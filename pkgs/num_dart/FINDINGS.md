@@ -413,6 +413,18 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 9. `pkgs/num_dart/lib/src/ndarray.dart` (`operator []=` Intermediate Unmanaged Array Allocation Overhead)
+- **Location**: [ndarray.dart:L729-L747](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L729-L747)
+- **Symptom**: Every time a developer mutates an array row or matrix sub-slice stack via the bracket setter `operator []=` (e.g. `matrix[i] = rowView` or `matrix[ [0, 2] ] = val`), the method forcefully allocates an intermediate, unmanaged `NDArray<int>` pointer target `indices` just to bridge to internal modifiers:
+  ```dart
+  final indices = NDArray<int>.fromList([spec], [1], DType.int32);
+  setIndices(indices, value);
+  ```
+- **The Inefficiency**: Incurs heavy dynamic FFI unmanaged memory page allocations, isolate data copy, and NativeFinalizer attachments overhead *directly inside hot setter code-paths*! 
+- **Recommended Tweak / High-End Fix**: Refactor the internal helper methods `setIndices()` and `setIndicesScalar()` to accept standard, flat Dart **`List<int>`** (or optimized `Int32List`) directly instead of forcing an `NDArray<int>` object type! This will allow the bracket setter to pass indices integers arrays directly without creating any transient unmanaged array wrappers, entirely erasing FFI allocations friction and GC pressure!
+
+***
+
 ## 9. `pkgs/num_dart/lib/src/ndarray.dart` (Modern Code Styling: Missing `DType` Enum Properties Abstractions)
 - **Location**: [ndarray.dart:L8](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L8) & [io.dart:L54](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/io.dart#L54)
 - **Symptom**: Data type traits, such as element byte widths (`_elementByteSize`), NumPy descriptors strings mapping (`_dtypeToDescr`), and precision type testing flags, are scattered as standalone private functions across `io.dart` or duplicated inside `if/else if` statements in `ndarray.dart`.
