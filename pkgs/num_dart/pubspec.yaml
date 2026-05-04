@@ -13,6 +13,8 @@ dependencies:
   ffi: ^2.1.2
   archive: ^3.6.0
   pocketfft: ^0.0.1
+  hooks: ^1.0.3
+  code_assets: ^1.0.0
 
 dev_dependencies:
   lints: ^6.0.0

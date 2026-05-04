@@ -47,14 +47,15 @@ def bench_binomial(ctx):
 # 2. SORTING & SEARCHING TRACK (Section 7)
 # ============================================================================
 def setup_qsort():
-    # Allocate template backwards
     template = np.arange(30000, 0, -1, dtype=np.float64)
-    return template
+    target = np.zeros(30000, dtype=np.float64)
+    return template, target
 
-def bench_qsort(template):
-    # Copy in-flight and sort, ensuring every iteration sorts an unsorted vector copy, exactly like Dart!
-    arr = np.copy(template)
-    np.sort(arr) # uses quicksort by default in NumPy
+def bench_qsort(ctx):
+    template, target = ctx
+    # High-speed C-level bit copy, bypassing object allocations inside timed loops!
+    np.copyto(target, template)
+    np.sort(target)
 
 def setup_where():
     cond = np.zeros((100, 100), dtype=np.int32)

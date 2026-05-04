@@ -8,6 +8,7 @@ import 'broadcasting.dart';
 import 'package:openblas/openblas.dart';
 import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
+import 'numdart_bindings.dart';
 import 'dart:io' show Platform;
 
 // Dynamic Libc Loader for ANSI C qsort
@@ -3186,27 +3187,19 @@ NDArray sort(NDArray a, {int axis = -1}) {
     ffi.NativeFunction<
       ffi.Int Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Void>)
     >
-  >
+  >?
   callbackPtr;
 
-  if (src.dtype == DType.float64) {
+  if (src.dtype == DType.float64 || src.dtype == DType.int64) {
     elementSizeInBytes = 8;
-    callbackPtr = ffi.Pointer.fromFunction(_compareFloat64, 0);
-  } else if (src.dtype == DType.float32) {
+  } else if (src.dtype == DType.float32 || src.dtype == DType.int32) {
     elementSizeInBytes = 4;
-    callbackPtr = ffi.Pointer.fromFunction(_compareFloat32, 0);
-  } else if (src.dtype == DType.int32) {
-    elementSizeInBytes = 4;
-    callbackPtr = ffi.Pointer.fromFunction(_compareInt32, 0);
-  } else if (src.dtype == DType.int64) {
-    elementSizeInBytes = 8;
-    callbackPtr = ffi.Pointer.fromFunction(_compareInt64, 0);
-  } else if (src.dtype == DType.complex128) {
-    elementSizeInBytes = 16;
-    callbackPtr = ffi.Pointer.fromFunction(_compareComplex128, 0);
   } else if (src.dtype == DType.complex64) {
     elementSizeInBytes = 8;
     callbackPtr = ffi.Pointer.fromFunction(_compareComplex64, 0);
+  } else if (src.dtype == DType.complex128) {
+    elementSizeInBytes = 16;
+    callbackPtr = ffi.Pointer.fromFunction(_compareComplex128, 0);
   } else {
     throw UnimplementedError('Unsupported dtype for sort: ${src.dtype}');
   }
@@ -3216,7 +3209,20 @@ NDArray sort(NDArray a, {int axis = -1}) {
 
   for (var r = 0; r < numRows; r++) {
     final rowPtr = baseCast + (r * rowSizeInBytes);
-    _qsort(rowPtr.cast<ffi.Void>(), n, elementSizeInBytes, callbackPtr);
+    
+    // High-speed direct C sorters bypassing FFI context switches
+    if (src.dtype == DType.float64) {
+      native_sort_double(rowPtr.cast<ffi.Double>(), n);
+    } else if (src.dtype == DType.float32) {
+      native_sort_float(rowPtr.cast<ffi.Float>(), n);
+    } else if (src.dtype == DType.int64) {
+      native_sort_int64(rowPtr.cast<ffi.LongLong>(), n);
+    } else if (src.dtype == DType.int32) {
+      native_sort_int32(rowPtr.cast<ffi.Int>(), n);
+    } else if (callbackPtr != null) {
+      // Fallback for rare complex lexicographical sorting
+      _qsort(rowPtr.cast<ffi.Void>(), n, elementSizeInBytes, callbackPtr);
+    }
   }
 
   return result;

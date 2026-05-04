@@ -2598,6 +2598,23 @@ external void kiss_fftri(
   ffi.Pointer<ffi.Double> timedata,
 );
 
+/// Natively sort a double precision float64 array of the specified size in-place.
+/// Uses pure C-to-C callbacks via standard library qsort to prevent FFI boundary jumps.
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
+external void native_sort_double(ffi.Pointer<ffi.Double> array, int size);
+
+/// Natively sort a single precision float32 array of the specified size in-place.
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
+external void native_sort_float(ffi.Pointer<ffi.Float> array, int size);
+
+/// Natively sort an int64 array of the specified size in-place.
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.LongLong>, ffi.Int)>()
+external void native_sort_int64(ffi.Pointer<ffi.LongLong> array, int size);
+
+/// Natively sort an int32 array of the specified size in-place.
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int>, ffi.Int)>()
+external void native_sort_int32(ffi.Pointer<ffi.Int> array, int size);
+
 typedef _Float32 = ffi.Float;
 typedef Dart_Float32 = double;
 typedef _Float64 = ffi.Double;

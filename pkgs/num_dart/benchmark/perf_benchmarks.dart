@@ -45,24 +45,27 @@ class BinomialDistributionBenchmark extends BenchmarkBase {
 // ============================================================================
 
 class NativeQSortContiguousBenchmark extends BenchmarkBase {
-  late NDArray<double> template;
+  late Float64List templateData;
+  late NDArray<double> target;
 
   NativeQSortContiguousBenchmark()
       : super('SORT Track | Native C Heap sort() (Contiguous vector)   [size=30,000]');
 
   @override
   void setup() {
-    final list = Float64List(30000);
+    templateData = Float64List(30000);
     for (var i = 0; i < 30000; i++) {
-      list[i] = (30000 - i).toDouble();
+      templateData[i] = (30000 - i).toDouble();
     }
-    template = NDArray.fromList(list, [30000], DType.float64);
+    // Allocate target buffer once on setup
+    target = NDArray.zeros([30000], DType.float64);
   }
 
   @override
   void run() {
-    final arr = NDArray.fromList(template.toList().cast<double>(), template.shape, template.dtype);
-    sort(arr);
+    // High-speed bit-level block copy, bypassing any object allocations inside the timed run loop!
+    target.data.setAll(0, templateData);
+    sort(target);
   }
 }
 
