@@ -62,6 +62,21 @@ This file logs architectural improvements and hidden flaws discovered during aut
   - If the input array `a` is already complex (`DType.complex128` or `complex64`) and is contiguous, and no padding is requested (`targetLen == lastAxisDim`), **we can completely bypass this loop, type switches, and the separate `pin` buffer allocation entirely!** We can safely pass `a.pointer` *directly* into `kiss_fft(cfg, a.pointer.cast(), pout)` zero-copy!
   - If zero-padding *is* required (`targetLen > lastAxisDim`), we can replace the loop with a single high-speed **`memcpy()` block copy** for the first `lastAxisDim` complex elements, and then call a single C `memset()` to zero-out the trailing padding block bytes in a single flash! 
 
+***
+
+## 6. `pkgs/num_dart/lib/src/ndarray.dart` (`toList()` Trivial Flat Copy Friction)
+- **Location**: [ndarray.dart:L1425-L1445](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L1425-L1445)
+- **Symptom**: The `toList()` method (which serializes an array to a flat Dart standard `List<T>`) *always* runs a heavy, deeply recursive Dart loop `_fillListRecursive` and calls `getCell(indices)` (triggering index coordinate multiplier math) for every single item cell, ignoring the layout state.
+- **The Inefficiency**: For perfectly flat, contiguous arrays (`isContiguous == true`), the underlying typed data buffer `data` (e.g. `Float64List` view) is **already perfectly sequential and ordered in memory!** 
+- **Recommended Tweak**: Inject a high-speed, early contiguous short-circuit gate at the top of `toList()`:
+  ```dart
+  if (isContiguous) {
+    return List<T>.from(data);
+  }
+  ```
+  This totally bypasses the entire recursive call frame stack and `getCell` coordinate arithmetic loop, reducing `toList()` runs over standard contiguous tensors to a blazing-fast **native-backed memory copy!**
+
+
 ## 2. `pkgs/num_dart/lib/src/operations.dart` (Generic Unnecessary Type Casts)
 - **Location**: [operations.dart:L1476](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1476) & [operations.dart:L4033](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L4033)
 - **Symptom**: Multiple recent FFI additions contain unnecessary downcasts or duplicate types assertions (e.g., `targetDType as DType` or duplicate list typing maps):
