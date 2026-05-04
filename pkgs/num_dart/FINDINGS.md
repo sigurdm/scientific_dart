@@ -77,6 +77,17 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 4. `pkgs/num_dart/lib/src/random.dart` (`randint()` Restricted to 32-bit Ranges on 64-bit Arrays)
+- **Location**: [random.dart:L56-L59](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/random.dart#L56-L59)
+- **Symptom**: To sample random integers uniformly, `randint()` calculates the spans `final range = high - low;` and loops using Dart's standard `Random.nextInt(range)` method:
+  ```dart
+  arr.data[i] = low + rand.nextInt(range);
+  ```
+- **The Hazard**: In the Dart SDK, `Random.nextInt(max)` has an ironclad API limitation: **`max` must be strictly positive and must not exceed $2^{32}$ ($4,294,967,296$)!** If a scientific developer configures `dtype: DType.int64` and requests a 64-bit wide sampling span exceeding $2^{32}$ (e.g., `randint(shape, 0, 100000000000)`), Dart's random generator **will instantly throw a fatal `ArgumentError` crash**, preventing 64-bit range capabilities!
+- **Recommended Tweak**: Add an explicit width check `if (range > 4294967296)`. If the range is wider than 32 bits, combine two 32-bit random bitmasks via bitwise shifts—`((rand.nextInt(1 << 32) << 32) | rand.nextInt(1 << 32))`—and scale or map that combined 64-bit random integer into the user's target interval. This fully restores authentic, non-crashing 64-bit random sampling capability package-wide!
+
+***
+
 ## 5. `pkgs/num_dart/lib/src/operations.dart` (`_reduceRecursive()` Extreme Leaf Allocation Hot-Spot)
 - **Location**: [operations.dart:L2164-L2178](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2164-L2178)
 - **Symptom**: Inside the recursive multi-axis partial reductions traversing engine, upon reaching the leaf base condition (`currentDim == src.shape.length`), the helper method executes the following memory allocation and offset loops:
