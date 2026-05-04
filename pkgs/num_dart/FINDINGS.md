@@ -53,6 +53,17 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 7. `pkgs/num_dart/lib/src/operations.dart` (Legacy `_loadLibc()` Startup Lookup Pruning)
+- **Location**: [operations.dart:L15-L61](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L15-L61)
+- **Symptom**: On module startup initialization, the codebase executes **`_loadLibc()`** to perform platform-specific lookups against OS library files (`libc.so.6`, `libc.so`, `ucrtbase.dll`) just to bind the legacy fallback function pointer `_qsort`.
+- **The Inefficiency**: Introduces package startup initialization latency and brittle path-dependent lookup risks across varied operating systems environments. Currently, `_qsort` is *only* used as a slow callback boundary fallback for **Complex numbers lexicographical sorting** (line 3416).
+- **Recommended Tweak**: 
+  - Implement a static C-to-C complex comparison callback and a pure C sorter `native_sort_complex128(cpx_t *base, int n)` directly inside our native module **`custom_sorting.c`**!
+  - Once complex sorting is offloaded to our native AOT library, **we can completely purge `_loadLibc()`, `_libc`, and all dynamic OS qsort bindings from the Dart codebase!** This renders `num_dart` 100% independent of host libc naming files variations and shortens package startup latency perfectly!
+
+
+***
+
 ## 5. `pkgs/num_dart/lib/src/fft.dart` (Cell-by-Cell FFI Copy Friction)
 - **Location**: [fft.dart:L68-L83](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/fft.dart#L68-L83) & [fft.dart:L153-L167](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/fft.dart#L153-L167)
 - **Symptom**: To offload a 1D row signal into the custom native C FFT engine buffer `pin`, `fft()` and `ifft()` use a cell-by-cell loop that fetches items from `a.data`, executes type checking branches (`val is Complex` vs `val as num`), and assigns `pin[i].r` / `pin[i].i` struct fields individually inside Dart.
