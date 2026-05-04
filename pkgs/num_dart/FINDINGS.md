@@ -481,6 +481,25 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 9. `pkgs/num_dart/lib/src/ndarray.dart` (🚨 Critical Arithmetic Hazard: `NDArray.arange()` Sizing Crashes on Zero/Negative Steps)
+- **Location**: [ndarray.dart:L199-L211](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L199-L211) (`arange`)
+- **Symptom**: The `arange(start, stop, {step})` linear spacing factory computes the required length buffer size using raw floating-point division:
+  ```dart
+  final length = ((stop - start) / step).ceil();
+  ```
+- **The Arithmetic Hazard**: Critical crash and security memory exploit risk! 
+  - **Zero Step Case**: If a user passes `step: 0.0` (or a variable evaluating to zero due to float underflow), `(stop - start) / 0.0` evaluates to **`double.infinity`** in Dart! Calling `.ceil()` on `double.infinity` immediately throws a fatal **`UnsupportedError: Infinity cannot be represented as an int`** crash.
+  - **Direction Mismatch Case**: If `step` is negative (e.g. `-1.0`) but `stop > start` (e.g. `arange(0, 10, step: -1.0)`), `length` becomes a **negative integer** (`-10`). Passing a negative capacity `[-10]` directly down to the native unmanaged `malloc` allocator will allocate massive, illegal garbage memory segments, triggering lethal native heap allocation failures or hard system process crashes!
+- **Recommended Tweak / Critical Patch**: Inject explicit validation gates at the very top of `arange()` to guarantee bounds integrity:
+  ```dart
+  if (step == 0.0) throw ArgumentError('step must be non-zero');
+  if (step > 0 && start > stop) throw ArgumentError('step must be negative when start > stop');
+  if (step < 0 && start < stop) throw ArgumentError('step must be positive when start < stop');
+  ```
+  This simple validation patch completely insulates the array builder tool from extreme arithmetic inputs exploits, ensuring 100% robust mathematical execution.
+
+***
+
 ## 9. `pkgs/num_dart/lib/src/ndarray.dart` (`operator []` Redundant List Map Allocation in Hot Path)
 - **Location**: [ndarray.dart:L664-L677](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L664-L677)
 - **Symptom**: When a developer queries a tensor scalar element or row slice via normal lists brackets selectors (e.g., `arr[[0, 2]]` or `arr[ [ [0, 1] ] ]`), the `operator []` bracket getter forcefully creates a lazy iterable and allocates a new dynamic list via `.toList()` just to downcast element wrappers typings:
