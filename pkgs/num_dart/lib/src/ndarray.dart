@@ -1,10 +1,11 @@
 import 'dart:ffi' as ffi;
+import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 import 'dart:collection';
 import 'broadcasting.dart';
 
 /// Supported data types for the elements of an [NDArray].
-enum DType { float32, float64, int32, int64, complex64, complex128 }
+enum DType { float32, float64, int32, int64, complex64, complex128, boolean }
 
 /// An n-dimensional array with memory allocated on the C heap.
 ///
@@ -115,6 +116,11 @@ class NDArray<T> implements ffi.Finalizable {
       pointer = p.cast();
       final floatList = p.asTypedList(totalSize * 2);
       data = ComplexList(floatList) as List<T>;
+    } else if (dtype == DType.boolean) {
+      final p = malloc<ffi.Uint8>(totalSize);
+      pointer = p.cast();
+      final uint8List = p.asTypedList(totalSize);
+      data = BoolList(uint8List) as List<T>;
     } else {
       throw UnimplementedError('Type $dtype not supported yet');
     }
@@ -154,6 +160,8 @@ class NDArray<T> implements ffi.Finalizable {
       arr.data.fillRange(0, arr.data.length, 0.0 as T);
     } else if (dtype == DType.complex128 || dtype == DType.complex64) {
       arr.data.fillRange(0, arr.data.length, Complex(0.0, 0.0) as T);
+    } else if (dtype == DType.boolean) {
+      arr.data.fillRange(0, arr.data.length, false as T);
     } else {
       arr.data.fillRange(0, arr.data.length, 0 as T);
     }
@@ -173,6 +181,8 @@ class NDArray<T> implements ffi.Finalizable {
       arr.data.fillRange(0, arr.data.length, 1.0 as T);
     } else if (dtype == DType.complex128 || dtype == DType.complex64) {
       arr.data.fillRange(0, arr.data.length, Complex(1.0, 0.0) as T);
+    } else if (dtype == DType.boolean) {
+      arr.data.fillRange(0, arr.data.length, true as T);
     } else {
       arr.data.fillRange(0, arr.data.length, 1 as T);
     }
@@ -299,6 +309,11 @@ class NDArray<T> implements ffi.Finalizable {
         parent.data.length * 2 - offsetElements * 2,
       );
       data = ComplexList(floatList) as List<T>;
+    } else if (parent.dtype == DType.boolean) {
+      final p = parent._pointer.cast<ffi.Uint8>() + offsetElements;
+      pointer = p.cast();
+      final uint8List = p.asTypedList(parent.data.length - offsetElements);
+      data = BoolList(uint8List) as List<T>;
     } else {
       throw UnimplementedError('Type ${parent.dtype} not supported yet');
     }
@@ -1775,6 +1790,33 @@ class ComplexList extends ListBase<Complex> {
   void operator []=(int index, Complex value) {
     _list[index * 2] = value.real;
     _list[index * 2 + 1] = value.imag;
+  }
+}
+
+/// A list view of boolean values backed by a flat list of uint8 bytes on the FFI heap.
+class BoolList extends ListBase<bool> {
+  final Uint8List _list;
+  BoolList(this._list);
+
+  /// Returns the backing list of raw bytes.
+  Uint8List get backingList => _list;
+
+  @override
+  int get length => _list.length;
+
+  @override
+  set length(int newLength) {
+    throw UnsupportedError('Cannot resize BoolList');
+  }
+
+  @override
+  bool operator [](int index) {
+    return _list[index] != 0;
+  }
+
+  @override
+  void operator []=(int index, bool value) {
+    _list[index] = value ? 1 : 0;
   }
 }
 

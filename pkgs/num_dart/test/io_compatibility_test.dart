@@ -234,5 +234,7 @@ String _dtypeToDescr(DType dtype) {
       return '<c16';
     case DType.complex64:
       return '<c8';
+    case DType.boolean:
+      return '|b1';
   }
 }

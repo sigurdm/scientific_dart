@@ -21,6 +21,8 @@ String _dtypeToDescr(DType dtype) {
       return '<c16';
     case DType.complex64:
       return '<c8';
+    case DType.boolean:
+      return '|b1';
   }
 }
 
@@ -41,6 +43,8 @@ DType _descrToDType(String descr) {
       return DType.complex128;
     case 'c8':
       return DType.complex64;
+    case 'b1':
+      return DType.boolean;
     default:
       throw UnsupportedError('Unsupported NumPy data type descriptor: $descr');
   }
@@ -49,6 +53,8 @@ DType _descrToDType(String descr) {
 /// Returns the byte size of a single element of the specified [DType].
 int _elementByteSize(DType dtype) {
   switch (dtype) {
+    case DType.boolean:
+      return 1;
     case DType.float32:
     case DType.int32:
       return 4;
