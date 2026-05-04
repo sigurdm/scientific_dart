@@ -77,6 +77,23 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 7. `pkgs/num_dart/lib/src/ndarray.dart` (`transpose()` Lacks Negative Axis Support)
+- **Location**: [ndarray.dart:L411-L419](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L411-L419)
+- **Symptom**: The `transpose([List<int>? axes])` method performs explicit bounds checks on custom axes arrays list. However, if an axis entry is negative (`axis < 0`), it **instantly throws a fatal `RangeError.index` exception** instead of normalizings it against tensor rank:
+  ```dart
+  if (axis < 0 || axis >= shape.length) {
+    throw RangeError.index(axis, shape, 'axis out of range');
+  }
+  ```
+- **The Hazard**: Violates universal NumPy/Python conventions where negative axis pointers are fully valid (e.g., `-1` loops to the trailing dim, `-2` to second-to-last). While we added negative axis normalizations to `swapaxes`, `moveaxis`, and `squeeze`, `transpose()` was left incomplete.
+- **Recommended Tweak**: Inject standard rank-normalization at the top of the custom axes parser loop:
+  ```dart
+  final normAxis = axis < 0 ? shape.length + axis : axis;
+  ```
+  This fully restores universal, robust negative-axis indexing uniformity across all structural view tools!
+
+***
+
 ## 6. `pkgs/num_dart/lib/src/io.dart` (`.npz` Archive Memory Bloat & Type-Cast Hazards)
 - **Location**: [io.dart:L444-L456](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/io.dart#L444-L456) (`loadz`)
 - **Symptom 1: Naive Type-Casting Vulnerability**: `loadz()` naively casts archive file contents directly to a strict `Uint8List`:
