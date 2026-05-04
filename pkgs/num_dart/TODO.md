@@ -57,7 +57,7 @@ This file tracks foundational features missing in `num_dart` relative to NumPy.
 - [x] Direct conversion to/from Dart `TypedData` with minimal copying.
 
 ## 9. Performance & Infrastructure
-- [ ] Optimize element-wise ops to iterate on C memory directly (avoid `toList()` copies).
+- [x] Optimize element-wise ops to iterate on C memory directly (avoid `toList()` copies) - C vector kernels + odometer walks.
 - [ ] Expand SIMD usage beyond `float32` addition.
 - [ ] Add `DType.bool` or efficient `uint8` masking for boolean operations.
-- [ ] Create a comprehensive benchmark suite comparing `num_dart` element-wise operations, reductions, and linear algebra performance directly against Python's NumPy.
+- [x] Create a comprehensive benchmark suite comparing `num_dart` element-wise operations, reductions, and linear algebra performance directly against Python's NumPy.
