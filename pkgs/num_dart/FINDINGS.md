@@ -77,6 +77,23 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 5. `pkgs/num_dart/lib/src/operations.dart` (`_reduceRecursive()` Extreme Leaf Allocation Hot-Spot)
+- **Location**: [operations.dart:L2164-L2178](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2164-L2178)
+- **Symptom**: Inside the recursive multi-axis partial reductions traversing engine, upon reaching the leaf base condition (`currentDim == src.shape.length`), the helper method executes the following memory allocation and offset loops:
+  ```dart
+  final destPos = List<int>.from(currentPos)..removeAt(targetAxis);
+  var destOffset = 0;
+  for (var i = 0; i < dest.shape.length; i++) {
+    destOffset += destPos[i] * dest.strides[i];
+  }
+  ```
+- **The Inefficiency**: Triggers millions of dynamic **`List<int>.from()` heap allocations** and sub-loops at every single individual element leaf cell, creating severe garbage collection spikes and memory pressure! Furthermore, it manually re-computes flat indices from scratch by looping across ranks instead of incrementally updating offsets via strides variables increments.
+- **Recommended Tweak**: 
+  - Completely avoid dynamic list creations at the leaf level by pre-allocating a reuseable `destPos` buffer array list *outside* the recursion stack and updating it in-place.
+  - Better yet, offload this entire partial axis reduction odometer traversal into a **flat C vector walker (`s_reduce_axis_double`)** that walks sequential data pointers via pure unmanaged strides math, bypassing Dart recursive isolate overhead entirely and achieving NumPy parity loops!
+
+***
+
 ## 7. `pkgs/num_dart/lib/src/ndarray.dart` (`transpose()` Lacks Negative Axis Support)
 - **Location**: [ndarray.dart:L411-L419](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L411-L419)
 - **Symptom**: The `transpose([List<int>? axes])` method performs explicit bounds checks on custom axes arrays list. However, if an axis entry is negative (`axis < 0`), it **instantly throws a fatal `RangeError.index` exception** instead of normalizings it against tensor rank:
