@@ -77,6 +77,21 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 9. `pkgs/num_dart/lib/src/ndarray.dart` (`ComplexList` High-Frequency Object Instantiation Friction)
+- **Location**: [ndarray.dart:L1809-L1812](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L1809-L1812)
+- **Symptom**: The `ComplexList` custom array view overrides the index getter to extract complex doubles pairs cells:
+  ```dart
+  @override
+  Complex operator [](int index) {
+    return Complex(_list[index * 2], _list[index * 2 + 1]);
+  }
+  ```
+- **The Inefficiency**: Every single read access to a `DType.complex128` or `complex64` cell via bracket indexes **instantiates a brand-new `Complex` object dynamically on the heap**! For high-frequency iterative loops in pure Dart fallbacks, spawning millions of temporary, short-lived `Complex` object frames results in massive memory fragmentation and aggressive Dart VM Garbage Collector thrashing!
+- **Recommended Tweak**: 
+  - Migrate `Complex` from a standard `final class` into a zero-cost **`extension type`** over an unmanaged flat storage memory view, or introduce direct, zero-allocation primitive field getters on `NDArray` (e.g., `double getComplexReal(int idx)` / `double getComplexImag(int idx)`). This will completely erase short-lived wrapper allocations, driving complex matrix arithmetic to optimal JIT memory performance!
+
+***
+
 ## 5. `pkgs/num_dart/lib/src/io.dart` (`save()` / `_serializeNpyBytes()` Double Allocation on Strided Saves)
 - **Location**: [io.dart:L86-L90](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/io.dart#L86-L90) (`save`) & [io.dart:L259-L262](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/io.dart#L259-L262) (`_serializeNpyBytes`)
 - **Symptom**: To serialize a non-contiguous strided view array to binary formats, the codebase creates a contiguous copy upfront using the following logic:
