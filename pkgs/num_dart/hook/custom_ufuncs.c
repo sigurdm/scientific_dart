@@ -386,3 +386,111 @@ float r_sum_float(const float *src, int size) {
     }
     return acc;
 }
+
+// ============================================================================
+// 5. ADDITIONAL MATH, ROUNDING & CLIPPING KERNELS (SIMD AUTOVECTORIZABLE)
+// ============================================================================
+
+void v_sqrt_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = sqrt(src[i]);
+    }
+}
+
+void v_tan_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = tan(src[i]);
+    }
+}
+
+void v_abs_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = fabs(src[i]);
+    }
+}
+
+void v_ceil_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = ceil(src[i]);
+    }
+}
+
+void v_floor_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = floor(src[i]);
+    }
+}
+
+void v_round_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = round(src[i]);
+    }
+}
+
+void v_clip_double(const double *src, double *res, double min_val, double max_val, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        double val = src[i];
+        if (val < min_val) val = min_val;
+        if (val > max_val) val = max_val;
+        res[i] = val;
+    }
+}
+
+void v_sqrt_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = sqrtf(src[i]);
+    }
+}
+
+void v_tan_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = tanf(src[i]);
+    }
+}
+
+void v_abs_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = fabsf(src[i]);
+    }
+}
+
+void v_ceil_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = ceilf(src[i]);
+    }
+}
+
+void v_floor_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = floorf(src[i]);
+    }
+}
+
+void v_round_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = roundf(src[i]);
+    }
+}
+
+void v_clip_float(const float *src, float *res, float min_val, float max_val, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        float val = src[i];
+        if (val < min_val) val = min_val;
+        if (val > max_val) val = max_val;
+        res[i] = val;
+    }
+}

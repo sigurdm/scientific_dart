@@ -481,6 +481,151 @@ external void v_log_float(
 external double r_sum_float(ffi.Pointer<ffi.Float> src, int size);
 
 /// ----------------------------------------------------------------------------
+/// Additional Math, Rounding, and Clipping Ufuncs (Float64 & Float32 Tiers)
+/// ----------------------------------------------------------------------------
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
+>()
+external void v_sqrt_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
+>()
+external void v_tan_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
+>()
+external void v_abs_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
+>()
+external void v_ceil_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
+>()
+external void v_floor_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
+>()
+external void v_round_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Double,
+    ffi.Double,
+    ffi.Int,
+  )
+>()
+external void v_clip_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Double> res,
+  double min_val,
+  double max_val,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
+>()
+external void v_sqrt_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
+>()
+external void v_tan_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
+>()
+external void v_abs_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
+>()
+external void v_ceil_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
+>()
+external void v_floor_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
+>()
+external void v_round_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Float,
+    ffi.Float,
+    ffi.Int,
+  )
+>()
+external void v_clip_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  double min_val,
+  double max_val,
+  int size,
+);
+
+/// ----------------------------------------------------------------------------
 /// Binary-Compatible Complex Number Type (Matches kiss_fft_cpx and num_dart.Complex)
 /// ----------------------------------------------------------------------------
 final class cpx_t extends ffi.Struct {

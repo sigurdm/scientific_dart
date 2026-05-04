@@ -1462,6 +1462,18 @@ dynamic prod<T extends num>(NDArray<T> a, {int? axis}) {
 /// **Gotchas:**
 /// - Negative values will result in [double.nan].
 NDArray<double> sqrt<T extends num>(NDArray<T> a) {
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      final result = NDArray<double>.create(a.shape, DType.float64);
+      v_sqrt_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      final result = NDArray<double>.create(a.shape, DType.float32);
+      v_sqrt_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
   final result = NDArray<double>.create(a.shape, DType.float64);
   for (var i = 0; i < a.data.length; i++) {
     result.data[i] = math.sqrt(a.data[i].toDouble());
@@ -2481,6 +2493,16 @@ NDArray tan(NDArray a) {
   }
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   final result = NDArray.create(a.shape, targetDType);
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_tan_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_tan_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
@@ -2796,6 +2818,16 @@ NDArray ceil(NDArray a) {
     throw UnsupportedError('Complex numbers are not supported for ceil');
   }
   final result = NDArray.create(a.shape, a.dtype);
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_ceil_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_ceil_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
@@ -2835,6 +2867,16 @@ NDArray floor(NDArray a) {
     throw UnsupportedError('Complex numbers are not supported for floor');
   }
   final result = NDArray.create(a.shape, a.dtype);
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_floor_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_floor_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {

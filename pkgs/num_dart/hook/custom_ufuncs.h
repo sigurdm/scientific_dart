@@ -85,4 +85,24 @@ void v_log_float(const float *src, float *res, int size);
 
 float r_sum_float(const float *src, int size);
 
+// ----------------------------------------------------------------------------
+// Additional Math, Rounding, and Clipping Ufuncs (Float64 & Float32 Tiers)
+// ----------------------------------------------------------------------------
+
+void v_sqrt_double(const double *src, double *res, int size);
+void v_tan_double(const double *src, double *res, int size);
+void v_abs_double(const double *src, double *res, int size);
+void v_ceil_double(const double *src, double *res, int size);
+void v_floor_double(const double *src, double *res, int size);
+void v_round_double(const double *src, double *res, int size);
+void v_clip_double(const double *src, double *res, double min_val, double max_val, int size);
+
+void v_sqrt_float(const float *src, float *res, int size);
+void v_tan_float(const float *src, float *res, int size);
+void v_abs_float(const float *src, float *res, int size);
+void v_ceil_float(const float *src, float *res, int size);
+void v_floor_float(const float *src, float *res, int size);
+void v_round_float(const float *src, float *res, int size);
+void v_clip_float(const float *src, float *res, float min_val, float max_val, int size);
+
 #endif // CUSTOM_UFUNCS_H
