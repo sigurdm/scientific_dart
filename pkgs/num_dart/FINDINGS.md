@@ -252,6 +252,14 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 6. `pkgs/num_dart/lib/src/operations.dart` (`inv()` Redundant Target Allocations on Strided Inversions)
+- **Location**: [operations.dart:L1714-L1725](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1714-L1725) & [operations.dart:L1758-L1760](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1758-L1760)
+- **Symptom**: For non-contiguous strided input matrix views, `inv()` forces an intermediate flat copy allocation: `src = NDArray.fromList(a.toList())`. However, it proceeds to allocate a *third* independent tensor `result = NDArray.create(src.shape)` and copies bytes via `result.data.setAll(0, src.data)` just to satisfy LAPACK in-place constraints.
+- **The Inefficiency**: Redundant allocation and memory copy duplication churn! Since `src` is already an intermediate contiguous copy unreferenced by any external consumer, it is 100% safe to mutate `src` in-place directly! Allocating a third `result` array and copying elements cell-by-cell into it is completely unnecessary.
+- **Recommended Tweak**: Refactor `inv()` to bypass `result` allocations if `!a.isContiguous`. Simply execute LAPACK `LAPACKE_dgetrf` and `dgetri` directly over `src.pointer` and return `src` as the inverted matrix, saving substantial RAM and array duplication latency!
+
+***
+
 ## 5. `pkgs/num_dart/lib/src/operations.dart` (`concatenate()` Recursive Cell-Copy and Bracket Allocation Churn)
 - **Location**: [operations.dart:L2242-L2255](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2242-L2255) (`_copyConcatenateRecursive`)
 - **Symptom**: To merge lists of tensors, the concatenation engine triggers a deeply recursive cell walk. Upon reaching the cell leaf base case (`currentDim == src.shape.length`), it invokes:
