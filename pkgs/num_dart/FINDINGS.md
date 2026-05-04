@@ -268,6 +268,17 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 6. `pkgs/num_dart/lib/src/operations.dart` (`nonzero()` Dynamic List Growth & Relocation Friction)
+- **Location**: [operations.dart:L3754-L3761](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L3754-L3761) & [operations.dart:L3772-L3775](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L3772-L3775)
+- **Symptom**: To locate non-zero element coordinates, `nonzero()` initializes empty dynamic Dart lists for each rank dimension axis: `List.generate(rank, (_) => <int>[])`. In the recursive walk loop, whenever a truth entry is hit, it dynamically appends the indices:
+  ```dart
+  coordinateLists[i].add(currentPos[i]);
+  ```
+- **The Inefficiency**: Triggers massive memory re-allocation and array growth copying overhead under the hood as standard Dart lists dynamically grow! For highly dense non-zero tensors (like mask boolean filters), dynamic lists resize hundreds of times mid-run.
+- **Recommended Tweak**: Pre-compute the exact required capacity by calling `count_nonzero(a)` upfront! Use this count to pre-allocate standard fixed-length TypedData **`Int32List(count)`** or unmanaged `malloc<ffi.Int32>(count)` pointer arrays directly. The recursive walk can then write values via static zero-friction array setters (`list[index++] = coordinate`), entirely eliminating list resizing churn and VM memory reallocations latency!
+
+***
+
 ## 5. `pkgs/num_dart/lib/src/operations.dart` (🚨 Critical Logic Bug: `count_nonzero()` Fallback Discards Returns & `nonzero()` Bracket Friction)
 - **Location**: [operations.dart:L3803-L3810](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L3803-L3810) (`count_nonzero`) & [operations.dart:L3770](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L3770) (`nonzero`)
 - **Symptom 1: Catastrophic `count_nonzero()` Logic Bug**: In the non-contiguous fallback path for global element counting, the recursive helper `countWalk` discards the sub-tree yield:
