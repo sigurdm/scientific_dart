@@ -51,6 +51,17 @@ This file logs architectural improvements and hidden flaws discovered during aut
   This completely deletes all iterations and allocations friction for identical shape tensors, offloading them to instant `O(1)` zero-friction returns!
 
 
+***
+
+## 5. `pkgs/num_dart/lib/src/fft.dart` (Cell-by-Cell FFI Copy Friction)
+- **Location**: [fft.dart:L68-L83](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/fft.dart#L68-L83) & [fft.dart:L153-L167](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/fft.dart#L153-L167)
+- **Symptom**: To offload a 1D row signal into the custom native C FFT engine buffer `pin`, `fft()` and `ifft()` use a cell-by-cell loop that fetches items from `a.data`, executes type checking branches (`val is Complex` vs `val as num`), and assigns `pin[i].r` / `pin[i].i` struct fields individually inside Dart.
+- **The Inefficiency**: Introduces massive cell iteration and runtime type-check overhead inside timed loops. 
+- **The Optimization Fix**: 
+  - Under the hood, our `num_dart.Complex` layout (and packed `Float64List`/`Float32List` backings) is **100% binary memory compatible with KissFFT's `kiss_fft_cpx` struct layout!**
+  - If the input array `a` is already complex (`DType.complex128` or `complex64`) and is contiguous, and no padding is requested (`targetLen == lastAxisDim`), **we can completely bypass this loop, type switches, and the separate `pin` buffer allocation entirely!** We can safely pass `a.pointer` *directly* into `kiss_fft(cfg, a.pointer.cast(), pout)` zero-copy!
+  - If zero-padding *is* required (`targetLen > lastAxisDim`), we can replace the loop with a single high-speed **`memcpy()` block copy** for the first `lastAxisDim` complex elements, and then call a single C `memset()` to zero-out the trailing padding block bytes in a single flash! 
+
 ## 2. `pkgs/num_dart/lib/src/operations.dart` (Generic Unnecessary Type Casts)
 - **Location**: [operations.dart:L1476](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1476) & [operations.dart:L4033](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L4033)
 - **Symptom**: Multiple recent FFI additions contain unnecessary downcasts or duplicate types assertions (e.g., `targetDType as DType` or duplicate list typing maps):
