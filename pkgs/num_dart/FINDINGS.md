@@ -540,6 +540,28 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 9. `pkgs/num_dart/lib/src/ndarray.dart` (🚨 Critical Memory Safety Flaw: View Invalidation Use-After-Free Segmentation Crashes)
+- **Location**: [ndarray.dart:L1696-L1700](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L1696-L1700) (`dispose`)
+- **Symptom**: The explicit `dispose()` method releases the unmanaged root buffer safely, detaching the native finalizer:
+  ```dart
+  if (_parent != null) return;
+  _finalizer.detach(this);
+  malloc.free(_pointer);
+  ```
+- **The Bug / Use-After-Free Hazard**: Critical native safety crash risk! While the root array releases its pointer, **all child array views (slices, transposes, reshapes) derived from it remain completely active and unaware that the backing heap buffer was freed!** If a developer subsequently reads or writes to a child view, it will access freed heap blocks, triggeringInsidious **Use-After-Free vulnerabilities**, memory corruption, or fatal native segmentation faults (**`SIGSEGV`**) that immediately kill the entire Dart application process!
+- **Recommended Tweak / Memory Hardening Fix**: 
+  - Introduce an explicit boolean flag `bool _isDisposed = false;` on root arrays.
+  - In `dispose()`, toggle `_isDisposed = true;`.
+  - Harden all data operations, element accessors, and FFI gates with a strict precondition assert check: 
+    ```dart
+    if (_isDisposed || (_parent != null && _parent!._isDisposed)) {
+      throw StateError('Cannot access an array or view whose memory has been explicitly freed/disposed!');
+    }
+    ```
+  - By letting views check their parent's `_isDisposed` state cascadingly, child views automatically and safely invalidate themselves, throwing clean, graceful Dart exceptions instead of hard kernel segmentation crashes!
+
+***
+
 ## 9. `pkgs/num_dart/lib/src/ndarray.dart` (Modern Code Styling: Missing `DType` Enum Properties Abstractions)
 - **Location**: [ndarray.dart:L8](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L8) & [io.dart:L54](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/io.dart#L54)
 - **Symptom**: Data type traits, such as element byte widths (`_elementByteSize`), NumPy descriptors strings mapping (`_dtypeToDescr`), and precision type testing flags, are scattered as standalone private functions across `io.dart` or duplicated inside `if/else if` statements in `ndarray.dart`.
