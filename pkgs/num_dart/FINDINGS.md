@@ -493,6 +493,27 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 9. `pkgs/num_dart/lib/src/ndarray.dart` (`NDArray` Lacks Structural Value Equality `operator ==` Override)
+- **Location**: [ndarray.dart:L31-L68](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L31-L68)
+- **Symptom**: The `NDArray` class completely omits an explicit override for the **equality operator `operator ==`** and the companion **`hashCode`** getter! The *only* class in the file that handles equality is the scalar `Complex` helper (line 1786).
+- **The Hazard / DX Defect**: Because it inherits Dart's default object equality, comparing two arrays via `arr1 == arr2` triggers strict **identity equality checking (`identical()`)**! This means two completely separate tensor instances housing identical ranks, shapes, and exact duplicate floating-point element data will evaluate as **`false`** always under standard operators!
+- **Recommended Tweak**: Implement a robust structural value equality override directly inside `NDArray`:
+  ```dart
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is NDArray &&
+        dtype == other.dtype &&
+        listEquals(shape, other.shape) &&
+        listEquals(data, other.data); // TypedData listEquals invokes optimized native memory checks under the hood!
+  }
+  @override
+  int get hashCode => Object.hash(Object.hashAll(shape), dtype, Object.hashAll(data));
+  ```
+  Integrating structural value equality will massively boost the developer experience (DX) across unit testing suites, allowing testing frameworks (`expect(result, expected)`) and core Dart collections to evaluate arrays naturally by mathematical value constraints rather than raw transient instance pointers!
+
+***
+
 ## 9. `pkgs/num_dart/lib/src/ndarray.dart` (Modern Code Styling: Missing `DType` Enum Properties Abstractions)
 - **Location**: [ndarray.dart:L8](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L8) & [io.dart:L54](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/io.dart#L54)
 - **Symptom**: Data type traits, such as element byte widths (`_elementByteSize`), NumPy descriptors strings mapping (`_dtypeToDescr`), and precision type testing flags, are scattered as standalone private functions across `io.dart` or duplicated inside `if/else if` statements in `ndarray.dart`.
