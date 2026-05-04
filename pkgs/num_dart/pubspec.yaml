@@ -1,0 +1,20 @@
+name: num_dart
+description: N-dimensional arrays and numerical operations.
+version: 0.0.1
+resolution: workspace
+# repository: https://github.com/my_org/my_repo
+
+environment:
+  sdk: ^3.11.5
+
+# Add regular dependencies here.
+dependencies:
+  openblas: ^0.0.1
+  ffi: ^2.1.2
+  archive: ^3.6.0
+  pocketfft: ^0.0.1
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6
+  benchmark_harness: ^2.2.0

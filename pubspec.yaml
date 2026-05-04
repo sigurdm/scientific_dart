@@ -1,0 +1,9 @@
+name: math_workspace
+environment:
+  sdk: ^3.11.5
+workspace:
+  - pkgs/openblas
+  - pkgs/num_dart
+  - pkgs/pocketfft
+dependencies:
+  http: ^1.6.0

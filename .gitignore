@@ -1,0 +1,27 @@
+# Dart Tooling & Build Artifacts Caches
+.dart_tool/
+.packages
+build/
+.hooks_runner/
+*.dill
+*.exe
+
+# Compiled Shared Library Asset Binaries (Loaded dynamically via FFI/Native Assets)
+*.so
+*.dylib
+*.dll
+*.a
+
+# Python Benchmark Caches
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Unpacked Native Third-Party Source Files (Downloaded dynamically by hook/build.dart)
+pkgs/pocketfft/hook/src/
+pkgs/openblas/third_party/
+
+# IDE & System files
+.idea/
+.DS_Store
+*.log

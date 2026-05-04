@@ -1,0 +1,30 @@
+import 'dart:ffi' as ffi;
+import 'package:ffi/ffi.dart';
+import 'package:openblas/openblas.dart';
+
+void main() {
+  final threads = openblas_get_num_threads();
+  print('OpenBLAS threads: $threads');
+
+  final configPtr = openblas_get_config();
+  final configStr = configPtr.cast<Utf8>().toDartString();
+  print('OpenBLAS Config: $configStr');
+
+  // Simple calculation: Vector dot product (cblas_sdot)
+  final n = 3;
+  final x = calloc<ffi.Float>(n);
+  final y = calloc<ffi.Float>(n);
+
+  x[0] = 1.0;
+  x[1] = 2.0;
+  x[2] = 3.0;
+  y[0] = 4.0;
+  y[1] = 5.0;
+  y[2] = 6.0;
+
+  final result = cblas_sdot(n, x, 1, y, 1);
+  print('sdot result: $result (Expected: 32.0)');
+
+  calloc.free(x);
+  calloc.free(y);
+}
