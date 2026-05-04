@@ -256,6 +256,16 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 6. `pkgs/num_dart/lib/src/fft.dart` (Lacks Multi-Dimensional 2D/ND FFT Support)
+- **Location**: [fft.dart:L6-L190](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/fft.dart#L6-L190)
+- **Symptom**: The Fourier signal processing tracking layer only wraps and exposes 1D transformations `fft()` and `ifft()` executing strictly along a single last axis dimension.
+- **The Hazard**: Violates NumPy `np.fft` standards. Scientific fields like image processing, spatial analytics, and physics tensors heavily require **2D discrete Fourier transforms (`fft2` / `ifft2`)** or **N-dimensional transformations (`fftn` / `ifftn`)** to transform spatial grids across axes stacks.
+- **Recommended Tweak**: 
+  - Sibling package `pocketfft` bundles KissFFT, which **natively exposes full multidimensional mixed-radix C solvers `kiss_fftnd_alloc()` and `kiss_fftnd()`!**
+  - We should update `pocketfft`'s bindings to expose these ND headers, and implement high-level `fft2()`, `ifft2()`, `fftn()`, and `ifftn()` methods in `num_dart`. They extract rank shapes, build native `kiss_fftnd` plans, and offload spatial frequency matrix calculations 100% zero-copy to the C heap, achieving full spatial data science completeness!
+
+***
+
 ## 8. `pkgs/openblas/hook/build.dart` (OpenBLAS Extreme Compilation Latency Hazard)
 - **Location**: [build.dart:L52-L97](file:///usr/local/google/home/sigurdm/projects/math/pkgs/openblas/hook/build.dart#L52-L97)
 - **Symptom**: When `input.config.buildCodeAssets` is active, the OpenBLAS build hook fetches the full raw 0.3.33 source code tarball from GitHub and launches a manual AOT compilation pass using system tools `make`.
