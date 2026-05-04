@@ -382,6 +382,15 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 4. `pkgs/num_dart/lib/src/operations.dart` (`clip()` Lacks Allocation-Free `{NDArray? out}` and Integer C Acceleration)
+- **Location**: [operations.dart:L2986-L3000](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2986-L3000)
+- **Symptom 1: Missing `out` Parameter Recycling**: The universal bounding ufunc `clip(a, min, max)` lacks a named parameter recycler `{NDArray? out}`, forcing constant result allocations (`NDArray.create()`) inside loops.
+- **Recommended Tweak 1**: Refactor `clip()` signature to accept an optional named recycler **`{NDArray? out}`**, and pass `out.pointer` to high-speed C kernels when provided, eliminating allocations friction entirely.
+- **Symptom 2: Missing Integer C FFI Fast Path**: If the array `a` is perfectly contiguous but uses an integer DType (`int32` or `int64`), it **completely fails to trigger the native C FFI acceleration track**, falling through to the slow pure-Dart recursive `_unaryOp` helper (line 3006) which runs slow, single-element `.clamp()` closures!
+- **Recommended Tweak 2**: Expose flat vector kernels `v_clip_int32` and `v_clip_int64` directly in **`custom_ufuncs.c`** to let the compiler auto-vectorize contiguous integer clamping over hardware registers SSE/NEON, avoiding slow Dart loops fallback.
+
+***
+
 ## 5. `pkgs/num_dart/lib/src/operations.dart` (`eig()` Forced Complex Upcasting and Missing Real LAPACK Solvers)
 - **Location**: [operations.dart:L2069-L2110](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2069-L2110) & [operations.dart:L2111-L2130](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2111-L2130)
 - **Symptom**: When computing eigenvalues/eigenvectors for a purely **real** matrix (`DType.float64` or `float32`), `eig()` forcefully upcasts and converts the input array into a complex tensor (`DType.complex128` or `complex64`), setting imaginary fields to `0.0`, and invokes the complex LAPACK solvers **`LAPACKE_zgeev`** / **`LAPACKE_cgeev`**.
