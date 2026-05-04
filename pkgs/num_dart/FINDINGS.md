@@ -192,6 +192,18 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 6. `pkgs/num_dart/lib/src/operations.dart` (`solve()` Redundant Isolate Cell Copy Frictions)
+- **Location**: [operations.dart:L1913-L1922](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1913-L1922) & [operations.dart:L1941-L1950](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1941-L1950)
+- **Symptom**: Before invoking high-speed LAPACK solvers (`dgesv` / `sgesv`), the `solve()` system method creates copies of the operands `a` and `b` to prevent LAPACK from overwriting the user's original inputs in-place. However, it does so via heavy Dart list duplications:
+  ```dart
+  final aCopy = NDArray<double>.fromList(List<double>.from(a.data as List<double>), a.shape, DType.float64);
+  ```
+- **The Inefficiency**: Executing `List<double>.from(a.data)` triggers expensive cell-by-cell iterations and temporary list allocations inside Dart VM isolate space. For large, dense linear systems (e.g., $500 \times 500$ matrices), this creates major latency bottlenecks.
+- **Recommended Tweak**: 
+  - When `a` and `b` are contiguous, replace the `List.from()` path with direct unmanaged heap allocations via `NDArray.create(shape, dtype)` and spawn a high-speed C **`memcpy()` block copy** to duplicate the binary memory blocks instantly. This entirely erases Dart-side element looping friction and type-casting bookkeeping overhead!
+
+***
+
 ## 5. `pkgs/num_dart/lib/src/operations.dart` (`det()` Lacks High-Dimensional ND Stack Support)
 - **Location**: [operations.dart:L1816](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1816)
 - **Symptom**: The `det(NDArray<double> a)` matrix determinant ufunc strictly limits input matrices to exactly 2D square matrices:
