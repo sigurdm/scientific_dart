@@ -507,6 +507,18 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 5. `pkgs/num_dart/lib/src/ndarray.dart` (`flatten()` Double Allocation Copy Penalty on Strided Views)
+- **Location**: [ndarray.dart:L376-L380](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L376-L380) (`flatten`) & [ndarray.dart:L394-L397](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L394-L397) (`ravel` fallback)
+- **Symptom**: While `ravel()` achieves stellar `O(1)` zero-copy views for contiguous arrays, non-contiguous strided or transposed array views fall back to `flatten()`, which serializes and creates a 1D tensor via the following pipeline:
+  ```dart
+  final flatList = toList();
+  return NDArray.fromList(flatList, [flatList.length], dtype);
+  ```
+- **The Inefficiency**: Incurs a severe **double-allocation and double-copy memory penalty**! `a.toList()` recursively walks the strided dimensions tree and flattens/orders elements into a fresh Dart standard list. `NDArray.fromList` then allocates a *second* unmanaged C heap pointer block via `malloc` and copies all elements a second time via `setAll()`! For huge datasets, this double data movement duplicates footprint latency and GC load.
+- **Recommended Tweak**: Expose a low-level C FFI flattening walker kernel `v_flatten_double(void *src, void *dest, ...)` in `custom_ufuncs.c`. When `!isContiguous`, `flatten()` can allocate a *single* destination pointer array via `NDArray.create()` and offload the strided dimensions traverse block copy 100% to C space! This will eliminate intermediate Dart list allocations and **cut copying latency and memory footprints exactly in half** for all strided flattening views!
+
+***
+
 ## 9. `pkgs/num_dart/lib/src/ndarray.dart` (`NDArray` Lacks Structural Value Equality `operator ==` Override)
 - **Location**: [ndarray.dart:L31-L68](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L31-L68)
 - **Symptom**: The `NDArray` class completely omits an explicit override for the **equality operator `operator ==`** and the companion **`hashCode`** getter! The *only* class in the file that handles equality is the scalar `Complex` helper (line 1786).
