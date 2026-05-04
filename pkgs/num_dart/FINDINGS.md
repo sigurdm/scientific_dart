@@ -168,6 +168,19 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 5. `pkgs/num_dart/lib/src/operations.dart` (`det()` Lacks High-Dimensional ND Stack Support)
+- **Location**: [operations.dart:L1816](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1816)
+- **Symptom**: The `det(NDArray<double> a)` matrix determinant ufunc strictly limits input matrices to exactly 2D square matrices:
+  ```dart
+  if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
+    throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
+  }
+  ```
+- **The Hazard**: Violates NumPy conventions. In Python NumPy, `np.linalg.det()` natively supports **high-dimensional stacked matrices** (e.g., tensor shape `[Batch, N, N]`), computing a matrix determinant for each stack and returning an array of shape `[Batch]`. While we successfully added ND stack broadcasting into `matmul()` and `inv()`, `det()` was left restricted.
+- **Recommended Tweak**: Refactor `det()` to allow arbitrary ranks ($\ge 2$), extract the leading stack dimensions via `a.shape.sublist(0, rank - 2)`, pre-allocate a result `NDArray<double>` of shape `batchShape`, and invoke a recursive walker/odometer loop to evaluate individual LAPACK `LAPACKE_dgetrf` pivots determinants, storing them in the result stack buffer perfectly.
+
+***
+
 ## 8. `pkgs/openblas/hook/build.dart` (OpenBLAS Extreme Compilation Latency Hazard)
 - **Location**: [build.dart:L52-L97](file:///usr/local/google/home/sigurdm/projects/math/pkgs/openblas/hook/build.dart#L52-L97)
 - **Symptom**: When `input.config.buildCodeAssets` is active, the OpenBLAS build hook fetches the full raw 0.3.33 source code tarball from GitHub and launches a manual AOT compilation pass using system tools `make`.
