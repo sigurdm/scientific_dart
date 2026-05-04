@@ -53,6 +53,20 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 4. `pkgs/num_dart/lib/src/operations.dart` (`matmul()` Redundant Allocation Copies)
+- **Location**: [operations.dart:L1243-L1248](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1243-L1248)
+- **Symptom**: For non-contiguous sliced views inputs in matrix multiplication, the `matmul()` method forces a full copy serialization via `a.toList()` and re-allocates an array:
+  ```dart
+  if (!a.isContiguous) {
+    a = NDArray.fromList(a.toList(), a.shape, a.dtype);
+  }
+  ```
+- **The Inefficiency**: Introduces heavy memory duplication and garbage collection friction. OpenBLAS **`cblas_dgemm` natively supports non-contiguous leading dimensions (`lda` / `ldb`) and transposed operands flags (`CblasTrans`)** exactly to parse strided sub-matrix memory blocks without any data copies!
+- **Recommended Tweak**: Refactor `matmul()` to inspect the last two dimension strides of `aView` and `bView`, dynamically deriving `CblasNoTrans` vs `CblasTrans` and adjusting the `lda` and `ldb` leading dimensions arguments passed into `cblas_dgemm()`. This will unlock **100% copy-free matrix multiplications** even for sliced or transposed sub-matrices!
+
+
+***
+
 ## 7. `pkgs/num_dart/lib/src/operations.dart` (Legacy `_loadLibc()` Startup Lookup Pruning)
 - **Location**: [operations.dart:L15-L61](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L15-L61)
 - **Symptom**: On module startup initialization, the codebase executes **`_loadLibc()`** to perform platform-specific lookups against OS library files (`libc.so.6`, `libc.so`, `ucrtbase.dll`) just to bind the legacy fallback function pointer `_qsort`.
