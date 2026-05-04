@@ -232,6 +232,17 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 4. `pkgs/num_dart/lib/src/operations.dart` (`where()` Lacks Allocation-Free `{NDArray? out}` Buffer Recycling)
+- **Location**: [operations.dart:L461-L500](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L461-L500) & [perf_benchmarks.dart:L88-L91](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/benchmark/perf_benchmarks.dart#L88-L91)
+- **Symptom**: The advanced `where(cond, x, y)` ternary broadcasting ufunc (which offloads three pointer streams odometer walks into unmanaged C space) *always* allocates a brand-new result tensor via `NDArray.create()` inside its loop body, even when called inside highly iterative or time-critical loops like the benchmark suite.
+- **The Inefficiency**: Forces constant dynamic memory heap page allocation and isolate NativeFinalizer attachments. We implemented named `{NDArray? out}` parameters for `add()`, `sin()`, and `sqrt()`, achieving absolute allocation-free execution, but `where()` was completely omitted!
+- **Recommended Tweak**: 
+  - Refactor `where()` to accept an optional named parameter Recycler **`{NDArray? out}`**. 
+  - If `out` is supplied, validate its compatibility (dtype and shape) and map its `out.pointer` directly into the unmanaged native C odometer walker `s_where_double()`.
+  - Update `TernaryWhereBroadcastingBenchmark` to pre-allocate this output buffer on `setup()`, unlocking complete **100% allocation-free conditional masking executions** at blindingly fast speeds!
+
+***
+
 ## 6. `pkgs/num_dart/lib/src/random.dart` (`exponential()` Dead-Code Loop Branch Inefficiency)
 - **Location**: [random.dart:L161-L164](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/random.dart#L161-L164)
 - **Symptom**: Inside the `exponential()` distribution sampler, to draw uniform variables, the code guards against `1.0` values:
