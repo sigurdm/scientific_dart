@@ -27,7 +27,7 @@ external void native_sort_int64(ffi.Pointer<ffi.LongLong> array, int size);
 external void native_sort_int32(ffi.Pointer<ffi.Int> array, int size);
 
 /// ----------------------------------------------------------------------------
-/// Double Precision (Float64) Vector Kernels
+/// Double Precision (Float64) Flat Contiguous Kernels
 /// ----------------------------------------------------------------------------
 @ffi.Native<
   ffi.Void Function(
@@ -127,6 +127,256 @@ external void v_log_double(
 
 @ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
 external double r_sum_double(ffi.Pointer<ffi.Double> src, int size);
+
+/// ----------------------------------------------------------------------------
+/// Double Precision (Float64) Generic ND Strided Broadcasting Kernels
+/// ----------------------------------------------------------------------------
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+/// ----------------------------------------------------------------------------
+/// Complex128 (Dual Float64) Vector Kernels (Contiguous and Strided)
+/// ----------------------------------------------------------------------------
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_add_complex(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_sub_complex(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_mul_complex(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_div_complex(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_complex(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_complex(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_complex(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_complex(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
 
 /// ----------------------------------------------------------------------------
 /// Single Precision (Float32) Vector Kernels
@@ -229,3 +479,16 @@ external void v_log_float(
 
 @ffi.Native<ffi.Float Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
 external double r_sum_float(ffi.Pointer<ffi.Float> src, int size);
+
+/// ----------------------------------------------------------------------------
+/// Binary-Compatible Complex Number Type (Matches kiss_fft_cpx and num_dart.Complex)
+/// ----------------------------------------------------------------------------
+final class cpx_t extends ffi.Struct {
+  /// real part
+  @ffi.Double()
+  external double r;
+
+  /// imaginary part
+  @ffi.Double()
+  external double i;
+}

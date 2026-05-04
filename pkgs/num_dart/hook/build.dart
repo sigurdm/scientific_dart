@@ -33,6 +33,7 @@ void main(List<String> args) async {
       input.packageRoot.resolve('hook/custom_ufuncs.c').toFilePath(),
       '-o',
       libFile.path,
+      '-lm',
     ];
 
     final res = await Process.run(compilerPath, compileArgs);

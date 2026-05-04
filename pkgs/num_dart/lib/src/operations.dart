@@ -362,6 +362,44 @@ NDArray add(NDArray a, NDArray b) {
   final result = NDArray.create(commonShape, targetDType);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
+  // 0B. Flat Contiguous Complex128 Track Add
+  if (a.isContiguous && b.isContiguous && listEquals(a.shape, b.shape)) {
+    if (targetDType == DType.complex128 && a.dtype == DType.complex128 && b.dtype == DType.complex128) {
+      v_add_complex(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
+  // 0C. General Multidimensional Strided Broadcasting Engine in C (Rank <= 8)
+  if (commonShape.length <= 8) {
+    final cShape = malloc<ffi.Int>(commonShape.length);
+    final cStridesA = malloc<ffi.Int>(stridesA.length);
+    final cStridesB = malloc<ffi.Int>(stridesB.length);
+    final cStridesRes = malloc<ffi.Int>(resultStrides.length);
+
+    for (var i = 0; i < commonShape.length; i++) {
+      cShape[i] = commonShape[i];
+      cStridesA[i] = stridesA[i];
+      cStridesB[i] = stridesB[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+
+    try {
+      if (targetDType == DType.float64 && a.dtype == DType.float64 && b.dtype == DType.float64) {
+        s_add_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      } else if (targetDType == DType.complex128 && a.dtype == DType.complex128 && b.dtype == DType.complex128) {
+        s_add_complex(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesB);
+      malloc.free(cStridesRes);
+    }
+  }
+
   // Fast SIMD path for identical, contiguous Float32 arrays
   if (a.dtype == DType.float32 &&
       b.dtype == DType.float32 &&
