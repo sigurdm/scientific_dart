@@ -512,7 +512,7 @@ class NDArray<T> implements ffi.Finalizable {
   /// **Arguments:**
   /// - [value]: Can be a single scalar of matching type (performs uniform clipping)
   ///   or an [NDArray] containing sequential values to write into the masked positions.
-  void setByMask(NDArray<int> mask, dynamic value) {
+  void setByMask(NDArray<bool> mask, dynamic value) {
     if (mask.shape.length != shape.length) {
       throw ArgumentError(
         'Mask shape length (${mask.shape.length}) must match array rank (${shape.length})',
@@ -534,7 +534,7 @@ class NDArray<T> implements ffi.Finalizable {
 
     void walk(int dim, int currentOffset, int maskOffset) {
       if (dim == shape.length) {
-        if (mask.data[maskOffset] == 1) {
+        if (mask.data[maskOffset]) {
           if (valData != null) {
             if (valueIndex >= valData.length) {
               throw ArgumentError(
@@ -675,6 +675,22 @@ class NDArray<T> implements ffi.Finalizable {
         }
         return getCell(intCoords);
       }
+    } else if (spec is NDArray && spec.dtype == DType.boolean) {
+      final boolMask = spec as NDArray<bool>;
+      var shapesMatch = boolMask.shape.length == shape.length;
+      if (shapesMatch) {
+        for (var i = 0; i < shape.length; i++) {
+          if (boolMask.shape[i] != shape[i]) {
+            shapesMatch = false;
+            break;
+          }
+        }
+      }
+      if (shapesMatch) {
+        return applyMask(boolMask);
+      } else {
+        throw ArgumentError('Boolean mask shape must exactly match array shape');
+      }
     } else if (spec is NDArray<int>) {
       var shapesMatch = spec.shape.length == shape.length;
       if (shapesMatch) {
@@ -686,7 +702,8 @@ class NDArray<T> implements ffi.Finalizable {
         }
       }
       if (shapesMatch) {
-        return applyMask(spec);
+        // Handle legacy or error cases or convert to true bool if user accidentally used int array masks
+        throw ArgumentError('Masking requires an NDArray of DType.boolean, not integers.');
       } else {
         return take(spec.data);
       }
@@ -737,6 +754,22 @@ class NDArray<T> implements ffi.Finalizable {
         }
         setCell(intCoords, value as T);
       }
+    } else if (spec is NDArray && spec.dtype == DType.boolean) {
+      final boolMask = spec as NDArray<bool>;
+      var shapesMatch = boolMask.shape.length == shape.length;
+      if (shapesMatch) {
+        for (var i = 0; i < shape.length; i++) {
+          if (boolMask.shape[i] != shape[i]) {
+            shapesMatch = false;
+            break;
+          }
+        }
+      }
+      if (shapesMatch) {
+        setByMask(boolMask, value);
+      } else {
+        throw ArgumentError('Boolean mask shape must exactly match array shape');
+      }
     } else if (spec is NDArray<int>) {
       var shapesMatch = spec.shape.length == shape.length;
       if (shapesMatch) {
@@ -748,7 +781,7 @@ class NDArray<T> implements ffi.Finalizable {
         }
       }
       if (shapesMatch) {
-        setByMask(spec, value);
+        throw ArgumentError('Masking requires an NDArray of DType.boolean, not integers.');
       } else {
         if (value is NDArray) {
           setIndices(spec, value);
@@ -764,7 +797,7 @@ class NDArray<T> implements ffi.Finalizable {
   }
 
   void _compareOpRec<Ta, Tb>(
-    List<int> result,
+    List<bool> result,
     List<Ta> a,
     List<Tb> b,
     List<int> shape,
@@ -778,7 +811,7 @@ class NDArray<T> implements ffi.Finalizable {
     bool Function(dynamic, dynamic) predicate,
   ) {
     if (dim == shape.length) {
-      result[offsetResult] = predicate(a[offsetA], b[offsetB]) ? 1 : 0;
+      result[offsetResult] = predicate(a[offsetA], b[offsetB]);
       return;
     }
 
@@ -801,7 +834,7 @@ class NDArray<T> implements ffi.Finalizable {
   }
 
   void _dispatchCompare(
-    List<int> rData,
+    List<bool> rData,
     NDArray a,
     NDArray b,
     List<int> shape,
@@ -985,7 +1018,7 @@ class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// {@example /example/ufuncs_example.dart lang=dart}
-  NDArray<int> operator >(dynamic other) {
+  NDArray<bool> operator >(dynamic other) {
     NDArray otherArr;
     if (other is NDArray) {
       otherArr = other;
@@ -1004,7 +1037,7 @@ class NDArray<T> implements ffi.Finalizable {
 
     final broadcastResult = broadcast(this, otherArr);
     final commonShape = broadcastResult.shape;
-    final result = NDArray<int>.create(commonShape, DType.int32);
+    final result = NDArray<bool>.create(commonShape, DType.boolean);
     final resultStrides = computeCStrides(commonShape);
 
     _dispatchCompare(
@@ -1024,7 +1057,7 @@ class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// {@example /example/ufuncs_example.dart lang=dart}
-  NDArray<int> operator <(dynamic other) {
+  NDArray<bool> operator <(dynamic other) {
     NDArray otherArr;
     if (other is NDArray) {
       otherArr = other;
@@ -1043,7 +1076,7 @@ class NDArray<T> implements ffi.Finalizable {
 
     final broadcastResult = broadcast(this, otherArr);
     final commonShape = broadcastResult.shape;
-    final result = NDArray<int>.create(commonShape, DType.int32);
+    final result = NDArray<bool>.create(commonShape, DType.boolean);
     final resultStrides = computeCStrides(commonShape);
 
     _dispatchCompare(
@@ -1063,7 +1096,7 @@ class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// {@example /example/ufuncs_example.dart lang=dart}
-  NDArray<int> operator >=(dynamic other) {
+  NDArray<bool> operator >=(dynamic other) {
     NDArray otherArr;
     if (other is NDArray) {
       otherArr = other;
@@ -1082,7 +1115,7 @@ class NDArray<T> implements ffi.Finalizable {
 
     final broadcastResult = broadcast(this, otherArr);
     final commonShape = broadcastResult.shape;
-    final result = NDArray<int>.create(commonShape, DType.int32);
+    final result = NDArray<bool>.create(commonShape, DType.boolean);
     final resultStrides = computeCStrides(commonShape);
 
     _dispatchCompare(
@@ -1102,7 +1135,7 @@ class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// {@example /example/ufuncs_example.dart lang=dart}
-  NDArray<int> operator <=(dynamic other) {
+  NDArray<bool> operator <=(dynamic other) {
     NDArray otherArr;
     if (other is NDArray) {
       otherArr = other;
@@ -1121,7 +1154,7 @@ class NDArray<T> implements ffi.Finalizable {
 
     final broadcastResult = broadcast(this, otherArr);
     final commonShape = broadcastResult.shape;
-    final result = NDArray<int>.create(commonShape, DType.int32);
+    final result = NDArray<bool>.create(commonShape, DType.boolean);
     final resultStrides = computeCStrides(commonShape);
 
     _dispatchCompare(
@@ -1141,7 +1174,7 @@ class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// {@example /example/ufuncs_example.dart lang=dart}
-  NDArray<int> eq(dynamic other) {
+  NDArray<bool> eq(dynamic other) {
     NDArray otherArr;
     if (other is NDArray) {
       otherArr = other;
@@ -1151,7 +1184,7 @@ class NDArray<T> implements ffi.Finalizable {
 
     final broadcastResult = broadcast(this, otherArr);
     final commonShape = broadcastResult.shape;
-    final result = NDArray<int>.create(commonShape, DType.int32);
+    final result = NDArray<bool>.create(commonShape, DType.boolean);
     final resultStrides = computeCStrides(commonShape);
 
     _dispatchCompare(
@@ -1202,7 +1235,7 @@ class NDArray<T> implements ffi.Finalizable {
         final indices = <int>[];
         final maskData = mask.mask.toList();
         for (var j = 0; j < maskData.length; j++) {
-          if (maskData[j] == 1) indices.add(j);
+          if (maskData[j]) indices.add(j);
         }
         processedSelectors[i] = Indices(indices);
       }
@@ -1298,7 +1331,7 @@ class NDArray<T> implements ffi.Finalizable {
   ///
   /// The [mask] array must have elements with value 0 or 1.
   /// Returns a 1D array containing the elements where the mask is 1.
-  NDArray<T> applyMask(NDArray<int> mask) {
+  NDArray<T> applyMask(NDArray<bool> mask) {
     return slice([Mask(BooleanMask(mask))]);
   }
 
@@ -1669,21 +1702,13 @@ class NDArray<T> implements ffi.Finalizable {
 
 /// A wrapper class for boolean masks used in advanced indexing.
 final class BooleanMask {
-  /// The underlying boolean array represented as 0s and 1s.
-  final NDArray<int> mask;
+  /// The underlying boolean array.
+  final NDArray<bool> mask;
 
-  /// Creates a new boolean mask. Precondition: elements must be 0 or 1.
+  /// Creates a new boolean mask. Precondition: mask dtype must be DType.boolean.
   BooleanMask(this.mask) {
-    if (mask.dtype != DType.int32) {
-      throw ArgumentError('Boolean mask must have DType.int32');
-    }
-    // Precondition check: elements must be 0 or 1!
-    // This is slow but ensures correctness!
-    final data = mask.toList();
-    for (final val in data) {
-      if (val != 0 && val != 1) {
-        throw ArgumentError('Boolean mask elements must be 0 or 1');
-      }
+    if (mask.dtype != DType.boolean) {
+      throw ArgumentError('Boolean mask must have DType.boolean');
     }
   }
 }

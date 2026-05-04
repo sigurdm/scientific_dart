@@ -146,9 +146,9 @@ void main() {
           2,
         ], DType.float64);
         final mask = a > 2.0;
-        expect(mask.dtype, DType.int32);
+        expect(mask.dtype, DType.boolean);
         expect(mask.shape, [2, 2]);
-        expect(mask.toList(), [0, 0, 1, 1]);
+        expect(mask.toList(), [false, false, true, true]);
       });
 
       test('Compatible shapes array comparison broadcasting', () {
@@ -165,11 +165,11 @@ void main() {
         final mask = mat < vec;
         expect(mask.shape, [2, 2]);
         expect(mask.toList(), [
-          1,
-          0,
-          0,
-          1,
-        ]); // [1<3(1), 10<3(0), 4<3(0), 2<3(1)]
+          true,
+          false,
+          false,
+          true,
+        ]); // [1<3(true), 10<3(false), 4<3(false), 2<3(true)]
       });
 
       test('Complex equality and inequality exceptions', () {
@@ -180,7 +180,7 @@ void main() {
         c2.data[0] = Complex(1, 2);
 
         // Equality is supported for complex!
-        expect(c1.eq(c2).data[0], 1);
+        expect(c1.eq(c2).data[0], true);
 
         // Inequalities throw UnsupportedError
         expect(() => c1 > c2, throwsUnsupportedError);

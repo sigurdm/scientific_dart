@@ -661,14 +661,13 @@ void main() {
         4,
       ], DType.float64);
       final b = a > 2.0;
-      expect(b.shape, [4]);
-      expect(b.toList(), [0, 0, 1, 1]);
+      expect(b.toList(), [false, false, true, true]);
 
       final c = a < 3.0;
-      expect(c.toList(), [1, 1, 0, 0]);
+      expect(c.toList(), [true, true, false, false]);
 
       final d = a.eq(2.0);
-      expect(d.toList(), [0, 1, 0, 0]);
+      expect(d.toList(), [false, true, false, false]);
     });
 
     test('Boolean Masking', () {

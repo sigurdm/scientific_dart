@@ -61,3 +61,4 @@ This file tracks foundational features missing in `num_dart` relative to NumPy.
 - [ ] Expand SIMD usage beyond `float32` addition.
 - [ ] Add `DType.bool` or efficient `uint8` masking for boolean operations.
 - [x] Create a comprehensive benchmark suite comparing `num_dart` element-wise operations, reductions, and linear algebra performance directly against Python's NumPy.
+- [ ] Set up test-coverage measurement, and achieve 100% or close coverage.
