@@ -339,15 +339,21 @@ DType _resolveDType(DType a, DType b) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray add(NDArray a, NDArray b) {
+NDArray add(NDArray a, NDArray b, {NDArray? out}) {
+  final targetDType = _resolveDType(a.dtype, b.dtype);
+
   // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
   if (a.isContiguous && b.isContiguous && listEquals(a.shape, b.shape)) {
+    final result = out ?? NDArray.create(a.shape, targetDType);
+    if (out != null) {
+      if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+        throw ArgumentError('Provided out buffer has incompatible shape or dtype.');
+      }
+    }
     if (a.dtype == DType.float64 && b.dtype == DType.float64) {
-      final result = NDArray.create(a.shape, DType.float64);
       v_add_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
     } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
-      final result = NDArray.create(a.shape, DType.float32);
       v_add_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
     }
@@ -358,8 +364,12 @@ NDArray add(NDArray a, NDArray b) {
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final targetDType = _resolveDType(a.dtype, b.dtype);
-  final result = NDArray.create(commonShape, targetDType);
+  final result = out ?? NDArray.create(commonShape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+      throw ArgumentError('Provided out buffer has incompatible shape or dtype for broadcasting.');
+    }
+  }
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   // 0B. Flat Contiguous Complex128 Track Add
@@ -1461,20 +1471,25 @@ dynamic prod<T extends num>(NDArray<T> a, {int? axis}) {
 ///
 /// **Gotchas:**
 /// - Negative values will result in [double.nan].
-NDArray<double> sqrt<T extends num>(NDArray<T> a) {
+NDArray<double> sqrt<T extends num>(NDArray<T> a, {NDArray? out}) {
+  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final result = out as NDArray<double>? ?? NDArray<double>.create(a.shape, targetDType as DType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape)) {
+      throw ArgumentError('Provided out buffer has incompatible shape for sqrt.');
+    }
+  }
+
   if (a.isContiguous) {
     if (a.dtype == DType.float64) {
-      final result = NDArray<double>.create(a.shape, DType.float64);
       v_sqrt_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
     } else if (a.dtype == DType.float32) {
-      final result = NDArray<double>.create(a.shape, DType.float32);
       v_sqrt_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
     }
   }
 
-  final result = NDArray<double>.create(a.shape, DType.float64);
   for (var i = 0; i < a.data.length; i++) {
     result.data[i] = math.sqrt(a.data[i].toDouble());
   }
@@ -1482,20 +1497,25 @@ NDArray<double> sqrt<T extends num>(NDArray<T> a) {
 }
 
 /// Compute the element-wise sine of the array.
-NDArray<double> sin<T extends num>(NDArray<T> a) {
+NDArray<double> sin<T extends num>(NDArray<T> a, {NDArray? out}) {
+  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final result = out as NDArray<double>? ?? NDArray<double>.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape)) {
+      throw ArgumentError('Provided out buffer has incompatible shape for sin.');
+    }
+  }
+
   if (a.isContiguous) {
     if (a.dtype == DType.float64) {
-      final result = NDArray<double>.create(a.shape, DType.float64);
       v_sin_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
     } else if (a.dtype == DType.float32) {
-      final result = NDArray<double>.create(a.shape, DType.float32);
       v_sin_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
     }
   }
 
-  final result = NDArray<double>.create(a.shape, DType.float64);
   for (var i = 0; i < a.data.length; i++) {
     result.data[i] = math.sin(a.data[i].toDouble());
   }
@@ -2916,6 +2936,16 @@ NDArray round(NDArray a) {
     throw UnsupportedError('Complex numbers are not supported for round');
   }
   final result = NDArray.create(a.shape, a.dtype);
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_round_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_round_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
@@ -2958,6 +2988,16 @@ NDArray clip(NDArray a, num min, num max) {
     throw UnsupportedError('Complex numbers are not supported for clip');
   }
   final result = NDArray.create(a.shape, a.dtype);
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_clip_double(a.pointer.cast(), result.pointer.cast(), min.toDouble(), max.toDouble(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_clip_float(a.pointer.cast(), result.pointer.cast(), min.toDouble(), max.toDouble(), a.data.length);
+      return result;
+    }
+  }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {

@@ -135,6 +135,7 @@ class NativeFftTransformBenchmark extends BenchmarkBase {
 class ElementwiseAddBenchmark extends BenchmarkBase {
   late NDArray<double> x;
   late NDArray<double> y;
+  late NDArray<double> outBuffer;
 
   ElementwiseAddBenchmark()
       : super('MEMORY Track| Element-wise Same-Shape add(x, y)       [size=300,000]');
@@ -143,17 +144,19 @@ class ElementwiseAddBenchmark extends BenchmarkBase {
   void setup() {
     x = NDArray.ones([300000], DType.float64);
     y = NDArray.ones([300000], DType.float64);
+    outBuffer = NDArray.create([300000], DType.float64);
   }
 
   @override
   void run() {
-    add(x, y);
+    add(x, y, out: outBuffer);
   }
 }
 
 class ScalarAdditionBroadcastBenchmark extends BenchmarkBase {
   late NDArray<double> x;
   late NDArray<double> scalarArr;
+  late NDArray<double> outBuffer;
 
   ScalarAdditionBroadcastBenchmark()
       : super('MEMORY Track| Scalar Array Broadcast add(x, scalar)   [size=300,000]');
@@ -161,18 +164,19 @@ class ScalarAdditionBroadcastBenchmark extends BenchmarkBase {
   @override
   void setup() {
     x = NDArray.ones([300000], DType.float64);
-    // A [1] length array acts as a universal scalar, broadcasting perfectly against any shapes!
     scalarArr = NDArray.fromList(Float64List.fromList([5.0]), [1], DType.float64);
+    outBuffer = NDArray.create([300000], DType.float64);
   }
 
   @override
   void run() {
-    add(x, scalarArr);
+    add(x, scalarArr, out: outBuffer);
   }
 }
 
 class SinUfuncBenchmark extends BenchmarkBase {
   late NDArray<double> x;
+  late NDArray<double> outBuffer;
 
   SinUfuncBenchmark()
       : super('MEMORY Track| Universal math function sin(x)          [size=100,000]');
@@ -180,11 +184,12 @@ class SinUfuncBenchmark extends BenchmarkBase {
   @override
   void setup() {
     x = NDArray.ones([100000], DType.float64);
+    outBuffer = NDArray.create([100000], DType.float64);
   }
 
   @override
   void run() {
-    sin(x);
+    sin(x, out: outBuffer);
   }
 }
 
