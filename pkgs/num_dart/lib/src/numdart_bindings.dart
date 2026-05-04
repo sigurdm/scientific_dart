@@ -25,3 +25,207 @@ external void native_sort_int64(ffi.Pointer<ffi.LongLong> array, int size);
 /// Natively sort an int32 array in-place.
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int>, ffi.Int)>()
 external void native_sort_int32(ffi.Pointer<ffi.Int> array, int size);
+
+/// ----------------------------------------------------------------------------
+/// Double Precision (Float64) Vector Kernels
+/// ----------------------------------------------------------------------------
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_add_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_sub_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_mul_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_div_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
+>()
+external void v_sin_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
+>()
+external void v_cos_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
+>()
+external void v_exp_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
+>()
+external void v_log_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
+external double r_sum_double(ffi.Pointer<ffi.Double> src, int size);
+
+/// ----------------------------------------------------------------------------
+/// Single Precision (Float32) Vector Kernels
+/// ----------------------------------------------------------------------------
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_add_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_sub_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_mul_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_div_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
+>()
+external void v_sin_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
+>()
+external void v_cos_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
+>()
+external void v_exp_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
+>()
+external void v_log_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<ffi.Float Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
+external double r_sum_float(ffi.Pointer<ffi.Float> src, int size);

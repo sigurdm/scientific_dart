@@ -340,6 +340,19 @@ DType _resolveDType(DType a, DType b) {
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
 NDArray add(NDArray a, NDArray b) {
+  // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
+  if (a.isContiguous && b.isContiguous && listEquals(a.shape, b.shape)) {
+    if (a.dtype == DType.float64 && b.dtype == DType.float64) {
+      final result = NDArray.create(a.shape, DType.float64);
+      v_add_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
+      final result = NDArray.create(a.shape, DType.float32);
+      v_add_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
   final stridesA = broadcastResult.stridesA;
@@ -579,6 +592,19 @@ void _elementWiseOp<Ta, Tb, Tr>(
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
 NDArray subtract(NDArray a, NDArray b) {
+  // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
+  if (a.isContiguous && b.isContiguous && listEquals(a.shape, b.shape)) {
+    if (a.dtype == DType.float64 && b.dtype == DType.float64) {
+      final result = NDArray.create(a.shape, DType.float64);
+      v_sub_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
+      final result = NDArray.create(a.shape, DType.float32);
+      v_sub_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
   final stridesA = broadcastResult.stridesA;
@@ -754,6 +780,19 @@ NDArray subtract(NDArray a, NDArray b) {
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
 NDArray multiply(NDArray a, NDArray b) {
+  // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
+  if (a.isContiguous && b.isContiguous && listEquals(a.shape, b.shape)) {
+    if (a.dtype == DType.float64 && b.dtype == DType.float64) {
+      final result = NDArray.create(a.shape, DType.float64);
+      v_mul_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
+      final result = NDArray.create(a.shape, DType.float32);
+      v_mul_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
   final stridesA = broadcastResult.stridesA;
@@ -929,6 +968,19 @@ NDArray multiply(NDArray a, NDArray b) {
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
 NDArray divide(NDArray a, NDArray b) {
+  // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
+  if (a.isContiguous && b.isContiguous && listEquals(a.shape, b.shape)) {
+    if (a.dtype == DType.float64 && b.dtype == DType.float64) {
+      final result = NDArray.create(a.shape, DType.float64);
+      v_div_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
+      final result = NDArray.create(a.shape, DType.float32);
+      v_div_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
   final stridesA = broadcastResult.stridesA;
@@ -1296,6 +1348,13 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
 /// ```
 dynamic sum<T extends num>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
+    if (a.isContiguous) {
+      if (a.dtype == DType.float64) {
+        return r_sum_double(a.pointer.cast(), a.data.length) as T;
+      } else if (a.dtype == DType.float32) {
+        return r_sum_float(a.pointer.cast(), a.data.length) as T;
+      }
+    }
     return a.data.reduce((value, element) => (value + element) as T);
   }
 
@@ -1374,6 +1433,18 @@ NDArray<double> sqrt<T extends num>(NDArray<T> a) {
 
 /// Compute the element-wise sine of the array.
 NDArray<double> sin<T extends num>(NDArray<T> a) {
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      final result = NDArray<double>.create(a.shape, DType.float64);
+      v_sin_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      final result = NDArray<double>.create(a.shape, DType.float32);
+      v_sin_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
   final result = NDArray<double>.create(a.shape, DType.float64);
   for (var i = 0; i < a.data.length; i++) {
     result.data[i] = math.sin(a.data[i].toDouble());

@@ -22,26 +22,24 @@ void main(List<String> args) async {
     }
     final libFile = File.fromUri(outputDir.uri.resolve(libName));
 
-    // Compile custom C code if shared binary asset is absent
-    if (!libFile.existsSync()) {
-      final compilerPath = cCompiler?.compiler?.toFilePath() ?? 'cc';
-      print('Compiling num_dart custom C extensions using compiler: $compilerPath');
+    final compilerPath = cCompiler?.compiler?.toFilePath() ?? 'cc';
+    print('Compiling num_dart custom C extensions using compiler: $compilerPath');
 
-      final compileArgs = <String>[
-        '-shared',
-        '-fPIC',
-        '-O3',
-        input.packageRoot.resolve('hook/custom_sorting.c').toFilePath(),
-        '-o',
-        libFile.path,
-      ];
+    final compileArgs = <String>[
+      '-shared',
+      '-fPIC',
+      '-O3',
+      input.packageRoot.resolve('hook/custom_sorting.c').toFilePath(),
+      input.packageRoot.resolve('hook/custom_ufuncs.c').toFilePath(),
+      '-o',
+      libFile.path,
+    ];
 
-      final res = await Process.run(compilerPath, compileArgs);
-      if (res.exitCode != 0) {
-        throw StateError('num_dart native C extensions compilation failed: ${res.stderr}');
-      }
-      print('Compiled num_dart shared library successfully at: ${libFile.path}');
+    final res = await Process.run(compilerPath, compileArgs);
+    if (res.exitCode != 0) {
+      throw StateError('num_dart native C extensions compilation failed: ${res.stderr}');
     }
+    print('Compiled num_dart shared library successfully at: ${libFile.path}');
 
     // Register the dynamic CodeAsset in the hooks pipeline under package asset ID namespace
     if (libFile.existsSync()) {
