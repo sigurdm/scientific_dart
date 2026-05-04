@@ -67,6 +67,16 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 5. `pkgs/pocketfft/hook/build.dart` (Unpinned Master Branch Download & Linker Risks)
+- **Location**: [build.dart:L24](file:///usr/local/google/home/sigurdm/projects/math/pkgs/pocketfft/hook/build.dart#L24) & [build.dart:L77-L88](file:///usr/local/google/home/sigurdm/projects/math/pkgs/pocketfft/hook/build.dart#L77-L88)
+- **Symptom 1: Unpinned Git Master Tarball**: The build hook fetches the KissFFT source code dependencies directly from the GitHub moving branch tip: `https://github.com/mborgerding/kissfft/tarball/master`.
+- **The Hazard**: This creates a severe security and build immutability risk. If a new commit is force-pushed or an incompatible breaking change is introduced on the `master` branch tip upstream, it **will instantly break our package builds** for all new consumers fetching the package! 
+- **Recommended Tweak 1**: Pin the archive URL strictly to an immutable, versioned release tag or permanent Git commit SHA token hash (e.g. `https://github.com/mborgerding/kissfft/archive/v1.3.1.tar.gz`) to guarantee absolute long-term build reliability and cryptographic supply chain security.
+- **Symptom 2: Missing `-lm` Linker Flag**: The compiler options list `compileArgs` for building `libpocketfft.so` is missing the explicit standard math library linker flag **`-lm`**.
+- **Recommended Tweak 2**: Append `'-lm'` to `compileArgs` to ensure robust transcendental mathematical linking across all Unix/Linux compiler toolchains without lookup failure hazards.
+
+***
+
 ## 7. `pkgs/num_dart/lib/src/operations.dart` (Legacy `_loadLibc()` Startup Lookup Pruning)
 - **Location**: [operations.dart:L15-L61](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L15-L61)
 - **Symptom**: On module startup initialization, the codebase executes **`_loadLibc()`** to perform platform-specific lookups against OS library files (`libc.so.6`, `libc.so`, `ucrtbase.dll`) just to bind the legacy fallback function pointer `_qsort`.
