@@ -113,6 +113,20 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 9. `pkgs/num_dart/lib/src/fft.dart` (🚨 Critical Resource Leak Flaw: Unmanaged Memory Leakage on Allocation Failures)
+- **Location**: [fft.dart:L50-L61](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/fft.dart#L50-L61) (`fft`) & [fft.dart:L138-L148](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/fft.dart#L138-L148) (`ifft`)
+- **Symptom**: The `fft()` method allocates a native C FFT planner `cfg` and then launches unmanaged heap array allocations for struct buffers:
+  ```dart
+  final cfg = kiss_fft_alloc(targetLen, 0, ffi.nullptr, ffi.nullptr);
+  final pin = malloc<kiss_fft_cpx>(targetLen);
+  final pout = malloc<kiss_fft_cpx>(targetLen);
+  try { // try block only starts here!
+  ```
+- **The Bug / Memory Leak**: Dangerous unmanaged leakage risk! If the first `malloc` (`pin`) succeeds but the subsequent allocation (`pout`) fails and throws an exception (e.g., an Out-of-Memory or invalid sizing limit crash), Dart will instantly abort execution. Since the `try` block has not started yet, **the `finally` block will be completely bypassed, and the allocated native `cfg` plan and the `pin` heap memory block will be permanently LEAKED in the host OS heap!**
+- **Recommended Tweak / Critical Patch**: Shift the `try` block opening statement to start **immediately after the `cfg` allocation validation** (line 56), surrounding both `pin`/`pout` `malloc` buffers allocations inside `try`. Initialize pointers to null-pointers upfront, and ensure `finally` safely releases `cfg` and frees `pin`/`pout` conditionally, securing 100% bulletproof memory leak safety under all conditions.
+
+***
+
 ## 9. `pkgs/num_dart/lib/src/ndarray.dart` (`ComplexList` High-Frequency Object Instantiation Friction)
 - **Location**: [ndarray.dart:L1809-L1812](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L1809-L1812)
 - **Symptom**: The `ComplexList` custom array view overrides the index getter to extract complex doubles pairs cells:
