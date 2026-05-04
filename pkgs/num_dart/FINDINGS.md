@@ -481,6 +481,26 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 5. `pkgs/num_dart/lib/src/operations.dart` (`_countNonzeroRecursive()` Severe Leaf Allocation Hot-Spot & Bracket Friction)
+- **Location**: [operations.dart:L3837-L3845](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L3837-L3845) (`_countNonzeroRecursive`)
+- **Symptom**: Inside the recursive axis-wise non-zero element counter helper, upon reaching the base leaf case condition (`currentDim == src.shape.length`), the code executes duplicate index computations:
+  ```dart
+  if (_isTrue(src[srcPos])) {
+    final destPos = List<int>.from(srcPos)..removeAt(targetAxis);
+    var destOffset = 0;
+    for (var i = 0; i < dest.shape.length; i++) {
+      destOffset += destPos[i] * dest.strides[i];
+    }
+    dest.data[destOffset] += 1;
+  }
+  ```
+- **The Inefficiency / Allocations Churn**: Extremely slow! Invokes the slow **bracket operator `src[srcPos]`** for every single cell element, which triggers fancy validation parsing switches package-wide on every call. Furthermore, whenever a true/non-zero cell is encountered, it creates a fresh heap list allocation `List<int>.from(srcPos)` and manual multipliers loops, leading to severe VM garbage collection thrashing and high latency stalls during large batch matrices summaries!
+- **Recommended Tweak**: 
+  - Eliminate dynamic lists clones entirely at leaf conditions by pre-allocating an reusable `destPos` scratch buffer list *outside* the recursive loop stack and updating it in-place.
+  - Remove pure Dart bracket offset math by maintaining running flat pointer offsets increments (`srcOffset + i * src.strides[dim]`) across recursion states, directly accessing `src.data[srcOffset]` for instant, zero-friction `O(1)` cell truth queries!
+
+***
+
 ## 9. `pkgs/num_dart/lib/src/ndarray.dart` (🚨 Critical Arithmetic Hazard: `NDArray.arange()` Sizing Crashes on Zero/Negative Steps)
 - **Location**: [ndarray.dart:L199-L211](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L199-L211) (`arange`)
 - **Symptom**: The `arange(start, stop, {step})` linear spacing factory computes the required length buffer size using raw floating-point division:
