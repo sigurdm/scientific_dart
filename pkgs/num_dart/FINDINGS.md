@@ -217,6 +217,21 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 6. `pkgs/num_dart/lib/src/random.dart` (`exponential()` Dead-Code Loop Branch Inefficiency)
+- **Location**: [random.dart:L161-L164](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/random.dart#L161-L164)
+- **Symptom**: Inside the `exponential()` distribution sampler, to draw uniform variables, the code guards against `1.0` values:
+  ```dart
+  var u = rand.nextDouble();
+  while (u == 1.0) {
+    u = rand.nextDouble();
+  }
+  ```
+- **The Inefficiency**: This `while (u == 1.0)` loop is completely dead, redundant code that creates unnecessary branch check latency for *every single array element* drawn!
+- **Rationale**: The Dart SDK explicitly defines that `Random.nextDouble()` generates floating-point values in the half-open interval `[0.0, 1.0)`—meaning it is **inclusive of 0.0 but strictly exclusive of 1.0**! It is mathematically impossible for `rand.nextDouble()` to return `1.0`. 
+- **Recommended Tweak**: Remove this `while` loop entirely, simplifying the inner loop block to just drawing `u` and evaluating `-scale * math.log(1.0 - u)` zero-friction, which accelerates exponential sampling loops throughput!
+
+***
+
 ## 8. `pkgs/num_dart/lib/src/ndarray.dart` (`NDArray.zeros()` Pure Dart Loop vs Native `memset`/`calloc`)
 - **Location**: [ndarray.dart:L157-L169](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L157-L169)
 - **Symptom**: The `NDArray.zeros()` factory creates an array via `NDArray.create()` and then uses Dart's standard list utilities to zero-out elements:
