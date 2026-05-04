@@ -193,7 +193,7 @@ void main() {
           DType.float64,
         );
 
-        final result = where(cond, x, y) as NDArray<double>;
+        final result = where(cond, x, y) as NDArray;
         expect(result.dtype, DType.float64);
         expect(result.shape, [4]);
         expect(result.toList(), [10.0, -6.0, 30.0, -8.0]);

@@ -3033,7 +3033,9 @@ NDArray clip(NDArray a, num min, num max) {
 }
 
 bool _isTrue(dynamic x) {
-  if (x is Complex) {
+  if (x is bool) {
+    return x;
+  } else if (x is Complex) {
     return x.real != 0.0 || x.imag != 0.0;
   } else if (x is num) {
     return x != 0;
