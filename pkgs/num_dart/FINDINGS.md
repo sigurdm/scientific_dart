@@ -205,6 +205,17 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 9. `pkgs/num_dart/lib/src/random.dart` (`exponential()` Probability Parameter Clarity & Rate Alias)
+- **Location**: [random.dart:L140-L145](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/random.dart#L140-L145)
+- **Symptom**: The `exponential()` random distribution sampler maps parameter names to match NumPy's `scale` (the inverse of the rate parameter, i.e., $1/\lambda$):
+  ```dart
+  NDArray<double> exponential(List<int> shape, {double scale = 1.0, ...})
+  ```
+- **The Ambiguity**: In standard mathematics and probability textbook literature, exponential distributions are heavily characterized by the **rate parameter `lambda` ($\lambda$)** directly. Developers coming from mathematical backgrounds frequently experience confusion when forced to use `scale`, sometimes accidentally passing raw rates instead of inverse scales.
+- **Recommended Tweak**: Preserve `scale` for 100% NumPy API compatibility, but introduce a named parameter alias **`double? lam`** (or `rate`) into `exponential()`. Add a clear precondition check: `final targetScale = lam != null ? 1.0 / lam : scale;`. This provides seamless mathematical textbook parity while preserving exact NumPy interfaces out of the box!
+
+***
+
 ## 8. `pkgs/openblas/hook/build.dart` (OpenBLAS Extreme Compilation Latency Hazard)
 - **Location**: [build.dart:L52-L97](file:///usr/local/google/home/sigurdm/projects/math/pkgs/openblas/hook/build.dart#L52-L97)
 - **Symptom**: When `input.config.buildCodeAssets` is active, the OpenBLAS build hook fetches the full raw 0.3.33 source code tarball from GitHub and launches a manual AOT compilation pass using system tools `make`.
