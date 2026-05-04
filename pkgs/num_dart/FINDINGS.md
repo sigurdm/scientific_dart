@@ -36,6 +36,21 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Recommended Tweak**: Refactor both loops to advance pairwise (`i += 2`) just like `normal()` does on lines 114-120, consuming both `z0` and `z1` in a single transform step. This will **double the generation throughput speeds** for large Poisson and Binomial tensors!
 
 
+***
+
+## 4. `pkgs/num_dart/lib/src/broadcasting.dart` (Trivial Same-Shape Short-Circuit)
+- **Location**: [broadcasting.dart:L27-L33](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/broadcasting.dart#L27-L33)
+- **Symptom**: The `broadcast(a, b)` ufunc helper method always runs the complete right-to-left trailing dimensions comparison loop and allocates three fresh `List<int>` instances, even when both arrays have **exactly identical shapes** (`listEquals(a.shape, b.shape)`).
+- **The Inefficiency**: Incurs unnecessary loop branches and list allocations for trivial non-broadcasting element-wise operations (like adding two different slices or strides views of the same shape).
+- **Recommended Tweak**: Inject an early short-circuit gate at the very top of `broadcast()`:
+  ```dart
+  if (listEquals(shapeA, shapeB)) {
+    return BroadcastResult(shapeA, stridesA, stridesB);
+  }
+  ```
+  This completely deletes all iterations and allocations friction for identical shape tensors, offloading them to instant `O(1)` zero-friction returns!
+
+
 ## 2. `pkgs/num_dart/lib/src/operations.dart` (Generic Unnecessary Type Casts)
 - **Location**: [operations.dart:L1476](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1476) & [operations.dart:L4033](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L4033)
 - **Symptom**: Multiple recent FFI additions contain unnecessary downcasts or duplicate types assertions (e.g., `targetDType as DType` or duplicate list typing maps):
