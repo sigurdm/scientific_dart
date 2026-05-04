@@ -494,3 +494,61 @@ void v_clip_float(const float *src, float *res, float min_val, float max_val, in
         res[i] = val;
     }
 }
+
+// ============================================================================
+// 6. GENERIC ND STRIDED BROADCASTING TERNARY "where" KERNELS (RANK <= 8)
+// ============================================================================
+
+void s_where_double(const unsigned char *cond, const int *stridesCond,
+                    const double *x, const int *stridesX,
+                    const double *y, const int *stridesY,
+                    double *res, const int *stridesRes,
+                    const int *shape, int rank) {
+    if (cond == NULL || x == NULL || y == NULL || res == NULL || rank <= 0 || rank > 8) return;
+
+    int coord[8] = {0};
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+
+    for (int el = 0; el < total_elements; el++) {
+        int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetCond += coord[d] * stridesCond[d];
+            offsetX    += coord[d] * stridesX[d];
+            offsetY    += coord[d] * stridesY[d];
+            offsetRes  += coord[d] * stridesRes[d];
+        }
+
+        // Execute conditional ternary cell mapping on unmanaged FFI buffers!
+        res[offsetRes] = cond[offsetCond] ? x[offsetX] : y[offsetY];
+
+        // Advance odometer coordinate odometer walk loops
+        ADVANCE_ODOMETER_LOOP
+    }
+}
+
+void s_where_float(const unsigned char *cond, const int *stridesCond,
+                   const float *x, const int *stridesX,
+                   const float *y, const int *stridesY,
+                   float *res, const int *stridesRes,
+                   const int *shape, int rank) {
+    if (cond == NULL || x == NULL || y == NULL || res == NULL || rank <= 0 || rank > 8) return;
+
+    int coord[8] = {0};
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+
+    for (int el = 0; el < total_elements; el++) {
+        int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetCond += coord[d] * stridesCond[d];
+            offsetX    += coord[d] * stridesX[d];
+            offsetY    += coord[d] * stridesY[d];
+            offsetRes  += coord[d] * stridesRes[d];
+        }
+
+        res[offsetRes] = cond[offsetCond] ? x[offsetX] : y[offsetY];
+
+        ADVANCE_ODOMETER_LOOP
+    }
+}

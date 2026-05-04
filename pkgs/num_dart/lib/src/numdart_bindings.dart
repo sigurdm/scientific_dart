@@ -626,6 +626,63 @@ external void v_clip_float(
 );
 
 /// ----------------------------------------------------------------------------
+/// Generic ND Strided Broadcasting Ternary "where" Sorters (Rank <= 8)
+/// ----------------------------------------------------------------------------
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.UnsignedChar>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_where_double(
+  ffi.Pointer<ffi.UnsignedChar> cond,
+  ffi.Pointer<ffi.Int> stridesCond,
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Double> y,
+  ffi.Pointer<ffi.Int> stridesY,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.UnsignedChar>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_where_float(
+  ffi.Pointer<ffi.UnsignedChar> cond,
+  ffi.Pointer<ffi.Int> stridesCond,
+  ffi.Pointer<ffi.Float> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Float> y,
+  ffi.Pointer<ffi.Int> stridesY,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+/// ----------------------------------------------------------------------------
 /// Binary-Compatible Complex Number Type (Matches kiss_fft_cpx and num_dart.Complex)
 /// ----------------------------------------------------------------------------
 final class cpx_t extends ffi.Struct {

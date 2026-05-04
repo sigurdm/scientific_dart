@@ -105,4 +105,20 @@ void v_floor_float(const float *src, float *res, int size);
 void v_round_float(const float *src, float *res, int size);
 void v_clip_float(const float *src, float *res, float min_val, float max_val, int size);
 
+// ----------------------------------------------------------------------------
+// Generic ND Strided Broadcasting Ternary "where" Sorters (Rank <= 8)
+// ----------------------------------------------------------------------------
+
+void s_where_double(const unsigned char *cond, const int *stridesCond,
+                    const double *x, const int *stridesX,
+                    const double *y, const int *stridesY,
+                    double *res, const int *stridesRes,
+                    const int *shape, int rank);
+
+void s_where_float(const unsigned char *cond, const int *stridesCond,
+                   const float *x, const int *stridesX,
+                   const float *y, const int *stridesY,
+                   float *res, const int *stridesRes,
+                   const int *shape, int rank);
+
 #endif // CUSTOM_UFUNCS_H

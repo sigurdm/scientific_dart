@@ -3680,6 +3680,51 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y]) {
   final result = NDArray.create(commonShape, targetDType);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
+  // 0. Advanced ND Odometer Ternary Broadcasting Engine in C (Rank <= 8)
+  if (commonShape.length <= 8 && condition.dtype == DType.boolean) {
+    final cShape = malloc<ffi.Int>(commonShape.length);
+    final cStridesCond = malloc<ffi.Int>(bCond.stridesA.length);
+    final cStridesX = malloc<ffi.Int>(bX.stridesA.length);
+    final cStridesY = malloc<ffi.Int>(bY.stridesA.length);
+    final cStridesRes = malloc<ffi.Int>(resultStrides.length);
+
+    for (var i = 0; i < commonShape.length; i++) {
+      cShape[i] = commonShape[i];
+      cStridesCond[i] = bCond.stridesA[i];
+      cStridesX[i] = bX.stridesA[i];
+      cStridesY[i] = bY.stridesA[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+
+    try {
+      if (targetDType == DType.float64 && x.dtype == DType.float64 && y.dtype == DType.float64) {
+        s_where_double(
+          condition.pointer.cast(), cStridesCond,
+          x.pointer.cast(), cStridesX,
+          y.pointer.cast(), cStridesY,
+          result.pointer.cast(), cStridesRes,
+          cShape, commonShape.length
+        );
+        return result;
+      } else if (targetDType == DType.float32 && x.dtype == DType.float32 && y.dtype == DType.float32) {
+        s_where_float(
+          condition.pointer.cast(), cStridesCond,
+          x.pointer.cast(), cStridesX,
+          y.pointer.cast(), cStridesY,
+          result.pointer.cast(), cStridesRes,
+          cShape, commonShape.length
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesCond);
+      malloc.free(cStridesX);
+      malloc.free(cStridesY);
+      malloc.free(cStridesRes);
+    }
+  }
+
   _dispatchWhere(
     result.data,
     condition,

@@ -70,7 +70,7 @@ class NativeQSortContiguousBenchmark extends BenchmarkBase {
 }
 
 class TernaryWhereBroadcastingBenchmark extends BenchmarkBase {
-  late NDArray<int> cond;
+  late NDArray<bool> cond;
   late NDArray<double> x;
   late NDArray<double> y;
 
@@ -79,7 +79,7 @@ class TernaryWhereBroadcastingBenchmark extends BenchmarkBase {
 
   @override
   void setup() {
-    cond = NDArray.zeros([100, 100], DType.int32);
+    cond = NDArray.zeros([100, 100], DType.boolean);
     x = NDArray.ones([100], DType.float64); // 1D vector stretching
     y = NDArray.ones([100, 100], DType.float64);
   }

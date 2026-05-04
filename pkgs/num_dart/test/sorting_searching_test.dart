@@ -181,9 +181,7 @@ void main() {
 
     group('where (Ternary Select & SIMD) tests', () {
       test('where condition select with scalar/array broadcasting', () {
-        final cond = NDArray.fromList(Int32List.fromList([1, 0, 1, 0]), [
-          4,
-        ], DType.int32);
+        final cond = NDArray.fromList([true, false, true, false], [4], DType.boolean);
         final x = NDArray.fromList(
           Float64List.fromList([10.0, 20.0, 30.0, 40.0]),
           [4],
@@ -195,16 +193,14 @@ void main() {
           DType.float64,
         );
 
-        final result = where(cond, x, y);
+        final result = where(cond, x, y) as NDArray<double>;
         expect(result.dtype, DType.float64);
         expect(result.shape, [4]);
         expect(result.toList(), [10.0, -6.0, 30.0, -8.0]);
       });
 
       test('where behaves as nonzero if x and y are omitted', () {
-        final cond = NDArray.fromList(Int32List.fromList([0, 1, 0, 1]), [
-          4,
-        ], DType.int32);
+        final cond = NDArray.fromList([false, true, false, true], [4], DType.boolean);
         final res = where(cond) as List<NDArray<int>>;
         expect(res.length, 1);
         expect(res[0].data, [1, 3]);
