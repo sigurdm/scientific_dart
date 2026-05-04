@@ -77,6 +77,26 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 3. `pkgs/num_dart/lib/src/ndarray.dart` (🚨 Critical Data Corruption Flaw: `reshape()` on Strided/Transposed Views)
+- **Location**: [ndarray.dart:L356-L374](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L356-L374)
+- **Symptom**: When `reshape(newShape)` is called, it validates the total size and then blindly attaches standard, flat contiguous strides to the existing backing pointer:
+  ```dart
+  final newStrides = computeCStrides(newShape);
+  return NDArray._(_pointer, data, ..., shape: newShape, strides: newStrides);
+  ```
+- **The Bug / Data Corruption**: If the original tensor was **non-contiguous or transposed** (e.g. an axes-swapped slice view), its memory bytes are no longer ordered row-by-row sequentially! By attaching standard row-major C strides (`computeCStrides`) to it, `reshape` will read the raw memory bytes as if they were contiguous, **completely scrambling and corrupting the array's spatial layout and values!!!**
+- **NumPy Parity Convention**: In Python NumPy, if a matrix is non-contiguous and can't be represented as a view, `.reshape()` **forcefully copies and flattens the memory into a new contiguous block** before reshaping, protecting semantic layout integrity.
+- **Recommended Tweak / Critical Patch**: Inject an explicit contiguous check at the top of `reshape()`. If the tensor is strided or transposed, force a copy to ensure correctness:
+  ```dart
+  if (!isContiguous) {
+    final flatList = toList();
+    return NDArray.fromList(flatList, newShape, dtype);
+  }
+  ```
+  This ironclad patch completely seals a silent data corruption hazard, locking in absolute mathematical correctness for high-dimensional tensor operations!
+
+***
+
 ## 9. `pkgs/num_dart/lib/src/ndarray.dart` (`ComplexList` High-Frequency Object Instantiation Friction)
 - **Location**: [ndarray.dart:L1809-L1812](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L1809-L1812)
 - **Symptom**: The `ComplexList` custom array view overrides the index getter to extract complex doubles pairs cells:
