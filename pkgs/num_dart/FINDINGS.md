@@ -481,6 +481,25 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 9. `pkgs/num_dart/lib/src/ndarray.dart` (`operator []` Redundant List Map Allocation in Hot Path)
+- **Location**: [ndarray.dart:L664-L677](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L664-L677)
+- **Symptom**: When a developer queries a tensor scalar element or row slice via normal lists brackets selectors (e.g., `arr[[0, 2]]` or `arr[ [ [0, 1] ] ]`), the `operator []` bracket getter forcefully creates a lazy iterable and allocates a new dynamic list via `.toList()` just to downcast element wrappers typings:
+  ```dart
+  final intCoords = spec.map((e) => e as int).toList();
+  return getCell(intCoords);
+  ```
+- **The Inefficiency**: Severe dynamic memory churn inside a fundamental getter hot path! Spawns dynamic array lists objects and loop wrappers on every single bracket lookups query, spiking GC pressure aggressively.
+- **Recommended Tweak / High-End Fix**: Introduce an early, non-allocating type-check short-circuit at the top of the list handler block:
+  ```dart
+  if (spec is List<int>) {
+    if (spec.length != shape.length) throw ArgumentError(...);
+    return getCell(spec); // Passes raw list view zero-allocation!
+  }
+  ```
+  By branching on strict `List<int>` directly, standard collections and indices queries bypass dynamic maps and list creation frames completely, delivering absolute **zero-allocation array bracket lookups**!
+
+***
+
 ## 9. `pkgs/num_dart/lib/src/ndarray.dart` (`operator []=` Intermediate Unmanaged Array Allocation Overhead)
 - **Location**: [ndarray.dart:L729-L747](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L729-L747)
 - **Symptom**: Every time a developer mutates an array row or matrix sub-slice stack via the bracket setter `operator []=` (e.g. `matrix[i] = rowView` or `matrix[ [0, 2] ] = val`), the method forcefully allocates an intermediate, unmanaged `NDArray<int>` pointer target `indices` just to bridge to internal modifiers:
