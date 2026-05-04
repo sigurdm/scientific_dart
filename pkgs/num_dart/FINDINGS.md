@@ -77,6 +77,19 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 5. `pkgs/num_dart/lib/src/io.dart` (`save()` / `_serializeNpyBytes()` Double Allocation on Strided Saves)
+- **Location**: [io.dart:L86-L90](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/io.dart#L86-L90) (`save`) & [io.dart:L259-L262](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/io.dart#L259-L262) (`_serializeNpyBytes`)
+- **Symptom**: To serialize a non-contiguous strided view array to binary formats, the codebase creates a contiguous copy upfront using the following logic:
+  ```dart
+  if (!a.isContiguous) {
+    src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+  }
+  ```
+- **The Inefficiency**: Incurs a severe **double-copy and double-allocation penalty** for strided arrays saves! `a.toList()` already traverses the strides tree recursively and flattens/orders the elements into a perfectly contiguous standard Dart list. Re-wrapping this flat list into an unmanaged `NDArray` via `fromList` allocates a *second* unmanaged heap pointer, attaches finalizers, and copies elements all over again!
+- **Recommended Tweak**: Completely purge the `NDArray.fromList` copy wrapper path. Instead, when `!a.isContiguous`, convert the flat list returns of `a.toList()` directly into standard TypedData lists (e.g. `Float64List.fromList(a.toList())`) and stream its `.buffer.asUint8List()` view directly to the file/archive. This cuts serialization RAM requirements and copying latency in half!
+
+***
+
 ## 4. `pkgs/num_dart/lib/src/random.dart` (`randint()` Restricted to 32-bit Ranges on 64-bit Arrays)
 - **Location**: [random.dart:L56-L59](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/random.dart#L56-L59)
 - **Symptom**: To sample random integers uniformly, `randint()` calculates the spans `final range = high - low;` and loops using Dart's standard `Random.nextInt(range)` method:
