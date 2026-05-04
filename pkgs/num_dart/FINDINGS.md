@@ -268,6 +268,23 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 5. `pkgs/num_dart/lib/src/operations.dart` (🚨 Critical Logic Bug: `count_nonzero()` Fallback Discards Returns & `nonzero()` Bracket Friction)
+- **Location**: [operations.dart:L3803-L3810](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L3803-L3810) (`count_nonzero`) & [operations.dart:L3770](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L3770) (`nonzero`)
+- **Symptom 1: Catastrophic `count_nonzero()` Logic Bug**: In the non-contiguous fallback path for global element counting, the recursive helper `countWalk` discards the sub-tree yield:
+  ```dart
+  for (var i = 0; i < a.shape[dim]; i++) {
+    pos[dim] = i;
+    countWalk(dim + 1); // The returned count is completely thrown away!
+  }
+  return subCount; // subCount remains 0 always!
+  ```
+- **The Hazard**: Any non-contiguous sliced/strided tensor passed to `count_nonzero()` **will silently and incorrectly return a count of `0` elements always**, breaking sorting/searching logic!
+- **Recommended Tweak 1**: Patch line 3808 to accumulate recursive yields correctly: `subCount += countWalk(dim + 1);`.
+- **Symptom 2: Heavy `nonzero()` Bracket Operator Friction**: At the leaf condition of `_nonzeroRecursive()`, the engine invokes the full bracket operator `final val = a[currentPos];` for *every single cell element*. Bracket selectors trigger heavy fancy parsing validation and strides multiplications rank steps, making cell coordinate extraction heavily suboptimal and slow.
+- **Recommended Tweak 2**: Maintain inline running flat offsets increments `currentOffset + i * a.strides[dim]` to query `data[currentOffset]` directly, or offload contiguous search tracks to a fast C kernel (`native_nonzero_double`) to push searching to optimal limits.
+
+***
+
 ## 6. `pkgs/num_dart/lib/src/operations.dart` (`inv()` Redundant Target Allocations on Strided Inversions)
 - **Location**: [operations.dart:L1714-L1725](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1714-L1725) & [operations.dart:L1758-L1760](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1758-L1760)
 - **Symptom**: For non-contiguous strided input matrix views, `inv()` forces an intermediate flat copy allocation: `src = NDArray.fromList(a.toList())`. However, it proceeds to allocate a *third* independent tensor `result = NDArray.create(src.shape)` and copies bytes via `result.data.setAll(0, src.data)` just to satisfy LAPACK in-place constraints.
