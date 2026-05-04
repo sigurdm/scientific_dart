@@ -256,6 +256,22 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
+## 5. `pkgs/num_dart/lib/src/operations.dart` (`matmul()` Suboptimal BLAS GEMM on Pure 1D Vector Dot Products)
+- **Location**: [operations.dart:L1253-L1273](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1253-L1273) & [operations.dart:L1371-L1373](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1371-L1373)
+- **Symptom**: To evaluate a simple 1D vector-vector inner product (dot product), `matmul()` temporarily promotes/upcasts both 1D arrays into dummy 2D row/column views (shape `[1, N]` and `[N, 1]`), routes them to the heavy general matrix-matrix multiplication wrapper **`cblas_dgemm()`**, and then downcasts the outcome back to a 0D scalar array via `result.reshape([])`.
+- **The Inefficiency**: Invoking the generalized `cblas_dgemm` matrix multiplication algorithm for basic 1D vectors triggers unnecessary rows/columns planning and execution registers overhead. Basic BLAS specifications expose **`cblas_ddot()` (Float64) and `cblas_sdot()` (Float32) vector routines explicitly hand-optimized for high-speed 1D vector inner products**!
+- **Recommended Tweak**: Inject a high-speed, early short-circuit gate at the very top of `matmul()`:
+  ```dart
+  if (a.shape.length == 1 && b.shape.length == 1) {
+    // Assert compatible sizes, allocate 0D scalar or return direct double result
+    final scalarRes = cblas_ddot(a.shape[0], a.pointer.cast(), 1, b.pointer.cast(), 1);
+    return NDArray.fromList([scalarRes], [], DType.float64);
+  }
+  ```
+  Offloading 1D vector products directly to the targeted `ddot` / `sdot` vector registers engine completely bypasses all 2D stack-walking and matrix allocation overhead, pushing dot products runtime down to true hardware-level absolute performance limits!
+
+***
+
 ## 6. `pkgs/num_dart/lib/src/fft.dart` (Lacks Multi-Dimensional 2D/ND FFT Support)
 - **Location**: [fft.dart:L6-L190](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/fft.dart#L6-L190)
 - **Symptom**: The Fourier signal processing tracking layer only wraps and exposes 1D transformations `fft()` and `ifft()` executing strictly along a single last axis dimension.
