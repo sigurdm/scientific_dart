@@ -58,7 +58,7 @@ This file tracks foundational features missing in `num_dart` relative to NumPy.
 
 ## 9. Performance & Infrastructure
 - [x] Optimize element-wise ops to iterate on C memory directly (avoid `toList()` copies) - C vector kernels + odometer walks.
-- [ ] Expand SIMD usage beyond `float32` addition.
-- [ ] Add `DType.bool` or efficient `uint8` masking for boolean operations.
+- [x] Expand SIMD usage beyond `float32` addition (via compiler autovectorization loops).
+- [x] Add `DType.bool` or efficient `uint8` masking for boolean operations (via `DType.boolean` + `BoolList`).
 - [x] Create a comprehensive benchmark suite comparing `num_dart` element-wise operations, reductions, and linear algebra performance directly against Python's NumPy.
 - [ ] Set up test-coverage measurement, and achieve 100% or close coverage.
