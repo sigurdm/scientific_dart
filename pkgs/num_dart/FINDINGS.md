@@ -625,3 +625,10 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Symptom**: Comparison operations are strictly restricted to operators (`a > b`, `a < b`), completely lacking top-level comparison ufunc implementations.
 - **The Gap**: Violates standard NumPy comparison ufuncs. Downstream developers looking to reuse pre-allocated boolean mask output buffers to avoid GC thrashing during dense iterative loops comparisons are forced to allocate new arrays constantly.
 - **Recommended Tweak**: Implement top-level broadcasted ufuncs **`equal(NDArray a, NDArray b, {NDArray? out})`**, **`not_equal()`**, **`greater()`**, **`greater_equal()`**, **`less()`**, **`less_equal()`**. Support standard `{NDArray? out}` output recycler mapping to eliminate allocations during element-wise comparisons sweeps!
+
+***
+
+## `pkgs/num_dart/lib/src/fft.dart` (🚨 Critical Numerical Flaw: `fft()` and `ifft()` Completely Corrupt Data on Non-Contiguous Strided Views)
+- **Symptom**: When executing discrete Fourier transforms (`fft()` or `ifft()`) on non-contiguous strided views (e.g. transposed arrays, sub-sliced signals views), the calculation produces garbage output values without any warnings or errors.
+- **The Flaw**: The FFT algorithms assume the input array `a` is always in C-contiguous memory layout. They directly walk `a.data[srcStart + i]` sequentially, completely ignoring `a.strides`, which reads incorrect index boundaries for sliced/transposed array views.
+- **Recommended Tweak / High-End Fix**: Refactor `fft()` and `ifft()` to verify if `a.isContiguous` is true. If the input is non-contiguous, automatically compile or duplicate a contiguous array copy via `NDArray.fromList(a.toList(), a.shape, a.dtype)` before FFI plan mapping. This fully guarantees numerical correctness across all strided signals sweeps!
