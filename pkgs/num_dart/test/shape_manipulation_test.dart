@@ -277,10 +277,12 @@ void main() {
         expect(b.toList(), [1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0]);
       });
 
-      test('Tile with negative reps throws', () {
+      test('Tile with negative or invalid reps throws', () {
         final a = NDArray.create([2], DType.float64);
         expect(() => tile(a, -1), throwsArgumentError);
         expect(() => tile(a, [2, -3]), throwsArgumentError);
+        expect(() => tile(a, 'invalid'), throwsArgumentError);
+        expect(() => tile(a, 3.5), throwsArgumentError);
       });
     });
 
@@ -357,6 +359,45 @@ void main() {
       test('Repeat invalid axis throws', () {
         final a = NDArray.create([2, 2], DType.float64);
         expect(() => repeat(a, 2, axis: 2), throwsRangeError);
+      });
+    });
+
+    group('NDArray deep duplicate copy() Tests', () {
+      test('copy() contiguous float64 array', () {
+        final a = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float64);
+        final b = a.copy();
+
+        expect(b.shape, [3]);
+        expect(b.dtype, DType.float64);
+        expect(b.toList(), [10.0, 20.0, 30.0]);
+
+        b.data[0] = 99.0;
+        expect(a.data[0], 10.0);
+      });
+
+      test('copy() non-contiguous transposed strided float64 array view', () {
+        final parent = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+
+        final view = parent.transposed;
+        expect(view.isContiguous, false);
+
+        final b = view.copy();
+        expect(b.shape, [2, 2]);
+        expect(b.isContiguous, true);
+        expect(b.toList(), [1.0, 3.0, 2.0, 4.0]);
+
+        b.data[0] = 99.0;
+        expect(parent.data[0], 1.0);
+      });
+
+      test('disposed array throws StateError', () {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        a.dispose();
+        expect(() => a.copy(), throwsStateError);
       });
     });
   });

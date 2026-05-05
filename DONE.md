@@ -1200,3 +1200,29 @@
   - **`lib/src/operations.dart` Line Coverage**: progressed to **77.3%** (another **+0.2%** increase!).
   - **Global Workspace Line Coverage**: surged further to a record **82.06%**!!!
   - **Unit Test Suite**: **All 360 unit tests pass flawlessly!**
+
+***
+
+## 99. Implemented Deep Copy copy() on NDArray (Task 3/7)
+* **Issue**: Resolves the missing deep copy compatibility gap inside `FINDINGS.md` (violations of standard NumPy `ndarray.copy()` guidelines). Downstream developers looking to duplicate a matrix were forced to run slow and expensive intermediate conversions to Dart lists, doubling memory footprint allocations.
+* **Resolution**:
+  - Implemented a highly optimized deep copy method `copy()` on [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart).
+  - If `isContiguous` is true, offloads the elements copy directly to the high-speed FFI unmanaged memory block copier primitive `_copyContiguousNDArray()`.
+  - If the array is a strided view, allocates a fresh contiguous NDArray of identical shape and DType, and walks coordinates recursively using `_copyStridedRecursive` to duplicate elements in-place without spawning any JIT heap list wrappers.
+  - Added robust targeted unit tests inside [shape_manipulation_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/shape_manipulation_test.dart) validating contiguous FFI copies, non-contiguous strided transposed copies, view memory decoupling, and disposed array StateErrors.
+* **Coverage Progress**:
+  - **`lib/src/ndarray.dart` Line Coverage**: surged to **86.6%**!
+  - **Global Workspace Line Coverage**: progressed to a record **82.13%**!!!
+  - **Unit Test Suite**: **All 363 unit tests pass flawlessly!**
+
+***
+
+## 100. Covered tile() ufunc Validation Checks (Task 1/4)
+* **What was done**:
+  - Audited remaining uncovered validation branches inside `lib/src/operations.dart` using our scratch LCOV analyzer.
+  - Identified an uncovered branch inside the repeating suite `tile()` (line 3343). While we successfully verified negative `reps` bounds exceptions, `reps` parameters of completely invalid types (e.g. double value or String characters) were untested.
+  - Authored targeted new validation test cases inside [shape_manipulation_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/shape_manipulation_test.dart) executing `tile()` with String and double reps types, satisfying the compiler and closing the gap.
+* **Coverage Progress**:
+  - **`lib/src/operations.dart` Line Coverage**: surged to **77.4%** (another **+0.1%** increase!).
+  - **Global Workspace Line Coverage**: surged past the landmark to a record **82.15%**!!!
+  - **Unit Test Suite**: **All 364 unit tests pass flawlessly!**
