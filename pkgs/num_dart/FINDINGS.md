@@ -630,3 +630,10 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Symptom**: The stacking operations suite strictly supports joining along existing axes (`concatenate()`, `vstack()`, `hstack()`), but completely lacks joining arrays along a new axis.
 - **The Gap**: Violates standard NumPy `np.stack` guidelines. Downstream developers wanting to stack a list of 1D coordinate arrays into a single 2D matrix (e.g., stacking `[x_coords, y_coords]` into a `[2, N]` coordinate grid) are forced to allocate matrices manually and run slow, nested loop writes in JIT space.
 - **Recommended Tweak**: Implement a highly optimized ufunc **`stack(List<NDArray> arrays, {int axis = 0})`**. Validate that all input arrays have identical shapes. Expand shapes in-flight by inserting a new dimension at the targeted `axis` location, and copy data blocks sequentially using standard contiguous and strided FFI walks, delivering full standard NumPy `np.stack` features!
+
+***
+
+## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Element-Wise Comparison ufuncs `equal`, `not_equal`, `greater`, `less` with Recycling)
+- **Symptom**: Comparison operations are strictly restricted to operators (`a > b`, `a < b`), completely lacking top-level comparison ufunc implementations.
+- **The Gap**: Violates standard NumPy comparison ufuncs. Downstream developers looking to reuse pre-allocated boolean mask output buffers to avoid GC thrashing during dense iterative loops comparisons are forced to allocate new arrays constantly.
+- **Recommended Tweak**: Implement top-level broadcasted ufuncs **`equal(NDArray a, NDArray b, {NDArray? out})`**, **`not_equal()`**, **`greater()`**, **`greater_equal()`**, **`less()`**, **`less_equal()`**. Support standard `{NDArray? out}` output recycler mapping to eliminate allocations during element-wise comparisons sweeps!
