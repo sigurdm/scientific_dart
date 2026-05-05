@@ -92,7 +92,7 @@
 
 ## 9. Achieved Absolute 100% Coverage for Random Distributions `random.dart` (Task 1)
 * **What was done**:
-  * Audited [random.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/random.dart) and identified remaining uncovered validation branches, zero-avoidance loop paths, and boundary edge cases across varied distributions.
+  * Audited [random.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/random.dart) and identified remaining uncovered validation branches, zero-avoidance loop paths, and boundary edge cases across varied distributions.
   * Exposed a mock **`ZeroThenDoubleRandom`** class to simulate rare zero-avoidance boundaries: it returns `0.0` on its first draw to force normal-based samplers re-draws, and standard `0.5` on subsequent draws.
   * Authored 6 new comprehensive unit test suites inside [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart) covering uniform, normal, Poisson, and Binomial distributions boundary gates.
 * **Coverage Progress**:
@@ -252,3 +252,17 @@
   * **`operations.dart` coverage after**: **66.8%** (1134/1697 lines) (Maintained excellent **66.8%** coverage!)
   * **Global Line Coverage before**: **73.69%** (2199/2984 lines)
   * **Global Line Coverage after**: **73.69%** (2199/2984 lines) (Workspace global line coverage successfully maintained at an all-time peak of **73.69%**!)
+
+***
+
+## 21. Covered `_resolveDType` Float/Int Cross-Promotions (Task 1)
+* **What was done**:
+  * Audited the FFI universal math functions and arithmetic helper methods inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart).
+  * Identified multiple cross-type promotions inside `_resolveDType()` (e.g. `float64 + float32`, `float32 + int64`, and `int64 + int32`, L247-249) that were completely untested (0% coverage).
+  * Authored a highly comprehensive, targeted test suite `_resolveDType cross-promotion additions coverage` in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart) executing these arithmetic combinations and asserting exact target promoted DType tags.
+* **Verification**: Confirmed all 36 master tests pass 100% green.
+* **Coverage Progress**:
+  * **`operations.dart` coverage before**: **67.1%** (1152 / 1718 lines)
+  * **`operations.dart` coverage after**: **68.2%** (1172 / 1718 lines) (Excellent **+1.1%** increase!)
+  * **Global Line Coverage before**: **73.79%** (2218 / 3006 lines)
+  * **Global Line Coverage after**: **74.45%** (2238 / 3006 lines) (Global Line Coverage surged to an all-time peak of **74.45%**!)

@@ -688,6 +688,32 @@ void main() {
       expect(res.data[2], closeTo(1.5, 1e-9));
       expect(res.data[3], closeTo(-0.5, 1e-9));
     });
+
+    test('_resolveDType cross-promotion additions coverage', () {
+      final f64 = NDArray<double>.fromList([1.0], [1], DType.float64);
+      final f32 = NDArray<double>.fromList([2.0], [1], DType.float32);
+      final i64 = NDArray<int>.fromList([3], [1], DType.int64);
+      final i32 = NDArray<int>.fromList([4], [1], DType.int32);
+      addTearDown(f64.dispose);
+      addTearDown(f32.dispose);
+      addTearDown(i64.dispose);
+      addTearDown(i32.dispose);
+
+      // 1. float64 + float32 -> float64
+      final r1 = add(f64, f32);
+      addTearDown(r1.dispose);
+      expect(r1.dtype, DType.float64);
+
+      // 2. float32 + int64 -> float32
+      final r2 = add(f32, i64);
+      addTearDown(r2.dispose);
+      expect(r2.dtype, DType.float32);
+
+      // 3. int64 + int32 -> int64
+      final r3 = add(i64, i32);
+      addTearDown(r3.dispose);
+      expect(r3.dtype, DType.int64);
+    });
   });
 }
 
