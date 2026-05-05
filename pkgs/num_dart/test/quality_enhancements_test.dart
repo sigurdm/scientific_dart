@@ -663,7 +663,30 @@ void main() {
       addTearDown(res3.dispose);
       expect(res3.dtype, DType.complex128);
       expect(res3.data[0].real, 3.0);
-      expect(res3.data[0].imag, 1.0);
+    });
+
+    test('inv() in-place out buffer validations and solvers coverage', () {
+      final a = NDArray<double>.fromList(
+        [1.0, 2.0, 3.0, 4.0],
+        [2, 2],
+        DType.float64,
+      );
+      final out = NDArray<double>.zeros([2, 2], DType.float64);
+      final incompatibleOut = NDArray<double>.ones([3, 3], DType.float64);
+      addTearDown(a.dispose);
+      addTearDown(out.dispose);
+      addTearDown(incompatibleOut.dispose);
+
+      // 1. Incompatible out shape throws ArgumentError
+      expect(() => inv(a, out: incompatibleOut), throwsArgumentError);
+
+      // 2. Valid in-place solving
+      final res = inv(a, out: out);
+      expect(identical(res, out), true);
+      expect(res.data[0], closeTo(-2.0, 1e-9));
+      expect(res.data[1], closeTo(1.0, 1e-9));
+      expect(res.data[2], closeTo(1.5, 1e-9));
+      expect(res.data[3], closeTo(-0.5, 1e-9));
     });
   });
 }

@@ -1750,12 +1750,20 @@ dynamic max<T extends num>(NDArray<T> a, {int? axis}) {
 /// - Throws [ArgumentError] if the matrix is not square or not 2D.
 /// - Throws [ArgumentError] if the matrix is singular (non-invertible).
 /// - Pure Dart implementation; might be slow for very large matrices.
-NDArray<double> inv(NDArray a) {
+NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
   }
   final n = a.shape[0];
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for matrix inversion.',
+      );
+    }
+  }
 
   NDArray src = a;
   if (!a.isContiguous) {
@@ -1766,7 +1774,7 @@ NDArray<double> inv(NDArray a) {
 
   try {
     if (targetDType == DType.float32) {
-      final result = NDArray<double>.create(src.shape, DType.float32);
+      final result = out ?? NDArray<double>.create(src.shape, DType.float32);
       if (src.dtype == DType.float32) {
         (result.data as Float32List).setRange(
           0,
@@ -1805,7 +1813,7 @@ NDArray<double> inv(NDArray a) {
         );
       return result;
     } else {
-      final result = NDArray<double>.create(src.shape, DType.float64);
+      final result = out ?? NDArray<double>.create(src.shape, DType.float64);
       if (src.dtype == DType.float64) {
         (result.data as Float64List).setRange(
           0,

@@ -428,3 +428,14 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Recommended Tweak**: 
   - If all source arrays are contiguous row-major layouts, implement a **contiguous fast-path** that computes flat unmanaged memory offsets and executes direct **`memmove` block memory copies** at hardware speeds!
   - Even for non-contiguous strided views, flattening them to contiguous scratch arrays first or writing optimized C loops will completely bypass recursive Dart stack-walking, delivering a spectacular **`10x-50x` speed acceleration**!
+
+***
+
+## 41. `pkgs/openblas/hook/build.dart` (🚨 Rebuild Hazard: Missing dynamic library dependency tracking in OpenBLAS build hook)
+- **Location**: [build.dart:L108-L120](file:///usr/local/google/home/sigurdm/projects/math/pkgs/openblas/hook/build.dart#L108-L120)
+- **Symptom**: The OpenBLAS build hook compiles and locates the compiled dynamic library (`libopenblas.so` / `libopenblas.dylib` / `libopenblas.dll`). However, it completely fails to register the dynamic library file or the `extractDir` source directory inside `output.dependencies.add(...)` in the hooks output metadata.
+- **The Hazard**: Silent cache drifts and dependency building drifts! If the underlying compiled library gets corrupted, deleted, or updated manually by standard tool chains, Dart's asset builder has no way of knowing that the library was deleted or altered. It will silently continue serving outdated build metadata from its cached output directory, leading to runtime dynamic linker lookup crashes!
+- **Recommended Tweak**: Explicitly register the compiled `libFile` as a dependency in `output.dependencies.add(libFile.uri)` inside `build.dart` to ensure that the dynamic assets system correctly tracks library existence and forces rebuild passes whenever necessary:
+  ```dart
+  output.dependencies.add(libFile.uri);
+  ```
