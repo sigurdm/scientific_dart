@@ -640,3 +640,10 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Symptom**: Currently, `num_dart` completely lacks standard helpers to extract the real and imaginary parts of a complex array element-wise.
 - **The Gap**: Violates standard NumPy `np.real` and `np.imag` guidelines. Downstream developers working in quantum physics simulations, digital signal processing (DSP), or AC electrical circuit engineering are forced to manually write slow nested coordinate loop walks in Dart VM space to dissect complex numbers.
 - **Recommended Tweak**: Implement broadcasted, high-performance ufuncs **`real(NDArray a, {NDArray? out})`** and **`imag(NDArray a, {NDArray? out})`**. When `a` is a complex array (`DType.complex128` or `complex64`), they return a standard float array (`DType.float64` or `float32`) containing the respective components. If `a` is already real/integer, `real()` returns a view or a copy of `a`, and `imag()` returns a zero-filled array of matching shape and DType!
+
+***
+
+## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing New-Axis Stacking `stack`)
+- **Symptom**: The stacking operations suite strictly supports joining along existing axes (`concatenate()`, `vstack()`, `hstack()`), but completely lacks joining arrays along a new axis.
+- **The Gap**: Violates standard NumPy `np.stack` guidelines. Downstream developers wanting to stack a list of 1D coordinate arrays into a single 2D matrix (e.g., stacking `[x_coords, y_coords]` into a `[2, N]` coordinate grid) are forced to allocate matrices manually and run slow, nested loop writes in JIT space.
+- **Recommended Tweak**: Implement a highly optimized ufunc **`stack(List<NDArray> arrays, {int axis = 0})`**. Validate that all input arrays have identical shapes. Expand shapes in-flight by inserting a new dimension at the targeted `axis` location, and copy data blocks sequentially using standard contiguous and strided FFI walks, delivering full standard NumPy `np.stack` features!
