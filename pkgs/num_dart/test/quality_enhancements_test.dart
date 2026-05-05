@@ -368,6 +368,28 @@ void main() {
       expect(time.data[1].imag, closeTo(2.0, 1e-9));
     });
 
+    test(
+      'fft() and ifft() with real inputs and zero padding padding checks',
+      () {
+        final realSignal = NDArray<double>.fromList(
+          [1.0, 2.0],
+          [2],
+          DType.float64,
+        );
+        addTearDown(realSignal.dispose);
+
+        // 1. fft with zero-padding (n = 4)
+        final freqPadded = fft(realSignal, n: 4);
+        addTearDown(freqPadded.dispose);
+        expect(freqPadded.shape, [4]);
+
+        // 2. ifft with real input and zero padding (n = 4)
+        final timePadded = ifft(realSignal, n: 4);
+        addTearDown(timePadded.dispose);
+        expect(timePadded.shape, [4]);
+      },
+    );
+
     test('uniform() validation checks coverage', () {
       expect(() => uniform([5], dtype: DType.int64), throwsArgumentError);
     });
