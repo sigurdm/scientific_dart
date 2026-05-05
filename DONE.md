@@ -1020,3 +1020,16 @@
   - **`lib/src/io.dart` Line Coverage**: progressed from **97.8%** to **99.1%** (An amazing **+1.3%** increase, leaving only two defensive/unreachable exception guards uncovered!).
   - **Global Workspace Line Coverage**: progressed from **80.28%** to **80.37%**!
   - **Unit Test Suite**: **All 317 unit tests pass flawlessly!**
+
+***
+
+## 85. Implemented deg2rad() and rad2deg() Element-Wise Angle Converters (Task 3/7)
+* **Issue**: Resolves the missing angle converters compatibility gap in `FINDINGS.md` (violations of standard NumPy trig functions guidelines). Orbit modelers, physical spatial vector headings, and geometrical sweeps were forced to multiply by $\pi / 180$ using slow loops in JIT Dart VM space.
+* **Resolution**:
+  - Implemented `deg2rad()` and `rad2deg()` element-wise ufuncs inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart) leveraging our high-speed, FFI-accelerated vector multiplication engine (`multiply`).
+  - Wraps constants $\pi/180$ and $180/\pi$ dynamically in Float32/Float64 `NDArray` parameters matching the precision of input array, completely preventing unwanted data type cross-promotions and retaining strict type boundaries natively.
+  - Authored a dedicated, comprehensive test suite [angle_converters_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/angle_converters_test.dart) validating float boundaries, Float32 precision re-routing, Complex exceptions, and disposed StateError checks.
+* **Coverage Progress**:
+  - **`lib/src/operations.dart` Line Coverage**: surged from **75.2%** to **75.4%**!
+  - **Global Workspace Line Coverage**: surged from **80.56%** to **80.65%**!
+  - **Unit Test Suite**: **All 328 unit tests pass flawlessly!**
