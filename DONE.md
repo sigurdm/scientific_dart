@@ -1057,3 +1057,17 @@
   - **`lib/src/ndarray.dart` Line Coverage**: progressed from **85.1%** to **85.2%**!
   - **Global Workspace Line Coverage**: progressed from **80.67%** to **80.70%**!
   - **Unit Test Suite**: **All 330 unit tests pass flawlessly!**
+
+***
+
+## 88. Fixed Critical Casting Crash Bug in Logical Operators Dispatch (Task 3/7/2)
+* **Issue**: Resolves the critical bug logged in `FINDINGS.md` regarding logical operators (`logical_and`, `logical_or`, `logical_xor`) failing with a fatal casting exception (`type 'BoolList' is not a subtype of type 'List<int>' in type cast`) when two boolean mask arrays are combined.
+* **Resolution**:
+  - Audited the logical operators dispatch helper `_dispatchBinaryLogical()` in [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart).
+  - Discovered it assumed non-complex, non-float operands were always backed by `List<int>`. Since boolean arrays are backed by `BoolList` (List<bool>), hard casting triggered VM crashes.
+  - Refactored `_dispatchBinaryLogical()` to explicitly check and support `DType.boolean` operands on both the left-hand side (`a`) and right-hand side (`b`), mapping their backing arrays to `List<bool>` and routing through dedicated type-safe logical paths.
+  - Added targeted verification tests in [logical_reductions_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/logical_reductions_test.dart) combining boolean mask arrays via logical operators.
+* **Coverage Progress**:
+  - **`lib/src/operations.dart` Line Coverage**: progressed to **75.0%** (2339 total lines)!
+  - **Global Workspace Line Coverage**: surged to **80.71%**!
+  - **Unit Test Suite**: **All 335 unit tests pass flawlessly!**

@@ -619,12 +619,6 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **The Gap**: In Python's NumPy, calling `np.concatenate` with mismatched rank arrays (like a 2D matrix and a 1D vector) supports implicit axis expansions or broadcast alignment along trailing dimensions where compatible, making data mapping dramatically more expressive.
 - **Recommended Tweak**: Refactor `concatenate()` to dynamically check and upcast/broadcast input shapes where compatible before executing sequential copy segments blocks. For instance, automatically stretching `[3]` into `[1, 3]` when concatenating along `axis == 0` with `[2, 3]`, perfectly matching NumPy's user experience!
 
-***
-
-## `pkgs/num_dart/lib/src/operations.dart` (🚨 Critical Bug: `_dispatchBinaryLogical` Throws Cast Exceptions on Boolean Arrays)
-- **Symptom**: When calling logical operators `logical_and`, `logical_or`, or `logical_xor` on two boolean masks/arrays (`DType.boolean`), the execution crashes with a fatal cast exception: `type 'BoolList' is not a subtype of type 'List<int>' in type cast` at `_dispatchBinaryLogical` in `operations.dart:L4473`.
-- **The Flaw**: The dispatch helper `_dispatchBinaryLogical` lacks explicit checks for boolean array data types. It assumes that if an input array is not Complex or Floating Point, it must be backed by `List<int>`. However, boolean arrays are backed by custom `BoolList` (which implements `List<bool>`), causing the hard cast to fail.
-- **Recommended Tweak**: Update `_dispatchBinaryLogical` to support `DType.boolean` operands explicitly. Map their backing arrays as `List<bool>` and dispatch through a dedicated `_elementWiseOp<bool, bool, int>` logical mapping path. This will fully restore boolean mask combination capabilities!
 
 ***
 

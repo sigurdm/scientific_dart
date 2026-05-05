@@ -4405,6 +4405,21 @@ void _dispatchBinaryLogical(
         0,
         op,
       );
+    } else if (b.dtype == DType.boolean) {
+      _elementWiseOp<Complex, bool, int>(
+        rData,
+        aData,
+        b.data as List<bool>,
+        shape,
+        sA,
+        sB,
+        sR,
+        0,
+        0,
+        0,
+        0,
+        op,
+      );
     } else {
       _elementWiseOp<Complex, int, int>(
         rData,
@@ -4453,8 +4468,86 @@ void _dispatchBinaryLogical(
         0,
         op,
       );
+    } else if (b.dtype == DType.boolean) {
+      _elementWiseOp<double, bool, int>(
+        rData,
+        aData,
+        b.data as List<bool>,
+        shape,
+        sA,
+        sB,
+        sR,
+        0,
+        0,
+        0,
+        0,
+        op,
+      );
     } else {
       _elementWiseOp<double, int, int>(
+        rData,
+        aData,
+        b.data as List<int>,
+        shape,
+        sA,
+        sB,
+        sR,
+        0,
+        0,
+        0,
+        0,
+        op,
+      );
+    }
+  } else if (a.dtype == DType.boolean) {
+    final aData = a.data as List<bool>;
+    if (b.dtype == DType.complex128 || b.dtype == DType.complex64) {
+      _elementWiseOp<bool, Complex, int>(
+        rData,
+        aData,
+        b.data as List<Complex>,
+        shape,
+        sA,
+        sB,
+        sR,
+        0,
+        0,
+        0,
+        0,
+        op,
+      );
+    } else if (b.dtype == DType.float64 || b.dtype == DType.float32) {
+      _elementWiseOp<bool, double, int>(
+        rData,
+        aData,
+        b.data as List<double>,
+        shape,
+        sA,
+        sB,
+        sR,
+        0,
+        0,
+        0,
+        0,
+        op,
+      );
+    } else if (b.dtype == DType.boolean) {
+      _elementWiseOp<bool, bool, int>(
+        rData,
+        aData,
+        b.data as List<bool>,
+        shape,
+        sA,
+        sB,
+        sR,
+        0,
+        0,
+        0,
+        0,
+        op,
+      );
+    } else {
+      _elementWiseOp<bool, int, int>(
         rData,
         aData,
         b.data as List<int>,
@@ -4491,6 +4584,21 @@ void _dispatchBinaryLogical(
         rData,
         aData,
         b.data as List<double>,
+        shape,
+        sA,
+        sB,
+        sR,
+        0,
+        0,
+        0,
+        0,
+        op,
+      );
+    } else if (b.dtype == DType.boolean) {
+      _elementWiseOp<int, bool, int>(
+        rData,
+        aData,
+        b.data as List<bool>,
         shape,
         sA,
         sB,

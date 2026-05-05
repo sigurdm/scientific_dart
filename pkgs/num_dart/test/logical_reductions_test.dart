@@ -68,6 +68,26 @@ void main() {
       expect(res1.toList(), [true, false]);
     });
 
+    test(
+      'logical_and, logical_or, and logical_xor successfully combine boolean mask arrays',
+      () {
+        final mask1 = NDArray.fromList([true, false, true], [3], DType.boolean);
+        final mask2 = NDArray.fromList([true, true, false], [3], DType.boolean);
+
+        final resAnd = logical_and(mask1, mask2);
+        expect(resAnd.dtype, DType.int32);
+        expect(resAnd.toList(), [1, 0, 0]); // 1 is true, 0 is false
+
+        final resOr = logical_or(mask1, mask2);
+        expect(resOr.dtype, DType.int32);
+        expect(resOr.toList(), [1, 1, 1]);
+
+        final resXor = logical_xor(mask1, mask2);
+        expect(resXor.dtype, DType.int32);
+        expect(resXor.toList(), [0, 1, 1]);
+      },
+    );
+
     test('Disposed array checks throw StateError', () {
       final a = NDArray.fromList([true, false], [2], DType.boolean);
       a.dispose();
