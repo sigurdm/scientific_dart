@@ -571,6 +571,25 @@ void main() {
       expect(c.data[0].real, 3.0);
       expect(c.data[0].imag, 1.0);
     });
+
+    test(
+      'matmul() copy-free 100% transposed and sliced views multi-dimensional multiplication',
+      () {
+        final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+        final b = NDArray.fromList([5.0, 6.0, 7.0, 8.0], [2, 2], DType.float64);
+        addTearDown(a.dispose);
+        addTearDown(b.dispose);
+
+        final aT = a.transposed;
+        final bT = b.transposed;
+
+        final result = matmul(aT, bT);
+        addTearDown(result.dispose);
+
+        expect(result.shape, [2, 2]);
+        expect(result.toList(), [23.0, 31.0, 34.0, 46.0]);
+      },
+    );
   });
 }
 

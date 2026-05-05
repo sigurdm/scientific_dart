@@ -1,4 +1,4 @@
-Choose one of the following tasks to work on.
+Choose one of the following tasks to work on (by random choice, use awk as a random dice rolling tool `awk -v min=1 -v max=5 'BEGIN{srand(); print int(min+rand()*(max-min+1))}'`).r
 After being done reschedule to do another task in 1 minute with the following prompt:
 
 ```

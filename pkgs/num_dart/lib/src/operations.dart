@@ -1325,12 +1325,18 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
     return NDArray.fromList([scalarRes], [], DType.float64);
   }
 
-  // Ensure contiguous layout upfront to make row-major BLAS strides lda/ldb predictable
-  if (!a.isContiguous) {
-    a = NDArray.fromList(a.toList(), a.shape, a.dtype);
+  // Copy upfront ONLY if neither inner strides is 1 (very rare custom sliced strides)
+  if (a.shape.length >= 2) {
+    final r = a.shape.length;
+    if (a.strides[r - 1] != 1 && a.strides[r - 2] != 1) {
+      a = NDArray.fromList(a.toList(), a.shape, a.dtype);
+    }
   }
-  if (!b.isContiguous) {
-    b = NDArray.fromList(b.toList(), b.shape, b.dtype);
+  if (b.shape.length >= 2) {
+    final r = b.shape.length;
+    if (b.strides[r - 1] != 1 && b.strides[r - 2] != 1) {
+      b = NDArray.fromList(b.toList(), b.shape, b.dtype);
+    }
   }
 
   var aPromoted = false;
@@ -1379,6 +1385,31 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
   final resShape = [...broadcastStack, m, n];
   final result = NDArray<double>.zeros(resShape, DType.float64);
 
+  // Stride resolution logic for 100% copy-free BLAS matrix multiplication
+  var transA = 111; // CblasNoTrans
+  var lda = kA;
+  if (!aPromoted) {
+    if (aView.strides[rankA - 1] == 1) {
+      transA = 111;
+      lda = aView.strides[rankA - 2];
+    } else if (aView.strides[rankA - 2] == 1) {
+      transA = 112; // CblasTrans
+      lda = aView.strides[rankA - 1];
+    }
+  }
+
+  var transB = 111; // CblasNoTrans
+  var ldb = n;
+  if (!bPromoted) {
+    if (bView.strides[rankB - 1] == 1) {
+      transB = 111;
+      ldb = bView.strides[rankB - 2];
+    } else if (bView.strides[rankB - 2] == 1) {
+      transB = 112; // CblasTrans
+      ldb = bView.strides[rankB - 1];
+    }
+  }
+
   final lenA = stackA.length;
   final lenB = stackB.length;
   final lenResult = broadcastStack.length;
@@ -1419,19 +1450,19 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
     if (dim == lenResult) {
       cblas_dgemm(
         101, // CblasRowMajor
-        111, // CblasNoTrans
-        111, // CblasNoTrans
+        transA,
+        transB,
         m,
         n,
         kA,
         1.0,
         aView.pointer.cast<ffi.Double>().elementAt(offsetA),
-        kA, // lda
+        lda,
         bView.pointer.cast<ffi.Double>().elementAt(offsetB),
-        n, // ldb
+        ldb,
         0.0,
         result.pointer.cast<ffi.Double>().elementAt(offsetRes),
-        n, // ldc
+        n, // ldc (result is always contiguous row-major)
       );
       return;
     }
