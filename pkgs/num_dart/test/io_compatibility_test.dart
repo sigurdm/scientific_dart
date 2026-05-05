@@ -2,6 +2,7 @@ import 'package:num_dart/num_dart.dart';
 import 'package:test/test.dart';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:archive/archive.dart';
 
 void main() {
   group('NDArray NumPy Binary Interoperability & I/O Tests', () {
@@ -144,6 +145,72 @@ void main() {
         expect(loaded['x']!.toList(), [0.5, 1.5]);
         expect(loaded['x']!.dtype, DType.float32);
       });
+
+      test('Load Fortran ordered .npz archive map simulated from Python', () {
+        // Build a fake in-memory .npy byte buffer that flags 'fortran_order': True
+        final descr = _dtypeToDescr(DType.float64);
+        final headerStr =
+            "{'descr': '$descr', 'fortran_order': True, 'shape': (2, 3)}";
+
+        final prefixLen = 6 + 2 + 2;
+        var paddedHeaderLen =
+            ((prefixLen + headerStr.length + 1) + 63) ~/ 64 * 64 - prefixLen;
+        final padCount = paddedHeaderLen - headerStr.length - 1;
+        final paddedHeader = headerStr + (' ' * padCount) + '\n';
+
+        final headerBytes = Uint8List.fromList(paddedHeader.codeUnits);
+        final lenBytes = Uint8List(2);
+        ByteData.view(
+          lenBytes.buffer,
+        ).setUint16(0, headerBytes.length, Endian.little);
+
+        final rawData = Float64List.fromList([1.0, 4.0, 2.0, 5.0, 3.0, 6.0]);
+        final rawDataBytes = Uint8List.view(rawData.buffer);
+
+        final fullBuffer = Uint8List(
+          6 + 2 + 2 + headerBytes.length + rawDataBytes.length,
+        );
+        var offset = 0;
+
+        fullBuffer.setRange(offset, offset + 6, const [
+          0x93,
+          0x4e,
+          0x55,
+          0x4d,
+          0x50,
+          0x59,
+        ]);
+        offset += 6;
+        fullBuffer.setRange(offset, offset + 2, const [0x01, 0x00]);
+        offset += 2;
+        fullBuffer.setRange(offset, offset + 2, lenBytes);
+        offset += 2;
+        fullBuffer.setRange(offset, offset + headerBytes.length, headerBytes);
+        offset += headerBytes.length;
+        fullBuffer.setRange(offset, offset + rawDataBytes.length, rawDataBytes);
+
+        // Pack this Fortran npy buffer inside a zip archive
+        final archive = Archive();
+        archive.addFile(
+          ArchiveFile('f_arr.npy', fullBuffer.length, fullBuffer),
+        );
+        final encoder = ZipEncoder();
+        final zipBytes = encoder.encode(
+          archive,
+          level: Deflate.NO_COMPRESSION,
+        )!;
+
+        const path = 'scratch/archive_fortran_simulated.npz';
+        File(path).writeAsBytesSync(zipBytes, flush: true);
+
+        // Load the archive
+        final loaded = loadz(path);
+        expect(loaded.containsKey('f_arr'), true);
+        expect(loaded['f_arr']!.shape, [2, 3]);
+        // Check that loaded array successfully restores strides to Column-Major!
+        expect(loaded['f_arr']!.strides, [1, 2]);
+        expect(loaded['f_arr']!.toList(), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+      });
     });
 
     group('Fortran Column-Major Layout Simulation Tests', () {
@@ -216,7 +283,215 @@ void main() {
         // Success! Stride reindexing mapping loaded column-major binary files with absolute zero data copies!
       });
     });
+
+    group('Error / Exception Handlers Tests', () {
+      test(
+        'Non-existent files throw FileSystemException in load and loadz',
+        () {
+          expect(
+            () => load('scratch/non_existent_file.npy'),
+            throwsA(isA<FileSystemException>()),
+          );
+          expect(
+            () => loadz('scratch/non_existent_archive.npz'),
+            throwsA(isA<FileSystemException>()),
+          );
+        },
+      );
+
+      test('Invalid Magic signature in load() throws FormatException', () {
+        final file = File('scratch/corrupted.npy');
+        file.writeAsBytesSync([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]);
+        expect(() => load('scratch/corrupted.npy'), throwsFormatException);
+      });
+
+      test('Big-endian header descriptor throws UnsupportedError', () {
+        const path = 'scratch/big_endian_simulated.npy';
+        _writeFakeNpy(
+          path,
+          "{'descr': '>f8', 'fortran_order': False, 'shape': (2,)}",
+        );
+        expect(() => load(path), throwsUnsupportedError);
+      });
+
+      test('Unsupported NumPy descriptor throws UnsupportedError', () {
+        const path = 'scratch/bad_descr.npy';
+        _writeFakeNpy(
+          path,
+          "{'descr': '<u2', 'fortran_order': False, 'shape': (2,)}",
+        );
+        expect(() => load(path), throwsUnsupportedError);
+      });
+
+      test('Missing descr in header throws FormatException', () {
+        const path = 'scratch/missing_descr.npy';
+        _writeFakeNpy(path, "{'fortran_order': False, 'shape': (2,)}");
+        expect(() => load(path), throwsFormatException);
+      });
+
+      test('Missing fortran_order in header throws FormatException', () {
+        const path = 'scratch/missing_fortran.npy';
+        _writeFakeNpy(path, "{'descr': '<f8', 'shape': (2,)}");
+        expect(() => load(path), throwsFormatException);
+      });
+
+      test('Missing shape in header throws FormatException', () {
+        const path = 'scratch/missing_shape.npy';
+        _writeFakeNpy(path, "{'descr': '<f8', 'fortran_order': False}");
+        expect(() => load(path), throwsFormatException);
+      });
+
+      test(
+        'Short npy file lacking format version headers throws FormatException',
+        () {
+          final file = File('scratch/short_version.npy');
+          file.writeAsBytesSync([0x93, 0x4e, 0x55, 0x4d, 0x50, 0x59, 0x01]);
+          expect(
+            () => load('scratch/short_version.npy'),
+            throwsFormatException,
+          );
+        },
+      );
+      test(
+        'load() throws FormatException when header lacks "descr" parameter',
+        () {
+          _writeFakeNpy(
+            'scratch/missing_descr.npy',
+            "{'fortran_order': False, 'shape': (2, 2)}",
+          );
+          expect(
+            () => load('scratch/missing_descr.npy'),
+            throwsFormatException,
+          );
+        },
+      );
+
+      test('load() throws UnsupportedError when descriptor is unsupported', () {
+        _writeFakeNpy(
+          'scratch/unsupported_dtype.npy',
+          "{'descr': '<f16', 'fortran_order': False, 'shape': (2, 2)}",
+        );
+        expect(
+          () => load('scratch/unsupported_dtype.npy'),
+          throwsUnsupportedError,
+        );
+      });
+
+      test(
+        '_deserializeNpyBytes throws FormatException on invalid magic bytes',
+        () {
+          final badBytes = Uint8List.fromList([
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+          ]);
+          final archive = Archive();
+          archive.addFile(
+            ArchiveFile('corrupted.npy', badBytes.length, badBytes),
+          );
+          final encoder = ZipEncoder();
+          final zipBytes = encoder.encode(
+            archive,
+            level: Deflate.NO_COMPRESSION,
+          )!;
+
+          const path = 'scratch/bad_archive_magic.npz';
+          File(path).writeAsBytesSync(zipBytes, flush: true);
+
+          expect(() => loadz(path), throwsFormatException);
+        },
+      );
+    });
+
+    group('Additional I/O Coverage Tests', () {
+      test(
+        'Save into brand new nested directory makes parent directory recursive',
+        () {
+          final a = NDArray.ones([2], DType.float64);
+          const path = 'scratch/nested_non_existent/nested_level/arr.npy';
+          save(path, a);
+
+          final file = File(path);
+          expect(file.existsSync(), true);
+          final loaded = load(path);
+          expect(loaded.toList(), [1.0, 1.0]);
+
+          file.deleteSync();
+          Directory('scratch/nested_non_existent').deleteSync(recursive: true);
+        },
+      );
+
+      test('Save non-contiguous view inside savez archive map', () {
+        final parent = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final view = parent.transposed;
+        expect(view.isContiguous, false);
+
+        const path = 'scratch/archive_with_view.npz';
+        savez(path, {'view_key': view}, compressed: false);
+
+        final loaded = loadz(path);
+        expect(loaded.containsKey('view_key'), true);
+        expect(loaded['view_key']!.toList(), [1.0, 3.0, 2.0, 4.0]);
+
+        File(path).deleteSync();
+      });
+
+      test(
+        'Savez npz file into brand new nested directory makes parent directory recursive',
+        () {
+          final a = NDArray.ones([2], DType.float64);
+          const path = 'scratch/nested_npz_dir/nested_level/archive.npz';
+          savez(path, {'arr': a}, compressed: false);
+
+          final file = File(path);
+          expect(file.existsSync(), true);
+          final loaded = loadz(path);
+          expect(loaded['arr']!.toList(), [1.0, 1.0]);
+
+          file.deleteSync();
+          Directory('scratch/nested_npz_dir').deleteSync(recursive: true);
+        },
+      );
+    });
   });
+}
+
+void _writeFakeNpy(
+  String path,
+  String headerStr, {
+  List<int> version = const [1, 0],
+}) {
+  final prefixLen = 6 + 2 + 2;
+  var paddedHeaderLen =
+      ((prefixLen + headerStr.length + 1) + 63) ~/ 64 * 64 - prefixLen;
+  final padCount = paddedHeaderLen - headerStr.length - 1;
+  final paddedHeader = headerStr + (' ' * padCount) + '\n';
+
+  final headerBytes = Uint8List.fromList(paddedHeader.codeUnits);
+  final lenBytes = Uint8List(2);
+  ByteData.view(
+    lenBytes.buffer,
+  ).setUint16(0, headerBytes.length, Endian.little);
+
+  final fullBuffer = Uint8List(6 + 2 + 2 + headerBytes.length + 16);
+  fullBuffer.setRange(0, 6, const [0x93, 0x4e, 0x55, 0x4d, 0x50, 0x59]);
+  fullBuffer.setRange(6, 8, version);
+  fullBuffer.setRange(8, 10, lenBytes);
+  fullBuffer.setRange(10, 10 + headerBytes.length, headerBytes);
+
+  File(path).writeAsBytesSync(fullBuffer, flush: true);
 }
 
 // Simple helper function to map DType to descriptor string for test creation
