@@ -506,9 +506,30 @@ void s_where_double(const unsigned char *cond, const int *stridesCond,
                     const int *shape, int rank) {
     if (cond == NULL || x == NULL || y == NULL || res == NULL || rank <= 0 || rank > 8) return;
 
-    int coord[8] = {0};
+    int is_contiguous = 1;
+    int expected_stride = 1;
+    for (int i = rank - 1; i >= 0; i--) {
+        if (stridesCond[i] != expected_stride || 
+            stridesX[i] != expected_stride || 
+            stridesY[i] != expected_stride || 
+            stridesRes[i] != expected_stride) {
+            is_contiguous = 0;
+            break;
+        }
+        expected_stride *= shape[i];
+    }
+
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
+
+    if (is_contiguous) {
+        for (int i = 0; i < total_elements; i++) {
+            res[i] = cond[i] ? x[i] : y[i];
+        }
+        return;
+    }
+
+    int coord[8] = {0};
 
     for (int el = 0; el < total_elements; el++) {
         int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0;
@@ -534,9 +555,30 @@ void s_where_float(const unsigned char *cond, const int *stridesCond,
                    const int *shape, int rank) {
     if (cond == NULL || x == NULL || y == NULL || res == NULL || rank <= 0 || rank > 8) return;
 
-    int coord[8] = {0};
+    int is_contiguous = 1;
+    int expected_stride = 1;
+    for (int i = rank - 1; i >= 0; i--) {
+        if (stridesCond[i] != expected_stride || 
+            stridesX[i] != expected_stride || 
+            stridesY[i] != expected_stride || 
+            stridesRes[i] != expected_stride) {
+            is_contiguous = 0;
+            break;
+        }
+        expected_stride *= shape[i];
+    }
+
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
+
+    if (is_contiguous) {
+        for (int i = 0; i < total_elements; i++) {
+            res[i] = cond[i] ? x[i] : y[i];
+        }
+        return;
+    }
+
+    int coord[8] = {0};
 
     for (int el = 0; el < total_elements; el++) {
         int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0;
