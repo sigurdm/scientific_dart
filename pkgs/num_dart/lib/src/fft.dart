@@ -37,7 +37,7 @@ NDArray fft(NDArray a, {int? n}) {
   }
 
   if (!a.isContiguous) {
-    a = NDArray.fromList(a.toList(), a.shape, a.dtype);
+    a = a.copy();
   }
 
   final lastAxisDim = a.shape.last;
@@ -154,7 +154,7 @@ NDArray ifft(NDArray a, {int? n}) {
   }
 
   if (!a.isContiguous) {
-    a = NDArray.fromList(a.toList(), a.shape, a.dtype);
+    a = a.copy();
   }
 
   final lastAxisDim = a.shape.last;

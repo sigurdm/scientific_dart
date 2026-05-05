@@ -1226,3 +1226,15 @@
   - **`lib/src/operations.dart` Line Coverage**: surged to **77.4%** (another **+0.1%** increase!).
   - **Global Workspace Line Coverage**: surged past the landmark to a record **82.15%**!!!
   - **Unit Test Suite**: **All 364 unit tests pass flawlessly!**
+
+***
+
+## 101. Optimized FFT Strides Duplications via copy() (Task 3/7)
+* **Issue**: Resolves **Finding 3** (non-contiguous views copies during FFT plans). Previously, when calling `fft()` and `ifft()` with non-contiguous strided views (such as transposed signals arrays), they executed a slow, multi-step fallback copy mapping elements back and forth to JIT Dart Lists, wasting allocation cycles.
+* **Resolution**:
+  - Refactored both `fft()` and `ifft()` inside [fft.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/fft.dart) to use our newly implemented, highly optimized deep duplicates `copy()` method when strided inputs are detected.
+  - Walks coordinates recursively in-place on strided structures without spawning a single JIT List intermediate, accelerating non-contiguous signals transform sweeps.
+* **Coverage Progress**:
+  - **`lib/src/fft.dart` Line Coverage**: remains stable at **94.5%**!
+  - **Global Workspace Line Coverage**: progressed to a record **82.16%**!!!
+  - **Unit Test Suite**: **All 366 unit tests pass flawlessly!**
