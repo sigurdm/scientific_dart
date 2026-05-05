@@ -89,10 +89,42 @@ void s_add_double(const double *a, const int *stridesA,
                   const int *shape, int rank) {
     if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return;
     
-    int coord[8] = {0}; // Support up to rank 8 tensors
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
+    int is_a_contiguous = 1, is_b_contiguous = 1, is_res_contiguous = 1;
+    int expected_stride = 1;
+    for (int i = rank - 1; i >= 0; i--) {
+        if (stridesA[i] != expected_stride) is_a_contiguous = 0;
+        if (stridesB[i] != expected_stride) is_b_contiguous = 0;
+        if (stridesRes[i] != expected_stride) is_res_contiguous = 0;
+        expected_stride *= shape[i];
+    }
+
+    int is_a_scalar = 1, is_b_scalar = 1;
+    for (int i = 0; i < rank; i++) {
+        if (stridesA[i] != 0) is_a_scalar = 0;
+        if (stridesB[i] != 0) is_b_scalar = 0;
+    }
+
+    if (is_res_contiguous) {
+        if (is_a_contiguous && is_b_contiguous) {
+            for (int i = 0; i < total_elements; i++) res[i] = a[i] + b[i];
+            return;
+        }
+        if (is_a_contiguous && is_b_scalar) {
+            double val = b[0];
+            for (int i = 0; i < total_elements; i++) res[i] = a[i] + val;
+            return;
+        }
+        if (is_a_scalar && is_b_contiguous) {
+            double val = a[0];
+            for (int i = 0; i < total_elements; i++) res[i] = val + b[i];
+            return;
+        }
+    }
+
+    int coord[8] = {0}; // Support up to rank 8 tensors
     for (int el = 0; el < total_elements; el++) {
         // Calculate FFI unmanaged cell heap byte pointer offsets from strides
         int offsetA = 0, offsetB = 0, offsetRes = 0;
@@ -114,10 +146,43 @@ void s_sub_double(const double *a, const int *stridesA,
                   double *res, const int *stridesRes,
                   const int *shape, int rank) {
     if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return;
-    int coord[8] = {0};
+    
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
+    int is_a_contiguous = 1, is_b_contiguous = 1, is_res_contiguous = 1;
+    int expected_stride = 1;
+    for (int i = rank - 1; i >= 0; i--) {
+        if (stridesA[i] != expected_stride) is_a_contiguous = 0;
+        if (stridesB[i] != expected_stride) is_b_contiguous = 0;
+        if (stridesRes[i] != expected_stride) is_res_contiguous = 0;
+        expected_stride *= shape[i];
+    }
+
+    int is_a_scalar = 1, is_b_scalar = 1;
+    for (int i = 0; i < rank; i++) {
+        if (stridesA[i] != 0) is_a_scalar = 0;
+        if (stridesB[i] != 0) is_b_scalar = 0;
+    }
+
+    if (is_res_contiguous) {
+        if (is_a_contiguous && is_b_contiguous) {
+            for (int i = 0; i < total_elements; i++) res[i] = a[i] - b[i];
+            return;
+        }
+        if (is_a_contiguous && is_b_scalar) {
+            double val = b[0];
+            for (int i = 0; i < total_elements; i++) res[i] = a[i] - val;
+            return;
+        }
+        if (is_a_scalar && is_b_contiguous) {
+            double val = a[0];
+            for (int i = 0; i < total_elements; i++) res[i] = val - b[i];
+            return;
+        }
+    }
+
+    int coord[8] = {0};
     for (int el = 0; el < total_elements; el++) {
         int offsetA = 0, offsetB = 0, offsetRes = 0;
         for (int d = 0; d < rank; d++) {
