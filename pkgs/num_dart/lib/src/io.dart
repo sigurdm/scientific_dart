@@ -1,8 +1,6 @@
 import 'dart:io';
-import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ffi' as ffi;
-import 'package:ffi/ffi.dart';
 import 'package:archive/archive.dart';
 import 'ndarray.dart';
 
