@@ -3214,6 +3214,25 @@ NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
   return concatenate(arrays, axis: 1);
 }
 
+/// Return an array copy of the given object.
+///
+/// This function corresponds to NumPy's `copy` function. It returns a deep copy
+/// of [a] that respects shape, strides, and DType.
+///
+/// **Throws:**
+/// - [StateError] if the array [a] is already disposed.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1, 2], [2], DType.int32);
+/// final b = copy(a);
+/// b.data[0] = 99;
+/// print(a.data[0]); // 1 (decoupled memory!)
+/// ```
+NDArray<T> copy<T extends Object>(NDArray<T> a) {
+  return a.copy();
+}
+
 /// Join a sequence of arrays along a new axis.
 ///
 /// Stacks the input [arrays] along a new dimension at [axis]. All arrays in the

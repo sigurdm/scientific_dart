@@ -399,6 +399,24 @@ void main() {
         a.dispose();
         expect(() => a.copy(), throwsStateError);
       });
+
+      test('top-level copy() contiguous float64 array', () {
+        final a = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float64);
+        final b = copy(a);
+
+        expect(b.shape, [3]);
+        expect(b.dtype, DType.float64);
+        expect(b.toList(), [10.0, 20.0, 30.0]);
+
+        b.data[0] = 99.0;
+        expect(a.data[0], 10.0);
+      });
+
+      test('top-level copy() disposed array throws StateError', () {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        a.dispose();
+        expect(() => copy(a), throwsStateError);
+      });
     });
   });
 }
