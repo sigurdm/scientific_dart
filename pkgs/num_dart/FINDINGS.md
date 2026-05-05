@@ -620,3 +620,10 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Symptom**: Currently, when calling `setByMask(mask, value)`, if the `value` parameter is an `NDArray`, it expects a flat list of values `value.data` which matches the mask target count sequentially, completely ignoring the shape and strides of the `value` array.
 - **The Gap**: In Python NumPy, calling `a[mask] = values` where `values` is another multidimensional array will dynamically align, broadcast, or slice the `values` array logically according to strides and coordinates of the selected mask truth entries.
 - **Recommended Tweak**: Refactor `setByMask` to walk both the mask coordinate odometer and the values coordinate odometer concurrently when `value` is an `NDArray` with rank > 1, allowing fully aligned multidimensional masked array assignments!
+
+***
+
+## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: `concatenate()` Lacks Implicit Broadcasting Axis Expansion)
+- **Symptom**: Currently, the `concatenate(List<NDArray> arrays, {int axis})` ufunc rigidly expects all input arrays to have identical shapes along all dimensions except the targeted concatenation `axis`. If a developer passes a mix of a 2D array of shape `[2, 3]` and a 1D vector of shape `[3]`, the function throws a fatal `ArgumentError`.
+- **The Gap**: In Python's NumPy, calling `np.concatenate` with mismatched rank arrays (like a 2D matrix and a 1D vector) supports implicit axis expansions or broadcast alignment along trailing dimensions where compatible, making data mapping dramatically more expressive.
+- **Recommended Tweak**: Refactor `concatenate()` to dynamically check and upcast/broadcast input shapes where compatible before executing sequential copy segments blocks. For instance, automatically stretching `[3]` into `[1, 3]` when concatenating along `axis == 0` with `[2, 3]`, perfectly matching NumPy's user experience!
