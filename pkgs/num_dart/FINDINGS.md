@@ -632,3 +632,10 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Symptom**: Currently, `sort()` and `argsort()` in `operations.dart` only support an unstable QuickSort routing to the native C FFI compilation.
 - **The Gap**: Downstream scientific developers seeking to perform stable multi-key sorting (e.g. sorting indices first by price, and then stably sorting by name) are completely blocked. Python's NumPy natively packages a `kind` parameter supporting `'quicksort'`, `'mergesort'`, `'heapsort'`, and `'stable'` to enable stable sorts.
 - **Recommended Tweak**: Expose a `kind` parameter to `sort()` and `argsort()`. Bind and implement a standard C FFI MergeSort routine (which offers stable $O(N \log N)$ sorting complexity) to fully match NumPy's stable multi-key sort capability!
+
+***
+
+## `pkgs/num_dart/lib/src/ndarray.dart` (NumPy Compatibility Gap: Missing Multidimensional Enumerator `ndenumerate`)
+- **Symptom**: Currently, `num_dart` completely lacks a standard helper to iterate over multidimensional tensor arrays yielding element values alongside their respective coordinates.
+- **The Gap**: Downstream developers looking to log coordinate mappings, execute custom spatial transformations, or inspect grid cells values are forced to program complex nested coordinate odometer sweeps from scratch in JIT space. Python's NumPy natively packages `np.ndenumerate` yielding `(coordinate_tuple, value)` in a flat sequence.
+- **Recommended Tweak**: Implement **`ndenumerate(NDArray a)`** as an iterable/generator yielding coordinates list/tuple and cell value sequentially. Wire it to automatically resolve non-contiguous stride offsets to deliver standard NumPy coordinate indexing traversals seamlessly!
