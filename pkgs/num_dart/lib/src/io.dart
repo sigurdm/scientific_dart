@@ -208,7 +208,7 @@ NDArray load(String filepath) {
         stride *= shape[i];
       }
       // Mutate strides metadata in the unmanaged array safely
-      result.strides.setAll(0, fStrides);
+      result.strides.setRange(0, shape.length, fStrides);
     }
 
     // 6. Zero-Copy direct stream file read straight into C Heap pointers!
@@ -338,7 +338,7 @@ NDArray _deserializeNpyBytes(Uint8List bytes) {
       fStrides[i] = stride;
       stride *= shape[i];
     }
-    result.strides.setAll(0, fStrides);
+    result.strides.setRange(0, shape.length, fStrides);
   }
 
   final dataOffset = 10 + headerLen;
@@ -349,7 +349,7 @@ NDArray _deserializeNpyBytes(Uint8List bytes) {
     bytes.offsetInBytes + dataOffset,
     dataByteSize,
   );
-  targetView.setAll(0, sourceView);
+  targetView.setRange(0, dataByteSize, sourceView);
 
   return result;
 }
@@ -434,6 +434,8 @@ Map<String, NDArray> loadz(String filepath) {
 
       final loadedArray = _deserializeNpyBytes(fileData);
       results[key] = loadedArray;
+      archiveFile.clear();
+      archiveFile.closeSync();
     }
   }
 

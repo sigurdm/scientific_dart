@@ -626,5 +626,3 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Recommended Tweak**: Implement high-speed vectorized converters matching NumPy's:
   - **`deg2rad(NDArray a, {NDArray? out})`**: Converts degrees to radians element-wise ($a \times \frac{\pi}{180.0}$).
   - **`rad2deg(NDArray a, {NDArray? out})`**: Converts radians to degrees element-wise ($a \times \frac{180.0}{\pi}$).
-  
-## Please look into the memory behavior in loadz. `next`

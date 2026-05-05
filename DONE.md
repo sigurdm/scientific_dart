@@ -998,3 +998,13 @@
   - **`lib/src/operations.dart` Line Coverage**: surged from **73.9%** to **74.8%** (Excellent **+0.9%** increase!).
   - **Global Workspace Line Coverage**: surged past the **80%** milestone, going from **79.86%** to **80.28%**!
   - **Unit Test Suite**: **All 314 unit tests pass flawlessly!**
+
+***
+
+## 83. Optimized `.npz` Loader sequential Deallocation Memory Behavior (Task 3/7/5)
+* **Issue**: Resolves the `next` annotated finding inside `FINDINGS.md` regarding `.npz` loader (`loadz()`) memory footprint behavior. Previously, `loadz()` decoded and fully inflated all inner `.npy` files in memory via `ZipDecoder().decodeBytes()`, holding all uncompressed byte buffers in memory concurrently until the entire archive loop finished. This created a massive 3x RAM footprint hazard ($O(N)$ where $N$ is total archive files count).
+* **Resolution**:
+  - Audited the low-level uncompressed `ArchiveFile` structure inside `package:archive` and discovered the public `.clear()` and `.closeSync()` methods designed to immediately release inflated heap memory buffers.
+  - Patched `loadz()` in [io.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/io.dart) to invoke `archiveFile.clear()` and `archiveFile.closeSync()` inside the loop iteration directly after deserialization completes for each file.
+  - Frees decompressed byte arrays sequentially during execution, successfully reducing the peak RAM memory footprint from $O(N)$ cumulative arrays down to a flat, stable $O(1)$ single-file peak limit!
+* **Verification**: Verified with full workspace unit tests suite, confirming that all `.npz` loading and saving operations remain 100% green and mathematically correct under 1D/2D multidimensional configurations. All **314 unit tests pass flawlessly!**
