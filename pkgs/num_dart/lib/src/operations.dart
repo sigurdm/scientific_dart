@@ -4192,46 +4192,138 @@ Map<String, NDArray> qr(NDArray a) {
   final k = m < n ? m : n;
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
 
-  final qMat = NDArray<double>.zeros([m, k], targetDType);
-  final rMat = NDArray<double>.zeros([k, n], targetDType);
-
-  final qData = qMat.data as List<double>;
-  final rData = rMat.data as List<double>;
-
-  final v = List.generate(
-    n,
-    (j) =>
-        List<double>.generate(m, (i) => (a.data[i * n + j] as num).toDouble()),
-  );
-
-  for (var j = 0; j < k; j++) {
-    var norm = 0.0;
-    for (var i = 0; i < m; i++) {
-      norm += v[j][i] * v[j][i];
-    }
-    norm = math.sqrt(norm);
-
-    if (norm < 1e-12) {
-      rData[j * n + j] = 0.0;
-      for (var i = 0; i < m; i++) qData[i * k + j] = 0.0;
+  final aCopy = NDArray.create([m, n], targetDType);
+  if (a.isContiguous && a.dtype == targetDType) {
+    if (targetDType == DType.float64) {
+      aCopy.pointer
+          .cast<ffi.Double>()
+          .asTypedList(m * n)
+          .setAll(0, a.data as List<double>);
     } else {
-      rData[j * n + j] = norm;
-      for (var i = 0; i < m; i++) {
-        qData[i * k + j] = v[j][i] / norm;
+      aCopy.pointer
+          .cast<ffi.Float>()
+          .asTypedList(m * n)
+          .setAll(0, a.data as List<double>);
+    }
+  } else {
+    final flat = a.toList();
+    if (targetDType == DType.float64) {
+      aCopy.pointer
+          .cast<ffi.Double>()
+          .asTypedList(m * n)
+          .setAll(0, flat.cast<double>());
+    } else {
+      aCopy.pointer
+          .cast<ffi.Float>()
+          .asTypedList(m * n)
+          .setAll(0, flat.cast<double>());
+    }
+  }
+
+  final rMat = NDArray<double>.zeros([k, n], targetDType);
+  final qMat = NDArray<double>.zeros([m, k], targetDType);
+
+  if (targetDType == DType.float64) {
+    final tau = malloc<ffi.Double>(k);
+    try {
+      final info = LAPACKE_dgeqrf(
+        101, // ROW_MAJOR
+        m,
+        n,
+        aCopy.pointer.cast<ffi.Double>(),
+        n,
+        tau,
+      );
+      if (info != 0) {
+        throw ArgumentError('Illegal value in call to LAPACKE_dgeqrf: $info');
       }
 
-      for (var j2 = j + 1; j2 < n; j2++) {
-        var dot = 0.0;
-        for (var i = 0; i < m; i++) {
-          dot += qData[i * k + j] * v[j2][i];
-        }
-        if (j2 < k) {
-          rData[j * n + j2] = dot;
-        }
-        for (var i = 0; i < m; i++) {
-          v[j2][i] -= dot * qData[i * k + j];
+      // Extract upper triangular matrix R from aCopy
+      final rData = rMat.data as List<double>;
+      final aCopyData = aCopy.data as List<double>;
+      for (var i = 0; i < k; i++) {
+        for (var j = i; j < n; j++) {
+          rData[i * n + j] = aCopyData[i * n + j];
         }
       }
+
+      // Copy reflectors to qMat (first k columns of aCopy)
+      final qData = qMat.data as List<double>;
+      for (var i = 0; i < m; i++) {
+        for (var j = 0; j < k; j++) {
+          qData[i * k + j] = aCopyData[i * n + j];
+        }
+      }
+
+      // Call dorgqr to reconstruct the orthonormal columns of Q in-place in qMat
+      final infoOrg = LAPACKE_dorgqr(
+        101, // ROW_MAJOR
+        m,
+        k,
+        k,
+        qMat.pointer.cast<ffi.Double>(),
+        k,
+        tau,
+      );
+      if (infoOrg != 0) {
+        throw ArgumentError(
+          'Illegal value in call to LAPACKE_dorgqr: $infoOrg',
+        );
+      }
+    } finally {
+      malloc.free(tau);
+      aCopy.dispose();
+    }
+  } else {
+    final tau = malloc<ffi.Float>(k);
+    try {
+      final info = LAPACKE_sgeqrf(
+        101, // ROW_MAJOR
+        m,
+        n,
+        aCopy.pointer.cast<ffi.Float>(),
+        n,
+        tau,
+      );
+      if (info != 0) {
+        throw ArgumentError('Illegal value in call to LAPACKE_sgeqrf: $info');
+      }
+
+      // Extract upper triangular matrix R from aCopy
+      final rData = rMat.data as List<double>;
+      final aCopyData = aCopy.data as List<double>;
+      for (var i = 0; i < k; i++) {
+        for (var j = i; j < n; j++) {
+          rData[i * n + j] = aCopyData[i * n + j];
+        }
+      }
+
+      // Copy reflectors to qMat (first k columns of aCopy)
+      final qData = qMat.data as List<double>;
+      for (var i = 0; i < m; i++) {
+        for (var j = 0; j < k; j++) {
+          qData[i * k + j] = aCopyData[i * n + j];
+        }
+      }
+
+      // Call sorgqr to reconstruct the orthonormal columns of Q in-place in qMat
+      final infoOrg = LAPACKE_sorgqr(
+        101, // ROW_MAJOR
+        m,
+        k,
+        k,
+        qMat.pointer.cast<ffi.Float>(),
+        k,
+        tau,
+      );
+      if (infoOrg != 0) {
+        throw ArgumentError(
+          'Illegal value in call to LAPACKE_sorgqr: $infoOrg',
+        );
+      }
+    } finally {
+      malloc.free(tau);
+      aCopy.dispose();
     }
   }
 
@@ -4256,157 +4348,92 @@ Map<String, NDArray> svd(NDArray a) {
     final uResult = vhNew.transpose();
     final vhResult = uNew.transpose();
 
-    return {
-      'U': NDArray<double>.fromList(
-        uResult.toList().cast<double>(),
-        uResult.shape,
-        uResult.dtype,
-      ),
-      'S': sNew,
-      'Vh': NDArray<double>.fromList(
-        vhResult.toList().cast<double>(),
-        vhResult.shape,
-        vhResult.dtype,
-      ),
-    };
+    return {'U': uResult, 'S': sNew, 'Vh': vhResult};
   }
 
-  final uMat = NDArray<double>.zeros([m, n], targetDType);
-  final vMat = NDArray<double>.zeros([n, n], targetDType);
-
-  for (var i = 0; i < m; i++) {
-    for (var j = 0; j < n; j++) {
-      uMat.data[i * n + j] = (a.data[i * n + j] as num).toDouble();
+  final aCopy = NDArray.create([m, n], targetDType);
+  if (a.isContiguous && a.dtype == targetDType) {
+    if (targetDType == DType.float64) {
+      aCopy.pointer
+          .cast<ffi.Double>()
+          .asTypedList(m * n)
+          .setAll(0, a.data as List<double>);
+    } else {
+      aCopy.pointer
+          .cast<ffi.Float>()
+          .asTypedList(m * n)
+          .setAll(0, a.data as List<double>);
+    }
+  } else {
+    final flat = a.toList();
+    if (targetDType == DType.float64) {
+      aCopy.pointer
+          .cast<ffi.Double>()
+          .asTypedList(m * n)
+          .setAll(0, flat.cast<double>());
+    } else {
+      aCopy.pointer
+          .cast<ffi.Float>()
+          .asTypedList(m * n)
+          .setAll(0, flat.cast<double>());
     }
   }
 
-  for (var i = 0; i < n; i++) {
-    vMat.data[i * n + i] = 1.0;
-  }
+  final sMat = NDArray<double>.zeros([n], targetDType);
+  final uMat = NDArray<double>.zeros([m, m], targetDType);
+  final vtMat = NDArray<double>.zeros([n, n], targetDType);
 
-  final uData = uMat.data as List<double>;
-  final vData = vMat.data as List<double>;
-
-  const maxSweeps = 40;
-  const tolerance = 1e-10;
-
-  for (var sweep = 0; sweep < maxSweeps; sweep++) {
-    var converged = true;
-
-    for (var i = 0; i < n; i++) {
-      for (var j = i + 1; j < n; j++) {
-        var alpha = 0.0;
-        var beta = 0.0;
-        var gamma = 0.0;
-
-        for (var r = 0; r < m; r++) {
-          final uI = uData[r * n + i];
-          final uJ = uData[r * n + j];
-          alpha += uI * uI;
-          beta += uJ * uJ;
-          gamma += uI * uJ;
-        }
-
-        if (gamma.abs() > tolerance * math.sqrt(alpha * beta)) {
-          converged = false;
-
-          final zeta = (beta - alpha) / (2.0 * gamma);
-          final t = zeta.sign / (zeta.abs() + math.sqrt(1.0 + zeta * zeta));
-          final c = 1.0 / math.sqrt(1.0 + t * t);
-          final s = c * t;
-
-          for (var r = 0; r < m; r++) {
-            final uI = uData[r * n + i];
-            final uJ = uData[r * n + j];
-            uData[r * n + i] = c * uI - s * uJ;
-            uData[r * n + j] = s * uI + c * uJ;
-          }
-
-          for (var r = 0; r < n; r++) {
-            final vI = vData[r * n + i];
-            final vJ = vData[r * n + j];
-            vData[r * n + i] = c * vI - s * vJ;
-            vData[r * n + j] = s * vI + c * vJ;
-          }
-        }
+  if (targetDType == DType.float64) {
+    final superb = malloc<ffi.Double>(math.max(1, n - 1));
+    try {
+      final info = LAPACKE_dgesvd(
+        101, // ROW_MAJOR
+        65, // 'A'
+        65, // 'A'
+        m,
+        n,
+        aCopy.pointer.cast<ffi.Double>(),
+        n,
+        sMat.pointer.cast<ffi.Double>(),
+        uMat.pointer.cast<ffi.Double>(),
+        m,
+        vtMat.pointer.cast<ffi.Double>(),
+        n,
+        superb,
+      );
+      if (info != 0) {
+        throw ArgumentError('Illegal value in call to LAPACKE_dgesvd: $info');
       }
+    } finally {
+      malloc.free(superb);
+      aCopy.dispose();
     }
-    if (converged) break;
-  }
-
-  final sVec = NDArray<double>.zeros([n], targetDType);
-  final sData = sVec.data as List<double>;
-
-  for (var j = 0; j < n; j++) {
-    var norm = 0.0;
-    for (var i = 0; i < m; i++) {
-      norm += uData[i * n + j] * uData[i * n + j];
-    }
-    norm = math.sqrt(norm);
-    sData[j] = norm;
-
-    if (norm > 1e-12) {
-      for (var i = 0; i < m; i++) {
-        uData[i * n + j] /= norm;
+  } else {
+    final superb = malloc<ffi.Float>(math.max(1, n - 1));
+    try {
+      final info = LAPACKE_sgesvd(
+        101, // ROW_MAJOR
+        65, // 'A'
+        65, // 'A'
+        m,
+        n,
+        aCopy.pointer.cast<ffi.Float>(),
+        n,
+        sMat.pointer.cast<ffi.Float>(),
+        uMat.pointer.cast<ffi.Float>(),
+        m,
+        vtMat.pointer.cast<ffi.Float>(),
+        n,
+        superb,
+      );
+      if (info != 0) {
+        throw ArgumentError('Illegal value in call to LAPACKE_sgesvd: $info');
       }
+    } finally {
+      malloc.free(superb);
+      aCopy.dispose();
     }
   }
 
-  final indices = List<int>.generate(n, (i) => i)
-    ..sort((a, b) => sData[b].compareTo(sData[a]));
-
-  final sortedS = NDArray<double>.zeros([n], targetDType);
-  final sortedU = NDArray<double>.zeros([m, n], targetDType);
-  final sortedVh = NDArray<double>.zeros([n, n], targetDType);
-
-  for (var j = 0; j < n; j++) {
-    final origJ = indices[j];
-    sortedS.data[j] = sData[origJ];
-
-    for (var i = 0; i < m; i++) {
-      sortedU.data[i * n + j] = uData[i * n + origJ];
-    }
-
-    for (var i = 0; i < n; i++) {
-      sortedVh.data[j * n + i] = vData[i * n + origJ];
-    }
-  }
-
-  // Full matrix U [m, m] expansion for NumPy full_matrices=True parity
-  final fullU = NDArray<double>.zeros([m, m], targetDType);
-  for (var i = 0; i < m; i++) {
-    for (var j = 0; j < n; j++) {
-      fullU.data[i * m + j] = sortedU.data[i * n + j];
-    }
-  }
-
-  for (var j = n; j < m; j++) {
-    final vec = List<double>.filled(m, 0.0);
-    for (var k = 0; k < m; k++) {
-      for (var r = 0; r < m; r++) vec[r] = (r == k) ? 1.0 : 0.0;
-
-      for (var c = 0; c < j; c++) {
-        var dot = 0.0;
-        for (var r = 0; r < m; r++) {
-          dot += fullU.data[r * m + c] * vec[r];
-        }
-        for (var r = 0; r < m; r++) {
-          vec[r] -= dot * fullU.data[r * m + c];
-        }
-      }
-
-      var norm = 0.0;
-      for (var r = 0; r < m; r++) norm += vec[r] * vec[r];
-      norm = math.sqrt(norm);
-
-      if (norm > 1e-5) {
-        for (var r = 0; r < m; r++) {
-          fullU.data[r * m + j] = vec[r] / norm;
-        }
-        break;
-      }
-    }
-  }
-
-  return {'U': fullU, 'S': sortedS, 'Vh': sortedVh};
+  return {'U': uMat, 'S': sMat, 'Vh': vtMat};
 }

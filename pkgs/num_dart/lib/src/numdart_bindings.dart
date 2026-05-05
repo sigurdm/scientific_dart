@@ -44,7 +44,7 @@ external void native_sort_complex64(ffi.Pointer<ffi.Float> array, int size);
     ffi.Pointer<ffi.Double>,
     ffi.Int,
   )
->()
+>(isLeaf: true)
 external void v_add_double(
   ffi.Pointer<ffi.Double> a,
   ffi.Pointer<ffi.Double> b,
@@ -59,7 +59,7 @@ external void v_add_double(
     ffi.Pointer<ffi.Double>,
     ffi.Int,
   )
->()
+>(isLeaf: true)
 external void v_sub_double(
   ffi.Pointer<ffi.Double> a,
   ffi.Pointer<ffi.Double> b,
@@ -74,7 +74,7 @@ external void v_sub_double(
     ffi.Pointer<ffi.Double>,
     ffi.Int,
   )
->()
+>(isLeaf: true)
 external void v_mul_double(
   ffi.Pointer<ffi.Double> a,
   ffi.Pointer<ffi.Double> b,
@@ -89,7 +89,7 @@ external void v_mul_double(
     ffi.Pointer<ffi.Double>,
     ffi.Int,
   )
->()
+>(isLeaf: true)
 external void v_div_double(
   ffi.Pointer<ffi.Double> a,
   ffi.Pointer<ffi.Double> b,
