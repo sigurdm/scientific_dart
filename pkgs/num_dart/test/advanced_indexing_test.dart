@@ -47,92 +47,163 @@ void main() {
       });
     });
 
-    group(
-      'Polymorphic Overload [] and []= Syntax tests (NumPy Equivalence)',
-      () {
-        test('operator [] single int extracts direct sub-matrix row views', () {
-          final a = NDArray.fromList(
-            Int32List.fromList(List.generate(12, (i) => i)),
-            [3, 4],
-            DType.int32,
-          );
-
-          // NumPy: a[1] extracts row 1 view
-          final r1 = a[1];
-          expect(r1.shape, [4]);
-          expect(r1.toList(), [4, 5, 6, 7]);
-        });
-
-        test('operator [] List<int> extracts fancy row stacks', () {
-          final a = NDArray.fromList(
-            Int32List.fromList(List.generate(12, (i) => i)),
-            [3, 4],
-            DType.int32,
-          );
-
-          // NumPy: a[[0, 2]] extracts row 0 and row 2 stacked!
-          final fancy =
-              a[[
-                [0, 2],
-              ]];
-          expect(fancy.shape, [2, 4]);
-          expect(fancy.toList(), [
-            0, 1, 2, 3, // row 0
-            8, 9, 10, 11, // row 2
-          ]);
-        });
-
-        test(
-          'operator [] NDArray boolean criteria filters and flattens to 1D',
-          () {
-            final a = NDArray.fromList(
-              Float64List.fromList([1.0, -2.0, 3.0, -4.0]),
-              [4],
-              DType.float64,
-            );
-
-            // NumPy: a[a > 0] returns positive elements flattened vector!
-            final positives = a[a > 0.0];
-            expect(positives.shape, [2]);
-            expect(positives.toList(), [1.0, 3.0]);
-          },
+    group('Polymorphic Overload [] and []= Syntax tests (NumPy Equivalence)', () {
+      test('operator [] single int extracts direct sub-matrix row views', () {
+        final a = NDArray.fromList(
+          Int32List.fromList(List.generate(12, (i) => i)),
+          [3, 4],
+          DType.int32,
         );
 
-        test('operator []= Boolean Mask assignments clips in-place', () {
-          final mat = NDArray.fromList(
-            Float64List.fromList([10.0, -1.0, 20.0, -3.0]),
+        // NumPy: a[1] extracts row 1 view
+        final r1 = a[1];
+        expect(r1.shape, [4]);
+        expect(r1.toList(), [4, 5, 6, 7]);
+      });
+
+      test('operator [] List<int> extracts fancy row stacks', () {
+        final a = NDArray.fromList(
+          Int32List.fromList(List.generate(12, (i) => i)),
+          [3, 4],
+          DType.int32,
+        );
+
+        // NumPy: a[[0, 2]] extracts row 0 and row 2 stacked!
+        final fancy =
+            a[[
+              [0, 2],
+            ]];
+        expect(fancy.shape, [2, 4]);
+        expect(fancy.toList(), [
+          0, 1, 2, 3, // row 0
+          8, 9, 10, 11, // row 2
+        ]);
+      });
+
+      test(
+        'operator [] NDArray boolean criteria filters and flattens to 1D',
+        () {
+          final a = NDArray.fromList(
+            Float64List.fromList([1.0, -2.0, 3.0, -4.0]),
             [4],
             DType.float64,
           );
 
-          // NumPy: mat[mat < 0.0] = 0.0
-          mat[mat < 0.0] = 0.0;
-          expect(mat.toList(), [10.0, 0.0, 20.0, 0.0]);
+          // NumPy: a[a > 0] returns positive elements flattened vector!
+          final positives = a[a > 0.0];
+          expect(positives.shape, [2]);
+          expect(positives.toList(), [1.0, 3.0]);
+        },
+      );
+
+      test('operator []= Boolean Mask assignments clips in-place', () {
+        final mat = NDArray.fromList(
+          Float64List.fromList([10.0, -1.0, 20.0, -3.0]),
+          [4],
+          DType.float64,
+        );
+
+        // NumPy: mat[mat < 0.0] = 0.0
+        mat[mat < 0.0] = 0.0;
+        expect(mat.toList(), [10.0, 0.0, 20.0, 0.0]);
+      });
+
+      test(
+        'operator []= Fancy list index assignment mutates specific rows stack',
+        () {
+          final mat = NDArray.arange(
+            0.0,
+            6.0,
+            dtype: DType.float64,
+          ).reshape([3, 2]);
+          // [[0,1], [2,3], [4,5]]
+
+          // Mutate row 0 and row 2 in-place to scalar 99.0
+          mat[[
+                [0, 2],
+              ]] =
+              99.0;
+          expect(mat.toList(), [
+            99.0, 99.0, // row 0 overwritten
+            2.0, 3.0,
+            99.0, 99.0, // row 2 overwritten
+          ]);
+        },
+      );
+
+      group('Additional NDArray Coverage & Edge Cases', () {
+        test('Disposed array checks throw StateError', () {
+          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          a.dispose();
+          expect(() => a.fill(1.0), throwsStateError);
+          expect(() => a.transpose(), throwsStateError);
+          expect(() => a[0], throwsStateError);
+          expect(() => a[0] = 1.0, throwsStateError);
+        });
+
+        test('Contiguous fill for float32 and int64', () {
+          final a = NDArray<double>.create([3], DType.float32);
+          a.fill(42.0);
+          expect(a.toList(), [42.0, 42.0, 42.0]);
+
+          final b = NDArray<int>.create([3], DType.int64);
+          b.fill(99);
+          expect(b.toList(), [99, 99, 99]);
         });
 
         test(
-          'operator []= Fancy list index assignment mutates specific rows stack',
+          'Unsupported selector type for operator[] throws ArgumentError',
           () {
-            final mat = NDArray.arange(
-              0.0,
-              6.0,
-              dtype: DType.float64,
-            ).reshape([3, 2]);
-            // [[0,1], [2,3], [4,5]]
-
-            // Mutate row 0 and row 2 in-place to scalar 99.0
-            mat[[
-                  [0, 2],
-                ]] =
-                99.0;
-            expect(mat.toList(), [
-              99.0, 99.0, // row 0 overwritten
-              2.0, 3.0,
-              99.0, 99.0, // row 2 overwritten
-            ]);
+            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            expect(() => a['invalid'], throwsArgumentError);
           },
         );
-      },
-    );
+
+        test(
+          'Integer array mask of same shape for operator[] throws ArgumentError',
+          () {
+            final a = NDArray.fromList([1, 2], [2], DType.int32);
+            final mask = NDArray.fromList([1, 0], [2], DType.int32);
+            expect(() => a[mask], throwsArgumentError);
+          },
+        );
+
+        test('operator[]= single int index assignment (scalar and array)', () {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          a[0] = 99.0; // scalar assignment to row 0
+          expect(a.toList(), [99.0, 99.0, 3.0, 4.0]);
+
+          final val = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+          a[1] = val; // array assignment to row 1
+          expect(a.toList(), [99.0, 99.0, 10.0, 20.0]);
+        });
+
+        test('operator[]= coordinate length mismatch throws ArgumentError', () {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          expect(() => a[[0]] = 99.0, throwsArgumentError);
+        });
+
+        test(
+          'operator[]= boolean mask shape mismatch throws ArgumentError',
+          () {
+            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            final mask = NDArray.fromList(
+              [true, false, true],
+              [3],
+              DType.boolean,
+            );
+            expect(() => a[mask] = 99.0, throwsArgumentError);
+          },
+        );
+      });
+    });
   });
 }
