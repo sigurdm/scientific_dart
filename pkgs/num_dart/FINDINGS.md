@@ -2,17 +2,7 @@
 
 This file logs architectural improvements and hidden flaws discovered during autonomous code-review loops passes.
 
-## `pkgs/num_dart/lib/src/operations.dart` (`matmul()` Redundant Allocation Copies)
-- **Location**: [operations.dart:L1243-L1248](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1243-L1248)
-- **Symptom**: For non-contiguous sliced views inputs in matrix multiplication, the `matmul()` method forces a full copy serialization via `a.toList()` and re-allocates an array:
-  ```dart
-  if (!a.isContiguous) {
-    a = NDArray.fromList(a.toList(), a.shape, a.dtype);
-  }
-  ```
-- **The Inefficiency**: Introduces heavy memory duplication and garbage collection friction. OpenBLAS **`cblas_dgemm` natively supports non-contiguous leading dimensions (`lda` / `ldb`) and transposed operands flags (`CblasTrans`)** exactly to parse strided sub-matrix memory blocks without any data copies!
-- **Recommended Tweak**: Refactor `matmul()` to inspect the last two dimension strides of `aView` and `bView`, dynamically deriving `CblasNoTrans` vs `CblasTrans` and adjusting the `lda` and `ldb` leading dimensions arguments passed into `cblas_dgemm()`. This will unlock **100% copy-free matrix multiplications** even for sliced or transposed sub-matrices!
-***
+
 
 ## `pkgs/num_dart/lib/src/operations.dart` (`variance()` Massive 4x Allocation & Multi-Loop Bloat on Axis Reductions)
 - **Location**: [operations.dart:L1590-L1605](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1590-L1605)
@@ -390,12 +380,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
   - **`cblas_cgemm`** for Complex64 single-precision complex matrices.
   Offloading these to BLAS FFI will **accelerate multi-dimensional ML multiplications by up to 100x**, matching NumPy's gold standard!
 
-***
 
-## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing NaN-Ignoring Statistical Reductions `nanmean`, `nansum`, `nanvar`, `nanstd`)
-- **Symptom**: The operations layer currently unrolls statistical reductions (`mean()`, `sum()`, `variance()`, `std()`) that rigidly evaluate every element. If even a single coordinate element in a matrix is `NaN` (Not-a-Number), these reductions return `NaN` for the entire array.
-- **The Gap**: Violates standard NumPy NaN-ignoring statistical reductions. Downstream data science and ML developers dealing with missing data (frequently represented as NaNs in sensor logs or ML inputs) are forced to write slow, manual filtering sweeps in Dart JIT space before triggering any statistics.
-- **Recommended Tweak**: Implement highly robust, zero-allocation NaN-ignoring top-level ufuncs `nanmean()`, `nansum()`, `nanvar()`, and `nanstd()`. They should walk coordinate strides, count non-NaN elements, and compute statistics dynamically, providing fully compliant and performant NumPy compatibility!
 
 ***
 
