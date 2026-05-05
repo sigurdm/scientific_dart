@@ -1140,3 +1140,15 @@
 * **Performance Impact Speedup**:
   - **SORT Track | Argsort (argsort) [size=30,000]**: execution time slashed from **14.85 ms** to **11.59 ms** (a superb **22.0% absolute time reduction**!).
 * **Verification**: Confirmed unmanaged builds compile cleanly. Verified correctness and stable rankings with full unit tests suite. All **346 unit tests pass flawlessly!**
+
+***
+
+## 94. Covered Argsort Scalar & Recycler Mismatch Branches in Operations (Task 1)
+* **What was done**:
+  - Audited remaining uncovered lines inside `lib/src/operations.dart` using our scratch LCOV analyzer.
+  - Identified uncovered branches in the indirect ranking suite `argsort()` (lines 4962, 4967 related to scalar 0D array handling and out-of-bounds axis range exceptions) and `imag()` complex component extractors (lines 4070-4076, 4082-4085 related to already real arrays recycler parameter checks and shape/DType recycler mismatch throws).
+  - Authored targeted new unit tests inside [sorting_searching_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/sorting_searching_test.dart) and [complex_components_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/complex_components_test.dart) validating all these edge cases.
+* **Coverage Progress**:
+  - **`lib/src/operations.dart` Line Coverage**: surged to **75.6%** (an amazing **+0.6%** increase!).
+  - **Global Workspace Line Coverage**: surged past the major landmark to **81.01%**!!!
+  - **Unit Test Suite**: **All 350 unit tests pass flawlessly!**

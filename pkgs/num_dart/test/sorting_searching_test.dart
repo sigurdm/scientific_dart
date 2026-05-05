@@ -165,6 +165,19 @@ void main() {
         ], DType.int64);
         expect(argsort(i64).toList(), [1, 3, 2, 0]);
       });
+
+      test('Argsort scalar 0D array returns single index 0', () {
+        final scalar = NDArray.fromList([99.0], [], DType.float64);
+        final idx = argsort(scalar);
+        expect(idx.shape, []);
+        expect(idx.toList(), [0]);
+      });
+
+      test('Argsort invalid target axis throws RangeError', () {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        expect(() => argsort(a, axis: 5), throwsRangeError);
+        expect(() => argsort(a, axis: -5), throwsRangeError);
+      });
     });
 
     group('count_nonzero & nonzero tests', () {
@@ -231,6 +244,32 @@ void main() {
         final res = where(cond) as List<NDArray<int>>;
         expect(res.length, 1);
         expect(res[0].data, [1, 3]);
+      });
+
+      test('where with integer inputs', () {
+        final cond = NDArray.fromList([true, false], [2], DType.boolean);
+        final x = NDArray.fromList([10, 20], [2], DType.int32);
+        final y = NDArray.fromList([100, 200], [2], DType.int32);
+
+        final res = where(cond, x, y) as NDArray;
+        expect(res.dtype, DType.int32);
+        expect(res.toList(), [10, 200]);
+      });
+
+      test('where with Complex inputs', () {
+        final cond = NDArray.fromList([true, false], [2], DType.boolean);
+        final x = NDArray<Complex>.create([2], DType.complex128);
+        x.data[0] = Complex(1.0, 1.0);
+        x.data[1] = Complex(2.0, 2.0);
+
+        final y = NDArray<Complex>.create([2], DType.complex128);
+        y.data[0] = Complex(10.0, 10.0);
+        y.data[1] = Complex(20.0, 20.0);
+
+        final res = where(cond, x, y) as NDArray;
+        expect(res.dtype, DType.complex128);
+        expect(res.data[0], Complex(1.0, 1.0));
+        expect(res.data[1], Complex(20.0, 20.0));
       });
     });
 

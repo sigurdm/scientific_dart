@@ -66,6 +66,32 @@ void main() {
       expect(out.toList(), [1.0, 3.0]);
     });
 
+    test('imag() recycler out parameter checks when a is already real', () {
+      final a = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+      final out = NDArray.create([2], DType.float64);
+      final res = imag(a, out: out);
+
+      expect(identical(res, out), true);
+      expect(out.toList(), [0.0, 0.0]);
+    });
+
+    test('recycler out shape and dtype mismatch throws ArgumentError', () {
+      final a = NDArray<Complex>.create([2], DType.complex128);
+      final wrongShape = NDArray.create([3], DType.float64);
+      final wrongDType = NDArray.create([2], DType.int32);
+
+      expect(() => real(a, out: wrongShape), throwsArgumentError);
+      expect(() => real(a, out: wrongDType), throwsArgumentError);
+      expect(() => imag(a, out: wrongShape), throwsArgumentError);
+      expect(() => imag(a, out: wrongDType), throwsArgumentError);
+
+      final realArr = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+      expect(() => real(realArr, out: wrongShape), throwsArgumentError);
+      expect(() => real(realArr, out: wrongDType), throwsArgumentError);
+      expect(() => imag(realArr, out: wrongShape), throwsArgumentError);
+      expect(() => imag(realArr, out: wrongDType), throwsArgumentError);
+    });
+
     test('disposed arrays throw StateError', () {
       final a = NDArray<Complex>.create([2], DType.complex128);
       a.dispose();
