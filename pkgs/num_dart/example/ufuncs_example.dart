@@ -12,6 +12,7 @@ void main() {
   runLogicalOperationsExample();
   runLogicalReductionsExample();
   runAngleConvertersExample();
+  runEnumerateAndComplexComponentsExample();
 }
 
 void runMixedTypeArithmeticExample() {
@@ -136,10 +137,11 @@ void runLogicalReductionsExample() {
   print('all(a): ${all(a)}'); // false
   print('any(a): ${any(a)}'); // true
 
-  final mat = NDArray.fromList([
-    true, true, false,
-    true, false, false,
-  ], [2, 3], DType.boolean);
+  final mat = NDArray.fromList(
+    [true, true, false, true, false, false],
+    [2, 3],
+    DType.boolean,
+  );
   print('2D matrix:\n$mat');
   print('all(mat, axis: 0): ${all(mat, axis: 0).data}'); // [true, false, false]
 }
@@ -154,4 +156,35 @@ void runAngleConvertersExample() {
   final back = rad2deg(rad);
   print('Radians: ${rad.data}');
   print('Back to Degrees: ${back.data}'); // [180, 90, 45]
+}
+
+void runEnumerateAndComplexComponentsExample() {
+  print('\n--- Multidimensional Enumerator (ndenumerate) ---');
+  final a = NDArray.fromList([10, 20, 30, 40], [2, 2], DType.int32);
+  for (final entry in ndenumerate(a)) {
+    print('  Coordinate: ${entry.$1}, Value: ${entry.$2}');
+  }
+
+  print('\n--- Complex Components Extractors (real, imag) ---');
+  final c = NDArray<Complex>.create([2], DType.complex128);
+  c.data[0] = Complex(3.0, 4.0);
+  c.data[1] = Complex(-1.0, 0.0);
+
+  final r = real(c);
+  final im = imag(c);
+
+  print('Complex array: ${c.data}');
+  print('Real component (Float64): ${r.data}'); // [3.0, -1.0]
+  print('Imaginary component (Float64): ${im.data}'); // [4.0, 0.0]
+
+  print('\n--- Zero-Copy view Demonstration ---');
+  final realArr = NDArray.fromList([1.5, 2.5], [2], DType.float64);
+  final realView = real(realArr); // Zero-copy view!
+  print('Original Array: ${realArr.data}');
+  print('Real View: ${realView.data}');
+
+  // Mutating view updates parent automatically!
+  realView.data[0] = 99.9;
+  print('Mutated Real View: ${realView.data}');
+  print('Propagated Parent Array: ${realArr.data}');
 }
