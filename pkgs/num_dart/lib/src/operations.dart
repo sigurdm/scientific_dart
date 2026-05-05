@@ -1323,13 +1323,13 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
   if (a.shape.length >= 2) {
     final r = a.shape.length;
     if (a.strides[r - 1] != 1 && a.strides[r - 2] != 1) {
-      a = NDArray.fromList(a.toList(), a.shape, a.dtype);
+      a = a.copy();
     }
   }
   if (b.shape.length >= 2) {
     final r = b.shape.length;
     if (b.strides[r - 1] != 1 && b.strides[r - 2] != 1) {
-      b = NDArray.fromList(b.toList(), b.shape, b.dtype);
+      b = b.copy();
     }
   }
 
@@ -5650,7 +5650,7 @@ List<NDArray<int>> nonzero(NDArray a) {
   final rank = a.shape.length;
   final coordinateLists = List.generate(rank, (_) => <int>[]);
 
-  _nonzeroRecursive(a, List<int>.filled(rank, 0), 0, coordinateLists);
+  _nonzeroRecursive(a, List<int>.filled(rank, 0), 0, 0, coordinateLists);
 
   return coordinateLists.map((list) {
     return NDArray<int>.fromList(list, [list.length], DType.int32);
@@ -5661,10 +5661,11 @@ void _nonzeroRecursive(
   NDArray a,
   List<int> currentPos,
   int currentDim,
+  int offset,
   List<List<int>> coordinateLists,
 ) {
   if (currentDim == a.shape.length) {
-    final val = a[currentPos];
+    final val = a.data[offset];
     if (_isTrue(val)) {
       for (var i = 0; i < currentPos.length; i++) {
         coordinateLists[i].add(currentPos[i]);
@@ -5673,9 +5674,17 @@ void _nonzeroRecursive(
     return;
   }
 
-  for (var i = 0; i < a.shape[currentDim]; i++) {
+  final stride = a.strides[currentDim];
+  final limit = a.shape[currentDim];
+  for (var i = 0; i < limit; i++) {
     currentPos[currentDim] = i;
-    _nonzeroRecursive(a, currentPos, currentDim + 1, coordinateLists);
+    _nonzeroRecursive(
+      a,
+      currentPos,
+      currentDim + 1,
+      offset + i * stride,
+      coordinateLists,
+    );
   }
 }
 
