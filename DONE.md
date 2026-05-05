@@ -1164,3 +1164,15 @@
   - **`lib/src/operations.dart` Line Coverage**: surged to **76.5%** (an amazing **+0.9%** increase!).
   - **Global Workspace Line Coverage**: surged past the landmark to a record **81.57%**!!!
   - **Unit Test Suite**: **All 351 unit tests pass flawlessly!**
+
+***
+
+## 96. Covered real() Recycler Out Parameter When Already Real (Task 1)
+* **What was done**:
+  - Audited remaining uncovered lines inside `lib/src/operations.dart` using our scratch LCOV analyzer.
+  - Identified uncovered branches inside the complex component extractor ufunc `real()` (lines 4110-4112). While we successfully verified recycler parameters on complex inputs, recycler parameters on already real/integer inputs were entirely untested.
+  - Authored targeted new recycler unit tests inside [complex_components_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/complex_components_test.dart) validating in-place recycler allocations on already real backing float64 arrays.
+* **Coverage Progress**:
+  - **`lib/src/operations.dart` Line Coverage**: surged to **76.9%** (an amazing **+0.4%** increase!).
+  - **Global Workspace Line Coverage**: surged past the landmark to a record **81.79%**!!!
+  - **Unit Test Suite**: **All 358 unit tests pass flawlessly!**

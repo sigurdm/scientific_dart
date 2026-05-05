@@ -66,6 +66,15 @@ void main() {
       expect(out.toList(), [1.0, 3.0]);
     });
 
+    test('real() recycler out parameter checks when a is already real', () {
+      final a = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+      final out = NDArray.create([2], DType.float64);
+      final res = real(a, out: out);
+
+      expect(identical(res, out), true);
+      expect(out.toList(), [10.0, 20.0]);
+    });
+
     test('imag() recycler out parameter checks when a is already real', () {
       final a = NDArray.fromList([10.0, 20.0], [2], DType.float64);
       final out = NDArray.create([2], DType.float64);
