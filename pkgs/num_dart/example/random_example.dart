@@ -7,6 +7,8 @@ void main() {
   runExponentialDistributionExample();
   runPoissonDistributionExample();
   runBinomialDistributionExample();
+  runUniformDistributionExample();
+  runRandintDistributionExample();
   runSeededReproducibilityExample();
 }
 
@@ -65,4 +67,20 @@ void runSeededReproducibilityExample() {
   print(
     'Do draws match perfectly? ${draw1.data[0] == draw2.data[0] && draw1.data[1] == draw2.data[1] ? "YES" : "NO"}',
   );
+}
+
+void runUniformDistributionExample() {
+  print('\n--- Uniform Distribution ---');
+  // Draw a 2x3 uniform array with values between 0.0 and 1.0
+  final a = uniform([2, 3], dtype: DType.float64);
+  print('Uniform shape: ${a.shape}');
+  print('Data: ${a.data}');
+}
+
+void runRandintDistributionExample() {
+  print('\n--- Uniform Integer (randint) Distribution ---');
+  // Draw a 2x3 uniform integer array with values in [0, 10)
+  final a = randint([2, 3], 0, 10, dtype: DType.int64);
+  print('Randint shape: ${a.shape}');
+  print('Data: ${a.data}');
 }

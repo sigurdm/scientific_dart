@@ -1,14 +1,22 @@
 import 'dart:math' as math;
 import 'dart:math' show Random;
+import 'dart:ffi' as ffi;
+import 'numdart_bindings.dart';
 import 'ndarray.dart';
 
-/// Generates an array with random values uniformly distributed in [0, 1).
+/// Generates an array with random values uniformly distributed in the half-open interval `[0.0, 1.0)`.
+///
+/// **Preconditions:**
+/// - [dtype] must be a floating point type (`DType.float32` or `DType.float64`).
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [dtype] is not a supported floating point type.
 ///
 /// **Example:**
-/// ```dart
-/// final a = uniform([2, 3], dtype: DType.float64);
-/// print(a.data); // Output: Random values between 0.0 and 1.0
-/// ```
+/// {@example /example/random_example.dart lang=dart}
+///
+/// Refer to the [Uniform Distribution Reference](https://en.wikipedia.org/wiki/Continuous_uniform_distribution)
+/// for details on continuous uniform distributions.
 ///
 /// By default, uses Dart's standard [Random] class, which is not cryptographically secure.
 /// You can pass a secure random object via the [random] parameter if needed.
@@ -22,19 +30,32 @@ NDArray<double> uniform(
   }
   final arr = NDArray<double>.create(shape, dtype);
   final rand = random ?? Random();
-  for (var i = 0; i < arr.data.length; i++) {
-    arr.data[i] = rand.nextDouble();
+  final len = arr.data.length;
+  final seed = rand.nextInt(4294967296);
+
+  if (dtype == DType.float64) {
+    v_uniform_double(arr.pointer.cast<ffi.Double>(), len, seed);
+  } else {
+    v_uniform_float(arr.pointer.cast<ffi.Float>(), len, seed);
   }
   return arr;
 }
 
-/// Generates an array with random integer values uniformly distributed in [low, high).
+/// Generates an array with random integer values uniformly distributed in the half-open interval `[low, high)`.
+///
+/// **Preconditions:**
+/// - [dtype] must be an integer type (`DType.int32` or `DType.int64`).
+/// - [low] must be strictly less than [high].
+///
+/// **Throws:**
+/// - [ArgumentError] if [dtype] is not a supported integer type.
+/// - [ArgumentError] if [low] is greater than or equal to [high].
 ///
 /// **Example:**
-/// ```dart
-/// final a = randint([2, 3], 0, 10, dtype: DType.int64);
-/// print(a.data); // Output: Random integers between 0 and 9
-/// ```
+/// {@example /example/random_example.dart lang=dart}
+///
+/// Refer to the [Discrete Uniform Distribution Reference](https://en.wikipedia.org/wiki/Discrete_uniform_distribution)
+/// for details on discrete uniform distributions.
 ///
 /// By default, uses Dart's standard [Random] class, which is not cryptographically secure.
 /// You can pass a secure random object via the [random] parameter if needed.
@@ -53,18 +74,13 @@ NDArray<int> randint(
   }
   final arr = NDArray<int>.create(shape, dtype);
   final rand = random ?? Random();
-  final range = high - low;
-  if (range <= 4294967296) {
-    for (var i = 0; i < arr.data.length; i++) {
-      arr.data[i] = low + rand.nextInt(range);
-    }
+  final len = arr.data.length;
+  final seed = rand.nextInt(4294967296);
+
+  if (dtype == DType.int64) {
+    v_randint_int64(arr.pointer.cast<ffi.Int64>(), len, low, high, seed);
   } else {
-    for (var i = 0; i < arr.data.length; i++) {
-      final low32 = rand.nextInt(4294967296);
-      final high32 = rand.nextInt(4294967296);
-      final u64 = ((high32 << 32) | low32).abs();
-      arr.data[i] = low + (u64 % range);
-    }
+    v_randint_int32(arr.pointer.cast<ffi.Int32>(), len, low, high, seed);
   }
   return arr;
 }
@@ -109,25 +125,11 @@ NDArray<double> normal(
   final rand = random ?? Random();
   final len = arr.data.length;
 
-  var i = 0;
-  while (i < len) {
-    var u1 = rand.nextDouble();
-    while (u1 == 0.0) {
-      u1 = rand.nextDouble();
-    }
-    final u2 = rand.nextDouble();
-
-    final mag = scale * math.sqrt(-2.0 * math.log(u1));
-    final angle = 2.0 * math.pi * u2;
-
-    final z0 = loc + mag * math.cos(angle);
-    final z1 = loc + mag * math.sin(angle);
-
-    arr.data[i] = z0;
-    if (i + 1 < len) {
-      arr.data[i + 1] = z1;
-    }
-    i += 2;
+  final seed = rand.nextInt(4294967296);
+  if (dtype == DType.float64) {
+    v_normal_double(arr.pointer.cast<ffi.Double>(), len, loc, scale, seed);
+  } else {
+    v_normal_float(arr.pointer.cast<ffi.Float>(), len, loc, scale, seed);
   }
 
   return arr;
