@@ -439,7 +439,7 @@ external void s_div_complex(
     ffi.Pointer<ffi.Float>,
     ffi.Int,
   )
->()
+>(isLeaf: true)
 external void v_add_float(
   ffi.Pointer<ffi.Float> a,
   ffi.Pointer<ffi.Float> b,
@@ -454,7 +454,7 @@ external void v_add_float(
     ffi.Pointer<ffi.Float>,
     ffi.Int,
   )
->()
+>(isLeaf: true)
 external void v_sub_float(
   ffi.Pointer<ffi.Float> a,
   ffi.Pointer<ffi.Float> b,
@@ -469,7 +469,7 @@ external void v_sub_float(
     ffi.Pointer<ffi.Float>,
     ffi.Int,
   )
->()
+>(isLeaf: true)
 external void v_mul_float(
   ffi.Pointer<ffi.Float> a,
   ffi.Pointer<ffi.Float> b,
@@ -484,7 +484,7 @@ external void v_mul_float(
     ffi.Pointer<ffi.Float>,
     ffi.Int,
   )
->()
+>(isLeaf: true)
 external void v_div_float(
   ffi.Pointer<ffi.Float> a,
   ffi.Pointer<ffi.Float> b,
@@ -494,7 +494,7 @@ external void v_div_float(
 
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
->()
+>(isLeaf: true)
 external void v_sin_float(
   ffi.Pointer<ffi.Float> src,
   ffi.Pointer<ffi.Float> res,
@@ -503,7 +503,7 @@ external void v_sin_float(
 
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
->()
+>(isLeaf: true)
 external void v_cos_float(
   ffi.Pointer<ffi.Float> src,
   ffi.Pointer<ffi.Float> res,
@@ -512,7 +512,7 @@ external void v_cos_float(
 
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
->()
+>(isLeaf: true)
 external void v_exp_float(
   ffi.Pointer<ffi.Float> src,
   ffi.Pointer<ffi.Float> res,
