@@ -101,6 +101,36 @@ void main() {
       expect(() => imag(realArr, out: wrongDType), throwsArgumentError);
     });
 
+    test('strided non-contiguous complex128 addition walks native C kernels', () {
+      final a = NDArray<Complex>.create([2, 2], DType.complex128);
+      a.data[0] = Complex(1.0, 2.0);
+      a.data[1] = Complex(3.0, 4.0);
+      a.data[2] = Complex(5.0, 6.0);
+      a.data[3] = Complex(7.0, 8.0);
+
+      final b = NDArray<Complex>.create([2, 2], DType.complex128);
+      b.data[0] = Complex(10.0, 10.0);
+      b.data[1] = Complex(20.0, 20.0);
+      b.data[2] = Complex(30.0, 30.0);
+      b.data[3] = Complex(40.0, 40.0);
+
+      final viewA = a.transposed;
+      final viewB = b.transposed;
+
+      expect(viewA.isContiguous, false);
+      expect(viewB.isContiguous, false);
+
+      final res = add(viewA, viewB);
+
+      expect(res.shape, [2, 2]);
+      expect(res.dtype, DType.complex128);
+
+      expect(res.data[0], Complex(11.0, 12.0));
+      expect(res.data[1], Complex(35.0, 36.0));
+      expect(res.data[2], Complex(23.0, 24.0));
+      expect(res.data[3], Complex(47.0, 48.0));
+    });
+
     test('disposed arrays throw StateError', () {
       final a = NDArray<Complex>.create([2], DType.complex128);
       a.dispose();

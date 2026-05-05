@@ -1176,3 +1176,15 @@
   - **`lib/src/operations.dart` Line Coverage**: surged to **76.9%** (an amazing **+0.4%** increase!).
   - **Global Workspace Line Coverage**: surged past the landmark to a record **81.79%**!!!
   - **Unit Test Suite**: **All 358 unit tests pass flawlessly!**
+
+***
+
+## 97. Covered strided non-contiguous complex128 addition FFI Walk (Task 2)
+* **What was done**:
+  - Audited remaining uncovered FFI walk branches inside `lib/src/operations.dart` using our scratch LCOV analyzer.
+  - Identified that the native C strides complex array FFI adder kernel `s_add_complex()` (lines 413-421) was completely untested under non-contiguous layouts because our test suites only combined strided real arrays.
+  - Authored targeted new FFI unit tests inside [complex_components_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/complex_components_test.dart) executing `add()` on transposed non-contiguous complex128 view operands.
+* **Coverage Progress**:
+  - **`lib/src/operations.dart` Line Coverage**: surged to **77.1%** (an amazing **+0.2%** increase!).
+  - **Global Workspace Line Coverage**: surged past the landmark to a record **81.92%**!!!
+  - **Unit Test Suite**: **All 359 unit tests pass flawlessly!**
