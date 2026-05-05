@@ -457,3 +457,18 @@ This file logs architectural improvements and hidden flaws discovered during aut
   - **`all(NDArray a, {int? axis})`**: returns true if all elements evaluate to True (non-zero for numeric dtypes).
   - **`any(NDArray a, {int? axis})`**: returns true if any element evaluates to True.
   Exposing these logical reduction helpers directly will elevate `num_dart`'s data query expressiveness to full NumPy levels!
+
+***
+
+## 44. `pkgs/num_dart/lib/src/ndarray.dart` (🚨 Type Safety Flaw: Crash on instantiating `NDArray.arange()` and `NDArray.linspace()` with Complex DTypes)
+- **Location**: [ndarray.dart:L275-L277](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L275-L277), [ndarray.dart:L297-L303](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L297-L303)
+- **Symptom**: The range creation factories `NDArray.arange()` and `NDArray.linspace()` assign computed double elements to their data list by executing `value as T`.
+- **The Hazard**: Hard runtime type crashes! When a developer attempts to instantiate a complex range array (e.g., `NDArray.arange(0, 5, dtype: DType.complex128)`), the casting statement `value as T` attempts to cast a raw Dart `double` directly to generic `Complex` type wrapper. This triggers an immediate **`TypeError: double is not a subtype of Complex`** runtime crash, breaking signal processing setups!
+- **Recommended Tweak**: Harden range assignment loops to check if `dtype.isComplex` is true and instantiate the proper Complex wrapper representation:
+  ```dart
+  if (dtype.isComplex) {
+    arr.data[i] = Complex(start + i * step, 0.0) as T;
+  } else {
+    arr.data[i] = (start + i * step) as T;
+  }
+  ```

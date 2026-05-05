@@ -146,6 +146,25 @@ void main() {
           0,
         ]); // Complex(2,1) < Complex(2,3) < Complex(5,0)
       });
+
+      test('Argsort float32, int32, and int64 lists', () {
+        final f32 = NDArray.fromList(
+          Float32List.fromList([4.0, 1.0, 3.0, 2.0]),
+          [4],
+          DType.float32,
+        );
+        expect(argsort(f32).toList(), [1, 3, 2, 0]);
+
+        final i32 = NDArray.fromList(Int32List.fromList([40, 10, 30, 20]), [
+          4,
+        ], DType.int32);
+        expect(argsort(i32).toList(), [1, 3, 2, 0]);
+
+        final i64 = NDArray.fromList(Int64List.fromList([400, 100, 300, 200]), [
+          4,
+        ], DType.int64);
+        expect(argsort(i64).toList(), [1, 3, 2, 0]);
+      });
     });
 
     group('count_nonzero & nonzero tests', () {
