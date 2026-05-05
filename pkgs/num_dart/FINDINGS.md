@@ -633,3 +633,10 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Symptom**: Currently, `num_dart` completely lacks a standard helper to iterate over multidimensional tensor arrays yielding element values alongside their respective coordinates.
 - **The Gap**: Downstream developers looking to log coordinate mappings, execute custom spatial transformations, or inspect grid cells values are forced to program complex nested coordinate odometer sweeps from scratch in JIT space. Python's NumPy natively packages `np.ndenumerate` yielding `(coordinate_tuple, value)` in a flat sequence.
 - **Recommended Tweak**: Implement **`ndenumerate(NDArray a)`** as an iterable/generator yielding coordinates list/tuple and cell value sequentially. Wire it to automatically resolve non-contiguous stride offsets to deliver standard NumPy coordinate indexing traversals seamlessly!
+
+***
+
+## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Complex Components Extractors `real` & `imag`)
+- **Symptom**: Currently, `num_dart` completely lacks standard helpers to extract the real and imaginary parts of a complex array element-wise.
+- **The Gap**: Violates standard NumPy `np.real` and `np.imag` guidelines. Downstream developers working in quantum physics simulations, digital signal processing (DSP), or AC electrical circuit engineering are forced to manually write slow nested coordinate loop walks in Dart VM space to dissect complex numbers.
+- **Recommended Tweak**: Implement broadcasted, high-performance ufuncs **`real(NDArray a, {NDArray? out})`** and **`imag(NDArray a, {NDArray? out})`**. When `a` is a complex array (`DType.complex128` or `complex64`), they return a standard float array (`DType.float64` or `float32`) containing the respective components. If `a` is already real/integer, `real()` returns a view or a copy of `a`, and `imag()` returns a zero-filled array of matching shape and DType!
