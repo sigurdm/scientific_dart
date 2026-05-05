@@ -439,4 +439,12 @@ This file logs architectural improvements and hidden flaws discovered during aut
   - **`cblas_dnrm2`** / **`cblas_snrm2`**: Euclidean L2 vector norm calculations at raw CPU hardware vector speeds.
   - Add a comprehensive `norm()` high-level method in `operations.dart` supporting both Frobenius norms for 2D matrices and L1/L2/infinity norms along axes for multi-dimensional arrays. This will deliver fully compatible, high-performance norm calculations to the developer workspace!
 
+***
+
+## 42. `pkgs/num_dart/lib/src/ndarray.dart` (🚨 Critical Memory Safety Flaw: Un-Disposable Transient Copied Memory in Non-Contiguous `reshape()`)
+- **Location**: [ndarray.dart:L445-L450](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L445-L450)
+- **Symptom**: When `reshape()` is called on a non-contiguous or transposed view, it creates a contiguous copy of the array (`final copied = NDArray.fromList(...)`) and returns a view of `copied` by setting its `_parent = copied`.
+- **The Hazard**: Catastrophic native memory leaks and memory bloat! Because the returned reshaped view is classified as a "view" (since `_parent != null`), calling `.dispose()` on the returned view **does absolutely nothing** (short-circuits, L540). As a result, there is **no way** for developers to explicitly free/dispose the unmanaged C memory allocated for the transient copy `copied`! They must wait for the garbage collector to collect both the view and the parent. If `reshape()` is called inside large loops, unmanaged C memory grows continuously until the system crashes due to Out-Of-Memory (OOM) conditions.
+- **Recommended Tweak**: Implement a dedicated tracking or memory-ownership delegate, or bypass view creation when reshaping a copy. If `reshape` forcefully allocates copied memory, return a root `NDArray` (with `_parent = null`) so developers can explicitly invoke `.dispose()` to release the native C memory in zero-time!
+
 
