@@ -16,13 +16,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
   - Collapse the entire operations chain into a **single, unified streaming loop kernel (`v_variance_axis_double`) in `custom_ufuncs.c`**! 
   - The C kernel can stream through `a`, fetch mean entries, accumulate squared differences, and write final divided statistics directly to a *single pre-allocated target result tensor* in a single cache-friendly pass. This collapses array allocations from **4 down to 1**, and loop sweeps from **4 down to 1**, hitting absolute peak computing efficiency!
 
-***
 
-## `pkgs/num_dart/lib/src/io.dart` (`.npz` Archive Memory Bloat)
-- **Location**: [io.dart:L444-L456](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/io.dart#L444-L456) (`loadz`)
-- **Symptom: Massive Memory Amplification Bloat**: During `.npz` deserialization, `loadz` reads file bytes, and `ZipDecoder().decodeBytes()` completely inflates the archive entries *entirely in memory*. When `_deserializeNpyBytes` runs, it allocates an unmanaged FFI heap block and executes a full `setAll()` memory copy.
-- **The Hazard**: Creates a **3x RAM footprint amplification factor penalty** (compressed bytes list + inflated `ArchiveFile` list + unmanaged C pointer heap bytes). For gigabyte-scale scientific datasets (e.g. machine learning model checkpoints or massive matrix logs), this is guaranteed to spike memory allocations and trigger Out-Of-Memory (`OOM`) thread kills!
-- **Recommended Tweak**: Document this massive RAM memory multiplier constraint explicitly in docstrings, or explore streaming zip decoders to parse file entries sequentially without inflatings the entire archive stack in memory.
 
 ***
 
@@ -97,12 +91,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **The Inefficiency**: Triggers massive memory re-allocation and array growth copying overhead under the hood as standard Dart lists dynamically grow! For highly dense non-zero tensors (like mask boolean filters), dynamic lists resize hundreds of times mid-run.
 - **Recommended Tweak**: Pre-compute the exact required capacity by calling `count_nonzero(a)` upfront! Use this count to pre-allocate standard fixed-length TypedData **`Int32List(count)`** or unmanaged `malloc<ffi.Int32>(count)` pointer arrays directly. The recursive walk can then write values via static zero-friction array setters (`list[index++] = coordinate`), entirely eliminating list resizing churn and VM memory reallocations latency!
 
-***
 
-## `pkgs/num_dart/lib/src/operations.dart` (`nonzero()` Bracket Friction)
-- **Location**: [operations.dart:L3770](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L3770) (`nonzero`)
-- **Symptom**: At the leaf condition of `_nonzeroRecursive()`, the engine invokes the full bracket operator `final val = a[currentPos];` for *every single cell element*. Bracket selectors trigger heavy fancy parsing validation and strides multiplications rank steps, making cell coordinate extraction heavily suboptimal and slow.
-- **Recommended Tweak**: Maintain inline running flat offsets increments `currentOffset + i * a.strides[dim]` to query `data[currentOffset]` directly, or offload contiguous search tracks to a fast C kernel (`native_nonzero_double`) to push searching to optimal limits.
 
 ***
 
