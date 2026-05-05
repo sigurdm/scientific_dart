@@ -26,6 +26,14 @@ external void native_sort_int64(ffi.Pointer<ffi.LongLong> array, int size);
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int>, ffi.Int)>()
 external void native_sort_int32(ffi.Pointer<ffi.Int> array, int size);
 
+/// Natively sort a complex128 array in-place lexicographically.
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
+external void native_sort_complex128(ffi.Pointer<ffi.Double> array, int size);
+
+/// Natively sort a complex64 array in-place lexicographically.
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
+external void native_sort_complex64(ffi.Pointer<ffi.Float> array, int size);
+
 /// ----------------------------------------------------------------------------
 /// Double Precision (Float64) Flat Contiguous Kernels
 /// ----------------------------------------------------------------------------

@@ -9,56 +9,6 @@ import 'package:openblas/openblas.dart';
 import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'numdart_bindings.dart';
-import 'dart:io' show Platform;
-
-// Dynamic Libc Loader for ANSI C qsort
-ffi.DynamicLibrary _loadLibc() {
-  if (Platform.isWindows) {
-    return ffi.DynamicLibrary.open('ucrtbase.dll');
-  }
-  if (Platform.isMacOS || Platform.isIOS) {
-    return ffi.DynamicLibrary.process();
-  }
-  try {
-    return ffi.DynamicLibrary.process();
-  } catch (_) {
-    try {
-      return ffi.DynamicLibrary.open('libc.so.6');
-    } catch (_) {
-      return ffi.DynamicLibrary.open('libc.so');
-    }
-  }
-}
-
-final ffi.DynamicLibrary _libc = _loadLibc();
-
-typedef _c_qsort =
-    ffi.Void Function(
-      ffi.Pointer<ffi.Void> base,
-      ffi.Size nitems,
-      ffi.Size size,
-      ffi.Pointer<
-        ffi.NativeFunction<
-          ffi.Int Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Void>)
-        >
-      >
-      compar,
-    );
-
-typedef _dart_qsort =
-    void Function(
-      ffi.Pointer<ffi.Void> base,
-      int nitems,
-      int size,
-      ffi.Pointer<
-        ffi.NativeFunction<
-          ffi.Int Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Void>)
-        >
-      >
-      compar,
-    );
-
-final _dart_qsort _qsort = _libc.lookupFunction<_c_qsort, _dart_qsort>('qsort');
 
 // LAPACK Extension Bindings linking explicitly to package:openblas asset via DefaultAsset
 
@@ -271,41 +221,6 @@ external int LAPACKE_sgetri(
   int lda,
   ffi.Pointer<ffi.Int> ipiv,
 );
-
-// Static Top-Level C-Callable Comparators for qsort
-int _compareFloat64(ffi.Pointer<ffi.Void> a, ffi.Pointer<ffi.Void> b) {
-  return a.cast<ffi.Double>().value.compareTo(b.cast<ffi.Double>().value);
-}
-
-int _compareFloat32(ffi.Pointer<ffi.Void> a, ffi.Pointer<ffi.Void> b) {
-  return a.cast<ffi.Float>().value.compareTo(b.cast<ffi.Float>().value);
-}
-
-int _compareInt32(ffi.Pointer<ffi.Void> a, ffi.Pointer<ffi.Void> b) {
-  return a.cast<ffi.Int32>().value.compareTo(b.cast<ffi.Int32>().value);
-}
-
-int _compareInt64(ffi.Pointer<ffi.Void> a, ffi.Pointer<ffi.Void> b) {
-  return a.cast<ffi.Int64>().value.compareTo(b.cast<ffi.Int64>().value);
-}
-
-int _compareComplex128(ffi.Pointer<ffi.Void> a, ffi.Pointer<ffi.Void> b) {
-  final pA = a.cast<ffi.Double>();
-  final pB = b.cast<ffi.Double>();
-  final realA = pA[0];
-  final realB = pB[0];
-  if (realA != realB) return realA.compareTo(realB);
-  return pA[1].compareTo(pB[1]);
-}
-
-int _compareComplex64(ffi.Pointer<ffi.Void> a, ffi.Pointer<ffi.Void> b) {
-  final pA = a.cast<ffi.Float>();
-  final pB = b.cast<ffi.Float>();
-  final realA = pA[0];
-  final realB = pB[0];
-  if (realA != realB) return realA.compareTo(realB);
-  return pA[1].compareTo(pB[1]);
-}
 
 /// Operations that can call out to FFI.
 enum Operation { add, matmul }
@@ -3535,23 +3450,14 @@ NDArray sort(NDArray a, {int axis = -1}) {
   final numRows = totalSize ~/ n;
 
   int elementSizeInBytes;
-  ffi.Pointer<
-    ffi.NativeFunction<
-      ffi.Int Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Void>)
-    >
-  >?
-  callbackPtr;
-
   if (src.dtype == DType.float64 || src.dtype == DType.int64) {
     elementSizeInBytes = 8;
   } else if (src.dtype == DType.float32 || src.dtype == DType.int32) {
     elementSizeInBytes = 4;
   } else if (src.dtype == DType.complex64) {
     elementSizeInBytes = 8;
-    callbackPtr = ffi.Pointer.fromFunction(_compareComplex64, 0);
   } else if (src.dtype == DType.complex128) {
     elementSizeInBytes = 16;
-    callbackPtr = ffi.Pointer.fromFunction(_compareComplex128, 0);
   } else {
     throw UnimplementedError('Unsupported dtype for sort: ${src.dtype}');
   }
@@ -3571,9 +3477,10 @@ NDArray sort(NDArray a, {int axis = -1}) {
       native_sort_int64(rowPtr.cast<ffi.LongLong>(), n);
     } else if (src.dtype == DType.int32) {
       native_sort_int32(rowPtr.cast<ffi.Int>(), n);
-    } else if (callbackPtr != null) {
-      // Fallback for rare complex lexicographical sorting
-      _qsort(rowPtr.cast<ffi.Void>(), n, elementSizeInBytes, callbackPtr);
+    } else if (src.dtype == DType.complex128) {
+      native_sort_complex128(rowPtr.cast<ffi.Double>(), n);
+    } else if (src.dtype == DType.complex64) {
+      native_sort_complex64(rowPtr.cast<ffi.Float>(), n);
     }
   }
 

@@ -21,4 +21,14 @@ void native_sort_int64(long long *array, int size);
  */
 void native_sort_int32(int *array, int size);
 
+/**
+ * Natively sort a complex128 array in-place lexicographically.
+ */
+void native_sort_complex128(double *array, int size);
+
+/**
+ * Natively sort a complex64 array in-place lexicographically.
+ */
+void native_sort_complex64(float *array, int size);
+
 #endif // CUSTOM_SORTING_H

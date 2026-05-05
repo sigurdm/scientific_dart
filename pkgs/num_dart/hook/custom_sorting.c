@@ -49,6 +49,36 @@ static int compare_int32(const void *a, const void *b) {
     return 0;
 }
 
+typedef struct {
+    double real;
+    double imag;
+} complex128_t;
+
+typedef struct {
+    float real;
+    float imag;
+} complex64_t;
+
+static int compare_complex128(const void *a, const void *b) {
+    const complex128_t *ca = (const complex128_t *)a;
+    const complex128_t *cb = (const complex128_t *)b;
+    if (ca->real < cb->real) return -1;
+    if (ca->real > cb->real) return 1;
+    if (ca->imag < cb->imag) return -1;
+    if (ca->imag > cb->imag) return 1;
+    return 0;
+}
+
+static int compare_complex64(const void *a, const void *b) {
+    const complex64_t *ca = (const complex64_t *)a;
+    const complex64_t *cb = (const complex64_t *)b;
+    if (ca->real < cb->real) return -1;
+    if (ca->real > cb->real) return 1;
+    if (ca->imag < cb->imag) return -1;
+    if (ca->imag > cb->imag) return 1;
+    return 0;
+}
+
 // ----------------------------------------------------------------------------
 // Public Sorter Definitions
 // ----------------------------------------------------------------------------
@@ -71,4 +101,14 @@ void native_sort_int64(long long *array, int size) {
 void native_sort_int32(int *array, int size) {
     if (array == NULL || size <= 1) return;
     qsort(array, size, sizeof(int), compare_int32);
+}
+
+void native_sort_complex128(double *array, int size) {
+    if (array == NULL || size <= 1) return;
+    qsort(array, size, sizeof(double) * 2, compare_complex128);
+}
+
+void native_sort_complex64(float *array, int size) {
+    if (array == NULL || size <= 1) return;
+    qsort(array, size, sizeof(float) * 2, compare_complex64);
 }
