@@ -102,10 +102,22 @@ class NDArray<T> implements ffi.Finalizable {
   /// The data type of the elements in the array.
   final DType dtype;
 
+  /// Returns true if the array is C-contiguous in memory.
+  final bool isContiguous;
+
   /// The parent array if this is a view, to prevent it from being garbage collected.
   final NDArray? _parent;
 
   static final _finalizer = ffi.NativeFinalizer(malloc.nativeFree);
+
+  static bool _checkContiguous(List<int> shape, List<int> strides) {
+    final cStrides = computeCStrides(shape);
+    if (strides.length != cStrides.length) return false;
+    for (var i = 0; i < strides.length; i++) {
+      if (strides[i] != cStrides[i]) return false;
+    }
+    return true;
+  }
 
   /// Private constructor for internal use and factories.
   NDArray._(
@@ -115,7 +127,7 @@ class NDArray<T> implements ffi.Finalizable {
     required this.shape,
     required this.strides,
     required this.dtype,
-  }) {
+  }) : isContiguous = _checkContiguous(shape, strides) {
     if (_parent == null) {
       _finalizer.attach(this, _pointer, detach: this);
     }
@@ -126,16 +138,6 @@ class NDArray<T> implements ffi.Finalizable {
   /// Returns true if this array or parent array's memory has been explicitly freed.
   bool get isDisposed =>
       _isDisposed || (_parent != null && _parent!.isDisposed);
-
-  /// Returns true if the array is C-contiguous in memory.
-  bool get isContiguous {
-    final cStrides = computeCStrides(shape);
-    if (strides.length != cStrides.length) return false;
-    for (var i = 0; i < strides.length; i++) {
-      if (strides[i] != cStrides[i]) return false;
-    }
-    return true;
-  }
 
   /// Factory to create a new array with allocated C memory.
   ///

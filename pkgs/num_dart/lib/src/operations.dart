@@ -3709,6 +3709,46 @@ void _dispatchWhere(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
+List<int> _broadcastStrides(NDArray a, List<int> targetShape) {
+  final strides = List<int>.filled(targetShape.length, 0);
+  final offset = targetShape.length - a.shape.length;
+  for (var i = 0; i < a.shape.length; i++) {
+    final targetDim = targetShape[i + offset];
+    final aDim = a.shape[i];
+    if (aDim == targetDim) {
+      strides[i + offset] = a.strides[i];
+    } else if (aDim == 1) {
+      strides[i + offset] = 0;
+    } else {
+      throw ArgumentError('Cannot broadcast shape ${a.shape} to $targetShape');
+    }
+  }
+  return strides;
+}
+
+List<int> _broadcast3Shapes(List<int> s1, List<int> s2, List<int> s3) {
+  final len = math.max(s1.length, math.max(s2.length, s3.length));
+  final common = List<int>.filled(len, 1);
+  for (var i = 0; i < len; i++) {
+    final dim1 = s1.length - 1 - i >= 0 ? s1[s1.length - 1 - i] : 1;
+    final dim2 = s2.length - 1 - i >= 0 ? s2[s2.length - 1 - i] : 1;
+    final dim3 = s3.length - 1 - i >= 0 ? s3[s3.length - 1 - i] : 1;
+
+    final target = math.max(dim1, math.max(dim2, dim3));
+    if (dim1 != target && dim1 != 1) {
+      throw ArgumentError('Incompatible shapes for broadcasting');
+    }
+    if (dim2 != target && dim2 != 1) {
+      throw ArgumentError('Incompatible shapes for broadcasting');
+    }
+    if (dim3 != target && dim3 != 1) {
+      throw ArgumentError('Incompatible shapes for broadcasting');
+    }
+    common[len - 1 - i] = target;
+  }
+  return common;
+}
+
 dynamic where(NDArray condition, [NDArray? x, NDArray? y]) {
   if (x == null && y == null) {
     return nonzero(condition);
@@ -3718,31 +3758,13 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y]) {
     throw ArgumentError('Either both or neither of x and y must be given');
   }
 
-  // Calculate target common shape via cascading broadcasts
-  final broadcastCondX = broadcast(condition, x!);
-  final finalBroadcast = broadcast(
-    NDArray.view(
-      condition,
-      broadcastCondX.shape,
-      List.filled(broadcastCondX.shape.length, 0),
-    ),
-    y!,
-  );
-  final commonShape = finalBroadcast.shape;
+  // Calculate target common shape via high-speed 3-way broadcast matching
+  final commonShape = _broadcast3Shapes(condition.shape, x!.shape, y!.shape);
 
   // Compute precise broadcasted strides for each operand independently to commonShape
-  final bCond = broadcast(
-    condition,
-    NDArray.view(condition, commonShape, List.filled(commonShape.length, 0)),
-  );
-  final bX = broadcast(
-    x,
-    NDArray.view(x, commonShape, List.filled(commonShape.length, 0)),
-  );
-  final bY = broadcast(
-    y,
-    NDArray.view(y, commonShape, List.filled(commonShape.length, 0)),
-  );
+  final stridesCond = _broadcastStrides(condition, commonShape);
+  final stridesX = _broadcastStrides(x, commonShape);
+  final stridesY = _broadcastStrides(y, commonShape);
 
   final targetDType = _resolveDType(x.dtype, y.dtype);
   final result = NDArray.create(commonShape, targetDType);
@@ -3751,16 +3773,16 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y]) {
   // 0. Advanced ND Odometer Ternary Broadcasting Engine in C (Rank <= 8)
   if (commonShape.length <= 8 && condition.dtype == DType.boolean) {
     final cShape = malloc<ffi.Int>(commonShape.length);
-    final cStridesCond = malloc<ffi.Int>(bCond.stridesA.length);
-    final cStridesX = malloc<ffi.Int>(bX.stridesA.length);
-    final cStridesY = malloc<ffi.Int>(bY.stridesA.length);
+    final cStridesCond = malloc<ffi.Int>(stridesCond.length);
+    final cStridesX = malloc<ffi.Int>(stridesX.length);
+    final cStridesY = malloc<ffi.Int>(stridesY.length);
     final cStridesRes = malloc<ffi.Int>(resultStrides.length);
 
     for (var i = 0; i < commonShape.length; i++) {
       cShape[i] = commonShape[i];
-      cStridesCond[i] = bCond.stridesA[i];
-      cStridesX[i] = bX.stridesA[i];
-      cStridesY[i] = bY.stridesA[i];
+      cStridesCond[i] = stridesCond[i];
+      cStridesX[i] = stridesX[i];
+      cStridesY[i] = stridesY[i];
       cStridesRes[i] = resultStrides[i];
     }
 
@@ -3813,9 +3835,9 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y]) {
     x,
     y,
     commonShape,
-    bCond.stridesA,
-    bX.stridesA,
-    bY.stridesA,
+    stridesCond,
+    stridesX,
+    stridesY,
     resultStrides,
   );
 
