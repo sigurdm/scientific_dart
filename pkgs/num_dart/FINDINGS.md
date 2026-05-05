@@ -611,3 +611,10 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Symptom**: When executing discrete Fourier transforms (`fft()` or `ifft()`) on non-contiguous strided views (e.g. transposed arrays, sub-sliced signals views), the calculation produces garbage output values without any warnings or errors.
 - **The Flaw**: The FFT algorithms assume the input array `a` is always in C-contiguous memory layout. They directly walk `a.data[srcStart + i]` sequentially, completely ignoring `a.strides`, which reads incorrect index boundaries for sliced/transposed array views.
 - **Recommended Tweak / High-End Fix**: Refactor `fft()` and `ifft()` to verify if `a.isContiguous` is true. If the input is non-contiguous, automatically compile or duplicate a contiguous array copy via `NDArray.fromList(a.toList(), a.shape, a.dtype)` before FFI plan mapping. This fully guarantees numerical correctness across all strided signals sweeps!
+
+***
+
+## `pkgs/num_dart/example/` (NumPy Compatibility Gap: Missing top-level `copy()` ufunc example script)
+- **Symptom**: Downstream developers seeking running guidelines for deep copies under `num_dart` completely lack any dedicated executable copy example script.
+- **The Gap**: Missing running examples for deep copy capabilities mapping to standard `np.copy(a)` routines.
+- **Recommended Tweak**: Expose a clear, high-value running copy example script **`copy_operations_example.dart`** demonstrating both contiguous array copies and strided views copies, confirming correct decoupled memory blocks walks!
