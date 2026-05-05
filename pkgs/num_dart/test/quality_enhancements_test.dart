@@ -631,6 +631,40 @@ void main() {
       expect(b.toList(), [Complex(1.0, 0.0), Complex(1.0, 0.0)]);
       expect(b.dtype, DType.complex64);
     });
+
+    test('add() cross-type complex/int and int/complex additions coverage', () {
+      final c = NDArray<Complex>.fromList(
+        [Complex(1.0, 1.0)],
+        [1],
+        DType.complex128,
+      );
+      final i = NDArray<int>.fromList([2], [1], DType.int64);
+      final d = NDArray<double>.fromList([3.0], [1], DType.float64);
+      addTearDown(c.dispose);
+      addTearDown(i.dispose);
+      addTearDown(d.dispose);
+
+      // 1. Complex + int
+      final res1 = add(c, i);
+      addTearDown(res1.dispose);
+      expect(res1.dtype, DType.complex128);
+      expect(res1.data[0].real, 3.0);
+      expect(res1.data[0].imag, 1.0);
+
+      // 2. double + Complex
+      final res2 = add(d, c);
+      addTearDown(res2.dispose);
+      expect(res2.dtype, DType.complex128);
+      expect(res2.data[0].real, 4.0);
+      expect(res2.data[0].imag, 1.0);
+
+      // 3. int + Complex
+      final res3 = add(i, c);
+      addTearDown(res3.dispose);
+      expect(res3.dtype, DType.complex128);
+      expect(res3.data[0].real, 3.0);
+      expect(res3.data[0].imag, 1.0);
+    });
   });
 }
 

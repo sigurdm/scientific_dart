@@ -248,3 +248,19 @@
   * **`operations.dart` coverage after**: **65.9%** (1119/1697 lines) (Surged to L1697 by deleting 29 lines of dead lookup code!)
   * **Global Line Coverage before**: **72.88%** (2196/3013 lines)
   * **Global Line Coverage after**: **73.19%** (2184/2984 lines) (Global line coverage successfully crossed the **73%** landmark!)
+
+***
+
+## 18. Covered cross-type Complex and int/double additions in `operations.dart` (Task 1)
+* **What was done**:
+  * Audited the core arithmetic addition pathways inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart).
+  * Identified that the element-wise arithmetic addition callbacks (`_elementWiseOp`) when adding a complex number array (`complex128`) to integers (`int64`), doubles (`float64`) to complex, and integers to complex (L433-484) were completely untested (0% coverage).
+  * Authored a targeted test `add() cross-type complex/int and int/complex additions coverage` in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart) that executes these mixed additions and validates exact real and imaginary sums.
+* **Notable Problems & Difficulty**:
+  * **Difficulty**: Extremely easy.
+  * **Notable Problems**: None.
+* **Coverage Progress**:
+  * **`operations.dart` coverage before**: **65.9%** (1119/1697 lines)
+  * **`operations.dart` coverage after**: **66.8%** (1134/1697 lines) (Excellent **+0.9%** increase!)
+  * **Global Line Coverage before**: **73.19%** (2184/2984 lines)
+  * **Global Line Coverage after**: **73.69%** (2199/2984 lines) (Global line coverage pushed to a record **73.69%**!)
