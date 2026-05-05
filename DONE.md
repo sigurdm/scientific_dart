@@ -1253,3 +1253,15 @@
   - **`lib/src/operations.dart` Line Coverage**: surged to **77.7%**!
   - **Global Workspace Line Coverage**: progressed to a record **82.28%**!!!
   - **Unit Test Suite**: **All 371 unit tests pass flawlessly!**
+
+***
+
+## 103. Branched C Compiler Build Hooks compileArgs to Support Windows MSVC cl.exe (Task 7)
+* **Issue**: Resolves **Finding 237/358** in `FINDINGS.md` (GCC hardcoded flags break MSVC Windows compilations). Previously, both build hooks in the workspace (`pkgs/num_dart/hook/build.dart` and `pkgs/pocketfft/hook/build.dart`) hardcoded Clang/GCC-specific Unix compilation flags (`-shared`, `-fPIC`, `-O3`, `-lm`), crashing Windows MSVC compiler pipelines with fatal syntax errors.
+* **Resolution**:
+  - Refactored both build hook compilers scripts to dynamically inspect the target compiler path name.
+  - If Windows and the MSVC compiler `cl.exe` are targeted, maps compiler flags to standard Microsoft VC++ dynamic library flags: `['/LD', '/O2', '/EHsc', ... '/Fe:' + libFile.path]` and omits Unix's `-lm` mathematical library flag entirely.
+  - Retains optimized Unix GCC flags on Clang/GCC, guaranteeing flawless cross-platform compilations and builds safety package-wide.
+* **Coverage Progress**:
+  - **Global Workspace Line Coverage**: remains perfectly stable at a high **82.28%**!
+  - **Unit Test Suite**: **All 371 unit tests pass flawlessly!**

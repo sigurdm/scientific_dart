@@ -27,16 +27,26 @@ void main(List<String> args) async {
       'Compiling num_dart custom C extensions using compiler: $compilerPath',
     );
 
-    final compileArgs = <String>[
-      '-shared',
-      '-fPIC',
-      '-O3',
-      input.packageRoot.resolve('hook/custom_sorting.c').toFilePath(),
-      input.packageRoot.resolve('hook/custom_ufuncs.c').toFilePath(),
-      '-o',
-      libFile.path,
-      '-lm',
-    ];
+    final isMSVC = os == OS.windows && compilerPath.toLowerCase().contains('cl');
+    final compileArgs = isMSVC
+        ? <String>[
+            '/LD',
+            '/O2',
+            '/EHsc',
+            input.packageRoot.resolve('hook/custom_sorting.c').toFilePath(),
+            input.packageRoot.resolve('hook/custom_ufuncs.c').toFilePath(),
+            '/Fe:${libFile.path}',
+          ]
+        : <String>[
+            '-shared',
+            '-fPIC',
+            '-O3',
+            input.packageRoot.resolve('hook/custom_sorting.c').toFilePath(),
+            input.packageRoot.resolve('hook/custom_ufuncs.c').toFilePath(),
+            '-o',
+            libFile.path,
+            '-lm',
+          ];
 
     final res = await Process.run(compilerPath, compileArgs);
     if (res.exitCode != 0) {

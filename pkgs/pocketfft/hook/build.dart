@@ -21,7 +21,9 @@ void main(List<String> args) async {
       final client = HttpClient();
       try {
         final request = await client.getUrl(
-          Uri.parse('https://github.com/mborgerding/kissfft/archive/v1.3.1.tar.gz'),
+          Uri.parse(
+            'https://github.com/mborgerding/kissfft/archive/v1.3.1.tar.gz',
+          ),
         );
         final response = await request.close();
         if (response.statusCode != 200) {
@@ -74,20 +76,33 @@ void main(List<String> args) async {
       final compilerPath = cCompiler?.compiler?.toFilePath() ?? 'cc';
       print('Compiling pocketfft plain C files via compiler: $compilerPath');
 
-      final compileArgs = <String>[
-        '-shared',
-        '-fPIC',
-        '-O3',
-        '-ffast-math',
-        '-Dkiss_fft_scalar=double',
-        '-I',
-        srcDir.uri.toFilePath(),
-        srcDir.uri.resolve('kiss_fft.c').toFilePath(),
-        srcDir.uri.resolve('kiss_fftr.c').toFilePath(),
-        '-o',
-        libFile.path,
-        '-lm',
-      ];
+      final isMSVC = os == OS.windows && compilerPath.toLowerCase().contains('cl');
+      final compileArgs = isMSVC
+          ? <String>[
+              '/LD',
+              '/O2',
+              '/EHsc',
+              '/Dkiss_fft_scalar=double',
+              '/I',
+              srcDir.uri.toFilePath(),
+              srcDir.uri.resolve('kiss_fft.c').toFilePath(),
+              srcDir.uri.resolve('kiss_fftr.c').toFilePath(),
+              '/Fe:${libFile.path}',
+            ]
+          : <String>[
+              '-shared',
+              '-fPIC',
+              '-O3',
+              '-ffast-math',
+              '-Dkiss_fft_scalar=double',
+              '-I',
+              srcDir.uri.toFilePath(),
+              srcDir.uri.resolve('kiss_fft.c').toFilePath(),
+              srcDir.uri.resolve('kiss_fftr.c').toFilePath(),
+              '-o',
+              libFile.path,
+              '-lm',
+            ];
 
       final res = await Process.run(compilerPath, compileArgs);
       if (res.exitCode != 0) {

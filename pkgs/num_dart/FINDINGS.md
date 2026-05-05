@@ -232,19 +232,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
   - Eliminate dynamic lists clones entirely at leaf conditions by pre-allocating an reusable `destPos` scratch buffer list *outside* the recursive loop stack and updating it in-place.
   - Remove pure Dart bracket offset math by maintaining running flat pointer offsets increments (`srcOffset + i * src.strides[dim]`) across recursion states, directly accessing `src.data[srcOffset]` for instant, zero-friction `O(1)` cell truth queries!
 
-***
 
-## `pkgs/num_dart/hook/build.dart` (🚨 Critical DevOps Flaw: Hardcoded GCC flags Break Windows MSVC Compilations toolchain)
-- **Location**: [build.dart:L28-L37](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/hook/build.dart#L28-L37)
-- **Symptom**: The build hook script hardcodes GCC/Clang-specific Unix flags in the custom C extensions compilation array:
-  ```dart
-  final compileArgs = <String>['-shared', '-fPIC', '-O3', ..., '-o', libFile.path, '-lm'];
-  ```
-- **The Bug / Windows Breakage**: Severe cross-platform toolchain incompatibility! On native Windows developer systems, the standard, official system compiler is Microsoft Visual Studio's **MSVC `cl.exe`**. MSVC `cl.exe` completely rejects and crashes on GNU/Unix flags like `-shared`, '-fPIC', '-O3', or '-o' with fatal syntax errors! 
-- **Recommended Tweak / Critical DevOps Fix**: Refactor `build.dart` to dynamically branch the `compileArgs` compiler flags list based on the target operating system type or compiler binary check:
-  - **For GCC / Clang (Linux/macOS/MinGW)**: Retain the excellent `['-shared', '-fPIC', '-O3', '-o', ...]` array.
-  - **For MSVC `cl.exe` (Windows Native)**: Swap the list flags with authentic Microsoft VC++ options: `['/LD', '/O2', '/EHsc', ... '/Fe:' + libFile.path]`, and omit Unix's `-lm` flag entirely.
-  This robust cross-platform toolchain branching ensures `num_dart` cross-compiles flawlessly and securely across all major target operating systems (Linux, macOS, AND Windows native) without any consumer build errors!
 
 ***
 
