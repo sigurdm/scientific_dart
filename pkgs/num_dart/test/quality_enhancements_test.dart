@@ -447,6 +447,11 @@ void main() {
         addTearDown(a.dispose);
         expect(a.shape, [2]);
         expect(a.dtype, DType.int64);
+
+        final oddLength = binomial([5], 100, 0.5);
+        addTearDown(oddLength.dispose);
+        expect(oddLength.shape, [5]);
+        expect(oddLength.dtype, DType.int64);
       },
     );
     test('save() and load() non-contiguous strided views of all dtypes', () {
@@ -766,10 +771,676 @@ void main() {
       final r2 = prod(f32);
       expect(r2, closeTo(30.0, 1e-9));
     });
+
+    test('variance() and std() on non-contiguous view calculation', () {
+      final parent = NDArray.fromList(
+        Float64List.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
+        [3, 2],
+        DType.float64,
+      );
+      addTearDown(parent.dispose);
+
+      final viewT = parent.transposed;
+      addTearDown(viewT.dispose);
+
+      expect(variance(viewT), closeTo(17.5 / 6.0, 1e-9));
+      expect(std(viewT), closeTo(math.sqrt(17.5 / 6.0), 1e-9));
+    });
+
+    test('variance() and std() on sliced view calculation', () {
+      final parent = NDArray.fromList(
+        Float64List.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
+        [3, 2],
+        DType.float64,
+      );
+      addTearDown(parent.dispose);
+
+      final view = parent.slice([Slice(start: 0, stop: 2), Slice.all()]);
+      expect(variance(view), closeTo(1.25, 1e-9));
+      expect(std(view), closeTo(math.sqrt(1.25), 1e-9));
+    });
+
+    test(
+      'clip() with named out parameter recycler and sliced contiguous view',
+      () {
+        final parent = NDArray.fromList(
+          Float64List.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
+          [3, 2],
+          DType.float64,
+        );
+        addTearDown(parent.dispose);
+
+        final view = parent.slice([Slice(start: 0, stop: 2), Slice.all()]);
+        final out = NDArray<double>.zeros([2, 2], DType.float64);
+        addTearDown(out.dispose);
+
+        final res = clip(view, 2.0, 3.0, out: out);
+        expect(identical(res, out), true);
+        expect(out.toList(), [2.0, 2.0, 3.0, 3.0]);
+
+        expect(parent.toList(), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+      },
+    );
+
+    group('NaN-Ignoring Statistical Reductions tests', () {
+      test('Verify nansum() treats NaNs as zeros', () {
+        final a = NDArray<double>.fromList(
+          Float64List.fromList([1.0, double.nan, 3.0, double.nan]),
+          [2, 2],
+          DType.float64,
+        );
+        addTearDown(a.dispose);
+
+        expect(nansum(a), closeTo(4.0, 1e-9));
+
+        final s0 = nansum(a, axis: 0);
+        addTearDown(s0.dispose);
+        expect(s0.shape, [2]);
+        expect(s0.toList(), [4.0, 0.0]);
+      });
+
+      test('Verify nanmean() ignores NaNs', () {
+        final a = NDArray<double>.fromList(
+          Float64List.fromList([1.0, double.nan, 3.0, 4.0]),
+          [2, 2],
+          DType.float64,
+        );
+        addTearDown(a.dispose);
+
+        expect(nanmean(a), closeTo(8.0 / 3.0, 1e-9));
+
+        final m0 = nanmean(a, axis: 0);
+        addTearDown(m0.dispose);
+        expect(m0.shape, [2]);
+        expect(m0.toList(), [2.0, 4.0]);
+      });
+
+      test('Verify nanvar() and nanstd() ignore NaNs', () {
+        final a = NDArray<double>.fromList(
+          Float64List.fromList([1.0, double.nan, 2.0, 3.0]),
+          [2, 2],
+          DType.float64,
+        );
+        addTearDown(a.dispose);
+
+        // mean = (1 + 2 + 3) / 3 = 2.0
+        // var = ((1-2)^2 + (2-2)^2 + (3-2)^2) / 3 = 2/3
+        expect(nanvar(a), closeTo(2.0 / 3.0, 1e-9));
+        expect(nanstd(a), closeTo(math.sqrt(2.0 / 3.0), 1e-9));
+
+        final v0 = nanvar(a, axis: 0);
+        final s0 = nanstd(a, axis: 0);
+        addTearDown(v0.dispose);
+        addTearDown(s0.dispose);
+
+        expect(v0.shape, [2]);
+        expect(s0.shape, [2]);
+      });
+    });
+
+    test('arange() and linspace() type safety with complex dtypes', () {
+      // 1. arange with complex128
+      final a128 = NDArray<Complex>.arange(0, 3, dtype: DType.complex128);
+      addTearDown(a128.dispose);
+      expect(a128.shape, [3]);
+      expect(a128.dtype, DType.complex128);
+      expect(a128.toList(), [
+        Complex(0.0, 0.0),
+        Complex(1.0, 0.0),
+        Complex(2.0, 0.0),
+      ]);
+
+      // 2. arange with complex64
+      final a64 = NDArray<Complex>.arange(1, 3, dtype: DType.complex64);
+      addTearDown(a64.dispose);
+      expect(a64.shape, [2]);
+      expect(a64.dtype, DType.complex64);
+      expect(a64.toList(), [Complex(1.0, 0.0), Complex(2.0, 0.0)]);
+
+      // 3. linspace with complex128
+      final l128 = NDArray<Complex>.linspace(
+        1.0,
+        2.0,
+        3,
+        dtype: DType.complex128,
+      );
+      addTearDown(l128.dispose);
+      expect(l128.shape, [3]);
+      expect(l128.dtype, DType.complex128);
+      expect(l128.toList(), [
+        Complex(1.0, 0.0),
+        Complex(1.5, 0.0),
+        Complex(2.0, 0.0),
+      ]);
+
+      // 4. linspace with single-element num == 1 and complex64
+      final l64 = NDArray<Complex>.linspace(
+        5.0,
+        10.0,
+        1,
+        dtype: DType.complex64,
+      );
+      addTearDown(l64.dispose);
+      expect(l64.shape, [1]);
+      expect(l64.dtype, DType.complex64);
+      expect(l64.toList(), [Complex(5.0, 0.0)]);
+    });
+
+    test('where() with out parameter recycler and shape validations', () {
+      final cond = NDArray.fromList(
+        [true, false, false, true],
+        [2, 2],
+        DType.boolean,
+      );
+      final x = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+      final y = NDArray.fromList(
+        [10.0, 20.0, 30.0, 40.0],
+        [2, 2],
+        DType.float64,
+      );
+      final out = NDArray<double>.zeros([2, 2], DType.float64);
+      final incompatibleOut = NDArray<double>.zeros([3], DType.float64);
+
+      addTearDown(cond.dispose);
+      addTearDown(x.dispose);
+      addTearDown(y.dispose);
+      addTearDown(out.dispose);
+      addTearDown(incompatibleOut.dispose);
+
+      // 1. Incompatible shape throws ArgumentError
+      expect(() => where(cond, x, y, incompatibleOut), throwsArgumentError);
+
+      // 2. Valid in-place recycling
+      final res = where(cond, x, y, out);
+      expect(identical(res, out), true);
+      expect(out.toList(), [1.0, 20.0, 30.0, 4.0]);
+    });
+
+    test('uniform() and normal() Float32, and randint() Int32 coverage', () {
+      // 1. uniform with float32
+      final u = uniform([10], dtype: DType.float32);
+      addTearDown(u.dispose);
+      expect(u.shape, [10]);
+      expect(u.dtype, DType.float32);
+      for (final val in u.data) {
+        expect(val, greaterThanOrEqualTo(0.0));
+        expect(val, lessThan(1.0));
+      }
+
+      // 2. randint with int32
+      final ri = randint([10], 0, 5, dtype: DType.int32);
+      addTearDown(ri.dispose);
+      expect(ri.shape, [10]);
+      expect(ri.dtype, DType.int32);
+      for (final val in ri.data) {
+        expect(val, greaterThanOrEqualTo(0));
+        expect(val, lessThan(5));
+      }
+
+      // 3. normal with float32
+      final n = normal([10], dtype: DType.float32);
+      addTearDown(n.dispose);
+      expect(n.shape, [10]);
+      expect(n.dtype, DType.float32);
+    });
+
+    test('setByMask() with NDArray values and capacity validations', () {
+      final parent = NDArray.fromList(
+        [1.0, 2.0, 3.0, 4.0],
+        [2, 2],
+        DType.float64,
+      );
+      final mask = NDArray.fromList(
+        [true, false, false, true],
+        [2, 2],
+        DType.boolean,
+      );
+      final values = NDArray.fromList([99.0, 100.0], [2], DType.float64);
+      final insufficientValues = NDArray.fromList([99.0], [1], DType.float64);
+
+      addTearDown(parent.dispose);
+      addTearDown(mask.dispose);
+      addTearDown(values.dispose);
+      addTearDown(insufficientValues.dispose);
+
+      // 1. Incompatible capacity throws ArgumentError
+      expect(
+        () => parent.setByMask(mask, insufficientValues),
+        throwsArgumentError,
+      );
+
+      // 2. Valid array value mask mutation
+      parent.setByMask(mask, values);
+      expect(parent.toList(), [99.0, 2.0, 3.0, 100.0]);
+    });
+
+    test('setIndices() RangeError and ArgumentError boundaries coverage', () {
+      final parent = NDArray.fromList(
+        [1.0, 2.0, 3.0, 4.0],
+        [2, 2],
+        DType.float64,
+      );
+      final indices = NDArray.fromList([0, 1], [2], DType.int32);
+      final values = NDArray.fromList(
+        [10.0, 20.0, 30.0, 40.0],
+        [2, 2],
+        DType.float64,
+      );
+      final insufficientValues = NDArray.fromList([10.0], [1], DType.float64);
+
+      addTearDown(parent.dispose);
+      addTearDown(indices.dispose);
+      addTearDown(values.dispose);
+      addTearDown(insufficientValues.dispose);
+
+      // 1. Invalid axis throws RangeError
+      expect(
+        () => parent.setIndices(indices, values, axis: -1),
+        throwsRangeError,
+      );
+      expect(
+        () => parent.setIndices(indices, values, axis: 2),
+        throwsRangeError,
+      );
+
+      // 2. Insufficient values capacity throws ArgumentError
+      expect(
+        () => parent.setIndices(indices, insufficientValues, axis: 0),
+        throwsArgumentError,
+      );
+    });
+
+    test('Contiguous sub-slice flatten() optimization correctness', () {
+      final parent = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+      // Slice representing the first 2 elements (strides: [1], contiguous: true, totalSize < data.length!)
+      final view = parent.slice([Slice(start: 0, stop: 2)]);
+
+      addTearDown(parent.dispose);
+      addTearDown(view.dispose);
+
+      expect(view.isContiguous, true);
+      expect(view.shape, [2]);
+
+      final flat = view.flatten();
+      addTearDown(flat.dispose);
+      expect(flat.shape, [2]);
+      expect(flat.isContiguous, true);
+      expect(flat.toList(), [1.0, 2.0]);
+    });
+
+    test(
+      'NDArray.fill() ufunc correctness and performance speedups verification',
+      () {
+        // 1. Contiguous Double Precision fill
+        final a = NDArray<double>.zeros([5], DType.float64);
+        addTearDown(a.dispose);
+        a.fill(42.5);
+        expect(a.toList(), [42.5, 42.5, 42.5, 42.5, 42.5]);
+
+        // 2. Contiguous Int32 Precision fill
+        final b = NDArray<int>.zeros([5], DType.int32);
+        addTearDown(b.dispose);
+        b.fill(99);
+        expect(b.toList(), [99, 99, 99, 99, 99]);
+
+        // 3. Strided view fallback JIT fill
+        final parent = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [4],
+          DType.float64,
+        );
+        final view = parent.slice([
+          Slice(start: 0, stop: 4, step: 2),
+        ]); // indices: 0, 2
+        addTearDown(parent.dispose);
+        addTearDown(view.dispose);
+
+        expect(view.shape, [2]);
+        expect(view.isContiguous, false);
+
+        view.fill(77.0);
+        expect(parent.toList(), [77.0, 2.0, 77.0, 4.0]);
+      },
+    );
+
+    test(
+      'diag() diagonal matrix ufunc correctness and zero-copy view validations',
+      () {
+        // 1. Main diagonal extraction (k = 0)
+        final mat = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+          [3, 3],
+          DType.float64,
+        );
+
+        final mainDiag = diag(mat);
+        addTearDown(mat.dispose);
+        addTearDown(mainDiag.dispose);
+
+        expect(mainDiag.shape, [3]);
+        expect(mainDiag.isContiguous, false); // spaced view
+        expect(mainDiag.toList(), [1.0, 5.0, 9.0]);
+
+        // 2. Strided views offset extractions (k = 1 and k = -1)
+        final upperDiag = diag(mat, k: 1);
+        final lowerDiag = diag(mat, k: -1);
+        addTearDown(upperDiag.dispose);
+        addTearDown(lowerDiag.dispose);
+
+        expect(upperDiag.shape, [2]);
+        expect(upperDiag.toList(), [2.0, 6.0]);
+        expect(lowerDiag.shape, [2]);
+        expect(lowerDiag.toList(), [4.0, 8.0]);
+
+        // 3. Construct diagonal 2D matrix from 1D vector
+        final vec = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+        final dMat = diag(vec);
+        final uDiagMat = diag(vec, k: 1);
+        addTearDown(vec.dispose);
+        addTearDown(dMat.dispose);
+        addTearDown(uDiagMat.dispose);
+
+        expect(dMat.shape, [2, 2]);
+        expect(dMat.toList(), [10.0, 0.0, 0.0, 20.0]);
+
+        expect(uDiagMat.shape, [3, 3]);
+        expect(uDiagMat.toList(), [
+          0.0,
+          10.0,
+          0.0,
+          0.0,
+          0.0,
+          20.0,
+          0.0,
+          0.0,
+          0.0,
+        ]);
+
+        // 4. Rank out of bounds throws ArgumentError
+        final tensor3d = NDArray.zeros([2, 2, 2], DType.float64);
+        addTearDown(tensor3d.dispose);
+        expect(() => diag(tensor3d), throwsArgumentError);
+      },
+    );
+
+    test('isclose() and allclose() approximate equality ufunc correctness', () {
+      final a = NDArray.fromList([1.0, 1.00001, 2.0], [3], DType.float64);
+      final b = NDArray.fromList([1.0, 1.00003, 2.0], [3], DType.float64);
+      addTearDown(a.dispose);
+      addTearDown(b.dispose);
+
+      // 1. Default tolerances: rtol = 1e-05, atol = 1e-08
+      final closeDefault = isclose(a, b);
+      addTearDown(closeDefault.dispose);
+      expect(closeDefault.toList(), [true, false, true]);
+
+      // 2. Stretched tolerances: rtol = 1e-04
+      final closeStretched = isclose(a, b, rtol: 1e-04);
+      addTearDown(closeStretched.dispose);
+      expect(closeStretched.toList(), [true, true, true]);
+
+      // 3. allclose logic
+      expect(allclose(a, b), false);
+      expect(allclose(a, b, rtol: 1e-04), true);
+
+      // 4. Infinite matching values
+      final infA = NDArray.fromList(
+        [double.infinity, double.negativeInfinity],
+        [2],
+        DType.float64,
+      );
+      final infB = NDArray.fromList(
+        [double.infinity, double.negativeInfinity],
+        [2],
+        DType.float64,
+      );
+      final infC = NDArray.fromList(
+        [double.negativeInfinity, double.infinity],
+        [2],
+        DType.float64,
+      );
+      addTearDown(infA.dispose);
+      addTearDown(infB.dispose);
+      addTearDown(infC.dispose);
+
+      final closeInf = isclose(infA, infB);
+      final closeInfMismatch = isclose(infA, infC);
+      addTearDown(closeInf.dispose);
+      addTearDown(closeInfMismatch.dispose);
+
+      expect(closeInf.toList(), [true, true]);
+      expect(closeInfMismatch.toList(), [false, false]);
+
+      // 5. NaN value equalNan checks
+      final nanA = NDArray.fromList([double.nan], [1], DType.float64);
+      final nanB = NDArray.fromList([double.nan], [1], DType.float64);
+      addTearDown(nanA.dispose);
+      addTearDown(nanB.dispose);
+
+      final closeNanDefault = isclose(nanA, nanB);
+      final closeNanEqual = isclose(nanA, nanB, equalNan: true);
+      addTearDown(closeNanDefault.dispose);
+      addTearDown(closeNanEqual.dispose);
+
+      expect(closeNanDefault.toList(), [false]);
+      expect(closeNanEqual.toList(), [true]);
+    });
+
+    test('nan_to_num() dataset cleaning ufunc correctness', () {
+      // 1. Default Float64 cleaning
+      final a = NDArray.fromList(
+        [1.0, double.nan, double.infinity, double.negativeInfinity],
+        [4],
+        DType.float64,
+      );
+      addTearDown(a.dispose);
+
+      final cleanDefault = nan_to_num(a);
+      addTearDown(cleanDefault.dispose);
+
+      expect(cleanDefault.toList()[0], 1.0);
+      expect(cleanDefault.toList()[1], 0.0);
+      expect(cleanDefault.toList()[2], double.maxFinite);
+      expect(cleanDefault.toList()[3], -double.maxFinite);
+
+      // 2. Custom parameters cleaning
+      final cleanCustom = nan_to_num(
+        a,
+        nan: 99.0,
+        posinf: 500.0,
+        neginf: -500.0,
+      );
+      addTearDown(cleanCustom.dispose);
+
+      expect(cleanCustom.toList(), [1.0, 99.0, 500.0, -500.0]);
+
+      // 3. View-safe in-place recycling
+      final parent = NDArray.fromList(
+        [double.nan, 2.0, double.nan, 4.0],
+        [4],
+        DType.float64,
+      );
+      final view = parent.slice([
+        Slice(start: 0, stop: 4, step: 2),
+      ]); // indices: 0, 2
+      addTearDown(parent.dispose);
+      addTearDown(view.dispose);
+
+      expect(view.isContiguous, false);
+      expect(view.isContiguous, false);
+      nan_to_num(view, nan: 100.0, out: view);
+
+      expect(parent.toList(), [100.0, 2.0, 100.0, 4.0]);
+    });
+
+    test(
+      'Linear Algebra solvers det() and solve() singular and preconditions exceptions',
+      () {
+        // 1. det() singular matrix returns 0.0
+        final singularMat = NDArray.fromList(
+          [
+            1.0, 2.0,
+            2.0, 4.0, // linearly dependent rows!
+          ],
+          [2, 2],
+          DType.float64,
+        );
+        addTearDown(singularMat.dispose);
+        expect(det(singularMat), 0.0);
+
+        // 2. solve() non-square matrix throws ArgumentError
+        final nonSquareA = NDArray.fromList(
+          [1.0, 2.0, 3.0],
+          [1, 3],
+          DType.float64,
+        );
+        final b = NDArray.fromList([1.0], [1], DType.float64);
+        addTearDown(nonSquareA.dispose);
+        addTearDown(b.dispose);
+        expect(() => solve(nonSquareA, b), throwsArgumentError);
+
+        // 3. solve() incompatible RHS shape throws ArgumentError
+        final squareA = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final incompatibleB = NDArray.fromList(
+          [1.0, 2.0, 3.0],
+          [3],
+          DType.float64,
+        );
+        addTearDown(squareA.dispose);
+        addTearDown(incompatibleB.dispose);
+        expect(() => solve(squareA, incompatibleB), throwsArgumentError);
+
+        // 4. solve() singular Float64 matrix throws singular ArgumentError
+        final singularFloat64A = NDArray.fromList(
+          [1.0, 2.0, 2.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final validB = NDArray.fromList([5.0, 6.0], [2], DType.float64);
+        addTearDown(singularFloat64A.dispose);
+        addTearDown(validB.dispose);
+        expect(() => solve(singularFloat64A, validB), throwsArgumentError);
+
+        // 5. solve() singular Float32 matrix throws singular ArgumentError
+        final singularFloat32A = NDArray.fromList(
+          [1.0, 2.0, 2.0, 4.0],
+          [2, 2],
+          DType.float32,
+        );
+        final validFloat32B = NDArray.fromList([5.0, 6.0], [2], DType.float32);
+        addTearDown(singularFloat32A.dispose);
+        addTearDown(validFloat32B.dispose);
+        expect(
+          () => solve(singularFloat32A, validFloat32B),
+          throwsArgumentError,
+        );
+      },
+    );
+
+    test(
+      'expand_dims() and squeeze() shape view manipulations ufunc correctness',
+      () {
+        // 1. expand_dims() verification
+        final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+        addTearDown(a.dispose);
+
+        final aExp0 = expand_dims(a, 0);
+        final aExp1 = expand_dims(a, 1);
+        final aExpNeg = expand_dims(a, -1); // normalized to axis 1
+        addTearDown(aExp0.dispose);
+        addTearDown(aExp1.dispose);
+        addTearDown(aExpNeg.dispose);
+
+        expect(aExp0.shape, [1, 3]);
+        expect(aExp0.strides, [1, 1]);
+
+        expect(aExp1.shape, [3, 1]);
+        expect(aExp1.strides, [1, 1]);
+
+        expect(aExpNeg.shape, [3, 1]);
+
+        // expand_dims out of bounds exception
+        expect(() => expand_dims(a, 3), throwsArgumentError);
+
+        // 2. squeeze() verification
+        final b = NDArray.zeros([1, 3, 1], DType.float64);
+        addTearDown(b.dispose);
+
+        final bSqueezedAll = squeeze(b);
+        final bSqueezed0 = squeeze(b, axis: [0]);
+        addTearDown(bSqueezedAll.dispose);
+        addTearDown(bSqueezed0.dispose);
+
+        expect(bSqueezedAll.shape, [3]);
+        expect(bSqueezedAll.strides, [1]);
+
+        expect(bSqueezed0.shape, [3, 1]);
+
+        // Squeeze non-unit dimension axis throws ArgumentError
+        expect(() => squeeze(b, axis: [1]), throwsArgumentError);
+      },
+    );
+
+    test(
+      'Contiguous sub-slice view sum() and prod() FFI reductions correctness',
+      () {
+        final parent = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [4],
+          DType.float64,
+        );
+        final view = parent.slice([
+          Slice(start: 0, stop: 2),
+        ]); // elements: 1.0, 2.0
+        addTearDown(parent.dispose);
+        addTearDown(view.dispose);
+
+        expect(view.isContiguous, true);
+        expect(view.shape, [2]);
+
+        // 1. sum() verification
+        final s = sum(view);
+        expect(s, 3.0);
+
+        // 2. prod() verification
+        final p = prod(view);
+        expect(p, 2.0);
+      },
+    );
+
+    test('concatenate() validation errors throws exceptions', () {
+      expect(() => concatenate(<NDArray<Object>>[]), throwsArgumentError);
+
+      final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+      final wrongShape = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+      final wrongRank = NDArray.fromList([1.0, 2.0], [1, 2], DType.float64);
+      final wrongDType = NDArray.fromList([1, 2], [2], DType.int32);
+
+      addTearDown(a.dispose);
+      addTearDown(wrongShape.dispose);
+      addTearDown(wrongRank.dispose);
+      addTearDown(wrongDType.dispose);
+
+      expect(() => concatenate([a, a], axis: 5), throwsRangeError);
+      expect(() => concatenate([a, a], axis: -5), throwsRangeError);
+      expect(() => concatenate(<NDArray<Object>>[a, wrongDType]), throwsArgumentError);
+
+      expect(() => concatenate(<NDArray<Object>>[a, wrongRank]), throwsArgumentError);
+
+      final mat1 = NDArray.fromList([1.0, 1.0, 1.0, 1.0], [2, 2], DType.float64);
+      final mat2 = NDArray.fromList([1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [2, 3], DType.float64);
+      addTearDown(mat1.dispose);
+      addTearDown(mat2.dispose);
+      expect(() => concatenate(<NDArray<double>>[mat1, mat2], axis: 0), throwsArgumentError);
+    });
   });
 }
 
-class ZeroThenDoubleRandom implements math.Random {
+final class ZeroThenDoubleRandom implements math.Random {
   var count = 0;
 
   @override
