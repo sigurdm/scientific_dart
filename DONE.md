@@ -216,3 +216,19 @@
   * **`operations.dart` coverage after**: **65.5%** (1131/1726 lines) (Excellent **+0.4%** increase!)
   * **Global Line Coverage before**: **72.55%** (2186/3013 lines)
   * **Global Line Coverage after**: **72.85%** (2195/3013 lines) (Global line coverage pushed to a historic **72.85%**!)
+
+***
+
+## 16. Covered NDArray ones factory complex dtypes in `ndarray.dart` (Task 1)
+* **What was done**:
+  * Audited the core NDArray matrix class [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart).
+  * Discovered that `NDArray.ones` element initialization when the dtype is a complex type (`complex128` / `complex64`, L243) was completely untested (0% coverage).
+  * Authored a targeted test `NDArray.ones() factory with complex dtypes coverage` inside [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart) that instantiates complex ones arrays, verifying correct DType tags and that the backing data array is properly populated with Complex(1.0, 0.0) elements.
+* **Notable Problems & Difficulty**:
+  * **Difficulty**: Extremely easy.
+  * **Notable Problems**: None.
+* **Coverage Progress**:
+  * **`ndarray.dart` coverage before**: **75.9%** (615/810 lines)
+  * **`ndarray.dart` coverage after**: **76.2%** (617/810 lines) (Excellent **+0.3%** increase!)
+  * **Global Line Coverage before**: **72.85%** (2195/3013 lines)
+  * **Global Line Coverage after**: **72.88%** (2196/3013 lines) (Global coverage pushed to an all-time record **72.88%**!)

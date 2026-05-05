@@ -619,6 +619,18 @@ void main() {
       // 4. sin() shape mismatch
       expect(() => sin(a, out: incompatibleOut), throwsArgumentError);
     });
+
+    test('NDArray.ones() factory with complex dtypes coverage', () {
+      final a = NDArray.ones([2], DType.complex128);
+      addTearDown(a.dispose);
+      expect(a.toList(), [Complex(1.0, 0.0), Complex(1.0, 0.0)]);
+      expect(a.dtype, DType.complex128);
+
+      final b = NDArray.ones([2], DType.complex64);
+      addTearDown(b.dispose);
+      expect(b.toList(), [Complex(1.0, 0.0), Complex(1.0, 0.0)]);
+      expect(b.dtype, DType.complex64);
+    });
   });
 }
 
