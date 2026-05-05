@@ -368,3 +368,18 @@ This file logs architectural improvements and hidden flaws discovered during aut
   output.dependencies.add(srcDir.uri.resolve('kiss_fft.c'));
   output.dependencies.add(srcDir.uri.resolve('kiss_fftr.c'));
   ```
+
+***
+
+## 36. `pkgs/pocketfft/pubspec.yaml` (🚨 Build Hook Resolution failure: package:archive in dev_dependencies instead of dependencies)
+- **Location**: [pubspec.yaml:L18](file:///usr/local/google/home/sigurdm/projects/math/pkgs/pocketfft/pubspec.yaml#L18)
+- **Symptom**: The pocketfft build hook `hook/build.dart` imports `package:archive/archive.dart` to decompress the downloaded KissFFT tarball. However, the `archive` package dependency is declared under **`dev_dependencies`** inside `pubspec.yaml` instead of regular **`dependencies`**.
+- **The Hazard**: Severe build compilation failures inside downstream consumer apps! When a third-party app or server consumes the pocketfft package as a standard dependency, Dart's package manager does NOT install or fetch its `dev_dependencies`. Consequently, when the build hook runs, it will fail to compile or resolve `package:archive`, causing `pub get` or app compilation to crash instantly!
+- **Recommended Tweak**: Move the `archive` package declaration from `dev_dependencies` into regular `dependencies` inside [pubspec.yaml](file:///usr/local/google/home/sigurdm/projects/math/pkgs/pocketfft/pubspec.yaml) to guarantee it is fully available during third-party builds:
+  ```yaml
+  dependencies:
+    ffi: ^2.1.2
+    hooks: ^1.0.3
+    code_assets: ^1.0.0
+    archive: ^3.6.0
+  ```
