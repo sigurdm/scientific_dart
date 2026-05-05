@@ -10,6 +10,8 @@ void main() {
   runComplexAbsoluteValueExample();
   runComparisonBroadcastingExample();
   runLogicalOperationsExample();
+  runLogicalReductionsExample();
+  runAngleConvertersExample();
 }
 
 void runMixedTypeArithmeticExample() {
@@ -125,4 +127,31 @@ void runLogicalOperationsExample() {
   print('a > 2.0: ${maskGT2.data}');
   print('a < 5.0: ${maskLT5.data}');
   print('logical_and(maskGT2, maskLT5): ${combined.data}'); // [0, 0, 1, 1, 0]
+}
+
+void runLogicalReductionsExample() {
+  print('\n--- Logical Reductions (all, any) ---');
+  final a = NDArray.fromList([true, true, false], [3], DType.boolean);
+  print('a: ${a.data}');
+  print('all(a): ${all(a)}'); // false
+  print('any(a): ${any(a)}'); // true
+
+  final mat = NDArray.fromList([
+    true, true, false,
+    true, false, false,
+  ], [2, 3], DType.boolean);
+  print('2D matrix:\n$mat');
+  print('all(mat, axis: 0): ${all(mat, axis: 0).data}'); // [true, false, false]
+}
+
+void runAngleConvertersExample() {
+  print('\n--- Angle Converters (deg2rad, rad2deg) ---');
+  final deg = NDArray.fromList([180.0, 90.0, 45.0], [3], DType.float64);
+  final rad = deg2rad(deg);
+  print('Degrees: ${deg.data}');
+  print('Radians: ${rad.data}'); // [pi, pi/2, pi/4]
+
+  final back = rad2deg(rad);
+  print('Radians: ${rad.data}');
+  print('Back to Degrees: ${back.data}'); // [180, 90, 45]
 }
