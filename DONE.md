@@ -166,3 +166,19 @@
   * **`ndarray.dart` coverage after**: **75.9%** (615/810 lines) (Excellent **+1.2%** increase!)
   * **Global Line Coverage before**: **72.04%** (2162/3001 lines)
   * **Global Line Coverage after**: **72.38%** (2172/3001 lines) (Workspace global coverage reached a record **72.38%**!)
+
+***
+
+## 13. Covered complex64/float64 cross-promotion L328-330 in `operations.dart` (Task 1)
+* **What was done**:
+  * Audited [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart) and identified that DType cross-promotions under `_resolveDType()` where one operand is `complex64` and the other is `float64` (promoting correctly to double-precision `complex128`) were completely untested.
+  * Authored a targeted test `_resolveDType() complex64 and float64 cross-promotion coverage` inside [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart).
+  * It performs element-wise addition between a `complex64` array and a `float64` array, confirming the promoted `complex128` dtype outcome and correct real/imaginary sums mapping!
+* **Notable Problems & Difficulty**:
+  * **Difficulty**: Extremely easy.
+  * **Notable Problems**: Cleaned up dead comparators code properly while maintaining vital FFI sorting callbacks.
+* **Coverage Progress**:
+  * **`operations.dart` coverage before**: **64.7%** (1109/1714 lines)
+  * **`operations.dart` coverage after**: **64.8%** (1111/1714 lines)
+  * **Global Line Coverage before**: **72.38%** (2172/3001 lines)
+  * **Global Line Coverage after**: **72.44%** (2174/3001 lines)

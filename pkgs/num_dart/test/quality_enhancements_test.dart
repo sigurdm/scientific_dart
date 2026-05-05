@@ -558,6 +558,19 @@ void main() {
       expect(vI64.toList(), [20, 30]);
       expect(vI64.dtype, DType.int64);
     });
+
+    test('_resolveDType() complex64 and float64 cross-promotion coverage', () {
+      final a = NDArray.fromList([Complex(1.0, 1.0)], [1], DType.complex64);
+      final b = NDArray.fromList([2.0], [1], DType.float64);
+      addTearDown(a.dispose);
+      addTearDown(b.dispose);
+
+      final c = add(a, b);
+      addTearDown(c.dispose);
+      expect(c.dtype, DType.complex128);
+      expect(c.data[0].real, 3.0);
+      expect(c.data[0].imag, 1.0);
+    });
   });
 }
 
