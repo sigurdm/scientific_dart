@@ -72,7 +72,7 @@ class NativeQSortContiguousBenchmark extends BenchmarkBase {
   @override
   void run() {
     // High-speed bit-level block copy, bypassing any object allocations inside the timed run loop!
-    target.data.setAll(0, templateData);
+    target.data.setRange(0, 30000, templateData);
     sort(target);
   }
 
