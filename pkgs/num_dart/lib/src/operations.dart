@@ -3214,6 +3214,108 @@ NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
   return concatenate(arrays, axis: 1);
 }
 
+/// Join a sequence of arrays along a new axis.
+///
+/// Stacks the input [arrays] along a new dimension at [axis]. All arrays in the
+/// list must have the exact same shape and DType.
+///
+/// **Preconditions:**
+/// - Input list [arrays] must be non-empty.
+/// - All arrays in [arrays] must not be disposed.
+/// - All arrays in [arrays] must share identical shapes and DTypes.
+///
+/// **Throws:**
+/// - [ArgumentError] if [arrays] is empty, or shape/DType mismatches occur.
+/// - [RangeError] if [axis] is out of bounds.
+/// - [StateError] if any array is disposed.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1, 2], [2], DType.int32);
+/// final b = NDArray.fromList([3, 4], [2], DType.int32);
+/// final s = stack([a, b], axis: 0); // shape [2, 2], values [[1, 2], [3, 4]]
+/// ```
+NDArray<T> stack<T extends Object>(List<NDArray<T>> arrays, {int axis = 0}) {
+  if (arrays.isEmpty) {
+    throw ArgumentError('List of arrays to stack must not be empty.');
+  }
+
+  for (final arr in arrays) {
+    if (arr.isDisposed) {
+      throw StateError('Cannot execute stack() on a disposed array.');
+    }
+  }
+
+  final first = arrays.first;
+  final rank = first.shape.length;
+  final dtype = first.dtype;
+
+  // Validate identical shapes and DTypes
+  for (var i = 1; i < arrays.length; i++) {
+    final arr = arrays[i];
+    if (arr.dtype != dtype) {
+      throw ArgumentError('All arrays in stack must have identical DTypes.');
+    }
+    if (!listEquals(arr.shape, first.shape)) {
+      throw ArgumentError('All arrays in stack must have identical shapes.');
+    }
+  }
+
+  // Target axis can range from -(rank + 1) to rank
+  final targetAxis = axis < 0 ? rank + 1 + axis : axis;
+  if (targetAxis < 0 || targetAxis > rank) {
+    throw RangeError.range(targetAxis, 0, rank, 'axis');
+  }
+
+  // Build stacked output shape by inserting arrays.length at targetAxis index
+  final stackedShape = List<int>.from(first.shape);
+  stackedShape.insert(targetAxis, arrays.length);
+
+  final result = NDArray<T>.zeros(stackedShape, dtype);
+
+  for (var i = 0; i < arrays.length; i++) {
+    final currentIndices = List<int>.filled(first.shape.length, 0);
+    _copyStackRecursive(
+      arrays[i],
+      result,
+      targetAxis,
+      i,
+      currentIndices,
+      0,
+    );
+  }
+
+  return result;
+}
+
+void _copyStackRecursive<T extends Object>(
+  NDArray<T> src,
+  NDArray<T> dest,
+  int targetAxis,
+  int axisOffset,
+  List<int> currentIndices,
+  int currentDim,
+) {
+  if (currentDim == src.shape.length) {
+    final destIndices = List<int>.from(currentIndices);
+    destIndices.insert(targetAxis, axisOffset);
+    dest[destIndices] = src[currentIndices];
+    return;
+  }
+
+  for (var i = 0; i < src.shape[currentDim]; i++) {
+    currentIndices[currentDim] = i;
+    _copyStackRecursive(
+      src,
+      dest,
+      targetAxis,
+      axisOffset,
+      currentIndices,
+      currentDim + 1,
+    );
+  }
+}
+
 /// Constructs a new array by repeating [array] the number of times given by [reps].
 ///
 /// This function corresponds to NumPy's `tile` function. It allocates new memory and

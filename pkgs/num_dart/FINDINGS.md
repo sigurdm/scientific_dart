@@ -599,12 +599,6 @@ This file logs architectural improvements and hidden flaws discovered during aut
 ***
 
 
-## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing New-Axis Stacking `stack`)
-- **Symptom**: The stacking operations suite strictly supports joining along existing axes (`concatenate()`, `vstack()`, `hstack()`), but completely lacks joining arrays along a new axis.
-- **The Gap**: Violates standard NumPy `np.stack` guidelines. Downstream developers wanting to stack a list of 1D coordinate arrays into a single 2D matrix (e.g., stacking `[x_coords, y_coords]` into a `[2, N]` coordinate grid) are forced to allocate matrices manually and run slow, nested loop writes in JIT space.
-- **Recommended Tweak**: Implement a highly optimized ufunc **`stack(List<NDArray> arrays, {int axis = 0})`**. Validate that all input arrays have identical shapes. Expand shapes in-flight by inserting a new dimension at the targeted `axis` location, and copy data blocks sequentially using standard contiguous and strided FFI walks, delivering full standard NumPy `np.stack` features!
-
-***
 
 ## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Element-Wise Comparison ufuncs `equal`, `not_equal`, `greater`, `less` with Recycling)
 - **Symptom**: Comparison operations are strictly restricted to operators (`a > b`, `a < b`), completely lacking top-level comparison ufunc implementations.
