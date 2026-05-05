@@ -319,6 +319,8 @@ class NDArray<T> implements ffi.Finalizable {
     for (var i = 0; i < n; i++) {
       if (dtype == DType.float32 || dtype == DType.float64) {
         arr.data[i * n + i] = 1.0 as T;
+      } else if (dtype.isComplex) {
+        arr.data[i * n + i] = Complex(1.0, 0.0) as T;
       } else {
         arr.data[i * n + i] = 1 as T;
       }

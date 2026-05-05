@@ -714,6 +714,21 @@ void main() {
       addTearDown(r3.dispose);
       expect(r3.dtype, DType.int64);
     });
+
+    test('NDArray.eye() complex identity matrix type safety validations', () {
+      final eye128 = NDArray<Complex>.eye(3, DType.complex128);
+      addTearDown(eye128.dispose);
+      expect(eye128.dtype, DType.complex128);
+      expect(eye128.data[0], Complex(1.0, 0.0));
+      expect(eye128.data[1], Complex(0.0, 0.0));
+      expect(eye128.data[4], Complex(1.0, 0.0));
+
+      final eye64 = NDArray<Complex>.eye(3, DType.complex64);
+      addTearDown(eye64.dispose);
+      expect(eye64.dtype, DType.complex64);
+      expect(eye64.data[0], Complex(1.0, 0.0));
+      expect(eye64.data[4], Complex(1.0, 0.0));
+    });
   });
 }
 
