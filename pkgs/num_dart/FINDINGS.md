@@ -356,3 +356,15 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Symptom**: Across virtually every single test case (e.g., Cholesky, SVD, QR, Slicing, Broadcasting), test arrays are allocated using `NDArray.fromList()` or `NDArray.create()`. However, the test cases **never call `a.dispose()`, `result.dispose()`, or release FFI arrays** at the end of their runs, nor do they register `tearDown()` handlers to clean them up.
 - **The Hazard**: Heavy native heap leakage during developer workflows! When running tests in loop trace runs (like watch compilation passes, coverage builders, or test harnesses), unmanaged C-heap memory grows continuously without bounds until the host process crashes. This violates the core library recommendation: *"Always call dispose explicitly as soon as an array is no longer needed."*
 - **Recommended Tweak / Best Practice**: Harden all test files to wrap FFI arrays inside standard `try-finally` blocks, or register local `addTearDown()` hooks during tests to guarantee that every allocated native pointer block is explicitly freed via `.dispose()`, securing 100% memory safety across test suites.
+
+***
+
+## 35. `pkgs/pocketfft/hook/build.dart` (🚨 Rebuild Hazard: Missing C-file source dependencies tracking in pocketfft build hook)
+- **Location**: [build.dart:L100-L112](file:///usr/local/google/home/sigurdm/projects/math/pkgs/pocketfft/hook/build.dart#L100-L112)
+- **Symptom**: The pocketfft package's build hook compiles the dynamic KissFFT library from `hook/src/kiss_fft.c` and `hook/src/kiss_fftr.c`. However, it completely fails to register any of these file dependencies in `output.dependencies.add(...)` in the hooks output metadata.
+- **The Hazard**: Brittle cache invalidation and silent compilation build drifts! If a developer modifies any of the C files inside `hook/src/` to optimize performance or fix FFI alignment issues, the Dart SDK build system will NOT detect any file updates. It will continue to serve stale, outdated precompiled dynamic libraries from its hook cache, completely ignoring the changes until a manual project clean or cache purge is forced!
+- **Recommended Tweak**: Simply register all compiled C files inside `output.dependencies` explicitly to let Dart's modern code assets system track modifications and rebuild pocketfft dynamically whenever any source C-file gets updated:
+  ```dart
+  output.dependencies.add(srcDir.uri.resolve('kiss_fft.c'));
+  output.dependencies.add(srcDir.uri.resolve('kiss_fftr.c'));
+  ```
