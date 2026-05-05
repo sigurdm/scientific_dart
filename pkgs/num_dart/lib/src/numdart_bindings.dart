@@ -133,7 +133,7 @@ external void v_log_double(
   int size,
 );
 
-@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int)>(isLeaf: true)
 external double r_sum_double(ffi.Pointer<ffi.Double> src, int size);
 
 /// ----------------------------------------------------------------------------

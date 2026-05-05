@@ -78,6 +78,7 @@ void main(List<String> args) async {
         '-shared',
         '-fPIC',
         '-O3',
+        '-ffast-math',
         '-Dkiss_fft_scalar=double',
         '-I',
         srcDir.uri.toFilePath(),
