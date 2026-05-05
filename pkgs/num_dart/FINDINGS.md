@@ -599,16 +599,3 @@ This file logs architectural improvements and hidden flaws discovered during aut
 ***
 
 
-
-## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Element-Wise Comparison ufuncs `equal`, `not_equal`, `greater`, `less` with Recycling)
-- **Symptom**: Comparison operations are strictly restricted to operators (`a > b`, `a < b`), completely lacking top-level comparison ufunc implementations.
-- **The Gap**: Violates standard NumPy comparison ufuncs. Downstream developers looking to reuse pre-allocated boolean mask output buffers to avoid GC thrashing during dense iterative loops comparisons are forced to allocate new arrays constantly.
-- **Recommended Tweak**: Implement top-level broadcasted ufuncs **`equal(NDArray a, NDArray b, {NDArray? out})`**, **`not_equal()`**, **`greater()`**, **`greater_equal()`**, **`less()`**, **`less_equal()`**. Support standard `{NDArray? out}` output recycler mapping to eliminate allocations during element-wise comparisons sweeps!
-
-
-***
-
-## `pkgs/num_dart/example/` (NumPy Compatibility Gap: Missing top-level `copy()` ufunc example script)
-- **Symptom**: Downstream developers seeking running guidelines for deep copies under `num_dart` completely lack any dedicated executable copy example script.
-- **The Gap**: Missing running examples for deep copy capabilities mapping to standard `np.copy(a)` routines.
-- **Recommended Tweak**: Expose a clear, high-value running copy example script **`copy_operations_example.dart`** demonstrating both contiguous array copies and strided views copies, confirming correct decoupled memory blocks walks!

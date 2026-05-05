@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 import 'dart:collection';
 import 'broadcasting.dart';
+import 'numdart_bindings.dart';
 
 /// Supported data types for the elements of an [NDArray].
 enum DType {
@@ -82,7 +83,7 @@ enum DType {
 /// // Explicitly free memory when done
 /// a.dispose();
 /// ```
-class NDArray<T> implements ffi.Finalizable {
+final class NDArray<T> implements ffi.Finalizable {
   /// Pointer to the raw C memory allocated for this array.
   final ffi.Pointer<ffi.Void> _pointer;
 
@@ -145,41 +146,47 @@ class NDArray<T> implements ffi.Finalizable {
   /// ```dart
   /// final a = NDArray<double>.create([2, 2], DType.float64);
   /// ```
-  factory NDArray.create(List<int> shape, DType dtype) {
+  factory NDArray.create(
+    List<int> shape,
+    DType dtype, {
+    bool zeroInit = false,
+  }) {
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     final strides = computeCStrides(shape);
 
     ffi.Pointer<ffi.Void> pointer;
     List<T> data;
 
+    final allocator = zeroInit ? calloc : malloc;
+
     if (dtype == DType.float64) {
-      final p = malloc<ffi.Double>(totalSize);
+      final p = allocator<ffi.Double>(totalSize);
       pointer = p.cast();
       data = p.asTypedList(totalSize) as List<T>;
     } else if (dtype == DType.float32) {
-      final p = malloc<ffi.Float>(totalSize);
+      final p = allocator<ffi.Float>(totalSize);
       pointer = p.cast();
       data = p.asTypedList(totalSize) as List<T>;
     } else if (dtype == DType.int32) {
-      final p = malloc<ffi.Int32>(totalSize);
+      final p = allocator<ffi.Int32>(totalSize);
       pointer = p.cast();
       data = p.asTypedList(totalSize) as List<T>;
     } else if (dtype == DType.int64) {
-      final p = malloc<ffi.Int64>(totalSize);
+      final p = allocator<ffi.Int64>(totalSize);
       pointer = p.cast();
       data = p.asTypedList(totalSize) as List<T>;
     } else if (dtype == DType.complex128) {
-      final p = malloc<ffi.Double>(totalSize * 2);
+      final p = allocator<ffi.Double>(totalSize * 2);
       pointer = p.cast();
       final doubleList = p.asTypedList(totalSize * 2);
       data = ComplexList(doubleList) as List<T>;
     } else if (dtype == DType.complex64) {
-      final p = malloc<ffi.Float>(totalSize * 2);
+      final p = allocator<ffi.Float>(totalSize * 2);
       pointer = p.cast();
       final floatList = p.asTypedList(totalSize * 2);
       data = ComplexList(floatList) as List<T>;
     } else if (dtype == DType.boolean) {
-      final p = malloc<ffi.Uint8>(totalSize);
+      final p = allocator<ffi.Uint8>(totalSize);
       pointer = p.cast();
       final uint8List = p.asTypedList(totalSize);
       data = BoolList(uint8List) as List<T>;
@@ -205,7 +212,7 @@ class NDArray<T> implements ffi.Finalizable {
   /// ```
   factory NDArray.fromList(List<T> list, List<int> shape, DType dtype) {
     final arr = NDArray<T>.create(shape, dtype);
-    arr.data.setAll(0, list);
+    arr.data.setRange(0, list.length, list);
     return arr;
   }
 
@@ -217,17 +224,7 @@ class NDArray<T> implements ffi.Finalizable {
   /// print(a.data); // [0.0, 0.0, 0.0, 0.0]
   /// ```
   factory NDArray.zeros(List<int> shape, DType dtype) {
-    final arr = NDArray<T>.create(shape, dtype);
-    if (dtype == DType.float32 || dtype == DType.float64) {
-      arr.data.fillRange(0, arr.data.length, 0.0 as T);
-    } else if (dtype == DType.complex128 || dtype == DType.complex64) {
-      arr.data.fillRange(0, arr.data.length, Complex(0.0, 0.0) as T);
-    } else if (dtype == DType.boolean) {
-      arr.data.fillRange(0, arr.data.length, false as T);
-    } else {
-      arr.data.fillRange(0, arr.data.length, 0 as T);
-    }
-    return arr;
+    return NDArray<T>.create(shape, dtype, zeroInit: true);
   }
 
   /// Factory to create an array filled with ones.
@@ -239,14 +236,14 @@ class NDArray<T> implements ffi.Finalizable {
   /// ```
   factory NDArray.ones(List<int> shape, DType dtype) {
     final arr = NDArray<T>.create(shape, dtype);
-    if (dtype == DType.float32 || dtype == DType.float64) {
-      arr.data.fillRange(0, arr.data.length, 1.0 as T);
-    } else if (dtype == DType.complex128 || dtype == DType.complex64) {
-      arr.data.fillRange(0, arr.data.length, Complex(1.0, 0.0) as T);
+    if (dtype == DType.complex128 || dtype == DType.complex64) {
+      arr.fill(Complex(1.0, 0.0));
     } else if (dtype == DType.boolean) {
-      arr.data.fillRange(0, arr.data.length, true as T);
+      arr.fill(true);
+    } else if (dtype == DType.float32 || dtype == DType.float64) {
+      arr.fill(1.0);
     } else {
-      arr.data.fillRange(0, arr.data.length, 1 as T);
+      arr.fill(1);
     }
     return arr;
   }
@@ -273,7 +270,12 @@ class NDArray<T> implements ffi.Finalizable {
     final length = ((stop - start) / step).ceil();
     final arr = NDArray<T>.create([length], dtype);
     for (var i = 0; i < length; i++) {
-      arr.data[i] = (start + i * step) as T;
+      final val = start + i * step;
+      if (dtype.isComplex) {
+        arr.data[i] = Complex(val, 0.0) as T;
+      } else {
+        arr.data[i] = val as T;
+      }
     }
     return arr;
   }
@@ -294,12 +296,21 @@ class NDArray<T> implements ffi.Finalizable {
     if (num <= 0) throw ArgumentError('num must be positive');
     final arr = NDArray<T>.create([num], dtype);
     if (num == 1) {
-      arr.data[0] = start as T;
+      if (dtype.isComplex) {
+        arr.data[0] = Complex(start, 0.0) as T;
+      } else {
+        arr.data[0] = start as T;
+      }
       return arr;
     }
     final step = (stop - start) / (num - 1);
     for (var i = 0; i < num; i++) {
-      arr.data[i] = (start + i * step) as T;
+      final val = start + i * step;
+      if (dtype.isComplex) {
+        arr.data[i] = Complex(val, 0.0) as T;
+      } else {
+        arr.data[i] = val as T;
+      }
     }
     return arr;
   }
@@ -420,16 +431,23 @@ class NDArray<T> implements ffi.Finalizable {
 
   /// Returns a new view of this array with a new shape.
   ///
+  /// **Preconditions:**
+  /// - The total size (product of dimensions) of the [newShape] must exactly match the current size.
+  ///
+  /// **Throws:**
+  /// - [StateError] if the array has been disposed.
+  /// - [ArgumentError] if the total size of [newShape] does not match the original size.
+  ///
+  /// **Performance considerations:**
+  /// - If the array [isContiguous], this operation is extremely fast ($O(1)$), returning a zero-allocation view sharing backing memory.
+  /// - If the array is a non-contiguous view, this flattens it first, performing a copy and allocating a new contiguous array ($O(N)$ complexity).
+  ///
   /// **Example:**
   /// ```dart
   /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
   /// final b = a.reshape([2, 2]);
   /// print(b.shape); // [2, 2]
   /// ```
-  ///
-  /// **Gotchas:**
-  /// - Returns a view sharing the same memory. Modifications reflect in both.
-  /// - The total size of the new shape must match the old one.
   NDArray<T> reshape(List<int> newShape) {
     if (isDisposed) {
       throw StateError(
@@ -459,10 +477,85 @@ class NDArray<T> implements ffi.Finalizable {
     );
   }
 
-  /// Returns a new 1D array containing a copy of the elements.
+  /// Returns a copy of the array collapsed into a one-dimensional tensor list.
+  ///
+  /// **Performance considerations:**
+  /// - For C-contiguous layouts, offloads copy directly to raw unmanaged hardware FFI
+  ///   pointer `setRange` copies, achieving maximum sequential throughput.
+  /// - For strided non-contiguous views, performs dynamic coordinate walk copy.
+  /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final a = NDArray<double>.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+  /// final flat = a.flatten();
+  /// print(flat.shape); // [4]
+  /// print(flat.toList()); // [1.0, 2.0, 3.0, 4.0]
+  /// ```
   NDArray<T> flatten() {
-    final flatList = toList();
-    return NDArray.fromList(flatList, [flatList.length], dtype);
+    final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+    final result = NDArray<T>.create([totalSize], dtype);
+
+    if (isContiguous) {
+      _copyContiguousNDArray(this, result, totalSize);
+    } else {
+      final flatList = toList();
+      result.data.setRange(0, totalSize, flatList);
+    }
+    return result;
+  }
+
+  /// Returns a deep copy of this array, respecting shape, strides, and DType.
+  ///
+  /// **Performance considerations:**
+  /// - For C-contiguous layouts, offloads elements copy directly to raw unmanaged FFI
+  ///   memmove/memcpy sweeps, achieving optimal performance.
+  /// - For strided non-contiguous views, allocates a single contiguous NDArray of
+  ///   identical shape and walks coordinates recursively to duplicate elements in-place
+  ///   without allocating intermediate JIT Lists.
+  ///
+  /// **Throws:**
+  /// - [StateError] if the array is already disposed.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+  /// final b = a.copy();
+  /// b.data[0] = 99;
+  /// print(a.data[0]); // 1 (decoupled memory!)
+  /// ```
+  NDArray<T> copy() {
+    if (isDisposed) {
+      throw StateError('Cannot copy a disposed array.');
+    }
+
+    final result = NDArray<T>.create(shape, dtype);
+
+    if (isContiguous) {
+      final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+      _copyContiguousNDArray(this, result, totalSize);
+    } else {
+      final currentIndices = List<int>.filled(shape.length, 0);
+      _copyStridedRecursive(result, currentIndices, 0);
+    }
+
+    return result;
+  }
+
+  void _copyStridedRecursive(
+    NDArray<T> dest,
+    List<int> currentIndices,
+    int currentDim,
+  ) {
+    if (currentDim == shape.length) {
+      dest[currentIndices] = this[currentIndices];
+      return;
+    }
+
+    for (var i = 0; i < shape[currentDim]; i++) {
+      currentIndices[currentDim] = i;
+      _copyStridedRecursive(dest, currentIndices, currentDim + 1);
+    }
   }
 
   /// Returns a 1D array containing the elements, as a view if contiguous, or a copy.
@@ -482,6 +575,82 @@ class NDArray<T> implements ffi.Finalizable {
     }
   }
 
+  /// Fills the array with [value] in-place.
+  ///
+  /// **Performance considerations:**
+  /// - For contiguous same-type arrays, utilizes blazing fast native C register filling kernels
+  ///   (`v_fill_double`, `v_fill_float`, `v_fill_int64`, `v_fill_int32`), bypassing Dart VM loops entirely.
+  /// - For strided or non-contiguous views, falls back to sequential element walk mutations.
+  /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final a = NDArray<double>.create([100], DType.float64);
+  /// a.fill(42.0);
+  /// ```
+  void fill(dynamic value) {
+    if (isDisposed) {
+      throw StateError('Cannot fill an array whose memory has been freed.');
+    }
+    final size = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+
+    if (isContiguous) {
+      if (dtype == DType.float64 && value is num) {
+        v_fill_double(_pointer.cast(), value.toDouble(), size);
+        return;
+      } else if (dtype == DType.float32 && value is num) {
+        v_fill_float(_pointer.cast(), value.toDouble(), size);
+        return;
+      } else if (dtype == DType.int64 && value is int) {
+        v_fill_int64(_pointer.cast(), value, size);
+        return;
+      } else if (dtype == DType.int32 && value is int) {
+        v_fill_int32(_pointer.cast(), value, size);
+        return;
+      }
+    }
+
+    // Fallback JIT loop for complex, boolean, or non-contiguous views
+    final targetValue = value as T;
+
+    void fillWalk(int dim, int currentOffset) {
+      if (dim == shape.length) {
+        data[currentOffset] = targetValue;
+        return;
+      }
+      for (var i = 0; i < shape[dim]; i++) {
+        fillWalk(dim + 1, currentOffset + i * strides[dim]);
+      }
+    }
+
+    fillWalk(0, 0);
+  }
+
+  /// Transposes the dimensions of this array.
+  ///
+  /// By default, reverses the order of dimensions. If [axes] is provided, permutes the
+  /// dimensions according to the specified permutation list.
+  ///
+  /// **Preconditions:**
+  /// - If provided, the length of [axes] must exactly match the array rank.
+  /// - Every axis value must be a valid dimension index (within `[-rank, rank - 1]`).
+  /// - [axes] must contain unique, non-duplicate indices.
+  ///
+  /// **Throws:**
+  /// - [StateError] if the array has been disposed.
+  /// - [ArgumentError] if [axes] length does not match the rank of the array.
+  /// - [RangeError] if any axis index is out of bounds.
+  /// - [ArgumentError] if [axes] contains duplicate indices.
+  ///
+  /// **Performance considerations:**
+  /// - This is a zero-allocation, copy-free view manipulation ($O(1)$ complexity). Strides are
+  ///   re-arranged internally without copying any underlying elements.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], DType.float64);
+  /// final b = a.transpose(); // b has shape [2, 3] view
+  /// ```
   NDArray<T> transpose([List<int>? axes]) {
     if (isDisposed) {
       throw StateError(
@@ -941,6 +1110,20 @@ class NDArray<T> implements ffi.Finalizable {
         predicate,
       );
     }
+  }
+
+  /// Internal package helper for broadcasting comparison walks.
+  void dispatchCompare(
+    List<bool> rData,
+    NDArray a,
+    NDArray b,
+    List<int> shape,
+    List<int> sA,
+    List<int> sB,
+    List<int> sR,
+    bool Function(dynamic, dynamic) predicate,
+  ) {
+    _dispatchCompare(rData, a, b, shape, sA, sB, sR, predicate);
   }
 
   void _dispatchCompare(
@@ -1932,7 +2115,7 @@ final class Complex {
 }
 
 /// A list view of complex numbers backed by a flat list of doubles.
-class ComplexList extends ListBase<Complex> {
+final class ComplexList extends ListBase<Complex> {
   final List<double> _list;
   ComplexList(this._list);
 
@@ -1972,7 +2155,7 @@ class ComplexList extends ListBase<Complex> {
 }
 
 /// A list view of boolean values backed by a flat list of uint8 bytes on the FFI heap.
-class BoolList extends ListBase<bool> {
+final class BoolList extends ListBase<bool> {
   final Uint8List _list;
   BoolList(this._list);
 
@@ -2038,4 +2221,39 @@ final class Indices extends Selector {
 final class Mask extends Selector {
   final BooleanMask mask;
   Mask(this.mask);
+}
+
+void _copyContiguousNDArray(NDArray src, NDArray dest, int size) {
+  final dtype = src.dtype;
+  if (dtype == DType.float64) {
+    final srcList = src._pointer.cast<ffi.Double>().asTypedList(size);
+    final destList = dest._pointer.cast<ffi.Double>().asTypedList(size);
+    destList.setRange(0, size, srcList);
+  } else if (dtype == DType.float32) {
+    final srcList = src._pointer.cast<ffi.Float>().asTypedList(size);
+    final destList = dest._pointer.cast<ffi.Float>().asTypedList(size);
+    destList.setRange(0, size, srcList);
+  } else if (dtype == DType.int32) {
+    final srcList = src._pointer.cast<ffi.Int32>().asTypedList(size);
+    final destList = dest._pointer.cast<ffi.Int32>().asTypedList(size);
+    destList.setRange(0, size, srcList);
+  } else if (dtype == DType.int64) {
+    final srcList = src._pointer.cast<ffi.Int64>().asTypedList(size);
+    final destList = dest._pointer.cast<ffi.Int64>().asTypedList(size);
+    destList.setRange(0, size, srcList);
+  } else if (dtype == DType.complex128) {
+    final srcList = src._pointer.cast<ffi.Double>().asTypedList(size * 2);
+    final destList = dest._pointer.cast<ffi.Double>().asTypedList(size * 2);
+    destList.setRange(0, size * 2, srcList);
+  } else if (dtype == DType.complex64) {
+    final srcList = src._pointer.cast<ffi.Float>().asTypedList(size * 2);
+    final destList = dest._pointer.cast<ffi.Float>().asTypedList(size * 2);
+    destList.setRange(0, size * 2, srcList);
+  } else if (dtype == DType.boolean) {
+    final srcList = src._pointer.cast<ffi.Uint8>().asTypedList(size);
+    final destList = dest._pointer.cast<ffi.Uint8>().asTypedList(size);
+    destList.setRange(0, size, srcList);
+  } else {
+    throw UnimplementedError('Type $dtype not supported for fast flatten');
+  }
 }

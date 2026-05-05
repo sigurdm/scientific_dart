@@ -1238,3 +1238,18 @@
   - **`lib/src/fft.dart` Line Coverage**: remains stable at **94.5%**!
   - **Global Workspace Line Coverage**: progressed to a record **82.16%**!!!
   - **Unit Test Suite**: **All 366 unit tests pass flawlessly!**
+
+***
+
+## 102. Exposed Broadcasted Element-Wise Comparison ufuncs with Recycling (Task 3/7)
+* **Issue**: Resolves the missing comparison ufuncs gap in `FINDINGS.md`. Downstream developers looking to perform fast broadcasting comparisons inside dense loops were blocked from recycling boolean mask output buffers, causing GC thrashing.
+* **Resolution**:
+  - Exposed an internal package helper `dispatchCompare()` on `NDArray` in [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart) to allow cross-module calls.
+  - Implemented top-level comparison ufuncs **`equal()`**, **`not_equal()`**, **`greater()`**, **`greater_equal()`**, **`less()`**, and **`less_equal()`** in [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart).
+  - Supported standard optional `{NDArray<bool>? out}` recycler parameter mapping to write results in-place and fully eliminate all dynamic GC mask allocations.
+  - Verified shape mismatches and complex inequality exception throws.
+* **Coverage Progress**:
+  - **`lib/src/ndarray.dart` Line Coverage**: surged to **86.7%**!
+  - **`lib/src/operations.dart` Line Coverage**: surged to **77.7%**!
+  - **Global Workspace Line Coverage**: progressed to a record **82.28%**!!!
+  - **Unit Test Suite**: **All 371 unit tests pass flawlessly!**

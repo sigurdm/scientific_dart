@@ -4605,6 +4605,192 @@ NDArray logical_not(NDArray a) {
   return result;
 }
 
+/// Element-wise comparison of [a] == [b] with broadcasting and recycling support.
+NDArray<bool> equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  final broadcastResult = broadcast(a, b);
+  final commonShape = broadcastResult.shape;
+
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  a.dispatchCompare(
+    result.data,
+    a,
+    b,
+    commonShape,
+    broadcastResult.stridesA,
+    broadcastResult.stridesB,
+    resultStrides,
+    (x, y) => x == y,
+  );
+  return result;
+}
+
+/// Element-wise comparison of [a] != [b] with broadcasting and recycling support.
+NDArray<bool> not_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  final broadcastResult = broadcast(a, b);
+  final commonShape = broadcastResult.shape;
+
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  a.dispatchCompare(
+    result.data,
+    a,
+    b,
+    commonShape,
+    broadcastResult.stridesA,
+    broadcastResult.stridesB,
+    resultStrides,
+    (x, y) => x != y,
+  );
+  return result;
+}
+
+/// Element-wise comparison of [a] > [b] with broadcasting and recycling support.
+NDArray<bool> greater(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  if (a.dtype.isComplex || b.dtype.isComplex) {
+    throw UnsupportedError('Complex numbers do not support inequality comparisons');
+  }
+  final broadcastResult = broadcast(a, b);
+  final commonShape = broadcastResult.shape;
+
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  a.dispatchCompare(
+    result.data,
+    a,
+    b,
+    commonShape,
+    broadcastResult.stridesA,
+    broadcastResult.stridesB,
+    resultStrides,
+    (x, y) => (x as num) > (y as num),
+  );
+  return result;
+}
+
+/// Element-wise comparison of [a] >= [b] with broadcasting and recycling support.
+NDArray<bool> greater_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  if (a.dtype.isComplex || b.dtype.isComplex) {
+    throw UnsupportedError('Complex numbers do not support inequality comparisons');
+  }
+  final broadcastResult = broadcast(a, b);
+  final commonShape = broadcastResult.shape;
+
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  a.dispatchCompare(
+    result.data,
+    a,
+    b,
+    commonShape,
+    broadcastResult.stridesA,
+    broadcastResult.stridesB,
+    resultStrides,
+    (x, y) => (x as num) >= (y as num),
+  );
+  return result;
+}
+
+/// Element-wise comparison of [a] < [b] with broadcasting and recycling support.
+NDArray<bool> less(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  if (a.dtype.isComplex || b.dtype.isComplex) {
+    throw UnsupportedError('Complex numbers do not support inequality comparisons');
+  }
+  final broadcastResult = broadcast(a, b);
+  final commonShape = broadcastResult.shape;
+
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  a.dispatchCompare(
+    result.data,
+    a,
+    b,
+    commonShape,
+    broadcastResult.stridesA,
+    broadcastResult.stridesB,
+    resultStrides,
+    (x, y) => (x as num) < (y as num),
+  );
+  return result;
+}
+
+/// Element-wise comparison of [a] <= [b] with broadcasting and recycling support.
+NDArray<bool> less_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  if (a.dtype.isComplex || b.dtype.isComplex) {
+    throw UnsupportedError('Complex numbers do not support inequality comparisons');
+  }
+  final broadcastResult = broadcast(a, b);
+  final commonShape = broadcastResult.shape;
+
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  a.dispatchCompare(
+    result.data,
+    a,
+    b,
+    commonShape,
+    broadcastResult.stridesA,
+    broadcastResult.stridesB,
+    resultStrides,
+    (x, y) => (x as num) <= (y as num),
+  );
+  return result;
+}
+
 /// Compute the element-wise truth value of [a] AND [b] with broadcasting support.
 ///
 /// **Example:**
