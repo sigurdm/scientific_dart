@@ -225,6 +225,28 @@ void main() {
       expect(c.data[3], Complex(17.0, 18.0));
     });
 
+    test('add() contiguous float32 SIMD fast paths and remainders coverage', () {
+      final a8 = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], [8], DType.float32);
+      final b8 = NDArray.fromList([10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0], [8], DType.float32);
+      addTearDown(a8.dispose);
+      addTearDown(b8.dispose);
+
+      final res8 = add(a8, b8);
+      addTearDown(res8.dispose);
+      expect(res8.dtype, DType.float32);
+      expect(res8.toList(), [11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0]);
+
+      final a6 = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [6], DType.float32);
+      final b6 = NDArray.fromList([10.0, 10.0, 10.0, 10.0, 10.0, 10.0], [6], DType.float32);
+      addTearDown(a6.dispose);
+      addTearDown(b6.dispose);
+
+      final res6 = add(a6, b6);
+      addTearDown(res6.dispose);
+      expect(res6.dtype, DType.float32);
+      expect(res6.toList(), [11.0, 12.0, 13.0, 14.0, 15.0, 16.0]);
+    });
+
     test('linspace() with num == 1 coverage', () {
       final a = NDArray<double>.linspace(5.0, 10.0, 1, dtype: DType.float64);
       addTearDown(a.dispose);

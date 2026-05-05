@@ -378,6 +378,32 @@ NDArray add(NDArray a, NDArray b, {NDArray? out}) {
     }
   }
 
+  // Fast SIMD path for identical, contiguous Float32 arrays
+  if (a.dtype == DType.float32 &&
+      b.dtype == DType.float32 &&
+      listEquals(a.shape, b.shape) &&
+      listEquals(a.strides, NDArray.computeCStrides(a.shape)) &&
+      listEquals(b.strides, NDArray.computeCStrides(b.shape))) {
+    final aData = a.data as Float32List;
+    final bData = b.data as Float32List;
+    final resultData = result.data as Float32List;
+
+    final vaList = Float32x4List.view(aData.buffer);
+    final vbList = Float32x4List.view(bData.buffer);
+    final vrList = Float32x4List.view(resultData.buffer);
+
+    final simdLen = vaList.length;
+    for (var i = 0; i < simdLen; i++) {
+      vrList[i] = vaList[i] + vbList[i];
+    }
+
+    final remainderStart = simdLen * 4;
+    for (var i = remainderStart; i < aData.length; i++) {
+      resultData[i] = aData[i] + bData[i];
+    }
+    return result;
+  }
+
   // 0C. General Multidimensional Strided Broadcasting Engine in C (Rank <= 8)
   if (commonShape.length <= 8) {
     final cShape = malloc<ffi.Int>(commonShape.length);
@@ -430,31 +456,7 @@ NDArray add(NDArray a, NDArray b, {NDArray? out}) {
     }
   }
 
-  // Fast SIMD path for identical, contiguous Float32 arrays
-  if (a.dtype == DType.float32 &&
-      b.dtype == DType.float32 &&
-      listEquals(a.shape, b.shape) &&
-      listEquals(a.strides, NDArray.computeCStrides(a.shape)) &&
-      listEquals(b.strides, NDArray.computeCStrides(b.shape))) {
-    final aData = a.data as Float32List;
-    final bData = b.data as Float32List;
-    final resultData = result.data as Float32List;
 
-    final vaList = Float32x4List.view(aData.buffer);
-    final vbList = Float32x4List.view(bData.buffer);
-    final vrList = Float32x4List.view(resultData.buffer);
-
-    final simdLen = vaList.length;
-    for (var i = 0; i < simdLen; i++) {
-      vrList[i] = vaList[i] + vbList[i];
-    }
-
-    final remainderStart = simdLen * 4;
-    for (var i = remainderStart; i < aData.length; i++) {
-      resultData[i] = aData[i] + bData[i];
-    }
-    return result;
-  }
 
   // Statically-generic type dispatch branches
   if (targetDType == DType.complex128 || targetDType == DType.complex64) {
