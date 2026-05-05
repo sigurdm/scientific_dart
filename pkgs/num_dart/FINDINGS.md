@@ -383,3 +383,39 @@ This file logs architectural improvements and hidden flaws discovered during aut
     code_assets: ^1.0.0
     archive: ^3.6.0
   ```
+
+***
+
+## 37. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Linear System Solvers `linalg.solve` / `lstsq`)
+- **Location**: [operations.dart:L20-L270](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L20-L270)
+- **Symptom**: Currently, the linear algebra suite inside `num_dart` only exposes raw LU decomposition matrix inversion `inv()`. It completely lacks high-level equation solvers.
+- **The Gap**: Violates standard scientific matrix calculation patterns. Downstream developers seeking to solve systems of linear equations $A x = B$ are forced to execute `matmul(inv(A), B)`, which is computationally highly inefficient, mathematically unstable, and extremely slow compared to direct LU/QR factorizations solvers!
+- **Recommended Tweak**: OpenBLAS bundles complete LAPACK solvers natively. Expose FFI bindings for:
+  - **`cblas_dgesv`** / **`cblas_sgesv`**: Direct LU solvers for solving exact systems of equations $A x = B$.
+  - **`cblas_dgelsd`** / **`cblas_sgelsd`**: Direct QR solvers using singular value decompositions to solve least-squares equations $A x \approx B$.
+  - **`cblas_dsyev`** / **`cblas_ssyev`**: Symmetric/Hermitian eigenvalue solvers.
+  Wrapping these solver gates under high-level `solve()`, `lstsq()`, and `eigh()` operations will elevate `num_dart` to full, elite NumPy linear algebra compatibility!
+
+***
+
+## 38. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Axis Stacking & Splitting Helpers `dstack` / `split`)
+- **Location**: [operations.dart:L2200-L2400](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2200-L2400)
+- **Symptom**: The codebase only exposes `vstack()` and `hstack()` to stack matrices vertically and horizontally. It lacks depth-wise stacking or coordinate-split capabilities.
+- **The Gap**: Downstream libraries performing multi-dimensional grid manipulations (e.g. concatenating color channels of spatial images along a third axis) are forced to write complex manual nested view slicing coordinate copy loops, leading to inefficient memory copying.
+- **Recommended Tweak**: Implement standard NumPy array manipulation helpers:
+  - **`dstack()`**: Depth-wise stacking along the third axis.
+  - **`column_stack()`**: Stacks 1D vectors as columns into 2D matrices.
+  - **`split()`** / **`array_split()`**: Splits a multi-dimensional matrix along a specified axis into a list of equal sub-arrays.
+
+***
+
+## 39. `pkgs/num_dart/hook/custom_ufuncs.c` (NumPy Compatibility Gap: Missing Transcendental Trigonometric Hyperbolics and Rounding Ufuncs)
+- **Location**: [custom_ufuncs.c:L37-L63](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/hook/custom_ufuncs.c#L37-L63)
+- **Symptom**: The library's universal functions suite only exposes basic trigonometric and exponential functions (`sin`, `cos`, `tan`, `sqrt`, `exp`, `log`, `abs`, `ceil`, `floor`, `round`, `clip`).
+- **The Gap**: Downstream math algorithms are forced to fallback to slow Dart JIT loops to compute hyperbolics (`sinh`/`cosh`/`tanh`), inverse trig (`asin`/`acos`/`atan`), and other base logarithmic scales.
+- **Recommended Tweak**: Declare highly optimized, SIMD-autovectorizable contiguous double and float loops inside `custom_ufuncs.c` for all missing transcendental ufuncs:
+  - Hyperbolics: `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, `atanh`.
+  - Inverse Trig: `asin`, `acos`, `atan`.
+  - Base log: `log10`, `log2`.
+  - Rounding: `trunc` (truncation towards zero).
+  Exposing these FFI fast-paths package-wide will ensure absolute, hardware-accelerated transcendental execution speeds!
