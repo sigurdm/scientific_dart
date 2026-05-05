@@ -1152,3 +1152,15 @@
   - **`lib/src/operations.dart` Line Coverage**: surged to **75.6%** (an amazing **+0.6%** increase!).
   - **Global Workspace Line Coverage**: surged past the major landmark to **81.01%**!!!
   - **Unit Test Suite**: **All 350 unit tests pass flawlessly!**
+
+***
+
+## 95. Covered Cross-Type Logical Operators Combinations (Task 2)
+* **What was done**:
+  - Audited remaining uncovered lines inside the logical operations dispatch layer of [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart).
+  - Identified multiple uncovered dispatch branches inside `_dispatchBinaryLogical()`. Because our previous mask tests only combined boolean arrays together, all the cross-type promotional boundaries (such as combining double/boolean, complex/boolean, and integer/boolean array operands) were entirely untested.
+  - Authored targeted new cross-type unit tests inside [logical_reductions_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/logical_reductions_test.dart) executing `logical_and` on double/boolean, complex/boolean, and integer/boolean arrays in both left-to-right and right-to-left operand configurations.
+* **Coverage Progress**:
+  - **`lib/src/operations.dart` Line Coverage**: surged to **76.5%** (an amazing **+0.9%** increase!).
+  - **Global Workspace Line Coverage**: surged past the landmark to a record **81.57%**!!!
+  - **Unit Test Suite**: **All 351 unit tests pass flawlessly!**

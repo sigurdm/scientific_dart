@@ -88,6 +88,31 @@ void main() {
       },
     );
 
+    test(
+      'logical_and cross-type promotions on float/boolean, complex/boolean, and int/boolean',
+      () {
+        final mask = NDArray.fromList([true, true, false], [3], DType.boolean);
+
+        // Float64 / boolean
+        final f64 = NDArray.fromList([0.0, 2.5, 0.0], [3], DType.float64);
+        expect(logical_and(f64, mask).toList(), [0, 1, 0]);
+        expect(logical_and(mask, f64).toList(), [0, 1, 0]);
+
+        // Complex128 / boolean
+        final c128 = NDArray<Complex>.create([3], DType.complex128);
+        c128.data[0] = Complex(0.0, 0.0); // false
+        c128.data[1] = Complex(1.0, -1.0); // true
+        c128.data[2] = Complex(0.0, 0.0);
+        expect(logical_and(c128, mask).toList(), [0, 1, 0]);
+        expect(logical_and(mask, c128).toList(), [0, 1, 0]);
+
+        // Int32 / boolean
+        final i32 = NDArray.fromList([0, 5, 0], [3], DType.int32);
+        expect(logical_and(i32, mask).toList(), [0, 1, 0]);
+        expect(logical_and(mask, i32).toList(), [0, 1, 0]);
+      },
+    );
+
     test('Disposed array checks throw StateError', () {
       final a = NDArray.fromList([true, false], [2], DType.boolean);
       a.dispose();
