@@ -590,6 +590,35 @@ void main() {
         expect(result.toList(), [23.0, 31.0, 34.0, 46.0]);
       },
     );
+
+    test('ufuncs in-place out buffer shape and dtype validation checks', () {
+      final a = NDArray<double>.ones([3], DType.float64);
+      final b = NDArray<double>.ones([3], DType.float64);
+      final incompatibleOut = NDArray<double>.ones([4], DType.float64);
+      final incompatibleDTypeOut = NDArray<int>.ones([3], DType.int32);
+      addTearDown(a.dispose);
+      addTearDown(b.dispose);
+      addTearDown(incompatibleOut.dispose);
+      addTearDown(incompatibleDTypeOut.dispose);
+
+      // 1. add() contiguous shape mismatch
+      expect(() => add(a, b, out: incompatibleOut), throwsArgumentError);
+      expect(() => add(a, b, out: incompatibleDTypeOut), throwsArgumentError);
+
+      // 2. add() broadcast shape mismatch
+      final broadcastA = NDArray.ones([1, 3], DType.float64);
+      addTearDown(broadcastA.dispose);
+      expect(
+        () => add(broadcastA, b, out: incompatibleOut),
+        throwsArgumentError,
+      );
+
+      // 3. sqrt() shape mismatch
+      expect(() => sqrt(a, out: incompatibleOut), throwsArgumentError);
+
+      // 4. sin() shape mismatch
+      expect(() => sin(a, out: incompatibleOut), throwsArgumentError);
+    });
   });
 }
 
