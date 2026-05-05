@@ -762,6 +762,12 @@ void main() {
       final r3 = add(i64, i32);
       addTearDown(r3.dispose);
       expect(r3.dtype, DType.int64);
+
+      // 4. int32 + float64 -> float64
+      final r4 = add(i32, f64);
+      addTearDown(r4.dispose);
+      expect(r4.dtype, DType.float64);
+      expect(r4.toList(), [5.0]);
     });
 
     test('NDArray.eye() complex identity matrix type safety validations', () {
