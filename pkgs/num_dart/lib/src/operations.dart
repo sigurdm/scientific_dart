@@ -1472,6 +1472,13 @@ dynamic sum<T extends Object>(NDArray<T> a, {int? axis}) {
 /// ```
 dynamic prod<T extends Object>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
+    if (a.isContiguous) {
+      if (a.dtype == DType.float64) {
+        return r_prod_double(a.pointer.cast(), a.data.length) as T;
+      } else if (a.dtype == DType.float32) {
+        return r_prod_float(a.pointer.cast(), a.data.length) as T;
+      }
+    }
     return a.data.reduce(
       (value, element) => ((value as dynamic) * element) as T,
     );

@@ -136,6 +136,9 @@ external void v_log_double(
 @ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int)>(isLeaf: true)
 external double r_sum_double(ffi.Pointer<ffi.Double> src, int size);
 
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int)>(isLeaf: true)
+external double r_prod_double(ffi.Pointer<ffi.Double> src, int size);
+
 /// ----------------------------------------------------------------------------
 /// Double Precision (Float64) Generic ND Strided Broadcasting Kernels
 /// ----------------------------------------------------------------------------
@@ -485,8 +488,11 @@ external void v_log_float(
   int size,
 );
 
-@ffi.Native<ffi.Float Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
+@ffi.Native<ffi.Float Function(ffi.Pointer<ffi.Float>, ffi.Int)>(isLeaf: true)
 external double r_sum_float(ffi.Pointer<ffi.Float> src, int size);
+
+@ffi.Native<ffi.Float Function(ffi.Pointer<ffi.Float>, ffi.Int)>(isLeaf: true)
+external double r_prod_float(ffi.Pointer<ffi.Float> src, int size);
 
 /// ----------------------------------------------------------------------------
 /// Additional Math, Rounding, and Clipping Ufuncs (Float64 & Float32 Tiers)

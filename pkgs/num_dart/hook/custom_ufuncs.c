@@ -71,6 +71,15 @@ double r_sum_double(const double *src, int size) {
     return acc;
 }
 
+double r_prod_double(const double *src, int size) {
+    if (src == NULL || size <= 0) return 1.0;
+    double acc = 1.0;
+    for (int i = 0; i < size; i++) {
+        acc *= src[i];
+    }
+    return acc;
+}
+
 // ============================================================================
 // 2. DOUBLE PRECISION (FLOAT64) GENERIC ND STRIDED BROADCASTING KERNELS
 // ============================================================================
@@ -514,6 +523,15 @@ float r_sum_float(const float *src, int size) {
     float acc = 0.0f;
     for (int i = 0; i < size; i++) {
         acc += src[i];
+    }
+    return acc;
+}
+
+float r_prod_float(const float *src, int size) {
+    if (src == NULL || size <= 0) return 1.0f;
+    float acc = 1.0f;
+    for (int i = 0; i < size; i++) {
+        acc *= src[i];
     }
     return acc;
 }

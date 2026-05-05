@@ -140,6 +140,71 @@ class LapackMatrixInversionBenchmark extends BenchmarkBase {
   }
 }
 
+class QrDecompositionBenchmark extends BenchmarkBase {
+  late NDArray<double> a;
+
+  QrDecompositionBenchmark()
+    : super(
+        'LINALG Track| QR Decomposition (qr)                  [shape=30x30]',
+      );
+
+  @override
+  void setup() {
+    a = NDArray.zeros([30, 30], DType.float64);
+    for (var i = 0; i < 30; i++) {
+      for (var j = 0; j < 30; j++) {
+        a.data[i * 30 + j] = (i + j + 1.0) / 10.0;
+        if (i == j) a.data[i * 30 + j] += 1.0;
+      }
+    }
+  }
+
+  @override
+  void run() {
+    final res = qr(a);
+    res['Q']!.dispose();
+    res['R']!.dispose();
+  }
+
+  @override
+  void teardown() {
+    a.dispose();
+  }
+}
+
+class SvdDecompositionBenchmark extends BenchmarkBase {
+  late NDArray<double> a;
+
+  SvdDecompositionBenchmark()
+    : super(
+        'LINALG Track| SVD Decomposition (svd)                [shape=30x30]',
+      );
+
+  @override
+  void setup() {
+    a = NDArray.zeros([30, 30], DType.float64);
+    for (var i = 0; i < 30; i++) {
+      for (var j = 0; j < 30; j++) {
+        a.data[i * 30 + j] = (i + j + 1.0) / 10.0;
+        if (i == j) a.data[i * 30 + j] += 1.0;
+      }
+    }
+  }
+
+  @override
+  void run() {
+    final res = svd(a);
+    res['U']!.dispose();
+    res['S']!.dispose();
+    res['Vh']!.dispose();
+  }
+
+  @override
+  void teardown() {
+    a.dispose();
+  }
+}
+
 class NativeFftTransformBenchmark extends BenchmarkBase {
   late NDArray<double> signal;
 
@@ -310,6 +375,8 @@ void main() {
     '\n--- TRACK C: OPENBLAS LINEAR ALGEBRA & NATIVE POCKETFFT SIGNALS ---',
   );
   LapackMatrixInversionBenchmark().report();
+  QrDecompositionBenchmark().report();
+  SvdDecompositionBenchmark().report();
   NativeFftTransformBenchmark().report();
 
   print(
