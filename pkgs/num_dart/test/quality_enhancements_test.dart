@@ -525,6 +525,39 @@ void main() {
 
       expect(() => add(a, b), throwsArgumentError);
     });
+
+    test(
+      'DType properties getters isComplex, isFloating, isInteger coverage',
+      () {
+        expect(DType.complex128.isComplex, true);
+        expect(DType.float64.isComplex, false);
+        expect(DType.float64.isFloating, true);
+        expect(DType.int64.isFloating, false);
+        expect(DType.int64.isInteger, true);
+        expect(DType.float64.isInteger, false);
+      },
+    );
+
+    test('NDArray.eye() factory with integer dtype coverage', () {
+      final a = NDArray.eye(2, DType.int32);
+      addTearDown(a.dispose);
+      expect(a.toList(), [1, 0, 0, 1]);
+      expect(a.dtype, DType.int32);
+    });
+
+    test('NDArray.view() FFI constructors with float32 and int64 coverage', () {
+      final pF32 = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float32);
+      addTearDown(pF32.dispose);
+      final vF32 = NDArray.view(pF32, [2], [1], offsetElements: 1);
+      expect(vF32.toList(), [2.0, 3.0]);
+      expect(vF32.dtype, DType.float32);
+
+      final pI64 = NDArray.fromList([10, 20, 30], [3], DType.int64);
+      addTearDown(pI64.dispose);
+      final vI64 = NDArray.view(pI64, [2], [1], offsetElements: 1);
+      expect(vI64.toList(), [20, 30]);
+      expect(vI64.dtype, DType.int64);
+    });
   });
 }
 
