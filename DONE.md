@@ -1085,3 +1085,17 @@
   - **Ternary where() 3-Way Broadcasting [shape=100x100]**: execution time slashed from **398.5 us** to **188.9 us** (a massive **52.6% time reduction** / more than **2.1x faster**!).
   - **Strided non-contiguous add(x, y) [shape=500x500]**: execution time slashed from **11.45 ms** to **7.36 ms** (a superb **35.7% time reduction**!).
 * **Verification**: Confirmed GCC/Clang builds compile cleanly. Verified exact mathematical parity with full unit tests suite. All **335 unit tests pass flawlessly!**
+
+***
+
+## 90. Implemented Element-Wise Complex Components Extractors real() and imag() (Task 3/7)
+* **Issue**: Resolves the missing complex extractors compatibility gap in `FINDINGS.md` (violations of NumPy `np.real` and `np.imag` standards). Scientific fields like quantum simulations, signal analysis, and AC circuit modeling lacked high-performance ufuncs to dissect complex matrices, forcing slow and redundant nested sweeps.
+* **Resolution**:
+  - Implemented top-level broadcasted ufuncs `real()` and `imag()` in [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart) returning float arrays (`DType.float64` / `float32`) matching input precision.
+  - Fully supports **zero-copy zero-allocation view creation** when `real()` is executed on an already real/integer array (`NDArray.view(a, shape, strides)`), perfectly matching NumPy's zero-copy standard!
+  - Automatically supports standard output recycler parameter mapping `{NDArray? out}` to reuse pre-allocated buffers and eliminate heap memory churn.
+  - Authored a dedicated, comprehensive test suite [complex_components_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/complex_components_test.dart) validating contiguous/sliced vectors, view invalidations, complex64 precision boundaries, and recycling parameter checks.
+* **Coverage Progress**:
+  - **`lib/src/operations.dart` Line Coverage**: progressed to **74.9%** (while executing 1783 / 2382 total lines, adding 65 new lines!).
+  - **Global Workspace Line Coverage**: **80.55%**!
+  - **Unit Test Suite**: **All 341 unit tests pass flawlessly!**

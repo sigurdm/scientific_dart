@@ -3913,6 +3913,140 @@ NDArray round(NDArray a) {
   return result;
 }
 
+/// Returns the real part of a complex array element-wise.
+///
+/// If the input array [a] is already real (integer or float), returns a zero-copy
+/// view of the array [a].
+///
+/// **Preconditions:**
+/// - The input array [a] must not be disposed.
+/// - If provided, the output recycler [out] must match the expected target shape and float DType.
+///
+/// **Throws:**
+/// - [StateError] if the array has been disposed.
+/// - [ArgumentError] if [out] is provided but has a shape or DType mismatch.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray<Complex>.create([2], DType.complex128);
+/// a.data[0] = Complex(3.0, 4.0);
+/// a.data[1] = Complex(-1.0, 0.0);
+/// final r = real(a); // [3.0, -1.0] (DType.float64)
+/// ```
+NDArray real(NDArray a, {NDArray? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute real() on a disposed array.');
+  }
+
+  final targetDType = a.dtype == DType.complex64 ? DType.float32 : DType.float64;
+
+  if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
+    if (out != null) {
+      if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+        throw ArgumentError(
+          'Recycler out must match shape ${a.shape} and DType ${a.dtype}',
+        );
+      }
+      // Copy elements into out
+      final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+      out.data.setRange(0, size, a.toList());
+      return out;
+    }
+    return NDArray.view(a, a.shape, a.strides); // Zero-copy view for already real arrays!
+  }
+
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Recycler out must match shape ${a.shape} and DType $targetDType',
+      );
+    }
+  }
+
+  final result = out ?? NDArray<double>.zeros(a.shape, targetDType);
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  _unaryOp<Complex, double>(
+    result.data as List<double>,
+    a.data as List<Complex>,
+    a.shape,
+    a.strides,
+    resultStrides,
+    0,
+    0,
+    0,
+    (x) => x.real,
+  );
+
+  return result;
+}
+
+/// Returns the imaginary part of a complex array element-wise.
+///
+/// If the input array [a] is already real, returns a zero-filled array of matching shape
+/// and target float DType.
+///
+/// **Preconditions:**
+/// - The input array [a] must not be disposed.
+/// - If provided, the output recycler [out] must match the expected target shape and float DType.
+///
+/// **Throws:**
+/// - [StateError] if the array has been disposed.
+/// - [ArgumentError] if [out] is provided but has a shape or DType mismatch.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray<Complex>.create([2], DType.complex128);
+/// a.data[0] = Complex(3.0, 4.0);
+/// a.data[1] = Complex(-1.0, 0.0);
+/// final im = imag(a); // [4.0, 0.0] (DType.float64)
+/// ```
+NDArray imag(NDArray a, {NDArray? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute imag() on a disposed array.');
+  }
+
+  final targetDType = a.dtype == DType.complex64 ? DType.float32 : DType.float64;
+
+  if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
+    if (out != null) {
+      if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+        throw ArgumentError(
+          'Recycler out must match shape ${a.shape} and DType $targetDType',
+        );
+      }
+      out.data.fillRange(0, out.data.length, 0.0);
+      return out;
+    }
+    return NDArray<double>.zeros(a.shape, targetDType);
+  }
+
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Recycler out must match shape ${a.shape} and DType $targetDType',
+      );
+    }
+  }
+
+  final result = out ?? NDArray<double>.zeros(a.shape, targetDType);
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  _unaryOp<Complex, double>(
+    result.data as List<double>,
+    a.data as List<Complex>,
+    a.shape,
+    a.strides,
+    resultStrides,
+    0,
+    0,
+    0,
+    (x) => x.imag,
+  );
+
+  return result;
+}
+
 /// Converts angles from degrees to radians element-wise.
 ///
 /// **Preconditions:**

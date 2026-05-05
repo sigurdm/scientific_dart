@@ -619,12 +619,6 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Complex Components Extractors `real` & `imag`)
-- **Symptom**: Currently, `num_dart` completely lacks standard helpers to extract the real and imaginary parts of a complex array element-wise.
-- **The Gap**: Violates standard NumPy `np.real` and `np.imag` guidelines. Downstream developers working in quantum physics simulations, digital signal processing (DSP), or AC electrical circuit engineering are forced to manually write slow nested coordinate loop walks in Dart VM space to dissect complex numbers.
-- **Recommended Tweak**: Implement broadcasted, high-performance ufuncs **`real(NDArray a, {NDArray? out})`** and **`imag(NDArray a, {NDArray? out})`**. When `a` is a complex array (`DType.complex128` or `complex64`), they return a standard float array (`DType.float64` or `float32`) containing the respective components. If `a` is already real/integer, `real()` returns a view or a copy of `a`, and `imag()` returns a zero-filled array of matching shape and DType!
-
-***
 
 ## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing New-Axis Stacking `stack`)
 - **Symptom**: The stacking operations suite strictly supports joining along existing axes (`concatenate()`, `vstack()`, `hstack()`), but completely lacks joining arrays along a new axis.
