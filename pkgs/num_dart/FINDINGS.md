@@ -379,19 +379,6 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 
 
-## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Logical Reductions `all()` and `any()`)
-- **Location**: [operations.dart:L1420-L1550](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1420-L1550)
-- **Symptom**: Currently, the operations tracking suite lacks any logical reduction functions.
-- **The Gap**: Violates standard NumPy logical reductions guidelines. downstream developers seeking to perform validation assertions (e.g. verifying if all elements in an error margin array are below a threshold `np.all(errors < 1e-5)`, or if any NaN entries exist in a dataset `np.any(np.isnan(data))`) are forced to fallback to slow, iterative elements lookups in Dart JIT space.
-- **Recommended Tweak**: Implement high-performance logical reductions `all()` and `any()` supporting:
-  - **`all(NDArray a, {int? axis})`**: returns true if all elements evaluate to True (non-zero for numeric dtypes).
-  - **`any(NDArray a, {int? axis})`**: returns true if any element evaluates to True.
-  Exposing these logical reduction helpers directly will elevate `num_dart`'s data query expressiveness to full NumPy levels!
-
-***
-
-
-
 ## `pkgs/num_dart/lib/src/ndarray.dart` (🚨 Performance Optimization Gap: `NDArray.zeros()` Pure-Dart Loops Clearing vs OS Native `calloc()`)
 - **Location**: [ndarray.dart:L219-L231](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L219-L231)
 - **Symptom**: The `NDArray.zeros()` factory allocates C memory page blocks using standard `malloc` (which returns un-initialized random memory garbage), and then unrolls sequential, slow Dart JIT `fillRange` loops across the backing array view (`arr.data.fillRange(0, arr.data.length, 0.0 as T)`) to zero-out elements.

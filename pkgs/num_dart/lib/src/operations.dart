@@ -1607,6 +1607,121 @@ dynamic prod<T extends Object>(NDArray<T> a, {int? axis}) {
   return result;
 }
 
+/// Returns true if all elements along a given [axis] evaluate to True.
+///
+/// If [axis] is omitted/null, performs a global reduction and returns a single Dart [bool].
+///
+/// **Preconditions:**
+/// - The array [a] must not be disposed.
+/// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [StateError] if the array has been disposed.
+/// - [ArgumentError] if [axis] is out of bounds.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([true, true, false], [3], DType.boolean);
+/// final res = all(a); // false
+/// ```
+dynamic all(NDArray a, {int? axis}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute all() on a disposed array.');
+  }
+
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final List elements = size == a.data.length ? a.data : a.toList();
+    for (var i = 0; i < elements.length; i++) {
+      if (!_isTrue(elements[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  var targetAxis = axis;
+  if (targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(targetAxis);
+  final result = NDArray<bool>.create(newShape, DType.boolean);
+  result.fill(true); // Initialize to true everywhere
+
+  _reduceRecursive<Object, bool>(
+    a as NDArray<Object>,
+    result,
+    List<int>.filled(a.shape.length, 0),
+    List<int>.filled(newShape.length, 0),
+    targetAxis,
+    0,
+    (current, val) => current && _isTrue(val),
+  );
+
+  return result;
+}
+
+/// Returns true if any element along a given [axis] evaluates to True.
+///
+/// If [axis] is omitted/null, performs a global reduction and returns a single Dart [bool].
+///
+/// **Preconditions:**
+/// - The array [a] must not be disposed.
+/// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [StateError] if the array has been disposed.
+/// - [ArgumentError] if [axis] is out of bounds.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([true, false, false], [3], DType.boolean);
+/// final res = any(a); // true
+/// ```
+dynamic any(NDArray a, {int? axis}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute any() on a disposed array.');
+  }
+
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final List elements = size == a.data.length ? a.data : a.toList();
+    for (var i = 0; i < elements.length; i++) {
+      if (_isTrue(elements[i])) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  var targetAxis = axis;
+  if (targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(targetAxis);
+  final result = NDArray<bool>.zeros(newShape, DType.boolean); // Pre-initialized to false
+
+  _reduceRecursive<Object, bool>(
+    a as NDArray<Object>,
+    result,
+    List<int>.filled(a.shape.length, 0),
+    List<int>.filled(newShape.length, 0),
+    targetAxis,
+    0,
+    (current, val) => current || _isTrue(val),
+  );
+
+  return result;
+}
+
 /// Compute the element-wise square root of the array.
 ///
 /// Returns a new array with the results.
