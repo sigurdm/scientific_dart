@@ -625,3 +625,10 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Symptom**: When calling logical operators `logical_and`, `logical_or`, or `logical_xor` on two boolean masks/arrays (`DType.boolean`), the execution crashes with a fatal cast exception: `type 'BoolList' is not a subtype of type 'List<int>' in type cast` at `_dispatchBinaryLogical` in `operations.dart:L4473`.
 - **The Flaw**: The dispatch helper `_dispatchBinaryLogical` lacks explicit checks for boolean array data types. It assumes that if an input array is not Complex or Floating Point, it must be backed by `List<int>`. However, boolean arrays are backed by custom `BoolList` (which implements `List<bool>`), causing the hard cast to fail.
 - **Recommended Tweak**: Update `_dispatchBinaryLogical` to support `DType.boolean` operands explicitly. Map their backing arrays as `List<bool>` and dispatch through a dedicated `_elementWiseOp<bool, bool, int>` logical mapping path. This will fully restore boolean mask combination capabilities!
+
+***
+
+## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: `sort()` and `argsort()` Lack Sorting Algorithm `kind` and Stable Sort Support)
+- **Symptom**: Currently, `sort()` and `argsort()` in `operations.dart` only support an unstable QuickSort routing to the native C FFI compilation.
+- **The Gap**: Downstream scientific developers seeking to perform stable multi-key sorting (e.g. sorting indices first by price, and then stably sorting by name) are completely blocked. Python's NumPy natively packages a `kind` parameter supporting `'quicksort'`, `'mergesort'`, `'heapsort'`, and `'stable'` to enable stable sorts.
+- **Recommended Tweak**: Expose a `kind` parameter to `sort()` and `argsort()`. Bind and implement a standard C FFI MergeSort routine (which offers stable $O(N \log N)$ sorting complexity) to fully match NumPy's stable multi-key sort capability!
