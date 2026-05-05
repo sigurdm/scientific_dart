@@ -1,4 +1,4 @@
-Choose one of the following tasks to work on (by random choice, use awk as a random dice rolling tool `awk -v min=1 -v max=5 'BEGIN{srand(); print int(min+rand()*(max-min+1))}'`).
+Choose one of the following tasks to work on (by random choice, use awk as a random dice rolling tool `awk -v min=1 -v max=6 'BEGIN{srand(); print int(min+rand()*(max-min+1))}'`).
 After being done with the chosen task reschedule to do another task in 1 minute with the following prompt:
 
 ```
@@ -12,4 +12,8 @@ Write a note in DONE.md about what was done, how hard it was, and if there were 
 3. Fix one or more of the issues you found from FINDINGS.md. Remove the problem from findings, and leave a description of the work in DONE.md. If there are questions you cannot solve. Describe it in QUESTIONS.md for me to help you async.
 If any of the questions have been answered, then remove the questions from QUESTIONS.md and try to continue that thread of investigation. 
 4. Try to look holistically at num_dart and think about what could be improved. Compare with what numpy can do and see what's missing. Write down your ideas in FINDINGS.md. 
-5. Optimization: Find a slow benchmark (relative to numpy) and try to catch up. Or if you have any other ideas how to improve the performance, try it out. First write a benchmark to show the performance difference, fix it, then write a benchmark to show the improvement. Consider using a profiler to find bottlenecks if they are not obvious. 
+5. Optimization: Find a slow benchmark (relative to numpy) and try to catch up. Or if you have any other ideas how to improve the performance, try it out. First write a benchmark to show the performance difference, fix it, then write a benchmark to show the improvement. Consider using a profiler to find bottlenecks if they are not obvious.
+6. Documentation: Find a file in the repo and make sure all api members are documented and the documentation is correct and with usage examples where applicable. If not, fix it and leave a description of the work in DONE.md. If there are questions you cannot solve. Describe it in QUESTIONS.md for me to help you async. 
+
+
+If any of the questions have been answered, then remove the questions from QUESTIONS.md and try to continue that thread of investigation.

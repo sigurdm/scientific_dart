@@ -1768,7 +1768,11 @@ NDArray<double> inv(NDArray a) {
     if (targetDType == DType.float32) {
       final result = NDArray<double>.create(src.shape, DType.float32);
       if (src.dtype == DType.float32) {
-        (result.data as Float32List).setAll(0, src.data as Float32List);
+        (result.data as Float32List).setRange(
+          0,
+          src.data.length,
+          src.data as Float32List,
+        );
       } else {
         for (var i = 0; i < src.data.length; i++) {
           result.data[i] = (src.data[i] as num).toDouble();
@@ -1803,7 +1807,11 @@ NDArray<double> inv(NDArray a) {
     } else {
       final result = NDArray<double>.create(src.shape, DType.float64);
       if (src.dtype == DType.float64) {
-        (result.data as Float64List).setAll(0, src.data as Float64List);
+        (result.data as Float64List).setRange(
+          0,
+          src.data.length,
+          src.data as Float64List,
+        );
       } else {
         for (var i = 0; i < src.data.length; i++) {
           result.data[i] = (src.data[i] as num).toDouble();
