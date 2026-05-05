@@ -403,6 +403,15 @@ void savez(
 /// Unpacks and deserializes all inner files, mapping variable name keys to loaded array targets.
 /// Supports compressed and uncompressed Python-generated `.npz` files.
 ///
+/// **Memory Consideration Warning (3x Footprint Hazard):**
+/// During `.npz` deserialization, this method reads the archive bytes and decodes them fully in memory
+/// via `ZipDecoder().decodeBytes()`. When deserializing each `.npy` file, it allocates a contiguous unmanaged
+/// C-heap memory block and copies the bytes block.
+/// This creates a temporary **3x RAM footprint amplification factor** (compressed archive bytes list + fully
+/// inflated `ArchiveFile` list + unmanaged FFI pointer heap arrays). For gigabyte-scale scientific datasets
+/// (e.g. large machine learning checkpoints or dense matrix grids logs), ensure the host system has sufficient
+/// free memory pages to prevent Out-Of-Memory (OOM) isolate VM kills.
+///
 /// **Example:**
 /// {@example /example/numpy_interop_example.dart lang=dart}
 Map<String, NDArray> loadz(String filepath) {

@@ -16,4 +16,4 @@ If any of the questions have been answered, then remove the questions from QUEST
 6. Documentation: Find a file in the repo and make sure all api members are documented and the documentation is correct and with usage examples where applicable. If not, fix it and leave a description of the work in DONE.md. If there are questions you cannot solve. Describe it in QUESTIONS.md for me to help you async. 
 
 
-If any of the questions have been answered, then remove the questions from QUESTIONS.md and try to continue that thread of investigation.
+If any of the questions have been answered, then remove the question from QUESTIONS.md and try to continue that thread of investigation.

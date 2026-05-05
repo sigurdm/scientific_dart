@@ -107,6 +107,8 @@ void main(List<String> args) async {
           file: libFile.uri,
         ),
       );
+      output.dependencies.add(srcDir.uri.resolve('kiss_fft.c'));
+      output.dependencies.add(srcDir.uri.resolve('kiss_fftr.c'));
       print('Registered pocketfft native dynamic code asset successfully.');
     }
   });
