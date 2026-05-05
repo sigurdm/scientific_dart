@@ -431,18 +431,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## 41. `pkgs/openblas/hook/build.dart` (🚨 Rebuild Hazard: Missing dynamic library dependency tracking in OpenBLAS build hook)
-- **Location**: [build.dart:L108-L120](file:///usr/local/google/home/sigurdm/projects/math/pkgs/openblas/hook/build.dart#L108-L120)
-- **Symptom**: The OpenBLAS build hook compiles and locates the compiled dynamic library (`libopenblas.so` / `libopenblas.dylib` / `libopenblas.dll`). However, it completely fails to register the dynamic library file or the `extractDir` source directory inside `output.dependencies.add(...)` in the hooks output metadata.
-- **The Hazard**: Silent cache drifts and dependency building drifts! If the underlying compiled library gets corrupted, deleted, or updated manually by standard tool chains, Dart's asset builder has no way of knowing that the library was deleted or altered. It will silently continue serving outdated build metadata from its cached output directory, leading to runtime dynamic linker lookup crashes!
-- **Recommended Tweak**: Explicitly register the compiled `libFile` as a dependency in `output.dependencies.add(libFile.uri)` inside `build.dart` to ensure that the dynamic assets system correctly tracks library existence and forces rebuild passes whenever necessary:
-  ```dart
-  output.dependencies.add(libFile.uri);
-  ```
-
-***
-
-## 42. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Vector & Matrix Norms `linalg.norm`)
+## 41. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Vector & Matrix Norms `linalg.norm`)
 - **Location**: [operations.dart:L4100-L4400](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L4100-L4400)
 - **Symptom**: Currently, the linear algebra tracking module inside `num_dart` completely lacks any public norm calculation functions.
 - **The Gap**: Violates standard NumPy `np.linalg.norm` scientific guidelines. Vector and matrix norm computations (such as Frobenius norm, spectral norm, L1/L2 vector norms) are fundamentally crucial across physical sciences, mathematical optimization, and machine learning algorithms (e.g. gradients clipping, distance calculations, regularization penalty calculations).

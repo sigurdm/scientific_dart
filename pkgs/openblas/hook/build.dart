@@ -114,6 +114,7 @@ void main(List<String> args) async {
               file: libFile.uri,
             ),
           );
+          output.dependencies.add(libFile.uri);
           print('Using built OpenBLAS library at ${libFile.path}');
         } else {
           print('Built library not found at ${libFile.path}');
