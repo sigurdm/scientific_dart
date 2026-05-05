@@ -12,23 +12,6 @@ This file logs architectural improvements and hidden flaws discovered during aut
   ```
 - **The Inefficiency**: Introduces heavy memory duplication and garbage collection friction. OpenBLAS **`cblas_dgemm` natively supports non-contiguous leading dimensions (`lda` / `ldb`) and transposed operands flags (`CblasTrans`)** exactly to parse strided sub-matrix memory blocks without any data copies!
 - **Recommended Tweak**: Refactor `matmul()` to inspect the last two dimension strides of `aView` and `bView`, dynamically deriving `CblasNoTrans` vs `CblasTrans` and adjusting the `lda` and `ldb` leading dimensions arguments passed into `cblas_dgemm()`. This will unlock **100% copy-free matrix multiplications** even for sliced or transposed sub-matrices!
-
-***
-
-## `pkgs/num_dart/hook/custom_ufuncs.c` (Elite C Optimization: Redundant Strides Multiplications inside Odometer Hot Paths)
-- **Location**: [custom_ufuncs.c:L98-L103](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/hook/custom_ufuncs.c#L98-L103) (`s_add_double`, `s_sub_double`, etc.)
-- **Symptom**: Inside generalized multi-dimensional strided ufunc kernels, the engine loops across every element. At each individual tensor cell, it executes a nested loop to fully recalculate unmanaged memory offsets from scratch using raw coordinate integer multiplications:
-  ```c
-  int offsetA = 0, offsetB = 0, offsetRes = 0;
-  for (int d = 0; d < rank; d++) {
-      offsetA += coord[d] * stridesA[d];
-      offsetB += coord[d] * stridesB[d];
-      offsetRes += coord[d] * stridesRes[d];
-  }
-  ```
-- **The Inefficiency**: Severe CPU registers waste! For a rank-5 tensor with $50,000$ elements, this triggers $250,000$ redundant inner loops and integer multiplications, completely destroying cache locality and stalling CPU pipes.
-- **Recommended Tweak / High-End Fix**: Refactor the odometer logic to maintain running pointers for `offsetA`, `offsetB`, and `offsetRes` iteratively. When advancing indices in `ADVANCE_ODOMETER_LOOP`, instead of nested multiplier loops, simple increment/decrement offsets by their respective `strides[d]` component directly! Removing nested loops and multiplications in hot paths will **boost strided ufuncs performance by up to 300%-500%**, matching advanced Python NumPy vector kernels exactly at the hardware level!
-
 ***
 
 ## `pkgs/num_dart/lib/src/operations.dart` (`variance()` Massive 4x Allocation & Multi-Loop Bloat on Axis Reductions)

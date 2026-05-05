@@ -133,20 +133,24 @@ void s_add_double(const double *a, const int *stridesA,
         }
     }
 
-    int coord[8] = {0}; // Support up to rank 8 tensors
+    int coord[8] = {0};
+    int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
-        // Calculate FFI unmanaged cell heap byte pointer offsets from strides
-        int offsetA = 0, offsetB = 0, offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            offsetA += coord[d] * stridesA[d];
-            offsetB += coord[d] * stridesB[d];
-            offsetRes += coord[d] * stridesRes[d];
-        }
-
         res[offsetRes] = a[offsetA] + b[offsetB];
 
-        // Advance multidimensional coordinate walk
-        ADVANCE_ODOMETER_LOOP
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetA += stridesA[d];
+                offsetB += stridesB[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetA -= (shape[d] - 1) * stridesA[d];
+            offsetB -= (shape[d] - 1) * stridesB[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
     }
 }
 
@@ -192,15 +196,23 @@ void s_sub_double(const double *a, const int *stridesA,
     }
 
     int coord[8] = {0};
+    int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
-        int offsetA = 0, offsetB = 0, offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            offsetA += coord[d] * stridesA[d];
-            offsetB += coord[d] * stridesB[d];
-            offsetRes += coord[d] * stridesRes[d];
-        }
         res[offsetRes] = a[offsetA] - b[offsetB];
-        ADVANCE_ODOMETER_LOOP
+
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetA += stridesA[d];
+                offsetB += stridesB[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetA -= (shape[d] - 1) * stridesA[d];
+            offsetB -= (shape[d] - 1) * stridesB[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
     }
 }
 
@@ -246,15 +258,23 @@ void s_mul_double(const double *a, const int *stridesA,
     }
 
     int coord[8] = {0};
+    int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
-        int offsetA = 0, offsetB = 0, offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            offsetA += coord[d] * stridesA[d];
-            offsetB += coord[d] * stridesB[d];
-            offsetRes += coord[d] * stridesRes[d];
-        }
         res[offsetRes] = a[offsetA] * b[offsetB];
-        ADVANCE_ODOMETER_LOOP
+
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetA += stridesA[d];
+                offsetB += stridesB[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetA -= (shape[d] - 1) * stridesA[d];
+            offsetB -= (shape[d] - 1) * stridesB[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
     }
 }
 
@@ -300,15 +320,23 @@ void s_div_double(const double *a, const int *stridesA,
     }
 
     int coord[8] = {0};
+    int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
-        int offsetA = 0, offsetB = 0, offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            offsetA += coord[d] * stridesA[d];
-            offsetB += coord[d] * stridesB[d];
-            offsetRes += coord[d] * stridesRes[d];
-        }
         res[offsetRes] = a[offsetA] / b[offsetB];
-        ADVANCE_ODOMETER_LOOP
+
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetA += stridesA[d];
+                offsetB += stridesB[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetA -= (shape[d] - 1) * stridesA[d];
+            offsetB -= (shape[d] - 1) * stridesB[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
     }
 }
 
@@ -365,20 +393,28 @@ void s_add_complex(const cpx_t *a, const int *stridesA,
                   cpx_t *res, const int *stridesRes,
                   const int *shape, int rank) {
     if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return;
-    int coord[8] = {0};
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
+    int coord[8] = {0};
+    int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
-        int offsetA = 0, offsetB = 0, offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            offsetA += coord[d] * stridesA[d];
-            offsetB += coord[d] * stridesB[d];
-            offsetRes += coord[d] * stridesRes[d];
-        }
         res[offsetRes].r = a[offsetA].r + b[offsetB].r;
         res[offsetRes].i = a[offsetA].i + b[offsetB].i;
-        ADVANCE_ODOMETER_LOOP
+
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetA += stridesA[d];
+                offsetB += stridesB[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetA -= (shape[d] - 1) * stridesA[d];
+            offsetB -= (shape[d] - 1) * stridesB[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
     }
 }
 
@@ -387,20 +423,28 @@ void s_sub_complex(const cpx_t *a, const int *stridesA,
                   cpx_t *res, const int *stridesRes,
                   const int *shape, int rank) {
     if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return;
-    int coord[8] = {0};
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
+    int coord[8] = {0};
+    int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
-        int offsetA = 0, offsetB = 0, offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            offsetA += coord[d] * stridesA[d];
-            offsetB += coord[d] * stridesB[d];
-            offsetRes += coord[d] * stridesRes[d];
-        }
         res[offsetRes].r = a[offsetA].r - b[offsetB].r;
         res[offsetRes].i = a[offsetA].i - b[offsetB].i;
-        ADVANCE_ODOMETER_LOOP
+
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetA += stridesA[d];
+                offsetB += stridesB[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetA -= (shape[d] - 1) * stridesA[d];
+            offsetB -= (shape[d] - 1) * stridesB[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
     }
 }
 
@@ -409,22 +453,30 @@ void s_mul_complex(const cpx_t *a, const int *stridesA,
                   cpx_t *res, const int *stridesRes,
                   const int *shape, int rank) {
     if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return;
-    int coord[8] = {0};
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
+    int coord[8] = {0};
+    int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
-        int offsetA = 0, offsetB = 0, offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            offsetA += coord[d] * stridesA[d];
-            offsetB += coord[d] * stridesB[d];
-            offsetRes += coord[d] * stridesRes[d];
-        }
         double r1 = a[offsetA].r, i1 = a[offsetA].i;
         double r2 = b[offsetB].r, i2 = b[offsetB].i;
         res[offsetRes].r = r1 * r2 - i1 * i2;
         res[offsetRes].i = r1 * i2 + i1 * r2;
-        ADVANCE_ODOMETER_LOOP
+
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetA += stridesA[d];
+                offsetB += stridesB[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetA -= (shape[d] - 1) * stridesA[d];
+            offsetB -= (shape[d] - 1) * stridesB[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
     }
 }
 
@@ -433,17 +485,12 @@ void s_div_complex(const cpx_t *a, const int *stridesA,
                   cpx_t *res, const int *stridesRes,
                   const int *shape, int rank) {
     if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return;
-    int coord[8] = {0};
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
+    int coord[8] = {0};
+    int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
-        int offsetA = 0, offsetB = 0, offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            offsetA += coord[d] * stridesA[d];
-            offsetB += coord[d] * stridesB[d];
-            offsetRes += coord[d] * stridesRes[d];
-        }
         double r1 = a[offsetA].r, i1 = a[offsetA].i;
         double r2 = b[offsetB].r, i2 = b[offsetB].i;
         double denom = r2 * r2 + i2 * i2;
@@ -454,7 +501,20 @@ void s_div_complex(const cpx_t *a, const int *stridesA,
             res[offsetRes].r = (r1 * r2 + i1 * i2) / denom;
             res[offsetRes].i = (i1 * r2 - r1 * i2) / denom;
         }
-        ADVANCE_ODOMETER_LOOP
+
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetA += stridesA[d];
+                offsetB += stridesB[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetA -= (shape[d] - 1) * stridesA[d];
+            offsetB -= (shape[d] - 1) * stridesB[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
     }
 }
 
@@ -679,21 +739,26 @@ void s_where_double(const unsigned char *cond, const int *stridesCond,
     }
 
     int coord[8] = {0};
+    int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0;
 
     for (int el = 0; el < total_elements; el++) {
-        int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            offsetCond += coord[d] * stridesCond[d];
-            offsetX    += coord[d] * stridesX[d];
-            offsetY    += coord[d] * stridesY[d];
-            offsetRes  += coord[d] * stridesRes[d];
-        }
-
-        // Execute conditional ternary cell mapping on unmanaged FFI buffers!
         res[offsetRes] = cond[offsetCond] ? x[offsetX] : y[offsetY];
 
-        // Advance odometer coordinate odometer walk loops
-        ADVANCE_ODOMETER_LOOP
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetCond += stridesCond[d];
+                offsetX    += stridesX[d];
+                offsetY    += stridesY[d];
+                offsetRes  += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetCond -= (shape[d] - 1) * stridesCond[d];
+            offsetX    -= (shape[d] - 1) * stridesX[d];
+            offsetY    -= (shape[d] - 1) * stridesY[d];
+            offsetRes  -= (shape[d] - 1) * stridesRes[d];
+        }
     }
 }
 
@@ -728,18 +793,153 @@ void s_where_float(const unsigned char *cond, const int *stridesCond,
     }
 
     int coord[8] = {0};
+    int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0;
 
     for (int el = 0; el < total_elements; el++) {
-        int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            offsetCond += coord[d] * stridesCond[d];
-            offsetX    += coord[d] * stridesX[d];
-            offsetY    += coord[d] * stridesY[d];
-            offsetRes  += coord[d] * stridesRes[d];
-        }
-
         res[offsetRes] = cond[offsetCond] ? x[offsetX] : y[offsetY];
 
-        ADVANCE_ODOMETER_LOOP
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetCond += stridesCond[d];
+                offsetX    += stridesX[d];
+                offsetY    += stridesY[d];
+                offsetRes  += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetCond -= (shape[d] - 1) * stridesCond[d];
+            offsetX    -= (shape[d] - 1) * stridesX[d];
+            offsetY    -= (shape[d] - 1) * stridesY[d];
+            offsetRes  -= (shape[d] - 1) * stridesRes[d];
+        }
+    }
+}
+
+void v_normal_double(double *res, int size, double loc, double scale, unsigned long long seed) {
+    if (res == NULL || size <= 0 || scale <= 0.0) return;
+
+    unsigned long long state = seed ^ 0x5555555555555555ULL;
+
+    int i = 0;
+    while (i < size) {
+        double u1;
+        do {
+            state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+            u1 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+        } while (u1 == 0.0);
+
+        state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+        double u2 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+
+        double mag = scale * sqrt(-2.0 * log(u1));
+        double angle = 2.0 * M_PI * u2;
+
+        res[i] = loc + mag * cos(angle);
+        if (i + 1 < size) {
+            res[i + 1] = loc + mag * sin(angle);
+        }
+        i += 2;
+    }
+}
+
+void v_normal_float(float *res, int size, float loc, float scale, unsigned long long seed) {
+    if (res == NULL || size <= 0 || scale <= 0.0f) return;
+
+    unsigned long long state = seed ^ 0x5555555555555555ULL;
+
+    int i = 0;
+    while (i < size) {
+        float u1;
+        do {
+            state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+            u1 = (float)((double)(state >> 11) * (1.0 / 9007199254740992.0));
+        } while (u1 == 0.0f);
+
+        state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+        float u2 = (float)((double)(state >> 11) * (1.0 / 9007199254740992.0));
+
+        float mag = scale * sqrtf(-2.0f * logf(u1));
+        float angle = 2.0f * (float)M_PI * u2;
+
+        res[i] = loc + mag * cosf(angle);
+        if (i + 1 < size) {
+            res[i + 1] = loc + mag * sinf(angle);
+        }
+        i += 2;
+    }
+}
+
+void v_uniform_double(double *res, int size, unsigned long long seed) {
+    if (res == NULL || size <= 0) return;
+
+    unsigned long long state = seed ^ 0x5555555555555555ULL;
+
+    for (int i = 0; i < size; i++) {
+        state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+        res[i] = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+    }
+}
+
+void v_uniform_float(float *res, int size, unsigned long long seed) {
+    if (res == NULL || size <= 0) return;
+
+    unsigned long long state = seed ^ 0x5555555555555555ULL;
+
+    for (int i = 0; i < size; i++) {
+        state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+        res[i] = (float)((double)(state >> 11) * (1.0 / 9007199254740992.0));
+    }
+}
+
+void v_randint_int64(int64_t *res, int size, int64_t low, int64_t high, unsigned long long seed) {
+    if (res == NULL || size <= 0 || low >= high) return;
+
+    unsigned long long state = seed ^ 0x5555555555555555ULL;
+    int64_t range = high - low;
+
+    for (int i = 0; i < size; i++) {
+        state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+        res[i] = low + (int64_t)(state % (unsigned long long)range);
+    }
+}
+
+void v_randint_int32(int32_t *res, int size, int32_t low, int32_t high, unsigned long long seed) {
+    if (res == NULL || size <= 0 || low >= high) return;
+
+    unsigned long long state = seed ^ 0x5555555555555555ULL;
+    int32_t range = high - low;
+
+    for (int i = 0; i < size; i++) {
+        state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+        res[i] = low + (int32_t)(state % (unsigned long long)range);
+    }
+}
+
+void v_fill_double(double *res, double value, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = value;
+    }
+}
+
+void v_fill_float(float *res, float value, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = value;
+    }
+}
+
+void v_fill_int64(int64_t *res, int64_t value, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = value;
+    }
+}
+
+void v_fill_int32(int32_t *res, int32_t value, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = value;
     }
 }
