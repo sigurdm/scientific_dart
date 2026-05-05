@@ -168,6 +168,22 @@ void main() {
           },
         );
 
+        test(
+          'Mismatched shape integer array selector for operator[] performs fancy take indexing',
+          () {
+            final a = NDArray.fromList(
+              [10.0, 20.0, 30.0, 40.0],
+              [4],
+              DType.float64,
+            );
+            final selector = NDArray.fromList([0, 2, 1], [3], DType.int32);
+
+            final res = a[selector];
+            expect(res.shape, [3]);
+            expect(res.toList(), [10.0, 30.0, 20.0]);
+          },
+        );
+
         test('operator[]= single int index assignment (scalar and array)', () {
           final a = NDArray.fromList(
             [1.0, 2.0, 3.0, 4.0],
