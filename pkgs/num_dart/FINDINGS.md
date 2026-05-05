@@ -258,21 +258,6 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **The Inefficiency**: Incurs a severe **double-allocation and double-copy memory penalty**! `a.toList()` recursively walks the strided dimensions tree and flattens/orders elements into a fresh Dart standard list. `NDArray.fromList` then allocates a *second* unmanaged C heap pointer block via `malloc` and copies all elements a second time via `setAll()`! For huge datasets, this double data movement duplicates footprint latency and GC load.
 - **Recommended Tweak**: Expose a low-level C FFI flattening walker kernel `v_flatten_double(void *src, void *dest, ...)` in `custom_ufuncs.c`. When `!isContiguous`, `flatten()` can allocate a *single* destination pointer array via `NDArray.create()` and offload the strided dimensions traverse block copy 100% to C space! This will eliminate intermediate Dart list allocations and **cut copying latency and memory footprints exactly in half** for all strided flattening views!
 
-***
-
-## `pkgs/num_dart/lib/src/operations.dart` (🚨 Critical Performance Bottleneck Flaw: `argsort()` Uses Slow Dart Closure Sorting instead of Native C FFI)
-- **Location**: [operations.dart:L3467-L3490](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L3467-L3490)
-- **Symptom**: While element-wise `sort()` was successfully accelerated using high-speed, native AOT C kernels (`native_sort_double`), the indirect sorting ufunc `argsort()` (which extracts indices that would sort the matrix along an axis) is left entirely in pure Dart:
-  ```dart
-  final indices = List<int>.generate(n, (i) => i);
-  indices.sort((i, j) => dataList[rowStart + i].compareTo(dataList[rowStart + j]));
-  ```
-- **The Inefficiency**: Catastrophically slow on dense science tensors! Spawns thousands of temporary dynamic `List<int>` heap entries *inside row loops*, creating severe Garbage Collection fragmentation friction. Furthermore, it invokes standard Dart closure sorting (`indices.sort`), which performs slow element-by-element comparative threshold lookups across Isolate VM boundaries, stalling tensor execution!
-- **Recommended Tweak / Critical Fix**: Expose dedicated native C indirect quicksort kernels in `custom_sorting.c` (e.g., `native_argsort_double(const double *data, int *indices, int n)`). Rewrite `argsort()` to pass the data pointer and the results fixed-length FFI unmanaged `result.pointer` directly to C space, letting pure C pointer arithmetic execute the quicksort in place without a single Dart loop, closure, or heap list allocation. This will deliver a spectacular **`50x-100x+` performance acceleration** for all complex matrix sorting operations!
-
-***
-
-  - Migrate `Complex` from a standard `final class` into a zero-cost **`extension type`** over an unmanaged flat storage memory view, or introduce direct, zero-allocation primitive field getters on `NDArray` (e.g., `double getComplexReal(int idx)` / `double getComplexImag(int idx)`). This will completely erase short-lived wrapper allocations, driving complex matrix arithmetic to optimal JIT memory performance!
 
 ***
 

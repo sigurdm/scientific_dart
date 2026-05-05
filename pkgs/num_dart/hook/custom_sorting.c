@@ -117,132 +117,111 @@ void native_sort_complex64(float *array, int size) {
 // Stable Indirect Sorting / Argsort Definitions
 // ----------------------------------------------------------------------------
 
-typedef struct {
-    double value;
-    int index;
-} double_index_t;
+#ifdef _MSC_VER
+#define THREAD_LOCAL __declspec(thread)
+#else
+#define THREAD_LOCAL __thread
+#endif
 
-static int compare_double_index(const void *a, const void *b) {
-    double_index_t da = *(const double_index_t *)a;
-    double_index_t db = *(const double_index_t *)b;
-    int nan_a = isnan(da.value);
-    int nan_b = isnan(db.value);
+static THREAD_LOCAL const double *global_double_data = NULL;
+static THREAD_LOCAL const float *global_float_data = NULL;
+static THREAD_LOCAL const long long *global_int64_data = NULL;
+static THREAD_LOCAL const int *global_int32_data = NULL;
+
+static int compare_indices_double(const void *a, const void *b) {
+    int idx_a = *(const int *)a;
+    int idx_b = *(const int *)b;
+    double val_a = global_double_data[idx_a];
+    double val_b = global_double_data[idx_b];
+    int nan_a = isnan(val_a);
+    int nan_b = isnan(val_b);
     if (nan_a && nan_b) return 0;
     if (nan_a) return 1;
     if (nan_b) return -1;
-    if (da.value < db.value) return -1;
-    if (da.value > db.value) return 1;
-    if (da.index < db.index) return -1;
-    if (da.index > db.index) return 1;
+    if (val_a < val_b) return -1;
+    if (val_a > val_b) return 1;
+    if (idx_a < idx_b) return -1;
+    if (idx_a > idx_b) return 1;
     return 0;
 }
 
 void native_argsort_double(const double *data, int *indices, int size) {
     if (data == NULL || indices == NULL || size <= 0) return;
-    double_index_t *pairs = malloc(sizeof(double_index_t) * size);
-    if (pairs == NULL) return;
     for (int i = 0; i < size; i++) {
-        pairs[i].value = data[i];
-        pairs[i].index = i;
+        indices[i] = i;
     }
-    qsort(pairs, size, sizeof(double_index_t), compare_double_index);
-    for (int i = 0; i < size; i++) {
-        indices[i] = pairs[i].index;
-    }
-    free(pairs);
+    global_double_data = data;
+    qsort(indices, size, sizeof(int), compare_indices_double);
+    global_double_data = NULL;
 }
 
-typedef struct {
-    float value;
-    int index;
-} float_index_t;
-
-static int compare_float_index(const void *a, const void *b) {
-    float_index_t fa = *(const float_index_t *)a;
-    float_index_t fb = *(const float_index_t *)b;
-    int nan_a = isnan(fa.value);
-    int nan_b = isnan(fb.value);
+static int compare_indices_float(const void *a, const void *b) {
+    int idx_a = *(const int *)a;
+    int idx_b = *(const int *)b;
+    float val_a = global_float_data[idx_a];
+    float val_b = global_float_data[idx_b];
+    int nan_a = isnan(val_a);
+    int nan_b = isnan(val_b);
     if (nan_a && nan_b) return 0;
     if (nan_a) return 1;
     if (nan_b) return -1;
-    if (fa.value < fb.value) return -1;
-    if (fa.value > fb.value) return 1;
-    if (fa.index < fb.index) return -1;
-    if (fa.index > fb.index) return 1;
+    if (val_a < val_b) return -1;
+    if (val_a > val_b) return 1;
+    if (idx_a < idx_b) return -1;
+    if (idx_a > idx_b) return 1;
     return 0;
 }
 
 void native_argsort_float(const float *data, int *indices, int size) {
     if (data == NULL || indices == NULL || size <= 0) return;
-    float_index_t *pairs = malloc(sizeof(float_index_t) * size);
-    if (pairs == NULL) return;
     for (int i = 0; i < size; i++) {
-        pairs[i].value = data[i];
-        pairs[i].index = i;
+        indices[i] = i;
     }
-    qsort(pairs, size, sizeof(float_index_t), compare_float_index);
-    for (int i = 0; i < size; i++) {
-        indices[i] = pairs[i].index;
-    }
-    free(pairs);
+    global_float_data = data;
+    qsort(indices, size, sizeof(int), compare_indices_float);
+    global_float_data = NULL;
 }
 
-typedef struct {
-    long long value;
-    int index;
-} int64_index_t;
-
-static int compare_int64_index(const void *a, const void *b) {
-    int64_index_t ia = *(const int64_index_t *)a;
-    int64_index_t ib = *(const int64_index_t *)b;
-    if (ia.value < ib.value) return -1;
-    if (ia.value > ib.value) return 1;
-    if (ia.index < ib.index) return -1;
-    if (ia.index > ib.index) return 1;
+static int compare_indices_int64(const void *a, const void *b) {
+    int idx_a = *(const int *)a;
+    int idx_b = *(const int *)b;
+    long long val_a = global_int64_data[idx_a];
+    long long val_b = global_int64_data[idx_b];
+    if (val_a < val_b) return -1;
+    if (val_a > val_b) return 1;
+    if (idx_a < idx_b) return -1;
+    if (idx_a > idx_b) return 1;
     return 0;
 }
 
 void native_argsort_int64(const long long *data, int *indices, int size) {
     if (data == NULL || indices == NULL || size <= 0) return;
-    int64_index_t *pairs = malloc(sizeof(int64_index_t) * size);
-    if (pairs == NULL) return;
     for (int i = 0; i < size; i++) {
-        pairs[i].value = data[i];
-        pairs[i].index = i;
+        indices[i] = i;
     }
-    qsort(pairs, size, sizeof(int64_index_t), compare_int64_index);
-    for (int i = 0; i < size; i++) {
-        indices[i] = pairs[i].index;
-    }
-    free(pairs);
+    global_int64_data = data;
+    qsort(indices, size, sizeof(int), compare_indices_int64);
+    global_int64_data = NULL;
 }
 
-typedef struct {
-    int value;
-    int index;
-} int32_index_t;
-
-static int compare_int32_index(const void *a, const void *b) {
-    int32_index_t ia = *(const int32_index_t *)a;
-    int32_index_t ib = *(const int32_index_t *)b;
-    if (ia.value < ib.value) return -1;
-    if (ia.value > ib.value) return 1;
-    if (ia.index < ib.index) return -1;
-    if (ia.index > ib.index) return 1;
+static int compare_indices_int32(const void *a, const void *b) {
+    int idx_a = *(const int *)a;
+    int idx_b = *(const int *)b;
+    int val_a = global_int32_data[idx_a];
+    int val_b = global_int32_data[idx_b];
+    if (val_a < val_b) return -1;
+    if (val_a > val_b) return 1;
+    if (idx_a < idx_b) return -1;
+    if (idx_a > idx_b) return 1;
     return 0;
 }
 
 void native_argsort_int32(const int *data, int *indices, int size) {
     if (data == NULL || indices == NULL || size <= 0) return;
-    int32_index_t *pairs = malloc(sizeof(int32_index_t) * size);
-    if (pairs == NULL) return;
     for (int i = 0; i < size; i++) {
-        pairs[i].value = data[i];
-        pairs[i].index = i;
+        indices[i] = i;
     }
-    qsort(pairs, size, sizeof(int32_index_t), compare_int32_index);
-    for (int i = 0; i < size; i++) {
-        indices[i] = pairs[i].index;
-    }
-    free(pairs);
+    global_int32_data = data;
+    qsort(indices, size, sizeof(int), compare_indices_int32);
+    global_int32_data = NULL;
 }
