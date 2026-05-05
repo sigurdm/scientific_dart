@@ -82,6 +82,35 @@ class NativeQSortContiguousBenchmark extends BenchmarkBase {
   }
 }
 
+class ArgsortBenchmark extends BenchmarkBase {
+  late Float64List templateData;
+  late NDArray<double> target;
+
+  ArgsortBenchmark()
+    : super('SORT Track | Argsort (argsort)                     [size=30,000]');
+
+  @override
+  void setup() {
+    templateData = Float64List(30000);
+    for (var i = 0; i < 30000; i++) {
+      templateData[i] = (30000 - i).toDouble();
+    }
+    target = NDArray.zeros([30000], DType.float64);
+  }
+
+  @override
+  void run() {
+    target.data.setRange(0, 30000, templateData);
+    final indices = argsort(target);
+    indices.dispose();
+  }
+
+  @override
+  void teardown() {
+    target.dispose();
+  }
+}
+
 class TernaryWhereBroadcastingBenchmark extends BenchmarkBase {
   late NDArray<bool> cond;
   late NDArray<double> x;
@@ -369,6 +398,7 @@ void main() {
 
   print('\n--- TRACK B: NATIVE C HEAP SORTING & SEARCHING BROADCASTS ---');
   NativeQSortContiguousBenchmark().report();
+  ArgsortBenchmark().report();
   TernaryWhereBroadcastingBenchmark().report();
 
   print(

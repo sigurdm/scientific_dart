@@ -445,8 +445,7 @@ class NDArray<T> implements ffi.Finalizable {
     }
 
     if (!isContiguous) {
-      final copied = NDArray<T>.fromList(toList(), shape, dtype);
-      return copied.reshape(newShape);
+      return NDArray<T>.fromList(toList(), newShape, dtype);
     }
 
     final newStrides = computeCStrides(newShape);
