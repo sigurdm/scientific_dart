@@ -607,15 +607,6 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Angle Converters `deg2rad` & `rad2deg`)
-- **Symptom**: The universal trig suite lacks angle converter ufuncs.
-- **The Gap**: Geometry, spatial vector headings, or physical orbit modelers are forced to multiply by $\pi / 180$ using manual, slow loops.
-- **Recommended Tweak**: Implement high-speed vectorized converters matching NumPy's:
-  - **`deg2rad(NDArray a, {NDArray? out})`**: Converts degrees to radians element-wise ($a \times \frac{\pi}{180.0}$).
-  - **`rad2deg(NDArray a, {NDArray? out})`**: Converts radians to degrees element-wise ($a \times \frac{180.0}{\pi}$).
-
-***
-
 ## `pkgs/num_dart/lib/src/ndarray.dart` (NumPy Compatibility Gap: `setByMask` Lacks Multi-Dimensional Array Broadcast Value Assignments)
 - **Symptom**: Currently, when calling `setByMask(mask, value)`, if the `value` parameter is an `NDArray`, it expects a flat list of values `value.data` which matches the mask target count sequentially, completely ignoring the shape and strides of the `value` array.
 - **The Gap**: In Python NumPy, calling `a[mask] = values` where `values` is another multidimensional array will dynamically align, broadcast, or slice the `values` array logically according to strides and coordinates of the selected mask truth entries.

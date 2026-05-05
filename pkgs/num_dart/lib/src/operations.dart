@@ -3913,6 +3913,62 @@ NDArray round(NDArray a) {
   return result;
 }
 
+/// Converts angles from degrees to radians element-wise.
+///
+/// **Preconditions:**
+/// - Input array [a] must not be disposed.
+/// - Input array [a] must not contain complex numbers.
+///
+/// **Throws:**
+/// - [StateError] if the array has been disposed.
+/// - [UnsupportedError] if the array has a complex data type.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([180.0, 90.0, 45.0], [3], DType.float64);
+/// final r = deg2rad(a); // [pi, pi / 2.0, pi / 4.0]
+/// ```
+NDArray deg2rad(NDArray a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute deg2rad on a disposed array.');
+  }
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    throw UnsupportedError('Complex numbers are not supported for deg2rad');
+  }
+  // pi / 180.0 = 0.017453292519943295
+  final factorDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final factor = NDArray.fromList([0.017453292519943295], [1], factorDType);
+  return multiply(a, factor);
+}
+
+/// Converts angles from radians to degrees element-wise.
+///
+/// **Preconditions:**
+/// - Input array [a] must not be disposed.
+/// - Input array [a] must not contain complex numbers.
+///
+/// **Throws:**
+/// - [StateError] if the array has been disposed.
+/// - [UnsupportedError] if the array has a complex data type.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([math.pi, math.pi / 2.0], [2], DType.float64);
+/// final d = rad2deg(a); // [180.0, 90.0]
+/// ```
+NDArray rad2deg(NDArray a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute rad2deg on a disposed array.');
+  }
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    throw UnsupportedError('Complex numbers are not supported for rad2deg');
+  }
+  // 180.0 / pi = 57.29577951308232
+  final factorDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final factor = NDArray.fromList([57.29577951308232], [1], factorDType);
+  return multiply(a, factor);
+}
+
 /// Returns an element-wise boolean mask indicating which elements of the array are NaN (Not-a-Number).
 ///
 /// **Preconditions:**
