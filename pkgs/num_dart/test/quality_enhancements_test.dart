@@ -247,6 +247,28 @@ void main() {
       expect(res6.toList(), [11.0, 12.0, 13.0, 14.0, 15.0, 16.0]);
     });
 
+    test('subtract() contiguous float64 and float32 FFI fast paths coverage', () {
+      final a64 = NDArray.fromList([20.0, 30.0], [2], DType.float64);
+      final b64 = NDArray.fromList([5.0, 10.0], [2], DType.float64);
+      addTearDown(a64.dispose);
+      addTearDown(b64.dispose);
+
+      final res64 = subtract(a64, b64);
+      addTearDown(res64.dispose);
+      expect(res64.dtype, DType.float64);
+      expect(res64.toList(), [15.0, 20.0]);
+
+      final a32 = NDArray.fromList([20.0, 30.0], [2], DType.float32);
+      final b32 = NDArray.fromList([5.0, 10.0], [2], DType.float32);
+      addTearDown(a32.dispose);
+      addTearDown(b32.dispose);
+
+      final res32 = subtract(a32, b32);
+      addTearDown(res32.dispose);
+      expect(res32.dtype, DType.float32);
+      expect(res32.toList(), [15.0, 20.0]);
+    });
+
     test('linspace() with num == 1 coverage', () {
       final a = NDArray<double>.linspace(5.0, 10.0, 1, dtype: DType.float64);
       addTearDown(a.dispose);
