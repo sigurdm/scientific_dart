@@ -3913,6 +3913,63 @@ NDArray round(NDArray a) {
   return result;
 }
 
+/// Enumerates elements of a multidimensional array yielding coordinates and values.
+///
+/// Yields records containing the coordinate list and the element value at that coordinate
+/// in standard C-contiguous order.
+///
+/// **Preconditions:**
+/// - The input array [a] must not be disposed.
+///
+/// **Throws:**
+/// - [StateError] if [a] has been disposed.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([10, 20, 30, 40], [2, 2], DType.int32);
+/// for (final entry in ndenumerate(a)) {
+///   print('coord: ${entry.$1}, value: ${entry.$2}');
+/// }
+/// // Yields:
+/// // ([0, 0], 10)
+/// // ([0, 1], 20)
+/// // ([1, 0], 30)
+/// // ([1, 1], 40)
+/// ```
+Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute ndenumerate() on a disposed array.');
+  }
+
+  final shape = a.shape;
+  final strides = a.strides;
+  final totalSize = shape.isEmpty ? 1 : shape.reduce((x, y) => x * y);
+
+  if (shape.isEmpty) {
+    yield ([], a.data[0]);
+    return;
+  }
+
+  final coord = List<int>.filled(shape.length, 0);
+  int offset = 0;
+
+  for (int el = 0; el < totalSize; el++) {
+    // Yield a copy of the coordinate list so that users don't receive the same mutated buffer!
+    yield (List<int>.from(coord), a.data[offset]);
+
+    // Advance odometer multidimensional coordinate odometer walk!
+    for (int d = shape.length - 1; d >= 0; d--) {
+      coord[d]++;
+      if (coord[d] < shape[d]) {
+        offset += strides[d];
+        break;
+      }
+      coord[d] = 0;
+      offset -= (shape[d] - 1) * strides[d];
+    }
+  }
+}
+
 /// Returns the real part of a complex array element-wise.
 ///
 /// If the input array [a] is already real (integer or float), returns a zero-copy
