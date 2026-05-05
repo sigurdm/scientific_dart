@@ -614,9 +614,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## `pkgs/num_dart/lib/src/ndarray.dart` (NumPy Compatibility Gap: Missing Deep Copy `copy()`)
-- **Symptom**: Currently, `num_dart` completely lacks a standard helper method to perform deep duplicates/copies of multidimensional arrays.
-- **The Gap**: Violates standard NumPy `ndarray.copy()` guidelines. Downstream developers looking to duplicate a matrix are forced to execute slow intermediate walks converting the data structure to a standard Dart list via `toList()`, and then allocating a second NDArray via `fromList()`, doubling memory allocations.
-- **Recommended Tweak**: Implement **`NDArray<T> copy()`** on `NDArray`.
-  - If `isContiguous` is true, offload the elements copying directly to the unmanaged C FFI layer `_copyContiguousNDArray`, achieving peak hardware speeds.
-  - If the array is a strided view, allocate a fresh contiguous NDArray of identical shape and DType, and walk coordinates recursively to duplicate elements in-place without spawning any intermediate Dart Lists!
+## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Top-Level `copy()` ufunc helper)
+- **Symptom**: Currently, `num_dart` strictly supports duplicating arrays via the `copy()` method on `NDArray`, completely lacking a top-level `copy(NDArray a)` ufunc helper.
+- **The Gap**: Violates standard NumPy `np.copy(a)` guidelines. Downstream developers seeking to maintain NumPy code parity look for top-level functional operations mappings.
+- **Recommended Tweak**: Implement a highly optimized top-level helper **`NDArray<T> copy<T extends Object>(NDArray<T> a)`** in [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart) returning `a.copy()` directly, delivering complete, flawless functional NumPy parity!
