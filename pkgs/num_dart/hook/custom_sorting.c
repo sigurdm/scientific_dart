@@ -1,5 +1,7 @@
 #include "custom_sorting.h"
 #include <stdlib.h>
+#include <math.h>
+#include <stdio.h>
 
 // ----------------------------------------------------------------------------
 // Pure C-to-C Static Callbacks for stdlib qsort
@@ -8,6 +10,11 @@
 static int compare_double(const void *a, const void *b) {
     double da = *(const double *)a;
     double db = *(const double *)b;
+    int nan_a = isnan(da);
+    int nan_b = isnan(db);
+    if (nan_a && nan_b) return 0;
+    if (nan_a) return 1;
+    if (nan_b) return -1;
     if (da < db) return -1;
     if (da > db) return 1;
     return 0;
@@ -16,6 +23,11 @@ static int compare_double(const void *a, const void *b) {
 static int compare_float(const void *a, const void *b) {
     float fa = *(const float *)a;
     float fb = *(const float *)b;
+    int nan_a = isnan(fa);
+    int nan_b = isnan(fb);
+    if (nan_a && nan_b) return 0;
+    if (nan_a) return 1;
+    if (nan_b) return -1;
     if (fa < fb) return -1;
     if (fa > fb) return 1;
     return 0;

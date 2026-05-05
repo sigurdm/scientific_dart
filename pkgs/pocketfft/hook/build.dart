@@ -21,7 +21,7 @@ void main(List<String> args) async {
       final client = HttpClient();
       try {
         final request = await client.getUrl(
-          Uri.parse('https://github.com/mborgerding/kissfft/tarball/master'),
+          Uri.parse('https://github.com/mborgerding/kissfft/archive/v1.3.1.tar.gz'),
         );
         final response = await request.close();
         if (response.statusCode != 200) {
@@ -85,6 +85,7 @@ void main(List<String> args) async {
         srcDir.uri.resolve('kiss_fftr.c').toFilePath(),
         '-o',
         libFile.path,
+        '-lm',
       ];
 
       final res = await Process.run(compilerPath, compileArgs);

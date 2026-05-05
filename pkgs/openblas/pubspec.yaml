@@ -12,6 +12,7 @@ dependencies:
   ffi: ^2.1.2
   hooks: ^1.0.3
   code_assets: ^1.0.0
+  archive: ^3.6.1
 
 dev_dependencies:
   lints: ^6.0.0

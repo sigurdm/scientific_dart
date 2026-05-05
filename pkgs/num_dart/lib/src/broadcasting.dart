@@ -30,6 +30,10 @@ BroadcastResult broadcast(NDArray a, NDArray b) {
   final stridesA = a.strides;
   final stridesB = b.strides;
 
+  if (_listEquals(shapeA, shapeB)) {
+    return BroadcastResult(shapeA, stridesA, stridesB);
+  }
+
   final maxLen = shapeA.length > shapeB.length ? shapeA.length : shapeB.length;
   final commonShape = List<int>.filled(maxLen, 1);
   final newStridesA = List<int>.filled(maxLen, 0);
@@ -64,4 +68,15 @@ BroadcastResult broadcast(NDArray a, NDArray b) {
   }
 
   return BroadcastResult(commonShape, newStridesA, newStridesB);
+}
+
+/// Helper to compare two lists structurally for elements equality.
+bool _listEquals<E>(List<E>? list1, List<E>? list2) {
+  if (identical(list1, list2)) return true;
+  if (list1 == null || list2 == null) return false;
+  if (list1.length != list2.length) return false;
+  for (var i = 0; i < list1.length; i++) {
+    if (list1[i] != list2[i]) return false;
+  }
+  return true;
 }

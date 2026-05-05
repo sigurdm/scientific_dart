@@ -5,7 +5,61 @@ import 'dart:collection';
 import 'broadcasting.dart';
 
 /// Supported data types for the elements of an [NDArray].
-enum DType { float32, float64, int32, int64, complex64, complex128, boolean }
+enum DType {
+  float32,
+  float64,
+  int32,
+  int64,
+  complex64,
+  complex128,
+  boolean;
+
+  /// Returns the byte size of a single element of this data type.
+  int get byteWidth {
+    switch (this) {
+      case DType.boolean:
+        return 1;
+      case DType.float32:
+      case DType.int32:
+        return 4;
+      case DType.float64:
+      case DType.int64:
+      case DType.complex64:
+        return 8;
+      case DType.complex128:
+        return 16;
+    }
+  }
+
+  /// Returns the standard NumPy descriptor string for this data type.
+  String get npyDescriptor {
+    switch (this) {
+      case DType.float64:
+        return '<f8';
+      case DType.float32:
+        return '<f4';
+      case DType.int64:
+        return '<i8';
+      case DType.int32:
+        return '<i4';
+      case DType.complex128:
+        return '<c16';
+      case DType.complex64:
+        return '<c8';
+      case DType.boolean:
+        return '|b1';
+    }
+  }
+
+  /// Returns true if this is a complex number data type.
+  bool get isComplex => this == DType.complex128 || this == DType.complex64;
+
+  /// Returns true if this is a floating-point number data type.
+  bool get isFloating => this == DType.float64 || this == DType.float32;
+
+  /// Returns true if this is an integer data type.
+  bool get isInteger => this == DType.int64 || this == DType.int32;
+}
 
 /// An n-dimensional array with memory allocated on the C heap.
 ///
@@ -66,6 +120,12 @@ class NDArray<T> implements ffi.Finalizable {
       _finalizer.attach(this, _pointer, detach: this);
     }
   }
+
+  bool _isDisposed = false;
+
+  /// Returns true if this array or parent array's memory has been explicitly freed.
+  bool get isDisposed =>
+      _isDisposed || (_parent != null && _parent!.isDisposed);
 
   /// Returns true if the array is C-contiguous in memory.
   bool get isContiguous {
@@ -202,6 +262,12 @@ class NDArray<T> implements ffi.Finalizable {
     double step = 1.0,
     DType dtype = DType.float64,
   }) {
+    if (step == 0.0) {
+      throw ArgumentError('Step size cannot be zero.');
+    }
+    if ((stop > start && step < 0.0) || (stop < start && step > 0.0)) {
+      throw ArgumentError('Step size direction must match start/stop range.');
+    }
     final length = ((stop - start) / step).ceil();
     final arr = NDArray<T>.create([length], dtype);
     for (var i = 0; i < length; i++) {
@@ -339,7 +405,14 @@ class NDArray<T> implements ffi.Finalizable {
   }
 
   /// Expose the raw pointer for FFI use.
-  ffi.Pointer<ffi.Void> get pointer => _pointer;
+  ffi.Pointer<ffi.Void> get pointer {
+    if (isDisposed) {
+      throw StateError(
+        'Cannot access an array or view whose memory has been explicitly freed/disposed!',
+      );
+    }
+    return _pointer;
+  }
 
   /// Returns a new view of this array with a new shape.
   ///
@@ -354,12 +427,22 @@ class NDArray<T> implements ffi.Finalizable {
   /// - Returns a view sharing the same memory. Modifications reflect in both.
   /// - The total size of the new shape must match the old one.
   NDArray<T> reshape(List<int> newShape) {
+    if (isDisposed) {
+      throw StateError(
+        'Cannot access an array or view whose memory has been explicitly freed/disposed!',
+      );
+    }
     final oldSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     final newSize = newShape.isEmpty ? 1 : newShape.reduce((a, b) => a * b);
     if (oldSize != newSize) {
       throw ArgumentError(
         'Total size must not change during reshape (was $oldSize, new is $newSize)',
       );
+    }
+
+    if (!isContiguous) {
+      final copied = NDArray<T>.fromList(toList(), shape, dtype);
+      return copied.reshape(newShape);
     }
 
     final newStrides = computeCStrides(newShape);
@@ -396,10 +479,12 @@ class NDArray<T> implements ffi.Finalizable {
     }
   }
 
-  /// Returns a view of the array with dimensions permuted.
-  ///
-  /// If [axes] is null, it reverses the order of the dimensions.
   NDArray<T> transpose([List<int>? axes]) {
+    if (isDisposed) {
+      throw StateError(
+        'Cannot access an array or view whose memory has been explicitly freed/disposed!',
+      );
+    }
     List<int> permutedAxes;
     if (axes == null) {
       permutedAxes = List.generate(shape.length, (i) => shape.length - 1 - i);
@@ -408,16 +493,20 @@ class NDArray<T> implements ffi.Finalizable {
         throw ArgumentError('Axes must match the rank of the array');
       }
       final seen = <int>{};
-      for (final axis in axes) {
-        if (axis < 0 || axis >= shape.length) {
-          throw RangeError.index(axis, shape, 'axis out of range');
+      final normAxes = <int>[];
+      for (var i = 0; i < axes.length; i++) {
+        var axis = axes[i];
+        if (axis < -shape.length || axis >= shape.length) {
+          throw RangeError.range(axis, -shape.length, shape.length - 1, 'axis');
         }
-        if (seen.contains(axis)) {
+        final normAxis = axis < 0 ? shape.length + axis : axis;
+        if (seen.contains(normAxis)) {
           throw ArgumentError('Axes must be a permutation without duplicates');
         }
-        seen.add(axis);
+        seen.add(normAxis);
+        normAxes.add(normAxis);
       }
-      permutedAxes = axes;
+      permutedAxes = normAxes;
     }
 
     final newShape = List<int>.filled(shape.length, 0);
@@ -659,6 +748,11 @@ class NDArray<T> implements ffi.Finalizable {
   ///
   /// Throws an [ArgumentError] if the type of [spec] is unsupported.
   dynamic operator [](dynamic spec) {
+    if (isDisposed) {
+      throw StateError(
+        'Cannot access an array or view whose memory has been explicitly freed/disposed!',
+      );
+    }
     if (spec is int) {
       return slice([Index(spec)]);
     } else if (spec is List) {
@@ -689,7 +783,9 @@ class NDArray<T> implements ffi.Finalizable {
       if (shapesMatch) {
         return applyMask(boolMask);
       } else {
-        throw ArgumentError('Boolean mask shape must exactly match array shape');
+        throw ArgumentError(
+          'Boolean mask shape must exactly match array shape',
+        );
       }
     } else if (spec is NDArray<int>) {
       var shapesMatch = spec.shape.length == shape.length;
@@ -703,7 +799,9 @@ class NDArray<T> implements ffi.Finalizable {
       }
       if (shapesMatch) {
         // Handle legacy or error cases or convert to true bool if user accidentally used int array masks
-        throw ArgumentError('Masking requires an NDArray of DType.boolean, not integers.');
+        throw ArgumentError(
+          'Masking requires an NDArray of DType.boolean, not integers.',
+        );
       } else {
         return take(spec.data);
       }
@@ -726,6 +824,11 @@ class NDArray<T> implements ffi.Finalizable {
   ///
   /// Throws an [ArgumentError] if the type of [spec] is unsupported.
   void operator []=(dynamic spec, dynamic value) {
+    if (isDisposed) {
+      throw StateError(
+        'Cannot access an array or view whose memory has been explicitly freed/disposed!',
+      );
+    }
     if (spec is int) {
       final indices = NDArray<int>.fromList([spec], [1], DType.int32);
       if (value is NDArray) {
@@ -768,7 +871,9 @@ class NDArray<T> implements ffi.Finalizable {
       if (shapesMatch) {
         setByMask(boolMask, value);
       } else {
-        throw ArgumentError('Boolean mask shape must exactly match array shape');
+        throw ArgumentError(
+          'Boolean mask shape must exactly match array shape',
+        );
       }
     } else if (spec is NDArray<int>) {
       var shapesMatch = spec.shape.length == shape.length;
@@ -781,7 +886,9 @@ class NDArray<T> implements ffi.Finalizable {
         }
       }
       if (shapesMatch) {
-        throw ArgumentError('Masking requires an NDArray of DType.boolean, not integers.');
+        throw ArgumentError(
+          'Masking requires an NDArray of DType.boolean, not integers.',
+        );
       } else {
         if (value is NDArray) {
           setIndices(spec, value);
@@ -1423,6 +1530,11 @@ class NDArray<T> implements ffi.Finalizable {
 
   /// Returns a flat list copy of the elements in this array, respecting shape and strides.
   List<T> toList() {
+    if (isDisposed) {
+      throw StateError(
+        'Cannot access an array or view whose memory has been explicitly freed/disposed!',
+      );
+    }
     final result = <T>[];
     _fillListRecursive(this, List<int>.filled(shape.length, 0), 0, result);
     return result;
@@ -1695,9 +1807,35 @@ class NDArray<T> implements ffi.Finalizable {
   /// Calling this on a view does nothing, as the memory is owned by the parent.
   void dispose() {
     if (_parent != null) return; // Views don't own memory
+    if (_isDisposed) return; // Guard against double-free!
+    _isDisposed = true;
     _finalizer.detach(this);
     malloc.free(_pointer);
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! NDArray) return false;
+    if (dtype != other.dtype) return false;
+    if (!_listEquals(shape, other.shape)) return false;
+
+    final thisList = toList();
+    final otherList = other.toList();
+    return _listEquals(thisList, otherList);
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(dtype, Object.hashAll(shape), Object.hashAll(toList()));
+}
+
+bool _listEquals<E>(List<E> a, List<E> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }
 
 /// A wrapper class for boolean masks used in advanced indexing.
@@ -1815,6 +1953,18 @@ class ComplexList extends ListBase<Complex> {
   void operator []=(int index, Complex value) {
     _list[index * 2] = value.real;
     _list[index * 2 + 1] = value.imag;
+  }
+
+  /// Returns the real part of the complex number at [index] without allocating a [Complex] object.
+  double getReal(int index) => _list[index * 2];
+
+  /// Returns the imaginary part of the complex number at [index] without allocating a [Complex] object.
+  double getImag(int index) => _list[index * 2 + 1];
+
+  /// Sets the real and imaginary parts of the complex number at [index] without allocating a [Complex] object.
+  void setRealImag(int index, double real, double imag) {
+    _list[index * 2] = real;
+    _list[index * 2 + 1] = imag;
   }
 }
 

@@ -6,28 +6,11 @@ import 'package:ffi/ffi.dart';
 import 'package:archive/archive.dart';
 import 'ndarray.dart';
 
-/// Maps an [NDArray] data type to its standard NumPy type descriptor string.
-String _dtypeToDescr(DType dtype) {
-  switch (dtype) {
-    case DType.float64:
-      return '<f8';
-    case DType.float32:
-      return '<f4';
-    case DType.int64:
-      return '<i8';
-    case DType.int32:
-      return '<i4';
-    case DType.complex128:
-      return '<c16';
-    case DType.complex64:
-      return '<c8';
-    case DType.boolean:
-      return '|b1';
-  }
-}
-
 /// Maps a NumPy descriptor string back to an [NDArray] [DType].
 DType _descrToDType(String descr) {
+  if (descr.contains('>')) {
+    throw UnsupportedError('Big-Endian .npy files are not supported yet.');
+  }
   // Strip byte-order indicators if any (e.g., '<', '>', '|')
   final clean = descr.replaceAll(RegExp(r'[<>|]'), '');
   switch (clean) {
@@ -50,23 +33,6 @@ DType _descrToDType(String descr) {
   }
 }
 
-/// Returns the byte size of a single element of the specified [DType].
-int _elementByteSize(DType dtype) {
-  switch (dtype) {
-    case DType.boolean:
-      return 1;
-    case DType.float32:
-    case DType.int32:
-      return 4;
-    case DType.float64:
-    case DType.int64:
-    case DType.complex64:
-      return 8;
-    case DType.complex128:
-      return 16;
-  }
-}
-
 /// Save an [NDArray] to disk in the standard NumPy binary format (`.npy`).
 ///
 /// This saves the array's shape, datatype, and raw heap memory in a highly compressed
@@ -84,15 +50,13 @@ void save(String filepath, NDArray a) {
   }
 
   // Re-orient to contiguous array if a is a strided view to ensure binary file sequentiality
-  NDArray src = a;
+  Uint8List? serializedBytes;
   if (!a.isContiguous) {
-    src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+    serializedBytes = _serializeDataContiguous(a.toList(), a.dtype);
   }
 
-  final descr = _dtypeToDescr(src.dtype);
-  final shapeStr = src.shape.length == 1
-      ? '${src.shape[0]},'
-      : src.shape.join(', ');
+  final descr = a.dtype.npyDescriptor;
+  final shapeStr = a.shape.length == 1 ? '${a.shape[0]},' : a.shape.join(', ');
 
   // Build NumPy Version 1.0 Header String dictionary literal
   final headerStr =
@@ -127,13 +91,16 @@ void save(String filepath, NDArray a) {
     raf.writeFromSync(headerBytes);
 
     // 5. Zero-Copy Raw C-Heap Bytes block dump!
-    final elementCount = src.shape.isEmpty
-        ? 1
-        : src.shape.reduce((x, y) => x * y);
-    final byteSize = elementCount * _elementByteSize(src.dtype);
-
-    final byteView = src.pointer.cast<ffi.Uint8>().asTypedList(byteSize);
-    raf.writeFromSync(byteView);
+    if (serializedBytes != null) {
+      raf.writeFromSync(serializedBytes);
+    } else {
+      final elementCount = a.shape.isEmpty
+          ? 1
+          : a.shape.reduce((x, y) => x * y);
+      final byteSize = elementCount * a.dtype.byteWidth;
+      final byteView = a.pointer.cast<ffi.Uint8>().asTypedList(byteSize);
+      raf.writeFromSync(byteView);
+    }
   } finally {
     raf.closeSync();
   }
@@ -187,7 +154,9 @@ NDArray load(String filepath) {
     final headerStr = String.fromCharCodes(headerBytes);
 
     // Parse descr via regex
-    final descrMatch = RegExp(r"'descr':\s*'([^']+)'").firstMatch(headerStr);
+    final descrMatch = RegExp(
+      '[\'\"]descr[\'\"]:\\s*[\'\"]([^\'\"]+)[\'\"]',
+    ).firstMatch(headerStr);
     if (descrMatch == null) {
       throw FormatException(
         'Invalid npy header: could not parse "descr" parameter string',
@@ -198,7 +167,7 @@ NDArray load(String filepath) {
 
     // Parse fortran_order bool flag
     final fortMatch = RegExp(
-      r"'fortran_order':\s*(True|False)",
+      '[\'\"]fortran_order[\'\"]:\\s*(True|False)',
       caseSensitive: false,
     ).firstMatch(headerStr);
     if (fortMatch == null) {
@@ -210,7 +179,7 @@ NDArray load(String filepath) {
 
     // Parse shape tuple
     final shapeMatch = RegExp(
-      r"'shape':\s*\(?([^\)]*)\)?",
+      '[\'\"]shape[\'\"]:\\s*\\(?([^\\)]*)\\)?',
     ).firstMatch(headerStr);
     if (shapeMatch == null) {
       throw FormatException(
@@ -228,7 +197,7 @@ NDArray load(String filepath) {
 
     // 5. Allocate matching NDArray with target layout strategies
     final elementCount = shape.isEmpty ? 1 : shape.reduce((x, y) => x * y);
-    final byteSize = elementCount * _elementByteSize(dtype);
+    final byteSize = elementCount * dtype.byteWidth;
 
     final result = NDArray.create(shape, dtype);
 
@@ -256,15 +225,13 @@ NDArray load(String filepath) {
 
 /// Serialize an [NDArray] directly into in-memory `.npy` bytes (internal utility for .npz).
 Uint8List _serializeNpyBytes(NDArray a) {
-  NDArray src = a;
+  Uint8List? serializedBytes;
   if (!a.isContiguous) {
-    src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+    serializedBytes = _serializeDataContiguous(a.toList(), a.dtype);
   }
 
-  final descr = _dtypeToDescr(src.dtype);
-  final shapeStr = src.shape.length == 1
-      ? '${src.shape[0]},'
-      : src.shape.join(', ');
+  final descr = a.dtype.npyDescriptor;
+  final shapeStr = a.shape.length == 1 ? '${a.shape[0]},' : a.shape.join(', ');
   final headerStr =
       "{'descr': '$descr', 'fortran_order': False, 'shape': ($shapeStr)}";
 
@@ -280,13 +247,12 @@ Uint8List _serializeNpyBytes(NDArray a) {
     lenBytes.buffer,
   ).setUint16(0, headerBytes.length, Endian.little);
 
-  final elementCount = src.shape.isEmpty
-      ? 1
-      : src.shape.reduce((x, y) => x * y);
-  final dataByteSize = elementCount * _elementByteSize(src.dtype);
-  final rawDataView = src.pointer.cast<ffi.Uint8>().asTypedList(dataByteSize);
+  final elementCount = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+  final dataByteSize = elementCount * a.dtype.byteWidth;
+  final Uint8List rawDataView =
+      serializedBytes ?? a.pointer.cast<ffi.Uint8>().asTypedList(dataByteSize);
 
-  final totalBytesSize = 6 + 2 + 2 + headerBytes.length + dataByteSize;
+  final totalBytesSize = 6 + 2 + 2 + headerBytes.length + rawDataView.length;
   final resultList = Uint8List(totalBytesSize);
 
   var offset = 0;
@@ -340,17 +306,21 @@ NDArray _deserializeNpyBytes(Uint8List bytes) {
   );
   final headerStr = String.fromCharCodes(headerBytes);
 
-  final descrMatch = RegExp(r"'descr':\s*'([^']+)'").firstMatch(headerStr);
+  final descrMatch = RegExp(
+    '[\'\"]descr[\'\"]:\\s*[\'\"]([^\'\"]+)[\'\"]',
+  ).firstMatch(headerStr);
   final descr = descrMatch!.group(1)!;
   final dtype = _descrToDType(descr);
 
   final fortMatch = RegExp(
-    r"'fortran_order':\s*(True|False)",
+    '[\'\"]fortran_order[\'\"]:\\s*(True|False)',
     caseSensitive: false,
   ).firstMatch(headerStr);
   final fortranOrder = fortMatch!.group(1)!.toLowerCase() == 'true';
 
-  final shapeMatch = RegExp(r"'shape':\s*\(?([^\)]*)\)?").firstMatch(headerStr);
+  final shapeMatch = RegExp(
+    '[\'\"]shape[\'\"]:\\s*\\(?([^\\)]*)\\)?',
+  ).firstMatch(headerStr);
   final shapeTokens = shapeMatch!.group(1)!.split(',');
   final shape = <int>[];
   for (var tok in shapeTokens) {
@@ -359,7 +329,7 @@ NDArray _deserializeNpyBytes(Uint8List bytes) {
   }
 
   final elementCount = shape.isEmpty ? 1 : shape.reduce((x, y) => x * y);
-  final dataByteSize = elementCount * _elementByteSize(dtype);
+  final dataByteSize = elementCount * dtype.byteWidth;
 
   final result = NDArray.create(shape, dtype);
 
@@ -450,7 +420,10 @@ Map<String, NDArray> loadz(String filepath) {
   for (final archiveFile in archive) {
     if (archiveFile.isFile && archiveFile.name.endsWith('.npy')) {
       final key = archiveFile.name.replaceAll('.npy', '');
-      final fileData = archiveFile.content as Uint8List;
+      final rawContent = archiveFile.content;
+      final Uint8List fileData = rawContent is Uint8List
+          ? rawContent
+          : Uint8List.fromList(rawContent as List<int>);
 
       final loadedArray = _deserializeNpyBytes(fileData);
       results[key] = loadedArray;
@@ -458,4 +431,41 @@ Map<String, NDArray> loadz(String filepath) {
   }
 
   return results;
+}
+
+/// Serializes data elements of a non-contiguous array to a contiguous standard list view
+/// to avoid allocating a transient unmanaged [NDArray] structure on the C-heap.
+Uint8List _serializeDataContiguous(List flatList, DType dtype) {
+  switch (dtype) {
+    case DType.float64:
+      return Float64List.fromList(flatList.cast<double>()).buffer.asUint8List();
+    case DType.float32:
+      return Float32List.fromList(flatList.cast<double>()).buffer.asUint8List();
+    case DType.int64:
+      return Int64List.fromList(flatList.cast<int>()).buffer.asUint8List();
+    case DType.int32:
+      return Int32List.fromList(flatList.cast<int>()).buffer.asUint8List();
+    case DType.boolean:
+      final bytes = Uint8List(flatList.length);
+      for (var i = 0; i < flatList.length; i++) {
+        bytes[i] = (flatList[i] as bool) ? 1 : 0;
+      }
+      return bytes;
+    case DType.complex128:
+      final doubleList = Float64List(flatList.length * 2);
+      for (var i = 0; i < flatList.length; i++) {
+        final c = flatList[i] as Complex;
+        doubleList[i * 2] = c.real;
+        doubleList[i * 2 + 1] = c.imag;
+      }
+      return doubleList.buffer.asUint8List();
+    case DType.complex64:
+      final floatList = Float32List(flatList.length * 2);
+      for (var i = 0; i < flatList.length; i++) {
+        final c = flatList[i] as Complex;
+        floatList[i * 2] = c.real;
+        floatList[i * 2 + 1] = c.imag;
+      }
+      return floatList.buffer.asUint8List();
+  }
 }

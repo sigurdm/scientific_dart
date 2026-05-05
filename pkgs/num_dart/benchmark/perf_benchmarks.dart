@@ -9,7 +9,9 @@ import 'package:num_dart/num_dart.dart';
 
 class NormalDistributionBenchmark extends BenchmarkBase {
   const NormalDistributionBenchmark()
-      : super('RNG Track  | Seeded normal() (Gaussian samples)       [size=50,000]');
+    : super(
+        'RNG Track  | Seeded normal() (Gaussian samples)       [size=50,000]',
+      );
 
   @override
   void run() {
@@ -20,7 +22,9 @@ class NormalDistributionBenchmark extends BenchmarkBase {
 
 class PoissonDistributionBenchmark extends BenchmarkBase {
   const PoissonDistributionBenchmark()
-      : super('RNG Track  | Seeded poisson() (Knuth vs Gaussian)      [size=20,000]');
+    : super(
+        'RNG Track  | Seeded poisson() (Knuth vs Gaussian)      [size=20,000]',
+      );
 
   @override
   void run() {
@@ -31,7 +35,9 @@ class PoissonDistributionBenchmark extends BenchmarkBase {
 
 class BinomialDistributionBenchmark extends BenchmarkBase {
   const BinomialDistributionBenchmark()
-      : super('RNG Track  | Seeded binomial() (Bernoulli vs Normal)   [size=20,000]');
+    : super(
+        'RNG Track  | Seeded binomial() (Bernoulli vs Normal)   [size=20,000]',
+      );
 
   @override
   void run() {
@@ -49,7 +55,9 @@ class NativeQSortContiguousBenchmark extends BenchmarkBase {
   late NDArray<double> target;
 
   NativeQSortContiguousBenchmark()
-      : super('SORT Track | Native C Heap sort() (Contiguous vector)   [size=30,000]');
+    : super(
+        'SORT Track | Native C Heap sort() (Contiguous vector)   [size=30,000]',
+      );
 
   @override
   void setup() {
@@ -67,6 +75,11 @@ class NativeQSortContiguousBenchmark extends BenchmarkBase {
     target.data.setAll(0, templateData);
     sort(target);
   }
+
+  @override
+  void teardown() {
+    target.dispose();
+  }
 }
 
 class TernaryWhereBroadcastingBenchmark extends BenchmarkBase {
@@ -75,7 +88,9 @@ class TernaryWhereBroadcastingBenchmark extends BenchmarkBase {
   late NDArray<double> y;
 
   TernaryWhereBroadcastingBenchmark()
-      : super('SORT Track | Ternary where() 3-Way Broadcasting       [shape=100x100]');
+    : super(
+        'SORT Track | Ternary where() 3-Way Broadcasting       [shape=100x100]',
+      );
 
   @override
   void setup() {
@@ -88,6 +103,13 @@ class TernaryWhereBroadcastingBenchmark extends BenchmarkBase {
   void run() {
     where(cond, x, y);
   }
+
+  @override
+  void teardown() {
+    cond.dispose();
+    x.dispose();
+    y.dispose();
+  }
 }
 
 // ============================================================================
@@ -98,7 +120,9 @@ class LapackMatrixInversionBenchmark extends BenchmarkBase {
   late NDArray<double> a;
 
   LapackMatrixInversionBenchmark()
-      : super('LINALG Track| OpenBLAS LU Matrix Inversion (inv)       [shape=100x100]');
+    : super(
+        'LINALG Track| OpenBLAS LU Matrix Inversion (inv)       [shape=100x100]',
+      );
 
   @override
   void setup() {
@@ -109,13 +133,20 @@ class LapackMatrixInversionBenchmark extends BenchmarkBase {
   void run() {
     inv(a);
   }
+
+  @override
+  void teardown() {
+    a.dispose();
+  }
 }
 
 class NativeFftTransformBenchmark extends BenchmarkBase {
   late NDArray<double> signal;
 
   NativeFftTransformBenchmark()
-      : super('LINALG Track| Native Mixed-Radix C FFI pocketfft (fft) [length=2048]');
+    : super(
+        'LINALG Track| Native Mixed-Radix C FFI pocketfft (fft) [length=2048]',
+      );
 
   @override
   void setup() {
@@ -125,6 +156,11 @@ class NativeFftTransformBenchmark extends BenchmarkBase {
   @override
   void run() {
     fft(signal);
+  }
+
+  @override
+  void teardown() {
+    signal.dispose();
   }
 }
 
@@ -138,7 +174,9 @@ class ElementwiseAddBenchmark extends BenchmarkBase {
   late NDArray<double> outBuffer;
 
   ElementwiseAddBenchmark()
-      : super('MEMORY Track| Element-wise Same-Shape add(x, y)       [size=300,000]');
+    : super(
+        'MEMORY Track| Element-wise Same-Shape add(x, y)       [size=300,000]',
+      );
 
   @override
   void setup() {
@@ -151,6 +189,13 @@ class ElementwiseAddBenchmark extends BenchmarkBase {
   void run() {
     add(x, y, out: outBuffer);
   }
+
+  @override
+  void teardown() {
+    x.dispose();
+    y.dispose();
+    outBuffer.dispose();
+  }
 }
 
 class ScalarAdditionBroadcastBenchmark extends BenchmarkBase {
@@ -159,18 +204,29 @@ class ScalarAdditionBroadcastBenchmark extends BenchmarkBase {
   late NDArray<double> outBuffer;
 
   ScalarAdditionBroadcastBenchmark()
-      : super('MEMORY Track| Scalar Array Broadcast add(x, scalar)   [size=300,000]');
+    : super(
+        'MEMORY Track| Scalar Array Broadcast add(x, scalar)   [size=300,000]',
+      );
 
   @override
   void setup() {
     x = NDArray.ones([300000], DType.float64);
-    scalarArr = NDArray.fromList(Float64List.fromList([5.0]), [1], DType.float64);
+    scalarArr = NDArray.fromList(Float64List.fromList([5.0]), [
+      1,
+    ], DType.float64);
     outBuffer = NDArray.create([300000], DType.float64);
   }
 
   @override
   void run() {
     add(x, scalarArr, out: outBuffer);
+  }
+
+  @override
+  void teardown() {
+    x.dispose();
+    scalarArr.dispose();
+    outBuffer.dispose();
   }
 }
 
@@ -179,7 +235,9 @@ class SinUfuncBenchmark extends BenchmarkBase {
   late NDArray<double> outBuffer;
 
   SinUfuncBenchmark()
-      : super('MEMORY Track| Universal math function sin(x)          [size=100,000]');
+    : super(
+        'MEMORY Track| Universal math function sin(x)          [size=100,000]',
+      );
 
   @override
   void setup() {
@@ -191,13 +249,21 @@ class SinUfuncBenchmark extends BenchmarkBase {
   void run() {
     sin(x, out: outBuffer);
   }
+
+  @override
+  void teardown() {
+    x.dispose();
+    outBuffer.dispose();
+  }
 }
 
 class SumReductionBenchmark extends BenchmarkBase {
   late NDArray<double> x;
 
   SumReductionBenchmark()
-      : super('MEMORY Track| Flat Memory Reduction walk sum(x)       [size=300,000]');
+    : super(
+        'MEMORY Track| Flat Memory Reduction walk sum(x)       [size=300,000]',
+      );
 
   @override
   void setup() {
@@ -208,6 +274,11 @@ class SumReductionBenchmark extends BenchmarkBase {
   void run() {
     sum(x);
   }
+
+  @override
+  void teardown() {
+    x.dispose();
+  }
 }
 
 // ============================================================================
@@ -215,9 +286,15 @@ class SumReductionBenchmark extends BenchmarkBase {
 // ============================================================================
 
 void main() {
-  print('============================================================================');
-  print('         num_dart ALL-INCLUSIVE PERFORMANCE BENCHMARK SUITE MASTER          ');
-  print('============================================================================');
+  print(
+    '============================================================================',
+  );
+  print(
+    '         num_dart ALL-INCLUSIVE PERFORMANCE BENCHMARK SUITE MASTER          ',
+  );
+  print(
+    '============================================================================',
+  );
   print('Establishing high-precision baseline metrics pre-optimization...\n');
 
   print('--- TRACK A: RANDOM DISTRIBUTIONS & RNG SOLVERS ---');
@@ -229,17 +306,27 @@ void main() {
   NativeQSortContiguousBenchmark().report();
   TernaryWhereBroadcastingBenchmark().report();
 
-  print('\n--- TRACK C: OPENBLAS LINEAR ALGEBRA & NATIVE POCKETFFT SIGNALS ---');
+  print(
+    '\n--- TRACK C: OPENBLAS LINEAR ALGEBRA & NATIVE POCKETFFT SIGNALS ---',
+  );
   LapackMatrixInversionBenchmark().report();
   NativeFftTransformBenchmark().report();
 
-  print('\n--- TRACK D: UNIVERSAL UFUNCS, REDUCTIONS & MEMORY STRIDES (SECTION 9 TARGET) ---');
+  print(
+    '\n--- TRACK D: UNIVERSAL UFUNCS, REDUCTIONS & MEMORY STRIDES (SECTION 9 TARGET) ---',
+  );
   ElementwiseAddBenchmark().report();
   ScalarAdditionBroadcastBenchmark().report();
   SinUfuncBenchmark().report();
   SumReductionBenchmark().report();
 
-  print('\n============================================================================');
-  print('Exhaustive Master Baseline Performance Benchmarks completed successfully.');
-  print('============================================================================');
+  print(
+    '\n============================================================================',
+  );
+  print(
+    'Exhaustive Master Baseline Performance Benchmarks completed successfully.',
+  );
+  print(
+    '============================================================================',
+  );
 }

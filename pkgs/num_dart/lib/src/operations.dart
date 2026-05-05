@@ -347,14 +347,26 @@ NDArray add(NDArray a, NDArray b, {NDArray? out}) {
     final result = out ?? NDArray.create(a.shape, targetDType);
     if (out != null) {
       if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
-        throw ArgumentError('Provided out buffer has incompatible shape or dtype.');
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype.',
+        );
       }
     }
     if (a.dtype == DType.float64 && b.dtype == DType.float64) {
-      v_add_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_add_double(
+        a.pointer.cast(),
+        b.pointer.cast(),
+        result.pointer.cast(),
+        a.data.length,
+      );
       return result;
     } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
-      v_add_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_add_float(
+        a.pointer.cast(),
+        b.pointer.cast(),
+        result.pointer.cast(),
+        a.data.length,
+      );
       return result;
     }
   }
@@ -367,15 +379,24 @@ NDArray add(NDArray a, NDArray b, {NDArray? out}) {
   final result = out ?? NDArray.create(commonShape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
-      throw ArgumentError('Provided out buffer has incompatible shape or dtype for broadcasting.');
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for broadcasting.',
+      );
     }
   }
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   // 0B. Flat Contiguous Complex128 Track Add
   if (a.isContiguous && b.isContiguous && listEquals(a.shape, b.shape)) {
-    if (targetDType == DType.complex128 && a.dtype == DType.complex128 && b.dtype == DType.complex128) {
-      v_add_complex(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+    if (targetDType == DType.complex128 &&
+        a.dtype == DType.complex128 &&
+        b.dtype == DType.complex128) {
+      v_add_complex(
+        a.pointer.cast(),
+        b.pointer.cast(),
+        result.pointer.cast(),
+        a.data.length,
+      );
       return result;
     }
   }
@@ -395,11 +416,33 @@ NDArray add(NDArray a, NDArray b, {NDArray? out}) {
     }
 
     try {
-      if (targetDType == DType.float64 && a.dtype == DType.float64 && b.dtype == DType.float64) {
-        s_add_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+      if (targetDType == DType.float64 &&
+          a.dtype == DType.float64 &&
+          b.dtype == DType.float64) {
+        s_add_double(
+          a.pointer.cast(),
+          cStridesA,
+          b.pointer.cast(),
+          cStridesB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          commonShape.length,
+        );
         return result;
-      } else if (targetDType == DType.complex128 && a.dtype == DType.complex128 && b.dtype == DType.complex128) {
-        s_add_complex(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+      } else if (targetDType == DType.complex128 &&
+          a.dtype == DType.complex128 &&
+          b.dtype == DType.complex128) {
+        s_add_complex(
+          a.pointer.cast(),
+          cStridesA,
+          b.pointer.cast(),
+          cStridesB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          commonShape.length,
+        );
         return result;
       }
     } finally {
@@ -644,11 +687,21 @@ NDArray subtract(NDArray a, NDArray b) {
   if (a.isContiguous && b.isContiguous && listEquals(a.shape, b.shape)) {
     if (a.dtype == DType.float64 && b.dtype == DType.float64) {
       final result = NDArray.create(a.shape, DType.float64);
-      v_sub_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_sub_double(
+        a.pointer.cast(),
+        b.pointer.cast(),
+        result.pointer.cast(),
+        a.data.length,
+      );
       return result;
     } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
       final result = NDArray.create(a.shape, DType.float32);
-      v_sub_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_sub_float(
+        a.pointer.cast(),
+        b.pointer.cast(),
+        result.pointer.cast(),
+        a.data.length,
+      );
       return result;
     }
   }
@@ -832,11 +885,21 @@ NDArray multiply(NDArray a, NDArray b) {
   if (a.isContiguous && b.isContiguous && listEquals(a.shape, b.shape)) {
     if (a.dtype == DType.float64 && b.dtype == DType.float64) {
       final result = NDArray.create(a.shape, DType.float64);
-      v_mul_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_mul_double(
+        a.pointer.cast(),
+        b.pointer.cast(),
+        result.pointer.cast(),
+        a.data.length,
+      );
       return result;
     } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
       final result = NDArray.create(a.shape, DType.float32);
-      v_mul_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_mul_float(
+        a.pointer.cast(),
+        b.pointer.cast(),
+        result.pointer.cast(),
+        a.data.length,
+      );
       return result;
     }
   }
@@ -1020,11 +1083,21 @@ NDArray divide(NDArray a, NDArray b) {
   if (a.isContiguous && b.isContiguous && listEquals(a.shape, b.shape)) {
     if (a.dtype == DType.float64 && b.dtype == DType.float64) {
       final result = NDArray.create(a.shape, DType.float64);
-      v_div_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_div_double(
+        a.pointer.cast(),
+        b.pointer.cast(),
+        result.pointer.cast(),
+        a.data.length,
+      );
       return result;
     } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
       final result = NDArray.create(a.shape, DType.float32);
-      v_div_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_div_float(
+        a.pointer.cast(),
+        b.pointer.cast(),
+        result.pointer.cast(),
+        a.data.length,
+      );
       return result;
     }
   }
@@ -1235,8 +1308,21 @@ List<int> _broadcastStackShapes(List<int> sA, List<int> sB) {
 
 /// Matrix multiplication for Float64 arrays using OpenBLAS, supporting high-dimensional stack broadcasting and 1D vector promotions.
 NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
-  if (a.dtype != DType.float64 || b.dtype != DType.float64) {
-    throw ArgumentError('matmul only supports Float64 for now');
+  if (a.shape.length == 1 && b.shape.length == 1) {
+    final n = a.shape[0];
+    if (n != b.shape[0]) {
+      throw ArgumentError(
+        'Incompatible vector dimensions for 1D dot product in matmul: ${a.shape} and ${b.shape}',
+      );
+    }
+    final scalarRes = cblas_ddot(
+      n,
+      a.pointer.cast<ffi.Double>(),
+      1,
+      b.pointer.cast<ffi.Double>(),
+      1,
+    );
+    return NDArray.fromList([scalarRes], [], DType.float64);
   }
 
   // Ensure contiguous layout upfront to make row-major BLAS strides lda/ldb predictable
@@ -1394,7 +1480,7 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
 /// final s0 = sum(a, axis: 0); // Sum along rows
 /// print(s0.data); // [4.0, 6.0]
 /// ```
-dynamic sum<T extends num>(NDArray<T> a, {int? axis}) {
+dynamic sum<T extends Object>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
     if (a.isContiguous) {
       if (a.dtype == DType.float64) {
@@ -1403,7 +1489,9 @@ dynamic sum<T extends num>(NDArray<T> a, {int? axis}) {
         return r_sum_float(a.pointer.cast(), a.data.length) as T;
       }
     }
-    return a.data.reduce((value, element) => (value + element) as T);
+    return a.data.reduce(
+      (value, element) => ((value as dynamic) + element) as T,
+    );
   }
 
   if (axis < 0 || axis >= a.shape.length) {
@@ -1417,9 +1505,10 @@ dynamic sum<T extends num>(NDArray<T> a, {int? axis}) {
     a,
     result,
     List<int>.filled(a.shape.length, 0),
+    List<int>.filled(newShape.length, 0),
     axis,
     0,
-    (current, val) => (current + val) as T,
+    (current, val) => ((current as dynamic) + val) as T,
   );
   return result;
 }
@@ -1435,9 +1524,11 @@ dynamic sum<T extends num>(NDArray<T> a, {int? axis}) {
 /// final p0 = prod(a, axis: 0); // Product along rows
 /// print(p0.data); // [3.0, 8.0]
 /// ```
-dynamic prod<T extends num>(NDArray<T> a, {int? axis}) {
+dynamic prod<T extends Object>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
-    return a.data.reduce((value, element) => (value * element) as T);
+    return a.data.reduce(
+      (value, element) => ((value as dynamic) * element) as T,
+    );
   }
 
   if (axis < 0 || axis >= a.shape.length) {
@@ -1451,9 +1542,10 @@ dynamic prod<T extends num>(NDArray<T> a, {int? axis}) {
     a,
     result,
     List<int>.filled(a.shape.length, 0),
+    List<int>.filled(newShape.length, 0),
     axis,
     0,
-    (current, val) => (current * val) as T,
+    (current, val) => ((current as dynamic) * val) as T,
   );
   return result;
 }
@@ -1473,10 +1565,13 @@ dynamic prod<T extends num>(NDArray<T> a, {int? axis}) {
 /// - Negative values will result in [double.nan].
 NDArray<double> sqrt<T extends num>(NDArray<T> a, {NDArray? out}) {
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  final result = out as NDArray<double>? ?? NDArray<double>.create(a.shape, targetDType as DType);
+  final result =
+      out as NDArray<double>? ?? NDArray<double>.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
-      throw ArgumentError('Provided out buffer has incompatible shape for sqrt.');
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape for sqrt.',
+      );
     }
   }
 
@@ -1499,10 +1594,13 @@ NDArray<double> sqrt<T extends num>(NDArray<T> a, {NDArray? out}) {
 /// Compute the element-wise sine of the array.
 NDArray<double> sin<T extends num>(NDArray<T> a, {NDArray? out}) {
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  final result = out as NDArray<double>? ?? NDArray<double>.create(a.shape, targetDType);
+  final result =
+      out as NDArray<double>? ?? NDArray<double>.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
-      throw ArgumentError('Provided out buffer has incompatible shape for sin.');
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape for sin.',
+      );
     }
   }
 
@@ -1553,7 +1651,7 @@ NDArray<double> log<T extends num>(NDArray<T> a) {
 ///
 /// **Gotchas:**
 /// - Returns a scalar if [axis] is null, or a new [NDArray] if [axis] is provided.
-dynamic mean<T extends num>(NDArray<T> a, {int? axis}) {
+dynamic mean<T extends Object>(NDArray<T> a, {int? axis}) {
   final s = sum(a, axis: axis);
   if (axis == null) {
     return s / a.data.length;
@@ -1647,6 +1745,7 @@ dynamic min<T extends num>(NDArray<T> a, {int? axis}) {
     a,
     result,
     List<int>.filled(a.shape.length, 0),
+    List<int>.filled(newShape.length, 0),
     axis,
     0,
     (current, val) => math.min(current, val.toDouble()),
@@ -1682,6 +1781,7 @@ dynamic max<T extends num>(NDArray<T> a, {int? axis}) {
     a,
     result,
     List<int>.filled(a.shape.length, 0),
+    List<int>.filled(newShape.length, 0),
     axis,
     0,
     (current, val) => math.max(current, val.toDouble()),
@@ -2153,13 +2253,14 @@ Map<String, NDArray<Complex>> eig(NDArray a) {
 }
 
 /// Recursive helper to traverse and reduce an array along an axis.
-void _reduceRecursive<T extends num>(
-  NDArray<T> src,
-  NDArray<T> dest,
+void _reduceRecursive<S extends Object, D extends Object>(
+  NDArray<S> src,
+  NDArray<D> dest,
   List<int> currentPos,
+  List<int> destPos,
   int targetAxis,
   int currentDim,
-  T Function(T current, T value) op,
+  D Function(D current, S value) op,
 ) {
   if (currentDim == src.shape.length) {
     // Calculate flat index for src
@@ -2169,7 +2270,6 @@ void _reduceRecursive<T extends num>(
     }
 
     // Calculate flat index for dest
-    final destPos = List<int>.from(currentPos)..removeAt(targetAxis);
     var destOffset = 0;
     for (var i = 0; i < dest.shape.length; i++) {
       destOffset += destPos[i] * dest.strides[i];
@@ -2181,12 +2281,28 @@ void _reduceRecursive<T extends num>(
 
   for (var i = 0; i < src.shape[currentDim]; i++) {
     currentPos[currentDim] = i;
-    _reduceRecursive(src, dest, currentPos, targetAxis, currentDim + 1, op);
+    if (currentDim < targetAxis) {
+      destPos[currentDim] = i;
+    } else if (currentDim > targetAxis) {
+      destPos[currentDim - 1] = i;
+    }
+    _reduceRecursive(
+      src,
+      dest,
+      currentPos,
+      destPos,
+      targetAxis,
+      currentDim + 1,
+      op,
+    );
   }
 }
 
 /// Concatenates a list of arrays along a specified axis.
-NDArray<T> concatenate<T extends num>(List<NDArray<T>> arrays, {int axis = 0}) {
+NDArray<T> concatenate<T extends Object>(
+  List<NDArray<T>> arrays, {
+  int axis = 0,
+}) {
   if (arrays.isEmpty) {
     throw ArgumentError('List of arrays must not be empty');
   }
@@ -2239,7 +2355,7 @@ NDArray<T> concatenate<T extends num>(List<NDArray<T>> arrays, {int axis = 0}) {
   return result;
 }
 
-void _copyConcatenateRecursive<T extends num>(
+void _copyConcatenateRecursive<T extends Object>(
   NDArray<T> src,
   NDArray<T> dest,
   int axis,
@@ -2268,12 +2384,12 @@ void _copyConcatenateRecursive<T extends num>(
 }
 
 /// Stacks arrays in sequence vertically (row wise).
-NDArray<T> vstack<T extends num>(List<NDArray<T>> arrays) {
+NDArray<T> vstack<T extends Object>(List<NDArray<T>> arrays) {
   return concatenate(arrays, axis: 0);
 }
 
 /// Stacks arrays in sequence horizontally (column wise).
-NDArray<T> hstack<T extends num>(List<NDArray<T>> arrays) {
+NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
   return concatenate(arrays, axis: 1);
 }
 
@@ -2991,10 +3107,22 @@ NDArray clip(NDArray a, num min, num max) {
 
   if (a.isContiguous) {
     if (a.dtype == DType.float64) {
-      v_clip_double(a.pointer.cast(), result.pointer.cast(), min.toDouble(), max.toDouble(), a.data.length);
+      v_clip_double(
+        a.pointer.cast(),
+        result.pointer.cast(),
+        min.toDouble(),
+        max.toDouble(),
+        a.data.length,
+      );
       return result;
     } else if (a.dtype == DType.float32) {
-      v_clip_float(a.pointer.cast(), result.pointer.cast(), min.toDouble(), max.toDouble(), a.data.length);
+      v_clip_float(
+        a.pointer.cast(),
+        result.pointer.cast(),
+        min.toDouble(),
+        max.toDouble(),
+        a.data.length,
+      );
       return result;
     }
   }
@@ -3402,7 +3530,7 @@ NDArray sort(NDArray a, {int axis = -1}) {
 
   for (var r = 0; r < numRows; r++) {
     final rowPtr = baseCast + (r * rowSizeInBytes);
-    
+
     // High-speed direct C sorters bypassing FFI context switches
     if (src.dtype == DType.float64) {
       native_sort_double(rowPtr.cast<ffi.Double>(), n);
@@ -3699,22 +3827,36 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y]) {
     }
 
     try {
-      if (targetDType == DType.float64 && x.dtype == DType.float64 && y.dtype == DType.float64) {
+      if (targetDType == DType.float64 &&
+          x.dtype == DType.float64 &&
+          y.dtype == DType.float64) {
         s_where_double(
-          condition.pointer.cast(), cStridesCond,
-          x.pointer.cast(), cStridesX,
-          y.pointer.cast(), cStridesY,
-          result.pointer.cast(), cStridesRes,
-          cShape, commonShape.length
+          condition.pointer.cast(),
+          cStridesCond,
+          x.pointer.cast(),
+          cStridesX,
+          y.pointer.cast(),
+          cStridesY,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          commonShape.length,
         );
         return result;
-      } else if (targetDType == DType.float32 && x.dtype == DType.float32 && y.dtype == DType.float32) {
+      } else if (targetDType == DType.float32 &&
+          x.dtype == DType.float32 &&
+          y.dtype == DType.float32) {
         s_where_float(
-          condition.pointer.cast(), cStridesCond,
-          x.pointer.cast(), cStridesX,
-          y.pointer.cast(), cStridesY,
-          result.pointer.cast(), cStridesRes,
-          cShape, commonShape.length
+          condition.pointer.cast(),
+          cStridesCond,
+          x.pointer.cast(),
+          cStridesX,
+          y.pointer.cast(),
+          cStridesY,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          commonShape.length,
         );
         return result;
       }
@@ -3805,7 +3947,7 @@ dynamic count_nonzero(NDArray a, {int? axis}) {
       var subCount = 0;
       for (var i = 0; i < a.shape[dim]; i++) {
         pos[dim] = i;
-        countWalk(dim + 1);
+        subCount += countWalk(dim + 1);
       }
       return subCount;
     }

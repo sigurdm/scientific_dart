@@ -31,6 +31,23 @@ external double cblas_sdot(
 );
 
 @ffi.Native<
+  ffi.Double Function(
+    blasint,
+    ffi.Pointer<ffi.Double>,
+    blasint,
+    ffi.Pointer<ffi.Double>,
+    blasint,
+  )
+>()
+external double cblas_ddot(
+  int n,
+  ffi.Pointer<ffi.Double> x,
+  int incx,
+  ffi.Pointer<ffi.Double> y,
+  int incy,
+);
+
+@ffi.Native<
   ffi.Void Function(
     blasint,
     ffi.Float,

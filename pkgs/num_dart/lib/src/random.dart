@@ -54,8 +54,17 @@ NDArray<int> randint(
   final arr = NDArray<int>.create(shape, dtype);
   final rand = random ?? Random();
   final range = high - low;
-  for (var i = 0; i < arr.data.length; i++) {
-    arr.data[i] = low + rand.nextInt(range);
+  if (range <= 4294967296) {
+    for (var i = 0; i < arr.data.length; i++) {
+      arr.data[i] = low + rand.nextInt(range);
+    }
+  } else {
+    for (var i = 0; i < arr.data.length; i++) {
+      final low32 = rand.nextInt(4294967296);
+      final high32 = rand.nextInt(4294967296);
+      final u64 = ((high32 << 32) | low32).abs();
+      arr.data[i] = low + (u64 % range);
+    }
   }
   return arr;
 }
@@ -140,6 +149,7 @@ NDArray<double> normal(
 NDArray<double> exponential(
   List<int> shape, {
   double scale = 1.0,
+  double? lam,
   DType dtype = DType.float64,
   Random? random,
 }) {
@@ -148,9 +158,10 @@ NDArray<double> exponential(
       'exponential only supports floating point dtypes (float32/float64)',
     );
   }
-  if (scale <= 0.0) {
+  final targetScale = lam != null ? 1.0 / lam : scale;
+  if (targetScale <= 0.0) {
     throw ArgumentError(
-      'scale parameter must be strictly positive (was $scale)',
+      'scale parameter (or 1 / lam) must be strictly positive (was $targetScale)',
     );
   }
 
@@ -158,11 +169,8 @@ NDArray<double> exponential(
   final rand = random ?? Random();
 
   for (var i = 0; i < arr.data.length; i++) {
-    var u = rand.nextDouble();
-    while (u == 1.0) {
-      u = rand.nextDouble();
-    }
-    arr.data[i] = -scale * math.log(1.0 - u);
+    final u = rand.nextDouble();
+    arr.data[i] = -targetScale * math.log(1.0 - u);
   }
 
   return arr;
@@ -216,14 +224,29 @@ NDArray<int> poisson(
     }
   } else {
     final stddev = math.sqrt(lam);
-    for (var i = 0; i < arr.data.length; i++) {
+    final len = arr.data.length;
+    var i = 0;
+    while (i < len) {
       var u1 = rand.nextDouble();
-      while (u1 == 0.0) u1 = rand.nextDouble();
+      while (u1 == 0.0) {
+        u1 = rand.nextDouble();
+      }
       final u2 = rand.nextDouble();
-      final z = math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2);
 
-      final val = (lam + stddev * z).round();
-      arr.data[i] = val < 0 ? 0 : val;
+      final mag = math.sqrt(-2.0 * math.log(u1));
+      final angle = 2.0 * math.pi * u2;
+
+      final z0 = mag * math.cos(angle);
+      final z1 = mag * math.sin(angle);
+
+      final val0 = (lam + stddev * z0).round();
+      arr.data[i] = val0 < 0 ? 0 : val0;
+
+      if (i + 1 < len) {
+        final val1 = (lam + stddev * z1).round();
+        arr.data[i + 1] = val1 < 0 ? 0 : val1;
+      }
+      i += 2;
     }
   }
 
@@ -290,19 +313,34 @@ NDArray<int> binomial(
   } else {
     final mean = n * p;
     final stddev = math.sqrt(n * p * (1.0 - p));
+    final len = arr.data.length;
 
-    for (var i = 0; i < arr.data.length; i++) {
-      if (stddev == 0.0) {
-        arr.data[i] = mean.round();
-        continue;
+    if (stddev == 0.0) {
+      arr.data.fillRange(0, len, mean.round());
+    } else {
+      var i = 0;
+      while (i < len) {
+        var u1 = rand.nextDouble();
+        while (u1 == 0.0) {
+          u1 = rand.nextDouble();
+        }
+        final u2 = rand.nextDouble();
+
+        final mag = math.sqrt(-2.0 * math.log(u1));
+        final angle = 2.0 * math.pi * u2;
+
+        final z0 = mag * math.cos(angle);
+        final z1 = mag * math.sin(angle);
+
+        final val0 = (mean + stddev * z0).round();
+        arr.data[i] = val0.clamp(0, n);
+
+        if (i + 1 < len) {
+          final val1 = (mean + stddev * z1).round();
+          arr.data[i + 1] = val1.clamp(0, n);
+        }
+        i += 2;
       }
-      var u1 = rand.nextDouble();
-      while (u1 == 0.0) u1 = rand.nextDouble();
-      final u2 = rand.nextDouble();
-      final z = math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2);
-
-      final val = (mean + stddev * z).round();
-      arr.data[i] = val.clamp(0, n);
     }
   }
 

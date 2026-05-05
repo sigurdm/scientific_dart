@@ -46,19 +46,21 @@ NDArray fft(NDArray a, {int? n}) {
   final totalElements = a.shape.reduce((x, y) => x * y);
   final signalsCount = totalElements ~/ lastAxisDim;
 
-  // 1. Allocate the native mixed-radix FFT plan configuration (0 for forward transform)
-  final cfg = kiss_fft_alloc(targetLen, 0, ffi.nullptr, ffi.nullptr);
-  if (cfg.address == 0) {
-    throw StateError(
-      'Failed to allocate native FFT plan for length $targetLen',
-    );
-  }
-
-  // 2. Allocate C-heap unmanaged struct array buffers
-  final pin = malloc<kiss_fft_cpx>(targetLen);
-  final pout = malloc<kiss_fft_cpx>(targetLen);
+  kiss_fft_cfg cfg = ffi.nullptr.cast();
+  ffi.Pointer<kiss_fft_cpx> pin = ffi.nullptr.cast();
+  ffi.Pointer<kiss_fft_cpx> pout = ffi.nullptr.cast();
 
   try {
+    cfg = kiss_fft_alloc(targetLen, 0, ffi.nullptr, ffi.nullptr);
+    if (cfg.address == 0) {
+      throw StateError(
+        'Failed to allocate native FFT plan for length $targetLen',
+      );
+    }
+
+    pin = malloc<kiss_fft_cpx>(targetLen);
+    pout = malloc<kiss_fft_cpx>(targetLen);
+
     // Walk every independent 1D row signal along the last dimension axis
     for (var s = 0; s < signalsCount; s++) {
       final srcStart = s * lastAxisDim;
@@ -92,9 +94,15 @@ NDArray fft(NDArray a, {int? n}) {
     }
   } finally {
     // 5. Release C heap allocations and planners to prevent memory leaks
-    free(cfg.cast<ffi.Void>());
-    malloc.free(pin);
-    malloc.free(pout);
+    if (cfg.address != 0) {
+      free(cfg.cast<ffi.Void>());
+    }
+    if (pin.address != 0) {
+      malloc.free(pin);
+    }
+    if (pout.address != 0) {
+      malloc.free(pout);
+    }
   }
 
   return result;
@@ -134,18 +142,21 @@ NDArray ifft(NDArray a, {int? n}) {
   final totalElements = a.shape.reduce((x, y) => x * y);
   final signalsCount = totalElements ~/ lastAxisDim;
 
-  // 1. Allocate native inverse plan configuration (1 for inverse transform)
-  final cfg = kiss_fft_alloc(targetLen, 1, ffi.nullptr, ffi.nullptr);
-  if (cfg.address == 0) {
-    throw StateError(
-      'Failed to allocate native IFFT plan for length $targetLen',
-    );
-  }
-
-  final pin = malloc<kiss_fft_cpx>(targetLen);
-  final pout = malloc<kiss_fft_cpx>(targetLen);
+  kiss_fft_cfg cfg = ffi.nullptr.cast();
+  ffi.Pointer<kiss_fft_cpx> pin = ffi.nullptr.cast();
+  ffi.Pointer<kiss_fft_cpx> pout = ffi.nullptr.cast();
 
   try {
+    cfg = kiss_fft_alloc(targetLen, 1, ffi.nullptr, ffi.nullptr);
+    if (cfg.address == 0) {
+      throw StateError(
+        'Failed to allocate native IFFT plan for length $targetLen',
+      );
+    }
+
+    pin = malloc<kiss_fft_cpx>(targetLen);
+    pout = malloc<kiss_fft_cpx>(targetLen);
+
     for (var s = 0; s < signalsCount; s++) {
       final srcStart = s * lastAxisDim;
       final destStart = s * targetLen;
@@ -180,9 +191,15 @@ NDArray ifft(NDArray a, {int? n}) {
       }
     }
   } finally {
-    free(cfg.cast<ffi.Void>());
-    malloc.free(pin);
-    malloc.free(pout);
+    if (cfg.address != 0) {
+      free(cfg.cast<ffi.Void>());
+    }
+    if (pin.address != 0) {
+      malloc.free(pin);
+    }
+    if (pout.address != 0) {
+      malloc.free(pout);
+    }
   }
 
   return result;

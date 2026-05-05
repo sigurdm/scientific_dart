@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:archive/archive.dart';
 import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
 
@@ -35,9 +36,6 @@ void main(List<String> args) async {
           outputDir.createSync(recursive: true);
         }
 
-        final tarballPath = outputDir.uri
-            .resolve('OpenBLAS-0.3.33.tar.gz')
-            .toFilePath();
         final extractDir = outputDir.uri
             .resolve('OpenBLAS-0.3.33/')
             .toFilePath();
@@ -51,27 +49,38 @@ void main(List<String> args) async {
 
         if (!libFile.existsSync()) {
           print('Downloading OpenBLAS release...');
-          final downloadResult = await Process.run('curl', [
-            '-L',
-            sourceUrl,
-            '-o',
-            tarballPath,
-          ]);
-          if (downloadResult.exitCode != 0) {
-            print('Failed to download OpenBLAS: ${downloadResult.stderr}');
-            exit(1);
+          final client = HttpClient();
+          List<int> tarGzBytes;
+          try {
+            final request = await client.getUrl(Uri.parse(sourceUrl));
+            final response = await request.close();
+            if (response.statusCode != 200) {
+              throw HttpException(
+                'Failed to download OpenBLAS: status ${response.statusCode}',
+              );
+            }
+            final bytesBuilder = BytesBuilder();
+            await for (final chunk in response) {
+              bytesBuilder.add(chunk);
+            }
+            tarGzBytes = bytesBuilder.toBytes();
+          } finally {
+            client.close();
           }
 
           print('Extracting OpenBLAS...');
-          final extractResult = await Process.run('tar', [
-            '-xzf',
-            tarballPath,
-            '-C',
-            outputDir.uri.toFilePath(),
-          ]);
-          if (extractResult.exitCode != 0) {
-            print('Failed to extract OpenBLAS: ${extractResult.stderr}');
-            exit(1);
+          final unzippedBytes = GZipDecoder().decodeBytes(tarGzBytes);
+          final archive = TarDecoder().decodeBytes(unzippedBytes);
+
+          for (final file in archive) {
+            final outPath = outputDir.uri.resolve(file.name).toFilePath();
+            if (file.isFile) {
+              final outFile = File(outPath);
+              outFile.createSync(recursive: true);
+              outFile.writeAsBytesSync(file.content as List<int>, flush: true);
+            } else {
+              Directory(outPath).createSync(recursive: true);
+            }
           }
 
           print('Building OpenBLAS with target $openBlasTarget...');

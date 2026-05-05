@@ -23,7 +23,9 @@ void main(List<String> args) async {
     final libFile = File.fromUri(outputDir.uri.resolve(libName));
 
     final compilerPath = cCompiler?.compiler?.toFilePath() ?? 'cc';
-    print('Compiling num_dart custom C extensions using compiler: $compilerPath');
+    print(
+      'Compiling num_dart custom C extensions using compiler: $compilerPath',
+    );
 
     final compileArgs = <String>[
       '-shared',
@@ -38,7 +40,9 @@ void main(List<String> args) async {
 
     final res = await Process.run(compilerPath, compileArgs);
     if (res.exitCode != 0) {
-      throw StateError('num_dart native C extensions compilation failed: ${res.stderr}');
+      throw StateError(
+        'num_dart native C extensions compilation failed: ${res.stderr}',
+      );
     }
     print('Compiled num_dart shared library successfully at: ${libFile.path}');
 
@@ -52,7 +56,15 @@ void main(List<String> args) async {
           file: libFile.uri,
         ),
       );
-      print('Registered num_dart native custom extensions code asset successfully.');
+      output.dependencies.add(
+        input.packageRoot.resolve('hook/custom_sorting.c'),
+      );
+      output.dependencies.add(
+        input.packageRoot.resolve('hook/custom_ufuncs.c'),
+      );
+      print(
+        'Registered num_dart native custom extensions code asset successfully.',
+      );
     }
   });
 }
