@@ -439,3 +439,13 @@ This file logs architectural improvements and hidden flaws discovered during aut
   ```dart
   output.dependencies.add(libFile.uri);
   ```
+
+***
+
+## 42. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Vector & Matrix Norms `linalg.norm`)
+- **Location**: [operations.dart:L4100-L4400](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L4100-L4400)
+- **Symptom**: Currently, the linear algebra tracking module inside `num_dart` completely lacks any public norm calculation functions.
+- **The Gap**: Violates standard NumPy `np.linalg.norm` scientific guidelines. Vector and matrix norm computations (such as Frobenius norm, spectral norm, L1/L2 vector norms) are fundamentally crucial across physical sciences, mathematical optimization, and machine learning algorithms (e.g. gradients clipping, distance calculations, regularization penalty calculations).
+- **Recommended Tweak**: OpenBLAS natively packages optimized vector Euclidean L2 norm routines. Expose:
+  - **`cblas_dnrm2`** / **`cblas_snrm2`**: Euclidean L2 vector norm calculations at raw CPU hardware vector speeds.
+  - Add a comprehensive `norm()` high-level method in `operations.dart` supporting both Frobenius norms for 2D matrices and L1/L2/infinity norms along axes for multi-dimensional arrays. This will deliver fully compatible, high-performance norm calculations to the developer workspace!
