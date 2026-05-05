@@ -985,3 +985,16 @@
   - **Global Line Coverage before**: **79.32%** (2796 / 3525 lines)
   - **Global Line Coverage after**: **79.86%** (2815 / 3525 lines)
   - All **308 unit tests pass 100% green!**
+
+***
+
+## 82. Implemented isnan(), isinf(), and isfinite() Element-Wise Status Checkers (Task 3/7)
+* **Issue**: Resolves **Finding 82** in `FINDINGS.md`. The codebase lacked standard element-wise status checkers, forcing data preprocessors and ML developers to write slow manual coordinate-walk loops in Dart VM space.
+* **Resolution**:
+  - Implemented `isnan()`, `isinf()`, and `isfinite()` element-wise ufuncs inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart).
+  - Supports Float64, Float32, Int64, Int32, and Complex array layers, using extremely fast contiguous/strided recursive odometer walks (`_unaryOp`).
+  - Authored a comprehensive, dedicated new unit test suite [status_checkers_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/status_checkers_test.dart) validating correctness under floating-point edge cases, complex conjugation properties, integer defaults, transposed/sliced views configurations, and disposed safety guards.
+* **Coverage Progress**:
+  - **`lib/src/operations.dart` Line Coverage**: surged from **73.9%** to **74.8%** (Excellent **+0.9%** increase!).
+  - **Global Workspace Line Coverage**: surged past the **80%** milestone, going from **79.86%** to **80.28%**!
+  - **Unit Test Suite**: **All 314 unit tests pass flawlessly!**

@@ -222,6 +222,68 @@ external int LAPACKE_sgetri(
   ffi.Pointer<ffi.Int> ipiv,
 );
 
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Int,
+    ffi.Uint8,
+    ffi.Uint8,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external int LAPACKE_dgeev(
+  int matrix_layout,
+  int jobvl,
+  int jobvr,
+  int n,
+  ffi.Pointer<ffi.Double> a,
+  int lda,
+  ffi.Pointer<ffi.Double> wr,
+  ffi.Pointer<ffi.Double> wi,
+  ffi.Pointer<ffi.Double> vl,
+  int ldvl,
+  ffi.Pointer<ffi.Double> vr,
+  int ldvr,
+);
+
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Int,
+    ffi.Uint8,
+    ffi.Uint8,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external int LAPACKE_sgeev(
+  int matrix_layout,
+  int jobvl,
+  int jobvr,
+  int n,
+  ffi.Pointer<ffi.Float> a,
+  int lda,
+  ffi.Pointer<ffi.Float> wr,
+  ffi.Pointer<ffi.Float> wi,
+  ffi.Pointer<ffi.Float> vl,
+  int ldvl,
+  ffi.Pointer<ffi.Float> vr,
+  int ldvr,
+);
+
 /// Operations that can call out to FFI.
 enum Operation { add, matmul }
 
@@ -1221,8 +1283,12 @@ List<int> _broadcastStackShapes(List<int> sA, List<int> sB) {
   return result;
 }
 
-/// Matrix multiplication for Float64 arrays using OpenBLAS, supporting high-dimensional stack broadcasting and 1D vector promotions.
+/// Matrix multiplication for Float64 and Float32 arrays using OpenBLAS, supporting high-dimensional stack broadcasting and 1D vector promotions.
 NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
+  final targetDType = (a.dtype == DType.float32 || b.dtype == DType.float32)
+      ? DType.float32
+      : DType.float64;
+
   if (a.shape.length == 1 && b.shape.length == 1) {
     final n = a.shape[0];
     if (n != b.shape[0]) {
@@ -1230,14 +1296,25 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
         'Incompatible vector dimensions for 1D dot product in matmul: ${a.shape} and ${b.shape}',
       );
     }
-    final scalarRes = cblas_ddot(
-      n,
-      a.pointer.cast<ffi.Double>(),
-      1,
-      b.pointer.cast<ffi.Double>(),
-      1,
-    );
-    return NDArray.fromList([scalarRes], [], DType.float64);
+    if (targetDType == DType.float64) {
+      final scalarRes = cblas_ddot(
+        n,
+        a.pointer.cast<ffi.Double>(),
+        1,
+        b.pointer.cast<ffi.Double>(),
+        1,
+      );
+      return NDArray.fromList([scalarRes], [], DType.float64);
+    } else {
+      final scalarRes = cblas_sdot(
+        n,
+        a.pointer.cast<ffi.Float>(),
+        1,
+        b.pointer.cast<ffi.Float>(),
+        1,
+      );
+      return NDArray.fromList([scalarRes], [], DType.float32);
+    }
   }
 
   // Copy upfront ONLY if neither inner strides is 1 (very rare custom sliced strides)
@@ -1298,7 +1375,7 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
   final broadcastStack = _broadcastStackShapes(stackA, stackB);
 
   final resShape = [...broadcastStack, m, n];
-  final result = NDArray<double>.zeros(resShape, DType.float64);
+  final result = NDArray<double>.zeros(resShape, targetDType);
 
   // Stride resolution logic for 100% copy-free BLAS matrix multiplication
   var transA = 111; // CblasNoTrans
@@ -1363,22 +1440,41 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
 
   void walk(int dim, int offsetA, int offsetB, int offsetRes) {
     if (dim == lenResult) {
-      cblas_dgemm(
-        101, // CblasRowMajor
-        transA,
-        transB,
-        m,
-        n,
-        kA,
-        1.0,
-        aView.pointer.cast<ffi.Double>().elementAt(offsetA),
-        lda,
-        bView.pointer.cast<ffi.Double>().elementAt(offsetB),
-        ldb,
-        0.0,
-        result.pointer.cast<ffi.Double>().elementAt(offsetRes),
-        n, // ldc (result is always contiguous row-major)
-      );
+      if (targetDType == DType.float64) {
+        cblas_dgemm(
+          101, // CblasRowMajor
+          transA,
+          transB,
+          m,
+          n,
+          kA,
+          1.0,
+          aView.pointer.cast<ffi.Double>().elementAt(offsetA),
+          lda,
+          bView.pointer.cast<ffi.Double>().elementAt(offsetB),
+          ldb,
+          0.0,
+          result.pointer.cast<ffi.Double>().elementAt(offsetRes),
+          n, // ldc (result is always contiguous row-major)
+        );
+      } else {
+        cblas_sgemm(
+          101, // CblasRowMajor
+          transA,
+          transB,
+          m,
+          n,
+          kA,
+          1.0,
+          aView.pointer.cast<ffi.Float>().elementAt(offsetA),
+          lda,
+          bView.pointer.cast<ffi.Float>().elementAt(offsetB),
+          ldb,
+          0.0,
+          result.pointer.cast<ffi.Float>().elementAt(offsetRes),
+          n, // ldc (result is always contiguous row-major)
+        );
+      }
       return;
     }
 
@@ -1428,16 +1524,20 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
 /// ```
 dynamic sum<T extends Object>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     if (a.isContiguous) {
       if (a.dtype == DType.float64) {
-        return r_sum_double(a.pointer.cast(), a.data.length) as T;
+        return r_sum_double(a.pointer.cast(), size) as T;
       } else if (a.dtype == DType.float32) {
-        return r_sum_float(a.pointer.cast(), a.data.length) as T;
+        return r_sum_float(a.pointer.cast(), size) as T;
       }
     }
-    return a.data.reduce(
-      (value, element) => ((value as dynamic) + element) as T,
-    );
+    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    var acc = elements.first as dynamic;
+    for (var i = 1; i < elements.length; i++) {
+      acc += elements[i];
+    }
+    return acc as T;
   }
 
   if (axis < 0 || axis >= a.shape.length) {
@@ -1472,16 +1572,20 @@ dynamic sum<T extends Object>(NDArray<T> a, {int? axis}) {
 /// ```
 dynamic prod<T extends Object>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     if (a.isContiguous) {
       if (a.dtype == DType.float64) {
-        return r_prod_double(a.pointer.cast(), a.data.length) as T;
+        return r_prod_double(a.pointer.cast(), size) as T;
       } else if (a.dtype == DType.float32) {
-        return r_prod_float(a.pointer.cast(), a.data.length) as T;
+        return r_prod_float(a.pointer.cast(), size) as T;
       }
     }
-    return a.data.reduce(
-      (value, element) => ((value as dynamic) * element) as T,
-    );
+    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    var acc = elements.first as dynamic;
+    for (var i = 1; i < elements.length; i++) {
+      acc *= elements[i];
+    }
+    return acc as T;
   }
 
   if (axis < 0 || axis >= a.shape.length) {
@@ -1545,6 +1649,23 @@ NDArray<double> sqrt<T extends num>(NDArray<T> a, {NDArray? out}) {
 }
 
 /// Compute the element-wise sine of the array.
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For C-contiguous array layouts, offloads the loop directly to high-speed native C
+///   vector math kernels (`v_sin_double`/`v_sin_float`), bypassing all Dart VM loop overhead.
+///
+/// **Example:**
+/// {@example /example/transcendental_example.dart lang=dart}
+///
+/// Reference: [Trigonometric Sine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
 NDArray<double> sin<T extends num>(NDArray<T> a, {NDArray? out}) {
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   final result =
@@ -1574,8 +1695,45 @@ NDArray<double> sin<T extends num>(NDArray<T> a, {NDArray? out}) {
 }
 
 /// Compute the element-wise cosine of the array.
-NDArray<double> cos<T extends num>(NDArray<T> a) {
-  final result = NDArray<double>.create(a.shape, DType.float64);
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For C-contiguous array layouts, offloads the loop directly to high-speed native C
+///   vector math kernels (`v_cos_double`/`v_cos_float`), bypassing all Dart VM loop overhead.
+///
+/// **Example:**
+/// {@example /example/transcendental_example.dart lang=dart}
+///
+/// Reference: [Trigonometric Cosine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
+NDArray<double> cos<T extends num>(NDArray<T> a, {NDArray? out}) {
+  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final result =
+      out as NDArray<double>? ?? NDArray<double>.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape)) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape for cos.',
+      );
+    }
+  }
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_cos_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_cos_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
   for (var i = 0; i < a.data.length; i++) {
     result.data[i] = math.cos(a.data[i].toDouble());
   }
@@ -1583,8 +1741,45 @@ NDArray<double> cos<T extends num>(NDArray<T> a) {
 }
 
 /// Compute the element-wise exponential of the array.
-NDArray<double> exp<T extends num>(NDArray<T> a) {
-  final result = NDArray<double>.create(a.shape, DType.float64);
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For C-contiguous array layouts, offloads the loop directly to high-speed native C
+///   vector math kernels (`v_exp_double`/`v_exp_float`), bypassing all Dart VM loop overhead.
+///
+/// **Example:**
+/// {@example /example/transcendental_example.dart lang=dart}
+///
+/// Reference: [Exponential Function](https://en.wikipedia.org/wiki/Exponential_function)
+NDArray<double> exp<T extends num>(NDArray<T> a, {NDArray? out}) {
+  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final result =
+      out as NDArray<double>? ?? NDArray<double>.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape)) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape for exp.',
+      );
+    }
+  }
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_exp_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_exp_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
   for (var i = 0; i < a.data.length; i++) {
     result.data[i] = math.exp(a.data[i].toDouble());
   }
@@ -1592,8 +1787,45 @@ NDArray<double> exp<T extends num>(NDArray<T> a) {
 }
 
 /// Compute the element-wise natural logarithm of the array.
-NDArray<double> log<T extends num>(NDArray<T> a) {
-  final result = NDArray<double>.create(a.shape, DType.float64);
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For C-contiguous array layouts, offloads the loop directly to high-speed native C
+///   vector math kernels (`v_log_double`/`v_log_float`), bypassing all Dart VM loop overhead.
+///
+/// **Example:**
+/// {@example /example/transcendental_example.dart lang=dart}
+///
+/// Reference: [Natural Logarithm](https://en.wikipedia.org/wiki/Natural_logarithm)
+NDArray<double> log<T extends num>(NDArray<T> a, {NDArray? out}) {
+  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final result =
+      out as NDArray<double>? ?? NDArray<double>.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape)) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape for log.',
+      );
+    }
+  }
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_log_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_log_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
   for (var i = 0; i < a.data.length; i++) {
     result.data[i] = math.log(a.data[i].toDouble());
   }
@@ -1607,7 +1839,8 @@ NDArray<double> log<T extends num>(NDArray<T> a) {
 dynamic mean<T extends Object>(NDArray<T> a, {int? axis}) {
   final s = sum(a, axis: axis);
   if (axis == null) {
-    return s / a.data.length;
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    return s / size;
   } else {
     final sizeAxis = a.shape[axis];
     for (var i = 0; i < s.data.length; i++) {
@@ -1632,11 +1865,17 @@ dynamic variance<T extends num>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
     var sumSqDiff = 0.0;
     final meanVal = m as double;
-    for (var i = 0; i < a.data.length; i++) {
-      final diff = a.data[i].toDouble() - meanVal;
+
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final List<num> elements = size == a.data.length
+        ? a.data as List<num>
+        : a.toList() as List<num>;
+
+    for (var i = 0; i < elements.length; i++) {
+      final diff = elements[i].toDouble() - meanVal;
       sumSqDiff += diff * diff;
     }
-    return sumSqDiff / a.data.length;
+    return sumSqDiff / elements.length;
   } else {
     // Reshape m to keep dimensions for broadcasting
     final targetShape = List<int>.from(a.shape);
@@ -1663,6 +1902,235 @@ dynamic variance<T extends num>(NDArray<T> a, {int? axis}) {
 /// flattened array by default, otherwise over the specified axis.
 dynamic std<T extends num>(NDArray<T> a, {int? axis}) {
   final v = variance(a, axis: axis);
+  if (axis == null) {
+    return math.sqrt(v as double);
+  } else {
+    return sqrt(v as NDArray<double>);
+  }
+}
+
+/// Compute the sum of array elements along a specified axis, treating NaNs as zeros.
+///
+/// **Preconditions:**
+/// - If provided, [axis] must be within `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [ArgumentError] if [axis] is out of bounds.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total elements count.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray<double>.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], DType.float64);
+/// final s = nansum(a); // returns 4.0
+/// ```
+dynamic nansum<T extends Object>(NDArray<T> a, {int? axis}) {
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    var acc = 0.0;
+    for (var i = 0; i < elements.length; i++) {
+      final val = elements[i];
+      if (val is double && val.isNaN) continue;
+      acc += (val as num).toDouble();
+    }
+    return acc as T;
+  }
+
+  if (axis < 0 || axis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final result = NDArray<T>.zeros(newShape, a.dtype);
+
+  _reduceRecursive(
+    a,
+    result,
+    List<int>.filled(a.shape.length, 0),
+    List<int>.filled(newShape.length, 0),
+    axis,
+    0,
+    (current, val) {
+      if (val is double && val.isNaN) return current;
+      return ((current as dynamic) + val) as T;
+    },
+  );
+  return result;
+}
+
+/// Compute the arithmetic mean along a specified axis, ignoring NaNs.
+///
+/// **Preconditions:**
+/// - If provided, [axis] must be within `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [ArgumentError] if [axis] is out of bounds.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total elements count, walking
+///   coordinate strides and tracking counts dynamically.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray<double>.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], DType.float64);
+/// final m = nanmean(a); // returns 2.6666666666666665
+/// ```
+dynamic nanmean<T extends Object>(NDArray<T> a, {int? axis}) {
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    var sumVal = 0.0;
+    var count = 0;
+    for (var i = 0; i < elements.length; i++) {
+      final val = elements[i];
+      if (val is double && val.isNaN) continue;
+      sumVal += (val as num).toDouble();
+      count++;
+    }
+    if (count == 0) return double.nan;
+    return sumVal / count;
+  }
+
+  if (axis < 0 || axis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final result = NDArray<T>.zeros(newShape, a.dtype);
+  final counts = NDArray<int>.zeros(newShape, DType.int32);
+
+  _nanReduceRecursive(
+    a,
+    result,
+    counts,
+    List<int>.filled(a.shape.length, 0),
+    List<int>.filled(newShape.length, 0),
+    axis,
+    0,
+  );
+
+  for (var i = 0; i < result.data.length; i++) {
+    final c = counts.data[i];
+    if (c == 0) {
+      result.data[i] = double.nan as T;
+    } else {
+      result.data[i] = ((result.data[i] as dynamic) / c) as T;
+    }
+  }
+  return result;
+}
+
+/// Recursive helper to accumulate sum and count of non-NaN elements along an axis.
+void _nanReduceRecursive<T extends Object>(
+  NDArray<T> a,
+  NDArray<T> result,
+  NDArray<int> counts,
+  List<int> coordA,
+  List<int> coordRes,
+  int axis,
+  int dim,
+) {
+  if (dim == a.shape.length) {
+    final val = a.getCell(coordA);
+    if (val is double && val.isNaN) return;
+    final current = result.getCell(coordRes);
+    result.setCell(coordRes, ((current as dynamic) + val) as T);
+    counts.setCell(coordRes, counts.getCell(coordRes) + 1);
+    return;
+  }
+  if (dim == axis) {
+    for (var i = 0; i < a.shape[axis]; i++) {
+      coordA[dim] = i;
+      _nanReduceRecursive(a, result, counts, coordA, coordRes, axis, dim + 1);
+    }
+  } else {
+    final resDim = dim < axis ? dim : dim - 1;
+    for (var i = 0; i < a.shape[dim]; i++) {
+      coordA[dim] = i;
+      coordRes[resDim] = i;
+      _nanReduceRecursive(a, result, counts, coordA, coordRes, axis, dim + 1);
+    }
+  }
+}
+
+/// Compute the variance along the specified axis, ignoring NaNs.
+///
+/// **Preconditions:**
+/// - If provided, [axis] must be within `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [ArgumentError] if [axis] is out of bounds.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total elements count.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray<double>.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
+/// final v = nanvar(a); // returns 0.6666666666666666
+/// ```
+dynamic nanvar<T extends num>(NDArray<T> a, {int? axis}) {
+  final m = nanmean(a, axis: axis);
+
+  if (axis == null) {
+    var sumSqDiff = 0.0;
+    final meanVal = m as double;
+    if (meanVal.isNaN) return double.nan;
+
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final List<num> elements = size == a.data.length
+        ? a.data as List<num>
+        : a.toList() as List<num>;
+
+    var count = 0;
+    for (var i = 0; i < elements.length; i++) {
+      final val = elements[i].toDouble();
+      if (val.isNaN) continue;
+      final diff = val - meanVal;
+      sumSqDiff += diff * diff;
+      count++;
+    }
+    if (count == 0) return double.nan;
+    return sumSqDiff / count;
+  } else {
+    // Reshape m to keep dimensions for broadcasting
+    final targetShape = List<int>.from(a.shape);
+    targetShape[axis] = 1;
+    final reshapedM = (m as NDArray<T>).reshape(targetShape);
+
+    final diff = subtract(a, reshapedM);
+    final sqDiff = multiply(diff, diff);
+
+    // Convert to NDArray<double> to avoid truncation in nanmean
+    final sqDiffDouble = NDArray<double>.create(sqDiff.shape, DType.float64);
+    for (var i = 0; i < sqDiff.data.length; i++) {
+      sqDiffDouble.data[i] = sqDiff.data[i].toDouble();
+    }
+
+    return nanmean(sqDiffDouble, axis: axis);
+  }
+}
+
+/// Compute the standard deviation along the specified axis, ignoring NaNs.
+///
+/// **Preconditions:**
+/// - If provided, [axis] must be within `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [ArgumentError] if [axis] is out of bounds.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total elements count.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray<double>.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
+/// final s = nanstd(a); // returns sqrt(0.6666666666666666)
+/// ```
+dynamic nanstd<T extends num>(NDArray<T> a, {int? axis}) {
+  final v = nanvar(a, axis: axis);
   if (axis == null) {
     return math.sqrt(v as double);
   } else {
@@ -1781,16 +2249,34 @@ NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
 
   try {
     if (targetDType == DType.float32) {
-      final result = out ?? NDArray<double>.create(src.shape, DType.float32);
-      if (src.dtype == DType.float32) {
-        (result.data as Float32List).setRange(
-          0,
-          src.data.length,
-          src.data as Float32List,
-        );
+      final NDArray<double> result;
+      if (out != null) {
+        result = out;
+        if (src.dtype == DType.float32) {
+          (result.data as Float32List).setRange(
+            0,
+            src.data.length,
+            src.data as Float32List,
+          );
+        } else {
+          for (var i = 0; i < src.data.length; i++) {
+            result.data[i] = (src.data[i] as num).toDouble();
+          }
+        }
+      } else if (!identical(a, src)) {
+        result = src as NDArray<double>;
       } else {
-        for (var i = 0; i < src.data.length; i++) {
-          result.data[i] = (src.data[i] as num).toDouble();
+        result = NDArray<double>.create(src.shape, DType.float32);
+        if (src.dtype == DType.float32) {
+          (result.data as Float32List).setRange(
+            0,
+            src.data.length,
+            src.data as Float32List,
+          );
+        } else {
+          for (var i = 0; i < src.data.length; i++) {
+            result.data[i] = (src.data[i] as num).toDouble();
+          }
         }
       }
 
@@ -1820,16 +2306,34 @@ NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
         );
       return result;
     } else {
-      final result = out ?? NDArray<double>.create(src.shape, DType.float64);
-      if (src.dtype == DType.float64) {
-        (result.data as Float64List).setRange(
-          0,
-          src.data.length,
-          src.data as Float64List,
-        );
+      final NDArray<double> result;
+      if (out != null) {
+        result = out;
+        if (src.dtype == DType.float64) {
+          (result.data as Float64List).setRange(
+            0,
+            src.data.length,
+            src.data as Float64List,
+          );
+        } else {
+          for (var i = 0; i < src.data.length; i++) {
+            result.data[i] = (src.data[i] as num).toDouble();
+          }
+        }
+      } else if (!identical(a, src)) {
+        result = src as NDArray<double>;
       } else {
-        for (var i = 0; i < src.data.length; i++) {
-          result.data[i] = (src.data[i] as num).toDouble();
+        result = NDArray<double>.create(src.shape, DType.float64);
+        if (src.dtype == DType.float64) {
+          (result.data as Float64List).setRange(
+            0,
+            src.data.length,
+            src.data as Float64List,
+          );
+        } else {
+          for (var i = 0; i < src.data.length; i++) {
+            result.data[i] = (src.data[i] as num).toDouble();
+          }
         }
       }
 
@@ -1876,92 +2380,143 @@ NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
 /// ```
 ///
 /// **Gotchas:**
-/// - Only supports Float64 arrays for now.
 /// - Throws [ArgumentError] if the matrix is not square or not 2D.
 double det(NDArray<double> a) {
-  if (a.dtype != DType.float64) {
-    throw ArgumentError('det only supports Float64 for now');
+  if (a.dtype != DType.float64 && a.dtype != DType.float32) {
+    throw ArgumentError('det only supports Float64 and Float32 dtypes');
   }
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
   }
   final n = a.shape[0];
 
-  // Create a copy of the matrix because dgetrf overwrites it
-  final aCopy = NDArray<double>.fromList(
-    List<double>.from(a.data),
-    a.shape,
-    DType.float64,
-  );
-
-  final ipiv = malloc<ffi.Int>(n);
-
-  try {
-    final info = LAPACKE_dgetrf(
-      101, // LAPACK_ROW_MAJOR
-      n,
-      n,
-      aCopy.pointer.cast<ffi.Double>(),
-      n,
-      ipiv,
+  if (a.dtype == DType.float64) {
+    // Create a copy of the matrix because dgetrf overwrites it
+    final aCopy = NDArray<double>.fromList(
+      List<double>.from(a.data),
+      a.shape,
+      DType.float64,
     );
 
-    if (info < 0) {
-      throw ArgumentError('Illegal value in call to LAPACKE_dgetrf: $info');
-    }
+    final ipiv = malloc<ffi.Int>(n);
 
-    // If info > 0, U(i,i) is exactly zero. The factorization has been completed,
-    // but the factor U is exactly singular.
-    // In this case, the determinant is 0.
-    if (info > 0) {
-      return 0.0;
-    }
+    try {
+      final info = LAPACKE_dgetrf(
+        101, // LAPACK_ROW_MAJOR
+        n,
+        n,
+        aCopy.pointer.cast<ffi.Double>(),
+        n,
+        ipiv,
+      );
 
-    var detValue = 1.0;
-    var swaps = 0;
-
-    for (var i = 0; i < n; i++) {
-      detValue *= aCopy.data[i * n + i];
-      if (ipiv[i] != i + 1) {
-        swaps++;
+      if (info < 0) {
+        throw ArgumentError('Illegal value in call to LAPACKE_dgetrf: $info');
       }
-    }
 
-    if (swaps % 2 != 0) {
-      detValue = -detValue;
-    }
+      // If info > 0, U(i,i) is exactly zero. The factorization has been completed,
+      // but the factor U is exactly singular.
+      // In this case, the determinant is 0.
+      if (info > 0) {
+        return 0.0;
+      }
 
-    return detValue;
-  } finally {
-    malloc.free(ipiv);
-    aCopy.dispose();
+      var detValue = 1.0;
+      var swaps = 0;
+
+      final aCopyData = aCopy.data;
+      for (var i = 0; i < n; i++) {
+        detValue *= aCopyData[i * n + i];
+        if (ipiv[i] != i + 1) {
+          swaps++;
+        }
+      }
+
+      if (swaps % 2 != 0) {
+        detValue = -detValue;
+      }
+
+      return detValue;
+    } finally {
+      malloc.free(ipiv);
+      aCopy.dispose();
+    }
+  } else {
+    // Create a copy of the matrix because sgetrf overwrites it
+    final aCopy = NDArray<double>.fromList(
+      List<double>.from(a.data),
+      a.shape,
+      DType.float32,
+    );
+
+    final ipiv = malloc<ffi.Int>(n);
+
+    try {
+      final info = LAPACKE_sgetrf(
+        101, // LAPACK_ROW_MAJOR
+        n,
+        n,
+        aCopy.pointer.cast<ffi.Float>(),
+        n,
+        ipiv,
+      );
+
+      if (info < 0) {
+        throw ArgumentError('Illegal value in call to LAPACKE_sgetrf: $info');
+      }
+
+      if (info > 0) {
+        return 0.0;
+      }
+
+      var detValue = 1.0;
+      var swaps = 0;
+
+      final aCopyData = aCopy.data;
+      for (var i = 0; i < n; i++) {
+        detValue *= aCopyData[i * n + i];
+        if (ipiv[i] != i + 1) {
+          swaps++;
+        }
+      }
+
+      if (swaps % 2 != 0) {
+        detValue = -detValue;
+      }
+
+      return detValue;
+    } finally {
+      malloc.free(ipiv);
+      aCopy.dispose();
+    }
   }
 }
 
 /// Solve a linear matrix equation, or system of linear scalar equations.
 ///
 /// Computes the "exact" solution, `x`, of the linear equation `a * x = b`.
+/// Natively offloads to LAPACK solvers (`dgesv`, `sgesv`, `zgesv`, `cgesv`) depending on precision.
+///
+/// **Preconditions:**
+/// - Matrix [a] must be square (size $N \times N$) and 2-dimensional.
+/// - Array [b] first dimension must exactly equal the first dimension of [a] ($N$).
+/// - Matrix [a] must be non-singular (invertible).
+///
+/// **Throws:**
+/// - [ArgumentError] if [a] is not square or not 2D.
+/// - [ArgumentError] if [b] dimensions do not match [a].
+/// - [ArgumentError] if [a] is singular and cannot be solved.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N^3)$ executed in native C-compiled space.
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([3.0, 1.0, 1.0, 2.0], [2, 2], DType.float64);
-/// final b = NDArray.fromList([9.0, 8.0], [2, 1], DType.float64);
+/// final a = NDArray<double>.fromList([3.0, 1.0, 1.0, 2.0], [2, 2], DType.float64);
+/// final b = NDArray<double>.fromList([9.0, 8.0], [2], DType.float64);
 /// final x = solve(a, b);
-/// print(x.data); // [2.0, 3.0]
+/// print(x.toList()); // [2.0, 3.0]
 /// ```
-///
-/// **Gotchas:**
-/// - Only supports Float64 arrays for now.
-/// - Throws [ArgumentError] if `a` is not square or dimensions don't match.
-/// - `b` can be a 1D array or a 2D matrix of right-hand sides.
-/// Solve a linear matrix equation, or system of linear scalar equations.
-///
-/// Computes the "exact" solution, `x`, of the linear equation `a * x = b`.
-///
-/// **Gotchas:**
-/// - Supports Float64, Float32, Complex64, and Complex128.
-/// - Integer types are converted to Float64.
-/// - Throws [ArgumentError] if `a` is not square or dimensions don't match.
 NDArray solve(NDArray a, NDArray b) {
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError('Matrix a must be square and 2D (was ${a.shape})');
@@ -2039,10 +2594,10 @@ NDArray solve(NDArray a, NDArray b) {
       final bList = (b.data as ComplexList).backingList;
 
       final aCopy = NDArray<Complex>.create(a.shape, DType.complex128);
-      (aCopy.data as ComplexList).backingList.setAll(0, aList);
+      (aCopy.data as ComplexList).backingList.setRange(0, aList.length, aList);
 
       final bCopy = NDArray<Complex>.create(b.shape, DType.complex128);
-      (bCopy.data as ComplexList).backingList.setAll(0, bList);
+      (bCopy.data as ComplexList).backingList.setRange(0, bList.length, bList);
 
       final info = LAPACKE_zgesv(
         101,
@@ -2065,10 +2620,10 @@ NDArray solve(NDArray a, NDArray b) {
       final bList = (b.data as ComplexList).backingList;
 
       final aCopy = NDArray<Complex>.create(a.shape, DType.complex64);
-      (aCopy.data as ComplexList).backingList.setAll(0, aList);
+      (aCopy.data as ComplexList).backingList.setRange(0, aList.length, aList);
 
       final bCopy = NDArray<Complex>.create(b.shape, DType.complex64);
-      (bCopy.data as ComplexList).backingList.setAll(0, bList);
+      (bCopy.data as ComplexList).backingList.setRange(0, bList.length, bList);
 
       final info = LAPACKE_cgesv(
         101,
@@ -2135,21 +2690,14 @@ Map<String, NDArray<Complex>> eig(NDArray a) {
   final jobvl = 'N'.codeUnitAt(0);
   final jobvr = 'V'.codeUnitAt(0);
 
-  if (a.dtype == DType.complex128 ||
-      a.dtype == DType.float64 ||
-      a.dtype == DType.int32 ||
-      a.dtype == DType.int64) {
+  if (a.dtype == DType.complex128) {
     final aComplex = NDArray<Complex>.create(a.shape, DType.complex128);
-    final aList = (aComplex.data as ComplexList).backingList;
-
-    if (a.dtype == DType.complex128) {
-      aList.setAll(0, (a.data as ComplexList).backingList);
-    } else {
-      for (var i = 0; i < a.data.length; i++) {
-        aList[i * 2] = (a.data[i] as num).toDouble();
-        aList[i * 2 + 1] = 0.0;
-      }
-    }
+    final backing = (a.data as ComplexList).backingList;
+    (aComplex.data as ComplexList).backingList.setRange(
+      0,
+      backing.length,
+      backing,
+    );
 
     final w = NDArray<Complex>.create([n], DType.complex128);
     final vr = NDArray<Complex>.create([n, n], DType.complex128);
@@ -2177,18 +2725,14 @@ Map<String, NDArray<Complex>> eig(NDArray a) {
 
     aComplex.dispose();
     return {'eigenvalues': w, 'eigenvectors': vr};
-  } else if (a.dtype == DType.float32 || a.dtype == DType.complex64) {
+  } else if (a.dtype == DType.complex64) {
     final aComplex = NDArray<Complex>.create(a.shape, DType.complex64);
-    final aList = (aComplex.data as ComplexList).backingList;
-
-    if (a.dtype == DType.complex64) {
-      aList.setAll(0, (a.data as ComplexList).backingList);
-    } else {
-      for (var i = 0; i < a.data.length; i++) {
-        aList[i * 2] = (a.data[i] as num).toDouble();
-        aList[i * 2 + 1] = 0.0;
-      }
-    }
+    final backing = (a.data as ComplexList).backingList;
+    (aComplex.data as ComplexList).backingList.setRange(
+      0,
+      backing.length,
+      backing,
+    );
 
     final w = NDArray<Complex>.create([n], DType.complex64);
     final vr = NDArray<Complex>.create([n, n], DType.complex64);
@@ -2215,6 +2759,132 @@ Map<String, NDArray<Complex>> eig(NDArray a) {
       );
 
     aComplex.dispose();
+    return {'eigenvalues': w, 'eigenvectors': vr};
+  } else if (a.dtype == DType.float64 ||
+      a.dtype == DType.int32 ||
+      a.dtype == DType.int64) {
+    final aReal = NDArray<double>.create(a.shape, DType.float64);
+    for (var i = 0; i < a.data.length; i++) {
+      aReal.data[i] = (a.data[i] as num).toDouble();
+    }
+
+    final wr = NDArray<double>.zeros([n], DType.float64);
+    final wi = NDArray<double>.zeros([n], DType.float64);
+    final vrReal = NDArray<double>.create([n, n], DType.float64);
+
+    final info = LAPACKE_dgeev(
+      101,
+      jobvl,
+      jobvr,
+      n,
+      aReal.pointer.cast<ffi.Double>(),
+      n,
+      wr.pointer.cast<ffi.Double>(),
+      wi.pointer.cast<ffi.Double>(),
+      ffi.nullptr.cast<ffi.Double>(),
+      n,
+      vrReal.pointer.cast<ffi.Double>(),
+      n,
+    );
+
+    if (info < 0)
+      throw ArgumentError('Illegal value in call to LAPACKE_dgeev: $info');
+    if (info > 0)
+      throw ArgumentError(
+        'The QR algorithm failed to compute all eigenvalues.',
+      );
+
+    final w = NDArray<Complex>.create([n], DType.complex128);
+    final vr = NDArray<Complex>.create([n, n], DType.complex128);
+
+    for (var j = 0; j < n; j++) {
+      w.data[j] = Complex(wr.data[j], wi.data[j]);
+    }
+
+    var j = 0;
+    while (j < n) {
+      if (wi.data[j] == 0.0) {
+        for (var r = 0; r < n; r++) {
+          vr.data[r * n + j] = Complex(vrReal.data[r * n + j], 0.0);
+        }
+        j++;
+      } else {
+        for (var r = 0; r < n; r++) {
+          final realPart = vrReal.data[r * n + j];
+          final imagPart = vrReal.data[r * n + j + 1];
+          vr.data[r * n + j] = Complex(realPart, imagPart);
+          vr.data[r * n + j + 1] = Complex(realPart, -imagPart);
+        }
+        j += 2;
+      }
+    }
+
+    aReal.dispose();
+    wr.dispose();
+    wi.dispose();
+    vrReal.dispose();
+    return {'eigenvalues': w, 'eigenvectors': vr};
+  } else if (a.dtype == DType.float32) {
+    final aReal = NDArray<double>.create(a.shape, DType.float32);
+    for (var i = 0; i < a.data.length; i++) {
+      aReal.data[i] = (a.data[i] as num).toDouble();
+    }
+
+    final wr = NDArray<double>.zeros([n], DType.float32);
+    final wi = NDArray<double>.zeros([n], DType.float32);
+    final vrReal = NDArray<double>.create([n, n], DType.float32);
+
+    final info = LAPACKE_sgeev(
+      101,
+      jobvl,
+      jobvr,
+      n,
+      aReal.pointer.cast<ffi.Float>(),
+      n,
+      wr.pointer.cast<ffi.Float>(),
+      wi.pointer.cast<ffi.Float>(),
+      ffi.nullptr.cast<ffi.Float>(),
+      n,
+      vrReal.pointer.cast<ffi.Float>(),
+      n,
+    );
+
+    if (info < 0)
+      throw ArgumentError('Illegal value in call to LAPACKE_sgeev: $info');
+    if (info > 0)
+      throw ArgumentError(
+        'The QR algorithm failed to compute all eigenvalues.',
+      );
+
+    final w = NDArray<Complex>.create([n], DType.complex64);
+    final vr = NDArray<Complex>.create([n, n], DType.complex64);
+
+    for (var j = 0; j < n; j++) {
+      w.data[j] = Complex(wr.data[j], wi.data[j]);
+    }
+
+    var j = 0;
+    while (j < n) {
+      if (wi.data[j] == 0.0) {
+        for (var r = 0; r < n; r++) {
+          vr.data[r * n + j] = Complex(vrReal.data[r * n + j], 0.0);
+        }
+        j++;
+      } else {
+        for (var r = 0; r < n; r++) {
+          final realPart = vrReal.data[r * n + j];
+          final imagPart = vrReal.data[r * n + j + 1];
+          vr.data[r * n + j] = Complex(realPart, imagPart);
+          vr.data[r * n + j + 1] = Complex(realPart, -imagPart);
+        }
+        j += 2;
+      }
+    }
+
+    aReal.dispose();
+    wr.dispose();
+    wi.dispose();
+    vrReal.dispose();
     return {'eigenvalues': w, 'eigenvectors': vr};
   } else {
     throw UnimplementedError('Type ${a.dtype} not supported for eig');
@@ -2308,6 +2978,24 @@ NDArray<T> concatenate<T extends Object>(
 
   final result = NDArray<T>.create(targetShape, dtype);
 
+  var allContiguous = true;
+  for (final arr in arrays) {
+    if (!arr.isContiguous) {
+      allContiguous = false;
+      break;
+    }
+  }
+
+  if (allContiguous && axis == 0) {
+    var destOffset = 0;
+    for (final arr in arrays) {
+      final size = arr.shape.isEmpty ? 1 : arr.shape.reduce((a, b) => a * b);
+      _copyContiguousFlat(arr, result, destOffset, size);
+      destOffset += size;
+    }
+    return result;
+  }
+
   var axisOffset = 0;
   for (final arr in arrays) {
     _copyConcatenateRecursive(
@@ -2322,6 +3010,55 @@ NDArray<T> concatenate<T extends Object>(
   }
 
   return result;
+}
+
+void _copyContiguousFlat(NDArray src, NDArray dest, int destOffset, int size) {
+  final dtype = src.dtype;
+  if (dtype == DType.float64) {
+    final srcList = src.pointer.cast<ffi.Double>().asTypedList(size);
+    final destList = dest.pointer.cast<ffi.Double>().asTypedList(
+      destOffset + size,
+    );
+    destList.setRange(destOffset, destOffset + size, srcList);
+  } else if (dtype == DType.float32) {
+    final srcList = src.pointer.cast<ffi.Float>().asTypedList(size);
+    final destList = dest.pointer.cast<ffi.Float>().asTypedList(
+      destOffset + size,
+    );
+    destList.setRange(destOffset, destOffset + size, srcList);
+  } else if (dtype == DType.int32) {
+    final srcList = src.pointer.cast<ffi.Int32>().asTypedList(size);
+    final destList = dest.pointer.cast<ffi.Int32>().asTypedList(
+      destOffset + size,
+    );
+    destList.setRange(destOffset, destOffset + size, srcList);
+  } else if (dtype == DType.int64) {
+    final srcList = src.pointer.cast<ffi.Int64>().asTypedList(size);
+    final destList = dest.pointer.cast<ffi.Int64>().asTypedList(
+      destOffset + size,
+    );
+    destList.setRange(destOffset, destOffset + size, srcList);
+  } else if (dtype == DType.complex128) {
+    final srcList = src.pointer.cast<ffi.Double>().asTypedList(size * 2);
+    final destList = dest.pointer.cast<ffi.Double>().asTypedList(
+      (destOffset + size) * 2,
+    );
+    destList.setRange(destOffset * 2, (destOffset + size) * 2, srcList);
+  } else if (dtype == DType.complex64) {
+    final srcList = src.pointer.cast<ffi.Float>().asTypedList(size * 2);
+    final destList = dest.pointer.cast<ffi.Float>().asTypedList(
+      (destOffset + size) * 2,
+    );
+    destList.setRange(destOffset * 2, (destOffset + size) * 2, srcList);
+  } else if (dtype == DType.boolean) {
+    final srcList = src.pointer.cast<ffi.Uint8>().asTypedList(size);
+    final destList = dest.pointer.cast<ffi.Uint8>().asTypedList(
+      destOffset + size,
+    );
+    destList.setRange(destOffset, destOffset + size, srcList);
+  } else {
+    throw UnimplementedError('Type $dtype not supported for fast concatenate');
+  }
 }
 
 void _copyConcatenateRecursive<T extends Object>(
@@ -3061,6 +3798,186 @@ NDArray round(NDArray a) {
   return result;
 }
 
+/// Returns an element-wise boolean mask indicating which elements of the array are NaN (Not-a-Number).
+///
+/// **Preconditions:**
+/// - The array must not be disposed.
+///
+/// **Throws:**
+/// - [StateError] if the array has been disposed.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
+/// final mask = isnan(a); // [false, true, false]
+/// ```
+NDArray<bool> isnan(NDArray a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute isnan on a disposed array.');
+  }
+  final result = NDArray<bool>.create(a.shape, DType.boolean);
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    _unaryOp<Complex, bool>(
+      result.data,
+      a.data as List<Complex>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => x.real.isNaN || x.imag.isNaN,
+    );
+  } else if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+    _unaryOp<int, bool>(
+      result.data,
+      a.data as List<int>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => false,
+    );
+  } else {
+    _unaryOp<double, bool>(
+      result.data,
+      a.data as List<double>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => x.isNaN,
+    );
+  }
+  return result;
+}
+
+/// Returns an element-wise boolean mask indicating which elements of the array are positive or negative infinity.
+///
+/// **Preconditions:**
+/// - The array must not be disposed.
+///
+/// **Throws:**
+/// - [StateError] if the array has been disposed.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, double.infinity, 3.0], [3], DType.float64);
+/// final mask = isinf(a); // [false, true, false]
+/// ```
+NDArray<bool> isinf(NDArray a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute isinf on a disposed array.');
+  }
+  final result = NDArray<bool>.create(a.shape, DType.boolean);
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    _unaryOp<Complex, bool>(
+      result.data,
+      a.data as List<Complex>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => x.real.isInfinite || x.imag.isInfinite,
+    );
+  } else if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+    _unaryOp<int, bool>(
+      result.data,
+      a.data as List<int>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => false,
+    );
+  } else {
+    _unaryOp<double, bool>(
+      result.data,
+      a.data as List<double>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => x.isInfinite,
+    );
+  }
+  return result;
+}
+
+/// Returns an element-wise boolean mask indicating which elements of the array are finite (neither NaN nor infinite).
+///
+/// **Preconditions:**
+/// - The array must not be disposed.
+///
+/// **Throws:**
+/// - [StateError] if the array has been disposed.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, double.nan, double.infinity], [3], DType.float64);
+/// final mask = isfinite(a); // [true, false, false]
+/// ```
+NDArray<bool> isfinite(NDArray a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute isfinite on a disposed array.');
+  }
+  final result = NDArray<bool>.create(a.shape, DType.boolean);
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    _unaryOp<Complex, bool>(
+      result.data,
+      a.data as List<Complex>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => x.real.isFinite && x.imag.isFinite,
+    );
+  } else if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+    _unaryOp<int, bool>(
+      result.data,
+      a.data as List<int>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => true,
+    );
+  } else {
+    _unaryOp<double, bool>(
+      result.data,
+      a.data as List<double>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => x.isFinite,
+    );
+  }
+  return result;
+}
+
 /// Clip (limit) the values in an array.
 ///
 /// Given an interval `[min, max]`, values outside the interval are clipped
@@ -3068,11 +3985,25 @@ NDArray round(NDArray a) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray clip(NDArray a, num min, num max) {
+NDArray clip(NDArray a, num min, num max, {NDArray? out}) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for clip');
   }
-  final result = NDArray.create(a.shape, a.dtype);
+  final result = out ?? NDArray.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape)) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape for clip.',
+      );
+    }
+    if (out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible DType for clip.',
+      );
+    }
+  }
+
+  final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
 
   if (a.isContiguous) {
     if (a.dtype == DType.float64) {
@@ -3081,7 +4012,7 @@ NDArray clip(NDArray a, num min, num max) {
         result.pointer.cast(),
         min.toDouble(),
         max.toDouble(),
-        a.data.length,
+        size,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -3090,7 +4021,7 @@ NDArray clip(NDArray a, num min, num max) {
         result.pointer.cast(),
         min.toDouble(),
         max.toDouble(),
-        a.data.length,
+        size,
       );
       return result;
     }
@@ -3460,12 +4391,42 @@ NDArray sort(NDArray a, {int axis = -1}) {
   }
 
   final result = NDArray.create(src.shape, src.dtype);
-  if (src.dtype == DType.float64 || src.dtype == DType.float32) {
-    (result.data as List<double>).setAll(0, src.data as List<double>);
-  } else if (src.dtype == DType.int32 || src.dtype == DType.int64) {
-    (result.data as List<int>).setAll(0, src.data as List<int>);
+  if (src.dtype == DType.float64) {
+    (result.data as Float64List).setRange(
+      0,
+      src.data.length,
+      src.data as Float64List,
+    );
+  } else if (src.dtype == DType.float32) {
+    (result.data as Float32List).setRange(
+      0,
+      src.data.length,
+      src.data as Float32List,
+    );
+  } else if (src.dtype == DType.int64) {
+    (result.data as Int64List).setRange(
+      0,
+      src.data.length,
+      src.data as Int64List,
+    );
+  } else if (src.dtype == DType.int32) {
+    (result.data as Int32List).setRange(
+      0,
+      src.data.length,
+      src.data as Int32List,
+    );
   } else if (src.dtype == DType.complex128 || src.dtype == DType.complex64) {
-    (result.data as List<Complex>).setAll(0, src.data as List<Complex>);
+    final srcBacking = (src.data as ComplexList).backingList;
+    final resBacking = (result.data as ComplexList).backingList;
+    if (srcBacking is Float64List && resBacking is Float64List) {
+      resBacking.setRange(0, srcBacking.length, srcBacking);
+    } else if (srcBacking is Float32List && resBacking is Float32List) {
+      resBacking.setRange(0, srcBacking.length, srcBacking);
+    }
+  } else if (src.dtype == DType.boolean) {
+    final srcBacking = (src.data as BoolList).backingList;
+    final resBacking = (result.data as BoolList).backingList;
+    resBacking.setRange(0, srcBacking.length, srcBacking);
   }
 
   final n = src.shape.last;
@@ -3625,9 +4586,7 @@ void _whereOpRec<Tc, Tx, Ty, Tr>(
 ) {
   if (dim == shape.length) {
     final cVal = cond[oCond];
-    final isTrue = cVal is Complex
-        ? (cVal.real != 0.0 || cVal.imag != 0.0)
-        : (cVal != 0);
+    final isTrue = _isTrue(cVal);
     if (isTrue) {
       final xVal = x[oX];
       result[oResult] = (Tr == Complex && xVal is num)
@@ -3792,8 +4751,13 @@ List<int> _broadcast3Shapes(List<int> s1, List<int> s2, List<int> s3) {
   return common;
 }
 
-dynamic where(NDArray condition, [NDArray? x, NDArray? y]) {
+dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
   if (x == null && y == null) {
+    if (out != null) {
+      throw ArgumentError(
+        'out buffer cannot be provided when x and y are omitted.',
+      );
+    }
     return nonzero(condition);
   }
 
@@ -3804,13 +4768,22 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y]) {
   // Calculate target common shape via high-speed 3-way broadcast matching
   final commonShape = _broadcast3Shapes(condition.shape, x!.shape, y!.shape);
 
+  final targetDType = _resolveDType(x.dtype, y.dtype);
+
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for where() result.',
+      );
+    }
+  }
+
   // Compute precise broadcasted strides for each operand independently to commonShape
   final stridesCond = _broadcastStrides(condition, commonShape);
   final stridesX = _broadcastStrides(x, commonShape);
   final stridesY = _broadcastStrides(y, commonShape);
 
-  final targetDType = _resolveDType(x.dtype, y.dtype);
-  final result = NDArray.create(commonShape, targetDType);
+  final result = out ?? NDArray.create(commonShape, targetDType);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   // 0. Advanced ND Odometer Ternary Broadcasting Engine in C (Rank <= 8)
@@ -4174,28 +5147,69 @@ Map<String, NDArray> cholesky(NDArray a) {
   }
   final n = a.shape[0];
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+
+  // Create result matrix L and copy elements from a
   final lMat = NDArray<double>.zeros([n, n], targetDType);
 
-  final aData = a.data as List<num>;
-  final lData = lMat.data as List<double>;
+  if (a.dtype == DType.float64) {
+    (lMat.data as Float64List).setRange(0, n * n, a.data as Float64List);
+  } else if (a.dtype == DType.float32) {
+    (lMat.data as Float32List).setRange(0, n * n, a.data as Float32List);
+  } else {
+    for (var i = 0; i < n * n; i++) {
+      lMat.data[i] = (a.data[i] as num).toDouble();
+    }
+  }
 
-  for (var i = 0; i < n; i++) {
-    for (var j = 0; j <= i; j++) {
-      var sum = 0.0;
-      for (var k = 0; k < j; k++) {
-        sum += lData[i * n + k] * lData[j * n + k];
+  // Char 'L' in ASCII is 76
+  const uploL = 76;
+
+  if (targetDType == DType.float64) {
+    final info = LAPACKE_dpotrf(
+      101, // ROW_MAJOR
+      uploL,
+      n,
+      lMat.pointer.cast<ffi.Double>(),
+      n,
+    );
+    if (info < 0) {
+      throw ArgumentError('Illegal value in call to LAPACKE_dpotrf: $info');
+    }
+    if (info > 0) {
+      throw ArgumentError(
+        'Matrix must be symmetric positive-definite for Cholesky decomposition',
+      );
+    }
+
+    // Zero-out strictly upper triangular part
+    final lData = lMat.data as Float64List;
+    for (var i = 0; i < n; i++) {
+      for (var j = i + 1; j < n; j++) {
+        lData[i * n + j] = 0.0;
       }
+    }
+  } else {
+    final info = LAPACKE_spotrf(
+      101, // ROW_MAJOR
+      uploL,
+      n,
+      lMat.pointer.cast<ffi.Float>(),
+      n,
+    );
+    if (info < 0) {
+      throw ArgumentError('Illegal value in call to LAPACKE_spotrf: $info');
+    }
+    if (info > 0) {
+      throw ArgumentError(
+        'Matrix must be symmetric positive-definite for Cholesky decomposition',
+      );
+    }
 
-      if (i == j) {
-        final diff = aData[i * n + i] - sum;
-        if (diff <= 0.0) {
-          throw ArgumentError(
-            'Matrix must be symmetric positive-definite for Cholesky decomposition',
-          );
-        }
-        lData[i * n + j] = math.sqrt(diff);
-      } else {
-        lData[i * n + j] = (aData[i * n + j] - sum) / lData[j * n + j];
+    // Zero-out strictly upper triangular part
+    final lData = lMat.data as Float32List;
+    for (var i = 0; i < n; i++) {
+      for (var j = i + 1; j < n; j++) {
+        lData[i * n + j] = 0.0;
       }
     }
   }
@@ -4203,6 +5217,29 @@ Map<String, NDArray> cholesky(NDArray a) {
   return {'L': lMat};
 }
 
+/// Computes the QR decomposition of a matrix $A = Q R$.
+///
+/// Decomposes a matrix [a] into an orthogonal matrix `Q` and an upper triangular matrix `R`
+/// such that `a = Q * R`.
+/// Natively offloads to LAPACK solvers (`dgeqrf` / `sgeqrf` and `dorgqr` / `sorgqr`) depending on precision.
+///
+/// **Preconditions:**
+/// - Input matrix [a] must be 2-dimensional.
+///
+/// **Throws:**
+/// - [ArgumentError] if [a] is not 2D.
+/// - [StateError] if native FFI memory allocation or LAPACK solver initialization fails.
+///
+/// **Performance considerations:**
+/// - Executes at high-speed natively in unmanaged C space.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray<double>.fromList([12.0, -51.0, 4.0, 6.0, 167.0, -68.0, -4.0, 24.0, -41.0], [3, 3], DType.float64);
+/// final res = qr(a);
+/// final q = res['Q']!;
+/// final r = res['R']!;
+/// ```
 Map<String, NDArray> qr(NDArray a) {
   if (a.shape.length != 2) {
     throw ArgumentError('Matrix must be 2D (was ${a.shape})');
@@ -4218,12 +5255,12 @@ Map<String, NDArray> qr(NDArray a) {
       aCopy.pointer
           .cast<ffi.Double>()
           .asTypedList(m * n)
-          .setAll(0, a.data as List<double>);
+          .setRange(0, m * n, a.data as List<double>);
     } else {
       aCopy.pointer
           .cast<ffi.Float>()
           .asTypedList(m * n)
-          .setAll(0, a.data as List<double>);
+          .setRange(0, m * n, a.data as List<double>);
     }
   } else {
     final flat = a.toList();
@@ -4231,12 +5268,12 @@ Map<String, NDArray> qr(NDArray a) {
       aCopy.pointer
           .cast<ffi.Double>()
           .asTypedList(m * n)
-          .setAll(0, flat.cast<double>());
+          .setRange(0, m * n, flat.cast<double>());
     } else {
       aCopy.pointer
           .cast<ffi.Float>()
           .asTypedList(m * n)
-          .setAll(0, flat.cast<double>());
+          .setRange(0, m * n, flat.cast<double>());
     }
   }
 
@@ -4350,6 +5387,30 @@ Map<String, NDArray> qr(NDArray a) {
   return {'Q': qMat, 'R': rMat};
 }
 
+/// Computes the Singular Value Decomposition (SVD) of a matrix $A = U S V^h$.
+///
+/// Decomposes a matrix [a] into left singular vectors `U`, singular values `S`,
+/// and right singular vectors `Vh` such that `a = U * diag(S) * Vh`.
+/// Natively offloads to LAPACK solvers (`dgesdd` / `sgesdd`) depending on precision.
+///
+/// **Preconditions:**
+/// - Input matrix [a] must be 2-dimensional.
+///
+/// **Throws:**
+/// - [ArgumentError] if [a] is not 2D.
+/// - [StateError] if native FFI memory allocation or LAPACK solver initialization fails.
+///
+/// **Performance considerations:**
+/// - Executes at high-speed natively in unmanaged C space.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray<double>.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], DType.float64);
+/// final res = svd(a);
+/// final u = res['U']!;
+/// final s = res['S']!;
+/// final vh = res['Vh']!;
+/// ```
 Map<String, NDArray> svd(NDArray a) {
   if (a.shape.length != 2) {
     throw ArgumentError('Matrix must be 2D (was ${a.shape})');
@@ -4377,12 +5438,12 @@ Map<String, NDArray> svd(NDArray a) {
       aCopy.pointer
           .cast<ffi.Double>()
           .asTypedList(m * n)
-          .setAll(0, a.data as List<double>);
+          .setRange(0, m * n, a.data as List<double>);
     } else {
       aCopy.pointer
           .cast<ffi.Float>()
           .asTypedList(m * n)
-          .setAll(0, a.data as List<double>);
+          .setRange(0, m * n, a.data as List<double>);
     }
   } else {
     final flat = a.toList();
@@ -4390,12 +5451,12 @@ Map<String, NDArray> svd(NDArray a) {
       aCopy.pointer
           .cast<ffi.Double>()
           .asTypedList(m * n)
-          .setAll(0, flat.cast<double>());
+          .setRange(0, m * n, flat.cast<double>());
     } else {
       aCopy.pointer
           .cast<ffi.Float>()
           .asTypedList(m * n)
-          .setAll(0, flat.cast<double>());
+          .setRange(0, m * n, flat.cast<double>());
     }
   }
 
@@ -4456,4 +5517,391 @@ Map<String, NDArray> svd(NDArray a) {
   }
 
   return {'U': uMat, 'S': sMat, 'Vh': vtMat};
+}
+
+/// Extract a diagonal or construct a diagonal array.
+///
+/// If [v] is a 2D matrix, extracts the k-th diagonal elements vector as a zero-copy 1D view.
+/// If [v] is a 1D vector, constructs a 2D square matrix with [v] as the k-th diagonal and zeros elsewhere.
+///
+/// **Preconditions:**
+/// - Input [v] must be a 1D or 2D array.
+///
+/// **Throws:**
+/// - [ArgumentError] if [v] rank is not 1 or 2.
+///
+/// **Example:**
+/// {@example /example/diag_example.dart lang=dart}
+///
+/// Reference: [Diagonal Matrix](https://en.wikipedia.org/wiki/Diagonal_matrix)
+NDArray diag(NDArray v, {int k = 0}) {
+  if (v.shape.length == 2) {
+    // 1. Extracting a diagonal from a 2D matrix as a copy-free 1D view!
+    final m = v.shape[0];
+    final n = v.shape[1];
+
+    int startRow;
+    int startCol;
+    int len;
+
+    if (k >= 0) {
+      startRow = 0;
+      startCol = k;
+      if (startCol >= n) {
+        return NDArray.create([0], v.dtype);
+      }
+      len = math.min(m, n - k);
+    } else {
+      startRow = -k;
+      startCol = 0;
+      if (startRow >= m) {
+        return NDArray.create([0], v.dtype);
+      }
+      len = math.min(m + k, n);
+    }
+
+    if (len <= 0) {
+      return NDArray.create([0], v.dtype);
+    }
+
+    // View offset in parent sequential coordinates
+    final offsetElements = startRow * v.strides[0] + startCol * v.strides[1];
+    // Diagonal spacing stride: strides[0] + strides[1]!
+    final diagStride = v.strides[0] + v.strides[1];
+
+    return NDArray.view(v, [len], [diagStride], offsetElements: offsetElements);
+  } else if (v.shape.length == 1) {
+    // 2. Constructing a 2D diagonal matrix from a 1D vector
+    final n = v.shape[0];
+    final size = n + k.abs();
+    final result = NDArray.zeros([size, size], v.dtype);
+
+    int startRow;
+    int startCol;
+
+    if (k >= 0) {
+      startRow = 0;
+      startCol = k;
+    } else {
+      startRow = -k;
+      startCol = 0;
+    }
+
+    final vList = v.toList();
+    final resData = result.data;
+    final resStrides = result.strides;
+
+    for (var i = 0; i < n; i++) {
+      final targetIdx =
+          (startRow + i) * resStrides[0] + (startCol + i) * resStrides[1];
+      resData[targetIdx] = vList[i];
+    }
+
+    return result;
+  } else {
+    throw ArgumentError('Input array must be 1- or 2-dimensional.');
+  }
+}
+
+/// Returns a boolean [NDArray] where two arrays are element-wise equal within a tolerance.
+///
+/// The tolerance relation is defined as:
+/// `abs(a - b) <= (atol + rtol * abs(b))`
+///
+/// **Preconditions:**
+/// - Input [a] and [b] must be numeric arrays.
+/// - [a] and [b] must have compatible broadcast shapes.
+///
+/// **Example:**
+/// {@example /example/isclose_example.dart lang=dart}
+///
+/// Reference: [Approximate Equality](https://numpy.org/doc/stable/reference/generated/numpy.isclose.html)
+NDArray<bool> isclose(
+  NDArray a,
+  NDArray b, {
+  double rtol = 1e-05,
+  double atol = 1e-08,
+  bool equalNan = false,
+}) {
+  final broadcastResult = broadcast(a, b);
+  final commonShape = broadcastResult.shape;
+
+  final size = commonShape.isEmpty ? 1 : commonShape.reduce((x, y) => x * y);
+  final result = NDArray<bool>.zeros(commonShape, DType.boolean);
+
+  final aList = a.toList().cast<num>();
+  final bList = b.toList().cast<num>();
+  final resData = result.data;
+
+  final broadcastResultRes = broadcast(a, b);
+  final stridesA = broadcastResultRes.stridesA;
+  final stridesB = broadcastResultRes.stridesB;
+  final stridesRes = NDArray.computeCStrides(commonShape);
+
+  final coord = List<int>.filled(commonShape.length, 0);
+
+  for (var el = 0; el < size; el++) {
+    var offsetA = 0;
+    var offsetB = 0;
+    var offsetRes = 0;
+    for (var d = 0; d < commonShape.length; d++) {
+      offsetA += coord[d] * stridesA[d];
+      offsetB += coord[d] * stridesB[d];
+      offsetRes += coord[d] * stridesRes[d];
+    }
+
+    final valA = aList[offsetA].toDouble();
+    final valB = bList[offsetB].toDouble();
+
+    var match = false;
+    if (equalNan && valA.isNaN && valB.isNaN) {
+      match = true;
+    } else if (valA.isInfinite || valB.isInfinite) {
+      match = valA == valB;
+    } else {
+      final diff = (valA - valB).abs();
+      final limit = atol + rtol * valB.abs();
+      match = diff <= limit;
+    }
+
+    resData[offsetRes] = match;
+
+    // Advance coord odometer
+    for (var d = commonShape.length - 1; d >= 0; d--) {
+      coord[d]++;
+      if (coord[d] < commonShape[d]) break;
+      coord[d] = 0;
+    }
+  }
+
+  return result;
+}
+
+/// Returns true if two arrays are element-wise equal within a tolerance.
+///
+/// The tolerance relation is defined as:
+/// `abs(a - b) <= (atol + rtol * abs(b))`
+///
+/// **Preconditions:**
+/// - Input [a] and [b] must be numeric arrays.
+/// - [a] and [b] must have compatible broadcast shapes.
+///
+/// **Example:**
+/// {@example /example/isclose_example.dart lang=dart}
+///
+/// Reference: [Approximate Equality](https://numpy.org/doc/stable/reference/generated/numpy.allclose.html)
+bool allclose(
+  NDArray a,
+  NDArray b, {
+  double rtol = 1e-05,
+  double atol = 1e-08,
+  bool equalNan = false,
+}) {
+  final closeMask = isclose(a, b, rtol: rtol, atol: atol, equalNan: equalNan);
+  final maskList = closeMask.toList();
+  closeMask.dispose();
+  for (final val in maskList) {
+    if (!val) return false;
+  }
+  return true;
+}
+
+/// Replace NaN with zero and infinity with large finite numbers.
+///
+/// By default, maps NaN to [nan] (which defaults to 0.0), maps positive infinity
+/// to [posinf] (or the maximum finite float value if null), and maps negative infinity
+/// to [neginf] (or the minimum finite float value if null).
+///
+/// **Preconditions:**
+/// - Input [a] must be a numeric array.
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Example:**
+/// {@example /example/nan_to_num_example.dart lang=dart}
+///
+/// Reference: [Replace NaN and Infinities](https://numpy.org/doc/stable/reference/generated/numpy.nan_to_num.html)
+NDArray nan_to_num(
+  NDArray a, {
+  double nan = 0.0,
+  double? posinf,
+  double? neginf,
+  NDArray? out,
+}) {
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for nan_to_num.',
+      );
+    }
+  }
+
+  final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+  final aList = a.toList();
+  final resultCopy = out ?? NDArray.create(a.shape, a.dtype);
+
+  final maxLimit = a.dtype == DType.float32
+      ? 3.4028234663852886e+38
+      : double.maxFinite;
+  final minLimit = -maxLimit;
+
+  final targetPosInf = posinf ?? maxLimit;
+  final targetNegInf = neginf ?? minLimit;
+
+  final cleanList = <dynamic>[];
+
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    final complexList = aList.cast<Complex>();
+    for (var i = 0; i < size; i++) {
+      var r = complexList[i].real;
+      var img = complexList[i].imag;
+
+      if (r.isNaN) r = nan;
+      if (r == double.infinity) r = targetPosInf;
+      if (r == double.negativeInfinity) r = targetNegInf;
+
+      if (img.isNaN) img = nan;
+      if (img == double.infinity) img = targetPosInf;
+      if (img == double.negativeInfinity) img = targetNegInf;
+
+      cleanList.add(Complex(r, img));
+    }
+  } else {
+    final numList = aList.cast<num>();
+    for (var i = 0; i < size; i++) {
+      var val = numList[i].toDouble();
+
+      if (val.isNaN) {
+        val = nan;
+      } else if (val == double.infinity) {
+        val = targetPosInf;
+      } else if (val == double.negativeInfinity) {
+        val = targetNegInf;
+      }
+
+      cleanList.add(val);
+    }
+  }
+
+  // View-Safe Strided Odometer Write Back!
+  final resData = resultCopy.data;
+  final resStrides = resultCopy.strides;
+  final coord = List<int>.filled(a.shape.length, 0);
+
+  for (var i = 0; i < size; i++) {
+    var offsetRes = 0;
+    for (var d = 0; d < a.shape.length; d++) {
+      offsetRes += coord[d] * resStrides[d];
+    }
+
+    resData[offsetRes] = cleanList[i];
+
+    // Advance odometer
+    for (var d = a.shape.length - 1; d >= 0; d--) {
+      coord[d]++;
+      if (coord[d] < a.shape[d]) break;
+      coord[d] = 0;
+    }
+  }
+
+  return resultCopy;
+}
+
+/// Expand the shape of an array by inserting a new axis of size 1.
+///
+/// Inserts a new dimension of size 1 at the specified [axis] position.
+/// If [axis] is negative, it is normalized relative to the rank of [a] plus 1.
+///
+/// **Preconditions:**
+/// - [axis] normalized value must be between `0` and the rank of [a] inclusive.
+///
+/// **Throws:**
+/// - [ArgumentError] if [axis] is out of bounds.
+///
+/// **Performance considerations:**
+/// - This is a zero-copy view manipulation executing in absolute $O(1)$ time complexity.
+///
+/// **Example:**
+/// {@example /example/shape_view_example.dart lang=dart}
+///
+/// Reference: [Expand Dimensions](https://numpy.org/doc/stable/reference/generated/numpy.expand_dims.html)
+NDArray expand_dims(NDArray a, int axis) {
+  final rank = a.shape.length;
+  var targetAxis = axis < 0 ? rank + 1 + axis : axis;
+
+  if (targetAxis < 0 || targetAxis > rank) {
+    throw ArgumentError(
+      'Axis $axis is out of bounds for array of rank $rank (valid bounds: [${-rank - 1}, $rank])',
+    );
+  }
+
+  final newShape = List<int>.from(a.shape);
+  final newStrides = List<int>.from(a.strides);
+
+  newShape.insert(targetAxis, 1);
+  // Insert stride mapping: copy sibling stride or default to 1 if rank is 0
+  final siblingStride = targetAxis < rank ? a.strides[targetAxis] : 1;
+  newStrides.insert(targetAxis, siblingStride);
+
+  return NDArray.view(a, newShape, newStrides, offsetElements: 0);
+}
+
+/// Remove axes of size 1 from the shape of an array.
+///
+/// If [axis] is provided, only removes the specified dimensions (which must have size 1).
+/// If [axis] is null, removes all dimensions of size 1.
+///
+/// **Preconditions:**
+/// - Specified [axis] entries must indeed correspond to dimensions of size 1.
+///
+/// **Throws:**
+/// - [ArgumentError] if [axis] is out of bounds or targets a dimension whose size is not 1.
+///
+/// **Performance considerations:**
+/// - This is a zero-copy view manipulation executing in absolute $O(1)$ time complexity.
+///
+/// **Example:**
+/// {@example /example/shape_view_example.dart lang=dart}
+///
+/// Reference: [Squeeze Dimensions](https://numpy.org/doc/stable/reference/generated/numpy.squeeze.html)
+NDArray squeeze(NDArray a, {List<int>? axis}) {
+  final rank = a.shape.length;
+  final shape = a.shape;
+  final strides = a.strides;
+
+  final newShape = <int>[];
+  final newStrides = <int>[];
+
+  final squeezeAxes = <int>{};
+  if (axis != null) {
+    for (final ax in axis) {
+      final targetAx = ax < 0 ? rank + ax : ax;
+      if (targetAx < 0 || targetAx >= rank) {
+        throw ArgumentError('Axis $ax is out of bounds for rank $rank');
+      }
+      if (shape[targetAx] != 1) {
+        throw ArgumentError(
+          'Cannot squeeze axis $ax because its dimension size is ${shape[targetAx]} (must be 1)',
+        );
+      }
+      squeezeAxes.add(targetAx);
+    }
+  } else {
+    for (var i = 0; i < rank; i++) {
+      if (shape[i] == 1) {
+        squeezeAxes.add(i);
+      }
+    }
+  }
+
+  for (var i = 0; i < rank; i++) {
+    if (!squeezeAxes.contains(i)) {
+      newShape.add(shape[i]);
+      newStrides.add(strides[i]);
+    }
+  }
+
+  // Squeezing all dimensions of a 1D unit tensor (e.g. shape [1]) yields a 0D scalar shape []
+  return NDArray.view(a, newShape, newStrides, offsetElements: 0);
 }

@@ -133,28 +133,9 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## 14. `pkgs/num_dart/lib/src/operations.dart` (`inv()` Redundant Target Allocations on Strided Inversions)
-- **Location**: [operations.dart:L1714-L1725](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1714-L1725) & [operations.dart:L1758-L1760](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1758-L1760)
-- **Symptom**: For non-contiguous strided input matrix views, `inv()` forces an intermediate flat copy allocation: `src = NDArray.fromList(a.toList())`. However, it proceeds to allocate a *third* independent tensor `result = NDArray.create(src.shape)` and copies bytes via `result.data.setAll(0, src.data)` just to satisfy LAPACK in-place constraints.
-- **The Inefficiency**: Redundant allocation and memory copy duplication churn! Since `src` is already an intermediate contiguous copy unreferenced by any external consumer, it is 100% safe to mutate `src` in-place directly! Allocating a third `result` array and copying elements cell-by-cell into it is completely unnecessary.
-- **Recommended Tweak**: Refactor `inv()` to bypass `result` allocations if `!a.isContiguous`. Simply execute LAPACK `LAPACKE_dgetrf` and `dgetri` directly over `src.pointer` and return `src` as the inverted matrix, saving substantial RAM and array duplication latency!
 
-***
 
-## 15. `pkgs/num_dart/lib/src/operations.dart` (`concatenate()` Recursive Cell-Copy and Bracket Allocation Churn)
-- **Location**: [operations.dart:L2242-L2255](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2242-L2255) (`_copyConcatenateRecursive`)
-- **Symptom**: To merge lists of tensors, the concatenation engine triggers a deeply recursive cell walk. Upon reaching the cell leaf base case (`currentDim == src.shape.length`), it invokes:
-  ```dart
-  final destIndices = List<int>.from(currentIndices);
-  destIndices[axis] += axisOffset;
-  dest[destIndices] = src[currentIndices];
-  ```
-- **The Inefficiency**: Unbelievably slow! Spawns millions of temporary `List<int>.from()` heap entries in the mid-run path. Furthermore, it invokes **bracket operators getter `src[...]` and setter `dest[...]` for *every single individual scalar element cell***! Bracket operators inside `NDArray` perform fancy parsing switches, shapes validation, and strides offset multipliers walks on every call, leading to a massive performance penalty!
-- **Recommended Tweak**: 
-  - When input arrays are flat, contiguous, and concatenation is along **`axis = 0`** (appending rows stacks), **the entire operation can be offloaded to a series of single-flash block copies!** Each array forms a packed sequential block. We can just loop `arrays` and issue a high-speed FFI **`memcpy()` pointer copy** (or flat `destTypedList.setAll(offset, arr.data)`) for the *entire array block at once*, completely wiping out all recursive frames, list allocations, and cell lookups friction entirely!
-  - For higher axes, we can similarly identify contiguous blocks chunks along trailing rows, utilizing fast `memcpy` splits instead of cell-by-cell loops.
 
-***
 
 ## 16. `pkgs/num_dart/lib/src/operations.dart` (`where()` Lacks Allocation-Free `{NDArray? out}` Buffer Recycling)
 - **Location**: [operations.dart:L461-L500](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L461-L500) & [perf_benchmarks.dart:L88-L91](file:///usr/local/google/home/sigurdm/projects/math/benchmark/perf_benchmarks.dart#L88-L91)
@@ -219,23 +200,9 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## 24. `pkgs/num_dart/lib/src/operations.dart` (🚨 Critical Incompleteness Flaw: `cos()`, `exp()`, and `log()` Lack Allocation-Free `out=` and FFI C Offloading)
-- **Location**: [operations.dart:L1526-L1540](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1526-L1540) (`cos` / `exp`)
-- **Symptom**: While the element-wise `sin()` and `sqrt()` ufuncs were successfully upgraded to support named `{NDArray? out}` buffer recycling parameters and native C FFI offloading fast paths (`v_sin_double`), their sister transcendental functions **`cos()`**, **`exp()`**, and **`log()`** were completely forgotten! 
-- **The Inefficiency / Disconnect**: They contain zero native FFI gates or named recyclers parameters, rigidly executing **slow, pure-Dart sequential `for` loops** that invoke `math.cos()` / `math.exp()` closures cell-by-cell in the Dart VM isolate!
-- **The Irony**: We already authored the high-speed autovectorizable vector math loops `v_cos_double`, `v_cos_float`, `v_exp_double`, and `v_exp_float` inside our native shared library **`custom_ufuncs.c`**, but they are never called!
-- **Recommended Tweak / Critical Fix**: Upgrade `cos()`, `exp()`, and `log()` signatures to accept optional named recyclers `{NDArray? out}` and inject `if (a.isContiguous)` fast path gates connecting them directly to their native C AOT vector counterparts. This will completely remove Isolate cell loops friction and dynamic memory duplication, achieving uniform **`10x-30x+` performance acceleration** across all core vector transcendental functions!
 
-***
 
-## 25. `pkgs/num_dart/lib/src/operations.dart` (`clip()` Lacks Allocation-Free `{NDArray? out}` and Integer C Acceleration)
-- **Location**: [operations.dart:L2986-L3000](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2986-L3000)
-- **Symptom 1: Missing `out` Parameter Recycling**: The universal bounding ufunc `clip(a, min, max)` lacks a named parameter recycler `{NDArray? out}`, forcing constant result allocations (`NDArray.create()`) inside loops.
-- **Recommended Tweak 1**: Refactor `clip()` signature to accept an optional named recycler **`{NDArray? out}`**, and pass `out.pointer` to high-speed C kernels when provided, eliminating allocations friction entirely.
-- **Symptom 2: Missing Integer C FFI Fast Path**: If the array `a` is perfectly contiguous but uses an integer DType (`int32` or `int64`), it **completely fails to trigger the native C FFI acceleration track**, falling through to the slow pure-Dart recursive `_unaryOp` helper (line 3006) which runs slow, single-element `.clamp()` closures!
-- **Recommended Tweak 2**: Expose flat vector kernels `v_clip_int32` and `v_clip_int64` directly in **`custom_ufuncs.c`** to let the compiler auto-vectorize contiguous integer clamping over hardware registers SSE/NEON, avoiding slow Dart loops fallback.
 
-***
 
 ## 26. `pkgs/num_dart/lib/src/operations.dart` (`eig()` Forced Complex Upcasting and Missing Real LAPACK Solvers)
 - **Location**: [operations.dart:L2069-L2110](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2069-L2110) & [operations.dart:L2111-L2130](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2111-L2130)
@@ -337,19 +304,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## 33. `pkgs/num_dart/benchmark/perf_benchmarks.dart` (🚨 Critical Memory safety flaw: Unmanaged C-heap allocations leaked inside benchmark harness setup)
-- **Location**: [perf_benchmarks.dart:L53-L235](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/benchmark/perf_benchmarks.dart#L53-L235)
-- **Symptom**: Across almost all custom `BenchmarkBase` implementations (`NativeQSortContiguousBenchmark`, `TernaryWhereBroadcastingBenchmark`, etc.), the harness allocates dense, large `NDArray` instances (e.g. size 300,000 doubles) during their `setup()` phase. However, none of these benchmarks override the standard **`teardown()`** method to explicitly call `.dispose()` on these allocated FFI arrays.
-- **The Hazard**: Massive unmanaged memory leaks! When running benchmark suites, these C-heap unmanaged memory structures are permanently leaked. If benchmarks are triggered inside continuous integration runs or test loops, they will continuously churn memory and eventually trigger Out-Of-Memory (`OOM`) crashes.
-- **Recommended Tweak**: Add an explicit `teardown()` override to all benchmark classes, releasing all unmanaged FFI array pointers safely:
-  ```dart
-  @override
-  void teardown() {
-    target.dispose();
-  }
-  ```
 
-***
 
 ## 34. `pkgs/num_dart/test/` (🚨 Critical Memory safety flaw: Widespread C-heap unmanaged allocations leakage across all test suites)
 - **Location**: [linear_algebra_test.dart:L5-L180](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/linear_algebra_test.dart#L5-L180) (And all other test suites)
@@ -410,26 +365,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## 39. `pkgs/num_dart/lib/src/operations.dart` (🚨 Performance & Precision Flaw: Pure-Dart Loops for Cholesky and QR Matrix Decompositions)
-- **Location**: [operations.dart:L4136-L4215](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L4136-L4215)
-- **Symptom**: The core matrix decomposition methods `cholesky()` and `qr()` are fully implemented inside slow pure-Dart nested JIT loops.
-- **The Hazard**: Catastrophic performance latency and numeric instability! For dense matrix shapes exceeding `[100, 100]`, computing a Gram-Schmidt orthogonalization or symmetric positive-definite factorisation in Dart JIT space is highly inefficient ($O(n^3)$ loop complexity). Furthermore, Gram-Schmidt is numerically unstable for ill-conditioned matrices compared to standard Householder reflections.
-- **Recommended Tweak**: Since standard OpenBLAS is a complete LAPACK distribution, offload these decompositions directly to unmanaged C LAPACK solvers via FFI:
-  - **`cblas_dpotrf`** / **`cblas_spotrf`**: Direct unmanaged Cholesky decomposition.
-  - **`cblas_dgeqrf`** / **`cblas_sgeqrf`**: Direct unmanaged QR decomposition using Householder reflections (which is numerically extremely stable).
-  Offloading these heavy linear algebra factorisations directly to native LAPACK FFI will **boost decompositions execution speed by up to `100x-500x`** while guaranteeing pristine IEEE-754 numerical stability!
 
-***
-
-## 40. `pkgs/num_dart/lib/src/operations.dart` (🚨 Performance Flaw: Recursive Coordinate-Wise Walker and Heap Allocations inside `concatenate()`)
-- **Location**: [operations.dart:L2256-L2325](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2256-L2325)
-- **Symptom**: The array concatenation method `concatenate()` is implemented via a slow recursive coordinate walker `_copyConcatenateRecursive()` that copies every single element individually. At every terminal leaf node, it allocates a brand-new coordinate list `List<int>.from(currentIndices)`.
-- **The Hazard**: Severe performance degradation and RAM churn on large scientific datasets! For massive multi-dimensional tensors, copying elements individually triggers millions of transient list allocations and GC pages thrashing, dramatically slowing down grid assembly operations.
-- **Recommended Tweak**: 
-  - If all source arrays are contiguous row-major layouts, implement a **contiguous fast-path** that computes flat unmanaged memory offsets and executes direct **`memmove` block memory copies** at hardware speeds!
-  - Even for non-contiguous strided views, flattening them to contiguous scratch arrays first or writing optimized C loops will completely bypass recursive Dart stack-walking, delivering a spectacular **`10x-50x` speed acceleration**!
-
-***
 
 ## 41. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Vector & Matrix Norms `linalg.norm`)
 - **Location**: [operations.dart:L4100-L4400](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L4100-L4400)
@@ -441,13 +377,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## 42. `pkgs/num_dart/lib/src/ndarray.dart` (🚨 Critical Memory Safety Flaw: Un-Disposable Transient Copied Memory in Non-Contiguous `reshape()`)
-- **Location**: [ndarray.dart:L445-L450](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L445-L450)
-- **Symptom**: When `reshape()` is called on a non-contiguous or transposed view, it creates a contiguous copy of the array (`final copied = NDArray.fromList(...)`) and returns a view of `copied` by setting its `_parent = copied`.
-- **The Hazard**: Catastrophic native memory leaks and memory bloat! Because the returned reshaped view is classified as a "view" (since `_parent != null`), calling `.dispose()` on the returned view **does absolutely nothing** (short-circuits, L540). As a result, there is **no way** for developers to explicitly free/dispose the unmanaged C memory allocated for the transient copy `copied`! They must wait for the garbage collector to collect both the view and the parent. If `reshape()` is called inside large loops, unmanaged C memory grows continuously until the system crashes due to Out-Of-Memory (OOM) conditions.
-- **Recommended Tweak**: Implement a dedicated tracking or memory-ownership delegate, or bypass view creation when reshaping a copy. If `reshape` forcefully allocates copied memory, return a root `NDArray` (with `_parent = null`) so developers can explicitly invoke `.dispose()` to release the native C memory in zero-time!
 
-***
 
 ## 43. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Logical Reductions `all()` and `any()`)
 - **Location**: [operations.dart:L1420-L1550](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1420-L1550)
@@ -460,25 +390,241 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## 44. `pkgs/num_dart/lib/src/ndarray.dart` (🚨 Type Safety Flaw: Crash on instantiating `NDArray.arange()` and `NDArray.linspace()` with Complex DTypes)
-- **Location**: [ndarray.dart:L275-L277](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L275-L277), [ndarray.dart:L297-L303](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L297-L303)
-- **Symptom**: The range creation factories `NDArray.arange()` and `NDArray.linspace()` assign computed double elements to their data list by executing `value as T`.
-- **The Hazard**: Hard runtime type crashes! When a developer attempts to instantiate a complex range array (e.g., `NDArray.arange(0, 5, dtype: DType.complex128)`), the casting statement `value as T` attempts to cast a raw Dart `double` directly to generic `Complex` type wrapper. This triggers an immediate **`TypeError: double is not a subtype of Complex`** runtime crash, breaking signal processing setups!
-- **Recommended Tweak**: Harden range assignment loops to check if `dtype.isComplex` is true and instantiate the proper Complex wrapper representation:
-  ```dart
-  if (dtype.isComplex) {
-    arr.data[i] = Complex(start + i * step, 0.0) as T;
-  } else {
-    arr.data[i] = (start + i * step) as T;
-  }
+
+
+## 46. `pkgs/num_dart/lib/src/ndarray.dart` (🚨 Performance Optimization Gap: `NDArray.zeros()` Pure-Dart Loops Clearing vs OS Native `calloc()`)
+- **Location**: [ndarray.dart:L219-L231](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L219-L231)
+- **Symptom**: The `NDArray.zeros()` factory allocates C memory page blocks using standard `malloc` (which returns un-initialized random memory garbage), and then unrolls sequential, slow Dart JIT `fillRange` loops across the backing array view (`arr.data.fillRange(0, arr.data.length, 0.0 as T)`) to zero-out elements.
+- **The Inefficiency**: For large, high-dimensional matrices, walking through and writing zeros element-by-element across unmanaged pointer buffers triggers significant CPU registers waste and cache misses.
+- **Recommended Tweak**: Since `package:ffi/ffi.dart` natively bundles the highly optimized standard OS allocator **`calloc()`** (which allocates zero-initialized memory page streams instantly at the kernel level), we can add an optional named parameter `{bool zeroInit = false}` to `NDArray.create`. By mapping `zeros()` directly to `calloc`, we completely erase Dart-side array walking, **accelerating zeroed array initializations by up to 10x-40x**!
 
 ***
 
-## 45. `pkgs/num_dart/lib/src/random.dart` (🚨 Performance Bottleneck: Pure-Dart Transcendental JIT Loops inside RNG Generators)
-- **Location**: [random.dart:L113-L131](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/random.dart#L113-L131), [random.dart:L229-L250](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/random.dart#L229-L250)
-- **Symptom**: Random generators (such as `normal()`, `poisson()`, and `binomial()`) execute thousands of heavy mathematical transcendental calls (`math.sqrt`, `math.log`, `math.cos`, `math.sin` inside their Box-Muller loops) inside pure-Dart loops.
-- **The Hazard**: Extreme execution latency! For massive probability simulations exceeding `50,000` elements, executing trigonometry and logarithms in Dart JIT space blocks compilation optimizations. Generating a 50,000 Normal array takes **over 21 milliseconds** in Dart, whereas it takes **less than 1 millisecond** in NumPy (which compiles RNG kernels directly in native C!).
-- **Recommended Tweak**: Compile standard Box-Muller, Knuth, and Ziggurat probabilistic generation algorithms inside native C:
-  - Expose a high-speed native FFI generator `v_normal_double(double *dest, int size, double loc, double scale, int seed)` compiled in unmanaged C heap.
-  - Offloading RNG loops directly to C dynamic extensions will **accelerate random distributions generation by over `20x`**, matching NumPy's extreme performance metrics!
-  ```
+## 47. `pkgs/pocketfft/hook/build.dart` (🚨 Critical DevOps Flaw: Hardcoded GCC Flags Break Windows MSVC Compilations Toolchain)
+- **Location**: [build.dart:L77-L90](file:///usr/local/google/home/sigurdm/projects/math/pkgs/pocketfft/hook/build.dart#L77-L90)
+- **Symptom**: Sibling package `pocketfft`'s build hook `hook/build.dart` hardcodes GCC/Clang-specific Unix flags (`-shared`, `-fPIC`, `-O3`, `-ffast-math`, `-o`, `-lm`) when compiling KissFFT plain-C source assets.
+- **The Bug / Windows Breakage**: Just like the main package, if a developer attempts to build or run this package on a native Windows developer machine (where MSVC `cl.exe` is the default system compiler), the MSVC compiler will immediately reject and crash on these GCC flags, completely blocking pocketfft assets compilation!
+- **Recommended Tweak / Critical DevOps Fix**: Refactor `pocketfft/hook/build.dart` to dynamically branch the compilation flags based on `input.config.code.targetOS` or target compiler toolchain, using MSVC options (e.g., `/LD`, `/O2`, `/Fe:`) for Windows/MSVC, and keeping standard Unix flags for Unix-based compilers.
+
+***
+
+## 48. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Advanced Linear Algebra Solvers `linalg.matrix_power`, `linalg.cond`, and `linalg.multi_dot`)
+- **Symptom**: The linear algebra tracking layer inside `num_dart` completely lacks advanced systems solvers:
+  - **`linalg.matrix_power(a, n)`**: Computes $A^n$ for square matrices. Currently, users must manually loop matrix multiplications.
+  - **`linalg.cond(x)`**: Computes the condition number of a matrix (ratio of maximum to minimum singular values), vital for checking numerical matrix stability.
+  - **`linalg.multi_dot(arrays)`**: Bypasses slow sequential multiplications by using dynamic programming (matrix chain multiplication parenthesization) to optimize multi-matrix multiplication chains orders, drastically saving CPU operations.
+- **Recommended Tweak**: Implement high-level `matrixPower()`, `cond()`, and `multiDot()` methods in `operations.dart`. Leverage our high-speed OpenBLAS GEMM matmul and SVD routines to deliver fully compliant and performant advanced solvers!
+
+***
+
+## 49. `pkgs/num_dart/lib/src/fft.dart` (NumPy Compatibility Gap: Missing Real Fourier Transforms `rfft`/`irfft` and Centers Shifting `fftshift`/`ifftshift`)
+- **Symptom**: The signal processing Fourier layer lacks core DSP operations:
+  - **`rfft()` / `irfft()`**: 1D DFT for purely real input sequences. Real FFTs run twice as fast and use half the RAM of complex ones by taking advantage of Hermitian symmetry and returning only the positive Nyquist frequency coefficients.
+  - **`fftshift()` / `ifftshift()`**: Shifts the zero-frequency component to the center of the spectrum, which is fundamentally crucial for spatial filters, visual DSP, and spectral plots.
+- **Recommended Tweak**: Expose `rfft()` and `irfft()` by utilizing KissFFT's native real solvers (`kiss_fftr_alloc` / `kiss_fftr`), and implement optimal offset-indexing shifts for `fftshift()` / `ifftshift()`!
+
+***
+
+## 50. `pkgs/num_dart/lib/src/random.dart` (NumPy Compatibility Gap: Missing Sampling Choice `random.choice` and Permutations `random.shuffle`/`random.permutation`)
+- **Symptom**: The random distributions and RNG module inside `num_dart` lacks fundamental sequence generators:
+  - **`random.choice(a, size, replace, p)`**: Generates a random sample from a 1D array, with or without replacement, and according to a custom probability distribution array.
+  - **`random.shuffle(x)` / `random.permutation(x)`**: Shuffles an array in-place or returns a new randomly permuted tensor, crucial for stochastic gradient descent (SGD) ML batching.
+- **Recommended Tweak**: Expose `choice()`, `shuffle()`, and `permutation()` in `random.dart` utilizing our robust Marsaglia-Multicarry RNG engines!
+
+***
+
+
+
+
+
+## 53. `pkgs/num_dart/lib/src/operations.dart` (🚨 Precision & Performance Gap: `matmul()` Lacks Float32, Complex64, and Complex128 BLAS Matrix Multiplications)
+- **Location**: [operations.dart:L1287-L1303](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1287-L1303)
+- **Symptom**: The core matrix multiplication operation `matmul()` rigidly accepts double-precision Float64 matrices only, throwing compile-time type mismatches or runtime errors on Float32, Complex64, or Complex128.
+- **The Gap / Inefficiency**: DOWNSTREAM machine learning, deep learning, and signal processing applications require massive Float32 or complex matrix multiplications. Forcing double-precision transitions wastes significant CPU RAM allocations and computational cycles.
+- **Recommended Tweak**: Bind and offload to OpenBLAS's native highly-optimized GEMM matrix-multiplication routines:
+  - **`cblas_sgemm`** for Float32 single-precision matrices.
+  - **`cblas_zgemm`** for Complex128 double-precision complex matrices.
+  - **`cblas_cgemm`** for Complex64 single-precision complex matrices.
+  Offloading these to BLAS FFI will **accelerate multi-dimensional ML multiplications by up to 100x**, matching NumPy's gold standard!
+
+***
+
+## 54. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing NaN-Ignoring Statistical Reductions `nanmean`, `nansum`, `nanvar`, `nanstd`)
+- **Symptom**: The operations layer currently unrolls statistical reductions (`mean()`, `sum()`, `variance()`, `std()`) that rigidly evaluate every element. If even a single coordinate element in a matrix is `NaN` (Not-a-Number), these reductions return `NaN` for the entire array.
+- **The Gap**: Violates standard NumPy NaN-ignoring statistical reductions. Downstream data science and ML developers dealing with missing data (frequently represented as NaNs in sensor logs or ML inputs) are forced to write slow, manual filtering sweeps in Dart JIT space before triggering any statistics.
+- **Recommended Tweak**: Implement highly robust, zero-allocation NaN-ignoring top-level ufuncs `nanmean()`, `nansum()`, `nanvar()`, and `nanstd()`. They should walk coordinate strides, count non-NaN elements, and compute statistics dynamically, providing fully compliant and performant NumPy compatibility!
+
+***
+
+## 55. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Moore-Penrose Pseudo-Inverse `linalg.pinv`)
+- **Symptom**: The linear algebra module lacks pseudo-inversion support for rectangular or ill-conditioned singular matrices.
+- **The Gap**: Downstream scientific and machine learning algorithms seeking to solve general linear regression models $A x \approx B$ for non-square matrices (or singular square matrices) are forced to crash on matrix singular errors or manually implement complex solvers.
+- **Recommended Tweak**: Leverage our high-speed native FFI SVD decomposition (`svd()`) to calculate the Moore-Penrose pseudo-inverse mathematically:
+  $$\Sigma^+ = V \cdot S^+ \cdot U^T$$
+  where $S^+$ is obtained by taking the reciprocal of the singular values of $S$ exceeding a small numerical tolerance threshold ($10^{-15}$) and setting all other terms to zero. This offers an extremely stable and numerically robust pseudoinverse solver gate!
+
+***
+
+## 56. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Array Splitting Helpers `split`, `hsplit`, `vsplit`, `dsplit`)
+- **Symptom**: The array manipulation suite only supports vertical and horizontal concatenations (`vstack`, `hstack`, `concatenate`). It completely lacks any coordinate splitters.
+- **The Gap**: Downstream developers seeking to divide scientific datasets along dimensional boundaries (such as dividing image matrices into independent color channels, or training inputs into train/test splits along rows) are forced to write raw, slow coordinate view slicing loops in Dart VM space.
+- **Recommended Tweak**: Implement standard NumPy array splitting helpers:
+  - **`split(array, indices_or_sections, axis)`**: Splits an array along a specified axis into multiple sub-arrays.
+  - **`hsplit()` / `vsplit()` / `dsplit()`**: Convenience splitters along vertical, horizontal, and depth-wise axes stacks respectively.
+  These can return zero-allocation sub-views of the parent array, yielding exceptional memory and CPU efficiency!
+
+***
+
+## 57. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Array Flipping and Rotating Helpers `flip`, `fliplr`, `flipud`, `rot90`)
+- **Symptom**: The codebase completely lacks any array reorientation or reversing operators.
+- **The Gap**: Downstream physical science, signal processing, and image rendering applications are forced to manually construct complex, slow element-wise loops just to reverse signals, rotate spatial grids, or mirror dimensional matrices.
+- **Recommended Tweak**: Implement high-performance, zero-allocation stride manipulations or fast C-heap block copies:
+  - **`flip(array, {int? axis})`**: Reverses array element layouts along a targeted axis by introducing negative strides or swapping indices recursively.
+  - **`fliplr()` / `flipud()`**: Zero-allocation 2D matrix flips (horizontal/vertical).
+  - **`rot90(array, {int k = 1})`**: Rotates 2D matrix by 90 degrees (optionally $k$ times).
+
+***
+
+## 58. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Array Unique Finder `unique`)
+- **Symptom**: The codebase completely lacks any categorical or unique elements filter.
+- **The Gap**: Downstream data analytics, statistical logs, and machine learning classification tasks seeking to extract unique class labels or verify unique coordinate keys must implement slow custom loops with standard Dart `Set` instances, triggering massive allocations churn.
+- **Recommended Tweak**: Implement:
+  - **`unique(NDArray a, {bool returnIndex = false, bool returnInverse = false, bool returnCounts = false})`**: Walks flat coordinates, filters duplicates, and returns sorted unique elements as a contiguous 1D array. Optionally returns coordinate indices, inverses, or occurrence counts.
+
+***
+
+## 59. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Inverse Trigonometric and Inverse Hyperbolic Functions)
+- **Symptom**: The universal functions suite completely lacks inverse trigonometric and inverse hyperbolic functions.
+- **The Gap**: Downstream developers building robotics calculations, astronomical mechanics, or physical simulations are forced to fall back to slow, iterative standard Dart math loops to calculate angles and inverse hyperbolics.
+- **Recommended Tweak**: Bind and program highly optimized native C FFI ufunc loops in [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/hook/custom_ufuncs.c) wrapping standard math library functions:
+  - Inverse Trig: `asin`, `acos`, `atan`, `atan2`.
+  - Inverse Hyperbolics: `asinh`, `acosh`, `atanh`.
+  Exposing these as fast-path ufuncs will ensure hardware-accelerated vector execution speeds for all inverse transcendental operations!
+
+***
+
+## 61. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Element-Wise Power `power`)
+- **Symptom**: The operations suite lacks element-wise exponentiation ufunc support.
+- **The Gap**: Downstream math and machine learning developers seeking to raise array elements to standard powers (e.g., squared calculations $A^2$, cubic arrays, or fractional roots) must write slow, iterative JIT loops.
+- **Recommended Tweak**: Implement a robust, highly optimized C vector power kernel `v_pow_double` / `v_pow_float` in [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/hook/custom_ufuncs.c) wrapping standard C library's `pow()` or SIMD-vector math registers. Expose a top-level `power(NDArray a, dynamic exponent, {NDArray? out})` ufunc supporting both scalar exponents and broadcasted array exponent bases!
+
+***
+
+## 62. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Broadcasting Array Reshaper `broadcast_to`)
+- **Symptom**: The array dimensions logic lacks a public helper to broadcast a tensor to a new shape.
+- **The Gap**: Downstream developers are forced to execute slow, manual strides expansion logic to stretch vectors, wasting RAM allocations.
+- **Recommended Tweak**: Implement a lightweight, zero-allocation **`broadcastTo(NDArray array, List<int> shape)`** helper. This can validate compatibility using our right-to-left broadcasting rules, compute correct strides (setting strides to `0` for expanded dimensions), and return a new zero-copy view sharing the parent's C memory.
+
+***
+
+## 63. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Depth-wise Stacking `dstack` and Column-wise Stacking `column_stack`)
+- **Symptom**: The array stacking helpers only support vertical (`vstack`) and horizontal (`hstack`) stacking.
+- **The Gap**: Image processing or spatial coordinate systems developers concatenating distinct channels (such as red, green, and blue channels along a third depth axis) are forced to write complex slice index writes loops.
+- **Recommended Tweak**: Implement:
+  - **`dstack(List<NDArray> arrays)`**: Stacks arrays along the third axis.
+  - **`column_stack(List<NDArray> arrays)`**: Stacks 1D arrays as columns into a 2D matrix.
+
+***
+
+## 64. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing NaN-Ignoring Reductions `nanmin` and `nanmax`)
+- **Symptom**: Even though we added `nanmean`, `nansum`, `nanvar`, and `nanstd`, the minimum and maximum reductions rigidly return `NaN` if any element is `NaN`.
+- **The Gap**: Missing crucial standard dataset filters inside data-cleaning or ML pipelines.
+- **Recommended Tweak**: Implement top-level, zero-allocation NaN-ignoring ufuncs:
+  - **`nanmin(NDArray a, {int? axis})`**: Returns minimum elements ignoring NaNs.
+  - **`nanmax(NDArray a, {int? axis})`**: Returns maximum elements ignoring NaNs.
+
+***
+
+***
+
+***
+
+## 68. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Percentile and Quantile Reductions `percentile` / `quantile`)
+- **Symptom**: The operations layer lacks percentile and quantile statistical reductions.
+- **The Gap**: Downstream data analysts, statisticians, and ML developers seeking to analyze distribution spreads, create box plots, or calculate error margins (e.g. 95th percentile error) are forced to write slow, manual sorting-based percentile loops in Dart VM space.
+- **Recommended Tweak**: Implement:
+  - **`percentile(NDArray a, double q, {int? axis})`**: Computes the q-th percentile (0 to 100) along the specified axis.
+  - **`quantile(NDArray a, double q, {int? axis})`**: Computes the q-th quantile (0.0 to 1.0) along the specified axis.
+  These can leverage our high-speed indirect quicksort `argsort` or in-place sorting `sort()` to extract linear interpolation percentiles instantly.
+
+***
+
+## 69. `pkgs/num_dart/lib/src/operations.dart` (🚨 Performance Optimization Gap: eigenvalues-only Extraction `linalg.eigvals`)
+- **Location**: [operations.dart:L2616-L2796](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2616-L2796)
+- **Symptom**: Currently, `eig()` forcefully computes both eigenvalues AND eigenvectors by calling LAPACK solvers with right vectors enabled (`jobvr = 'V'`).
+- **The Inefficiency**: Wastes huge memory and CPU cycles when eigenvectors are not required! In many physical models, spectral radius calculations, or stability proofs, developers only care about the eigenvalues spectrum. Forcefully calculating eigenvectors doubles unmanaged heap allocations and forces LAPACK to run expensive vector iterations.
+- **Recommended Tweak**: Implement **`eigvals(NDArray a)`** which maps directly to LAPACK solvers but passes the ASCII job code `78` (character `'N'`) to both `jobvl` and `jobvr` parameters. This tells LAPACK to completely skip the expensive eigenvectors computation phase, **accelerating eigenvalues extraction by up to 2x** and slashing memory footprints to a fraction!
+
+***
+
+## 70. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Discrete Difference `diff`)
+- **Symptom**: The operations layer lacks numerical differentiation or difference ufuncs.
+- **The Gap**: Downstream developers building physical kinematics models, time-series analyzers, or digital filters are forced to implement slow manual indexing loop sweeps in Dart.
+- **Recommended Tweak**: Implement:
+  - **`diff(NDArray a, {int n = 1, int axis = -1})`**: Computes the n-th discrete difference recursively along the specified axis, returning an array of shape shape[axis] - n along the diff axis.
+
+***
+
+## 73. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Binary Insert Searcher `searchsorted`)
+- **Symptom**: The operations layer lacks binary-search insertions index calculators.
+- **The Gap**: Physical simulations or time-series developers looking to search ordered thresholds, map sample intervals, or build histogram binning must write slow, sequential loops in Dart VM space.
+- **Recommended Tweak**: Implement **`searchsorted(NDArray a, dynamic v, {String side = 'left'})`** where [a] is a sorted 1D array. When [v] is a scalar or a broadcasted array of values, it performs binary search queries and returns insertion indices where ordered alignment is maintained.
+
+***
+
+## 74. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Hypotenuse Calculator `hypot`)
+- **Symptom**: The trigonometric suite lacks element-wise hypotenuse calculation ufuncs.
+- **The Gap**: Image processing, spatial robotics calculations, or complex absolute value sweeps are forced to calculate magnitudes via slow Dart sequences `sqrt(x * x + y * y)`, which triggers severe overflow/underflow precision failures for extremely large or small floats.
+- **Recommended Tweak**: Bind and program a highly optimized native C FFI hypotenuse vector ufunc `v_hypot_double` / `v_hypot_float` mapping to standard library's `hypot()` / `hypotf()` (which prevent internal overflows natively), and expose it as a top-level broadcasted ufunc **`hypot(NDArray x, NDArray y, {NDArray? out})`**.
+
+***
+
+## 75. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Flat Index Mapping `ravel_multi_index` & `unravel_index`)
+- **Symptom**: The operations layer completely lacks flat-to-multi-dimensional coordinate translation indices calculators.
+- **The Gap**: Downstream developers mapping raw FFI flat 1D coordinates vectors back to multi-dimensional grid locations are forced to execute slow, manual nested division loops.
+- **Recommended Tweak**: Implement:
+  - **`unravel_index(NDArray indices, List<int> dims)`**: Translates a flat 1D indices vector into a tuple/map of multi-dimensional coordinate arrays.
+  - **`ravel_multi_index(List<NDArray> multi_index, List<int> dims)`**: Translates multi-dimensional coordinate vectors back to flat 1D index lists.
+
+***
+
+## 77. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing High-Precision Small Floats `log1p` and `expm1`)
+- **Symptom**: The exponential and logarithm ufuncs lack high-precision small-values wrappers.
+- **The Gap**: Actuarial science models, financial curves calculations, or neural networks activation sweeps are forced to evaluate standard loops for very small floats $x \approx 10^{-16}$ (e.g. `log(1.0 + x)`), causing severe floating-point truncation and underflow precision failures.
+- **Recommended Tweak**: Bind and program native C FFI ufunc vectors `v_log1p_double`/`v_expm1_double` mapping to standard C library's `log1p()` and `expm1()` functions (which retain full precision under CPU mathematical boundaries), exposing them as top-level broadcasted ufuncs **`log1p(NDArray a, {NDArray? out})`** and **`expm1(NDArray a, {NDArray? out})`**.
+
+***
+
+## 79. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Element-Wise Signum `sign`)
+- **Symptom**: The universal math ufuncs lack element-wise signum extraction.
+- **The Gap**: Downstream developers building step-activation algorithms, physical vector headings, or derivatives updates are forced to fall back to slow, unvectorised loops.
+- **Recommended Tweak**: Program a highly optimized C FFI ufunc vector `v_sign_double` / `v_sign_float` in [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/hook/custom_ufuncs.c) returning `-1.0` for negative, `0.0` for zero, and `1.0` for positive float bounds. Expose it as a standard public ufunc **`sign(NDArray a, {NDArray? out})`**.
+
+***
+
+## 80. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing High-Speed Partial Sorters `partition` & `argpartition`)
+- **Symptom**: Sorters suite strictly supports $O(N \log N)$ full sorting (`sort` and `argsort`), completely lacking partial sorters.
+- **The Gap**: Extreme performance waste when developers only seek to extract rolling medians, compute K-nearest neighbors (KNN) coordinates distance lists, or retrieve top-K recommendation outputs! Forcefully executing full quicksort on millions of elements wastes CPU registers and cache pages.
+- **Recommended Tweak**: Implement highly optimized native C FFI Hoare's Quickselect partial sorting kernels `native_partition_double` / `native_argpartition_double` (which run in blazing fast **$O(N)$ linear time complexity**) inside [custom_sorting.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/hook/custom_sorting.c). Expose them as top-level public ufuncs:
+  - **`partition(NDArray a, int kth, {int axis = -1})`**: Partially sorts elements along the axis such that the value at index `kth` is in its final sorted position.
+  - **`argpartition(NDArray a, int kth, {int axis = -1})`**: Partially sorts indices along the axis.
+
+***
+
+## 81. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Modulo & Remainder `fmod` and `remainder`/`mod`)
+- **Symptom**: The mathematical suite completely lacks element-wise division remainder/modulo calculations.
+- **The Gap**: Downstream signal processing engineers, period mapping, or physics modelers must write slow, manual looping modulo steps in JIT space.
+- **Recommended Tweak**: Implement broadcasted mathematical remainder ufuncs:
+  - **`fmod(NDArray x, NDArray y, {NDArray? out})`**: Computes element-wise division remainder mapping to standard C `fmod()` (which preserves dividend sign).
+  - **`remainder(NDArray x, NDArray y, {NDArray? out})`**: Computes modulo division remainder matching Python `%` modulo (which preserves divisor sign).
+
+***
+
+## 83. `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Angle Converters `deg2rad` & `rad2deg`)
+- **Symptom**: The universal trig suite lacks angle converter ufuncs.
+- **The Gap**: Geometry, spatial vector headings, or physical orbit modelers are forced to multiply by $\pi / 180$ using manual, slow loops.
+- **Recommended Tweak**: Implement high-speed vectorized converters matching NumPy's:
+  - **`deg2rad(NDArray a, {NDArray? out})`**: Converts degrees to radians element-wise ($a \times \frac{\pi}{180.0}$).
+  - **`rad2deg(NDArray a, {NDArray? out})`**: Converts radians to degrees element-wise ($a \times \frac{180.0}{\pi}$).
+  
+## Please look into the memory behavior in loadz. `next`
