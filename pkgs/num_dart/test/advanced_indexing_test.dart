@@ -198,6 +198,29 @@ void main() {
           expect(a.toList(), [99.0, 99.0, 10.0, 20.0]);
         });
 
+        test(
+          'operator[]= nested List<List<int>> index assignment with NDArray value',
+          () {
+            final a = NDArray.fromList(
+              [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+              [3, 2],
+              DType.float64,
+            );
+            final val = NDArray.fromList(
+              [99.0, 99.0, 88.0, 88.0],
+              [2, 2],
+              DType.float64,
+            );
+
+            // Target rows 0 and 2 using nested list [[0, 2]]
+            a[[
+                  [0, 2],
+                ]] =
+                val;
+            expect(a.toList(), [99.0, 99.0, 3.0, 4.0, 88.0, 88.0]);
+          },
+        );
+
         test('operator[]= coordinate length mismatch throws ArgumentError', () {
           final a = NDArray.fromList(
             [1.0, 2.0, 3.0, 4.0],

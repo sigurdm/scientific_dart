@@ -1045,3 +1045,15 @@
   - **`lib/src/ndarray.dart` Line Coverage**: progressed from **85.0%** to **85.1%**!
   - **Global Workspace Line Coverage**: progressed from **80.65%** to **80.67%**!
   - **Unit Test Suite**: **All 329 unit tests pass flawlessly!**
+
+***
+
+## 87. Covered Nested List of List Row Assignments with NDArray Values in NDArray (Task 2)
+* **What was done**:
+  - Audited remaining uncovered lines inside the indexing mutation suite of [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart).
+  - Identified an uncovered branch on line 966 in `operator []=` coordinate selector mutations. When target rows stack are targeted via nested integer lists (such as `a[[[0, 2]]] = values`) and the right-hand side is another `NDArray`, the execution routes to `setIndices(indices, values)`.
+  - Authored a comprehensive new unit test inside [advanced_indexing_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/advanced_indexing_test.dart) verifying that nested lists of lists successfully mutates the targeted rows stack in-place under matching multidimensional matrix shapes.
+* **Coverage Progress**:
+  - **`lib/src/ndarray.dart` Line Coverage**: progressed from **85.1%** to **85.2%**!
+  - **Global Workspace Line Coverage**: progressed from **80.67%** to **80.70%**!
+  - **Unit Test Suite**: **All 330 unit tests pass flawlessly!**
