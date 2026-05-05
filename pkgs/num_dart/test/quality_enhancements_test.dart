@@ -729,6 +729,21 @@ void main() {
       expect(eye64.data[0], Complex(1.0, 0.0));
       expect(eye64.data[4], Complex(1.0, 0.0));
     });
+
+    test('prod() contiguous FFI leaf paths coverage', () {
+      final f64 = NDArray<double>.fromList([2.0, 3.0, 4.0], [3], DType.float64);
+      final f32 = NDArray<double>.fromList([5.0, 2.0, 3.0], [3], DType.float32);
+      addTearDown(f64.dispose);
+      addTearDown(f32.dispose);
+
+      // 1. float64 contiguous FFI prod()
+      final r1 = prod(f64);
+      expect(r1, closeTo(24.0, 1e-9));
+
+      // 2. float32 contiguous FFI prod()
+      final r2 = prod(f32);
+      expect(r2, closeTo(30.0, 1e-9));
+    });
   });
 }
 
