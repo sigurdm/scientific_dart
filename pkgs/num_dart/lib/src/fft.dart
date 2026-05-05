@@ -3,25 +3,41 @@ import 'package:ffi/ffi.dart';
 import 'package:pocketfft/pocketfft.dart';
 import 'ndarray.dart';
 
-/// Compute the 1D discrete Fourier Transform (FFT) along the last axis using native PocketFFT/KissFFT.
+/// Computes the 1D discrete Fourier Transform (FFT) along the last axis.
 ///
-/// Transforms time-domain discrete sequences into frequency coefficients.
-/// Output is **always a Complex array** (`DType.complex128` or `DType.complex64` depending on precision).
+/// Transforms discrete sequences from the time/space domain into frequency coefficients.
+/// The resulting array is **always complex** (`DType.complex128` or `DType.complex64` depending on precision).
 ///
-/// Supports arbitrary sequence lengths via high-speed mixed-radix prime factoring natively.
+/// Natively offloads computation to pocketfft's pocketfft/KissFFT mixed-radix prime factoring, supporting
+/// arbitrary non-power-of-two sequence lengths at high speeds.
 ///
-/// **Arguments:**
-/// - [a]: The input signal [NDArray] (real or complex).
-/// - [n]: Optional target transform length. If provided, the sequence along the last axis is truncated
-///        or padded with zeros to length [n]. If omitted, defaults to the last axis size.
+/// **Preconditions:**
+/// - Input [a] must have rank $\ge 1$ (not empty or 0-dimensional).
+/// - If provided, the target length [n] must be greater than 0.
+///
+/// **Throws:**
+/// - [ArgumentError] if the input array shape is empty (scalar 0D).
+/// - [ArgumentError] if [n] is provided but is less than or equal to 0.
+/// - [StateError] if native FFI memory allocations or KissFFT plan allocation (`kiss_fft_alloc`) fail.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N \log N)$ where $N$ is the transform length, scaling linearly even for prime lengths.
+/// - Memory allocations (`pin`, `pout`, `cfg`) are created on the unmanaged C-heap and are strictly released
+///   in a `finally` block to prevent memory leaks.
 ///
 /// **Example:**
 /// {@example /example/fft_example.dart lang=dart}
+///
+/// Reference: [Cooley-Tukey FFT Algorithm](https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm)
 NDArray fft(NDArray a, {int? n}) {
   if (a.shape.isEmpty) {
     throw ArgumentError(
       'Cannot compute FFT on a 0-dimensional or empty scalar array',
     );
+  }
+
+  if (!a.isContiguous) {
+    a = NDArray.fromList(a.toList(), a.shape, a.dtype);
   }
 
   final lastAxisDim = a.shape.last;
@@ -108,10 +124,25 @@ NDArray fft(NDArray a, {int? n}) {
   return result;
 }
 
-/// Compute the 1D Inverse discrete Fourier Transform (IFFT) along the last axis using native PocketFFT/KissFFT.
+/// Computes the 1D inverse discrete Fourier Transform (IFFT) along the last axis.
 ///
-/// Transforms frequency domain coefficients back into time-domain complex signals.
-/// Exposes standard `1 / N` normalization scaling automatically.
+/// Transforms frequency domain coefficients back into complex time/space domain signals, applying
+/// standard `1 / N` normalization scaling automatically.
+/// The resulting array is **always complex** (`DType.complex128` or `DType.complex64` depending on precision).
+///
+/// **Preconditions:**
+/// - Input [a] must have rank $\ge 1$ (not empty or 0-dimensional).
+/// - If provided, the target length [n] must be greater than 0.
+///
+/// **Throws:**
+/// - [ArgumentError] if the input array shape is empty (scalar 0D).
+/// - [ArgumentError] if [n] is provided but is less than or equal to 0.
+/// - [StateError] if native FFI memory allocations or KissFFT plan allocation (`kiss_fft_alloc`) fail.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N \log N)$ where $N$ is the transform length.
+/// - Memory allocations (`pin`, `pout`, `cfg`) are created on the unmanaged C-heap and are strictly released
+///   in a `finally` block to prevent memory leaks.
 ///
 /// **Example:**
 /// {@example /example/fft_example.dart lang=dart}
@@ -120,6 +151,10 @@ NDArray ifft(NDArray a, {int? n}) {
     throw ArgumentError(
       'Cannot compute IFFT on a 0-dimensional or empty scalar array',
     );
+  }
+
+  if (!a.isContiguous) {
+    a = NDArray.fromList(a.toList(), a.shape, a.dtype);
   }
 
   final lastAxisDim = a.shape.last;

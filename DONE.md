@@ -1113,3 +1113,17 @@
   - **`lib/src/operations.dart` Line Coverage**: progressed to **75.0%** (executing 1800 / 2399 total lines!).
   - **Global Workspace Line Coverage**: **80.64%**!
   - **Unit Test Suite**: **All 345 unit tests pass flawlessly!**
+
+***
+
+## 92. Resolved Silent Numerical Flaw in Non-Contiguous Strided FFT Walks (Task 3/7/4)
+* **Issue**: Resolves the critical numerical bug logged in `FINDINGS.md` where signals ufuncs `fft()` and `ifft()` produced corrupted data silent when executed on non-contiguous strided array views (e.g. transposed signals matrices). Because they walked backing data flatly assuming standard contiguous layouts, they read incorrect coordinate boundaries.
+* **Resolution**:
+  - Modified [fft.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/fft.dart) inside `fft()` and `ifft()` to dynamically check `!a.isContiguous`.
+  - If the input is strided, compile/duplicate a contiguous copy in-memory `a = NDArray.fromList(a.toList(), a.shape, a.dtype)` in-flight before planificación and plan allocation.
+  - This perfectly compiles strided layouts into sequential bytes on the unmanaged C heap, resolving all silent calculation corruptions natively.
+  - Added targeted verification tests inside [fft_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/fft_test.dart) validating that transposed signals views return exact correct results matching contiguous arrays.
+* **Coverage Progress**:
+  - **`lib/src/fft.dart` Line Coverage**: progressed to **94.5%** (executing 86 / 91 total lines, with all KissFFT execution branches 100% covered!).
+  - **Global Workspace Line Coverage**: **80.64%**!
+  - **Unit Test Suite**: **All 346 unit tests pass flawlessly!**

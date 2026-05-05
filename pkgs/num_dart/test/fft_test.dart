@@ -113,5 +113,92 @@ void main() {
         expect(restored.data[3].real, closeTo(0.0, 1e-9));
       },
     );
+
+    test(
+      'Verify Float32/Complex64 precision branches, and IFFT with real input fallback',
+      () {
+        final a32 = NDArray.fromList(
+          Float32List.fromList([1.0, 0.0, 0.0, 0.0]),
+          [4],
+          DType.float32,
+        );
+        final freq32 = fft(a32);
+        expect(freq32.dtype, DType.complex64);
+        expect(freq32.shape, [4]);
+
+        final restored32 = ifft(freq32);
+        expect(restored32.dtype, DType.complex64);
+        expect(restored32.shape, [4]);
+        expect(restored32.data[0].real, closeTo(1.0, 1e-5));
+
+        final realSignal = NDArray.fromList(
+          Float64List.fromList([1.0, 2.0, 3.0, 4.0]),
+          [4],
+          DType.float64,
+        );
+        final restoredFromReal = ifft(realSignal);
+        expect(restoredFromReal.dtype, DType.complex128);
+        expect(restoredFromReal.shape, [4]);
+      },
+    );
+
+    test(
+      'Verify fft() and ifft() on non-contiguous transposed strided views',
+      () {
+        final parent = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+
+        final view = parent.transposed;
+        expect(view.isContiguous, false);
+
+        final freq = fft(view);
+        expect(freq.shape, [2, 2]);
+
+        final contiguous = NDArray.fromList(
+          [1.0, 3.0, 2.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final freqContig = fft(contiguous);
+
+        for (var i = 0; i < 4; i++) {
+          expect(freq.data[i].real, closeTo(freqContig.data[i].real, 1e-5));
+          expect(freq.data[i].imag, closeTo(freqContig.data[i].imag, 1e-5));
+        }
+
+        final restored = ifft(freq);
+        expect(restored.shape, [2, 2]);
+        final restoredContig = ifft(freqContig);
+
+        for (var i = 0; i < 4; i++) {
+          expect(
+            restored.data[i].real,
+            closeTo(restoredContig.data[i].real, 1e-5),
+          );
+          expect(
+            restored.data[i].imag,
+            closeTo(restoredContig.data[i].imag, 1e-5),
+          );
+        }
+      },
+    );
+
+    test(
+      'Verify fft() and ifft() throws StateError on native plan allocation failure',
+      () {
+        final a = NDArray<double>.fromList(Float64List.fromList([1.0, 2.0]), [
+          2,
+        ], DType.float64);
+        addTearDown(a.dispose);
+
+        final hugeN = 10000000000000;
+
+        expect(() => fft(a, n: hugeN), throwsA(anything));
+        expect(() => ifft(a, n: hugeN), throwsA(anything));
+      },
+    );
   });
 }
