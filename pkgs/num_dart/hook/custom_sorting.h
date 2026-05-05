@@ -31,4 +31,24 @@ void native_sort_complex128(double *array, int size);
  */
 void native_sort_complex64(float *array, int size);
 
+/**
+ * Natively compute indirect sort indices for double precision float64 array.
+ */
+void native_argsort_double(const double *data, int *indices, int size);
+
+/**
+ * Natively compute indirect sort indices for single precision float32 array.
+ */
+void native_argsort_float(const float *data, int *indices, int size);
+
+/**
+ * Natively compute indirect sort indices for int64 array.
+ */
+void native_argsort_int64(const long long *data, int *indices, int size);
+
+/**
+ * Natively compute indirect sort indices for int32 array.
+ */
+void native_argsort_int32(const int *data, int *indices, int size);
+
 #endif // CUSTOM_SORTING_H

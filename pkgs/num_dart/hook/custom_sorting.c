@@ -112,3 +112,137 @@ void native_sort_complex64(float *array, int size) {
     if (array == NULL || size <= 1) return;
     qsort(array, size, sizeof(float) * 2, compare_complex64);
 }
+
+// ----------------------------------------------------------------------------
+// Stable Indirect Sorting / Argsort Definitions
+// ----------------------------------------------------------------------------
+
+typedef struct {
+    double value;
+    int index;
+} double_index_t;
+
+static int compare_double_index(const void *a, const void *b) {
+    double_index_t da = *(const double_index_t *)a;
+    double_index_t db = *(const double_index_t *)b;
+    int nan_a = isnan(da.value);
+    int nan_b = isnan(db.value);
+    if (nan_a && nan_b) return 0;
+    if (nan_a) return 1;
+    if (nan_b) return -1;
+    if (da.value < db.value) return -1;
+    if (da.value > db.value) return 1;
+    if (da.index < db.index) return -1;
+    if (da.index > db.index) return 1;
+    return 0;
+}
+
+void native_argsort_double(const double *data, int *indices, int size) {
+    if (data == NULL || indices == NULL || size <= 0) return;
+    double_index_t *pairs = malloc(sizeof(double_index_t) * size);
+    if (pairs == NULL) return;
+    for (int i = 0; i < size; i++) {
+        pairs[i].value = data[i];
+        pairs[i].index = i;
+    }
+    qsort(pairs, size, sizeof(double_index_t), compare_double_index);
+    for (int i = 0; i < size; i++) {
+        indices[i] = pairs[i].index;
+    }
+    free(pairs);
+}
+
+typedef struct {
+    float value;
+    int index;
+} float_index_t;
+
+static int compare_float_index(const void *a, const void *b) {
+    float_index_t fa = *(const float_index_t *)a;
+    float_index_t fb = *(const float_index_t *)b;
+    int nan_a = isnan(fa.value);
+    int nan_b = isnan(fb.value);
+    if (nan_a && nan_b) return 0;
+    if (nan_a) return 1;
+    if (nan_b) return -1;
+    if (fa.value < fb.value) return -1;
+    if (fa.value > fb.value) return 1;
+    if (fa.index < fb.index) return -1;
+    if (fa.index > fb.index) return 1;
+    return 0;
+}
+
+void native_argsort_float(const float *data, int *indices, int size) {
+    if (data == NULL || indices == NULL || size <= 0) return;
+    float_index_t *pairs = malloc(sizeof(float_index_t) * size);
+    if (pairs == NULL) return;
+    for (int i = 0; i < size; i++) {
+        pairs[i].value = data[i];
+        pairs[i].index = i;
+    }
+    qsort(pairs, size, sizeof(float_index_t), compare_float_index);
+    for (int i = 0; i < size; i++) {
+        indices[i] = pairs[i].index;
+    }
+    free(pairs);
+}
+
+typedef struct {
+    long long value;
+    int index;
+} int64_index_t;
+
+static int compare_int64_index(const void *a, const void *b) {
+    int64_index_t ia = *(const int64_index_t *)a;
+    int64_index_t ib = *(const int64_index_t *)b;
+    if (ia.value < ib.value) return -1;
+    if (ia.value > ib.value) return 1;
+    if (ia.index < ib.index) return -1;
+    if (ia.index > ib.index) return 1;
+    return 0;
+}
+
+void native_argsort_int64(const long long *data, int *indices, int size) {
+    if (data == NULL || indices == NULL || size <= 0) return;
+    int64_index_t *pairs = malloc(sizeof(int64_index_t) * size);
+    if (pairs == NULL) return;
+    for (int i = 0; i < size; i++) {
+        pairs[i].value = data[i];
+        pairs[i].index = i;
+    }
+    qsort(pairs, size, sizeof(int64_index_t), compare_int64_index);
+    for (int i = 0; i < size; i++) {
+        indices[i] = pairs[i].index;
+    }
+    free(pairs);
+}
+
+typedef struct {
+    int value;
+    int index;
+} int32_index_t;
+
+static int compare_int32_index(const void *a, const void *b) {
+    int32_index_t ia = *(const int32_index_t *)a;
+    int32_index_t ib = *(const int32_index_t *)b;
+    if (ia.value < ib.value) return -1;
+    if (ia.value > ib.value) return 1;
+    if (ia.index < ib.index) return -1;
+    if (ia.index > ib.index) return 1;
+    return 0;
+}
+
+void native_argsort_int32(const int *data, int *indices, int size) {
+    if (data == NULL || indices == NULL || size <= 0) return;
+    int32_index_t *pairs = malloc(sizeof(int32_index_t) * size);
+    if (pairs == NULL) return;
+    for (int i = 0; i < size; i++) {
+        pairs[i].value = data[i];
+        pairs[i].index = i;
+    }
+    qsort(pairs, size, sizeof(int32_index_t), compare_int32_index);
+    for (int i = 0; i < size; i++) {
+        indices[i] = pairs[i].index;
+    }
+    free(pairs);
+}

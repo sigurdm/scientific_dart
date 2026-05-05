@@ -3553,21 +3553,41 @@ NDArray<int> argsort(NDArray a, {int axis = -1}) {
 
   final result = NDArray<int>.create(src.shape, DType.int32);
 
+  if (src.dtype == DType.float64) {
+    final dataPtr = src.pointer.cast<ffi.Double>();
+    final resPtr = result.pointer.cast<ffi.Int>();
+    for (var r = 0; r < numRows; r++) {
+      native_argsort_double(dataPtr + r * n, resPtr + r * n, n);
+    }
+    return result;
+  } else if (src.dtype == DType.float32) {
+    final dataPtr = src.pointer.cast<ffi.Float>();
+    final resPtr = result.pointer.cast<ffi.Int>();
+    for (var r = 0; r < numRows; r++) {
+      native_argsort_float(dataPtr + r * n, resPtr + r * n, n);
+    }
+    return result;
+  } else if (src.dtype == DType.int64) {
+    final dataPtr = src.pointer.cast<ffi.LongLong>();
+    final resPtr = result.pointer.cast<ffi.Int>();
+    for (var r = 0; r < numRows; r++) {
+      native_argsort_int64(dataPtr + r * n, resPtr + r * n, n);
+    }
+    return result;
+  } else if (src.dtype == DType.int32) {
+    final dataPtr = src.pointer.cast<ffi.Int>();
+    final resPtr = result.pointer.cast<ffi.Int>();
+    for (var r = 0; r < numRows; r++) {
+      native_argsort_int32(dataPtr + r * n, resPtr + r * n, n);
+    }
+    return result;
+  }
+
   for (var r = 0; r < numRows; r++) {
     final rowStart = r * n;
     final indices = List<int>.generate(n, (i) => i);
 
-    if (src.dtype == DType.float64 || src.dtype == DType.float32) {
-      final dataList = src.data as List<double>;
-      indices.sort(
-        (i, j) => dataList[rowStart + i].compareTo(dataList[rowStart + j]),
-      );
-    } else if (src.dtype == DType.int32 || src.dtype == DType.int64) {
-      final dataList = src.data as List<int>;
-      indices.sort(
-        (i, j) => dataList[rowStart + i].compareTo(dataList[rowStart + j]),
-      );
-    } else if (src.dtype == DType.complex128 || src.dtype == DType.complex64) {
+    if (src.dtype == DType.complex128 || src.dtype == DType.complex64) {
       final dataList = src.data as List<Complex>;
       indices.sort((i, j) {
         final cA = dataList[rowStart + i];

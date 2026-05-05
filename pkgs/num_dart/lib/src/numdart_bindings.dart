@@ -34,6 +34,46 @@ external void native_sort_complex128(ffi.Pointer<ffi.Double> array, int size);
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
 external void native_sort_complex64(ffi.Pointer<ffi.Float> array, int size);
 
+/// Natively compute indirect sort indices for double precision float64 array.
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Int>, ffi.Int)
+>()
+external void native_argsort_double(
+  ffi.Pointer<ffi.Double> data,
+  ffi.Pointer<ffi.Int> indices,
+  int size,
+);
+
+/// Natively compute indirect sort indices for single precision float32 array.
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Int>, ffi.Int)
+>()
+external void native_argsort_float(
+  ffi.Pointer<ffi.Float> data,
+  ffi.Pointer<ffi.Int> indices,
+  int size,
+);
+
+/// Natively compute indirect sort indices for int64 array.
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.LongLong>, ffi.Pointer<ffi.Int>, ffi.Int)
+>()
+external void native_argsort_int64(
+  ffi.Pointer<ffi.LongLong> data,
+  ffi.Pointer<ffi.Int> indices,
+  int size,
+);
+
+/// Natively compute indirect sort indices for int32 array.
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Int>, ffi.Pointer<ffi.Int>, ffi.Int)
+>()
+external void native_argsort_int32(
+  ffi.Pointer<ffi.Int> data,
+  ffi.Pointer<ffi.Int> indices,
+  int size,
+);
+
 /// ----------------------------------------------------------------------------
 /// Double Precision (Float64) Flat Contiguous Kernels
 /// ----------------------------------------------------------------------------
@@ -99,7 +139,7 @@ external void v_div_double(
 
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
->()
+>(isLeaf: true)
 external void v_sin_double(
   ffi.Pointer<ffi.Double> src,
   ffi.Pointer<ffi.Double> res,
@@ -108,7 +148,7 @@ external void v_sin_double(
 
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
->()
+>(isLeaf: true)
 external void v_cos_double(
   ffi.Pointer<ffi.Double> src,
   ffi.Pointer<ffi.Double> res,
@@ -117,7 +157,7 @@ external void v_cos_double(
 
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
->()
+>(isLeaf: true)
 external void v_exp_double(
   ffi.Pointer<ffi.Double> src,
   ffi.Pointer<ffi.Double> res,
