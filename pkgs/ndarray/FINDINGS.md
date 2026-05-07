@@ -70,6 +70,14 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Types**: Expansion to `uint8` and `int16` for image/audio processing.
 - **Consistency**: Reduction results (e.g., `variance`) sometimes force `float64` even for `float32` inputs, causing precision/DType inconsistency.
 
+### 3.5 Advanced Linear Algebra & Vector Calculus (Roadmap)
+- **Tensors & Matrices**:
+  - `matrix_power(NDArray a, int n)`: Raise a square 2D matrix to integer power `n` using binary exponentiation.
+  - `kron(NDArray a, NDArray b)`: Kronecker product of two arrays.
+- **Vector Calculus**:
+  - `cross(NDArray a, NDArray b)`: Vector cross product in 3D space.
+  - `outer(NDArray a, NDArray b)`: Vector outer product.
+
 ---
 
 ## ✨ Section 4: Usability & Ergonomics (Resolved)
