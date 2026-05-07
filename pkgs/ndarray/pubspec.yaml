@@ -1,0 +1,24 @@
+name: ndarray
+description: N-dimensional arrays and numerical operations.
+version: 0.0.2
+resolution: workspace
+repository: https://github.com/sigurdm/math
+
+environment:
+  sdk: ^3.11.5
+
+# Add regular dependencies here.
+dependencies:
+  openblas: ^0.0.1
+  ffi: ^2.2.0
+  archive: ^3.6.1
+  pocketfft: ^0.0.1
+  hooks: ^1.0.3
+  code_assets: ^1.0.0
+  meta: ^1.18.2
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.31.1
+  benchmark_harness: ^2.4.0
+  coverage: ^1.15.0

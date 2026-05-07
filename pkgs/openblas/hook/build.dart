@@ -98,6 +98,13 @@ void main(List<String> args) async {
             print('No cross-compiler provided. Using host compiler.');
           }
 
+          // Restore executable permissions for OpenBLAS build scripts (lost during Dart TarDecoder extraction)
+          await Process.run('chmod', [
+            '-R',
+            '+x',
+            '.',
+          ], workingDirectory: extractDir);
+
           final buildResult = await Process.run(
             'make',
             makeArgs,

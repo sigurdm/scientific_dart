@@ -3,7 +3,7 @@ environment:
   sdk: ^3.11.5
 workspace:
   - pkgs/openblas
-  - pkgs/num_dart
+  - pkgs/ndarray
   - pkgs/pocketfft
   - pkgs/guitar_tuner
 dependencies:
