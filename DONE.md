@@ -1532,6 +1532,18 @@
   - Authored a highly polished, professional, and detailed roadmap roadmap target list inside [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/FINDINGS.md#L651-L686) under **Section 10: Holistic Review & Roadmap** to guide upcoming package parity enhancement phases.
 * **Verification**: Clean format, warning-free static compiler analyses, and all **374 unit tests continue to pass flawlessly green**!
 
+***
+
+## 126. Optimized det() Redundant Copy Buffers allocations (Task 8 / Finding Fix)
+* **Issue**:
+  - Inside `det()`, to prevent OpenBLAS LAPACK factorization functions (`LAPACKE_dgetrf`/`LAPACKE_sgetrf`) from overwriting the input matrix `a`, it instantiated a copy array `aCopy` using:
+    `final aCopy = NDArray<double>.fromList(List<double>.from(a.data), a.shape, ...);`
+  - This created a double-allocation bottleneck: `List<double>.from` unrolls a slow element-wise copying loop inside the Dart Isolate VM and allocates a temporary heap list, and `fromList` then allocates a *second* C heap memory block via `malloc` and copies elements a second time.
+* **Resolution**:
+  - **Direct pre-allocation & Copying**: Modified [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2608-L2616) in both Double and Float paths to pre-allocate `aCopy` directly using `NDArray.create(a.shape, a.dtype)`.
+  - **Optimized Fast-Path Copy**: If the input matrix is C-contiguous, perform an extremely fast direct C-level FFI block copy via `setRange` (compiles directly to an optimized `memcpy`/`memmove` on backing pointers). If it's a strided non-contiguous view, call `a.toList()` directly to copy elements to `aCopy` in a single pass, bypassing intermediate heap lists completely.
+* **Verification**: Formatting and lints are pristine, and all **374 unit tests continue to pass flawlessly green**!
+
 
 
 
