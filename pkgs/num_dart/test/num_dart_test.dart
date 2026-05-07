@@ -1036,6 +1036,7 @@ void main() {
     });
     test('Complex Array Creation', () {
       final a = NDArray<Complex>.create([2], DType.complex128);
+      addTearDown(a.dispose);
       expect(a.shape, [2]);
       expect(a.dtype, DType.complex128);
 
@@ -1050,14 +1051,17 @@ void main() {
 
     test('Complex Array Addition', () {
       final a = NDArray<Complex>.create([2], DType.complex128);
+      addTearDown(a.dispose);
       a.data[0] = Complex(1.0, 2.0);
       a.data[1] = Complex(3.0, 4.0);
 
       final b = NDArray<Complex>.create([2], DType.complex128);
+      addTearDown(b.dispose);
       b.data[0] = Complex(10.0, 20.0);
       b.data[1] = Complex(30.0, 40.0);
 
       final c = add(a, b);
+      addTearDown(c.dispose);
       expect(c.shape, [2]);
       expect(c.data[0], Complex(11.0, 22.0));
       expect(c.data[1], Complex(33.0, 44.0));
@@ -1065,12 +1069,15 @@ void main() {
 
     test('Complex and Real Array Interaction', () {
       final a = NDArray<Complex>.create([2], DType.complex128);
+      addTearDown(a.dispose);
       a.data[0] = Complex(1.0, 2.0);
       a.data[1] = Complex(3.0, 4.0);
 
       final b = NDArray<double>.fromList([10.0, 20.0], [2], DType.float64);
+      addTearDown(b.dispose);
 
       final c = add(a, b);
+      addTearDown(c.dispose);
       expect(c.shape, [2]);
       expect(c.data[0], Complex(11.0, 2.0));
       expect(c.data[1], Complex(23.0, 4.0));
@@ -1079,6 +1086,7 @@ void main() {
     group('NDArray Bounds, Formats, and Error Exceptions Tests', () {
       test('Transpose axes validations', () {
         final a = NDArray.zeros([2, 3], DType.float64);
+        addTearDown(a.dispose);
         expect(() => a.transpose([0]), throwsArgumentError);
         expect(() => a.transpose([0, -5]), throwsRangeError);
         expect(() => a.transpose([0, 0]), throwsArgumentError);
@@ -1086,6 +1094,7 @@ void main() {
 
       test('getCell and setCell coordinate checks', () {
         final a = NDArray.zeros([2, 3], DType.float64);
+        addTearDown(a.dispose);
         expect(() => a.getCell([0]), throwsArgumentError);
         expect(() => a.getCell([0, 5]), throwsRangeError);
         expect(() => a.setCell([0], 1.0), throwsArgumentError);
@@ -1094,25 +1103,32 @@ void main() {
 
       test('setByMask dimensions validation', () {
         final a = NDArray.zeros([2, 3], DType.float64);
+        addTearDown(a.dispose);
         final mask1D = NDArray<bool>.zeros([2], DType.boolean);
+        addTearDown(mask1D.dispose);
         expect(() => a.setByMask(mask1D, 5.0), throwsArgumentError);
 
         final mask2D = NDArray<bool>.zeros([2, 2], DType.boolean);
+        addTearDown(mask2D.dispose);
         expect(() => a.setByMask(mask2D, 5.0), throwsArgumentError);
       });
 
       test('setIndices and setIndicesScalar bounds checks', () {
         final a = NDArray.zeros([2, 3], DType.float64);
+        addTearDown(a.dispose);
         final indices = NDArray<int>.fromList([0], [1], DType.int32);
+        addTearDown(indices.dispose);
         expect(
           () => a.setIndicesScalar(indices, 1.0, axis: 5),
           throwsRangeError,
         );
 
         final badIndices = NDArray<int>.fromList([5], [1], DType.int32);
+        addTearDown(badIndices.dispose);
         expect(() => a.setIndicesScalar(badIndices, 1.0), throwsRangeError);
 
         final val = NDArray.zeros([1], DType.float64);
+        addTearDown(val.dispose);
         expect(() => a.setIndices(badIndices, val), throwsRangeError);
       });
 
@@ -1137,9 +1153,11 @@ void main() {
 
       test('operator [] fancy index parameter checks', () {
         final a = NDArray.zeros([2, 3], DType.float64);
+        addTearDown(a.dispose);
         expect(() => a[[0]], throwsArgumentError);
 
         final badMask = NDArray<bool>.zeros([2, 2], DType.boolean);
+        addTearDown(badMask.dispose);
         expect(() => a[badMask], throwsArgumentError);
       });
     });

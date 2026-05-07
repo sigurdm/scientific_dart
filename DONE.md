@@ -1763,6 +1763,16 @@
   - **Speedups**: **Combined Flat Array Concatenation (concatenate) execution time for 1,000,000 elements dropped from 5257.34 microseconds down to 5096.06 microseconds (a 161 microsecond speedup)!**
 * **Verification**: Compiles warning-free, static compiler checks are pristine, and all **381 unit tests pass flawlessly green**!
 
+***
+
+## 148. Refactored min, max, nanmin, nanmax to preserve original NDArray DTypes (Task 3 / Finding Fix / Option A)
+* **Gap**: Reductions along specified axes previously pre-populated the output buffer with floating-point positive or negative infinity as identity placeholders, unconditionally upcasting all integer/float results to `DType.float64`. Furthermore, the return types were marked `dynamic` because the return shape was a scalar when `axis` was null and an `NDArray` when `axis` was provided.
+* **Resolution**:
+  - **DType Preservation via First-Slice Cloning**: Refactored `min()`, `max()`, `nanmin()`, and `nanmax()` inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2342-L2583) to extract the first slice along the target axis (`a.slice(...)`) to initialize the output buffer. Iterates remaining indexes recursively in place via high-performance zero-allocation element-wise strided walkers (`_elementWiseMinRec()`, etc.), preserving the exact original DType of the array without infinity upcasts!
+  - **0-Dimensional NDArray Parity**: Changed the return signature from `dynamic` to `NDArray<T>`. When `axis` is null, the functions return a strongly-typed 0D `NDArray` (shape `[]`). Downstream developers can easily retrieve the scalar value via the newly added `.scalar` getter on `NDArray` in [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L750-L758)!
+  - **Correctness unit tests**: Added thorough correctness tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart#L2150-L2192) verifying DType preservation across `int32`, `float32`, and `float64`, correct NaN handling, and 0D scalar extraction. Updated other tests in `num_dart_test.dart` to use `.scalar` and cleaned up unnecessary compiler casts.
+* **Verification**: Static compile analysis is warning-free, formatting is pristine, and all **382 unit tests pass flawlessly green**!
+
 
 
 
