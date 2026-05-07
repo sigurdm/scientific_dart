@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
 import 'dart:ffi' as ffi;
 import 'dart:typed_data';
+import 'dart:async';
 import 'package:ffi/ffi.dart';
 import 'dart:collection';
 import 'broadcasting.dart';
@@ -114,6 +115,35 @@ final class NDArray<T> implements ffi.Finalizable {
 
   static final _finalizer = ffi.NativeFinalizer(malloc.nativeFree);
 
+  static const _scopeKey = #num_dart.NDArrayScope;
+
+  /// Executes [callback] within an automatic resource management scope.
+  ///
+  /// Any [NDArray] created during the execution of [callback] (including
+  /// intermediate results from mathematical operations) will be automatically
+  /// disposed of when the callback returns (or throws).
+  ///
+  /// If you want an array to survive beyond the scope (e.g., if it's the result
+  /// of a computation), call [detachFromScope] on it before returning.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final result = NDArray.scope(() {
+  ///   final a = NDArray.zeros([100], DType.float64);
+  ///   final b = NDArray.ones([100], DType.float64);
+  ///   final c = add(a, b);
+  ///   return c.detachFromScope(); // 'a' and 'b' are freed, 'c' survives.
+  /// });
+  /// ```
+  static R scope<R>(R Function() callback) {
+    final scope = _NDArrayScope();
+    try {
+      return runZoned(callback, zoneValues: {_scopeKey: scope});
+    } finally {
+      scope.dispose();
+    }
+  }
+
   static bool _checkContiguous(List<int> shape, List<int> strides) {
     final cStrides = computeCStrides(shape);
     if (strides.length != cStrides.length) return false;
@@ -136,7 +166,21 @@ final class NDArray<T> implements ffi.Finalizable {
        isContiguous = _checkContiguous(shape, strides) {
     if (_parent == null) {
       _finalizer.attach(this, _pointer, detach: this);
+      final scope = Zone.current[_scopeKey] as _NDArrayScope?;
+      scope?._track(this);
     }
+  }
+
+  /// Removes this array from its automatic disposal scope.
+  ///
+  /// Use this when you want an array created inside an [NDArray.scope] to
+  /// survive after the scope finishes (e.g. when returning it as a result).
+  ///
+  /// Returns this array to allow for method chaining.
+  NDArray<T> detachFromScope() {
+    final scope = Zone.current[_scopeKey] as _NDArrayScope?;
+    scope?._untrack(this);
+    return this;
   }
 
   bool _isDisposed = false;
