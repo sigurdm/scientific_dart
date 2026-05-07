@@ -1406,6 +1406,17 @@
     - Added unit tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart) asserting solver correctness on non-contiguous transposed strided matrices.
 * **Verification**: Verified lints and format are clean, and all **371 unit tests pass flawless green**.
 
+***
+
+## 115. Code Review Pass & `argsort()` Double-Allocation Findings (Task 2)
+* **What was done**:
+  - Audited the sorting index function [argsort()](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L5361) inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart) for performance bottlenecks, styling bugs, and type safety.
+  - **Double-Allocation bottleneck exposed**: Uncovered a major memory and copying-friction bottleneck logged as **Finding 59** inside [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/FINDINGS.md):
+    - When sorting non-contiguous views, `argsort()` duplicates the operand matrix `a` by calling `a.toList()` (allocating a temporary dynamic list in JIT space), and then delegating to `NDArray.fromList()` (allocating a *second* unmanaged FFI block via `malloc`), generating duplicate copying loops.
+    - Outlined recommended engineering workaround: allocate directly via `NDArray.create(shape, dtype)` and execute a single `setRange(0, length, a.toList())` block copy to unmanaged memory, completely eliminating the double-allocations and isolate dynamic list conversion.
+* **Verification**: Confirmed formatting and lints are clean. All 371 unit tests execute successfully.
+
+
 
 
 

@@ -41,17 +41,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## `pkgs/num_dart/lib/src/operations.dart` (`solve()` Redundant Isolate Cell Copy Frictions)
-- **Location**: [operations.dart:L1913-L1922](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1913-L1922) & [operations.dart:L1941-L1950](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1941-L1950)
-- **Symptom**: Before invoking high-speed LAPACK solvers (`dgesv` / `sgesv`), the `solve()` system method creates copies of the operands `a` and `b` to prevent LAPACK from overwriting the user's original inputs in-place. However, it does so via heavy Dart list duplications:
-  ```dart
-  final aCopy = NDArray<double>.fromList(List<double>.from(a.data as List<double>), a.shape, DType.float64);
-  ```
-- **The Inefficiency**: Executing `List<double>.from(a.data)` triggers expensive cell-by-cell iterations and temporary list allocations inside Dart VM isolate space. For large, dense linear systems (e.g., $500 \times 500$ matrices), this creates major latency bottlenecks.
-- **Recommended Tweak**: 
-  - When `a` and `b` are contiguous, replace the `List.from()` path with direct unmanaged heap allocations via `NDArray.create(shape, dtype)` and spawn a high-speed C **`memcpy()` block copy** to duplicate the binary memory blocks instantly. This entirely erases Dart-side element looping friction and type-casting bookkeeping overhead!
 
-***
 
 ## `pkgs/num_dart/lib/src/operations.dart` (`det()` Lacks High-Dimensional ND Stack Support)
 - **Location**: [operations.dart:L1816](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L1816)
@@ -656,3 +646,15 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Symptom**: The library lacks a high-level utility to create sliding window views over dimensions.
 - **The Gap**: Signal processing, image convolutions, and rolling time-series statistical analyses heavily require sliding windows (e.g. extracting rolling 10-day window matrices over a dataset). Downstream developers are forced to copy elements, leading to massive memory copying stalls.
 - **Recommended Tweak**: Leverage our planned low-level `asStrided()` to implement a public, safe **`slidingWindowView(NDArray a, List<int> windowShape, {List<int>? axis})`** view factory. It automatically calculates expanded strides (setting stride offsets for the window dimensions) and returns a zero-allocation, copy-free rolling window view sharing parent memory!
+
+***
+
+## `pkgs/num_dart/lib/src/operations.dart` (🚨 Performance Bottleneck: `argsort()` Redundant Double-Allocation & Isolate Cell Copy Friction)
+- **Location**: [operations.dart:L5379-L5381](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L5379-L5381)
+- **Symptom**: When sorting non-contiguous view inputs, `argsort()` duplicates the operand array `a` via:
+  ```dart
+  src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+  ```
+- **The Inefficiency / Performance Drag**: Duplicate heap allocations and copy sweeps! Calling `a.toList()` maps a temporary dynamic list in JIT space, and `fromList()` then allocates a second unmanaged block via `malloc`, duplicating copying sweeps.
+- **Recommended Tweak**: Pre-allocate directly via `NDArray.create(a.shape, a.dtype)` and copy values directly to the backing pointer view using `setRange(0, length, a.toList())`, bypassing the intermediate dynamic heap list conversion and double-allocations!
+
