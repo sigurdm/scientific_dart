@@ -145,12 +145,32 @@ final class NDArray<T> implements ffi.Finalizable {
   bool get isDisposed =>
       _isDisposed || (_parent != null && _parent!.isDisposed);
 
-  /// Factory to create a new array with allocated C memory.
+  /// Factory to create a new multi-dimensional array with backing unmanaged C heap memory.
+  ///
+  /// This allocates raw, stable memory directly on the unmanaged C heap using `malloc` or `calloc`.
+  /// The resulting array is backed by standard Dart TypedLists mapping directly to the unmanaged pages.
+  ///
+  /// **Preconditions:**
+  /// - All dimensions in [shape] must be strictly non-negative ($\ge 0$).
+  ///
+  /// **Throws:**
+  /// - [ArgumentError] if any dimension in [shape] is negative.
+  /// - [UnimplementedError] if the provided [dtype] is unsupported.
+  ///
+  /// **Performance considerations:**
+  /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$ where $N$ is the total
+  ///   number of elements (product of all dimensions in [shape]).
+  /// - Offloads allocation directly to raw OS heap memory management (virtual memory page mappings),
+  ///   bypassing Dart isolate VM GC pressure.
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray<double>.create([2, 2], DType.float64);
+  /// final a = NDArray<double>.create([2, 2], DType.float64, zeroInit: true);
+  /// print(a.toList()); // [0.0, 0.0, 0.0, 0.0]
   /// ```
+  ///
+  /// Refer to the [NumPy Array Creation Guidelines](https://numpy.org/doc/stable/reference/routines.array-creation.html)
+  /// and [Dart FFI Memory Management](https://dart.dev/guides/libraries/c-interop) for additional details.
   factory NDArray.create(
     List<int> shape,
     DType dtype, {
