@@ -1597,6 +1597,16 @@
   - In pure C benchmarks, the new 8-way unrolled sum loop achieved a **5.0x performance speedup** over the old loop, reducing time from **357.3 us** down to **71.78 microseconds** (which is even **FASTER** than Python NumPy's **90.93 us**!).
 * **Verification**: Clean formatted, warning-free static compiler builds, and all **374 unit tests continue to pass flawless green**!
 
+***
+
+## 132. Removed externalSize parameter from NativeFinalizer attachment (User Feedback)
+* **Issue**:
+  - We previously configured `NDArray._()` to supply the `externalSize` parameter to `NativeFinalizer.attach` to notify the Dart GC of C heap allocation sizes.
+  - However, `externalSize` can often work poorly with massive allocations (like large matrices), potentially causing premature or aggressive garbage collection pauses. Relying on explicit memory disposal via `.dispose()` is a much safer, standard, and cleaner production pattern.
+* **Resolution**:
+  - Removed the `externalSize` parameter and backing calculations from `NDArray._()` constructor inside [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L135-L142), returning NativeFinalizer attachments back to their standard signature.
+* **Verification**: Clean formatted, compiles warning-free, and all **374 unit tests continue to pass flawlessly green**!
+
 
 
 
