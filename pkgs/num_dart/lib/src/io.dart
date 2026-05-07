@@ -226,8 +226,7 @@ NDArray load(String filepath) {
     final elementCount = shape.isEmpty ? 1 : shape.reduce((x, y) => x * y);
     final byteSize = elementCount * dtype.byteWidth;
 
-    final result = NDArray.create(shape, dtype);
-
+    List<int>? strides;
     // Wire Zero-Copy Column-Major Fortran strides if the file demands it!
     if (fortranOrder && shape.length > 1) {
       final fStrides = List<int>.filled(shape.length, 0);
@@ -236,9 +235,10 @@ NDArray load(String filepath) {
         fStrides[i] = stride;
         stride *= shape[i];
       }
-      // Mutate strides metadata in the unmanaged array safely
-      result.strides.setRange(0, shape.length, fStrides);
+      strides = fStrides;
     }
+
+    final result = NDArray.create(shape, dtype, strides: strides);
 
     // 6. Zero-Copy direct stream file read straight into C Heap pointers!
     final byteView = result.pointer.cast<ffi.Uint8>().asTypedList(byteSize);
@@ -358,8 +358,7 @@ NDArray _deserializeNpyBytes(Uint8List bytes) {
   final elementCount = shape.isEmpty ? 1 : shape.reduce((x, y) => x * y);
   final dataByteSize = elementCount * dtype.byteWidth;
 
-  final result = NDArray.create(shape, dtype);
-
+  List<int>? strides;
   if (fortranOrder && shape.length > 1) {
     final fStrides = List<int>.filled(shape.length, 0);
     var stride = 1;
@@ -367,8 +366,10 @@ NDArray _deserializeNpyBytes(Uint8List bytes) {
       fStrides[i] = stride;
       stride *= shape[i];
     }
-    result.strides.setRange(0, shape.length, fStrides);
+    strides = fStrides;
   }
+
+  final result = NDArray.create(shape, dtype, strides: strides);
 
   final dataOffset = 10 + headerLen;
   final targetView = result.pointer.cast<ffi.Uint8>().asTypedList(dataByteSize);

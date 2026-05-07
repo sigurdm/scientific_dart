@@ -100,6 +100,7 @@ final class NDArray<T> implements ffi.Finalizable {
   final List<int> shape;
 
   /// The number of elements to skip in memory to move to the next position along each dimension.
+  @internal
   final List<int> strides;
 
   /// The data type of the elements in the array.
@@ -127,10 +128,12 @@ final class NDArray<T> implements ffi.Finalizable {
     this._pointer,
     this.data,
     this._parent, {
-    required this.shape,
-    required this.strides,
+    required List<int> shape,
+    required List<int> strides,
     required this.dtype,
-  }) : isContiguous = _checkContiguous(shape, strides) {
+  })  : shape = List<int>.unmodifiable(shape),
+        strides = List<int>.unmodifiable(strides),
+        isContiguous = _checkContiguous(shape, strides) {
     if (_parent == null) {
       _finalizer.attach(this, _pointer, detach: this);
     }
@@ -152,9 +155,10 @@ final class NDArray<T> implements ffi.Finalizable {
     List<int> shape,
     DType dtype, {
     bool zeroInit = false,
+    @internal List<int>? strides,
   }) {
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
-    final strides = computeCStrides(shape);
+    final finalStrides = strides ?? computeCStrides(shape);
 
     ffi.Pointer<ffi.Void> pointer;
     List<T> data;
@@ -201,7 +205,7 @@ final class NDArray<T> implements ffi.Finalizable {
       data,
       null,
       shape: shape,
-      strides: strides,
+      strides: finalStrides,
       dtype: dtype,
     );
   }
