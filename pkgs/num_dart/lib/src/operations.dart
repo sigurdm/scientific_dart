@@ -2608,11 +2608,16 @@ double det(NDArray<double> a) {
 
   if (a.dtype == DType.float64) {
     // Create a copy of the matrix because dgetrf overwrites it
-    final aCopy = NDArray<double>.fromList(
-      List<double>.from(a.data),
-      a.shape,
-      DType.float64,
-    );
+    final aCopy = NDArray<double>.create(a.shape, DType.float64);
+    if (a.isContiguous) {
+      (aCopy.data as Float64List).setRange(
+        0,
+        a.data.length,
+        a.data as Float64List,
+      );
+    } else {
+      aCopy.data.setRange(0, a.data.length, a.toList());
+    }
 
     final ipiv = malloc<ffi.Int>(n);
 
@@ -2659,11 +2664,16 @@ double det(NDArray<double> a) {
     }
   } else {
     // Create a copy of the matrix because sgetrf overwrites it
-    final aCopy = NDArray<double>.fromList(
-      List<double>.from(a.data),
-      a.shape,
-      DType.float32,
-    );
+    final aCopy = NDArray<double>.create(a.shape, DType.float32);
+    if (a.isContiguous) {
+      (aCopy.data as Float32List).setRange(
+        0,
+        a.data.length,
+        a.data as Float32List,
+      );
+    } else {
+      aCopy.data.setRange(0, a.data.length, a.toList());
+    }
 
     final ipiv = malloc<ffi.Int>(n);
 
