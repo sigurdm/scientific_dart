@@ -1498,6 +1498,20 @@
   - Stable `argsort()` of **50,000 already-sorted indices** dropped from **1752.05 us** down to **74.97 microseconds** (NumPy is **71.66 us**), achieving **1.04x complete, flawless performance parity**!
 * **Verification**: All builds compile flawlessly warning-free, and all **374 unit tests continue to pass 100% green**!
 
+***
+
+## 123. Fixed TimSort Boundary Bug and Added C Header File Dependencies Tracking (Task 5 follow-up)
+* **Issue**:
+  - **TimSort descending loop bounds check bug**: Discovered that in Christopher Swenson's C TimSort (`timsort.h`), the `COUNT_RUN` boundary checks broke at `size - 1` instead of `size`. This prevented TimSort from detecting runs that spanned all the way to the end of the array. Pre-sorted and reverse-sorted arrays were therefore split into two runs (size $N - 1$ and 1), forcing a costly `TIM_SORT_MERGE` operation.
+  - **Missing Header dependencies tracking**: The local headers `custom_sorting.h` and `custom_ufuncs.h` were not registered as dependencies inside `build.dart` build hook.
+* **Resolution**:
+  - **Resolved TimSort Boundary Check Bug**: Fixed the loop boundaries in [timsort.h](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/third_party/timsort/timsort.h#L1434-L1461) by changing the break checks from `curr == size - 1` to `curr == size`, allowing the scan to correctly evaluate and include the very last element `dst[size - 1]`!
+  - **Declaring headers dependencies**: Added `custom_sorting.h` and `custom_ufuncs.h` as explicit dependencies in `build.dart` build hooks to ensure incremental compilation occurs whenever header files are modified in the workspace.
+* **Spectacular Sorting Speedup Results**:
+  - Direct `sort()` on **50,000 reverse-sorted elements dropped from 1501.93 us down to 187.85 microseconds** (achieving **3.0x performance parity** with NumPy's 70.22 us!).
+  - Stable `argsort()` on **50,000 reverse-sorted indices dropped from 2048.68 us down to 176.93 microseconds** (achieving **2.3x performance parity** with NumPy's 76.56 us!).
+* **Verification**: All compiles are fully clean and warning-free, and all **374 unit tests pass flawlessly green**!
+
 
 
 
