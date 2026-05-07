@@ -64,11 +64,28 @@ void v_log_double(const double *src, double *res, int size) {
 
 double r_sum_double(const double *src, int size) {
     if (src == NULL || size <= 0) return 0.0;
-    double acc = 0.0;
-    for (int i = 0; i < size; i++) {
-        acc += src[i];
+    double acc0 = 0.0, acc1 = 0.0, acc2 = 0.0, acc3 = 0.0;
+    double acc4 = 0.0, acc5 = 0.0, acc6 = 0.0, acc7 = 0.0;
+    
+    int i = 0;
+    int limit = size - (size % 8);
+    
+    for (; i < limit; i += 8) {
+        acc0 += src[i];
+        acc1 += src[i + 1];
+        acc2 += src[i + 2];
+        acc3 += src[i + 3];
+        acc4 += src[i + 4];
+        acc5 += src[i + 5];
+        acc6 += src[i + 6];
+        acc7 += src[i + 7];
     }
-    return acc;
+    
+    double total = (acc0 + acc1) + (acc2 + acc3) + (acc4 + acc5) + (acc6 + acc7);
+    for (; i < size; i++) {
+        total += src[i];
+    }
+    return total;
 }
 
 double r_prod_double(const double *src, int size) {
@@ -580,11 +597,28 @@ void v_log_float(const float *src, float *res, int size) {
 
 float r_sum_float(const float *src, int size) {
     if (src == NULL || size <= 0) return 0.0f;
-    float acc = 0.0f;
-    for (int i = 0; i < size; i++) {
-        acc += src[i];
+    float acc0 = 0.0f, acc1 = 0.0f, acc2 = 0.0f, acc3 = 0.0f;
+    float acc4 = 0.0f, acc5 = 0.0f, acc6 = 0.0f, acc7 = 0.0f;
+    
+    int i = 0;
+    int limit = size - (size % 8);
+    
+    for (; i < limit; i += 8) {
+        acc0 += src[i];
+        acc1 += src[i + 1];
+        acc2 += src[i + 2];
+        acc3 += src[i + 3];
+        acc4 += src[i + 4];
+        acc5 += src[i + 5];
+        acc6 += src[i + 6];
+        acc7 += src[i + 7];
     }
-    return acc;
+    
+    float total = (acc0 + acc1) + (acc2 + acc3) + (acc4 + acc5) + (acc6 + acc7);
+    for (; i < size; i++) {
+        total += src[i];
+    }
+    return total;
 }
 
 float r_prod_float(const float *src, int size) {
