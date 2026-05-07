@@ -49,6 +49,15 @@ void main() {
 
         expect(() => inv(a), throwsArgumentError);
       });
+
+      test('Singular Float32 matrix throws ArgumentError', () {
+        final a = NDArray.fromList(Float32List.fromList([1.0, 2.0, 2.0, 4.0]), [
+          2,
+          2,
+        ], DType.float32); // dependent rows, det = 0
+
+        expect(() => inv(a), throwsArgumentError);
+      });
     });
 
     group('Cholesky Decomposition tests', () {
