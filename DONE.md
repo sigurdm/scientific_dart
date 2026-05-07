@@ -1721,6 +1721,16 @@
   - **FFT Speedups**: **PocketFFT FFI execution speed dropped from 1523.18 microseconds down to 1395.83 microseconds (a spectacular 8.4% performance speedup)!**
 * **Verification**: Compiles flawless and warning-free, static analyses are clean, and all **378 unit tests continue to pass flawlessly green**!
 
+***
+
+## 144. Implemented high-level safe copy-free slidingWindowView() strides view manipulator (Task 7 / Finding Fix)
+* **Gap**: Signal processing, CNN pad convolutions, and rolling time-series calculations require rolling window views over coordinate dimensions. Lacking this forced downstream developers to copy elements manually, dragging down performance.
+* **Resolution**:
+  - **Mathematical view manipulations**: Authored and exposed the top-level public API **`slidingWindowView()`** inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L6861-L6955)!
+  - **Copy-free strides alignment**: Calculates reduced shape dimensions and appends sliding window dimensions at the end. Duplicates original strides for window dimensions and delegates directly to [NDArray.view](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L399-L435) to return a zero-copy view sharing backing unmanaged C memory. Runs in $O(D)$ strides matching time with zero unmanaged allocations or element copies!
+  - **Correctness coverage unit tests**: Authored dedicated unit tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart#L1956-L2006) verifying 1D/2D sliding windows, coordinate values, shape mapping, and argument errors.
+* **Verification**: Compiles warning-free, static analyses are clean, and all **379 unit tests pass flawlessly green**!
+
 
 
 
