@@ -601,8 +601,27 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## Investigate if we can make the package compile and work with dart2wasm.
+## `pkgs/num_dart/lib/src/random.dart` (🚨 Performance Optimization Gap: `exponential()` Uses Slow Dart JIT Loop & Transcendental Logarithms)
+- **Symptom**: The `exponential()` generator runs a standard element-wise loop in Dart isolate space, calling `math.log(1.0 - rand.nextDouble())` individually for every single array element.
+- **The Inefficiency**: Running dynamic JIT loops over thousands of cells and performing high-overhead scalar logarithmic transcendental arithmetic inside Dart VM is highly CPU-inefficient, causing cache misses and serialization boundaries bottlenecks.
+- **Recommended Tweak**: Program a native C FFI kernel `v_exponential_double(double *res, int size, double scale, int seed)` inside `custom_ufuncs.c` that generates random uniform floats natively via LCG and applies Inverse Transform Sampling natively in AOT-compiled C code, bypassing Dart isolate transitions entirely for up to **5x-10x speedup**!
+
 ***
 
+## `pkgs/num_dart/lib/src/random.dart` (🚨 Performance Optimization Gap: `poisson()` Small-$\lambda$ Knuth Nested Loop Bottleneck)
+- **Symptom**: For smaller rates ($\lambda < 30.0$), the `poisson()` generator executes Knuth's inversion algorithm using a raw nested `do-while` loop inside Dart JIT space.
+- **The Inefficiency**: Scales poorly as $O(\text{shape.length} \times \lambda)$ calculations. For massive science tensors (e.g. 100,000 elements), this nested loop triggers millions of scalar divisions, multiplications, and conditional branches in standard VM space.
+- **Recommended Tweak**: Program a high-speed native C FFI Poisson kernel `v_poisson_knuth(int *res, int size, double lam, int seed)` in `custom_ufuncs.c`. Computing Knuth's nested loop directly in AOT-compiled C space eliminates all Dart JIT check margins, boosting simulation speeds up to **10x+**!
 
+***
 
+## `pkgs/num_dart/lib/src/ndarray.dart` (🚨 Severe Performance Flaw: `operator ==` and `hashCode` Trigger Catastrophic `toList()` Heap Allocations Churn)
+- **Symptom**: To compare two `NDArray` instances or retrieve an array's hash value, the `operator ==` and `hashCode` overrides unconditionally serialize the entire array's elements into a fresh Dart List via `toList()`.
+- **The Inefficiency**: Insanely slow and memory-bloated! For large multidimensional arrays (e.g. 500 x 500 grids), this allocates two massive dynamic standard Lists and runs slow, cell-by-cell Dart VM copying loops. For maps and sets lookups, it constantly recreates these arrays, triggering garbage collection thrashing and potential OOM kills.
+- **Recommended Tweak**: 
+  - If both arrays are C-contiguous, same shape, and same dtype, execute an instantaneous, zero-allocation **`memcmp` block byte check** on their unmanaged pointers!
+  - If one of the arrays is strided or non-contiguous, perform a single, zero-allocation concurrent coordinate walking loop to compare elements directly, entirely avoiding all intermediate `toList()` heap allocations!
+  - Refactor `hashCode` to compute a rolling hash over the flat elements directly on the FFI heap or using a C helper, eliminating object allocations completely.
+
+## Investigate if we can make the package compile and work with dart2wasm.
+***
