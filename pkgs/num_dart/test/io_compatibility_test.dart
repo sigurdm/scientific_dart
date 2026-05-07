@@ -86,6 +86,21 @@ void main() {
         expect(loaded.data[1], Complex(0.0, 3.5));
       });
 
+      test('Complex64 array round-trip', () {
+        final a = NDArray<Complex>.create([2], DType.complex64);
+        a.data[0] = Complex(1.5, -2.5);
+        a.data[1] = Complex(0.0, 3.0);
+
+        const path = 'scratch/test_c8.npy';
+        save(path, a);
+
+        final loaded = load(path);
+        expect(loaded.shape, [2]);
+        expect(loaded.dtype, DType.complex64);
+        expect(loaded.data[0], Complex(1.5, -2.5));
+        expect(loaded.data[1], Complex(0.0, 3.0));
+      });
+
       test(
         'Non-contiguous view save creates contiguous file copy seamlessly',
         () {
