@@ -691,4 +691,6 @@ In this code review, we assessed [broadcasting.dart](file:///usr/local/google/ho
 
 ### 3. Random Distributions (`random.dart`)
 - **Assessment**: High-Parity but minor JIT loops remain.
-- **Findings**: Univariate `uniform` and Box-Muller `normal` Gaussian generators are natively offloaded to C FFI vector math functions, running at pure compiled speeds. However, univariate `exponential()` and `poisson()` (for lambda < 30.0) still use element-by-element copying JIT loops in Dart. These present minor future optimization targets to be offloaded to FFI.
+- **Findings**: 
+  - Univariate `uniform` and Box-Muller `normal` Gaussian generators are natively offloaded to C FFI vector math functions, running at pure compiled speeds.
+  - **Poisson Distribution Inefficiencies**: The `poisson()` generator for small lambda (`lam < 30.0`) utilizes Knuth's sequential inversion algorithm, which loops an average of `lam` times per element. For `lam = 29.0` and an array of size 50,000, this translates to a massive **1,450,000 individual JIT loops** invoking `rand.nextDouble()`, stalling CPU execution. Offloading Poisson generation entirely to C FFI using Hermite or ratio-of-uniforms algorithms represents an ideal future optimization target.
