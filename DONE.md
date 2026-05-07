@@ -1773,6 +1773,18 @@
   - **Correctness unit tests**: Added thorough correctness tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart#L2150-L2192) verifying DType preservation across `int32`, `float32`, and `float64`, correct NaN handling, and 0D scalar extraction. Updated other tests in `num_dart_test.dart` to use `.scalar` and cleaned up unnecessary compiler casts.
 * **Verification**: Static compile analysis is warning-free, formatting is pristine, and all **382 unit tests pass flawlessly green**!
 
+***
+
+## 149. Improved pocketfft FFI signal transform coverage (Task 1 / Coverage Improvement)
+* **Issue**:
+  - **FFT zero-padding gap**: Raw lcov trace maps identified that zero-padding boundary loops on unmanaged `ComplexList` heap inputs (`fft.dart` lines 119-120 and 283-284) had 0 executions, keeping `fft.dart` coverage flat at 84.7%.
+* **Resolution**:
+  - **Zero-padded ComplexList unit tests**: Added extensive zero-padding tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart#L2210-L2228) invoking `fft` and `ifft` with target length `n` greater than input length on pure `ComplexList` backing arrays, successfully covering all padding loops.
+* **Coverage Results**:
+  - **`lib/src/fft.dart` line coverage**: Surged from **84.7% to 87.5%**!
+  - **🏆 Global line coverage**: Reached **86.93%**!
+* **Verification**: Formatted beautifully, compile checks are clean, and all **383 unit tests pass flawlessly green**!
+
 
 
 
