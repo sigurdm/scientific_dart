@@ -20,10 +20,14 @@ void main() async {
   final NDArray<double> captureBuffer = NDArray<double>.create([bufferSize], DType.float32);
 
   final List<String> peakLog = [];
+  final List<String> waterfall = [];
+  const waterfallHeight = 5;
 
   try {
     capture.open();
-    print('Listening... Press Ctrl+C to stop.\n');
+    print('Listening... Press Ctrl+C to stop.');
+    // Reserve space for waterfall and status
+    for (var i = 0; i < waterfallHeight + 1; i++) print('');
 
     // Run the loop
     while (true) {
@@ -36,34 +40,51 @@ void main() async {
         final rmsVal = math.sqrt(mean(sqSamples as NDArray<double>) as double);
 
         TunerResult? currentResult;
-        if (rmsVal > 0.01) {
+        if (rmsVal > 0.005) {
           currentResult = logic.process(captureBuffer, rmsVal);
         }
         return (rmsVal, currentResult);
       });
 
-      if (result != null) {
-        // Clear line and print result
-        stdout.write('\r\x1b[K$result');
+      // Move cursor up to start of our display area
+      stdout.write('\x1b[${waterfallHeight + 1}A');
 
-        // Log "stable" peaks (within 2 cents for 10 consecutive frames is hard, let's just log every new note)
+      if (result != null) {
+        // Update waterfall
+        waterfall.add(result.spectrumLine);
+        if (waterfall.length > waterfallHeight) waterfall.removeAt(0);
+
+        // Log peaks
         if (peakLog.isEmpty || peakLog.last.split(' ')[0] != result.note) {
-           peakLog.add('${result.note} @ ${result.frequency.toStringAsFixed(1)} Hz');
-           if (peakLog.length > 5) peakLog.removeAt(0);
+          peakLog.add(
+            '${result.note} @ ${result.frequency.toStringAsFixed(1)} Hz',
+          );
+          if (peakLog.length > 5) peakLog.removeAt(0);
+        }
+      } else {
+        // Add "silence" line to waterfall if we want it to scroll even when silent
+        waterfall.add(' ' * 80);
+        if (waterfall.length > waterfallHeight) waterfall.removeAt(0);
+      }
+
+      // 1. Print waterfall
+      for (var i = 0; i < waterfallHeight; i++) {
+        final line = i < waterfall.length ? waterfall[i] : ' ' * 80;
+        stdout.writeln('\x1b[K$line');
+      }
+
+      // 2. Print status line
+      if (result != null) {
+        stdout.write('\r\x1b[K$result');
+        if (peakLog.isNotEmpty) {
+          stdout.write(' | Peaks: ${peakLog.join(", ")}');
         }
       } else {
         stdout.write(
           '\r\x1b[KWaiting for signal... (RMS: ${currentRms.toStringAsFixed(4)})',
         );
       }
-
-      // Print peak log above the current line using cursor movements if supported, 
-      // but for simplicity let's just keep it as a status.
-      // Actually, printing peaks without scrolling is hard with just \r.
-      // Let's just show the last few peaks in the status line.
-      if (peakLog.isNotEmpty) {
-        stdout.write(' | Peaks: ${peakLog.join(", ")}');
-      }
+      stdout.write('\n'); // Ensure we are on the status line
 
       // Small sleep for responsiveness
       await Future.delayed(const Duration(milliseconds: 50));

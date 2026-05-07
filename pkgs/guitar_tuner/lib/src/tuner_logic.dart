@@ -7,6 +7,7 @@ final class TunerResult {
   final double targetFrequency;
   final double cents;
   final double rms;
+  final String spectrumLine;
 
   TunerResult({
     required this.note,
@@ -14,6 +15,7 @@ final class TunerResult {
     required this.targetFrequency,
     required this.cents,
     required this.rms,
+    required this.spectrumLine,
   });
 
   @override
@@ -103,6 +105,9 @@ final class TunerLogic {
 
       final freq = refinedPeakIdx * sampleRate / bufferSize;
 
+      // 7. Generate spectrum line for waterfall plot
+      final String spectrumLine = _generateSpectrumLine(magnitudes);
+
       // 4. Find closest note
       String closestNote = 'Unknown';
       double minDiff = double.infinity;
@@ -126,8 +131,39 @@ final class TunerLogic {
         targetFrequency: targetFreq,
         cents: cents,
         rms: rms,
+        spectrumLine: spectrumLine,
       );
     });
+  }
+
+  String _generateSpectrumLine(NDArray magnitudes) {
+    const plotWidth = 80;
+    const chars = ' .:-=+*#%@';
+
+    // Use frequencies from 50Hz to 1000Hz
+    final minIdx = (50 * bufferSize / sampleRate).floor();
+    final maxIdx = (1000 * bufferSize / sampleRate).ceil();
+    final range = maxIdx - minIdx;
+
+    final result = StringBuffer();
+    final magnitudesList = magnitudes.toList();
+    for (var i = 0; i < plotWidth; i++) {
+      final start = minIdx + (i * range / plotWidth).floor();
+      final end = minIdx + ((i + 1) * range / plotWidth).floor();
+
+      double sum = 0.0;
+      int count = 0;
+      for (var j = start; j < end && j < magnitudesList.length; j++) {
+        sum += magnitudesList[j];
+        count++;
+      }
+
+      final avg = count > 0 ? sum / count : 0.0;
+      // Heuristic scaling for better visual contrast
+      int level = (avg * 50).round().clamp(0, chars.length - 1);
+      result.write(chars[level]);
+    }
+    return result.toString();
   }
 
   void dispose() {

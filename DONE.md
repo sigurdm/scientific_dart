@@ -1894,3 +1894,30 @@
 * **Results**:
   - **Memory Safety**: Eliminated 100% of native heap memory leaks under all exception and error flow paths, keeping code clean of manual `.dispose()` boilerplate.
   - **Verification**: All unit tests pass flawlessly green!
+
+***
+
+## 158. Integrated detachToParentScope() to Bridge Nested Zone Lifetimes Stably (User Request Fix)
+* **Issue**:
+  - Refactoring utility functions (like `multivariateNormal()`) to use internal `NDArray.scope` blocks successfully prevented memory leaks of intermediate transient arrays inside the function.
+  - However, using `result.detachFromScope()` detached the returned tensor **completely** from all scopes. If a caller executed `multivariateNormal()` inside their own outer `NDArray.scope`, the returned result was no longer tracked by the outer scope, breaking the caller's automatic resource management context and causing caller-side memory leaks unless manually disposed!
+* **Resolution**:
+  - **Scope Nesting Promotion**: Re-introduced `_parentScope` tracking inside `_NDArrayScope` by parsing `Zone.current` during child scope instantiation in [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/ndarray.dart#L139-L141).
+  - **`detachToParentScope()` API**: Added a new public API method [detachToParentScope()](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/ndarray.dart#L206-L215) that unlinks the array from the current active scope, and if a parent scope exists, promotes/reattaches it to the parent scope so it continues to be managed by the caller's outer scope block.
+  - **Rng Solver Refactor**: Refactored `multivariateNormal()` inside [random.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/random.dart#L492) to use `detachToParentScope()`.
+* **Results**:
+  - **Memory Safety**: Guaranteed robust parent/child nested scope delegation and promotion, preventing memory leaks for callers of utility library functions under nested scopes!
+  - **Verification**: Added rigorous nested promotion unit tests in [scope_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/scope_test.dart#L127-L149). Formatting is pristine, and all **398 unit tests pass flawlessly green!**
+
+***
+
+## 159. Introduced NDArray.unmanaged() Context for Scope-Independent Array Construction (User Request Fix)
+* **Issue**:
+  - Any `NDArray` allocated inside an active `NDArray.scope` was automatically registered and tracked for disposal.
+  - While `detachFromScope()` allowed escaping active scopes, if a user wanted to allocate long-lived or persistent arrays (e.g., global neural network weight matrices or audio ring buffers) *from inside* a scope, they had to call detach on every single array, which was verbose and error-prone.
+* **Resolution**:
+  - **Zone-based Scope Bypass**: Implemented the static method `NDArray.unmanaged<R>(R Function() callback)` in [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/ndarray.dart#L169-L172).
+  - **Zone Override**: This executes the callback inside a child Zone where `_scopeKey` is explicitly overridden to `null`. Any arrays allocated inside the callback block bypass active outer scopes completely, requiring zero constructor changes or manual list detaches!
+* **Results**:
+  - **API Elegance**: Enabled clean, zone-based persistent array allocations inside active scopes.
+  - **Verification**: Added rigorous scope independence unit tests in [scope_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/scope_test.dart#L150-L173). Formatting is pristine, and all **399 unit tests pass flawlessly green!**
