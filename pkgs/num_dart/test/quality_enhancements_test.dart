@@ -2036,6 +2036,55 @@ void main() {
         ); // axes count mismatch
       },
     );
+
+    test('Advanced Vector Selection select() correctness and broadcasting', () {
+      final cond1 = NDArray.fromList([true, false, false], [3], DType.boolean);
+      final cond2 = NDArray.fromList([false, true, false], [3], DType.boolean);
+
+      final choice1 = NDArray.fromList([10, 20, 30], [3], DType.int32);
+      final choice2 = NDArray.fromList([100, 200, 300], [3], DType.int32);
+
+      addTearDown(cond1.dispose);
+      addTearDown(cond2.dispose);
+      addTearDown(choice1.dispose);
+      addTearDown(choice2.dispose);
+
+      // 1. Standard select
+      final res = select([cond1, cond2], [choice1, choice2], defaultValue: 999);
+      addTearDown(res.dispose);
+
+      expect(res.shape, [3]);
+      expect(res.dtype, DType.int32);
+      expect(res.toList(), [
+        10,
+        200,
+        999,
+      ]); // cond1 true at 0 -> 10; cond2 true at 1 -> 200; default at 2 -> 999
+
+      // 2. Broadcasting select (scalar condition, vector choices)
+      final condScalar = NDArray.fromList([true], [1], DType.boolean);
+      addTearDown(condScalar.dispose);
+      final resB = select([condScalar], [choice1], defaultValue: 999);
+      addTearDown(resB.dispose);
+
+      expect(resB.shape, [3]); // broadcasted
+      expect(resB.toList(), [10, 20, 30]);
+
+      // 3. Verify ArgumentError throwing exceptions
+      expect(() => select([], [choice1]), throwsArgumentError); // empty list
+      expect(() => select([cond1], []), throwsArgumentError);
+      expect(
+        () => select([cond1, cond2], [choice1]),
+        throwsArgumentError,
+      ); // length mismatch
+
+      final badShapeChoice = NDArray.fromList([1, 2], [2], DType.int32);
+      addTearDown(badShapeChoice.dispose);
+      expect(
+        () => select([cond1], [badShapeChoice]),
+        throwsArgumentError,
+      ); // shape mismatch
+    });
   });
 }
 

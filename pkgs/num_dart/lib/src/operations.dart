@@ -6952,3 +6952,209 @@ NDArray slidingWindowView(NDArray a, List<int> windowShape, {List<int>? axis}) {
   // 3. Return the zero-copy NDArray view sharing backing unmanaged C memory
   return NDArray.view(a, shape: outShape, strides: outStrides);
 }
+
+/// Compute the broadcasted shape list of two shapes.
+List<int> broadcastShapes(List<int> s1, List<int> s2) {
+  final len = math.max(s1.length, s2.length);
+  final common = List<int>.filled(len, 1);
+  for (var i = 0; i < len; i++) {
+    final dim1 = s1.length - 1 - i >= 0 ? s1[s1.length - 1 - i] : 1;
+    final dim2 = s2.length - 1 - i >= 0 ? s2[s2.length - 1 - i] : 1;
+
+    final target = math.max(dim1, dim2);
+    if (dim1 != target && dim1 != 1) {
+      throw ArgumentError('Incompatible shapes for broadcasting');
+    }
+    if (dim2 != target && dim2 != 1) {
+      throw ArgumentError('Incompatible shapes for broadcasting');
+    }
+    common[len - 1 - i] = target;
+  }
+  return common;
+}
+
+/// Return an array drawn from elements in [choicelist], depending on conditions in [condlist].
+///
+/// This corresponds to NumPy's `select` function.
+///
+/// **Mathematical Mechanics**:
+/// - Evaluates a list of boolean conditions in [condlist] sequentially per cell.
+/// - Draws corresponding values from the same-indexed array in [choicelist].
+/// - If no condition is met, falls back to [defaultValue].
+/// - Leverages zero-copy, zero-allocation $N$-dimensional strides recursive walk in a single pass!
+///
+/// **Preconditions:**
+/// - [condlist] and [choicelist] must have the same length.
+/// - All condition and choice arrays must broadcast perfectly to a common shape.
+///
+/// **Throws:**
+/// - [ArgumentError] if [condlist] and [choicelist] lengths mismatch, or if any shape is incompatible.
+///
+/// **Example:**
+/// ```dart
+/// final cond1 = NDArray.fromList([true, false], [2], DType.boolean);
+/// final cond2 = NDArray.fromList([false, true], [2], DType.boolean);
+/// final choice1 = NDArray.fromList([10, 20], [2], DType.int32);
+/// final choice2 = NDArray.fromList([100, 200], [2], DType.int32);
+/// final res = select([cond1, cond2], [choice1, choice2], defaultValue: 999);
+/// print(res.toList()); // [10, 200]
+/// ```
+NDArray select(
+  List<NDArray<bool>> condlist,
+  List<NDArray> choicelist, {
+  dynamic defaultValue = 0,
+}) {
+  if (condlist.isEmpty || choicelist.isEmpty) {
+    throw ArgumentError('condlist and choicelist must not be empty');
+  }
+  if (condlist.length != choicelist.length) {
+    throw ArgumentError(
+      'condlist length (${condlist.length}) must match choicelist length (${choicelist.length})',
+    );
+  }
+
+  // 1. Calculate common broadcasted shape
+  final allShapes = <List<int>>[];
+  for (final c in condlist) {
+    allShapes.add(c.shape);
+  }
+  for (final c in choicelist) {
+    allShapes.add(c.shape);
+  }
+
+  var commonShape = allShapes[0];
+  for (var i = 1; i < allShapes.length; i++) {
+    commonShape = broadcastShapes(commonShape, allShapes[i]);
+  }
+
+  // 2. Determine target upcasted DType
+  var targetDType = choicelist[0].dtype;
+  for (var i = 1; i < choicelist.length; i++) {
+    targetDType = _resolveDType(targetDType, choicelist[i].dtype);
+  }
+  if (defaultValue is double &&
+      !targetDType.isFloating &&
+      !targetDType.isComplex) {
+    targetDType = DType.float64;
+  }
+
+  final result = NDArray.create(commonShape, targetDType);
+
+  // 3. Compute strides for all condition and choice operands independently to commonShape
+  final stridesCond = condlist
+      .map((c) => _broadcastStrides(c, commonShape))
+      .toList();
+  final stridesChoice = choicelist
+      .map((c) => _broadcastStrides(c, commonShape))
+      .toList();
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  // 4. Execute recursive multi-operand strided walk
+  final currentPos = List<int>.filled(commonShape.length, 0);
+  final initialOffsetsCond = List<int>.filled(condlist.length, 0);
+  final initialOffsetsChoice = List<int>.filled(choicelist.length, 0);
+
+  _selectRecursive(
+    result,
+    condlist,
+    choicelist,
+    stridesCond,
+    stridesChoice,
+    resultStrides,
+    currentPos,
+    0,
+    initialOffsetsCond,
+    initialOffsetsChoice,
+    0,
+    defaultValue,
+  );
+
+  return result;
+}
+
+void _selectRecursive(
+  NDArray result,
+  List<NDArray<bool>> condlist,
+  List<NDArray> choicelist,
+  List<List<int>> stridesCond,
+  List<List<int>> stridesChoice,
+  List<int> resultStrides,
+  List<int> currentPos,
+  int dim,
+  List<int> offsetsCond,
+  List<int> offsetsChoice,
+  int offsetRes,
+  dynamic defaultValue,
+) {
+  final rank = result.shape.length;
+  if (dim == rank) {
+    var chosen = false;
+    for (var j = 0; j < condlist.length; j++) {
+      if (condlist[j].data[offsetsCond[j]]) {
+        result.data[offsetRes] = _castValue(
+          choicelist[j].data[offsetsChoice[j]],
+          result.dtype,
+        );
+        chosen = true;
+        break;
+      }
+    }
+    if (!chosen) {
+      result.data[offsetRes] = _castValue(defaultValue, result.dtype);
+    }
+    return;
+  }
+
+  final limit = result.shape[dim];
+  for (var i = 0; i < limit; i++) {
+    final nextOffsetsCond = List<int>.generate(
+      condlist.length,
+      (j) => offsetsCond[j] + i * stridesCond[j][dim],
+    );
+    final nextOffsetsChoice = List<int>.generate(
+      choicelist.length,
+      (j) => offsetsChoice[j] + i * stridesChoice[j][dim],
+    );
+    currentPos[dim] = i;
+    _selectRecursive(
+      result,
+      condlist,
+      choicelist,
+      stridesCond,
+      stridesChoice,
+      resultStrides,
+      currentPos,
+      dim + 1,
+      nextOffsetsCond,
+      nextOffsetsChoice,
+      offsetRes + i * resultStrides[dim],
+      defaultValue,
+    );
+  }
+}
+
+dynamic _castValue(dynamic val, DType dtype) {
+  if (dtype == DType.complex128 || dtype == DType.complex64) {
+    if (val is Complex) return val;
+    if (val is num) return Complex(val.toDouble(), 0.0);
+    return Complex(0.0, 0.0);
+  }
+  if (dtype == DType.float64 || dtype == DType.float32) {
+    if (val is num) return val.toDouble();
+    if (val is Complex) return val.real;
+    return 0.0;
+  }
+  if (dtype == DType.int64 || dtype == DType.int32) {
+    if (val is num) return val.toInt();
+    if (val is Complex) return val.real.toInt();
+    if (val is bool) return val ? 1 : 0;
+    return 0;
+  }
+  if (dtype == DType.boolean) {
+    if (val is bool) return val;
+    if (val is num) return val != 0;
+    if (val is Complex) return val.real != 0.0 || val.imag != 0.0;
+    return false;
+  }
+  return val;
+}
