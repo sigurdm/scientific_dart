@@ -1638,6 +1638,15 @@
   - Authored a highly polished, detailed, and standard-compliant docstring in [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L148-L171) for `NDArray.create`. Added explicit warnings about unmanaged C memory page mapping, preconditions on non-negative dimensions, listed throwing errors, big-O space/time complexities, and complete usage examples.
 * **Verification**: Static analyses are pristinely clean, formatting is pristine, and all **375 unit tests continue to pass flawless green**!
 
+***
+
+## 136. Audited Poisson univariate distribution generator and reported findings (Task 2)
+* **What was done**:
+  - Audited the random univariate distributions (`random.dart`), focusing on the Poisson distribution generator `poisson()`.
+  - Identified a hidden algorithmic inefficiency: for small lambda (`lam < 30.0`), Knuth's sequential inversion algorithm executes JIT loops in Dart space which iterate an average of `lam` times per element. For `lam = 29.0` and size 50,000, this creates a massive **1.45 million loops**, stalling execution.
+  - Documented the detailed findings block inside [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/FINDINGS.md#L691-L699) under Section 11.
+* **Verification**: Pristinely clean static checks and formatted perfectly, and all **375 unit tests pass flawless green**!
+
 
 
 
