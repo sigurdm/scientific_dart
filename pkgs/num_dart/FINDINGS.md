@@ -49,6 +49,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Trig/Hyperbolic**: `asin`, `acos`, `atan`, `atan2`, `asinh`, `acosh`, `atanh`.
 - **High-Precision**: `log1p`, `expm1`.
 - **Bitwise**: `bitwise_and`, `bitwise_or`, `bitwise_xor`, `left_shift`, `right_shift`.
+  - **bitwise detail**: We can implement `bitwise_and(NDArray a, NDArray b)`, `bitwise_or()`, and `bitwise_xor()` for integer dtypes (`int32` and `int64`). These will walk strides recursively and apply operators: `a.data[offsetA] & b.data[offsetB]`, `|`, and `^`. It will throw an `UnsupportedError` if called on float or complex dtypes, matching standard NumPy behaviour exactly!
 
 ### 3.2 Array Manipulation
 - **Shaping**: `broadcast_to`, `meshgrid`/`mgrid`/`ogrid`, `asStrided`, `slidingWindowView`.
