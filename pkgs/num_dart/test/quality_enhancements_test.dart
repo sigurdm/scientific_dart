@@ -79,6 +79,23 @@ void main() {
       expect(a == c, false);
       expect(a == d, false); // different shape
       expect(a.hashCode == b.hashCode, true);
+
+      // Non-contiguous view comparisons tests (triggering recursive walkers)
+      final parent1 = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+      final parent2 = NDArray.fromList([1.0, 3.0, 2.0, 4.0], [2, 2], DType.float64);
+      addTearDown(parent1.dispose);
+      addTearDown(parent2.dispose);
+
+      final viewT1 = parent1.transposed; // non-contiguous: [[1.0, 3.0], [2.0, 4.0]]
+      addTearDown(viewT1.dispose);
+      expect(viewT1.isContiguous, false);
+
+      // 1. Non-contiguous == contiguous
+      expect(viewT1 == parent2, true);
+      expect(viewT1 == parent1, false);
+
+      // 2. Non-contiguous hashCode
+      expect(viewT1.hashCode == parent2.hashCode, true);
     });
 
     test('View Invalidation Safety (throws StateError on disposed views)', () {
