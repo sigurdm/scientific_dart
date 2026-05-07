@@ -31,7 +31,8 @@ This file logs architectural improvements and hidden flaws discovered during aut
 ### 2.2 Memory Management & Safety
 - **Issue**: **Test suite memory leakage**. Almost all tests allocate FFI memory without calling `.dispose()`, leading to heap growth during long test runs.
 - **Issue**: `NDArray.zeros()` uses `malloc` + `memset`. Using `calloc` would be more efficient for the OS via demand-paging.
-- **Recommended Tweak**: Harden tests with `addTearDown(() => arr.dispose())`. Refactor `NDArray.create` to support `calloc`.
+- **Issue**: **TypedData buffer offset safety in Serialization**. Inside `io.dart`, `.buffer.asUint8List()` is called directly on temporary TypedData lists during serialization without specifying `offsetInBytes` and `lengthInBytes`, posing a future regression hazard if Dart's internal TypedData buffer allocations or views align differently.
+- **Recommended Tweak**: Harden tests with `addTearDown(() => arr.dispose())`. Refactor `NDArray.create` to support `calloc`. Update `io.dart` serialization code to use `.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes)` for absolute safety.
 
 ### 2.3 Broadcasting & Advanced Indexing
 - **Issue**: `setByMask()` lacks support for broadcasting multi-dimensional array assignments.

@@ -15,7 +15,7 @@
 - 📶 **Mixed-Radix pocketfft**: Fast Fourier Transform (`fft`) and Inverse FFT (`ifft`) mapped to PocketFFT unmanaged kernels.
 - 🎲 **RNG Distributions**: High-performance Normal (Gaussian), Poisson, and Binomial sample generation.
 - 🔍 **Data Sanitation & Tolerance Comparisons**: Approximate floating-point equality comparisons (`isclose`/`allclose`) and NaN/Infinities cleaning (`nan_to_num`).
-- 🧹 **Automatic Resource Management Scope**: Zone-based scoped lifetimes (`NDArray.scope()`) that automatically release raw unmanaged heap allocations of transient arrays.
+- 🧹 **Automatic Resource Management Scope**: Zone-based scoped lifetimes (`NDArray.scope()`) that automatically release raw unmanaged heap allocations of transient arrays. [Read the Tutorial](doc/memory_management.md).
 
 ---
 
