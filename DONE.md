@@ -1574,6 +1574,18 @@
   - Confirmed that all functions are fully enriched with preconditions, lists of exceptions and errors, detailed parameter listings, big-O time/space complexities, and clean usage examples with `@example` imports.
 * **Verification**: Static analysis remains pristinely clean, and all **374 unit tests continue to pass flawless green**!
 
+***
+
+## 130. Enriched Test Coverage for Optimized Structural Equality and hashCode (Task 1)
+* **What was done**:
+  - Measured workspace line coverage statistics using `generate_coverage.dart`. 
+  - Discovered that the newly optimized structural value equality `operator ==` and rolling Jenkins-hash `hashCode` overrides lacked coverage on the non-contiguous strided views fallback code paths (`_equalsRecursive` and `_hashRecursive` recursive walkers).
+  - Authored targeted, robust unit tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart#L79-L96) asserting correct equality and hashCode comparisons on non-contiguous transposed views against contiguous matrices.
+* **Coverage Statistics**:
+  - **`lib/src/ndarray.dart` Line Coverage**: Climbed from **86.5%** to **88.1%**!
+  - **🏆 Global Line Coverage**: Surged to a new peak record of **86.94%**!
+  - All **374 unit tests continue to pass flawless green**!
+
 
 
 
