@@ -9,7 +9,6 @@ This file logs architectural improvements and hidden flaws discovered during aut
 ### 1.1 Reductions & Statistics Bloat
 - **Issue**: `variance()` and `std()` trigger a chain of intermediate element-wise operations (subtract, multiply, cast) leading to **4x memory amplification** and 4x loop passes.
 - **Issue**: `binomial()`, `exponential()`, and `poisson()` for small parameters use raw Dart JIT loops with billions of `rand.nextDouble()` calls, stalling simulations.
-- **Issue**: `_countNonzeroRecursive()` and `nonzero()` create massive heap allocation churn due to dynamic list growth and recursive coordinate mapping.
 - **Recommended Tweak**: Collapse these into unified streaming C kernels in `custom_ufuncs.c`. For statistics, use single-pass algorithms. For random sampling, move the entire loop into AOT C space.
 
 ### 1.2 View & Manipulation Overhead
