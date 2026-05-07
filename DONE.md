@@ -1553,6 +1553,18 @@
   - Assessed that Broadcasting and I/O are highly optimized (100% zero-copy block file serialization transfers, dynamic column-major Fortran strides, and $O(D)$ broadcasting). Noted that `exponential()` and Knuth `poisson()` distributions inside `random.dart` still use element-wise Dart loops and present minor optimization targets.
 * **Verification**: Statically analyzed warning-free, formatted clean, and all **374 workspace unit tests pass green**!
 
+***
+
+## 128. Optimized NDArray operator == and hashCode Overrides (Task 8 / Finding Fix)
+* **Issue**:
+  - **Unconditional list serialization**: The `operator ==` and `hashCode` overrides in `NDArray` previously called `toList()` unconditionally. This serialized the entire array elements into dynamic heap Lists on both sides of the comparison.
+  - **The Inefficiency**: For large multidimensional arrays, this allocated massive temporary dynamic Lists in VM JIT space and ran slow element-wise Dart VM copying loops on every single equals check and hash lookup, causing severe GC thrashing and OOM isolate VM risks.
+* **Resolution**:
+  - **Dynamic FFI `memcmp` Fast Path**: Bound a custom C FFI function **`custom_memcmp`** (linking directly to standard C `<string.h>` `memcmp()`) in [custom_sorting.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/hook/custom_sorting.c#L317-L320). If both arrays are contiguous, same shape, and same dtype, `operator ==` now executes a zero-allocation, hyper-fast C-level **`memcmp` byte block comparison** on backing pointer boundaries in nanoseconds/microseconds!
+  - **Zero-Allocation Recursive Walkers fallback**: If one of the arrays is non-contiguous, `operator ==` falls back to an optimized, in-place **recursive concurrent cell comparison** (`_equalsRecursive`) which walks strides natively without allocating any intermediate dynamic heap Lists!
+  - **Zero-Allocation `hashCode`**: Refactored `hashCode` to compute a rolling hash over the backing data directly in-place (contiguous `Object.hash` loop, non-contiguous `_hashRecursive` stride walker), completely eliminating `toList()` heap list allocations.
+* **Verification**: Formats perfectly clean, compiles statically warning-free, and all **374 unit tests continue to pass flawless green**!
+
 
 
 
