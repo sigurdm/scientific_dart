@@ -650,6 +650,12 @@ In this holistic review, we analyze the gaps between Dart's `num_dart` and Pytho
 * **Matrix/Vector Norms (`norm`)**:
   - **NumPy Parity**: NumPy's `np.linalg.norm()` computes vector and matrix norms (Frobenius, nuclear, $L_1$, $L_2$, $L_{\infty}$ norms). This is critical for machine learning loss calculations and mathematical statistics.
   - **Roadmap Plan**: Implement `norm(NDArray a, {dynamic ord, List<int>? axis, bool keepdims})` leveraging CBLAS level-1 `cblas_dnrm2`/`cblas_snrm2` for high-speed native vector norms, and fallback JIT loops for matrix Frobenius and Schatten norms.
+* **Matrix Pseudo-Inverse & Rank (`pinv`, `matrix_rank`)**:
+  - **NumPy Parity**: `np.linalg.pinv()` computes the Moore-Penrose pseudo-inverse of a matrix using singular value decomposition (SVD)—critical for solving overdetermined linear regression systems. `np.linalg.matrix_rank()` estimates the matrix rank.
+  - **Roadmap Plan**: Implement `pinv(NDArray a, {double rcond = 1e-15})` by computing the SVD of $A$, inverting the non-zero singular values, and executing $V \cdot S^{-1} \cdot U^T$ multiplication natively!
+* **Matrix Power & Tensor Contraction (`matrix_power`, `tensordot`)**:
+  - **NumPy Parity**: `np.linalg.matrix_power(A, n)` raises a square matrix to an integer power $n$ (using binary exponentiation), and `np.tensordot(a, b, axes=2)` computes the tensor contraction over specified axes of two multi-dimensional arrays.
+  - **Roadmap Plan**: Implement `matrix_power(NDArray a, int n)` using binary exponentiation ($O(\log n)$) and native gemm, and `tensordot()` leveraging axis swapping + reshape + BLAS matrix multiplication.
 
 ### 2. 🚨 Missing Universal ufuncs
 * **Inverse Trigonometric & Advanced Math**:
