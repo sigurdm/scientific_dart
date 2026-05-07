@@ -1616,6 +1616,19 @@
   - Authored a dedicated round-trip loading and saving unit test in [io_compatibility_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/io_compatibility_test.dart#L88-L103) verifying structural, type, and element precision parity round-trip loading of `DType.complex64` `.npy` binary formats.
 * **Verification**: Static compiler analysis is warning-free, formatting is pristine, and all **375 unit tests pass flawless green**!
 
+***
+
+## 134. Optimized argsort() Redundant Copy Buffers allocations (Task 3 / Finding Fix)
+* **Issue**:
+  - When sorting non-contiguous view inputs, `argsort()` previously cloned the operand array using:
+    `src = NDArray.fromList(a.toList(), a.shape, a.dtype);`
+  - This created a double-allocation bottleneck: `a.toList()` created a slow temporary dynamic heap list inside VM space, and `fromList` then allocated a *second* unmanaged heap memory block via `malloc` and copied elements a second time.
+* **Resolution**:
+  - **Direct pre-allocation & Copying**: Modified [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L5425-L5431) to pre-allocate `src` directly using `NDArray.create(a.shape, a.dtype)` if the input array is non-contiguous.
+  - **Optimized Single-Pass Copy**: Copied elements straight into `src` in a single pass via `src.data.setRange(0, src.data.length, a.toList())`, bypassing redundant double list allocations.
+  - **Predictable disposes protection**: Wrapped execution inside a robust `try-finally` block ensuring that if `src` was dynamically pre-allocated for copy, it is predictably freed/disposed via `src.dispose()` at the end!
+* **Verification**: Static compiler analysis is warning-free, formatting is pristine, and all **375 unit tests continue to pass flawless green**!
+
 
 
 
