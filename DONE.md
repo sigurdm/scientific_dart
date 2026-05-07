@@ -1350,6 +1350,20 @@
     - Practical code examples and links to reference mathematical definitions (Arithmetic Mean, Variance, and Standard Deviation).
 * **Verification**: Confirmed formatting and all unit tests pass flawlessly.
 
+***
+
+## 110. Enriched and Corrected Matrix Inversion `inv()` Documentation (Task 6)
+* **What was done**:
+  - Audited the multiplicative matrix inversion [inv()](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2392) inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart) for documentation correctness and style issues.
+  - **Docstring Error Corrected**: Identified and corrected an outdated, misleading comment stating `inv()` was a *"pure Dart implementation"* and *"might be slow for very large matrices"*. The method was actually optimized to offload inversion fully to unmanaged high-speed OpenBLAS LAPACK LU routines.
+  - Replaced with professional "Effective Dart" guidelines:
+    - Documented inputs **preconditions** (square 2D layout shapes and Float32/Float64 precision).
+    - Documented **throws exceptions** (`ArgumentError` on non-square shapes or singular non-invertible matrices, `StateError` on memory limits).
+    - Specified exact **algorithmic complexities** ($O(N^3)$ floating-point pivoting time).
+    - Created clean code examples showing `toList()` assertions and injected descriptive links to reference mathematical resources.
+* **Verification**: Confirmed all lints and 372 unit tests pass successfully.
+
+
 
 
 

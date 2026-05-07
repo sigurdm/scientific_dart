@@ -2374,21 +2374,36 @@ dynamic max<T extends num>(NDArray<T> a, {int? axis}) {
   return result;
 }
 
-/// Compute the inverse of a square 2D matrix using Gauss-Jordan elimination.
+/// Compute the multiplicative inverse of a square 2D matrix.
 ///
-/// Returns a new array with the inverse matrix.
+/// Natively offloads computation to high-speed OpenBLAS LAPACK LU decomposition routines
+/// (`LAPACKE_dgetrf`/`LAPACKE_dgetri` for Float64, and `LAPACKE_sgetrf`/`LAPACKE_sgetri` for Float32),
+/// yielding maximum sequential execution throughput.
+///
+/// **Preconditions:**
+/// - Input array [a] must be a square 2D matrix (`shape.length == 2` and `shape[0] == shape[1]`).
+/// - If provided, the [out] recycler array must exactly match the shape and target float dtype of [a].
+/// - The matrix must be non-singular (invertible).
+///
+/// **Throws:**
+/// - [ArgumentError] if [a] is not square or not 2D.
+/// - [ArgumentError] if [out] is provided but has incompatible dimensions or dtype.
+/// - [ArgumentError] if the matrix is singular (non-invertible) during LU pivoting.
+/// - [StateError] if FFI memory allocations fail.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N^3)$ where $N$ is the matrix dimension length.
+/// - For non-contiguous views, automatically flattens the matrix first, recycling allocation views
+///   where safe to minimize heap churn.
 ///
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([4.0, 7.0, 2.0, 6.0], [2, 2], DType.float64);
 /// final b = inv(a);
-/// print(b.data); // [0.6, -0.7, -0.2, 0.4]
+/// print(b.toList()); // [0.6, -0.7, -0.2, 0.4]
 /// ```
 ///
-/// **Gotchas:**
-/// - Throws [ArgumentError] if the matrix is not square or not 2D.
-/// - Throws [ArgumentError] if the matrix is singular (non-invertible).
-/// - Pure Dart implementation; might be slow for very large matrices.
+/// Reference: [Matrix Inversion](https://en.wikipedia.org/wiki/Invertible_matrix)
 NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
