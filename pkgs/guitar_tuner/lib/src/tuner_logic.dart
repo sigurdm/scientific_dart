@@ -81,7 +81,21 @@ final class TunerLogic {
       // 4. Calculate magnitude spectrum
       final magnitudes = abs(spectrum);
 
-      // 5. Find peak in the spectrum (excluding DC and higher half due to symmetry)
+      // 5. Generate spectrum line for waterfall plot (always visible)
+      final String spectrumLine = _generateSpectrumLine(magnitudes);
+
+      if (rms < 0.005) {
+        return TunerResult(
+          note: '--',
+          frequency: 0.0,
+          targetFrequency: 0.0,
+          cents: 0.0,
+          rms: rms,
+          spectrumLine: spectrumLine,
+        );
+      }
+
+      // 6. Find peak in the spectrum (excluding DC and higher half due to symmetry)
       final minIdx = (50 * bufferSize / sampleRate).floor();
       final maxIdx = (1000 * bufferSize / sampleRate).ceil();
 
@@ -89,7 +103,7 @@ final class TunerLogic {
       final peakIdxInSlice = argmax(searchRange) as int;
       final peakIdx = minIdx + peakIdxInSlice;
 
-      // 6. Parabolic interpolation for more accurate peak frequency
+      // 7. Parabolic interpolation for more accurate peak frequency
       double refinedPeakIdx = peakIdx.toDouble();
       if (peakIdx > 0 && peakIdx < magnitudes.shape[0] - 1) {
         final magsList = magnitudes.toList();
@@ -105,10 +119,7 @@ final class TunerLogic {
 
       final freq = refinedPeakIdx * sampleRate / bufferSize;
 
-      // 7. Generate spectrum line for waterfall plot
-      final String spectrumLine = _generateSpectrumLine(magnitudes);
-
-      // 4. Find closest note
+      // 8. Find closest note
       String closestNote = 'Unknown';
       double minDiff = double.infinity;
       double targetFreq = 0.0;
@@ -122,7 +133,7 @@ final class TunerLogic {
         }
       });
 
-      // 5. Calculate cents difference
+      // 9. Calculate cents difference
       final cents = 1200 * math.log(freq / targetFreq) / math.log(2);
 
       return TunerResult(

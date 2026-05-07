@@ -35,54 +35,41 @@ void main() async {
       capture.read(captureBuffer);
 
       // Check if we have enough signal (RMS threshold) via num_dart
-      final (double currentRms, TunerResult? result) = NDArray.scope(() {
+      final (double currentRms, TunerResult result) = NDArray.scope(() {
         final sqSamples = multiply(captureBuffer, captureBuffer);
         final rmsVal = math.sqrt(mean(sqSamples as NDArray<double>) as double);
 
-        TunerResult? currentResult;
-        if (rmsVal > 0.005) {
-          currentResult = logic.process(captureBuffer, rmsVal);
-        }
+        final currentResult = logic.process(captureBuffer, rmsVal);
         return (rmsVal, currentResult);
       });
 
       // Move cursor up to start of our display area
       stdout.write('\x1b[${waterfallHeight + 1}A');
 
-      if (result != null) {
-        // Update waterfall
-        waterfall.add(result.spectrumLine);
-        if (waterfall.length > waterfallHeight) waterfall.removeAt(0);
+      // 1. Update waterfall
+      waterfall.add(result.spectrumLine);
+      if (waterfall.length > waterfallHeight) waterfall.removeAt(0);
 
-        // Log peaks
+      // 2. Log peaks (only if signal is significant)
+      if (currentRms > 0.005 && result.note != '--') {
         if (peakLog.isEmpty || peakLog.last.split(' ')[0] != result.note) {
           peakLog.add(
             '${result.note} @ ${result.frequency.toStringAsFixed(1)} Hz',
           );
           if (peakLog.length > 5) peakLog.removeAt(0);
         }
-      } else {
-        // Add "silence" line to waterfall if we want it to scroll even when silent
-        waterfall.add(' ' * 80);
-        if (waterfall.length > waterfallHeight) waterfall.removeAt(0);
       }
 
-      // 1. Print waterfall
+      // 3. Print waterfall
       for (var i = 0; i < waterfallHeight; i++) {
         final line = i < waterfall.length ? waterfall[i] : ' ' * 80;
         stdout.writeln('\x1b[K$line');
       }
 
-      // 2. Print status line
-      if (result != null) {
-        stdout.write('\r\x1b[K$result');
-        if (peakLog.isNotEmpty) {
-          stdout.write(' | Peaks: ${peakLog.join(", ")}');
-        }
-      } else {
-        stdout.write(
-          '\r\x1b[KWaiting for signal... (RMS: ${currentRms.toStringAsFixed(4)})',
-        );
+      // 4. Print status line
+      stdout.write('\r\x1b[K$result');
+      if (peakLog.isNotEmpty) {
+        stdout.write(' | Peaks: ${peakLog.join(", ")}');
       }
       stdout.write('\n'); // Ensure we are on the status line
 

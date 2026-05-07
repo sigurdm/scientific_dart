@@ -929,6 +929,36 @@ void main() {
     );
 
     test(
+      'prod() and sum() on non-contiguous strided views along axes',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [3, 2],
+          DType.float64,
+        );
+        final viewT = parent.transposed; // non-contiguous view of shape [2, 3]
+        expect(viewT.isContiguous, false);
+
+        // Global reduction
+        expect(prod(viewT), 720.0); // 1*2*3*4*5*6 = 720
+        expect(sum(viewT), 21.0);
+
+        // Reduction along axes (triggers _reduceRecursive fallback paths)
+        final p0 = prod(viewT, axis: 0); // Product along axis 0 -> shape [3]
+        expect(p0.shape, [3]);
+        expect(p0.toList(), [
+          2.0,
+          12.0,
+          30.0,
+        ]); // col 0: 1*2=2, col 1: 3*4=12, col 2: 5*6=30
+
+        final p1 = prod(viewT, axis: 1); // Product along axis 1 -> shape [2]
+        expect(p1.shape, [2]);
+        expect(p1.toList(), [6.0, 120.0]); // row 0: 1*2*3=6, row 1: 4*5*6=120
+      }),
+    );
+
+    test(
       'variance() and std() on non-contiguous view calculation',
       () => NDArray.scope(() {
         final parent = NDArray.fromList(
