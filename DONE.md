@@ -2026,3 +2026,13 @@
 * **Results**:
   - **Performance**: Boosted coordinate extraction speeds by up to **10x** on large grids and reduced heap GC churn to exactly zero.
   - **Verification**: Checked all **400 unit tests pass flawlessly green!**
+
+***
+
+## 169. Exposed FFT Multi-Dimensional Axis Support Roadmap in Section 3.1 of FINDINGS.md (Task 4 / Holistic Roadmap Audit)
+* **Issue**:
+  - The current Fourier Transform functions (`fft` and `ifft`) are hardcoded to compute transforms solely along the last axis (`a.shape.last`), lacking standard NumPy compatibility for arbitrary multi-dimensional axis selection.
+* **Resolution**:
+  - **Roadmap Integration**: Added a detailed specification under Section 3.1 (Fourier Transforms) in [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md#L47-L49), planning a standard `axis` parameter (default `-1`) that transposes dimensions internally before and after raw pocketfft FFI plan executions to achieve full standard `np.fft.fft(a, axis=axis)` capability.
+* **Results**:
+  - **Verification**: All **400 unit tests pass flawlessly green!**
