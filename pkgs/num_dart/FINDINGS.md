@@ -555,9 +555,54 @@ This file logs architectural improvements and hidden flaws discovered during aut
 ## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: `sort()` and `argsort()` Lack Sorting Algorithm `kind` and Stable Sort Support)
 - **Symptom**: Currently, `sort()` and `argsort()` in `operations.dart` only support an unstable QuickSort routing to the native C FFI compilation.
 - **The Gap**: Downstream scientific developers seeking to perform stable multi-key sorting (e.g. sorting indices first by price, and then stably sorting by name) are completely blocked. Python's NumPy natively packages a `kind` parameter supporting `'quicksort'`, `'mergesort'`, `'heapsort'`, and `'stable'` to enable stable sorts.
-- **Recommended Tweak**: Expose a `kind` parameter to `sort()` and `argsort()`. Bind and implement a standard C FFI MergeSort routine (which offers stable $O(N \log N)$ sorting complexity) to fully match NumPy's stable multi-key sort capability!
-
+- **Recommended Tweak**: Expose a `kind` parameter to `sort()` and `argsort()`. Bind and implement a standard C FFI MergeSort routine (actually use Timsort) (which offers stable $O(N \log N)$ sorting complexity) to fully match NumPy's stable multi-key sort capability!
 
 ***
+
+## `pkgs/num_dart/lib/src/ndarray.dart` (NumPy Compatibility & Usability Gap: Missing `asStrided` Sliding Windows / Rolling Views Stride Tricks)
+- **Symptom**: The codebase has no built-in sliding-window or rolling-window view generator.
+- **The Gap**: In NumPy, `np.lib.stride_tricks.as_strided()` allows developers to create rolling or sliding windows over arrays (e.g., sliding windows of size 10 over a 10,000-element time-series array) with zero extra memory allocation. In `num_dart`, developers are forced to allocate a massive 10,000 x 10 matrix and duplicate elements across the FFI heap, which creates severe memory allocation churn and degrades CPU cache-friendly layouts.
+- **Recommended Tweak**: Implement a low-level view factory constructor `NDArray.asStrided(NDArray parent, List<int> shape, List<int> strides, {int offsetElements = 0})` that directly creates a non-contiguous strided view sharing the parent's C memory. This will allow creating multi-dimensional sliding/rolling windows, convolutions, or diagonal blocks in exact O(1) zero-copy time and zero extra memory!
+
+***
+
+## `pkgs/num_dart/lib/src/ndarray.dart` (DType Expansion Gap: Missing Unsigned Byte (`uint8`) and Smaller Integer (`int16`) Backings for High-Performance Multimedia Image & Audio Processing)
+- **Symptom**: The library strictly limits array element data types to standard `int32`, `int64`, `float32`, `float64`, `complex64`, `complex128`, and `boolean`.
+- **The Gap**: Modern image processing libraries natively store pixel channel buffers in unsigned 8-bit byte formats (`uint8`), and audio systems pack waveforms into 16-bit signed integers (`int16`). Lacking these backings in `num_dart` forces developers to upcast all image/audio arrays into large 32-bit or 64-bit integers, wasting 2x to 4x memory allocations and CPU bandwidth.
+- **Recommended Tweak**: Expand the `DType` enum to include `uint8` and `int16`. Update `NDArray.create` to bind these types directly to `ffi.Uint8` and `ffi.Int16` unmanaged heap pointers and map their corresponding Dart typed list views (`Uint8List` and `Int16List`). This will instantly enable zero-copy, highly efficient image manipulation and audio signal processing pipelines!
+
+***
+
+## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Coordinate Grids & Mesh Evaluation Helpers `meshgrid`, `mgrid`, and `ogrid`)
+- **Symptom**: Lacks multi-dimensional coordinate grid generators.
+- **The Gap**: Scientific fields like spatial mechanics, electrodynamics, and computer graphics heavily rely on `np.meshgrid` or `np.mgrid` coordinate evaluation helpers to compute mathematical grids (e.g., evaluating a 2D scalar field function like z = sin(x^2 + y^2)). Lacking these, downstream developers must write slow, nested Dart loop sweeps to manually construct or replicate mesh coordinates, losing all CPU vectorization and SIMD performance advantages.
+- **Recommended Tweak**: Implement `meshgrid(List<NDArray> xi, {bool sparse = false})` and `mgrid`/`ogrid` coordinate grid generators. By utilizing zero-allocation shape/stride expansions (`broadcast_to`), they can return lightweight, zero-copy coordinate mesh views of the input vectors, yielding elite mathematical grid evaluation speeds!
+
+***
+
+## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Cumulative Reductions `cumsum` & `cumprod`)
+- **Symptom**: The mathematical reductions suite only supports flat or axis-wise reductions `sum()` and `prod()`. It lacks cumulative prefix aggregations.
+- **The Gap**: Standard telemetry processing, financial time-series analysis (e.g., asset walks, compound interest curves), and numerical integration algorithms heavily require running prefix sums (`cumsum`) and running products (`cumprod`). Lacking these, downstream developers must write sequential loops in Dart VM JIT space, causing severe CPU registers stalls and thread boundaries serialization.
+- **Recommended Tweak**: Bind and program highly optimized native C FFI prefix sweep kernels `v_cumsum_double` / `v_cumprod_double` inside `custom_ufuncs.c` that calculate cumulative running aggregations along specified axes in a single, cache-friendly pass. Expose these as top-level `cumsum(NDArray a, {int? axis})` and `cumprod(NDArray a, {int? axis})` operations!
+
+***
+
+## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Bitwise & Binary Shift Operations for Cryptography & Bit-masking Parsing)
+- **Symptom**: The element-wise logical operations suite only supports boolean inputs and basic boolean operations. It lacks binary integer operations (`bitwise_and`, `bitwise_or`, `bitwise_xor`, `bitwise_not`, `left_shift`, `right_shift`).
+- **The Gap**: Developers performing low-level data stream parsing, network packet decoding, or cryptography are forced to write slow cell-by-cell loops in Dart VM space to manipulate bits across integer array indices.
+- **Recommended Tweak**: Expose element-wise bitwise C operators that directly act on `int32` and `int64` C memory buffers, bypassing JIT boundaries for complex binary/cryptographic data pipelines!
+
+***
+
+## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing 1D Numeric Linear Interpolator `interp`)
+- **Symptom**: The library lacks coordinate-wise numeric resampling and interpolation.
+- **The Gap**: Scientific telemetry processing, signal alignment, and curve plotting heavily require one-dimensional linear interpolation (`np.interp`) to resample raw datasets onto regular grids. Lacking this, developers must write slow, manual binary searches and mathematical interpolation steps in Dart VM space.
+- **Recommended Tweak**: Implement `interp(NDArray x, NDArray xp, NDArray fp, {double? left, double? right})` where `xp` is a sorted 1D array. This can leverage high-speed binary search logic to execute zero-friction element-wise resampling grids!
+
+***
+
+## Investigate if we can make the package compile and work with dart2wasm.
+***
+
 
 
