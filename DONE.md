@@ -1438,6 +1438,15 @@
   - Fully documented `save()`, `load()`, `savez()`, and `loadz()` in `io.dart`, and `uniform()`, `randint()`, `normal()`, `exponential()`, `poisson()`, and `binomial()` in `random.dart` according to the "Effective Dart" guidelines and your strict coding preferences.
 * **Verification**: Verified that all workspace formatting and static analysis remain pristine, and all **372 workspace unit tests continue to pass 100% green**!
 
+***
+
+## 118. Encapsulated NDArray strides as @internal and Secured Shape/Strides as Unmodifiable (Task 6 follow-up)
+* **What was done**:
+  - Expose `.shape` as public but secure it against dynamic client corruption by wrapping it in **`List<int>.unmodifiable()`** inside the private constructor `NDArray._()`, throwing runtime `UnsupportedError` on any mutations.
+  - Marked `.strides` as **`@internal`** using standard meta annotations to keep it fully restricted to internal library usage and wrapped it in `List<int>.unmodifiable()` as well.
+  - Refactored standard array creators and binary format serialization loaders inside `io.dart` (`load()` and `_deserializeNpyBytes()`) to avoid in-place strides updates, passing custom Fortran strides directly to `NDArray.create()` via the package-private `strides` parameter instead.
+* **Verification**: Formatting and compiler checks are completely warning-free, and verified that all **372 workspace unit tests continue to pass 100% green**!
+
 
 
 
