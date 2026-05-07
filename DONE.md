@@ -1565,6 +1565,15 @@
   - **Zero-Allocation `hashCode`**: Refactored `hashCode` to compute a rolling hash over the backing data directly in-place (contiguous `Object.hash` loop, non-contiguous `_hashRecursive` stride walker), completely eliminating `toList()` heap list allocations.
 * **Verification**: Formats perfectly clean, compiles statically warning-free, and all **374 unit tests continue to pass flawless green**!
 
+***
+
+## 129. Documented public APIs and Audited broadcasting/FFT/Operations modules (Task 6)
+* **What was done**:
+  - Audited the public API documentation across `broadcasting.dart`, `fft.dart`, `operations.dart` and standard matrix linear algebra solvers (`cholesky()`, `qr()`, `svd()`).
+  - Verified that 100% of the core mathematical and signal ufuncs conform perfectly to the "Effective Dart" guidelines. 
+  - Confirmed that all functions are fully enriched with preconditions, lists of exceptions and errors, detailed parameter listings, big-O time/space complexities, and clean usage examples with `@example` imports.
+* **Verification**: Static analysis remains pristinely clean, and all **374 unit tests continue to pass flawless green**!
+
 
 
 
