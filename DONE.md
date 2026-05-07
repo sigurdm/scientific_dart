@@ -1991,3 +1991,15 @@
   - **Roadmap Additions**: Added a new section **Section 3.5 (Advanced Linear Algebra & Vector Calculus)** in [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md#L73-L81) logging future integration points for `matrix_power` (binary matrix exponentiation $O(\log N)$), `kron` (Kronecker matrix product), `cross` (3D vector cross products), and `outer` (vector outer products).
 * **Results**:
   - **Verification**: Formatting is clean, the git working tree is pristine, and all **400 unit tests pass 100% green!**
+
+***
+
+## 166. Marked Section 2.2 (Memory Management & Safety) as Fully Resolved in FINDINGS.md (Task 7 / Roadmaps)
+* **Issue**:
+  - Outstanding Section 2.2 logs in `FINDINGS.md` listed FFI memory leak hazards in our unit test suites.
+* **Resolution**:
+  - **Absolute Victory over Memory Leaks**: Solved unit test memory leakage globally across all 19 test files by refactoring them to run fully inside `NDArray.scope()` blocks, guaranteeing zero unmanaged heap memory leaks!
+  - **Hardenings**: Successfully integrated `calloc` zero-page demand paging allocations in `NDArray.zeros()`, exception-safe nesting promotion scope delegation in `multivariateNormal()`, and explicit TypedData offset view boundaries in serialization.
+  - **Clean Roadmaps**: Removed the resolved issues and cleanly marked **Section 2.2 as 100% RESOLVED** in [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md#L31-L34)!
+* **Results**:
+  - **Verification**: Formatting is pristine and all **400 unit tests continue to pass 100% green!**
