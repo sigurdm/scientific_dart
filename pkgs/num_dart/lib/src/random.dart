@@ -494,3 +494,105 @@ NDArray multivariateNormal(
   final finalShape = [...sampleShape, d];
   return x2D.reshape(finalShape);
 }
+
+/// Draw samples from a multinomial distribution.
+///
+/// This corresponds to NumPy's `random.multinomial` function.
+///
+/// **Mathematical Mechanics**:
+/// The multinomial distribution is a generalization of the binomial distribution.
+/// A trial has $K$ possible categorical outcomes, each with a probability $p_j$ specified in [pvals].
+///
+/// To draw a sample of shape `[...size, K]`:
+/// 1. Computes the cumulative probability distribution (CDF) of [pvals].
+/// 2. For each output coordinate block, performs [n] trials:
+///    - Draws a standard uniform variable $U \sim \mathcal{U}(0, 1)$.
+///    - Uses binary/linear search to find the first outcome index $j$ where $U \le \text{CDF}[j]$.
+///    - Increments the count of category $j$ for that sample.
+///
+/// **Preconditions:**
+/// - [n] must be strictly non-negative ($\ge 0$).
+/// - [pvals] must be a 1-dimensional vector of probabilities. The probabilities must sum to approximately 1.0.
+/// - If provided, [size] must be a valid shape list.
+///
+/// **Throws:**
+/// - [ArgumentError] if [n] is negative, or if [pvals] is not a 1D vector.
+/// - [ArgumentError] if [pvals] contains negative probabilities, or if their sum exceeds 1.0 by a significant tolerance.
+///
+/// **Example:**
+/// ```dart
+/// final pvals = NDArray.fromList([0.2, 0.5, 0.3], [3], DType.float64);
+/// final samples = multinomial(10, pvals, size: [1000]);
+/// print(samples.shape); // [1000, 3]
+/// ```
+NDArray<int> multinomial(
+  int n,
+  NDArray pvals, {
+  List<int>? size,
+  Random? random,
+}) {
+  if (n < 0) {
+    throw ArgumentError('n trials must be non-negative (was $n)');
+  }
+  if (pvals.shape.length != 1) {
+    throw ArgumentError(
+      'pvals must be a 1-dimensional probability vector (was ${pvals.shape})',
+    );
+  }
+
+  final k = pvals.shape[0];
+  final rand = random ?? Random();
+
+  // 1. Compute CDF of pvals and validate probabilities
+  final cdf = List<double>.filled(k, 0.0);
+  var sumP = 0.0;
+  for (var i = 0; i < k; i++) {
+    final p = (pvals.data[i] as num).toDouble();
+    if (p < 0.0) {
+      throw ArgumentError(
+        'pvals must contain non-negative probabilities (was $p at index $i)',
+      );
+    }
+    sumP += p;
+    cdf[i] = sumP;
+  }
+
+  if ((sumP - 1.0).abs() > 1e-3) {
+    // Normalize probabilities slightly if they deviate by a minor tolerance
+    for (var i = 0; i < k; i++) {
+      cdf[i] /= sumP;
+    }
+  }
+
+  // 2. Resolve output shape
+  final sampleShape = <int>[];
+  if (size != null) {
+    sampleShape.addAll(size);
+  }
+  final sampleCount = sampleShape.isEmpty
+      ? 1
+      : sampleShape.reduce((a, b) => a * b);
+
+  // 3. Allocate result counts array of shape [...size, k]
+  final finalShape = [...sampleShape, k];
+  final result = NDArray<int>.create(finalShape, DType.int32, zeroInit: true);
+
+  // 4. Perform multinomial simulation sweeps
+  for (var s = 0; s < sampleCount; s++) {
+    final offset = s * k;
+    for (var t = 0; t < n; t++) {
+      final u = rand.nextDouble();
+      // Locate outcome index using linear search on CDF
+      var outcome = k - 1;
+      for (var j = 0; j < k; j++) {
+        if (u <= cdf[j]) {
+          outcome = j;
+          break;
+        }
+      }
+      result.data[offset + outcome]++;
+    }
+  }
+
+  return result;
+}

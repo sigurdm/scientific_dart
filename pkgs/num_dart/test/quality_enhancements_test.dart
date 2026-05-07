@@ -2085,6 +2085,71 @@ void main() {
         throwsArgumentError,
       ); // shape mismatch
     });
+
+    test(
+      'Multinomial Distribution multinomial() trial simulation correctness',
+      () {
+        final pvals = NDArray.fromList([0.2, 0.5, 0.3], [3], DType.float64);
+        addTearDown(pvals.dispose);
+
+        // Draw 1000 samples of 10 trials (shape [1000, 3])
+        final samples = multinomial(10, pvals, size: [1000]);
+        addTearDown(samples.dispose);
+
+        expect(samples.shape, [1000, 3]);
+        expect(samples.dtype, DType.int32);
+
+        // For every sample, the sum of category counts must exactly equal the trials 'n' (10)!
+        for (var i = 0; i < 1000; i++) {
+          final sum =
+              samples.getCell([i, 0]) +
+              samples.getCell([i, 1]) +
+              samples.getCell([i, 2]);
+          expect(sum, 10);
+        }
+
+        // Statistical ratios should converge close to [0.2, 0.5, 0.3]
+        var count0 = 0.0;
+        var count1 = 0.0;
+        var count2 = 0.0;
+        for (var i = 0; i < 1000; i++) {
+          count0 += samples.getCell([i, 0]);
+          count1 += samples.getCell([i, 1]);
+          count2 += samples.getCell([i, 2]);
+        }
+        final r0 = count0 / 10000.0;
+        final r1 = count1 / 10000.0;
+        final r2 = count2 / 10000.0;
+
+        expect(r0, closeTo(0.2, 0.05));
+        expect(r1, closeTo(0.5, 0.05));
+        expect(r2, closeTo(0.3, 0.05));
+
+        // Verify exceptions throwing
+        expect(
+          () => multinomial(-5, pvals),
+          throwsArgumentError,
+        ); // negative trials
+
+        final badShapePvals = NDArray.fromList(
+          [0.5, 0.5],
+          [1, 2],
+          DType.float64,
+        );
+        addTearDown(badShapePvals.dispose);
+        expect(
+          () => multinomial(10, badShapePvals),
+          throwsArgumentError,
+        ); // bad shape pvals
+
+        final negativePvals = NDArray.fromList([-0.2, 1.2], [2], DType.float64);
+        addTearDown(negativePvals.dispose);
+        expect(
+          () => multinomial(10, negativePvals),
+          throwsArgumentError,
+        ); // negative probability
+      },
+    );
   });
 }
 
