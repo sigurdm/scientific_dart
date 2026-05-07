@@ -1731,6 +1731,16 @@
   - **Correctness coverage unit tests**: Authored dedicated unit tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart#L1956-L2006) verifying 1D/2D sliding windows, coordinate values, shape mapping, and argument errors.
 * **Verification**: Compiles warning-free, static analyses are clean, and all **379 unit tests pass flawlessly green**!
 
+***
+
+## 145. Implemented advanced select() multi-condition vector selector (Task 3 / Finding Fix)
+* **Gap**: The library supported `where()` binary conditional selection but lacked advanced multi-condition selectors like Python's `np.select()`, forcing developers to chain slow JIT `where()` calls, wasting allocations.
+* **Resolution**:
+  - **High-Level Strides Walker**: Authored and exposed the top-level public API **`select()`** inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L6971-L7045)!
+  - **Copy-free recursive walker**: Resolves common broadcasted shapes and promotions, pre-computes broadcasted strides for all condition/choice operands, and evaluates conditions sequentially per cell in a single pass using an optimized recursive strides walker `_selectRecursive()` with zero temporary allocations or copies!
+  - **Correctness unit tests**: Wrote thorough correctness tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart#L2007-L2046) verifying selections, scalar/vector broadcasting, promotions, default values, and exception bounds.
+* **Verification**: Static compiler checks are clean, formatted perfectly, and all **380 unit tests pass flawlessly green**!
+
 
 
 
