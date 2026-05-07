@@ -501,13 +501,17 @@ Map<String, NDArray> loadz(String filepath) {
 Uint8List _serializeDataContiguous(List flatList, DType dtype) {
   switch (dtype) {
     case DType.float64:
-      return Float64List.fromList(flatList.cast<double>()).buffer.asUint8List();
+      final list = Float64List.fromList(flatList.cast<double>());
+      return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
     case DType.float32:
-      return Float32List.fromList(flatList.cast<double>()).buffer.asUint8List();
+      final list = Float32List.fromList(flatList.cast<double>());
+      return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
     case DType.int64:
-      return Int64List.fromList(flatList.cast<int>()).buffer.asUint8List();
+      final list = Int64List.fromList(flatList.cast<int>());
+      return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
     case DType.int32:
-      return Int32List.fromList(flatList.cast<int>()).buffer.asUint8List();
+      final list = Int32List.fromList(flatList.cast<int>());
+      return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
     case DType.boolean:
       final bytes = Uint8List(flatList.length);
       for (var i = 0; i < flatList.length; i++) {
@@ -521,7 +525,10 @@ Uint8List _serializeDataContiguous(List flatList, DType dtype) {
         doubleList[i * 2] = c.real;
         doubleList[i * 2 + 1] = c.imag;
       }
-      return doubleList.buffer.asUint8List();
+      return doubleList.buffer.asUint8List(
+        doubleList.offsetInBytes,
+        doubleList.lengthInBytes,
+      );
     case DType.complex64:
       final floatList = Float32List(flatList.length * 2);
       for (var i = 0; i < flatList.length; i++) {
@@ -529,6 +536,9 @@ Uint8List _serializeDataContiguous(List flatList, DType dtype) {
         floatList[i * 2] = c.real;
         floatList[i * 2 + 1] = c.imag;
       }
-      return floatList.buffer.asUint8List();
+      return floatList.buffer.asUint8List(
+        floatList.offsetInBytes,
+        floatList.lengthInBytes,
+      );
   }
 }
