@@ -136,6 +136,10 @@ void main() {
         ], DType.float64);
         final b = clip(a, min: -1.0, max: 5.0);
         expect(b.data, [-1.0, 1.5, 5.0]);
+
+        // Verify Complex clip throws UnsupportedError
+        final c = NDArray<Complex>.create([2], DType.complex128);
+        expect(() => clip(c, min: -1.0, max: 5.0), throwsUnsupportedError);
       });
     });
 
