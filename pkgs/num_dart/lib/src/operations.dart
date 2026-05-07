@@ -2093,13 +2093,29 @@ dynamic nansum<T extends Object>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     final List<T> elements = size == a.data.length ? a.data : a.toList();
-    var acc = 0.0;
-    for (var i = 0; i < elements.length; i++) {
-      final val = elements[i];
-      if (val is double && val.isNaN) continue;
-      acc += (val as num).toDouble();
+    if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+      var acc = 0;
+      for (var i = 0; i < elements.length; i++) {
+        acc += elements[i] as int;
+      }
+      return acc as T;
+    } else if (a.dtype == DType.complex64 || a.dtype == DType.complex128) {
+      var acc = Complex(0.0, 0.0);
+      for (var i = 0; i < elements.length; i++) {
+        final val = elements[i] as Complex;
+        if (val.real.isNaN || val.imag.isNaN) continue;
+        acc += val;
+      }
+      return acc as T;
+    } else {
+      var acc = 0.0;
+      for (var i = 0; i < elements.length; i++) {
+        final val = elements[i] as double;
+        if (val.isNaN) continue;
+        acc += val;
+      }
+      return acc as T;
     }
-    return acc as T;
   }
 
   if (axis < 0 || axis >= a.shape.length) {
@@ -2713,16 +2729,19 @@ NDArray solve(NDArray a, NDArray b) {
 
   try {
     if (a.dtype == DType.float64 && b.dtype == DType.float64) {
-      final aCopy = NDArray<double>.fromList(
-        List<double>.from(a.data as List<double>),
-        a.shape,
-        DType.float64,
-      );
-      final bCopy = NDArray<double>.fromList(
-        List<double>.from(b.data as List<double>),
-        b.shape,
-        DType.float64,
-      );
+      final aCopy = NDArray<double>.create(a.shape, DType.float64);
+      if (a.isContiguous) {
+        (aCopy.data as Float64List).setRange(0, a.data.length, a.data as Float64List);
+      } else {
+        aCopy.data.setRange(0, a.data.length, a.toList() as List<double>);
+      }
+
+      final bCopy = NDArray<double>.create(b.shape, DType.float64);
+      if (b.isContiguous) {
+        (bCopy.data as Float64List).setRange(0, b.data.length, b.data as Float64List);
+      } else {
+        bCopy.data.setRange(0, b.data.length, b.toList() as List<double>);
+      }
 
       final info = LAPACKE_dgesv(
         101,
@@ -2741,16 +2760,19 @@ NDArray solve(NDArray a, NDArray b) {
       aCopy.dispose();
       return bCopy;
     } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
-      final aCopy = NDArray<double>.fromList(
-        List<double>.from(a.data as List<double>),
-        a.shape,
-        DType.float32,
-      );
-      final bCopy = NDArray<double>.fromList(
-        List<double>.from(b.data as List<double>),
-        b.shape,
-        DType.float32,
-      );
+      final aCopy = NDArray<double>.create(a.shape, DType.float32);
+      if (a.isContiguous) {
+        (aCopy.data as Float32List).setRange(0, a.data.length, a.data as Float32List);
+      } else {
+        aCopy.data.setRange(0, a.data.length, a.toList() as List<double>);
+      }
+
+      final bCopy = NDArray<double>.create(b.shape, DType.float32);
+      if (b.isContiguous) {
+        (bCopy.data as Float32List).setRange(0, b.data.length, b.data as Float32List);
+      } else {
+        bCopy.data.setRange(0, b.data.length, b.toList() as List<double>);
+      }
 
       final info = LAPACKE_sgesv(
         101,

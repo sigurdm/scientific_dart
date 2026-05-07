@@ -1393,6 +1393,20 @@
   - Annotated the flat backup buffer field [NDArray.data](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L95) with `@internal` to ensure standard encapsulation. This protects downstream consumers from accessing unsafe flat sequential backing lists (which completely ignore offsets and strides calculations for non-contiguous or sliced views) directly.
 * **Verification**: Verified lints are clean and all 372 unit tests pass successfully.
 
+***
+
+## 114. Optimized `solve()` Matrix Copying & Patched `nansum()` Type-Safety Crash (Task 7)
+* **What was done**:
+  - **Exposed & Optimized solver copying bottleneck**: Addressed **Finding 4** inside [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/FINDINGS.md) by refactoring matrix operand duplication in [solve()](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2715). 
+    - Completely eliminated slow dynamic isolate list conversions `List<double>.from(a.data)` in the Float64 and Float32 pathways.
+    - Replaced with pre-allocation `NDArray.create(shape, dtype)` and block-level contiguous `setRange()` copies to bypass JIT runtime type switches. Added contiguous checking with clean fallback mapping.
+  - **Patched nansum() Type-Safety crash**: Resolved a core bug where flat `nansum()` reductions (with `axis == null`) unconditionally converted non-double inputs (such as integer or complex arrays) to double and accumulated them as double, causing a fatal `TypeError` when casting back to `T`. Introduced type-specific loops and accumulators (`int` for integer arrays, `Complex` for complex arrays, `double` for real arrays) to ensure 100% type-safety.
+  - **Targeted Unit Testing**:
+    - Added unit tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart) asserting type-safety of flat `nansum()` across all numeric dtypes.
+    - Added unit tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart) asserting solver correctness on non-contiguous transposed strided matrices.
+* **Verification**: Verified lints and format are clean, and all **371 unit tests pass flawless green**.
+
+
 
 
 

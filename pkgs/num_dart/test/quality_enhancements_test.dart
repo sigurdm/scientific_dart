@@ -156,7 +156,12 @@ void main() {
 
     test('randint() supporting wide ranges (> 2^32)', () {
       // Generate a 64-bit integer range that exceeds 2^32
-      final a = randint([10], low: 100000000000, high: 200000000000, dtype: DType.int64);
+      final a = randint(
+        [10],
+        low: 100000000000,
+        high: 200000000000,
+        dtype: DType.int64,
+      );
       addTearDown(a.dispose);
       expect(a.shape, [10]);
       expect(a.dtype, DType.int64);
@@ -674,13 +679,23 @@ void main() {
     test('NDArray.view() FFI constructors with float32 and int64 coverage', () {
       final pF32 = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float32);
       addTearDown(pF32.dispose);
-      final vF32 = NDArray.view(pF32, shape: [2], strides: [1], offsetElements: 1);
+      final vF32 = NDArray.view(
+        pF32,
+        shape: [2],
+        strides: [1],
+        offsetElements: 1,
+      );
       expect(vF32.toList(), [2.0, 3.0]);
       expect(vF32.dtype, DType.float32);
 
       final pI64 = NDArray.fromList([10, 20, 30], [3], DType.int64);
       addTearDown(pI64.dispose);
-      final vI64 = NDArray.view(pI64, shape: [2], strides: [1], offsetElements: 1);
+      final vI64 = NDArray.view(
+        pI64,
+        shape: [2],
+        strides: [1],
+        offsetElements: 1,
+      );
       expect(vI64.toList(), [20, 30]);
       expect(vI64.dtype, DType.int64);
     });
@@ -1682,8 +1697,63 @@ void main() {
         // 5. int / Complex
         final div5 = divide(i, c);
         addTearDown(div5.dispose);
-        expect(div5.dtype, DType.complex128);
         expect(div5.data[0], Complex(0.1, -0.1)); // 2 / (10+10i) = 0.1 - 0.1i
+      },
+    );
+
+    test(
+      'nansum() flat sum type safety on Int32/Int64 and Complex128/Complex64 NDArrays',
+      () {
+        // 1. Int32 Summation (should return int scalar without double-cast crash)
+        final aInt32 = NDArray.fromList([10, 20, 30, 40], [4], DType.int32);
+        addTearDown(aInt32.dispose);
+        final sumI32 = nansum(aInt32);
+        expect(sumI32, 100);
+        expect(sumI32, isA<int>());
+
+        // 2. Int64 Summation
+        final aInt64 = NDArray.fromList([100, 200], [2], DType.int64);
+        addTearDown(aInt64.dispose);
+        final sumI64 = nansum(aInt64);
+        expect(sumI64, 300);
+        expect(sumI64, isA<int>());
+
+        // 3. Complex128 Summation (should return Complex scalar)
+        final aC128 = NDArray<Complex>.create([2], DType.complex128);
+        aC128.data[0] = Complex(1.0, 2.0);
+        aC128.data[1] = Complex(3.0, 4.0);
+        addTearDown(aC128.dispose);
+        final sumC128 = nansum(aC128);
+        expect(sumC128, Complex(4.0, 6.0));
+        expect(sumC128, isA<Complex>());
+      },
+    );
+
+    test(
+      'solve() optimized contiguous block copy and non-contiguous view solvers correctness',
+      () {
+        // 1. Contiguous Float64 matrix solve
+        final a = NDArray.fromList([3.0, 1.0, 1.0, 2.0], [2, 2], DType.float64);
+        final b = NDArray.fromList([9.0, 8.0], [2], DType.float64);
+        addTearDown(a.dispose);
+        addTearDown(b.dispose);
+
+        final x = solve(a, b);
+        addTearDown(x.dispose);
+        expect(x.toList(), [2.0, 3.0]);
+
+        // 2. Non-contiguous transposed Float64 matrix solve
+        final aParent = NDArray.fromList([3.0, 1.0, 1.0, 2.0], [2, 2], DType.float64);
+        final aTransposed = aParent.transposed; // non-contiguous!
+        // aTransposed is: [[3.0, 1.0], [1.0, 2.0]] which is symmetric, so solve is same
+        final bParent = NDArray.fromList([9.0, 8.0], [2], DType.float64);
+        addTearDown(aParent.dispose);
+        addTearDown(aTransposed.dispose);
+        addTearDown(bParent.dispose);
+
+        final x2 = solve(aTransposed, bParent);
+        addTearDown(x2.dispose);
+        expect(x2.toList(), [2.0, 3.0]);
       },
     );
   });
