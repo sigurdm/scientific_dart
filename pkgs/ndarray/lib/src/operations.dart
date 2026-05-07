@@ -6492,44 +6492,47 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
 /// {@example /example/sorting_searching_example.dart lang=dart}
 List<NDArray<int>> nonzero(NDArray a) {
   final rank = a.shape.length;
-  final coordinateLists = List.generate(rank, (_) => <int>[]);
+  final count = count_nonzero(a) as int;
 
-  _nonzeroRecursive(a, List<int>.filled(rank, 0), 0, 0, coordinateLists);
+  final results = List.generate(
+    rank,
+    (_) => NDArray<int>.create([count], DType.int32, zeroInit: true),
+  );
 
-  return coordinateLists.map((list) {
-    return NDArray<int>.fromList(list, [list.length], DType.int32);
-  }).toList();
-}
+  if (count == 0) {
+    return results;
+  }
 
-void _nonzeroRecursive(
-  NDArray a,
-  List<int> currentPos,
-  int currentDim,
-  int offset,
-  List<List<int>> coordinateLists,
-) {
-  if (currentDim == a.shape.length) {
+  final shape = a.shape;
+  final strides = a.strides;
+  final totalSize = shape.isEmpty ? 1 : shape.reduce((x, y) => x * y);
+
+  final coord = List<int>.filled(rank, 0);
+  int offset = 0;
+  int writeIdx = 0;
+
+  for (int el = 0; el < totalSize; el++) {
     final val = a.data[offset];
     if (_isTrue(val)) {
-      for (var i = 0; i < currentPos.length; i++) {
-        coordinateLists[i].add(currentPos[i]);
+      for (var d = 0; d < rank; d++) {
+        results[d].data[writeIdx] = coord[d];
       }
+      writeIdx++;
     }
-    return;
+
+    // Advance odometer multidimensional coordinate odometer walk!
+    for (int d = rank - 1; d >= 0; d--) {
+      coord[d]++;
+      if (coord[d] < shape[d]) {
+        offset += strides[d];
+        break;
+      }
+      coord[d] = 0;
+      offset -= (shape[d] - 1) * strides[d];
+    }
   }
 
-  final stride = a.strides[currentDim];
-  final limit = a.shape[currentDim];
-  for (var i = 0; i < limit; i++) {
-    currentPos[currentDim] = i;
-    _nonzeroRecursive(
-      a,
-      currentPos,
-      currentDim + 1,
-      offset + i * stride,
-      coordinateLists,
-    );
-  }
+  return results;
 }
 
 /// Count the number of non-zero elements in the array [a].
