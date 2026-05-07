@@ -234,6 +234,42 @@ final class NDArray<T> implements ffi.Finalizable {
     bool zeroInit = false,
     @internal List<int>? strides,
   }) {
+    if (identical(T, dynamic) || identical(T, Object)) {
+      if (dtype == DType.float64 || dtype == DType.float32) {
+        return NDArray<double>.create(
+              shape,
+              dtype,
+              zeroInit: zeroInit,
+              strides: strides,
+            )
+            as NDArray<T>;
+      } else if (dtype == DType.int32 || dtype == DType.int64) {
+        return NDArray<int>.create(
+              shape,
+              dtype,
+              zeroInit: zeroInit,
+              strides: strides,
+            )
+            as NDArray<T>;
+      } else if (dtype == DType.complex128 || dtype == DType.complex64) {
+        return NDArray<Complex>.create(
+              shape,
+              dtype,
+              zeroInit: zeroInit,
+              strides: strides,
+            )
+            as NDArray<T>;
+      } else if (dtype == DType.boolean) {
+        return NDArray<bool>.create(
+              shape,
+              dtype,
+              zeroInit: zeroInit,
+              strides: strides,
+            )
+            as NDArray<T>;
+      }
+    }
+
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     final finalStrides = strides ?? computeCStrides(shape);
 
@@ -459,6 +495,43 @@ final class NDArray<T> implements ffi.Finalizable {
     required List<int> strides,
     int offsetElements = 0,
   }) {
+    if (identical(T, dynamic) || identical(T, Object)) {
+      if (parent.dtype == DType.float64 || parent.dtype == DType.float32) {
+        return NDArray<double>.view(
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+            )
+            as NDArray<T>;
+      } else if (parent.dtype == DType.int32 || parent.dtype == DType.int64) {
+        return NDArray<int>.view(
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+            )
+            as NDArray<T>;
+      } else if (parent.dtype == DType.complex128 ||
+          parent.dtype == DType.complex64) {
+        return NDArray<Complex>.view(
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+            )
+            as NDArray<T>;
+      } else if (parent.dtype == DType.boolean) {
+        return NDArray<bool>.view(
+              parent,
+              shape: shape,
+              strides: strides,
+              offsetElements: offsetElements,
+            )
+            as NDArray<T>;
+      }
+    }
+
     ffi.Pointer<ffi.Void> pointer;
     List<T> data;
 

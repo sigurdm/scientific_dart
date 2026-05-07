@@ -15,9 +15,11 @@ void main() async {
 
   final capture = AudioCapture(sampleRate: sampleRate, bufferSize: bufferSize);
   final logic = TunerLogic(sampleRate: sampleRate, bufferSize: bufferSize);
-  
+
   // Pre-allocate capture buffer to avoid garbage collection pressure
-  final NDArray<double> captureBuffer = NDArray<double>.create([bufferSize], DType.float32);
+  final NDArray<double> captureBuffer = NDArray<double>.create([
+    bufferSize,
+  ], DType.float32);
 
   try {
     capture.open();
@@ -31,8 +33,8 @@ void main() async {
       // Check if we have enough signal (RMS threshold) via num_dart
       final (double currentRms, TunerResult? result) = NDArray.scope(() {
         final sqSamples = multiply(captureBuffer, captureBuffer);
-        final rmsVal = math.sqrt(mean(sqSamples as NDArray<Object>) as double);
-        
+        final rmsVal = math.sqrt(mean(sqSamples as NDArray<double>) as double);
+
         TunerResult? currentResult;
         if (rmsVal > 0.01) {
           currentResult = logic.process(captureBuffer);
@@ -48,7 +50,7 @@ void main() async {
           '\r\x1b[KWaiting for signal... (RMS: ${currentRms.toStringAsFixed(4)})',
         );
       }
-      
+
       // Small sleep to not hog the CPU too much
       await Future.delayed(const Duration(milliseconds: 100));
     }

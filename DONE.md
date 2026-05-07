@@ -1858,3 +1858,15 @@
 * **Results**:
   - **Performance**: Achieved extremely fast, zero-allocation tracking and unlinking loops, perfectly maintaining a 100% clean `NDArray` class.
   - **Verification**: Added rigorous unit tests in [scope_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/scope_test.dart) verifying basic scopes, nested scopes, unmanaged escape detachments, and hybrid List-to-Set promotion past 100 arrays. Wrote comprehensive operator tests in [operators_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/operators_test.dart). Formatting is pristine and all **397 unit tests pass flawlessly green!**
+
+***
+
+## 154. Runtime Type Specialization for NDArray Instances
+* **Issue**:
+  - **Type Incompatibility**: Many `NDArray` instances were being created as `NDArray<dynamic>` at runtime when using generic factories or ufuncs. This caused `TypeError`s when passing these arrays to strict-typed functions like `mean<T extends Object>`.
+* **Resolution**:
+  - **Dynamic Dispatch in Factories**: Refactored the `NDArray.create` and `NDArray.view` factories to check if the type parameter `T` is `dynamic` or `Object`.
+  - **Runtime Specialization**: When `T` is non-specific, the factories now automatically dispatch to specialized internal creators (`NDArray<double>`, `NDArray<int>`, `NDArray<Complex>`, `NDArray<bool>`) based on the provided `DType`.
+* **Results**:
+  - **Robustness**: Eliminated runtime `TypeError`s in the `guitar_tuner` example and ensured that all intermediate arrays returned by ufuncs like `multiply` have specific numeric types at runtime.
+  - **Compatibility**: Maintained static API compatibility while providing a more precise dynamic type system that "just works" for the user.
