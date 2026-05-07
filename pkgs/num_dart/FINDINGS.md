@@ -57,6 +57,11 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ### 3.3 Statistics & Sorting
 - **Reductions**: `nanmin`, `nanmax`, `percentile`, `quantile`, `cumsum`, `cumprod`.
+  - **percentile/quantile detail**: We can implement `percentile(NDArray a, double q, {int? axis})` and `quantile(NDArray a, double q, {int? axis})` by sorting slices using our high-speed Timsort solver. We can then apply linear interpolation:
+    $idx = q \times (N - 1)$ (for quantile, $q \in [0, 1]$)
+    $low = \lfloor idx \rfloor$, $high = \lceil idx \rceil$
+    $val = arr[low] + (idx - low) \times (arr[high] - arr[low])$.
+    This achieves 100% standard NumPy parity and is highly optimized!
 - **Sorting**: `partition`, `argpartition`, `unique`, stable sort support (`kind` parameter).
 - **Searching**: `searchsorted`, `ravel_multi_index`/`unravel_index`.
 
