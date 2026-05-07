@@ -309,47 +309,43 @@ final class NDArray<T> implements ffi.Finalizable {
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     final finalStrides = strides ?? computeCStrides(shape);
 
+    final allocator = zeroInit ? calloc : malloc;
     ffi.Pointer<ffi.Void> pointer;
     List<T> data;
 
     if (dtype == DType.float64) {
-      final p = malloc<ffi.Double>(totalSize);
+      final p = allocator<ffi.Double>(totalSize);
       pointer = p.cast();
       data = p.asTypedList(totalSize) as List<T>;
     } else if (dtype == DType.float32) {
-      final p = malloc<ffi.Float>(totalSize);
+      final p = allocator<ffi.Float>(totalSize);
       pointer = p.cast();
       data = p.asTypedList(totalSize) as List<T>;
     } else if (dtype == DType.int32) {
-      final p = malloc<ffi.Int32>(totalSize);
+      final p = allocator<ffi.Int32>(totalSize);
       pointer = p.cast();
       data = p.asTypedList(totalSize) as List<T>;
     } else if (dtype == DType.int64) {
-      final p = malloc<ffi.Int64>(totalSize);
+      final p = allocator<ffi.Int64>(totalSize);
       pointer = p.cast();
       data = p.asTypedList(totalSize) as List<T>;
     } else if (dtype == DType.complex128) {
-      final p = malloc<ffi.Double>(totalSize * 2);
+      final p = allocator<ffi.Double>(totalSize * 2);
       pointer = p.cast();
       final doubleList = p.asTypedList(totalSize * 2);
       data = ComplexList(doubleList) as List<T>;
     } else if (dtype == DType.complex64) {
-      final p = malloc<ffi.Float>(totalSize * 2);
+      final p = allocator<ffi.Float>(totalSize * 2);
       pointer = p.cast();
       final floatList = p.asTypedList(totalSize * 2);
       data = ComplexList(floatList) as List<T>;
     } else if (dtype == DType.boolean) {
-      final p = malloc<ffi.Uint8>(totalSize);
+      final p = allocator<ffi.Uint8>(totalSize);
       pointer = p.cast();
       final uint8List = p.asTypedList(totalSize);
       data = BoolList(uint8List) as List<T>;
     } else {
       throw UnimplementedError('Type $dtype not supported yet');
-    }
-
-    if (zeroInit) {
-      final byteSize = totalSize * dtype.byteWidth;
-      native_zero_memory(pointer, byteSize);
     }
 
     return NDArray._(
