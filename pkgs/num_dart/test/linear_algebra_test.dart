@@ -473,6 +473,12 @@ void main() {
         expect(() => eig(a), throwsArgumentError);
       });
 
+      test('eig() throws UnimplementedError on boolean matrix', () {
+        final a = NDArray.zeros([2, 2], DType.boolean);
+        addTearDown(a.dispose);
+        expect(() => eig(a), throwsUnimplementedError);
+      });
+
       test('solve() throws ArgumentError on non-square matrix a', () {
         final a = NDArray.zeros([2, 3], DType.float64);
         final b = NDArray.zeros([2], DType.float64);
