@@ -1544,6 +1544,15 @@
   - **Optimized Fast-Path Copy**: If the input matrix is C-contiguous, perform an extremely fast direct C-level FFI block copy via `setRange` (compiles directly to an optimized `memcpy`/`memmove` on backing pointers). If it's a strided non-contiguous view, call `a.toList()` directly to copy elements to `aCopy` in a single pass, bypassing intermediate heap lists completely.
 * **Verification**: Formatting and lints are pristine, and all **374 unit tests continue to pass flawlessly green**!
 
+***
+
+## 127. Conducted Code Review of Broadcasting, I/O, and Random Packages (Task 2)
+* **What was done**:
+  - Audited [broadcasting.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/broadcasting.dart), [io.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/io.dart), and [random.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/random.dart) for performance bottlenecks and API design correctness.
+  - Exposed a detailed findings block inside [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/FINDINGS.md#L686-L706) under **Section 11: Code Review Findings: I/O Serialization & Broadcasting Parity Assessment**.
+  - Assessed that Broadcasting and I/O are highly optimized (100% zero-copy block file serialization transfers, dynamic column-major Fortran strides, and $O(D)$ broadcasting). Noted that `exponential()` and Knuth `poisson()` distributions inside `random.dart` still use element-wise Dart loops and present minor optimization targets.
+* **Verification**: Statically analyzed warning-free, formatted clean, and all **374 workspace unit tests pass green**!
+
 
 
 
