@@ -849,3 +849,13 @@ final class cpx_t extends ffi.Struct {
   @ffi.Double()
   external double i;
 }
+
+/// Zero-allocation optimized direct C memcmp block byte compare.
+@ffi.Native<
+  ffi.Int Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Void>, ffi.Size)
+>()
+external int custom_memcmp(
+  ffi.Pointer<ffi.Void> s1,
+  ffi.Pointer<ffi.Void> s2,
+  int n,
+);

@@ -2014,14 +2014,67 @@ final class NDArray<T> implements ffi.Finalizable {
     if (dtype != other.dtype) return false;
     if (!_listEquals(shape, other.shape)) return false;
 
-    final thisList = toList();
-    final otherList = other.toList();
-    return _listEquals(thisList, otherList);
+    final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+
+    // 1. High-speed direct C memcmp block byte check for C-contiguous same-layout arrays
+    if (isContiguous && other.isContiguous) {
+      final byteSize = totalSize * dtype.byteWidth;
+      return custom_memcmp(pointer, other.pointer, byteSize) == 0;
+    }
+
+    // 2. Zero-allocation recursive in-place coordinate walking comparison
+    return _equalsRecursive(this, other, List<int>.filled(shape.length, 0), 0);
+  }
+
+  static bool _equalsRecursive(
+    NDArray a,
+    NDArray b,
+    List<int> indices,
+    int dim,
+  ) {
+    if (dim == a.shape.length) {
+      return a.getCell(indices) == b.getCell(indices);
+    }
+    for (var i = 0; i < a.shape[dim]; i++) {
+      indices[dim] = i;
+      if (!_equalsRecursive(a, b, indices, dim + 1)) return false;
+    }
+    return true;
   }
 
   @override
-  int get hashCode =>
-      Object.hash(dtype, Object.hashAll(shape), Object.hashAll(toList()));
+  int get hashCode {
+    var hash = Object.hash(dtype, Object.hashAll(shape));
+
+    // 1. High-speed direct in-place rolling hash for contiguous arrays
+    if (isContiguous) {
+      final len = data.length;
+      for (var i = 0; i < len; i++) {
+        hash = Object.hash(hash, data[i]);
+      }
+      return hash;
+    }
+
+    // 2. Zero-allocation recursive rolling hash walker
+    return _hashRecursive(this, List<int>.filled(shape.length, 0), 0, hash);
+  }
+
+  static int _hashRecursive(
+    NDArray a,
+    List<int> indices,
+    int dim,
+    int currentHash,
+  ) {
+    if (dim == a.shape.length) {
+      return Object.hash(currentHash, a.getCell(indices));
+    }
+    var hash = currentHash;
+    for (var i = 0; i < a.shape[dim]; i++) {
+      indices[dim] = i;
+      hash = _hashRecursive(a, indices, dim + 1, hash);
+    }
+    return hash;
+  }
 }
 
 bool _listEquals<E>(List<E> a, List<E> b) {

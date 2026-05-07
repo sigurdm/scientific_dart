@@ -313,3 +313,8 @@ void native_argsort_int32(const int *data, int *indices, int size) {
     tim_indices_int32_tim_sort(indices, size);
     global_int32_data = NULL;
 }
+
+int custom_memcmp(const void *s1, const void *s2, size_t n) {
+    if (s1 == NULL || s2 == NULL) return s1 == s2 ? 0 : (s1 == NULL ? -1 : 1);
+    return memcmp(s1, s2, n);
+}

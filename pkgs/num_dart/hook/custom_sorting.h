@@ -1,6 +1,8 @@
 #ifndef CUSTOM_SORTING_H
 #define CUSTOM_SORTING_H
 
+#include <stddef.h>
+
 /**
  * Natively sort a double precision float64 array in-place on the FFI heap.
  */
@@ -50,5 +52,10 @@ void native_argsort_int64(const long long *data, int *indices, int size);
  * Natively compute indirect sort indices for int32 array.
  */
 void native_argsort_int32(const int *data, int *indices, int size);
+
+/**
+ * Zero-allocation optimized direct C memcmp block byte compare.
+ */
+int custom_memcmp(const void *s1, const void *s2, size_t n);
 
 #endif // CUSTOM_SORTING_H
