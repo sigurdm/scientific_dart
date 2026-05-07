@@ -58,4 +58,9 @@ void native_argsort_int32(const int *data, int *indices, int size);
  */
 int custom_memcmp(const void *s1, const void *s2, size_t n);
 
+/**
+ * Hardware-speed direct C memset block zero-fill initialization.
+ */
+void native_zero_memory(void *ptr, size_t bytes);
+
 #endif // CUSTOM_SORTING_H

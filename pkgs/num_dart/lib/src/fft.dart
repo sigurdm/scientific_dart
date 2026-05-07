@@ -109,20 +109,32 @@ NDArray fft(NDArray a, {int? n}) {
       final destStart = s * targetLen;
 
       // Populate input buffer, applying zero-padding or truncation if n is specified
-      for (var i = 0; i < targetLen; i++) {
-        if (i < lastAxisDim) {
-          final val = a.data[srcStart + i];
-          if (val is Complex) {
-            pin[i].r = val.real;
-            pin[i].i = val.imag;
+      if (a.data is ComplexList) {
+        final compList = a.data as ComplexList;
+        for (var i = 0; i < targetLen; i++) {
+          if (i < lastAxisDim) {
+            pin[i].r = compList.getReal(srcStart + i);
+            pin[i].i = compList.getImag(srcStart + i);
           } else {
-            pin[i].r = (val as num).toDouble();
+            pin[i].r = 0.0;
             pin[i].i = 0.0;
           }
-        } else {
-          // Zero coefficient padding
-          pin[i].r = 0.0;
-          pin[i].i = 0.0;
+        }
+      } else {
+        for (var i = 0; i < targetLen; i++) {
+          if (i < lastAxisDim) {
+            final val = a.data[srcStart + i];
+            if (val is Complex) {
+              pin[i].r = val.real;
+              pin[i].i = val.imag;
+            } else {
+              pin[i].r = (val as num).toDouble();
+              pin[i].i = 0.0;
+            }
+          } else {
+            pin[i].r = 0.0;
+            pin[i].i = 0.0;
+          }
         }
       }
 
@@ -130,8 +142,15 @@ NDArray fft(NDArray a, {int? n}) {
       kiss_fft(cfg, pin, pout);
 
       // 4. Collect results from pout back into Dart Complex tensor list buffer
-      for (var i = 0; i < targetLen; i++) {
-        result.data[destStart + i] = Complex(pout[i].r, pout[i].i);
+      if (result.data is ComplexList) {
+        final compList = result.data as ComplexList;
+        for (var i = 0; i < targetLen; i++) {
+          compList.setRealImag(destStart + i, pout[i].r, pout[i].i);
+        }
+      } else {
+        for (var i = 0; i < targetLen; i++) {
+          result.data[destStart + i] = Complex(pout[i].r, pout[i].i);
+        }
       }
     }
   } finally {
@@ -254,19 +273,32 @@ NDArray ifft(NDArray a, {int? n}) {
       final srcStart = s * lastAxisDim;
       final destStart = s * targetLen;
 
-      for (var i = 0; i < targetLen; i++) {
-        if (i < lastAxisDim) {
-          final val = a.data[srcStart + i];
-          if (val is Complex) {
-            pin[i].r = val.real;
-            pin[i].i = val.imag;
+      if (a.data is ComplexList) {
+        final compList = a.data as ComplexList;
+        for (var i = 0; i < targetLen; i++) {
+          if (i < lastAxisDim) {
+            pin[i].r = compList.getReal(srcStart + i);
+            pin[i].i = compList.getImag(srcStart + i);
           } else {
-            pin[i].r = (val as num).toDouble();
+            pin[i].r = 0.0;
             pin[i].i = 0.0;
           }
-        } else {
-          pin[i].r = 0.0;
-          pin[i].i = 0.0;
+        }
+      } else {
+        for (var i = 0; i < targetLen; i++) {
+          if (i < lastAxisDim) {
+            final val = a.data[srcStart + i];
+            if (val is Complex) {
+              pin[i].r = val.real;
+              pin[i].i = val.imag;
+            } else {
+              pin[i].r = (val as num).toDouble();
+              pin[i].i = 0.0;
+            }
+          } else {
+            pin[i].r = 0.0;
+            pin[i].i = 0.0;
+          }
         }
       }
 
@@ -276,11 +308,22 @@ NDArray ifft(NDArray a, {int? n}) {
       // 3. Apply standard 1/N scaling factor normalization (KissFFT leaves it unscaled)
       final scaleFactor = 1.0 / targetLen;
 
-      for (var i = 0; i < targetLen; i++) {
-        result.data[destStart + i] = Complex(
-          pout[i].r * scaleFactor,
-          pout[i].i * scaleFactor,
-        );
+      if (result.data is ComplexList) {
+        final compList = result.data as ComplexList;
+        for (var i = 0; i < targetLen; i++) {
+          compList.setRealImag(
+            destStart + i,
+            pout[i].r * scaleFactor,
+            pout[i].i * scaleFactor,
+          );
+        }
+      } else {
+        for (var i = 0; i < targetLen; i++) {
+          result.data[destStart + i] = Complex(
+            pout[i].r * scaleFactor,
+            pout[i].i * scaleFactor,
+          );
+        }
       }
     }
   } finally {

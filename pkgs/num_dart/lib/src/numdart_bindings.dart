@@ -859,3 +859,7 @@ external int custom_memcmp(
   ffi.Pointer<ffi.Void> s2,
   int n,
 );
+
+/// Hardware-speed direct C memset block zero-fill initialization.
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Size)>(isLeaf: true)
+external void native_zero_memory(ffi.Pointer<ffi.Void> ptr, int bytes);

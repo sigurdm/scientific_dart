@@ -318,3 +318,8 @@ int custom_memcmp(const void *s1, const void *s2, size_t n) {
     if (s1 == NULL || s2 == NULL) return s1 == s2 ? 0 : (s1 == NULL ? -1 : 1);
     return memcmp(s1, s2, n);
 }
+
+void native_zero_memory(void *ptr, size_t bytes) {
+    if (ptr == NULL || bytes <= 0) return;
+    memset(ptr, 0, bytes);
+}
