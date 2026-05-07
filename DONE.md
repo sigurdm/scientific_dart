@@ -1629,6 +1629,15 @@
   - **Predictable disposes protection**: Wrapped execution inside a robust `try-finally` block ensuring that if `src` was dynamically pre-allocated for copy, it is predictably freed/disposed via `src.dispose()` at the end!
 * **Verification**: Static compiler analysis is warning-free, formatting is pristine, and all **375 unit tests continue to pass flawless green**!
 
+***
+
+## 135. Enriched public NDArray.create factory API documentation (Task 6)
+* **What was done**:
+  - Audited the public constructor APIs of the core `NDArray` class.
+  - Discovered that `NDArray.create` had a simple description but lacked detailed preconditions, throwing statements, performance considerations, and reference documentation links.
+  - Authored a highly polished, detailed, and standard-compliant docstring in [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L148-L171) for `NDArray.create`. Added explicit warnings about unmanaged C memory page mapping, preconditions on non-negative dimensions, listed throwing errors, big-O space/time complexities, and complete usage examples.
+* **Verification**: Static analyses are pristinely clean, formatting is pristine, and all **375 unit tests continue to pass flawless green**!
+
 
 
 
