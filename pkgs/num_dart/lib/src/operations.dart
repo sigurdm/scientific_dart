@@ -5423,68 +5423,77 @@ NDArray<int> argsort(NDArray a, {int axis = -1}) {
   }
 
   NDArray src = a;
+  bool needsDispose = false;
   if (!a.isContiguous) {
-    src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+    src = NDArray.create(a.shape, a.dtype);
+    src.data.setRange(0, src.data.length, a.toList());
+    needsDispose = true;
   }
 
-  final n = src.shape.last;
-  final totalSize = src.shape.isEmpty ? 1 : src.shape.reduce((x, y) => x * y);
-  final numRows = totalSize ~/ n;
+  try {
+    final n = src.shape.last;
+    final totalSize = src.shape.isEmpty ? 1 : src.shape.reduce((x, y) => x * y);
+    final numRows = totalSize ~/ n;
 
-  final result = NDArray<int>.create(src.shape, DType.int32);
+    final result = NDArray<int>.create(src.shape, DType.int32);
 
-  if (src.dtype == DType.float64) {
-    final dataPtr = src.pointer.cast<ffi.Double>();
-    final resPtr = result.pointer.cast<ffi.Int>();
-    for (var r = 0; r < numRows; r++) {
-      native_argsort_double(dataPtr + r * n, resPtr + r * n, n);
+    if (src.dtype == DType.float64) {
+      final dataPtr = src.pointer.cast<ffi.Double>();
+      final resPtr = result.pointer.cast<ffi.Int>();
+      for (var r = 0; r < numRows; r++) {
+        native_argsort_double(dataPtr + r * n, resPtr + r * n, n);
+      }
+      return result;
+    } else if (src.dtype == DType.float32) {
+      final dataPtr = src.pointer.cast<ffi.Float>();
+      final resPtr = result.pointer.cast<ffi.Int>();
+      for (var r = 0; r < numRows; r++) {
+        native_argsort_float(dataPtr + r * n, resPtr + r * n, n);
+      }
+      return result;
+    } else if (src.dtype == DType.int64) {
+      final dataPtr = src.pointer.cast<ffi.LongLong>();
+      final resPtr = result.pointer.cast<ffi.Int>();
+      for (var r = 0; r < numRows; r++) {
+        native_argsort_int64(dataPtr + r * n, resPtr + r * n, n);
+      }
+      return result;
+    } else if (src.dtype == DType.int32) {
+      final dataPtr = src.pointer.cast<ffi.Int>();
+      final resPtr = result.pointer.cast<ffi.Int>();
+      for (var r = 0; r < numRows; r++) {
+        native_argsort_int32(dataPtr + r * n, resPtr + r * n, n);
+      }
+      return result;
     }
-    return result;
-  } else if (src.dtype == DType.float32) {
-    final dataPtr = src.pointer.cast<ffi.Float>();
-    final resPtr = result.pointer.cast<ffi.Int>();
+
     for (var r = 0; r < numRows; r++) {
-      native_argsort_float(dataPtr + r * n, resPtr + r * n, n);
+      final rowStart = r * n;
+      final indices = List<int>.generate(n, (i) => i);
+
+      if (src.dtype == DType.complex128 || src.dtype == DType.complex64) {
+        final dataList = src.data as List<Complex>;
+        indices.sort((i, j) {
+          final cA = dataList[rowStart + i];
+          final cB = dataList[rowStart + j];
+          if (cA.real != cB.real) return cA.real.compareTo(cB.real);
+          return cA.imag.compareTo(cB.imag);
+        });
+      } else {
+        throw UnimplementedError('Unsupported dtype for argsort: ${src.dtype}');
+      }
+
+      for (var i = 0; i < n; i++) {
+        result.data[rowStart + i] = indices[i];
+      }
     }
+
     return result;
-  } else if (src.dtype == DType.int64) {
-    final dataPtr = src.pointer.cast<ffi.LongLong>();
-    final resPtr = result.pointer.cast<ffi.Int>();
-    for (var r = 0; r < numRows; r++) {
-      native_argsort_int64(dataPtr + r * n, resPtr + r * n, n);
+  } finally {
+    if (needsDispose) {
+      src.dispose();
     }
-    return result;
-  } else if (src.dtype == DType.int32) {
-    final dataPtr = src.pointer.cast<ffi.Int>();
-    final resPtr = result.pointer.cast<ffi.Int>();
-    for (var r = 0; r < numRows; r++) {
-      native_argsort_int32(dataPtr + r * n, resPtr + r * n, n);
-    }
-    return result;
   }
-
-  for (var r = 0; r < numRows; r++) {
-    final rowStart = r * n;
-    final indices = List<int>.generate(n, (i) => i);
-
-    if (src.dtype == DType.complex128 || src.dtype == DType.complex64) {
-      final dataList = src.data as List<Complex>;
-      indices.sort((i, j) {
-        final cA = dataList[rowStart + i];
-        final cB = dataList[rowStart + j];
-        if (cA.real != cB.real) return cA.real.compareTo(cB.real);
-        return cA.imag.compareTo(cB.imag);
-      });
-    } else {
-      throw UnimplementedError('Unsupported dtype for argsort: ${src.dtype}');
-    }
-
-    for (var i = 0; i < n; i++) {
-      result.data[rowStart + i] = indices[i];
-    }
-  }
-
-  return result;
 }
 
 void _whereOpRec<Tc, Tx, Ty, Tr>(
