@@ -8,6 +8,7 @@ void main() {
     group('normal distribution tests', () {
       test('Shape, type, and standard parameter checks', () {
         final a = normal([2, 5], loc: 0.0, scale: 1.0, dtype: DType.float64);
+        addTearDown(a.dispose);
         expect(a.shape, [2, 5]);
         expect(a.dtype, DType.float64);
         expect(a.data.length, 10);
@@ -18,6 +19,7 @@ void main() {
         const scale = 3.0;
         // Draw a large sample size to confirm sample parameters match target distributions
         final a = normal([10000], loc: loc, scale: scale, dtype: DType.float64);
+        addTearDown(a.dispose);
 
         final sampleMean = mean(a) as double;
         final sampleStd = std(a) as double;
@@ -38,6 +40,7 @@ void main() {
       test('Basic property and statistics validation', () {
         const scale = 2.5;
         final a = exponential([5000], scale: scale, dtype: DType.float64);
+        addTearDown(a.dispose);
 
         expect(a.shape, [5000]);
         // All values in an exponential distribution are strictly non-negative
@@ -55,6 +58,7 @@ void main() {
       test('Small lambda exact Knuth path checks', () {
         const lam = 4.0;
         final a = poisson([5000], lam: lam, dtype: DType.int64);
+        addTearDown(a.dispose);
         expect(a.dtype, DType.int64);
 
         final sampleMean = mean(a) as double;
@@ -69,6 +73,7 @@ void main() {
         const lam = 50.0;
         // Large lam triggers Track B to avoid numerical underflow or infinite loops!
         final a = poisson([5000], lam: lam, dtype: DType.int32);
+        addTearDown(a.dispose);
         expect(a.dtype, DType.int32);
 
         final sampleMean = mean(a) as double;
@@ -84,6 +89,7 @@ void main() {
         const n = 20;
         const p = 0.4;
         final a = binomial([5000], n: n, p: p, dtype: DType.int64);
+        addTearDown(a.dispose);
 
         expect(a.dtype, DType.int64);
         for (final val in a.data) {
@@ -100,6 +106,7 @@ void main() {
         const n = 1000;
         const p = 0.3;
         final a = binomial([5000], n: n, p: p, dtype: DType.int32);
+        addTearDown(a.dispose);
 
         expect(a.dtype, DType.int32);
         final sampleMean = mean(a) as double;
@@ -117,19 +124,27 @@ void main() {
         final r2 = math.Random(12345);
 
         final n1 = normal(shape, loc: 5.0, scale: 2.0, random: r1);
+        addTearDown(n1.dispose);
         final n2 = normal(shape, loc: 5.0, scale: 2.0, random: r2);
+        addTearDown(n2.dispose);
         expect(n1.toList(), n2.toList()); // exact matching doubles!
 
         final e1 = exponential([10], scale: 1.5, random: math.Random(42));
+        addTearDown(e1.dispose);
         final e2 = exponential([10], scale: 1.5, random: math.Random(42));
+        addTearDown(e2.dispose);
         expect(e1.toList(), e2.toList());
 
         final p1 = poisson([10], lam: 12.0, random: math.Random(7));
+        addTearDown(p1.dispose);
         final p2 = poisson([10], lam: 12.0, random: math.Random(7));
+        addTearDown(p2.dispose);
         expect(p1.toList(), p2.toList());
 
         final b1 = binomial([10], n: 100, p: 0.2, random: math.Random(999));
+        addTearDown(b1.dispose);
         final b2 = binomial([10], n: 100, p: 0.2, random: math.Random(999));
+        addTearDown(b2.dispose);
         expect(b1.toList(), b2.toList());
       });
     });

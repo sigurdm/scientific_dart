@@ -2208,6 +2208,27 @@ void main() {
         expect(nanMaxF64.getCell([1]), 6.0);
       },
     );
+
+    test('FFT and IFFT zero-padding with ComplexList inputs and outputs', () {
+      final a = NDArray<Complex>.create([4], DType.complex128);
+      addTearDown(a.dispose);
+      a.data[0] = Complex(1.0, 0.0);
+      a.data[1] = Complex(2.0, 0.0);
+      a.data[2] = Complex(3.0, 0.0);
+      a.data[3] = Complex(4.0, 0.0);
+
+      // Trigger zero-padding block for ComplexList input
+      final res = fft(a, n: 8);
+      addTearDown(res.dispose);
+      expect(res.shape, [8]);
+      expect(res.dtype, DType.complex128);
+
+      // Trigger IFFT zero-padding block for ComplexList input
+      final invRes = ifft(res, n: 12);
+      addTearDown(invRes.dispose);
+      expect(invRes.shape, [12]);
+      expect(invRes.dtype, DType.complex128);
+    });
   });
 }
 

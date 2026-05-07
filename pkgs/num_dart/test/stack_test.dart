@@ -6,9 +6,12 @@ void main() {
   group('NDArray New-Axis Stacking (stack) Tests', () {
     test('stack() basic 1D arrays to 2D along axis 0', () {
       final a = NDArray.fromList([1, 2], [2], DType.int32);
+      addTearDown(a.dispose);
       final b = NDArray.fromList([3, 4], [2], DType.int32);
+      addTearDown(b.dispose);
 
       final s0 = stack([a, b], axis: 0);
+      addTearDown(s0.dispose);
       expect(s0.shape, [2, 2]);
       expect(s0.dtype, DType.int32);
       expect(s0.toList(), [1, 2, 3, 4]);
@@ -16,9 +19,12 @@ void main() {
 
     test('stack() basic 1D arrays to 2D along axis 1', () {
       final a = NDArray.fromList([1, 2], [2], DType.int32);
+      addTearDown(a.dispose);
       final b = NDArray.fromList([3, 4], [2], DType.int32);
+      addTearDown(b.dispose);
 
       final s1 = stack([a, b], axis: 1);
+      addTearDown(s1.dispose);
       expect(s1.shape, [2, 2]);
       expect(s1.toList(), [1, 3, 2, 4]);
     });
@@ -26,24 +32,31 @@ void main() {
     test('stack() multidimensional 2D matrices checks', () {
       // two matrices of shape [2, 3]
       final a = NDArray.fromList([1, 2, 3, 4, 5, 6], [2, 3], DType.int32);
+      addTearDown(a.dispose);
       final b = NDArray.fromList([10, 20, 30, 40, 50, 60], [2, 3], DType.int32);
+      addTearDown(b.dispose);
 
       // Stacks into shape [2, 2, 3] along axis 0
       final s0 = stack([a, b], axis: 0);
+      addTearDown(s0.dispose);
       expect(s0.shape, [2, 2, 3]);
       expect(s0.toList(), [1, 2, 3, 4, 5, 6, 10, 20, 30, 40, 50, 60]);
 
       // Stacks into shape [2, 2, 3] along axis 1
       final s1 = stack([a, b], axis: 1);
+      addTearDown(s1.dispose);
       expect(s1.shape, [2, 2, 3]);
       expect(s1.toList(), [1, 2, 3, 10, 20, 30, 4, 5, 6, 40, 50, 60]);
     });
 
     test('stack() resolved negative target axis', () {
       final a = NDArray.fromList([1, 2], [2], DType.int32);
+      addTearDown(a.dispose);
       final b = NDArray.fromList([3, 4], [2], DType.int32);
+      addTearDown(b.dispose);
 
       final sNeg = stack([a, b], axis: -1); // targets axis 1
+      addTearDown(sNeg.dispose);
       expect(sNeg.shape, [2, 2]);
       expect(sNeg.toList(), [1, 3, 2, 4]);
     });
@@ -53,10 +66,13 @@ void main() {
       expect(() => stack(<NDArray<Object>>[]), throwsArgumentError);
 
       final a = NDArray.fromList([1, 2], [2], DType.int32);
+      addTearDown(a.dispose);
       final wrongShape = NDArray.fromList([1, 2, 3], [3], DType.int32);
+      addTearDown(wrongShape.dispose);
       final wrongDType = NDArray.fromList(Float64List.fromList([1.0, 2.0]), [
         2,
       ], DType.float64);
+      addTearDown(wrongDType.dispose);
 
       // Mismatch shape/DType throws ArgumentError
       expect(() => stack([a, wrongShape]), throwsArgumentError);

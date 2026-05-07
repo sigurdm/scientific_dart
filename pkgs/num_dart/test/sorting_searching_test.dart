@@ -11,8 +11,10 @@ void main() {
           [2, 3],
           DType.float64,
         );
+        addTearDown(mat.dispose);
 
         final sorted = sort(mat, axis: 1);
+        addTearDown(sorted.dispose);
         expect(sorted.shape, [2, 3]);
         expect(sorted.dtype, DType.float64);
         // Verifies each row is independently sorted in C memory!
@@ -23,7 +25,9 @@ void main() {
         final a = NDArray.fromList(Int32List.fromList([5, -2, 10, 0]), [
           4,
         ], DType.int32);
+        addTearDown(a.dispose);
         final s = sort(a);
+        addTearDown(s.dispose);
         expect(s.toList(), [-2, 0, 5, 10]);
       });
 
@@ -31,7 +35,9 @@ void main() {
         final a = NDArray.fromList(Int64List.fromList([100, 50, 200]), [
           3,
         ], DType.int64);
+        addTearDown(a.dispose);
         final s = sort(a);
+        addTearDown(s.dispose);
         expect(s.toList(), [50, 100, 200]);
       });
     });
@@ -39,6 +45,7 @@ void main() {
     group('Complex Lexicographical Sorting tests', () {
       test('Sort Complex128 array lexicographically', () {
         final a = NDArray<Complex>.create([4], DType.complex128);
+        addTearDown(a.dispose);
         // Real part compared first, then Imaginary part if reals are equal!
         a.data[0] = Complex(2.0, 5.0);
         a.data[1] = Complex(1.0, 10.0);
@@ -49,6 +56,7 @@ void main() {
         a.data[3] = Complex(0.0, 0.0);
 
         final s = sort(a);
+        addTearDown(s.dispose);
         expect(s.shape, [4]);
         expect(s.dtype, DType.complex128);
         expect(s.data[0], Complex(0.0, 0.0));
@@ -65,9 +73,11 @@ void main() {
           [2, 3],
           DType.float64,
         );
+        addTearDown(mat.dispose);
 
         // Sorting columns across rows!
         final s = sort(mat, axis: 0);
+        addTearDown(s.dispose);
         expect(s.shape, [2, 3]);
         expect(s.toList(), [
           2.0, 1.0, 3.0, // column 0: min(5,2)=2. col 2: min(4,3)=3
@@ -87,8 +97,10 @@ void main() {
           [2, 2, 2],
           DType.float64,
         );
+        addTearDown(tensor.dispose);
 
         final s = sort(tensor, axis: 1); // sort along row axis
+        addTearDown(s.dispose);
         expect(s.shape, [2, 2, 2]);
         expect(s.toList(), [
           5.0, 2.0, // row 0 vs 1 elements sorted
@@ -104,12 +116,15 @@ void main() {
           [2, 3],
           DType.float64,
         );
+        addTearDown(mat.dispose);
 
         // Create a non-contiguous view: column 0 (elements 10.0 and 4.0)
         final colView = mat.slice([Slice.all(), Index(0)]);
+        addTearDown(colView.dispose);
         expect(colView.isContiguous, false);
 
         final s = sort(colView);
+        addTearDown(s.dispose);
         expect(s.shape, [2]);
         expect(s.toList(), [4.0, 10.0]); // sorted perfectly!
       });
@@ -122,7 +137,9 @@ void main() {
           [4],
           DType.float64,
         );
+        addTearDown(a.dispose);
         final indices = argsort(a);
+        addTearDown(indices.dispose);
         expect(indices.shape, [4]);
         expect(indices.dtype, DType.int32);
         expect(indices.toList(), [
@@ -135,11 +152,13 @@ void main() {
 
       test('Argsort complex array indirect ranking', () {
         final a = NDArray<Complex>.create([3], DType.complex128);
+        addTearDown(a.dispose);
         a.data[0] = Complex(5.0, 0.0);
         a.data[1] = Complex(2.0, 3.0);
         a.data[2] = Complex(2.0, 1.0);
 
         final idx = argsort(a);
+        addTearDown(idx.dispose);
         expect(idx.toList(), [
           2,
           1,
@@ -153,28 +172,40 @@ void main() {
           [4],
           DType.float32,
         );
-        expect(argsort(f32).toList(), [1, 3, 2, 0]);
+        addTearDown(f32.dispose);
+        final resF32 = argsort(f32);
+        addTearDown(resF32.dispose);
+        expect(resF32.toList(), [1, 3, 2, 0]);
 
         final i32 = NDArray.fromList(Int32List.fromList([40, 10, 30, 20]), [
           4,
         ], DType.int32);
-        expect(argsort(i32).toList(), [1, 3, 2, 0]);
+        addTearDown(i32.dispose);
+        final resI32 = argsort(i32);
+        addTearDown(resI32.dispose);
+        expect(resI32.toList(), [1, 3, 2, 0]);
 
         final i64 = NDArray.fromList(Int64List.fromList([400, 100, 300, 200]), [
           4,
         ], DType.int64);
-        expect(argsort(i64).toList(), [1, 3, 2, 0]);
+        addTearDown(i64.dispose);
+        final resI64 = argsort(i64);
+        addTearDown(resI64.dispose);
+        expect(resI64.toList(), [1, 3, 2, 0]);
       });
 
       test('Argsort scalar 0D array returns single index 0', () {
         final scalar = NDArray.fromList([99.0], [], DType.float64);
+        addTearDown(scalar.dispose);
         final idx = argsort(scalar);
+        addTearDown(idx.dispose);
         expect(idx.shape, []);
         expect(idx.toList(), [0]);
       });
 
       test('Argsort invalid target axis throws RangeError', () {
         final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        addTearDown(a.dispose);
         expect(() => argsort(a, axis: 5), throwsRangeError);
         expect(() => argsort(a, axis: -5), throwsRangeError);
       });
@@ -186,11 +217,13 @@ void main() {
           2,
           3,
         ], DType.int32);
+        addTearDown(mat.dispose);
 
         expect(count_nonzero(mat), 3);
 
         final c0 =
             count_nonzero(mat, axis: 0) as NDArray<int>; // count along columns
+        addTearDown(c0.dispose);
         expect(c0.shape, [3]);
         expect(c0.toList(), [1, 1, 1]); // col0 has 2, col1 has 5, col2 has 3
       });
@@ -200,8 +233,12 @@ void main() {
           2,
           3,
         ], DType.int32);
+        addTearDown(mat.dispose);
 
         final coords = nonzero(mat);
+        for (final c in coords) {
+          addTearDown(c.dispose);
+        }
         expect(coords.length, 2); // one per dimension
         expect(coords[0].data, [0, 1]); // row coordinates
         expect(coords[1].data, [
@@ -218,18 +255,22 @@ void main() {
           [4],
           DType.boolean,
         );
+        addTearDown(cond.dispose);
         final x = NDArray.fromList(
           Float64List.fromList([10.0, 20.0, 30.0, 40.0]),
           [4],
           DType.float64,
         );
+        addTearDown(x.dispose);
         final y = NDArray.fromList(
           Float64List.fromList([-5.0, -6.0, -7.0, -8.0]),
           [4],
           DType.float64,
         );
+        addTearDown(y.dispose);
 
         final result = where(cond, x, y) as NDArray;
+        addTearDown(result.dispose);
         expect(result.dtype, DType.float64);
         expect(result.shape, [4]);
         expect(result.toList(), [10.0, -6.0, 30.0, -8.0]);
@@ -241,32 +282,44 @@ void main() {
           [4],
           DType.boolean,
         );
+        addTearDown(cond.dispose);
         final res = where(cond) as List<NDArray<int>>;
+        for (final r in res) {
+          addTearDown(r.dispose);
+        }
         expect(res.length, 1);
         expect(res[0].data, [1, 3]);
       });
 
       test('where with integer inputs', () {
         final cond = NDArray.fromList([true, false], [2], DType.boolean);
+        addTearDown(cond.dispose);
         final x = NDArray.fromList([10, 20], [2], DType.int32);
+        addTearDown(x.dispose);
         final y = NDArray.fromList([100, 200], [2], DType.int32);
+        addTearDown(y.dispose);
 
         final res = where(cond, x, y) as NDArray;
+        addTearDown(res.dispose);
         expect(res.dtype, DType.int32);
         expect(res.toList(), [10, 200]);
       });
 
       test('where with Complex inputs', () {
         final cond = NDArray.fromList([true, false], [2], DType.boolean);
+        addTearDown(cond.dispose);
         final x = NDArray<Complex>.create([2], DType.complex128);
+        addTearDown(x.dispose);
         x.data[0] = Complex(1.0, 1.0);
         x.data[1] = Complex(2.0, 2.0);
 
         final y = NDArray<Complex>.create([2], DType.complex128);
+        addTearDown(y.dispose);
         y.data[0] = Complex(10.0, 10.0);
         y.data[1] = Complex(20.0, 20.0);
 
         final res = where(cond, x, y) as NDArray;
+        addTearDown(res.dispose);
         expect(res.dtype, DType.complex128);
         expect(res.data[0], Complex(1.0, 1.0));
         expect(res.data[1], Complex(20.0, 20.0));
@@ -280,6 +333,7 @@ void main() {
           [5],
           DType.float64,
         );
+        addTearDown(a.dispose);
 
         // In NumPy duplicate max extremes return the *first* occurrence!
         // max is 50.0 at index 1 and 3. NumPy returns 1!
@@ -293,9 +347,11 @@ void main() {
           [2, 3],
           DType.float64,
         );
+        addTearDown(mat.dispose);
 
         final am0 =
             argmax(mat, axis: 0) as NDArray<int>; // cols max row indices
+        addTearDown(am0.dispose);
         expect(am0.shape, [3]);
         expect(am0.toList(), [
           1,
