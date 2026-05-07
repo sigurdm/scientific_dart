@@ -1306,5 +1306,22 @@
   - Linked these classes beautifully to the external indexing examples package [indexing_example.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/example/indexing_example.dart) using the robust custom tool directive `{@example}`.
 * **Verification**: Confirmed all 371 workspace unit tests continue to pass flawlessly and compile successfully.
 
+***
+
+## 107. Massive Coverage Upgrades & Cross-Type Arithmetic Testing (Task 1)
+* **What was done**:
+  - Executed full workspace test coverage mapping and ran analysis to isolate unexecuted blocks of logic.
+  - Discovered that `ifft()` on strided non-contiguous views was completely uncovered. Authored a new targeted test `ifft() with non-contiguous strided view input` in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart) to verify plan allocation and 1D reverse transform scaling correctness on strided signals transposed arrays.
+  - Uncovered massive, identical coverage gaps across arithmetic ufuncs `subtract()`, `multiply()`, and `divide()` where dozens of dynamic element-wise cross-type promotions (e.g., Complex - int, double - Complex, float - int) were completely unexecuted (0% coverage).
+  - Authored an extensive, highly targeted new test suite `Cross-type arithmetic coverage for subtract, multiply, and divide` in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart) executing all 18 cross-type arithmetic paths and asserting exact value structures and precision.
+* **Coverage Progress (Breaking past the 85% Milestone!)**:
+  - **`lib/src/operations.dart` Coverage**: progressed from **78.8%** to **82.0%** (executed an extra **80 lines**!).
+  - **`lib/src/fft.dart` Coverage**: progressed from **94.5%** to **95.6%**.
+  - **`lib/src/ndarray.dart` Coverage**: progressed from **87.2%** to **87.8%**.
+  - **Global Workspace Coverage before**: **83.13%** (3223 / 3877 lines)
+  - **Global Workspace Coverage after**: **85.35%** (3309 / 3877 lines) (Spectacular **+2.22%** global increase!)
+* **Verification**: All **372 workspace unit tests pass 100% green** and compile flawlessly!
+
+
 
 

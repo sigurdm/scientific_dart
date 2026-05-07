@@ -225,49 +225,71 @@ void main() {
       expect(c.data[3], Complex(17.0, 18.0));
     });
 
-    test('add() contiguous float32 SIMD fast paths and remainders coverage', () {
-      final a8 = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], [8], DType.float32);
-      final b8 = NDArray.fromList([10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0], [8], DType.float32);
-      addTearDown(a8.dispose);
-      addTearDown(b8.dispose);
+    test(
+      'add() contiguous float32 SIMD fast paths and remainders coverage',
+      () {
+        final a8 = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+          [8],
+          DType.float32,
+        );
+        final b8 = NDArray.fromList(
+          [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0],
+          [8],
+          DType.float32,
+        );
+        addTearDown(a8.dispose);
+        addTearDown(b8.dispose);
 
-      final res8 = add(a8, b8);
-      addTearDown(res8.dispose);
-      expect(res8.dtype, DType.float32);
-      expect(res8.toList(), [11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0]);
+        final res8 = add(a8, b8);
+        addTearDown(res8.dispose);
+        expect(res8.dtype, DType.float32);
+        expect(res8.toList(), [11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0]);
 
-      final a6 = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [6], DType.float32);
-      final b6 = NDArray.fromList([10.0, 10.0, 10.0, 10.0, 10.0, 10.0], [6], DType.float32);
-      addTearDown(a6.dispose);
-      addTearDown(b6.dispose);
+        final a6 = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [6],
+          DType.float32,
+        );
+        final b6 = NDArray.fromList(
+          [10.0, 10.0, 10.0, 10.0, 10.0, 10.0],
+          [6],
+          DType.float32,
+        );
+        addTearDown(a6.dispose);
+        addTearDown(b6.dispose);
 
-      final res6 = add(a6, b6);
-      addTearDown(res6.dispose);
-      expect(res6.dtype, DType.float32);
-      expect(res6.toList(), [11.0, 12.0, 13.0, 14.0, 15.0, 16.0]);
-    });
+        final res6 = add(a6, b6);
+        addTearDown(res6.dispose);
+        expect(res6.dtype, DType.float32);
+        expect(res6.toList(), [11.0, 12.0, 13.0, 14.0, 15.0, 16.0]);
+      },
+    );
 
-    test('subtract() contiguous float64 and float32 FFI fast paths coverage', () {
-      final a64 = NDArray.fromList([20.0, 30.0], [2], DType.float64);
-      final b64 = NDArray.fromList([5.0, 10.0], [2], DType.float64);
-      addTearDown(a64.dispose);
-      addTearDown(b64.dispose);
+    test(
+      'subtract() contiguous float64 and float32 FFI fast paths coverage',
+      () {
+        final a64 = NDArray.fromList([20.0, 30.0], [2], DType.float64);
+        final b64 = NDArray.fromList([5.0, 10.0], [2], DType.float64);
+        addTearDown(a64.dispose);
+        addTearDown(b64.dispose);
 
-      final res64 = subtract(a64, b64);
-      addTearDown(res64.dispose);
-      expect(res64.dtype, DType.float64);
-      expect(res64.toList(), [15.0, 20.0]);
+        final res64 = subtract(a64, b64);
+        addTearDown(res64.dispose);
+        expect(res64.dtype, DType.float64);
+        expect(res64.toList(), [15.0, 20.0]);
 
-      final a32 = NDArray.fromList([20.0, 30.0], [2], DType.float32);
-      final b32 = NDArray.fromList([5.0, 10.0], [2], DType.float32);
-      addTearDown(a32.dispose);
-      addTearDown(b32.dispose);
+        final a32 = NDArray.fromList([20.0, 30.0], [2], DType.float32);
+        final b32 = NDArray.fromList([5.0, 10.0], [2], DType.float32);
+        addTearDown(a32.dispose);
+        addTearDown(b32.dispose);
 
-      final res32 = subtract(a32, b32);
-      addTearDown(res32.dispose);
-      expect(res32.dtype, DType.float32);
-      expect(res32.toList(), [15.0, 20.0]);
-    });
+        final res32 = subtract(a32, b32);
+        addTearDown(res32.dispose);
+        expect(res32.dtype, DType.float32);
+        expect(res32.toList(), [15.0, 20.0]);
+      },
+    );
 
     test('linspace() with num == 1 coverage', () {
       final a = NDArray<double>.linspace(5.0, 10.0, 1, dtype: DType.float64);
@@ -433,6 +455,35 @@ void main() {
         expect(timePadded.shape, [4]);
       },
     );
+
+    test('ifft() with non-contiguous strided view input', () {
+      final parent = NDArray.fromList(
+        [Complex(1.0, 1.0), Complex(2.0, 2.0), Complex(3.0, 3.0), Complex(4.0, 4.0)],
+        [2, 2],
+        DType.complex128,
+      );
+      addTearDown(parent.dispose);
+
+      // Transposed view is non-contiguous
+      final transposed = parent.transposed;
+      expect(transposed.isContiguous, false);
+
+      // Should automatically copy transposed inside ifft
+      final result = ifft(transposed);
+      addTearDown(result.dispose);
+
+      expect(result.shape, [2, 2]);
+      expect(result.dtype, DType.complex128);
+      expect(result.data[0].real, closeTo(2.0, 1e-9));
+      expect(result.data[0].imag, closeTo(2.0, 1e-9));
+      expect(result.data[1].real, closeTo(-1.0, 1e-9));
+      expect(result.data[1].imag, closeTo(-1.0, 1e-9));
+      expect(result.data[2].real, closeTo(3.0, 1e-9));
+      expect(result.data[2].imag, closeTo(3.0, 1e-9));
+      expect(result.data[3].real, closeTo(-1.0, 1e-9));
+      expect(result.data[3].imag, closeTo(-1.0, 1e-9));
+    });
+
 
     test('uniform() validation checks coverage', () {
       expect(() => uniform([5], dtype: DType.int64), throwsArgumentError);
@@ -1477,15 +1528,152 @@ void main() {
 
       expect(() => concatenate([a, a], axis: 5), throwsRangeError);
       expect(() => concatenate([a, a], axis: -5), throwsRangeError);
-      expect(() => concatenate(<NDArray<Object>>[a, wrongDType]), throwsArgumentError);
+      expect(
+        () => concatenate(<NDArray<Object>>[a, wrongDType]),
+        throwsArgumentError,
+      );
 
-      expect(() => concatenate(<NDArray<Object>>[a, wrongRank]), throwsArgumentError);
+      expect(
+        () => concatenate(<NDArray<Object>>[a, wrongRank]),
+        throwsArgumentError,
+      );
 
-      final mat1 = NDArray.fromList([1.0, 1.0, 1.0, 1.0], [2, 2], DType.float64);
-      final mat2 = NDArray.fromList([1.0, 1.0, 1.0, 1.0, 1.0, 1.0], [2, 3], DType.float64);
+      final mat1 = NDArray.fromList(
+        [1.0, 1.0, 1.0, 1.0],
+        [2, 2],
+        DType.float64,
+      );
+      final mat2 = NDArray.fromList(
+        [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        [2, 3],
+        DType.float64,
+      );
       addTearDown(mat1.dispose);
       addTearDown(mat2.dispose);
-      expect(() => concatenate(<NDArray<double>>[mat1, mat2], axis: 0), throwsArgumentError);
+      expect(
+        () => concatenate(<NDArray<double>>[mat1, mat2], axis: 0),
+        throwsArgumentError,
+      );
+    });
+
+    test('Cross-type arithmetic coverage for subtract, multiply, and divide', () {
+      final c = NDArray<Complex>.fromList([Complex(10.0, 10.0)], [1], DType.complex128);
+      final i = NDArray<int>.fromList([2], [1], DType.int64);
+      final d = NDArray<double>.fromList([4.0], [1], DType.float64);
+      addTearDown(c.dispose);
+      addTearDown(i.dispose);
+      addTearDown(d.dispose);
+
+      // --- subtract() Gaps ---
+      // 1. Complex - int
+      final s1 = subtract(c, i);
+      addTearDown(s1.dispose);
+      expect(s1.dtype, DType.complex128);
+      expect(s1.data[0], Complex(8.0, 10.0));
+
+      // 2. int - Complex
+      final s2 = subtract(i, c);
+      addTearDown(s2.dispose);
+      expect(s2.dtype, DType.complex128);
+      expect(s2.data[0], Complex(-8.0, -10.0));
+
+      // 3. double - int
+      final s3 = subtract(d, i);
+      addTearDown(s3.dispose);
+      expect(s3.dtype, DType.float64);
+      expect(s3.data[0], 2.0);
+
+      // 4. int - double
+      final s4 = subtract(i, d);
+      addTearDown(s4.dispose);
+      expect(s4.dtype, DType.float64);
+      expect(s4.data[0], -2.0);
+
+      // 5. int - int
+      final s5 = subtract(i, i);
+      addTearDown(s5.dispose);
+      expect(s5.dtype, DType.int64);
+      expect(s5.data[0], 0);
+
+      // --- multiply() Gaps ---
+      // 1. Complex * Complex
+      final m1 = multiply(c, c);
+      addTearDown(m1.dispose);
+      expect(m1.dtype, DType.complex128);
+      expect(m1.data[0], Complex(0.0, 200.0)); // (10+10i)^2 = 0 + 200i
+
+      // 2. Complex * double
+      final m2 = multiply(c, d);
+      addTearDown(m2.dispose);
+      expect(m2.dtype, DType.complex128);
+      expect(m2.data[0], Complex(40.0, 40.0));
+
+      // 3. Complex * int
+      final m3 = multiply(c, i);
+      addTearDown(m3.dispose);
+      expect(m3.dtype, DType.complex128);
+      expect(m3.data[0], Complex(20.0, 20.0));
+
+      // 4. double * Complex
+      final m4 = multiply(d, c);
+      addTearDown(m4.dispose);
+      expect(m4.dtype, DType.complex128);
+      expect(m4.data[0], Complex(40.0, 40.0));
+
+      // 5. int * Complex
+      final m5 = multiply(i, c);
+      addTearDown(m5.dispose);
+      expect(m5.dtype, DType.complex128);
+      expect(m5.data[0], Complex(20.0, 20.0));
+
+      // 6. double * int
+      final m6 = multiply(d, i);
+      addTearDown(m6.dispose);
+      expect(m6.dtype, DType.float64);
+      expect(m6.data[0], 8.0);
+
+      // 7. int * double
+      final m7 = multiply(i, d);
+      addTearDown(m7.dispose);
+      expect(m7.dtype, DType.float64);
+      expect(m7.data[0], 8.0);
+
+      // 8. int * int
+      final m8 = multiply(i, i);
+      addTearDown(m8.dispose);
+      expect(m8.dtype, DType.int64);
+      expect(m8.data[0], 4);
+
+      // --- divide() Gaps ---
+      // 1. Complex / Complex
+      final div1 = divide(c, c);
+      addTearDown(div1.dispose);
+      expect(div1.dtype, DType.complex128);
+      expect(div1.data[0], Complex(1.0, 0.0));
+
+      // 2. Complex / double
+      final div2 = divide(c, d);
+      addTearDown(div2.dispose);
+      expect(div2.dtype, DType.complex128);
+      expect(div2.data[0], Complex(2.5, 2.5));
+
+      // 3. Complex / int
+      final div3 = divide(c, i);
+      addTearDown(div3.dispose);
+      expect(div3.dtype, DType.complex128);
+      expect(div3.data[0], Complex(5.0, 5.0));
+
+      // 4. double / Complex
+      final div4 = divide(d, c);
+      addTearDown(div4.dispose);
+      expect(div4.dtype, DType.complex128);
+      expect(div4.data[0], Complex(0.2, -0.2)); // 4 / (10+10i) = 0.2 - 0.2i
+
+      // 5. int / Complex
+      final div5 = divide(i, c);
+      addTearDown(div5.dispose);
+      expect(div5.dtype, DType.complex128);
+      expect(div5.data[0], Complex(0.1, -0.1)); // 2 / (10+10i) = 0.1 - 0.1i
     });
   });
 }
