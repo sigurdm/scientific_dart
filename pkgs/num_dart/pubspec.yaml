@@ -2,7 +2,7 @@ name: num_dart
 description: N-dimensional arrays and numerical operations.
 version: 0.0.2
 resolution: workspace
-# repository: https://github.com/my_org/my_repo
+repository: https://github.com/sigurdm/math
 
 environment:
   sdk: ^3.11.5
@@ -15,6 +15,7 @@ dependencies:
   pocketfft: ^0.0.1
   hooks: ^1.0.3
   code_assets: ^1.0.0
+  meta: ^1.11.0
 
 dev_dependencies:
   lints: ^6.0.0

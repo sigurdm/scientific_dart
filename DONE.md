@@ -1384,6 +1384,16 @@
     - **Finding 58 (High-Level Sliding Window Views)**: Gaps in exposing high-level sliding windows view generator `np.lib.stride_tricks.sliding_window_view()`. Downstream developers are forced to copy elements. Recommended high-level `slidingWindowView()` utilizing safe `asStrided()` views.
 * **Verification**: Confirmed formatting is complete. All 372 unit tests pass successfully.
 
+***
+
+## 113. Encapsulated `NDArray.data` Backup Typed List with `@internal`
+* **What was done**:
+  - Added dependency `meta: ^1.11.0` to [pubspec.yaml](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/pubspec.yaml).
+  - Imported `package:meta/meta.dart` in [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L1).
+  - Annotated the flat backup buffer field [NDArray.data](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L95) with `@internal` to ensure standard encapsulation. This protects downstream consumers from accessing unsafe flat sequential backing lists (which completely ignore offsets and strides calculations for non-contiguous or sliced views) directly.
+* **Verification**: Verified lints are clean and all 372 unit tests pass successfully.
+
+
 
 
 

@@ -1,3 +1,4 @@
+import 'package:meta/meta.dart';
 import 'dart:ffi' as ffi;
 import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
@@ -92,6 +93,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Restrictions:**
   /// - This list has a fixed length and cannot be resized.
   /// - This list becomes invalid as soon as the underlying C memory is freed (via `dispose()` or garbage collection). Accessing it afterwards leads to undefined behavior or crashes.
+  @internal
   final List<T> data;
 
   /// The dimensions of the n-dimensional array.
