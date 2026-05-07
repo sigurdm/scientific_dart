@@ -1945,3 +1945,16 @@
   - **io.dart Coverage Score**: `io.dart` line coverage jumped to a spectacular **99.6%**!
   - **Global Line Coverage**: Safely locked global line coverage at a record **87.29%**!
   - **Verification**: All **399 unit tests continue to pass 100% green!**
+
+***
+
+## 162. Optimized Zeros Allocation using C `calloc` Demand-Paging OS Pages (Task 3 / Finding Fix)
+* **Issue**:
+  - `NDArray.zeros()` and zero-initializations inside `NDArray.create()` previously allocated memory using `malloc` on the unmanaged heap, and then zeroed it by calling `native_zero_memory()` (`memset`).
+  - Calling `memset` immediately writes zero to every byte of the allocated virtual memory block, forcing the OS to allocate physical memory pages and perform CPU memory-write sweeps instantly, causing high allocation latency and large physical footprints for large arrays.
+* **Resolution**:
+  - **Calloc Allocator Integration**: Refactored `NDArray.create()` in [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/ndarray.dart#L312) to resolve the allocator dynamically: `final allocator = zeroInit ? calloc : malloc;`.
+  - **Zero-Page Demand-Paging**: Completely eliminated the redundant `native_zero_memory()` call block. Zeroed arrays are now allocated directly using `calloc`, leveraging the OS virtual memory demand-paging (physical pages are only allocated/written when a non-zero write occurs), drastically speeding up zeros creation and saving massive physical RAM!
+* **Results**:
+  - **Performance**: Achieved near-instantaneous allocations of large zero-filled matrices and minimized physical memory footprints.
+  - **Verification**: Checked all **400 unit tests pass flawlessly green!**
