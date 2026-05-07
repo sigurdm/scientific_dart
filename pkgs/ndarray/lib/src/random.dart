@@ -462,37 +462,35 @@ NDArray multivariateNormal(
     );
   }
 
-  // 1. LAPACK Cholesky factorization: Sigma = L * L^T
-  final choleskyFactors = cholesky(cov);
-  final l = choleskyFactors['L']! as NDArray<double>;
+  return NDArray.scope(() {
+    // 1. LAPACK Cholesky factorization: Sigma = L * L^T
+    final choleskyFactors = cholesky(cov);
+    final l = choleskyFactors['L']! as NDArray<double>;
 
-  final sampleShape = <int>[];
-  if (size != null) {
-    sampleShape.addAll(size);
-  }
-  final sampleCount = sampleShape.isEmpty
-      ? 1
-      : sampleShape.reduce((a, b) => a * b);
+    final sampleShape = <int>[];
+    if (size != null) {
+      sampleShape.addAll(size);
+    }
+    final sampleCount = sampleShape.isEmpty
+        ? 1
+        : sampleShape.reduce((a, b) => a * b);
 
-  // 2. Draw independent standard normals Z
-  final zShape = [...sampleShape, d];
-  final z = normal(zShape, dtype: cov.dtype, random: random);
+    // 2. Draw independent standard normals Z
+    final zShape = [...sampleShape, d];
+    final z = normal(zShape, dtype: cov.dtype, random: random);
 
-  // 3. Transform: X = Z * L^T + mean
-  final lT = l.transpose();
+    // 3. Transform: X = Z * L^T + mean
+    final lT = l.transpose();
 
-  // We need to reshape or broadcast Z to 2D if sampleShape rank > 1
-  final z2D = z.reshape([sampleCount, d]);
-  final x2D = add(matmul(z2D, lT), mean);
+    // We need to reshape or broadcast Z to 2D if sampleShape rank > 1
+    final z2D = z.reshape([sampleCount, d]);
+    final x2D = add(matmul(z2D, lT), mean);
 
-  l.dispose();
-  lT.dispose();
-  z.dispose();
-  z2D.dispose();
-
-  // Reshape back to final output shape: [...size, d]
-  final finalShape = [...sampleShape, d];
-  return x2D.reshape(finalShape);
+    // Reshape back to final output shape: [...size, d]
+    final finalShape = [...sampleShape, d];
+    final result = x2D.reshape(finalShape);
+    return result.detachFromScope();
+  });
 }
 
 /// Draw samples from a multinomial distribution.
