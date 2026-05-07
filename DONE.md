@@ -1683,6 +1683,15 @@
   - Documented complete, professional roadmap target plans and NumPy parity assessments inside [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/FINDINGS.md#L653-L661) under Section 10, Subsection 1.
 * **Verification**: Pristinely formatted clean, compile checks pass green, and all **376 unit tests pass flawless green**!
 
+***
+
+## 141. Added Boolean matrix eig() exception throwing test coverage (Task 1)
+* **What was done**:
+  - Audited the uncovered error handling paths of the eigenvalues solver `eig()` in [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart).
+  - Discovered that the exception throwing block for unsupported dtypes inside `eig()` (specifically for boolean matrices) was never hit by any tests.
+  - Authored a targeted unit test `eig() throws UnimplementedError on boolean matrix` in [linear_algebra_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/linear_algebra_test.dart#L476-L479) confirming that the solver successfully intercepts boolean matrices and throws `UnimplementedError`.
+* **Verification**: Static compiler checks are warning-free, formatting is pristine, and all **377 unit tests pass flawless green**!
+
 
 
 
