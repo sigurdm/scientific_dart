@@ -1363,6 +1363,17 @@
     - Created clean code examples showing `toList()` assertions and injected descriptive links to reference mathematical resources.
 * **Verification**: Confirmed all lints and 372 unit tests pass successfully.
 
+***
+
+## 111. Code Review Pass & `det()` Double-Allocation Findings (Task 2)
+* **What was done**:
+  - Audited the matrix determinant function [det()](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2563) inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart) for performance bottlenecks, styling bugs, and type safety.
+  - **Double-Allocation bottleneck exposed**: Uncovered a major memory and copying-friction bottleneck logged as **Finding 55** inside [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/FINDINGS.md):
+    - To copy matrix elements before factorization to prevent inputs overwriting, `det()` calls the expensive dynamic `List<double>.from(a.data)` which triggers VM element-wise loops, and then delegates to `NDArray.fromList()` which allocates a *second* unmanaged FFI block via `malloc`, generating severe double-allocation heap churn.
+    - Outlined recommended engineering tweak to allocate copy directly via `NDArray.create()` and execute optimized `setRange` block copies for contiguous layouts and a single flat list view pass for strided view layouts.
+* **Verification**: Confirmed formatting and lints are 100% clean. All unit tests execute successfully.
+
+
 
 
 

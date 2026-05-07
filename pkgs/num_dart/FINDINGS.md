@@ -623,5 +623,17 @@ This file logs architectural improvements and hidden flaws discovered during aut
   - If one of the arrays is strided or non-contiguous, perform a single, zero-allocation concurrent coordinate walking loop to compare elements directly, entirely avoiding all intermediate `toList()` heap allocations!
   - Refactor `hashCode` to compute a rolling hash over the flat elements directly on the FFI heap or using a C helper, eliminating object allocations completely.
 
+***
 
+## `pkgs/num_dart/lib/src/operations.dart` (🚨 Performance Bottleneck: `det()` Redundant Double-Allocation & Isolate Cell Copy Friction)
+- **Location**: [operations.dart:L2574-L2578](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2574-L2578) & [operations.dart:L2625-L2629](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L2625-L2629)
+- **Symptom**: To prevent OpenBLAS LAPACK factorizations (`LAPACKE_dgetrf` / `LAPACKE_sgetrf`) from overwriting the user's input matrix, `det()` creates a duplicate array copy `aCopy` using:
+  ```dart
+  final aCopy = NDArray<double>.fromList(List<double>.from(a.data), a.shape, DType.float64);
+  ```
+- **The Inefficiency / Performance Drag**: Major double-allocation and double-copy memory bottleneck! Calling `List<double>.from(a.data)` unrolls slow element-wise comparative sweeps inside Dart VM space and allocates a temporary heap List. `NDArray.fromList` then allocates a *second* unmanaged heap memory block via `malloc` and copies all elements a second time!
+- **Recommended Tweak**: Allocate `aCopy` directly via `NDArray.create(a.shape, dtype)`. If the input array `a` is contiguous, use optimized block-level `setRange()` (direct `memcpy`) to copy bytes instantly at hardware speeds. If it's a strided non-contiguous view, use a single `toList()` pass straight to the unmanaged heap, completely bypassing the redundant intermediate heap list allocations and dynamic VM loops!
 
+***
+
+## Investigate if we can make the package compile and work with dart2wasm. `next`
