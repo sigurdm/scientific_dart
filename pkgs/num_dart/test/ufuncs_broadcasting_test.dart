@@ -134,7 +134,7 @@ void main() {
         final a = NDArray.fromList(Float64List.fromList([-5.0, 1.5, 10.0]), [
           3,
         ], DType.float64);
-        final b = clip(a, -1.0, 5.0);
+        final b = clip(a, min: -1.0, max: 5.0);
         expect(b.data, [-1.0, 1.5, 5.0]);
       });
     });

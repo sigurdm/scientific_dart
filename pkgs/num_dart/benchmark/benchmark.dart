@@ -49,7 +49,7 @@ void main() {
     for (var i = 0; i < iterations; i++) {
       // To be fair with non-destructive Dart addition, we include a copy step!
       final resultFFI = NDArray<double>.create([size], DType.float64);
-      resultFFI.data.setAll(0, a.data);
+      resultFFI.data.setRange(0, size, a.data);
 
       cblas_daxpy(
         size,
@@ -87,8 +87,8 @@ void main() {
     final b = NDArray<double>.ones([size], DType.float32);
 
     final sizeHalf = size ~/ 2;
-    final aNonContig = NDArray<double>.view(a, [sizeHalf], [2]);
-    final bNonContig = NDArray<double>.view(b, [sizeHalf], [2]);
+    final aNonContig = NDArray<double>.view(a, shape: [sizeHalf], strides: [2]);
+    final bNonContig = NDArray<double>.view(b, shape: [sizeHalf], strides: [2]);
 
     // 1. Warmup & Benchmark scalar
     for (var i = 0; i < warmup; i++) {
@@ -138,7 +138,7 @@ void main() {
     final stopwatchFFI = Stopwatch()..start();
     for (var i = 0; i < iterations; i++) {
       final resultFFI = NDArray<double>.create([sizeHalf], DType.float32);
-      resultFFI.data.setAll(0, aFFI.data);
+      resultFFI.data.setRange(0, sizeHalf, aFFI.data);
 
       cblas_saxpy(
         sizeHalf,

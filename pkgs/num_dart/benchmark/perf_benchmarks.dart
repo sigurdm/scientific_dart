@@ -16,7 +16,8 @@ class NormalDistributionBenchmark extends BenchmarkBase {
   @override
   void run() {
     // Distributions are top-level functions taking shape and math.Random objects for seeding!
-    normal([50000], random: standard_math.Random(42));
+    final arr = normal([50000], random: standard_math.Random(42));
+    arr.dispose();
   }
 }
 
@@ -29,7 +30,8 @@ class PoissonDistributionBenchmark extends BenchmarkBase {
   @override
   void run() {
     // lam >= 30.0 triggers Gaussian Normal approximation track natively
-    poisson([20000], lam: 35.0, random: standard_math.Random(42));
+    final arr = poisson([20000], lam: 35.0, random: standard_math.Random(42));
+    arr.dispose();
   }
 }
 
@@ -42,7 +44,8 @@ class BinomialDistributionBenchmark extends BenchmarkBase {
   @override
   void run() {
     // n >= 50 triggers Normal distribution approximation track natively
-    binomial([20000], 60, 0.4, random: standard_math.Random(42));
+    final arr = binomial([20000], n: 60, p: 0.4, random: standard_math.Random(42));
+    arr.dispose();
   }
 }
 
@@ -73,7 +76,8 @@ class NativeQSortContiguousBenchmark extends BenchmarkBase {
   void run() {
     // High-speed bit-level block copy, bypassing any object allocations inside the timed run loop!
     target.data.setRange(0, 30000, templateData);
-    sort(target);
+    final res = sort(target);
+    res.dispose();
   }
 
   @override
@@ -115,6 +119,7 @@ class TernaryWhereBroadcastingBenchmark extends BenchmarkBase {
   late NDArray<bool> cond;
   late NDArray<double> x;
   late NDArray<double> y;
+  late NDArray<double> outBuffer;
 
   TernaryWhereBroadcastingBenchmark()
     : super(
@@ -126,11 +131,12 @@ class TernaryWhereBroadcastingBenchmark extends BenchmarkBase {
     cond = NDArray.zeros([100, 100], DType.boolean);
     x = NDArray.ones([100], DType.float64); // 1D vector stretching
     y = NDArray.ones([100, 100], DType.float64);
+    outBuffer = NDArray.zeros([100, 100], DType.float64);
   }
 
   @override
   void run() {
-    where(cond, x, y);
+    where(cond, x, y, outBuffer);
   }
 
   @override
@@ -138,6 +144,7 @@ class TernaryWhereBroadcastingBenchmark extends BenchmarkBase {
     cond.dispose();
     x.dispose();
     y.dispose();
+    outBuffer.dispose();
   }
 }
 
@@ -160,7 +167,8 @@ class LapackMatrixInversionBenchmark extends BenchmarkBase {
 
   @override
   void run() {
-    inv(a);
+    final res = inv(a);
+    res.dispose();
   }
 
   @override
@@ -249,7 +257,8 @@ class NativeFftTransformBenchmark extends BenchmarkBase {
 
   @override
   void run() {
-    fft(signal);
+    final res = fft(signal);
+    res.dispose();
   }
 
   @override
@@ -351,6 +360,87 @@ class SinUfuncBenchmark extends BenchmarkBase {
   }
 }
 
+class CosUfuncBenchmark extends BenchmarkBase {
+  late NDArray<double> x;
+  late NDArray<double> outBuffer;
+
+  CosUfuncBenchmark()
+    : super(
+        'MEMORY Track| Universal math function cos(x)          [size=100,000]',
+      );
+
+  @override
+  void setup() {
+    x = NDArray.ones([100000], DType.float64);
+    outBuffer = NDArray.create([100000], DType.float64);
+  }
+
+  @override
+  void run() {
+    cos(x, out: outBuffer);
+  }
+
+  @override
+  void teardown() {
+    x.dispose();
+    outBuffer.dispose();
+  }
+}
+
+class ExpUfuncBenchmark extends BenchmarkBase {
+  late NDArray<double> x;
+  late NDArray<double> outBuffer;
+
+  ExpUfuncBenchmark()
+    : super(
+        'MEMORY Track| Universal math function exp(x)          [size=100,000]',
+      );
+
+  @override
+  void setup() {
+    x = NDArray.ones([100000], DType.float64);
+    outBuffer = NDArray.create([100000], DType.float64);
+  }
+
+  @override
+  void run() {
+    exp(x, out: outBuffer);
+  }
+
+  @override
+  void teardown() {
+    x.dispose();
+    outBuffer.dispose();
+  }
+}
+
+class ClipUfuncBenchmark extends BenchmarkBase {
+  late NDArray<double> x;
+  late NDArray<double> outBuffer;
+
+  ClipUfuncBenchmark()
+    : super(
+        'MEMORY Track| Universal math function clip(x)          [size=300,000]',
+      );
+
+  @override
+  void setup() {
+    x = NDArray.ones([300000], DType.float64);
+    outBuffer = NDArray.create([300000], DType.float64);
+  }
+
+  @override
+  void run() {
+    clip(x, min: 0.0, max: 0.5, out: outBuffer);
+  }
+
+  @override
+  void teardown() {
+    x.dispose();
+    outBuffer.dispose();
+  }
+}
+
 class SumReductionBenchmark extends BenchmarkBase {
   late NDArray<double> x;
 
@@ -372,6 +462,146 @@ class SumReductionBenchmark extends BenchmarkBase {
   @override
   void teardown() {
     x.dispose();
+  }
+}
+
+class ZerosBenchmark extends BenchmarkBase {
+  late List<int> shape;
+
+  ZerosBenchmark()
+    : super(
+        'MEMORY Track| Zeros Array Creation (zeros)         [size=1,000,000]',
+      );
+
+  @override
+  void setup() {
+    shape = [1000, 1000];
+  }
+
+  @override
+  void run() {
+    final arr = NDArray<double>.zeros(shape, DType.float64);
+    arr.dispose();
+  }
+}
+
+class ConcatenateBenchmark extends BenchmarkBase {
+  late NDArray<double> a;
+  late NDArray<double> b;
+
+  ConcatenateBenchmark()
+    : super(
+        'MEMORY Track| Flat Array Concatenation (concatenate) [size=1,000,000]',
+      );
+
+  @override
+  void setup() {
+    a = NDArray.ones([500000], DType.float64);
+    b = NDArray.ones([500000], DType.float64);
+  }
+
+  @override
+  void run() {
+    final res = concatenate([a, b], axis: 0);
+    res.dispose();
+  }
+
+  @override
+  void teardown() {
+    a.dispose();
+    b.dispose();
+  }
+}
+
+class ContiguousViewFlattenBenchmark extends BenchmarkBase {
+  late NDArray<double> parent;
+  late NDArray<double> view;
+
+  ContiguousViewFlattenBenchmark()
+    : super(
+        'MEMORY Track| Contiguous View Flatten (flatten)       [size=300,000]',
+      );
+
+  @override
+  void setup() {
+    parent = NDArray.ones([600000], DType.float64);
+    // Take a slice representing first 300,000 elements. It is contiguous, but totalSize < data.length!
+    view = parent.slice([Slice(start: 0, stop: 300000)]);
+  }
+
+  @override
+  void run() {
+    final res = view.flatten();
+    res.dispose();
+  }
+
+  @override
+  void teardown() {
+    parent.dispose();
+    view.dispose();
+  }
+}
+
+class ContiguousViewSumBenchmark extends BenchmarkBase {
+  late NDArray<double> parent;
+  late NDArray<double> view;
+
+  ContiguousViewSumBenchmark()
+    : super(
+        'MEMORY Track| Contiguous View Sum Reduction (sum)     [size=300,000]',
+      );
+
+  @override
+  void setup() {
+    parent = NDArray.ones([600000], DType.float64);
+    view = parent.slice([Slice(start: 0, stop: 300000)]);
+  }
+
+  @override
+  void run() {
+    sum(view);
+  }
+
+  @override
+  void teardown() {
+    parent.dispose();
+    view.dispose();
+  }
+}
+
+class StridedElementwiseAddBenchmark extends BenchmarkBase {
+  late NDArray<double> parentX;
+  late NDArray<double> parentY;
+  late NDArray<double> xView;
+  late NDArray<double> yView;
+  late NDArray<double> outBuffer;
+
+  StridedElementwiseAddBenchmark()
+    : super(
+        'MEMORY Track| Strided non-contiguous add(x, y)         [shape=500x500]',
+      );
+
+  @override
+  void setup() {
+    parentX = NDArray.ones([500, 500], DType.float64);
+    parentY = NDArray.ones([500, 500], DType.float64);
+    xView = parentX.transposed;
+    yView = parentY.transposed;
+    outBuffer = NDArray.create([500, 500], DType.float64);
+  }
+
+  @override
+  void run() {
+    add(xView, yView, out: outBuffer);
+  }
+
+  @override
+  void teardown() {
+    parentX.dispose();
+    parentY.dispose();
+    xView.dispose();
+    yView.dispose();
+    outBuffer.dispose();
   }
 }
 
@@ -415,7 +645,15 @@ void main() {
   ElementwiseAddBenchmark().report();
   ScalarAdditionBroadcastBenchmark().report();
   SinUfuncBenchmark().report();
+  CosUfuncBenchmark().report();
+  ExpUfuncBenchmark().report();
   SumReductionBenchmark().report();
+  ZerosBenchmark().report();
+  ConcatenateBenchmark().report();
+  ClipUfuncBenchmark().report();
+  ContiguousViewFlattenBenchmark().report();
+  ContiguousViewSumBenchmark().report();
+  StridedElementwiseAddBenchmark().report();
 
   print(
     '\n============================================================================',

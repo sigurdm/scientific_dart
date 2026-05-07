@@ -68,7 +68,7 @@ void runTrigAndRoundingExample() {
   print('round(b): ${round(b).data}');
 
   // Clipping array elements
-  final cl = clip(b, -1.0, 2.0);
+  final cl = clip(b, min: -1.0, max: 2.0);
   print('clip(b, -1.0, 2.0): ${cl.data}'); // [-1.0, 1.2, 2.0]
 }
 

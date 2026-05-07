@@ -456,8 +456,6 @@ NDArray add(NDArray a, NDArray b, {NDArray? out}) {
     }
   }
 
-
-
   // Statically-generic type dispatch branches
   if (targetDType == DType.complex128 || targetDType == DType.complex64) {
     final rData = result.data as List<Complex>;
@@ -1340,8 +1338,8 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
   if (a.shape.length == 1) {
     aView = NDArray.view(
       a,
-      [1, a.shape[0]],
-      [0, a.strides[0]],
+      shape: [1, a.shape[0]],
+      strides: [0, a.strides[0]],
       offsetElements: 0,
     );
     aPromoted = true;
@@ -1351,8 +1349,8 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
   if (b.shape.length == 1) {
     bView = NDArray.view(
       b,
-      [b.shape[0], 1],
-      [b.strides[0], 0],
+      shape: [b.shape[0], 1],
+      strides: [b.strides[0], 0],
       offsetElements: 0,
     );
     bPromoted = true;
@@ -1709,7 +1707,10 @@ dynamic any(NDArray a, {int? axis}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(targetAxis);
-  final result = NDArray<bool>.zeros(newShape, DType.boolean); // Pre-initialized to false
+  final result = NDArray<bool>.zeros(
+    newShape,
+    DType.boolean,
+  ); // Pre-initialized to false
 
   _reduceRecursive<Object, bool>(
     a as NDArray<Object>,
@@ -3296,14 +3297,7 @@ NDArray<T> stack<T extends Object>(List<NDArray<T>> arrays, {int axis = 0}) {
 
   for (var i = 0; i < arrays.length; i++) {
     final currentIndices = List<int>.filled(first.shape.length, 0);
-    _copyStackRecursive(
-      arrays[i],
-      result,
-      targetAxis,
-      i,
-      currentIndices,
-      0,
-    );
+    _copyStackRecursive(arrays[i], result, targetAxis, i, currentIndices, 0);
   }
 
   return result;
@@ -4118,7 +4112,9 @@ NDArray real(NDArray a, {NDArray? out}) {
     throw StateError('Cannot execute real() on a disposed array.');
   }
 
-  final targetDType = a.dtype == DType.complex64 ? DType.float32 : DType.float64;
+  final targetDType = a.dtype == DType.complex64
+      ? DType.float32
+      : DType.float64;
 
   if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
     if (out != null) {
@@ -4132,7 +4128,11 @@ NDArray real(NDArray a, {NDArray? out}) {
       out.data.setRange(0, size, a.toList());
       return out;
     }
-    return NDArray.view(a, a.shape, a.strides); // Zero-copy view for already real arrays!
+    return NDArray.view(
+      a,
+      shape: a.shape,
+      strides: a.strides,
+    ); // Zero-copy view for already real arrays!
   }
 
   if (out != null) {
@@ -4186,7 +4186,9 @@ NDArray imag(NDArray a, {NDArray? out}) {
     throw StateError('Cannot execute imag() on a disposed array.');
   }
 
-  final targetDType = a.dtype == DType.complex64 ? DType.float32 : DType.float64;
+  final targetDType = a.dtype == DType.complex64
+      ? DType.float32
+      : DType.float64;
 
   if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
     if (out != null) {
@@ -4470,7 +4472,7 @@ NDArray<bool> isfinite(NDArray a) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray clip(NDArray a, num min, num max, {NDArray? out}) {
+NDArray clip(NDArray a, {required num min, required num max, NDArray? out}) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for clip');
   }
@@ -4666,7 +4668,9 @@ NDArray<bool> not_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
 /// Element-wise comparison of [a] > [b] with broadcasting and recycling support.
 NDArray<bool> greater(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.dtype.isComplex || b.dtype.isComplex) {
-    throw UnsupportedError('Complex numbers do not support inequality comparisons');
+    throw UnsupportedError(
+      'Complex numbers do not support inequality comparisons',
+    );
   }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -4698,7 +4702,9 @@ NDArray<bool> greater(NDArray a, NDArray b, {NDArray<bool>? out}) {
 /// Element-wise comparison of [a] >= [b] with broadcasting and recycling support.
 NDArray<bool> greater_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.dtype.isComplex || b.dtype.isComplex) {
-    throw UnsupportedError('Complex numbers do not support inequality comparisons');
+    throw UnsupportedError(
+      'Complex numbers do not support inequality comparisons',
+    );
   }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -4730,7 +4736,9 @@ NDArray<bool> greater_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
 /// Element-wise comparison of [a] < [b] with broadcasting and recycling support.
 NDArray<bool> less(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.dtype.isComplex || b.dtype.isComplex) {
-    throw UnsupportedError('Complex numbers do not support inequality comparisons');
+    throw UnsupportedError(
+      'Complex numbers do not support inequality comparisons',
+    );
   }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -4762,7 +4770,9 @@ NDArray<bool> less(NDArray a, NDArray b, {NDArray<bool>? out}) {
 /// Element-wise comparison of [a] <= [b] with broadcasting and recycling support.
 NDArray<bool> less_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.dtype.isComplex || b.dtype.isComplex) {
-    throw UnsupportedError('Complex numbers do not support inequality comparisons');
+    throw UnsupportedError(
+      'Complex numbers do not support inequality comparisons',
+    );
   }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -6357,7 +6367,7 @@ NDArray diag(NDArray v, {int k = 0}) {
     // Diagonal spacing stride: strides[0] + strides[1]!
     final diagStride = v.strides[0] + v.strides[1];
 
-    return NDArray.view(v, [len], [diagStride], offsetElements: offsetElements);
+    return NDArray.view(v, shape: [len], strides: [diagStride], offsetElements: offsetElements);
   } else if (v.shape.length == 1) {
     // 2. Constructing a 2D diagonal matrix from a 1D vector
     final n = v.shape[0];
@@ -6632,7 +6642,7 @@ NDArray expand_dims(NDArray a, int axis) {
   final siblingStride = targetAxis < rank ? a.strides[targetAxis] : 1;
   newStrides.insert(targetAxis, siblingStride);
 
-  return NDArray.view(a, newShape, newStrides, offsetElements: 0);
+  return NDArray.view(a, shape: newShape, strides: newStrides, offsetElements: 0);
 }
 
 /// Remove axes of size 1 from the shape of an array.
@@ -6691,5 +6701,5 @@ NDArray squeeze(NDArray a, {List<int>? axis}) {
   }
 
   // Squeezing all dimensions of a 1D unit tensor (e.g. shape [1]) yields a 0D scalar shape []
-  return NDArray.view(a, newShape, newStrides, offsetElements: 0);
+  return NDArray.view(a, shape: newShape, strides: newStrides, offsetElements: 0);
 }

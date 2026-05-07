@@ -83,7 +83,7 @@ void main() {
       test('Small n Bernoulli trials path checks', () {
         const n = 20;
         const p = 0.4;
-        final a = binomial([5000], n, p, dtype: DType.int64);
+        final a = binomial([5000], n: n, p: p, dtype: DType.int64);
 
         expect(a.dtype, DType.int64);
         for (final val in a.data) {
@@ -99,7 +99,7 @@ void main() {
       test('Large n Normal Approximation triggers safely', () {
         const n = 1000;
         const p = 0.3;
-        final a = binomial([5000], n, p, dtype: DType.int32);
+        final a = binomial([5000], n: n, p: p, dtype: DType.int32);
 
         expect(a.dtype, DType.int32);
         final sampleMean = mean(a) as double;
@@ -128,8 +128,8 @@ void main() {
         final p2 = poisson([10], lam: 12.0, random: math.Random(7));
         expect(p1.toList(), p2.toList());
 
-        final b1 = binomial([10], 100, 0.2, random: math.Random(999));
-        final b2 = binomial([10], 100, 0.2, random: math.Random(999));
+        final b1 = binomial([10], n: 100, p: 0.2, random: math.Random(999));
+        final b2 = binomial([10], n: 100, p: 0.2, random: math.Random(999));
         expect(b1.toList(), b2.toList());
       });
     });

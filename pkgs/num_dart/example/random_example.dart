@@ -45,11 +45,11 @@ void runPoissonDistributionExample() {
 void runBinomialDistributionExample() {
   print('\n--- Binomial Distribution (Bernoulli Trials) ---');
   // Small n: 20 trials with success probability 0.5
-  final smallN = binomial([5], 20, 0.5, dtype: DType.int32);
+  final smallN = binomial([5], n: 20, p: 0.5, dtype: DType.int32);
   print('Binomial data (n=20, p=0.5, Bernoulli trials): ${smallN.data}');
 
   // Large n: 1000 trials with p=0.3, triggers fast normal approximation
-  final largeN = binomial([5], 1000, 0.3, dtype: DType.int64);
+  final largeN = binomial([5], n: 1000, p: 0.3, dtype: DType.int64);
   print('Binomial data (n=1000, p=0.3, Normal approx): ${largeN.data}');
 }
 
@@ -80,7 +80,7 @@ void runUniformDistributionExample() {
 void runRandintDistributionExample() {
   print('\n--- Uniform Integer (randint) Distribution ---');
   // Draw a 2x3 uniform integer array with values in [0, 10)
-  final a = randint([2, 3], 0, 10, dtype: DType.int64);
+  final a = randint([2, 3], low: 0, high: 10, dtype: DType.int64);
   print('Randint shape: ${a.shape}');
   print('Data: ${a.data}');
 }

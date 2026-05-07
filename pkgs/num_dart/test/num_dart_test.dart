@@ -64,8 +64,8 @@ void main() {
       ], DType.float64);
       final view = NDArray.view(
         a,
-        [2],
-        [1],
+        shape: [2],
+        strides: [1],
         offsetElements: 1,
       ); // View of [2, 3] if we flatten or just take from offset 1
       // Wait, strides for view of [2] with stride 1 from offset 1 will be elements at index 1 and 2.
@@ -197,6 +197,26 @@ void main() {
       expect(a.data[0], 99.0);
     });
 
+    test('Reshape non-contiguous view disposal memory safety', () {
+      final parent = NDArray.fromList(
+        Float64List.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
+        [3, 2],
+        DType.float64,
+      );
+      final viewT = parent.transposed;
+      final reshaped = viewT.reshape([6]);
+
+      expect(reshaped.isDisposed, false);
+      reshaped.dispose();
+      expect(reshaped.isDisposed, true);
+
+      expect(parent.isDisposed, false);
+      expect(viewT.isDisposed, false);
+
+      parent.dispose();
+      viewT.dispose();
+    });
+
     test('Dart Addition (Fallback)', () {
       final a = NDArray.fromList(Float64List.fromList([1, 2, 3, 4]), [
         2,
@@ -266,7 +286,7 @@ void main() {
     });
 
     test('Randint Factory', () {
-      final a = randint([2, 3], 0, 10, dtype: DType.int64);
+      final a = randint([2, 3], low: 0, high: 10, dtype: DType.int64);
       expect(a.shape, [2, 3]);
       expect(a.data.length, 6);
       for (final value in a.data) {
@@ -727,6 +747,43 @@ void main() {
       expect(a.data[0], 1.0);
     });
 
+    test('Flatten contiguous arrays across all DTypes (FFI block copy)', () {
+      for (final dtype in DType.values) {
+        final NDArray a;
+        final List expected;
+        if (dtype == DType.complex128 || dtype == DType.complex64) {
+          a = NDArray<Complex>.create([2, 2], dtype);
+          a.data[0] = Complex(1.0, 1.0);
+          a.data[1] = Complex(2.0, 2.0);
+          a.data[2] = Complex(3.0, 3.0);
+          a.data[3] = Complex(4.0, 4.0);
+          expected = [
+            Complex(1.0, 1.0),
+            Complex(2.0, 2.0),
+            Complex(3.0, 3.0),
+            Complex(4.0, 4.0),
+          ];
+        } else if (dtype == DType.boolean) {
+          a = NDArray<bool>.fromList([true, false, true, false], [2, 2], dtype);
+          expected = [true, false, true, false];
+        } else if (dtype == DType.int32 || dtype == DType.int64) {
+          a = NDArray<int>.fromList([1, 2, 3, 4], [2, 2], dtype);
+          expected = [1, 2, 3, 4];
+        } else {
+          a = NDArray<double>.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], dtype);
+          expected = [1.0, 2.0, 3.0, 4.0];
+        }
+        addTearDown(a.dispose);
+
+        final b = a.flatten();
+        addTearDown(b.dispose);
+
+        expect(b.shape, [4]);
+        expect(b.dtype, dtype);
+        expect(b.toList(), expected);
+      }
+    });
+
     test('Ravel (Contiguous)', () {
       final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0, 4.0]), [
         2,
@@ -875,6 +932,74 @@ void main() {
       expect(c.shape, [2]);
       expect(c.data[0], Complex(11.0, 2.0));
       expect(c.data[1], Complex(23.0, 4.0));
+    });
+
+    group('NDArray Bounds, Formats, and Error Exceptions Tests', () {
+      test('Transpose axes validations', () {
+        final a = NDArray.zeros([2, 3], DType.float64);
+        expect(() => a.transpose([0]), throwsArgumentError);
+        expect(() => a.transpose([0, -5]), throwsRangeError);
+        expect(() => a.transpose([0, 0]), throwsArgumentError);
+      });
+
+      test('getCell and setCell coordinate checks', () {
+        final a = NDArray.zeros([2, 3], DType.float64);
+        expect(() => a.getCell([0]), throwsArgumentError);
+        expect(() => a.getCell([0, 5]), throwsRangeError);
+        expect(() => a.setCell([0], 1.0), throwsArgumentError);
+        expect(() => a.setCell([0, 5], 1.0), throwsRangeError);
+      });
+
+      test('setByMask dimensions validation', () {
+        final a = NDArray.zeros([2, 3], DType.float64);
+        final mask1D = NDArray<bool>.zeros([2], DType.boolean);
+        expect(() => a.setByMask(mask1D, 5.0), throwsArgumentError);
+
+        final mask2D = NDArray<bool>.zeros([2, 2], DType.boolean);
+        expect(() => a.setByMask(mask2D, 5.0), throwsArgumentError);
+      });
+
+      test('setIndices and setIndicesScalar bounds checks', () {
+        final a = NDArray.zeros([2, 3], DType.float64);
+        final indices = NDArray<int>.fromList([0], [1], DType.int32);
+        expect(
+          () => a.setIndicesScalar(indices, 1.0, axis: 5),
+          throwsRangeError,
+        );
+
+        final badIndices = NDArray<int>.fromList([5], [1], DType.int32);
+        expect(() => a.setIndicesScalar(badIndices, 1.0), throwsRangeError);
+
+        final val = NDArray.zeros([1], DType.float64);
+        expect(() => a.setIndices(badIndices, val), throwsRangeError);
+      });
+
+      test('setIndices multi-dimensional slice assignment', () {
+        final a = NDArray.zeros([3, 3], DType.float64);
+        addTearDown(a.dispose);
+
+        final indices = NDArray.fromList([0, 2], [2], DType.int32);
+        addTearDown(indices.dispose);
+
+        final vals = NDArray.fromList(
+          Float64List.fromList([1.0, 2.0, 3.0, 4.0, 0.0, 0.0]),
+          [2, 3],
+          DType.float64,
+        );
+        addTearDown(vals.dispose);
+
+        a.setIndices(indices, vals, axis: 0);
+
+        expect(a.toList(), [1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 4.0, 0.0, 0.0]);
+      });
+
+      test('operator [] fancy index parameter checks', () {
+        final a = NDArray.zeros([2, 3], DType.float64);
+        expect(() => a[[0]], throwsArgumentError);
+
+        final badMask = NDArray<bool>.zeros([2, 2], DType.boolean);
+        expect(() => a[badMask], throwsArgumentError);
+      });
     });
   });
 }

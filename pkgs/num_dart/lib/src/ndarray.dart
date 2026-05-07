@@ -343,7 +343,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final view = NDArray.view(parent, [2], [1], offsetElements: 1);
+  /// final view = NDArray.view(parent, shape: [2], strides: [1], offsetElements: 1);
   /// ```
   ///
   /// **Restrictions:**
@@ -351,9 +351,9 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - **Shared Mutations**: Modifications to the view affect the parent and vice versa.
   /// - **No Ownership**: Calling `dispose()` on a view does nothing.
   factory NDArray.view(
-    NDArray parent,
-    List<int> shape,
-    List<int> strides, {
+    NDArray parent, {
+    required List<int> shape,
+    required List<int> strides,
     int offsetElements = 0,
   }) {
     ffi.Pointer<ffi.Void> pointer;
@@ -1596,8 +1596,8 @@ final class NDArray<T> implements ffi.Finalizable {
 
     return NDArray.view(
       this,
-      newShape,
-      newStrides,
+      shape: newShape,
+      strides: newStrides,
       offsetElements: offsetElements,
     );
   }
@@ -1782,7 +1782,7 @@ final class NDArray<T> implements ffi.Finalizable {
       newStrides.insert(normAxis, strides[normAxis]);
     }
 
-    return NDArray.view(this, newShape, newStrides);
+    return NDArray.view(this, shape: newShape, strides: newStrides);
   }
 
   /// Returns a new view of this array with single-dimensional entries removed from the shape.
@@ -1851,7 +1851,7 @@ final class NDArray<T> implements ffi.Finalizable {
       }
     }
 
-    return NDArray.view(this, newShape, newStrides);
+    return NDArray.view(this, shape: newShape, strides: newStrides);
   }
 
   /// Returns a new view of this array with [axis1] and [axis2] interchanged.
@@ -1891,7 +1891,7 @@ final class NDArray<T> implements ffi.Finalizable {
     newStrides[norm1] = newStrides[norm2];
     newStrides[norm2] = tempStride;
 
-    return NDArray.view(this, newShape, newStrides);
+    return NDArray.view(this, shape: newShape, strides: newStrides);
   }
 
   /// Returns a new view of this array with axes moved from [source] positions to [destination] positions.
@@ -1984,7 +1984,7 @@ final class NDArray<T> implements ffi.Finalizable {
       newStrides[i] = strides[newOrder[i]];
     }
 
-    return NDArray.view(this, newShape, newStrides);
+    return NDArray.view(this, shape: newShape, strides: newStrides);
   }
 
   /// Manually free the allocated C memory.

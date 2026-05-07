@@ -60,9 +60,9 @@ NDArray<double> uniform(
 /// By default, uses Dart's standard [Random] class, which is not cryptographically secure.
 /// You can pass a secure random object via the [random] parameter if needed.
 NDArray<int> randint(
-  List<int> shape,
-  int low,
-  int high, {
+  List<int> shape, {
+  required int low,
+  required int high,
   DType dtype = DType.int64,
   Random? random,
 }) {
@@ -276,9 +276,9 @@ NDArray<int> poisson(
 /// **Example:**
 /// {@example /example/random_example.dart lang=dart}
 NDArray<int> binomial(
-  List<int> shape,
-  int n,
-  double p, {
+  List<int> shape, {
+  required int n,
+  required double p,
   DType dtype = DType.int64,
   Random? random,
 }) {

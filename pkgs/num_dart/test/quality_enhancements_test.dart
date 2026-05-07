@@ -156,7 +156,7 @@ void main() {
 
     test('randint() supporting wide ranges (> 2^32)', () {
       // Generate a 64-bit integer range that exceeds 2^32
-      final a = randint([10], 100000000000, 200000000000, dtype: DType.int64);
+      final a = randint([10], low: 100000000000, high: 200000000000, dtype: DType.int64);
       addTearDown(a.dispose);
       expect(a.shape, [10]);
       expect(a.dtype, DType.int64);
@@ -458,7 +458,12 @@ void main() {
 
     test('ifft() with non-contiguous strided view input', () {
       final parent = NDArray.fromList(
-        [Complex(1.0, 1.0), Complex(2.0, 2.0), Complex(3.0, 3.0), Complex(4.0, 4.0)],
+        [
+          Complex(1.0, 1.0),
+          Complex(2.0, 2.0),
+          Complex(3.0, 3.0),
+          Complex(4.0, 4.0),
+        ],
         [2, 2],
         DType.complex128,
       );
@@ -484,17 +489,16 @@ void main() {
       expect(result.data[3].imag, closeTo(-1.0, 1e-9));
     });
 
-
     test('uniform() validation checks coverage', () {
       expect(() => uniform([5], dtype: DType.int64), throwsArgumentError);
     });
 
     test('randint() validation checks coverage', () {
       expect(
-        () => randint([5], 0, 10, dtype: DType.float64),
+        () => randint([5], low: 0, high: 10, dtype: DType.float64),
         throwsArgumentError,
       );
-      expect(() => randint([5], 10, 5), throwsArgumentError);
+      expect(() => randint([5], low: 10, high: 5), throwsArgumentError);
     });
 
     test('normal() validation and zero-avoidance checks coverage', () {
@@ -524,26 +528,26 @@ void main() {
       'binomial() validation, zero trials, zero stddev, and zero-avoidance checks',
       () {
         expect(
-          () => binomial([5], 10, 0.5, dtype: DType.float64),
+          () => binomial([5], n: 10, p: 0.5, dtype: DType.float64),
           throwsArgumentError,
         );
-        expect(() => binomial([5], -1, 0.5), throwsArgumentError);
-        expect(() => binomial([5], 10, 1.5), throwsArgumentError);
+        expect(() => binomial([5], n: -1, p: 0.5), throwsArgumentError);
+        expect(() => binomial([5], n: 10, p: 1.5), throwsArgumentError);
 
-        final zeroTrials = binomial([5], 0, 0.5);
+        final zeroTrials = binomial([5], n: 0, p: 0.5);
         addTearDown(zeroTrials.dispose);
         expect(zeroTrials.toList(), [0, 0, 0, 0, 0]);
 
-        final zeroStddev = binomial([5], 100, 1.0);
+        final zeroStddev = binomial([5], n: 100, p: 1.0);
         addTearDown(zeroStddev.dispose);
         expect(zeroStddev.toList(), [100, 100, 100, 100, 100]);
 
-        final a = binomial([2], 100, 0.5, random: ZeroThenDoubleRandom());
+        final a = binomial([2], n: 100, p: 0.5, random: ZeroThenDoubleRandom());
         addTearDown(a.dispose);
         expect(a.shape, [2]);
         expect(a.dtype, DType.int64);
 
-        final oddLength = binomial([5], 100, 0.5);
+        final oddLength = binomial([5], n: 100, p: 0.5);
         addTearDown(oddLength.dispose);
         expect(oddLength.shape, [5]);
         expect(oddLength.dtype, DType.int64);
@@ -670,13 +674,13 @@ void main() {
     test('NDArray.view() FFI constructors with float32 and int64 coverage', () {
       final pF32 = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float32);
       addTearDown(pF32.dispose);
-      final vF32 = NDArray.view(pF32, [2], [1], offsetElements: 1);
+      final vF32 = NDArray.view(pF32, shape: [2], strides: [1], offsetElements: 1);
       expect(vF32.toList(), [2.0, 3.0]);
       expect(vF32.dtype, DType.float32);
 
       final pI64 = NDArray.fromList([10, 20, 30], [3], DType.int64);
       addTearDown(pI64.dispose);
-      final vI64 = NDArray.view(pI64, [2], [1], offsetElements: 1);
+      final vI64 = NDArray.view(pI64, shape: [2], strides: [1], offsetElements: 1);
       expect(vI64.toList(), [20, 30]);
       expect(vI64.dtype, DType.int64);
     });
@@ -915,7 +919,7 @@ void main() {
         final out = NDArray<double>.zeros([2, 2], DType.float64);
         addTearDown(out.dispose);
 
-        final res = clip(view, 2.0, 3.0, out: out);
+        final res = clip(view, min: 2.0, max: 3.0, out: out);
         expect(identical(res, out), true);
         expect(out.toList(), [2.0, 2.0, 3.0, 3.0]);
 
@@ -1069,7 +1073,7 @@ void main() {
       }
 
       // 2. randint with int32
-      final ri = randint([10], 0, 5, dtype: DType.int32);
+      final ri = randint([10], low: 0, high: 5, dtype: DType.int32);
       addTearDown(ri.dispose);
       expect(ri.shape, [10]);
       expect(ri.dtype, DType.int32);
@@ -1556,125 +1560,132 @@ void main() {
       );
     });
 
-    test('Cross-type arithmetic coverage for subtract, multiply, and divide', () {
-      final c = NDArray<Complex>.fromList([Complex(10.0, 10.0)], [1], DType.complex128);
-      final i = NDArray<int>.fromList([2], [1], DType.int64);
-      final d = NDArray<double>.fromList([4.0], [1], DType.float64);
-      addTearDown(c.dispose);
-      addTearDown(i.dispose);
-      addTearDown(d.dispose);
+    test(
+      'Cross-type arithmetic coverage for subtract, multiply, and divide',
+      () {
+        final c = NDArray<Complex>.fromList(
+          [Complex(10.0, 10.0)],
+          [1],
+          DType.complex128,
+        );
+        final i = NDArray<int>.fromList([2], [1], DType.int64);
+        final d = NDArray<double>.fromList([4.0], [1], DType.float64);
+        addTearDown(c.dispose);
+        addTearDown(i.dispose);
+        addTearDown(d.dispose);
 
-      // --- subtract() Gaps ---
-      // 1. Complex - int
-      final s1 = subtract(c, i);
-      addTearDown(s1.dispose);
-      expect(s1.dtype, DType.complex128);
-      expect(s1.data[0], Complex(8.0, 10.0));
+        // --- subtract() Gaps ---
+        // 1. Complex - int
+        final s1 = subtract(c, i);
+        addTearDown(s1.dispose);
+        expect(s1.dtype, DType.complex128);
+        expect(s1.data[0], Complex(8.0, 10.0));
 
-      // 2. int - Complex
-      final s2 = subtract(i, c);
-      addTearDown(s2.dispose);
-      expect(s2.dtype, DType.complex128);
-      expect(s2.data[0], Complex(-8.0, -10.0));
+        // 2. int - Complex
+        final s2 = subtract(i, c);
+        addTearDown(s2.dispose);
+        expect(s2.dtype, DType.complex128);
+        expect(s2.data[0], Complex(-8.0, -10.0));
 
-      // 3. double - int
-      final s3 = subtract(d, i);
-      addTearDown(s3.dispose);
-      expect(s3.dtype, DType.float64);
-      expect(s3.data[0], 2.0);
+        // 3. double - int
+        final s3 = subtract(d, i);
+        addTearDown(s3.dispose);
+        expect(s3.dtype, DType.float64);
+        expect(s3.data[0], 2.0);
 
-      // 4. int - double
-      final s4 = subtract(i, d);
-      addTearDown(s4.dispose);
-      expect(s4.dtype, DType.float64);
-      expect(s4.data[0], -2.0);
+        // 4. int - double
+        final s4 = subtract(i, d);
+        addTearDown(s4.dispose);
+        expect(s4.dtype, DType.float64);
+        expect(s4.data[0], -2.0);
 
-      // 5. int - int
-      final s5 = subtract(i, i);
-      addTearDown(s5.dispose);
-      expect(s5.dtype, DType.int64);
-      expect(s5.data[0], 0);
+        // 5. int - int
+        final s5 = subtract(i, i);
+        addTearDown(s5.dispose);
+        expect(s5.dtype, DType.int64);
+        expect(s5.data[0], 0);
 
-      // --- multiply() Gaps ---
-      // 1. Complex * Complex
-      final m1 = multiply(c, c);
-      addTearDown(m1.dispose);
-      expect(m1.dtype, DType.complex128);
-      expect(m1.data[0], Complex(0.0, 200.0)); // (10+10i)^2 = 0 + 200i
+        // --- multiply() Gaps ---
+        // 1. Complex * Complex
+        final m1 = multiply(c, c);
+        addTearDown(m1.dispose);
+        expect(m1.dtype, DType.complex128);
+        expect(m1.data[0], Complex(0.0, 200.0)); // (10+10i)^2 = 0 + 200i
 
-      // 2. Complex * double
-      final m2 = multiply(c, d);
-      addTearDown(m2.dispose);
-      expect(m2.dtype, DType.complex128);
-      expect(m2.data[0], Complex(40.0, 40.0));
+        // 2. Complex * double
+        final m2 = multiply(c, d);
+        addTearDown(m2.dispose);
+        expect(m2.dtype, DType.complex128);
+        expect(m2.data[0], Complex(40.0, 40.0));
 
-      // 3. Complex * int
-      final m3 = multiply(c, i);
-      addTearDown(m3.dispose);
-      expect(m3.dtype, DType.complex128);
-      expect(m3.data[0], Complex(20.0, 20.0));
+        // 3. Complex * int
+        final m3 = multiply(c, i);
+        addTearDown(m3.dispose);
+        expect(m3.dtype, DType.complex128);
+        expect(m3.data[0], Complex(20.0, 20.0));
 
-      // 4. double * Complex
-      final m4 = multiply(d, c);
-      addTearDown(m4.dispose);
-      expect(m4.dtype, DType.complex128);
-      expect(m4.data[0], Complex(40.0, 40.0));
+        // 4. double * Complex
+        final m4 = multiply(d, c);
+        addTearDown(m4.dispose);
+        expect(m4.dtype, DType.complex128);
+        expect(m4.data[0], Complex(40.0, 40.0));
 
-      // 5. int * Complex
-      final m5 = multiply(i, c);
-      addTearDown(m5.dispose);
-      expect(m5.dtype, DType.complex128);
-      expect(m5.data[0], Complex(20.0, 20.0));
+        // 5. int * Complex
+        final m5 = multiply(i, c);
+        addTearDown(m5.dispose);
+        expect(m5.dtype, DType.complex128);
+        expect(m5.data[0], Complex(20.0, 20.0));
 
-      // 6. double * int
-      final m6 = multiply(d, i);
-      addTearDown(m6.dispose);
-      expect(m6.dtype, DType.float64);
-      expect(m6.data[0], 8.0);
+        // 6. double * int
+        final m6 = multiply(d, i);
+        addTearDown(m6.dispose);
+        expect(m6.dtype, DType.float64);
+        expect(m6.data[0], 8.0);
 
-      // 7. int * double
-      final m7 = multiply(i, d);
-      addTearDown(m7.dispose);
-      expect(m7.dtype, DType.float64);
-      expect(m7.data[0], 8.0);
+        // 7. int * double
+        final m7 = multiply(i, d);
+        addTearDown(m7.dispose);
+        expect(m7.dtype, DType.float64);
+        expect(m7.data[0], 8.0);
 
-      // 8. int * int
-      final m8 = multiply(i, i);
-      addTearDown(m8.dispose);
-      expect(m8.dtype, DType.int64);
-      expect(m8.data[0], 4);
+        // 8. int * int
+        final m8 = multiply(i, i);
+        addTearDown(m8.dispose);
+        expect(m8.dtype, DType.int64);
+        expect(m8.data[0], 4);
 
-      // --- divide() Gaps ---
-      // 1. Complex / Complex
-      final div1 = divide(c, c);
-      addTearDown(div1.dispose);
-      expect(div1.dtype, DType.complex128);
-      expect(div1.data[0], Complex(1.0, 0.0));
+        // --- divide() Gaps ---
+        // 1. Complex / Complex
+        final div1 = divide(c, c);
+        addTearDown(div1.dispose);
+        expect(div1.dtype, DType.complex128);
+        expect(div1.data[0], Complex(1.0, 0.0));
 
-      // 2. Complex / double
-      final div2 = divide(c, d);
-      addTearDown(div2.dispose);
-      expect(div2.dtype, DType.complex128);
-      expect(div2.data[0], Complex(2.5, 2.5));
+        // 2. Complex / double
+        final div2 = divide(c, d);
+        addTearDown(div2.dispose);
+        expect(div2.dtype, DType.complex128);
+        expect(div2.data[0], Complex(2.5, 2.5));
 
-      // 3. Complex / int
-      final div3 = divide(c, i);
-      addTearDown(div3.dispose);
-      expect(div3.dtype, DType.complex128);
-      expect(div3.data[0], Complex(5.0, 5.0));
+        // 3. Complex / int
+        final div3 = divide(c, i);
+        addTearDown(div3.dispose);
+        expect(div3.dtype, DType.complex128);
+        expect(div3.data[0], Complex(5.0, 5.0));
 
-      // 4. double / Complex
-      final div4 = divide(d, c);
-      addTearDown(div4.dispose);
-      expect(div4.dtype, DType.complex128);
-      expect(div4.data[0], Complex(0.2, -0.2)); // 4 / (10+10i) = 0.2 - 0.2i
+        // 4. double / Complex
+        final div4 = divide(d, c);
+        addTearDown(div4.dispose);
+        expect(div4.dtype, DType.complex128);
+        expect(div4.data[0], Complex(0.2, -0.2)); // 4 / (10+10i) = 0.2 - 0.2i
 
-      // 5. int / Complex
-      final div5 = divide(i, c);
-      addTearDown(div5.dispose);
-      expect(div5.dtype, DType.complex128);
-      expect(div5.data[0], Complex(0.1, -0.1)); // 2 / (10+10i) = 0.1 - 0.1i
-    });
+        // 5. int / Complex
+        final div5 = divide(i, c);
+        addTearDown(div5.dispose);
+        expect(div5.dtype, DType.complex128);
+        expect(div5.data[0], Complex(0.1, -0.1)); // 2 / (10+10i) = 0.1 - 0.1i
+      },
+    );
   });
 }
 
