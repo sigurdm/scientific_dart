@@ -62,7 +62,34 @@ NDArray fft(NDArray a, {int? n}) {
   final totalElements = a.shape.reduce((x, y) => x * y);
   final signalsCount = totalElements ~/ lastAxisDim;
 
+  final isZeroCopyFastPath = a.dtype == DType.complex128 &&
+      targetLen == lastAxisDim &&
+      a.isContiguous;
+
   kiss_fft_cfg cfg = ffi.nullptr.cast();
+
+  if (isZeroCopyFastPath) {
+    try {
+      cfg = kiss_fft_alloc(targetLen, 0, ffi.nullptr, ffi.nullptr);
+      if (cfg.address == 0) {
+        throw StateError(
+          'Failed to allocate native FFT plan for length $targetLen',
+        );
+      }
+
+      for (var s = 0; s < signalsCount; s++) {
+        final rowPin = a.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
+        final rowPout = result.pointer.cast<kiss_fft_cpx>() + s * targetLen;
+        kiss_fft(cfg, rowPin, rowPout);
+      }
+    } finally {
+      if (cfg.address != 0) {
+        free(cfg.cast<ffi.Void>());
+      }
+    }
+    return result;
+  }
+
   ffi.Pointer<kiss_fft_cpx> pin = ffi.nullptr.cast();
   ffi.Pointer<kiss_fft_cpx> pout = ffi.nullptr.cast();
 
@@ -177,7 +204,40 @@ NDArray ifft(NDArray a, {int? n}) {
   final totalElements = a.shape.reduce((x, y) => x * y);
   final signalsCount = totalElements ~/ lastAxisDim;
 
+  final isZeroCopyFastPath = a.dtype == DType.complex128 &&
+      targetLen == lastAxisDim &&
+      a.isContiguous;
+
   kiss_fft_cfg cfg = ffi.nullptr.cast();
+
+  if (isZeroCopyFastPath) {
+    try {
+      cfg = kiss_fft_alloc(targetLen, 1, ffi.nullptr, ffi.nullptr);
+      if (cfg.address == 0) {
+        throw StateError(
+          'Failed to allocate native IFFT plan for length $targetLen',
+        );
+      }
+
+      final scaleFactor = 1.0 / targetLen;
+      for (var s = 0; s < signalsCount; s++) {
+        final rowPin = a.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
+        final rowPout = result.pointer.cast<kiss_fft_cpx>() + s * targetLen;
+        kiss_fft(cfg, rowPin, rowPout);
+
+        for (var i = 0; i < targetLen; i++) {
+          rowPout[i].r *= scaleFactor;
+          rowPout[i].i *= scaleFactor;
+        }
+      }
+    } finally {
+      if (cfg.address != 0) {
+        free(cfg.cast<ffi.Void>());
+      }
+    }
+    return result;
+  }
+
   ffi.Pointer<kiss_fft_cpx> pin = ffi.nullptr.cast();
   ffi.Pointer<kiss_fft_cpx> pout = ffi.nullptr.cast();
 

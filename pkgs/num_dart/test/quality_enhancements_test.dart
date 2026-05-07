@@ -1743,7 +1743,11 @@ void main() {
         expect(x.toList(), [2.0, 3.0]);
 
         // 2. Non-contiguous transposed Float64 matrix solve
-        final aParent = NDArray.fromList([3.0, 1.0, 1.0, 2.0], [2, 2], DType.float64);
+        final aParent = NDArray.fromList(
+          [3.0, 1.0, 1.0, 2.0],
+          [2, 2],
+          DType.float64,
+        );
         final aTransposed = aParent.transposed; // non-contiguous!
         // aTransposed is: [[3.0, 1.0], [1.0, 2.0]] which is symmetric, so solve is same
         final bParent = NDArray.fromList([9.0, 8.0], [2], DType.float64);
@@ -1754,6 +1758,79 @@ void main() {
         final x2 = solve(aTransposed, bParent);
         addTearDown(x2.dispose);
         expect(x2.toList(), [2.0, 3.0]);
+      },
+    );
+
+    test(
+      'Zero-copy FFT and IFFT contiguous Float64 complex128 correctness',
+      () {
+        // 1. 1D Complex Vector Zero-Copy FFT and IFFT
+        final a = NDArray<Complex>.create([4], DType.complex128);
+        a.data[0] = Complex(1.0, 0.0);
+        a.data[1] = Complex(2.0, 0.0);
+        a.data[2] = Complex(3.0, 0.0);
+        a.data[3] = Complex(4.0, 0.0);
+        addTearDown(a.dispose);
+
+        final resFFT = fft(a);
+        addTearDown(resFFT.dispose);
+        expect(resFFT.dtype, DType.complex128);
+        expect(resFFT.shape, [4]);
+
+        // Mathematical FFT outputs for [1, 2, 3, 4]:
+        // F(0) = 10 + 0i
+        // F(1) = -2 + 2i
+        // F(2) = -2 + 0i
+        // F(3) = -2 - 2i
+        expect(resFFT.data[0], Complex(10.0, 0.0));
+        expect(resFFT.data[1].real, closeTo(-2.0, 1e-10));
+        expect(resFFT.data[1].imag, closeTo(2.0, 1e-10));
+        expect(resFFT.data[2].real, closeTo(-2.0, 1e-10));
+        expect(resFFT.data[2].imag, closeTo(0.0, 1e-10));
+        expect(resFFT.data[3].real, closeTo(-2.0, 1e-10));
+        expect(resFFT.data[3].imag, closeTo(-2.0, 1e-10));
+
+        // Round-trip back with zero-copy IFFT
+        final resIFFT = ifft(resFFT);
+        addTearDown(resIFFT.dispose);
+        expect(resIFFT.dtype, DType.complex128);
+        expect(resIFFT.shape, [4]);
+        expect(resIFFT.data[0].real, closeTo(1.0, 1e-10));
+        expect(resIFFT.data[0].imag, closeTo(0.0, 1e-10));
+        expect(resIFFT.data[1].real, closeTo(2.0, 1e-10));
+        expect(resIFFT.data[1].imag, closeTo(0.0, 1e-10));
+        expect(resIFFT.data[2].real, closeTo(3.0, 1e-10));
+        expect(resIFFT.data[2].imag, closeTo(0.0, 1e-10));
+        expect(resIFFT.data[3].real, closeTo(4.0, 1e-10));
+        expect(resIFFT.data[3].imag, closeTo(0.0, 1e-10));
+
+        // 2. High-Dimensional Stacked 2D Complex Matrix Zero-Copy FFT and IFFT
+        final mat = NDArray<Complex>.create([2, 2], DType.complex128);
+        mat.data[0] = Complex(1.0, 0.0);
+        mat.data[1] = Complex(2.0, 0.0);
+        mat.data[2] = Complex(3.0, 0.0);
+        mat.data[3] = Complex(4.0, 0.0);
+        addTearDown(mat.dispose);
+
+        final matFFT = fft(mat);
+        addTearDown(matFFT.dispose);
+        expect(matFFT.shape, [2, 2]);
+        expect(matFFT.dtype, DType.complex128);
+
+        // Row 0: [1, 2] -> [3, -1]
+        // Row 1: [3, 4] -> [7, -1]
+        expect(matFFT.data[0].real, closeTo(3.0, 1e-10));
+        expect(matFFT.data[1].real, closeTo(-1.0, 1e-10));
+        expect(matFFT.data[2].real, closeTo(7.0, 1e-10));
+        expect(matFFT.data[3].real, closeTo(-1.0, 1e-10));
+
+        final matIFFT = ifft(matFFT);
+        addTearDown(matIFFT.dispose);
+        expect(matIFFT.shape, [2, 2]);
+        expect(matIFFT.data[0].real, closeTo(1.0, 1e-10));
+        expect(matIFFT.data[1].real, closeTo(2.0, 1e-10));
+        expect(matIFFT.data[2].real, closeTo(3.0, 1e-10));
+        expect(matIFFT.data[3].real, closeTo(4.0, 1e-10));
       },
     );
   });

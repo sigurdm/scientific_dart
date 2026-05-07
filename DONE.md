@@ -1416,6 +1416,20 @@
     - Outlined recommended engineering workaround: allocate directly via `NDArray.create(shape, dtype)` and execute a single `setRange(0, length, a.toList())` block copy to unmanaged memory, completely eliminating the double-allocations and isolate dynamic list conversion.
 * **Verification**: Confirmed formatting and lints are clean. All 371 unit tests execute successfully.
 
+***
+
+## 116. Implemented Discrete Fourier Transform `fft()` and `ifft()` Zero-Copy contiguous complex128 Fast-Paths (Task 3)
+* **What was done**:
+  - **Exposed & Optimized FFT/IFFT FFI copying loops**: Addressed **Finding 3** inside [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/FINDINGS.md) by refactoring signal copying loops inside [fft()](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/fft.dart#L32) and [ifft()](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/fft.dart#L149).
+  - **Bypassed heap allocations**: Introduced a hardware-level zero-copy fast-path for contiguous `complex128` arrays when target transform length `targetLen == lastAxisDim` is active:
+    - FFT: Bypasses `pin` and `pout` struct buffers allocations completely. Directly passes operand C-heap pointer `a.pointer` and result C-heap pointer `result.pointer` offsets to AOT CBLAS-level `kiss_fft` plan zero-copy.
+    - IFFT: Passes pointers directly to `kiss_fft` inverse plan, and performs standard `1/N` normalization scaling directly inside C-heap space using fast pointer indices: `rowPout[i].r *= scaleFactor; rowPout[i].i *= scaleFactor;`
+    - Fully erases all Dart-side element loops, structural copying branches, type switches, and dynamic garbage collection.
+  - **Targeted Unit Testing**:
+    - Added unit tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart) asserting correctness of zero-copy FFT and IFFT calculations on both 1D complex vectors and stacked multidimensional complex matrices.
+* **Verification**: Verified lints and format are clean, and all **372 unit tests pass flawless green**.
+
+
 
 
 
