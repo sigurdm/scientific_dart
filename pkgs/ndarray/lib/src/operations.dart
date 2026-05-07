@@ -2930,7 +2930,19 @@ NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
 
 /// Compute the determinant of a square 2D matrix using OpenBLAS.
 ///
+/// Transforms the matrix and calculates its determinant natively via LAPACK LU decomposition.
 /// Returns the determinant as a double.
+///
+/// **Preconditions:**
+/// - Matrix [a] must be square (size $N \times N$) and 2-dimensional.
+/// - Data type [a.dtype] must be float32 or float64.
+///
+/// **Throws:**
+/// - [ArgumentError] if [a] is not square or not 2D.
+/// - [ArgumentError] if [a.dtype] is not a supported floating point data type.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N^3)$ leveraging optimized native LAPACK linear algebra solvers.
 ///
 /// **Example:**
 /// ```dart
@@ -2939,8 +2951,8 @@ NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
 /// print(d); // -2.0
 /// ```
 ///
-/// **Gotchas:**
-/// - Throws [ArgumentError] if the matrix is not square or not 2D.
+/// Refer to the [Determinant Reference](https://en.wikipedia.org/wiki/Determinant)
+/// and [LAPACK LU solver](https://en.wikipedia.org/wiki/LU_decomposition) for additional details.
 double det(NDArray<double> a) {
   if (a.dtype != DType.float64 && a.dtype != DType.float32) {
     throw ArgumentError('det only supports Float64 and Float32 dtypes');
@@ -4432,7 +4444,8 @@ NDArray bitwise_and(NDArray a, NDArray b) {
 
   if (!a.dtype.isInteger || !b.dtype.isInteger) {
     throw UnsupportedError(
-        'Bitwise operations only supported for integer dtypes');
+      'Bitwise operations only supported for integer dtypes',
+    );
   }
   final targetDType = _resolveDType(a.dtype, b.dtype);
   final result = NDArray.create(commonShape, targetDType);
@@ -4469,7 +4482,8 @@ NDArray bitwise_or(NDArray a, NDArray b) {
 
   if (!a.dtype.isInteger || !b.dtype.isInteger) {
     throw UnsupportedError(
-        'Bitwise operations only supported for integer dtypes');
+      'Bitwise operations only supported for integer dtypes',
+    );
   }
   final targetDType = _resolveDType(a.dtype, b.dtype);
   final result = NDArray.create(commonShape, targetDType);
@@ -4506,7 +4520,8 @@ NDArray bitwise_xor(NDArray a, NDArray b) {
 
   if (!a.dtype.isInteger || !b.dtype.isInteger) {
     throw UnsupportedError(
-        'Bitwise operations only supported for integer dtypes');
+      'Bitwise operations only supported for integer dtypes',
+    );
   }
   final targetDType = _resolveDType(a.dtype, b.dtype);
   final result = NDArray.create(commonShape, targetDType);
@@ -4538,7 +4553,8 @@ NDArray bitwise_xor(NDArray a, NDArray b) {
 NDArray bitwise_not(NDArray a) {
   if (!a.dtype.isInteger) {
     throw UnsupportedError(
-        'Bitwise operations only supported for integer dtypes');
+      'Bitwise operations only supported for integer dtypes',
+    );
   }
   final result = NDArray.create(a.shape, a.dtype);
   final resultStrides = NDArray.computeCStrides(a.shape);
@@ -4570,7 +4586,9 @@ NDArray left_shift(NDArray a, NDArray b) {
   final stridesB = broadcastResult.stridesB;
 
   if (!a.dtype.isInteger || !b.dtype.isInteger) {
-    throw UnsupportedError('Shift operations only supported for integer dtypes');
+    throw UnsupportedError(
+      'Shift operations only supported for integer dtypes',
+    );
   }
   final targetDType = _resolveDType(a.dtype, b.dtype);
   final result = NDArray.create(commonShape, targetDType);
@@ -4606,7 +4624,9 @@ NDArray right_shift(NDArray a, NDArray b) {
   final stridesB = broadcastResult.stridesB;
 
   if (!a.dtype.isInteger || !b.dtype.isInteger) {
-    throw UnsupportedError('Shift operations only supported for integer dtypes');
+    throw UnsupportedError(
+      'Shift operations only supported for integer dtypes',
+    );
   }
   final targetDType = _resolveDType(a.dtype, b.dtype);
   final result = NDArray.create(commonShape, targetDType);
