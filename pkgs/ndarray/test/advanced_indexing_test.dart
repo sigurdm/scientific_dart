@@ -5,84 +5,96 @@ import 'dart:typed_data';
 void main() {
   group('NDArray Advanced Indexing, Fancy Lists & Mask Overloads Tests', () {
     group('Explicit Static-Typed Addressing Methods tests', () {
-      test('getCell and setCell basic checks', () => NDArray.scope(() {
-        final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0, 4.0]), [
-          2,
-          2,
-        ], DType.float64);
+      test(
+        'getCell and setCell basic checks',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Float64List.fromList([1.0, 2.0, 3.0, 4.0]),
+            [2, 2],
+            DType.float64,
+          );
 
-        expect(a.getCell([0, 0]), 1.0);
-        expect(a.getCell([0, 1]), 2.0);
+          expect(a.getCell([0, 0]), 1.0);
+          expect(a.getCell([0, 1]), 2.0);
 
-        a.setCell([1, 1], 40.0);
-        expect(a.getCell([1, 1]), 40.0);
-        expect(a.toList(), [1.0, 2.0, 3.0, 40.0]);
-      }));
+          a.setCell([1, 1], 40.0);
+          expect(a.getCell([1, 1]), 40.0);
+          expect(a.toList(), [1.0, 2.0, 3.0, 40.0]);
+        }),
+      );
 
-      test('setByMask explicit boolean mask mutation scalar clipping',
-          () => NDArray.scope(() {
-        final arr = NDArray.fromList(
-          Float64List.fromList([-5.0, 10.0, -2.5, 4.0]),
-          [4],
-          DType.float64,
-        );
-        final mask = arr < 0.0; // returns binary mask array
+      test(
+        'setByMask explicit boolean mask mutation scalar clipping',
+        () => NDArray.scope(() {
+          final arr = NDArray.fromList(
+            Float64List.fromList([-5.0, 10.0, -2.5, 4.0]),
+            [4],
+            DType.float64,
+          );
+          final mask = arr < 0.0; // returns binary mask array
 
-        // Explicit scalar clip
-        arr.setByMaskScalar(mask, 0.0);
-        expect(arr.toList(), [0.0, 10.0, 0.0, 4.0]);
-      }));
+          // Explicit scalar clip
+          arr.setByMaskScalar(mask, 0.0);
+          expect(arr.toList(), [0.0, 10.0, 0.0, 4.0]);
+        }),
+      );
 
-      test('setIndicesScalar and setIndices fancy explicit row mutations',
-          () => NDArray.scope(() {
-        final mat = NDArray.fromList(
-          Int32List.fromList([1, 1, 1, 2, 2, 2, 3, 3, 3]),
-          [3, 3],
-          DType.int32,
-        );
+      test(
+        'setIndicesScalar and setIndices fancy explicit row mutations',
+        () => NDArray.scope(() {
+          final mat = NDArray.fromList(
+            Int32List.fromList([1, 1, 1, 2, 2, 2, 3, 3, 3]),
+            [3, 3],
+            DType.int32,
+          );
 
-        final targetRows = NDArray.fromList([0, 2], [2], DType.int32);
+          final targetRows = NDArray.fromList([0, 2], [2], DType.int32);
 
-        // Overwrite row 0 and row 2 to 9
-        mat.setIndicesScalar(targetRows, 9, axis: 0);
-        expect(mat.toList(), [9, 9, 9, 2, 2, 2, 9, 9, 9]);
-      }));
+          // Overwrite row 0 and row 2 to 9
+          mat.setIndicesScalar(targetRows, 9, axis: 0);
+          expect(mat.toList(), [9, 9, 9, 2, 2, 2, 9, 9, 9]);
+        }),
+      );
     });
 
     group('Polymorphic Overload [] and []= Syntax tests (NumPy Equivalence)', () {
-      test('operator [] single int extracts direct sub-matrix row views',
-          () => NDArray.scope(() {
-        final a = NDArray.fromList(
-          Int32List.fromList(List.generate(12, (i) => i)),
-          [3, 4],
-          DType.int32,
-        );
+      test(
+        'operator [] single int extracts direct sub-matrix row views',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Int32List.fromList(List.generate(12, (i) => i)),
+            [3, 4],
+            DType.int32,
+          );
 
-        // NumPy: a[1] extracts row 1 view
-        final r1 = a[1];
-        expect(r1.shape, [4]);
-        expect(r1.toList(), [4, 5, 6, 7]);
-      }));
+          // NumPy: a[1] extracts row 1 view
+          final r1 = a[1];
+          expect(r1.shape, [4]);
+          expect(r1.toList(), [4, 5, 6, 7]);
+        }),
+      );
 
-      test('operator [] List<int> extracts fancy row stacks',
-          () => NDArray.scope(() {
-        final a = NDArray.fromList(
-          Int32List.fromList(List.generate(12, (i) => i)),
-          [3, 4],
-          DType.int32,
-        );
+      test(
+        'operator [] List<int> extracts fancy row stacks',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Int32List.fromList(List.generate(12, (i) => i)),
+            [3, 4],
+            DType.int32,
+          );
 
-        // NumPy: a[[0, 2]] extracts row 0 and row 2 stacked!
-        final fancy =
-            a[[
-              [0, 2],
-            ]];
-        expect(fancy.shape, [2, 4]);
-        expect(fancy.toList(), [
-          0, 1, 2, 3, // row 0
-          8, 9, 10, 11, // row 2
-        ]);
-      }));
+          // NumPy: a[[0, 2]] extracts row 0 and row 2 stacked!
+          final fancy =
+              a[[
+                [0, 2],
+              ]];
+          expect(fancy.shape, [2, 4]);
+          expect(fancy.toList(), [
+            0, 1, 2, 3, // row 0
+            8, 9, 10, 11, // row 2
+          ]);
+        }),
+      );
 
       test(
         'operator [] NDArray boolean criteria filters and flattens to 1D',
@@ -101,19 +113,21 @@ void main() {
         }),
       );
 
-      test('operator []= Boolean Mask assignments clips in-place',
-          () => NDArray.scope(() {
-        final mat = NDArray.fromList(
-          Float64List.fromList([10.0, -1.0, 20.0, -3.0]),
-          [4],
-          DType.float64,
-        );
+      test(
+        'operator []= Boolean Mask assignments clips in-place',
+        () => NDArray.scope(() {
+          final mat = NDArray.fromList(
+            Float64List.fromList([10.0, -1.0, 20.0, -3.0]),
+            [4],
+            DType.float64,
+          );
 
-        // NumPy: mat[mat < 0.0] = 0.0
-        final mask = mat < 0.0;
-        mat[mask] = 0.0;
-        expect(mat.toList(), [10.0, 0.0, 20.0, 0.0]);
-      }));
+          // NumPy: mat[mat < 0.0] = 0.0
+          final mask = mat < 0.0;
+          mat[mask] = 0.0;
+          expect(mat.toList(), [10.0, 0.0, 20.0, 0.0]);
+        }),
+      );
 
       test(
         'operator []= Fancy list index assignment mutates specific rows stack',
@@ -139,23 +153,30 @@ void main() {
       );
 
       group('Additional NDArray Coverage & Edge Cases', () {
-        test('Disposed array checks throw StateError', () => NDArray.scope(() {
-          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
-          expect(() => a.fill(1.0), throwsStateError);
-          expect(() => a.transpose(), throwsStateError);
-          expect(() => a[0], throwsStateError);
-          expect(() => a[0] = 1.0, throwsStateError);
-        }));
+        test(
+          'Disposed array checks throw StateError',
+          () => NDArray.scope(() {
+            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            a.dispose();
+            expect(() => a.fill(1.0), throwsStateError);
+            expect(() => a.transpose(), throwsStateError);
+            expect(() => a[0], throwsStateError);
+            expect(() => a[0] = 1.0, throwsStateError);
+          }),
+        );
 
-        test('Contiguous fill for float32 and int64', () => NDArray.scope(() {
-          final a = NDArray<double>.create([3], DType.float32);
-          a.fill(42.0);
-          expect(a.toList(), [42.0, 42.0, 42.0]);
+        test(
+          'Contiguous fill for float32 and int64',
+          () => NDArray.scope(() {
+            final a = NDArray<double>.create([3], DType.float32);
+            a.fill(42.0);
+            expect(a.toList(), [42.0, 42.0, 42.0]);
 
-          final b = NDArray<int>.create([3], DType.int64);
-          b.fill(99);
-          expect(b.toList(), [99, 99, 99]);
-        }));
+            final b = NDArray<int>.create([3], DType.int64);
+            b.fill(99);
+            expect(b.toList(), [99, 99, 99]);
+          }),
+        );
 
         test(
           'Unsupported selector type for operator[] throws ArgumentError',
@@ -190,20 +211,22 @@ void main() {
           }),
         );
 
-        test('operator[]= single int index assignment (scalar and array)',
-            () => NDArray.scope(() {
-          final a = NDArray.fromList(
-            [1.0, 2.0, 3.0, 4.0],
-            [2, 2],
-            DType.float64,
-          );
-          a[0] = 99.0; // scalar assignment to row 0
-          expect(a.toList(), [99.0, 99.0, 3.0, 4.0]);
+        test(
+          'operator[]= single int index assignment (scalar and array)',
+          () => NDArray.scope(() {
+            final a = NDArray.fromList(
+              [1.0, 2.0, 3.0, 4.0],
+              [2, 2],
+              DType.float64,
+            );
+            a[0] = 99.0; // scalar assignment to row 0
+            expect(a.toList(), [99.0, 99.0, 3.0, 4.0]);
 
-          final val = NDArray.fromList([10.0, 20.0], [2], DType.float64);
-          a[1] = val; // array assignment to row 1
-          expect(a.toList(), [99.0, 99.0, 10.0, 20.0]);
-        }));
+            final val = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+            a[1] = val; // array assignment to row 1
+            expect(a.toList(), [99.0, 99.0, 10.0, 20.0]);
+          }),
+        );
 
         test(
           'operator[]= nested List<List<int>> index assignment with NDArray value',
@@ -228,15 +251,17 @@ void main() {
           }),
         );
 
-        test('operator[]= coordinate length mismatch throws ArgumentError',
-            () => NDArray.scope(() {
-          final a = NDArray.fromList(
-            [1.0, 2.0, 3.0, 4.0],
-            [2, 2],
-            DType.float64,
-          );
-          expect(() => a[[0]] = 99.0, throwsArgumentError);
-        }));
+        test(
+          'operator[]= coordinate length mismatch throws ArgumentError',
+          () => NDArray.scope(() {
+            final a = NDArray.fromList(
+              [1.0, 2.0, 3.0, 4.0],
+              [2, 2],
+              DType.float64,
+            );
+            expect(() => a[[0]] = 99.0, throwsArgumentError);
+          }),
+        );
 
         test(
           'operator[]= boolean mask shape mismatch throws ArgumentError',
@@ -291,11 +316,13 @@ void main() {
           }),
         );
 
-        test('operator[]= invalid selector type throws ArgumentError',
-            () => NDArray.scope(() {
-          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
-          expect(() => a['invalid'] = 99.0, throwsArgumentError);
-        }));
+        test(
+          'operator[]= invalid selector type throws ArgumentError',
+          () => NDArray.scope(() {
+            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            expect(() => a['invalid'] = 99.0, throwsArgumentError);
+          }),
+        );
       });
     });
   });

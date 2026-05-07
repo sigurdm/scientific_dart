@@ -3,7 +3,7 @@
 [![Pub Version](https://img.shields.io/pub/v/ndarray)](https://pub.dev/packages/ndarray)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-**ndarray** is a high-performance, FFI-accelerated N-dimensional array and numerical computing library for Dart, heavily inspired by NumPy. It features automatic resource management scopes (`NDArray.scope()`), unmanaged C-heap memory allocations, blazingly fast vectorised ufuncs, parallelized builds, and native OpenBLAS-backed linear algebra solvers.
+**ndarray** is a high-performance, FFI-accelerated N-dimensional array and numerical computing library for Dart, heavily inspired by NumPy. It features automatic resource management scopes (`NDArray.scope()`), unmanaged C-heap memory allocations, vectorised ufuncs, parallelized builds, and native OpenBLAS-backed linear algebra solvers.
 
 ---
 

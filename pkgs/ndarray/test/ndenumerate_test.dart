@@ -6,7 +6,11 @@ void main() {
     test(
       'ndenumerate() basic 2D matrix walk checks',
       () => NDArray.scope(() {
-        final a = NDArray.fromList([10, 20, 30, 40, 50, 60], [2, 3], DType.int32);
+        final a = NDArray.fromList(
+          [10, 20, 30, 40, 50, 60],
+          [2, 3],
+          DType.int32,
+        );
         final entries = ndenumerate(a).toList();
 
         expect(entries.length, 6);
@@ -79,6 +83,7 @@ void main() {
       'disposed arrays throw StateError',
       () => NDArray.scope(() {
         final a = NDArray.fromList([1, 2], [2], DType.int32);
+        a.dispose();
         expect(() => ndenumerate(a).toList(), throwsStateError);
       }),
     );

@@ -4256,6 +4256,379 @@ NDArray tanh(NDArray a) {
   return result;
 }
 
+/// Numerical negative, element-wise.
+///
+/// **Example:**
+/// ```dart
+/// final b = negative(a);
+/// ```
+NDArray negative(NDArray a) {
+  final result = NDArray.create(a.shape, a.dtype);
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    _unaryOp<Complex, Complex>(
+      result.data as List<Complex>,
+      a.data as List<Complex>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => -x,
+    );
+  } else if (a.dtype == DType.float64 || a.dtype == DType.float32) {
+    _unaryOp<double, double>(
+      result.data as List<double>,
+      a.data as List<double>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => -x,
+    );
+  } else if (a.dtype == DType.int64 || a.dtype == DType.int32) {
+    _unaryOp<int, int>(
+      result.data as List<int>,
+      a.data as List<int>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => -x,
+    );
+  } else if (a.dtype == DType.boolean) {
+    throw UnsupportedError('Boolean arrays do not support negative operator');
+  }
+  return result;
+}
+
+/// Element-wise floor division with broadcasting and dtype upcasting support.
+///
+/// Corresponds to Dart's `~/` operator.
+///
+/// **Example:**
+/// ```dart
+/// final c = floor_divide(a, b);
+/// ```
+NDArray floor_divide(NDArray a, NDArray b) {
+  final broadcastResult = broadcast(a, b);
+  final commonShape = broadcastResult.shape;
+  final stridesA = broadcastResult.stridesA;
+  final stridesB = broadcastResult.stridesB;
+
+  final targetDType = _resolveDType(a.dtype, b.dtype);
+  if (targetDType.isComplex) {
+    throw UnsupportedError('Complex numbers do not support floor division');
+  }
+  final result = NDArray.create(commonShape, targetDType);
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  if (targetDType == DType.float64 || targetDType == DType.float32) {
+    _elementWiseOp<double, double, double>(
+      result.data as List<double>,
+      a.data as List<double>,
+      b.data as List<double>,
+      commonShape,
+      stridesA,
+      stridesB,
+      resultStrides,
+      0,
+      0,
+      0,
+      0,
+      (x, y) => (x ~/ y).toDouble(),
+    );
+  } else {
+    _elementWiseOp<int, int, int>(
+      result.data as List<int>,
+      a.data as List<int>,
+      b.data as List<int>,
+      commonShape,
+      stridesA,
+      stridesB,
+      resultStrides,
+      0,
+      0,
+      0,
+      0,
+      (x, y) => x ~/ y,
+    );
+  }
+  return result;
+}
+
+/// Element-wise remainder of division with broadcasting and dtype upcasting support.
+///
+/// Corresponds to Dart's `%` operator.
+///
+/// **Example:**
+/// ```dart
+/// final c = remainder(a, b);
+/// ```
+NDArray remainder(NDArray a, NDArray b) {
+  final broadcastResult = broadcast(a, b);
+  final commonShape = broadcastResult.shape;
+  final stridesA = broadcastResult.stridesA;
+  final stridesB = broadcastResult.stridesB;
+
+  final targetDType = _resolveDType(a.dtype, b.dtype);
+  if (targetDType.isComplex) {
+    throw UnsupportedError('Complex numbers do not support remainder');
+  }
+  final result = NDArray.create(commonShape, targetDType);
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  if (targetDType == DType.float64 || targetDType == DType.float32) {
+    _elementWiseOp<double, double, double>(
+      result.data as List<double>,
+      a.data as List<double>,
+      b.data as List<double>,
+      commonShape,
+      stridesA,
+      stridesB,
+      resultStrides,
+      0,
+      0,
+      0,
+      0,
+      (x, y) => x % y,
+    );
+  } else {
+    _elementWiseOp<int, int, int>(
+      result.data as List<int>,
+      a.data as List<int>,
+      b.data as List<int>,
+      commonShape,
+      stridesA,
+      stridesB,
+      resultStrides,
+      0,
+      0,
+      0,
+      0,
+      (x, y) => x % y,
+    );
+  }
+  return result;
+}
+
+/// Element-wise bitwise AND with broadcasting support.
+///
+/// **Example:**
+/// ```dart
+/// final c = bitwise_and(a, b);
+/// ```
+NDArray bitwise_and(NDArray a, NDArray b) {
+  final broadcastResult = broadcast(a, b);
+  final commonShape = broadcastResult.shape;
+  final stridesA = broadcastResult.stridesA;
+  final stridesB = broadcastResult.stridesB;
+
+  if (!a.dtype.isInteger || !b.dtype.isInteger) {
+    throw UnsupportedError(
+        'Bitwise operations only supported for integer dtypes');
+  }
+  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final result = NDArray.create(commonShape, targetDType);
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  _elementWiseOp<int, int, int>(
+    result.data as List<int>,
+    a.data as List<int>,
+    b.data as List<int>,
+    commonShape,
+    stridesA,
+    stridesB,
+    resultStrides,
+    0,
+    0,
+    0,
+    0,
+    (x, y) => x & y,
+  );
+  return result;
+}
+
+/// Element-wise bitwise OR with broadcasting support.
+///
+/// **Example:**
+/// ```dart
+/// final c = bitwise_or(a, b);
+/// ```
+NDArray bitwise_or(NDArray a, NDArray b) {
+  final broadcastResult = broadcast(a, b);
+  final commonShape = broadcastResult.shape;
+  final stridesA = broadcastResult.stridesA;
+  final stridesB = broadcastResult.stridesB;
+
+  if (!a.dtype.isInteger || !b.dtype.isInteger) {
+    throw UnsupportedError(
+        'Bitwise operations only supported for integer dtypes');
+  }
+  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final result = NDArray.create(commonShape, targetDType);
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  _elementWiseOp<int, int, int>(
+    result.data as List<int>,
+    a.data as List<int>,
+    b.data as List<int>,
+    commonShape,
+    stridesA,
+    stridesB,
+    resultStrides,
+    0,
+    0,
+    0,
+    0,
+    (x, y) => x | y,
+  );
+  return result;
+}
+
+/// Element-wise bitwise XOR with broadcasting support.
+///
+/// **Example:**
+/// ```dart
+/// final c = bitwise_xor(a, b);
+/// ```
+NDArray bitwise_xor(NDArray a, NDArray b) {
+  final broadcastResult = broadcast(a, b);
+  final commonShape = broadcastResult.shape;
+  final stridesA = broadcastResult.stridesA;
+  final stridesB = broadcastResult.stridesB;
+
+  if (!a.dtype.isInteger || !b.dtype.isInteger) {
+    throw UnsupportedError(
+        'Bitwise operations only supported for integer dtypes');
+  }
+  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final result = NDArray.create(commonShape, targetDType);
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  _elementWiseOp<int, int, int>(
+    result.data as List<int>,
+    a.data as List<int>,
+    b.data as List<int>,
+    commonShape,
+    stridesA,
+    stridesB,
+    resultStrides,
+    0,
+    0,
+    0,
+    0,
+    (x, y) => x ^ y,
+  );
+  return result;
+}
+
+/// Element-wise bitwise NOT.
+///
+/// **Example:**
+/// ```dart
+/// final b = bitwise_not(a);
+/// ```
+NDArray bitwise_not(NDArray a) {
+  if (!a.dtype.isInteger) {
+    throw UnsupportedError(
+        'Bitwise operations only supported for integer dtypes');
+  }
+  final result = NDArray.create(a.shape, a.dtype);
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  _unaryOp<int, int>(
+    result.data as List<int>,
+    a.data as List<int>,
+    a.shape,
+    a.strides,
+    resultStrides,
+    0,
+    0,
+    0,
+    (x) => ~x,
+  );
+  return result;
+}
+
+/// Element-wise left shift with broadcasting support.
+///
+/// **Example:**
+/// ```dart
+/// final c = left_shift(a, b);
+/// ```
+NDArray left_shift(NDArray a, NDArray b) {
+  final broadcastResult = broadcast(a, b);
+  final commonShape = broadcastResult.shape;
+  final stridesA = broadcastResult.stridesA;
+  final stridesB = broadcastResult.stridesB;
+
+  if (!a.dtype.isInteger || !b.dtype.isInteger) {
+    throw UnsupportedError('Shift operations only supported for integer dtypes');
+  }
+  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final result = NDArray.create(commonShape, targetDType);
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  _elementWiseOp<int, int, int>(
+    result.data as List<int>,
+    a.data as List<int>,
+    b.data as List<int>,
+    commonShape,
+    stridesA,
+    stridesB,
+    resultStrides,
+    0,
+    0,
+    0,
+    0,
+    (x, y) => x << y,
+  );
+  return result;
+}
+
+/// Element-wise right shift with broadcasting support.
+///
+/// **Example:**
+/// ```dart
+/// final c = right_shift(a, b);
+/// ```
+NDArray right_shift(NDArray a, NDArray b) {
+  final broadcastResult = broadcast(a, b);
+  final commonShape = broadcastResult.shape;
+  final stridesA = broadcastResult.stridesA;
+  final stridesB = broadcastResult.stridesB;
+
+  if (!a.dtype.isInteger || !b.dtype.isInteger) {
+    throw UnsupportedError('Shift operations only supported for integer dtypes');
+  }
+  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final result = NDArray.create(commonShape, targetDType);
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  _elementWiseOp<int, int, int>(
+    result.data as List<int>,
+    a.data as List<int>,
+    b.data as List<int>,
+    commonShape,
+    stridesA,
+    stridesB,
+    resultStrides,
+    0,
+    0,
+    0,
+    0,
+    (x, y) => x >> y,
+  );
+  return result;
+}
+
 /// Compute the element-wise absolute value of the array.
 ///
 /// For complex numbers, returns the magnitude as a real array.

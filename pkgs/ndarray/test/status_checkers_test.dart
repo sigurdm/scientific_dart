@@ -144,6 +144,7 @@ void main() {
       'Disposed array checks throw StateError',
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        a.dispose();
 
         expect(() => isnan(a), throwsStateError);
         expect(() => isinf(a), throwsStateError);

@@ -516,6 +516,7 @@ void main() {
         'disposed array throws StateError',
         () => NDArray.scope(() {
           final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          a.dispose();
           expect(() => a.copy(), throwsStateError);
         }),
       );
@@ -539,6 +540,7 @@ void main() {
         'top-level copy() disposed array throws StateError',
         () => NDArray.scope(() {
           final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          a.dispose();
           expect(() => copy(a), throwsStateError);
         }),
       );

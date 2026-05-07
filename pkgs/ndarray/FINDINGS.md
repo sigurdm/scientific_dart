@@ -73,10 +73,10 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ---
 
-## ✨ Section 4: Usability & Ergonomics
-- **Issue**: **Missing Operator Overloading**. `NDArray` lacks operators for `+`, `-`, `*`, `/`, etc., forcing verbose functional calls like `add(a, b)`.
+## ✨ Section 4: Usability & Ergonomics (Resolved)
+- **Status**: **RESOLVED**. Implemented full operator overloading for arithmetic (+, -, *, /, ~/, %), bitwise (&, |, ^, ~, <<, >>), and unary (-) operations. These wrap existing and new ufuncs with full broadcasting support for both array-array and array-scalar operands.
 - **Issue**: `operator []` does not support `Slice` or `Indices` objects directly, and lacks equivalents for `NewAxis` or `Ellipsis`.
-- **Recommended Tweak**: Implement operator overloading for all standard arithmetic, logical, and bitwise operations.
+- **Recommended Tweak**: Expand `operator []` and `operator []=` to handle complex NumPy-style selection objects.
 
 ---
 

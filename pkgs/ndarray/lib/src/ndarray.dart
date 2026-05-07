@@ -6,6 +6,7 @@ import 'package:ffi/ffi.dart';
 import 'dart:collection';
 import 'broadcasting.dart';
 import 'numdart_bindings.dart';
+import 'operations.dart' as ops;
 
 /// Supported data types for the elements of an [NDArray].
 enum DType {
@@ -1468,9 +1469,91 @@ final class NDArray<T> implements ffi.Finalizable {
         List.filled(targetShape.length, 1),
         DType.float64,
       );
+    } else if (value is bool) {
+      return NDArray.fromList(
+        <bool>[value],
+        List.filled(targetShape.length, 1),
+        DType.boolean,
+      );
     } else {
       throw ArgumentError('Unsupported scalar type: ${value.runtimeType}');
     }
+  }
+
+  /// Element-wise addition with full broadcasting support.
+  NDArray operator +(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.add(this, otherArr);
+  }
+
+  /// Element-wise subtraction with full broadcasting support.
+  NDArray operator -(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.subtract(this, otherArr);
+  }
+
+  /// Element-wise multiplication with full broadcasting support.
+  NDArray operator *(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.multiply(this, otherArr);
+  }
+
+  /// Element-wise division with full broadcasting support.
+  NDArray operator /(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.divide(this, otherArr);
+  }
+
+  /// Element-wise floor division with full broadcasting support.
+  NDArray operator ~/(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.floor_divide(this, otherArr);
+  }
+
+  /// Element-wise remainder with full broadcasting support.
+  NDArray operator %(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.remainder(this, otherArr);
+  }
+
+  /// Numerical negative, element-wise.
+  NDArray operator -() {
+    return ops.negative(this);
+  }
+
+  /// Element-wise bitwise AND with full broadcasting support.
+  NDArray operator &(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.bitwise_and(this, otherArr);
+  }
+
+  /// Element-wise bitwise OR with full broadcasting support.
+  NDArray operator |(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.bitwise_or(this, otherArr);
+  }
+
+  /// Element-wise bitwise XOR with full broadcasting support.
+  NDArray operator ^(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.bitwise_xor(this, otherArr);
+  }
+
+  /// Element-wise bitwise NOT.
+  NDArray operator ~() {
+    return ops.bitwise_not(this);
+  }
+
+  /// Element-wise left shift with full broadcasting support.
+  NDArray operator <<(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.left_shift(this, otherArr);
+  }
+
+  /// Element-wise right shift with full broadcasting support.
+  NDArray operator >>(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.right_shift(this, otherArr);
   }
 
   /// Element-wise greater than comparison with full broadcasting support.
@@ -2287,6 +2370,8 @@ final class Complex {
     }
   }
 
+  Complex operator -() => Complex(-real, -imag);
+
   Complex operator *(dynamic other) {
     if (other is Complex) {
       return Complex(
@@ -2551,23 +2636,69 @@ void _copyContiguousNDArray(NDArray src, NDArray dest, int size) {
   }
 }
 
-/// Private class to manage a collection of [NDArray]s within a [Zone].
+/// Private class to manage a collection of [NDArray]s within a [Zone]
+/// using a high-performance hybrid scaling design: a flat fast-path List
+/// for collections up to 100 elements (yielding zero GC and blazingly fast sweeps),
+/// promoting seamlessly to a HashSet for larger collections to guarantee O(1) scaling.
 final class _NDArrayScope {
-  final Set<NDArray> _arrays =
-      HashSet(equals: identical, hashCode: identityHashCode);
+  // Standard fast-path: flat List of tracked arrays
+  final List<NDArray> _list = [];
+
+  // Fallback slow-path: Set for large-scale scopes (> 100 arrays)
+  Set<NDArray>? _set;
+
+  _NDArrayScope();
 
   void _track(NDArray array) {
-    _arrays.add(array);
+    if (_set != null) {
+      _set!.add(array);
+      return;
+    }
+
+    _list.add(array);
+
+    // Promotion trigger: promote to HashSet once we cross 100 elements
+    if (_list.length > 100) {
+      _set = HashSet(equals: identical, hashCode: identityHashCode);
+      _set!.addAll(_list);
+      _list.clear();
+    }
   }
 
   void _untrack(NDArray array) {
-    _arrays.remove(array);
+    if (_set != null) {
+      _set!.remove(array);
+      return;
+    }
+
+    // Swap-and-Pop optimization to avoid shifting subsequent elements in the list!
+    final len = _list.length;
+    for (var i = 0; i < len; i++) {
+      if (identical(_list[i], array)) {
+        if (i < len - 1) {
+          _list[i] = _list.last;
+        }
+        _list.removeLast();
+        break;
+      }
+    }
   }
 
   void dispose() {
-    for (final array in _arrays) {
-      array.dispose();
+    if (_set != null) {
+      for (final array in _set!) {
+        if (!array.isDisposed) {
+          array.dispose();
+        }
+      }
+      _set!.clear();
+    } else {
+      for (final array in _list) {
+        if (!array.isDisposed) {
+          array.dispose();
+        }
+      }
+      _list.clear();
     }
-    _arrays.clear();
   }
 }

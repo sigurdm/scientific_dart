@@ -34,7 +34,11 @@ void main() {
       () => NDArray.scope(() {
         // two matrices of shape [2, 3]
         final a = NDArray.fromList([1, 2, 3, 4, 5, 6], [2, 3], DType.int32);
-        final b = NDArray.fromList([10, 20, 30, 40, 50, 60], [2, 3], DType.int32);
+        final b = NDArray.fromList(
+          [10, 20, 30, 40, 50, 60],
+          [2, 3],
+          DType.int32,
+        );
 
         // Stacks into shape [2, 2, 3] along axis 0
         final s0 = stack([a, b], axis: 0);
@@ -86,6 +90,7 @@ void main() {
       'disposed arrays throw StateError',
       () => NDArray.scope(() {
         final a = NDArray.fromList([1, 2], [2], DType.int32);
+        a.dispose();
         expect(() => stack([a, a]), throwsStateError);
       }),
     );
