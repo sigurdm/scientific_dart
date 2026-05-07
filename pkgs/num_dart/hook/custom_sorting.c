@@ -323,3 +323,8 @@ void native_zero_memory(void *ptr, size_t bytes) {
     if (ptr == NULL || bytes <= 0) return;
     memset(ptr, 0, bytes);
 }
+
+void custom_memcpy(void *dest, const void *src, size_t n) {
+    if (dest == NULL || src == NULL || n <= 0) return;
+    memcpy(dest, src, n);
+}

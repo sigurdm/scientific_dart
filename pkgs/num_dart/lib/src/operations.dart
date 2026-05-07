@@ -3261,52 +3261,10 @@ NDArray<T> concatenate<T extends Object>(
 }
 
 void _copyContiguousFlat(NDArray src, NDArray dest, int destOffset, int size) {
-  final dtype = src.dtype;
-  if (dtype == DType.float64) {
-    final srcList = src.pointer.cast<ffi.Double>().asTypedList(size);
-    final destList = dest.pointer.cast<ffi.Double>().asTypedList(
-      destOffset + size,
-    );
-    destList.setRange(destOffset, destOffset + size, srcList);
-  } else if (dtype == DType.float32) {
-    final srcList = src.pointer.cast<ffi.Float>().asTypedList(size);
-    final destList = dest.pointer.cast<ffi.Float>().asTypedList(
-      destOffset + size,
-    );
-    destList.setRange(destOffset, destOffset + size, srcList);
-  } else if (dtype == DType.int32) {
-    final srcList = src.pointer.cast<ffi.Int32>().asTypedList(size);
-    final destList = dest.pointer.cast<ffi.Int32>().asTypedList(
-      destOffset + size,
-    );
-    destList.setRange(destOffset, destOffset + size, srcList);
-  } else if (dtype == DType.int64) {
-    final srcList = src.pointer.cast<ffi.Int64>().asTypedList(size);
-    final destList = dest.pointer.cast<ffi.Int64>().asTypedList(
-      destOffset + size,
-    );
-    destList.setRange(destOffset, destOffset + size, srcList);
-  } else if (dtype == DType.complex128) {
-    final srcList = src.pointer.cast<ffi.Double>().asTypedList(size * 2);
-    final destList = dest.pointer.cast<ffi.Double>().asTypedList(
-      (destOffset + size) * 2,
-    );
-    destList.setRange(destOffset * 2, (destOffset + size) * 2, srcList);
-  } else if (dtype == DType.complex64) {
-    final srcList = src.pointer.cast<ffi.Float>().asTypedList(size * 2);
-    final destList = dest.pointer.cast<ffi.Float>().asTypedList(
-      (destOffset + size) * 2,
-    );
-    destList.setRange(destOffset * 2, (destOffset + size) * 2, srcList);
-  } else if (dtype == DType.boolean) {
-    final srcList = src.pointer.cast<ffi.Uint8>().asTypedList(size);
-    final destList = dest.pointer.cast<ffi.Uint8>().asTypedList(
-      destOffset + size,
-    );
-    destList.setRange(destOffset, destOffset + size, srcList);
-  } else {
-    throw UnimplementedError('Type $dtype not supported for fast concatenate');
-  }
+  final width = src.dtype.byteWidth;
+  final destPtr = dest.pointer.cast<ffi.Uint8>() + destOffset * width;
+  final srcPtr = src.pointer.cast<ffi.Uint8>();
+  custom_memcpy(destPtr.cast(), srcPtr.cast(), size * width);
 }
 
 void _copyConcatenateRecursive<T extends Object>(

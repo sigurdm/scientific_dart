@@ -63,4 +63,9 @@ int custom_memcmp(const void *s1, const void *s2, size_t n);
  */
 void native_zero_memory(void *ptr, size_t bytes);
 
+/**
+ * Hardware-speed direct C memcpy block copy.
+ */
+void custom_memcpy(void *dest, const void *src, size_t n);
+
 #endif // CUSTOM_SORTING_H

@@ -863,3 +863,13 @@ external int custom_memcmp(
 /// Hardware-speed direct C memset block zero-fill initialization.
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Size)>(isLeaf: true)
 external void native_zero_memory(ffi.Pointer<ffi.Void> ptr, int bytes);
+
+/// Hardware-speed direct C memcpy block copy.
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Void>, ffi.Size)
+>(isLeaf: true)
+external void custom_memcpy(
+  ffi.Pointer<ffi.Void> dest,
+  ffi.Pointer<ffi.Void> src,
+  int bytes,
+);
