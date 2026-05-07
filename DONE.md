@@ -1921,3 +1921,14 @@
 * **Results**:
   - **API Elegance**: Enabled clean, zone-based persistent array allocations inside active scopes.
   - **Verification**: Added rigorous scope independence unit tests in [scope_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/scope_test.dart#L150-L173). Formatting is pristine, and all **399 unit tests pass flawlessly green!**
+
+***
+
+## 160. Added Non-Contiguous View Sum & Prod Axis Reduction Coverage (Task 1 / Coverage)
+* **Issue**:
+  - Fallback recursive strides reduction walkers (`_reduceRecursive`) inside `operations.dart` for non-contiguous strided view operands lacked dedicated test coverage along specific target axes.
+* **Resolution**:
+  - **Targeted Unit Tests**: Added robust, highly precise unit tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/quality_enhancements_test.dart#L931-L959) creating non-contiguous transposed views, and calling `prod()` and `sum()` along axis `0` and axis `1`.
+* **Results**:
+  - **Robustness**: Successfully validated mathematically correct values of recursive strides-walking reductions for multi-dimensional views!
+  - **Verification**: Formatting is clean and all **399 unit tests pass 100% green!**
