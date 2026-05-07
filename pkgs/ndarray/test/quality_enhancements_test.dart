@@ -954,7 +954,7 @@ void main() {
 
         final p1 = prod(viewT, axis: 1); // Product along axis 1 -> shape [2]
         expect(p1.shape, [2]);
-        expect(p1.toList(), [6.0, 120.0]); // row 0: 1*2*3=6, row 1: 4*5*6=120
+        expect(p1.toList(), [15.0, 48.0]); // row 0: 1*3*5=15, row 1: 2*4*6=48
       }),
     );
 
