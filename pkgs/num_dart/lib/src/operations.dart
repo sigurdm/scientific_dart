@@ -6857,3 +6857,98 @@ NDArray squeeze(NDArray a, {List<int>? axis}) {
     offsetElements: 0,
   );
 }
+
+/// Create a sliding window view over several dimensions of an array.
+///
+/// This corresponds to NumPy's `lib.stride_tricks.sliding_window_view` function.
+///
+/// **Mathematical Mechanics**:
+/// By manipulating strides, a sliding window of shape `windowShape` can be created
+/// without copying any element data (completely zero-copy, copy-free, and zero-allocation).
+///
+/// For an input array `a` with shape $S = (s_0, \dots, s_{D-1})$ and strides $V = (v_0, \dots, v_{D-1})$:
+/// - The axes to apply sliding windows are specified by [axis] (defaults to all axes).
+/// - The output shape has the original dimensions reduced by `windowShape - 1`, with the window
+///   dimensions appended at the end:
+///   $$S_{\text{out}} = (s_0 - w_0 + 1, \dots, s_{k} - w_k + 1, \dots, w_0, \dots, w_k)$$
+/// - The output strides has the original strides, with the original strides of the window axes appended at the end:
+///   $$V_{\text{out}} = (v_0, \dots, v_{D-1}, v_{\text{axis}_0}, \dots, v_{\text{axis}_k})$$
+///
+/// **Preconditions:**
+/// - [windowShape] length must match [axis] length.
+/// - Each window dimension must be strictly positive and less than or equal to the corresponding axis size.
+///
+/// **Throws:**
+/// - [ArgumentError] if axes are out of range, shapes mismatch, or window dimensions exceed axis sizes.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0], [5], DType.float64);
+/// final view = slidingWindowView(a, [3]);
+/// print(view.shape); // [3, 3]
+/// print(view.toList()); // [[1.0, 2.0, 3.0], [2.0, 3.0, 4.0], [3.0, 4.0, 5.0]]
+/// ```
+NDArray slidingWindowView(NDArray a, List<int> windowShape, {List<int>? axis}) {
+  final rank = a.shape.length;
+
+  // 1. Resolve and validate target axes
+  final targetAxes = <int>[];
+  if (axis != null) {
+    for (var ax in axis) {
+      final resolved = ax < 0 ? rank + ax : ax;
+      if (resolved < 0 || resolved >= rank) {
+        throw RangeError.range(resolved, 0, rank - 1, 'axis');
+      }
+      if (targetAxes.contains(resolved)) {
+        throw ArgumentError(
+          'Duplicate axis specified in sliding window: $resolved',
+        );
+      }
+      targetAxes.add(resolved);
+    }
+  } else {
+    // Default is all axes
+    for (var i = 0; i < rank; i++) {
+      targetAxes.add(i);
+    }
+  }
+
+  if (windowShape.length != targetAxes.length) {
+    throw ArgumentError(
+      'windowShape length (${windowShape.length}) must match axes length (${targetAxes.length})',
+    );
+  }
+
+  // 2. Calculate output shape and strides
+  final outShape = List<int>.from(a.shape);
+  final outStrides = List<int>.from(a.strides);
+
+  for (var i = 0; i < targetAxes.length; i++) {
+    final ax = targetAxes[i];
+    final wSize = windowShape[i];
+    final aSize = a.shape[ax];
+
+    if (wSize <= 0) {
+      throw ArgumentError(
+        'windowShape dimensions must be strictly positive (was $wSize)',
+      );
+    }
+    if (wSize > aSize) {
+      throw ArgumentError(
+        'windowShape dimension ($wSize) cannot exceed axis size ($aSize) for axis $ax',
+      );
+    }
+
+    outShape[ax] = aSize - wSize + 1;
+  }
+
+  // Append window dimensions and their corresponding strides at the end
+  for (var i = 0; i < targetAxes.length; i++) {
+    final ax = targetAxes[i];
+    outShape.add(windowShape[i]);
+    outStrides.add(a.strides[ax]);
+  }
+
+  // 3. Return the zero-copy NDArray view sharing backing unmanaged C memory
+  return NDArray.view(a, shape: outShape, strides: outStrides);
+}

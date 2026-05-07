@@ -1964,6 +1964,78 @@ void main() {
         throwsArgumentError,
       );
     });
+
+    test(
+      'Sliding Window Views slidingWindowView() zero-copy view correctness',
+      () {
+        // 1D array sliding window of size 3
+        final a = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0],
+          [5],
+          DType.float64,
+        );
+        addTearDown(a.dispose);
+
+        final view = slidingWindowView(a, [3]);
+        expect(view.shape, [3, 3]);
+        expect(view.dtype, DType.float64);
+
+        // Output values should exactly match the sliding windows:
+        // Row 0: [1.0, 2.0, 3.0]
+        // Row 1: [2.0, 3.0, 4.0]
+        // Row 2: [3.0, 4.0, 5.0]
+        expect(view.getCell([0, 0]), 1.0);
+        expect(view.getCell([0, 1]), 2.0);
+        expect(view.getCell([0, 2]), 3.0);
+
+        expect(view.getCell([1, 0]), 2.0);
+        expect(view.getCell([1, 1]), 3.0);
+        expect(view.getCell([1, 2]), 4.0);
+
+        expect(view.getCell([2, 0]), 3.0);
+        expect(view.getCell([2, 1]), 4.0);
+        expect(view.getCell([2, 2]), 5.0);
+
+        // 2D array sliding window along specified axis
+        final mat = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+          [2, 4],
+          DType.float64,
+        );
+        addTearDown(mat.dispose);
+
+        // Slide window of size 2 along axis 1 (columns)
+        final win2d = slidingWindowView(mat, [2], axis: [1]);
+        expect(win2d.shape, [
+          2,
+          3,
+          2,
+        ]); // original [2, 4] -> columns: 4 - 2 + 1 = 3 -> [2, 3, 2]
+
+        // Row 0 sliding windows:
+        // Win 0: [1.0, 2.0]
+        // Win 1: [2.0, 3.0]
+        // Win 2: [3.0, 4.0]
+        expect(win2d.getCell([0, 0, 0]), 1.0);
+        expect(win2d.getCell([0, 0, 1]), 2.0);
+        expect(win2d.getCell([0, 1, 0]), 2.0);
+        expect(win2d.getCell([0, 1, 1]), 3.0);
+
+        // Verify ArgumentError validations
+        expect(
+          () => slidingWindowView(a, [6]),
+          throwsArgumentError,
+        ); // window exceeds size
+        expect(
+          () => slidingWindowView(a, [0]),
+          throwsArgumentError,
+        ); // invalid positive size
+        expect(
+          () => slidingWindowView(a, [2, 2]),
+          throwsArgumentError,
+        ); // axes count mismatch
+      },
+    );
   });
 }
 
