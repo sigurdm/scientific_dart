@@ -1433,7 +1433,7 @@ static size_t COUNT_RUN(SORT_TYPE *dst, const size_t start, const size_t size) {
   if (SORT_CMP(dst[start], dst[start + 1]) <= 0) {
     /* increasing run */
     while (1) {
-      if (curr == size - 1) {
+      if (curr == size) {
         break;
       }
 
@@ -1448,7 +1448,7 @@ static size_t COUNT_RUN(SORT_TYPE *dst, const size_t start, const size_t size) {
   } else {
     /* decreasing run */
     while (1) {
-      if (curr == size - 1) {
+      if (curr == size) {
         break;
       }
 

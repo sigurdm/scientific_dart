@@ -73,7 +73,13 @@ void main(List<String> args) async {
         input.packageRoot.resolve('hook/custom_sorting.c'),
       );
       output.dependencies.add(
+        input.packageRoot.resolve('hook/custom_sorting.h'),
+      );
+      output.dependencies.add(
         input.packageRoot.resolve('hook/custom_ufuncs.c'),
+      );
+      output.dependencies.add(
+        input.packageRoot.resolve('hook/custom_ufuncs.h'),
       );
       output.dependencies.add(
         input.packageRoot.resolve('third_party/timsort/timsort.h'),
