@@ -640,16 +640,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## `pkgs/num_dart/lib/src/operations.dart` (🚨 Performance Bottleneck: `argsort()` Redundant Double-Allocation & Isolate Cell Copy Friction)
-- **Location**: [operations.dart:L5379-L5381](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart#L5379-L5381)
-- **Symptom**: When sorting non-contiguous view inputs, `argsort()` duplicates the operand array `a` via:
-  ```dart
-  src = NDArray.fromList(a.toList(), a.shape, a.dtype);
-  ```
-- **The Inefficiency / Performance Drag**: Duplicate heap allocations and copy sweeps! Calling `a.toList()` maps a temporary dynamic list in JIT space, and `fromList()` then allocates a second unmanaged block via `malloc`, duplicating copying sweeps.
-- **Recommended Tweak**: Pre-allocate directly via `NDArray.create(a.shape, a.dtype)` and copy values directly to the backing pointer view using `setRange(0, length, a.toList())`, bypassing the intermediate dynamic heap list conversion and double-allocations!
 
-***
 
 ## 🗺️ Section 10: Holistic Review & Roadmap: Performance/Compatibility Gaps between `num_dart` and Python's `numpy`
 
