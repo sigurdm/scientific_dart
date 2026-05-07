@@ -76,7 +76,8 @@ void main(List<String> args) async {
       final compilerPath = cCompiler?.compiler?.toFilePath() ?? 'cc';
       print('Compiling pocketfft plain C files via compiler: $compilerPath');
 
-      final isMSVC = os == OS.windows && compilerPath.toLowerCase().contains('cl');
+      final isMSVC =
+          os == OS.windows && compilerPath.toLowerCase().contains('cl');
       final compileArgs = isMSVC
           ? <String>[
               '/LD',

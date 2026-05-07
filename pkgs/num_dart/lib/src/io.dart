@@ -33,14 +33,28 @@ DType _descrToDType(String descr) {
 
 /// Save an [NDArray] to disk in the standard NumPy binary format (`.npy`).
 ///
-/// This saves the array's shape, datatype, and raw heap memory in a highly compressed
-/// little-endian format which is 100% cross-language compatible with Python's NumPy.
+/// This saves the array's shape, datatype, and raw heap memory in a little-endian
+/// format which is 100% cross-language compatible with Python's NumPy.
 ///
-/// It performs zero-copy block disk operations by viewing the unmanaged C heap
-/// pointers directly as a native Dart list view.
+/// **Preconditions:**
+/// - [filepath] must be a valid, writable path string.
+/// - [a] must not be a disposed [NDArray] instance.
+///
+/// **Throws:**
+/// - [FileSystemException] if the parent directories cannot be created or the file cannot be written to.
+/// - [StateError] if the array [a] is disposed.
+///
+/// **Performance considerations:**
+/// - Algorithmic time complexity is $O(N)$ where $N$ is the total number of elements in the array.
+/// - Zero-copy block disk operations are performed for contiguous arrays, dumping unmanaged C-heap
+///   memory directly to the disk as a native byte view, minimizing RAM allocations and CPU sweeps.
+/// - Non-contiguous strided or transposed views are copied into a contiguous sequence prior to block serialization.
 ///
 /// **Example:**
 /// {@example /example/numpy_interop_example.dart lang=dart}
+///
+/// Refer to the [NumPy NPY Format Specification](https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html)
+/// for details on the binary format.
 void save(String filepath, NDArray a) {
   final file = File(filepath);
   if (!file.parent.existsSync()) {
@@ -106,14 +120,29 @@ void save(String filepath, NDArray a) {
 
 /// Load an [NDArray] binary data block from a NumPy `.npy` file.
 ///
-/// Fully parses NumPy little-endian datatype descriptors, shapes, and includes
-/// native **zero-copy Column-Major Fortran strides mapping** support. If a file
-/// is flagged as `fortran_order: True` (column-major from Python), `load()` loads the raw binary
-/// sequential columns straight into the C heap and configures column-major strides, completely
-/// eliminating slow sorting data loops!
+/// **Preconditions:**
+/// - [filepath] must point to an existing, readable file on the file system.
+///
+/// **Throws:**
+/// - [FileSystemException] if the file does not exist or cannot be read.
+/// - [FormatException] if the file lacks a valid `.npy` magic prefix, version header,
+///   or contains corrupted ASCII headers/shapes.
+/// - [UnsupportedError] if the file uses Big-Endian byte order or contains an unsupported
+///   NumPy data type descriptor (e.g., f16, u2, etc.).
+///
+/// **Performance considerations:**
+/// - Algorithmic time complexity is $O(N)$ where $N$ is the total number of elements in the loaded array.
+/// - Performs zero-copy direct binary block transfers straight from the file stream into unmanaged C-heap
+///   memory pages, minimizing GC pressure.
+/// - Supports native **zero-copy Column-Major Fortran strides mapping** in $O(1)$ time: if a file is flagged
+///   as `fortran_order: True` (column-major from Python), it loads sequential columns straight into the C heap
+///   and configures column-major strides directly, completely eliminating slow sorting data loops!
 ///
 /// **Example:**
 /// {@example /example/numpy_interop_example.dart lang=dart}
+///
+/// Refer to the [NumPy NPY Format Specification](https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html)
+/// for details on the binary format.
 NDArray load(String filepath) {
   final file = File(filepath);
   if (!file.existsSync()) {
@@ -354,13 +383,29 @@ NDArray _deserializeNpyBytes(Uint8List bytes) {
   return result;
 }
 
-/// Save multiple named arrays to a single zip archive file on disk (`.npz`).
+/// Save multiple named arrays to a single ZIP archive file on disk (`.npz`).
 ///
-/// This corresponds to NumPy's `savez` / `savez_compressed` functions.
-/// If [compressed] is true, applies Deflate compression to minimize disk footprints.
+/// This corresponds to NumPy's `savez` and `savez_compressed` functions.
+///
+/// **Preconditions:**
+/// - [filepath] must be a valid, writable path string.
+/// - [arrays] map must not be empty, and all [NDArray] values must not be disposed.
+///
+/// **Throws:**
+/// - [FileSystemException] if the parent directories cannot be created or the archive file cannot be written.
+/// - [StateError] if any array in [arrays] is disposed.
+/// - [FormatException] if the ZIP archive encoding fails.
+///
+/// **Performance considerations:**
+/// - Algorithmic time complexity is $O(N)$ where $N$ is the total number of elements across all packed arrays.
+/// - If [compressed] is true, applies Deflate compression to minimize disk footprints. Note that compression
+///   is CPU-intensive and will temporarily increase dynamic RAM allocation for the compressed byte buffers.
 ///
 /// **Example:**
 /// {@example /example/numpy_interop_example.dart lang=dart}
+///
+/// Refer to the [NumPy savez reference](https://numpy.org/doc/stable/reference/generated/numpy.savez.html)
+/// for details on NumPy archive formats.
 void savez(
   String filepath,
   Map<String, NDArray> arrays, {
@@ -396,22 +441,32 @@ void savez(
   file.writeAsBytesSync(Uint8List.fromList(zipBytes), flush: true);
 }
 
-/// Load multiple named [NDArray] instances back from a NumPy `.npz` zip archive.
+/// Load multiple named [NDArray] instances back from a NumPy `.npz` ZIP archive.
 ///
 /// Unpacks and deserializes all inner files, mapping variable name keys to loaded array targets.
-/// Supports compressed and uncompressed Python-generated `.npz` files.
+/// Supports compressed and uncompressed Python-generated `.npz` archives.
 ///
-/// **Memory Consideration Warning (3x Footprint Hazard):**
-/// During `.npz` deserialization, this method reads the archive bytes and decodes them fully in memory
-/// via `ZipDecoder().decodeBytes()`. When deserializing each `.npy` file, it allocates a contiguous unmanaged
-/// C-heap memory block and copies the bytes block.
-/// This creates a temporary **3x RAM footprint amplification factor** (compressed archive bytes list + fully
-/// inflated `ArchiveFile` list + unmanaged FFI pointer heap arrays). For gigabyte-scale scientific datasets
-/// (e.g. large machine learning checkpoints or dense matrix grids logs), ensure the host system has sufficient
-/// free memory pages to prevent Out-Of-Memory (OOM) isolate VM kills.
+/// **Preconditions:**
+/// - [filepath] must point to an existing, readable `.npz` ZIP archive file on the filesystem.
+///
+/// **Throws:**
+/// - [FileSystemException] if the file does not exist or cannot be read.
+/// - [FormatException] if the file is not a valid ZIP archive or contains corrupted inner `.npy` byte streams.
+///
+/// **Performance considerations:**
+/// - **Memory Consideration Warning (3x Footprint Hazard):** During `.npz` deserialization, this method reads the
+///   archive bytes and decodes them fully in memory via `ZipDecoder().decodeBytes()`. When deserializing each `.npy` file,
+///   it allocates a contiguous unmanaged C-heap memory block and copies the bytes block.
+///   This creates a temporary **3x RAM footprint amplification factor** (compressed archive bytes list + fully
+///   inflated `ArchiveFile` list + unmanaged FFI pointer heap arrays). For gigabyte-scale scientific datasets
+///   (e.g. large machine learning checkpoints or dense matrix grids logs), ensure the host system has sufficient
+///   free memory pages to prevent Out-Of-Memory (OOM) isolate VM kills.
 ///
 /// **Example:**
 /// {@example /example/numpy_interop_example.dart lang=dart}
+///
+/// Refer to the [NumPy load reference](https://numpy.org/doc/stable/reference/generated/numpy.load.html)
+/// and [ZIP format details](https://en.wikipedia.org/wiki/ZIP_(file_format)) for additional information.
 Map<String, NDArray> loadz(String filepath) {
   final file = File(filepath);
   if (!file.existsSync()) {

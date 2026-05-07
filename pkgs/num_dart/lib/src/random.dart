@@ -12,6 +12,12 @@ import 'ndarray.dart';
 /// **Throws:**
 /// - [ArgumentError] if the provided [dtype] is not a supported floating point type.
 ///
+/// **Performance considerations:**
+/// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
+///   the generated array (product of [shape] dimensions).
+/// - Offloads element generation directly to high-speed C FFI vector functions (`v_uniform_double` / `v_uniform_float`),
+///   yielding ultra-high performance and avoiding Dart loop context switching overhead.
+///
 /// **Example:**
 /// {@example /example/random_example.dart lang=dart}
 ///
@@ -50,6 +56,12 @@ NDArray<double> uniform(
 /// **Throws:**
 /// - [ArgumentError] if [dtype] is not a supported integer type.
 /// - [ArgumentError] if [low] is greater than or equal to [high].
+///
+/// **Performance considerations:**
+/// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
+///   the generated array (product of [shape] dimensions).
+/// - Offloads element generation directly to high-speed C FFI vector functions (`v_randint_int64` / `v_randint_int32`),
+///   providing optimal random integers generation speed.
 ///
 /// **Example:**
 /// {@example /example/random_example.dart lang=dart}
@@ -99,10 +111,20 @@ NDArray<int> randint(
 /// - [dtype] must be a floating point type (`float32` or `float64`).
 ///
 /// **Throws:**
-/// - [ArgumentError] if preconditions are violated.
+/// - [ArgumentError] if [dtype] is not a supported floating point type.
+/// - [ArgumentError] if [scale] is less than or equal to 0.0.
+///
+/// **Performance considerations:**
+/// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
+///   the generated array.
+/// - Offloads element generation directly to high-speed C FFI vector functions (`v_normal_double` / `v_normal_float`),
+///   combining Box-Muller math with native vector speed.
 ///
 /// **Example:**
 /// {@example /example/random_example.dart lang=dart}
+///
+/// Refer to the [Normal Distribution Reference](https://en.wikipedia.org/wiki/Normal_distribution)
+/// for details on standard Gaussian distributions.
 NDArray<double> normal(
   List<int> shape, {
   double loc = 0.0,
@@ -142,12 +164,21 @@ NDArray<double> normal(
 ///
 /// **Preconditions:**
 /// - [scale] (the inverse of the rate parameter lambda, i.e., 1/lambda) must be strictly positive.
+/// - [dtype] must be a floating point type (`float32` or `float64`).
 ///
 /// **Throws:**
-/// - [ArgumentError] if [scale] is non-positive.
+/// - [ArgumentError] if [dtype] is not a supported floating point type.
+/// - [ArgumentError] if [scale] (or 1 / lam) is non-positive.
+///
+/// **Performance considerations:**
+/// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
+///   the generated array.
 ///
 /// **Example:**
 /// {@example /example/random_example.dart lang=dart}
+///
+/// Refer to the [Exponential Distribution Reference](https://en.wikipedia.org/wiki/Exponential_distribution)
+/// for details on exponential variables.
 NDArray<double> exponential(
   List<int> shape, {
   double scale = 1.0,
@@ -193,10 +224,20 @@ NDArray<double> exponential(
 /// - [dtype] must be an integer type (`int32` or `int64`).
 ///
 /// **Throws:**
-/// - [ArgumentError] if parameters are invalid.
+/// - [ArgumentError] if [dtype] is not a supported integer type.
+/// - [ArgumentError] if [lam] is less than or equal to 0.0.
+///
+/// **Performance considerations:**
+/// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
+///   the generated array.
+/// - For small [lam] (< 30.0), Knuth's method iterates an average of `lam` times per element, making the runtime
+///   dependent on the rate, whereas the Gaussian approximation runs in stable $O(1)$ steps per element.
 ///
 /// **Example:**
 /// {@example /example/random_example.dart lang=dart}
+///
+/// Refer to the [Poisson Distribution Reference](https://en.wikipedia.org/wiki/Poisson_distribution)
+/// for details on Poisson processes.
 NDArray<int> poisson(
   List<int> shape, {
   double lam = 1.0,
@@ -269,12 +310,24 @@ NDArray<int> poisson(
 /// **Preconditions:**
 /// - [n] (number of trials) must be non-negative.
 /// - [p] (success probability) must be in the interval `[0.0, 1.0]`.
+/// - [dtype] must be an integer type (`int32` or `int64`).
 ///
 /// **Throws:**
-/// - [ArgumentError] if inputs violate probability bounds.
+/// - [ArgumentError] if [dtype] is not a supported integer type.
+/// - [ArgumentError] if [n] is negative.
+/// - [ArgumentError] if [p] is less than 0.0 or greater than 1.0.
+///
+/// **Performance considerations:**
+/// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
+///   the generated array.
+/// - For small [n] (< 50), Bernoulli simulation runs in $O(n)$ loops per element. For large [n], the Normal
+///   distribution approximation executes in stable $O(1)$ steps per element, avoiding performance degradation.
 ///
 /// **Example:**
 /// {@example /example/random_example.dart lang=dart}
+///
+/// Refer to the [Binomial Distribution Reference](https://en.wikipedia.org/wiki/Binomial_distribution)
+/// for details on independent Bernoulli trials.
 NDArray<int> binomial(
   List<int> shape, {
   required int n,

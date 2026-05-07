@@ -44,7 +44,12 @@ class BinomialDistributionBenchmark extends BenchmarkBase {
   @override
   void run() {
     // n >= 50 triggers Normal distribution approximation track natively
-    final arr = binomial([20000], n: 60, p: 0.4, random: standard_math.Random(42));
+    final arr = binomial(
+      [20000],
+      n: 60,
+      p: 0.4,
+      random: standard_math.Random(42),
+    );
     arr.dispose();
   }
 }

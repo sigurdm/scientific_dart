@@ -101,35 +101,82 @@ void main() {
       expect(() => imag(realArr, out: wrongDType), throwsArgumentError);
     });
 
-    test('strided non-contiguous complex128 addition walks native C kernels', () {
-      final a = NDArray<Complex>.create([2, 2], DType.complex128);
-      a.data[0] = Complex(1.0, 2.0);
-      a.data[1] = Complex(3.0, 4.0);
-      a.data[2] = Complex(5.0, 6.0);
-      a.data[3] = Complex(7.0, 8.0);
+    test(
+      'strided non-contiguous complex128 addition walks native C kernels',
+      () {
+        final a = NDArray<Complex>.create([2, 2], DType.complex128);
+        a.data[0] = Complex(1.0, 2.0);
+        a.data[1] = Complex(3.0, 4.0);
+        a.data[2] = Complex(5.0, 6.0);
+        a.data[3] = Complex(7.0, 8.0);
 
-      final b = NDArray<Complex>.create([2, 2], DType.complex128);
-      b.data[0] = Complex(10.0, 10.0);
-      b.data[1] = Complex(20.0, 20.0);
-      b.data[2] = Complex(30.0, 30.0);
-      b.data[3] = Complex(40.0, 40.0);
+        final b = NDArray<Complex>.create([2, 2], DType.complex128);
+        b.data[0] = Complex(10.0, 10.0);
+        b.data[1] = Complex(20.0, 20.0);
+        b.data[2] = Complex(30.0, 30.0);
+        b.data[3] = Complex(40.0, 40.0);
 
-      final viewA = a.transposed;
-      final viewB = b.transposed;
+        final viewA = a.transposed;
+        final viewB = b.transposed;
 
-      expect(viewA.isContiguous, false);
-      expect(viewB.isContiguous, false);
+        expect(viewA.isContiguous, false);
+        expect(viewB.isContiguous, false);
 
-      final res = add(viewA, viewB);
+        final res = add(viewA, viewB);
 
-      expect(res.shape, [2, 2]);
-      expect(res.dtype, DType.complex128);
+        expect(res.shape, [2, 2]);
+        expect(res.dtype, DType.complex128);
 
-      expect(res.data[0], Complex(11.0, 12.0));
-      expect(res.data[1], Complex(35.0, 36.0));
-      expect(res.data[2], Complex(23.0, 24.0));
-      expect(res.data[3], Complex(47.0, 48.0));
-    });
+        expect(res.data[0], Complex(11.0, 12.0));
+        expect(res.data[1], Complex(35.0, 36.0));
+        expect(res.data[2], Complex(23.0, 24.0));
+        expect(res.data[3], Complex(47.0, 48.0));
+      },
+    );
+
+    test(
+      'strided non-contiguous complex128 subtraction fallback elementswise sweeps',
+      () {
+        final a = NDArray<Complex>.create([2, 2], DType.complex128);
+        a.data[0] = Complex(10.0, 10.0);
+        a.data[1] = Complex(20.0, 20.0);
+        a.data[2] = Complex(30.0, 30.0);
+        a.data[3] = Complex(40.0, 40.0);
+        addTearDown(a.dispose);
+
+        final b = NDArray<Complex>.create([2, 2], DType.complex128);
+        b.data[0] = Complex(1.0, 2.0);
+        b.data[1] = Complex(3.0, 4.0);
+        b.data[2] = Complex(5.0, 6.0);
+        b.data[3] = Complex(7.0, 8.0);
+        addTearDown(b.dispose);
+
+        final res1 = subtract(a.transposed, b.transposed);
+        addTearDown(res1.dispose);
+        expect(res1.shape, [2, 2]);
+        expect(res1.dtype, DType.complex128);
+        expect(res1.data[0], Complex(9.0, 8.0));
+        expect(res1.data[1], Complex(25.0, 24.0));
+        expect(res1.data[2], Complex(17.0, 16.0));
+        expect(res1.data[3], Complex(33.0, 32.0));
+
+        final realArr = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        addTearDown(realArr.dispose);
+
+        final res2 = subtract(a.transposed, realArr.transposed);
+        addTearDown(res2.dispose);
+        expect(res2.shape, [2, 2]);
+        expect(res2.dtype, DType.complex128);
+        expect(res2.data[0], Complex(9.0, 10.0));
+        expect(res2.data[1], Complex(27.0, 30.0));
+        expect(res2.data[2], Complex(18.0, 20.0));
+        expect(res2.data[3], Complex(36.0, 40.0));
+      },
+    );
 
     test('disposed arrays throw StateError', () {
       final a = NDArray<Complex>.create([2], DType.complex128);

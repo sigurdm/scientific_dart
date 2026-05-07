@@ -2731,14 +2731,22 @@ NDArray solve(NDArray a, NDArray b) {
     if (a.dtype == DType.float64 && b.dtype == DType.float64) {
       final aCopy = NDArray<double>.create(a.shape, DType.float64);
       if (a.isContiguous) {
-        (aCopy.data as Float64List).setRange(0, a.data.length, a.data as Float64List);
+        (aCopy.data as Float64List).setRange(
+          0,
+          a.data.length,
+          a.data as Float64List,
+        );
       } else {
         aCopy.data.setRange(0, a.data.length, a.toList() as List<double>);
       }
 
       final bCopy = NDArray<double>.create(b.shape, DType.float64);
       if (b.isContiguous) {
-        (bCopy.data as Float64List).setRange(0, b.data.length, b.data as Float64List);
+        (bCopy.data as Float64List).setRange(
+          0,
+          b.data.length,
+          b.data as Float64List,
+        );
       } else {
         bCopy.data.setRange(0, b.data.length, b.toList() as List<double>);
       }
@@ -2762,14 +2770,22 @@ NDArray solve(NDArray a, NDArray b) {
     } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
       final aCopy = NDArray<double>.create(a.shape, DType.float32);
       if (a.isContiguous) {
-        (aCopy.data as Float32List).setRange(0, a.data.length, a.data as Float32List);
+        (aCopy.data as Float32List).setRange(
+          0,
+          a.data.length,
+          a.data as Float32List,
+        );
       } else {
         aCopy.data.setRange(0, a.data.length, a.toList() as List<double>);
       }
 
       final bCopy = NDArray<double>.create(b.shape, DType.float32);
       if (b.isContiguous) {
-        (bCopy.data as Float32List).setRange(0, b.data.length, b.data as Float32List);
+        (bCopy.data as Float32List).setRange(
+          0,
+          b.data.length,
+          b.data as Float32List,
+        );
       } else {
         bCopy.data.setRange(0, b.data.length, b.toList() as List<double>);
       }

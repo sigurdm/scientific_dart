@@ -62,9 +62,8 @@ NDArray fft(NDArray a, {int? n}) {
   final totalElements = a.shape.reduce((x, y) => x * y);
   final signalsCount = totalElements ~/ lastAxisDim;
 
-  final isZeroCopyFastPath = a.dtype == DType.complex128 &&
-      targetLen == lastAxisDim &&
-      a.isContiguous;
+  final isZeroCopyFastPath =
+      a.dtype == DType.complex128 && targetLen == lastAxisDim && a.isContiguous;
 
   kiss_fft_cfg cfg = ffi.nullptr.cast();
 
@@ -204,9 +203,8 @@ NDArray ifft(NDArray a, {int? n}) {
   final totalElements = a.shape.reduce((x, y) => x * y);
   final signalsCount = totalElements ~/ lastAxisDim;
 
-  final isZeroCopyFastPath = a.dtype == DType.complex128 &&
-      targetLen == lastAxisDim &&
-      a.isContiguous;
+  final isZeroCopyFastPath =
+      a.dtype == DType.complex128 && targetLen == lastAxisDim && a.isContiguous;
 
   kiss_fft_cfg cfg = ffi.nullptr.cast();
 

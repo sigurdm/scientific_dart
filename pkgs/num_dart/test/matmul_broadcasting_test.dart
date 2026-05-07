@@ -138,6 +138,78 @@ void main() {
           expect(res.shape, [2]);
           expect(res.toList(), [4.0, 5.0]);
         });
+
+        test(
+          'matmul() throws ArgumentError on incompatible 1D vector dot dimensions',
+          () {
+            final v1 = NDArray<double>.fromList(
+              Float64List.fromList([1.0, 2.0]),
+              [2],
+              DType.float64,
+            );
+            final v2 = NDArray<double>.fromList(
+              Float64List.fromList([1.0, 2.0, 3.0]),
+              [3],
+              DType.float64,
+            );
+            addTearDown(v1.dispose);
+            addTearDown(v2.dispose);
+            expect(() => matmul(v1, v2), throwsArgumentError);
+          },
+        );
+
+        test(
+          'matmul() throws ArgumentError on incompatible inner dimensions',
+          () {
+            final a = NDArray<double>.zeros([2, 3], DType.float64);
+            final b = NDArray<double>.zeros([2, 2], DType.float64);
+            addTearDown(a.dispose);
+            addTearDown(b.dispose);
+            expect(() => matmul(a, b), throwsArgumentError);
+          },
+        );
+      });
+
+      group('Float32 Single-Precision matmul tests', () {
+        test('Verify Float32 1D Vector Dot Product sdot', () {
+          final v1 = NDArray<double>.fromList(
+            Float32List.fromList([1.0, 2.0]),
+            [2],
+            DType.float32,
+          );
+          final v2 = NDArray<double>.fromList(
+            Float32List.fromList([3.0, 4.0]),
+            [2],
+            DType.float32,
+          );
+          addTearDown(v1.dispose);
+          addTearDown(v2.dispose);
+
+          final res = matmul(v1, v2);
+          expect(res.shape, []);
+          expect(res.dtype, DType.float32);
+          expect(res.data[0], closeTo(11.0, 1e-5));
+        });
+
+        test('Verify Float32 2D Matrix Multiply sgemm', () {
+          final a = NDArray<double>.fromList(
+            Float32List.fromList([1.0, 2.0, 3.0, 4.0]),
+            [2, 2],
+            DType.float32,
+          );
+          final b = NDArray<double>.fromList(
+            Float32List.fromList([5.0, 6.0, 7.0, 8.0]),
+            [2, 2],
+            DType.float32,
+          );
+          addTearDown(a.dispose);
+          addTearDown(b.dispose);
+
+          final res = matmul(a, b);
+          expect(res.shape, [2, 2]);
+          expect(res.dtype, DType.float32);
+          expect(res.toList(), [19.0, 22.0, 43.0, 50.0]);
+        });
       });
     },
   );

@@ -1,6 +1,8 @@
 #ifndef CUSTOM_UFUNCS_H
 #define CUSTOM_UFUNCS_H
 
+#include <stdint.h>
+
 // ----------------------------------------------------------------------------
 // Binary-Compatible Complex Number Type (Matches kiss_fft_cpx and num_dart.Complex)
 // ----------------------------------------------------------------------------
@@ -120,5 +122,17 @@ void s_where_float(const unsigned char *cond, const int *stridesCond,
                    const float *y, const int *stridesY,
                    float *res, const int *stridesRes,
                    const int *shape, int rank);
+
+void v_normal_double(double *res, int size, double loc, double scale, unsigned long long seed);
+void v_normal_float(float *res, int size, float loc, float scale, unsigned long long seed);
+
+void v_uniform_double(double *res, int size, unsigned long long seed);
+void v_uniform_float(float *res, int size, unsigned long long seed);
+void v_randint_int64(int64_t *res, int size, int64_t low, int64_t high, unsigned long long seed);
+void v_randint_int32(int32_t *res, int size, int32_t low, int32_t high, unsigned long long seed);
+void v_fill_double(double *res, double value, int size);
+void v_fill_float(float *res, float value, int size);
+void v_fill_int64(int64_t *res, int64_t value, int size);
+void v_fill_int32(int32_t *res, int32_t value, int size);
 
 #endif // CUSTOM_UFUNCS_H

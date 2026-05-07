@@ -54,7 +54,9 @@ void main() {
 
       final a = NDArray.fromList([1, 2], [2], DType.int32);
       final wrongShape = NDArray.fromList([1, 2, 3], [3], DType.int32);
-      final wrongDType = NDArray.fromList(Float64List.fromList([1.0, 2.0]), [2], DType.float64);
+      final wrongDType = NDArray.fromList(Float64List.fromList([1.0, 2.0]), [
+        2,
+      ], DType.float64);
 
       // Mismatch shape/DType throws ArgumentError
       expect(() => stack([a, wrongShape]), throwsArgumentError);

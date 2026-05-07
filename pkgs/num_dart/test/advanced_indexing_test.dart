@@ -242,6 +242,51 @@ void main() {
             expect(() => a[mask] = 99.0, throwsArgumentError);
           },
         );
+
+        test(
+          'Integer array mask of same shape for operator[]= throws ArgumentError',
+          () {
+            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            final mask = NDArray.fromList([1, 0], [2], DType.int32);
+            expect(() => a[mask] = 99.0, throwsArgumentError);
+          },
+        );
+
+        test(
+          'operator[]= mismatched shape integer array selector with NDArray value',
+          () {
+            final a = NDArray.fromList(
+              [1.0, 2.0, 3.0, 4.0],
+              [4],
+              DType.float64,
+            );
+            final selector = NDArray.fromList([0, 2], [2], DType.int32);
+            final val = NDArray.fromList([99.0, 88.0], [2], DType.float64);
+
+            a[selector] = val;
+            expect(a.toList(), [99.0, 2.0, 88.0, 4.0]);
+          },
+        );
+
+        test(
+          'operator[]= mismatched shape integer array selector with scalar value',
+          () {
+            final a = NDArray.fromList(
+              [1.0, 2.0, 3.0, 4.0],
+              [4],
+              DType.float64,
+            );
+            final selector = NDArray.fromList([0, 2], [2], DType.int32);
+
+            a[selector] = 99.0;
+            expect(a.toList(), [99.0, 2.0, 99.0, 4.0]);
+          },
+        );
+
+        test('operator[]= invalid selector type throws ArgumentError', () {
+          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          expect(() => a['invalid'] = 99.0, throwsArgumentError);
+        });
       });
     });
   });

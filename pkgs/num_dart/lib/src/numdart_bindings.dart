@@ -736,6 +736,107 @@ external void s_where_float(
   int rank,
 );
 
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Double,
+    ffi.Double,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void v_normal_double(
+  ffi.Pointer<ffi.Double> res,
+  int size,
+  double loc,
+  double scale,
+  int seed,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Float,
+    ffi.Float,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void v_normal_float(
+  ffi.Pointer<ffi.Float> res,
+  int size,
+  double loc,
+  double scale,
+  int seed,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Int, ffi.UnsignedLongLong)
+>()
+external void v_uniform_double(ffi.Pointer<ffi.Double> res, int size, int seed);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Int, ffi.UnsignedLongLong)
+>()
+external void v_uniform_float(ffi.Pointer<ffi.Float> res, int size, int seed);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void v_randint_int64(
+  ffi.Pointer<ffi.Int64> res,
+  int size,
+  int low,
+  int high,
+  int seed,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Int,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void v_randint_int32(
+  ffi.Pointer<ffi.Int32> res,
+  int size,
+  int low,
+  int high,
+  int seed,
+);
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Double, ffi.Int)>(
+  isLeaf: true,
+)
+external void v_fill_double(
+  ffi.Pointer<ffi.Double> res,
+  double value,
+  int size,
+);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Float, ffi.Int)>(
+  isLeaf: true,
+)
+external void v_fill_float(ffi.Pointer<ffi.Float> res, double value, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int64>, ffi.Int64, ffi.Int)>(
+  isLeaf: true,
+)
+external void v_fill_int64(ffi.Pointer<ffi.Int64> res, int value, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int32>, ffi.Int32, ffi.Int)>(
+  isLeaf: true,
+)
+external void v_fill_int32(ffi.Pointer<ffi.Int32> res, int value, int size);
+
 /// ----------------------------------------------------------------------------
 /// Binary-Compatible Complex Number Type (Matches kiss_fft_cpx and num_dart.Complex)
 /// ----------------------------------------------------------------------------

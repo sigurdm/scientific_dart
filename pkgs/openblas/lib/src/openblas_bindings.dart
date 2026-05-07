@@ -121,6 +121,41 @@ external void cblas_dgemm(
 );
 
 @ffi.Native<
+  ffi.Void Function(
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    blasint,
+    blasint,
+    blasint,
+    ffi.Float,
+    ffi.Pointer<ffi.Float>,
+    blasint,
+    ffi.Pointer<ffi.Float>,
+    blasint,
+    ffi.Float,
+    ffi.Pointer<ffi.Float>,
+    blasint,
+  )
+>()
+external void cblas_sgemm(
+  int order,
+  int transA,
+  int transB,
+  int m,
+  int n,
+  int k,
+  double alpha,
+  ffi.Pointer<ffi.Float> a,
+  int lda,
+  ffi.Pointer<ffi.Float> b,
+  int ldb,
+  double beta,
+  ffi.Pointer<ffi.Float> c,
+  int ldc,
+);
+
+@ffi.Native<
   lapack_int Function(
     ffi.Int,
     lapack_int,

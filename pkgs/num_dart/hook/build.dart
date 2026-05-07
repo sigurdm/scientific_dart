@@ -27,7 +27,8 @@ void main(List<String> args) async {
       'Compiling num_dart custom C extensions using compiler: $compilerPath',
     );
 
-    final isMSVC = os == OS.windows && compilerPath.toLowerCase().contains('cl');
+    final isMSVC =
+        os == OS.windows && compilerPath.toLowerCase().contains('cl');
     final compileArgs = isMSVC
         ? <String>[
             '/LD',

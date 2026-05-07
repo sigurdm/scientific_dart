@@ -1,29 +1,44 @@
 import 'ndarray.dart';
 
-class BroadcastResult {
+/// Encapsulates the results of a shape broadcasting operation.
+///
+/// Contains the combined [shape], and the adjusted strides ([stridesA] and [stridesB])
+/// for both operand arrays to enable aligned memory walks.
+final class BroadcastResult {
+  /// The combined broadcasted shape list.
   final List<int> shape;
+
+  /// Adjusted strides for the first operand array.
   final List<int> stridesA;
+
+  /// Adjusted strides for the second operand array.
   final List<int> stridesB;
+
   BroadcastResult(this.shape, this.stridesA, this.stridesB);
 }
 
-/// Calculates the broadcasted shape and strides for two arrays.
+/// Calculates the broadcasted shape and strides for two matrices.
+///
+/// Compares dimensions starting from the trailing dimensions and working forward
+/// according to standard NumPy shape broadcasting guidelines.
+///
+/// **Preconditions:**
+/// - Trailing dimensions comparing from right-to-left must either be equal or one of them must be 1.
+///
+/// **Throws:**
+/// - [ArgumentError] if matrix shapes are not compatible for broadcasting.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(D)$ where $D$ is the maximum rank dimension length, executing
+///   in zero unmanaged heap allocations.
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, 2.0], [2, 1], DType.float64);
-/// final b = NDArray.fromList([10.0, 20.0, 30.0], [1, 3], DType.float64);
+/// final a = NDArray<double>.fromList([1.0, 2.0], [2, 1], DType.float64);
+/// final b = NDArray<double>.fromList([10.0, 20.0, 30.0], [1, 3], DType.float64);
 /// final result = broadcast(a, b);
 /// print(result.shape); // [2, 3]
 /// ```
-///
-/// Throws [ArgumentError] if the shapes are not compatible for broadcasting.
-///
-/// Two dimensions are compatible when:
-/// 1. They are equal, or
-/// 2. One of them is 1.
-///
-/// Broadcasting compares dimensions starting from the trailing dimensions and working forward.
 BroadcastResult broadcast(NDArray a, NDArray b) {
   final shapeA = a.shape;
   final shapeB = b.shape;

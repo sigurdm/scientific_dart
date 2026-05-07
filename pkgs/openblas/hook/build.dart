@@ -84,7 +84,11 @@ void main(List<String> args) async {
           }
 
           print('Building OpenBLAS with target $openBlasTarget...');
-          final makeArgs = <String>['TARGET=$openBlasTarget', 'USE_THREAD=1'];
+          final makeArgs = <String>[
+            '-j${Platform.numberOfProcessors}',
+            'TARGET=$openBlasTarget',
+            'USE_THREAD=1',
+          ];
 
           if (cCompiler != null) {
             makeArgs.add('CC=${cCompiler.compiler.toFilePath()}');
