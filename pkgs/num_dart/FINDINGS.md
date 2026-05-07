@@ -624,12 +624,10 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## `pkgs/num_dart/lib/src/random.dart` (NumPy Compatibility Gap: Missing Scientific Multivariate Normal & Categorical Distributions `multivariate_normal`, `multinomial`)
-- **Symptom**: The random distributions suite only supports 1D univariate distributions (`normal`, `uniform`, `randint`, `exponential`, `poisson`, `binomial`).
-- **The Gap**: Advanced scientific data science, machine learning, and physical models heavily require **multivariate normal distributions** (drawing coordinate vectors from a joint Gaussian distribution defined by a mean vector and covariance matrix) and **multinomial categorical distributions** (drawing counts from standard trials with multiple categorical probability weights). Lacking these forces developers to write slow custom simulation loops.
-- **Recommended Tweak**: Expose:
-  - `multivariateNormal(NDArray mean, NDArray cov, List<int> shape)`: computes Cholesky factorization of the covariance matrix ($L$), draws standard independent normal vectors ($Z$), and evaluates $X = \mu + L \cdot Z$ using OpenBLAS GEMV!
-  - `multinomial(int n, NDArray pvals, List<int> shape)`: performs categorical CDF sweeps.
+## `pkgs/num_dart/lib/src/random.dart` (NumPy Compatibility Gap: Missing Scientific Multinomial Categorical Distribution `multinomial`)
+- **Symptom**: The random distributions suite only supports univariate distributions and multivariate Gaussian distributions, lacking multinomial distributions.
+- **The Gap**: Advanced scientific statistical modeling, probability simulations, and randomized physical trials heavily require multinomial categorical distributions (drawing counts from trials with multiple categorical probability weights). Lacking this forces developers to write slow custom loops.
+- **Recommended Tweak**: Expose `multinomial(int n, NDArray pvals, List<int> shape)` performing high-speed categorical cumulative distribution function (CDF) sweeps on the FFI heap.
 
 ***
 
