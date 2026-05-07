@@ -648,3 +648,38 @@ This file logs architectural improvements and hidden flaws discovered during aut
   ```
 - **The Inefficiency / Performance Drag**: Duplicate heap allocations and copy sweeps! Calling `a.toList()` maps a temporary dynamic list in JIT space, and `fromList()` then allocates a second unmanaged block via `malloc`, duplicating copying sweeps.
 - **Recommended Tweak**: Pre-allocate directly via `NDArray.create(a.shape, a.dtype)` and copy values directly to the backing pointer view using `setRange(0, length, a.toList())`, bypassing the intermediate dynamic heap list conversion and double-allocations!
+
+***
+
+## 🗺️ Section 10: Holistic Review & Roadmap: Performance/Compatibility Gaps between `num_dart` and Python's `numpy`
+
+In this holistic review, we analyze the gaps between Dart's `num_dart` and Python's `numpy` standard API libraries, outlining key roadmap targets to bring `num_dart` to complete compatibility parity.
+
+### 1. 🚨 Matrix & Vector Math Gaps
+* **Matrix/Vector Norms (`norm`)**:
+  - **NumPy Parity**: NumPy's `np.linalg.norm()` computes vector and matrix norms (Frobenius, nuclear, $L_1$, $L_2$, $L_{\infty}$ norms). This is critical for machine learning loss calculations and mathematical statistics.
+  - **Roadmap Plan**: Implement `norm(NDArray a, {dynamic ord, List<int>? axis, bool keepdims})` leveraging CBLAS level-1 `cblas_dnrm2`/`cblas_snrm2` for high-speed native vector norms, and fallback JIT loops for matrix Frobenius and Schatten norms.
+
+### 2. 🚨 Missing Universal ufuncs
+* **Inverse Trigonometric & Advanced Math**:
+  - **NumPy Parity**: Missing inverse trigonometry (`asin`, `acos`, `atan`, `atan2`) and base log utilities (`log10`, `log2`, `expm1`, `log1p`).
+  - **Roadmap Plan**: Add standard vector math kernels in `custom_ufuncs.c` leveraging standard C math functions (e.g. `asin()`, `acos()`, `log10()`) to compile high-speed FFI SIMD fast paths for double and float arrays.
+
+### 3. 🚨 Array Manipulation & Shaping Gaps
+* **Tiling & Replications (`tile`, `repeat`)**:
+  - **NumPy Parity**: `np.tile()` replicates arrays along dimensions, and `np.repeat()` replicates individual elements along a specified axis. This is heavily used to align array coordinates during custom manual broadcasting.
+  - **Roadmap Plan**: Add safe, high-level `tile(NDArray a, reps)` and `repeat(NDArray a, repeats, {int? axis})` creating optimized view strides or executing clean element-copying sweeps.
+* **Padding (`pad`)**:
+  - **NumPy Parity**: `np.pad()` pads boundaries with constants, edges, or statistics (mean, median). Crucial for Convolutional Neural Networks (CNN) padding layers.
+  - **Roadmap Plan**: Implement `pad(NDArray a, List<List<int>> padWidth, {String mode, dynamic constantValues})`.
+* **Rotations & Flipping (`flip`, `rot90`, `roll`)**:
+  - **NumPy Parity**: `np.flip()` reverses array order along axes, `np.rot90()` rotates 2D grids, and `np.roll()` shifts elements cyclically.
+  - **Roadmap Plan**: Implement copy-free stride inversion for `flip()` (returning views with negative strides!), and odometer JIT loops for `roll()`.
+
+### 4. 🚨 Set Operations Gaps
+* **Unique Element Deduplication (`unique`)**:
+  - **NumPy Parity**: `np.unique()` finds unique elements, sorting them and optionally returning the original indices, inverse indices, and frequency counts. Essential for categorical groupings.
+  - **Roadmap Plan**: Implement `unique(NDArray a, {bool returnIndex, bool returnInverse, bool returnCounts})` leveraging our inlined C TimSort to sort elements and perform a linear deduplication sweep.
+* **1D Set Utilities**:
+  - **NumPy Parity**: `np.intersect1d()`, `np.union1d()`, `np.setdiff1d()`, `np.setxor1d()`.
+  - **Roadmap Plan**: Add standard 1D array sorted set utilities.
