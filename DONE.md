@@ -1523,6 +1523,15 @@
   - Passed `externalSize: byteSize` directly to the finalizer attach call. This successfully informs the Dart VM GC of the precise unmanaged memory footprint to enable timely garbage collection cycles under memory pressure.
 * **Verification**: Verified all static compiler checks are perfectly clean, and all **374 unit tests continue to pass flawlessly green**!
 
+***
+
+## 125. Expose Section 10: Holistic Review & Roadmap in FINDINGS.md (Task 4)
+* **What was done**:
+  - Explored the codebase holistically, checked core feature coverage, and compared with NumPy standard libraries capabilities.
+  - Discovered multiple feature gaps in advanced indexing/masking, missing universal ufuncs (`log10`, `asin`, `sinh`), missing linear algebra estimators (`norm()`), set utilities (`unique()`), and array manipulations (`tile()`, `repeat()`, `pad()`, `flip()`, `rot90()`, `roll()`).
+  - Authored a highly polished, professional, and detailed roadmap roadmap target list inside [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/FINDINGS.md#L651-L686) under **Section 10: Holistic Review & Roadmap** to guide upcoming package parity enhancement phases.
+* **Verification**: Clean format, warning-free static compiler analyses, and all **374 unit tests continue to pass flawlessly green**!
+
 
 
 
