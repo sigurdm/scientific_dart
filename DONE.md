@@ -1429,6 +1429,15 @@
     - Added unit tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart) asserting correctness of zero-copy FFT and IFFT calculations on both 1D complex vectors and stacked multidimensional complex matrices.
 * **Verification**: Verified lints and format are clean, and all **372 unit tests pass flawless green**.
 
+***
+
+## 117. Enriched public API documentation for `io.dart` and `random.dart` (Task 6)
+* **What was done**:
+  - Audited all public API members in the standard binary serialization module [io.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/io.dart) and random distributions/generation module [random.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/random.dart).
+  - Discovered multiple documentation gaps in preconditions on inputs, detailed lists of thrown exceptions/errors, reference documentation links, and performance characteristics (Big-O time/space complexity).
+  - Fully documented `save()`, `load()`, `savez()`, and `loadz()` in `io.dart`, and `uniform()`, `randint()`, `normal()`, `exponential()`, `poisson()`, and `binomial()` in `random.dart` according to the "Effective Dart" guidelines and your strict coding preferences.
+* **Verification**: Verified that all workspace formatting and static analysis remain pristine, and all **372 workspace unit tests continue to pass 100% green**!
+
 
 
 
