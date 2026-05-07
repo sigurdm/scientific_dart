@@ -147,5 +147,29 @@ void main() {
       expect(inner.isDisposed, isTrue);
       expect(outer.isDisposed, isTrue);
     });
+
+    test('NDArray.unmanaged constructs arrays independent of current scope', () {
+      late NDArray outer;
+      late NDArray unmanagedArr;
+
+      NDArray.scope(() {
+        outer = NDArray.zeros([10], DType.float64);
+
+        NDArray.unmanaged(() {
+          unmanagedArr = NDArray.ones([10], DType.float64);
+        });
+
+        expect(outer.isDisposed, isFalse);
+        expect(unmanagedArr.isDisposed, isFalse);
+      });
+
+      // Scope ended: 'outer' must be automatically disposed, but 'unmanagedArr' must survive completely!
+      expect(outer.isDisposed, isTrue);
+      expect(unmanagedArr.isDisposed, isFalse);
+
+      // Clean up manually
+      unmanagedArr.dispose();
+      expect(unmanagedArr.isDisposed, isTrue);
+    });
   });
 }

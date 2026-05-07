@@ -83,7 +83,7 @@ final class TunerLogic {
       final minIdx = (50 * bufferSize / sampleRate).floor();
       final maxIdx = (1000 * bufferSize / sampleRate).ceil();
 
-      searchRange = magnitudes.slice([Slice(start: minIdx, stop: maxIdx)]);
+      final searchRange = magnitudes.slice([Slice(start: minIdx, stop: maxIdx)]);
       final peakIdxInSlice = argmax(searchRange) as int;
       final peakIdx = minIdx + peakIdxInSlice;
 

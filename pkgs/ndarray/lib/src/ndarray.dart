@@ -156,6 +156,22 @@ final class NDArray<T> implements ffi.Finalizable {
     }, zoneValues: {_scopeKey: scope});
   }
 
+  /// Executes [callback] within an unmanaged context, preventing any created
+  /// [NDArray]s from being registered in or disposed of by any active outer scopes.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// NDArray.scope(() {
+  ///   final a = NDArray.zeros([10]); // Automatically disposed by scope
+  ///   final b = NDArray.unmanaged(() {
+  ///     return NDArray.ones([10]); // 100% unmanaged, survives the scope block!
+  ///   });
+  /// });
+  /// ```
+  static R unmanaged<R>(R Function() callback) {
+    return runZoned(callback, zoneValues: {_scopeKey: null});
+  }
+
   static bool _checkContiguous(List<int> shape, List<int> strides) {
     final cStrides = computeCStrides(shape);
     if (strides.length != cStrides.length) return false;
