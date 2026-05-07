@@ -1981,3 +1981,13 @@
 * **Results**:
   - **Memory Alignment Safety**: Guaranteed 100% absolute binary alignment safety for sequential FFI serialization files, completely eliminating any offset/alignment corruption hazards.
   - **Verification**: Formatting is pristine and all **400 unit tests pass flawlessly green!**
+
+***
+
+## 165. Exposed Advanced Linear Algebra & Vector Calculus Roadmap in Section 3.5 of FINDINGS.md (Task 4 / Holistic Roadmap Audit)
+* **Issue**:
+  - Found that Section 3 of `FINDINGS.md` (NumPy Compatibility Roadmap) lacked clear logging for advanced linear algebra vector/matrix utilities and vector calculus operations, representing a minor roadmap design gap.
+* **Resolution**:
+  - **Roadmap Additions**: Added a new section **Section 3.5 (Advanced Linear Algebra & Vector Calculus)** in [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md#L73-L81) logging future integration points for `matrix_power` (binary matrix exponentiation $O(\log N)$), `kron` (Kronecker matrix product), `cross` (3D vector cross products), and `outer` (vector outer products).
+* **Results**:
+  - **Verification**: Formatting is clean, the git working tree is pristine, and all **400 unit tests pass 100% green!**
