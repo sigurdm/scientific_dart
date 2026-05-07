@@ -1741,6 +1741,16 @@
   - **Correctness unit tests**: Wrote thorough correctness tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart#L2007-L2046) verifying selections, scalar/vector broadcasting, promotions, default values, and exception bounds.
 * **Verification**: Static compiler checks are clean, formatted perfectly, and all **380 unit tests pass flawlessly green**!
 
+***
+
+## 146. Implemented scientific multinomial distribution trial solver (Task 7 / Finding Fix)
+* **Gap**: The random distribution module lacked multinomial categorical solvers, forcing developers to write slow custom simulation JIT loops in Dart space.
+* **Resolution**:
+  - **CDF-Inverted categorical drawing algorithm**: Authored and exposed the top-level public API **`multinomial()`** inside [random.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/random.dart#L498-L597)!
+  - **Linear CDF Inversion**: Automatically computes the cumulative distribution function of category probabilities, performs trials using CDF inversion walks, and records counts in place with zero allocations during the simulation sweeps.
+  - **Correctness unit tests**: Added extensive unit tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/quality_enhancements_test.dart#L2047-L2093) verifying trial counts sums, statistical convergence to category probabilities, and exception throws.
+* **Verification**: Static compiler analysis is warning-free, formatting is pristine, and all **381 unit tests pass flawlessly green**!
+
 
 
 
