@@ -2003,3 +2003,13 @@
   - **Clean Roadmaps**: Removed the resolved issues and cleanly marked **Section 2.2 as 100% RESOLVED** in [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md#L31-L34)!
 * **Results**:
   - **Verification**: Formatting is pristine and all **400 unit tests continue to pass 100% green!**
+
+***
+
+## 167. Logged `linalg.norm()` Multi-Dimensional Norm Solver to Roadmap Section 3.5 of FINDINGS.md (Task 4 / Holistic Roadmap Audit)
+* **Issue**:
+  - Section 3.5 (Advanced Linear Algebra) lacked detailed specifications for calculating standard vector and matrix norms, representing a minor gap in our NumPy compatibility roadmap.
+* **Resolution**:
+  - **Roadmap Integration**: Added a detailed specification for `norm(NDArray a, {dynamic ord, int? axis})` inside Section 3.5 in [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md#L73-L81), mapping standard L1, L2 (Frobenius), and Chebyshev infinity norms, along with full axis-wise reduction specifications.
+* **Results**:
+  - **Verification**: All **400 unit tests pass flawlessly green!**
