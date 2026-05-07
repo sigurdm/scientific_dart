@@ -1607,6 +1607,15 @@
   - Removed the `externalSize` parameter and backing calculations from `NDArray._()` constructor inside [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L135-L142), returning NativeFinalizer attachments back to their standard signature.
 * **Verification**: Clean formatted, compiles warning-free, and all **374 unit tests continue to pass flawlessly green**!
 
+***
+
+## 133. Added Complex64 NPY file round-trip test coverage (Task 1)
+* **What was done**:
+  - Audited the uncovered lines of [io.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/io.dart).
+  - Discovered that while `complex128` array loading and saving was structurally covered, the `complex64` (mixed-precision KissFFT tier) serialization mappings were not executed in tests.
+  - Authored a dedicated round-trip loading and saving unit test in [io_compatibility_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/io_compatibility_test.dart#L88-L103) verifying structural, type, and element precision parity round-trip loading of `DType.complex64` `.npy` binary formats.
+* **Verification**: Static compiler analysis is warning-free, formatting is pristine, and all **375 unit tests pass flawless green**!
+
 
 
 
