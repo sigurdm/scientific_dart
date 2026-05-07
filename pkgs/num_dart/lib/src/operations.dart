@@ -1950,10 +1950,26 @@ NDArray<double> log<T extends num>(NDArray<T> a, {NDArray? out}) {
   return result;
 }
 
-/// Compute the mean of elements in the array.
+/// Compute the arithmetic mean of array elements along a specified axis.
 ///
-/// **Gotchas:**
-/// - Returns a scalar if [axis] is null, or a new [NDArray] if [axis] is provided.
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num` or `Complex`).
+/// - If provided, [axis] must be within `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [RangeError] if [axis] is out of range.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+/// final m = mean(a); // returns 2.5 scalar
+/// final m0 = mean(a, axis: 0); // returns NDArray [2.0, 3.0]
+/// ```
+///
+/// Reference: [Arithmetic Mean](https://en.wikipedia.org/wiki/Arithmetic_mean)
 dynamic mean<T extends Object>(NDArray<T> a, {int? axis}) {
   final s = sum(a, axis: axis);
   if (axis == null) {
@@ -1968,15 +1984,28 @@ dynamic mean<T extends Object>(NDArray<T> a, {int? axis}) {
   }
 }
 
-/// Compute the variance along the specified axis.
+/// Compute the variance of array elements along a specified axis.
 ///
-/// Returns the variance of the array elements, a measure of the spread of a
-/// distribution. The variance is computed for the flattened array by default,
-/// otherwise over the specified axis.
+/// Variance is a measure of the spread of a distribution. The variance is computed for
+/// the flattened array by default, otherwise over the specified axis.
 ///
-/// **Gotchas:**
-/// - Returns a scalar if [axis] is null, or a new [NDArray] if [axis] is provided.
-/// - Currently does not support `ddof` (Delta Degrees of Freedom).
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - If provided, [axis] must be within `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [RangeError] if [axis] is out of range.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+/// final v = variance(a); // returns 1.25 scalar
+/// ```
+///
+/// Reference: [Variance](https://en.wikipedia.org/wiki/Variance)
 dynamic variance<T extends num>(NDArray<T> a, {int? axis}) {
   final m = mean(a, axis: axis);
 
@@ -2013,11 +2042,28 @@ dynamic variance<T extends num>(NDArray<T> a, {int? axis}) {
   }
 }
 
-/// Compute the standard deviation along the specified axis.
+/// Compute the standard deviation of array elements along a specified axis.
 ///
-/// Returns the standard deviation, a measure of the spread of a distribution,
-/// of the array elements. The standard deviation is computed for the
-/// flattened array by default, otherwise over the specified axis.
+/// Standard deviation is a measure of the spread of a distribution. The standard deviation
+/// is computed for the flattened array by default, otherwise over the specified axis.
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - If provided, [axis] must be within `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [RangeError] if [axis] is out of range.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+/// final s = std(a); // returns sqrt(1.25) scalar
+/// ```
+///
+/// Reference: [Standard Deviation](https://en.wikipedia.org/wiki/Standard_deviation)
 dynamic std<T extends num>(NDArray<T> a, {int? axis}) {
   final v = variance(a, axis: axis);
   if (axis == null) {
@@ -6367,7 +6413,12 @@ NDArray diag(NDArray v, {int k = 0}) {
     // Diagonal spacing stride: strides[0] + strides[1]!
     final diagStride = v.strides[0] + v.strides[1];
 
-    return NDArray.view(v, shape: [len], strides: [diagStride], offsetElements: offsetElements);
+    return NDArray.view(
+      v,
+      shape: [len],
+      strides: [diagStride],
+      offsetElements: offsetElements,
+    );
   } else if (v.shape.length == 1) {
     // 2. Constructing a 2D diagonal matrix from a 1D vector
     final n = v.shape[0];
@@ -6642,7 +6693,12 @@ NDArray expand_dims(NDArray a, int axis) {
   final siblingStride = targetAxis < rank ? a.strides[targetAxis] : 1;
   newStrides.insert(targetAxis, siblingStride);
 
-  return NDArray.view(a, shape: newShape, strides: newStrides, offsetElements: 0);
+  return NDArray.view(
+    a,
+    shape: newShape,
+    strides: newStrides,
+    offsetElements: 0,
+  );
 }
 
 /// Remove axes of size 1 from the shape of an array.
@@ -6701,5 +6757,10 @@ NDArray squeeze(NDArray a, {List<int>? axis}) {
   }
 
   // Squeezing all dimensions of a 1D unit tensor (e.g. shape [1]) yields a 0D scalar shape []
-  return NDArray.view(a, shape: newShape, strides: newStrides, offsetElements: 0);
+  return NDArray.view(
+    a,
+    shape: newShape,
+    strides: newStrides,
+    offsetElements: 0,
+  );
 }

@@ -1338,6 +1338,19 @@
     - conditional stub loader: imports the correct engine automatically at compile time based on target libraries features.
 * **Verification**: Confirmed all unit tests remain 100% passing and formatted.
 
+***
+
+## 109. Enriched Documentation for `mean`, `variance`, and `std` Reductions (Task 6)
+* **What was done**:
+  - Audited statistical reductions `mean()`, `variance()`, and `std()` inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart) for styling gaps against the "Effective Dart" guidelines.
+  - Replaced basic descriptions with comprehensive doc comments, detailing:
+    - Input parameters **preconditions** (numeric types `T extends num` and complex signals support).
+    - Axis bounds **exceptions throws conditions** (`RangeError` details).
+    - Exact **algorithmic complexities** ($O(N)$ time scales).
+    - Practical code examples and links to reference mathematical definitions (Arithmetic Mean, Variance, and Standard Deviation).
+* **Verification**: Confirmed formatting and all unit tests pass flawlessly.
+
+
 
 
 
