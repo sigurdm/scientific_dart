@@ -131,6 +131,21 @@ void main() {
         expect(restored32.shape, [4]);
         expect(restored32.data[0].real, closeTo(1.0, 1e-5));
 
+        final comp64 = NDArray.fromList(
+          [Complex(1.0, 2.0), Complex(3.0, 4.0), Complex(5.0, 6.0), Complex(7.0, 8.0)],
+          [4],
+          DType.complex64,
+        );
+        final freq64 = fft(comp64);
+        expect(freq64.dtype, DType.complex64);
+        expect(freq64.shape, [4]);
+
+        final restored64 = ifft(freq64);
+        expect(restored64.dtype, DType.complex64);
+        expect(restored64.shape, [4]);
+        expect(restored64.data[0].real, closeTo(1.0, 1e-5));
+        expect(restored64.data[0].imag, closeTo(2.0, 1e-5));
+
         final realSignal = NDArray.fromList(
           Float64List.fromList([1.0, 2.0, 3.0, 4.0]),
           [4],
