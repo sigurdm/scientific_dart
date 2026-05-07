@@ -626,12 +626,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## `pkgs/num_dart/lib/src/ndarray.dart` (NumPy Compatibility Gap: Missing High-Level Sliding Window Views `slidingWindowView`)
-- **Symptom**: The library lacks a high-level utility to create sliding window views over dimensions.
-- **The Gap**: Signal processing, image convolutions, and rolling time-series statistical analyses heavily require sliding windows (e.g. extracting rolling 10-day window matrices over a dataset). Downstream developers are forced to copy elements, leading to massive memory copying stalls.
-- **Recommended Tweak**: Leverage our planned low-level `asStrided()` to implement a public, safe **`slidingWindowView(NDArray a, List<int> windowShape, {List<int>? axis})`** view factory. It automatically calculates expanded strides (setting stride offsets for the window dimensions) and returns a zero-allocation, copy-free rolling window view sharing parent memory!
 
-***
 
 
 
