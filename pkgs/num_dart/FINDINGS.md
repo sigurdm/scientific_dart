@@ -623,6 +623,5 @@ This file logs architectural improvements and hidden flaws discovered during aut
   - If one of the arrays is strided or non-contiguous, perform a single, zero-allocation concurrent coordinate walking loop to compare elements directly, entirely avoiding all intermediate `toList()` heap allocations!
   - Refactor `hashCode` to compute a rolling hash over the flat elements directly on the FFI heap or using a C helper, eliminating object allocations completely.
 
-## Investigate if we can make the package compile and work with dart2wasm. `next`
-***
+
 

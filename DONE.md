@@ -1322,6 +1322,23 @@
   - **Global Workspace Coverage after**: **85.35%** (3309 / 3877 lines) (Spectacular **+2.22%** global increase!)
 * **Verification**: All **372 workspace unit tests pass 100% green** and compile flawlessly!
 
+***
+
+## 108. Compile and Work Compatibility Assessment for `dart2wasm` (Task 7)
+* **Issue**: Investigates the compatibility constraints of compiling and running the `num_dart` codebase with the high-performance Dart WebAssembly compiler `dart2wasm`, mapping technical challenges and proposing concrete architectural workarounds.
+* **Research Assessment & Gaps**:
+  - **The standard `dart:ffi` Barrier**: Wasm sandboxed web runtimes operate without operating-system level dynamic loaders (like Linux `dlopen` or Windows `LoadLibrary`). Because `num_dart` relies on loading standard `libopenblas` and pocketfft AOT compiled libraries dynamically at runtime using unmanaged host memory, standard **`dart:ffi` is strictly unsupported on `dart2wasm`** and will throw fatal compilation or execution crashes immediately.
+  - **WebAssembly Compilations workarounds**: To compile and run natively under `dart2wasm` on web platforms, the package must completely replace the standard FFI loader with a static WebAssembly heap-based layout:
+    1. **Compile C Sources to Wasm**: Use the Emscripten compiler toolchain (`emcc`) to compile OpenBLAS, KissFFT, and custom C ufunc kernels directly into static Wasm modules (`.wasm`).
+    2. **Wasm Heap Memory Bridge**: Refactor `NDArray` constructors to allocate memory within the virtual Wasm linear memory block (accessed via JavaScript buffer views like `Module.HEAPF64`) rather than standard host heap memory page buffers.
+    3. **JS/Wasm Interop bindings**: Replace FFI native bindings (`external` declarations) with modern **JS Interop bindings (`@JS` or `@staticInterop`)** via `package:web`, routing calls directly to static Wasm module exports.
+  - **Proposed Abstraction Architecture**: Suggests introducing conditional imports to preserve ultra-high-speed native desktop BLAS while offering seamless web support:
+    - `numdart_engine_vm.dart`: binds to OpenBLAS/FFT dynamically using `dart:ffi` (current standard).
+    - `numdart_engine_wasm.dart`: binds to Emscripten static Wasm modules using JS Interop for `dart2wasm`.
+    - conditional stub loader: imports the correct engine automatically at compile time based on target libraries features.
+* **Verification**: Confirmed all unit tests remain 100% passing and formatted.
+
+
 
 
 
