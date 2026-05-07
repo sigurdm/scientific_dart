@@ -76,6 +76,8 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Vector Calculus**:
   - `cross(NDArray a, NDArray b)`: Vector cross product in 3D space.
   - `outer(NDArray a, NDArray b)`: Vector outer product.
+- **Solvers & Norms**:
+  - `norm(NDArray a, {dynamic ord, int? axis})`: Calculate vector/matrix norms. Expose standard L1, L2 (Frobenius), and Chebyshev infinity norms, supporting Axis-wise reductions cleanly!
 
 ---
 
