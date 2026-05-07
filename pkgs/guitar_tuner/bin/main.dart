@@ -17,7 +17,7 @@ void main() async {
   final logic = TunerLogic(sampleRate: sampleRate, bufferSize: bufferSize);
   
   // Pre-allocate capture buffer to avoid garbage collection pressure
-  final captureBuffer = NDArray<double>.create([bufferSize], DType.float32);
+  final NDArray<double> captureBuffer = NDArray<double>.create([bufferSize], DType.float32);
 
   try {
     capture.open();
@@ -29,23 +29,23 @@ void main() async {
       capture.read(captureBuffer);
 
       // Check if we have enough signal (RMS threshold) via num_dart
-      final (rms, result) = NDArray.scope(() {
+      final (double currentRms, TunerResult? result) = NDArray.scope(() {
         final sqSamples = multiply(captureBuffer, captureBuffer);
-        final currentRms = math.sqrt(mean(sqSamples) as double);
+        final rmsVal = math.sqrt(mean(sqSamples as NDArray<Object>) as double);
         
         TunerResult? currentResult;
-        if (currentRms > 0.01) {
+        if (rmsVal > 0.01) {
           currentResult = logic.process(captureBuffer);
         }
-        return (currentRms, currentResult);
+        return (rmsVal, currentResult);
       });
 
       if (result != null) {
         // Clear line and print result
-        stdout.write('\r\x1b[K$result (RMS: ${rms.toStringAsFixed(4)})');
+        stdout.write('\r\x1b[K$result (RMS: ${currentRms.toStringAsFixed(4)})');
       } else {
         stdout.write(
-          '\r\x1b[KWaiting for signal... (RMS: ${rms.toStringAsFixed(4)})',
+          '\r\x1b[KWaiting for signal... (RMS: ${currentRms.toStringAsFixed(4)})',
         );
       }
       
