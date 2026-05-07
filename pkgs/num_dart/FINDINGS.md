@@ -617,12 +617,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Advanced Multi-Condition Vector Selector `select()`)
-- **Symptom**: The library has `where()` for binary conditional selection, but completely lacks a multi-condition selector.
-- **The Gap**: In Python's NumPy, `np.select(condlist, choicelist, default=0)` allows developers to evaluate a list of boolean conditions sequentially, drawing corresponding elements from choices list, which is extremely powerful for complex data binning, categorisation, and piecewise functions evaluation. Lacking this forces downstream developers to chain multiple slow JIT `where()` calls, wasting RAM allocation copies.
-- **Recommended Tweak**: Implement a top-level `select(List<NDArray<bool>> condlist, List<NDArray> choicelist, {dynamic defaultValue = 0.0})` selector. This can walk coordinate strides in a single concurrent pass, evaluating conditions sequentially per cell, completely avoiding intermediate view allocations!
 
-***
 
 ## `pkgs/num_dart/lib/src/random.dart` (NumPy Compatibility Gap: Missing Scientific Multinomial Categorical Distribution `multinomial`)
 - **Symptom**: The random distributions suite only supports univariate distributions and multivariate Gaussian distributions, lacking multinomial distributions.
