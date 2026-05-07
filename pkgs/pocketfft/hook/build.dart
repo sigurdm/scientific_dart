@@ -22,7 +22,7 @@ void main(List<String> args) async {
       try {
         final request = await client.getUrl(
           Uri.parse(
-            'https://github.com/mborgerding/kissfft/archive/v1.3.1.tar.gz',
+            'https://github.com/mborgerding/kissfft/archive/6e9e673e420c4bf47d4a60c57c578f93e4ec192f.tar.gz',
           ),
         );
         final response = await request.close();
