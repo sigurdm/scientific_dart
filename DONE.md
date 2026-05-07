@@ -1674,6 +1674,15 @@
   - Authored a dedicated test case `Verify Complex clip throws UnsupportedError` in [ufuncs_broadcasting_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/ufuncs_broadcasting_test.dart#L138-L141) confirming the ufunc properly intercepts complex arrays.
 * **Verification**: Static compiler analysis is warning-free, formatting is pristine, and all **376 unit tests continue to pass flawless green**!
 
+***
+
+## 140. Rich roadmap documentation of Matrix Math gaps in FINDINGS.md (Task 4)
+* **What was done**:
+  - Audited `num_dart` capabilities holistically against Python's standard `numpy` libraries.
+  - Identified multiple crucial linear algebra gaps: matrix pseudo-inverse (`pinv()`), matrix rank (`matrix_rank()`), matrix power (`matrix_power()`), and tensor contraction (`tensordot()`).
+  - Documented complete, professional roadmap target plans and NumPy parity assessments inside [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/FINDINGS.md#L653-L661) under Section 10, Subsection 1.
+* **Verification**: Pristinely formatted clean, compile checks pass green, and all **376 unit tests pass flawless green**!
+
 
 
 
