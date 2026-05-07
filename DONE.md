@@ -1656,6 +1656,15 @@
   - Authored a highly detailed, standard-compliant docstring in [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L245-L266) for `NDArray.zeros`. Enriched with warnings about unmanaged `calloc` allocations, preconditions on non-negative dimensions, listed throwing exceptions, big-O space/time complexities, and complete usage examples.
 * **Verification**: Static compiler analysis is warning-free, formatting is pristine, and all **375 unit tests continue to pass flawless green**!
 
+***
+
+## 138. Added Singular Float32 matrix inversion test coverage (Task 1)
+* **What was done**:
+  - Audited the uncovered branches of `inv()` in [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/operations.dart).
+  - Discovered that the exception handling block for singular matrix detection in the `DType.float32` precision tier (`info > 0` code returned from `LAPACKE_sgetrf`) was not executed in tests.
+  - Authored a targeted unit test `Singular Float32 matrix throws ArgumentError` in [linear_algebra_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/test/linear_algebra_test.dart#L53-L60) asserting that `inv()` throws an `ArgumentError` when attempting to invert a singular Float32 matrix.
+* **Verification**: Static compiler checks are perfect and clean, formatting is pristine, and all **376 unit tests pass flawless green**!
+
 
 
 
