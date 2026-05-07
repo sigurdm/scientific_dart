@@ -1958,3 +1958,14 @@
 * **Results**:
   - **Performance**: Achieved near-instantaneous allocations of large zero-filled matrices and minimized physical memory footprints.
   - **Verification**: Checked all **400 unit tests pass flawlessly green!**
+
+***
+
+## 163. Standardized `det` API Documentation (Task 6 / Documentation Audit)
+* **Issue**:
+  - The documentation for the top-level linear algebra function `det()` was non-standard, missing formal preconditions, throw conditions, or complexity notes, and using a non-standard "**Gotchas**" section.
+* **Resolution**:
+  - **Standardized API Comments**: Completely rewrote `det()` API documentation comments inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart#L2930-L2943) following Effective Dart guidelines. Added standardized Preconditions, Throws, and Performance considerations (LU decomposition $O(N^3)$), along with references to official LAPACK and mathematical determinant documentation.
+* **Results**:
+  - **Pristine API**: Aligned `det()` documentation cleanly with the rest of the premium library standards.
+  - **Verification**: Formatting is clean and all **400 unit tests pass 100% green!**
