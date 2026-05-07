@@ -58,6 +58,7 @@ void main() {
       // Logical: row 0: [1.0, 0.0, 3.0], row 1: [0.0, 5.0, 6.0]. Column 0 is: [1.0, 0.0].
       // Column 2 is: [3.0, 6.0] (nonzero count is 2).
       final view = a.slice([Slice.all(), Index(2)]);
+      addTearDown(view.dispose);
       expect(view.isContiguous, false);
       expect(view.toList(), [3.0, 6.0]);
 
@@ -111,6 +112,7 @@ void main() {
       final parent = NDArray.ones([2, 2], DType.float64);
       addTearDown(parent.dispose);
       final view = parent.slice([Index(0)]); // Select first row
+      addTearDown(view.dispose);
 
       expect(parent.isDisposed, false);
       expect(view.isDisposed, false);
@@ -239,6 +241,7 @@ void main() {
 
       // View creation coverage (parent.dtype == DType.complex64)
       final view = a.slice([Index(0)]); // Select first row
+      addTearDown(view.dispose);
       expect(view.shape, [2]);
       expect(view.dtype, DType.complex64);
       expect(view.data[0], Complex(1.0, 2.0));
@@ -377,6 +380,7 @@ void main() {
         addTearDown(b.dispose);
 
         final row0 = a.slice([Index(0)]).reshape([1, 2]);
+        addTearDown(row0.dispose);
         final combined = concatenate([row0, b], axis: 0);
         addTearDown(combined.dispose);
         expect(combined.shape, [2, 2]);
@@ -589,6 +593,7 @@ void main() {
       final f32 = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float32);
       final f32View = f32.transposed; // non-contiguous!
       addTearDown(f32.dispose);
+      addTearDown(f32View.dispose);
       save('scratch/f32_view.npy', f32View);
       final f32Loaded = load('scratch/f32_view.npy');
       addTearDown(f32Loaded.dispose);
@@ -600,6 +605,7 @@ void main() {
       final i32 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
       final i32View = i32.transposed;
       addTearDown(i32.dispose);
+      addTearDown(i32View.dispose);
       save('scratch/i32_view.npy', i32View);
       final i32Loaded = load('scratch/i32_view.npy');
       addTearDown(i32Loaded.dispose);
@@ -609,6 +615,7 @@ void main() {
       final i64 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int64);
       final i64View = i64.transposed;
       addTearDown(i64.dispose);
+      addTearDown(i64View.dispose);
       save('scratch/i64_view.npy', i64View);
       final i64Loaded = load('scratch/i64_view.npy');
       addTearDown(i64Loaded.dispose);
@@ -622,6 +629,7 @@ void main() {
       );
       final bView = b.transposed;
       addTearDown(b.dispose);
+      addTearDown(bView.dispose);
       save('scratch/b_view.npy', bView);
       final bLoaded = load('scratch/b_view.npy');
       addTearDown(bLoaded.dispose);
@@ -640,6 +648,7 @@ void main() {
       );
       final c128View = c128.transposed;
       addTearDown(c128.dispose);
+      addTearDown(c128View.dispose);
       save('scratch/c128_view.npy', c128View);
       final c128Loaded = load('scratch/c128_view.npy');
       addTearDown(c128Loaded.dispose);
@@ -663,6 +672,7 @@ void main() {
       );
       final c64View = c64.transposed;
       addTearDown(c64.dispose);
+      addTearDown(c64View.dispose);
       save('scratch/c64_view.npy', c64View);
       final c64Loaded = load('scratch/c64_view.npy');
       addTearDown(c64Loaded.dispose);
@@ -711,6 +721,7 @@ void main() {
         strides: [1],
         offsetElements: 1,
       );
+      addTearDown(vF32.dispose);
       expect(vF32.toList(), [2.0, 3.0]);
       expect(vF32.dtype, DType.float32);
 
@@ -722,6 +733,7 @@ void main() {
         strides: [1],
         offsetElements: 1,
       );
+      addTearDown(vI64.dispose);
       expect(vI64.toList(), [20, 30]);
       expect(vI64.dtype, DType.int64);
     });
@@ -749,6 +761,8 @@ void main() {
 
         final aT = a.transposed;
         final bT = b.transposed;
+        addTearDown(aT.dispose);
+        addTearDown(bT.dispose);
 
         final result = matmul(aT, bT);
         addTearDown(result.dispose);
@@ -942,6 +956,7 @@ void main() {
       addTearDown(parent.dispose);
 
       final view = parent.slice([Slice(start: 0, stop: 2), Slice.all()]);
+      addTearDown(view.dispose);
       expect(variance(view), closeTo(1.25, 1e-9));
       expect(std(view), closeTo(math.sqrt(1.25), 1e-9));
     });
@@ -957,6 +972,7 @@ void main() {
         addTearDown(parent.dispose);
 
         final view = parent.slice([Slice(start: 0, stop: 2), Slice.all()]);
+        addTearDown(view.dispose);
         final out = NDArray<double>.zeros([2, 2], DType.float64);
         addTearDown(out.dispose);
 
@@ -1977,6 +1993,7 @@ void main() {
         addTearDown(a.dispose);
 
         final view = slidingWindowView(a, [3]);
+        addTearDown(view.dispose);
         expect(view.shape, [3, 3]);
         expect(view.dtype, DType.float64);
 
@@ -2006,6 +2023,7 @@ void main() {
 
         // Slide window of size 2 along axis 1 (columns)
         final win2d = slidingWindowView(mat, [2], axis: [1]);
+        addTearDown(win2d.dispose);
         expect(win2d.shape, [
           2,
           3,
