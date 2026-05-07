@@ -5,15 +5,19 @@ import 'ndarray.dart';
 /// Contains the combined [shape], and the adjusted strides ([stridesA] and [stridesB])
 /// for both operand arrays to enable aligned memory walks.
 final class BroadcastResult {
-  /// The combined broadcasted shape list.
+  /// The combined broadcasted shape list representing the final target shape
+  /// resulting from broadcasting matricial dimensions.
   final List<int> shape;
 
-  /// Adjusted strides for the first operand array.
+  /// The adjusted memory stride offsets for the first operand array,
+  /// containing `0` on stretched dimensions.
   final List<int> stridesA;
 
-  /// Adjusted strides for the second operand array.
+  /// The adjusted memory stride offsets for the second operand array,
+  /// containing `0` on stretched dimensions.
   final List<int> stridesB;
 
+  /// Creates a new [BroadcastResult] representing aligned shape and strides.
   BroadcastResult(this.shape, this.stridesA, this.stridesB);
 }
 
