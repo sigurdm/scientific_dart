@@ -1647,6 +1647,15 @@
   - Documented the detailed findings block inside [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/FINDINGS.md#L691-L699) under Section 11.
 * **Verification**: Pristinely clean static checks and formatted perfectly, and all **375 unit tests pass flawless green**!
 
+***
+
+## 137. Enriched public NDArray.zeros factory API documentation (Task 6)
+* **What was done**:
+  - Audited the public constructor and factory APIs of the core `NDArray` class.
+  - Discovered that the `NDArray.zeros` factory lacked complete documentation comments.
+  - Authored a highly detailed, standard-compliant docstring in [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L245-L266) for `NDArray.zeros`. Enriched with warnings about unmanaged `calloc` allocations, preconditions on non-negative dimensions, listed throwing exceptions, big-O space/time complexities, and complete usage examples.
+* **Verification**: Static compiler analysis is warning-free, formatting is pristine, and all **375 unit tests continue to pass flawless green**!
+
 
 
 
