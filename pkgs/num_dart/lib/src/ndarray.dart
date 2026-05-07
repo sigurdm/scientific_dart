@@ -242,13 +242,30 @@ final class NDArray<T> implements ffi.Finalizable {
     return arr;
   }
 
-  /// Factory to create an array filled with zeros.
+  /// Factory to create a new C-contiguous array filled with zeros.
+  ///
+  /// Backed directly by unmanaged C heap memory pages allocated via `calloc`.
+  ///
+  /// **Preconditions:**
+  /// - All dimensions in [shape] must be strictly non-negative ($\ge 0$).
+  ///
+  /// **Throws:**
+  /// - [ArgumentError] if any dimension in [shape] is negative.
+  /// - [UnimplementedError] if the provided [dtype] is unsupported.
+  ///
+  /// **Performance considerations:**
+  /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$ where $N$ is the total
+  ///   number of elements (product of all dimensions in [shape]).
+  /// - Bypasses isolate VM GC pressure entirely by allocating memory via unmanaged `calloc` pages.
   ///
   /// **Example:**
   /// ```dart
   /// final a = NDArray<double>.zeros([2, 2], DType.float64);
-  /// print(a.data); // [0.0, 0.0, 0.0, 0.0]
+  /// print(a.toList()); // [0.0, 0.0, 0.0, 0.0]
   /// ```
+  ///
+  /// Refer to the [NumPy zeros reference](https://numpy.org/doc/stable/reference/generated/numpy.zeros.html)
+  /// and [Dart FFI calloc allocator](https://pub.dev/documentation/ffi/latest/ffi/calloc-constant.html) for additional details.
   factory NDArray.zeros(List<int> shape, DType dtype) {
     return NDArray<T>.create(shape, dtype, zeroInit: true);
   }
