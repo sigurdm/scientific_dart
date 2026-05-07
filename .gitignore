@@ -25,3 +25,7 @@ pkgs/openblas/third_party/
 .idea/
 .DS_Store
 *.log
+
+# Transient Local Test / Benchmark Run Outputs
+scratch/
+
