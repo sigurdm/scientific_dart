@@ -142,8 +142,7 @@ final class NDArray<T> implements ffi.Finalizable {
   bool _isDisposed = false;
 
   /// Returns true if this array or parent array's memory has been explicitly freed.
-  bool get isDisposed =>
-      _isDisposed || (_parent != null && _parent.isDisposed);
+  bool get isDisposed => _isDisposed || (_parent != null && _parent.isDisposed);
 
   /// Returns true if this is a zero-copy view sharing memory with another array.
   bool get isView => _parent != null;
@@ -548,8 +547,7 @@ final class NDArray<T> implements ffi.Finalizable {
     if (isContiguous) {
       _copyContiguousNDArray(this, result, totalSize);
     } else {
-      final flatList = toList();
-      result.data.setRange(0, totalSize, flatList);
+      _copyStridedRecursiveFast(result, strides, result.strides, 0, 0, 0);
     }
     return result;
   }
@@ -584,26 +582,36 @@ final class NDArray<T> implements ffi.Finalizable {
       final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
       _copyContiguousNDArray(this, result, totalSize);
     } else {
-      final currentIndices = List<int>.filled(shape.length, 0);
-      _copyStridedRecursive(result, currentIndices, 0);
+      _copyStridedRecursiveFast(result, strides, result.strides, 0, 0, 0);
     }
 
     return result;
   }
 
-  void _copyStridedRecursive(
+  void _copyStridedRecursiveFast(
     NDArray<T> dest,
-    List<int> currentIndices,
-    int currentDim,
+    List<int> stridesSrc,
+    List<int> stridesDest,
+    int dim,
+    int offsetSrc,
+    int offsetDest,
   ) {
-    if (currentDim == shape.length) {
-      dest[currentIndices] = this[currentIndices];
+    final rank = shape.length;
+    if (dim == rank) {
+      dest.data[offsetDest] = data[offsetSrc];
       return;
     }
 
-    for (var i = 0; i < shape[currentDim]; i++) {
-      currentIndices[currentDim] = i;
-      _copyStridedRecursive(dest, currentIndices, currentDim + 1);
+    final limit = shape[dim];
+    for (var i = 0; i < limit; i++) {
+      _copyStridedRecursiveFast(
+        dest,
+        stridesSrc,
+        stridesDest,
+        dim + 1,
+        offsetSrc + i * stridesSrc[dim],
+        offsetDest + i * stridesDest[dim],
+      );
     }
   }
 
