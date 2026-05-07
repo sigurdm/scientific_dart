@@ -648,5 +648,3 @@ This file logs architectural improvements and hidden flaws discovered during aut
   ```
 - **The Inefficiency / Performance Drag**: Duplicate heap allocations and copy sweeps! Calling `a.toList()` maps a temporary dynamic list in JIT space, and `fromList()` then allocates a second unmanaged block via `malloc`, duplicating copying sweeps.
 - **Recommended Tweak**: Pre-allocate directly via `NDArray.create(a.shape, a.dtype)` and copy values directly to the backing pointer view using `setRange(0, length, a.toList())`, bypassing the intermediate dynamic heap list conversion and double-allocations!
-
-- Use `externalSize` with the nativefinalizer attach calls to enable better GC'ing. `next`
