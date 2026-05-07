@@ -31,7 +31,8 @@ This file logs architectural improvements and hidden flaws discovered during aut
 ### 2.2 Memory Management & Safety
 - **Issue**: **Test suite memory leakage**. Almost all tests allocate FFI memory without calling `.dispose()`, leading to heap growth during long test runs.
 - **Issue**: `NDArray.zeros()` uses `malloc` + `memset`. Using `calloc` would be more efficient for the OS via demand-paging.
-- **Recommended Tweak**: Harden tests with `addTearDown(() => arr.dispose())`. Refactor `NDArray.create` to support `calloc`.
+- **Issue**: **Unmanaged Exception Leakage inside `multivariateNormal()`**. If `cholesky`, `add`, `matmul`, or `reshape` throws an exception inside `multivariateNormal()`, the temporary arrays `l`, `lT`, `z`, and `z2D` are never disposed, leading to native FFI heap memory leaks!
+- **Recommended Tweak**: Harden tests with `addTearDown(() => arr.dispose())`. Refactor `NDArray.create` to support `calloc`. Leverage `NDArray.scope()` inside `multivariateNormal()` to guarantee 100% leak-safety under all exception/error flows.
 
 ### 2.3 Broadcasting & Advanced Indexing
 - **Issue**: `setByMask()` lacks support for broadcasting multi-dimensional array assignments.
