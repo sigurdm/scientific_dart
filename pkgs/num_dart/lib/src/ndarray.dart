@@ -143,7 +143,10 @@ final class NDArray<T> implements ffi.Finalizable {
 
   /// Returns true if this array or parent array's memory has been explicitly freed.
   bool get isDisposed =>
-      _isDisposed || (_parent != null && _parent!.isDisposed);
+      _isDisposed || (_parent != null && _parent.isDisposed);
+
+  /// Returns true if this is a zero-copy view sharing memory with another array.
+  bool get isView => _parent != null;
 
   /// Factory to create a new multi-dimensional array with backing unmanaged C heap memory.
   ///

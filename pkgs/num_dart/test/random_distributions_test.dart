@@ -1,7 +1,6 @@
 import 'package:num_dart/num_dart.dart';
 import 'package:test/test.dart';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
 void main() {
   group('NDArray Random Distributions Tests', () {

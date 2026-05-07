@@ -58,7 +58,7 @@ void main() {
       addTearDown(parent.dispose);
 
       // Slice a view on the latter elements (index 2 to 4 -> [true, false])
-      final view = parent.slice([Slice(start: 2, stop: 4)]) as NDArray<bool>;
+      final view = parent.slice([Slice(start: 2, stop: 4)]);
       addTearDown(view.dispose);
 
       expect(view.shape, [2]);

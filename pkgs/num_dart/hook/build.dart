@@ -22,7 +22,7 @@ void main(List<String> args) async {
     }
     final libFile = File.fromUri(outputDir.uri.resolve(libName));
 
-    final compilerPath = cCompiler?.compiler?.toFilePath() ?? 'cc';
+    final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
     print(
       'Compiling num_dart custom C extensions using compiler: $compilerPath',
     );

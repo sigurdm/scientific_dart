@@ -1,5 +1,4 @@
 import 'package:num_dart/num_dart.dart';
-import 'dart:typed_data';
 
 void main() {
   print('=== NDArray Float32 SIMD additions Fast Path Benchmark ===\n');

@@ -6535,7 +6535,7 @@ Map<String, NDArray> qr(NDArray a) {
       }
 
       // Extract upper triangular matrix R from aCopy
-      final rData = rMat.data as List<double>;
+      final rData = rMat.data;
       final aCopyData = aCopy.data as List<double>;
       for (var i = 0; i < k; i++) {
         for (var j = i; j < n; j++) {
@@ -6544,7 +6544,7 @@ Map<String, NDArray> qr(NDArray a) {
       }
 
       // Copy reflectors to qMat (first k columns of aCopy)
-      final qData = qMat.data as List<double>;
+      final qData = qMat.data;
       for (var i = 0; i < m; i++) {
         for (var j = 0; j < k; j++) {
           qData[i * k + j] = aCopyData[i * n + j];
@@ -6586,7 +6586,7 @@ Map<String, NDArray> qr(NDArray a) {
       }
 
       // Extract upper triangular matrix R from aCopy
-      final rData = rMat.data as List<double>;
+      final rData = rMat.data;
       final aCopyData = aCopy.data as List<double>;
       for (var i = 0; i < k; i++) {
         for (var j = i; j < n; j++) {
@@ -6595,7 +6595,7 @@ Map<String, NDArray> qr(NDArray a) {
       }
 
       // Copy reflectors to qMat (first k columns of aCopy)
-      final qData = qMat.data as List<double>;
+      final qData = qMat.data;
       for (var i = 0; i < m; i++) {
         for (var j = 0; j < k; j++) {
           qData[i * k + j] = aCopyData[i * n + j];
@@ -7459,4 +7459,42 @@ dynamic _castValue(dynamic val, DType dtype) {
     return false;
   }
   return val;
+}
+
+/// Return the Hanning window.
+///
+/// The Hanning window is a taper formed by using a weighted cosine.
+///
+/// **Example:**
+/// ```dart
+/// final window = hanning(512);
+/// ```
+NDArray<double> hanning(int M) {
+  if (M < 1) return NDArray<double>.create([0], DType.float64);
+  if (M == 1) return NDArray<double>.fromList([1.0], [1], DType.float64);
+
+  final res = NDArray<double>.create([M], DType.float64);
+  for (var n = 0; n < M; n++) {
+    res.data[n] = 0.5 - 0.5 * math.cos(2.0 * math.pi * n / (M - 1));
+  }
+  return res;
+}
+
+/// Return the Hamming window.
+///
+/// The Hamming window is a taper formed by using a weighted cosine.
+///
+/// **Example:**
+/// ```dart
+/// final window = hamming(512);
+/// ```
+NDArray<double> hamming(int M) {
+  if (M < 1) return NDArray<double>.create([0], DType.float64);
+  if (M == 1) return NDArray<double>.fromList([1.0], [1], DType.float64);
+
+  final res = NDArray<double>.create([M], DType.float64);
+  for (var n = 0; n < M; n++) {
+    res.data[n] = 0.54 - 0.46 * math.cos(2.0 * math.pi * n / (M - 1));
+  }
+  return res;
 }

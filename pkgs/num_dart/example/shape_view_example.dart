@@ -17,7 +17,7 @@ void main() {
   print(
     '\nexpand_dims(a, 0): shape ${aExpand0.shape}, strides ${aExpand0.strides}',
   );
-  print('Is aExpand0 a zero-copy view? ${aExpand0.parent != null}'); // true
+  print('Is aExpand0 a zero-copy view? ${aExpand0.isView}'); // true
 
   // 3. Expand dimensions at axis 1 -> shape [3, 1]
   final aExpand1 = expand_dims(a, 1);
