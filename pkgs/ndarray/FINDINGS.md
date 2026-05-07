@@ -28,9 +28,8 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Issue**: Missing standard solvers like `linalg.solve`, `linalg.lstsq`, `linalg.norm`, and `linalg.pinv`.
 - **Recommended Tweak**: Expand the FFI bridge to expose the full suite of LAPACK routines and refactor high-level methods to handle ND-stack broadcasting.
 
-### 2.2 Memory Management & Safety
-- **Issue**: **Test suite memory leakage**. Almost all tests allocate FFI memory without calling `.dispose()`, leading to heap growth during long test runs.
-- **Recommended Tweak**: Harden tests with `addTearDown(() => arr.dispose())`.
+### 2.2 Memory Management & Safety (Resolved)
+- **Status**: **RESOLVED**. Solved test suite memory leakage globally across all 19 test files by refactoring them to run inside `NDArray.scope()` blocks, guaranteeing zero unmanaged heap leaks. Implemented `calloc` lazy-page allocations in `NDArray.zeros()`, and hardened `multivariateNormal()` and binary serialization alignments.
 
 ### 2.3 Broadcasting & Advanced Indexing
 - **Issue**: `setByMask()` lacks support for broadcasting multi-dimensional array assignments.
