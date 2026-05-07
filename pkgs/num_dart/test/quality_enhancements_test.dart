@@ -81,12 +81,21 @@ void main() {
       expect(a.hashCode == b.hashCode, true);
 
       // Non-contiguous view comparisons tests (triggering recursive walkers)
-      final parent1 = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
-      final parent2 = NDArray.fromList([1.0, 3.0, 2.0, 4.0], [2, 2], DType.float64);
+      final parent1 = NDArray.fromList(
+        [1.0, 2.0, 3.0, 4.0],
+        [2, 2],
+        DType.float64,
+      );
+      final parent2 = NDArray.fromList(
+        [1.0, 3.0, 2.0, 4.0],
+        [2, 2],
+        DType.float64,
+      );
       addTearDown(parent1.dispose);
       addTearDown(parent2.dispose);
 
-      final viewT1 = parent1.transposed; // non-contiguous: [[1.0, 3.0], [2.0, 4.0]]
+      final viewT1 =
+          parent1.transposed; // non-contiguous: [[1.0, 3.0], [2.0, 4.0]]
       addTearDown(viewT1.dispose);
       expect(viewT1.isContiguous, false);
 
@@ -1912,6 +1921,48 @@ void main() {
       final resF64 = clip(f64T, min: 2.0, max: 3.0);
       addTearDown(resF64.dispose);
       expect(resF64.toList(), [2.0, 3.0, 2.0, 3.0]);
+    });
+
+    test('Multivariate Normal Distribution multivariateNormal() correctness', () {
+      final mean = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+      // Identity covariance Sigma = I
+      final cov = NDArray.fromList([1.0, 0.0, 0.0, 1.0], [2, 2], DType.float64);
+
+      addTearDown(mean.dispose);
+      addTearDown(cov.dispose);
+
+      // Draw 500 samples (returns shape [500, 2])
+      final samples = multivariateNormal(mean, cov, size: [500]);
+      addTearDown(samples.dispose);
+
+      expect(samples.shape, [500, 2]);
+      expect(samples.dtype, DType.float64);
+
+      // Check statistical means of the drawn samples to verify standard convergence!
+      var sumX = 0.0;
+      var sumY = 0.0;
+      for (var i = 0; i < 500; i++) {
+        sumX += samples.getCell([i, 0]);
+        sumY += samples.getCell([i, 1]);
+      }
+      final meanX = sumX / 500;
+      final meanY = sumY / 500;
+
+      // Means should converge closely to [10, 20] under standard deviation 1
+      expect(meanX, closeTo(10.0, 0.5));
+      expect(meanY, closeTo(20.0, 0.5));
+
+      // Verify ArgumentError throwing exceptions
+      final badMean = NDArray.fromList([10.0, 20.0], [1, 2], DType.float64);
+      addTearDown(badMean.dispose);
+      expect(() => multivariateNormal(badMean, cov), throwsArgumentError);
+
+      final mismatchedMean = NDArray.fromList([10.0], [1], DType.float64);
+      addTearDown(mismatchedMean.dispose);
+      expect(
+        () => multivariateNormal(mismatchedMean, cov),
+        throwsArgumentError,
+      );
     });
   });
 }

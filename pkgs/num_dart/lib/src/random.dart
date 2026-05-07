@@ -3,6 +3,7 @@ import 'dart:math' show Random;
 import 'dart:ffi' as ffi;
 import 'numdart_bindings.dart';
 import 'ndarray.dart';
+import 'operations.dart';
 
 /// Generates an array with random values uniformly distributed in the half-open interval `[0.0, 1.0)`.
 ///
@@ -400,4 +401,96 @@ NDArray<int> binomial(
   }
 
   return arr;
+}
+
+/// Draw random samples from a multivariate normal (Gaussian) distribution.
+///
+/// This corresponds to NumPy's `random.multivariate_normal` function.
+///
+/// **Mathematical Mechanics**:
+/// The multivariate normal distribution is defined by a mean vector [mean] ($\mu$) of size $D$
+/// and a symmetric, positive-definite covariance matrix [cov] ($\Sigma$) of size $D \times D$.
+///
+/// To draw a sample $X \sim \mathcal{N}(\mu, \Sigma)$:
+/// 1. Computes the Cholesky factorization of the covariance matrix $\Sigma = L \cdot L^T$,
+///    where $L$ is a lower triangular factor.
+/// 2. Draws standard independent normal vectors $Z \sim \mathcal{N}(0, I)$ of size $D$.
+/// 3. Returns the linearly transformed sample $X = \mu + Z \cdot L^T$ natively using
+///    zero-copy BLAS matrix multiplication (`matmul()`) and broadcasted upcast addition (`add()`)!
+///
+/// **Preconditions:**
+/// - [mean] must be a 1-dimensional vector of size $D$.
+/// - [cov] must be a square 2-dimensional symmetric, positive-definite covariance matrix of size $D \times D$.
+/// - If provided, [size] must be a valid shape list (e.g. `[N]`).
+///
+/// **Throws:**
+/// - [ArgumentError] if [mean] is not 1D or [cov] is not 2D and square.
+/// - [ArgumentError] if [mean] first dimension does not match [cov] dimensions.
+/// - [ArgumentError] if [cov] is not symmetric positive-definite.
+///
+/// **Performance considerations:**
+/// - Leverages high-speed LAPACK Cholesky solver and native CBLAS double/float matrix multiplication,
+///   yielding spectacular compiled execution speeds.
+///
+/// **Example:**
+/// ```dart
+/// final mean = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+/// final cov = NDArray.fromList([1.0, 0.0, 0.0, 1.0], [2, 2], DType.float64);
+/// final samples = multivariateNormal(mean, cov, size: [1000]);
+/// print(samples.shape); // [1000, 2]
+/// ```
+NDArray multivariateNormal(
+  NDArray mean,
+  NDArray cov, {
+  List<int>? size,
+  Random? random,
+}) {
+  if (mean.shape.length != 1) {
+    throw ArgumentError(
+      'mean must be a 1-dimensional vector (was ${mean.shape})',
+    );
+  }
+  if (cov.shape.length != 2 || cov.shape[0] != cov.shape[1]) {
+    throw ArgumentError(
+      'cov must be a 2-dimensional square matrix (was ${cov.shape})',
+    );
+  }
+  final d = mean.shape[0];
+  if (cov.shape[0] != d) {
+    throw ArgumentError(
+      'mean dimension ($d) must match cov dimensions (${cov.shape[0]}x${cov.shape[1]})',
+    );
+  }
+
+  // 1. LAPACK Cholesky factorization: Sigma = L * L^T
+  final choleskyFactors = cholesky(cov);
+  final l = choleskyFactors['L']! as NDArray<double>;
+
+  final sampleShape = <int>[];
+  if (size != null) {
+    sampleShape.addAll(size);
+  }
+  final sampleCount = sampleShape.isEmpty
+      ? 1
+      : sampleShape.reduce((a, b) => a * b);
+
+  // 2. Draw independent standard normals Z
+  final zShape = [...sampleShape, d];
+  final z = normal(zShape, dtype: cov.dtype, random: random);
+
+  // 3. Transform: X = Z * L^T + mean
+  final lT = l.transpose();
+
+  // We need to reshape or broadcast Z to 2D if sampleShape rank > 1
+  final z2D = z.reshape([sampleCount, d]);
+  final x2D = add(matmul(z2D, lT), mean);
+
+  l.dispose();
+  lT.dispose();
+  z.dispose();
+  z2D.dispose();
+
+  // Reshape back to final output shape: [...size, d]
+  final finalShape = [...sampleShape, d];
+  return x2D.reshape(finalShape);
 }
