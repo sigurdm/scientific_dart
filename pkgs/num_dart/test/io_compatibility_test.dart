@@ -21,11 +21,13 @@ void main() {
           [2, 3],
           DType.float64,
         );
+        addTearDown(a.dispose);
 
         const path = 'scratch/test_f64.npy';
         save(path, a);
 
         final loaded = load(path);
+        addTearDown(loaded.dispose);
         expect(loaded.shape, [2, 3]);
         expect(loaded.dtype, DType.float64);
         expect(loaded.toList(), [1.5, 2.5, 3.5, 4.5, 5.5, 6.5]);
@@ -37,10 +39,12 @@ void main() {
           [4],
           DType.float32,
         );
+        addTearDown(a.dispose);
         const path = 'scratch/test_f32.npy';
         save(path, a);
 
         final loaded = load(path);
+        addTearDown(loaded.dispose);
         expect(loaded.shape, [4]);
         expect(loaded.dtype, DType.float32);
         expect(loaded.toList(), [-1.0, 0.0, 1.0, 10.5]);
@@ -51,10 +55,12 @@ void main() {
           2,
           2,
         ], DType.int32);
+        addTearDown(a.dispose);
         const path = 'scratch/test_i32.npy';
         save(path, a);
 
         final loaded = load(path);
+        addTearDown(loaded.dispose);
         expect(loaded.dtype, DType.int32);
         expect(loaded.toList(), [10, 20, 30, 40]);
       });
@@ -63,16 +69,19 @@ void main() {
         final a = NDArray.fromList(Int64List.fromList([999999999, 111111111]), [
           2,
         ], DType.int64);
+        addTearDown(a.dispose);
         const path = 'scratch/test_i64.npy';
         save(path, a);
 
         final loaded = load(path);
+        addTearDown(loaded.dispose);
         expect(loaded.dtype, DType.int64);
         expect(loaded.toList(), [999999999, 111111111]);
       });
 
       test('Complex128 array round-trip', () {
         final a = NDArray<Complex>.create([2], DType.complex128);
+        addTearDown(a.dispose);
         a.data[0] = Complex(1.0, -2.0);
         a.data[1] = Complex(0.0, 3.5);
 
@@ -80,6 +89,7 @@ void main() {
         save(path, a);
 
         final loaded = load(path);
+        addTearDown(loaded.dispose);
         expect(loaded.shape, [2]);
         expect(loaded.dtype, DType.complex128);
         expect(loaded.data[0], Complex(1.0, -2.0));
@@ -88,6 +98,7 @@ void main() {
 
       test('Complex64 array round-trip', () {
         final a = NDArray<Complex>.create([2], DType.complex64);
+        addTearDown(a.dispose);
         a.data[0] = Complex(1.5, -2.5);
         a.data[1] = Complex(0.0, 3.0);
 
@@ -95,6 +106,7 @@ void main() {
         save(path, a);
 
         final loaded = load(path);
+        addTearDown(loaded.dispose);
         expect(loaded.shape, [2]);
         expect(loaded.dtype, DType.complex64);
         expect(loaded.data[0], Complex(1.5, -2.5));
@@ -109,15 +121,18 @@ void main() {
             [2, 2],
             DType.float64,
           );
+          addTearDown(parent.dispose);
 
           // Transposed view is non-contiguous (strides: [1, 2])
           final view = parent.transpose();
+          addTearDown(view.dispose);
           expect(view.isContiguous, false);
 
           const path = 'scratch/test_view.npy';
           save(path, view); // should make contiguous copy in-flight
 
           final loaded = load(path);
+          addTearDown(loaded.dispose);
           expect(loaded.shape, [2, 2]);
           // Transposed data logic: 1, 3, 2, 4
           expect(loaded.toList(), [1.0, 3.0, 2.0, 4.0]);
@@ -130,10 +145,12 @@ void main() {
         final arr1 = NDArray.fromList(Float64List.fromList([1.0, 2.0]), [
           2,
         ], DType.float64);
+        addTearDown(arr1.dispose);
         final arr2 = NDArray.fromList(Int32List.fromList([5, 6, 7, 8]), [
           2,
           2,
         ], DType.int32);
+        addTearDown(arr2.dispose);
 
         final map = {'array_one': arr1, 'array_two': arr2};
 
@@ -141,6 +158,7 @@ void main() {
         savez(path, map, compressed: false);
 
         final loaded = loadz(path);
+        addTearDown(() => loaded.values.forEach((a) => a.dispose()));
         expect(loaded.containsKey('array_one'), true);
         expect(loaded.containsKey('array_two'), true);
 
@@ -153,10 +171,12 @@ void main() {
         final arr1 = NDArray.fromList(Float32List.fromList([0.5, 1.5]), [
           2,
         ], DType.float32);
+        addTearDown(arr1.dispose);
         const path = 'scratch/archive_comp.npz';
         savez(path, {'x': arr1}, compressed: true);
 
         final loaded = loadz(path);
+        addTearDown(() => loaded.values.forEach((a) => a.dispose()));
         expect(loaded['x']!.toList(), [0.5, 1.5]);
         expect(loaded['x']!.dtype, DType.float32);
       });
@@ -220,6 +240,7 @@ void main() {
 
         // Load the archive
         final loaded = loadz(path);
+        addTearDown(() => loaded.values.forEach((a) => a.dispose()));
         expect(loaded.containsKey('f_arr'), true);
         expect(loaded['f_arr']!.shape, [2, 3]);
         // Check that loaded array successfully restores strides to Column-Major!
@@ -281,6 +302,7 @@ void main() {
 
         // Load it via num_dart load()!
         final loaded = load(path);
+        addTearDown(loaded.dispose);
 
         expect(loaded.shape, [2, 3]);
         // The zero-copy Fortran strides must be exactly: [1, 2]!
@@ -431,12 +453,14 @@ void main() {
         'Save into brand new nested directory makes parent directory recursive',
         () {
           final a = NDArray.ones([2], DType.float64);
+          addTearDown(a.dispose);
           const path = 'scratch/nested_non_existent/nested_level/arr.npy';
           save(path, a);
 
           final file = File(path);
           expect(file.existsSync(), true);
           final loaded = load(path);
+          addTearDown(loaded.dispose);
           expect(loaded.toList(), [1.0, 1.0]);
 
           file.deleteSync();
@@ -450,13 +474,16 @@ void main() {
           [2, 2],
           DType.float64,
         );
+        addTearDown(parent.dispose);
         final view = parent.transposed;
+        addTearDown(view.dispose);
         expect(view.isContiguous, false);
 
         const path = 'scratch/archive_with_view.npz';
         savez(path, {'view_key': view}, compressed: false);
 
         final loaded = loadz(path);
+        addTearDown(() => loaded.values.forEach((a) => a.dispose()));
         expect(loaded.containsKey('view_key'), true);
         expect(loaded['view_key']!.toList(), [1.0, 3.0, 2.0, 4.0]);
 
@@ -467,12 +494,14 @@ void main() {
         'Savez npz file into brand new nested directory makes parent directory recursive',
         () {
           final a = NDArray.ones([2], DType.float64);
+          addTearDown(a.dispose);
           const path = 'scratch/nested_npz_dir/nested_level/archive.npz';
           savez(path, {'arr': a}, compressed: false);
 
           final file = File(path);
           expect(file.existsSync(), true);
           final loaded = loadz(path);
+          addTearDown(() => loaded.values.forEach((a) => a.dispose()));
           expect(loaded['arr']!.toList(), [1.0, 1.0]);
 
           file.deleteSync();

@@ -5,6 +5,7 @@ void main() {
   group('NDArray Boolean Data Type (DType.boolean) Tests', () {
     test('Create empty boolean array via zeros factory', () {
       final arr = NDArray<bool>.zeros([2, 3], DType.boolean);
+      addTearDown(arr.dispose);
 
       expect(arr.shape, [2, 3]);
       expect(arr.dtype, DType.boolean);
@@ -16,6 +17,7 @@ void main() {
 
     test('Mutating boolean values via BoolList indexing operators', () {
       final arr = NDArray<bool>.zeros([4], DType.boolean);
+      addTearDown(arr.dispose);
 
       arr.data[0] = true;
       arr.data[2] = true;
@@ -30,6 +32,7 @@ void main() {
 
     test('Create boolean array filled with true via ones factory', () {
       final arr = NDArray<bool>.ones([5], DType.boolean);
+      addTearDown(arr.dispose);
 
       expect(arr.shape, [5]);
       expect(arr.dtype, DType.boolean);
@@ -39,6 +42,7 @@ void main() {
     test('Boolean fromList contiguous block copying', () {
       final input = [true, false, false, true];
       final arr = NDArray.fromList(input, [2, 2], DType.boolean);
+      addTearDown(arr.dispose);
 
       expect(arr.shape, [2, 2]);
       expect(arr.dtype, DType.boolean);
@@ -51,9 +55,11 @@ void main() {
         [4],
         DType.boolean,
       );
+      addTearDown(parent.dispose);
 
       // Slice a view on the latter elements (index 2 to 4 -> [true, false])
       final view = parent.slice([Slice(start: 2, stop: 4)]) as NDArray<bool>;
+      addTearDown(view.dispose);
 
       expect(view.shape, [2]);
       expect(view.dtype, DType.boolean);

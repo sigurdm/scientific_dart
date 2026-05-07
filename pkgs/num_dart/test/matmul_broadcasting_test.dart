@@ -21,6 +21,7 @@ void main() {
               [2, 2, 2],
               DType.float64,
             );
+            addTearDown(a.dispose);
 
             // Batch 0, Mat B: identity [[1, 0], [0, 1]]
             // Batch 1, Mat B: all twos [[2, 2], [2, 2]]
@@ -32,8 +33,10 @@ void main() {
               [2, 2, 2],
               DType.float64,
             );
+            addTearDown(b.dispose);
 
             final res = matmul(a, b);
+            addTearDown(res.dispose);
 
             expect(res.shape, [2, 2, 2]);
             expect(res.dtype, DType.float64);
@@ -60,6 +63,7 @@ void main() {
               [2, 1, 2, 2],
               DType.float64,
             );
+            addTearDown(a.dispose);
 
             final b = NDArray.fromList(
               Float64List.fromList([
@@ -70,8 +74,10 @@ void main() {
               [3, 2, 2],
               DType.float64,
             );
+            addTearDown(b.dispose);
 
             final res = matmul(a, b);
+            addTearDown(res.dispose);
 
             expect(res.shape, [2, 3, 2, 2]);
 
@@ -95,11 +101,14 @@ void main() {
             final v1 = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0]), [
               3,
             ], DType.float64);
+            addTearDown(v1.dispose);
             final v2 = NDArray.fromList(Float64List.fromList([4.0, 5.0, 6.0]), [
               3,
             ], DType.float64);
+            addTearDown(v2.dispose);
 
             final dotRes = matmul(v1, v2);
+            addTearDown(dotRes.dispose);
             // 1*4 + 2*5 + 3*6 = 4 + 10 + 18 = 32.0
             expect(dotRes.shape, <int>[]); // 0D scalar array
             expect(dotRes.data[0], 32.0);
@@ -112,11 +121,14 @@ void main() {
             [2, 3],
             DType.float64,
           );
+          addTearDown(mat.dispose);
           final vec = NDArray.fromList(Float64List.fromList([1.0, 1.0, 1.0]), [
             3,
           ], DType.float64);
+          addTearDown(vec.dispose);
 
           final res = matmul(mat, vec);
+          addTearDown(res.dispose);
           // row 0: 1+2+3 = 6.0, row 1: 4+5+6 = 15.0
           expect(res.shape, [2]);
           expect(res.toList(), [6.0, 15.0]);
@@ -126,13 +138,16 @@ void main() {
           final vec = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0]), [
             3,
           ], DType.float64);
+          addTearDown(vec.dispose);
           final mat = NDArray.fromList(
             Float64List.fromList([1.0, 0.0, 0.0, 1.0, 1.0, 1.0]),
             [3, 2],
             DType.float64,
           );
+          addTearDown(mat.dispose);
 
           final res = matmul(vec, mat);
+          addTearDown(res.dispose);
           // col 0: 1*1 + 2*0 + 3*1 = 4.0
           // col 1: 1*0 + 2*1 + 3*1 = 5.0
           expect(res.shape, [2]);
@@ -186,6 +201,7 @@ void main() {
           addTearDown(v2.dispose);
 
           final res = matmul(v1, v2);
+          addTearDown(res.dispose);
           expect(res.shape, []);
           expect(res.dtype, DType.float32);
           expect(res.data[0], closeTo(11.0, 1e-5));
@@ -206,6 +222,7 @@ void main() {
           addTearDown(b.dispose);
 
           final res = matmul(a, b);
+          addTearDown(res.dispose);
           expect(res.shape, [2, 2]);
           expect(res.dtype, DType.float32);
           expect(res.toList(), [19.0, 22.0, 43.0, 50.0]);

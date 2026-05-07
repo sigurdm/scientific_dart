@@ -10,6 +10,7 @@ void main() {
         2,
         3,
       ], DType.float64);
+      addTearDown(a.dispose);
       expect(a.shape, [2, 3]);
       expect(a.strides, [3, 1]);
     });
@@ -19,10 +20,12 @@ void main() {
         2,
         1,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = NDArray.fromList(Float64List.fromList([10, 20, 30]), [
         1,
         3,
       ], DType.float64);
+      addTearDown(b.dispose);
       final result = broadcast(a, b);
       expect(result.shape, [2, 3]);
       expect(result.stridesA, [1, 0]);
@@ -34,11 +37,14 @@ void main() {
         2,
         1,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = NDArray.fromList(Float64List.fromList([10, 20, 30]), [
         1,
         3,
       ], DType.float64);
+      addTearDown(b.dispose);
       final c = add(a, b);
+      addTearDown(c.dispose);
       expect(c.shape, [2, 3]);
       expect(c.data, [11.0, 21.0, 31.0, 12.0, 22.0, 32.0]);
     });
@@ -48,11 +54,14 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = NDArray<double>.fromList(Float64List.fromList([5, 6, 7, 8]), [
         2,
         2,
       ], DType.float64);
+      addTearDown(b.dispose);
       final c = matmul(a, b);
+      addTearDown(c.dispose);
       expect(c.shape, [2, 2]);
       expect(c.data, [19.0, 22.0, 43.0, 50.0]);
     });
@@ -62,12 +71,14 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final view = NDArray.view(
         a,
         shape: [2],
         strides: [1],
         offsetElements: 1,
       ); // View of [2, 3] if we flatten or just take from offset 1
+      addTearDown(view.dispose);
       // Wait, strides for view of [2] with stride 1 from offset 1 will be elements at index 1 and 2.
       // data at index 1 is 2.0.
       // data at index 2 is 3.0.
@@ -85,11 +96,14 @@ void main() {
         2,
         1,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = NDArray.fromList(Float64List.fromList([10, 20, 30]), [
         1,
         3,
       ], DType.float64);
+      addTearDown(b.dispose);
       final c = subtract(a, b);
+      addTearDown(c.dispose);
       expect(c.shape, [2, 3]);
       expect(c.data, [-9.0, -19.0, -29.0, -8.0, -18.0, -28.0]);
     });
@@ -99,11 +113,14 @@ void main() {
         2,
         1,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = NDArray.fromList(Float64List.fromList([10, 20, 30]), [
         1,
         3,
       ], DType.float64);
+      addTearDown(b.dispose);
       final c = multiply(a, b);
+      addTearDown(c.dispose);
       expect(c.shape, [2, 3]);
       expect(c.data, [10.0, 20.0, 30.0, 20.0, 40.0, 60.0]);
     });
@@ -113,23 +130,28 @@ void main() {
         2,
         1,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = NDArray.fromList(Float64List.fromList([2, 4, 5]), [
         1,
         3,
       ], DType.float64);
+      addTearDown(b.dispose);
       final c = divide(a, b);
+      addTearDown(c.dispose);
       expect(c.shape, [2, 3]);
       expect(c.data, [5.0, 2.5, 2.0, 10.0, 5.0, 4.0]);
     });
 
     test('Zeros Factory', () {
       final a = NDArray<double>.zeros([2, 3], DType.float64);
+      addTearDown(a.dispose);
       expect(a.shape, [2, 3]);
       expect(a.data, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
     });
 
     test('Ones Factory', () {
       final a = NDArray<double>.ones([2, 3], DType.float64);
+      addTearDown(a.dispose);
       expect(a.shape, [2, 3]);
       expect(a.data, [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
     });
@@ -141,12 +163,14 @@ void main() {
         step: 1.0,
         dtype: DType.float64,
       );
+      addTearDown(a.dispose);
       expect(a.shape, [5]);
       expect(a.data, [0.0, 1.0, 2.0, 3.0, 4.0]);
     });
 
     test('Linspace Factory', () {
       final a = NDArray<double>.linspace(0.0, 1.0, 5, dtype: DType.float64);
+      addTearDown(a.dispose);
       expect(a.shape, [5]);
       expect(a.data, [0.0, 0.25, 0.5, 0.75, 1.0]);
     });
@@ -156,24 +180,28 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final s = sum(a);
       expect(s, 10.0);
     });
 
     test('Manual Dispose', () {
       final a = NDArray<double>.create([2, 2], DType.float64);
+      addTearDown(a.dispose);
       // Should not throw
       a.dispose();
     });
 
     test('Eye Factory', () {
       final a = NDArray<double>.eye(3, DType.float64);
+      addTearDown(a.dispose);
       expect(a.shape, [3, 3]);
       expect(a.data, [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]);
     });
 
     test('Uniform Factory', () {
       final a = uniform([2, 3], dtype: DType.float64);
+      addTearDown(a.dispose);
       expect(a.shape, [2, 3]);
       expect(a.data.length, 6);
       for (final value in a.data) {
@@ -186,7 +214,9 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1, 2, 3, 4]), [
         4,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = a.reshape([2, 2]);
+      addTearDown(b.dispose);
       expect(b.shape, [2, 2]);
       expect(b.strides, [2, 1]);
       expect(b.data, [1.0, 2.0, 3.0, 4.0]);
@@ -222,15 +252,18 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = NDArray.fromList(Float64List.fromList([10, 20, 30, 40]), [
         2,
         2,
       ], DType.float64);
+      addTearDown(b.dispose);
 
       // Force Dart path
       ffiThresholds[Operation.add] = 10000;
 
       final c = add(a, b);
+      addTearDown(c.dispose);
       expect(c.shape, [2, 2]);
       expect(c.data, [11.0, 22.0, 33.0, 44.0]);
     });
@@ -241,14 +274,17 @@ void main() {
         [5],
         DType.float32,
       );
+      addTearDown(a.dispose);
       final b = NDArray.fromList(
         Float32List.fromList([10.0, 20.0, 30.0, 40.0, 50.0]),
         [5],
         DType.float32,
       );
+      addTearDown(b.dispose);
 
       // This should trigger SIMD path because it is float32 and contiguous
       final c = add(a, b);
+      addTearDown(c.dispose);
       expect(c.shape, [5]);
       expect(c.data, [11.0, 22.0, 33.0, 44.0, 55.0]);
     });
@@ -258,7 +294,9 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final s = sum(a, axis: 0) as NDArray<double>;
+      addTearDown(s.dispose);
       expect(s.shape, [2]);
       expect(s.data, [4.0, 6.0]);
     });
@@ -268,25 +306,30 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final s = sum(a, axis: 1) as NDArray<double>;
+      addTearDown(s.dispose);
       expect(s.shape, [2]);
       expect(s.data, [3.0, 7.0]);
     });
 
     test('NDArray.create supports Int32', () {
       final a = NDArray<int>.create([2, 2], DType.int32);
+      addTearDown(a.dispose);
       expect(a.shape, [2, 2]);
       expect(a.dtype, DType.int32);
     });
 
     test('NDArray.create supports Int64', () {
       final a = NDArray<int>.create([2, 2], DType.int64);
+      addTearDown(a.dispose);
       expect(a.shape, [2, 2]);
       expect(a.dtype, DType.int64);
     });
 
     test('Randint Factory', () {
       final a = randint([2, 3], low: 0, high: 10, dtype: DType.int64);
+      addTearDown(a.dispose);
       expect(a.shape, [2, 3]);
       expect(a.data.length, 6);
       for (final value in a.data) {
@@ -299,7 +342,9 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, 4.0, 9.0]), [
         3,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = sqrt(a);
+      addTearDown(b.dispose);
       expect(b.shape, [3]);
       expect(b.data, [1.0, 2.0, 3.0]);
     });
@@ -308,7 +353,9 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([0.0, math.pi / 2]), [
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = sin(a);
+      addTearDown(b.dispose);
       expect(b.shape, [2]);
       expect(b.data[0], closeTo(0.0, 1e-10));
       expect(b.data[1], closeTo(1.0, 1e-10));
@@ -318,7 +365,9 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([0.0, math.pi]), [
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = cos(a);
+      addTearDown(b.dispose);
       expect(b.shape, [2]);
       expect(b.data[0], closeTo(1.0, 1e-10));
       expect(b.data[1], closeTo(-1.0, 1e-10));
@@ -328,7 +377,9 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([0.0, 1.0]), [
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = exp(a);
+      addTearDown(b.dispose);
       expect(b.shape, [2]);
       expect(b.data[0], closeTo(1.0, 1e-10));
       expect(b.data[1], closeTo(math.e, 1e-10));
@@ -338,7 +389,9 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, math.e]), [
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = log(a);
+      addTearDown(b.dispose);
       expect(b.shape, [2]);
       expect(b.data[0], closeTo(0.0, 1e-10));
       expect(b.data[1], closeTo(1.0, 1e-10));
@@ -349,10 +402,12 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final m = mean(a);
       expect(m, 2.5);
 
       final m0 = mean(a, axis: 0) as NDArray<double>;
+      addTearDown(m0.dispose);
       expect(m0.shape, [2]);
       expect(m0.data, [2.0, 3.0]);
     });
@@ -363,9 +418,9 @@ void main() {
         2,
       ], DType.float64);
       final m = min(a);
-      expect(m, 1.0);
+      expect(m.scalar, 1.0);
 
-      final m0 = min(a, axis: 0) as NDArray<double>;
+      final m0 = min(a, axis: 0);
       expect(m0.shape, [2]);
       expect(m0.data, [3.0, 1.0]); // Min along rows: min(3,4)=3, min(1,2)=1
     });
@@ -376,9 +431,9 @@ void main() {
         2,
       ], DType.float64);
       final m = max(a);
-      expect(m, 4.0);
+      expect(m.scalar, 4.0);
 
-      final m0 = max(a, axis: 0) as NDArray<double>;
+      final m0 = max(a, axis: 0);
       expect(m0.shape, [2]);
       expect(m0.data, [4.0, 2.0]); // Max along rows: max(3,4)=4, max(1,2)=2
     });
@@ -388,10 +443,12 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final p = prod(a);
       expect(p, 24.0);
 
       final p0 = prod(a, axis: 0) as NDArray<double>;
+      addTearDown(p0.dispose);
       expect(p0.shape, [2]);
       expect(p0.toList(), [3.0, 8.0]); // Prod along rows: 1*3=3, 2*4=8
     });
@@ -400,6 +457,7 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0, 4.0]), [
         4,
       ], DType.float64);
+      addTearDown(a.dispose);
       final v = variance(a);
       expect(
         v,
@@ -410,7 +468,9 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a2.dispose);
       final v0 = variance(a2, axis: 0) as NDArray<double>;
+      addTearDown(v0.dispose);
       expect(v0.shape, [2]);
       expect(v0.toList(), [
         1.0,
@@ -422,6 +482,7 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0, 4.0]), [
         4,
       ], DType.float64);
+      addTearDown(a.dispose);
       final s = std(a);
       expect(s, closeTo(math.sqrt(1.25), 1e-10));
 
@@ -429,7 +490,9 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a2.dispose);
       final s0 = std(a2, axis: 0) as NDArray<double>;
+      addTearDown(s0.dispose);
       expect(s0.shape, [2]);
       expect(s0.toList(), [1.0, 1.0]);
     });
@@ -439,6 +502,7 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final d = det(a);
       expect(d, closeTo(-2.0, 1e-10)); // 1*4 - 2*3 = -2
 
@@ -447,6 +511,7 @@ void main() {
         [3, 3],
         DType.float64,
       );
+      addTearDown(a3.dispose);
       final d3 = det(a3);
       expect(
         d3,
@@ -459,6 +524,7 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final d = det(a);
       expect(d, closeTo(0.0, 1e-10));
     });
@@ -468,10 +534,13 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = NDArray.fromList(Float64List.fromList([9.0, 8.0]), [
         2,
       ], DType.float64);
+      addTearDown(b.dispose);
       final x = solve(a, b);
+      addTearDown(x.dispose);
       expect(x.shape, [2]);
       expect(x.data[0], closeTo(2.0, 1e-10));
       expect(x.data[1], closeTo(3.0, 1e-10));
@@ -482,11 +551,14 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = NDArray.fromList(Float64List.fromList([9.0, 5.0, 8.0, 5.0]), [
         2,
         2,
       ], DType.float64);
+      addTearDown(b.dispose);
       final x = solve(a, b);
+      addTearDown(x.dispose);
       expect(x.shape, [2, 2]);
       expect(x.data[0], closeTo(2.0, 1e-10));
       expect(x.data[1], closeTo(1.0, 1e-10));
@@ -499,9 +571,11 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = NDArray.fromList(Float64List.fromList([5.0, 10.0]), [
         2,
       ], DType.float64);
+      addTearDown(b.dispose);
       expect(() => solve(a, b), throwsArgumentError);
     });
 
@@ -510,10 +584,13 @@ void main() {
         2,
         2,
       ], DType.float32);
+      addTearDown(a.dispose);
       final b = NDArray.fromList(Float32List.fromList([9.0, 8.0]), [
         2,
       ], DType.float32);
+      addTearDown(b.dispose);
       final x = solve(a, b);
+      addTearDown(x.dispose);
       expect(x.shape, [2]);
       expect(x.dtype, DType.float32);
       expect(x.data[0], closeTo(2.0, 1e-5));
@@ -522,8 +599,11 @@ void main() {
 
     test('Solve Int32 (converts to Float64)', () {
       final a = NDArray.fromList([3, 1, 1, 2], [2, 2], DType.int32);
+      addTearDown(a.dispose);
       final b = NDArray.fromList([9, 8], [2], DType.int32);
+      addTearDown(b.dispose);
       final x = solve(a, b);
+      addTearDown(x.dispose);
       expect(x.shape, [2]);
       expect(x.dtype, DType.float64);
       expect(x.data[0], closeTo(2.0, 1e-10));
@@ -532,16 +612,19 @@ void main() {
 
     test('Solve Complex128', () {
       final a = NDArray<Complex>.create([2, 2], DType.complex128);
+      addTearDown(a.dispose);
       a.data[0] = Complex(3.0, 0.0);
       a.data[1] = Complex(1.0, 0.0);
       a.data[2] = Complex(1.0, 0.0);
       a.data[3] = Complex(2.0, 0.0);
 
       final b = NDArray<Complex>.create([2], DType.complex128);
+      addTearDown(b.dispose);
       b.data[0] = Complex(9.0, 0.0);
       b.data[1] = Complex(8.0, 0.0);
 
       final x = solve(a, b);
+      addTearDown(x.dispose);
       expect(x.shape, [2]);
       expect(x.dtype, DType.complex128);
       expect(x.data[0], Complex(2.0, 0.0));
@@ -553,9 +636,12 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final result = eig(a);
       final w = result['eigenvalues']!;
+      addTearDown(w.dispose);
       final vr = result['eigenvectors']!;
+      addTearDown(vr.dispose);
 
       expect(w.shape, [2]);
       expect(vr.shape, [2, 2]);
@@ -577,6 +663,7 @@ void main() {
 
     test('Eigen Decompositions (Complex Matrix)', () {
       final a = NDArray<Complex>.create([2, 2], DType.complex128);
+      addTearDown(a.dispose);
       a.data[0] = Complex(0.0, 1.0);
       a.data[1] = Complex(0.0, 0.0);
       a.data[2] = Complex(0.0, 0.0);
@@ -584,6 +671,7 @@ void main() {
 
       final result = eig(a);
       final w = result['eigenvalues']!;
+      addTearDown(w.dispose);
 
       expect(w.shape, [2]);
       expect(w.data[0], Complex(0.0, 1.0));
@@ -595,7 +683,9 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = inv(a);
+      addTearDown(b.dispose);
       expect(b.shape, [2, 2]);
       expect(b.data[0], closeTo(0.6, 1e-10));
       expect(b.data[1], closeTo(-0.7, 1e-10));
@@ -608,6 +698,7 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       expect(a[[0, 0]], 1.0);
       expect(a[[0, 1]], 2.0);
       expect(a[[1, 0]], 3.0);
@@ -621,7 +712,9 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0, 4.0]), [
         4,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = a.slice([Slice(start: 1, stop: 3)]);
+      addTearDown(b.dispose);
       expect(b.shape, [2]);
       expect(b.toList(), [2.0, 3.0]);
     });
@@ -630,7 +723,9 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0, 4.0]), [
         4,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = a.slice([Slice(start: 1, stop: 3)]);
+      addTearDown(b.dispose);
       b.data[0] = 20.0;
       expect(a.data[1], 20.0);
     });
@@ -639,7 +734,9 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0, 4.0]), [
         4,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = a.slice([Slice(start: 0, stop: 4, step: 2)]);
+      addTearDown(b.dispose);
       expect(b.shape, [2]);
       expect(b.toList(), [1.0, 3.0]);
     });
@@ -649,7 +746,9 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = a.slice([Index(1)]); // Select row 1
+      addTearDown(b.dispose);
       expect(b.shape, [2]);
       expect(b.toList(), [3.0, 4.0]);
     });
@@ -658,9 +757,11 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0, 4.0]), [
         4,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = a.slice([
         Indices([0, 2, 3]),
       ]);
+      addTearDown(b.dispose);
       expect(b.shape, [3]);
       expect(b.toList(), [1.0, 3.0, 4.0]);
     });
@@ -669,9 +770,11 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0, 4.0]), [
         4,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = a.slice([
         Indices([0, 2]),
       ]);
+      addTearDown(b.dispose);
       b.data[0] = 10.0;
       expect(a.data[0], 1.0); // Original should not change!
     });
@@ -680,13 +783,17 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0, 4.0]), [
         4,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = a > 2.0;
+      addTearDown(b.dispose);
       expect(b.toList(), [false, false, true, true]);
 
       final c = a < 3.0;
+      addTearDown(c.dispose);
       expect(c.toList(), [true, true, false, false]);
 
       final d = a.eq(2.0);
+      addTearDown(d.dispose);
       expect(d.toList(), [false, true, false, false]);
     });
 
@@ -694,8 +801,11 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0, 4.0]), [
         4,
       ], DType.float64);
+      addTearDown(a.dispose);
       final mask = a > 2.0;
+      addTearDown(mask.dispose);
       final b = a.slice([Mask(BooleanMask(mask))]);
+      addTearDown(b.dispose);
       expect(b.shape, [2]);
       expect(b.toList(), [3.0, 4.0]);
     });
@@ -704,8 +814,11 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0, 4.0]), [
         4,
       ], DType.float64);
+      addTearDown(a.dispose);
       final mask = a > 2.0;
+      addTearDown(mask.dispose);
       final b = a.slice([Mask(BooleanMask(mask))]);
+      addTearDown(b.dispose);
       b.data[0] = 10.0;
       expect(a.data[2], 3.0); // Original should not change!
     });
@@ -715,11 +828,14 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = a.take([0, 1], axis: 1); // Select columns 0 and 1
+      addTearDown(b.dispose);
       expect(b.shape, [2, 2]);
       expect(b.toList(), [1.0, 2.0, 3.0, 4.0]);
 
       final c = a.take([1], axis: 0); // Select row 1
+      addTearDown(c.dispose);
       expect(c.shape, [1, 2]);
       expect(c.toList(), [3.0, 4.0]);
     });
@@ -728,8 +844,11 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0, 4.0]), [
         4,
       ], DType.float64);
+      addTearDown(a.dispose);
       final mask = a > 2.0;
+      addTearDown(mask.dispose);
       final b = a.applyMask(mask);
+      addTearDown(b.dispose);
       expect(b.shape, [2]);
       expect(b.toList(), [3.0, 4.0]);
     });
@@ -739,7 +858,9 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = a.flatten();
+      addTearDown(b.dispose);
       expect(b.shape, [4]);
       expect(b.toList(), [1.0, 2.0, 3.0, 4.0]);
 
@@ -789,7 +910,9 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = a.ravel();
+      addTearDown(b.dispose);
       expect(b.shape, [4]);
       expect(b.toList(), [1.0, 2.0, 3.0, 4.0]);
 
@@ -802,11 +925,14 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = a.slice([
         Slice(start: 0, stop: 2),
         Index(0),
       ]); // Select column 0
+      addTearDown(b.dispose);
       final c = b.ravel();
+      addTearDown(c.dispose);
       expect(c.shape, [2]);
       expect(c.toList(), [1.0, 3.0]);
 
@@ -819,7 +945,9 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = a.transposed;
+      addTearDown(b.dispose);
       expect(b.shape, [2, 2]);
       expect(b.toList(), [1.0, 3.0, 2.0, 4.0]);
 
@@ -832,7 +960,9 @@ void main() {
         2,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = a.transpose([1, 0]);
+      addTearDown(b.dispose);
       expect(b.shape, [2, 2]);
       expect(b.toList(), [1.0, 3.0, 2.0, 4.0]);
     });
@@ -842,11 +972,14 @@ void main() {
         1,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = NDArray.fromList(Float64List.fromList([3.0, 4.0]), [
         1,
         2,
       ], DType.float64);
+      addTearDown(b.dispose);
       final c = concatenate([a, b], axis: 0);
+      addTearDown(c.dispose);
       expect(c.shape, [2, 2]);
       expect(c.toList(), [1.0, 2.0, 3.0, 4.0]);
     });
@@ -856,11 +989,14 @@ void main() {
         1,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = NDArray.fromList(Float64List.fromList([3.0, 4.0]), [
         1,
         2,
       ], DType.float64);
+      addTearDown(b.dispose);
       final c = concatenate([a, b], axis: 1);
+      addTearDown(c.dispose);
       expect(c.shape, [1, 4]);
       expect(c.toList(), [1.0, 2.0, 3.0, 4.0]);
     });
@@ -870,11 +1006,14 @@ void main() {
         1,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = NDArray.fromList(Float64List.fromList([3.0, 4.0]), [
         1,
         2,
       ], DType.float64);
+      addTearDown(b.dispose);
       final c = vstack([a, b]);
+      addTearDown(c.dispose);
       expect(c.shape, [2, 2]);
       expect(c.toList(), [1.0, 2.0, 3.0, 4.0]);
     });
@@ -884,11 +1023,14 @@ void main() {
         1,
         2,
       ], DType.float64);
+      addTearDown(a.dispose);
       final b = NDArray.fromList(Float64List.fromList([3.0, 4.0]), [
         1,
         2,
       ], DType.float64);
+      addTearDown(b.dispose);
       final c = hstack([a, b]);
+      addTearDown(c.dispose);
       expect(c.shape, [1, 4]);
       expect(c.toList(), [1.0, 2.0, 3.0, 4.0]);
     });

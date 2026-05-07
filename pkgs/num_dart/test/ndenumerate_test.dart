@@ -5,6 +5,7 @@ void main() {
   group('NDArray Multidimensional Enumeration (ndenumerate) Tests', () {
     test('ndenumerate() basic 2D matrix walk checks', () {
       final a = NDArray.fromList([10, 20, 30, 40, 50, 60], [2, 3], DType.int32);
+      addTearDown(a.dispose);
       final entries = ndenumerate(a).toList();
 
       expect(entries.length, 6);
@@ -30,12 +31,14 @@ void main() {
 
     test('ndenumerate() supports 1D arrays and 0D scalars', () {
       final a = NDArray.fromList([9.0, 8.0], [2], DType.float64);
+      addTearDown(a.dispose);
       final entries1D = ndenumerate(a).toList();
       expect(entries1D.length, 2);
       expect(entries1D[0].$1, [0]);
       expect(entries1D[0].$2, 9.0);
 
       final scalar = NDArray.fromList([99], [], DType.int32);
+      addTearDown(scalar.dispose);
       final entries0D = ndenumerate(scalar).toList();
       expect(entries0D.length, 1);
       expect(entries0D[0].$1, []);
@@ -44,7 +47,9 @@ void main() {
 
     test('ndenumerate() handles non-contiguous strided transposed views', () {
       final parent = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+      addTearDown(parent.dispose);
       final view = parent.transposed; // shape [2, 2], non-contiguous strides!
+      addTearDown(view.dispose);
       expect(view.isContiguous, false);
 
       final entries = ndenumerate(view).toList();

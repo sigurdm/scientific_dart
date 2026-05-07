@@ -5,16 +5,19 @@ void main() {
   group('NDArray Complex Components (real, imag) Tests', () {
     test('real() and imag() basic complex128 contiguous checks', () {
       final a = NDArray<Complex>.create([3], DType.complex128);
+      addTearDown(a.dispose);
       a.data[0] = Complex(3.5, 4.5);
       a.data[1] = Complex(-1.0, 0.0);
       a.data[2] = Complex(0.0, -2.5);
 
       final r = real(a);
+      addTearDown(r.dispose);
       expect(r.dtype, DType.float64);
       expect(r.shape, [3]);
       expect(r.toList(), [3.5, -1.0, 0.0]);
 
       final im = imag(a);
+      addTearDown(im.dispose);
       expect(im.dtype, DType.float64);
       expect(im.shape, [3]);
       expect(im.toList(), [4.5, 0.0, -2.5]);
@@ -22,21 +25,26 @@ void main() {
 
     test('real() and imag() support complex64', () {
       final a = NDArray<Complex>.create([2], DType.complex64);
+      addTearDown(a.dispose);
       a.data[0] = Complex(1.5, -2.5);
       a.data[1] = Complex(0.0, 3.0);
 
       final r = real(a);
+      addTearDown(r.dispose);
       expect(r.dtype, DType.float32);
       expect(r.toList(), [1.5, 0.0]);
 
       final im = imag(a);
+      addTearDown(im.dispose);
       expect(im.dtype, DType.float32);
       expect(im.toList(), [-2.5, 3.0]);
     });
 
     test('real() on already real arrays returns zero-copy views', () {
       final a = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+      addTearDown(a.dispose);
       final r = real(a);
+      addTearDown(r.dispose);
 
       expect(r.dtype, DType.float64);
       expect(r.toList(), [10.0, 20.0]);
@@ -48,7 +56,9 @@ void main() {
 
     test('imag() on already real arrays returns zero-filled arrays', () {
       final a = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+      addTearDown(a.dispose);
       final im = imag(a);
+      addTearDown(im.dispose);
 
       expect(im.dtype, DType.float64);
       expect(im.toList(), [0.0, 0.0]);
@@ -56,10 +66,12 @@ void main() {
 
     test('recycler out parameter checks', () {
       final a = NDArray<Complex>.create([2], DType.complex128);
+      addTearDown(a.dispose);
       a.data[0] = Complex(1.0, 2.0);
       a.data[1] = Complex(3.0, 4.0);
 
       final out = NDArray.create([2], DType.float64);
+      addTearDown(out.dispose);
       final res = real(a, out: out);
 
       expect(identical(res, out), true);
@@ -68,7 +80,9 @@ void main() {
 
     test('real() recycler out parameter checks when a is already real', () {
       final a = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+      addTearDown(a.dispose);
       final out = NDArray.create([2], DType.float64);
+      addTearDown(out.dispose);
       final res = real(a, out: out);
 
       expect(identical(res, out), true);
@@ -77,7 +91,9 @@ void main() {
 
     test('imag() recycler out parameter checks when a is already real', () {
       final a = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+      addTearDown(a.dispose);
       final out = NDArray.create([2], DType.float64);
+      addTearDown(out.dispose);
       final res = imag(a, out: out);
 
       expect(identical(res, out), true);
@@ -86,8 +102,11 @@ void main() {
 
     test('recycler out shape and dtype mismatch throws ArgumentError', () {
       final a = NDArray<Complex>.create([2], DType.complex128);
+      addTearDown(a.dispose);
       final wrongShape = NDArray.create([3], DType.float64);
+      addTearDown(wrongShape.dispose);
       final wrongDType = NDArray.create([2], DType.int32);
+      addTearDown(wrongDType.dispose);
 
       expect(() => real(a, out: wrongShape), throwsArgumentError);
       expect(() => real(a, out: wrongDType), throwsArgumentError);
@@ -95,6 +114,7 @@ void main() {
       expect(() => imag(a, out: wrongDType), throwsArgumentError);
 
       final realArr = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+      addTearDown(realArr.dispose);
       expect(() => real(realArr, out: wrongShape), throwsArgumentError);
       expect(() => real(realArr, out: wrongDType), throwsArgumentError);
       expect(() => imag(realArr, out: wrongShape), throwsArgumentError);
@@ -105,24 +125,29 @@ void main() {
       'strided non-contiguous complex128 addition walks native C kernels',
       () {
         final a = NDArray<Complex>.create([2, 2], DType.complex128);
+        addTearDown(a.dispose);
         a.data[0] = Complex(1.0, 2.0);
         a.data[1] = Complex(3.0, 4.0);
         a.data[2] = Complex(5.0, 6.0);
         a.data[3] = Complex(7.0, 8.0);
 
         final b = NDArray<Complex>.create([2, 2], DType.complex128);
+        addTearDown(b.dispose);
         b.data[0] = Complex(10.0, 10.0);
         b.data[1] = Complex(20.0, 20.0);
         b.data[2] = Complex(30.0, 30.0);
         b.data[3] = Complex(40.0, 40.0);
 
         final viewA = a.transposed;
+        addTearDown(viewA.dispose);
         final viewB = b.transposed;
+        addTearDown(viewB.dispose);
 
         expect(viewA.isContiguous, false);
         expect(viewB.isContiguous, false);
 
         final res = add(viewA, viewB);
+        addTearDown(res.dispose);
 
         expect(res.shape, [2, 2]);
         expect(res.dtype, DType.complex128);
@@ -151,7 +176,11 @@ void main() {
         b.data[3] = Complex(7.0, 8.0);
         addTearDown(b.dispose);
 
-        final res1 = subtract(a.transposed, b.transposed);
+        final aT = a.transposed;
+        addTearDown(aT.dispose);
+        final bT = b.transposed;
+        addTearDown(bT.dispose);
+        final res1 = subtract(aT, bT);
         addTearDown(res1.dispose);
         expect(res1.shape, [2, 2]);
         expect(res1.dtype, DType.complex128);
@@ -167,7 +196,9 @@ void main() {
         );
         addTearDown(realArr.dispose);
 
-        final res2 = subtract(a.transposed, realArr.transposed);
+        final realArrT = realArr.transposed;
+        addTearDown(realArrT.dispose);
+        final res2 = subtract(aT, realArrT);
         addTearDown(res2.dispose);
         expect(res2.shape, [2, 2]);
         expect(res2.dtype, DType.complex128);

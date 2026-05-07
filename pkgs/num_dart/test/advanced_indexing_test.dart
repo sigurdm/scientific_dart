@@ -10,6 +10,7 @@ void main() {
           2,
           2,
         ], DType.float64);
+        addTearDown(a.dispose);
 
         expect(a.getCell([0, 0]), 1.0);
         expect(a.getCell([0, 1]), 2.0);
@@ -25,7 +26,9 @@ void main() {
           [4],
           DType.float64,
         );
+        addTearDown(arr.dispose);
         final mask = arr < 0.0; // returns binary mask array
+        addTearDown(mask.dispose);
 
         // Explicit scalar clip
         arr.setByMask(mask, 0.0);
@@ -38,8 +41,10 @@ void main() {
           [3, 3],
           DType.int32,
         );
+        addTearDown(mat.dispose);
 
         final targetRows = NDArray.fromList([0, 2], [2], DType.int32);
+        addTearDown(targetRows.dispose);
 
         // Overwrite row 0 and row 2 to 9
         mat.setIndicesScalar(targetRows, 9, axis: 0);
@@ -54,9 +59,11 @@ void main() {
           [3, 4],
           DType.int32,
         );
+        addTearDown(a.dispose);
 
         // NumPy: a[1] extracts row 1 view
         final r1 = a[1];
+        addTearDown(r1.dispose);
         expect(r1.shape, [4]);
         expect(r1.toList(), [4, 5, 6, 7]);
       });
@@ -67,12 +74,14 @@ void main() {
           [3, 4],
           DType.int32,
         );
+        addTearDown(a.dispose);
 
         // NumPy: a[[0, 2]] extracts row 0 and row 2 stacked!
         final fancy =
             a[[
               [0, 2],
             ]];
+        addTearDown(fancy.dispose);
         expect(fancy.shape, [2, 4]);
         expect(fancy.toList(), [
           0, 1, 2, 3, // row 0
@@ -88,9 +97,13 @@ void main() {
             [4],
             DType.float64,
           );
+          addTearDown(a.dispose);
 
           // NumPy: a[a > 0] returns positive elements flattened vector!
-          final positives = a[a > 0.0];
+          final mask = a > 0.0;
+          addTearDown(mask.dispose);
+          final positives = a[mask];
+          addTearDown(positives.dispose);
           expect(positives.shape, [2]);
           expect(positives.toList(), [1.0, 3.0]);
         },
@@ -102,9 +115,12 @@ void main() {
           [4],
           DType.float64,
         );
+        addTearDown(mat.dispose);
 
         // NumPy: mat[mat < 0.0] = 0.0
-        mat[mat < 0.0] = 0.0;
+        final mask = mat < 0.0;
+        addTearDown(mask.dispose);
+        mat[mask] = 0.0;
         expect(mat.toList(), [10.0, 0.0, 20.0, 0.0]);
       });
 
@@ -116,6 +132,7 @@ void main() {
             6.0,
             dtype: DType.float64,
           ).reshape([3, 2]);
+          addTearDown(mat.dispose);
           // [[0,1], [2,3], [4,5]]
 
           // Mutate row 0 and row 2 in-place to scalar 99.0
@@ -143,10 +160,12 @@ void main() {
 
         test('Contiguous fill for float32 and int64', () {
           final a = NDArray<double>.create([3], DType.float32);
+          addTearDown(a.dispose);
           a.fill(42.0);
           expect(a.toList(), [42.0, 42.0, 42.0]);
 
           final b = NDArray<int>.create([3], DType.int64);
+          addTearDown(b.dispose);
           b.fill(99);
           expect(b.toList(), [99, 99, 99]);
         });
@@ -155,6 +174,7 @@ void main() {
           'Unsupported selector type for operator[] throws ArgumentError',
           () {
             final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            addTearDown(a.dispose);
             expect(() => a['invalid'], throwsArgumentError);
           },
         );
@@ -163,7 +183,9 @@ void main() {
           'Integer array mask of same shape for operator[] throws ArgumentError',
           () {
             final a = NDArray.fromList([1, 2], [2], DType.int32);
+            addTearDown(a.dispose);
             final mask = NDArray.fromList([1, 0], [2], DType.int32);
+            addTearDown(mask.dispose);
             expect(() => a[mask], throwsArgumentError);
           },
         );
@@ -176,9 +198,12 @@ void main() {
               [4],
               DType.float64,
             );
+            addTearDown(a.dispose);
             final selector = NDArray.fromList([0, 2, 1], [3], DType.int32);
+            addTearDown(selector.dispose);
 
             final res = a[selector];
+            addTearDown(res.dispose);
             expect(res.shape, [3]);
             expect(res.toList(), [10.0, 30.0, 20.0]);
           },
@@ -190,10 +215,12 @@ void main() {
             [2, 2],
             DType.float64,
           );
+          addTearDown(a.dispose);
           a[0] = 99.0; // scalar assignment to row 0
           expect(a.toList(), [99.0, 99.0, 3.0, 4.0]);
 
           final val = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+          addTearDown(val.dispose);
           a[1] = val; // array assignment to row 1
           expect(a.toList(), [99.0, 99.0, 10.0, 20.0]);
         });
@@ -206,11 +233,13 @@ void main() {
               [3, 2],
               DType.float64,
             );
+            addTearDown(a.dispose);
             final val = NDArray.fromList(
               [99.0, 99.0, 88.0, 88.0],
               [2, 2],
               DType.float64,
             );
+            addTearDown(val.dispose);
 
             // Target rows 0 and 2 using nested list [[0, 2]]
             a[[
@@ -227,6 +256,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
+          addTearDown(a.dispose);
           expect(() => a[[0]] = 99.0, throwsArgumentError);
         });
 
@@ -234,11 +264,13 @@ void main() {
           'operator[]= boolean mask shape mismatch throws ArgumentError',
           () {
             final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            addTearDown(a.dispose);
             final mask = NDArray.fromList(
               [true, false, true],
               [3],
               DType.boolean,
             );
+            addTearDown(mask.dispose);
             expect(() => a[mask] = 99.0, throwsArgumentError);
           },
         );
@@ -247,7 +279,9 @@ void main() {
           'Integer array mask of same shape for operator[]= throws ArgumentError',
           () {
             final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            addTearDown(a.dispose);
             final mask = NDArray.fromList([1, 0], [2], DType.int32);
+            addTearDown(mask.dispose);
             expect(() => a[mask] = 99.0, throwsArgumentError);
           },
         );
@@ -260,8 +294,11 @@ void main() {
               [4],
               DType.float64,
             );
+            addTearDown(a.dispose);
             final selector = NDArray.fromList([0, 2], [2], DType.int32);
+            addTearDown(selector.dispose);
             final val = NDArray.fromList([99.0, 88.0], [2], DType.float64);
+            addTearDown(val.dispose);
 
             a[selector] = val;
             expect(a.toList(), [99.0, 2.0, 88.0, 4.0]);
@@ -276,7 +313,9 @@ void main() {
               [4],
               DType.float64,
             );
+            addTearDown(a.dispose);
             final selector = NDArray.fromList([0, 2], [2], DType.int32);
+            addTearDown(selector.dispose);
 
             a[selector] = 99.0;
             expect(a.toList(), [99.0, 2.0, 99.0, 4.0]);
@@ -285,6 +324,7 @@ void main() {
 
         test('operator[]= invalid selector type throws ArgumentError', () {
           final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          addTearDown(a.dispose);
           expect(() => a['invalid'] = 99.0, throwsArgumentError);
         });
       });

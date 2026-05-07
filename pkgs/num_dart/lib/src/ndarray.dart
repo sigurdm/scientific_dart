@@ -748,6 +748,16 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Returns a view of the array with dimensions reversed.
   NDArray<T> get transposed => transpose();
 
+  /// Returns the single scalar value of a 0-dimensional array.
+  T get scalar {
+    if (shape.isNotEmpty) {
+      throw StateError(
+        'scalar can only be called on 0-dimensional arrays (has shape $shape)',
+      );
+    }
+    return data[0];
+  }
+
   /// Fetches the single scalar element at the specified multi-dimensional [coords].
   ///
   /// **Polymorphic Equivalence:**

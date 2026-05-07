@@ -6,7 +6,9 @@ void main() {
   group('NDArray Angle Converters (deg2rad, rad2deg) Tests', () {
     test('deg2rad basic float64 contiguous conversion checks', () {
       final a = NDArray.fromList([180.0, 90.0, 0.0, -45.0], [4], DType.float64);
+      addTearDown(a.dispose);
       final res = deg2rad(a);
+      addTearDown(res.dispose);
 
       expect(res.dtype, DType.float64);
       expect(res.data[0], closeTo(math.pi, 1e-10));
@@ -21,7 +23,9 @@ void main() {
         [4],
         DType.float64,
       );
+      addTearDown(a.dispose);
       final res = rad2deg(a);
+      addTearDown(res.dispose);
 
       expect(res.dtype, DType.float64);
       expect(res.data[0], closeTo(180.0, 1e-10));
@@ -32,18 +36,23 @@ void main() {
 
     test('deg2rad and rad2deg support Float32', () {
       final a = NDArray.fromList([180.0, 90.0], [2], DType.float32);
+      addTearDown(a.dispose);
       final r = deg2rad(a);
+      addTearDown(r.dispose);
       expect(r.dtype, DType.float32);
       expect(r.data[0], closeTo(math.pi, 1e-5));
 
       final b = NDArray.fromList([math.pi, math.pi / 2.0], [2], DType.float32);
+      addTearDown(b.dispose);
       final d = rad2deg(b);
+      addTearDown(d.dispose);
       expect(d.dtype, DType.float32);
       expect(d.data[0], closeTo(180.0, 1e-5));
     });
 
     test('Complex arrays throw UnsupportedError', () {
       final a = NDArray<Complex>.create([2], DType.complex128);
+      addTearDown(a.dispose);
       expect(() => deg2rad(a), throwsUnsupportedError);
       expect(() => rad2deg(a), throwsUnsupportedError);
     });

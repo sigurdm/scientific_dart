@@ -2342,11 +2342,14 @@ dynamic nanstd<T extends num>(NDArray<T> a, {int? axis}) {
 /// Compute the minimum of elements in the array.
 ///
 /// **Gotchas:**
-/// - Returns a scalar if [axis] is null, or a new [NDArray] if [axis] is provided.
-/// - When [axis] is provided, the result is currently always a [DType.float64] array.
-dynamic min<T extends num>(NDArray<T> a, {int? axis}) {
+/// - Returns a 0-dimensional [NDArray] if [axis] is null, or a new [NDArray] if [axis] is provided.
+/// - Preserves the original data type (DType) of the input array along the reduction axis.
+NDArray<T> min<T extends num>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
-    return a.data.reduce((value, element) => math.min(value, element));
+    final minVal = a.data.reduce((value, element) => math.min(value, element));
+    final result = NDArray<T>.create([], a.dtype);
+    result.data[0] = minVal;
+    return result;
   }
 
   if (axis < 0 || axis >= a.shape.length) {
@@ -2354,35 +2357,124 @@ dynamic min<T extends num>(NDArray<T> a, {int? axis}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = NDArray<double>.fromList(
-    List<double>.filled(
-      newShape.isEmpty ? 1 : newShape.reduce((x, y) => x * y),
-      double.infinity,
-    ),
-    newShape,
-    DType.float64,
-  );
+  final selectors = List<Selector>.generate(a.shape.length, (j) {
+    if (j == axis) return Index(0);
+    return Slice();
+  });
+  final firstSlice = a.slice(selectors);
 
-  _reduceRecursive(
-    a,
-    result,
-    List<int>.filled(a.shape.length, 0),
-    List<int>.filled(newShape.length, 0),
-    axis,
-    0,
-    (current, val) => math.min(current, val.toDouble()),
-  );
+  final result = NDArray<T>.fromList(firstSlice.toList(), newShape, a.dtype);
+
+  for (var i = 1; i < a.shape[axis]; i++) {
+    final currentSelectors = List<Selector>.generate(a.shape.length, (j) {
+      if (j == axis) return Index(i);
+      return Slice();
+    });
+    final currentSlice = a.slice(currentSelectors);
+    _elementWiseMin(result, currentSlice);
+  }
+
+  return result;
+}
+
+/// Compute the minimum of elements along a specified axis, ignoring NaNs.
+///
+/// This corresponds to NumPy's `nanmin` function.
+///
+/// **Preconditions:**
+/// - [axis], if provided, must be a valid axis index within `[0, rank - 1]`.
+///
+/// **Throws:**
+/// - [ArgumentError] if [axis] is out of bounds.
+/// - [UnsupportedError] if the array contains Complex numbers.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
+/// print(nanmin(a)); // 1.0
+/// ```
+NDArray<T> nanmin<T extends Object>(NDArray<T> a, {int? axis}) {
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    throw UnsupportedError('Complex numbers are not supported for nanmin');
+  }
+
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final List<T> elements = size == a.data.length ? a.data : a.toList();
+
+    var minVal = double.infinity;
+    var hasValid = false;
+    var hasNan = false;
+
+    for (var i = 0; i < elements.length; i++) {
+      final val = elements[i];
+      if (val is double) {
+        if (val.isNaN) {
+          hasNan = true;
+          continue;
+        }
+        if (val < minVal) {
+          minVal = val;
+          hasValid = true;
+        }
+      } else if (val is num) {
+        final dVal = val.toDouble();
+        if (dVal < minVal) {
+          minVal = dVal;
+          hasValid = true;
+        }
+      }
+    }
+
+    final result = NDArray<T>.create([], a.dtype);
+    if (!hasValid) {
+      result.data[0] = (hasNan ? double.nan : double.infinity) as T;
+    } else {
+      result.data[0] =
+          ((a.dtype == DType.float64 || a.dtype == DType.float32)
+                  ? minVal
+                  : minVal.toInt())
+              as T;
+    }
+    return result;
+  }
+
+  if (axis < 0 || axis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final selectors = List<Selector>.generate(a.shape.length, (j) {
+    if (j == axis) return Index(0);
+    return Slice();
+  });
+  final firstSlice = a.slice(selectors);
+
+  final result = NDArray<T>.fromList(firstSlice.toList(), newShape, a.dtype);
+
+  for (var i = 1; i < a.shape[axis]; i++) {
+    final currentSelectors = List<Selector>.generate(a.shape.length, (j) {
+      if (j == axis) return Index(i);
+      return Slice();
+    });
+    final currentSlice = a.slice(currentSelectors);
+    _elementWiseNanMin(result, currentSlice);
+  }
+
   return result;
 }
 
 /// Compute the maximum of elements in the array.
 ///
 /// **Gotchas:**
-/// - Returns a scalar if [axis] is null, or a new [NDArray] if [axis] is provided.
-/// - When [axis] is provided, the result is currently always a [DType.float64] array.
-dynamic max<T extends num>(NDArray<T> a, {int? axis}) {
+/// - Returns a 0-dimensional [NDArray] if [axis] is null, or a new [NDArray] if [axis] is provided.
+/// - Preserves the original data type (DType) of the input array along the reduction axis.
+NDArray<T> max<T extends num>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
-    return a.data.reduce((value, element) => math.max(value, element));
+    final maxVal = a.data.reduce((value, element) => math.max(value, element));
+    final result = NDArray<T>.create([], a.dtype);
+    result.data[0] = maxVal;
+    return result;
   }
 
   if (axis < 0 || axis >= a.shape.length) {
@@ -2390,25 +2482,277 @@ dynamic max<T extends num>(NDArray<T> a, {int? axis}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = NDArray<double>.fromList(
-    List<double>.filled(
-      newShape.isEmpty ? 1 : newShape.reduce((x, y) => x * y),
-      -double.infinity,
-    ),
-    newShape,
-    DType.float64,
-  );
+  final selectors = List<Selector>.generate(a.shape.length, (j) {
+    if (j == axis) return Index(0);
+    return Slice();
+  });
+  final firstSlice = a.slice(selectors);
 
-  _reduceRecursive(
-    a,
-    result,
-    List<int>.filled(a.shape.length, 0),
-    List<int>.filled(newShape.length, 0),
-    axis,
-    0,
-    (current, val) => math.max(current, val.toDouble()),
-  );
+  final result = NDArray<T>.fromList(firstSlice.toList(), newShape, a.dtype);
+
+  for (var i = 1; i < a.shape[axis]; i++) {
+    final currentSelectors = List<Selector>.generate(a.shape.length, (j) {
+      if (j == axis) return Index(i);
+      return Slice();
+    });
+    final currentSlice = a.slice(currentSelectors);
+    _elementWiseMax(result, currentSlice);
+  }
+
   return result;
+}
+
+/// Compute the maximum of elements along a specified axis, ignoring NaNs.
+///
+/// This corresponds to NumPy's `nanmax` function.
+///
+/// **Preconditions:**
+/// - [axis], if provided, must be a valid axis index within `[0, rank - 1]`.
+///
+/// **Throws:**
+/// - [ArgumentError] if [axis] is out of bounds.
+/// - [UnsupportedError] if the array contains Complex numbers.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
+/// print(nanmax(a)); // 3.0
+/// ```
+NDArray<T> nanmax<T extends Object>(NDArray<T> a, {int? axis}) {
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    throw UnsupportedError('Complex numbers are not supported for nanmax');
+  }
+
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final List<T> elements = size == a.data.length ? a.data : a.toList();
+
+    var maxVal = -double.infinity;
+    var hasValid = false;
+    var hasNan = false;
+
+    for (var i = 0; i < elements.length; i++) {
+      final val = elements[i];
+      if (val is double) {
+        if (val.isNaN) {
+          hasNan = true;
+          continue;
+        }
+        if (val > maxVal) {
+          maxVal = val;
+          hasValid = true;
+        }
+      } else if (val is num) {
+        final dVal = val.toDouble();
+        if (dVal > maxVal) {
+          maxVal = dVal;
+          hasValid = true;
+        }
+      }
+    }
+
+    final result = NDArray<T>.create([], a.dtype);
+    if (!hasValid) {
+      result.data[0] = (hasNan ? double.nan : -double.infinity) as T;
+    } else {
+      result.data[0] =
+          ((a.dtype == DType.float64 || a.dtype == DType.float32)
+                  ? maxVal
+                  : maxVal.toInt())
+              as T;
+    }
+    return result;
+  }
+
+  if (axis < 0 || axis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final selectors = List<Selector>.generate(a.shape.length, (j) {
+    if (j == axis) return Index(0);
+    return Slice();
+  });
+  final firstSlice = a.slice(selectors);
+
+  final result = NDArray<T>.fromList(firstSlice.toList(), newShape, a.dtype);
+
+  for (var i = 1; i < a.shape[axis]; i++) {
+    final currentSelectors = List<Selector>.generate(a.shape.length, (j) {
+      if (j == axis) return Index(i);
+      return Slice();
+    });
+    final currentSlice = a.slice(currentSelectors);
+    _elementWiseNanMax(result, currentSlice);
+  }
+
+  return result;
+}
+
+void _elementWiseMin(NDArray dest, NDArray src) {
+  _elementWiseMinRec(dest, src, dest.strides, src.strides, 0, 0, 0);
+}
+
+void _elementWiseMinRec(
+  NDArray dest,
+  NDArray src,
+  List<int> stridesDest,
+  List<int> stridesSrc,
+  int dim,
+  int offsetDest,
+  int offsetSrc,
+) {
+  final rank = dest.shape.length;
+  if (dim == rank) {
+    final dVal = dest.data[offsetDest];
+    final sVal = src.data[offsetSrc];
+    if (dVal is double && sVal is double) {
+      dest.data[offsetDest] = math.min(dVal, sVal);
+    } else if (dVal is int && sVal is int) {
+      dest.data[offsetDest] = math.min(dVal, sVal);
+    }
+    return;
+  }
+
+  final limit = dest.shape[dim];
+  for (var i = 0; i < limit; i++) {
+    _elementWiseMinRec(
+      dest,
+      src,
+      stridesDest,
+      stridesSrc,
+      dim + 1,
+      offsetDest + i * stridesDest[dim],
+      offsetSrc + i * stridesSrc[dim],
+    );
+  }
+}
+
+void _elementWiseMax(NDArray dest, NDArray src) {
+  _elementWiseMaxRec(dest, src, dest.strides, src.strides, 0, 0, 0);
+}
+
+void _elementWiseMaxRec(
+  NDArray dest,
+  NDArray src,
+  List<int> stridesDest,
+  List<int> stridesSrc,
+  int dim,
+  int offsetDest,
+  int offsetSrc,
+) {
+  final rank = dest.shape.length;
+  if (dim == rank) {
+    final dVal = dest.data[offsetDest];
+    final sVal = src.data[offsetSrc];
+    if (dVal is double && sVal is double) {
+      dest.data[offsetDest] = math.max(dVal, sVal);
+    } else if (dVal is int && sVal is int) {
+      dest.data[offsetDest] = math.max(dVal, sVal);
+    }
+    return;
+  }
+
+  final limit = dest.shape[dim];
+  for (var i = 0; i < limit; i++) {
+    _elementWiseMaxRec(
+      dest,
+      src,
+      stridesDest,
+      stridesSrc,
+      dim + 1,
+      offsetDest + i * stridesDest[dim],
+      offsetSrc + i * stridesSrc[dim],
+    );
+  }
+}
+
+void _elementWiseNanMin(NDArray dest, NDArray src) {
+  _elementWiseNanMinRec(dest, src, dest.strides, src.strides, 0, 0, 0);
+}
+
+void _elementWiseNanMinRec(
+  NDArray dest,
+  NDArray src,
+  List<int> stridesDest,
+  List<int> stridesSrc,
+  int dim,
+  int offsetDest,
+  int offsetSrc,
+) {
+  final rank = dest.shape.length;
+  if (dim == rank) {
+    final dVal = dest.data[offsetDest];
+    final sVal = src.data[offsetSrc];
+    if (dVal is double && sVal is double) {
+      if (sVal.isNaN) return;
+      if (dVal.isNaN || sVal < dVal) {
+        dest.data[offsetDest] = sVal;
+      }
+    } else if (dVal is int && sVal is int) {
+      if (sVal < dVal) {
+        dest.data[offsetDest] = sVal;
+      }
+    }
+    return;
+  }
+
+  final limit = dest.shape[dim];
+  for (var i = 0; i < limit; i++) {
+    _elementWiseNanMinRec(
+      dest,
+      src,
+      stridesDest,
+      stridesSrc,
+      dim + 1,
+      offsetDest + i * stridesDest[dim],
+      offsetSrc + i * stridesSrc[dim],
+    );
+  }
+}
+
+void _elementWiseNanMax(NDArray dest, NDArray src) {
+  _elementWiseNanMaxRec(dest, src, dest.strides, src.strides, 0, 0, 0);
+}
+
+void _elementWiseNanMaxRec(
+  NDArray dest,
+  NDArray src,
+  List<int> stridesDest,
+  List<int> stridesSrc,
+  int dim,
+  int offsetDest,
+  int offsetSrc,
+) {
+  final rank = dest.shape.length;
+  if (dim == rank) {
+    final dVal = dest.data[offsetDest];
+    final sVal = src.data[offsetSrc];
+    if (dVal is double && sVal is double) {
+      if (sVal.isNaN) return;
+      if (dVal.isNaN || sVal > dVal) {
+        dest.data[offsetDest] = sVal;
+      }
+    } else if (dVal is int && sVal is int) {
+      if (sVal > dVal) {
+        dest.data[offsetDest] = sVal;
+      }
+    }
+    return;
+  }
+
+  final limit = dest.shape[dim];
+  for (var i = 0; i < limit; i++) {
+    _elementWiseNanMaxRec(
+      dest,
+      src,
+      stridesDest,
+      stridesSrc,
+      dim + 1,
+      offsetDest + i * stridesDest[dim],
+      offsetSrc + i * stridesSrc[dim],
+    );
+  }
 }
 
 /// Compute the multiplicative inverse of a square 2D matrix.

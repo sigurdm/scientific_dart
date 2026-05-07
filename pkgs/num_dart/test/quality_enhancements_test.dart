@@ -2150,6 +2150,64 @@ void main() {
         ); // negative probability
       },
     );
+
+    test(
+      'Type-preserving reductions min(), max(), nanmin(), nanmax() DType parity',
+      () {
+        // 1. Integer min() / max() DType preservation
+        final aInt32 = NDArray.fromList(
+          [10, 2, 30, 4, 50, 6],
+          [3, 2],
+          DType.int32,
+        );
+        addTearDown(aInt32.dispose);
+
+        final minI32 = min(aInt32, axis: 0);
+        addTearDown(minI32.dispose);
+        expect(minI32.shape, [2]);
+        expect(minI32.dtype, DType.int32); // Preserves Int32!
+        expect(minI32.toList(), [10, 2]);
+
+        final maxI32 = max(aInt32, axis: 0);
+        addTearDown(maxI32.dispose);
+        expect(maxI32.shape, [2]);
+        expect(maxI32.dtype, DType.int32); // Preserves Int32!
+        expect(maxI32.toList(), [50, 6]);
+
+        // 2. Float32 min() / max() DType preservation
+        final aFloat32 = NDArray.fromList(
+          [10.0, 2.0, 30.0, 4.0, 50.0, 6.0],
+          [3, 2],
+          DType.float32,
+        );
+        addTearDown(aFloat32.dispose);
+
+        final minF32 = min(aFloat32, axis: 0);
+        addTearDown(minF32.dispose);
+        expect(minF32.dtype, DType.float32); // Preserves Float32!
+
+        // 3. nanmin() / nanmax() DType preservation
+        final nanF64 = NDArray.fromList(
+          [1.0, double.nan, 3.0, 4.0, double.nan, 6.0],
+          [3, 2],
+          DType.float64,
+        );
+        addTearDown(nanF64.dispose);
+
+        final nanMinF64 = nanmin(nanF64, axis: 0);
+        addTearDown(nanMinF64.dispose);
+        expect(nanMinF64.shape, [2]);
+        expect(nanMinF64.dtype, DType.float64);
+        expect(nanMinF64.getCell([0]), 1.0);
+
+        final nanMaxF64 = nanmax(nanF64, axis: 0);
+        addTearDown(nanMaxF64.dispose);
+        expect(nanMaxF64.shape, [2]);
+        expect(nanMaxF64.dtype, DType.float64);
+        expect(nanMaxF64.getCell([0]), 3.0);
+        expect(nanMaxF64.getCell([1]), 6.0);
+      },
+    );
   });
 }
 

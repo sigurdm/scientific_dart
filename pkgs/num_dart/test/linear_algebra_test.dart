@@ -13,8 +13,10 @@ void main() {
             [2, 2],
             DType.float64,
           );
+          addTearDown(a.dispose);
 
           final aInv = inv(a);
+          addTearDown(aInv.dispose);
           expect(aInv.shape, [2, 2]);
           expect(aInv.dtype, DType.float64);
 
@@ -31,8 +33,10 @@ void main() {
           2,
           2,
         ], DType.float32);
+        addTearDown(a.dispose);
 
         final aInv = inv(a);
+        addTearDown(aInv.dispose);
         expect(aInv.dtype, DType.float32);
         // expected inverse for [[1,2],[3,4]] is [[-2, 1], [1.5, -0.5]]
         expect(aInv.data[0], closeTo(-2.0, 1e-5));
@@ -46,6 +50,7 @@ void main() {
           2,
           2,
         ], DType.float64); // dependent rows, det = 0
+        addTearDown(a.dispose);
 
         expect(() => inv(a), throwsArgumentError);
       });
@@ -55,6 +60,7 @@ void main() {
           2,
           2,
         ], DType.float32); // dependent rows, det = 0
+        addTearDown(a.dispose);
 
         expect(() => inv(a), throwsArgumentError);
       });
@@ -77,8 +83,10 @@ void main() {
           [3, 3],
           DType.float64,
         );
+        addTearDown(a.dispose);
 
         final res = cholesky(a);
+        addTearDown(() => res.values.forEach((v) => v.dispose()));
         final l = res['L']!;
 
         expect(l.shape, [3, 3]);
@@ -103,7 +111,9 @@ void main() {
           2,
           2,
         ], DType.float32);
+        addTearDown(a.dispose);
         final res = cholesky(a);
+        addTearDown(() => res.values.forEach((v) => v.dispose()));
         final l = res['L']!;
         expect(l.dtype, DType.float32);
         // L = [[2, 0], [1, 1]]
@@ -131,8 +141,10 @@ void main() {
           [3, 3],
           DType.float64,
         );
+        addTearDown(a.dispose);
 
         final res = qr(a);
+        addTearDown(() => res.values.forEach((v) => v.dispose()));
         final q = res['Q']!;
         final r = res['R']!;
 
@@ -178,7 +190,9 @@ void main() {
           [3, 3],
           DType.float32,
         );
+        addTearDown(a.dispose);
         final res = qr(a);
+        addTearDown(() => res.values.forEach((v) => v.dispose()));
         expect(res['Q']!.dtype, DType.float32);
         expect(res['R']!.dtype, DType.float32);
         expect(res['R']!.data[3], 0.0);
@@ -200,9 +214,12 @@ void main() {
           [3, 3],
           DType.float64,
         );
+        addTearDown(parent.dispose);
         final view = parent.transpose();
+        addTearDown(view.dispose);
         expect(view.isContiguous, false);
         final res = qr(view);
+        addTearDown(() => res.values.forEach((v) => v.dispose()));
         expect(res['Q']!.shape, [3, 3]);
         expect(res['R']!.shape, [3, 3]);
         expect(res['R']!.data[3], 0.0);
@@ -216,8 +233,10 @@ void main() {
           [3, 2],
           DType.float64,
         );
+        addTearDown(a.dispose);
 
         final res = svd(a);
+        addTearDown(() => res.values.forEach((v) => v.dispose()));
         final u = res['U']!;
         final s = res['S']!;
         final vh = res['Vh']!;
@@ -237,7 +256,9 @@ void main() {
           [3, 2],
           DType.float32,
         );
+        addTearDown(a.dispose);
         final res = svd(a);
+        addTearDown(() => res.values.forEach((v) => v.dispose()));
         expect(res['U']!.dtype, DType.float32);
         expect(res['S']!.dtype, DType.float32);
         expect(res['Vh']!.dtype, DType.float32);
@@ -250,9 +271,12 @@ void main() {
           [2, 3],
           DType.float64,
         );
+        addTearDown(parent.dispose);
         final view = parent.transpose();
+        addTearDown(view.dispose);
         expect(view.isContiguous, false);
         final res = svd(view);
+        addTearDown(() => res.values.forEach((v) => v.dispose()));
         expect(res['U']!.shape, [3, 3]);
         expect(res['S']!.shape, [2]);
       });
@@ -264,6 +288,7 @@ void main() {
           2,
           2,
         ], DType.float64);
+        addTearDown(a.dispose);
         expect(det(a), closeTo(-2.0, 1e-9));
       });
 
@@ -272,6 +297,7 @@ void main() {
           2,
           2,
         ], DType.float32);
+        addTearDown(a.dispose);
         expect(det(a), closeTo(-2.0, 1e-5));
       });
 
@@ -288,11 +314,14 @@ void main() {
           2,
           2,
         ], DType.float64);
+        addTearDown(a.dispose);
         final b = NDArray.fromList(Float64List.fromList([9.0, 8.0]), [
           2,
           1,
         ], DType.float64);
+        addTearDown(b.dispose);
         final x = solve(a, b);
+        addTearDown(x.dispose);
         expect(x.shape, [2, 1]);
         expect(x.data[0], closeTo(2.0, 1e-9));
         expect(x.data[1], closeTo(3.0, 1e-9));
@@ -303,11 +332,14 @@ void main() {
           2,
           2,
         ], DType.float32);
+        addTearDown(a.dispose);
         final b = NDArray.fromList(Float32List.fromList([9.0, 8.0]), [
           2,
           1,
         ], DType.float32);
+        addTearDown(b.dispose);
         final x = solve(a, b);
+        addTearDown(x.dispose);
         expect(x.shape, [2, 1]);
         expect(x.data[0], closeTo(2.0, 1e-5));
         expect(x.data[1], closeTo(3.0, 1e-5));
@@ -315,16 +347,19 @@ void main() {
 
       test('Solve Complex128 system of equations', () {
         final a = NDArray<Complex>.create([2, 2], DType.complex128);
+        addTearDown(a.dispose);
         a.data[0] = Complex(3.0, 0.0);
         a.data[1] = Complex(1.0, 0.0);
         a.data[2] = Complex(1.0, 0.0);
         a.data[3] = Complex(2.0, 0.0);
 
         final b = NDArray<Complex>.create([2, 1], DType.complex128);
+        addTearDown(b.dispose);
         b.data[0] = Complex(9.0, 0.0);
         b.data[1] = Complex(8.0, 0.0);
 
         final x = solve(a, b);
+        addTearDown(x.dispose);
         expect(x.dtype, DType.complex128);
         expect(x.data[0], Complex(2.0, 0.0));
         expect(x.data[1], Complex(3.0, 0.0));
@@ -335,10 +370,12 @@ void main() {
           2,
           2,
         ], DType.float64);
+        addTearDown(a.dispose);
         final b = NDArray.fromList(Float64List.fromList([9.0, 8.0]), [
           2,
           1,
         ], DType.float64);
+        addTearDown(b.dispose);
         expect(() => solve(a, b), throwsArgumentError);
       });
 
@@ -347,11 +384,14 @@ void main() {
           2,
           2,
         ], DType.int32);
+        addTearDown(a.dispose);
         final b = NDArray.fromList(Int32List.fromList([9, 8]), [
           2,
           1,
         ], DType.int32);
+        addTearDown(b.dispose);
         final x = solve(a, b);
+        addTearDown(x.dispose);
         expect(x.dtype, DType.float64);
         expect(x.data[0], closeTo(2.0, 1e-9));
         expect(x.data[1], closeTo(3.0, 1e-9));
@@ -359,16 +399,19 @@ void main() {
 
       test('Solve Complex64 system of equations', () {
         final a = NDArray<Complex>.create([2, 2], DType.complex64);
+        addTearDown(a.dispose);
         a.data[0] = Complex(3.0, 0.0);
         a.data[1] = Complex(1.0, 0.0);
         a.data[2] = Complex(1.0, 0.0);
         a.data[3] = Complex(2.0, 0.0);
 
         final b = NDArray<Complex>.create([2, 1], DType.complex64);
+        addTearDown(b.dispose);
         b.data[0] = Complex(9.0, 0.0);
         b.data[1] = Complex(8.0, 0.0);
 
         final x = solve(a, b);
+        addTearDown(x.dispose);
         expect(x.dtype, DType.complex64);
         expect(x.data[0].real, closeTo(2.0, 1e-5));
         expect(x.data[1].real, closeTo(3.0, 1e-5));
@@ -382,7 +425,9 @@ void main() {
           [2, 2],
           DType.float64,
         );
+        addTearDown(a.dispose);
         final res = eig(a);
+        addTearDown(() => res.values.forEach((v) => v.dispose()));
         final w = res['eigenvalues']!;
         final vr = res['eigenvectors']!;
 
@@ -401,7 +446,9 @@ void main() {
           [2, 2],
           DType.float32,
         );
+        addTearDown(a.dispose);
         final res = eig(a);
+        addTearDown(() => res.values.forEach((v) => v.dispose()));
         final w = res['eigenvalues']!;
         expect(w.dtype, DType.complex64);
         expect(w.data[0].real, closeTo(-1.0, 1e-5));
@@ -410,12 +457,14 @@ void main() {
 
       test('Eigenvalues/eigenvectors of Complex128 matrix', () {
         final a = NDArray<Complex>.create([2, 2], DType.complex128);
+        addTearDown(a.dispose);
         a.data[0] = Complex(0.0, 0.0);
         a.data[1] = Complex(1.0, 0.0);
         a.data[2] = Complex(-2.0, 0.0);
         a.data[3] = Complex(-3.0, 0.0);
 
         final res = eig(a);
+        addTearDown(() => res.values.forEach((v) => v.dispose()));
         expect(res['eigenvalues']!.dtype, DType.complex128);
         expect(res['eigenvalues']!.data[0].real, closeTo(-1.0, 1e-9));
         expect(res['eigenvalues']!.data[1].real, closeTo(-2.0, 1e-9));
@@ -423,12 +472,14 @@ void main() {
 
       test('Eigenvalues/eigenvectors of Complex64 matrix', () {
         final a = NDArray<Complex>.create([2, 2], DType.complex64);
+        addTearDown(a.dispose);
         a.data[0] = Complex(0.0, 0.0);
         a.data[1] = Complex(1.0, 0.0);
         a.data[2] = Complex(-2.0, 0.0);
         a.data[3] = Complex(-3.0, 0.0);
 
         final res = eig(a);
+        addTearDown(() => res.values.forEach((v) => v.dispose()));
         expect(res['eigenvalues']!.dtype, DType.complex64);
         expect(res['eigenvalues']!.data[0].real, closeTo(-1.0, 1e-5));
         expect(res['eigenvalues']!.data[1].real, closeTo(-2.0, 1e-5));

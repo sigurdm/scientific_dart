@@ -10,7 +10,9 @@ void main() {
         final a = NDArray.fromList(Float64List.fromList([1.0, 0.0, 0.0, 0.0]), [
           4,
         ], DType.float64);
+        addTearDown(a.dispose);
         final freq = fft(a);
+        addTearDown(freq.dispose);
 
         expect(freq.shape, [4]);
         expect(freq.dtype, DType.complex128);
@@ -29,7 +31,9 @@ void main() {
         final a = NDArray.fromList(Float64List.fromList([2.0, 2.0, 2.0, 2.0]), [
           4,
         ], DType.float64);
+        addTearDown(a.dispose);
         final freq = fft(a);
+        addTearDown(freq.dispose);
 
         final Complex dcComponent = freq.data[0];
         expect(dcComponent.real, closeTo(8.0, 1e-9));
@@ -51,9 +55,12 @@ void main() {
           [8],
           DType.float64,
         );
+        addTearDown(a.dispose);
 
         final freq = fft(a);
+        addTearDown(freq.dispose);
         final restored = ifft(freq);
+        addTearDown(restored.dispose);
 
         expect(restored.shape, [8]);
         expect(restored.dtype, DType.complex128);
@@ -74,10 +81,13 @@ void main() {
           [6],
           DType.float64,
         );
+        addTearDown(a6.dispose);
         final freq6 = fft(a6);
+        addTearDown(freq6.dispose);
         expect(freq6.shape, [6]);
 
         final restored6 = ifft(freq6);
+        addTearDown(restored6.dispose);
         for (var i = 0; i < 6; i++) {
           expect(restored6.data[i].real, closeTo(a6.data[i], 1e-9));
         }
@@ -87,10 +97,13 @@ void main() {
           [5],
           DType.float64,
         );
+        addTearDown(a5.dispose);
         final freq5 = fft(a5);
+        addTearDown(freq5.dispose);
         expect(freq5.shape, [5]);
 
         final restored5 = ifft(freq5);
+        addTearDown(restored5.dispose);
         expect(restored5.shape, [5]);
         expect(restored5.data[4].real, closeTo(1.0, 1e-9));
       },
@@ -102,10 +115,13 @@ void main() {
         final a = NDArray.fromList(Float64List.fromList([1.0, 2.0]), [
           2,
         ], DType.float64);
+        addTearDown(a.dispose);
         final paddedFreq = fft(a, n: 4);
+        addTearDown(paddedFreq.dispose);
         expect(paddedFreq.shape, [4]);
 
         final restored = ifft(paddedFreq);
+        addTearDown(restored.dispose);
         expect(restored.shape, [4]);
         expect(restored.data[0].real, closeTo(1.0, 1e-9));
         expect(restored.data[1].real, closeTo(2.0, 1e-9));
@@ -122,11 +138,14 @@ void main() {
           [4],
           DType.float32,
         );
+        addTearDown(a32.dispose);
         final freq32 = fft(a32);
+        addTearDown(freq32.dispose);
         expect(freq32.dtype, DType.complex64);
         expect(freq32.shape, [4]);
 
         final restored32 = ifft(freq32);
+        addTearDown(restored32.dispose);
         expect(restored32.dtype, DType.complex64);
         expect(restored32.shape, [4]);
         expect(restored32.data[0].real, closeTo(1.0, 1e-5));
@@ -141,11 +160,14 @@ void main() {
           [4],
           DType.complex64,
         );
+        addTearDown(comp64.dispose);
         final freq64 = fft(comp64);
+        addTearDown(freq64.dispose);
         expect(freq64.dtype, DType.complex64);
         expect(freq64.shape, [4]);
 
         final restored64 = ifft(freq64);
+        addTearDown(restored64.dispose);
         expect(restored64.dtype, DType.complex64);
         expect(restored64.shape, [4]);
         expect(restored64.data[0].real, closeTo(1.0, 1e-5));
@@ -156,7 +178,9 @@ void main() {
           [4],
           DType.float64,
         );
+        addTearDown(realSignal.dispose);
         final restoredFromReal = ifft(realSignal);
+        addTearDown(restoredFromReal.dispose);
         expect(restoredFromReal.dtype, DType.complex128);
         expect(restoredFromReal.shape, [4]);
       },
@@ -170,11 +194,14 @@ void main() {
           [2, 2],
           DType.float64,
         );
+        addTearDown(parent.dispose);
 
         final view = parent.transposed;
+        addTearDown(view.dispose);
         expect(view.isContiguous, false);
 
         final freq = fft(view);
+        addTearDown(freq.dispose);
         expect(freq.shape, [2, 2]);
 
         final contiguous = NDArray.fromList(
@@ -182,7 +209,9 @@ void main() {
           [2, 2],
           DType.float64,
         );
+        addTearDown(contiguous.dispose);
         final freqContig = fft(contiguous);
+        addTearDown(freqContig.dispose);
 
         for (var i = 0; i < 4; i++) {
           expect(freq.data[i].real, closeTo(freqContig.data[i].real, 1e-5));
@@ -190,8 +219,10 @@ void main() {
         }
 
         final restored = ifft(freq);
+        addTearDown(restored.dispose);
         expect(restored.shape, [2, 2]);
         final restoredContig = ifft(freqContig);
+        addTearDown(restoredContig.dispose);
 
         for (var i = 0; i < 4; i++) {
           expect(
