@@ -31,7 +31,7 @@ void main() {
         addTearDown(mask.dispose);
 
         // Explicit scalar clip
-        arr.setByMask(mask, 0.0);
+        arr.setByMaskScalar(mask, 0.0);
         expect(arr.toList(), [0.0, 10.0, 0.0, 4.0]);
       });
 

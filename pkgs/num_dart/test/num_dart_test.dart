@@ -1106,11 +1106,11 @@ void main() {
         addTearDown(a.dispose);
         final mask1D = NDArray<bool>.zeros([2], DType.boolean);
         addTearDown(mask1D.dispose);
-        expect(() => a.setByMask(mask1D, 5.0), throwsArgumentError);
+        expect(() => a.setByMaskScalar(mask1D, 5.0), throwsArgumentError);
 
         final mask2D = NDArray<bool>.zeros([2, 2], DType.boolean);
         addTearDown(mask2D.dispose);
-        expect(() => a.setByMask(mask2D, 5.0), throwsArgumentError);
+        expect(() => a.setByMaskScalar(mask2D, 5.0), throwsArgumentError);
       });
 
       test('setIndices and setIndicesScalar bounds checks', () {

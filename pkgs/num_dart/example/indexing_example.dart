@@ -30,7 +30,7 @@ void runStaticTypedAddressingExample() {
   final negativeMask = arr < 0.0; // returns an NDArray<int> mask
 
   // Clips all negative elements to 0.0 explicitly!
-  arr.setByMask(negativeMask, 0.0);
+  arr.setByMaskScalar(negativeMask, 0.0);
   print(
     'After setByMask clipping negatives -> expected [0, 5, 0, 8]: ${arr.toList()}',
   );

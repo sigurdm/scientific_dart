@@ -829,7 +829,12 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Arguments:**
   /// - [value]: Can be a single scalar of matching type (performs uniform clipping)
   ///   or an [NDArray] containing sequential values to write into the masked positions.
-  void setByMask(NDArray<bool> mask, dynamic value) {
+  /// Modifies elements where the provided boolean binary [mask] contains `true`
+  /// drawing sequential values from another [NDArray].
+  ///
+  /// **Preconditions:**
+  /// - [mask] must share identical dimensions ([shape]) with this array.
+  void setByMask(NDArray<bool> mask, NDArray<T> values) {
     if (mask.shape.length != shape.length) {
       throw ArgumentError(
         'Mask shape length (${mask.shape.length}) must match array rank (${shape.length})',
@@ -844,24 +849,56 @@ final class NDArray<T> implements ffi.Finalizable {
     }
 
     var valueIndex = 0;
-    List? valData;
-    if (value is NDArray) {
-      valData = value.data;
+    final valData = values.data;
+
+    void walk(int dim, int currentOffset, int maskOffset) {
+      if (dim == shape.length) {
+        if (mask.data[maskOffset]) {
+          if (valueIndex >= valData.length) {
+            throw ArgumentError(
+              'Source values array contains fewer elements than the mask targets',
+            );
+          }
+          data[currentOffset] = valData[valueIndex++];
+        }
+        return;
+      }
+
+      for (var i = 0; i < shape[dim]; i++) {
+        walk(
+          dim + 1,
+          currentOffset + i * strides[dim],
+          maskOffset + i * mask.strides[dim],
+        );
+      }
+    }
+
+    walk(0, 0, 0);
+  }
+
+  /// Modifies elements where the provided boolean binary [mask] contains `true`,
+  /// setting them all uniformly to the single scalar [value].
+  ///
+  /// **Preconditions:**
+  /// - [mask] must share identical dimensions ([shape]) with this array.
+  void setByMaskScalar(NDArray<bool> mask, T value) {
+    if (mask.shape.length != shape.length) {
+      throw ArgumentError(
+        'Mask shape length (${mask.shape.length}) must match array rank (${shape.length})',
+      );
+    }
+    for (var i = 0; i < shape.length; i++) {
+      if (mask.shape[i] != shape[i]) {
+        throw ArgumentError(
+          'Mask dimensions (${mask.shape}) must exactly match array shape ($shape)',
+        );
+      }
     }
 
     void walk(int dim, int currentOffset, int maskOffset) {
       if (dim == shape.length) {
         if (mask.data[maskOffset]) {
-          if (valData != null) {
-            if (valueIndex >= valData.length) {
-              throw ArgumentError(
-                'Source values array contains fewer elements than the mask targets',
-              );
-            }
-            data[currentOffset] = valData[valueIndex++] as T;
-          } else {
-            data[currentOffset] = value as T;
-          }
+          data[currentOffset] = value;
         }
         return;
       }
@@ -1097,7 +1134,15 @@ final class NDArray<T> implements ffi.Finalizable {
         }
       }
       if (shapesMatch) {
-        setByMask(boolMask, value);
+        if (value is NDArray<T>) {
+          setByMask(boolMask, value);
+        } else if (value is T) {
+          setByMaskScalar(boolMask, value);
+        } else {
+          throw ArgumentError(
+            'Value type (${value.runtimeType}) must be either NDArray<$T> or a scalar $T for mask assignment',
+          );
+        }
       } else {
         throw ArgumentError(
           'Boolean mask shape must exactly match array shape',

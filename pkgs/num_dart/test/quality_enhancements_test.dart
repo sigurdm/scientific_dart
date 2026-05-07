@@ -2247,6 +2247,49 @@ void main() {
       expect(invRes.shape, [12]);
       expect(invRes.dtype, DType.complex128);
     });
+
+    test('NDArray cross-type comparison operators coverage', () {
+      final comp = NDArray<Complex>.create([2], DType.complex128);
+      comp.data[0] = Complex(1.0, 0.0);
+      comp.data[1] = Complex(3.0, 0.0);
+      addTearDown(comp.dispose);
+
+      final dbl = NDArray.fromList([2.0, 2.0], [2], DType.float64);
+      addTearDown(dbl.dispose);
+
+      final integer = NDArray.fromList([2, 2], [2], DType.int32);
+      addTearDown(integer.dispose);
+
+      // 1. Complex with double
+      final cDbl = comp.eq(dbl);
+      addTearDown(cDbl.dispose);
+      expect(cDbl.toList(), [false, false]); // 1 != 2, 3 != 2
+
+      // 2. Complex with int
+      final cInt = comp.eq(integer);
+      addTearDown(cInt.dispose);
+      expect(cInt.toList(), [false, false]);
+
+      // 3. double with Complex
+      final dblC = dbl.eq(comp);
+      addTearDown(dblC.dispose);
+      expect(dblC.toList(), [false, false]);
+
+      // 4. double with int
+      final dblInt = dbl.eq(integer);
+      addTearDown(dblInt.dispose);
+      expect(dblInt.toList(), [true, true]);
+
+      // 5. int with Complex
+      final intC = integer.eq(comp);
+      addTearDown(intC.dispose);
+      expect(intC.toList(), [false, false]);
+
+      // 6. int with double
+      final intDbl = integer.eq(dbl);
+      addTearDown(intDbl.dispose);
+      expect(intDbl.toList(), [true, true]);
+    });
   });
 }
 
