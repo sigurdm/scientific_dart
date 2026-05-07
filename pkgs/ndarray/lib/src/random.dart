@@ -489,7 +489,7 @@ NDArray multivariateNormal(
     // Reshape back to final output shape: [...size, d]
     final finalShape = [...sampleShape, d];
     final result = x2D.reshape(finalShape);
-    return result.detachFromScope();
+    return result.detachToParentScope();
   });
 }
 

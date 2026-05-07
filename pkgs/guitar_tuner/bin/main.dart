@@ -17,9 +17,9 @@ void main() async {
   final logic = TunerLogic(sampleRate: sampleRate, bufferSize: bufferSize);
 
   // Pre-allocate capture buffer to avoid garbage collection pressure
-  final NDArray<double> captureBuffer = NDArray<double>.create([
-    bufferSize,
-  ], DType.float32);
+  final NDArray<double> captureBuffer = NDArray<double>.create([bufferSize], DType.float32);
+
+  final List<String> peakLog = [];
 
   try {
     capture.open();
@@ -37,22 +37,36 @@ void main() async {
 
         TunerResult? currentResult;
         if (rmsVal > 0.01) {
-          currentResult = logic.process(captureBuffer);
+          currentResult = logic.process(captureBuffer, rmsVal);
         }
         return (rmsVal, currentResult);
       });
 
       if (result != null) {
         // Clear line and print result
-        stdout.write('\r\x1b[K$result (RMS: ${currentRms.toStringAsFixed(4)})');
+        stdout.write('\r\x1b[K$result');
+
+        // Log "stable" peaks (within 2 cents for 10 consecutive frames is hard, let's just log every new note)
+        if (peakLog.isEmpty || peakLog.last.split(' ')[0] != result.note) {
+           peakLog.add('${result.note} @ ${result.frequency.toStringAsFixed(1)} Hz');
+           if (peakLog.length > 5) peakLog.removeAt(0);
+        }
       } else {
         stdout.write(
           '\r\x1b[KWaiting for signal... (RMS: ${currentRms.toStringAsFixed(4)})',
         );
       }
 
-      // Small sleep to not hog the CPU too much
-      await Future.delayed(const Duration(milliseconds: 100));
+      // Print peak log above the current line using cursor movements if supported, 
+      // but for simplicity let's just keep it as a status.
+      // Actually, printing peaks without scrolling is hard with just \r.
+      // Let's just show the last few peaks in the status line.
+      if (peakLog.isNotEmpty) {
+        stdout.write(' | Peaks: ${peakLog.join(", ")}');
+      }
+
+      // Small sleep for responsiveness
+      await Future.delayed(const Duration(milliseconds: 50));
     }
   } catch (e) {
     print('\nError: $e');

@@ -124,5 +124,28 @@ void main() {
         expect(a.isDisposed, isTrue);
       }
     });
+
+    test('Nested scope detachToParentScope() promotes array to parent scope', () {
+      late NDArray outer;
+      late NDArray inner;
+
+      NDArray.scope(() {
+        outer = NDArray.zeros([10], DType.float64);
+
+        NDArray.scope(() {
+          inner = NDArray.ones([10], DType.float64);
+          inner.detachToParentScope(); // Promoted to outer scope!
+          expect(inner.isDisposed, isFalse);
+        });
+
+        // Inner scope ended, but 'inner' was promoted to outer scope, so it must still be alive!
+        expect(inner.isDisposed, isFalse);
+        expect(outer.isDisposed, isFalse);
+      });
+
+      // Outer scope ended, so both should now be disposed!
+      expect(inner.isDisposed, isTrue);
+      expect(outer.isDisposed, isTrue);
+    });
   });
 }

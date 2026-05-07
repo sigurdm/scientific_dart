@@ -6,18 +6,48 @@ final class TunerResult {
   final double frequency;
   final double targetFrequency;
   final double cents;
+  final double rms;
 
   TunerResult({
     required this.note,
     required this.frequency,
     required this.targetFrequency,
     required this.cents,
+    required this.rms,
   });
 
   @override
   String toString() {
-    final status = cents.abs() < 5 ? 'IN TUNE' : (cents > 0 ? 'TOO HIGH' : 'TOO LOW');
-    return '$note (${frequency.toStringAsFixed(1)} Hz) - $status (${cents.toStringAsFixed(1)} cents)';
+    final status =
+        cents.abs() < 5 ? 'IN TUNE' : (cents > 0 ? 'TOO HIGH' : 'TOO LOW');
+    final visual = _generateVisual();
+    final vol = _generateVolumeBar();
+    return 'Vol: $vol | $note |$visual| (${frequency.toStringAsFixed(1)} Hz) - $status (${cents.toStringAsFixed(1)} cents)';
+  }
+
+  String _generateVolumeBar() {
+    const width = 10;
+    // Map RMS (approx 0 to 0.5 for loud signal) to bar width
+    int level = (rms * 20).round().clamp(0, width);
+    return '[' + '#' * level + ' ' * (width - level) + ']';
+  }
+
+  String _generateVisual() {
+    const width = 21; // odd number
+    const center = width ~/ 2;
+    final chars = List.filled(width, '-');
+    chars[center] = '|';
+
+    // Map cents (-50 to 50) to index (0 to 20)
+    int needlePos = (center + (cents / 50.0 * center)).round();
+    needlePos = needlePos.clamp(0, width - 1);
+
+    if (cents.abs() < 5) {
+      chars[needlePos] = '★'; // Special char for "in tune"
+    } else {
+      chars[needlePos] = '▲';
+    }
+    return chars.join();
   }
 }
 
@@ -38,7 +68,7 @@ final class TunerLogic {
   TunerLogic({required this.sampleRate, required this.bufferSize})
       : _window = hanning(bufferSize, dtype: DType.float32);
 
-  TunerResult process(NDArray<double> input) {
+  TunerResult process(NDArray<double> input, double rms) {
     return NDArray.scope(() {
       // 2. Apply Hanning window to reduce spectral leakage
       final windowedInput = multiply(input, _window) as NDArray<double>;
@@ -53,7 +83,7 @@ final class TunerLogic {
       final minIdx = (50 * bufferSize / sampleRate).floor();
       final maxIdx = (1000 * bufferSize / sampleRate).ceil();
 
-      final searchRange = magnitudes.slice([Slice(start: minIdx, stop: maxIdx)]);
+      searchRange = magnitudes.slice([Slice(start: minIdx, stop: maxIdx)]);
       final peakIdxInSlice = argmax(searchRange) as int;
       final peakIdx = minIdx + peakIdxInSlice;
 
@@ -95,6 +125,7 @@ final class TunerLogic {
         frequency: freq,
         targetFrequency: targetFreq,
         cents: cents,
+        rms: rms,
       );
     });
   }

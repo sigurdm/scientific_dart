@@ -137,7 +137,8 @@ final class NDArray<T> implements ffi.Finalizable {
   /// });
   /// ```
   static R scope<R>(R Function() callback) {
-    final scope = _NDArrayScope();
+    final parentScope = Zone.current[_scopeKey] as _NDArrayScope?;
+    final scope = _NDArrayScope(parentScope);
     return runZoned(() {
       R result;
       try {
@@ -191,6 +192,25 @@ final class NDArray<T> implements ffi.Finalizable {
   NDArray<T> detachFromScope() {
     final scope = Zone.current[_scopeKey] as _NDArrayScope?;
     scope?._untrack(this);
+    return this;
+  }
+
+  /// Detaches this array from the current automatic disposal scope and
+  /// promotes/reattaches it to the parent (outer) scope (if any).
+  ///
+  /// Use this when returning an array from a helper function that uses an internal
+  /// [NDArray.scope] to clean up its own transients, but you want the returned array
+  /// to remain managed by the caller's outer scope.
+  ///
+  /// Returns this array to allow for method chaining.
+  NDArray<T> detachToParentScope() {
+    final scope = Zone.current[_scopeKey] as _NDArrayScope?;
+    if (scope != null) {
+      scope._untrack(this);
+      if (scope._parentScope != null) {
+        scope._parentScope._track(this);
+      }
+    }
     return this;
   }
 
@@ -2714,13 +2734,16 @@ void _copyContiguousNDArray(NDArray src, NDArray dest, int size) {
 /// for collections up to 100 elements (yielding zero GC and blazingly fast sweeps),
 /// promoting seamlessly to a HashSet for larger collections to guarantee O(1) scaling.
 final class _NDArrayScope {
+  // Parent outer scope context (if nested)
+  final _NDArrayScope? _parentScope;
+
   // Standard fast-path: flat List of tracked arrays
   final List<NDArray> _list = [];
 
   // Fallback slow-path: Set for large-scale scopes (> 100 arrays)
   Set<NDArray>? _set;
 
-  _NDArrayScope();
+  _NDArrayScope(this._parentScope);
 
   void _track(NDArray array) {
     if (_set != null) {
