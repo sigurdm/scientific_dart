@@ -1373,6 +1373,18 @@
     - Outlined recommended engineering tweak to allocate copy directly via `NDArray.create()` and execute optimized `setRange` block copies for contiguous layouts and a single flat list view pass for strided view layouts.
 * **Verification**: Confirmed formatting and lints are 100% clean. All unit tests execute successfully.
 
+***
+
+## 112. Codebase Review Pass & NumPy Compatibility Gaps Audit (Task 4)
+* **What was done**:
+  - Conducted a comprehensive codebase-wide quality audit, identifying, reviewing, and logging new high-end optimization ideas and architectural gaps against standard Python NumPy features.
+  - Exposed and logged **3 major new NumPy compatibility gaps** in [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/FINDINGS.md):
+    - **Finding 56 (Advanced Multi-Condition Vector Selector)**: Gaps in exposing standard multi-conditional vector selections `np.select()`. Chaining multiple slow JIT `where()` calls creates massive allocations copies churn. Recommended `select()` walking coordinate strides in a single pass.
+    - **Finding 57 (Multivariate Normal and Categorical RNG)**: Gaps in exposing scientific RNG distributions `np.random.multivariate_normal()` and `np.random.multinomial()`. Recommended `multivariateNormal()` using Cholesky covariance factorizations ($L$) and standard independent normals ($Z$), evaluating $X = \mu + L \cdot Z$ natively using OpenBLAS GEMV!
+    - **Finding 58 (High-Level Sliding Window Views)**: Gaps in exposing high-level sliding windows view generator `np.lib.stride_tricks.sliding_window_view()`. Downstream developers are forced to copy elements. Recommended high-level `slidingWindowView()` utilizing safe `asStrided()` views.
+* **Verification**: Confirmed formatting is complete. All 372 unit tests pass successfully.
+
+
 
 
 

@@ -636,4 +636,23 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ***
 
-## Investigate if we can make the package compile and work with dart2wasm. `next`
+## `pkgs/num_dart/lib/src/operations.dart` (NumPy Compatibility Gap: Missing Advanced Multi-Condition Vector Selector `select()`)
+- **Symptom**: The library has `where()` for binary conditional selection, but completely lacks a multi-condition selector.
+- **The Gap**: In Python's NumPy, `np.select(condlist, choicelist, default=0)` allows developers to evaluate a list of boolean conditions sequentially, drawing corresponding elements from choices list, which is extremely powerful for complex data binning, categorisation, and piecewise functions evaluation. Lacking this forces downstream developers to chain multiple slow JIT `where()` calls, wasting RAM allocation copies.
+- **Recommended Tweak**: Implement a top-level `select(List<NDArray<bool>> condlist, List<NDArray> choicelist, {dynamic defaultValue = 0.0})` selector. This can walk coordinate strides in a single concurrent pass, evaluating conditions sequentially per cell, completely avoiding intermediate view allocations!
+
+***
+
+## `pkgs/num_dart/lib/src/random.dart` (NumPy Compatibility Gap: Missing Scientific Multivariate Normal & Categorical Distributions `multivariate_normal`, `multinomial`)
+- **Symptom**: The random distributions suite only supports 1D univariate distributions (`normal`, `uniform`, `randint`, `exponential`, `poisson`, `binomial`).
+- **The Gap**: Advanced scientific data science, machine learning, and physical models heavily require **multivariate normal distributions** (drawing coordinate vectors from a joint Gaussian distribution defined by a mean vector and covariance matrix) and **multinomial categorical distributions** (drawing counts from standard trials with multiple categorical probability weights). Lacking these forces developers to write slow custom simulation loops.
+- **Recommended Tweak**: Expose:
+  - `multivariateNormal(NDArray mean, NDArray cov, List<int> shape)`: computes Cholesky factorization of the covariance matrix ($L$), draws standard independent normal vectors ($Z$), and evaluates $X = \mu + L \cdot Z$ using OpenBLAS GEMV!
+  - `multinomial(int n, NDArray pvals, List<int> shape)`: performs categorical CDF sweeps.
+
+***
+
+## `pkgs/num_dart/lib/src/ndarray.dart` (NumPy Compatibility Gap: Missing High-Level Sliding Window Views `slidingWindowView`)
+- **Symptom**: The library lacks a high-level utility to create sliding window views over dimensions.
+- **The Gap**: Signal processing, image convolutions, and rolling time-series statistical analyses heavily require sliding windows (e.g. extracting rolling 10-day window matrices over a dataset). Downstream developers are forced to copy elements, leading to massive memory copying stalls.
+- **Recommended Tweak**: Leverage our planned low-level `asStrided()` to implement a public, safe **`slidingWindowView(NDArray a, List<int> windowShape, {List<int>? axis})`** view factory. It automatically calculates expanded strides (setting stride offsets for the window dimensions) and returns a zero-allocation, copy-free rolling window view sharing parent memory!
