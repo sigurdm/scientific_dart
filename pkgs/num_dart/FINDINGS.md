@@ -683,3 +683,21 @@ In this holistic review, we analyze the gaps between Dart's `num_dart` and Pytho
 * **1D Set Utilities**:
   - **NumPy Parity**: `np.intersect1d()`, `np.union1d()`, `np.setdiff1d()`, `np.setxor1d()`.
   - **Roadmap Plan**: Add standard 1D array sorted set utilities.
+
+***
+
+## 🔍 Section 11: Code Review Findings: I/O Serialization & Broadcasting Parity Assessment
+
+In this code review, we assessed [broadcasting.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/broadcasting.dart), [io.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/io.dart), and [random.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/random.dart) for architectural bottlenecks and NumPy parity.
+
+### 1. Shape Broadcasting Parity (`broadcasting.dart`)
+- **Assessment**: Excellent! Parity is 100% complete.
+- **Findings**: The multidimensional right-to-left broadcasting algorithm successfully mimics standard NumPy broadcasting behavior. It evaluates trailing dimensions and stretches 1-sized dimensions by setting strides to 0 in $O(D)$ time where $D$ is maximum rank, utilizing zero unmanaged allocations.
+
+### 2. Zero-Copy File I/O (`io.dart`)
+- **Assessment**: Superb!
+- **Findings**: The binary format serialization/deserialization pipeline is extremely solid. If an array is contiguous, it reads/writes bytes straight between the C heap pointer view and the file stream block (direct zero-copy filesystem transfers), completely avoiding all intermediate Dart heap object copying. It also correctly parses and wires column-major Fortran strides in $O(1)$ time without memory re-arranging loops!
+
+### 3. Random Distributions (`random.dart`)
+- **Assessment**: High-Parity but minor JIT loops remain.
+- **Findings**: Univariate `uniform` and Box-Muller `normal` Gaussian generators are natively offloaded to C FFI vector math functions, running at pure compiled speeds. However, univariate `exponential()` and `poisson()` (for lambda < 30.0) still use element-by-element copying JIT loops in Dart. These present minor future optimization targets to be offloaded to FFI.
