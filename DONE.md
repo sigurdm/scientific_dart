@@ -1512,6 +1512,17 @@
   - Stable `argsort()` on **50,000 reverse-sorted indices dropped from 2048.68 us down to 176.93 microseconds** (achieving **2.3x performance parity** with NumPy's 76.56 us!).
 * **Verification**: All compiles are fully clean and warning-free, and all **374 unit tests pass flawlessly green**!
 
+***
+
+## 124. Supply externalSize parameter to NativeFinalizer to enable timely GC (Task 3 / next annotated finding)
+* **Issue**:
+  - The private constructor `NDArray._()` previously called `_finalizer.attach(this, _pointer, detach: this)` without specifying the `externalSize` parameter.
+  - Since the Dart VM was unaware of the massive unmanaged C heap allocation sizes occupied by the underlying array pointer backing views, it did not trigger garbage collection runs in a timely manner under memory pressure, posing severe memory footprint amplification and OOM vm isolate crash risks under heavy data loads.
+* **Resolution**:
+  - **Supplied `externalSize`**: Modified [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart#L135-L141) inside the constructor to dynamically calculate the C heap allocation footprint size in bytes: `final byteSize = totalSize * dtype.byteWidth`.
+  - Passed `externalSize: byteSize` directly to the finalizer attach call. This successfully informs the Dart VM GC of the precise unmanaged memory footprint to enable timely garbage collection cycles under memory pressure.
+* **Verification**: Verified all static compiler checks are perfectly clean, and all **374 unit tests continue to pass flawlessly green**!
+
 
 
 
