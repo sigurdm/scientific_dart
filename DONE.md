@@ -1293,4 +1293,18 @@
     - **Array Equality `operator ==` and `hashCode` `toList()` serialization**: Exposed a severe, silent memory bottleneck where simply checking two matrices for equality or checking their hash value unconditionally serializes their entire element grids into standard Dart lists on the heap (`toList()`), triggering massive GC thrashing and OOM risks. Outlined C-level zero-copy `memcmp` checks and strided coordinate walks to run comparisons in absolute zero-allocation microsecond times!
 * **Verification**: Confirmed that all lints and compiler states are fully clean. All **371 unit tests continue to pass 100% green** and execute successfully!
 
+***
+
+## 106. Enriched Advanced Indexing Selector Subclasses Documentation (Task 6)
+* **What was done**:
+  - Audited the advanced indexing Selector family inside [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/lib/src/ndarray.dart) to address styling and documentation gaps against modern "Effective Dart" style guidelines.
+  - Fully documented the public interfaces, fields, and constructors for the base class [Selector] and all its subclasses:
+    - [Index]: documented indexing properties, preconditions, RangeErrors throws conditions, and row-extraction code examples.
+    - [Slice]: documented contiguous and strided ranges selection, inclusive/exclusive range boundaries preconditions, step size assertions, and usage examples.
+    - [Indices]: documented coordinate lists advanced indexing, coordinate bounds preconditions, and sub-matrix extraction examples.
+    - [Mask]: documented boolean mask advanced indexing, dimension compatibility preconditions, and boolean criteria filter examples.
+  - Linked these classes beautifully to the external indexing examples package [indexing_example.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/num_dart/example/indexing_example.dart) using the robust custom tool directive `{@example}`.
+* **Verification**: Confirmed all 371 workspace unit tests continue to pass flawlessly and compile successfully.
+
+
 

@@ -2181,29 +2181,74 @@ final class BoolList extends ListBase<bool> {
   }
 }
 
-/// Base class for selectors used in slicing and advanced indexing.
+/// Base class for selectors used in slicing and advanced indexing on [NDArray].
+///
+/// Subclasses represent different indexing modes:
+/// - [Index] to extract a single scalar index along a dimension and reduce rank.
+/// - [Slice] to extract a continuous range of values along a dimension, keeping rank.
+/// - [Indices] to extract specific coordinates along a dimension (advanced indexing).
+/// - [Mask] to filter elements based on a boolean mask array.
+///
+/// Refer to the [Advanced Slicing & Indexing Guide](https://numpy.org/doc/stable/user/basics.indexing.html)
+/// for standard concepts of array slicing.
+///
+/// {@example /example/indexing_example.dart lang=dart}
 sealed class Selector {
   const Selector();
 }
 
-/// Selects a single index along a dimension, reducing rank.
+/// Selects a single index along a dimension of an [NDArray], reducing the rank of the resulting array by 1.
+///
+/// **Preconditions:**
+/// - The [value] index must be within `[-dimSize, dimSize - 1]` where `dimSize` is the size of the targeted dimension.
+///
+/// **Throws:**
+/// - [RangeError] during slicing if [value] is out of bounds.
+///
+/// **Example:**
+/// ```dart
+/// // Select the element at index 1 along the first dimension
+/// final rowView = arr.slice([Index(1)]);
+/// ```
 final class Index extends Selector {
+  /// The coordinate index to select. Can be negative to index from the end.
   final int value;
+
+  /// Creates a single index selector with the specified [value].
   Index(this.value);
 }
 
-/// Represents a slice of an array dimension.
+/// Represents a continuous or strided slice of an [NDArray] dimension.
+///
+/// Similar to Python's `start:stop:step` slice notation. Keeps the rank of the dimension intact.
+///
+/// **Preconditions:**
+/// - [step] must be strictly non-zero.
+/// - [start] and [stop], if provided, represent inclusive start and exclusive stop bounds.
+///
+/// **Throws:**
+/// - [AssertionError] if [step] is zero.
+///
+/// **Example:**
+/// ```dart
+/// // Select elements from index 1 to 5 with step size of 2
+/// final sliceView = arr.slice([Slice(start: 1, stop: 5, step: 2)]);
+/// ```
 final class Slice extends Selector {
-  /// The starting index of the slice.
+  /// The starting index of the slice (inclusive).
+  /// If null, defaults to the beginning of the dimension.
   final int? start;
 
   /// The ending index of the slice (exclusive).
+  /// If null, defaults to the end of the dimension.
   final int? stop;
 
-  /// The step size for the slice.
+  /// The step size for the slice. Defaults to 1.
   final int step;
 
   /// Creates a slice from [start] to [stop] with [step].
+  ///
+  /// Precondition: [step] must be non-zero.
   const Slice({this.start, this.stop, this.step = 1})
     : assert(step != 0, 'Step cannot be zero');
 
@@ -2211,15 +2256,44 @@ final class Slice extends Selector {
   const Slice.all({int step = 1}) : this(start: null, stop: null, step: step);
 }
 
-/// Selects specific indices along a dimension (advanced indexing).
+/// Selects specific coordinate indices along an [NDArray] dimension (advanced indexing).
+///
+/// Useful for extracting irregular intervals or custom lists of indices.
+///
+/// **Preconditions:**
+/// - Every index in [values] must be within `[-dimSize, dimSize - 1]` where `dimSize` is the size of the dimension.
+///
+/// **Example:**
+/// ```dart
+/// // Extract rows at index 0 and 2 from a 2D matrix
+/// final subMatrix = arr.slice([Indices([0, 2])]);
+/// ```
 final class Indices extends Selector {
+  /// The list of specific indices to select.
   final List<int> values;
+
+  /// Creates an indices selector with the specified coordinate [values].
   Indices(this.values);
 }
 
-/// Selects elements matching a boolean mask.
+/// Selects elements of an [NDArray] matching a boolean mask array.
+///
+/// Triggers boolean indexing/masking.
+///
+/// **Preconditions:**
+/// - The [mask] must share identical shape and dimensions with the targeted dimension array.
+///
+/// **Example:**
+/// ```dart
+/// // Filter elements matching a boolean condition
+/// final maskCondition = arr > 0.5;
+/// final positiveValues = arr.slice([Mask(BooleanMask(maskCondition))]);
+/// ```
 final class Mask extends Selector {
+  /// The boolean mask wrapper.
   final BooleanMask mask;
+
+  /// Creates a mask selector wrapping the specified boolean [mask].
   Mask(this.mask);
 }
 
