@@ -135,9 +135,7 @@ final class NDArray<T> implements ffi.Finalizable {
        strides = List<int>.unmodifiable(strides),
        isContiguous = _checkContiguous(shape, strides) {
     if (_parent == null) {
-      final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
-      final byteSize = totalSize * dtype.byteWidth;
-      _finalizer.attach(this, _pointer, detach: this, externalSize: byteSize);
+      _finalizer.attach(this, _pointer, detach: this);
     }
   }
 
