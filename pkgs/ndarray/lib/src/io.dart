@@ -484,9 +484,7 @@ Map<String, NDArray> loadz(String filepath) {
     if (archiveFile.isFile && archiveFile.name.endsWith('.npy')) {
       final key = archiveFile.name.replaceAll('.npy', '');
       final rawContent = archiveFile.content;
-      final Uint8List fileData = rawContent is Uint8List
-          ? rawContent
-          : Uint8List.fromList(rawContent as List<int>);
+      final Uint8List fileData = rawContent as Uint8List;
 
       final loadedArray = _deserializeNpyBytes(fileData);
       results[key] = loadedArray;
