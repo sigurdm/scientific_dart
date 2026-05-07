@@ -291,6 +291,27 @@ enum Operation { add, matmul }
 /// Keys are operation names, values are array size thresholds.
 final Map<Operation, int> ffiThresholds = {Operation.matmul: 1};
 
+/// Configure the number of parallel execution threads used by OpenBLAS at runtime.
+///
+/// **Preconditions:**
+/// - [numThreads] must be greater than or equal to 1.
+///
+/// **Throws:**
+/// - [ArgumentError] if [numThreads] is less than 1.
+///
+/// **Example:**
+/// ```dart
+/// setNumThreads(1); // Disable multi-threading to bypass overhead on small matrices
+/// ```
+void setNumThreads(int numThreads) {
+  if (numThreads < 1) {
+    throw ArgumentError(
+      'Number of threads must be at least 1 (was $numThreads)',
+    );
+  }
+  openblas_set_num_threads(numThreads);
+}
+
 bool listEquals(List<int> a, List<int> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {

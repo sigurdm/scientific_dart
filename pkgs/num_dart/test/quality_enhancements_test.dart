@@ -1864,36 +1864,38 @@ void main() {
       },
     );
 
-    test(
-      'Contiguous and non-contiguous clip() precision ufuncs coverage',
-      () {
-        // 1. Contiguous Float32 clip
-        final f32 = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float32);
-        addTearDown(f32.dispose);
-        final resF32 = clip(f32, min: 2.0, max: 3.0);
-        addTearDown(resF32.dispose);
-        expect(resF32.dtype, DType.float32);
-        expect(resF32.toList(), [2.0, 2.0, 3.0, 3.0]);
+    test('Contiguous and non-contiguous clip() precision ufuncs coverage', () {
+      // 1. Contiguous Float32 clip
+      final f32 = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float32);
+      addTearDown(f32.dispose);
+      final resF32 = clip(f32, min: 2.0, max: 3.0);
+      addTearDown(resF32.dispose);
+      expect(resF32.dtype, DType.float32);
+      expect(resF32.toList(), [2.0, 2.0, 3.0, 3.0]);
 
-        // 2. Non-contiguous integer clip
-        final i32 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
-        final i32T = i32.transposed;
-        addTearDown(i32.dispose);
-        addTearDown(i32T.dispose);
-        final resI32 = clip(i32T, min: 2, max: 3);
-        addTearDown(resI32.dispose);
-        expect(resI32.toList(), [2, 3, 2, 3]); // transposed: 1, 3, 2, 4 -> clipped: 2, 3, 2, 3
+      // 2. Non-contiguous integer clip
+      final i32 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+      final i32T = i32.transposed;
+      addTearDown(i32.dispose);
+      addTearDown(i32T.dispose);
+      final resI32 = clip(i32T, min: 2, max: 3);
+      addTearDown(resI32.dispose);
+      expect(resI32.toList(), [
+        2,
+        3,
+        2,
+        3,
+      ]); // transposed: 1, 3, 2, 4 -> clipped: 2, 3, 2, 3
 
-        // 3. Non-contiguous double clip
-        final f64 = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
-        final f64T = f64.transposed;
-        addTearDown(f64.dispose);
-        addTearDown(f64T.dispose);
-        final resF64 = clip(f64T, min: 2.0, max: 3.0);
-        addTearDown(resF64.dispose);
-        expect(resF64.toList(), [2.0, 3.0, 2.0, 3.0]);
-      },
-    );
+      // 3. Non-contiguous double clip
+      final f64 = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+      final f64T = f64.transposed;
+      addTearDown(f64.dispose);
+      addTearDown(f64T.dispose);
+      final resF64 = clip(f64T, min: 2.0, max: 3.0);
+      addTearDown(resF64.dispose);
+      expect(resF64.toList(), [2.0, 3.0, 2.0, 3.0]);
+    });
   });
 }
 

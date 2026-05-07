@@ -407,3 +407,6 @@ typedef blasint = ffi.Int;
 typedef Dartblasint = int;
 typedef lapack_int = ffi.Int;
 typedef Dartlapack_int = int;
+
+@ffi.Native<ffi.Void Function(ffi.Int)>()
+external void openblas_set_num_threads(int num_threads);

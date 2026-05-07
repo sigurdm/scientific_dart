@@ -615,6 +615,10 @@ class StridedElementwiseAddBenchmark extends BenchmarkBase {
 // ============================================================================
 
 void main() {
+  // Limit OpenBLAS execution to 1 thread to avoid parallel thread context switch
+  // overhead on lightweight/small matrices in the benchmark suite.
+  setNumThreads(1);
+
   print(
     '============================================================================',
   );

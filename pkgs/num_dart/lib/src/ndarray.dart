@@ -131,9 +131,9 @@ final class NDArray<T> implements ffi.Finalizable {
     required List<int> shape,
     required List<int> strides,
     required this.dtype,
-  })  : shape = List<int>.unmodifiable(shape),
-        strides = List<int>.unmodifiable(strides),
-        isContiguous = _checkContiguous(shape, strides) {
+  }) : shape = List<int>.unmodifiable(shape),
+       strides = List<int>.unmodifiable(strides),
+       isContiguous = _checkContiguous(shape, strides) {
     if (_parent == null) {
       _finalizer.attach(this, _pointer, detach: this);
     }

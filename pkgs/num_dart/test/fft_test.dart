@@ -132,7 +132,12 @@ void main() {
         expect(restored32.data[0].real, closeTo(1.0, 1e-5));
 
         final comp64 = NDArray.fromList(
-          [Complex(1.0, 2.0), Complex(3.0, 4.0), Complex(5.0, 6.0), Complex(7.0, 8.0)],
+          [
+            Complex(1.0, 2.0),
+            Complex(3.0, 4.0),
+            Complex(5.0, 6.0),
+            Complex(7.0, 8.0),
+          ],
           [4],
           DType.complex64,
         );
