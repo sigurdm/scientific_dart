@@ -73,7 +73,7 @@ void main(List<String> args) async {
 
     // 3. Compile plain-C source code using Process.run for extreme reliability
     if (!libFile.existsSync()) {
-      final compilerPath = cCompiler?.compiler?.toFilePath() ?? 'cc';
+      final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
       print('Compiling pocketfft plain C files via compiler: $compilerPath');
 
       final isMSVC =

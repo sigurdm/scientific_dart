@@ -38,8 +38,8 @@ final class BroadcastResult {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([1.0, 2.0], [2, 1], `DType.float64);`
-/// final b = `NDArray<double>`.fromList([10.0, 20.0, 30.0], [1, 3], `DType.float64);`
+/// final a = `NDArray<Float64>`.fromList([1.0, 2.0], [2, 1], `DType.float64);`
+/// final b = `NDArray<Float64>`.fromList([10.0, 20.0, 30.0], [1, 3], `DType.float64);`
 /// final result = broadcast(a, b);
 /// print(result.shape); // [2, 3]
 /// ```
@@ -65,19 +65,23 @@ BroadcastResult broadcast(NDArray a, NDArray b) {
 
     if (dimA == dimB) {
       commonShape[maxLen - 1 - i] = dimA;
-      if (i < shapeA.length)
+      if (i < shapeA.length) {
         newStridesA[maxLen - 1 - i] = stridesA[shapeA.length - 1 - i];
-      if (i < shapeB.length)
+      }
+      if (i < shapeB.length) {
         newStridesB[maxLen - 1 - i] = stridesB[shapeB.length - 1 - i];
+      }
     } else if (dimA == 1) {
       commonShape[maxLen - 1 - i] = dimB;
       // newStridesA remains 0 for this dimension, effectively stretching it
-      if (i < shapeB.length)
+      if (i < shapeB.length) {
         newStridesB[maxLen - 1 - i] = stridesB[shapeB.length - 1 - i];
+      }
     } else if (dimB == 1) {
       commonShape[maxLen - 1 - i] = dimA;
-      if (i < shapeA.length)
+      if (i < shapeA.length) {
         newStridesA[maxLen - 1 - i] = stridesA[shapeA.length - 1 - i];
+      }
       // newStridesB remains 0 for this dimension, effectively stretching it
     } else {
       throw ArgumentError(

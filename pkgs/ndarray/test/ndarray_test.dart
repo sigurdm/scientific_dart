@@ -55,14 +55,16 @@ void main() {
     test(
       'Matrix Multiplication (OpenBLAS)',
       () => NDArray.scope(() {
-        final a = NDArray<double>.fromList(Float64List.fromList([1, 2, 3, 4]), [
-          2,
-          2,
-        ], DType.float64);
-        final b = NDArray<double>.fromList(Float64List.fromList([5, 6, 7, 8]), [
-          2,
-          2,
-        ], DType.float64);
+        final a = NDArray<Float64>.fromList(
+          Float64List.fromList([1, 2, 3, 4]),
+          [2, 2],
+          DType.float64,
+        );
+        final b = NDArray<Float64>.fromList(
+          Float64List.fromList([5, 6, 7, 8]),
+          [2, 2],
+          DType.float64,
+        );
         final c = matmul(a, b);
         expect(c.shape, [2, 2]);
         expect(c.data, [19.0, 22.0, 43.0, 50.0]);
@@ -149,7 +151,7 @@ void main() {
     test(
       'Zeros Factory',
       () => NDArray.scope(() {
-        final a = NDArray<double>.zeros([2, 3], DType.float64);
+        final a = NDArray<Float64>.zeros([2, 3], DType.float64);
         expect(a.shape, [2, 3]);
         expect(a.data, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
       }),
@@ -158,7 +160,7 @@ void main() {
     test(
       'Ones Factory',
       () => NDArray.scope(() {
-        final a = NDArray<double>.ones([2, 3], DType.float64);
+        final a = NDArray<Float64>.ones([2, 3], DType.float64);
         expect(a.shape, [2, 3]);
         expect(a.data, [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
       }),
@@ -167,7 +169,7 @@ void main() {
     test(
       'Arange Factory',
       () => NDArray.scope(() {
-        final a = NDArray<double>.arange(
+        final a = NDArray<Float64>.arange(
           0.0,
           5.0,
           step: 1.0,
@@ -181,7 +183,7 @@ void main() {
     test(
       'Linspace Factory',
       () => NDArray.scope(() {
-        final a = NDArray<double>.linspace(0.0, 1.0, 5, dtype: DType.float64);
+        final a = NDArray<Float64>.linspace(0.0, 1.0, 5, dtype: DType.float64);
         expect(a.shape, [5]);
         expect(a.data, [0.0, 0.25, 0.5, 0.75, 1.0]);
       }),
@@ -202,7 +204,7 @@ void main() {
     test(
       'Manual Dispose',
       () => NDArray.scope(() {
-        final a = NDArray<double>.create([2, 2], DType.float64);
+        final a = NDArray<Float64>.create([2, 2], DType.float64);
         // Should not throw
         a.dispose();
       }),
@@ -211,7 +213,7 @@ void main() {
     test(
       'Eye Factory',
       () => NDArray.scope(() {
-        final a = NDArray<double>.eye(3, DType.float64);
+        final a = NDArray<Float64>.eye(3, DType.float64);
         expect(a.shape, [3, 3]);
         expect(a.data, [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]);
       }),
@@ -242,7 +244,7 @@ void main() {
         expect(b.data, [1.0, 2.0, 3.0, 4.0]);
 
         // Modify view
-        b.data[0] = 99.0;
+        b.data[0] = Float64(99.0);
         // Check original
         expect(a.data[0], 99.0);
       }),
@@ -317,7 +319,7 @@ void main() {
           2,
           2,
         ], DType.float64);
-        final s = sum(a, axis: 0) as NDArray<double>;
+        final s = sum(a, axis: 0) as NDArray;
         expect(s.shape, [2]);
         expect(s.data, [4.0, 6.0]);
       }),
@@ -330,7 +332,7 @@ void main() {
           2,
           2,
         ], DType.float64);
-        final s = sum(a, axis: 1) as NDArray<double>;
+        final s = sum(a, axis: 1) as NDArray;
         expect(s.shape, [2]);
         expect(s.data, [3.0, 7.0]);
       }),
@@ -339,7 +341,7 @@ void main() {
     test(
       'NDArray.create supports Int32',
       () => NDArray.scope(() {
-        final a = NDArray<int>.create([2, 2], DType.int32);
+        final a = NDArray<Int32>.create([2, 2], DType.int32);
         expect(a.shape, [2, 2]);
         expect(a.dtype, DType.int32);
       }),
@@ -348,7 +350,7 @@ void main() {
     test(
       'NDArray.create supports Int64',
       () => NDArray.scope(() {
-        final a = NDArray<int>.create([2, 2], DType.int64);
+        final a = NDArray<Int64>.create([2, 2], DType.int64);
         expect(a.shape, [2, 2]);
         expect(a.dtype, DType.int64);
       }),
@@ -441,7 +443,7 @@ void main() {
         final m = mean(a);
         expect(m, 2.5);
 
-        final m0 = mean(a, axis: 0) as NDArray<double>;
+        final m0 = mean(a, axis: 0) as NDArray;
         expect(m0.shape, [2]);
         expect(m0.data, [2.0, 3.0]);
       }),
@@ -489,7 +491,7 @@ void main() {
         final p = prod(a);
         expect(p, 24.0);
 
-        final p0 = prod(a, axis: 0) as NDArray<double>;
+        final p0 = prod(a, axis: 0) as NDArray;
         expect(p0.shape, [2]);
         expect(p0.toList(), [3.0, 8.0]); // Prod along rows: 1*3=3, 2*4=8
       }),
@@ -512,7 +514,7 @@ void main() {
           [2, 2],
           DType.float64,
         );
-        final v0 = variance(a2, axis: 0) as NDArray<double>;
+        final v0 = variance(a2, axis: 0) as NDArray;
         expect(v0.shape, [2]);
         expect(v0.toList(), [
           1.0,
@@ -535,7 +537,7 @@ void main() {
           [2, 2],
           DType.float64,
         );
-        final s0 = std(a2, axis: 0) as NDArray<double>;
+        final s0 = std(a2, axis: 0) as NDArray;
         expect(s0.shape, [2]);
         expect(s0.toList(), [1.0, 1.0]);
       }),
@@ -779,7 +781,7 @@ void main() {
           4,
         ], DType.float64);
         final b = a.slice([Slice(start: 1, stop: 3)]);
-        b.data[0] = 20.0;
+        b.data[0] = Float64(20.0);
         expect(a.data[1], 20.0);
       }),
     );
@@ -832,7 +834,7 @@ void main() {
         final b = a.slice([
           Indices([0, 2]),
         ]);
-        b.data[0] = 10.0;
+        b.data[0] = Float64(10.0);
         expect(a.data[0], 1.0); // Original should not change!
       }),
     );
@@ -875,7 +877,7 @@ void main() {
         ], DType.float64);
         final mask = a > 2.0;
         final b = a.slice([Mask(BooleanMask(mask))]);
-        b.data[0] = 10.0;
+        b.data[0] = Float64(10.0);
         expect(a.data[2], 3.0); // Original should not change!
       }),
     );
@@ -921,7 +923,7 @@ void main() {
         expect(b.shape, [4]);
         expect(b.toList(), [1.0, 2.0, 3.0, 4.0]);
 
-        b.data[0] = 10.0;
+        b.data[0] = Float64(10.0);
         expect(a.data[0], 1.0);
       }),
     );
@@ -933,7 +935,7 @@ void main() {
           final NDArray a;
           final List expected;
           if (dtype == DType.complex128 || dtype == DType.complex64) {
-            a = NDArray<Complex>.create([2, 2], dtype);
+            a = NDArray<Complex>.create([2, 2], dtype as dynamic);
             a.data[0] = Complex(1.0, 1.0);
             a.data[1] = Complex(2.0, 2.0);
             a.data[2] = Complex(3.0, 3.0);
@@ -948,14 +950,18 @@ void main() {
             a = NDArray<bool>.fromList(
               [true, false, true, false],
               [2, 2],
-              dtype,
+              dtype as dynamic,
             );
             expected = [true, false, true, false];
           } else if (dtype == DType.int32 || dtype == DType.int64) {
-            a = NDArray<int>.fromList([1, 2, 3, 4], [2, 2], dtype);
+            a = NDArray<Int64>.fromList([1, 2, 3, 4], [2, 2], dtype as dynamic);
             expected = [1, 2, 3, 4];
           } else {
-            a = NDArray<double>.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], dtype);
+            a = NDArray.fromList(
+              [1.0, 2.0, 3.0, 4.0],
+              [2, 2],
+              dtype as dynamic,
+            );
             expected = [1.0, 2.0, 3.0, 4.0];
           }
 
@@ -979,7 +985,7 @@ void main() {
         expect(b.shape, [4]);
         expect(b.toList(), [1.0, 2.0, 3.0, 4.0]);
 
-        b.data[0] = 10.0;
+        b.data[0] = Float64(10.0);
         expect(a.data[0], 10.0);
       }),
     );
@@ -999,7 +1005,7 @@ void main() {
         expect(c.shape, [2]);
         expect(c.toList(), [1.0, 3.0]);
 
-        c.data[0] = 10.0;
+        c.data[0] = Float64(10.0);
         expect(b.data[0], 1.0);
       }),
     );
@@ -1015,7 +1021,7 @@ void main() {
         expect(b.shape, [2, 2]);
         expect(b.toList(), [1.0, 3.0, 2.0, 4.0]);
 
-        b.data[0] = 10.0;
+        b.data[0] = Float64(10.0);
         expect(a.data[0], 10.0);
       }),
     );
@@ -1142,7 +1148,7 @@ void main() {
         a.data[0] = Complex(1.0, 2.0);
         a.data[1] = Complex(3.0, 4.0);
 
-        final b = NDArray<double>.fromList([10.0, 20.0], [2], DType.float64);
+        final b = NDArray<Float64>.fromList([10.0, 20.0], [2], DType.float64);
 
         final c = add(a, b);
         expect(c.shape, [2]);
@@ -1195,14 +1201,17 @@ void main() {
         'setIndices and setIndicesScalar bounds checks',
         () => NDArray.scope(() {
           final a = NDArray.zeros([2, 3], DType.float64);
-          final indices = NDArray<int>.fromList([0], [1], DType.int32);
+          final indices = NDArray<Int32>.fromList([0], [1], DType.int32);
           expect(
-            () => a.setIndicesScalar(indices, 1.0, axis: 5),
+            () => a.setIndicesScalar(indices, Float64(1.0), axis: 5),
             throwsRangeError,
           );
 
-          final badIndices = NDArray<int>.fromList([5], [1], DType.int32);
-          expect(() => a.setIndicesScalar(badIndices, 1.0), throwsRangeError);
+          final badIndices = NDArray<Int32>.fromList([5], [1], DType.int32);
+          expect(
+            () => a.setIndicesScalar(badIndices, Float64(1.0)),
+            throwsRangeError,
+          );
 
           final val = NDArray.zeros([1], DType.float64);
           expect(() => a.setIndices(badIndices, val), throwsRangeError);

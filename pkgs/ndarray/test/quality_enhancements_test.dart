@@ -44,7 +44,7 @@ void main() {
         expect(reshaped.toList(), [1.0, 3.0, 2.0, 4.0]);
 
         // Verify memory decoupling (modifying reshaped does NOT affect parent)
-        reshaped.data[0] = 99.0;
+        reshaped.data[0] = Float64(99.0);
         expect(parent.data[0], 1.0);
       }),
     );

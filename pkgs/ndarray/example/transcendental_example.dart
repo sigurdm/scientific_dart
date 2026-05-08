@@ -26,7 +26,7 @@ void main() {
   print('log(exp(x)): ${logVal.toList()}');
 
   // 4. Blazingly Fast Allocation-Free Recycling using named {out} parameter
-  final outRecycler = NDArray<double>.zeros([3], DType.float64);
+  final outRecycler = NDArray<Float64>.zeros([3], DType.float64);
   print('\n--- Allocation-Free Out Recycling ---');
   print('outRecycler (before): ${outRecycler.toList()}');
 

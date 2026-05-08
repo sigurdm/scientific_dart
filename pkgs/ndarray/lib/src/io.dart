@@ -82,7 +82,7 @@ void save(String filepath, NDArray a) {
 
   // Use space padding and end with a mandatory trailing newline '\n'
   final padCount = paddedHeaderLen - headerStr.length - 1;
-  final paddedHeader = headerStr + (' ' * padCount) + '\n';
+  final paddedHeader = '$headerStr${' ' * padCount}\n';
 
   final raf = file.openSync(mode: FileMode.write);
 
@@ -182,7 +182,7 @@ NDArray load(String filepath) {
 
     // Parse descr via regex
     final descrMatch = RegExp(
-      '[\'\"]descr[\'\"]:\\s*[\'\"]([^\'\"]+)[\'\"]',
+      '[\'"]descr[\'"]:\\s*[\'"]([^\'"]+)[\'"]',
     ).firstMatch(headerStr);
     if (descrMatch == null) {
       throw FormatException(
@@ -194,7 +194,7 @@ NDArray load(String filepath) {
 
     // Parse fortran_order bool flag
     final fortMatch = RegExp(
-      '[\'\"]fortran_order[\'\"]:\\s*(True|False)',
+      '[\'"]fortran_order[\'"]:\\s*(True|False)',
       caseSensitive: false,
     ).firstMatch(headerStr);
     if (fortMatch == null) {
@@ -206,7 +206,7 @@ NDArray load(String filepath) {
 
     // Parse shape tuple
     final shapeMatch = RegExp(
-      '[\'\"]shape[\'\"]:\\s*\\(?([^\\)]*)\\)?',
+      '[\'"]shape[\'"]:\\s*\\(?([^\\)]*)\\)?',
     ).firstMatch(headerStr);
     if (shapeMatch == null) {
       throw FormatException(
@@ -266,7 +266,7 @@ Uint8List _serializeNpyBytes(NDArray a) {
   var paddedHeaderLen =
       ((prefixLen + headerStr.length + 1) + 63) ~/ 64 * 64 - prefixLen;
   final padCount = paddedHeaderLen - headerStr.length - 1;
-  final paddedHeader = headerStr + (' ' * padCount) + '\n';
+  final paddedHeader = '$headerStr${' ' * padCount}\n';
 
   final headerBytes = Uint8List.fromList(paddedHeader.codeUnits);
   final lenBytes = Uint8List(2);
@@ -334,19 +334,19 @@ NDArray _deserializeNpyBytes(Uint8List bytes) {
   final headerStr = String.fromCharCodes(headerBytes);
 
   final descrMatch = RegExp(
-    '[\'\"]descr[\'\"]:\\s*[\'\"]([^\'\"]+)[\'\"]',
+    '[\'"]descr[\'"]:\\s*[\'"]([^\'"]+)[\'"]',
   ).firstMatch(headerStr);
   final descr = descrMatch!.group(1)!;
   final dtype = _descrToDType(descr);
 
   final fortMatch = RegExp(
-    '[\'\"]fortran_order[\'\"]:\\s*(True|False)',
+    '[\'"]fortran_order[\'"]:\\s*(True|False)',
     caseSensitive: false,
   ).firstMatch(headerStr);
   final fortranOrder = fortMatch!.group(1)!.toLowerCase() == 'true';
 
   final shapeMatch = RegExp(
-    '[\'\"]shape[\'\"]:\\s*\\(?([^\\)]*)\\)?',
+    '[\'"]shape[\'"]:\\s*\\(?([^\\)]*)\\)?',
   ).firstMatch(headerStr);
   final shapeTokens = shapeMatch!.group(1)!.split(',');
   final shape = <int>[];
@@ -500,25 +500,31 @@ Map<String, NDArray> loadz(String filepath) {
 /// to avoid allocating a transient unmanaged [NDArray] structure on the C-heap.
 Uint8List _serializeDataContiguous(List flatList, DType dtype) {
   switch (dtype) {
-    case DType.float64:
+    case Float64DType():
       final list = Float64List.fromList(flatList.cast<double>());
       return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case DType.float32:
+    case Float32DType():
       final list = Float32List.fromList(flatList.cast<double>());
       return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case DType.int64:
+    case Int64DType():
       final list = Int64List.fromList(flatList.cast<int>());
       return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case DType.int32:
+    case Int32DType():
       final list = Int32List.fromList(flatList.cast<int>());
       return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case DType.boolean:
+    case Uint8DType():
+      final list = Uint8List.fromList(flatList.cast<int>());
+      return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
+    case Int16DType():
+      final list = Int16List.fromList(flatList.cast<int>());
+      return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
+    case BooleanDType():
       final bytes = Uint8List(flatList.length);
       for (var i = 0; i < flatList.length; i++) {
         bytes[i] = (flatList[i] as bool) ? 1 : 0;
       }
       return bytes;
-    case DType.complex128:
+    case Complex128DType():
       final doubleList = Float64List(flatList.length * 2);
       for (var i = 0; i < flatList.length; i++) {
         final c = flatList[i] as Complex;
@@ -529,7 +535,7 @@ Uint8List _serializeDataContiguous(List flatList, DType dtype) {
         doubleList.offsetInBytes,
         doubleList.lengthInBytes,
       );
-    case DType.complex64:
+    case Complex64DType():
       final floatList = Float32List(flatList.length * 2);
       for (var i = 0; i < flatList.length; i++) {
         final c = flatList[i] as Complex;

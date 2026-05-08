@@ -17,7 +17,7 @@ void main() {
           expect(a.getCell([0, 0]), 1.0);
           expect(a.getCell([0, 1]), 2.0);
 
-          a.setCell([1, 1], 40.0);
+          a.setCell([1, 1], Float64(40.0));
           expect(a.getCell([1, 1]), 40.0);
           expect(a.toList(), [1.0, 2.0, 3.0, 40.0]);
         }),
@@ -34,7 +34,7 @@ void main() {
           final mask = arr < 0.0; // returns binary mask array
 
           // Explicit scalar clip
-          arr.setByMaskScalar(mask, 0.0);
+          arr.setByMaskScalar(mask, Float64(0.0));
           expect(arr.toList(), [0.0, 10.0, 0.0, 4.0]);
         }),
       );
@@ -51,7 +51,7 @@ void main() {
           final targetRows = NDArray.fromList([0, 2], [2], DType.int32);
 
           // Overwrite row 0 and row 2 to 9
-          mat.setIndicesScalar(targetRows, 9, axis: 0);
+          mat.setIndicesScalar(targetRows, Int32(9), axis: 0);
           expect(mat.toList(), [9, 9, 9, 2, 2, 2, 9, 9, 9]);
         }),
       );

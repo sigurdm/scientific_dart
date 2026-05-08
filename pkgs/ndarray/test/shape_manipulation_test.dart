@@ -19,7 +19,7 @@ void main() {
           expect(b.toList(), [1.0, 2.0, 3.0, 4.0]);
 
           // Verify it shares memory (view behavior)
-          b.data[0] = 99.0;
+          b.data[0] = Float64(99.0);
           expect(a.data[0], 99.0);
         }),
       );
@@ -107,7 +107,7 @@ void main() {
           expect(b.toList(), [1.0, 2.0]);
 
           // View verification
-          b.data[0] = 42.0;
+          b.data[0] = Float64(42.0);
           expect(a.data[0], 42.0);
         }),
       );
@@ -213,7 +213,7 @@ void main() {
           expect(b.toList(), [1.0, 4.0, 2.0, 5.0, 3.0, 6.0]);
 
           // View verification
-          b.data[0] = 11.0; // updates a.data[0]
+          b.data[0] = Float64(11.0); // updates a.data[0]
           expect(a.data[0], 11.0);
         }),
       );
@@ -309,7 +309,7 @@ void main() {
           expect(b.toList(), [1.0, 2.0, 1.0, 2.0, 1.0, 2.0]);
 
           // Verify it allocates new memory (copy behavior)
-          b.data[0] = 99.0;
+          b.data[0] = Float64(99.0);
           expect(a.data[0], 1.0);
         }),
       );
@@ -382,7 +382,7 @@ void main() {
           expect(b.toList(), [1.0, 1.0, 2.0, 2.0, 3.0, 3.0]);
 
           // Copy verification
-          b.data[0] = 99.0;
+          b.data[0] = Float64(99.0);
           expect(a.data[0], 1.0);
         }),
       );
@@ -485,7 +485,7 @@ void main() {
           expect(b.dtype, DType.float64);
           expect(b.toList(), [10.0, 20.0, 30.0]);
 
-          b.data[0] = 99.0;
+          b.data[0] = Float64(99.0);
           expect(a.data[0], 10.0);
         }),
       );
@@ -507,7 +507,7 @@ void main() {
           expect(b.isContiguous, true);
           expect(b.toList(), [1.0, 3.0, 2.0, 4.0]);
 
-          b.data[0] = 99.0;
+          b.data[0] = Float64(99.0);
           expect(parent.data[0], 1.0);
         }),
       );
@@ -531,7 +531,7 @@ void main() {
           expect(b.dtype, DType.float64);
           expect(b.toList(), [10.0, 20.0, 30.0]);
 
-          b.data[0] = 99.0;
+          b.data[0] = Float64(99.0);
           expect(a.data[0], 10.0);
         }),
       );

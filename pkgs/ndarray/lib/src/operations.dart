@@ -339,7 +339,7 @@ DType _resolveDType(DType a, DType b) {
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
 NDArray add(NDArray a, NDArray b, {NDArray? out}) {
-  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
 
   // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
   if (a.isContiguous && b.isContiguous && listEquals(a.shape, b.shape)) {
@@ -710,7 +710,7 @@ NDArray subtract(NDArray a, NDArray b) {
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
   final result = NDArray.create(commonShape, targetDType);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
@@ -908,7 +908,7 @@ NDArray multiply(NDArray a, NDArray b) {
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
   final result = NDArray.create(commonShape, targetDType);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
@@ -1107,7 +1107,7 @@ NDArray divide(NDArray a, NDArray b) {
   final stridesB = broadcastResult.stridesB;
 
   // True division always upcasts to a floating or complex type!
-  var targetDType = _resolveDType(a.dtype, b.dtype);
+  DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
   if (targetDType == DType.int32 || targetDType == DType.int64) {
     targetDType = DType.float64;
   }
@@ -1306,8 +1306,9 @@ List<int> _broadcastStackShapes(List<int> sA, List<int> sB) {
 }
 
 /// Matrix multiplication for Float64 and Float32 arrays using OpenBLAS, supporting high-dimensional stack broadcasting and 1D vector promotions.
-NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
-  final targetDType = (a.dtype == DType.float32 || b.dtype == DType.float32)
+NDArray matmul(NDArray a, NDArray b) {
+  final DType<dynamic> targetDType =
+      (a.dtype == DType.float32 || b.dtype == DType.float32)
       ? DType.float32
       : DType.float64;
 
@@ -1356,7 +1357,7 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
   var aPromoted = false;
   var bPromoted = false;
 
-  NDArray<double> aView = a;
+  NDArray aView = a;
   if (a.shape.length == 1) {
     aView = NDArray.view(
       a,
@@ -1367,7 +1368,7 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
     aPromoted = true;
   }
 
-  NDArray<double> bView = b;
+  NDArray bView = b;
   if (b.shape.length == 1) {
     bView = NDArray.view(
       b,
@@ -1397,7 +1398,7 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
   final broadcastStack = _broadcastStackShapes(stackA, stackB);
 
   final resShape = [...broadcastStack, m, n];
-  final result = NDArray<double>.zeros(resShape, targetDType);
+  final result = NDArray.zeros(resShape, targetDType as dynamic);
 
   // Stride resolution logic for 100% copy-free BLAS matrix multiplication
   var transA = 111; // CblasNoTrans
@@ -1544,22 +1545,22 @@ NDArray<double> matmul(NDArray<double> a, NDArray<double> b) {
 /// final s0 = sum(a, axis: 0); // Sum along rows
 /// print(s0.data); // [4.0, 6.0]
 /// ```
-dynamic sum<T extends Object>(NDArray<T> a, {int? axis}) {
+dynamic sum(NDArray a, {int? axis}) {
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     if (a.isContiguous) {
       if (a.dtype == DType.float64) {
-        return r_sum_double(a.pointer.cast(), size) as T;
+        return r_sum_double(a.pointer.cast(), size) as dynamic;
       } else if (a.dtype == DType.float32) {
-        return r_sum_float(a.pointer.cast(), size) as T;
+        return r_sum_float(a.pointer.cast(), size) as dynamic;
       }
     }
-    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
     var acc = elements.first as dynamic;
     for (var i = 1; i < elements.length; i++) {
       acc += elements[i];
     }
-    return acc as T;
+    return acc as dynamic;
   }
 
   if (axis < 0 || axis >= a.shape.length) {
@@ -1567,7 +1568,7 @@ dynamic sum<T extends Object>(NDArray<T> a, {int? axis}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = NDArray<T>.zeros(newShape, a.dtype);
+  final result = NDArray.zeros(newShape, a.dtype as dynamic);
 
   _reduceRecursive(
     a,
@@ -1576,7 +1577,7 @@ dynamic sum<T extends Object>(NDArray<T> a, {int? axis}) {
     List<int>.filled(newShape.length, 0),
     axis,
     0,
-    (current, val) => ((current as dynamic) + val) as T,
+    (current, val) => ((current as dynamic) + val) as dynamic,
   );
   return result;
 }
@@ -1592,22 +1593,22 @@ dynamic sum<T extends Object>(NDArray<T> a, {int? axis}) {
 /// final p0 = prod(a, axis: 0); // Product along rows
 /// print(p0.data); // [3.0, 8.0]
 /// ```
-dynamic prod<T extends Object>(NDArray<T> a, {int? axis}) {
+dynamic prod(NDArray a, {int? axis}) {
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     if (a.isContiguous) {
       if (a.dtype == DType.float64) {
-        return r_prod_double(a.pointer.cast(), size) as T;
+        return r_prod_double(a.pointer.cast(), size) as dynamic;
       } else if (a.dtype == DType.float32) {
-        return r_prod_float(a.pointer.cast(), size) as T;
+        return r_prod_float(a.pointer.cast(), size) as dynamic;
       }
     }
-    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
     var acc = elements.first as dynamic;
     for (var i = 1; i < elements.length; i++) {
       acc *= elements[i];
     }
-    return acc as T;
+    return acc as dynamic;
   }
 
   if (axis < 0 || axis >= a.shape.length) {
@@ -1615,7 +1616,7 @@ dynamic prod<T extends Object>(NDArray<T> a, {int? axis}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = NDArray<T>.ones(newShape, a.dtype);
+  final result = NDArray.ones(newShape, a.dtype as dynamic);
 
   _reduceRecursive(
     a,
@@ -1624,7 +1625,7 @@ dynamic prod<T extends Object>(NDArray<T> a, {int? axis}) {
     List<int>.filled(newShape.length, 0),
     axis,
     0,
-    (current, val) => ((current as dynamic) * val) as T,
+    (current, val) => ((current as dynamic) * val) as dynamic,
   );
   return result;
 }
@@ -1674,7 +1675,7 @@ dynamic all(NDArray a, {int? axis}) {
   final result = NDArray<bool>.create(newShape, DType.boolean);
   result.fill(true); // Initialize to true everywhere
 
-  _reduceRecursive<Object, bool>(
+  _reduceRecursive(
     a as NDArray<Object>,
     result,
     List<int>.filled(a.shape.length, 0),
@@ -1734,7 +1735,7 @@ dynamic any(NDArray a, {int? axis}) {
     DType.boolean,
   ); // Pre-initialized to false
 
-  _reduceRecursive<Object, bool>(
+  _reduceRecursive(
     a as NDArray<Object>,
     result,
     List<int>.filled(a.shape.length, 0),
@@ -1760,10 +1761,11 @@ dynamic any(NDArray a, {int? axis}) {
 ///
 /// **Gotchas:**
 /// - Negative values will result in [double.nan].
-NDArray<double> sqrt<T extends num>(NDArray<T> a, {NDArray? out}) {
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  final result =
-      out as NDArray<double>? ?? NDArray<double>.create(a.shape, targetDType);
+NDArray sqrt(NDArray a, {NDArray? out}) {
+  final DType<dynamic> targetDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
+  final result = out ?? NDArray.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
       throw ArgumentError(
@@ -1782,8 +1784,9 @@ NDArray<double> sqrt<T extends num>(NDArray<T> a, {NDArray? out}) {
     }
   }
 
+  final aNum = a as NDArray<num>;
   for (var i = 0; i < a.data.length; i++) {
-    result.data[i] = math.sqrt(a.data[i].toDouble());
+    result.data[i] = math.sqrt(aNum.data[i].toDouble());
   }
   return result;
 }
@@ -1806,10 +1809,11 @@ NDArray<double> sqrt<T extends num>(NDArray<T> a, {NDArray? out}) {
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Trigonometric Sine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
-NDArray<double> sin<T extends num>(NDArray<T> a, {NDArray? out}) {
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  final result =
-      out as NDArray<double>? ?? NDArray<double>.create(a.shape, targetDType);
+NDArray sin(NDArray a, {NDArray? out}) {
+  final DType<dynamic> targetDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
+  final result = out ?? NDArray.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
       throw ArgumentError(
@@ -1828,8 +1832,9 @@ NDArray<double> sin<T extends num>(NDArray<T> a, {NDArray? out}) {
     }
   }
 
+  final aNum = a as NDArray<num>;
   for (var i = 0; i < a.data.length; i++) {
-    result.data[i] = math.sin(a.data[i].toDouble());
+    result.data[i] = math.sin(aNum.data[i].toDouble());
   }
   return result;
 }
@@ -1852,10 +1857,11 @@ NDArray<double> sin<T extends num>(NDArray<T> a, {NDArray? out}) {
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Trigonometric Cosine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
-NDArray<double> cos<T extends num>(NDArray<T> a, {NDArray? out}) {
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  final result =
-      out as NDArray<double>? ?? NDArray<double>.create(a.shape, targetDType);
+NDArray cos(NDArray a, {NDArray? out}) {
+  final DType<dynamic> targetDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
+  final result = out ?? NDArray.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
       throw ArgumentError(
@@ -1874,8 +1880,9 @@ NDArray<double> cos<T extends num>(NDArray<T> a, {NDArray? out}) {
     }
   }
 
+  final aNum = a as NDArray<num>;
   for (var i = 0; i < a.data.length; i++) {
-    result.data[i] = math.cos(a.data[i].toDouble());
+    result.data[i] = math.cos(aNum.data[i].toDouble());
   }
   return result;
 }
@@ -1898,10 +1905,11 @@ NDArray<double> cos<T extends num>(NDArray<T> a, {NDArray? out}) {
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Exponential Function](https://en.wikipedia.org/wiki/Exponential_function)
-NDArray<double> exp<T extends num>(NDArray<T> a, {NDArray? out}) {
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  final result =
-      out as NDArray<double>? ?? NDArray<double>.create(a.shape, targetDType);
+NDArray exp(NDArray a, {NDArray? out}) {
+  final DType<dynamic> targetDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
+  final result = out ?? NDArray.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
       throw ArgumentError(
@@ -1920,8 +1928,9 @@ NDArray<double> exp<T extends num>(NDArray<T> a, {NDArray? out}) {
     }
   }
 
+  final aNum = a as NDArray<num>;
   for (var i = 0; i < a.data.length; i++) {
-    result.data[i] = math.exp(a.data[i].toDouble());
+    result.data[i] = math.exp(aNum.data[i].toDouble());
   }
   return result;
 }
@@ -1944,10 +1953,11 @@ NDArray<double> exp<T extends num>(NDArray<T> a, {NDArray? out}) {
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Natural Logarithm](https://en.wikipedia.org/wiki/Natural_logarithm)
-NDArray<double> log<T extends num>(NDArray<T> a, {NDArray? out}) {
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
-  final result =
-      out as NDArray<double>? ?? NDArray<double>.create(a.shape, targetDType);
+NDArray log(NDArray a, {NDArray? out}) {
+  final DType<dynamic> targetDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
+  final result = out ?? NDArray.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
       throw ArgumentError(
@@ -1966,8 +1976,9 @@ NDArray<double> log<T extends num>(NDArray<T> a, {NDArray? out}) {
     }
   }
 
+  final aNum = a as NDArray<num>;
   for (var i = 0; i < a.data.length; i++) {
-    result.data[i] = math.log(a.data[i].toDouble());
+    result.data[i] = math.log(aNum.data[i].toDouble());
   }
   return result;
 }
@@ -1992,7 +2003,7 @@ NDArray<double> log<T extends num>(NDArray<T> a, {NDArray? out}) {
 /// ```
 ///
 /// Reference: [Arithmetic Mean](https://en.wikipedia.org/wiki/Arithmetic_mean)
-dynamic mean<T extends Object>(NDArray<T> a, {int? axis}) {
+dynamic mean(NDArray a, {int? axis}) {
   final s = sum(a, axis: axis);
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
@@ -2000,7 +2011,7 @@ dynamic mean<T extends Object>(NDArray<T> a, {int? axis}) {
   } else {
     final sizeAxis = a.shape[axis];
     for (var i = 0; i < s.data.length; i++) {
-      s.data[i] = (s.data[i] / sizeAxis) as T;
+      s.data[i] = (s.data[i] / sizeAxis) as dynamic;
     }
     return s;
   }
@@ -2049,7 +2060,7 @@ dynamic variance<T extends num>(NDArray<T> a, {int? axis}) {
     // Reshape m to keep dimensions for broadcasting
     final targetShape = List<int>.from(a.shape);
     targetShape[axis] = 1;
-    final reshapedM = (m as NDArray<T>).reshape(targetShape);
+    final reshapedM = (m as NDArray).reshape(targetShape);
 
     final diff = subtract(a, reshapedM);
     final sqDiff = multiply(diff, diff);
@@ -2091,7 +2102,7 @@ dynamic std<T extends num>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
     return math.sqrt(v as double);
   } else {
-    return sqrt(v as NDArray<double>);
+    return sqrt(v as NDArray);
   }
 }
 
@@ -2111,16 +2122,16 @@ dynamic std<T extends num>(NDArray<T> a, {int? axis}) {
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], `DType.float64);`
 /// final s = nansum(a); // returns 4.0
 /// ```
-dynamic nansum<T extends Object>(NDArray<T> a, {int? axis}) {
+dynamic nansum(NDArray a, {int? axis}) {
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
     if (a.dtype == DType.int32 || a.dtype == DType.int64) {
       var acc = 0;
       for (var i = 0; i < elements.length; i++) {
         acc += elements[i] as int;
       }
-      return acc as T;
+      return acc as dynamic;
     } else if (a.dtype == DType.complex64 || a.dtype == DType.complex128) {
       var acc = Complex(0.0, 0.0);
       for (var i = 0; i < elements.length; i++) {
@@ -2128,7 +2139,7 @@ dynamic nansum<T extends Object>(NDArray<T> a, {int? axis}) {
         if (val.real.isNaN || val.imag.isNaN) continue;
         acc += val;
       }
-      return acc as T;
+      return acc as dynamic;
     } else {
       var acc = 0.0;
       for (var i = 0; i < elements.length; i++) {
@@ -2136,7 +2147,7 @@ dynamic nansum<T extends Object>(NDArray<T> a, {int? axis}) {
         if (val.isNaN) continue;
         acc += val;
       }
-      return acc as T;
+      return acc as dynamic;
     }
   }
 
@@ -2145,7 +2156,7 @@ dynamic nansum<T extends Object>(NDArray<T> a, {int? axis}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = NDArray<T>.zeros(newShape, a.dtype);
+  final result = NDArray.zeros(newShape, a.dtype as dynamic);
 
   _reduceRecursive(
     a,
@@ -2156,7 +2167,7 @@ dynamic nansum<T extends Object>(NDArray<T> a, {int? axis}) {
     0,
     (current, val) {
       if (val is double && val.isNaN) return current;
-      return ((current as dynamic) + val) as T;
+      return ((current as dynamic) + val) as dynamic;
     },
   );
   return result;
@@ -2179,10 +2190,10 @@ dynamic nansum<T extends Object>(NDArray<T> a, {int? axis}) {
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], `DType.float64);`
 /// final m = nanmean(a); // returns 2.6666666666666665
 /// ```
-dynamic nanmean<T extends Object>(NDArray<T> a, {int? axis}) {
+dynamic nanmean(NDArray a, {int? axis}) {
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
     var sumVal = 0.0;
     var count = 0;
     for (var i = 0; i < elements.length; i++) {
@@ -2200,7 +2211,7 @@ dynamic nanmean<T extends Object>(NDArray<T> a, {int? axis}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = NDArray<T>.zeros(newShape, a.dtype);
+  final result = NDArray.zeros(newShape, a.dtype as dynamic);
   final counts = NDArray<int>.zeros(newShape, DType.int32);
 
   _nanReduceRecursive(
@@ -2216,18 +2227,18 @@ dynamic nanmean<T extends Object>(NDArray<T> a, {int? axis}) {
   for (var i = 0; i < result.data.length; i++) {
     final c = counts.data[i];
     if (c == 0) {
-      result.data[i] = double.nan as T;
+      result.data[i] = double.nan as dynamic;
     } else {
-      result.data[i] = ((result.data[i] as dynamic) / c) as T;
+      result.data[i] = ((result.data[i] as dynamic) / c) as dynamic;
     }
   }
   return result;
 }
 
 /// Recursive helper to accumulate sum and count of non-NaN elements along an axis.
-void _nanReduceRecursive<T extends Object>(
-  NDArray<T> a,
-  NDArray<T> result,
+void _nanReduceRecursive(
+  NDArray a,
+  NDArray result,
   NDArray<int> counts,
   List<int> coordA,
   List<int> coordRes,
@@ -2238,7 +2249,7 @@ void _nanReduceRecursive<T extends Object>(
     final val = a.getCell(coordA);
     if (val is double && val.isNaN) return;
     final current = result.getCell(coordRes);
-    result.setCell(coordRes, ((current as dynamic) + val) as T);
+    result.setCell(coordRes, ((current as dynamic) + val) as dynamic);
     counts.setCell(coordRes, counts.getCell(coordRes) + 1);
     return;
   }
@@ -2300,7 +2311,7 @@ dynamic nanvar<T extends num>(NDArray<T> a, {int? axis}) {
     // Reshape m to keep dimensions for broadcasting
     final targetShape = List<int>.from(a.shape);
     targetShape[axis] = 1;
-    final reshapedM = (m as NDArray<T>).reshape(targetShape);
+    final reshapedM = (m as NDArray).reshape(targetShape);
 
     final diff = subtract(a, reshapedM);
     final sqDiff = multiply(diff, diff);
@@ -2336,7 +2347,7 @@ dynamic nanstd<T extends num>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
     return math.sqrt(v as double);
   } else {
-    return sqrt(v as NDArray<double>);
+    return sqrt(v as NDArray);
   }
 }
 
@@ -2401,7 +2412,7 @@ NDArray<T> nanmin<T extends Object>(NDArray<T> a, {int? axis}) {
 
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
 
     var minVal = double.infinity;
     var hasValid = false;
@@ -2429,13 +2440,13 @@ NDArray<T> nanmin<T extends Object>(NDArray<T> a, {int? axis}) {
 
     final result = NDArray<T>.create([], a.dtype);
     if (!hasValid) {
-      result.data[0] = (hasNan ? double.nan : double.infinity) as T;
+      result.data[0] = (hasNan ? double.nan : double.infinity) as dynamic;
     } else {
       result.data[0] =
           ((a.dtype == DType.float64 || a.dtype == DType.float32)
                   ? minVal
                   : minVal.toInt())
-              as T;
+              as dynamic;
     }
     return result;
   }
@@ -2526,7 +2537,7 @@ NDArray<T> nanmax<T extends Object>(NDArray<T> a, {int? axis}) {
 
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
 
     var maxVal = -double.infinity;
     var hasValid = false;
@@ -2554,13 +2565,13 @@ NDArray<T> nanmax<T extends Object>(NDArray<T> a, {int? axis}) {
 
     final result = NDArray<T>.create([], a.dtype);
     if (!hasValid) {
-      result.data[0] = (hasNan ? double.nan : -double.infinity) as T;
+      result.data[0] = (hasNan ? double.nan : -double.infinity) as dynamic;
     } else {
       result.data[0] =
           ((a.dtype == DType.float64 || a.dtype == DType.float32)
                   ? maxVal
                   : maxVal.toInt())
-              as T;
+              as dynamic;
     }
     return result;
   }
@@ -2786,12 +2797,14 @@ void _elementWiseNanMaxRec(
 /// ```
 ///
 /// Reference: [Matrix Inversion](https://en.wikipedia.org/wiki/Invertible_matrix)
-NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
+NDArray inv(NDArray a, {NDArray? out}) {
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
   }
   final n = a.shape[0];
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final DType<dynamic> targetDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
 
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
@@ -2810,7 +2823,7 @@ NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
 
   try {
     if (targetDType == DType.float32) {
-      final NDArray<double> result;
+      final NDArray result;
       if (out != null) {
         result = out;
         if (src.dtype == DType.float32) {
@@ -2825,9 +2838,9 @@ NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
           }
         }
       } else if (!identical(a, src)) {
-        result = src as NDArray<double>;
+        result = src;
       } else {
-        result = NDArray<double>.create(src.shape, DType.float32);
+        result = NDArray.create(src.shape, DType.float32);
         if (src.dtype == DType.float32) {
           (result.data as Float32List).setRange(
             0,
@@ -2849,10 +2862,12 @@ NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
         n,
         ipiv,
       );
-      if (info < 0)
+      if (info < 0) {
         throw ArgumentError('Illegal value in call to LAPACKE_sgetrf: $info');
-      if (info > 0)
+      }
+      if (info > 0) {
         throw ArgumentError('Matrix is singular and cannot be inverted');
+      }
 
       final infoTri = LAPACKE_sgetri(
         101,
@@ -2861,13 +2876,14 @@ NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
         n,
         ipiv,
       );
-      if (infoTri < 0)
+      if (infoTri < 0) {
         throw ArgumentError(
           'Illegal value in call to LAPACKE_sgetri: $infoTri',
         );
+      }
       return result;
     } else {
-      final NDArray<double> result;
+      final NDArray result;
       if (out != null) {
         result = out;
         if (src.dtype == DType.float64) {
@@ -2882,9 +2898,9 @@ NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
           }
         }
       } else if (!identical(a, src)) {
-        result = src as NDArray<double>;
+        result = src;
       } else {
-        result = NDArray<double>.create(src.shape, DType.float64);
+        result = NDArray.create(src.shape, DType.float64);
         if (src.dtype == DType.float64) {
           (result.data as Float64List).setRange(
             0,
@@ -2906,10 +2922,12 @@ NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
         n,
         ipiv,
       );
-      if (info < 0)
+      if (info < 0) {
         throw ArgumentError('Illegal value in call to LAPACKE_dgetrf: $info');
-      if (info > 0)
+      }
+      if (info > 0) {
         throw ArgumentError('Matrix is singular and cannot be inverted');
+      }
 
       final infoTri = LAPACKE_dgetri(
         101,
@@ -2918,10 +2936,11 @@ NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
         n,
         ipiv,
       );
-      if (infoTri < 0)
+      if (infoTri < 0) {
         throw ArgumentError(
           'Illegal value in call to LAPACKE_dgetri: $infoTri',
         );
+      }
       return result;
     }
   } finally {
@@ -2954,7 +2973,7 @@ NDArray<double> inv(NDArray a, {NDArray<double>? out}) {
 ///
 /// Refer to the [Determinant Reference](https://en.wikipedia.org/wiki/Determinant)
 /// and [LAPACK LU solver](https://en.wikipedia.org/wiki/LU_decomposition) for additional details.
-double det(NDArray<double> a) {
+double det(NDArray a) {
   if (a.dtype != DType.float64 && a.dtype != DType.float32) {
     throw ArgumentError('det only supports Float64 and Float32 dtypes');
   }
@@ -2973,7 +2992,11 @@ double det(NDArray<double> a) {
         a.data as Float64List,
       );
     } else {
-      aCopy.data.setRange(0, a.data.length, a.toList());
+      aCopy.data.setRange(
+        0,
+        a.data.length,
+        a.toList().cast<double>() as dynamic,
+      );
     }
 
     final ipiv = malloc<ffi.Int>(n);
@@ -3029,7 +3052,11 @@ double det(NDArray<double> a) {
         a.data as Float32List,
       );
     } else {
-      aCopy.data.setRange(0, a.data.length, a.toList());
+      aCopy.data.setRange(
+        0,
+        a.data.length,
+        a.toList().cast<double>() as dynamic,
+      );
     }
 
     final ipiv = malloc<ffi.Int>(n);
@@ -3149,10 +3176,12 @@ NDArray solve(NDArray a, NDArray b) {
         bCopy.pointer.cast<ffi.Double>(),
         nrhs,
       );
-      if (info < 0)
+      if (info < 0) {
         throw ArgumentError('Illegal value in call to LAPACKE_dgesv: $info');
-      if (info > 0)
+      }
+      if (info > 0) {
         throw ArgumentError('Matrix is singular and cannot be solved');
+      }
       aCopy.dispose();
       return bCopy;
     } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
@@ -3188,10 +3217,12 @@ NDArray solve(NDArray a, NDArray b) {
         bCopy.pointer.cast<ffi.Float>(),
         nrhs,
       );
-      if (info < 0)
+      if (info < 0) {
         throw ArgumentError('Illegal value in call to LAPACKE_sgesv: $info');
-      if (info > 0)
+      }
+      if (info > 0) {
         throw ArgumentError('Matrix is singular and cannot be solved');
+      }
       aCopy.dispose();
       return bCopy;
     } else if (a.dtype == DType.complex128 && b.dtype == DType.complex128) {
@@ -3214,10 +3245,12 @@ NDArray solve(NDArray a, NDArray b) {
         bCopy.pointer.cast<ffi.Double>(),
         nrhs,
       );
-      if (info < 0)
+      if (info < 0) {
         throw ArgumentError('Illegal value in call to LAPACKE_zgesv: $info');
-      if (info > 0)
+      }
+      if (info > 0) {
         throw ArgumentError('Matrix is singular and cannot be solved');
+      }
       aCopy.dispose();
       return bCopy;
     } else if (a.dtype == DType.complex64 && b.dtype == DType.complex64) {
@@ -3240,10 +3273,12 @@ NDArray solve(NDArray a, NDArray b) {
         bCopy.pointer.cast<ffi.Float>(),
         nrhs,
       );
-      if (info < 0)
+      if (info < 0) {
         throw ArgumentError('Illegal value in call to LAPACKE_cgesv: $info');
-      if (info > 0)
+      }
+      if (info > 0) {
         throw ArgumentError('Matrix is singular and cannot be solved');
+      }
       aCopy.dispose();
       return bCopy;
     } else {
@@ -3268,10 +3303,12 @@ NDArray solve(NDArray a, NDArray b) {
         bDouble.pointer.cast<ffi.Double>(),
         nrhs,
       );
-      if (info < 0)
+      if (info < 0) {
         throw ArgumentError('Illegal value in call to LAPACKE_dgesv: $info');
-      if (info > 0)
+      }
+      if (info > 0) {
         throw ArgumentError('Matrix is singular and cannot be solved');
+      }
 
       aDouble.dispose();
       return bDouble;
@@ -3321,12 +3358,14 @@ Map<String, NDArray<Complex>> eig(NDArray a) {
       n,
     );
 
-    if (info < 0)
+    if (info < 0) {
       throw ArgumentError('Illegal value in call to LAPACKE_zgeev: $info');
-    if (info > 0)
+    }
+    if (info > 0) {
       throw ArgumentError(
         'The QR algorithm failed to compute all eigenvalues.',
       );
+    }
 
     aComplex.dispose();
     return {'eigenvalues': w, 'eigenvectors': vr};
@@ -3356,12 +3395,14 @@ Map<String, NDArray<Complex>> eig(NDArray a) {
       n,
     );
 
-    if (info < 0)
+    if (info < 0) {
       throw ArgumentError('Illegal value in call to LAPACKE_cgeev: $info');
-    if (info > 0)
+    }
+    if (info > 0) {
       throw ArgumentError(
         'The QR algorithm failed to compute all eigenvalues.',
       );
+    }
 
     aComplex.dispose();
     return {'eigenvalues': w, 'eigenvectors': vr};
@@ -3392,12 +3433,14 @@ Map<String, NDArray<Complex>> eig(NDArray a) {
       n,
     );
 
-    if (info < 0)
+    if (info < 0) {
       throw ArgumentError('Illegal value in call to LAPACKE_dgeev: $info');
-    if (info > 0)
+    }
+    if (info > 0) {
       throw ArgumentError(
         'The QR algorithm failed to compute all eigenvalues.',
       );
+    }
 
     final w = NDArray<Complex>.create([n], DType.complex128);
     final vr = NDArray<Complex>.create([n, n], DType.complex128);
@@ -3454,12 +3497,14 @@ Map<String, NDArray<Complex>> eig(NDArray a) {
       n,
     );
 
-    if (info < 0)
+    if (info < 0) {
       throw ArgumentError('Illegal value in call to LAPACKE_sgeev: $info');
-    if (info > 0)
+    }
+    if (info > 0) {
       throw ArgumentError(
         'The QR algorithm failed to compute all eigenvalues.',
       );
+    }
 
     final w = NDArray<Complex>.create([n], DType.complex64);
     final vr = NDArray<Complex>.create([n, n], DType.complex64);
@@ -3497,14 +3542,14 @@ Map<String, NDArray<Complex>> eig(NDArray a) {
 }
 
 /// Recursive helper to traverse and reduce an array along an axis.
-void _reduceRecursive<S extends Object, D extends Object>(
-  NDArray<S> src,
-  NDArray<D> dest,
+void _reduceRecursive(
+  NDArray src,
+  NDArray dest,
   List<int> currentPos,
   List<int> destPos,
   int targetAxis,
   int currentDim,
-  D Function(D current, S value) op,
+  Function op,
 ) {
   if (currentDim == src.shape.length) {
     // Calculate flat index for src
@@ -3702,7 +3747,7 @@ NDArray<T> copy<T extends Object>(NDArray<T> a) {
 /// final b = NDArray.fromList([3, 4], [2], `DType.int32);`
 /// final s = stack([a, b], axis: 0); // shape [2, 2], values [[1, 2], [3, 4]]
 /// ```
-NDArray<T> stack<T extends Object>(List<NDArray<T>> arrays, {int axis = 0}) {
+NDArray stack(List<NDArray> arrays, {int axis = 0}) {
   if (arrays.isEmpty) {
     throw ArgumentError('List of arrays to stack must not be empty.');
   }
@@ -3738,7 +3783,7 @@ NDArray<T> stack<T extends Object>(List<NDArray<T>> arrays, {int axis = 0}) {
   final stackedShape = List<int>.from(first.shape);
   stackedShape.insert(targetAxis, arrays.length);
 
-  final result = NDArray<T>.zeros(stackedShape, dtype);
+  final result = NDArray.zeros(stackedShape, dtype);
 
   for (var i = 0; i < arrays.length; i++) {
     final currentIndices = List<int>.filled(first.shape.length, 0);
@@ -3748,9 +3793,9 @@ NDArray<T> stack<T extends Object>(List<NDArray<T>> arrays, {int axis = 0}) {
   return result;
 }
 
-void _copyStackRecursive<T extends Object>(
-  NDArray<T> src,
-  NDArray<T> dest,
+void _copyStackRecursive(
+  NDArray src,
+  NDArray dest,
   int targetAxis,
   int axisOffset,
   List<int> currentIndices,
@@ -3896,13 +3941,15 @@ NDArray<T> repeat<T>(NDArray<T> array, dynamic repeats, {int? axis}) {
 
   List<int> repList;
   if (repeats is int) {
-    if (repeats < 0)
+    if (repeats < 0) {
       throw ArgumentError('repeats must be non-negative (was $repeats)');
+    }
     repList = List<int>.filled(srcArray.shape[targetAxis], repeats);
   } else if (repeats is List<int>) {
     for (final r in repeats) {
-      if (r < 0)
+      if (r < 0) {
         throw ArgumentError('repeats values must be non-negative (was $r)');
+      }
     }
     if (repeats.length != srcArray.shape[targetAxis]) {
       throw ArgumentError(
@@ -4010,7 +4057,9 @@ NDArray tan(NDArray a) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for tan');
   }
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final DType<dynamic> targetDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
   final result = NDArray.create(a.shape, targetDType);
 
   if (a.isContiguous) {
@@ -4065,7 +4114,8 @@ NDArray atan2(NDArray y, NDArray x) {
   }
   final broadcastResult = broadcast(y, x);
   final shape = broadcastResult.shape;
-  final targetDType = (y.dtype == DType.float32 && x.dtype == DType.float32)
+  final DType<dynamic> targetDType =
+      (y.dtype == DType.float32 && x.dtype == DType.float32)
       ? DType.float32
       : DType.float64;
 
@@ -4226,11 +4276,13 @@ NDArray sinh(NDArray a) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for sinh');
   }
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final DType<dynamic> targetDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
   final result = NDArray.create(a.shape, targetDType);
   final resultStrides = NDArray.computeCStrides(a.shape);
 
-  final op = (double x) => (math.exp(x) - math.exp(-x)) / 2.0;
+  double op(double x) => (math.exp(x) - math.exp(-x)) / 2.0;
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
     _unaryOp<int, double>(
       result.data as List<double>,
@@ -4267,11 +4319,13 @@ NDArray cosh(NDArray a) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for cosh');
   }
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final DType<dynamic> targetDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
   final result = NDArray.create(a.shape, targetDType);
   final resultStrides = NDArray.computeCStrides(a.shape);
 
-  final op = (double x) => (math.exp(x) + math.exp(-x)) / 2.0;
+  double op(double x) => (math.exp(x) + math.exp(-x)) / 2.0;
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
     _unaryOp<int, double>(
       result.data as List<double>,
@@ -4308,14 +4362,16 @@ NDArray tanh(NDArray a) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for tanh');
   }
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final DType<dynamic> targetDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
   final result = NDArray.create(a.shape, targetDType);
   final resultStrides = NDArray.computeCStrides(a.shape);
 
-  final op = (double x) {
+  double op(double x) {
     final e2x = math.exp(2.0 * x);
     return (e2x - 1.0) / (e2x + 1.0);
-  };
+  }
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
     _unaryOp<int, double>(
       result.data as List<double>,
@@ -4410,7 +4466,7 @@ NDArray floor_divide(NDArray a, NDArray b) {
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
   if (targetDType.isComplex) {
     throw UnsupportedError('Complex numbers do not support floor division');
   }
@@ -4465,7 +4521,7 @@ NDArray remainder(NDArray a, NDArray b) {
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
   if (targetDType.isComplex) {
     throw UnsupportedError('Complex numbers do not support remainder');
   }
@@ -4523,7 +4579,7 @@ NDArray bitwise_and(NDArray a, NDArray b) {
       'Bitwise operations only supported for integer dtypes',
     );
   }
-  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
   final result = NDArray.create(commonShape, targetDType);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
@@ -4561,7 +4617,7 @@ NDArray bitwise_or(NDArray a, NDArray b) {
       'Bitwise operations only supported for integer dtypes',
     );
   }
-  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
   final result = NDArray.create(commonShape, targetDType);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
@@ -4599,7 +4655,7 @@ NDArray bitwise_xor(NDArray a, NDArray b) {
       'Bitwise operations only supported for integer dtypes',
     );
   }
-  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
   final result = NDArray.create(commonShape, targetDType);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
@@ -4666,7 +4722,7 @@ NDArray left_shift(NDArray a, NDArray b) {
       'Shift operations only supported for integer dtypes',
     );
   }
-  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
   final result = NDArray.create(commonShape, targetDType);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
@@ -4704,7 +4760,7 @@ NDArray right_shift(NDArray a, NDArray b) {
       'Shift operations only supported for integer dtypes',
     );
   }
-  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
   final result = NDArray.create(commonShape, targetDType);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
@@ -4733,7 +4789,7 @@ NDArray right_shift(NDArray a, NDArray b) {
 /// {@example /example/ufuncs_example.dart lang=dart}
 NDArray abs(NDArray a) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    final targetDType = a.dtype == DType.complex64
+    final DType<dynamic> targetDType = a.dtype == DType.complex64
         ? DType.float32
         : DType.float64;
     final result = NDArray.create(a.shape, targetDType);
@@ -5081,7 +5137,7 @@ NDArray real(NDArray a, {NDArray? out}) {
     throw StateError('Cannot execute real() on a disposed array.');
   }
 
-  final targetDType = a.dtype == DType.complex64
+  final DType<double> targetDType = a.dtype == DType.complex64
       ? DType.float32
       : DType.float64;
 
@@ -5155,7 +5211,7 @@ NDArray imag(NDArray a, {NDArray? out}) {
     throw StateError('Cannot execute imag() on a disposed array.');
   }
 
-  final targetDType = a.dtype == DType.complex64
+  final DType<double> targetDType = a.dtype == DType.complex64
       ? DType.float32
       : DType.float64;
 
@@ -5221,7 +5277,9 @@ NDArray deg2rad(NDArray a) {
     throw UnsupportedError('Complex numbers are not supported for deg2rad');
   }
   // pi / 180.0 = 0.017453292519943295
-  final factorDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final DType<dynamic> factorDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
   final factor = NDArray.fromList([0.017453292519943295], [1], factorDType);
   return multiply(a, factor);
 }
@@ -5249,7 +5307,9 @@ NDArray rad2deg(NDArray a) {
     throw UnsupportedError('Complex numbers are not supported for rad2deg');
   }
   // 180.0 / pi = 57.29577951308232
-  final factorDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final DType<dynamic> factorDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
   final factor = NDArray.fromList([57.29577951308232], [1], factorDType);
   return multiply(a, factor);
 }
@@ -6535,7 +6595,7 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
   // Calculate target common shape via high-speed 3-way broadcast matching
   final commonShape = _broadcast3Shapes(condition.shape, x!.shape, y!.shape);
 
-  final targetDType = _resolveDType(x.dtype, y.dtype);
+  final DType<dynamic> targetDType = _resolveDType(x.dtype, y.dtype);
 
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
@@ -6925,10 +6985,14 @@ Map<String, NDArray> cholesky(NDArray a) {
     throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
   }
   final n = a.shape[0];
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final DType<dynamic> targetDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
 
   // Create result matrix L and copy elements from a
-  final lMat = NDArray<double>.zeros([n, n], targetDType);
+  final lMat = targetDType == DType.float32
+      ? NDArray<Float32>.zeros([n, n], DType.float32)
+      : NDArray<Float64>.zeros([n, n], DType.float64);
 
   if (a.dtype == DType.float64) {
     (lMat.data as Float64List).setRange(0, n * n, a.data as Float64List);
@@ -7026,7 +7090,9 @@ Map<String, NDArray> qr(NDArray a) {
   final m = a.shape[0];
   final n = a.shape[1];
   final k = m < n ? m : n;
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final DType<dynamic> targetDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
 
   final aCopy = NDArray.create([m, n], targetDType);
   if (a.isContiguous && a.dtype == targetDType) {
@@ -7056,8 +7122,12 @@ Map<String, NDArray> qr(NDArray a) {
     }
   }
 
-  final rMat = NDArray<double>.zeros([k, n], targetDType);
-  final qMat = NDArray<double>.zeros([m, k], targetDType);
+  final rMat = targetDType == DType.float32
+      ? NDArray<Float32>.zeros([k, n], DType.float32)
+      : NDArray<Float64>.zeros([k, n], DType.float64);
+  final qMat = targetDType == DType.float32
+      ? NDArray<Float32>.zeros([m, k], DType.float32)
+      : NDArray<Float64>.zeros([m, k], DType.float64);
 
   if (targetDType == DType.float64) {
     final tau = malloc<ffi.Double>(k);
@@ -7196,7 +7266,9 @@ Map<String, NDArray> svd(NDArray a) {
   }
   final m = a.shape[0];
   final n = a.shape[1];
-  final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  final DType<dynamic> targetDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
 
   if (m < n) {
     final aT = a.transpose();
@@ -7239,9 +7311,15 @@ Map<String, NDArray> svd(NDArray a) {
     }
   }
 
-  final sMat = NDArray<double>.zeros([n], targetDType);
-  final uMat = NDArray<double>.zeros([m, m], targetDType);
-  final vtMat = NDArray<double>.zeros([n, n], targetDType);
+  final sMat = targetDType == DType.float32
+      ? NDArray<Float32>.zeros([n], DType.float32)
+      : NDArray<Float64>.zeros([n], DType.float64);
+  final uMat = targetDType == DType.float32
+      ? NDArray<Float32>.zeros([m, m], DType.float32)
+      : NDArray<Float64>.zeros([m, m], DType.float64);
+  final vtMat = targetDType == DType.float32
+      ? NDArray<Float32>.zeros([n, n], DType.float32)
+      : NDArray<Float64>.zeros([n, n], DType.float64);
 
   if (targetDType == DType.float64) {
     final superb = malloc<ffi.Double>(math.max(1, n - 1));
@@ -7872,7 +7950,8 @@ NDArray select(
   // 2. Determine target upcasted DType
   var targetDType = choicelist[0].dtype;
   for (var i = 1; i < choicelist.length; i++) {
-    targetDType = _resolveDType(targetDType, choicelist[i].dtype);
+    targetDType =
+        _resolveDType(targetDType, choicelist[i].dtype);
   }
   if (defaultValue is double &&
       !targetDType.isFloating &&
@@ -8010,14 +8089,16 @@ dynamic _castValue(dynamic val, DType dtype) {
 /// final window = hanning(512);
 /// ```
 NDArray<double> hanning(int M, {DType dtype = DType.float64}) {
-  if (M < 1) return NDArray<double>.create([0], dtype);
-  if (M == 1) return NDArray<double>.fromList([1.0], [1], dtype);
+  if (M < 1) return NDArray.create([0], dtype as dynamic) as NDArray<double>;
+  if (M == 1) {
+    return NDArray.fromList([1.0], [1], dtype as dynamic) as NDArray<double>;
+  }
 
-  final res = NDArray<double>.create([M], dtype);
+  final res = NDArray.create([M], dtype as dynamic);
   for (var n = 0; n < M; n++) {
     res.data[n] = 0.5 - 0.5 * math.cos(2.0 * math.pi * n / (M - 1));
   }
-  return res;
+  return res as NDArray<double>;
 }
 
 /// Return the Hamming window.
@@ -8029,12 +8110,14 @@ NDArray<double> hanning(int M, {DType dtype = DType.float64}) {
 /// final window = hamming(512);
 /// ```
 NDArray<double> hamming(int M, {DType dtype = DType.float64}) {
-  if (M < 1) return NDArray<double>.create([0], dtype);
-  if (M == 1) return NDArray<double>.fromList([1.0], [1], dtype);
+  if (M < 1) return NDArray.create([0], dtype as dynamic) as NDArray<double>;
+  if (M == 1) {
+    return NDArray.fromList([1.0], [1], dtype as dynamic) as NDArray<double>;
+  }
 
-  final res = NDArray<double>.create([M], dtype);
+  final res = NDArray.create([M], dtype as dynamic);
   for (var n = 0; n < M; n++) {
     res.data[n] = 0.54 - 0.46 * math.cos(2.0 * math.pi * n / (M - 1));
   }
-  return res;
+  return res as NDArray<double>;
 }

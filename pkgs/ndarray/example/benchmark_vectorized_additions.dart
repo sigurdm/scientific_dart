@@ -11,13 +11,13 @@ void runAdditionsBenchmark() {
   const iterations = 200;
 
   print('Generating Float32 arrays of size $arraySize...');
-  final a = NDArray<double>.linspace(
+  final a = NDArray<Float64>.linspace(
     1.0,
     100.0,
     arraySize,
     dtype: DType.float32,
   );
-  final b = NDArray<double>.linspace(
+  final b = NDArray<Float64>.linspace(
     1.0,
     100.0,
     arraySize,

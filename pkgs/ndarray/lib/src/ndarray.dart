@@ -9,60 +9,87 @@ import 'numdart_bindings.dart';
 import 'operations.dart' as ops;
 
 /// Supported data types for the elements of an [NDArray].
-enum DType {
-  float32,
-  float64,
-  int32,
-  int64,
-  complex64,
-  complex128,
-  boolean;
+extension type const Float64(double value) implements double {}
+extension type const Float32(double value) implements double {}
 
-  /// Returns the byte size of a single element of this data type.
-  int get byteWidth {
-    switch (this) {
-      case DType.boolean:
-        return 1;
-      case DType.float32:
-      case DType.int32:
-        return 4;
-      case DType.float64:
-      case DType.int64:
-      case DType.complex64:
-        return 8;
-      case DType.complex128:
-        return 16;
-    }
-  }
+extension type const Int64(int value) implements int {}
+extension type const Int32(int value) implements int {}
+extension type const Uint8(int value) implements int {}
+extension type const Int16(int value) implements int {}
 
-  /// Returns the standard NumPy descriptor string for this data type.
-  String get npyDescriptor {
-    switch (this) {
-      case DType.float64:
-        return '<f8';
-      case DType.float32:
-        return '<f4';
-      case DType.int64:
-        return '<i8';
-      case DType.int32:
-        return '<i4';
-      case DType.complex128:
-        return '<c16';
-      case DType.complex64:
-        return '<c8';
-      case DType.boolean:
-        return '|b1';
-    }
-  }
+/// Supported data types for the elements of an [NDArray].
+sealed class DType<T> {
+  final String name;
+  final int byteWidth;
+  final String npyDescriptor;
 
-  /// Returns true if this is a complex number data type.
-  bool get isComplex => this == DType.complex128 || this == DType.complex64;
+  const DType._(this.name, this.byteWidth, this.npyDescriptor);
 
-  /// Returns true if this is a floating-point number data type.
-  bool get isFloating => this == DType.float64 || this == DType.float32;
+  static const float32 = Float32DType();
+  static const float64 = Float64DType();
+  static const int32 = Int32DType();
+  static const int64 = Int64DType();
+  static const uint8 = Uint8DType();
+  static const int16 = Int16DType();
+  static const complex64 = Complex64DType();
+  static const complex128 = Complex128DType();
+  static const boolean = BooleanDType();
 
-  /// Returns true if this is an integer data type.
-  bool get isInteger => this == DType.int64 || this == DType.int32;
+  static const values = [
+    float32,
+    float64,
+    int32,
+    int64,
+    uint8,
+    int16,
+    complex64,
+    complex128,
+    boolean,
+  ];
+
+  bool get isComplex => this is Complex64DType || this is Complex128DType;
+  bool get isFloating => this is Float32DType || this is Float64DType;
+  bool get isInteger =>
+      this is Int32DType ||
+      this is Int64DType ||
+      this is Uint8DType ||
+      this is Int16DType;
+}
+
+final class Float32DType extends DType<Float32> {
+  const Float32DType() : super._('float32', 4, '<f4');
+}
+
+final class Float64DType extends DType<Float64> {
+  const Float64DType() : super._('float64', 8, '<f8');
+}
+
+final class Int32DType extends DType<Int32> {
+  const Int32DType() : super._('int32', 4, '<i4');
+}
+
+final class Int64DType extends DType<Int64> {
+  const Int64DType() : super._('int64', 8, '<i8');
+}
+
+final class Uint8DType extends DType<Uint8> {
+  const Uint8DType() : super._('uint8', 1, '|u1');
+}
+
+final class Int16DType extends DType<Int16> {
+  const Int16DType() : super._('int16', 2, '<i2');
+}
+
+final class Complex64DType extends DType<Complex> {
+  const Complex64DType() : super._('complex64', 8, '<c8');
+}
+
+final class Complex128DType extends DType<Complex> {
+  const Complex128DType() : super._('complex128', 16, '<c16');
+}
+
+final class BooleanDType extends DType<bool> {
+  const BooleanDType() : super._('boolean', 1, '|b1');
 }
 
 /// An n-dimensional array with memory allocated on the C heap.
@@ -105,14 +132,23 @@ final class NDArray<T> implements ffi.Finalizable {
   @internal
   final List<int> strides;
 
+  /// The logical start of the array in the [data] list.
+  final int offsetElements;
+
   /// The data type of the elements in the array.
-  final DType dtype;
+  final DType<T> dtype;
 
   /// Returns true if the array is C-contiguous in memory.
   final bool isContiguous;
 
   /// The parent array if this is a view, to prevent it from being garbage collected.
   final NDArray? _parent;
+
+  /// The total number of elements in the n-dimensional array.
+  int get size => shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+
+  /// The number of dimensions of the n-dimensional array.
+  int get rank => shape.length;
 
   static final _finalizer = ffi.NativeFinalizer(malloc.nativeFree);
 
@@ -189,9 +225,26 @@ final class NDArray<T> implements ffi.Finalizable {
     required List<int> shape,
     required List<int> strides,
     required this.dtype,
+    this.offsetElements = 0,
   }) : shape = List<int>.unmodifiable(shape),
        strides = List<int>.unmodifiable(strides),
        isContiguous = _checkContiguous(shape, strides) {
+    assert(
+      identical(T, dynamic) ||
+          identical(T, Object) ||
+          identical(T, Float64) ||
+          identical(T, Float32) ||
+          identical(T, Int64) ||
+          identical(T, Int32) ||
+          identical(T, Uint8) ||
+          identical(T, Int16) ||
+          identical(T, double) ||
+          identical(T, int) ||
+          identical(T, Complex) ||
+          identical(T, bool),
+      'NDArray cannot be created with type parameter $T. '
+      'Only the following allowed types are supported: Float64, Float32, Int64, Int32, Uint8, Int16, double, int, Complex, bool.',
+    );
     if (_parent == null) {
       _finalizer.attach(this, _pointer, detach: this);
       final scope = Zone.current[_scopeKey] as _NDArrayScope?;
@@ -263,49 +316,21 @@ final class NDArray<T> implements ffi.Finalizable {
   /// ```
   ///
   /// Refer to the [NumPy Array Creation Guidelines](https://numpy.org/doc/stable/reference/routines.array-creation.html)
+  /// and [Dart FFI Memory Management](https://dart.dev/guides/libraries/c-interop) for additional details.  /// Factory to create a new multi-dimensional array with backing unmanaged C heap memory.
+  ///
+  /// This allocates raw, stable memory directly on the unmanaged C heap using `malloc` or `calloc`.
+  ///
+  /// **Gotchas:**
+  /// - backing heap pages are not managed by isolate garbage collection. Call `dispose()` explicitly to prevent leaks.
+  ///
+  /// Refer to the [NumPy Array Creation Guidelines](https://numpy.org/doc/stable/reference/routines.array-creation.html)
   /// and [Dart FFI Memory Management](https://dart.dev/guides/libraries/c-interop) for additional details.
   factory NDArray.create(
     List<int> shape,
-    DType dtype, {
+    DType<T> dtype, {
     bool zeroInit = false,
     @internal List<int>? strides,
   }) {
-    if (identical(T, dynamic) || identical(T, Object)) {
-      if (dtype == DType.float64 || dtype == DType.float32) {
-        return NDArray<double>.create(
-              shape,
-              dtype,
-              zeroInit: zeroInit,
-              strides: strides,
-            )
-            as NDArray<T>;
-      } else if (dtype == DType.int32 || dtype == DType.int64) {
-        return NDArray<int>.create(
-              shape,
-              dtype,
-              zeroInit: zeroInit,
-              strides: strides,
-            )
-            as NDArray<T>;
-      } else if (dtype == DType.complex128 || dtype == DType.complex64) {
-        return NDArray<Complex>.create(
-              shape,
-              dtype,
-              zeroInit: zeroInit,
-              strides: strides,
-            )
-            as NDArray<T>;
-      } else if (dtype == DType.boolean) {
-        return NDArray<bool>.create(
-              shape,
-              dtype,
-              zeroInit: zeroInit,
-              strides: strides,
-            )
-            as NDArray<T>;
-      }
-    }
-
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     final finalStrides = strides ?? computeCStrides(shape);
 
@@ -313,39 +338,46 @@ final class NDArray<T> implements ffi.Finalizable {
     ffi.Pointer<ffi.Void> pointer;
     List<T> data;
 
-    if (dtype == DType.float64) {
-      final p = allocator<ffi.Double>(totalSize);
-      pointer = p.cast();
-      data = p.asTypedList(totalSize) as List<T>;
-    } else if (dtype == DType.float32) {
-      final p = allocator<ffi.Float>(totalSize);
-      pointer = p.cast();
-      data = p.asTypedList(totalSize) as List<T>;
-    } else if (dtype == DType.int32) {
-      final p = allocator<ffi.Int32>(totalSize);
-      pointer = p.cast();
-      data = p.asTypedList(totalSize) as List<T>;
-    } else if (dtype == DType.int64) {
-      final p = allocator<ffi.Int64>(totalSize);
-      pointer = p.cast();
-      data = p.asTypedList(totalSize) as List<T>;
-    } else if (dtype == DType.complex128) {
-      final p = allocator<ffi.Double>(totalSize * 2);
-      pointer = p.cast();
-      final doubleList = p.asTypedList(totalSize * 2);
-      data = ComplexList(doubleList) as List<T>;
-    } else if (dtype == DType.complex64) {
-      final p = allocator<ffi.Float>(totalSize * 2);
-      pointer = p.cast();
-      final floatList = p.asTypedList(totalSize * 2);
-      data = ComplexList(floatList) as List<T>;
-    } else if (dtype == DType.boolean) {
-      final p = allocator<ffi.Uint8>(totalSize);
-      pointer = p.cast();
-      final uint8List = p.asTypedList(totalSize);
-      data = BoolList(uint8List) as List<T>;
-    } else {
-      throw UnimplementedError('Type $dtype not supported yet');
+    switch (dtype) {
+      case Float64DType():
+        final p = allocator<ffi.Double>(totalSize);
+        pointer = p.cast();
+        data = p.asTypedList(totalSize) as List<T>;
+      case Float32DType():
+        final p = allocator<ffi.Float>(totalSize);
+        pointer = p.cast();
+        data = p.asTypedList(totalSize) as List<T>;
+      case Int32DType():
+        final p = allocator<ffi.Int32>(totalSize);
+        pointer = p.cast();
+        data = p.asTypedList(totalSize) as List<T>;
+      case Int64DType():
+        final p = allocator<ffi.Int64>(totalSize);
+        pointer = p.cast();
+        data = p.asTypedList(totalSize) as List<T>;
+      case Uint8DType():
+        final p = allocator<ffi.Uint8>(totalSize);
+        pointer = p.cast();
+        data = p.asTypedList(totalSize) as List<T>;
+      case Int16DType():
+        final p = allocator<ffi.Int16>(totalSize);
+        pointer = p.cast();
+        data = p.asTypedList(totalSize) as List<T>;
+      case Complex128DType():
+        final p = allocator<ffi.Double>(totalSize * 2);
+        pointer = p.cast();
+        final doubleList = p.asTypedList(totalSize * 2);
+        data = ComplexList(doubleList) as List<T>;
+      case Complex64DType():
+        final p = allocator<ffi.Float>(totalSize * 2);
+        pointer = p.cast();
+        final floatList = p.asTypedList(totalSize * 2);
+        data = ComplexList(floatList) as List<T>;
+      case BooleanDType():
+        final p = allocator<ffi.Uint8>(totalSize);
+        pointer = p.cast();
+        final uint8List = p.asTypedList(totalSize);
+        data = BoolList(uint8List) as List<T>;
     }
 
     return NDArray._(
@@ -364,9 +396,27 @@ final class NDArray<T> implements ffi.Finalizable {
   /// ```dart
   /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], `DType.float64);`
   /// ```
-  factory NDArray.fromList(List<T> list, List<int> shape, DType dtype) {
+  factory NDArray.fromList(List list, List<int> shape, DType<T> dtype) {
     final arr = NDArray<T>.create(shape, dtype);
-    arr.data.setRange(0, list.length, list);
+    final List eagerList = switch (dtype) {
+      Float64DType() => Float64List.fromList(list.cast<double>()),
+      Float32DType() => Float32List.fromList(list.cast<double>()),
+      Int64DType() => Int64List.fromList(
+        list.map((e) => (e as num).toInt()).toList(),
+      ),
+      Int32DType() => Int32List.fromList(
+        list.map((e) => (e as num).toInt()).toList(),
+      ),
+      Uint8DType() => Uint8List.fromList(
+        list.map((e) => (e as num).toInt()).toList(),
+      ),
+      Int16DType() => Int16List.fromList(
+        list.map((e) => (e as num).toInt()).toList(),
+      ),
+      BooleanDType() => List<bool>.from(list),
+      Complex128DType() || Complex64DType() => List<Complex>.from(list),
+    };
+    arr.data.setRange(0, eagerList.length, eagerList as dynamic);
     return arr;
   }
 
@@ -394,7 +444,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// Refer to the [NumPy zeros reference](https://numpy.org/doc/stable/reference/generated/numpy.zeros.html)
   /// and [Dart FFI calloc allocator](https://pub.dev/documentation/ffi/latest/ffi/calloc-constant.html) for additional details.
-  factory NDArray.zeros(List<int> shape, DType dtype) {
+  factory NDArray.zeros(List<int> shape, DType<T> dtype) {
     return NDArray<T>.create(shape, dtype, zeroInit: true);
   }
 
@@ -405,7 +455,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// final a = `NDArray<double>`.ones([2, 2], `DType.float64);`
   /// print(a.data); // [1.0, 1.0, 1.0, 1.0]
   /// ```
-  factory NDArray.ones(List<int> shape, DType dtype) {
+  factory NDArray.ones(List<int> shape, DType<T> dtype) {
     final arr = NDArray<T>.create(shape, dtype);
     if (dtype == DType.complex128 || dtype == DType.complex64) {
       arr.fill(Complex(1.0, 0.0));
@@ -430,8 +480,9 @@ final class NDArray<T> implements ffi.Finalizable {
     double start,
     double stop, {
     double step = 1.0,
-    DType dtype = DType.float64,
+    DType<T>? dtype,
   }) {
+    final DType<T> resolvedDType = dtype ?? (DType.float64 as DType<T>);
     if (step == 0.0) {
       throw ArgumentError('Step size cannot be zero.');
     }
@@ -439,10 +490,10 @@ final class NDArray<T> implements ffi.Finalizable {
       throw ArgumentError('Step size direction must match start/stop range.');
     }
     final length = ((stop - start) / step).ceil();
-    final arr = NDArray<T>.create([length], dtype);
+    final arr = NDArray<T>.create([length], resolvedDType);
     for (var i = 0; i < length; i++) {
       final val = start + i * step;
-      if (dtype.isComplex) {
+      if (resolvedDType.isComplex) {
         arr.data[i] = Complex(val, 0.0) as T;
       } else {
         arr.data[i] = val as T;
@@ -462,12 +513,13 @@ final class NDArray<T> implements ffi.Finalizable {
     double start,
     double stop,
     int num, {
-    DType dtype = DType.float64,
+    DType<T>? dtype,
   }) {
+    final DType<T> resolvedDType = dtype ?? (DType.float64 as DType<T>);
     if (num <= 0) throw ArgumentError('num must be positive');
-    final arr = NDArray<T>.create([num], dtype);
+    final arr = NDArray<T>.create([num], resolvedDType);
     if (num == 1) {
-      if (dtype.isComplex) {
+      if (resolvedDType.isComplex) {
         arr.data[0] = Complex(start, 0.0) as T;
       } else {
         arr.data[0] = start as T;
@@ -477,7 +529,7 @@ final class NDArray<T> implements ffi.Finalizable {
     final step = (stop - start) / (num - 1);
     for (var i = 0; i < num; i++) {
       final val = start + i * step;
-      if (dtype.isComplex) {
+      if (resolvedDType.isComplex) {
         arr.data[i] = Complex(val, 0.0) as T;
       } else {
         arr.data[i] = val as T;
@@ -496,7 +548,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Gotchas:**
   /// - This only creates 2D square matrices.
-  factory NDArray.eye(int n, DType dtype) {
+  factory NDArray.eye(int n, DType<T> dtype) {
     final arr = NDArray<T>.zeros([n, n], dtype);
     for (var i = 0; i < n; i++) {
       if (dtype == DType.float32 || dtype == DType.float64) {
@@ -528,83 +580,90 @@ final class NDArray<T> implements ffi.Finalizable {
     int offsetElements = 0,
   }) {
     if (identical(T, dynamic) || identical(T, Object)) {
-      if (parent.dtype == DType.float64 || parent.dtype == DType.float32) {
-        return NDArray<double>.view(
-              parent,
-              shape: shape,
-              strides: strides,
-              offsetElements: offsetElements,
-            )
-            as NDArray<T>;
-      } else if (parent.dtype == DType.int32 || parent.dtype == DType.int64) {
-        return NDArray<int>.view(
-              parent,
-              shape: shape,
-              strides: strides,
-              offsetElements: offsetElements,
-            )
-            as NDArray<T>;
-      } else if (parent.dtype == DType.complex128 ||
-          parent.dtype == DType.complex64) {
-        return NDArray<Complex>.view(
-              parent,
-              shape: shape,
-              strides: strides,
-              offsetElements: offsetElements,
-            )
-            as NDArray<T>;
-      } else if (parent.dtype == DType.boolean) {
-        return NDArray<bool>.view(
-              parent,
-              shape: shape,
-              strides: strides,
-              offsetElements: offsetElements,
-            )
-            as NDArray<T>;
-      }
+      return switch (parent.dtype) {
+        Float64DType() || Float32DType() =>
+          NDArray<double>.view(
+                parent,
+                shape: shape,
+                strides: strides,
+                offsetElements: offsetElements,
+              )
+              as NDArray<T>,
+        Int64DType() || Int32DType() || Uint8DType() || Int16DType() =>
+          NDArray<int>.view(
+                parent,
+                shape: shape,
+                strides: strides,
+                offsetElements: offsetElements,
+              )
+              as NDArray<T>,
+        Complex128DType() || Complex64DType() =>
+          NDArray<Complex>.view(
+                parent,
+                shape: shape,
+                strides: strides,
+                offsetElements: offsetElements,
+              )
+              as NDArray<T>,
+        BooleanDType() =>
+          NDArray<bool>.view(
+                parent,
+                shape: shape,
+                strides: strides,
+                offsetElements: offsetElements,
+              )
+              as NDArray<T>,
+      };
     }
 
     ffi.Pointer<ffi.Void> pointer;
     List<T> data;
 
     // Calculate the offset pointer
-    if (parent.dtype == DType.float64) {
-      final p = parent._pointer.cast<ffi.Double>() + offsetElements;
-      pointer = p.cast();
-      data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-    } else if (parent.dtype == DType.float32) {
-      final p = parent._pointer.cast<ffi.Float>() + offsetElements;
-      pointer = p.cast();
-      data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-    } else if (parent.dtype == DType.int32) {
-      final p = parent._pointer.cast<ffi.Int32>() + offsetElements;
-      pointer = p.cast();
-      data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-    } else if (parent.dtype == DType.int64) {
-      final p = parent._pointer.cast<ffi.Int64>() + offsetElements;
-      pointer = p.cast();
-      data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-    } else if (parent.dtype == DType.complex128) {
-      final p = parent._pointer.cast<ffi.Double>() + (offsetElements * 2);
-      pointer = p.cast();
-      final doubleList = p.asTypedList(
-        parent.data.length * 2 - offsetElements * 2,
-      );
-      data = ComplexList(doubleList) as List<T>;
-    } else if (parent.dtype == DType.complex64) {
-      final p = parent._pointer.cast<ffi.Float>() + (offsetElements * 2);
-      pointer = p.cast();
-      final floatList = p.asTypedList(
-        parent.data.length * 2 - offsetElements * 2,
-      );
-      data = ComplexList(floatList) as List<T>;
-    } else if (parent.dtype == DType.boolean) {
-      final p = parent._pointer.cast<ffi.Uint8>() + offsetElements;
-      pointer = p.cast();
-      final uint8List = p.asTypedList(parent.data.length - offsetElements);
-      data = BoolList(uint8List) as List<T>;
-    } else {
-      throw UnimplementedError('Type ${parent.dtype} not supported yet');
+    switch (parent.dtype) {
+      case Float64DType():
+        final p = parent._pointer.cast<ffi.Double>() + offsetElements;
+        pointer = p.cast();
+        data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
+      case Float32DType():
+        final p = parent._pointer.cast<ffi.Float>() + offsetElements;
+        pointer = p.cast();
+        data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
+      case Int32DType():
+        final p = parent._pointer.cast<ffi.Int32>() + offsetElements;
+        pointer = p.cast();
+        data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
+      case Int64DType():
+        final p = parent._pointer.cast<ffi.Int64>() + offsetElements;
+        pointer = p.cast();
+        data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
+      case Uint8DType():
+        final p = parent._pointer.cast<ffi.Uint8>() + offsetElements;
+        pointer = p.cast();
+        data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
+      case Int16DType():
+        final p = parent._pointer.cast<ffi.Int16>() + offsetElements;
+        pointer = p.cast();
+        data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
+      case Complex128DType():
+        final p = parent._pointer.cast<ffi.Double>() + (offsetElements * 2);
+        pointer = p.cast();
+        final doubleList = p.asTypedList(
+          parent.data.length * 2 - offsetElements * 2,
+        );
+        data = ComplexList(doubleList) as List<T>;
+      case Complex64DType():
+        final p = parent._pointer.cast<ffi.Float>() + (offsetElements * 2);
+        pointer = p.cast();
+        final floatList = p.asTypedList(
+          parent.data.length * 2 - offsetElements * 2,
+        );
+        data = ComplexList(floatList) as List<T>;
+      case BooleanDType():
+        final p = parent._pointer.cast<ffi.Uint8>() + offsetElements;
+        pointer = p.cast();
+        final uint8List = p.asTypedList(parent.data.length - offsetElements);
+        data = BoolList(uint8List) as List<T>;
     }
 
     return NDArray._(
@@ -613,7 +672,7 @@ final class NDArray<T> implements ffi.Finalizable {
       parent,
       shape: shape,
       strides: strides,
-      dtype: parent.dtype,
+      dtype: parent.dtype as DType<T>,
     );
   }
 
@@ -756,64 +815,73 @@ final class NDArray<T> implements ffi.Finalizable {
       cStridesSrc[i] = strides[i];
     }
     try {
-      if (dtype == DType.float64) {
-        s_flatten_double(
-          pointer.cast(),
-          cStridesSrc,
-          dest.pointer.cast(),
-          cShape,
-          shape.length,
-        );
-      } else if (dtype == DType.float32) {
-        s_flatten_float(
-          pointer.cast(),
-          cStridesSrc,
-          dest.pointer.cast(),
-          cShape,
-          shape.length,
-        );
-      } else if (dtype == DType.int64) {
-        s_flatten_int64(
-          pointer.cast(),
-          cStridesSrc,
-          dest.pointer.cast(),
-          cShape,
-          shape.length,
-        );
-      } else if (dtype == DType.int32) {
-        s_flatten_int32(
-          pointer.cast(),
-          cStridesSrc,
-          dest.pointer.cast(),
-          cShape,
-          shape.length,
-        );
-      } else if (dtype == DType.complex128) {
-        s_flatten_complex128(
-          pointer.cast(),
-          cStridesSrc,
-          dest.pointer.cast(),
-          cShape,
-          shape.length,
-        );
-      } else if (dtype == DType.complex64) {
-        s_flatten_complex64(
-          pointer.cast(),
-          cStridesSrc,
-          dest.pointer.cast(),
-          cShape,
-          shape.length,
-        );
-      } else if (dtype == DType.boolean) {
-        s_flatten_boolean(
-          pointer.cast(),
-          cStridesSrc,
-          dest.pointer.cast(),
-          cShape,
-          shape.length,
-        );
-      } else {
-        throw UnimplementedError('Type $dtype not supported yet');
+      switch (dtype) {
+        case Float64DType():
+          s_flatten_double(
+            pointer.cast(),
+            cStridesSrc,
+            dest.pointer.cast(),
+            cShape,
+            shape.length,
+          );
+        case Float32DType():
+          s_flatten_float(
+            pointer.cast(),
+            cStridesSrc,
+            dest.pointer.cast(),
+            cShape,
+            shape.length,
+          );
+        case Int64DType():
+          s_flatten_int64(
+            pointer.cast(),
+            cStridesSrc,
+            dest.pointer.cast(),
+            cShape,
+            shape.length,
+          );
+        case Int32DType():
+          s_flatten_int32(
+            pointer.cast(),
+            cStridesSrc,
+            dest.pointer.cast(),
+            cShape,
+            shape.length,
+          );
+        case Uint8DType():
+          s_flatten_boolean(
+            pointer.cast(),
+            cStridesSrc,
+            dest.pointer.cast(),
+            cShape,
+            shape.length,
+          );
+        case Int16DType():
+          throw UnimplementedError('Type $dtype not supported yet');
+        case Complex128DType():
+          s_flatten_complex128(
+            pointer.cast(),
+            cStridesSrc,
+            dest.pointer.cast(),
+            cShape,
+            shape.length,
+          );
+        case Complex64DType():
+          s_flatten_complex64(
+            pointer.cast(),
+            cStridesSrc,
+            dest.pointer.cast(),
+            cShape,
+            shape.length,
+          );
+        case BooleanDType():
+          s_flatten_boolean(
+            pointer.cast(),
+            cStridesSrc,
+            dest.pointer.cast(),
+            cShape,
+            shape.length,
+          );
       }
     } finally {
       malloc.free(cShape);
@@ -858,18 +926,29 @@ final class NDArray<T> implements ffi.Finalizable {
     final size = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
 
     if (isContiguous) {
-      if (dtype == DType.float64 && value is num) {
-        v_fill_double(_pointer.cast(), value.toDouble(), size);
-        return;
-      } else if (dtype == DType.float32 && value is num) {
-        v_fill_float(_pointer.cast(), value.toDouble(), size);
-        return;
-      } else if (dtype == DType.int64 && value is int) {
-        v_fill_int64(_pointer.cast(), value, size);
-        return;
-      } else if (dtype == DType.int32 && value is int) {
-        v_fill_int32(_pointer.cast(), value, size);
-        return;
+      switch (dtype) {
+        case Float64DType():
+          if (value is num) {
+            v_fill_double(_pointer.cast(), value.toDouble(), size);
+            return;
+          }
+        case Float32DType():
+          if (value is num) {
+            v_fill_float(_pointer.cast(), value.toDouble(), size);
+            return;
+          }
+        case Int64DType():
+          if (value is int) {
+            v_fill_int64(_pointer.cast(), value, size);
+            return;
+          }
+        case Int32DType():
+          if (value is int) {
+            v_fill_int32(_pointer.cast(), value, size);
+            return;
+          }
+        default:
+          break;
       }
     }
 
@@ -2828,6 +2907,14 @@ void _copyContiguousNDArray(NDArray src, NDArray dest, int size) {
   } else if (dtype == DType.boolean) {
     final srcList = src._pointer.cast<ffi.Uint8>().asTypedList(size);
     final destList = dest._pointer.cast<ffi.Uint8>().asTypedList(size);
+    destList.setRange(0, size, srcList);
+  } else if (dtype == DType.uint8) {
+    final srcList = src._pointer.cast<ffi.Uint8>().asTypedList(size);
+    final destList = dest._pointer.cast<ffi.Uint8>().asTypedList(size);
+    destList.setRange(0, size, srcList);
+  } else if (dtype == DType.int16) {
+    final srcList = src._pointer.cast<ffi.Int16>().asTypedList(size);
+    final destList = dest._pointer.cast<ffi.Int16>().asTypedList(size);
     destList.setRange(0, size, srcList);
   } else {
     throw UnimplementedError('Type $dtype not supported for fast flatten');

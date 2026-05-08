@@ -35,7 +35,7 @@ NDArray<double> uniform(
   if (dtype != DType.float32 && dtype != DType.float64) {
     throw ArgumentError('uniform only supports float types for now');
   }
-  final arr = NDArray<double>.create(shape, dtype);
+  final arr = NDArray<double>.create(shape, dtype as dynamic);
   final rand = random ?? Random();
   final len = arr.data.length;
   final seed = rand.nextInt(4294967296);
@@ -85,7 +85,7 @@ NDArray<int> randint(
   if (low >= high) {
     throw ArgumentError('low must be less than high');
   }
-  final arr = NDArray<int>.create(shape, dtype);
+  final arr = NDArray<int>.create(shape, dtype as dynamic);
   final rand = random ?? Random();
   final len = arr.data.length;
   final seed = rand.nextInt(4294967296);
@@ -144,7 +144,7 @@ NDArray<double> normal(
     );
   }
 
-  final arr = NDArray<double>.create(shape, dtype);
+  final arr = NDArray<double>.create(shape, dtype as dynamic);
   final rand = random ?? Random();
   final len = arr.data.length;
 
@@ -199,7 +199,7 @@ NDArray<double> exponential(
     );
   }
 
-  final arr = NDArray<double>.create(shape, dtype);
+  final arr = NDArray<double>.create(shape, dtype as dynamic);
   final rand = random ?? Random();
 
   for (var i = 0; i < arr.data.length; i++) {
@@ -252,7 +252,7 @@ NDArray<int> poisson(
     throw ArgumentError('lambda must be strictly positive (was $lam)');
   }
 
-  final arr = NDArray<int>.create(shape, dtype);
+  final arr = NDArray<int>.create(shape, dtype as dynamic);
   final rand = random ?? Random();
   final len = arr.data.length;
   final seed = rand.nextInt(4294967296);
@@ -317,7 +317,7 @@ NDArray<int> binomial(
     );
   }
 
-  final arr = NDArray<int>.create(shape, dtype);
+  final arr = NDArray<int>.create(shape, dtype as dynamic);
   final rand = random ?? Random();
   final len = arr.data.length;
   final seed = rand.nextInt(4294967296);
@@ -393,7 +393,7 @@ NDArray multivariateNormal(
   return NDArray.scope(() {
     // 1. LAPACK Cholesky factorization: Sigma = L * L^T
     final choleskyFactors = cholesky(cov);
-    final l = choleskyFactors['L']! as NDArray<double>;
+    final l = choleskyFactors['L']! as NDArray<Float64>;
 
     final sampleShape = <int>[];
     if (size != null) {
