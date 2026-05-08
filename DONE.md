@@ -2029,10 +2029,13 @@
 
 ***
 
-## 169. Exposed FFT Multi-Dimensional Axis Support Roadmap in Section 3.1 of FINDINGS.md (Task 4 / Holistic Roadmap Audit)
+## 170. Implemented `sign` Universal Function and Cleaned Up Roadmap (Task 3 / Finding Fix)
 * **Issue**:
-  - The current Fourier Transform functions (`fft` and `ifft`) are hardcoded to compute transforms solely along the last axis (`a.shape.last`), lacking standard NumPy compatibility for arbitrary multi-dimensional axis selection.
+  - The `sign` universal function was missing from the `ndarray` package, as noted in Section 3.1 of `FINDINGS.md`.
+  - `remainder` was also listed as missing in `FINDINGS.md` despite being already implemented and tested.
 * **Resolution**:
-  - **Roadmap Integration**: Added a detailed specification under Section 3.1 (Fourier Transforms) in [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md#L47-L49), planning a standard `axis` parameter (default `-1`) that transposes dimensions internally before and after raw pocketfft FFI plan executions to achieve full standard `np.fft.fft(a, axis=axis)` capability.
+  - **Implementation**: Added the `sign` ufunc in [operations.dart](pkgs/ndarray/lib/src/operations.dart), supporting integer, floating-point, and complex dtypes. For complex numbers, it correctly implements `x / |x|` (or 0 if x is 0), matching NumPy's behavior.
+  - **Test Coverage**: Created a new test suite [sign_test.dart](pkgs/ndarray/test/sign_test.dart) to verify correct sign extraction and handling of edge cases like `0`, `nan`, and complex magnitudes.
+  - **Cleanup**: Removed `sign` and `remainder` from the missing ufuncs roadmap in [FINDINGS.md](pkgs/ndarray/FINDINGS.md).
 * **Results**:
-  - **Verification**: All **400 unit tests pass flawlessly green!**
+  - **Verification**: New tests pass, and existing tests remain green. All **403 unit tests pass flawlessly green!**

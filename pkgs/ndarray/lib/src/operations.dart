@@ -4708,6 +4708,74 @@ NDArray abs(NDArray a) {
   return result;
 }
 
+/// Compute the element-wise sign of the array.
+///
+/// For real numbers, returns:
+/// - -1 if x < 0
+/// - 0 if x == 0
+/// - 1 if x > 0
+/// - nan if x is nan
+///
+/// For complex numbers, returns `x / |x|` (or 0 if x is 0).
+///
+/// **Example:**
+/// ```dart
+/// final s = sign(a);
+/// ```
+NDArray sign(NDArray a) {
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    final result = NDArray.create(a.shape, a.dtype);
+    final resultStrides = NDArray.computeCStrides(a.shape);
+
+    _unaryOp<Complex, Complex>(
+      result.data as List<Complex>,
+      a.data as List<Complex>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (c) {
+        if (c.real == 0 && c.imag == 0) return Complex(0, 0);
+        final mag = math.sqrt(c.real * c.real + c.imag * c.imag);
+        return Complex(c.real / mag, c.imag / mag);
+      },
+    );
+    return result;
+  }
+
+  final result = NDArray.create(a.shape, a.dtype);
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+    _unaryOp<int, int>(
+      result.data as List<int>,
+      a.data as List<int>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => x.sign,
+    );
+  } else {
+    _unaryOp<double, double>(
+      result.data as List<double>,
+      a.data as List<double>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => x.sign,
+    );
+  }
+  return result;
+}
+
 /// Compute the element-wise ceiling of the array.
 ///
 /// **Example:**

@@ -42,13 +42,14 @@ This file logs architectural improvements and hidden flaws discovered during aut
 ## 🧪 Section 3: NumPy Compatibility Roadmap (Missing Features)
 
 ### 3.1 Universal Functions (ufuncs)
-- **Math**: `power`, `hypot`, `sign`, `fmod`/`remainder`, `diff`.
+- **Math**: `power`, `hypot`, `diff`.
 - **Trig/Hyperbolic**: `asin`, `acos`, `atan`, `atan2`, `asinh`, `acosh`, `atanh`.
 - **High-Precision**: `log1p`, `expm1`.
 - **Fourier Transforms**:
   - Multi-dimensional `axis` support inside `fft()` and `ifft()`. Currently, our FFT transforms are hardcoded to execute along the final axis (`a.shape.last`). Adding an `axis` parameter (default `-1`) and transposing dimensions internally before/after FFI plan runs would achieve full standard NumPy `np.fft.fft(a, axis=axis)` compatibility!
 - **Bitwise**: `bitwise_and`, `bitwise_or`, `bitwise_xor`, `left_shift`, `right_shift`.
   - **bitwise detail**: We can implement `bitwise_and(NDArray a, NDArray b)`, `bitwise_or()`, and `bitwise_xor()` for integer dtypes (`int32` and `int64`). These will walk strides recursively and apply operators: `a.data[offsetA] & b.data[offsetB]`, `|`, and `^`. It will throw an `UnsupportedError` if called on float or complex dtypes, matching standard NumPy behaviour exactly!
+
 
 ### 3.2 Array Manipulation
 - **Shaping**: `broadcast_to`, `meshgrid`/`mgrid`/`ogrid`, `asStrided`, `slidingWindowView`.
