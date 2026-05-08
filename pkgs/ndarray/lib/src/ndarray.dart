@@ -123,7 +123,16 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - This list has a fixed length and cannot be resized.
   /// - This list becomes invalid as soon as the underlying C memory is freed (via `dispose()` or garbage collection). Accessing it afterwards leads to undefined behavior or crashes.
   @internal
-  final List<T> data;
+  final List<T> _data;
+
+  /// A Dart list view of the raw C memory.
+  @internal
+  List<T> get data {
+    if (isDisposed) {
+      throw StateError('Cannot access a disposed NDArray.');
+    }
+    return _data;
+  }
 
   /// The dimensions of the n-dimensional array.
   final List<int> shape;
@@ -220,7 +229,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Private constructor for internal use and factories.
   NDArray._(
     this._pointer,
-    this.data,
+    this._data,
     this._parent, {
     required List<int> shape,
     required List<int> strides,
