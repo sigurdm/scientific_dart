@@ -5,6 +5,8 @@ import 'numdart_bindings.dart';
 import 'ndarray.dart';
 import 'operations.dart';
 
+final _globalRand = Random();
+
 bool _listEquals(List<int> a, List<int> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
@@ -38,6 +40,7 @@ bool _listEquals(List<int> a, List<int> b) {
 NDArray<T> uniform<T extends num>(
   List<int> shape, {
   DType<T>? dtype,
+  int? seed,
   Random? random,
   NDArray<T>? into,
 }) {
@@ -95,6 +98,7 @@ NDArray<T> randint<T extends num>(
   required int low,
   required int high,
   DType<T>? dtype,
+  int? seed,
   Random? random,
   NDArray<T>? into,
 }) {
@@ -157,6 +161,7 @@ NDArray<T> normal<T extends num>(
   double loc = 0.0,
   double scale = 1.0,
   DType<T>? dtype,
+  int? seed,
   Random? random,
   NDArray<T>? into,
 }) {
@@ -219,6 +224,7 @@ NDArray<T> exponential<T extends num>(
   double scale = 1.0,
   double? lam,
   DType<T>? dtype,
+  int? seed,
   Random? random,
   NDArray<T>? into,
 }) {
@@ -285,6 +291,7 @@ NDArray<T> poisson<T extends num>(
   List<int> shape, {
   double lam = 1.0,
   DType<T>? dtype,
+  int? seed,
   Random? random,
   NDArray<T>? into,
 }) {
@@ -353,6 +360,7 @@ NDArray<T> binomial<T extends num>(
   required int n,
   required double p,
   DType<T>? dtype,
+  int? seed,
   Random? random,
   NDArray<T>? into,
 }) {
@@ -430,6 +438,7 @@ NDArray<T> multivariateNormal<T extends num>(
   NDArray cov, {
   List<int>? size,
   DType<T>? dtype,
+  int? seed,
   Random? random,
   NDArray<T>? into,
 }) {
@@ -482,7 +491,7 @@ NDArray<T> multivariateNormal<T extends num>(
         : sampleShape.reduce((a, b) => a * b);
 
     final zShape = [...sampleShape, d];
-    final z = normal(zShape, dtype: resolvedDType, random: random);
+    final z = normal(zShape, dtype: resolvedDType, seed: seed, random: random);
     final lT = l.transpose();
 
     final z2D = z.reshape([sampleCount, d]);
@@ -492,10 +501,11 @@ NDArray<T> multivariateNormal<T extends num>(
     add(matmul(z2D, lT), mean, out: x2D);
 
     if (into != null) {
-      return into.detachToParentScope();
+      return into;
     }
+    x2D.detachToParentScope();
     final result = x2D.reshape(finalShape);
-    return result.detachToParentScope();
+    return result;
   });
 }
 
@@ -534,6 +544,7 @@ NDArray<T> multinomial<T extends num>(
   NDArray pvals, {
   List<int>? size,
   DType<T>? dtype,
+  int? seed,
   Random? random,
   NDArray<T>? into,
 }) {
