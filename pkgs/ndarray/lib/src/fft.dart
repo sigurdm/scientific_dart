@@ -6,7 +6,7 @@ import 'ndarray.dart';
 /// Computes the 1D discrete Fourier Transform (FFT) along the last axis.
 ///
 /// Transforms discrete sequences from the time/space domain into frequency coefficients.
-/// The resulting array is **always complex** (`DType.complex128` or `DType.complex64` depending on precision).
+/// The resulting array is **always complex** (``DType.complex128`` or ``DType.complex64`` depending on precision).
 ///
 /// Natively offloads computation to pocketfft's pocketfft/KissFFT mixed-radix prime factoring, supporting
 /// arbitrary non-power-of-two sequence lengths at high speeds.
@@ -162,7 +162,7 @@ NDArray fft(NDArray a, {int? n}) {
 ///
 /// Transforms frequency domain coefficients back into complex time/space domain signals, applying
 /// standard `1 / N` normalization scaling automatically.
-/// The resulting array is **always complex** (`DType.complex128` or `DType.complex64` depending on precision).
+/// The resulting array is **always complex** (``DType.complex128`` or ``DType.complex64`` depending on precision).
 ///
 /// **Preconditions:**
 /// - Input [a] must have rank $\ge 1$ (not empty or 0-dimensional).

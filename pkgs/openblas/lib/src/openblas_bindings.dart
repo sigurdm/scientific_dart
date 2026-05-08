@@ -13,6 +13,9 @@ external int openblas_get_num_threads();
 @ffi.Native<ffi.Pointer<ffi.Char> Function()>()
 external ffi.Pointer<ffi.Char> openblas_get_config();
 
+@ffi.Native<ffi.Void Function(ffi.Int)>()
+external void openblas_set_num_threads(int num_threads);
+
 @ffi.Native<
   ffi.Float Function(
     blasint,
@@ -196,6 +199,284 @@ external int LAPACKE_dgetri(
     ffi.Int,
     lapack_int,
     lapack_int,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+    ffi.Pointer<lapack_int>,
+  )
+>()
+external int LAPACKE_sgetrf(
+  int matrix_layout,
+  int m,
+  int n,
+  ffi.Pointer<ffi.Float> a,
+  int lda,
+  ffi.Pointer<lapack_int> ipiv,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+    ffi.Pointer<lapack_int>,
+  )
+>()
+external int LAPACKE_sgetri(
+  int matrix_layout,
+  int n,
+  ffi.Pointer<ffi.Float> a,
+  int lda,
+  ffi.Pointer<lapack_int> ipiv,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    ffi.Char,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    lapack_int,
+  )
+>()
+external int LAPACKE_dpotrf(
+  int matrix_layout,
+  int uplo,
+  int n,
+  ffi.Pointer<ffi.Double> a,
+  int lda,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    ffi.Char,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+  )
+>()
+external int LAPACKE_spotrf(
+  int matrix_layout,
+  int uplo,
+  int n,
+  ffi.Pointer<ffi.Float> a,
+  int lda,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    lapack_int,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+  )
+>()
+external int LAPACKE_dgeqrf(
+  int matrix_layout,
+  int m,
+  int n,
+  ffi.Pointer<ffi.Double> a,
+  int lda,
+  ffi.Pointer<ffi.Double> tau,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    lapack_int,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+  )
+>()
+external int LAPACKE_sgeqrf(
+  int matrix_layout,
+  int m,
+  int n,
+  ffi.Pointer<ffi.Float> a,
+  int lda,
+  ffi.Pointer<ffi.Float> tau,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    lapack_int,
+    lapack_int,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+  )
+>()
+external int LAPACKE_dorgqr(
+  int matrix_layout,
+  int m,
+  int n,
+  int k,
+  ffi.Pointer<ffi.Double> a,
+  int lda,
+  ffi.Pointer<ffi.Double> tau,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    lapack_int,
+    lapack_int,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+  )
+>()
+external int LAPACKE_sorgqr(
+  int matrix_layout,
+  int m,
+  int n,
+  int k,
+  ffi.Pointer<ffi.Float> a,
+  int lda,
+  ffi.Pointer<ffi.Float> tau,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    ffi.Char,
+    ffi.Char,
+    lapack_int,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+  )
+>()
+external int LAPACKE_dgesvd(
+  int matrix_layout,
+  int jobu,
+  int jobvt,
+  int m,
+  int n,
+  ffi.Pointer<ffi.Double> a,
+  int lda,
+  ffi.Pointer<ffi.Double> s,
+  ffi.Pointer<ffi.Double> u,
+  int ldu,
+  ffi.Pointer<ffi.Double> vt,
+  int ldvt,
+  ffi.Pointer<ffi.Double> superb,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    ffi.Char,
+    ffi.Char,
+    lapack_int,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+  )
+>()
+external int LAPACKE_sgesvd(
+  int matrix_layout,
+  int jobu,
+  int jobvt,
+  int m,
+  int n,
+  ffi.Pointer<ffi.Float> a,
+  int lda,
+  ffi.Pointer<ffi.Float> s,
+  ffi.Pointer<ffi.Float> u,
+  int ldu,
+  ffi.Pointer<ffi.Float> vt,
+  int ldvt,
+  ffi.Pointer<ffi.Float> superb,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    ffi.Char,
+    ffi.Char,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    lapack_int,
+  )
+>()
+external int LAPACKE_dgeev(
+  int matrix_layout,
+  int jobvl,
+  int jobvr,
+  int n,
+  ffi.Pointer<ffi.Double> a,
+  int lda,
+  ffi.Pointer<ffi.Double> wr,
+  ffi.Pointer<ffi.Double> wi,
+  ffi.Pointer<ffi.Double> vl,
+  int ldvl,
+  ffi.Pointer<ffi.Double> vr,
+  int ldvr,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    ffi.Char,
+    ffi.Char,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+  )
+>()
+external int LAPACKE_sgeev(
+  int matrix_layout,
+  int jobvl,
+  int jobvr,
+  int n,
+  ffi.Pointer<ffi.Float> a,
+  int lda,
+  ffi.Pointer<ffi.Float> wr,
+  ffi.Pointer<ffi.Float> wi,
+  ffi.Pointer<ffi.Float> vl,
+  int ldvl,
+  ffi.Pointer<ffi.Float> vr,
+  int ldvr,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    lapack_int,
+    lapack_int,
     ffi.Pointer<ffi.Double>,
     lapack_int,
     ffi.Pointer<lapack_int>,
@@ -293,68 +574,6 @@ external int LAPACKE_cgesv(
     lapack_int,
     ffi.Pointer<ffi.Double>,
     ffi.Pointer<ffi.Double>,
-    ffi.Pointer<ffi.Double>,
-    lapack_int,
-    ffi.Pointer<ffi.Double>,
-    lapack_int,
-  )
->()
-external int LAPACKE_dgeev(
-  int matrix_layout,
-  int jobvl,
-  int jobvr,
-  int n,
-  ffi.Pointer<ffi.Double> a,
-  int lda,
-  ffi.Pointer<ffi.Double> wr,
-  ffi.Pointer<ffi.Double> wi,
-  ffi.Pointer<ffi.Double> vl,
-  int ldvl,
-  ffi.Pointer<ffi.Double> vr,
-  int ldvr,
-);
-
-@ffi.Native<
-  lapack_int Function(
-    ffi.Int,
-    ffi.Char,
-    ffi.Char,
-    lapack_int,
-    ffi.Pointer<ffi.Float>,
-    lapack_int,
-    ffi.Pointer<ffi.Float>,
-    ffi.Pointer<ffi.Float>,
-    ffi.Pointer<ffi.Float>,
-    lapack_int,
-    ffi.Pointer<ffi.Float>,
-    lapack_int,
-  )
->()
-external int LAPACKE_sgeev(
-  int matrix_layout,
-  int jobvl,
-  int jobvr,
-  int n,
-  ffi.Pointer<ffi.Float> a,
-  int lda,
-  ffi.Pointer<ffi.Float> wr,
-  ffi.Pointer<ffi.Float> wi,
-  ffi.Pointer<ffi.Float> vl,
-  int ldvl,
-  ffi.Pointer<ffi.Float> vr,
-  int ldvr,
-);
-
-@ffi.Native<
-  lapack_int Function(
-    ffi.Int,
-    ffi.Char,
-    ffi.Char,
-    lapack_int,
-    ffi.Pointer<ffi.Double>,
-    lapack_int,
-    ffi.Pointer<ffi.Double>,
-    ffi.Pointer<ffi.Double>,
     lapack_int,
     ffi.Pointer<ffi.Double>,
     lapack_int,
@@ -407,6 +626,3 @@ typedef blasint = ffi.Int;
 typedef Dartblasint = int;
 typedef lapack_int = ffi.Int;
 typedef Dartlapack_int = int;
-
-@ffi.Native<ffi.Void Function(ffi.Int)>()
-external void openblas_set_num_threads(int num_threads);

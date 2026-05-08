@@ -104,9 +104,11 @@ void main() {
           final y = NDArray.fromList(Float64List.fromList([1.0]), [
             1,
           ], DType.float64);
-          final x = NDArray.fromList(Float64List.fromList([1.0, math.sqrt(3)]), [
-            2,
-          ], DType.float64);
+          final x = NDArray.fromList(
+            Float64List.fromList([1.0, math.sqrt(3)]),
+            [2],
+            DType.float64,
+          );
 
           final b = atan2(y, x); // y broadcasts to [2]
           expect(b.shape, [2]);
@@ -163,7 +165,11 @@ void main() {
           expect(resFloor.data, [-2.0, 1.0, 2.0]);
 
           final resRound = round(a);
-          expect(resRound.data, [-2.0, 1.0, 3.0]); // Dart round() for -1.5 is -2
+          expect(resRound.data, [
+            -2.0,
+            1.0,
+            3.0,
+          ]); // Dart round() for -1.5 is -2
         }),
       );
 

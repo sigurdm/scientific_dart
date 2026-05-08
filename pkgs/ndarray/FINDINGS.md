@@ -7,7 +7,6 @@ This file logs architectural improvements and hidden flaws discovered during aut
 ## 🚀 Section 1: Critical Performance Bottlenecks
 
 ### 1.1 Reductions & Statistics Bloat
-- **Issue**: `variance()` and `std()` trigger a chain of intermediate element-wise operations (subtract, multiply, cast) leading to **4x memory amplification** and 4x loop passes.
 - **Issue**: `binomial()`, `exponential()`, and `poisson()` for small parameters use raw Dart JIT loops with billions of `rand.nextDouble()` calls, stalling simulations.
 - **Recommended Tweak**: Collapse these into unified streaming C kernels in `custom_ufuncs.c`. For statistics, use single-pass algorithms. For random sampling, move the entire loop into AOT C space.
 
@@ -27,44 +26,29 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Issue**: Missing standard solvers like `linalg.solve`, `linalg.lstsq`, `linalg.norm`, and `linalg.pinv`.
 - **Recommended Tweak**: Expand the FFI bridge to expose the full suite of LAPACK routines and refactor high-level methods to handle ND-stack broadcasting.
 
-### 2.2 Broadcasting & Advanced Indexing
-- **Issue**: `setByMask()` lacks support for broadcasting multi-dimensional array assignments.
-- **Issue**: `concatenate()` lacks implicit axis expansion (e.g., concatenating a 1D vector to a 2D matrix).
-- **Issue**: Advanced indexing (e.g., `a[[0, 1], [0, 1]]`) does not support broadcasting multiple index arrays against each other to select arbitrary coordinate sets.
-- **Issue**: The recursive advanced indexing walker (`_copyAdvancedRecursive`) is slow and prone to stack depth limits on high-rank tensors.
-- **Recommended Tweak**: Align broadcasting and indexing logic with NumPy standards. Offload advanced indexing walks to a native C odometer kernel.
+### 2.2 Advanced Indexing
+- **Issue**: The recursive advanced indexing walker (`_copyAdvancedRecursive`) is functional but further C-level optimization for extreme ranks is an option.
+- **Recommended Tweak**: Offload advanced indexing walks to a native C odometer kernel.
 
 ---
 
 ## 🧪 Section 3: NumPy Compatibility Roadmap (Missing Features)
 
 ### 3.1 Universal Functions (ufuncs)
-- **Math**: `diff`.
-- **Trig/Hyperbolic**: `asin`, `acos`, `atan`, `asinh`, `acosh`, `atanh`.
-- **High-Precision**: `log1p`, `expm1`.
+- **Math**: `diff` (still pending).
 - **Fourier Transforms**:
   - Multi-dimensional `axis` support inside `fft()` and `ifft()`. Currently, our FFT transforms are hardcoded to execute along the final axis (`a.shape.last`). Adding an `axis` parameter (default `-1`) and transposing dimensions internally before/after FFI plan runs would achieve full standard NumPy `np.fft.fft(a, axis=axis)` compatibility!
 
-
 ### 3.2 Array Manipulation
-- **Shaping**: `broadcast_to`, `meshgrid`/`mgrid`/`ogrid`, `asStrided`, `slidingWindowView`.
-- **Joining/Splitting**: `dstack`, `column_stack`, `split`, `hsplit`, `vsplit`, `dsplit`.
-- **Reorientation**: `flip`, `fliplr`, `flipud`, `rot90`, `roll`.
+- **Shaping**: `mgrid`/`ogrid`, `asStrided`, `slidingWindowView`.
 
 ### 3.3 Statistics & Sorting
-- **Reductions**: `nanmin`, `nanmax`, `percentile`, `quantile`, `cumsum`, `cumprod`.
-  - **percentile/quantile detail**: We can implement `percentile(NDArray a, double q, {int? axis})` and `quantile(NDArray a, double q, {int? axis})` by sorting slices using our high-speed Timsort solver. We can then apply linear interpolation:
-    $idx = q \times (N - 1)$ (for quantile, $q \in [0, 1]$)
-    $low = \lfloor idx \rfloor$, $high = \lceil idx \rceil$
-    $val = arr[low] + (idx - low) \times (arr[high] - arr[low])$.
-    This achieves 100% standard NumPy parity and is highly optimized!
 - **Sorting**: `partition`, `argpartition`, `unique`, stable sort support (`kind` parameter).
 - **Searching**: `searchsorted`, `ravel_multi_index`/`unravel_index`.
 
 ### 3.4 Random & DType
 - **Sampling**: `choice`, `shuffle`, `permutation`, `multinomial`.
 - **Types**: Expansion to `uint8` and `int16` for image/audio processing.
-- **Consistency**: Reduction results (e.g., `variance`) sometimes force `float64` even for `float32` inputs, causing precision/DType inconsistency.
 
 ### 3.5 Advanced Linear Algebra & Vector Calculus (Roadmap)
 - **Tensors & Matrices**:
@@ -79,8 +63,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
 ---
 
 ## ✨ Section 4: Usability & Ergonomics
-- **Issue**: `operator []` does not support `Slice` or `Indices` objects directly, and lacks equivalents for `NewAxis` or `Ellipsis`.
-- **Recommended Tweak**: Expand `operator []` and `operator []=` to handle complex NumPy-style selection objects.
+- **Recommended Tweak**: Expand `operator []=` to handle more complex NumPy-style selection objects (e.g. mixed lists).
 
 ---
 

@@ -38,8 +38,8 @@ final class BroadcastResult {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<double>.fromList([1.0, 2.0], [2, 1], DType.float64);
-/// final b = NDArray<double>.fromList([10.0, 20.0, 30.0], [1, 3], DType.float64);
+/// final a = `NDArray<double>`.fromList([1.0, 2.0], [2, 1], `DType.float64);`
+/// final b = `NDArray<double>`.fromList([10.0, 20.0, 30.0], [1, 3], `DType.float64);`
 /// final result = broadcast(a, b);
 /// print(result.shape); // [2, 3]
 /// ```

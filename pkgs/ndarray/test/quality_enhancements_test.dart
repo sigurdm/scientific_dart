@@ -141,7 +141,7 @@ void main() {
         var paddedHeaderLen =
             ((prefixLen + headerStr.length + 1) + 63) ~/ 64 * 64 - prefixLen;
         final padCount = paddedHeaderLen - headerStr.length - 1;
-        final paddedHeader = headerStr + (' ' * padCount) + '\n';
+        final paddedHeader = "$headerStr${' ' * padCount}\n";
 
         final headerBytes = Uint8List.fromList(paddedHeader.codeUnits);
         final lenBytes = Uint8List(2);
@@ -527,7 +527,10 @@ void main() {
     test(
       'uniform() validation checks coverage',
       () => NDArray.scope(() {
-        expect(() => uniform([5], dtype: DType.int64), throwsArgumentError);
+        expect(
+          () => uniform([5], dtype: DType.int64 as dynamic),
+          throwsArgumentError,
+        );
       }),
     );
 
@@ -535,7 +538,7 @@ void main() {
       'randint() validation checks coverage',
       () => NDArray.scope(() {
         expect(
-          () => randint([5], low: 0, high: 10, dtype: DType.float64),
+          () => randint([5], low: 0, high: 10, dtype: DType.float64 as dynamic),
           throwsArgumentError,
         );
         expect(() => randint([5], low: 10, high: 5), throwsArgumentError);
@@ -556,14 +559,20 @@ void main() {
     test(
       'exponential() validation checks coverage',
       () => NDArray.scope(() {
-        expect(() => exponential([5], dtype: DType.int32), throwsArgumentError);
+        expect(
+          () => exponential([5], dtype: DType.int32 as dynamic),
+          throwsArgumentError,
+        );
       }),
     );
 
     test(
       'poisson() validation, large lambda, and zero-avoidance checks',
       () => NDArray.scope(() {
-        expect(() => poisson([5], dtype: DType.float64), throwsArgumentError);
+        expect(
+          () => poisson([5], dtype: DType.float64 as dynamic),
+          throwsArgumentError,
+        );
         expect(() => poisson([5], lam: 0.0), throwsArgumentError);
 
         final a = poisson([2], lam: 40.0, random: ZeroThenDoubleRandom());
@@ -576,7 +585,7 @@ void main() {
       'binomial() validation, zero trials, zero stddev, and zero-avoidance checks',
       () {
         expect(
-          () => binomial([5], n: 10, p: 0.5, dtype: DType.float64),
+          () => binomial([5], n: 10, p: 0.5, dtype: DType.float64 as dynamic),
           throwsArgumentError,
         );
         expect(() => binomial([5], n: -1, p: 0.5), throwsArgumentError);
@@ -2218,8 +2227,9 @@ final class ZeroThenDoubleRandom implements math.Random {
   @override
   double nextDouble() {
     count++;
-    if (count == 1)
+    if (count == 1) {
       return 0.0; // Return 0.0 on first draw to force zero-avoidance loop path
+    }
     return 0.5;
   }
 

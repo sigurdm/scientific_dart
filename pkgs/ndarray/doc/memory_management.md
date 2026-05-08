@@ -75,15 +75,6 @@ NDArray computeResult() {
 
 > **Note**: You are now responsible for calling `.dispose()` on the returned array when you are finished with it.
 
----
-
-## How It Works: Implicit Tracking
-
-`NDArray.scope` uses **Dart Zones** to maintain an implicit context. Every time you call a constructor or a factory (like `zeros()`, `fromList()`, etc.), the `NDArray` instance checks if it's being created inside a scope. If it is, it adds itself to that scope's disposal list.
-
-This means that even third-party utility functions that return `NDArray`s will automatically support scopes if they use the standard `ndarray` factories.
-
----
 
 ## Asynchronous Scopes
 
@@ -99,22 +90,27 @@ Future<void> processDataAsync() async {
 }
 ```
 
----
+### Avoiding repeated allocations with `into:`
 
-## Best Practices
+While `NDArray.scope` cleans up intermediate allocations automatically, allocating new arrays inside high-frequency hot loops still incurs heap allocation and garbage collection overhead. 
 
-1.  **Scope for "Units of Work"**: Wrap logical operations (like a single frame of audio processing or a single training step) in a scope.
-2.  **Avoid Global Arrays**: Try not to keep `NDArray`s in long-lived variables. If you must, ensure they are either `detachFromScope()`'d or created outside any scope and manually disposed.
-3.  **Nested Scopes**: Scopes can be nested. Inner scopes will only dispose of arrays created within them, while the outer scope handles the rest.
-4.  **Error Handling**: Scopes use `try-finally` internally. Even if your code throws an exception, all native memory allocated within that block is guaranteed to be freed.
+Instead it is often better to pre-allocate a fixed destination array once and pass it to the `into:` named parameter in subsequent operations. This completely avoids repeated allocations by writing the result directly into the pre-allocated memory:
 
----
+```dart
+void processInLoop(NDArray<Float64> input) {
+  // 1. Pre-allocate fixed output buffer once!
+  final outputBuffer = NDArray<Float64>.zeros(input.shape, DType.float64);
 
-## Comparison at a Glance
+  for (var i = 0; i < 10000; i++) {
+    // 2. Zero new allocations! The ufunc writes directly into the buffer.
+    input.multiply(Float64(2.0), into: outputBuffer);
+    
+    // Use the outputBuffer results...
+  }
+  
+  // 3. Free the fixed buffer when completely done
+  outputBuffer.dispose();
+}
+```
 
-| Feature | Manual (`.dispose()`) | `NDArray.scope` |
-| :--- | :--- | :--- |
-| **Risk of Leaks** | High (easy to forget) | Zero (within scope) |
-| **Ergonomics** | Verbose `try-finally` | Clean, NumPy-like |
-| **Intermediates** | Must be manually saved & freed | Automatically caught |
-| **Async Safety** | Manual tracking required | Automatic completion wait |
+To create a buffer of the right shape for the result of a broadcasted operation, you can use [NDArray.broadcastShapes].

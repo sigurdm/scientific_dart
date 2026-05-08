@@ -233,7 +233,8 @@ void main() {
           expect(count_nonzero(mat), 3);
 
           final c0 =
-              count_nonzero(mat, axis: 0) as NDArray<int>; // count along columns
+              count_nonzero(mat, axis: 0)
+                  as NDArray<int>; // count along columns
           expect(c0.shape, [3]);
           expect(c0.toList(), [1, 1, 1]); // col0 has 2, col1 has 5, col2 has 3
         }),

@@ -106,38 +106,48 @@ void main() {
           }),
         );
 
-        test('Verify Matrix-Vector multiplication [2, 3] x [3] -> [2]', () => NDArray.scope(() {
-          final mat = NDArray.fromList(
-            Float64List.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
-            [2, 3],
-            DType.float64,
-          );
-          final vec = NDArray.fromList(Float64List.fromList([1.0, 1.0, 1.0]), [
-            3,
-          ], DType.float64);
+        test(
+          'Verify Matrix-Vector multiplication [2, 3] x [3] -> [2]',
+          () => NDArray.scope(() {
+            final mat = NDArray.fromList(
+              Float64List.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
+              [2, 3],
+              DType.float64,
+            );
+            final vec = NDArray.fromList(
+              Float64List.fromList([1.0, 1.0, 1.0]),
+              [3],
+              DType.float64,
+            );
 
-          final res = matmul(mat, vec);
-          // row 0: 1+2+3 = 6.0, row 1: 4+5+6 = 15.0
-          expect(res.shape, [2]);
-          expect(res.toList(), [6.0, 15.0]);
-        }));
+            final res = matmul(mat, vec);
+            // row 0: 1+2+3 = 6.0, row 1: 4+5+6 = 15.0
+            expect(res.shape, [2]);
+            expect(res.toList(), [6.0, 15.0]);
+          }),
+        );
 
-        test('Verify Vector-Matrix multiplication [3] x [3, 2] -> [2]', () => NDArray.scope(() {
-          final vec = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0]), [
-            3,
-          ], DType.float64);
-          final mat = NDArray.fromList(
-            Float64List.fromList([1.0, 0.0, 0.0, 1.0, 1.0, 1.0]),
-            [3, 2],
-            DType.float64,
-          );
+        test(
+          'Verify Vector-Matrix multiplication [3] x [3, 2] -> [2]',
+          () => NDArray.scope(() {
+            final vec = NDArray.fromList(
+              Float64List.fromList([1.0, 2.0, 3.0]),
+              [3],
+              DType.float64,
+            );
+            final mat = NDArray.fromList(
+              Float64List.fromList([1.0, 0.0, 0.0, 1.0, 1.0, 1.0]),
+              [3, 2],
+              DType.float64,
+            );
 
-          final res = matmul(vec, mat);
-          // col 0: 1*1 + 2*0 + 3*1 = 4.0
-          // col 1: 1*0 + 2*1 + 3*1 = 5.0
-          expect(res.shape, [2]);
-          expect(res.toList(), [4.0, 5.0]);
-        }));
+            final res = matmul(vec, mat);
+            // col 0: 1*1 + 2*0 + 3*1 = 4.0
+            // col 1: 1*0 + 2*1 + 3*1 = 5.0
+            expect(res.shape, [2]);
+            expect(res.toList(), [4.0, 5.0]);
+          }),
+        );
 
         test(
           'matmul() throws ArgumentError on incompatible 1D vector dot dimensions',
@@ -167,41 +177,47 @@ void main() {
       });
 
       group('Float32 Single-Precision matmul tests', () {
-        test('Verify Float32 1D Vector Dot Product sdot', () => NDArray.scope(() {
-          final v1 = NDArray<double>.fromList(
-            Float32List.fromList([1.0, 2.0]),
-            [2],
-            DType.float32,
-          );
-          final v2 = NDArray<double>.fromList(
-            Float32List.fromList([3.0, 4.0]),
-            [2],
-            DType.float32,
-          );
+        test(
+          'Verify Float32 1D Vector Dot Product sdot',
+          () => NDArray.scope(() {
+            final v1 = NDArray<double>.fromList(
+              Float32List.fromList([1.0, 2.0]),
+              [2],
+              DType.float32,
+            );
+            final v2 = NDArray<double>.fromList(
+              Float32List.fromList([3.0, 4.0]),
+              [2],
+              DType.float32,
+            );
 
-          final res = matmul(v1, v2);
-          expect(res.shape, []);
-          expect(res.dtype, DType.float32);
-          expect(res.data[0], closeTo(11.0, 1e-5));
-        }));
+            final res = matmul(v1, v2);
+            expect(res.shape, []);
+            expect(res.dtype, DType.float32);
+            expect(res.data[0], closeTo(11.0, 1e-5));
+          }),
+        );
 
-        test('Verify Float32 2D Matrix Multiply sgemm', () => NDArray.scope(() {
-          final a = NDArray<double>.fromList(
-            Float32List.fromList([1.0, 2.0, 3.0, 4.0]),
-            [2, 2],
-            DType.float32,
-          );
-          final b = NDArray<double>.fromList(
-            Float32List.fromList([5.0, 6.0, 7.0, 8.0]),
-            [2, 2],
-            DType.float32,
-          );
+        test(
+          'Verify Float32 2D Matrix Multiply sgemm',
+          () => NDArray.scope(() {
+            final a = NDArray<double>.fromList(
+              Float32List.fromList([1.0, 2.0, 3.0, 4.0]),
+              [2, 2],
+              DType.float32,
+            );
+            final b = NDArray<double>.fromList(
+              Float32List.fromList([5.0, 6.0, 7.0, 8.0]),
+              [2, 2],
+              DType.float32,
+            );
 
-          final res = matmul(a, b);
-          expect(res.shape, [2, 2]);
-          expect(res.dtype, DType.float32);
-          expect(res.toList(), [19.0, 22.0, 43.0, 50.0]);
-        }));
+            final res = matmul(a, b);
+            expect(res.shape, [2, 2]);
+            expect(res.dtype, DType.float32);
+            expect(res.toList(), [19.0, 22.0, 43.0, 50.0]);
+          }),
+        );
       });
     },
   );

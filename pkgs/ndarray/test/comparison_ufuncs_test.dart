@@ -3,33 +3,38 @@ import 'package:test/test.dart';
 
 void main() {
   group('Top-Level Comparison ufuncs with Recycling Tests', () {
-    test('equal() and not_equal() broadcasted comparison',
-        () => NDArray.scope(() {
-      final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-      final b = NDArray.fromList([1.0, 9.9, 3.0], [3], DType.float64);
+    test(
+      'equal() and not_equal() broadcasted comparison',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+        final b = NDArray.fromList([1.0, 9.9, 3.0], [3], DType.float64);
 
-      // equal
-      final eq = equal(a, b);
-      expect(eq.shape, [3]);
-      expect(eq.dtype, DType.boolean);
-      expect(eq.toList(), [true, false, true]);
+        // equal
+        final eq = equal(a, b);
+        expect(eq.shape, [3]);
+        expect(eq.dtype, DType.boolean);
+        expect(eq.toList(), [true, false, true]);
 
-      // not_equal
-      final neq = not_equal(a, b);
-      expect(neq.shape, [3]);
-      expect(neq.dtype, DType.boolean);
-      expect(neq.toList(), [false, true, false]);
-    }));
+        // not_equal
+        final neq = not_equal(a, b);
+        expect(neq.shape, [3]);
+        expect(neq.dtype, DType.boolean);
+        expect(neq.toList(), [false, true, false]);
+      }),
+    );
 
-    test('equal() with named recycler out parameter', () => NDArray.scope(() {
-      final a = NDArray.fromList([10.0, 20.0], [2], DType.float64);
-      final b = NDArray.fromList([10.0, 99.0], [2], DType.float64);
-      final out = NDArray<bool>.create([2], DType.boolean);
+    test(
+      'equal() with named recycler out parameter',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+        final b = NDArray.fromList([10.0, 99.0], [2], DType.float64);
+        final out = NDArray<bool>.create([2], DType.boolean);
 
-      final res = equal(a, b, out: out);
-      expect(identical(res, out), true);
-      expect(out.toList(), [true, false]);
-    }));
+        final res = equal(a, b, out: out);
+        expect(identical(res, out), true);
+        expect(out.toList(), [true, false]);
+      }),
+    );
 
     test(
       'inequalities (greater, greater_equal, less, less_equal) contiguous & strided',
@@ -55,24 +60,28 @@ void main() {
       }),
     );
 
-    test('complex numbers inequality throws UnsupportedError',
-        () => NDArray.scope(() {
-      final a = NDArray<Complex>.create([2], DType.complex128);
-      final b = NDArray<Complex>.create([2], DType.complex128);
+    test(
+      'complex numbers inequality throws UnsupportedError',
+      () => NDArray.scope(() {
+        final a = NDArray<Complex>.create([2], DType.complex128);
+        final b = NDArray<Complex>.create([2], DType.complex128);
 
-      expect(() => greater(a, b), throwsUnsupportedError);
-      expect(() => greater_equal(a, b), throwsUnsupportedError);
-      expect(() => less(a, b), throwsUnsupportedError);
-      expect(() => less_equal(a, b), throwsUnsupportedError);
-    }));
+        expect(() => greater(a, b), throwsUnsupportedError);
+        expect(() => greater_equal(a, b), throwsUnsupportedError);
+        expect(() => less(a, b), throwsUnsupportedError);
+        expect(() => less_equal(a, b), throwsUnsupportedError);
+      }),
+    );
 
-    test('recycler out buffer shape incompatibility throws ArgumentError',
-        () => NDArray.scope(() {
-      final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
-      final b = NDArray.fromList([3.0, 4.0], [2], DType.float64);
-      final wrongShape = NDArray<bool>.create([3], DType.boolean);
+    test(
+      'recycler out buffer shape incompatibility throws ArgumentError',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final b = NDArray.fromList([3.0, 4.0], [2], DType.float64);
+        final wrongShape = NDArray<bool>.create([3], DType.boolean);
 
-      expect(() => equal(a, b, out: wrongShape), throwsArgumentError);
-    }));
+        expect(() => equal(a, b, out: wrongShape), throwsArgumentError);
+      }),
+    );
   });
 }

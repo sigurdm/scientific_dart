@@ -1168,8 +1168,8 @@ void main() {
           final a = NDArray.zeros([2, 3], DType.float64);
           expect(() => a.getCell([0]), throwsArgumentError);
           expect(() => a.getCell([0, 5]), throwsRangeError);
-          expect(() => a.setCell([0], 1.0), throwsArgumentError);
-          expect(() => a.setCell([0, 5], 1.0), throwsRangeError);
+          expect(() => a.setCell([0], 1.0 as dynamic), throwsArgumentError);
+          expect(() => a.setCell([0, 5], 1.0 as dynamic), throwsRangeError);
         }),
       );
 
@@ -1178,10 +1178,16 @@ void main() {
         () => NDArray.scope(() {
           final a = NDArray.zeros([2, 3], DType.float64);
           final mask1D = NDArray<bool>.zeros([2], DType.boolean);
-          expect(() => a.setByMaskScalar(mask1D, 5.0), throwsArgumentError);
+          expect(
+            () => a.setByMaskScalar(mask1D, 5.0 as dynamic),
+            throwsArgumentError,
+          );
 
           final mask2D = NDArray<bool>.zeros([2, 2], DType.boolean);
-          expect(() => a.setByMaskScalar(mask2D, 5.0), throwsArgumentError);
+          expect(
+            () => a.setByMaskScalar(mask2D, 5.0 as dynamic),
+            throwsArgumentError,
+          );
         }),
       );
 

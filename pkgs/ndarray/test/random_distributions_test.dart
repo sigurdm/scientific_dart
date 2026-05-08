@@ -21,7 +21,12 @@ void main() {
           const loc = 10.0;
           const scale = 3.0;
           // Draw a large sample size to confirm sample parameters match target distributions
-          final a = normal([10000], loc: loc, scale: scale, dtype: DType.float64);
+          final a = normal(
+            [10000],
+            loc: loc,
+            scale: scale,
+            dtype: DType.float64,
+          );
 
           final sampleMean = mean(a) as double;
           final sampleStd = std(a) as double;
@@ -32,11 +37,14 @@ void main() {
         }),
       );
 
-      test('Throws on invalid parameters', () => NDArray.scope(() {
-        expect(() => normal([2], scale: 0.0), throwsArgumentError);
-        expect(() => normal([2], scale: -1.5), throwsArgumentError);
-        expect(() => normal([2], dtype: DType.int32), throwsArgumentError);
-      }));
+      test(
+        'Throws on invalid parameters',
+        () => NDArray.scope(() {
+          expect(() => normal([2], scale: 0.0), throwsArgumentError);
+          expect(() => normal([2], scale: -1.5), throwsArgumentError);
+          expect(() => normal([2], dtype: DType.int32), throwsArgumentError);
+        }),
+      );
     });
 
     group('exponential distribution tests', () {
