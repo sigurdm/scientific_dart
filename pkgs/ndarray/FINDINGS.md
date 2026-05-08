@@ -10,12 +10,6 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Issue**: `binomial()`, `exponential()`, and `poisson()` for small parameters use raw Dart JIT loops with billions of `rand.nextDouble()` calls, stalling simulations.
 - **Recommended Tweak**: Collapse these into unified streaming C kernels in `custom_ufuncs.c`. For statistics, use single-pass algorithms. For random sampling, move the entire loop into AOT C space.
 
-### 1.2 View & Manipulation Overhead
-- **Issue**: `flatten()` and `ravel()` (on strided views) suffer a **double-allocation and double-copy penalty** because they route through `toList()` and `fromList()`.
-- **Issue**: `det()`, `qr()`, and `svd()` fallback to slow `toList()` copies for non-contiguous views and often use redundant intermediate `List.from(a.data)` allocations.
-- **Issue**: `operator ==` and `hashCode` - While `operator ==` is optimized, `hashCode` still loops in Dart space for large arrays.
-- **Recommended Tweak**: Implement low-level C FFI flattening/walking kernels. For `hashCode`, use a native rolling hash acting directly on C memory.
-
 ---
 
 ## 🛠️ Section 2: Architectural & Memory Safety Gaps

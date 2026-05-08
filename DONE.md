@@ -2039,3 +2039,16 @@
   - **Re-indexing**: Re-indexed remaining subsections in Section 2 to maintain sequential numbering.
 * **Results**:
   - **Verification**: `FINDINGS.md` now only contains active bottlenecks, architectural gaps, and the NumPy compatibility roadmap.
+
+***
+
+## 173. Optimized Strided View Flattening and Elements Hashing Natively in C (Task 3 / Task 8 / Finding Fix)
+* **Issue**:
+  - `flatten()` and `copy()` on non-contiguous strided views previously unrolled a slow recursive coordinate-wise walker in Dart (`_copyStridedRecursiveFast`), causing high JIT recursion call overhead and dynamic VM memory thrashing.
+  - `hashCode` unrolled a recursive rolling hash walker in Dart (`_hashRecursive`), looping in Dart space element-by-element and generating massive dynamic VM lookup overhead.
+* **Resolution**:
+  - **Native C Odometer Flattening**: Implemented high-speed strides odometer-walking `s_flatten_...` kernels in `custom_ufuncs.c` for all data types, sequentially writing elements directly to C-contiguous destinations on the unmanaged heap at pure C hardware speed. Decoupled and replaced the old `_copyStridedRecursiveFast` walker completely.
+  - **Native C Hashing**: Implemented optimized rolling FNV-1a `s_hash_...` kernels in C that hash element byte-representations natively (normalizing float `-0.0` and NaNs, complex numbers, and booleans) with a specialized contiguous linear loop fast-path. Bypassed and removed the `_hashRecursive` walker entirely.
+* **Results**:
+  - **Performance**: Eliminated all recursive Dart JIT traversal walks and loop overhead, speeding up strided view flattening and array hashing significantly.
+  - **Verification**: Authored extensive new targeted multi-precision hashing and flattening unit tests verifying exact `hashCode` invariants under transposed/sliced shapes. All **408 workspace unit tests continue to pass 100% green!**

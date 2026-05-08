@@ -22,3 +22,4 @@ dev_dependencies:
   test: ^1.31.1
   benchmark_harness: ^2.4.0
   coverage: ^1.15.0
+  ffigen: ^20.1.1

@@ -11,6 +11,11 @@ typedef struct {
     double i; // imaginary part
 } cpx_t;
 
+typedef struct {
+    float r; // real part
+    float i; // imaginary part
+} cpx_f_t;
+
 // ----------------------------------------------------------------------------
 // Double Precision (Float64) Flat Contiguous Kernels
 // ----------------------------------------------------------------------------
@@ -25,6 +30,7 @@ void v_exp_double(const double *src, double *res, int size);
 void v_log_double(const double *src, double *res, int size);
 
 double r_sum_double(const double *src, int size);
+double r_prod_double(const double *src, int size);
 
 // ----------------------------------------------------------------------------
 // Double Precision (Float64) Generic ND Strided Broadcasting Kernels
@@ -86,6 +92,7 @@ void v_exp_float(const float *src, float *res, int size);
 void v_log_float(const float *src, float *res, int size);
 
 float r_sum_float(const float *src, int size);
+float r_prod_float(const float *src, int size);
 
 // ----------------------------------------------------------------------------
 // Additional Math, Rounding, and Clipping Ufuncs (Float64 & Float32 Tiers)
@@ -134,5 +141,27 @@ void v_fill_double(double *res, double value, int size);
 void v_fill_float(float *res, float value, int size);
 void v_fill_int64(int64_t *res, int64_t value, int size);
 void v_fill_int32(int32_t *res, int32_t value, int size);
+
+// ----------------------------------------------------------------------------
+// Native C High-Speed Strided Flattening/Copying Kernels
+// ----------------------------------------------------------------------------
+void s_flatten_double(const double *src, const int *stridesSrc, double *dest, const int *shape, int rank);
+void s_flatten_float(const float *src, const int *stridesSrc, float *dest, const int *shape, int rank);
+void s_flatten_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *shape, int rank);
+void s_flatten_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *shape, int rank);
+void s_flatten_complex128(const double *src, const int *stridesSrc, double *dest, const int *shape, int rank);
+void s_flatten_complex64(const float *src, const int *stridesSrc, float *dest, const int *shape, int rank);
+void s_flatten_boolean(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *shape, int rank);
+
+// ----------------------------------------------------------------------------
+// Native C High-Speed Elements Hashing Kernels
+// ----------------------------------------------------------------------------
+uint32_t s_hash_double(const double *a, const int *strides, const int *shape, int rank, int is_contiguous);
+uint32_t s_hash_float(const float *a, const int *strides, const int *shape, int rank, int is_contiguous);
+uint32_t s_hash_int64(const int64_t *a, const int *strides, const int *shape, int rank, int is_contiguous);
+uint32_t s_hash_int32(const int32_t *a, const int *strides, const int *shape, int rank, int is_contiguous);
+uint32_t s_hash_complex128(const double *a, const int *strides, const int *shape, int rank, int is_contiguous);
+uint32_t s_hash_complex64(const float *a, const int *strides, const int *shape, int rank, int is_contiguous);
+uint32_t s_hash_boolean(const uint8_t *a, const int *strides, const int *shape, int rank, int is_contiguous);
 
 #endif // CUSTOM_UFUNCS_H

@@ -977,3 +977,494 @@ void v_fill_int32(int32_t *res, int32_t value, int size) {
         res[i] = value;
     }
 }
+
+// Helper functions to perform rolling FNV-1a hash updates
+static inline void hash_double(uint32_t *hash, double val) {
+    if (val == 0.0) {
+        val = 0.0;
+    }
+    if (val != val) { // isNaN
+        const uint64_t nan_bits = 0x7ff8000000000000ULL;
+        const uint8_t *bytes = (const uint8_t*)&nan_bits;
+        for (int i = 0; i < 8; i++) {
+            *hash ^= bytes[i];
+            *hash *= 16777619U;
+        }
+        return;
+    }
+    const uint8_t *bytes = (const uint8_t*)&val;
+    for (int i = 0; i < 8; i++) {
+        *hash ^= bytes[i];
+        *hash *= 16777619U;
+    }
+}
+
+static inline void hash_float(uint32_t *hash, float val) {
+    if (val == 0.0f) {
+        val = 0.0f;
+    }
+    if (val != val) { // isNaN
+        const uint32_t nan_bits = 0x7fc00000U;
+        const uint8_t *bytes = (const uint8_t*)&nan_bits;
+        for (int i = 0; i < 4; i++) {
+            *hash ^= bytes[i];
+            *hash *= 16777619U;
+        }
+        return;
+    }
+    const uint8_t *bytes = (const uint8_t*)&val;
+    for (int i = 0; i < 4; i++) {
+        *hash ^= bytes[i];
+        *hash *= 16777619U;
+    }
+}
+
+static inline void hash_int64(uint32_t *hash, int64_t val) {
+    const uint8_t *bytes = (const uint8_t*)&val;
+    for (int i = 0; i < 8; i++) {
+        *hash ^= bytes[i];
+        *hash *= 16777619U;
+    }
+}
+
+static inline void hash_int32(uint32_t *hash, int32_t val) {
+    const uint8_t *bytes = (const uint8_t*)&val;
+    for (int i = 0; i < 4; i++) {
+        *hash ^= bytes[i];
+        *hash *= 16777619U;
+    }
+}
+
+static inline void hash_boolean(uint32_t *hash, uint8_t val) {
+    uint8_t b = val ? 1 : 0;
+    *hash ^= b;
+    *hash *= 16777619U;
+}
+
+// ============================================================================
+// 7. NATIVE C HIGH-SPEED STRIDED FLATTENING/COPYING KERNELS
+// ============================================================================
+
+void s_flatten_double(const double *src, const int *stridesSrc, double *dest, const int *shape, int rank) {
+    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (rank == 0) {
+        dest[0] = src[0];
+        return;
+    }
+    int coord[8] = {0};
+    int offsetSrc = 0;
+    for (int el = 0; el < total_elements; el++) {
+        dest[el] = src[offsetSrc];
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetSrc += stridesSrc[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+        }
+    }
+}
+
+void s_flatten_float(const float *src, const int *stridesSrc, float *dest, const int *shape, int rank) {
+    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (rank == 0) {
+        dest[0] = src[0];
+        return;
+    }
+    int coord[8] = {0};
+    int offsetSrc = 0;
+    for (int el = 0; el < total_elements; el++) {
+        dest[el] = src[offsetSrc];
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetSrc += stridesSrc[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+        }
+    }
+}
+
+void s_flatten_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *shape, int rank) {
+    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (rank == 0) {
+        dest[0] = src[0];
+        return;
+    }
+    int coord[8] = {0};
+    int offsetSrc = 0;
+    for (int el = 0; el < total_elements; el++) {
+        dest[el] = src[offsetSrc];
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetSrc += stridesSrc[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+        }
+    }
+}
+
+void s_flatten_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *shape, int rank) {
+    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (rank == 0) {
+        dest[0] = src[0];
+        return;
+    }
+    int coord[8] = {0};
+    int offsetSrc = 0;
+    for (int el = 0; el < total_elements; el++) {
+        dest[el] = src[offsetSrc];
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetSrc += stridesSrc[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+        }
+    }
+}
+
+void s_flatten_complex128(const double *src, const int *stridesSrc, double *dest, const int *shape, int rank) {
+    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (rank == 0) {
+        dest[0] = src[0];
+        dest[1] = src[1];
+        return;
+    }
+    const cpx_t *c_src = (const cpx_t*)src;
+    cpx_t *c_dest = (cpx_t*)dest;
+    int coord[8] = {0};
+    int offsetSrc = 0;
+    for (int el = 0; el < total_elements; el++) {
+        c_dest[el] = c_src[offsetSrc];
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetSrc += stridesSrc[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+        }
+    }
+}
+
+void s_flatten_complex64(const float *src, const int *stridesSrc, float *dest, const int *shape, int rank) {
+    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (rank == 0) {
+        dest[0] = src[0];
+        dest[1] = src[1];
+        return;
+    }
+    const cpx_f_t *c_src = (const cpx_f_t*)src;
+    cpx_f_t *c_dest = (cpx_f_t*)dest;
+    int coord[8] = {0};
+    int offsetSrc = 0;
+    for (int el = 0; el < total_elements; el++) {
+        c_dest[el] = c_src[offsetSrc];
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetSrc += stridesSrc[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+        }
+    }
+}
+
+void s_flatten_boolean(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *shape, int rank) {
+    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (rank == 0) {
+        dest[0] = src[0];
+        return;
+    }
+    int coord[8] = {0};
+    int offsetSrc = 0;
+    for (int el = 0; el < total_elements; el++) {
+        dest[el] = src[offsetSrc];
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetSrc += stridesSrc[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+        }
+    }
+}
+
+// ============================================================================
+// 8. NATIVE C HIGH-SPEED ELEMENTS HASHING KERNELS
+// ============================================================================
+
+uint32_t s_hash_double(const double *a, const int *strides, const int *shape, int rank, int is_contiguous) {
+    if (a == NULL) return 0;
+    uint32_t hash = 2166136261U;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (is_contiguous) {
+        for (int i = 0; i < total_elements; i++) {
+            hash_double(&hash, a[i]);
+        }
+        return hash;
+    }
+    if (rank <= 0 || rank > 8) {
+        if (rank == 0) {
+            hash_double(&hash, a[0]);
+        }
+        return hash;
+    }
+    int coord[8] = {0};
+    int offset = 0;
+    for (int el = 0; el < total_elements; el++) {
+        hash_double(&hash, a[offset]);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offset += strides[d];
+                break;
+            }
+            coord[d] = 0;
+            offset -= (shape[d] - 1) * strides[d];
+        }
+    }
+    return hash;
+}
+
+uint32_t s_hash_float(const float *a, const int *strides, const int *shape, int rank, int is_contiguous) {
+    if (a == NULL) return 0;
+    uint32_t hash = 2166136261U;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (is_contiguous) {
+        for (int i = 0; i < total_elements; i++) {
+            hash_float(&hash, a[i]);
+        }
+        return hash;
+    }
+    if (rank <= 0 || rank > 8) {
+        if (rank == 0) {
+            hash_float(&hash, a[0]);
+        }
+        return hash;
+    }
+    int coord[8] = {0};
+    int offset = 0;
+    for (int el = 0; el < total_elements; el++) {
+        hash_float(&hash, a[offset]);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offset += strides[d];
+                break;
+            }
+            coord[d] = 0;
+            offset -= (shape[d] - 1) * strides[d];
+        }
+    }
+    return hash;
+}
+
+uint32_t s_hash_int64(const int64_t *a, const int *strides, const int *shape, int rank, int is_contiguous) {
+    if (a == NULL) return 0;
+    uint32_t hash = 2166136261U;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (is_contiguous) {
+        for (int i = 0; i < total_elements; i++) {
+            hash_int64(&hash, a[i]);
+        }
+        return hash;
+    }
+    if (rank <= 0 || rank > 8) {
+        if (rank == 0) {
+            hash_int64(&hash, a[0]);
+        }
+        return hash;
+    }
+    int coord[8] = {0};
+    int offset = 0;
+    for (int el = 0; el < total_elements; el++) {
+        hash_int64(&hash, a[offset]);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offset += strides[d];
+                break;
+            }
+            coord[d] = 0;
+            offset -= (shape[d] - 1) * strides[d];
+        }
+    }
+    return hash;
+}
+
+uint32_t s_hash_int32(const int32_t *a, const int *strides, const int *shape, int rank, int is_contiguous) {
+    if (a == NULL) return 0;
+    uint32_t hash = 2166136261U;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (is_contiguous) {
+        for (int i = 0; i < total_elements; i++) {
+            hash_int32(&hash, a[i]);
+        }
+        return hash;
+    }
+    if (rank <= 0 || rank > 8) {
+        if (rank == 0) {
+            hash_int32(&hash, a[0]);
+        }
+        return hash;
+    }
+    int coord[8] = {0};
+    int offset = 0;
+    for (int el = 0; el < total_elements; el++) {
+        hash_int32(&hash, a[offset]);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offset += strides[d];
+                break;
+            }
+            coord[d] = 0;
+            offset -= (shape[d] - 1) * strides[d];
+        }
+    }
+    return hash;
+}
+
+uint32_t s_hash_complex128(const double *a, const int *strides, const int *shape, int rank, int is_contiguous) {
+    if (a == NULL) return 0;
+    uint32_t hash = 2166136261U;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    const cpx_t *c_a = (const cpx_t*)a;
+    if (is_contiguous) {
+        for (int i = 0; i < total_elements; i++) {
+            hash_double(&hash, c_a[i].r);
+            hash_double(&hash, c_a[i].i);
+        }
+        return hash;
+    }
+    if (rank <= 0 || rank > 8) {
+        if (rank == 0) {
+            hash_double(&hash, c_a[0].r);
+            hash_double(&hash, c_a[0].i);
+        }
+        return hash;
+    }
+    int coord[8] = {0};
+    int offset = 0;
+    for (int el = 0; el < total_elements; el++) {
+        hash_double(&hash, c_a[offset].r);
+        hash_double(&hash, c_a[offset].i);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offset += strides[d];
+                break;
+            }
+            coord[d] = 0;
+            offset -= (shape[d] - 1) * strides[d];
+        }
+    }
+    return hash;
+}
+
+uint32_t s_hash_complex64(const float *a, const int *strides, const int *shape, int rank, int is_contiguous) {
+    if (a == NULL) return 0;
+    uint32_t hash = 2166136261U;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    const cpx_f_t *c_a = (const cpx_f_t*)a;
+    if (is_contiguous) {
+        for (int i = 0; i < total_elements; i++) {
+            hash_float(&hash, c_a[i].r);
+            hash_float(&hash, c_a[i].i);
+        }
+        return hash;
+    }
+    if (rank <= 0 || rank > 8) {
+        if (rank == 0) {
+            hash_float(&hash, c_a[0].r);
+            hash_float(&hash, c_a[0].i);
+        }
+        return hash;
+    }
+    int coord[8] = {0};
+    int offset = 0;
+    for (int el = 0; el < total_elements; el++) {
+        hash_float(&hash, c_a[offset].r);
+        hash_float(&hash, c_a[offset].i);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offset += strides[d];
+                break;
+            }
+            coord[d] = 0;
+            offset -= (shape[d] - 1) * strides[d];
+        }
+    }
+    return hash;
+}
+
+uint32_t s_hash_boolean(const uint8_t *a, const int *strides, const int *shape, int rank, int is_contiguous) {
+    if (a == NULL) return 0;
+    uint32_t hash = 2166136261U;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (is_contiguous) {
+        for (int i = 0; i < total_elements; i++) {
+            hash_boolean(&hash, a[i]);
+        }
+        return hash;
+    }
+    if (rank <= 0 || rank > 8) {
+        if (rank == 0) {
+            hash_boolean(&hash, a[0]);
+        }
+        return hash;
+    }
+    int coord[8] = {0};
+    int offset = 0;
+    for (int el = 0; el < total_elements; el++) {
+        hash_boolean(&hash, a[offset]);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offset += strides[d];
+                break;
+            }
+            coord[d] = 0;
+            offset -= (shape[d] - 1) * strides[d];
+        }
+    }
+    return hash;
+}

@@ -707,7 +707,7 @@ final class NDArray<T> implements ffi.Finalizable {
     if (isContiguous) {
       _copyContiguousNDArray(this, result, totalSize);
     } else {
-      _copyStridedRecursiveFast(result, strides, result.strides, 0, 0, 0);
+      _copyStridedToContiguous(result);
     }
     return result;
   }
@@ -742,36 +742,82 @@ final class NDArray<T> implements ffi.Finalizable {
       final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
       _copyContiguousNDArray(this, result, totalSize);
     } else {
-      _copyStridedRecursiveFast(result, strides, result.strides, 0, 0, 0);
+      _copyStridedToContiguous(result);
     }
 
     return result;
   }
 
-  void _copyStridedRecursiveFast(
-    NDArray<T> dest,
-    List<int> stridesSrc,
-    List<int> stridesDest,
-    int dim,
-    int offsetSrc,
-    int offsetDest,
-  ) {
-    final rank = shape.length;
-    if (dim == rank) {
-      dest.data[offsetDest] = data[offsetSrc];
-      return;
+  void _copyStridedToContiguous(NDArray<T> dest) {
+    final cShape = malloc<ffi.Int>(shape.length);
+    final cStridesSrc = malloc<ffi.Int>(strides.length);
+    for (var i = 0; i < shape.length; i++) {
+      cShape[i] = shape[i];
+      cStridesSrc[i] = strides[i];
     }
-
-    final limit = shape[dim];
-    for (var i = 0; i < limit; i++) {
-      _copyStridedRecursiveFast(
-        dest,
-        stridesSrc,
-        stridesDest,
-        dim + 1,
-        offsetSrc + i * stridesSrc[dim],
-        offsetDest + i * stridesDest[dim],
-      );
+    try {
+      if (dtype == DType.float64) {
+        s_flatten_double(
+          pointer.cast(),
+          cStridesSrc,
+          dest.pointer.cast(),
+          cShape,
+          shape.length,
+        );
+      } else if (dtype == DType.float32) {
+        s_flatten_float(
+          pointer.cast(),
+          cStridesSrc,
+          dest.pointer.cast(),
+          cShape,
+          shape.length,
+        );
+      } else if (dtype == DType.int64) {
+        s_flatten_int64(
+          pointer.cast(),
+          cStridesSrc,
+          dest.pointer.cast(),
+          cShape,
+          shape.length,
+        );
+      } else if (dtype == DType.int32) {
+        s_flatten_int32(
+          pointer.cast(),
+          cStridesSrc,
+          dest.pointer.cast(),
+          cShape,
+          shape.length,
+        );
+      } else if (dtype == DType.complex128) {
+        s_flatten_complex128(
+          pointer.cast(),
+          cStridesSrc,
+          dest.pointer.cast(),
+          cShape,
+          shape.length,
+        );
+      } else if (dtype == DType.complex64) {
+        s_flatten_complex64(
+          pointer.cast(),
+          cStridesSrc,
+          dest.pointer.cast(),
+          cShape,
+          shape.length,
+        );
+      } else if (dtype == DType.boolean) {
+        s_flatten_boolean(
+          pointer.cast(),
+          cStridesSrc,
+          dest.pointer.cast(),
+          cShape,
+          shape.length,
+        );
+      } else {
+        throw UnimplementedError('Type $dtype not supported yet');
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesSrc);
     }
   }
 
@@ -2392,36 +2438,81 @@ final class NDArray<T> implements ffi.Finalizable {
 
   @override
   int get hashCode {
-    var hash = Object.hash(dtype, Object.hashAll(shape));
+    var baseHash = Object.hash(dtype, Object.hashAll(shape));
 
-    // 1. High-speed direct in-place rolling hash for contiguous arrays
-    if (isContiguous) {
-      final len = data.length;
-      for (var i = 0; i < len; i++) {
-        hash = Object.hash(hash, data[i]);
+    final int elementsHash;
+    final cShape = malloc<ffi.Int>(shape.length);
+    final cStrides = malloc<ffi.Int>(strides.length);
+    for (var i = 0; i < shape.length; i++) {
+      cShape[i] = shape[i];
+      cStrides[i] = strides[i];
+    }
+    try {
+      if (dtype == DType.float64) {
+        elementsHash = s_hash_double(
+          pointer.cast(),
+          cStrides,
+          cShape,
+          shape.length,
+          isContiguous ? 1 : 0,
+        );
+      } else if (dtype == DType.float32) {
+        elementsHash = s_hash_float(
+          pointer.cast(),
+          cStrides,
+          cShape,
+          shape.length,
+          isContiguous ? 1 : 0,
+        );
+      } else if (dtype == DType.int64) {
+        elementsHash = s_hash_int64(
+          pointer.cast(),
+          cStrides,
+          cShape,
+          shape.length,
+          isContiguous ? 1 : 0,
+        );
+      } else if (dtype == DType.int32) {
+        elementsHash = s_hash_int32(
+          pointer.cast(),
+          cStrides,
+          cShape,
+          shape.length,
+          isContiguous ? 1 : 0,
+        );
+      } else if (dtype == DType.complex128) {
+        elementsHash = s_hash_complex128(
+          pointer.cast(),
+          cStrides,
+          cShape,
+          shape.length,
+          isContiguous ? 1 : 0,
+        );
+      } else if (dtype == DType.complex64) {
+        elementsHash = s_hash_complex64(
+          pointer.cast(),
+          cStrides,
+          cShape,
+          shape.length,
+          isContiguous ? 1 : 0,
+        );
+      } else if (dtype == DType.boolean) {
+        elementsHash = s_hash_boolean(
+          pointer.cast(),
+          cStrides,
+          cShape,
+          shape.length,
+          isContiguous ? 1 : 0,
+        );
+      } else {
+        throw UnimplementedError('Type $dtype not supported yet');
       }
-      return hash;
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStrides);
     }
 
-    // 2. Zero-allocation recursive rolling hash walker
-    return _hashRecursive(this, List<int>.filled(shape.length, 0), 0, hash);
-  }
-
-  static int _hashRecursive(
-    NDArray a,
-    List<int> indices,
-    int dim,
-    int currentHash,
-  ) {
-    if (dim == a.shape.length) {
-      return Object.hash(currentHash, a.getCell(indices));
-    }
-    var hash = currentHash;
-    for (var i = 0; i < a.shape[dim]; i++) {
-      indices[dim] = i;
-      hash = _hashRecursive(a, indices, dim + 1, hash);
-    }
-    return hash;
+    return Object.hash(baseHash, elementsHash);
   }
 }
 

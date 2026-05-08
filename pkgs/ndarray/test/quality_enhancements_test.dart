@@ -2218,6 +2218,151 @@ void main() {
         expect(intDbl.toList(), [true, true]);
       }),
     );
+
+    test(
+      'FFI native C flatten() and hashCode() correctness and invariants across all DTypes',
+      () => NDArray.scope(() {
+        // 1. Float64
+        final f64 = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final f64T = f64.transposed;
+        final f64Flat = f64T.flatten();
+        expect(f64Flat.isContiguous, true);
+        expect(f64Flat.toList(), [1.0, 3.0, 2.0, 4.0]);
+        final f64Contig = NDArray.fromList(
+          [1.0, 3.0, 2.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        expect(f64T == f64Contig, true);
+        expect(f64T.hashCode == f64Contig.hashCode, true);
+
+        // 2. Float32
+        final f32 = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float32,
+        );
+        final f32T = f32.transposed;
+        final f32Flat = f32T.flatten();
+        expect(f32Flat.isContiguous, true);
+        expect(f32Flat.toList(), [1.0, 3.0, 2.0, 4.0]);
+        final f32Contig = NDArray.fromList(
+          [1.0, 3.0, 2.0, 4.0],
+          [2, 2],
+          DType.float32,
+        );
+        expect(f32T == f32Contig, true);
+        expect(f32T.hashCode == f32Contig.hashCode, true);
+
+        // 3. Int64
+        final i64 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int64);
+        final i64T = i64.transposed;
+        final i64Flat = i64T.flatten();
+        expect(i64Flat.isContiguous, true);
+        expect(i64Flat.toList(), [1, 3, 2, 4]);
+        final i64Contig = NDArray.fromList([1, 3, 2, 4], [2, 2], DType.int64);
+        expect(i64T == i64Contig, true);
+        expect(i64T.hashCode == i64Contig.hashCode, true);
+
+        // 4. Int32
+        final i32 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+        final i32T = i32.transposed;
+        final i32Flat = i32T.flatten();
+        expect(i32Flat.isContiguous, true);
+        expect(i32Flat.toList(), [1, 3, 2, 4]);
+        final i32Contig = NDArray.fromList([1, 3, 2, 4], [2, 2], DType.int32);
+        expect(i32T == i32Contig, true);
+        expect(i32T.hashCode == i32Contig.hashCode, true);
+
+        // 5. Complex128
+        final c128 = NDArray<Complex>.fromList(
+          [
+            Complex(1.0, 1.0),
+            Complex(2.0, 2.0),
+            Complex(3.0, 3.0),
+            Complex(4.0, 4.0),
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+        final c128T = c128.transposed;
+        final c128Flat = c128T.flatten();
+        expect(c128Flat.isContiguous, true);
+        expect(c128Flat.toList(), [
+          Complex(1.0, 1.0),
+          Complex(3.0, 3.0),
+          Complex(2.0, 2.0),
+          Complex(4.0, 4.0),
+        ]);
+        final c128Contig = NDArray<Complex>.fromList(
+          [
+            Complex(1.0, 1.0),
+            Complex(3.0, 3.0),
+            Complex(2.0, 2.0),
+            Complex(4.0, 4.0),
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+        expect(c128T == c128Contig, true);
+        expect(c128T.hashCode == c128Contig.hashCode, true);
+
+        // 6. Complex64
+        final c64 = NDArray<Complex>.fromList(
+          [
+            Complex(1.0, 1.0),
+            Complex(2.0, 2.0),
+            Complex(3.0, 3.0),
+            Complex(4.0, 4.0),
+          ],
+          [2, 2],
+          DType.complex64,
+        );
+        final c64T = c64.transposed;
+        final c64Flat = c64T.flatten();
+        expect(c64Flat.isContiguous, true);
+        expect(c64Flat.toList(), [
+          Complex(1.0, 1.0),
+          Complex(3.0, 3.0),
+          Complex(2.0, 2.0),
+          Complex(4.0, 4.0),
+        ]);
+        final c64Contig = NDArray<Complex>.fromList(
+          [
+            Complex(1.0, 1.0),
+            Complex(3.0, 3.0),
+            Complex(2.0, 2.0),
+            Complex(4.0, 4.0),
+          ],
+          [2, 2],
+          DType.complex64,
+        );
+        expect(c64T == c64Contig, true);
+        expect(c64T.hashCode == c64Contig.hashCode, true);
+
+        // 7. Boolean
+        final b = NDArray.fromList(
+          [true, false, true, false],
+          [2, 2],
+          DType.boolean,
+        );
+        final bT = b.transposed;
+        final bFlat = bT.flatten();
+        expect(bFlat.isContiguous, true);
+        expect(bFlat.toList(), [true, true, false, false]);
+        final bContig = NDArray.fromList(
+          [true, true, false, false],
+          [2, 2],
+          DType.boolean,
+        );
+        expect(bT == bContig, true);
+        expect(bT.hashCode == bContig.hashCode, true);
+      }),
+    );
   });
 }
 

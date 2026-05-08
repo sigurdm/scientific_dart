@@ -74,6 +74,30 @@ external void native_argsort_int32(
   int size,
 );
 
+/// Zero-allocation optimized direct C memcmp block byte compare.
+@ffi.Native<
+  ffi.Int Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Void>, ffi.Size)
+>()
+external int custom_memcmp(
+  ffi.Pointer<ffi.Void> s1,
+  ffi.Pointer<ffi.Void> s2,
+  int n,
+);
+
+/// Hardware-speed direct C memset block zero-fill initialization.
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Size)>()
+external void native_zero_memory(ffi.Pointer<ffi.Void> ptr, int bytes);
+
+/// Hardware-speed direct C memcpy block copy.
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Void>, ffi.Size)
+>()
+external void custom_memcpy(
+  ffi.Pointer<ffi.Void> dest,
+  ffi.Pointer<ffi.Void> src,
+  int n,
+);
+
 /// ----------------------------------------------------------------------------
 /// Double Precision (Float64) Flat Contiguous Kernels
 /// ----------------------------------------------------------------------------
@@ -84,7 +108,7 @@ external void native_argsort_int32(
     ffi.Pointer<ffi.Double>,
     ffi.Int,
   )
->(isLeaf: true)
+>()
 external void v_add_double(
   ffi.Pointer<ffi.Double> a,
   ffi.Pointer<ffi.Double> b,
@@ -99,7 +123,7 @@ external void v_add_double(
     ffi.Pointer<ffi.Double>,
     ffi.Int,
   )
->(isLeaf: true)
+>()
 external void v_sub_double(
   ffi.Pointer<ffi.Double> a,
   ffi.Pointer<ffi.Double> b,
@@ -114,7 +138,7 @@ external void v_sub_double(
     ffi.Pointer<ffi.Double>,
     ffi.Int,
   )
->(isLeaf: true)
+>()
 external void v_mul_double(
   ffi.Pointer<ffi.Double> a,
   ffi.Pointer<ffi.Double> b,
@@ -129,7 +153,7 @@ external void v_mul_double(
     ffi.Pointer<ffi.Double>,
     ffi.Int,
   )
->(isLeaf: true)
+>()
 external void v_div_double(
   ffi.Pointer<ffi.Double> a,
   ffi.Pointer<ffi.Double> b,
@@ -139,7 +163,7 @@ external void v_div_double(
 
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
->(isLeaf: true)
+>()
 external void v_sin_double(
   ffi.Pointer<ffi.Double> src,
   ffi.Pointer<ffi.Double> res,
@@ -148,7 +172,7 @@ external void v_sin_double(
 
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
->(isLeaf: true)
+>()
 external void v_cos_double(
   ffi.Pointer<ffi.Double> src,
   ffi.Pointer<ffi.Double> res,
@@ -157,7 +181,7 @@ external void v_cos_double(
 
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
->(isLeaf: true)
+>()
 external void v_exp_double(
   ffi.Pointer<ffi.Double> src,
   ffi.Pointer<ffi.Double> res,
@@ -173,10 +197,10 @@ external void v_log_double(
   int size,
 );
 
-@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int)>(isLeaf: true)
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
 external double r_sum_double(ffi.Pointer<ffi.Double> src, int size);
 
-@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int)>(isLeaf: true)
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
 external double r_prod_double(ffi.Pointer<ffi.Double> src, int size);
 
 /// ----------------------------------------------------------------------------
@@ -439,7 +463,7 @@ external void s_div_complex(
     ffi.Pointer<ffi.Float>,
     ffi.Int,
   )
->(isLeaf: true)
+>()
 external void v_add_float(
   ffi.Pointer<ffi.Float> a,
   ffi.Pointer<ffi.Float> b,
@@ -454,7 +478,7 @@ external void v_add_float(
     ffi.Pointer<ffi.Float>,
     ffi.Int,
   )
->(isLeaf: true)
+>()
 external void v_sub_float(
   ffi.Pointer<ffi.Float> a,
   ffi.Pointer<ffi.Float> b,
@@ -469,7 +493,7 @@ external void v_sub_float(
     ffi.Pointer<ffi.Float>,
     ffi.Int,
   )
->(isLeaf: true)
+>()
 external void v_mul_float(
   ffi.Pointer<ffi.Float> a,
   ffi.Pointer<ffi.Float> b,
@@ -484,7 +508,7 @@ external void v_mul_float(
     ffi.Pointer<ffi.Float>,
     ffi.Int,
   )
->(isLeaf: true)
+>()
 external void v_div_float(
   ffi.Pointer<ffi.Float> a,
   ffi.Pointer<ffi.Float> b,
@@ -494,7 +518,7 @@ external void v_div_float(
 
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
->(isLeaf: true)
+>()
 external void v_sin_float(
   ffi.Pointer<ffi.Float> src,
   ffi.Pointer<ffi.Float> res,
@@ -503,7 +527,7 @@ external void v_sin_float(
 
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
->(isLeaf: true)
+>()
 external void v_cos_float(
   ffi.Pointer<ffi.Float> src,
   ffi.Pointer<ffi.Float> res,
@@ -512,7 +536,7 @@ external void v_cos_float(
 
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
->(isLeaf: true)
+>()
 external void v_exp_float(
   ffi.Pointer<ffi.Float> src,
   ffi.Pointer<ffi.Float> res,
@@ -528,10 +552,10 @@ external void v_log_float(
   int size,
 );
 
-@ffi.Native<ffi.Float Function(ffi.Pointer<ffi.Float>, ffi.Int)>(isLeaf: true)
+@ffi.Native<ffi.Float Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
 external double r_sum_float(ffi.Pointer<ffi.Float> src, int size);
 
-@ffi.Native<ffi.Float Function(ffi.Pointer<ffi.Float>, ffi.Int)>(isLeaf: true)
+@ffi.Native<ffi.Float Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
 external double r_prod_float(ffi.Pointer<ffi.Float> src, int size);
 
 /// ----------------------------------------------------------------------------
@@ -813,29 +837,417 @@ external void v_randint_int32(
   int high,
   int seed,
 );
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Double, ffi.Int)>(
-  isLeaf: true,
-)
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Double, ffi.Int)>()
 external void v_fill_double(
   ffi.Pointer<ffi.Double> res,
   double value,
   int size,
 );
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Float, ffi.Int)>(
-  isLeaf: true,
-)
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Float, ffi.Int)>()
 external void v_fill_float(ffi.Pointer<ffi.Float> res, double value, int size);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int64>, ffi.Int64, ffi.Int)>(
-  isLeaf: true,
-)
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int64>, ffi.Int64, ffi.Int)>()
 external void v_fill_int64(ffi.Pointer<ffi.Int64> res, int value, int size);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int32>, ffi.Int32, ffi.Int)>(
-  isLeaf: true,
-)
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int32>, ffi.Int32, ffi.Int)>()
 external void v_fill_int32(ffi.Pointer<ffi.Int32> res, int value, int size);
+
+/// ----------------------------------------------------------------------------
+/// Native C High-Speed Strided Flattening/Copying Kernels
+/// ----------------------------------------------------------------------------
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_flatten_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> dest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_flatten_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Float> dest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_flatten_int64(
+  ffi.Pointer<ffi.Int64> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int64> dest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_flatten_int32(
+  ffi.Pointer<ffi.Int32> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int32> dest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_flatten_complex128(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> dest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_flatten_complex64(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Float> dest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_flatten_boolean(
+  ffi.Pointer<ffi.Uint8> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Uint8> dest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+/// ----------------------------------------------------------------------------
+/// Native C High-Speed Elements Hashing Kernels
+/// ----------------------------------------------------------------------------
+@ffi.Native<
+  ffi.Uint32 Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external int s_hash_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int is_contiguous,
+);
+
+@ffi.Native<
+  ffi.Uint32 Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external int s_hash_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int is_contiguous,
+);
+
+@ffi.Native<
+  ffi.Uint32 Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external int s_hash_int64(
+  ffi.Pointer<ffi.Int64> a,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int is_contiguous,
+);
+
+@ffi.Native<
+  ffi.Uint32 Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external int s_hash_int32(
+  ffi.Pointer<ffi.Int32> a,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int is_contiguous,
+);
+
+@ffi.Native<
+  ffi.Uint32 Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external int s_hash_complex128(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int is_contiguous,
+);
+
+@ffi.Native<
+  ffi.Uint32 Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external int s_hash_complex64(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int is_contiguous,
+);
+
+@ffi.Native<
+  ffi.Uint32 Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external int s_hash_boolean(
+  ffi.Pointer<ffi.Uint8> a,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int is_contiguous,
+);
+
+typedef ptrdiff_t = ffi.Long;
+typedef Dartptrdiff_t = int;
+
+final class max_align_t extends ffi.Opaque {}
+
+typedef __u_char = ffi.UnsignedChar;
+typedef Dart__u_char = int;
+typedef __u_short = ffi.UnsignedShort;
+typedef Dart__u_short = int;
+typedef __u_int = ffi.UnsignedInt;
+typedef Dart__u_int = int;
+typedef __u_long = ffi.UnsignedLong;
+typedef Dart__u_long = int;
+typedef __int8_t = ffi.SignedChar;
+typedef Dart__int8_t = int;
+typedef __uint8_t = ffi.UnsignedChar;
+typedef Dart__uint8_t = int;
+typedef __int16_t = ffi.Short;
+typedef Dart__int16_t = int;
+typedef __uint16_t = ffi.UnsignedShort;
+typedef Dart__uint16_t = int;
+typedef __int32_t = ffi.Int;
+typedef Dart__int32_t = int;
+typedef __uint32_t = ffi.UnsignedInt;
+typedef Dart__uint32_t = int;
+typedef __int64_t = ffi.Long;
+typedef Dart__int64_t = int;
+typedef __uint64_t = ffi.UnsignedLong;
+typedef Dart__uint64_t = int;
+typedef __int_least8_t = __int8_t;
+typedef __uint_least8_t = __uint8_t;
+typedef __int_least16_t = __int16_t;
+typedef __uint_least16_t = __uint16_t;
+typedef __int_least32_t = __int32_t;
+typedef __uint_least32_t = __uint32_t;
+typedef __int_least64_t = __int64_t;
+typedef __uint_least64_t = __uint64_t;
+typedef __quad_t = ffi.Long;
+typedef Dart__quad_t = int;
+typedef __u_quad_t = ffi.UnsignedLong;
+typedef Dart__u_quad_t = int;
+typedef __intmax_t = ffi.Long;
+typedef Dart__intmax_t = int;
+typedef __uintmax_t = ffi.UnsignedLong;
+typedef Dart__uintmax_t = int;
+typedef __dev_t = ffi.UnsignedLong;
+typedef Dart__dev_t = int;
+typedef __uid_t = ffi.UnsignedInt;
+typedef Dart__uid_t = int;
+typedef __gid_t = ffi.UnsignedInt;
+typedef Dart__gid_t = int;
+typedef __ino_t = ffi.UnsignedLong;
+typedef Dart__ino_t = int;
+typedef __ino64_t = ffi.UnsignedLong;
+typedef Dart__ino64_t = int;
+typedef __mode_t = ffi.UnsignedInt;
+typedef Dart__mode_t = int;
+typedef __nlink_t = ffi.UnsignedLong;
+typedef Dart__nlink_t = int;
+typedef __off_t = ffi.Long;
+typedef Dart__off_t = int;
+typedef __off64_t = ffi.Long;
+typedef Dart__off64_t = int;
+typedef __pid_t = ffi.Int;
+typedef Dart__pid_t = int;
+
+final class __fsid_t extends ffi.Struct {
+  @ffi.Array.multi([2])
+  external ffi.Array<ffi.Int> __val;
+}
+
+typedef __clock_t = ffi.Long;
+typedef Dart__clock_t = int;
+typedef __rlim_t = ffi.UnsignedLong;
+typedef Dart__rlim_t = int;
+typedef __rlim64_t = ffi.UnsignedLong;
+typedef Dart__rlim64_t = int;
+typedef __id_t = ffi.UnsignedInt;
+typedef Dart__id_t = int;
+typedef __time_t = ffi.Long;
+typedef Dart__time_t = int;
+typedef __useconds_t = ffi.UnsignedInt;
+typedef Dart__useconds_t = int;
+typedef __suseconds_t = ffi.Long;
+typedef Dart__suseconds_t = int;
+typedef __suseconds64_t = ffi.Long;
+typedef Dart__suseconds64_t = int;
+typedef __daddr_t = ffi.Int;
+typedef Dart__daddr_t = int;
+typedef __key_t = ffi.Int;
+typedef Dart__key_t = int;
+typedef __clockid_t = ffi.Int;
+typedef Dart__clockid_t = int;
+typedef __timer_t = ffi.Pointer<ffi.Void>;
+typedef __blksize_t = ffi.Long;
+typedef Dart__blksize_t = int;
+typedef __blkcnt_t = ffi.Long;
+typedef Dart__blkcnt_t = int;
+typedef __blkcnt64_t = ffi.Long;
+typedef Dart__blkcnt64_t = int;
+typedef __fsblkcnt_t = ffi.UnsignedLong;
+typedef Dart__fsblkcnt_t = int;
+typedef __fsblkcnt64_t = ffi.UnsignedLong;
+typedef Dart__fsblkcnt64_t = int;
+typedef __fsfilcnt_t = ffi.UnsignedLong;
+typedef Dart__fsfilcnt_t = int;
+typedef __fsfilcnt64_t = ffi.UnsignedLong;
+typedef Dart__fsfilcnt64_t = int;
+typedef __fsword_t = ffi.Long;
+typedef Dart__fsword_t = int;
+typedef __ssize_t = ffi.Long;
+typedef Dart__ssize_t = int;
+typedef __syscall_slong_t = ffi.Long;
+typedef Dart__syscall_slong_t = int;
+typedef __syscall_ulong_t = ffi.UnsignedLong;
+typedef Dart__syscall_ulong_t = int;
+typedef __loff_t = __off64_t;
+typedef __caddr_t = ffi.Pointer<ffi.Char>;
+typedef __intptr_t = ffi.Long;
+typedef Dart__intptr_t = int;
+typedef __socklen_t = ffi.UnsignedInt;
+typedef Dart__socklen_t = int;
+typedef __sig_atomic_t = ffi.Int;
+typedef Dart__sig_atomic_t = int;
+typedef int_least8_t = __int_least8_t;
+typedef int_least16_t = __int_least16_t;
+typedef int_least32_t = __int_least32_t;
+typedef int_least64_t = __int_least64_t;
+typedef uint_least8_t = __uint_least8_t;
+typedef uint_least16_t = __uint_least16_t;
+typedef uint_least32_t = __uint_least32_t;
+typedef uint_least64_t = __uint_least64_t;
+typedef int_fast8_t = ffi.SignedChar;
+typedef Dartint_fast8_t = int;
+typedef int_fast16_t = ffi.Long;
+typedef Dartint_fast16_t = int;
+typedef int_fast32_t = ffi.Long;
+typedef Dartint_fast32_t = int;
+typedef int_fast64_t = ffi.Long;
+typedef Dartint_fast64_t = int;
+typedef uint_fast8_t = ffi.UnsignedChar;
+typedef Dartuint_fast8_t = int;
+typedef uint_fast16_t = ffi.UnsignedLong;
+typedef Dartuint_fast16_t = int;
+typedef uint_fast32_t = ffi.UnsignedLong;
+typedef Dartuint_fast32_t = int;
+typedef uint_fast64_t = ffi.UnsignedLong;
+typedef Dartuint_fast64_t = int;
+typedef intmax_t = __intmax_t;
+typedef uintmax_t = __uintmax_t;
 
 /// ----------------------------------------------------------------------------
 /// Binary-Compatible Complex Number Type (Matches kiss_fft_cpx and num_dart.Complex)
@@ -850,26 +1262,246 @@ final class cpx_t extends ffi.Struct {
   external double i;
 }
 
-/// Zero-allocation optimized direct C memcmp block byte compare.
-@ffi.Native<
-  ffi.Int Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Void>, ffi.Size)
->()
-external int custom_memcmp(
-  ffi.Pointer<ffi.Void> s1,
-  ffi.Pointer<ffi.Void> s2,
-  int n,
-);
+final class cpx_f_t extends ffi.Struct {
+  /// real part
+  @ffi.Float()
+  external double r;
 
-/// Hardware-speed direct C memset block zero-fill initialization.
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Size)>(isLeaf: true)
-external void native_zero_memory(ffi.Pointer<ffi.Void> ptr, int bytes);
+  /// imaginary part
+  @ffi.Float()
+  external double i;
+}
 
-/// Hardware-speed direct C memcpy block copy.
-@ffi.Native<
-  ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Void>, ffi.Size)
->(isLeaf: true)
-external void custom_memcpy(
-  ffi.Pointer<ffi.Void> dest,
-  ffi.Pointer<ffi.Void> src,
-  int bytes,
-);
+const int NULL = 0;
+
+const int _STDINT_H = 1;
+
+const int _FEATURES_H = 1;
+
+const int _DEFAULT_SOURCE = 1;
+
+const int __GLIBC_USE_ISOC2Y = 1;
+
+const int __GLIBC_USE_ISOC23 = 1;
+
+const int __USE_ISOC11 = 1;
+
+const int __USE_ISOC99 = 1;
+
+const int __USE_ISOC95 = 1;
+
+const int _POSIX_SOURCE = 1;
+
+const int _POSIX_C_SOURCE = 200809;
+
+const int __USE_POSIX = 1;
+
+const int __USE_POSIX2 = 1;
+
+const int __USE_POSIX199309 = 1;
+
+const int __USE_POSIX199506 = 1;
+
+const int __USE_XOPEN2K = 1;
+
+const int __USE_XOPEN2K8 = 1;
+
+const int _ATFILE_SOURCE = 1;
+
+const int __WORDSIZE = 64;
+
+const int __WORDSIZE_TIME64_COMPAT32 = 1;
+
+const int __SYSCALL_WORDSIZE = 64;
+
+const int __TIMESIZE = 64;
+
+const int __USE_TIME_BITS64 = 1;
+
+const int __USE_MISC = 1;
+
+const int __USE_ATFILE = 1;
+
+const int __USE_FORTIFY_LEVEL = 0;
+
+const int __GLIBC_USE_DEPRECATED_GETS = 0;
+
+const int __GLIBC_USE_DEPRECATED_SCANF = 0;
+
+const int __GLIBC_USE_C23_STRTOL = 1;
+
+const int _STDC_PREDEF_H = 1;
+
+const int __STDC_IEC_559__ = 1;
+
+const int __STDC_IEC_60559_BFP__ = 201404;
+
+const int __STDC_IEC_559_COMPLEX__ = 1;
+
+const int __STDC_IEC_60559_COMPLEX__ = 201404;
+
+const int __STDC_ISO_10646__ = 201706;
+
+const int __GNU_LIBRARY__ = 6;
+
+const int __GLIBC__ = 2;
+
+const int __GLIBC_MINOR__ = 42;
+
+const int _SYS_CDEFS_H = 1;
+
+const int __THROW = 1;
+
+const int __THROWNL = 1;
+
+const int __glibc_c99_flexarr_available = 1;
+
+const int __LDOUBLE_REDIRECTS_TO_FLOAT128_ABI = 0;
+
+const int __HAVE_GENERIC_SELECTION = 0;
+
+const int __GLIBC_USE_LIB_EXT2 = 1;
+
+const int __GLIBC_USE_IEC_60559_BFP_EXT = 1;
+
+const int __GLIBC_USE_IEC_60559_BFP_EXT_C23 = 1;
+
+const int __GLIBC_USE_IEC_60559_EXT = 1;
+
+const int __GLIBC_USE_IEC_60559_FUNCS_EXT = 1;
+
+const int __GLIBC_USE_IEC_60559_FUNCS_EXT_C23 = 1;
+
+const int __GLIBC_USE_IEC_60559_TYPES_EXT = 1;
+
+const int _BITS_TYPES_H = 1;
+
+const int _BITS_TYPESIZES_H = 1;
+
+const int __OFF_T_MATCHES_OFF64_T = 1;
+
+const int __INO_T_MATCHES_INO64_T = 1;
+
+const int __RLIM_T_MATCHES_RLIM64_T = 1;
+
+const int __STATFS_MATCHES_STATFS64 = 1;
+
+const int __KERNEL_OLD_TIMEVAL_MATCHES_TIMEVAL64 = 1;
+
+const int __FD_SETSIZE = 1024;
+
+const int _BITS_TIME64_H = 1;
+
+const int _BITS_WCHAR_H = 1;
+
+const int __WCHAR_MAX = 2147483647;
+
+const int __WCHAR_MIN = -2147483648;
+
+const int _BITS_STDINT_INTN_H = 1;
+
+const int _BITS_STDINT_UINTN_H = 1;
+
+const int _BITS_STDINT_LEAST_H = 1;
+
+const int INT8_MIN = -128;
+
+const int INT16_MIN = -32768;
+
+const int INT32_MIN = -2147483648;
+
+const int INT64_MIN = -9223372036854775808;
+
+const int INT8_MAX = 127;
+
+const int INT16_MAX = 32767;
+
+const int INT32_MAX = 2147483647;
+
+const int INT64_MAX = 9223372036854775807;
+
+const int UINT8_MAX = 255;
+
+const int UINT16_MAX = 65535;
+
+const int UINT32_MAX = 4294967295;
+
+const int UINT64_MAX = -1;
+
+const int INT_LEAST8_MIN = -128;
+
+const int INT_LEAST16_MIN = -32768;
+
+const int INT_LEAST32_MIN = -2147483648;
+
+const int INT_LEAST64_MIN = -9223372036854775808;
+
+const int INT_LEAST8_MAX = 127;
+
+const int INT_LEAST16_MAX = 32767;
+
+const int INT_LEAST32_MAX = 2147483647;
+
+const int INT_LEAST64_MAX = 9223372036854775807;
+
+const int UINT_LEAST8_MAX = 255;
+
+const int UINT_LEAST16_MAX = 65535;
+
+const int UINT_LEAST32_MAX = 4294967295;
+
+const int UINT_LEAST64_MAX = -1;
+
+const int INT_FAST8_MIN = -128;
+
+const int INT_FAST16_MIN = -9223372036854775808;
+
+const int INT_FAST32_MIN = -9223372036854775808;
+
+const int INT_FAST64_MIN = -9223372036854775808;
+
+const int INT_FAST8_MAX = 127;
+
+const int INT_FAST16_MAX = 9223372036854775807;
+
+const int INT_FAST32_MAX = 9223372036854775807;
+
+const int INT_FAST64_MAX = 9223372036854775807;
+
+const int UINT_FAST8_MAX = 255;
+
+const int UINT_FAST16_MAX = -1;
+
+const int UINT_FAST32_MAX = -1;
+
+const int UINT_FAST64_MAX = -1;
+
+const int INTPTR_MIN = -9223372036854775808;
+
+const int INTPTR_MAX = 9223372036854775807;
+
+const int UINTPTR_MAX = -1;
+
+const int INTMAX_MIN = -9223372036854775808;
+
+const int INTMAX_MAX = 9223372036854775807;
+
+const int UINTMAX_MAX = -1;
+
+const int PTRDIFF_MIN = -9223372036854775808;
+
+const int PTRDIFF_MAX = 9223372036854775807;
+
+const int SIG_ATOMIC_MIN = -2147483648;
+
+const int SIG_ATOMIC_MAX = 2147483647;
+
+const int SIZE_MAX = -1;
+
+const int WCHAR_MIN = -2147483648;
+
+const int WCHAR_MAX = 2147483647;
+
+const int WINT_MIN = 0;
+
+const int WINT_MAX = 4294967295;
