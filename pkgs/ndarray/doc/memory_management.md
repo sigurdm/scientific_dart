@@ -114,3 +114,40 @@ void processInLoop(NDArray<Float64> input) {
 ```
 
 To create a buffer of the right shape for the result of a broadcasted operation, you can use [NDArray.broadcastShapes].
+
+---
+
+## Crucial Gotcha: Returning Views from Scopes
+
+When returning a **view** (such as a `reshape`, `transpose`, `slice`, or index-view) of an internally allocated array from a scope, you must be extremely careful.
+
+### The View Resource Tracking Design
+
+The scope mechanism only tracks **allocating parent arrays** (where `_parent == null`), not their zero-copy views. This is because a view simply points to its parent's raw FFI memory block.
+
+* If you attempt to call `.detachFromScope()` or `.detachToParentScope()` on a returned **view**, the call is a **silent no-op** (since views are not registered in the scope's tracked list).
+* As a result, when the scope exits, the **parent allocating array** is automatically disposed, freeing the underlying C memory!
+* The returned view will now point to **freed C memory**, leading to extremely dangerous **Use-After-Free (UAF) undefined behavior** (random corrupt values, silent data races, or sudden segmentation faults).
+
+### The Solution: Detach the Parent, NOT the View
+
+To return a view safely, you must promote/detach the **actual memory-allocating parent array** from the scope before returning the view:
+
+```dart
+NDArray<Float64> getReshapedSamples() {
+  return NDArray.scope(() {
+    // 1. Allocate parent array (registered inside the scope)
+    final parent = NDArray<Float64>.create([1000], DType.float64);
+    
+    // Perform operations...
+    
+    // 2. Promote the actual parent allocating array out of the scope!
+    parent.detachToParentScope();
+    
+    // 3. Obtain the view and return it safely
+    final view = parent.reshape([10, 100]);
+    return view;
+  }); // Intermediate arrays are freed, but 'parent' survives, keeping 'view' memory safe!
+}
+```
+
