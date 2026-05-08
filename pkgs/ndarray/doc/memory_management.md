@@ -117,21 +117,16 @@ To create a buffer of the right shape for the result of a broadcasted operation,
 
 ---
 
-## Crucial Gotcha: Returning Views from Scopes
+## Returning Views from Scopes
 
-When returning a **view** (such as a `reshape`, `transpose`, `slice`, or index-view) of an internally allocated array from a scope, you must be extremely careful.
+When returning a **view** (such as a `reshape`, `transpose`, `slice`, or index-view) of an internally allocated array from a scope, the memory management is handled **100% automatically**.
 
-### The View Resource Tracking Design
+### How it Works
 
-The scope mechanism only tracks **allocating parent arrays** (where `_parent == null`), not their zero-copy views. This is because a view simply points to its parent's raw FFI memory block.
+The scope mechanism tracks **allocating parent arrays** (where `_parent == null`), not their zero-copy views. 
+However, the detaching methods (`detachFromScope()` and `detachToParentScope()`) are engineered to **automatically walk the view parent chain and detach the root memory-allocating parent array**!
 
-* If you attempt to call `.detachFromScope()` or `.detachToParentScope()` on a returned **view**, the call is a **silent no-op** (since views are not registered in the scope's tracked list).
-* As a result, when the scope exits, the **parent allocating array** is automatically disposed, freeing the underlying C memory!
-* The returned view will now point to **freed C memory**, leading to extremely dangerous **Use-After-Free (UAF) undefined behavior** (random corrupt values, silent data races, or sudden segmentation faults).
-
-### The Solution: Detach the Parent, NOT the View
-
-To return a view safely, you must promote/detach the **actual memory-allocating parent array** from the scope before returning the view:
+Therefore, you can call detaching methods directly on the returned view, and the system will seamlessly promote the parent memory block, keeping the view fully valid and safe outside the scope:
 
 ```dart
 NDArray<Float64> getReshapedSamples() {
@@ -139,15 +134,14 @@ NDArray<Float64> getReshapedSamples() {
     // 1. Allocate parent array (registered inside the scope)
     final parent = NDArray<Float64>.create([1000], DType.float64);
     
-    // Perform operations...
-    
-    // 2. Promote the actual parent allocating array out of the scope!
-    parent.detachToParentScope();
-    
-    // 3. Obtain the view and return it safely
+    // 2. Reshape to get a view
     final view = parent.reshape([10, 100]);
-    return view;
-  }); // Intermediate arrays are freed, but 'parent' survives, keeping 'view' memory safe!
+    
+    // 3. Call detach directly on the view!
+    // The parent array is automatically detached behind the scenes, keeping the view memory 100% safe!
+    return view.detachToParentScope();
+  }); 
 }
 ```
+
 
