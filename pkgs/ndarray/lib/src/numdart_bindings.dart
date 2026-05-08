@@ -1098,6 +1098,73 @@ external int s_hash_boolean(
   int is_contiguous,
 );
 
+/// ----------------------------------------------------------------------------
+/// Native C High-Speed Random Distribution Generators
+/// ----------------------------------------------------------------------------
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int,
+    ffi.Double,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void v_poisson_int64(
+  ffi.Pointer<ffi.Int64> res,
+  int size,
+  double lam,
+  int seed,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Int,
+    ffi.Double,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void v_poisson_int32(
+  ffi.Pointer<ffi.Int32> res,
+  int size,
+  double lam,
+  int seed,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Double,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void v_binomial_int64(
+  ffi.Pointer<ffi.Int64> res,
+  int size,
+  int n,
+  double p,
+  int seed,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Double,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void v_binomial_int32(
+  ffi.Pointer<ffi.Int32> res,
+  int size,
+  int n,
+  double p,
+  int seed,
+);
+
 typedef ptrdiff_t = ffi.Long;
 typedef Dartptrdiff_t = int;
 

@@ -164,4 +164,12 @@ uint32_t s_hash_complex128(const double *a, const int *strides, const int *shape
 uint32_t s_hash_complex64(const float *a, const int *strides, const int *shape, int rank, int is_contiguous);
 uint32_t s_hash_boolean(const uint8_t *a, const int *strides, const int *shape, int rank, int is_contiguous);
 
+// ----------------------------------------------------------------------------
+// Native C High-Speed Random Distribution Generators
+// ----------------------------------------------------------------------------
+void v_poisson_int64(int64_t *res, int size, double lam, unsigned long long seed);
+void v_poisson_int32(int32_t *res, int size, double lam, unsigned long long seed);
+void v_binomial_int64(int64_t *res, int size, int n, double p, unsigned long long seed);
+void v_binomial_int32(int32_t *res, int size, int n, double p, unsigned long long seed);
+
 #endif // CUSTOM_UFUNCS_H

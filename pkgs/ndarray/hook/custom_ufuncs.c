@@ -1468,3 +1468,235 @@ uint32_t s_hash_boolean(const uint8_t *a, const int *strides, const int *shape, 
     }
     return hash;
 }
+
+// ============================================================================
+// 9. NATIVE C HIGH-SPEED RANDOM DISTRIBUTION GENERATORS
+// ============================================================================
+
+void v_poisson_int64(int64_t *res, int size, double lam, unsigned long long seed) {
+    if (res == NULL || size <= 0 || lam <= 0.0) return;
+
+    unsigned long long state = seed ^ 0x5555555555555555ULL;
+
+    if (lam < 30.0) {
+        double limit = exp(-lam);
+        for (int i = 0; i < size; i++) {
+            int k = 0;
+            double p = 1.0;
+            do {
+                k++;
+                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+                double u = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                p *= u;
+            } while (p > limit);
+            res[i] = k - 1;
+        }
+    } else {
+        double stddev = sqrt(lam);
+        int i = 0;
+        while (i < size) {
+            double u1;
+            do {
+                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+                u1 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+            } while (u1 == 0.0);
+
+            state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+            double u2 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+
+            double mag = sqrt(-2.0 * log(u1));
+            double angle = 2.0 * M_PI * u2;
+
+            double z0 = mag * cos(angle);
+            double z1 = mag * sin(angle);
+
+            double val0 = lam + stddev * z0;
+            res[i] = val0 < 0 ? 0 : (int64_t)round(val0);
+
+            if (i + 1 < size) {
+                double val1 = lam + stddev * z1;
+                res[i + 1] = val1 < 0 ? 0 : (int64_t)round(val1);
+            }
+            i += 2;
+        }
+    }
+}
+
+void v_poisson_int32(int32_t *res, int size, double lam, unsigned long long seed) {
+    if (res == NULL || size <= 0 || lam <= 0.0) return;
+
+    unsigned long long state = seed ^ 0x5555555555555555ULL;
+
+    if (lam < 30.0) {
+        double limit = exp(-lam);
+        for (int i = 0; i < size; i++) {
+            int k = 0;
+            double p = 1.0;
+            do {
+                k++;
+                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+                double u = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                p *= u;
+            } while (p > limit);
+            res[i] = k - 1;
+        }
+    } else {
+        double stddev = sqrt(lam);
+        int i = 0;
+        while (i < size) {
+            double u1;
+            do {
+                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+                u1 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+            } while (u1 == 0.0);
+
+            state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+            double u2 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+
+            double mag = sqrt(-2.0 * log(u1));
+            double angle = 2.0 * M_PI * u2;
+
+            double z0 = mag * cos(angle);
+            double z1 = mag * sin(angle);
+
+            double val0 = lam + stddev * z0;
+            res[i] = val0 < 0 ? 0 : (int32_t)round(val0);
+
+            if (i + 1 < size) {
+                double val1 = lam + stddev * z1;
+                res[i + 1] = val1 < 0 ? 0 : (int32_t)round(val1);
+            }
+            i += 2;
+        }
+    }
+}
+
+void v_binomial_int64(int64_t *res, int size, int n, double p, unsigned long long seed) {
+    if (res == NULL || size <= 0 || n < 0 || p < 0.0 || p > 1.0) return;
+
+    unsigned long long state = seed ^ 0x5555555555555555ULL;
+
+    if (n == 0) {
+        for (int i = 0; i < size; i++) res[i] = 0;
+        return;
+    }
+
+    if (n < 50) {
+        for (int i = 0; i < size; i++) {
+            int successes = 0;
+            for (int t = 0; t < n; t++) {
+                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+                double u = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                if (u < p) {
+                    successes++;
+                }
+            }
+            res[i] = successes;
+        }
+    } else {
+        double mean = n * p;
+        double stddev = sqrt(n * p * (1.0 - p));
+
+        if (stddev == 0.0) {
+            for (int i = 0; i < size; i++) {
+                res[i] = (int64_t)round(mean);
+            }
+        } else {
+            int i = 0;
+            while (i < size) {
+                double u1;
+                do {
+                    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+                    u1 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                } while (u1 == 0.0);
+
+                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+                double u2 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+
+                double mag = sqrt(-2.0 * log(u1));
+                double angle = 2.0 * M_PI * u2;
+
+                double z0 = mag * cos(angle);
+                double z1 = mag * sin(angle);
+
+                double val0 = round(mean + stddev * z0);
+                if (val0 < 0) val0 = 0;
+                if (val0 > n) val0 = n;
+                res[i] = (int64_t)val0;
+
+                if (i + 1 < size) {
+                    double val1 = round(mean + stddev * z1);
+                    if (val1 < 0) val1 = 0;
+                    if (val1 > n) val1 = n;
+                    res[i + 1] = (int64_t)val1;
+                }
+                i += 2;
+            }
+        }
+    }
+}
+
+void v_binomial_int32(int32_t *res, int size, int n, double p, unsigned long long seed) {
+    if (res == NULL || size <= 0 || n < 0 || p < 0.0 || p > 1.0) return;
+
+    unsigned long long state = seed ^ 0x5555555555555555ULL;
+
+    if (n == 0) {
+        for (int i = 0; i < size; i++) res[i] = 0;
+        return;
+    }
+
+    if (n < 50) {
+        for (int i = 0; i < size; i++) {
+            int successes = 0;
+            for (int t = 0; t < n; t++) {
+                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+                double u = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                if (u < p) {
+                    successes++;
+                }
+            }
+            res[i] = successes;
+        }
+    } else {
+        double mean = n * p;
+        double stddev = sqrt(n * p * (1.0 - p));
+
+        if (stddev == 0.0) {
+            for (int i = 0; i < size; i++) {
+                res[i] = (int32_t)round(mean);
+            }
+        } else {
+            int i = 0;
+            while (i < size) {
+                double u1;
+                do {
+                    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+                    u1 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                } while (u1 == 0.0);
+
+                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+                double u2 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+
+                double mag = sqrt(-2.0 * log(u1));
+                double angle = 2.0 * M_PI * u2;
+
+                double z0 = mag * cos(angle);
+                double z1 = mag * sin(angle);
+
+                double val0 = round(mean + stddev * z0);
+                if (val0 < 0) val0 = 0;
+                if (val0 > n) val0 = n;
+                res[i] = (int32_t)val0;
+
+                if (i + 1 < size) {
+                    double val1 = round(mean + stddev * z1);
+                    if (val1 < 0) val1 = 0;
+                    if (val1 > n) val1 = n;
+                    res[i + 1] = (int32_t)val1;
+                }
+                i += 2;
+            }
+        }
+    }
+}

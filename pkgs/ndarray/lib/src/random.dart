@@ -254,44 +254,13 @@ NDArray<int> poisson(
 
   final arr = NDArray<int>.create(shape, dtype);
   final rand = random ?? Random();
+  final len = arr.data.length;
+  final seed = rand.nextInt(4294967296);
 
-  if (lam < 30.0) {
-    final limit = math.exp(-lam);
-    for (var i = 0; i < arr.data.length; i++) {
-      var k = 0;
-      var p = 1.0;
-      do {
-        k++;
-        p *= rand.nextDouble();
-      } while (p > limit);
-      arr.data[i] = k - 1;
-    }
+  if (dtype == DType.int64) {
+    v_poisson_int64(arr.pointer.cast<ffi.Int64>(), len, lam, seed);
   } else {
-    final stddev = math.sqrt(lam);
-    final len = arr.data.length;
-    var i = 0;
-    while (i < len) {
-      var u1 = rand.nextDouble();
-      while (u1 == 0.0) {
-        u1 = rand.nextDouble();
-      }
-      final u2 = rand.nextDouble();
-
-      final mag = math.sqrt(-2.0 * math.log(u1));
-      final angle = 2.0 * math.pi * u2;
-
-      final z0 = mag * math.cos(angle);
-      final z1 = mag * math.sin(angle);
-
-      final val0 = (lam + stddev * z0).round();
-      arr.data[i] = val0 < 0 ? 0 : val0;
-
-      if (i + 1 < len) {
-        final val1 = (lam + stddev * z1).round();
-        arr.data[i + 1] = val1 < 0 ? 0 : val1;
-      }
-      i += 2;
-    }
+    v_poisson_int32(arr.pointer.cast<ffi.Int32>(), len, lam, seed);
   }
 
   return arr;
@@ -350,54 +319,13 @@ NDArray<int> binomial(
 
   final arr = NDArray<int>.create(shape, dtype);
   final rand = random ?? Random();
+  final len = arr.data.length;
+  final seed = rand.nextInt(4294967296);
 
-  if (n == 0) {
-    arr.data.fillRange(0, arr.data.length, 0);
-    return arr;
-  }
-
-  if (n < 50) {
-    for (var i = 0; i < arr.data.length; i++) {
-      var successes = 0;
-      for (var t = 0; t < n; t++) {
-        if (rand.nextDouble() < p) {
-          successes++;
-        }
-      }
-      arr.data[i] = successes;
-    }
+  if (dtype == DType.int64) {
+    v_binomial_int64(arr.pointer.cast<ffi.Int64>(), len, n, p, seed);
   } else {
-    final mean = n * p;
-    final stddev = math.sqrt(n * p * (1.0 - p));
-    final len = arr.data.length;
-
-    if (stddev == 0.0) {
-      arr.data.fillRange(0, len, mean.round());
-    } else {
-      var i = 0;
-      while (i < len) {
-        var u1 = rand.nextDouble();
-        while (u1 == 0.0) {
-          u1 = rand.nextDouble();
-        }
-        final u2 = rand.nextDouble();
-
-        final mag = math.sqrt(-2.0 * math.log(u1));
-        final angle = 2.0 * math.pi * u2;
-
-        final z0 = mag * math.cos(angle);
-        final z1 = mag * math.sin(angle);
-
-        final val0 = (mean + stddev * z0).round();
-        arr.data[i] = val0.clamp(0, n);
-
-        if (i + 1 < len) {
-          final val1 = (mean + stddev * z1).round();
-          arr.data[i + 1] = val1.clamp(0, n);
-        }
-        i += 2;
-      }
-    }
+    v_binomial_int32(arr.pointer.cast<ffi.Int32>(), len, n, p, seed);
   }
 
   return arr;
