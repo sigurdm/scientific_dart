@@ -262,32 +262,44 @@ final class NDArray<T> implements ffi.Finalizable {
     }
   }
 
-  /// Removes this array from its automatic disposal scope.
+  /// Recursively locates the root memory-allocating parent array.
+  @internal
+  NDArray get _rootParent {
+    var current = this as NDArray;
+    while (current._parent != null) {
+      current = current._parent!;
+    }
+    return current;
+  }
+
+  /// Removes this array (or its allocating parent) from its automatic disposal scope.
   ///
-  /// Use this when you want an array created inside an [NDArray.scope] to
+  /// Use this when you want an array or view created inside an [NDArray.scope] to
   /// survive after the scope finishes (e.g. when returning it as a result).
   ///
   /// Returns this array to allow for method chaining.
   NDArray<T> detachFromScope() {
+    final root = _rootParent;
     final scope = Zone.current[_scopeKey] as _NDArrayScope?;
-    scope?._untrack(this);
+    scope?._untrack(root);
     return this;
   }
 
-  /// Detaches this array from the current automatic disposal scope and
+  /// Detaches this array (or its allocating parent) from the current automatic disposal scope and
   /// promotes/reattaches it to the parent (outer) scope (if any).
   ///
-  /// Use this when returning an array from a helper function that uses an internal
+  /// Use this when returning an array or view from a helper function that uses an internal
   /// [NDArray.scope] to clean up its own transients, but you want the returned array
   /// to remain managed by the caller's outer scope.
   ///
   /// Returns this array to allow for method chaining.
   NDArray<T> detachToParentScope() {
+    final root = _rootParent;
     final scope = Zone.current[_scopeKey] as _NDArrayScope?;
     if (scope != null) {
-      scope._untrack(this);
+      scope._untrack(root);
       if (scope._parentScope != null) {
-        scope._parentScope._track(this);
+        scope._parentScope._track(root);
       }
     }
     return this;

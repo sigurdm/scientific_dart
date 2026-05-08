@@ -503,9 +503,8 @@ NDArray<T> multivariateNormal<T extends num>(
     if (into != null) {
       return into;
     }
-    x2D.detachToParentScope();
     final result = x2D.reshape(finalShape);
-    return result;
+    return result.detachToParentScope();
   });
 }
 
