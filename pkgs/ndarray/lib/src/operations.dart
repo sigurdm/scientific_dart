@@ -4142,6 +4142,81 @@ NDArray atan2(NDArray y, NDArray x) {
   return result;
 }
 
+/// Compute the element-wise hypotenuse `sqrt(x1**2 + x2**2)` with broadcasting support.
+///
+/// **Example:**
+/// ```dart
+/// final h = hypot(a, b);
+/// ```
+NDArray<double> hypot(NDArray x1, NDArray x2) {
+  final broadcastResult = broadcast(x1, x2);
+  final shape = broadcastResult.shape;
+  final result = NDArray<double>.create(shape, DType.float64);
+  final resultStrides = NDArray.computeCStrides(shape);
+  final rData = result.data;
+
+  double hypotOp(double x, double y) {
+    x = x.abs();
+    y = y.abs();
+    if (x < y) {
+      final temp = x;
+      x = y;
+      y = temp;
+    }
+    if (x == 0) return 0.0;
+    final t = y / x;
+    return x * math.sqrt(1.0 + t * t);
+  }
+
+  _elementWiseOp<num, num, double>(
+    rData,
+    x1.data as List<num>,
+    x2.data as List<num>,
+    shape,
+    broadcastResult.stridesA,
+    broadcastResult.stridesB,
+    resultStrides,
+    0,
+    0,
+    0,
+    0,
+    (valA, valB) => hypotOp(valA.toDouble(), valB.toDouble()),
+  );
+
+  return result;
+}
+
+/// Compute the element-wise power `x1**x2` with broadcasting support.
+///
+/// **Example:**
+/// ```dart
+/// final p = power(a, b);
+/// ```
+NDArray<double> power(NDArray x1, NDArray x2) {
+  final broadcastResult = broadcast(x1, x2);
+  final shape = broadcastResult.shape;
+  final result = NDArray<double>.create(shape, DType.float64);
+  final resultStrides = NDArray.computeCStrides(shape);
+  final rData = result.data;
+
+  _elementWiseOp<num, num, double>(
+    rData,
+    x1.data as List<num>,
+    x2.data as List<num>,
+    shape,
+    broadcastResult.stridesA,
+    broadcastResult.stridesB,
+    resultStrides,
+    0,
+    0,
+    0,
+    0,
+    (valA, valB) => math.pow(valA.toDouble(), valB.toDouble()).toDouble(),
+  );
+
+  return result;
+}
+
 /// Compute the element-wise hyperbolic sine of the array.
 ///
 /// **Example:**

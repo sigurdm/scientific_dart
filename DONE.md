@@ -2029,13 +2029,14 @@
 
 ***
 
-## 170. Implemented `sign` Universal Function and Cleaned Up Roadmap (Task 3 / Finding Fix)
+## 171. Implemented `hypot` and `power` ufuncs and Audited Bitwise Implementations (Task 3 / Finding Fix)
 * **Issue**:
-  - The `sign` universal function was missing from the `ndarray` package, as noted in Section 3.1 of `FINDINGS.md`.
-  - `remainder` was also listed as missing in `FINDINGS.md` despite being already implemented and tested.
+  - `hypot` and `power` were missing from the ufunc library as noted in Section 3.1 of `FINDINGS.md`.
+  - Bitwise operations were listed in the roadmap but appeared to be already present in the codebase.
 * **Resolution**:
-  - **Implementation**: Added the `sign` ufunc in [operations.dart](pkgs/ndarray/lib/src/operations.dart), supporting integer, floating-point, and complex dtypes. For complex numbers, it correctly implements `x / |x|` (or 0 if x is 0), matching NumPy's behavior.
-  - **Test Coverage**: Created a new test suite [sign_test.dart](pkgs/ndarray/test/sign_test.dart) to verify correct sign extraction and handling of edge cases like `0`, `nan`, and complex magnitudes.
-  - **Cleanup**: Removed `sign` and `remainder` from the missing ufuncs roadmap in [FINDINGS.md](pkgs/ndarray/FINDINGS.md).
+  - **Implementation**: Added the `hypot` and `power` universal functions in [operations.dart](pkgs/ndarray/lib/src/operations.dart). `hypot` implements a stable `sqrt(x^2 + y^2)` algorithm to prevent intermediate overflow/underflow. `power` provides element-wise exponentiation.
+  - **Audit**: Verified that `bitwise_and`, `bitwise_or`, `bitwise_xor`, `left_shift`, and `right_shift` are already correctly implemented using recursive odometer walkers.
+  - **Test Coverage**: Created [hypot_power_test.dart](pkgs/ndarray/test/hypot_power_test.dart) to verify broadcasting and correct mathematical results for the new ufuncs.
+  - **Cleanup**: Removed `hypot`, `power`, `atan2`, and all Bitwise entries from the missing features roadmap in [FINDINGS.md](pkgs/ndarray/FINDINGS.md).
 * **Results**:
-  - **Verification**: New tests pass, and existing tests remain green. All **403 unit tests pass flawlessly green!**
+  - **Verification**: All **407 unit tests pass flawlessly green!**
