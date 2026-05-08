@@ -2365,6 +2365,29 @@ void main() {
         expect(bT.hashCode == bContig.hashCode, true);
       }),
     );
+    test(
+      'Random generators support into parameter recycler buffer reuse',
+      () => NDArray.scope(() {
+        final buffer = NDArray<Float64>.zeros([10], DType.float64);
+
+        // 1. uniform into
+        final u = uniform([10], into: buffer);
+        expect(identical(u, buffer), true);
+
+        // 2. normal into
+        final n = normal([10], into: buffer);
+        expect(identical(n, buffer), true);
+
+        // 3. exponential into
+        final e = exponential([10], into: buffer);
+        expect(identical(e, buffer), true);
+
+        // 4. randint into
+        final bufferInt = NDArray<Int64>.zeros([10], DType.int64);
+        final r = randint([10], low: 0, high: 10, into: bufferInt);
+        expect(identical(r, bufferInt), true);
+      }),
+    );
   });
 }
 

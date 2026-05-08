@@ -5,6 +5,14 @@ import 'numdart_bindings.dart';
 import 'ndarray.dart';
 import 'operations.dart';
 
+bool _listEquals(List<int> a, List<int> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
 /// Generates an array with random values uniformly distributed in the half-open interval `[0.0, 1.0)`.
 ///
 /// **Preconditions:**
@@ -27,23 +35,33 @@ import 'operations.dart';
 ///
 /// By default, uses Dart's standard [Random] class, which is not cryptographically secure.
 /// You can pass a secure random object via the [random] parameter if needed.
-NDArray<double> uniform(
+NDArray<T> uniform<T extends num>(
   List<int> shape, {
-  DType dtype = DType.float64,
+  DType<T>? dtype,
   Random? random,
+  NDArray<T>? into,
 }) {
-  if (dtype != DType.float32 && dtype != DType.float64) {
+  final resolvedDType = dtype ?? (into?.dtype ?? DType.float64 as DType<T>);
+  if (!identical(resolvedDType, DType.float32) &&
+      !identical(resolvedDType, DType.float64)) {
     throw ArgumentError('uniform only supports float types for now');
   }
-  final arr = NDArray<double>.create(shape, dtype as dynamic);
+  if (into != null) {
+    if (!_listEquals(into.shape, shape) || into.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+  final arr = into ?? NDArray<T>.create(shape, resolvedDType);
   final rand = random ?? Random();
   final len = arr.data.length;
   final seed = rand.nextInt(4294967296);
 
-  if (dtype == DType.float64) {
+  if (identical(resolvedDType, DType.float64)) {
     v_uniform_double(arr.pointer.cast<ffi.Double>(), len, seed);
   } else {
-    v_uniform_float(arr.pointer.cast<ffi.Float>(), len, seed);
+    for (var i = 0; i < len; i++) {
+      arr.data[i] = rand.nextDouble() as T;
+    }
   }
   return arr;
 }
@@ -72,25 +90,33 @@ NDArray<double> uniform(
 ///
 /// By default, uses Dart's standard [Random] class, which is not cryptographically secure.
 /// You can pass a secure random object via the [random] parameter if needed.
-NDArray<int> randint(
+NDArray<T> randint<T extends num>(
   List<int> shape, {
   required int low,
   required int high,
-  DType dtype = DType.int64,
+  DType<T>? dtype,
   Random? random,
+  NDArray<T>? into,
 }) {
-  if (dtype != DType.int32 && dtype != DType.int64) {
+  final resolvedDType = dtype ?? (into?.dtype ?? DType.int64 as DType<T>);
+  if (!identical(resolvedDType, DType.int32) &&
+      !identical(resolvedDType, DType.int64)) {
     throw ArgumentError('randint only supports integer types');
   }
   if (low >= high) {
     throw ArgumentError('low must be less than high');
   }
-  final arr = NDArray<int>.create(shape, dtype as dynamic);
+  if (into != null) {
+    if (!_listEquals(into.shape, shape) || into.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+  final arr = into ?? NDArray<T>.create(shape, resolvedDType);
   final rand = random ?? Random();
   final len = arr.data.length;
   final seed = rand.nextInt(4294967296);
 
-  if (dtype == DType.int64) {
+  if (identical(resolvedDType, DType.int64)) {
     v_randint_int64(arr.pointer.cast<ffi.Int64>(), len, low, high, seed);
   } else {
     v_randint_int32(arr.pointer.cast<ffi.Int32>(), len, low, high, seed);
@@ -126,14 +152,17 @@ NDArray<int> randint(
 ///
 /// Refer to the [Normal Distribution Reference](https://en.wikipedia.org/wiki/Normal_distribution)
 /// for details on standard Gaussian distributions.
-NDArray<double> normal(
+NDArray<T> normal<T extends num>(
   List<int> shape, {
   double loc = 0.0,
   double scale = 1.0,
-  DType dtype = DType.float64,
+  DType<T>? dtype,
   Random? random,
+  NDArray<T>? into,
 }) {
-  if (dtype != DType.float32 && dtype != DType.float64) {
+  final resolvedDType = dtype ?? (into?.dtype ?? DType.float64 as DType<T>);
+  if (!identical(resolvedDType, DType.float32) &&
+      !identical(resolvedDType, DType.float64)) {
     throw ArgumentError(
       'normal only supports floating point dtypes (float32/float64)',
     );
@@ -144,12 +173,17 @@ NDArray<double> normal(
     );
   }
 
-  final arr = NDArray<double>.create(shape, dtype as dynamic);
+  if (into != null) {
+    if (!_listEquals(into.shape, shape) || into.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+  final arr = into ?? NDArray<T>.create(shape, resolvedDType);
   final rand = random ?? Random();
   final len = arr.data.length;
 
   final seed = rand.nextInt(4294967296);
-  if (dtype == DType.float64) {
+  if (identical(resolvedDType, DType.float64)) {
     v_normal_double(arr.pointer.cast<ffi.Double>(), len, loc, scale, seed);
   } else {
     v_normal_float(arr.pointer.cast<ffi.Float>(), len, loc, scale, seed);
@@ -180,14 +214,17 @@ NDArray<double> normal(
 ///
 /// Refer to the [Exponential Distribution Reference](https://en.wikipedia.org/wiki/Exponential_distribution)
 /// for details on exponential variables.
-NDArray<double> exponential(
+NDArray<T> exponential<T extends num>(
   List<int> shape, {
   double scale = 1.0,
   double? lam,
-  DType dtype = DType.float64,
+  DType<T>? dtype,
   Random? random,
+  NDArray<T>? into,
 }) {
-  if (dtype != DType.float32 && dtype != DType.float64) {
+  final resolvedDType = dtype ?? (into?.dtype ?? DType.float64 as DType<T>);
+  if (!identical(resolvedDType, DType.float32) &&
+      !identical(resolvedDType, DType.float64)) {
     throw ArgumentError(
       'exponential only supports floating point dtypes (float32/float64)',
     );
@@ -199,12 +236,17 @@ NDArray<double> exponential(
     );
   }
 
-  final arr = NDArray<double>.create(shape, dtype as dynamic);
+  if (into != null) {
+    if (!_listEquals(into.shape, shape) || into.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+  final arr = into ?? NDArray<T>.create(shape, resolvedDType);
   final rand = random ?? Random();
 
   for (var i = 0; i < arr.data.length; i++) {
     final u = rand.nextDouble();
-    arr.data[i] = -targetScale * math.log(1.0 - u);
+    arr.data[i] = (-targetScale * math.log(1.0 - u)) as T;
   }
 
   return arr;
@@ -239,25 +281,33 @@ NDArray<double> exponential(
 ///
 /// Refer to the [Poisson Distribution Reference](https://en.wikipedia.org/wiki/Poisson_distribution)
 /// for details on Poisson processes.
-NDArray<int> poisson(
+NDArray<T> poisson<T extends num>(
   List<int> shape, {
   double lam = 1.0,
-  DType dtype = DType.int64,
+  DType<T>? dtype,
   Random? random,
+  NDArray<T>? into,
 }) {
-  if (dtype != DType.int32 && dtype != DType.int64) {
+  final resolvedDType = dtype ?? (into?.dtype ?? DType.int64 as DType<T>);
+  if (!identical(resolvedDType, DType.int32) &&
+      !identical(resolvedDType, DType.int64)) {
     throw ArgumentError('poisson only supports integer dtypes (int32/int64)');
   }
   if (lam <= 0.0) {
     throw ArgumentError('lambda must be strictly positive (was $lam)');
   }
 
-  final arr = NDArray<int>.create(shape, dtype as dynamic);
+  if (into != null) {
+    if (!_listEquals(into.shape, shape) || into.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+  final arr = into ?? NDArray<T>.create(shape, resolvedDType);
   final rand = random ?? Random();
   final len = arr.data.length;
   final seed = rand.nextInt(4294967296);
 
-  if (dtype == DType.int64) {
+  if (identical(resolvedDType, DType.int64)) {
     v_poisson_int64(arr.pointer.cast<ffi.Int64>(), len, lam, seed);
   } else {
     v_poisson_int32(arr.pointer.cast<ffi.Int32>(), len, lam, seed);
@@ -298,14 +348,17 @@ NDArray<int> poisson(
 ///
 /// Refer to the [Binomial Distribution Reference](https://en.wikipedia.org/wiki/Binomial_distribution)
 /// for details on independent Bernoulli trials.
-NDArray<int> binomial(
+NDArray<T> binomial<T extends num>(
   List<int> shape, {
   required int n,
   required double p,
-  DType dtype = DType.int64,
+  DType<T>? dtype,
   Random? random,
+  NDArray<T>? into,
 }) {
-  if (dtype != DType.int32 && dtype != DType.int64) {
+  final resolvedDType = dtype ?? (into?.dtype ?? DType.int64 as DType<T>);
+  if (!identical(resolvedDType, DType.int32) &&
+      !identical(resolvedDType, DType.int64)) {
     throw ArgumentError('binomial only supports integer dtypes (int32/int64)');
   }
   if (n < 0) {
@@ -317,12 +370,17 @@ NDArray<int> binomial(
     );
   }
 
-  final arr = NDArray<int>.create(shape, dtype as dynamic);
+  if (into != null) {
+    if (!_listEquals(into.shape, shape) || into.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+  final arr = into ?? NDArray<T>.create(shape, resolvedDType);
   final rand = random ?? Random();
   final len = arr.data.length;
   final seed = rand.nextInt(4294967296);
 
-  if (dtype == DType.int64) {
+  if (identical(resolvedDType, DType.int64)) {
     v_binomial_int64(arr.pointer.cast<ffi.Int64>(), len, n, p, seed);
   } else {
     v_binomial_int32(arr.pointer.cast<ffi.Int32>(), len, n, p, seed);
@@ -367,11 +425,13 @@ NDArray<int> binomial(
 /// final samples = multivariateNormal(mean, cov, size: [1000]);
 /// print(samples.shape); // [1000, 2]
 /// ```
-NDArray multivariateNormal(
+NDArray<T> multivariateNormal<T extends num>(
   NDArray mean,
   NDArray cov, {
   List<int>? size,
+  DType<T>? dtype,
   Random? random,
+  NDArray<T>? into,
 }) {
   if (mean.shape.length != 1) {
     throw ArgumentError(
@@ -390,10 +450,28 @@ NDArray multivariateNormal(
     );
   }
 
+  final resolvedDType = dtype ?? (into?.dtype ?? DType.float64 as DType<T>);
+  if (!identical(resolvedDType, DType.float32) &&
+      !identical(resolvedDType, DType.float64)) {
+    throw ArgumentError(
+      'multivariateNormal only supports floating point dtypes (float32/float64)',
+    );
+  }
+
+  final sampleShape = <int>[];
+  if (size != null) {
+    sampleShape.addAll(size);
+  }
+  final finalShape = [...sampleShape, d];
+  if (into != null) {
+    if (!_listEquals(into.shape, finalShape) || into.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+
   return NDArray.scope(() {
-    // 1. LAPACK Cholesky factorization: Sigma = L * L^T
     final choleskyFactors = cholesky(cov);
-    final l = choleskyFactors['L']! as NDArray<Float64>;
+    final l = choleskyFactors['L']!;
 
     final sampleShape = <int>[];
     if (size != null) {
@@ -403,19 +481,19 @@ NDArray multivariateNormal(
         ? 1
         : sampleShape.reduce((a, b) => a * b);
 
-    // 2. Draw independent standard normals Z
     final zShape = [...sampleShape, d];
-    final z = normal(zShape, dtype: cov.dtype, random: random);
-
-    // 3. Transform: X = Z * L^T + mean
+    final z = normal(zShape, dtype: resolvedDType, random: random);
     final lT = l.transpose();
 
-    // We need to reshape or broadcast Z to 2D if sampleShape rank > 1
     final z2D = z.reshape([sampleCount, d]);
-    final x2D = add(matmul(z2D, lT), mean);
+    final x2D =
+        into?.reshape([sampleCount, d]) ??
+        NDArray<T>.create([sampleCount, d], resolvedDType);
+    add(matmul(z2D, lT), mean, out: x2D);
 
-    // Reshape back to final output shape: [...size, d]
-    final finalShape = [...sampleShape, d];
+    if (into != null) {
+      return into.detachToParentScope();
+    }
     final result = x2D.reshape(finalShape);
     return result.detachToParentScope();
   });
@@ -451,11 +529,13 @@ NDArray multivariateNormal(
 /// final samples = multinomial(10, pvals, size: [1000]);
 /// print(samples.shape); // [1000, 3]
 /// ```
-NDArray<int> multinomial(
+NDArray<T> multinomial<T extends num>(
   int n,
   NDArray pvals, {
   List<int>? size,
+  DType<T>? dtype,
   Random? random,
+  NDArray<T>? into,
 }) {
   if (n < 0) {
     throw ArgumentError('n trials must be non-negative (was $n)');
@@ -466,10 +546,17 @@ NDArray<int> multinomial(
     );
   }
 
+  final resolvedDType = dtype ?? (into?.dtype ?? DType.int32 as DType<T>);
+  if (!identical(resolvedDType, DType.int32) &&
+      !identical(resolvedDType, DType.int64)) {
+    throw ArgumentError(
+      'multinomial only supports integer dtypes (int32/int64)',
+    );
+  }
+
   final k = pvals.shape[0];
   final rand = random ?? Random();
 
-  // 1. Compute CDF of pvals and validate probabilities
   final cdf = List<double>.filled(k, 0.0);
   var sumP = 0.0;
   for (var i = 0; i < k; i++) {
@@ -484,13 +571,11 @@ NDArray<int> multinomial(
   }
 
   if ((sumP - 1.0).abs() > 1e-3) {
-    // Normalize probabilities slightly if they deviate by a minor tolerance
     for (var i = 0; i < k; i++) {
       cdf[i] /= sumP;
     }
   }
 
-  // 2. Resolve output shape
   final sampleShape = <int>[];
   if (size != null) {
     sampleShape.addAll(size);
@@ -499,16 +584,22 @@ NDArray<int> multinomial(
       ? 1
       : sampleShape.reduce((a, b) => a * b);
 
-  // 3. Allocate result counts array of shape [...size, k]
   final finalShape = [...sampleShape, k];
-  final result = NDArray<int>.create(finalShape, DType.int32, zeroInit: true);
+  if (into != null) {
+    if (!_listEquals(into.shape, finalShape) || into.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+  final result =
+      into ?? NDArray<T>.create(finalShape, resolvedDType, zeroInit: true);
+  if (into != null) {
+    result.fill(0);
+  }
 
-  // 4. Perform multinomial simulation sweeps
   for (var s = 0; s < sampleCount; s++) {
     final offset = s * k;
     for (var t = 0; t < n; t++) {
       final u = rand.nextDouble();
-      // Locate outcome index using linear search on CDF
       var outcome = k - 1;
       for (var j = 0; j < k; j++) {
         if (u <= cdf[j]) {
@@ -516,7 +607,8 @@ NDArray<int> multinomial(
           break;
         }
       }
-      result.data[offset + outcome]++;
+      result.data[offset + outcome] =
+          ((result.data[offset + outcome] as num) + 1) as T;
     }
   }
 

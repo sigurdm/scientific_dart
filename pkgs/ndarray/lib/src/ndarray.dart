@@ -232,6 +232,7 @@ final class NDArray<T> implements ffi.Finalizable {
     assert(
       identical(T, dynamic) ||
           identical(T, Object) ||
+          identical(T, num) ||
           identical(T, Float64) ||
           identical(T, Float32) ||
           identical(T, Int64) ||
