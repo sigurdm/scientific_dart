@@ -27,10 +27,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
 - **Issue**: Missing standard solvers like `linalg.solve`, `linalg.lstsq`, `linalg.norm`, and `linalg.pinv`.
 - **Recommended Tweak**: Expand the FFI bridge to expose the full suite of LAPACK routines and refactor high-level methods to handle ND-stack broadcasting.
 
-### 2.2 Memory Management & Safety (Resolved)
-- **Status**: **RESOLVED**. Solved test suite memory leakage globally across all 19 test files by refactoring them to run inside `NDArray.scope()` blocks, guaranteeing zero unmanaged heap leaks. Implemented `calloc` lazy-page allocations in `NDArray.zeros()`, and hardened `multivariateNormal()` and binary serialization alignments.
-
-### 2.3 Broadcasting & Advanced Indexing
+### 2.2 Broadcasting & Advanced Indexing
 - **Issue**: `setByMask()` lacks support for broadcasting multi-dimensional array assignments.
 - **Issue**: `concatenate()` lacks implicit axis expansion (e.g., concatenating a 1D vector to a 2D matrix).
 - **Issue**: Advanced indexing (e.g., `a[[0, 1], [0, 1]]`) does not support broadcasting multiple index arrays against each other to select arbitrary coordinate sets.
@@ -81,8 +78,7 @@ This file logs architectural improvements and hidden flaws discovered during aut
 
 ---
 
-## ✨ Section 4: Usability & Ergonomics (Resolved)
-- **Status**: **RESOLVED**. Implemented full operator overloading for arithmetic (+, -, *, /, ~/, %), bitwise (&, |, ^, ~, <<, >>), and unary (-) operations. These wrap existing and new ufuncs with full broadcasting support for both array-array and array-scalar operands.
+## ✨ Section 4: Usability & Ergonomics
 - **Issue**: `operator []` does not support `Slice` or `Indices` objects directly, and lacks equivalents for `NewAxis` or `Ellipsis`.
 - **Recommended Tweak**: Expand `operator []` and `operator []=` to handle complex NumPy-style selection objects.
 

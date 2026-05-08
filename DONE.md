@@ -2029,14 +2029,13 @@
 
 ***
 
-## 171. Implemented `hypot` and `power` ufuncs and Audited Bitwise Implementations (Task 3 / Finding Fix)
+## 172. Purged Resolved Findings from FINDINGS.md (Task 3 / Cleanup)
 * **Issue**:
-  - `hypot` and `power` were missing from the ufunc library as noted in Section 3.1 of `FINDINGS.md`.
-  - Bitwise operations were listed in the roadmap but appeared to be already present in the codebase.
+  - `FINDINGS.md` contained several sections and subsections marked as "RESOLVED", cluttering the active roadmap of outstanding issues.
 * **Resolution**:
-  - **Implementation**: Added the `hypot` and `power` universal functions in [operations.dart](pkgs/ndarray/lib/src/operations.dart). `hypot` implements a stable `sqrt(x^2 + y^2)` algorithm to prevent intermediate overflow/underflow. `power` provides element-wise exponentiation.
-  - **Audit**: Verified that `bitwise_and`, `bitwise_or`, `bitwise_xor`, `left_shift`, and `right_shift` are already correctly implemented using recursive odometer walkers.
-  - **Test Coverage**: Created [hypot_power_test.dart](pkgs/ndarray/test/hypot_power_test.dart) to verify broadcasting and correct mathematical results for the new ufuncs.
-  - **Cleanup**: Removed `hypot`, `power`, `atan2`, and all Bitwise entries from the missing features roadmap in [FINDINGS.md](pkgs/ndarray/FINDINGS.md).
+  - **Cleanup**: Excised the following resolved items from [FINDINGS.md](pkgs/ndarray/FINDINGS.md):
+    - Section 2.2: Memory Management & Safety (Resolved status).
+    - Section 4: Usability & Ergonomics (Operator overloading implementation).
+  - **Re-indexing**: Re-indexed remaining subsections in Section 2 to maintain sequential numbering.
 * **Results**:
-  - **Verification**: All **407 unit tests pass flawlessly green!**
+  - **Verification**: `FINDINGS.md` now only contains active bottlenecks, architectural gaps, and the NumPy compatibility roadmap.
