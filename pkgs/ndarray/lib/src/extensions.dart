@@ -171,14 +171,13 @@ extension Float64NDArrayOperations on NDArray<Float64> {
 
   /// Matrix multiplication returning Float64 NDArray.
   NDArray<Float64> matmul(NDArray<Float64> other, {NDArray<Float64>? into}) {
+    final res = ops.matmul(this as dynamic, other as dynamic);
     if (into != null) {
-      final res =
-          ops.matmul(this as dynamic, other as dynamic) as NDArray<Float64>;
-      into.data.setRange(0, res.data.length, res.data);
+      into.data.setRange(0, res.data.length, res.data as dynamic);
       res.dispose();
       return into;
     }
-    return ops.matmul(this as dynamic, other as dynamic) as NDArray<Float64>;
+    return NDArray<Float64>.view(res, shape: res.shape, strides: res.strides);
   }
 
   // --- Mixed Float32 arguments ---
@@ -382,22 +381,22 @@ extension Float64NDArrayOperations on NDArray<Float64> {
   // --- Mixed Scalar double/int arguments ---
 
   NDArray<Float64> addScalar(double scalar, {NDArray<Float64>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Float64>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return add(scalarArr, into: into);
   }
 
   NDArray<Float64> subtractScalar(double scalar, {NDArray<Float64>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Float64>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return subtract(scalarArr, into: into);
   }
 
   NDArray<Float64> multiplyScalar(double scalar, {NDArray<Float64>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Float64>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return multiply(scalarArr, into: into);
   }
 
   NDArray<Float64> divideScalar(double scalar, {NDArray<Float64>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Float64>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return divide(scalarArr, into: into);
   }
 }
@@ -672,22 +671,22 @@ extension Float32NDArrayOperations on NDArray<Float32> {
   // --- Mixed Scalar double/int arguments ---
 
   NDArray<Float32> addScalar(double scalar, {NDArray<Float32>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Float32>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return add(scalarArr, into: into);
   }
 
   NDArray<Float32> subtractScalar(double scalar, {NDArray<Float32>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Float32>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return subtract(scalarArr, into: into);
   }
 
   NDArray<Float32> multiplyScalar(double scalar, {NDArray<Float32>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Float32>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return multiply(scalarArr, into: into);
   }
 
   NDArray<Float32> divideScalar(double scalar, {NDArray<Float32>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Float32>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return divide(scalarArr, into: into);
   }
 }
@@ -956,17 +955,17 @@ extension Int64NDArrayOperations on NDArray<Int64> {
   // --- Mixed Scalar int arguments ---
 
   NDArray<Int64> addScalar(int scalar, {NDArray<Int64>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Int64>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return add(scalarArr, into: into);
   }
 
   NDArray<Int64> subtractScalar(int scalar, {NDArray<Int64>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Int64>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return subtract(scalarArr, into: into);
   }
 
   NDArray<Int64> multiplyScalar(int scalar, {NDArray<Int64>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Int64>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return multiply(scalarArr, into: into);
   }
 }
@@ -1161,17 +1160,17 @@ extension Int32NDArrayOperations on NDArray<Int32> {
   // --- Mixed Scalar int arguments ---
 
   NDArray<Int32> addScalar(int scalar, {NDArray<Int32>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Int32>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return add(scalarArr, into: into);
   }
 
   NDArray<Int32> subtractScalar(int scalar, {NDArray<Int32>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Int32>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return subtract(scalarArr, into: into);
   }
 
   NDArray<Int32> multiplyScalar(int scalar, {NDArray<Int32>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Int32>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return multiply(scalarArr, into: into);
   }
 }
@@ -1542,22 +1541,22 @@ extension ComplexNDArrayOperations on NDArray<Complex> {
   // --- Mixed Scalar arguments ---
 
   NDArray<Complex> addScalar(dynamic scalar, {NDArray<Complex>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Complex>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return add(scalarArr, into: into);
   }
 
   NDArray<Complex> subtractScalar(dynamic scalar, {NDArray<Complex>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Complex>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return subtract(scalarArr, into: into);
   }
 
   NDArray<Complex> multiplyScalar(dynamic scalar, {NDArray<Complex>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Complex>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return multiply(scalarArr, into: into);
   }
 
   NDArray<Complex> divideScalar(dynamic scalar, {NDArray<Complex>? into}) {
-    final scalarArr = _wrapScalar(scalar, shape) as NDArray<Complex>;
+    final scalarArr = _wrapScalar(scalar, shape, dtype);
     return divide(scalarArr, into: into);
   }
 }
@@ -1794,27 +1793,24 @@ bool _listEquals<E>(List<E> a, List<E> b) {
   return true;
 }
 
-NDArray _wrapScalar(dynamic value, List<int> targetShape) {
-  if (value is Complex) {
-    return NDArray.fromList(
-      <Complex>[value],
-      List.filled(targetShape.length, 1),
-      DType.complex128,
-    );
-  } else if (value is double) {
-    return NDArray.fromList(
-      <double>[value],
-      List.filled(targetShape.length, 1),
-      DType.float64,
-    );
-  } else if (value is int) {
-    return NDArray.fromList(
-      <int>[value],
-      List.filled(targetShape.length, 1),
-      DType.int64,
-    );
+NDArray<T> _wrapScalar<T>(
+  dynamic value,
+  List<int> targetShape,
+  DType<T> dtype,
+) {
+  dynamic resolvedValue = value;
+  if (dtype.isComplex && value is! Complex) {
+    resolvedValue = Complex((value as num).toDouble(), 0.0);
+  } else if (dtype.isFloating && value is! double) {
+    resolvedValue = (value as num).toDouble();
+  } else if (dtype.isInteger && value is! int) {
+    resolvedValue = (value as num).toInt();
   }
-  throw ArgumentError('Unsupported scalar type: ${value.runtimeType}');
+  return NDArray<T>.fromList(
+    [resolvedValue],
+    List.filled(targetShape.length, 1),
+    dtype,
+  );
 }
 
 void _elementWiseIntIntToDoubleOp(
