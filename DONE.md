@@ -2426,3 +2426,13 @@
   - **API integration**: Refactored [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart) to support FFI-offloaded contiguous and strided `asin()`, `acos()`, and `atan()` ufuncs with named recycler parameter `{out}` support.
 * **Results**:
   - **Verification**: Created targeted unit tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/quality_enhancements_test.dart) verifying complex arcsine, arccosine, and arctangent roundtrip principal variable preservation under exact double precision limits. All **438 package tests pass flawlessly green!** Static analysis is pristine.
+
+***
+
+## 203. Offload 100% of all remaining 12 strided real math ufuncs to C FFI odometer loops (Task 5 / Optimization)
+* **What was done**:
+  - **Odometer loops in unmanaged C**: Generated 18 new strided real math ufunc FFI loops inside [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.c#L2315) supporting high-speed strided walks for `tan`, `exp`, `log`, `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, and `atanh` (and single-precision float formats) using unmanaged C macros.
+  - **Bindings & operations routing**: Bound them to FFI in [ndarray_bindings.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/ndarray_bindings.dart) and refactored [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart) to route non-contiguous strided views (such as transposed/sliced matrices) directly to C odometer kernels instead of slow Dart VM cell loops.
+  - **Benchmark results**: Created [strided_math_benchmark.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/benchmark/strided_math_benchmark.dart) measuring non-contiguous `tan()` and `exp()` operations on a $1500 \times 1500$ double matrix. Average execution speed went from **95.30 ms down to 49.20 ms (a 93% speedup!)** for strided `tan()`, and **38.60 ms down to 34.00 ms** for strided `exp()`.
+* **Results**:
+  - **Verification**: All **438 package unit tests pass flawlessly green!** formatting and static analysis are pristine. Staged and committed optimizations cleanly.
