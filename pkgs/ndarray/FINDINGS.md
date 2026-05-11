@@ -102,6 +102,18 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 ### 3.13 1D Linear Interpolation
 - **Data Alignment Solver**: Exposing piece-wise linear interpolation solver `interp(x, xp, fp)` to align uneven scientific timeseries records natively.
 
+### 3.14 Structured Masked Arrays (ma category)
+- **Robust Missing Data Handling**: Exposing masked array wrappers (similar to standard `numpy.ma` package) to dynamically package arrays with boolean masks, allowing ufuncs and reductions to automatically bypass invalid/corrupted records natively.
+
+### 3.15 Quantitative Financial ufuncs
+- **Corporate & Quantitative Solvers**: Exposing high-speed financial universal functions such as Net Present Value `npv()`, Internal Rate of Return `irr()`, Future Value `fv()`, and Present Value `pv()`.
+
+### 3.16 Schur and Hessenberg linalg Decompositions
+- **Advanced Control Theory Solvers**: Exposing native LAPACK-bound solvers `linalg.schur()` and `linalg.hessenberg()` to support advanced control systems design and numeric eigenvalue search algorithms.
+
+### 3.17 Axis-Specific Matrix Splitting
+- **Standard Multi-Dimensional Segmentation**: Adding axis-specific sub-array splitting helpers `hsplit()`, `vsplit()`, and `dsplit()` to align with standard NumPy dataset segmentations.
+
 ---
 
 ## ✨ Section 4: Usability & Ergonomics
