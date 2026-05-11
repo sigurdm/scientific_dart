@@ -2248,3 +2248,13 @@
   - **In-place `out` Recyclers**: Added complete, memory-efficient output recycling support across all four new functions.
 * **Results**:
   - **Verification**: Created targeted unit tests validating mathematical outcomes, positive/negative diagonals, singular matrices, negative exponents, and in-place buffer recycling. All **434 tests passed perfectly green!** Formatting and static analysis are pristine.
+
+***
+
+## 188. N-Dimensional Cumulative Accumulations `cumsum()` and `cumprod()` (Task 3 / Findings Fix)
+* **What was done**:
+  - Resolved a major cumulative accumulations roadmap entry in [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md).
+  - **Stride-Safe N-Dimensional Recursive Cumulative walks**: Implemented standard cumulative sum (`cumsum()`) and cumulative product (`cumprod()`) ufuncs. Programmed a zero-allocation recursive multi-dimensional walker `_cumOpRecursive` inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart) that resolves loops along any axis natively on both contiguous and non-contiguous strided views.
+  - **In-place Recyclers**: Exposed standard, memory-efficient named parameter `{out}` recycler support across both ufuncs.
+* **Results**:
+  - **Verification**: Created targeted unit tests verifying flat cumulative sequences, multi-dimensional axis sweeps, complex and integer data types, transposed view layouts, and in-place recycler buffer reuse. All **435 tests passed flawlessly green!** Formatting and static analysis are perfectly immaculate.
