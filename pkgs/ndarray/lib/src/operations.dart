@@ -301,9 +301,9 @@ final Map<Operation, int> ffiThresholds = {Operation.matmul: 1};
 /// - [ArgumentError] if [numThreads] is less than 1.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// setNumThreads(1); // Disable multi-threading to bypass overhead on small matrices
-/// ```
+/// ``
 void setNumThreads(int numThreads) {
   if (numThreads < 1) {
     throw ArgumentError(
@@ -1601,11 +1601,11 @@ NDArray matmul(NDArray a, NDArray b) {
 /// Otherwise, sums all elements and returns a scalar value of type [T].
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 /// final s0 = sum(a, axis: 0); // Sum along rows
 /// print(s0.data); // [4.0, 6.0]
-/// ```
+/// ``
 NDArray sum(NDArray a, {int? axis, NDArray? out}) {
   final targetShape = axis == null
       ? <int>[]
@@ -1668,11 +1668,11 @@ NDArray sum(NDArray a, {int? axis, NDArray? out}) {
 /// Otherwise, multiplies all elements and returns a scalar value of type [T].
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 /// final p0 = prod(a, axis: 0); // Product along rows
 /// print(p0.data); // [3.0, 8.0]
-/// ```
+/// ``
 NDArray prod(NDArray a, {int? axis, NDArray? out}) {
   final targetShape = axis == null
       ? <int>[]
@@ -1742,10 +1742,10 @@ NDArray prod(NDArray a, {int? axis, NDArray? out}) {
 /// - [ArgumentError] if [axis] is out of bounds.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([true, true, false], [3], DType.boolean);
 /// final res = all(a); // false
-/// ```
+/// ``
 NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute all() on a disposed array.');
@@ -1814,10 +1814,10 @@ NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? out}) {
 /// - [ArgumentError] if [axis] is out of bounds.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([true, false, false], [3], DType.boolean);
 /// final res = any(a); // true
-/// ```
+/// ``
 NDArray<bool> any(NDArray a, {int? axis, NDArray<bool>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute any() on a disposed array.');
@@ -1882,11 +1882,11 @@ NDArray<bool> any(NDArray a, {int? axis, NDArray<bool>? out}) {
 /// Returns a new array with the results.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1.0, 4.0, 9.0], [3], DType.float64);
 /// final b = sqrt(a);
 /// print(b.data); // [1.0, 2.0, 3.0]
-/// ```
+/// ``
 ///
 /// **Gotchas:**
 /// - Negative values will result in [double.nan].
@@ -2027,9 +2027,32 @@ NDArray sin(NDArray a, {NDArray? out}) {
     }
   }
 
-  final aNum = a as NDArray<num>;
-  for (var i = 0; i < a.data.length; i++) {
-    result.data[i] = math.sin(aNum.data[i].toDouble());
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+    _unaryOp<int, double>(
+      result.data as List<double>,
+      a.data as List<int>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => math.sin(x.toDouble()),
+    );
+  } else {
+    _unaryOp<double, double>(
+      result.data as List<double>,
+      a.data as List<double>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => math.sin(x.toDouble()),
+    );
   }
   return result;
 }
@@ -2141,9 +2164,32 @@ NDArray cos(NDArray a, {NDArray? out}) {
     }
   }
 
-  final aNum = a as NDArray<num>;
-  for (var i = 0; i < a.data.length; i++) {
-    result.data[i] = math.cos(aNum.data[i].toDouble());
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+    _unaryOp<int, double>(
+      result.data as List<double>,
+      a.data as List<int>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => math.cos(x.toDouble()),
+    );
+  } else {
+    _unaryOp<double, double>(
+      result.data as List<double>,
+      a.data as List<double>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => math.cos(x.toDouble()),
+    );
   }
   return result;
 }
@@ -2331,11 +2377,11 @@ NDArray log(NDArray a, {NDArray? out}) {
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 /// final m = mean(a); // returns 2.5 scalar
 /// final m0 = mean(a, axis: 0); // returns NDArray [2.0, 3.0]
-/// ```
+/// ``
 ///
 /// Reference: [Arithmetic Mean](https://en.wikipedia.org/wiki/Arithmetic_mean)
 NDArray mean(NDArray a, {int? axis, NDArray? out}) {
@@ -2408,10 +2454,10 @@ NDArray mean(NDArray a, {int? axis, NDArray? out}) {
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
 /// final v = variance(a); // returns 1.25 scalar
-/// ```
+/// ``
 ///
 /// Reference: [Variance](https://en.wikipedia.org/wiki/Variance)
 NDArray<double> variance<T extends num>(
@@ -2497,10 +2543,10 @@ NDArray<double> variance<T extends num>(
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
 /// final s = std(a); // returns sqrt(1.25) scalar
-/// ```
+/// ``
 ///
 /// Reference: [Standard Deviation](https://en.wikipedia.org/wiki/Standard_deviation)
 NDArray<double> std<T extends num>(
@@ -2552,10 +2598,10 @@ NDArray<double> std<T extends num>(
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total elements count.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray<double>.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], DType.float64);
 /// final s = nansum(a); // returns 4.0
-/// ```
+/// ``
 NDArray nansum(NDArray a, {int? axis, NDArray? out}) {
   final targetShape = axis == null
       ? <int>[]
@@ -2636,10 +2682,10 @@ NDArray nansum(NDArray a, {int? axis, NDArray? out}) {
 ///   coordinate strides and tracking counts dynamically.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray<double>.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], DType.float64);
 /// final m = nanmean(a); // returns 2.6666666666666665
-/// ```
+/// ``
 NDArray nanmean(NDArray a, {int? axis, NDArray? out}) {
   final DType targetDType = a.dtype.isComplex
       ? DType.complex128
@@ -2780,10 +2826,10 @@ void _nanReduceRecursive(
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total elements count.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray<double>.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
 /// final v = nanvar(a); // returns 0.6666666666666666
-/// ```
+/// ``
 NDArray<double> nanvar<T extends num>(
   NDArray<T> a, {
   int? axis,
@@ -2877,10 +2923,10 @@ NDArray<double> nanvar<T extends num>(
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total elements count.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray<double>.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
 /// final s = nanstd(a); // returns sqrt(0.6666666666666666)
-/// ```
+/// ``
 NDArray<double> nanstd<T extends num>(
   NDArray<T> a, {
   int? axis,
@@ -2968,10 +3014,10 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis}) {
 /// - [UnsupportedError] if the array contains Complex numbers.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
 /// print(nanmin(a)); // 1.0
-/// ```
+/// ``
 NDArray<T> nanmin<T extends Object>(NDArray<T> a, {int? axis}) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for nanmin');
@@ -3093,10 +3139,10 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis}) {
 /// - [UnsupportedError] if the array contains Complex numbers.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
 /// print(nanmax(a)); // 3.0
-/// ```
+/// ``
 NDArray<T> nanmax<T extends Object>(NDArray<T> a, {int? axis}) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for nanmax');
@@ -3357,11 +3403,11 @@ void _elementWiseNanMaxRec(
 ///   where safe to minimize heap churn.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([4.0, 7.0, 2.0, 6.0], [2, 2], DType.float64);
 /// final b = inv(a);
 /// print(b.toList()); // [0.6, -0.7, -0.2, 0.4]
-/// ```
+/// ``
 ///
 /// Reference: [Matrix Inversion](https://en.wikipedia.org/wiki/Invertible_matrix)
 NDArray inv(NDArray a, {NDArray? out}) {
@@ -3540,11 +3586,11 @@ NDArray inv(NDArray a, {NDArray? out}) {
 /// - Algorithmic complexity is $O(N^3)$ leveraging optimized native LAPACK linear algebra solvers.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 /// final d = det(a);
 /// print(d); // -2.0
-/// ```
+/// ``
 ///
 /// Refer to the [Determinant Reference](https://en.wikipedia.org/wiki/Determinant)
 /// and [LAPACK LU solver](https://en.wikipedia.org/wiki/LU_decomposition) for additional details.
@@ -3696,12 +3742,12 @@ double det(NDArray a) {
 /// - Algorithmic complexity is $O(N^3)$ executed in native C-compiled space.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray<double>.fromList([3.0, 1.0, 1.0, 2.0], [2, 2], DType.float64);
 /// final b = NDArray<double>.fromList([9.0, 8.0], [2], DType.float64);
 /// final x = solve(a, b);
 /// print(x.toList()); // [2.0, 3.0]
-/// ```
+/// ``
 NDArray solve(NDArray a, NDArray b) {
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError('Matrix a must be square and 2D (was ${a.shape})');
@@ -4291,12 +4337,12 @@ NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
 /// - [StateError] if the array [a] is already disposed.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1, 2], [2], DType.int32);
 /// final b = copy(a);
 /// b.data[0] = 99;
 /// print(a.data[0]); // 1 (decoupled memory!)
-/// ```
+/// ``
 NDArray<T> copy<T extends Object>(NDArray<T> a) {
   return a.copy();
 }
@@ -4317,11 +4363,11 @@ NDArray<T> copy<T extends Object>(NDArray<T> a) {
 /// - [StateError] if any array is disposed.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1, 2], [2], DType.int32);
 /// final b = NDArray.fromList([3, 4], [2], DType.int32);
 /// final s = stack([a, b], axis: 0); // shape [2, 2], values [[1, 2], [3, 4]]
-/// ```
+/// ``
 NDArray stack(List<NDArray> arrays, {int axis = 0}) {
   if (arrays.isEmpty) {
     throw ArgumentError('List of arrays to stack must not be empty.');
@@ -4728,7 +4774,7 @@ NDArray tan(NDArray a, {NDArray? out}) {
       0,
       0,
       0,
-      (x) => math.asin(x.toDouble()),
+      (x) => math.tan(x.toDouble()),
     );
   } else {
     _unaryOp<double, double>(
@@ -4740,7 +4786,7 @@ NDArray tan(NDArray a, {NDArray? out}) {
       0,
       0,
       0,
-      (x) => math.asin(x),
+      (x) => math.tan(x),
     );
   }
   return result;
@@ -4755,10 +4801,10 @@ NDArray tan(NDArray a, {NDArray? out}) {
 /// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([0.0, 1.0], [2], DType.float64);
 /// final b = asin(a); // [0.0, 1.570796...]
-/// ```
+/// ``
 NDArray asin(NDArray a, {NDArray? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute asin() on a disposed array.');
@@ -4890,10 +4936,10 @@ NDArray asin(NDArray a, {NDArray? out}) {
 /// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1.0, 0.0], [2], DType.float64);
 /// final b = acos(a); // [0.0, 1.570796...]
-/// ```
+/// ``
 NDArray acos(NDArray a, {NDArray? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute acos() on a disposed array.');
@@ -5025,10 +5071,10 @@ NDArray acos(NDArray a, {NDArray? out}) {
 /// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([0.0, 1.0], [2], DType.float64);
 /// final b = atan(a); // [0.0, 0.785398...]
-/// ```
+/// ``
 NDArray atan(NDArray a, {NDArray? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute atan() on a disposed array.');
@@ -5843,9 +5889,9 @@ NDArray atan2(NDArray y, NDArray x) {
 /// Compute the element-wise hypotenuse `sqrt(x1**2 + x2**2)` with broadcasting support.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final h = hypot(a, b);
-/// ```
+/// ``
 NDArray<double> hypot(NDArray x1, NDArray x2) {
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
@@ -5978,9 +6024,9 @@ NDArray<double> hypot(NDArray x1, NDArray x2) {
 /// Compute the element-wise power `x1**x2` with broadcasting support.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final p = power(a, b);
-/// ```
+/// ``
 NDArray power(NDArray x1, NDArray x2) {
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
@@ -6104,9 +6150,9 @@ NDArray power(NDArray x1, NDArray x2) {
 /// Numerical negative, element-wise.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final b = negative(a);
-/// ```
+/// ``
 NDArray negative(NDArray a) {
   final result = NDArray.create(a.shape, a.dtype);
   final resultStrides = NDArray.computeCStrides(a.shape);
@@ -6158,9 +6204,9 @@ NDArray negative(NDArray a) {
 /// Corresponds to Dart's `~/` operator.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final c = floor_divide(a, b);
-/// ```
+/// ``
 NDArray floor_divide(NDArray a, NDArray b) {
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -6213,9 +6259,9 @@ NDArray floor_divide(NDArray a, NDArray b) {
 /// Corresponds to Dart's `%` operator.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final c = remainder(a, b);
-/// ```
+/// ``
 NDArray remainder(NDArray a, NDArray b) {
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -6266,9 +6312,9 @@ NDArray remainder(NDArray a, NDArray b) {
 /// Element-wise bitwise AND with broadcasting support.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final c = bitwise_and(a, b);
-/// ```
+/// ``
 NDArray bitwise_and(NDArray a, NDArray b) {
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -6304,9 +6350,9 @@ NDArray bitwise_and(NDArray a, NDArray b) {
 /// Element-wise bitwise OR with broadcasting support.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final c = bitwise_or(a, b);
-/// ```
+/// ``
 NDArray bitwise_or(NDArray a, NDArray b) {
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -6342,9 +6388,9 @@ NDArray bitwise_or(NDArray a, NDArray b) {
 /// Element-wise bitwise XOR with broadcasting support.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final c = bitwise_xor(a, b);
-/// ```
+/// ``
 NDArray bitwise_xor(NDArray a, NDArray b) {
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -6380,9 +6426,9 @@ NDArray bitwise_xor(NDArray a, NDArray b) {
 /// Element-wise bitwise NOT.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final b = bitwise_not(a);
-/// ```
+/// ``
 NDArray bitwise_not(NDArray a) {
   if (!a.dtype.isInteger) {
     throw UnsupportedError(
@@ -6409,9 +6455,9 @@ NDArray bitwise_not(NDArray a) {
 /// Element-wise left shift with broadcasting support.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final c = left_shift(a, b);
-/// ```
+/// ``
 NDArray left_shift(NDArray a, NDArray b) {
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -6447,9 +6493,9 @@ NDArray left_shift(NDArray a, NDArray b) {
 /// Element-wise right shift with broadcasting support.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final c = right_shift(a, b);
-/// ```
+/// ``
 NDArray right_shift(NDArray a, NDArray b) {
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -6552,9 +6598,9 @@ NDArray abs(NDArray a) {
 /// For complex numbers, returns `x / |x|` (or 0 if x is 0).
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final s = sign(a);
-/// ```
+/// ``
 NDArray sign(NDArray a) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     final result = NDArray.create(a.shape, a.dtype);
@@ -6768,7 +6814,7 @@ NDArray round(NDArray a) {
 /// - [StateError] if [a] has been disposed.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([10, 20, 30, 40], [2, 2], DType.int32);
 /// for (final entry in ndenumerate(a)) {
 ///   print('coord: ${entry.$1}, value: ${entry.$2}');
@@ -6778,7 +6824,7 @@ NDArray round(NDArray a) {
 /// // ([0, 1], 20)
 /// // ([1, 0], 30)
 /// // ([1, 1], 40)
-/// ```
+/// ``
 Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
   if (a.isDisposed) {
     throw StateError('Cannot execute ndenumerate() on a disposed array.');
@@ -6827,12 +6873,12 @@ Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
 /// - [ArgumentError] if [out] is provided but has a shape or DType mismatch.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray<Complex>.create([2], `DType.complex128);`
 /// a.data[0] = Complex(3.0, 4.0);
 /// a.data[1] = Complex(-1.0, 0.0);
 /// final r = real(a); // [3.0, -1.0] (`DType.float64)`
-/// ```
+/// ``
 NDArray real(NDArray a, {NDArray? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute real() on a disposed array.');
@@ -6901,12 +6947,12 @@ NDArray real(NDArray a, {NDArray? out}) {
 /// - [ArgumentError] if [out] is provided but has a shape or DType mismatch.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray<Complex>.create([2], `DType.complex128);`
 /// a.data[0] = Complex(3.0, 4.0);
 /// a.data[1] = Complex(-1.0, 0.0);
 /// final im = imag(a); // [4.0, 0.0] (`DType.float64)`
-/// ```
+/// ``
 NDArray imag(NDArray a, {NDArray? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute imag() on a disposed array.');
@@ -6966,10 +7012,10 @@ NDArray imag(NDArray a, {NDArray? out}) {
 /// - [UnsupportedError] if the array has a complex data type.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([180.0, 90.0, 45.0], [3], DType.float64);
 /// final r = deg2rad(a); // [pi, pi / 2.0, pi / 4.0]
-/// ```
+/// ``
 NDArray deg2rad(NDArray a, {NDArray? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute deg2rad on a disposed array.');
@@ -6996,10 +7042,10 @@ NDArray deg2rad(NDArray a, {NDArray? out}) {
 /// - [UnsupportedError] if the array has a complex data type.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([math.pi, math.pi / 2.0], [2], DType.float64);
 /// final d = rad2deg(a); // [180.0, 90.0]
-/// ```
+/// ``
 NDArray rad2deg(NDArray a, {NDArray? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute rad2deg on a disposed array.');
@@ -7024,10 +7070,10 @@ NDArray rad2deg(NDArray a, {NDArray? out}) {
 /// - [StateError] if the array has been disposed.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
 /// final mask = isnan(a); // [false, true, false]
-/// ```
+/// ``
 NDArray<bool> isnan(NDArray a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute isnan on a disposed array.');
@@ -7084,10 +7130,10 @@ NDArray<bool> isnan(NDArray a) {
 /// - [StateError] if the array has been disposed.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1.0, double.infinity, 3.0], [3], DType.float64);
 /// final mask = isinf(a); // [false, true, false]
-/// ```
+/// ``
 NDArray<bool> isinf(NDArray a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute isinf on a disposed array.');
@@ -7144,10 +7190,10 @@ NDArray<bool> isinf(NDArray a) {
 /// - [StateError] if the array has been disposed.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1.0, double.nan, double.infinity], [3], DType.float64);
 /// final mask = isfinite(a); // [true, false, false]
-/// ```
+/// ``
 NDArray<bool> isfinite(NDArray a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute isfinite on a disposed array.');
@@ -8794,12 +8840,12 @@ Map<String, NDArray> cholesky(NDArray a) {
 /// - Executes at high-speed natively in unmanaged C space.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray<double>.fromList([12.0, -51.0, 4.0, 6.0, 167.0, -68.0, -4.0, 24.0, -41.0], [3, 3], DType.float64);
 /// final res = qr(a);
 /// final q = res['Q']!;
 /// final r = res['R']!;
-/// ```
+/// ``
 Map<String, NDArray> qr(NDArray a) {
   if (a.shape.length != 2) {
     throw ArgumentError('Matrix must be 2D (was ${a.shape})');
@@ -8970,13 +9016,13 @@ Map<String, NDArray> qr(NDArray a) {
 /// - Executes at high-speed natively in unmanaged C space.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray<double>.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], DType.float64);
 /// final res = svd(a);
 /// final u = res['U']!;
 /// final s = res['S']!;
 /// final vh = res['Vh']!;
-/// ```
+/// ``
 Map<String, NDArray> svd(NDArray a) {
   if (a.shape.length != 2) {
     throw ArgumentError('Matrix must be 2D (was ${a.shape})');
@@ -9527,12 +9573,12 @@ NDArray squeeze(NDArray a, {List<int>? axis}) {
 /// - [ArgumentError] if axes are out of range, shapes mismatch, or window dimensions exceed axis sizes.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0], [5], DType.float64);
 /// final view = slidingWindowView(a, [3]);
 /// print(view.shape); // [3, 3]
 /// print(view.toList()); // [[1.0, 2.0, 3.0], [2.0, 3.0, 4.0], [3.0, 4.0, 5.0]]
-/// ```
+/// ``
 NDArray slidingWindowView(NDArray a, List<int> windowShape, {List<int>? axis}) {
   final rank = a.shape.length;
 
@@ -9636,14 +9682,14 @@ List<int> broadcastShapes(List<int> s1, List<int> s2) {
 /// - [ArgumentError] if [condlist] and [choicelist] lengths mismatch, or if any shape is incompatible.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final cond1 = NDArray.fromList([true, false], [2], DType.boolean);
 /// final cond2 = NDArray.fromList([false, true], [2], DType.boolean);
 /// final choice1 = NDArray.fromList([10, 20], [2], DType.int32);
 /// final choice2 = NDArray.fromList([100, 200], [2], DType.int32);
 /// final res = select([cond1, cond2], [choice1, choice2], defaultValue: 999);
 /// print(res.toList()); // [10, 200]
-/// ```
+/// ``
 NDArray select(
   List<NDArray<bool>> condlist,
   List<NDArray> choicelist, {
@@ -9809,9 +9855,9 @@ dynamic _castValue(dynamic val, DType dtype) {
 /// The Hanning window is a taper formed by using a weighted cosine.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final window = hanning(512);
-/// ```
+/// ``
 NDArray<double> hanning(int M, {DType dtype = DType.float64}) {
   if (M < 1) return NDArray.create([0], dtype as dynamic) as NDArray<double>;
   if (M == 1) {
@@ -9830,9 +9876,9 @@ NDArray<double> hanning(int M, {DType dtype = DType.float64}) {
 /// The Hamming window is a taper formed by using a weighted cosine.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final window = hamming(512);
-/// ```
+/// ``
 NDArray<double> hamming(int M, {DType dtype = DType.float64}) {
   if (M < 1) return NDArray.create([0], dtype as dynamic) as NDArray<double>;
   if (M == 1) {
@@ -10199,10 +10245,10 @@ NDArray matrix_power(NDArray a, int n, {NDArray? out}) {
 /// - [ArgumentError] if [out] shape or dtype is incompatible.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([1, 2, 4, 7, 0], [5], DType.int64);
 /// final res = diff(a); // [1, 2, 3, -7]
-/// ```
+/// ``
 NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute diff() on a disposed array.');
@@ -11008,10 +11054,10 @@ NDArray<T> _cumOpFFI<T>(
 /// - [StateError] if the array has been disposed.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// final a = NDArray.fromList([Complex(1.0, 2.0)], [1], DType.complex128);
 /// final c = conj(a); // [Complex(1.0, -2.0)]
-/// ```
+/// ``
 NDArray conj(NDArray a, {NDArray? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute conj() on a disposed array.');

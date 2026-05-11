@@ -105,14 +105,14 @@ final class BooleanDType extends DType<bool> {
 ///   invalidated view causes crashes or undefined behavior.
 ///
 /// **Example Usage:**
-/// ```dart
+/// ``dart
 /// // Create a 2x3 array filled with ones
 /// final a = NDArray<double>.ones([2, 3], DType.float64);
 /// print(a.data); // [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 ///
 /// // Explicitly free memory when done
 /// a.dispose();
-/// ```
+/// ``
 final class NDArray<T> implements ffi.Finalizable {
   /// Pointer to the raw C memory allocated for this array.
   final ffi.Pointer<ffi.Void> _pointer;
@@ -173,14 +173,14 @@ final class NDArray<T> implements ffi.Finalizable {
   /// of a computation), call [detachFromScope] on it before returning.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final result = NDArray.scope(() {
   ///   final a = NDArray.zeros([100], DType.float64);
   ///   final b = NDArray.ones([100], DType.float64);
   ///   final c = add(a, b);
   ///   return c.detachFromScope(); // 'a' and 'b' are freed, 'c' survives.
   /// });
-  /// ```
+  /// ``
   static R scope<R>(R Function() callback) {
     final parentScope = Zone.current[_scopeKey] as _NDArrayScope?;
     final scope = _NDArrayScope(parentScope);
@@ -205,14 +205,14 @@ final class NDArray<T> implements ffi.Finalizable {
   /// [NDArray]s from being registered in or disposed of by any active outer scopes.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// NDArray.scope(() {
   ///   final a = NDArray.zeros([10]); // Automatically disposed by scope
   ///   final b = NDArray.unmanaged(() {
   ///     return NDArray.ones([10]); // 100% unmanaged, survives the scope block!
   ///   });
   /// });
-  /// ```
+  /// ``
   static R unmanaged<R>(R Function() callback) {
     return runZoned(callback, zoneValues: {_scopeKey: null});
   }
@@ -332,10 +332,10 @@ final class NDArray<T> implements ffi.Finalizable {
   ///   bypassing Dart isolate VM GC pressure.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray<double>.create([2, 2], DType.float64, zeroInit: true);
   /// print(a.toList()); // [0.0, 0.0, 0.0, 0.0]
-  /// ```
+  /// ``
   ///
   /// Refer to the [NumPy Array Creation Guidelines](https://numpy.org/doc/stable/reference/routines.array-creation.html)
   /// and [Dart FFI Memory Management](https://dart.dev/guides/libraries/c-interop) for additional details.  /// Factory to create a new multi-dimensional array with backing unmanaged C heap memory.
@@ -421,9 +421,9 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - [ArgumentError] if the total size of [shape] does not match the length of [list].
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
-  /// ```
+  /// ``
   factory NDArray.fromList(List list, List<int> shape, DType<T> dtype) {
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     if (totalSize != list.length) {
@@ -471,10 +471,10 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - Bypasses isolate VM GC pressure entirely by allocating memory via unmanaged `calloc` pages.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray<double>.zeros([2, 2], DType.float64);
   /// print(a.toList()); // [0.0, 0.0, 0.0, 0.0]
-  /// ```
+  /// ``
   ///
   /// Refer to the [NumPy zeros reference](https://numpy.org/doc/stable/reference/generated/numpy.zeros.html)
   /// and [Dart FFI calloc allocator](https://pub.dev/documentation/ffi/latest/ffi/calloc-constant.html) for additional details.
@@ -485,10 +485,10 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Factory to create an array filled with ones.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray<double>.ones([2, 2], DType.float64);
   /// print(a.data); // [1.0, 1.0, 1.0, 1.0]
-  /// ```
+  /// ``
   factory NDArray.ones(List<int> shape, DType<T> dtype) {
     final arr = NDArray<T>.create(shape, dtype);
     if (dtype == DType.complex128 || dtype == DType.complex64) {
@@ -506,10 +506,10 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Factory to create an array with a range of values.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray<double>.arange(0.0, 5.0, step: 1.0, dtype: DType.float64);
   /// print(a.data); // [0.0, 1.0, 2.0, 3.0, 4.0]
-  /// ```
+  /// ``
   factory NDArray.arange(
     double start,
     double stop, {
@@ -539,10 +539,10 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Factory to create an array with evenly spaced values.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray<double>.linspace(0.0, 1.0, 5, dtype: DType.float64);
   /// print(a.data); // [0.0, 0.25, 0.5, 0.75, 1.0]
-  /// ```
+  /// ``
   factory NDArray.linspace(
     double start,
     double stop,
@@ -575,10 +575,10 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Factory to create a 2D identity matrix.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray<double>.eye(3, DType.float64);
   /// print(a.data); // [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-  /// ```
+  /// ``
   ///
   /// **Gotchas:**
   /// - This only creates 2D square matrices.
@@ -599,9 +599,9 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Factory to create a view sharing the same memory.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final view = NDArray.view(parent, shape: [2], strides: [1], offsetElements: 1);
-  /// ```
+  /// ``
   ///
   /// **Restrictions:**
   /// - **Lifetime Dependency**: The view is only valid as long as the parent's memory is not freed. If you call `parent.dispose()`, this view becomes invalid.
@@ -744,11 +744,11 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - If the array is a non-contiguous view, this flattens it first, performing a copy and allocating a new contiguous array ($O(N)$ complexity).
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
   /// final b = a.reshape([2, 2]);
   /// print(b.shape); // [2, 2]
-  /// ```
+  /// ``
   NDArray<T> reshape(List<int> newShape) {
     if (isDisposed) {
       throw StateError(
@@ -787,12 +787,12 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray<double>.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
   /// final flat = a.flatten();
   /// print(flat.shape); // [4]
   /// print(flat.toList()); // [1.0, 2.0, 3.0, 4.0]
-  /// ```
+  /// ``
   NDArray<T> flatten() {
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     final result = NDArray<T>.create([totalSize], dtype);
@@ -818,12 +818,12 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - [StateError] if the array is already disposed.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
   /// final b = a.copy();
   /// b.data[0] = 99;
   /// print(a.data[0]); // 1 (decoupled memory!)
-  /// ```
+  /// ``
   NDArray<T> copy() {
     if (isDisposed) {
       throw StateError('Cannot copy a disposed array.');
@@ -945,11 +945,11 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - Otherwise, falls back to returning a deep flattened copy ($O(N)$ complexity).
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
   /// final r = a.ravel();
   /// print(r.shape); // [4]
-  /// ```
+  /// ``
   NDArray<T> ravel() {
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     if (isContiguous) {
@@ -975,10 +975,10 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray<double>.create([100], DType.float64);
   /// a.fill(42.0);
-  /// ```
+  /// ``
   void fill(dynamic value) {
     if (isDisposed) {
       throw StateError('Cannot fill an array whose memory has been freed.');
@@ -1049,10 +1049,10 @@ final class NDArray<T> implements ffi.Finalizable {
   ///   re-arranged internally without copying any underlying elements.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], DType.float64);
   /// final b = a.transpose(); // b has shape [2, 3] view
-  /// ```
+  /// ``
   NDArray<T> transpose([List<int>? axes]) {
     if (isDisposed) {
       throw StateError(
@@ -1110,10 +1110,10 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - This is a zero-allocation, copy-free view manipulation ($O(1)$ complexity).
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
   /// final t = a.transposed; // shape [2, 2]
-  /// ```
+  /// ``
   NDArray<T> get transposed => transpose();
 
   /// Returns the single scalar value of a 0-dimensional array.
@@ -1125,10 +1125,10 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - [StateError] if the array has dimensions.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray.fromList([42], [], DType.int32);
   /// print(a.scalar); // 42
-  /// ```
+  /// ``
   T get scalar {
     if (shape.isNotEmpty) {
       throw StateError(
@@ -1184,10 +1184,10 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - [RangeError] if any coordinate is out of bounds for its dimension.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray.zeros([2, 2], DType.int32);
   /// a.setCell([0, 1], 42);
-  /// ```
+  /// ``
   void setCell(List<int> coords, T value) {
     if (coords.length != shape.length) {
       throw ArgumentError(
@@ -2075,9 +2075,9 @@ final class NDArray<T> implements ffi.Finalizable {
   /// or [Slice] objects (to select a range and keep rank).
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final view = arr.slice([Slice(1, 3), 2]);
-  /// ```
+  /// ``
   /// Returns a view or copy of the array with elements sliced based on [selectors].
   ///
   /// [selectors] must contain instances of [Selector] subclasses: [Index], [Slice], [Indices], [Mask].
@@ -2183,10 +2183,10 @@ final class NDArray<T> implements ffi.Finalizable {
   /// This method corresponds to NumPy's `take` function.
   ///
   /// **Example:**
-  /// ```dart
+  /// ``dart
   /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
   /// final b = a.take([0, 1], axis: 1); // Select columns 0 and 1
-  /// ```
+  /// ``
   NDArray<T> take(List<int> indices, {int axis = 0}) {
     if (axis < 0 || axis >= shape.length) {
       throw RangeError.index(axis, shape, 'axis out of range');
@@ -2884,10 +2884,10 @@ sealed class Selector {
 /// - [RangeError] during slicing if [value] is out of bounds.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// // Select the element at index 1 along the first dimension
 /// final rowView = arr.slice([Index(1)]);
-/// ```
+/// ``
 final class Index extends Selector {
   /// The coordinate index to select. Can be negative to index from the end.
   final int value;
@@ -2908,10 +2908,10 @@ final class Index extends Selector {
 /// - [AssertionError] if [step] is zero.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// // Select elements from index 1 to 5 with step size of 2
 /// final sliceView = arr.slice([Slice(start: 1, stop: 5, step: 2)]);
-/// ```
+/// ``
 final class Slice extends Selector {
   /// The starting index of the slice (inclusive).
   /// If null, defaults to the beginning of the dimension.
@@ -2942,10 +2942,10 @@ final class Slice extends Selector {
 /// - Every index in [values] must be within `[-dimSize, dimSize - 1]` where `dimSize` is the size of the dimension.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// // Extract rows at index 0 and 2 from a 2D matrix
 /// final subMatrix = arr.slice([Indices([0, 2])]);
-/// ```
+/// ``
 final class Indices extends Selector {
   /// The list of specific indices to select.
   final List<int> values;
@@ -2962,11 +2962,11 @@ final class Indices extends Selector {
 /// - The [mask] must share identical shape and dimensions with the targeted dimension array.
 ///
 /// **Example:**
-/// ```dart
+/// ``dart
 /// // Filter elements matching a boolean condition
 /// final maskCondition = arr > 0.5;
 /// final positiveValues = arr.slice([Mask(BooleanMask(maskCondition))]);
-/// ```
+/// ``
 final class Mask extends Selector {
   /// The boolean mask wrapper.
   final BooleanMask mask;

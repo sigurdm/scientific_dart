@@ -5,6 +5,8 @@ void main() {
     'pkgs/ndarray/lib/src/ndarray.dart',
     'pkgs/ndarray/lib/src/operations.dart',
     'pkgs/ndarray/lib/src/broadcasting.dart',
+    'pkgs/ndarray/lib/src/random.dart',
+    'pkgs/ndarray/lib/src/fft.dart',
   ];
 
   for (final filePath in files) {
@@ -14,6 +16,9 @@ void main() {
 
     for (var line in lines) {
       if (line.trim().startsWith('///')) {
+        // Remove double backticks
+        line = line.replaceAll('``', '`');
+
         // Remove backticks from things like `NDArray<double>` or `DType.float64`
         // but only if they look like code, not things like `.npy`
         
