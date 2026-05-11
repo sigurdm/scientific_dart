@@ -2321,3 +2321,19 @@
   - Cleaned up `FINDINGS.md` by deleting this resolved entry, keeping the roadmap completely clean.
 * **Results**:
   - **Verification**: Formatting and static analysis pass clean. All committed changes are staged successfully!
+
+***
+
+## 194. Repository-Wide Recycler Parameter Naming Renaming (into -> out) (User Request / Refactoring)
+* **Issue**:
+  - While using the unified named parameter `{into}` served styling consistency, standard Python NumPy specifies **`out`** for all in-place recycler parameters (e.g. `np.sum(a, out=out)`). Matching this is critical for the library's target developer ergonomics and API parity.
+* **Resolution**:
+  - **Universal Renaming Sweep**: Successfully refactored all instances of `{into}` back to `{out}` across:
+    - 4 native ufuncs `cumsum`, `cumprod`, `cummin`, and `cummax`.
+    - The 11 statistical reductions `sum`, `prod`, `all`, `any`, `mean`, `variance`, `std`, `nansum`, `nanmean`, `nanvar`, and `nanstd`.
+    - The 6 random distribution generators `uniform`, `normal`, `poisson`, `binomial`, `exponential`, and `randint`.
+    - Linear algebra / matrix arithmetic extensions (`add`, `subtract`, `multiply`, `divide`, `matmul`, etc.) inside [extensions.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/extensions.dart).
+    - All unit test suites in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/quality_enhancements_test.dart), [extensions_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/extensions_test.dart), and [random_coverage_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/random_coverage_test.dart).
+    - All educational example scripts.
+* **Results**:
+  - **Verification**: Recompiled all dynamic libraries and confirmed that all **436 unit tests pass flawlessly green!** Static analysis is perfectly pristine.
