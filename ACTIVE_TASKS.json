@@ -1,10 +1,4 @@
 {
-  "antigravity": {
-    "agent_id": "antigravity",
-    "task_id": "3",
-    "finding_id": "3.1",
-    "claimed_at": "2026-05-11T12:16:51.263930"
-  },
   "Agent-Alpha": {
     "agent_id": "Agent-Alpha",
     "task_id": "3",
