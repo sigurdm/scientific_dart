@@ -29,7 +29,7 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 ### 3.1 Universal Functions (ufuncs)
 - **Math & Trigonometry**:
   - Trigonometric functions: `tan()`, inverse trig `asin()`, `acos()`, `atan()`, and `atan2(y, x)`.
-  - Hyperbolic functions: `sinh()`, `cosh()`, `tanh()`, `asinh()`, `acosh()`, `atanh()`.
+  - (sinh(), cosh(), tanh(), asinh(), acosh(), and atanh() FFI-accelerated ufuncs have been fully resolved!)
   - Power & logarithmic: `square()`, element-wise `power()`, modulo `remainder()` / `mod()`, and combined division/modulo `divmod()`.
   - Floating-point classification: `isnan()`, `isinf()`, `isfinite()`, sign copier `copysign()`.
 - **Logical Operations (Vectorized)**:
