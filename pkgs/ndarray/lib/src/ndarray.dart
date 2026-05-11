@@ -919,6 +919,15 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Throws:**
   /// - [StateError] if the array has been disposed.
   ///
+  /// **View vs. Copy Behavior:**
+  /// - **Returns a VIEW** when the array is **C-contiguous** (`isContiguous` is `true`).
+  ///   Shares the exact same backing memory and raw pointer (`_pointer`). Mutations made to the
+  ///   returned raveled array will directly affect the original array (and vice versa).
+  /// - **Returns a COPY** when the array is **non-contiguous / strided** (e.g. sliced views or
+  ///   transposed matrices). Allocates a brand-new contiguous C heap array and duplicates elements.
+  ///   Mutations made to the returned raveled array are completely decoupled and will **not** affect
+  ///   the original array.
+  ///
   /// **Performance considerations:**
   /// - If the array [isContiguous], this returns a zero-allocation, zero-copy 1D view sharing backing memory ($O(1)$ complexity).
   /// - Otherwise, falls back to returning a deep flattened copy ($O(N)$ complexity).
