@@ -2483,3 +2483,16 @@
   - Removed the resolved Section 1.1 ("Non-Contiguous Strided Transcendental ufuncs") and organized custom_ufuncs finding from [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md).
 * **Results**:
   - **Verification**: All **438 package unit tests pass flawlessly green!** formatting and static analysis are perfectly clean. Staged and committed refactorings cleanly.
+
+***
+
+## 209. Enriched ndarray Public API Documentation & Examples (Task 6)
+* **What was done**:
+  - Audited widespread Dartdoc documentation across the entire `pkgs/ndarray` package to ensure compliance with "Effective Dart" guidelines.
+  - **Automated Cleanup**: Developed and executed a custom Dart script to identify and remove hundreds of incorrect backticks in code examples (e.g., ` `NDArray<double>`.ones(...) ` -> `NDArray<double>.ones(...)`).
+  - **HTML Warning Resolution**: Fixed dozens of "unintended HTML in doc comment" analyzer warnings by wrapping type fragments with angle brackets (e.g., `List<int>`, `NDArray<T>`) in backticks within prose.
+  - **Improved `NDArray.fromList`**: Enhanced the factory with detailed documentation of its flattening behavior and added a critical runtime check ensuring input list length exactly matches the requested total shape size, throwing a descriptive `ArgumentError` on mismatch.
+  - **Extension Documentation**: Added missing Dartdocs to all strongly-typed mathematical extensions in `extensions.dart`, detailing their roles in providing optimized operations for specific element types.
+  - **Triple Backtick Restoration**: Repaired broken triple backticks in code blocks that were accidentally corrupted during regex-based automated cleanup phases.
+* **Results**:
+  - **Verification**: Verified that the package compiles flawlessly with 0 analyzer warnings and 0 errors. All **438 package unit tests pass flawlessly green!**
