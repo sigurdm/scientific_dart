@@ -2647,3 +2647,90 @@ void s_conj_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, c
         }
     }
 }
+
+/* ============================================================================
+ * CROSS-TYPE BINARY MATH FFI HELPERS IMPLEMENTATION
+ * ============================================================================
+ */
+
+static inline cpx_t cpx_from_double(double v) { return (cpx_t){v, 0.0}; }
+static inline cpx_t cpx_from_float(float v) { return (cpx_t){(double)v, 0.0}; }
+static inline cpx_t cpx_from_int64(int64_t v) { return (cpx_t){(double)v, 0.0}; }
+static inline cpx_t cpx_from_int32(int32_t v) { return (cpx_t){(double)v, 0.0}; }
+static inline cpx_t cpx_from_cpx(cpx_t v) { return v; }
+
+static inline cpx_t cpx_div(cpx_t x, cpx_t y) {
+    double denom = y.r * y.r + y.i * y.i;
+    if (denom == 0.0) return (cpx_t){NAN, NAN};
+    return (cpx_t){(x.r * y.r + x.i * y.i) / denom, (x.i * y.r - x.r * y.i) / denom};
+}
+
+#define EXPR_double(OP, Ta, Tb, x, y, OP_SYM) ((double)x OP_SYM (double)y)
+#define EXPR_float(OP, Ta, Tb, x, y, OP_SYM) ((float)x OP_SYM (float)y)
+#define EXPR_int64(OP, Ta, Tb, x, y, OP_SYM) (x OP_SYM y)
+#define EXPR_int32(OP, Ta, Tb, x, y, OP_SYM) (x OP_SYM y)
+#define EXPR_cpx(OP, Ta, Tb, x, y, OP_SYM) cpx_##OP(cpx_from_##Ta(x), cpx_from_##Tb(y))
+
+#define DEFINE_V_UFUNC(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, OP_SYM) \
+void v_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const Tb *b, Tr *res, int size) { \
+    if (a == NULL || b == NULL || res == NULL || size <= 0) return; \
+    for (int i = 0; i < size; i++) { \
+        Ta x = a[i]; \
+        Tb y = b[i]; \
+        res[i] = EXPR_##Tr_tok(OP, Ta_tok, Tb_tok, x, y, OP_SYM); \
+        (void)x; (void)y; \
+    } \
+}
+
+#define DEFINE_S_UFUNC(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, OP_SYM) \
+void s_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const int *stridesA, \
+                                             const Tb *b, const int *stridesB, \
+                                             Tr *res, const int *stridesRes, \
+                                             const int *shape, int rank) { \
+    if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return; \
+    int total_elements = 1; \
+    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
+    int coord[8] = {0}; \
+    int offsetA = 0, offsetB = 0, offsetRes = 0; \
+    for (int el = 0; el < total_elements; el++) { \
+        Ta x = a[offsetA]; \
+        Tb y = b[offsetB]; \
+        res[offsetRes] = EXPR_##Tr_tok(OP, Ta_tok, Tb_tok, x, y, OP_SYM); \
+        (void)x; (void)y; \
+        for (int d = rank - 1; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shape[d]) { \
+                offsetA += stridesA[d]; \
+                offsetB += stridesB[d]; \
+                offsetRes += stridesRes[d]; \
+                break; \
+            } \
+            coord[d] = 0; \
+            offsetA -= (shape[d] - 1) * stridesA[d]; \
+            offsetB -= (shape[d] - 1) * stridesB[d]; \
+            offsetRes -= (shape[d] - 1) * stridesRes[d]; \
+        } \
+    } \
+}
+
+#define DEFINE_V_S_UFUNC(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, OP_SYM) \
+  DEFINE_V_UFUNC(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, OP_SYM) \
+  DEFINE_S_UFUNC(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, OP_SYM)
+
+#define BUILD_ADD_COMBINATIONS(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr) \
+  DEFINE_V_S_UFUNC(add, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, +)
+
+#define BUILD_SUB_COMBINATIONS(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr) \
+  DEFINE_V_S_UFUNC(sub, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, -)
+
+#define BUILD_MUL_COMBINATIONS(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr) \
+  DEFINE_V_S_UFUNC(mul, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, *)
+
+#define BUILD_DIV_COMBINATIONS(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr) \
+  DEFINE_V_S_UFUNC(div, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, /)
+
+GENERATE_OP_COMBINATIONS(add, BUILD_ADD_COMBINATIONS)
+GENERATE_OP_COMBINATIONS(sub, BUILD_SUB_COMBINATIONS)
+GENERATE_OP_COMBINATIONS(mul, BUILD_MUL_COMBINATIONS)
+GENERATE_DIV_COMBINATIONS(div, BUILD_DIV_COMBINATIONS)
+

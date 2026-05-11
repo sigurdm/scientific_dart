@@ -1821,25 +1821,25 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Element-wise addition with full broadcasting support.
   NDArray operator +(dynamic other) {
     final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
-    return ops.add(this, otherArr);
+    return add(otherArr);
   }
 
   /// Element-wise subtraction with full broadcasting support.
   NDArray operator -(dynamic other) {
     final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
-    return ops.subtract(this, otherArr);
+    return subtract(otherArr);
   }
 
   /// Element-wise multiplication with full broadcasting support.
   NDArray operator *(dynamic other) {
     final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
-    return ops.multiply(this, otherArr);
+    return multiply(otherArr);
   }
 
   /// Element-wise division with full broadcasting support.
   NDArray operator /(dynamic other) {
     final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
-    return ops.divide(this, otherArr);
+    return divide(otherArr);
   }
 
   /// Element-wise floor division with full broadcasting support.

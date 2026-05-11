@@ -3609,3 +3609,3807 @@ const int WCHAR_MAX = 2147483647;
 const int WINT_MIN = 0;
 
 const int WINT_MAX = 4294967295;
+
+// =============================================================================
+// AUTO-GENERATED CROSS-TYPE BINARY MATH FFI HELPERS
+// =============================================================================
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_add_double_double_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_double_double_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_add_double_float_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_double_float_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_add_double_int64_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_double_int64_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_add_double_int32_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_double_int32_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_add_double_cpx_cpx(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_double_cpx_cpx(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_add_float_double_double(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_float_double_double(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_add_float_float_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_float_float_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_add_float_int64_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_float_int64_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_add_float_int32_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_float_int32_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_add_float_cpx_cpx(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_float_cpx_cpx(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_add_int64_double_double(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_int64_double_double(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_add_int64_float_float(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_int64_float_float(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Int,
+  )
+>()
+external void v_add_int64_int64_int64(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.LongLong> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_int64_int64_int64(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.LongLong> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Int,
+  )
+>()
+external void v_add_int64_int32_int64(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.LongLong> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_int64_int32_int64(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.LongLong> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_add_int64_cpx_cpx(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_int64_cpx_cpx(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_add_int32_double_double(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_int32_double_double(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_add_int32_float_float(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_int32_float_float(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Int,
+  )
+>()
+external void v_add_int32_int64_int64(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.LongLong> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_int32_int64_int64(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.LongLong> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void v_add_int32_int32_int32(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_int32_int32_int32(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Int> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_add_int32_cpx_cpx(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_int32_cpx_cpx(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_add_cpx_double_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_cpx_double_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_add_cpx_float_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_cpx_float_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_add_cpx_int64_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_cpx_int64_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_add_cpx_int32_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_cpx_int32_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_add_cpx_cpx_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_add_cpx_cpx_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_sub_double_double_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_double_double_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_sub_double_float_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_double_float_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_sub_double_int64_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_double_int64_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_sub_double_int32_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_double_int32_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_sub_double_cpx_cpx(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_double_cpx_cpx(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_sub_float_double_double(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_float_double_double(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_sub_float_float_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_float_float_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_sub_float_int64_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_float_int64_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_sub_float_int32_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_float_int32_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_sub_float_cpx_cpx(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_float_cpx_cpx(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_sub_int64_double_double(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_int64_double_double(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_sub_int64_float_float(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_int64_float_float(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Int,
+  )
+>()
+external void v_sub_int64_int64_int64(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.LongLong> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_int64_int64_int64(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.LongLong> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Int,
+  )
+>()
+external void v_sub_int64_int32_int64(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.LongLong> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_int64_int32_int64(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.LongLong> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_sub_int64_cpx_cpx(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_int64_cpx_cpx(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_sub_int32_double_double(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_int32_double_double(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_sub_int32_float_float(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_int32_float_float(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Int,
+  )
+>()
+external void v_sub_int32_int64_int64(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.LongLong> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_int32_int64_int64(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.LongLong> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void v_sub_int32_int32_int32(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_int32_int32_int32(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Int> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_sub_int32_cpx_cpx(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_int32_cpx_cpx(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_sub_cpx_double_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_cpx_double_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_sub_cpx_float_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_cpx_float_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_sub_cpx_int64_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_cpx_int64_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_sub_cpx_int32_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_cpx_int32_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_sub_cpx_cpx_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_sub_cpx_cpx_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_mul_double_double_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_double_double_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_mul_double_float_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_double_float_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_mul_double_int64_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_double_int64_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_mul_double_int32_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_double_int32_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_mul_double_cpx_cpx(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_double_cpx_cpx(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_mul_float_double_double(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_float_double_double(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_mul_float_float_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_float_float_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_mul_float_int64_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_float_int64_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_mul_float_int32_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_float_int32_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_mul_float_cpx_cpx(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_float_cpx_cpx(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_mul_int64_double_double(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_int64_double_double(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_mul_int64_float_float(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_int64_float_float(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Int,
+  )
+>()
+external void v_mul_int64_int64_int64(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.LongLong> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_int64_int64_int64(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.LongLong> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Int,
+  )
+>()
+external void v_mul_int64_int32_int64(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.LongLong> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_int64_int32_int64(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.LongLong> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_mul_int64_cpx_cpx(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_int64_cpx_cpx(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_mul_int32_double_double(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_int32_double_double(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_mul_int32_float_float(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_int32_float_float(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Int,
+  )
+>()
+external void v_mul_int32_int64_int64(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.LongLong> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_int32_int64_int64(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.LongLong> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void v_mul_int32_int32_int32(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_int32_int32_int32(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Int> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_mul_int32_cpx_cpx(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_int32_cpx_cpx(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_mul_cpx_double_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_cpx_double_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_mul_cpx_float_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_cpx_float_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_mul_cpx_int64_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_cpx_int64_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_mul_cpx_int32_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_cpx_int32_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_mul_cpx_cpx_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_mul_cpx_cpx_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_div_double_double_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_double_double_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_div_double_float_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_double_float_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_div_double_int64_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_double_int64_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_div_double_int32_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_double_int32_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_div_double_cpx_cpx(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_double_cpx_cpx(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_div_float_double_double(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_float_double_double(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_div_float_float_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_float_float_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_div_float_int64_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_float_int64_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_div_float_int32_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_float_int32_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_div_float_cpx_cpx(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_float_cpx_cpx(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_div_int64_double_double(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_int64_double_double(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_div_int64_float_float(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_int64_float_float(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_div_int64_int64_double(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_int64_int64_double(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_div_int64_int32_double(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_int64_int32_double(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_div_int64_cpx_cpx(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_int64_cpx_cpx(
+  ffi.Pointer<ffi.LongLong> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_div_int32_double_double(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_int32_double_double(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_div_int32_float_float(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_int32_float_float(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_div_int32_int64_double(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_int32_int64_double(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_div_int32_int32_double(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_int32_int32_double(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_div_int32_cpx_cpx(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_int32_cpx_cpx(
+  ffi.Pointer<ffi.Int> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_div_cpx_double_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_cpx_double_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_div_cpx_float_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_cpx_float_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_div_cpx_int64_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_cpx_int64_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.LongLong> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_div_cpx_int32_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_cpx_int32_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_div_cpx_cpx_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_div_cpx_cpx_cpx(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);

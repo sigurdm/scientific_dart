@@ -562,7 +562,7 @@ NDArray<T> multivariateNormal<T extends num>(
     final x2D =
         out?.reshape([sampleCount, d]) ??
         NDArray<T>.create([sampleCount, d], resolvedDType);
-    add(matmul(z2D, lT), mean, out: x2D);
+    matmul(z2D, lT).add(mean, out: x2D);
 
     if (out != null) {
       return out;

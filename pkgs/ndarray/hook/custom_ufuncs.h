@@ -332,4 +332,75 @@ void v_tril_float(const float *src, float *res, int batch_count, int rows, int c
 void v_triu_double(const double *src, double *res, int batch_count, int rows, int cols, int k);
 void v_triu_float(const float *src, float *res, int batch_count, int rows, int cols, int k);
 
+/* ============================================================================
+ * SECTION 8: AUTO-GENERATED CROSS-TYPE BINARY MATH FFI HELPERS
+ * ============================================================================
+ */
+
+#define GENERATE_OP_COMBINATIONS(OP, MACRO) \
+  MACRO(OP, double, double, double, double, double, double) \
+  MACRO(OP, double, float, double, double, float, double) \
+  MACRO(OP, double, int64, double, double, int64_t, double) \
+  MACRO(OP, double, int32, double, double, int32_t, double) \
+  MACRO(OP, double, cpx, cpx, double, cpx_t, cpx_t) \
+  MACRO(OP, float, double, double, float, double, double) \
+  MACRO(OP, float, float, float, float, float, float) \
+  MACRO(OP, float, int64, float, float, int64_t, float) \
+  MACRO(OP, float, int32, float, float, int32_t, float) \
+  MACRO(OP, float, cpx, cpx, float, cpx_t, cpx_t) \
+  MACRO(OP, int64, double, double, int64_t, double, double) \
+  MACRO(OP, int64, float, float, int64_t, float, float) \
+  MACRO(OP, int64, int64, int64, int64_t, int64_t, int64_t) \
+  MACRO(OP, int64, int32, int64, int64_t, int32_t, int64_t) \
+  MACRO(OP, int64, cpx, cpx, int64_t, cpx_t, cpx_t) \
+  MACRO(OP, int32, double, double, int32_t, double, double) \
+  MACRO(OP, int32, float, float, int32_t, float, float) \
+  MACRO(OP, int32, int64, int64, int32_t, int64_t, int64_t) \
+  MACRO(OP, int32, int32, int32, int32_t, int32_t, int32_t) \
+  MACRO(OP, int32, cpx, cpx, int32_t, cpx_t, cpx_t) \
+  MACRO(OP, cpx, double, cpx, cpx_t, double, cpx_t) \
+  MACRO(OP, cpx, float, cpx, cpx_t, float, cpx_t) \
+  MACRO(OP, cpx, int64, cpx, cpx_t, int64_t, cpx_t) \
+  MACRO(OP, cpx, int32, cpx, cpx_t, int32_t, cpx_t) \
+  MACRO(OP, cpx, cpx, cpx, cpx_t, cpx_t, cpx_t)
+
+#define GENERATE_DIV_COMBINATIONS(OP, MACRO) \
+  MACRO(OP, double, double, double, double, double, double) \
+  MACRO(OP, double, float, double, double, float, double) \
+  MACRO(OP, double, int64, double, double, int64_t, double) \
+  MACRO(OP, double, int32, double, double, int32_t, double) \
+  MACRO(OP, double, cpx, cpx, double, cpx_t, cpx_t) \
+  MACRO(OP, float, double, double, float, double, double) \
+  MACRO(OP, float, float, float, float, float, float) \
+  MACRO(OP, float, int64, float, float, int64_t, float) \
+  MACRO(OP, float, int32, float, float, int32_t, float) \
+  MACRO(OP, float, cpx, cpx, float, cpx_t, cpx_t) \
+  MACRO(OP, int64, double, double, int64_t, double, double) \
+  MACRO(OP, int64, float, float, int64_t, float, float) \
+  MACRO(OP, int64, int64, double, int64_t, int64_t, double) \
+  MACRO(OP, int64, int32, double, int64_t, int32_t, double) \
+  MACRO(OP, int64, cpx, cpx, int64_t, cpx_t, cpx_t) \
+  MACRO(OP, int32, double, double, int32_t, double, double) \
+  MACRO(OP, int32, float, float, int32_t, float, float) \
+  MACRO(OP, int32, int64, double, int32_t, int64_t, double) \
+  MACRO(OP, int32, int32, double, int32_t, int32_t, double) \
+  MACRO(OP, int32, cpx, cpx, int32_t, cpx_t, cpx_t) \
+  MACRO(OP, cpx, double, cpx, cpx_t, double, cpx_t) \
+  MACRO(OP, cpx, float, cpx, cpx_t, float, cpx_t) \
+  MACRO(OP, cpx, int64, cpx, cpx_t, int64_t, cpx_t) \
+  MACRO(OP, cpx, int32, cpx, cpx_t, int32_t, cpx_t) \
+  MACRO(OP, cpx, cpx, cpx, cpx_t, cpx_t, cpx_t)
+
+#define DECLARE_FFI_HELPER(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr) \
+  void v_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const Tb *b, Tr *res, int size); \
+  void s_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const int *stridesA, \
+                                               const Tb *b, const int *stridesB, \
+                                               Tr *res, const int *stridesRes, \
+                                               const int *shape, int rank);
+
+GENERATE_OP_COMBINATIONS(add, DECLARE_FFI_HELPER)
+GENERATE_OP_COMBINATIONS(sub, DECLARE_FFI_HELPER)
+GENERATE_OP_COMBINATIONS(mul, DECLARE_FFI_HELPER)
+GENERATE_DIV_COMBINATIONS(div, DECLARE_FFI_HELPER)
+
 #endif /* CUSTOM_UFUNCS_H */
