@@ -33,6 +33,10 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 - **Issue**: `eig()` in `operations.dart` also copies elements from `a.data` sequentially to `aReal.data` using a flat `for` loop over `a.data[i]`. If the input array `a` is non-contiguous, it copies elements sequentially from the backing list, resulting in incorrect eigenvalue and eigenvector computations.
 - **Recommended Tweak**: Add a contiguous check `if (!a.isContiguous) a = a.copy();` at the beginning of `eig()`, disposing of the transient copy in a `finally` block.
 
+### 2.5 linalg.inv Memory Leak on Non-Contiguous Views with out Recycler
+- **Issue**: Inside `inv()` in `operations.dart` (lines 2987-2990), if the input array `a` is non-contiguous, it copies it to a contiguous temporary array `src = NDArray.fromList(...)`. If the user passes a valid `out` recycler buffer (`out != null`), `src`'s elements are copied into `out`, and the function returns `out`. However, the copied contiguous temporary array `src` is **never disposed of**, leaking its memory on the native C-heap.
+- **Recommended Tweak**: Track whether `src` was created via `final bool wasCopied = !a.isContiguous;`. If `wasCopied` is true and `out != null`, ensure `src.dispose()` is strictly called in the function's `finally` block to release its allocations.
+
 ---
 
 ## 🧪 Section 3: NumPy Compatibility Roadmap (Missing Features)
