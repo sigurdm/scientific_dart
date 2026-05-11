@@ -6,9 +6,7 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 
 ## 🚀 Section 1: Critical Performance Bottlenecks
 
-### 1.1 Reductions & Statistics Bloat
-- **Issue**: `binomial()`, `exponential()`, and `poisson()` for small parameters use raw Dart JIT loops with billions of `rand.nextDouble()` calls, stalling simulations.
-- **Recommended Tweak**: Collapse these into unified streaming C kernels in `custom_ufuncs.c`. For statistics, use single-pass algorithms. For random sampling, move the entire loop into AOT C space.
+*(All previously logged critical PRNG bottleneck issues have been successfully resolved!)*
 
 ---
 
@@ -24,22 +22,6 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 - **Issue**: The recursive advanced indexing walker (`_copyAdvancedRecursive`) is functional but further C-level optimization for extreme ranks is an option.
 - **Issue**: Missing structured multi-dimensional iteration utilities equivalent to NumPy's `nditer` and `ndenumerate`. Currently, hot loops are forced to nested dimension walks or explicit flat-index strided conversions, causing VM boundary crossing overhead and list allocations.
 - **Recommended Tweak**: Offload advanced indexing walks to a native C odometer kernel. Design a zero-allocation `nditer`-like class in Dart that yields strided coordinate buffers directly to consumer math closures.
-
-### 2.3 linalg.cholesky Correctness Failure on Strided Views
-- **Issue**: `cholesky()` in `operations.dart` copies elements from `a.data` sequentially using `setRange(0, n*n, a.data)` or a simple `for (var i = 0; i < n*n; i++) lMat.data[i] = a.data[i]`. If `a` is non-contiguous (e.g., transposed or sliced view), this copies incorrect data from the parent backing array index 0, yielding completely garbage results.
-- **Recommended Tweak**: Add a contiguous check `if (!a.isContiguous) a = a.copy();` at the beginning of `cholesky()`, and ensure the copied temporary array is disposed of cleanly in a `finally` block (exactly matching our `fft` leak-safety pattern!).
-
-### 2.4 linalg.eig Correctness Failure on Strided Views
-- **Issue**: `eig()` in `operations.dart` also copies elements from `a.data` sequentially to `aReal.data` using a flat `for` loop over `a.data[i]`. If the input array `a` is non-contiguous, it copies elements sequentially from the backing list, resulting in incorrect eigenvalue and eigenvector computations.
-- **Recommended Tweak**: Add a contiguous check `if (!a.isContiguous) a = a.copy();` at the beginning of `eig()`, disposing of the transient copy in a `finally` block.
-
-### 2.5 linalg.inv Memory Leak on Non-Contiguous Views with out Recycler
-- **Issue**: Inside `inv()` in `operations.dart` (lines 2987-2990), if the input array `a` is non-contiguous, it copies it to a contiguous temporary array `src = NDArray.fromList(...)`. If the user passes a valid `out` recycler buffer (`out != null`), `src`'s elements are copied into `out`, and the function returns `out`. However, the copied contiguous temporary array `src` is **never disposed of**, leaking its memory on the native C-heap.
-- **Recommended Tweak**: Track whether `src` was created via `final bool wasCopied = !a.isContiguous;`. If `wasCopied` is true and `out != null`, ensure `src.dispose()` is strictly called in the function's `finally` block to release its allocations.
-
-### 2.6 linalg.solve Memory Leak on Singular/Illegal Matrix Failure Exceptions
-- **Issue**: `solve()` in `operations.dart` (lines 3300-3390) creates intermediate copied arrays `aCopy` and `bCopy` on setup. However, if `LAPACKE_dgesv` or `LAPACKE_sgesv` fails (e.g., throwing `ArgumentError` due to a singular matrix or illegal value), the function exits immediately without disposing of either `aCopy` or `bCopy`, leaking their native memory blocks on the unmanaged C-heap.
-- **Recommended Tweak**: Wrap the solver inside a `try {} finally {}` block. Reclaim `aCopy` unconditionally, and reclaim `bCopy` on failure scenarios to prevent all unmanaged heap leaks.
 
 ---
 
