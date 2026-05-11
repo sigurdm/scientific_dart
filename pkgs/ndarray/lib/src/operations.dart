@@ -8846,14 +8846,78 @@ NDArray cumsum(NDArray a, {int? axis, NDArray? out}) {
     }
   }
 
-  _cumOpRecursive(
-    a,
-    result,
-    List<int>.filled(a.shape.length, 0),
-    targetAxis,
-    0,
-    (acc, val) => ((acc as dynamic) + val) as dynamic,
-  );
+  final rank = a.shape.length;
+  final cShape = malloc<ffi.Int>(rank);
+  final cStridesA = malloc<ffi.Int>(rank);
+  final cStridesRes = malloc<ffi.Int>(rank);
+
+  for (var i = 0; i < rank; i++) {
+    cShape[i] = a.shape[i];
+    cStridesA[i] = a.strides[i];
+    cStridesRes[i] = result.strides[i];
+  }
+
+  try {
+    if (a.dtype == DType.float64) {
+      s_cumsum_double(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    } else if (a.dtype == DType.float32) {
+      s_cumsum_float(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    } else {
+      final doubleA = NDArray<double>.create(a.shape, DType.float64);
+      for (var i = 0; i < a.data.length; i++) {
+        doubleA.data[i] = (a.data[i] as num).toDouble();
+      }
+      final doubleRes = NDArray<double>.create(a.shape, DType.float64);
+      final cStridesDoubleA = malloc<ffi.Int>(rank);
+      final cStridesDoubleRes = malloc<ffi.Int>(rank);
+
+      for (var i = 0; i < rank; i++) {
+        cStridesDoubleA[i] = doubleA.strides[i];
+        cStridesDoubleRes[i] = doubleRes.strides[i];
+      }
+
+      try {
+        s_cumsum_double(
+          doubleA.pointer.cast(),
+          cStridesDoubleA,
+          doubleRes.pointer.cast(),
+          cStridesDoubleRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      } finally {
+        malloc.free(cStridesDoubleA);
+        malloc.free(cStridesDoubleRes);
+      }
+
+      for (var i = 0; i < result.data.length; i++) {
+        result.data[i] = _castValue(doubleRes.data[i], a.dtype);
+      }
+      doubleA.dispose();
+      doubleRes.dispose();
+    }
+  } finally {
+    malloc.free(cShape);
+    malloc.free(cStridesA);
+    malloc.free(cStridesRes);
+  }
 
   return result;
 }
@@ -8916,43 +8980,78 @@ NDArray cumprod(NDArray a, {int? axis, NDArray? out}) {
     }
   }
 
-  _cumOpRecursive(
-    a,
-    result,
-    List<int>.filled(a.shape.length, 0),
-    targetAxis,
-    0,
-    (acc, val) => ((acc as dynamic) * val) as dynamic,
-  );
+  final rank = a.shape.length;
+  final cShape = malloc<ffi.Int>(rank);
+  final cStridesA = malloc<ffi.Int>(rank);
+  final cStridesRes = malloc<ffi.Int>(rank);
+
+  for (var i = 0; i < rank; i++) {
+    cShape[i] = a.shape[i];
+    cStridesA[i] = a.strides[i];
+    cStridesRes[i] = result.strides[i];
+  }
+
+  try {
+    if (a.dtype == DType.float64) {
+      s_cumprod_double(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    } else if (a.dtype == DType.float32) {
+      s_cumprod_float(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    } else {
+      final doubleA = NDArray<double>.create(a.shape, DType.float64);
+      for (var i = 0; i < a.data.length; i++) {
+        doubleA.data[i] = (a.data[i] as num).toDouble();
+      }
+      final doubleRes = NDArray<double>.create(a.shape, DType.float64);
+      final cStridesDoubleA = malloc<ffi.Int>(rank);
+      final cStridesDoubleRes = malloc<ffi.Int>(rank);
+
+      for (var i = 0; i < rank; i++) {
+        cStridesDoubleA[i] = doubleA.strides[i];
+        cStridesDoubleRes[i] = doubleRes.strides[i];
+      }
+
+      try {
+        s_cumprod_double(
+          doubleA.pointer.cast(),
+          cStridesDoubleA,
+          doubleRes.pointer.cast(),
+          cStridesDoubleRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      } finally {
+        malloc.free(cStridesDoubleA);
+        malloc.free(cStridesDoubleRes);
+      }
+
+      for (var i = 0; i < result.data.length; i++) {
+        result.data[i] = _castValue(doubleRes.data[i], a.dtype);
+      }
+      doubleA.dispose();
+      doubleRes.dispose();
+    }
+  } finally {
+    malloc.free(cShape);
+    malloc.free(cStridesA);
+    malloc.free(cStridesRes);
+  }
 
   return result;
-}
-
-void _cumOpRecursive(
-  NDArray a,
-  NDArray result,
-  List<int> coord,
-  int axis,
-  int dim,
-  dynamic Function(dynamic acc, dynamic val) op,
-) {
-  if (dim == a.shape.length) {
-    dynamic acc;
-    for (var i = 0; i < a.shape[axis]; i++) {
-      coord[axis] = i;
-      final val = a.getCell(coord);
-      acc = (i == 0) ? val : op(acc, val);
-      result.setCell(coord, acc);
-    }
-    return;
-  }
-
-  if (dim == axis) {
-    _cumOpRecursive(a, result, coord, axis, dim + 1, op);
-  } else {
-    for (var i = 0; i < a.shape[dim]; i++) {
-      coord[dim] = i;
-      _cumOpRecursive(a, result, coord, axis, dim + 1, op);
-    }
-  }
 }

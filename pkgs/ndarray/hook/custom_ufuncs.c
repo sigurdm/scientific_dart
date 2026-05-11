@@ -1897,3 +1897,131 @@ void v_triu_float(const float *src, float *res, int batch_count, int rows, int c
         }
     }
 }
+
+void s_cumsum_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis) {
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    for (int o = 0; o < outer_size; o++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                offsetRes += coord[d] * stridesRes[d];
+            }
+        }
+        double acc = 0.0;
+        for (int i = 0; i < shape[axis]; i++) {
+            int idxSrc = offsetSrc + i * stridesSrc[axis];
+            int idxRes = offsetRes + i * stridesRes[axis];
+            acc = (i == 0) ? src[idxSrc] : (acc + src[idxSrc]);
+            res[idxRes] = acc;
+        }
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_cumsum_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, int axis) {
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    for (int o = 0; o < outer_size; o++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                offsetRes += coord[d] * stridesRes[d];
+            }
+        }
+        float acc = 0.0f;
+        for (int i = 0; i < shape[axis]; i++) {
+            int idxSrc = offsetSrc + i * stridesSrc[axis];
+            int idxRes = offsetRes + i * stridesRes[axis];
+            acc = (i == 0) ? src[idxSrc] : (acc + src[idxSrc]);
+            res[idxRes] = acc;
+        }
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_cumprod_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis) {
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    for (int o = 0; o < outer_size; o++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                offsetRes += coord[d] * stridesRes[d];
+            }
+        }
+        double acc = 1.0;
+        for (int i = 0; i < shape[axis]; i++) {
+            int idxSrc = offsetSrc + i * stridesSrc[axis];
+            int idxRes = offsetRes + i * stridesRes[axis];
+            acc = (i == 0) ? src[idxSrc] : (acc * src[idxSrc]);
+            res[idxRes] = acc;
+        }
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_cumprod_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, int axis) {
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    for (int o = 0; o < outer_size; o++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                offsetRes += coord[d] * stridesRes[d];
+            }
+        }
+        float acc = 1.0f;
+        for (int i = 0; i < shape[axis]; i++) {
+            int idxSrc = offsetSrc + i * stridesSrc[axis];
+            int idxRes = offsetRes + i * stridesRes[axis];
+            acc = (i == 0) ? src[idxSrc] : (acc * src[idxSrc]);
+            res[idxRes] = acc;
+        }
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}

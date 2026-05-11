@@ -152,6 +152,20 @@ void v_tril_float(const float *src, float *res, int batch_count, int rows, int c
 void v_triu_double(const double *src, double *res, int batch_count, int rows, int cols, int k);
 void v_triu_float(const float *src, float *res, int batch_count, int rows, int cols, int k);
 
+void v_asin_double(const double *src, double *res, int size);
+void v_asin_float(const float *src, float *res, int size);
+void v_acos_double(const double *src, double *res, int size);
+void v_acos_float(const float *src, float *res, int size);
+void v_atan_double(const double *src, double *res, int size);
+void v_atan_float(const float *src, float *res, int size);
+void v_atan2_double(const double *y, const double *x, double *res, int size);
+void v_atan2_float(const float *y, const float *x, float *res, int size);
+
+void s_cumsum_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_cumsum_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_cumprod_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_cumprod_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, int axis);
+
 // ----------------------------------------------------------------------------
 // Native C High-Speed Strided Flattening/Copying Kernels
 // ----------------------------------------------------------------------------
