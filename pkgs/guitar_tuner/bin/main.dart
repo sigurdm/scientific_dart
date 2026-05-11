@@ -17,7 +17,9 @@ void main() async {
   final logic = TunerLogic(sampleRate: sampleRate, bufferSize: bufferSize);
 
   // Pre-allocate capture buffer to avoid garbage collection pressure
-  final NDArray<double> captureBuffer = NDArray<double>.create([bufferSize], DType.float32);
+  final NDArray<double> captureBuffer = NDArray<double>.create([
+    bufferSize,
+  ], DType.float32);
 
   final List<String> peakLog = [];
   final List<String> waterfall = [];
@@ -37,7 +39,7 @@ void main() async {
       // Check if we have enough signal (RMS threshold) via num_dart
       final (double currentRms, TunerResult result) = NDArray.scope(() {
         final sqSamples = multiply(captureBuffer, captureBuffer);
-        final rmsVal = math.sqrt(mean(sqSamples as NDArray<double>) as double);
+        final rmsVal = math.sqrt(mean(sqSamples).scalar);
 
         final currentResult = logic.process(captureBuffer, rmsVal);
         return (rmsVal, currentResult);

@@ -11,10 +11,10 @@ void main() {
         final c = NDArray.fromList([1, 2, 3], [3], DType.int32);
         final d = NDArray.fromList([1, 0, 3], [3], DType.int32);
 
-        expect(all(a), true);
-        expect(all(b), false);
-        expect(all(c), true);
-        expect(all(d), false);
+        expect(all(a).scalar, true);
+        expect(all(b).scalar, false);
+        expect(all(c).scalar, true);
+        expect(all(d).scalar, false);
       }),
     );
 
@@ -26,10 +26,10 @@ void main() {
         final c = NDArray.fromList([0, 0, 0], [3], DType.int32);
         final d = NDArray.fromList([0, 5, 0], [3], DType.int32);
 
-        expect(any(a), false);
-        expect(any(b), true);
-        expect(any(c), false);
-        expect(any(d), true);
+        expect(any(a).scalar, false);
+        expect(any(b).scalar, true);
+        expect(any(c).scalar, false);
+        expect(any(d).scalar, true);
       }),
     );
 

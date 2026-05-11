@@ -28,8 +28,8 @@ void main() {
             dtype: DType.float64,
           );
 
-          final sampleMean = mean(a) as double;
-          final sampleStd = std(a) as double;
+          final sampleMean = mean(a).scalar;
+          final sampleStd = std(a).scalar;
 
           // Over 10,000 draws, sample mean should be very close to loc, and stddev close to scale!
           expect(sampleMean, closeTo(loc, 0.1));
@@ -60,7 +60,7 @@ void main() {
             expect(val, greaterThanOrEqualTo(0.0));
           }
 
-          final sampleMean = mean(a) as double;
+          final sampleMean = mean(a).scalar;
           // Exponential distribution mean is exactly equal to its scale parameter (beta)
           expect(sampleMean, closeTo(scale, 0.15));
         }),
@@ -75,8 +75,8 @@ void main() {
           final a = poisson([5000], lam: lam, dtype: DType.int64);
           expect(a.dtype, DType.int64);
 
-          final sampleMean = mean(a) as double;
-          final sampleVar = variance(a) as double;
+          final sampleMean = mean(a).scalar;
+          final sampleVar = variance(a).scalar;
 
           // In a Poisson distribution, both Mean and Variance are exactly equal to lambda!
           expect(sampleMean, closeTo(lam, 0.15));
@@ -92,7 +92,7 @@ void main() {
           final a = poisson([5000], lam: lam, dtype: DType.int32);
           expect(a.dtype, DType.int32);
 
-          final sampleMean = mean(a) as double;
+          final sampleMean = mean(a).scalar;
           expect(sampleMean, closeTo(lam, 0.3));
           for (final val in a.data) {
             expect(val, greaterThanOrEqualTo(0));
@@ -115,7 +115,7 @@ void main() {
             expect(val, lessThanOrEqualTo(n));
           }
 
-          final sampleMean = mean(a) as double;
+          final sampleMean = mean(a).scalar;
           final expectedMean = n * p; // 20 * 0.4 = 8.0
           expect(sampleMean, closeTo(expectedMean, 0.2));
         }),
@@ -129,7 +129,7 @@ void main() {
           final a = binomial([5000], n: n, p: p, dtype: DType.int32);
 
           expect(a.dtype, DType.int32);
-          final sampleMean = mean(a) as double;
+          final sampleMean = mean(a).scalar;
           final expectedMean = n * p; // 1000 * 0.3 = 300.0
           expect(sampleMean, closeTo(expectedMean, 1.0));
         }),

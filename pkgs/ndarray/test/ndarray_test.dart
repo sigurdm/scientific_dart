@@ -197,7 +197,7 @@ void main() {
           2,
         ], DType.float64);
         final s = sum(a);
-        expect(s, 10.0);
+        expect(s.scalar, 10.0);
       }),
     );
 
@@ -319,7 +319,7 @@ void main() {
           2,
           2,
         ], DType.float64);
-        final s = sum(a, axis: 0) as NDArray;
+        final s = sum(a, axis: 0);
         expect(s.shape, [2]);
         expect(s.data, [4.0, 6.0]);
       }),
@@ -332,7 +332,7 @@ void main() {
           2,
           2,
         ], DType.float64);
-        final s = sum(a, axis: 1) as NDArray;
+        final s = sum(a, axis: 1);
         expect(s.shape, [2]);
         expect(s.data, [3.0, 7.0]);
       }),
@@ -441,9 +441,9 @@ void main() {
           2,
         ], DType.float64);
         final m = mean(a);
-        expect(m, 2.5);
+        expect(m.scalar, 2.5);
 
-        final m0 = mean(a, axis: 0) as NDArray;
+        final m0 = mean(a, axis: 0);
         expect(m0.shape, [2]);
         expect(m0.data, [2.0, 3.0]);
       }),
@@ -489,9 +489,9 @@ void main() {
           2,
         ], DType.float64);
         final p = prod(a);
-        expect(p, 24.0);
+        expect(p.scalar, 24.0);
 
-        final p0 = prod(a, axis: 0) as NDArray;
+        final p0 = prod(a, axis: 0);
         expect(p0.shape, [2]);
         expect(p0.toList(), [3.0, 8.0]); // Prod along rows: 1*3=3, 2*4=8
       }),
@@ -505,7 +505,7 @@ void main() {
         ], DType.float64);
         final v = variance(a);
         expect(
-          v,
+          v.scalar,
           closeTo(1.25, 1e-10),
         ); // Mean=2.5, SqDiffs=[2.25, 0.25, 0.25, 2.25], Sum=5, Var=1.25
 
@@ -514,7 +514,7 @@ void main() {
           [2, 2],
           DType.float64,
         );
-        final v0 = variance(a2, axis: 0) as NDArray;
+        final v0 = variance(a2, axis: 0);
         expect(v0.shape, [2]);
         expect(v0.toList(), [
           1.0,
@@ -530,14 +530,14 @@ void main() {
           4,
         ], DType.float64);
         final s = std(a);
-        expect(s, closeTo(math.sqrt(1.25), 1e-10));
+        expect(s.scalar, closeTo(math.sqrt(1.25), 1e-10));
 
         final a2 = NDArray.fromList(
           Float64List.fromList([1.0, 2.0, 3.0, 4.0]),
           [2, 2],
           DType.float64,
         );
-        final s0 = std(a2, axis: 0) as NDArray;
+        final s0 = std(a2, axis: 0);
         expect(s0.shape, [2]);
         expect(s0.toList(), [1.0, 1.0]);
       }),

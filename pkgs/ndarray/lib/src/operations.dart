@@ -1545,22 +1545,29 @@ NDArray matmul(NDArray a, NDArray b) {
 /// final s0 = sum(a, axis: 0); // Sum along rows
 /// print(s0.data); // [4.0, 6.0]
 /// ```
-dynamic sum(NDArray a, {int? axis}) {
+NDArray sum(NDArray a, {int? axis}) {
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    dynamic acc;
     if (a.isContiguous) {
       if (a.dtype == DType.float64) {
-        return r_sum_double(a.pointer.cast(), size) as dynamic;
+        acc = r_sum_double(a.pointer.cast(), size);
       } else if (a.dtype == DType.float32) {
-        return r_sum_float(a.pointer.cast(), size) as dynamic;
+        acc = r_sum_float(a.pointer.cast(), size);
       }
     }
-    final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
-    var acc = elements.first as dynamic;
-    for (var i = 1; i < elements.length; i++) {
-      acc += elements[i];
+    if (acc == null) {
+      final List<dynamic> elements = size == a.data.length
+          ? a.data
+          : a.toList();
+      acc = elements.first;
+      for (var i = 1; i < elements.length; i++) {
+        acc += elements[i];
+      }
     }
-    return acc as dynamic;
+    final result = NDArray.create([], a.dtype);
+    result.data[0] = acc;
+    return result;
   }
 
   if (axis < 0 || axis >= a.shape.length) {
@@ -1593,22 +1600,29 @@ dynamic sum(NDArray a, {int? axis}) {
 /// final p0 = prod(a, axis: 0); // Product along rows
 /// print(p0.data); // [3.0, 8.0]
 /// ```
-dynamic prod(NDArray a, {int? axis}) {
+NDArray prod(NDArray a, {int? axis}) {
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    dynamic acc;
     if (a.isContiguous) {
       if (a.dtype == DType.float64) {
-        return r_prod_double(a.pointer.cast(), size) as dynamic;
+        acc = r_prod_double(a.pointer.cast(), size);
       } else if (a.dtype == DType.float32) {
-        return r_prod_float(a.pointer.cast(), size) as dynamic;
+        acc = r_prod_float(a.pointer.cast(), size);
       }
     }
-    final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
-    var acc = elements.first as dynamic;
-    for (var i = 1; i < elements.length; i++) {
-      acc *= elements[i];
+    if (acc == null) {
+      final List<dynamic> elements = size == a.data.length
+          ? a.data
+          : a.toList();
+      acc = elements.first;
+      for (var i = 1; i < elements.length; i++) {
+        acc *= elements[i];
+      }
     }
-    return acc as dynamic;
+    final result = NDArray.create([], a.dtype);
+    result.data[0] = acc;
+    return result;
   }
 
   if (axis < 0 || axis >= a.shape.length) {
@@ -1647,7 +1661,7 @@ dynamic prod(NDArray a, {int? axis}) {
 /// final a = NDArray.fromList([true, true, false], [3], `DType.boolean);`
 /// final res = all(a); // false
 /// ```
-dynamic all(NDArray a, {int? axis}) {
+NDArray<bool> all(NDArray a, {int? axis}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute all() on a disposed array.');
   }
@@ -1655,12 +1669,16 @@ dynamic all(NDArray a, {int? axis}) {
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     final List elements = size == a.data.length ? a.data : a.toList();
+    var allTrue = true;
     for (var i = 0; i < elements.length; i++) {
       if (!_isTrue(elements[i])) {
-        return false;
+        allTrue = false;
+        break;
       }
     }
-    return true;
+    final result = NDArray<bool>.create([], DType.boolean);
+    result.data[0] = allTrue;
+    return result;
   }
 
   var targetAxis = axis;
@@ -1705,7 +1723,7 @@ dynamic all(NDArray a, {int? axis}) {
 /// final a = NDArray.fromList([true, false, false], [3], `DType.boolean);`
 /// final res = any(a); // true
 /// ```
-dynamic any(NDArray a, {int? axis}) {
+NDArray<bool> any(NDArray a, {int? axis}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute any() on a disposed array.');
   }
@@ -1713,12 +1731,16 @@ dynamic any(NDArray a, {int? axis}) {
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     final List elements = size == a.data.length ? a.data : a.toList();
+    var anyTrue = false;
     for (var i = 0; i < elements.length; i++) {
       if (_isTrue(elements[i])) {
-        return true;
+        anyTrue = true;
+        break;
       }
     }
-    return false;
+    final result = NDArray<bool>.create([], DType.boolean);
+    result.data[0] = anyTrue;
+    return result;
   }
 
   var targetAxis = axis;
@@ -2003,11 +2025,39 @@ NDArray log(NDArray a, {NDArray? out}) {
 /// ```
 ///
 /// Reference: [Arithmetic Mean](https://en.wikipedia.org/wiki/Arithmetic_mean)
-dynamic mean(NDArray a, {int? axis}) {
-  final s = sum(a, axis: axis);
+NDArray mean(NDArray a, {int? axis}) {
+  final DType targetDType = a.dtype.isComplex
+      ? DType.complex128
+      : DType.float64;
+
+  NDArray promotedA;
+  if (a.dtype == DType.float64 ||
+      a.dtype == DType.float32 ||
+      a.dtype == DType.complex128 ||
+      a.dtype == DType.complex64) {
+    promotedA = a;
+  } else {
+    promotedA = NDArray<double>.create(a.shape, DType.float64);
+    final doubleList = promotedA.data as List<double>;
+    final aList = a.data;
+    for (var i = 0; i < aList.length; i++) {
+      doubleList[i] = (aList[i] as num).toDouble();
+    }
+  }
+
+  final s = sum(promotedA, axis: axis);
+
+  if (promotedA != a) {
+    promotedA.dispose();
+  }
+
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    return s / size;
+    final meanVal = s.data[0] / size;
+    final result = NDArray.create([], targetDType);
+    result.data[0] = meanVal;
+    s.dispose();
+    return result;
   } else {
     final sizeAxis = a.shape[axis];
     for (var i = 0; i < s.data.length; i++) {
@@ -2039,12 +2089,13 @@ dynamic mean(NDArray a, {int? axis}) {
 /// ```
 ///
 /// Reference: [Variance](https://en.wikipedia.org/wiki/Variance)
-dynamic variance<T extends num>(NDArray<T> a, {int? axis}) {
+NDArray<double> variance<T extends num>(NDArray<T> a, {int? axis}) {
   final m = mean(a, axis: axis);
 
   if (axis == null) {
     var sumSqDiff = 0.0;
-    final meanVal = m as double;
+    final meanVal = m.data[0] as double;
+    m.dispose();
 
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     final List<num> elements = size == a.data.length
@@ -2055,23 +2106,36 @@ dynamic variance<T extends num>(NDArray<T> a, {int? axis}) {
       final diff = elements[i].toDouble() - meanVal;
       sumSqDiff += diff * diff;
     }
-    return sumSqDiff / elements.length;
+    final result = NDArray<double>.create([], DType.float64);
+    result.data[0] = sumSqDiff / elements.length;
+    return result;
   } else {
     // Reshape m to keep dimensions for broadcasting
     final targetShape = List<int>.from(a.shape);
     targetShape[axis] = 1;
-    final reshapedM = (m as NDArray).reshape(targetShape);
+    final reshapedM = m.reshape(targetShape);
 
     final diff = subtract(a, reshapedM);
     final sqDiff = multiply(diff, diff);
 
-    // Convert to `NDArray<double>` to avoid truncation in mean
     final sqDiffDouble = NDArray<double>.create(sqDiff.shape, DType.float64);
     for (var i = 0; i < sqDiff.data.length; i++) {
       sqDiffDouble.data[i] = sqDiff.data[i].toDouble();
     }
 
-    return mean(sqDiffDouble, axis: axis);
+    m.dispose();
+    reshapedM.dispose();
+    diff.dispose();
+    sqDiff.dispose();
+
+    final res = mean(sqDiffDouble, axis: axis);
+    final resultVal = NDArray<double>.view(
+      res,
+      shape: res.shape,
+      strides: res.strides,
+    );
+    sqDiffDouble.dispose();
+    return resultVal;
   }
 }
 
@@ -2097,12 +2161,23 @@ dynamic variance<T extends num>(NDArray<T> a, {int? axis}) {
 /// ```
 ///
 /// Reference: [Standard Deviation](https://en.wikipedia.org/wiki/Standard_deviation)
-dynamic std<T extends num>(NDArray<T> a, {int? axis}) {
+NDArray<double> std<T extends num>(NDArray<T> a, {int? axis}) {
   final v = variance(a, axis: axis);
   if (axis == null) {
-    return math.sqrt(v as double);
+    final stdVal = math.sqrt(v.data[0]);
+    final result = NDArray<double>.create([], DType.float64);
+    result.data[0] = stdVal;
+    v.dispose();
+    return result;
   } else {
-    return sqrt(v as NDArray);
+    final res = sqrt(v);
+    final resultVal = NDArray<double>.view(
+      res,
+      shape: res.shape,
+      strides: res.strides,
+    );
+    v.dispose();
+    return resultVal;
   }
 }
 
@@ -2122,33 +2197,37 @@ dynamic std<T extends num>(NDArray<T> a, {int? axis}) {
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], `DType.float64);`
 /// final s = nansum(a); // returns 4.0
 /// ```
-dynamic nansum(NDArray a, {int? axis}) {
+NDArray nansum(NDArray a, {int? axis}) {
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
+    dynamic acc;
     if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-      var acc = 0;
+      var sumVal = 0;
       for (var i = 0; i < elements.length; i++) {
-        acc += elements[i] as int;
+        sumVal += elements[i] as int;
       }
-      return acc as dynamic;
+      acc = sumVal;
     } else if (a.dtype == DType.complex64 || a.dtype == DType.complex128) {
-      var acc = Complex(0.0, 0.0);
+      var sumVal = Complex(0.0, 0.0);
       for (var i = 0; i < elements.length; i++) {
         final val = elements[i] as Complex;
         if (val.real.isNaN || val.imag.isNaN) continue;
-        acc += val;
+        sumVal += val;
       }
-      return acc as dynamic;
+      acc = sumVal;
     } else {
-      var acc = 0.0;
+      var sumVal = 0.0;
       for (var i = 0; i < elements.length; i++) {
         final val = elements[i] as double;
         if (val.isNaN) continue;
-        acc += val;
+        sumVal += val;
       }
-      return acc as dynamic;
+      acc = sumVal;
     }
+    final result = NDArray.create([], a.dtype);
+    result.data[0] = acc;
+    return result;
   }
 
   if (axis < 0 || axis >= a.shape.length) {
@@ -2190,10 +2269,33 @@ dynamic nansum(NDArray a, {int? axis}) {
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], `DType.float64);`
 /// final m = nanmean(a); // returns 2.6666666666666665
 /// ```
-dynamic nanmean(NDArray a, {int? axis}) {
+NDArray nanmean(NDArray a, {int? axis}) {
+  final DType targetDType = a.dtype.isComplex
+      ? DType.complex128
+      : DType.float64;
+
+  NDArray promotedA;
+  if (a.dtype == DType.float64 ||
+      a.dtype == DType.float32 ||
+      a.dtype == DType.complex128 ||
+      a.dtype == DType.complex64) {
+    promotedA = a;
+  } else {
+    promotedA = NDArray<double>.create(a.shape, DType.float64);
+    final doubleList = promotedA.data as List<double>;
+    final aList = a.data;
+    for (var i = 0; i < aList.length; i++) {
+      doubleList[i] = (aList[i] as num).toDouble();
+    }
+  }
+
   if (axis == null) {
-    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
+    final size = promotedA.shape.isEmpty
+        ? 1
+        : promotedA.shape.reduce((x, y) => x * y);
+    final List<dynamic> elements = size == promotedA.data.length
+        ? promotedA.data
+        : promotedA.toList();
     var sumVal = 0.0;
     var count = 0;
     for (var i = 0; i < elements.length; i++) {
@@ -2202,23 +2304,34 @@ dynamic nanmean(NDArray a, {int? axis}) {
       sumVal += (val as num).toDouble();
       count++;
     }
-    if (count == 0) return double.nan;
-    return sumVal / count;
+    if (promotedA != a) {
+      promotedA.dispose();
+    }
+    final result = NDArray<double>.create([], DType.float64);
+    if (count == 0) {
+      result.data[0] = double.nan;
+    } else {
+      result.data[0] = sumVal / count;
+    }
+    return result;
   }
 
-  if (axis < 0 || axis >= a.shape.length) {
+  if (axis < 0 || axis >= promotedA.shape.length) {
+    if (promotedA != a) {
+      promotedA.dispose();
+    }
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = NDArray.zeros(newShape, a.dtype as dynamic);
+  final newShape = List<int>.from(promotedA.shape)..removeAt(axis);
+  final result = NDArray.zeros(newShape, targetDType as dynamic);
   final counts = NDArray<int>.zeros(newShape, DType.int32);
 
   _nanReduceRecursive(
-    a,
+    promotedA,
     result,
     counts,
-    List<int>.filled(a.shape.length, 0),
+    List<int>.filled(promotedA.shape.length, 0),
     List<int>.filled(newShape.length, 0),
     axis,
     0,
@@ -2231,6 +2344,10 @@ dynamic nanmean(NDArray a, {int? axis}) {
     } else {
       result.data[i] = ((result.data[i] as dynamic) / c) as dynamic;
     }
+  }
+  counts.dispose();
+  if (promotedA != a) {
+    promotedA.dispose();
   }
   return result;
 }
@@ -2284,13 +2401,18 @@ void _nanReduceRecursive(
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], `DType.float64);`
 /// final v = nanvar(a); // returns 0.6666666666666666
 /// ```
-dynamic nanvar<T extends num>(NDArray<T> a, {int? axis}) {
+NDArray<double> nanvar<T extends num>(NDArray<T> a, {int? axis}) {
   final m = nanmean(a, axis: axis);
 
   if (axis == null) {
     var sumSqDiff = 0.0;
-    final meanVal = m as double;
-    if (meanVal.isNaN) return double.nan;
+    final meanVal = m.data[0];
+    m.dispose();
+    if (meanVal.isNaN) {
+      final result = NDArray<double>.create([], DType.float64);
+      result.data[0] = double.nan;
+      return result;
+    }
 
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     final List<num> elements = size == a.data.length
@@ -2305,13 +2427,18 @@ dynamic nanvar<T extends num>(NDArray<T> a, {int? axis}) {
       sumSqDiff += diff * diff;
       count++;
     }
-    if (count == 0) return double.nan;
-    return sumSqDiff / count;
+    final result = NDArray<double>.create([], DType.float64);
+    if (count == 0) {
+      result.data[0] = double.nan;
+    } else {
+      result.data[0] = sumSqDiff / count;
+    }
+    return result;
   } else {
     // Reshape m to keep dimensions for broadcasting
     final targetShape = List<int>.from(a.shape);
     targetShape[axis] = 1;
-    final reshapedM = (m as NDArray).reshape(targetShape);
+    final reshapedM = m.reshape(targetShape);
 
     final diff = subtract(a, reshapedM);
     final sqDiff = multiply(diff, diff);
@@ -2322,7 +2449,19 @@ dynamic nanvar<T extends num>(NDArray<T> a, {int? axis}) {
       sqDiffDouble.data[i] = sqDiff.data[i].toDouble();
     }
 
-    return nanmean(sqDiffDouble, axis: axis);
+    m.dispose();
+    reshapedM.dispose();
+    diff.dispose();
+    sqDiff.dispose();
+
+    final res = nanmean(sqDiffDouble, axis: axis);
+    final resultVal = NDArray<double>.view(
+      res,
+      shape: res.shape,
+      strides: res.strides,
+    );
+    sqDiffDouble.dispose();
+    return resultVal;
   }
 }
 
@@ -2342,12 +2481,23 @@ dynamic nanvar<T extends num>(NDArray<T> a, {int? axis}) {
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], `DType.float64);`
 /// final s = nanstd(a); // returns sqrt(0.6666666666666666)
 /// ```
-dynamic nanstd<T extends num>(NDArray<T> a, {int? axis}) {
+NDArray<double> nanstd<T extends num>(NDArray<T> a, {int? axis}) {
   final v = nanvar(a, axis: axis);
   if (axis == null) {
-    return math.sqrt(v as double);
+    final stdVal = math.sqrt(v.data[0]);
+    final result = NDArray<double>.create([], DType.float64);
+    result.data[0] = stdVal;
+    v.dispose();
+    return result;
   } else {
-    return sqrt(v as NDArray);
+    final res = sqrt(v);
+    final resultVal = NDArray<double>.view(
+      res,
+      shape: res.shape,
+      strides: res.strides,
+    );
+    v.dispose();
+    return resultVal;
   }
 }
 

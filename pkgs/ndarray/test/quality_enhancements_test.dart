@@ -361,15 +361,15 @@ void main() {
 
         // Test sum()
         final totalSum = sum(a);
-        expect(totalSum, Complex(10.0, 1.0));
+        expect(totalSum.scalar, Complex(10.0, 1.0));
 
         // Test mean()
         final totalMean = mean(a);
-        expect(totalMean, Complex(2.5, 0.25));
+        expect(totalMean.scalar, Complex(2.5, 0.25));
 
         // Test prod()
         final totalProd = prod(a);
-        expect(totalProd, Complex(24.0, 24.0)); // (1+i)*2*3*4 = 24 + 24i
+        expect(totalProd.scalar, Complex(24.0, 24.0)); // (1+i)*2*3*4 = 24 + 24i
 
         // Test concatenate() and hstack()
         final b = NDArray<Complex>.fromList(
@@ -929,11 +929,11 @@ void main() {
 
         // 1. float64 contiguous FFI prod()
         final r1 = prod(f64);
-        expect(r1, closeTo(24.0, 1e-9));
+        expect(r1.scalar, closeTo(24.0, 1e-9));
 
         // 2. float32 contiguous FFI prod()
         final r2 = prod(f32);
-        expect(r2, closeTo(30.0, 1e-9));
+        expect(r2.scalar, closeTo(30.0, 1e-9));
       }),
     );
 
@@ -949,8 +949,8 @@ void main() {
         expect(viewT.isContiguous, false);
 
         // Global reduction
-        expect(prod(viewT), 720.0); // 1*2*3*4*5*6 = 720
-        expect(sum(viewT), 21.0);
+        expect(prod(viewT).scalar, 720.0); // 1*2*3*4*5*6 = 720
+        expect(sum(viewT).scalar, 21.0);
 
         // Reduction along axes (triggers _reduceRecursive fallback paths)
         final p0 = prod(viewT, axis: 0); // Product along axis 0 -> shape [3]
@@ -978,8 +978,8 @@ void main() {
 
         final viewT = parent.transposed;
 
-        expect(variance(viewT), closeTo(17.5 / 6.0, 1e-9));
-        expect(std(viewT), closeTo(math.sqrt(17.5 / 6.0), 1e-9));
+        expect(variance(viewT).scalar, closeTo(17.5 / 6.0, 1e-9));
+        expect(std(viewT).scalar, closeTo(math.sqrt(17.5 / 6.0), 1e-9));
       }),
     );
 
@@ -993,8 +993,8 @@ void main() {
         );
 
         final view = parent.slice([Slice(start: 0, stop: 2), Slice.all()]);
-        expect(variance(view), closeTo(1.25, 1e-9));
-        expect(std(view), closeTo(math.sqrt(1.25), 1e-9));
+        expect(variance(view).scalar, closeTo(1.25, 1e-9));
+        expect(std(view).scalar, closeTo(math.sqrt(1.25), 1e-9));
       }),
     );
 
@@ -1028,7 +1028,7 @@ void main() {
             DType.float64,
           );
 
-          expect(nansum(a), closeTo(4.0, 1e-9));
+          expect(nansum(a).scalar, closeTo(4.0, 1e-9));
 
           final s0 = nansum(a, axis: 0);
           expect(s0.shape, [2]);
@@ -1045,7 +1045,7 @@ void main() {
             DType.float64,
           );
 
-          expect(nanmean(a), closeTo(8.0 / 3.0, 1e-9));
+          expect(nanmean(a).scalar, closeTo(8.0 / 3.0, 1e-9));
 
           final m0 = nanmean(a, axis: 0);
           expect(m0.shape, [2]);
@@ -1064,8 +1064,8 @@ void main() {
 
           // mean = (1 + 2 + 3) / 3 = 2.0
           // var = ((1-2)^2 + (2-2)^2 + (3-2)^2) / 3 = 2/3
-          expect(nanvar(a), closeTo(2.0 / 3.0, 1e-9));
-          expect(nanstd(a), closeTo(math.sqrt(2.0 / 3.0), 1e-9));
+          expect(nanvar(a).scalar, closeTo(2.0 / 3.0, 1e-9));
+          expect(nanstd(a).scalar, closeTo(math.sqrt(2.0 / 3.0), 1e-9));
 
           final v0 = nanvar(a, axis: 0);
           final s0 = nanstd(a, axis: 0);
@@ -1555,11 +1555,11 @@ void main() {
 
         // 1. sum() verification
         final s = sum(view);
-        expect(s, 3.0);
+        expect(s.scalar, 3.0);
 
         // 2. prod() verification
         final p = prod(view);
-        expect(p, 2.0);
+        expect(p.scalar, 2.0);
       },
     );
 
@@ -1717,22 +1717,22 @@ void main() {
         // 1. Int32 Summation (should return int scalar without double-cast crash)
         final aInt32 = NDArray.fromList([10, 20, 30, 40], [4], DType.int32);
         final sumI32 = nansum(aInt32);
-        expect(sumI32, 100);
-        expect(sumI32, isA<int>());
+        expect(sumI32.scalar, 100);
+        expect(sumI32.scalar, isA<int>());
 
         // 2. Int64 Summation
         final aInt64 = NDArray.fromList([100, 200], [2], DType.int64);
         final sumI64 = nansum(aInt64);
-        expect(sumI64, 300);
-        expect(sumI64, isA<int>());
+        expect(sumI64.scalar, 300);
+        expect(sumI64.scalar, isA<int>());
 
         // 3. Complex128 Summation (should return Complex scalar)
         final aC128 = NDArray<Complex>.create([2], DType.complex128);
         aC128.data[0] = Complex(1.0, 2.0);
         aC128.data[1] = Complex(3.0, 4.0);
         final sumC128 = nansum(aC128);
-        expect(sumC128, Complex(4.0, 6.0));
-        expect(sumC128, isA<Complex>());
+        expect(sumC128.scalar, Complex(4.0, 6.0));
+        expect(sumC128.scalar, isA<Complex>());
       },
     );
 
