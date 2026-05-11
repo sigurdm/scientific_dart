@@ -1918,6 +1918,43 @@ NDArray sin(NDArray a, {NDArray? out}) {
       v_sin_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
     }
+  } else {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    try {
+      if (a.dtype == DType.float64) {
+        s_sin_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.float32) {
+        s_sin_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
+    }
   }
 
   final aNum = a as NDArray<num>;
@@ -1965,6 +2002,43 @@ NDArray cos(NDArray a, {NDArray? out}) {
     } else if (a.dtype == DType.float32) {
       v_cos_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
+    }
+  } else {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    try {
+      if (a.dtype == DType.float64) {
+        s_cos_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.float32) {
+        s_cos_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
     }
   }
 

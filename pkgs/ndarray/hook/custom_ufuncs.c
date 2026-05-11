@@ -2112,3 +2112,37 @@ DEFINE_STRIDED_DIFF_OP(s_diff_int64, int64_t, SUB_REAL)
 DEFINE_STRIDED_DIFF_OP(s_diff_int32, int32_t, SUB_REAL)
 DEFINE_STRIDED_DIFF_OP(s_diff_complex128, cpx_t, cpx_sub)
 DEFINE_STRIDED_DIFF_OP(s_diff_complex64, cpx_f_t, cpx_sub_f)
+
+#define DEFINE_STRIDED_UNARY_OP(FUNCNAME, T, OP) \
+void FUNCNAME(const T *src, const int *stridesSrc, \
+              T *res, const int *stridesRes, \
+              const int *shape, int rank) { \
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0) return; \
+    int coord[8] = {0}; \
+    int total_size = 1; \
+    for (int d = 0; d < rank; d++) total_size *= shape[d]; \
+    for (int i = 0; i < total_size; i++) { \
+        int offsetSrc = 0; \
+        int offsetRes = 0; \
+        for (int d = 0; d < rank; d++) { \
+            offsetSrc += coord[d] * stridesSrc[d]; \
+            offsetRes += coord[d] * stridesRes[d]; \
+        } \
+        res[offsetRes] = OP(src[offsetSrc]); \
+        for (int d = rank - 1; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shape[d]) break; \
+            coord[d] = 0; \
+        } \
+    } \
+}
+
+#define OP_SIN_D(x) sin(x)
+#define OP_SIN_F(x) sinf(x)
+#define OP_COS_D(x) cos(x)
+#define OP_COS_F(x) cosf(x)
+
+DEFINE_STRIDED_UNARY_OP(s_sin_double, double, OP_SIN_D)
+DEFINE_STRIDED_UNARY_OP(s_sin_float, float, OP_SIN_F)
+DEFINE_STRIDED_UNARY_OP(s_cos_double, double, OP_COS_D)
+DEFINE_STRIDED_UNARY_OP(s_cos_float, float, OP_COS_F)
