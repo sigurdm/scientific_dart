@@ -2531,5 +2531,80 @@ void main() {
         expect(identical(nst, nanStdBuffer), true);
       }),
     );
+
+    test(
+      'linalg.tril() and linalg.triu() matrix extractions correctness',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+          [3, 3],
+          DType.float64,
+        );
+
+        // 1. tril standard
+        final l = tril(a);
+        expect(l.toList(), [1.0, 0.0, 0.0, 4.0, 5.0, 0.0, 7.0, 8.0, 9.0]);
+
+        // 2. triu standard
+        final u = triu(a);
+        expect(u.toList(), [1.0, 2.0, 3.0, 0.0, 5.0, 6.0, 0.0, 0.0, 9.0]);
+
+        // 3. offsets (k=1, k=-1)
+        final lK1 = tril(a, k: 1);
+        expect(lK1.toList(), [1.0, 2.0, 0.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);
+
+        final uKM1 = triu(a, k: -1);
+        expect(uKM1.toList(), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 0.0, 8.0, 9.0]);
+
+        // 4. in-place recycler out reuse
+        final outBuffer = NDArray<double>.zeros([3, 3], DType.float64);
+        final lOut = tril(a, k: 0, out: outBuffer);
+        expect(identical(lOut, outBuffer), true);
+        expect(lOut.toList(), [1.0, 0.0, 0.0, 4.0, 5.0, 0.0, 7.0, 8.0, 9.0]);
+      }),
+    );
+
+    test(
+      'linalg.pinv() and linalg.matrix_power() correctness',
+      () => NDArray.scope(() {
+        // 1. pinv
+        final a = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [2, 3],
+          DType.float64,
+        );
+        final aPlus = pinv(a);
+        expect(aPlus.shape, [3, 2]);
+
+        // Verify A * A+ * A = A (approximately)
+        final temp = matmul(a, aPlus);
+        final rec = matmul(temp, a);
+        expect(allclose(rec, a, atol: 1e-7), true);
+
+        temp.dispose();
+        rec.dispose();
+        aPlus.dispose();
+
+        // 2. matrix_power
+        final t = NDArray.fromList([0.8, 0.2, 0.1, 0.9], [2, 2], DType.float64);
+
+        final t2 = matrix_power(t, 2);
+        final tTimesT = matmul(t, t);
+        expect(allclose(t2, tTimesT, atol: 1e-9), true);
+
+        final t0 = matrix_power(t, 0);
+        expect(t0.toList(), [1.0, 0.0, 0.0, 1.0]);
+
+        final tInv = matrix_power(t, -1);
+        final check = matmul(t, tInv);
+        expect(allclose(check, t0, atol: 1e-9), true);
+
+        t2.dispose();
+        tTimesT.dispose();
+        t0.dispose();
+        tInv.dispose();
+        check.dispose();
+      }),
+    );
   });
 }

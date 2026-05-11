@@ -147,6 +147,10 @@ void v_secure_randint_int64(int64_t *res, int size, int64_t low, int64_t high);
 void v_secure_randint_int32(int32_t *res, int size, int32_t low, int32_t high);
 void v_secure_normal_double(double *res, int size, double loc, double scale);
 void v_secure_normal_float(float *res, int size, float loc, float scale);
+void v_tril_double(const double *src, double *res, int batch_count, int rows, int cols, int k);
+void v_tril_float(const float *src, float *res, int batch_count, int rows, int cols, int k);
+void v_triu_double(const double *src, double *res, int batch_count, int rows, int cols, int k);
+void v_triu_float(const float *src, float *res, int batch_count, int rows, int cols, int k);
 
 // ----------------------------------------------------------------------------
 // Native C High-Speed Strided Flattening/Copying Kernels

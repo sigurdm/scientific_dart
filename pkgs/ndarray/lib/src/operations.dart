@@ -8465,3 +8465,325 @@ NDArray<double> hamming(int M, {DType dtype = DType.float64}) {
   }
   return res as NDArray<double>;
 }
+
+/// Extract a lower triangular matrix (on and below the k-th diagonal) element-wise.
+///
+/// **Preconditions:**
+/// - Input [a] must be an array with rank >= 2.
+/// - If provided, the [out] recycler must have matching shape and dtype.
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if [a] has rank < 2.
+/// - [ArgumentError] if [out] has mismatched shape or dtype.
+///
+/// **Example:**
+/// {@example /example/triangular_example.dart lang=dart}
+NDArray tril(NDArray a, {int k = 0, NDArray? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute tril() on a disposed array.');
+  }
+  if (a.shape.length < 2) {
+    throw ArgumentError('Input array must have rank >= 2.');
+  }
+  final result = out ?? NDArray.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  final rank = a.shape.length;
+  final rows = a.shape[rank - 2];
+  final cols = a.shape[rank - 1];
+
+  final batchCount = a.shape.isEmpty
+      ? 1
+      : a.shape.sublist(0, rank - 2).isEmpty
+      ? 1
+      : a.shape.sublist(0, rank - 2).reduce((x, y) => x * y);
+
+  if (a.isContiguous && result.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_tril_double(
+        a.pointer.cast(),
+        result.pointer.cast(),
+        batchCount,
+        rows,
+        cols,
+        k,
+      );
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_tril_float(
+        a.pointer.cast(),
+        result.pointer.cast(),
+        batchCount,
+        rows,
+        cols,
+        k,
+      );
+      return result;
+    }
+  }
+
+  final aList = a.isContiguous ? a.data : a.toList();
+  final resData = result.data;
+  final matrixSize = rows * cols;
+
+  for (var b = 0; b < batchCount; b++) {
+    final offset = b * matrixSize;
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        final idx = offset + r * cols + c;
+        resData[idx] = (c <= r + k) ? aList[idx] : _castValue(0, a.dtype);
+      }
+    }
+  }
+  return result;
+}
+
+/// Extract an upper triangular matrix (on and above the k-th diagonal) element-wise.
+///
+/// **Preconditions:**
+/// - Input [a] must be an array with rank >= 2.
+/// - If provided, the [out] recycler must have matching shape and dtype.
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if [a] has rank < 2.
+/// - [ArgumentError] if [out] has mismatched shape or dtype.
+///
+/// **Example:**
+/// {@example /example/triangular_example.dart lang=dart}
+NDArray triu(NDArray a, {int k = 0, NDArray? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute triu() on a disposed array.');
+  }
+  if (a.shape.length < 2) {
+    throw ArgumentError('Input array must have rank >= 2.');
+  }
+  final result = out ?? NDArray.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  final rank = a.shape.length;
+  final rows = a.shape[rank - 2];
+  final cols = a.shape[rank - 1];
+
+  final batchCount = a.shape.isEmpty
+      ? 1
+      : a.shape.sublist(0, rank - 2).isEmpty
+      ? 1
+      : a.shape.sublist(0, rank - 2).reduce((x, y) => x * y);
+
+  if (a.isContiguous && result.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_triu_double(
+        a.pointer.cast(),
+        result.pointer.cast(),
+        batchCount,
+        rows,
+        cols,
+        k,
+      );
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_triu_float(
+        a.pointer.cast(),
+        result.pointer.cast(),
+        batchCount,
+        rows,
+        cols,
+        k,
+      );
+      return result;
+    }
+  }
+
+  final aList = a.isContiguous ? a.data : a.toList();
+  final resData = result.data;
+  final matrixSize = rows * cols;
+
+  for (var b = 0; b < batchCount; b++) {
+    final offset = b * matrixSize;
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        final idx = offset + r * cols + c;
+        resData[idx] = (c >= r + k) ? aList[idx] : _castValue(0, a.dtype);
+      }
+    }
+  }
+  return result;
+}
+
+/// Compute the Moore-Penrose pseudo-inverse of a 2D matrix.
+///
+/// Uses Singular Value Decomposition (SVD) to resolve the pseudo-inverse.
+/// Singular values smaller than [rcond] * max(singular_value) are treated as zero.
+///
+/// **Preconditions:**
+/// - Input [a] must be a 2D matrix.
+/// - If provided, [out] must have shape `[cols, rows]` and matching dtype.
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if [a] has rank != 2.
+/// - [ArgumentError] if [out] has mismatched shape or dtype.
+///
+/// **Example:**
+/// {@example /example/linalg_premium_example.dart lang=dart}
+NDArray pinv(NDArray a, {double? rcond, NDArray? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute pinv() on a disposed array.');
+  }
+  if (a.shape.length != 2) {
+    throw ArgumentError(
+      'Moore-Penrose pseudo-inverse is only defined for 2D matrices (was shape ${a.shape}).',
+    );
+  }
+  final m = a.shape[0];
+  final n = a.shape[1];
+
+  final targetShape = [n, m];
+  final result = out ?? NDArray.create(targetShape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  final svdResult = svd(a);
+  final u = svdResult['U']!;
+  final s = svdResult['S']!;
+  final vt = svdResult['Vh']!;
+
+  final maxSingularVal = s.data[0] as double;
+  final epsilon = 2.220446049250313e-16;
+  final maxDim = m > n ? m : n;
+  final resolvedRcond = rcond ?? (maxDim * epsilon);
+  final threshold = resolvedRcond * maxSingularVal;
+
+  final sPlus = NDArray.zeros([n, m], a.dtype as dynamic);
+  for (var i = 0; i < s.data.length; i++) {
+    final sVal = s.data[i] as double;
+    if (sVal > threshold) {
+      sPlus.setCell([i, i], _castValue(1.0 / sVal, a.dtype));
+    }
+  }
+
+  final v = vt.transpose();
+  final ut = u.transpose();
+
+  final temp = matmul(v, sPlus);
+  final temp2 = matmul(temp, ut);
+  for (var i = 0; i < result.data.length; i++) {
+    result.data[i] = temp2.data[i];
+  }
+
+  u.dispose();
+  s.dispose();
+  vt.dispose();
+  sPlus.dispose();
+  v.dispose();
+  ut.dispose();
+  temp.dispose();
+  temp2.dispose();
+
+  return result;
+}
+
+/// Raise a square 2D matrix to the integer power [n].
+///
+/// Computes $A^n$ using highly optimized binary exponentiation (square-and-multiply)
+/// in $O(\log n)$ matrix multiplications.
+///
+/// **Preconditions:**
+/// - Input [a] must be a square 2D matrix.
+/// - If provided, [out] must have matching shape and dtype.
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if [a] has rank != 2 or is not square.
+/// - [ArgumentError] if [out] has mismatched shape or dtype.
+///
+/// **Example:**
+/// {@example /example/linalg_premium_example.dart lang=dart}
+NDArray matrix_power(NDArray a, int n, {NDArray? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute matrix_power() on a disposed array.');
+  }
+  if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
+    throw ArgumentError(
+      'matrix_power is only defined for 2D square matrices (was shape ${a.shape}).',
+    );
+  }
+
+  final size = a.shape[0];
+  final result = out ?? NDArray.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  if (n == 0) {
+    final eye = NDArray.eye(size, a.dtype as dynamic);
+    result.fill(0);
+    for (var i = 0; i < size; i++) {
+      result.setCell([i, i], eye.getCell([i, i]));
+    }
+    eye.dispose();
+    return result;
+  }
+
+  NDArray base;
+  bool wasBaseAllocated = false;
+
+  if (n < 0) {
+    base = inv(a);
+    wasBaseAllocated = true;
+    n = -n;
+  } else {
+    base = a;
+  }
+
+  var res = NDArray.eye(size, a.dtype as dynamic);
+  var current = base.copy();
+
+  var exponent = n;
+  while (exponent > 0) {
+    if ((exponent & 1) == 1) {
+      final nextRes = matmul(res, current);
+      res.dispose();
+      res = nextRes;
+    }
+    final nextCurrent = matmul(current, current);
+    current.dispose();
+    current = nextCurrent;
+    exponent >>= 1;
+  }
+
+  current.dispose();
+  if (wasBaseAllocated) {
+    base.dispose();
+  }
+
+  for (var i = 0; i < result.data.length; i++) {
+    result.data[i] = res.data[i];
+  }
+  res.dispose();
+
+  return result;
+}
