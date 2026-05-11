@@ -2309,4 +2309,15 @@
   - Uses standard, highly optimized non-recursive mechanical odometer coordinate sweeps in C to walk adjacent difference calculations `out[i] = src[i+1] - src[i]` along the target `axis` directly in C space.
   - **Recursive higher-order derivative support**: Implemented strongly-typed public ufunc `diff<T>()` inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart#L8804), supporting positive steps `n > 1` by recursively dispatching difference passes. Exposes standard output recycler `{into}` buffer support.
 * **Results**:
-  - **Verification**: Created targeted unit tests verifying flat sequences, multi-axis sweeps, complex & integer arrays, higher-order difference steps, and recycler buffer reuse. All **436 unit tests pass flawlessly green!** Formatting and static analysis are perfectly clean.
+  - **Verification**: Created targeted unit tests verifying flat sequences, multi-axis sweeps, complex & integer arrays, higher-order difference steps, and recycler buffer reuse. All **436 unit tests pass flawlessly green!** Formatting and static analysis are pristine.
+
+***
+
+## 193. Codebase Review Pass & FINDINGS.md Roadmap Alignment (Task 2 / Review Code)
+* **What was done**:
+  - Audited the central findings tracker [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md).
+  - Confirmed that all previously logged correctness and memory safety gaps are completely resolved.
+  - Confirmed that our newest FFI C-offloaded `diff()` discrete difference ufunc has been successfully integrated, fully aligned, and tested.
+  - Cleaned up `FINDINGS.md` by deleting this resolved entry, keeping the roadmap completely clean.
+* **Results**:
+  - **Verification**: Formatting and static analysis pass clean. All committed changes are staged successfully!
