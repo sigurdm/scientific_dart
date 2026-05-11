@@ -161,6 +161,12 @@ void main() {
           ),
           throwsArgumentError,
         );
+
+        // Valid into recycler buffer
+        final validInto = NDArray<Float64>.create([2, 2], DType.float64);
+        final res = multivariateNormal(mean, cov, size: [2], into: validInto);
+        expect(res == validInto, true);
+        expect(res.shape, [2, 2]);
       });
     });
 
@@ -184,6 +190,12 @@ void main() {
           ),
           throwsArgumentError,
         );
+
+        // Valid into recycler buffer
+        final validInto = NDArray<Int32>.create([2, 3], DType.int32);
+        final res = multinomial(10, pvals, size: [2], into: validInto);
+        expect(res == validInto, true);
+        expect(res.shape, [2, 3]);
       });
     });
   });
