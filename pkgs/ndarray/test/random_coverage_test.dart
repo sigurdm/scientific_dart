@@ -8,20 +8,18 @@ void main() {
         // Invalid dtype
         expect(() => uniform([2, 2], dtype: DType.int32), throwsArgumentError);
 
-        // Incompatible into shape
+        // Incompatible out shape
         expect(
-          () => uniform([
-            2,
-            2,
-          ], into: NDArray<Float64>.create([3], DType.float64)),
+          () =>
+              uniform([2, 2], out: NDArray<Float64>.create([3], DType.float64)),
           throwsArgumentError,
         );
-        // Incompatible into dtype
+        // Incompatible out dtype
         expect(
           () => uniform(
             [2, 2],
             dtype: DType.float64,
-            into: NDArray<Float32>.create([2, 2], DType.float32) as dynamic,
+            out: NDArray<Float32>.create([2, 2], DType.float32) as dynamic,
           ),
           throwsArgumentError,
         );
@@ -38,13 +36,13 @@ void main() {
           throwsArgumentError,
         );
 
-        // Incompatible into shape
+        // Incompatible out shape
         expect(
           () => randint(
             [2, 2],
             low: 0,
             high: 5,
-            into: NDArray<Int64>.create([3], DType.int64),
+            out: NDArray<Int64>.create([3], DType.int64),
           ),
           throwsArgumentError,
         );
@@ -58,10 +56,10 @@ void main() {
         // Invalid dtype
         expect(() => normal([2, 2], dtype: DType.int64), throwsArgumentError);
 
-        // Incompatible into shape
+        // Incompatible out shape
         expect(
           () =>
-              normal([2, 2], into: NDArray<Float64>.create([3], DType.float64)),
+              normal([2, 2], out: NDArray<Float64>.create([3], DType.float64)),
           throwsArgumentError,
         );
       });
@@ -77,12 +75,12 @@ void main() {
           throwsArgumentError,
         );
 
-        // Incompatible into shape
+        // Incompatible out shape
         expect(
           () => exponential([
             2,
             2,
-          ], into: NDArray<Float64>.create([3], DType.float64)),
+          ], out: NDArray<Float64>.create([3], DType.float64)),
           throwsArgumentError,
         );
       });
@@ -98,9 +96,9 @@ void main() {
           throwsArgumentError,
         );
 
-        // Incompatible into shape
+        // Incompatible out shape
         expect(
-          () => poisson([2, 2], into: NDArray<Int64>.create([3], DType.int64)),
+          () => poisson([2, 2], out: NDArray<Int64>.create([3], DType.int64)),
           throwsArgumentError,
         );
       });
@@ -118,13 +116,13 @@ void main() {
           throwsArgumentError,
         );
 
-        // Incompatible into shape
+        // Incompatible out shape
         expect(
           () => binomial(
             [2, 2],
             n: 10,
             p: 0.5,
-            into: NDArray<Int64>.create([3], DType.int64),
+            out: NDArray<Int64>.create([3], DType.int64),
           ),
           throwsArgumentError,
         );
@@ -151,20 +149,20 @@ void main() {
           throwsArgumentError,
         );
 
-        // Incompatible into shape
+        // Incompatible out shape
         expect(
           () => multivariateNormal(
             mean,
             cov,
             size: [2],
-            into: NDArray<Float64>.create([3], DType.float64),
+            out: NDArray<Float64>.create([3], DType.float64),
           ),
           throwsArgumentError,
         );
 
-        // Valid into recycler buffer
+        // Valid out recycler buffer
         final validInto = NDArray<Float64>.create([2, 2], DType.float64);
-        final res = multivariateNormal(mean, cov, size: [2], into: validInto);
+        final res = multivariateNormal(mean, cov, size: [2], out: validInto);
         expect(res == validInto, true);
         expect(res.shape, [2, 2]);
       });
@@ -180,20 +178,20 @@ void main() {
           throwsArgumentError,
         );
 
-        // Incompatible into shape
+        // Incompatible out shape
         expect(
           () => multinomial(
             10,
             pvals,
             size: [2],
-            into: NDArray<Int32>.create([3], DType.int32),
+            out: NDArray<Int32>.create([3], DType.int32),
           ),
           throwsArgumentError,
         );
 
-        // Valid into recycler buffer
+        // Valid out recycler buffer
         final validInto = NDArray<Int32>.create([2, 3], DType.int32);
-        final res = multinomial(10, pvals, size: [2], into: validInto);
+        final res = multinomial(10, pvals, size: [2], out: validInto);
         expect(res == validInto, true);
         expect(res.shape, [2, 3]);
       });

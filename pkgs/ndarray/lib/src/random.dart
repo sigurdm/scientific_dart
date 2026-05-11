@@ -40,20 +40,20 @@ NDArray<T> uniform<T extends num>(
   List<int> shape, {
   DType<T>? dtype,
   int? seed,
-  NDArray<T>? into,
+  NDArray<T>? out,
   bool secure = false,
 }) {
-  final resolvedDType = dtype ?? (into?.dtype ?? DType.float64 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
   if (!identical(resolvedDType, DType.float32) &&
       !identical(resolvedDType, DType.float64)) {
     throw ArgumentError('uniform only supports float types for now');
   }
-  if (into != null) {
-    if (!_listEquals(into.shape, shape) || into.dtype != resolvedDType) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!_listEquals(out.shape, shape) || out.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
-  final arr = into ?? NDArray<T>.create(shape, resolvedDType);
+  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
   final len = arr.data.length;
 
   if (secure) {
@@ -105,10 +105,10 @@ NDArray<T> randint<T extends num>(
   required int high,
   DType<T>? dtype,
   int? seed,
-  NDArray<T>? into,
+  NDArray<T>? out,
   bool secure = false,
 }) {
-  final resolvedDType = dtype ?? (into?.dtype ?? DType.int64 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
   if (!identical(resolvedDType, DType.int32) &&
       !identical(resolvedDType, DType.int64)) {
     throw ArgumentError('randint only supports integer types');
@@ -116,12 +116,12 @@ NDArray<T> randint<T extends num>(
   if (low >= high) {
     throw ArgumentError('low must be less than high');
   }
-  if (into != null) {
-    if (!_listEquals(into.shape, shape) || into.dtype != resolvedDType) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!_listEquals(out.shape, shape) || out.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
-  final arr = into ?? NDArray<T>.create(shape, resolvedDType);
+  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
   final len = arr.data.length;
 
   if (secure) {
@@ -177,10 +177,10 @@ NDArray<T> normal<T extends num>(
   double scale = 1.0,
   DType<T>? dtype,
   int? seed,
-  NDArray<T>? into,
+  NDArray<T>? out,
   bool secure = false,
 }) {
-  final resolvedDType = dtype ?? (into?.dtype ?? DType.float64 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
   if (!identical(resolvedDType, DType.float32) &&
       !identical(resolvedDType, DType.float64)) {
     throw ArgumentError(
@@ -193,12 +193,12 @@ NDArray<T> normal<T extends num>(
     );
   }
 
-  if (into != null) {
-    if (!_listEquals(into.shape, shape) || into.dtype != resolvedDType) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!_listEquals(out.shape, shape) || out.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
-  final arr = into ?? NDArray<T>.create(shape, resolvedDType);
+  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
   final len = arr.data.length;
 
   if (secure) {
@@ -249,10 +249,10 @@ NDArray<T> exponential<T extends num>(
   double? lam,
   DType<T>? dtype,
   int? seed,
-  NDArray<T>? into,
+  NDArray<T>? out,
   bool secure = false,
 }) {
-  final resolvedDType = dtype ?? (into?.dtype ?? DType.float64 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
   if (!identical(resolvedDType, DType.float32) &&
       !identical(resolvedDType, DType.float64)) {
     throw ArgumentError(
@@ -266,12 +266,12 @@ NDArray<T> exponential<T extends num>(
     );
   }
 
-  if (into != null) {
-    if (!_listEquals(into.shape, shape) || into.dtype != resolvedDType) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!_listEquals(out.shape, shape) || out.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
-  final arr = into ?? NDArray<T>.create(shape, resolvedDType);
+  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
   final len = arr.data.length;
 
   if (secure) {
@@ -352,10 +352,10 @@ NDArray<T> poisson<T extends num>(
   double lam = 1.0,
   DType<T>? dtype,
   int? seed,
-  NDArray<T>? into,
+  NDArray<T>? out,
   bool secure = false,
 }) {
-  final resolvedDType = dtype ?? (into?.dtype ?? DType.int64 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
   if (!identical(resolvedDType, DType.int32) &&
       !identical(resolvedDType, DType.int64)) {
     throw ArgumentError('poisson only supports integer dtypes (int32/int64)');
@@ -364,12 +364,12 @@ NDArray<T> poisson<T extends num>(
     throw ArgumentError('lambda must be strictly positive (was $lam)');
   }
 
-  if (into != null) {
-    if (!_listEquals(into.shape, shape) || into.dtype != resolvedDType) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!_listEquals(out.shape, shape) || out.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
-  final arr = into ?? NDArray<T>.create(shape, resolvedDType);
+  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
   final len = arr.data.length;
 
   final seedVal = secure
@@ -423,10 +423,10 @@ NDArray<T> binomial<T extends num>(
   required double p,
   DType<T>? dtype,
   int? seed,
-  NDArray<T>? into,
+  NDArray<T>? out,
   bool secure = false,
 }) {
-  final resolvedDType = dtype ?? (into?.dtype ?? DType.int64 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
   if (!identical(resolvedDType, DType.int32) &&
       !identical(resolvedDType, DType.int64)) {
     throw ArgumentError('binomial only supports integer dtypes (int32/int64)');
@@ -440,12 +440,12 @@ NDArray<T> binomial<T extends num>(
     );
   }
 
-  if (into != null) {
-    if (!_listEquals(into.shape, shape) || into.dtype != resolvedDType) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!_listEquals(out.shape, shape) || out.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
-  final arr = into ?? NDArray<T>.create(shape, resolvedDType);
+  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
   final len = arr.data.length;
 
   final seedVal = secure
@@ -503,7 +503,7 @@ NDArray<T> multivariateNormal<T extends num>(
   List<int>? size,
   DType<T>? dtype,
   int? seed,
-  NDArray<T>? into,
+  NDArray<T>? out,
   bool secure = false,
 }) {
   if (mean.shape.length != 1) {
@@ -523,7 +523,7 @@ NDArray<T> multivariateNormal<T extends num>(
     );
   }
 
-  final resolvedDType = dtype ?? (into?.dtype ?? DType.float64 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
   if (!identical(resolvedDType, DType.float32) &&
       !identical(resolvedDType, DType.float64)) {
     throw ArgumentError(
@@ -536,9 +536,9 @@ NDArray<T> multivariateNormal<T extends num>(
     sampleShape.addAll(size);
   }
   final finalShape = [...sampleShape, d];
-  if (into != null) {
-    if (!_listEquals(into.shape, finalShape) || into.dtype != resolvedDType) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!_listEquals(out.shape, finalShape) || out.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
@@ -560,12 +560,12 @@ NDArray<T> multivariateNormal<T extends num>(
 
     final z2D = z.reshape([sampleCount, d]);
     final x2D =
-        into?.reshape([sampleCount, d]) ??
+        out?.reshape([sampleCount, d]) ??
         NDArray<T>.create([sampleCount, d], resolvedDType);
     add(matmul(z2D, lT), mean, out: x2D);
 
-    if (into != null) {
-      return into;
+    if (out != null) {
+      return out;
     }
     final result = x2D.reshape(finalShape);
     return result.detachToParentScope();
@@ -608,7 +608,7 @@ NDArray<T> multinomial<T extends num>(
   List<int>? size,
   DType<T>? dtype,
   int? seed,
-  NDArray<T>? into,
+  NDArray<T>? out,
   bool secure = false,
 }) {
   if (n < 0) {
@@ -620,7 +620,7 @@ NDArray<T> multinomial<T extends num>(
     );
   }
 
-  final resolvedDType = dtype ?? (into?.dtype ?? DType.int32 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.int32 as DType<T>);
   if (!identical(resolvedDType, DType.int32) &&
       !identical(resolvedDType, DType.int64)) {
     throw ArgumentError(
@@ -659,14 +659,14 @@ NDArray<T> multinomial<T extends num>(
       : sampleShape.reduce((a, b) => a * b);
 
   final finalShape = [...sampleShape, k];
-  if (into != null) {
-    if (!_listEquals(into.shape, finalShape) || into.dtype != resolvedDType) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!_listEquals(out.shape, finalShape) || out.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
   final result =
-      into ?? NDArray<T>.create(finalShape, resolvedDType, zeroInit: true);
-  if (into != null) {
+      out ?? NDArray<T>.create(finalShape, resolvedDType, zeroInit: true);
+  if (out != null) {
     result.fill(0);
   }
 

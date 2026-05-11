@@ -37,21 +37,21 @@ void main() {
           final resAddView = aView.add(bView);
           expect(resAddView.toList(), [11.0, 33.0, 22.0, 44.0]);
 
-          // into Recycler parameter
+          // out Recycler parameter
           final intoBuf = NDArray<Float64>.create([2, 2], DType.float64);
-          final resInto = a.add(b, into: intoBuf);
+          final resInto = a.add(b, out: intoBuf);
           expect(resInto, intoBuf);
           expect(resInto.toList(), [11.0, 22.0, 33.0, 44.0]);
 
-          // into incompatible shape/dtype throws ArgumentError
+          // out incompatible shape/dtype throws ArgumentError
           expect(
-            () => a.add(b, into: NDArray<Float64>.create([3], DType.float64)),
+            () => a.add(b, out: NDArray<Float64>.create([3], DType.float64)),
             throwsArgumentError,
           );
 
           // matmul with recycler
           final intoMatmul = NDArray<Float64>.create([2, 2], DType.float64);
-          final resMatmul = a.matmul(b, into: intoMatmul);
+          final resMatmul = a.matmul(b, out: intoMatmul);
           expect(resMatmul, intoMatmul);
           expect(resMatmul.toList(), [70.0, 100.0, 150.0, 220.0]);
 
@@ -116,11 +116,11 @@ void main() {
 
           // Recycler
           final intoBuf = NDArray<Float32>.create([2, 2], DType.float32);
-          expect(a.add(b, into: intoBuf), intoBuf);
+          expect(a.add(b, out: intoBuf), intoBuf);
 
           // Incompatible recycler
           expect(
-            () => a.add(b, into: NDArray<Float32>.create([3], DType.float32)),
+            () => a.add(b, out: NDArray<Float32>.create([3], DType.float32)),
             throwsArgumentError,
           );
 
@@ -170,19 +170,18 @@ void main() {
 
           // Recycler
           final intoBuf = NDArray<Int64>.create([2, 2], DType.int64);
-          expect(a.add(b, into: intoBuf), intoBuf);
+          expect(a.add(b, out: intoBuf), intoBuf);
 
           final intoDoubleBuf = NDArray<Float64>.create([2, 2], DType.float64);
-          expect(b.divide(a, into: intoDoubleBuf), intoDoubleBuf);
+          expect(b.divide(a, out: intoDoubleBuf), intoDoubleBuf);
 
           // Incompatible recycler
           expect(
-            () => a.add(b, into: NDArray<Int64>.create([3], DType.int64)),
+            () => a.add(b, out: NDArray<Int64>.create([3], DType.int64)),
             throwsArgumentError,
           );
           expect(
-            () =>
-                b.divide(a, into: NDArray<Float64>.create([3], DType.float64)),
+            () => b.divide(a, out: NDArray<Float64>.create([3], DType.float64)),
             throwsArgumentError,
           );
 
@@ -230,19 +229,18 @@ void main() {
 
           // Recycler
           final intoBuf = NDArray<Int32>.create([2, 2], DType.int32);
-          expect(a.add(b, into: intoBuf), intoBuf);
+          expect(a.add(b, out: intoBuf), intoBuf);
 
           final intoDoubleBuf = NDArray<Float64>.create([2, 2], DType.float64);
-          expect(b.divide(a, into: intoDoubleBuf), intoDoubleBuf);
+          expect(b.divide(a, out: intoDoubleBuf), intoDoubleBuf);
 
           // Incompatible recycler
           expect(
-            () => a.add(b, into: NDArray<Int32>.create([3], DType.int32)),
+            () => a.add(b, out: NDArray<Int32>.create([3], DType.int32)),
             throwsArgumentError,
           );
           expect(
-            () =>
-                b.divide(a, into: NDArray<Float64>.create([3], DType.float64)),
+            () => b.divide(a, out: NDArray<Float64>.create([3], DType.float64)),
             throwsArgumentError,
           );
 
@@ -299,12 +297,11 @@ void main() {
           final aView = a.slice([const Slice(start: 0, stop: 2, step: 1)]);
           final bView = b.slice([const Slice(start: 0, stop: 2, step: 1)]);
           final intoBuf = NDArray<Complex>.create([2], DType.complex128);
-          expect(aView.add(bView, into: intoBuf), intoBuf);
+          expect(aView.add(bView, out: intoBuf), intoBuf);
 
           // Incompatible recycler
           expect(
-            () =>
-                a.add(b, into: NDArray<Complex>.create([3], DType.complex128)),
+            () => a.add(b, out: NDArray<Complex>.create([3], DType.complex128)),
             throwsArgumentError,
           );
 

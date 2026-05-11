@@ -10,14 +10,13 @@ import 'operations.dart' as ops;
 
 extension Float64NDArrayOperations on NDArray<Float64> {
   /// Element-wise addition returning strongly-typed Float64 NDArray.
-  NDArray<Float64> add(NDArray<Float64> other, {NDArray<Float64>? into}) {
+  NDArray<Float64> add(NDArray<Float64> other, {NDArray<Float64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.float64) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) ||
+          out.dtype != DType.float64) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -50,14 +49,13 @@ extension Float64NDArrayOperations on NDArray<Float64> {
   }
 
   /// Element-wise subtraction returning strongly-typed Float64 NDArray.
-  NDArray<Float64> subtract(NDArray<Float64> other, {NDArray<Float64>? into}) {
+  NDArray<Float64> subtract(NDArray<Float64> other, {NDArray<Float64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.float64) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) ||
+          out.dtype != DType.float64) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -90,14 +88,13 @@ extension Float64NDArrayOperations on NDArray<Float64> {
   }
 
   /// Element-wise multiplication returning strongly-typed Float64 NDArray.
-  NDArray<Float64> multiply(NDArray<Float64> other, {NDArray<Float64>? into}) {
+  NDArray<Float64> multiply(NDArray<Float64> other, {NDArray<Float64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.float64) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) ||
+          out.dtype != DType.float64) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -130,14 +127,13 @@ extension Float64NDArrayOperations on NDArray<Float64> {
   }
 
   /// Element-wise division returning strongly-typed Float64 NDArray.
-  NDArray<Float64> divide(NDArray<Float64> other, {NDArray<Float64>? into}) {
+  NDArray<Float64> divide(NDArray<Float64> other, {NDArray<Float64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.float64) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) ||
+          out.dtype != DType.float64) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -170,25 +166,21 @@ extension Float64NDArrayOperations on NDArray<Float64> {
   }
 
   /// Matrix multiplication returning Float64 NDArray.
-  NDArray<Float64> matmul(NDArray<Float64> other, {NDArray<Float64>? into}) {
+  NDArray<Float64> matmul(NDArray<Float64> other, {NDArray<Float64>? out}) {
     final res = ops.matmul(this as dynamic, other as dynamic);
-    if (into != null) {
-      into.data.setRange(0, res.data.length, res.data as dynamic);
+    if (out != null) {
+      out.data.setRange(0, res.data.length, res.data as dynamic);
       res.dispose();
-      return into;
+      return out;
     }
     return NDArray<Float64>.view(res, shape: res.shape, strides: res.strides);
   }
 
   // --- Mixed Float32 arguments ---
 
-  NDArray<Float64> addFloat32(
-    NDArray<Float32> other, {
-    NDArray<Float64>? into,
-  }) {
+  NDArray<Float64> addFloat32(NDArray<Float32> other, {NDArray<Float64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleOp(
       result.data as List<double>,
@@ -209,11 +201,10 @@ extension Float64NDArrayOperations on NDArray<Float64> {
 
   NDArray<Float64> subtractFloat32(
     NDArray<Float32> other, {
-    NDArray<Float64>? into,
+    NDArray<Float64>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleOp(
       result.data as List<double>,
@@ -234,11 +225,10 @@ extension Float64NDArrayOperations on NDArray<Float64> {
 
   NDArray<Float64> multiplyFloat32(
     NDArray<Float32> other, {
-    NDArray<Float64>? into,
+    NDArray<Float64>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleOp(
       result.data as List<double>,
@@ -259,11 +249,10 @@ extension Float64NDArrayOperations on NDArray<Float64> {
 
   NDArray<Float64> divideFloat32(
     NDArray<Float32> other, {
-    NDArray<Float64>? into,
+    NDArray<Float64>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleOp(
       result.data as List<double>,
@@ -284,10 +273,9 @@ extension Float64NDArrayOperations on NDArray<Float64> {
 
   // --- Mixed Int64 arguments ---
 
-  NDArray<Float64> addInt64(NDArray<Int64> other, {NDArray<Float64>? into}) {
+  NDArray<Float64> addInt64(NDArray<Int64> other, {NDArray<Float64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleIntOp(
       result.data as List<double>,
@@ -308,11 +296,10 @@ extension Float64NDArrayOperations on NDArray<Float64> {
 
   NDArray<Float64> subtractInt64(
     NDArray<Int64> other, {
-    NDArray<Float64>? into,
+    NDArray<Float64>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleIntOp(
       result.data as List<double>,
@@ -333,11 +320,10 @@ extension Float64NDArrayOperations on NDArray<Float64> {
 
   NDArray<Float64> multiplyInt64(
     NDArray<Int64> other, {
-    NDArray<Float64>? into,
+    NDArray<Float64>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleIntOp(
       result.data as List<double>,
@@ -356,10 +342,9 @@ extension Float64NDArrayOperations on NDArray<Float64> {
     return result;
   }
 
-  NDArray<Float64> divideInt64(NDArray<Int64> other, {NDArray<Float64>? into}) {
+  NDArray<Float64> divideInt64(NDArray<Int64> other, {NDArray<Float64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleIntOp(
       result.data as List<double>,
@@ -380,24 +365,24 @@ extension Float64NDArrayOperations on NDArray<Float64> {
 
   // --- Mixed Scalar double/int arguments ---
 
-  NDArray<Float64> addScalar(double scalar, {NDArray<Float64>? into}) {
+  NDArray<Float64> addScalar(double scalar, {NDArray<Float64>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return add(scalarArr, into: into);
+    return add(scalarArr, out: out);
   }
 
-  NDArray<Float64> subtractScalar(double scalar, {NDArray<Float64>? into}) {
+  NDArray<Float64> subtractScalar(double scalar, {NDArray<Float64>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return subtract(scalarArr, into: into);
+    return subtract(scalarArr, out: out);
   }
 
-  NDArray<Float64> multiplyScalar(double scalar, {NDArray<Float64>? into}) {
+  NDArray<Float64> multiplyScalar(double scalar, {NDArray<Float64>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return multiply(scalarArr, into: into);
+    return multiply(scalarArr, out: out);
   }
 
-  NDArray<Float64> divideScalar(double scalar, {NDArray<Float64>? into}) {
+  NDArray<Float64> divideScalar(double scalar, {NDArray<Float64>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return divide(scalarArr, into: into);
+    return divide(scalarArr, out: out);
   }
 }
 
@@ -407,14 +392,13 @@ extension Float64NDArrayOperations on NDArray<Float64> {
 
 extension Float32NDArrayOperations on NDArray<Float32> {
   /// Element-wise addition returning strongly-typed Float32 NDArray.
-  NDArray<Float32> add(NDArray<Float32> other, {NDArray<Float32>? into}) {
+  NDArray<Float32> add(NDArray<Float32> other, {NDArray<Float32>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float32>.create(expectedShape, DType.float32);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.float32) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Float32>.create(expectedShape, DType.float32);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) ||
+          out.dtype != DType.float32) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -447,14 +431,13 @@ extension Float32NDArrayOperations on NDArray<Float32> {
   }
 
   /// Element-wise subtraction returning strongly-typed Float32 NDArray.
-  NDArray<Float32> subtract(NDArray<Float32> other, {NDArray<Float32>? into}) {
+  NDArray<Float32> subtract(NDArray<Float32> other, {NDArray<Float32>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float32>.create(expectedShape, DType.float32);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.float32) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Float32>.create(expectedShape, DType.float32);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) ||
+          out.dtype != DType.float32) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -487,14 +470,13 @@ extension Float32NDArrayOperations on NDArray<Float32> {
   }
 
   /// Element-wise multiplication returning strongly-typed Float32 NDArray.
-  NDArray<Float32> multiply(NDArray<Float32> other, {NDArray<Float32>? into}) {
+  NDArray<Float32> multiply(NDArray<Float32> other, {NDArray<Float32>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float32>.create(expectedShape, DType.float32);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.float32) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Float32>.create(expectedShape, DType.float32);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) ||
+          out.dtype != DType.float32) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -527,14 +509,13 @@ extension Float32NDArrayOperations on NDArray<Float32> {
   }
 
   /// Element-wise division returning strongly-typed Float32 NDArray.
-  NDArray<Float32> divide(NDArray<Float32> other, {NDArray<Float32>? into}) {
+  NDArray<Float32> divide(NDArray<Float32> other, {NDArray<Float32>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float32>.create(expectedShape, DType.float32);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.float32) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Float32>.create(expectedShape, DType.float32);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) ||
+          out.dtype != DType.float32) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -568,13 +549,9 @@ extension Float32NDArrayOperations on NDArray<Float32> {
 
   // --- Mixed Float64 arguments (Upcast promotion) ---
 
-  NDArray<Float64> addFloat64(
-    NDArray<Float64> other, {
-    NDArray<Float64>? into,
-  }) {
+  NDArray<Float64> addFloat64(NDArray<Float64> other, {NDArray<Float64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleOp(
       result.data as List<double>,
@@ -595,11 +572,10 @@ extension Float32NDArrayOperations on NDArray<Float32> {
 
   NDArray<Float64> subtractFloat64(
     NDArray<Float64> other, {
-    NDArray<Float64>? into,
+    NDArray<Float64>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleOp(
       result.data as List<double>,
@@ -620,11 +596,10 @@ extension Float32NDArrayOperations on NDArray<Float32> {
 
   NDArray<Float64> multiplyFloat64(
     NDArray<Float64> other, {
-    NDArray<Float64>? into,
+    NDArray<Float64>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleOp(
       result.data as List<double>,
@@ -645,11 +620,10 @@ extension Float32NDArrayOperations on NDArray<Float32> {
 
   NDArray<Float64> divideFloat64(
     NDArray<Float64> other, {
-    NDArray<Float64>? into,
+    NDArray<Float64>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleOp(
       result.data as List<double>,
@@ -670,24 +644,24 @@ extension Float32NDArrayOperations on NDArray<Float32> {
 
   // --- Mixed Scalar double/int arguments ---
 
-  NDArray<Float32> addScalar(double scalar, {NDArray<Float32>? into}) {
+  NDArray<Float32> addScalar(double scalar, {NDArray<Float32>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return add(scalarArr, into: into);
+    return add(scalarArr, out: out);
   }
 
-  NDArray<Float32> subtractScalar(double scalar, {NDArray<Float32>? into}) {
+  NDArray<Float32> subtractScalar(double scalar, {NDArray<Float32>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return subtract(scalarArr, into: into);
+    return subtract(scalarArr, out: out);
   }
 
-  NDArray<Float32> multiplyScalar(double scalar, {NDArray<Float32>? into}) {
+  NDArray<Float32> multiplyScalar(double scalar, {NDArray<Float32>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return multiply(scalarArr, into: into);
+    return multiply(scalarArr, out: out);
   }
 
-  NDArray<Float32> divideScalar(double scalar, {NDArray<Float32>? into}) {
+  NDArray<Float32> divideScalar(double scalar, {NDArray<Float32>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return divide(scalarArr, into: into);
+    return divide(scalarArr, out: out);
   }
 }
 
@@ -697,13 +671,12 @@ extension Float32NDArrayOperations on NDArray<Float32> {
 
 extension Int64NDArrayOperations on NDArray<Int64> {
   /// Element-wise addition returning strongly-typed Int64 NDArray.
-  NDArray<Int64> add(NDArray<Int64> other, {NDArray<Int64>? into}) {
+  NDArray<Int64> add(NDArray<Int64> other, {NDArray<Int64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result = into ?? NDArray<Int64>.create(expectedShape, DType.int64);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.int64) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Int64>.create(expectedShape, DType.int64);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) || out.dtype != DType.int64) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -726,13 +699,12 @@ extension Int64NDArrayOperations on NDArray<Int64> {
   }
 
   /// Element-wise subtraction returning strongly-typed Int64 NDArray.
-  NDArray<Int64> subtract(NDArray<Int64> other, {NDArray<Int64>? into}) {
+  NDArray<Int64> subtract(NDArray<Int64> other, {NDArray<Int64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result = into ?? NDArray<Int64>.create(expectedShape, DType.int64);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.int64) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Int64>.create(expectedShape, DType.int64);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) || out.dtype != DType.int64) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -755,13 +727,12 @@ extension Int64NDArrayOperations on NDArray<Int64> {
   }
 
   /// Element-wise multiplication returning strongly-typed Int64 NDArray.
-  NDArray<Int64> multiply(NDArray<Int64> other, {NDArray<Int64>? into}) {
+  NDArray<Int64> multiply(NDArray<Int64> other, {NDArray<Int64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result = into ?? NDArray<Int64>.create(expectedShape, DType.int64);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.int64) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Int64>.create(expectedShape, DType.int64);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) || out.dtype != DType.int64) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -784,14 +755,13 @@ extension Int64NDArrayOperations on NDArray<Int64> {
   }
 
   /// Element-wise division returning Float64 NDArray (due to division promotion).
-  NDArray<Float64> divide(NDArray<Int64> other, {NDArray<Float64>? into}) {
+  NDArray<Float64> divide(NDArray<Int64> other, {NDArray<Float64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.float64) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) ||
+          out.dtype != DType.float64) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -815,10 +785,9 @@ extension Int64NDArrayOperations on NDArray<Int64> {
 
   // --- Mixed Double/Float64 arguments (Upcast promotion) ---
 
-  NDArray<Float64> addDouble(NDArray<Float64> other, {NDArray<Float64>? into}) {
+  NDArray<Float64> addDouble(NDArray<Float64> other, {NDArray<Float64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleIntOp(
       result.data as List<double>,
@@ -839,11 +808,10 @@ extension Int64NDArrayOperations on NDArray<Int64> {
 
   NDArray<Float64> subtractDouble(
     NDArray<Float64> other, {
-    NDArray<Float64>? into,
+    NDArray<Float64>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleIntOp(
       result.data as List<double>,
@@ -864,11 +832,10 @@ extension Int64NDArrayOperations on NDArray<Int64> {
 
   NDArray<Float64> multiplyDouble(
     NDArray<Float64> other, {
-    NDArray<Float64>? into,
+    NDArray<Float64>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
     final broadcastResult = broadcast(this, other);
     _elementWiseDoubleIntOp(
       result.data as List<double>,
@@ -889,9 +856,9 @@ extension Int64NDArrayOperations on NDArray<Int64> {
 
   // --- Mixed Int32 arguments ---
 
-  NDArray<Int64> addInt32(NDArray<Int32> other, {NDArray<Int64>? into}) {
+  NDArray<Int64> addInt32(NDArray<Int32> other, {NDArray<Int64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result = into ?? NDArray<Int64>.create(expectedShape, DType.int64);
+    final result = out ?? NDArray<Int64>.create(expectedShape, DType.int64);
     final broadcastResult = broadcast(this, other);
     _elementWiseIntOp(
       result.data as List<int>,
@@ -910,9 +877,9 @@ extension Int64NDArrayOperations on NDArray<Int64> {
     return result;
   }
 
-  NDArray<Int64> subtractInt32(NDArray<Int32> other, {NDArray<Int64>? into}) {
+  NDArray<Int64> subtractInt32(NDArray<Int32> other, {NDArray<Int64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result = into ?? NDArray<Int64>.create(expectedShape, DType.int64);
+    final result = out ?? NDArray<Int64>.create(expectedShape, DType.int64);
     final broadcastResult = broadcast(this, other);
     _elementWiseIntOp(
       result.data as List<int>,
@@ -931,9 +898,9 @@ extension Int64NDArrayOperations on NDArray<Int64> {
     return result;
   }
 
-  NDArray<Int64> multiplyInt32(NDArray<Int32> other, {NDArray<Int64>? into}) {
+  NDArray<Int64> multiplyInt32(NDArray<Int32> other, {NDArray<Int64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result = into ?? NDArray<Int64>.create(expectedShape, DType.int64);
+    final result = out ?? NDArray<Int64>.create(expectedShape, DType.int64);
     final broadcastResult = broadcast(this, other);
     _elementWiseIntOp(
       result.data as List<int>,
@@ -954,19 +921,19 @@ extension Int64NDArrayOperations on NDArray<Int64> {
 
   // --- Mixed Scalar int arguments ---
 
-  NDArray<Int64> addScalar(int scalar, {NDArray<Int64>? into}) {
+  NDArray<Int64> addScalar(int scalar, {NDArray<Int64>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return add(scalarArr, into: into);
+    return add(scalarArr, out: out);
   }
 
-  NDArray<Int64> subtractScalar(int scalar, {NDArray<Int64>? into}) {
+  NDArray<Int64> subtractScalar(int scalar, {NDArray<Int64>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return subtract(scalarArr, into: into);
+    return subtract(scalarArr, out: out);
   }
 
-  NDArray<Int64> multiplyScalar(int scalar, {NDArray<Int64>? into}) {
+  NDArray<Int64> multiplyScalar(int scalar, {NDArray<Int64>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return multiply(scalarArr, into: into);
+    return multiply(scalarArr, out: out);
   }
 }
 
@@ -976,13 +943,12 @@ extension Int64NDArrayOperations on NDArray<Int64> {
 
 extension Int32NDArrayOperations on NDArray<Int32> {
   /// Element-wise addition returning strongly-typed Int32 NDArray.
-  NDArray<Int32> add(NDArray<Int32> other, {NDArray<Int32>? into}) {
+  NDArray<Int32> add(NDArray<Int32> other, {NDArray<Int32>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result = into ?? NDArray<Int32>.create(expectedShape, DType.int32);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.int32) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Int32>.create(expectedShape, DType.int32);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) || out.dtype != DType.int32) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -1005,13 +971,12 @@ extension Int32NDArrayOperations on NDArray<Int32> {
   }
 
   /// Element-wise subtraction returning strongly-typed Int32 NDArray.
-  NDArray<Int32> subtract(NDArray<Int32> other, {NDArray<Int32>? into}) {
+  NDArray<Int32> subtract(NDArray<Int32> other, {NDArray<Int32>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result = into ?? NDArray<Int32>.create(expectedShape, DType.int32);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.int32) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Int32>.create(expectedShape, DType.int32);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) || out.dtype != DType.int32) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -1034,13 +999,12 @@ extension Int32NDArrayOperations on NDArray<Int32> {
   }
 
   /// Element-wise multiplication returning strongly-typed Int32 NDArray.
-  NDArray<Int32> multiply(NDArray<Int32> other, {NDArray<Int32>? into}) {
+  NDArray<Int32> multiply(NDArray<Int32> other, {NDArray<Int32>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result = into ?? NDArray<Int32>.create(expectedShape, DType.int32);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.int32) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Int32>.create(expectedShape, DType.int32);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) || out.dtype != DType.int32) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -1063,14 +1027,13 @@ extension Int32NDArrayOperations on NDArray<Int32> {
   }
 
   /// Element-wise division returning Float64 NDArray (due to division promotion).
-  NDArray<Float64> divide(NDArray<Int32> other, {NDArray<Float64>? into}) {
+  NDArray<Float64> divide(NDArray<Int32> other, {NDArray<Float64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result =
-        into ?? NDArray<Float64>.create(expectedShape, DType.float64);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.float64) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+    final result = out ?? NDArray<Float64>.create(expectedShape, DType.float64);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) ||
+          out.dtype != DType.float64) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -1094,9 +1057,9 @@ extension Int32NDArrayOperations on NDArray<Int32> {
 
   // --- Mixed Int64 arguments (Upcast promotion) ---
 
-  NDArray<Int64> addInt64(NDArray<Int64> other, {NDArray<Int64>? into}) {
+  NDArray<Int64> addInt64(NDArray<Int64> other, {NDArray<Int64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result = into ?? NDArray<Int64>.create(expectedShape, DType.int64);
+    final result = out ?? NDArray<Int64>.create(expectedShape, DType.int64);
     final broadcastResult = broadcast(this, other);
     _elementWiseIntOp(
       result.data as List<int>,
@@ -1115,9 +1078,9 @@ extension Int32NDArrayOperations on NDArray<Int32> {
     return result;
   }
 
-  NDArray<Int64> subtractInt64(NDArray<Int64> other, {NDArray<Int64>? into}) {
+  NDArray<Int64> subtractInt64(NDArray<Int64> other, {NDArray<Int64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result = into ?? NDArray<Int64>.create(expectedShape, DType.int64);
+    final result = out ?? NDArray<Int64>.create(expectedShape, DType.int64);
     final broadcastResult = broadcast(this, other);
     _elementWiseIntOp(
       result.data as List<int>,
@@ -1136,9 +1099,9 @@ extension Int32NDArrayOperations on NDArray<Int32> {
     return result;
   }
 
-  NDArray<Int64> multiplyInt64(NDArray<Int64> other, {NDArray<Int64>? into}) {
+  NDArray<Int64> multiplyInt64(NDArray<Int64> other, {NDArray<Int64>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
-    final result = into ?? NDArray<Int64>.create(expectedShape, DType.int64);
+    final result = out ?? NDArray<Int64>.create(expectedShape, DType.int64);
     final broadcastResult = broadcast(this, other);
     _elementWiseIntOp(
       result.data as List<int>,
@@ -1159,19 +1122,19 @@ extension Int32NDArrayOperations on NDArray<Int32> {
 
   // --- Mixed Scalar int arguments ---
 
-  NDArray<Int32> addScalar(int scalar, {NDArray<Int32>? into}) {
+  NDArray<Int32> addScalar(int scalar, {NDArray<Int32>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return add(scalarArr, into: into);
+    return add(scalarArr, out: out);
   }
 
-  NDArray<Int32> subtractScalar(int scalar, {NDArray<Int32>? into}) {
+  NDArray<Int32> subtractScalar(int scalar, {NDArray<Int32>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return subtract(scalarArr, into: into);
+    return subtract(scalarArr, out: out);
   }
 
-  NDArray<Int32> multiplyScalar(int scalar, {NDArray<Int32>? into}) {
+  NDArray<Int32> multiplyScalar(int scalar, {NDArray<Int32>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return multiply(scalarArr, into: into);
+    return multiply(scalarArr, out: out);
   }
 }
 
@@ -1181,14 +1144,14 @@ extension Int32NDArrayOperations on NDArray<Int32> {
 
 extension ComplexNDArrayOperations on NDArray<Complex> {
   /// Element-wise addition with Complex NDArray.
-  NDArray<Complex> add(NDArray<Complex> other, {NDArray<Complex>? into}) {
+  NDArray<Complex> add(NDArray<Complex> other, {NDArray<Complex>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
     final result =
-        into ?? NDArray<Complex>.create(expectedShape, DType.complex128);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.complex128) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+        out ?? NDArray<Complex>.create(expectedShape, DType.complex128);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) ||
+          out.dtype != DType.complex128) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -1221,14 +1184,14 @@ extension ComplexNDArrayOperations on NDArray<Complex> {
   }
 
   /// Element-wise subtraction with Complex NDArray.
-  NDArray<Complex> subtract(NDArray<Complex> other, {NDArray<Complex>? into}) {
+  NDArray<Complex> subtract(NDArray<Complex> other, {NDArray<Complex>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
     final result =
-        into ?? NDArray<Complex>.create(expectedShape, DType.complex128);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.complex128) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+        out ?? NDArray<Complex>.create(expectedShape, DType.complex128);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) ||
+          out.dtype != DType.complex128) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -1261,14 +1224,14 @@ extension ComplexNDArrayOperations on NDArray<Complex> {
   }
 
   /// Element-wise multiplication with Complex NDArray.
-  NDArray<Complex> multiply(NDArray<Complex> other, {NDArray<Complex>? into}) {
+  NDArray<Complex> multiply(NDArray<Complex> other, {NDArray<Complex>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
     final result =
-        into ?? NDArray<Complex>.create(expectedShape, DType.complex128);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.complex128) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+        out ?? NDArray<Complex>.create(expectedShape, DType.complex128);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) ||
+          out.dtype != DType.complex128) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -1301,14 +1264,14 @@ extension ComplexNDArrayOperations on NDArray<Complex> {
   }
 
   /// Element-wise division with Complex NDArray.
-  NDArray<Complex> divide(NDArray<Complex> other, {NDArray<Complex>? into}) {
+  NDArray<Complex> divide(NDArray<Complex> other, {NDArray<Complex>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
     final result =
-        into ?? NDArray<Complex>.create(expectedShape, DType.complex128);
-    if (into != null) {
-      if (!_listEquals(into.shape, expectedShape) ||
-          into.dtype != DType.complex128) {
-        throw ArgumentError('Incompatible into shape or dtype.');
+        out ?? NDArray<Complex>.create(expectedShape, DType.complex128);
+    if (out != null) {
+      if (!_listEquals(out.shape, expectedShape) ||
+          out.dtype != DType.complex128) {
+        throw ArgumentError('Incompatible out shape or dtype.');
       }
     }
 
@@ -1342,13 +1305,10 @@ extension ComplexNDArrayOperations on NDArray<Complex> {
 
   // --- Mixed Float64 arguments ---
 
-  NDArray<Complex> addFloat64(
-    NDArray<Float64> other, {
-    NDArray<Complex>? into,
-  }) {
+  NDArray<Complex> addFloat64(NDArray<Float64> other, {NDArray<Complex>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
     final result =
-        into ?? NDArray<Complex>.create(expectedShape, DType.complex128);
+        out ?? NDArray<Complex>.create(expectedShape, DType.complex128);
     final broadcastResult = broadcast(this, other);
     _elementWiseComplexDoubleOp(
       result.data,
@@ -1369,11 +1329,11 @@ extension ComplexNDArrayOperations on NDArray<Complex> {
 
   NDArray<Complex> subtractFloat64(
     NDArray<Float64> other, {
-    NDArray<Complex>? into,
+    NDArray<Complex>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
     final result =
-        into ?? NDArray<Complex>.create(expectedShape, DType.complex128);
+        out ?? NDArray<Complex>.create(expectedShape, DType.complex128);
     final broadcastResult = broadcast(this, other);
     _elementWiseComplexDoubleOp(
       result.data,
@@ -1394,11 +1354,11 @@ extension ComplexNDArrayOperations on NDArray<Complex> {
 
   NDArray<Complex> multiplyFloat64(
     NDArray<Float64> other, {
-    NDArray<Complex>? into,
+    NDArray<Complex>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
     final result =
-        into ?? NDArray<Complex>.create(expectedShape, DType.complex128);
+        out ?? NDArray<Complex>.create(expectedShape, DType.complex128);
     final broadcastResult = broadcast(this, other);
     _elementWiseComplexDoubleOp(
       result.data,
@@ -1419,11 +1379,11 @@ extension ComplexNDArrayOperations on NDArray<Complex> {
 
   NDArray<Complex> divideFloat64(
     NDArray<Float64> other, {
-    NDArray<Complex>? into,
+    NDArray<Complex>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
     final result =
-        into ?? NDArray<Complex>.create(expectedShape, DType.complex128);
+        out ?? NDArray<Complex>.create(expectedShape, DType.complex128);
     final broadcastResult = broadcast(this, other);
     _elementWiseComplexDoubleOp(
       result.data,
@@ -1444,10 +1404,10 @@ extension ComplexNDArrayOperations on NDArray<Complex> {
 
   // --- Mixed Int64 arguments ---
 
-  NDArray<Complex> addInt64(NDArray<Int64> other, {NDArray<Complex>? into}) {
+  NDArray<Complex> addInt64(NDArray<Int64> other, {NDArray<Complex>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
     final result =
-        into ?? NDArray<Complex>.create(expectedShape, DType.complex128);
+        out ?? NDArray<Complex>.create(expectedShape, DType.complex128);
     final broadcastResult = broadcast(this, other);
     _elementWiseComplexIntOp(
       result.data,
@@ -1468,11 +1428,11 @@ extension ComplexNDArrayOperations on NDArray<Complex> {
 
   NDArray<Complex> subtractInt64(
     NDArray<Int64> other, {
-    NDArray<Complex>? into,
+    NDArray<Complex>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
     final result =
-        into ?? NDArray<Complex>.create(expectedShape, DType.complex128);
+        out ?? NDArray<Complex>.create(expectedShape, DType.complex128);
     final broadcastResult = broadcast(this, other);
     _elementWiseComplexIntOp(
       result.data,
@@ -1493,11 +1453,11 @@ extension ComplexNDArrayOperations on NDArray<Complex> {
 
   NDArray<Complex> multiplyInt64(
     NDArray<Int64> other, {
-    NDArray<Complex>? into,
+    NDArray<Complex>? out,
   }) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
     final result =
-        into ?? NDArray<Complex>.create(expectedShape, DType.complex128);
+        out ?? NDArray<Complex>.create(expectedShape, DType.complex128);
     final broadcastResult = broadcast(this, other);
     _elementWiseComplexIntOp(
       result.data,
@@ -1516,10 +1476,10 @@ extension ComplexNDArrayOperations on NDArray<Complex> {
     return result;
   }
 
-  NDArray<Complex> divideInt64(NDArray<Int64> other, {NDArray<Complex>? into}) {
+  NDArray<Complex> divideInt64(NDArray<Int64> other, {NDArray<Complex>? out}) {
     final expectedShape = ops.broadcastShapes(shape, other.shape);
     final result =
-        into ?? NDArray<Complex>.create(expectedShape, DType.complex128);
+        out ?? NDArray<Complex>.create(expectedShape, DType.complex128);
     final broadcastResult = broadcast(this, other);
     _elementWiseComplexIntOp(
       result.data,
@@ -1540,24 +1500,24 @@ extension ComplexNDArrayOperations on NDArray<Complex> {
 
   // --- Mixed Scalar arguments ---
 
-  NDArray<Complex> addScalar(dynamic scalar, {NDArray<Complex>? into}) {
+  NDArray<Complex> addScalar(dynamic scalar, {NDArray<Complex>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return add(scalarArr, into: into);
+    return add(scalarArr, out: out);
   }
 
-  NDArray<Complex> subtractScalar(dynamic scalar, {NDArray<Complex>? into}) {
+  NDArray<Complex> subtractScalar(dynamic scalar, {NDArray<Complex>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return subtract(scalarArr, into: into);
+    return subtract(scalarArr, out: out);
   }
 
-  NDArray<Complex> multiplyScalar(dynamic scalar, {NDArray<Complex>? into}) {
+  NDArray<Complex> multiplyScalar(dynamic scalar, {NDArray<Complex>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return multiply(scalarArr, into: into);
+    return multiply(scalarArr, out: out);
   }
 
-  NDArray<Complex> divideScalar(dynamic scalar, {NDArray<Complex>? into}) {
+  NDArray<Complex> divideScalar(dynamic scalar, {NDArray<Complex>? out}) {
     final scalarArr = _wrapScalar(scalar, shape, dtype);
-    return divide(scalarArr, into: into);
+    return divide(scalarArr, out: out);
   }
 }
 

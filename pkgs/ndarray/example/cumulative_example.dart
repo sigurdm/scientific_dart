@@ -40,7 +40,7 @@ void main() {
 
     // 4. In-place recycler buffer reuse
     final recycler = NDArray<double>.zeros([2, 3], DType.float64);
-    final recycled = cumsum(mat, axis: 0, into: recycler);
+    final recycled = cumsum(mat, axis: 0, out: recycler);
     print(
       '\nRecycled buffer (identical check): ${identical(recycled, recycler) ? "PASS" : "FAIL"}',
     );

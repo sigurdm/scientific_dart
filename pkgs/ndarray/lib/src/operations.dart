@@ -1565,13 +1565,13 @@ NDArray matmul(NDArray a, NDArray b) {
 /// final s0 = sum(a, axis: 0); // Sum along rows
 /// print(s0.data); // [4.0, 6.0]
 /// ```
-NDArray sum(NDArray a, {int? axis, NDArray? into}) {
+NDArray sum(NDArray a, {int? axis, NDArray? out}) {
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
-  if (into != null) {
-    if (!listEquals(into.shape, targetShape) || into.dtype != a.dtype) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
@@ -1594,7 +1594,7 @@ NDArray sum(NDArray a, {int? axis, NDArray? into}) {
         acc += elements[i];
       }
     }
-    final result = into ?? NDArray.create([], a.dtype);
+    final result = out ?? NDArray.create([], a.dtype);
     result.data[0] = acc;
     return result;
   }
@@ -1604,8 +1604,8 @@ NDArray sum(NDArray a, {int? axis, NDArray? into}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = into ?? NDArray.zeros(newShape, a.dtype as dynamic);
-  if (into != null) {
+  final result = out ?? NDArray.zeros(newShape, a.dtype as dynamic);
+  if (out != null) {
     result.fill(0);
   }
 
@@ -1632,13 +1632,13 @@ NDArray sum(NDArray a, {int? axis, NDArray? into}) {
 /// final p0 = prod(a, axis: 0); // Product along rows
 /// print(p0.data); // [3.0, 8.0]
 /// ```
-NDArray prod(NDArray a, {int? axis, NDArray? into}) {
+NDArray prod(NDArray a, {int? axis, NDArray? out}) {
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
-  if (into != null) {
-    if (!listEquals(into.shape, targetShape) || into.dtype != a.dtype) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
@@ -1661,7 +1661,7 @@ NDArray prod(NDArray a, {int? axis, NDArray? into}) {
         acc *= elements[i];
       }
     }
-    final result = into ?? NDArray.create([], a.dtype);
+    final result = out ?? NDArray.create([], a.dtype);
     result.data[0] = acc;
     return result;
   }
@@ -1671,8 +1671,8 @@ NDArray prod(NDArray a, {int? axis, NDArray? into}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = into ?? NDArray.ones(newShape, a.dtype as dynamic);
-  if (into != null) {
+  final result = out ?? NDArray.ones(newShape, a.dtype as dynamic);
+  if (out != null) {
     result.fill(1);
   }
 
@@ -1705,7 +1705,7 @@ NDArray prod(NDArray a, {int? axis, NDArray? into}) {
 /// final a = NDArray.fromList([true, true, false], [3], `DType.boolean);`
 /// final res = all(a); // false
 /// ```
-NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? into}) {
+NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute all() on a disposed array.');
   }
@@ -1718,9 +1718,9 @@ NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? into}) {
   final targetShape = targetAxis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(targetAxis));
-  if (into != null) {
-    if (!listEquals(into.shape, targetShape) || into.dtype != DType.boolean) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != DType.boolean) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
@@ -1734,7 +1734,7 @@ NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? into}) {
         break;
       }
     }
-    final result = into ?? NDArray<bool>.create([], DType.boolean);
+    final result = out ?? NDArray<bool>.create([], DType.boolean);
     result.data[0] = allTrue;
     return result;
   }
@@ -1744,7 +1744,7 @@ NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? into}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(targetAxis);
-  final result = into ?? NDArray<bool>.create(newShape, DType.boolean);
+  final result = out ?? NDArray<bool>.create(newShape, DType.boolean);
   result.fill(true); // Initialize to true everywhere
 
   _reduceRecursive(
@@ -1777,7 +1777,7 @@ NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? into}) {
 /// final a = NDArray.fromList([true, false, false], [3], `DType.boolean);`
 /// final res = any(a); // true
 /// ```
-NDArray<bool> any(NDArray a, {int? axis, NDArray<bool>? into}) {
+NDArray<bool> any(NDArray a, {int? axis, NDArray<bool>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute any() on a disposed array.');
   }
@@ -1790,9 +1790,9 @@ NDArray<bool> any(NDArray a, {int? axis, NDArray<bool>? into}) {
   final targetShape = targetAxis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(targetAxis));
-  if (into != null) {
-    if (!listEquals(into.shape, targetShape) || into.dtype != DType.boolean) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != DType.boolean) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
@@ -1806,7 +1806,7 @@ NDArray<bool> any(NDArray a, {int? axis, NDArray<bool>? into}) {
         break;
       }
     }
-    final result = into ?? NDArray<bool>.create([], DType.boolean);
+    final result = out ?? NDArray<bool>.create([], DType.boolean);
     result.data[0] = anyTrue;
     return result;
   }
@@ -1817,9 +1817,9 @@ NDArray<bool> any(NDArray a, {int? axis, NDArray<bool>? into}) {
 
   final newShape = List<int>.from(a.shape)..removeAt(targetAxis);
   final result =
-      into ??
+      out ??
       NDArray<bool>.zeros(newShape, DType.boolean); // Pre-initialized to false
-  if (into != null) {
+  if (out != null) {
     result.fill(false);
   }
 
@@ -2091,7 +2091,7 @@ NDArray log(NDArray a, {NDArray? out}) {
 /// ```
 ///
 /// Reference: [Arithmetic Mean](https://en.wikipedia.org/wiki/Arithmetic_mean)
-NDArray mean(NDArray a, {int? axis, NDArray? into}) {
+NDArray mean(NDArray a, {int? axis, NDArray? out}) {
   final DType targetDType = a.dtype.isComplex
       ? DType.complex128
       : DType.float64;
@@ -2099,9 +2099,9 @@ NDArray mean(NDArray a, {int? axis, NDArray? into}) {
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
-  if (into != null) {
-    if (!listEquals(into.shape, targetShape) || into.dtype != targetDType) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != targetDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
@@ -2127,13 +2127,13 @@ NDArray mean(NDArray a, {int? axis, NDArray? into}) {
     }
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     final meanVal = s.data[0] / size;
-    final result = into ?? NDArray.create([], targetDType);
+    final result = out ?? NDArray.create([], targetDType);
     result.data[0] = meanVal;
     s.dispose();
     return result;
   } else {
-    final result = into ?? NDArray.create(targetShape, targetDType);
-    sum(promotedA, axis: axis, into: result);
+    final result = out ?? NDArray.create(targetShape, targetDType);
+    sum(promotedA, axis: axis, out: result);
     if (promotedA != a) {
       promotedA.dispose();
     }
@@ -2170,14 +2170,14 @@ NDArray mean(NDArray a, {int? axis, NDArray? into}) {
 NDArray<double> variance<T extends num>(
   NDArray<T> a, {
   int? axis,
-  NDArray<double>? into,
+  NDArray<double>? out,
 }) {
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
-  if (into != null) {
-    if (!listEquals(into.shape, targetShape) || into.dtype != DType.float64) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
@@ -2197,7 +2197,7 @@ NDArray<double> variance<T extends num>(
       final diff = elements[i].toDouble() - meanVal;
       sumSqDiff += diff * diff;
     }
-    final result = into ?? NDArray<double>.create([], DType.float64);
+    final result = out ?? NDArray<double>.create([], DType.float64);
     result.data[0] = sumSqDiff / elements.length;
     return result;
   } else {
@@ -2219,10 +2219,10 @@ NDArray<double> variance<T extends num>(
     diff.dispose();
     sqDiff.dispose();
 
-    final res = mean(sqDiffDouble, axis: axis, into: into);
-    if (into != null) {
+    final res = mean(sqDiffDouble, axis: axis, out: out);
+    if (out != null) {
       sqDiffDouble.dispose();
-      return into;
+      return out;
     }
     final resultVal = NDArray<double>.view(
       res,
@@ -2259,29 +2259,29 @@ NDArray<double> variance<T extends num>(
 NDArray<double> std<T extends num>(
   NDArray<T> a, {
   int? axis,
-  NDArray<double>? into,
+  NDArray<double>? out,
 }) {
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
-  if (into != null) {
-    if (!listEquals(into.shape, targetShape) || into.dtype != DType.float64) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
   final v = variance(a, axis: axis);
   if (axis == null) {
     final stdVal = math.sqrt(v.data[0]);
-    final result = into ?? NDArray<double>.create([], DType.float64);
+    final result = out ?? NDArray<double>.create([], DType.float64);
     result.data[0] = stdVal;
     v.dispose();
     return result;
   } else {
-    final res = sqrt(v, out: into);
-    if (into != null) {
+    final res = sqrt(v, out: out);
+    if (out != null) {
       v.dispose();
-      return into;
+      return out;
     }
     final resultVal = NDArray<double>.view(
       res,
@@ -2309,13 +2309,13 @@ NDArray<double> std<T extends num>(
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], `DType.float64);`
 /// final s = nansum(a); // returns 4.0
 /// ```
-NDArray nansum(NDArray a, {int? axis, NDArray? into}) {
+NDArray nansum(NDArray a, {int? axis, NDArray? out}) {
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
-  if (into != null) {
-    if (!listEquals(into.shape, targetShape) || into.dtype != a.dtype) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
@@ -2346,7 +2346,7 @@ NDArray nansum(NDArray a, {int? axis, NDArray? into}) {
       }
       acc = sumVal;
     }
-    final result = into ?? NDArray.create([], a.dtype);
+    final result = out ?? NDArray.create([], a.dtype);
     result.data[0] = acc;
     return result;
   }
@@ -2356,8 +2356,8 @@ NDArray nansum(NDArray a, {int? axis, NDArray? into}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = into ?? NDArray.zeros(newShape, a.dtype as dynamic);
-  if (into != null) {
+  final result = out ?? NDArray.zeros(newShape, a.dtype as dynamic);
+  if (out != null) {
     result.fill(0);
   }
 
@@ -2393,7 +2393,7 @@ NDArray nansum(NDArray a, {int? axis, NDArray? into}) {
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], `DType.float64);`
 /// final m = nanmean(a); // returns 2.6666666666666665
 /// ```
-NDArray nanmean(NDArray a, {int? axis, NDArray? into}) {
+NDArray nanmean(NDArray a, {int? axis, NDArray? out}) {
   final DType targetDType = a.dtype.isComplex
       ? DType.complex128
       : DType.float64;
@@ -2401,9 +2401,9 @@ NDArray nanmean(NDArray a, {int? axis, NDArray? into}) {
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
-  if (into != null) {
-    if (!listEquals(into.shape, targetShape) || into.dtype != targetDType) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != targetDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
@@ -2440,7 +2440,7 @@ NDArray nanmean(NDArray a, {int? axis, NDArray? into}) {
     if (promotedA != a) {
       promotedA.dispose();
     }
-    final result = into ?? NDArray<double>.create([], DType.float64);
+    final result = out ?? NDArray<double>.create([], DType.float64);
     if (count == 0) {
       result.data[0] = double.nan;
     } else {
@@ -2457,8 +2457,8 @@ NDArray nanmean(NDArray a, {int? axis, NDArray? into}) {
   }
 
   final newShape = List<int>.from(promotedA.shape)..removeAt(axis);
-  final result = into ?? NDArray.zeros(newShape, targetDType as dynamic);
-  if (into != null) {
+  final result = out ?? NDArray.zeros(newShape, targetDType as dynamic);
+  if (out != null) {
     result.fill(0);
   }
   final counts = NDArray<int>.zeros(newShape, DType.int32);
@@ -2540,14 +2540,14 @@ void _nanReduceRecursive(
 NDArray<double> nanvar<T extends num>(
   NDArray<T> a, {
   int? axis,
-  NDArray<double>? into,
+  NDArray<double>? out,
 }) {
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
-  if (into != null) {
-    if (!listEquals(into.shape, targetShape) || into.dtype != DType.float64) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
@@ -2558,7 +2558,7 @@ NDArray<double> nanvar<T extends num>(
     final meanVal = m.data[0];
     m.dispose();
     if (meanVal.isNaN) {
-      final result = into ?? NDArray<double>.create([], DType.float64);
+      final result = out ?? NDArray<double>.create([], DType.float64);
       result.data[0] = double.nan;
       return result;
     }
@@ -2576,7 +2576,7 @@ NDArray<double> nanvar<T extends num>(
       sumSqDiff += diff * diff;
       count++;
     }
-    final result = into ?? NDArray<double>.create([], DType.float64);
+    final result = out ?? NDArray<double>.create([], DType.float64);
     if (count == 0) {
       result.data[0] = double.nan;
     } else {
@@ -2603,10 +2603,10 @@ NDArray<double> nanvar<T extends num>(
     diff.dispose();
     sqDiff.dispose();
 
-    final res = nanmean(sqDiffDouble, axis: axis, into: into);
-    if (into != null) {
+    final res = nanmean(sqDiffDouble, axis: axis, out: out);
+    if (out != null) {
       sqDiffDouble.dispose();
-      return into;
+      return out;
     }
     final resultVal = NDArray<double>.view(
       res,
@@ -2637,29 +2637,29 @@ NDArray<double> nanvar<T extends num>(
 NDArray<double> nanstd<T extends num>(
   NDArray<T> a, {
   int? axis,
-  NDArray<double>? into,
+  NDArray<double>? out,
 }) {
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
-  if (into != null) {
-    if (!listEquals(into.shape, targetShape) || into.dtype != DType.float64) {
-      throw ArgumentError('Incompatible into buffer shape or dtype.');
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
   final v = nanvar(a, axis: axis);
   if (axis == null) {
     final stdVal = math.sqrt(v.data[0]);
-    final result = into ?? NDArray<double>.create([], DType.float64);
+    final result = out ?? NDArray<double>.create([], DType.float64);
     result.data[0] = stdVal;
     v.dispose();
     return result;
   } else {
-    final res = sqrt(v, out: into);
-    if (into != null) {
+    final res = sqrt(v, out: out);
+    if (out != null) {
       v.dispose();
-      return into;
+      return out;
     }
     final resultVal = NDArray<double>.view(
       res,
@@ -5477,7 +5477,7 @@ NDArray real(NDArray a, {NDArray? out}) {
           'Recycler out must match shape ${a.shape} and DType ${a.dtype}',
         );
       }
-      // Copy elements into out
+      // Copy elements out out
       final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
       out.data.setRange(0, size, a.toList());
       return out;
@@ -7302,7 +7302,7 @@ void _argMinMaxRecursive(
 
 /// Compute the Cholesky decomposition of a square 2D matrix.
 ///
-/// Factorizes a symmetric, positive-definite matrix [a] into `A = L * L^T`, where `L`
+/// Factorizes a symmetric, positive-definite matrix [a] out `A = L * L^T`, where `L`
 /// is a lower triangular matrix factor.
 ///
 /// Returns a Map `{'L': lMatrix}` containing the lower factor.
@@ -7407,7 +7407,7 @@ Map<String, NDArray> cholesky(NDArray a) {
 
 /// Computes the QR decomposition of a matrix $A = Q R$.
 ///
-/// Decomposes a matrix [a] into an orthogonal matrix `Q` and an upper triangular matrix `R`
+/// Decomposes a matrix [a] out an orthogonal matrix `Q` and an upper triangular matrix `R`
 /// such that `a = Q * R`.
 /// Natively offloads to LAPACK solvers (`dgeqrf` / `sgeqrf` and `dorgqr` / `sorgqr`) depending on precision.
 ///
@@ -7583,7 +7583,7 @@ Map<String, NDArray> qr(NDArray a) {
 
 /// Computes the Singular Value Decomposition (SVD) of a matrix $A = U S V^h$.
 ///
-/// Decomposes a matrix [a] into left singular vectors `U`, singular values `S`,
+/// Decomposes a matrix [a] out left singular vectors `U`, singular values `S`,
 /// and right singular vectors `Vh` such that `a = U * diag(S) * Vh`.
 /// Natively offloads to LAPACK solvers (`dgesdd` / `sgesdd`) depending on precision.
 ///
@@ -8810,20 +8810,20 @@ NDArray matrix_power(NDArray a, int n, {NDArray? out}) {
 /// - Input [a] must not be disposed.
 /// - [n] must be >= 0.
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
-/// - If provided, [into] must have compatible shape and dtype.
+/// - If provided, [out] must have compatible shape and dtype.
 ///
 /// **Throws:**
 /// - [StateError] if [a] is disposed.
 /// - [ArgumentError] if [n] is negative.
 /// - [ArgumentError] if [axis] is out of bounds.
-/// - [ArgumentError] if [into] shape or dtype is incompatible.
+/// - [ArgumentError] if [out] shape or dtype is incompatible.
 ///
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([1, 2, 4, 7, 0], [5], DType.int64);
 /// final res = diff(a); // [1, 2, 3, -7]
 /// ```
-NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? into}) {
+NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute diff() on a disposed array.');
   }
@@ -8831,8 +8831,8 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? into}) {
     throw ArgumentError('Order of difference n must be >= 0 (was $n).');
   }
   if (n == 0) {
-    final result = into ?? a.copy();
-    if (into != null) {
+    final result = out ?? a.copy();
+    if (out != null) {
       for (var i = 0; i < result.data.length; i++) {
         result.data[i] = a.data[i];
       }
@@ -8851,12 +8851,12 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? into}) {
   if (n >= a.shape[targetAxis]) {
     final emptyShape = List<int>.from(a.shape);
     emptyShape[targetAxis] = 0;
-    return into ?? NDArray<T>.create(emptyShape, a.dtype);
+    return out ?? NDArray<T>.create(emptyShape, a.dtype);
   }
 
   if (n > 1) {
     final step = diff(a, n: n - 1, axis: targetAxis);
-    final result = diff(step, n: 1, axis: targetAxis, into: into);
+    final result = diff(step, n: 1, axis: targetAxis, out: out);
     step.dispose();
     return result;
   }
@@ -8864,9 +8864,9 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? into}) {
   final targetShape = List<int>.from(a.shape);
   targetShape[targetAxis] = a.shape[targetAxis] - 1;
 
-  final result = into ?? NDArray<T>.create(targetShape, a.dtype);
-  if (into != null) {
-    if (!listEquals(into.shape, targetShape) || into.dtype != a.dtype) {
+  final result = out ?? NDArray<T>.create(targetShape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -8885,100 +8885,104 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? into}) {
   }
 
   try {
-    if (a.dtype == DType.float64) {
-      s_diff_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    } else if (a.dtype == DType.float32) {
-      s_diff_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    } else if (a.dtype == DType.int64) {
-      s_diff_int64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    } else if (a.dtype == DType.int32) {
-      s_diff_int32(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    } else if (a.dtype == DType.complex128) {
-      s_diff_complex128(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    } else if (a.dtype == DType.complex64) {
-      s_diff_complex64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    } else {
-      final doubleA = NDArray<double>.create(a.shape, DType.float64);
-      for (var i = 0; i < a.data.length; i++) {
-        doubleA.data[i] = (a.data[i] as num).toDouble();
-      }
-      final doubleRes = NDArray<double>.create(targetShape, DType.float64);
-      final cStridesDoubleA = malloc<ffi.Int>(rank);
-      final cStridesDoubleRes = malloc<ffi.Int>(rank);
-
-      for (var i = 0; i < rank; i++) {
-        cStridesDoubleA[i] = doubleA.strides[i];
-        cStridesDoubleRes[i] = doubleRes.strides[i];
-      }
-
-      try {
+    final dtype = a.dtype;
+    switch (dtype) {
+      case Float64DType():
         s_diff_double(
-          doubleA.pointer.cast(),
-          cStridesDoubleA,
-          doubleRes.pointer.cast(),
-          cStridesDoubleRes,
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
           cShape,
           rank,
           targetAxis,
         );
-      } finally {
-        malloc.free(cStridesDoubleA);
-        malloc.free(cStridesDoubleRes);
-      }
+      case Float32DType():
+        s_diff_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      case Int64DType():
+        s_diff_int64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      case Int32DType():
+        s_diff_int32(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      case Complex128DType():
+        s_diff_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      case Complex64DType():
+        s_diff_complex64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      case Uint8DType():
+      case Int16DType():
+      case BooleanDType():
+        final doubleA = NDArray<double>.create(a.shape, DType.float64);
+        for (var i = 0; i < a.data.length; i++) {
+          doubleA.data[i] = (a.data[i] as num).toDouble();
+        }
+        final doubleRes = NDArray<double>.create(targetShape, DType.float64);
+        final cStridesDoubleA = malloc<ffi.Int>(rank);
+        final cStridesDoubleRes = malloc<ffi.Int>(rank);
 
-      for (var i = 0; i < result.data.length; i++) {
-        result.data[i] = _castValue(doubleRes.data[i], a.dtype) as T;
-      }
-      doubleA.dispose();
-      doubleRes.dispose();
+        for (var i = 0; i < rank; i++) {
+          cStridesDoubleA[i] = doubleA.strides[i];
+          cStridesDoubleRes[i] = doubleRes.strides[i];
+        }
+
+        try {
+          s_diff_double(
+            doubleA.pointer.cast(),
+            cStridesDoubleA,
+            doubleRes.pointer.cast(),
+            cStridesDoubleRes,
+            cShape,
+            rank,
+            targetAxis,
+          );
+        } finally {
+          malloc.free(cStridesDoubleA);
+          malloc.free(cStridesDoubleRes);
+        }
+
+        for (var i = 0; i < result.data.length; i++) {
+          result.data[i] = _castValue(doubleRes.data[i], a.dtype) as T;
+        }
+        doubleA.dispose();
+        doubleRes.dispose();
     }
   } finally {
     malloc.free(cShape);
@@ -8989,7 +8993,7 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? into}) {
   return result;
 }
 
-NDArray<T> cumsum<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
+NDArray<T> cumsum<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumsum() on a disposed array.');
   }
@@ -8997,9 +9001,9 @@ NDArray<T> cumsum<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
   final NDArray<T> result;
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result = into ?? NDArray<T>.create([size], a.dtype);
-    if (into != null) {
-      if (!listEquals(into.shape, [size]) || into.dtype != a.dtype) {
+    result = out ?? NDArray<T>.create([size], a.dtype);
+    if (out != null) {
+      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
         );
@@ -9025,9 +9029,9 @@ NDArray<T> cumsum<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  result = into ?? NDArray<T>.create(a.shape, a.dtype);
-  if (into != null) {
-    if (!listEquals(into.shape, a.shape) || into.dtype != a.dtype) {
+  result = out ?? NDArray<T>.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -9041,16 +9045,16 @@ NDArray<T> cumsum<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
 ///
 /// **Preconditions:**
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
-/// - If provided, the [into] recycler must have compatible shape and dtype.
+/// - If provided, the [out] recycler must have compatible shape and dtype.
 ///
 /// **Throws:**
 /// - [StateError] if the array is disposed.
 /// - [ArgumentError] if [axis] is out of bounds.
-/// - [ArgumentError] if [into] recycler shape or dtype is incompatible.
+/// - [ArgumentError] if [out] recycler shape or dtype is incompatible.
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<T> cumprod<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
+NDArray<T> cumprod<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumprod() on a disposed array.');
   }
@@ -9058,9 +9062,9 @@ NDArray<T> cumprod<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
   final NDArray<T> result;
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result = into ?? NDArray<T>.create([size], a.dtype);
-    if (into != null) {
-      if (!listEquals(into.shape, [size]) || into.dtype != a.dtype) {
+    result = out ?? NDArray<T>.create([size], a.dtype);
+    if (out != null) {
+      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
         );
@@ -9086,9 +9090,9 @@ NDArray<T> cumprod<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  result = into ?? NDArray<T>.create(a.shape, a.dtype);
-  if (into != null) {
-    if (!listEquals(into.shape, a.shape) || into.dtype != a.dtype) {
+  result = out ?? NDArray<T>.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -9102,16 +9106,16 @@ NDArray<T> cumprod<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
 ///
 /// **Preconditions:**
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
-/// - If provided, the [into] recycler must have compatible shape and dtype.
+/// - If provided, the [out] recycler must have compatible shape and dtype.
 ///
 /// **Throws:**
 /// - [StateError] if the array is disposed.
 /// - [ArgumentError] if [axis] is out of bounds.
-/// - [ArgumentError] if [into] recycler shape or dtype is incompatible.
+/// - [ArgumentError] if [out] recycler shape or dtype is incompatible.
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
+NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cummin() on a disposed array.');
   }
@@ -9119,9 +9123,9 @@ NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
   final NDArray<T> result;
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result = into ?? NDArray<T>.create([size], a.dtype);
-    if (into != null) {
-      if (!listEquals(into.shape, [size]) || into.dtype != a.dtype) {
+    result = out ?? NDArray<T>.create([size], a.dtype);
+    if (out != null) {
+      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
         );
@@ -9149,9 +9153,9 @@ NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  result = into ?? NDArray<T>.create(a.shape, a.dtype);
-  if (into != null) {
-    if (!listEquals(into.shape, a.shape) || into.dtype != a.dtype) {
+  result = out ?? NDArray<T>.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -9165,16 +9169,16 @@ NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
 ///
 /// **Preconditions:**
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
-/// - If provided, the [into] recycler must have compatible shape and dtype.
+/// - If provided, the [out] recycler must have compatible shape and dtype.
 ///
 /// **Throws:**
 /// - [StateError] if the array is disposed.
 /// - [ArgumentError] if [axis] is out of bounds.
-/// - [ArgumentError] if [into] recycler shape or dtype is incompatible.
+/// - [ArgumentError] if [out] recycler shape or dtype is incompatible.
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
+NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cummax() on a disposed array.');
   }
@@ -9182,9 +9186,9 @@ NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
   final NDArray<T> result;
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result = into ?? NDArray<T>.create([size], a.dtype);
-    if (into != null) {
-      if (!listEquals(into.shape, [size]) || into.dtype != a.dtype) {
+    result = out ?? NDArray<T>.create([size], a.dtype);
+    if (out != null) {
+      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
         );
@@ -9212,9 +9216,9 @@ NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  result = into ?? NDArray<T>.create(a.shape, a.dtype);
-  if (into != null) {
-    if (!listEquals(into.shape, a.shape) || into.dtype != a.dtype) {
+  result = out ?? NDArray<T>.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -9244,214 +9248,368 @@ NDArray<T> _cumOpFFI<T>(
   }
 
   try {
-    if (opType == _CumOpType.sum) {
-      if (a.dtype == DType.float64) {
-        s_cumsum_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.float32) {
-        s_cumsum_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.int64) {
-        s_cumsum_int64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.int32) {
-        s_cumsum_int32(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.complex128) {
-        s_cumsum_complex128(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.complex64) {
-        s_cumsum_complex64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      }
-    } else if (opType == _CumOpType.prod) {
-      if (a.dtype == DType.float64) {
-        s_cumprod_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.float32) {
-        s_cumprod_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.int64) {
-        s_cumprod_int64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.int32) {
-        s_cumprod_int32(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.complex128) {
-        s_cumprod_complex128(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.complex64) {
-        s_cumprod_complex64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      }
-    } else if (opType == _CumOpType.min) {
-      if (a.dtype == DType.float64) {
-        s_cummin_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.float32) {
-        s_cummin_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.int64) {
-        s_cummin_int64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.int32) {
-        s_cummin_int32(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      }
-    } else if (opType == _CumOpType.max) {
-      if (a.dtype == DType.float64) {
-        s_cummax_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.float32) {
-        s_cummax_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.int64) {
-        s_cummax_int64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      } else if (a.dtype == DType.int32) {
-        s_cummax_int32(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-      }
+    switch (opType) {
+      case _CumOpType.sum:
+        final dtype = a.dtype;
+        switch (dtype) {
+          case Float64DType():
+            s_cumsum_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Float32DType():
+            s_cumsum_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Int64DType():
+            s_cumsum_int64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Int32DType():
+            s_cumsum_int32(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Complex128DType():
+            s_cumsum_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Complex64DType():
+            s_cumsum_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Uint8DType():
+          case Int16DType():
+          case BooleanDType():
+            final doubleA = NDArray<double>.create(a.shape, DType.float64);
+            for (var i = 0; i < a.data.length; i++) {
+              doubleA.data[i] = (a.data[i] as num).toDouble();
+            }
+            final doubleRes = NDArray<double>.create(a.shape, DType.float64);
+            final cStridesDoubleA = malloc<ffi.Int>(rank);
+            final cStridesDoubleRes = malloc<ffi.Int>(rank);
+            for (var i = 0; i < rank; i++) {
+              cStridesDoubleA[i] = doubleA.strides[i];
+              cStridesDoubleRes[i] = doubleRes.strides[i];
+            }
+            try {
+              s_cumsum_double(
+                doubleA.pointer.cast(),
+                cStridesDoubleA,
+                doubleRes.pointer.cast(),
+                cStridesDoubleRes,
+                cShape,
+                rank,
+                axis,
+              );
+            } finally {
+              malloc.free(cStridesDoubleA);
+              malloc.free(cStridesDoubleRes);
+            }
+            for (var i = 0; i < result.data.length; i++) {
+              result.data[i] = _castValue(doubleRes.data[i], a.dtype) as T;
+            }
+            doubleA.dispose();
+            doubleRes.dispose();
+        }
+
+      case _CumOpType.prod:
+        final dtype = a.dtype;
+        switch (dtype) {
+          case Float64DType():
+            s_cumprod_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Float32DType():
+            s_cumprod_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Int64DType():
+            s_cumprod_int64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Int32DType():
+            s_cumprod_int32(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Complex128DType():
+            s_cumprod_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Complex64DType():
+            s_cumprod_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Uint8DType():
+          case Int16DType():
+          case BooleanDType():
+            final doubleA = NDArray<double>.create(a.shape, DType.float64);
+            for (var i = 0; i < a.data.length; i++) {
+              doubleA.data[i] = (a.data[i] as num).toDouble();
+            }
+            final doubleRes = NDArray<double>.create(a.shape, DType.float64);
+            final cStridesDoubleA = malloc<ffi.Int>(rank);
+            final cStridesDoubleRes = malloc<ffi.Int>(rank);
+            for (var i = 0; i < rank; i++) {
+              cStridesDoubleA[i] = doubleA.strides[i];
+              cStridesDoubleRes[i] = doubleRes.strides[i];
+            }
+            try {
+              s_cumprod_double(
+                doubleA.pointer.cast(),
+                cStridesDoubleA,
+                doubleRes.pointer.cast(),
+                cStridesDoubleRes,
+                cShape,
+                rank,
+                axis,
+              );
+            } finally {
+              malloc.free(cStridesDoubleA);
+              malloc.free(cStridesDoubleRes);
+            }
+            for (var i = 0; i < result.data.length; i++) {
+              result.data[i] = _castValue(doubleRes.data[i], a.dtype) as T;
+            }
+            doubleA.dispose();
+            doubleRes.dispose();
+        }
+
+      case _CumOpType.min:
+        final dtype = a.dtype;
+        switch (dtype) {
+          case Float64DType():
+            s_cummin_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Float32DType():
+            s_cummin_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Int64DType():
+            s_cummin_int64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Int32DType():
+            s_cummin_int32(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Uint8DType():
+          case Int16DType():
+          case BooleanDType():
+            final doubleA = NDArray<double>.create(a.shape, DType.float64);
+            for (var i = 0; i < a.data.length; i++) {
+              doubleA.data[i] = (a.data[i] as num).toDouble();
+            }
+            final doubleRes = NDArray<double>.create(a.shape, DType.float64);
+            final cStridesDoubleA = malloc<ffi.Int>(rank);
+            final cStridesDoubleRes = malloc<ffi.Int>(rank);
+            for (var i = 0; i < rank; i++) {
+              cStridesDoubleA[i] = doubleA.strides[i];
+              cStridesDoubleRes[i] = doubleRes.strides[i];
+            }
+            try {
+              s_cummin_double(
+                doubleA.pointer.cast(),
+                cStridesDoubleA,
+                doubleRes.pointer.cast(),
+                cStridesDoubleRes,
+                cShape,
+                rank,
+                axis,
+              );
+            } finally {
+              malloc.free(cStridesDoubleA);
+              malloc.free(cStridesDoubleRes);
+            }
+            for (var i = 0; i < result.data.length; i++) {
+              result.data[i] = _castValue(doubleRes.data[i], a.dtype) as T;
+            }
+            doubleA.dispose();
+            doubleRes.dispose();
+          case Complex128DType():
+          case Complex64DType():
+            throw ArgumentError(
+              'Cumulative minimum is not defined for complex numbers.',
+            );
+        }
+
+      case _CumOpType.max:
+        final dtype = a.dtype;
+        switch (dtype) {
+          case Float64DType():
+            s_cummax_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Float32DType():
+            s_cummax_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Int64DType():
+            s_cummax_int64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Int32DType():
+            s_cummax_int32(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              axis,
+            );
+          case Uint8DType():
+          case Int16DType():
+          case BooleanDType():
+            final doubleA = NDArray<double>.create(a.shape, DType.float64);
+            for (var i = 0; i < a.data.length; i++) {
+              doubleA.data[i] = (a.data[i] as num).toDouble();
+            }
+            final doubleRes = NDArray<double>.create(a.shape, DType.float64);
+            final cStridesDoubleA = malloc<ffi.Int>(rank);
+            final cStridesDoubleRes = malloc<ffi.Int>(rank);
+            for (var i = 0; i < rank; i++) {
+              cStridesDoubleA[i] = doubleA.strides[i];
+              cStridesDoubleRes[i] = doubleRes.strides[i];
+            }
+            try {
+              s_cummax_double(
+                doubleA.pointer.cast(),
+                cStridesDoubleA,
+                doubleRes.pointer.cast(),
+                cStridesDoubleRes,
+                cShape,
+                rank,
+                axis,
+              );
+            } finally {
+              malloc.free(cStridesDoubleA);
+              malloc.free(cStridesDoubleRes);
+            }
+            for (var i = 0; i < result.data.length; i++) {
+              result.data[i] = _castValue(doubleRes.data[i], a.dtype) as T;
+            }
+            doubleA.dispose();
+            doubleRes.dispose();
+          case Complex128DType():
+          case Complex64DType():
+            throw ArgumentError(
+              'Cumulative maximum is not defined for complex numbers.',
+            );
+        }
     }
   } finally {
     malloc.free(cShape);
