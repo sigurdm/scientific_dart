@@ -2354,3 +2354,154 @@ DEFINE_STRIDED_UNARY_OP(s_acosh_double, double, OP_ACOSH_D)
 DEFINE_STRIDED_UNARY_OP(s_acosh_float, float, OP_ACOSH_F)
 DEFINE_STRIDED_UNARY_OP(s_atanh_double, double, OP_ATANH_D)
 DEFINE_STRIDED_UNARY_OP(s_atanh_float, float, OP_ATANH_F)
+
+static inline cpx_t cpx_atanh(cpx_t z) {
+    double r = 0.25 * log(((1.0 + z.r)*(1.0 + z.r) + z.i*z.i) / ((1.0 - z.r)*(1.0 - z.r) + z.i*z.i));
+    double s = 0.5 * atan2(2.0 * z.i, 1.0 - z.r*z.r - z.i*z.i);
+    return (cpx_t){r, s};
+}
+
+static inline cpx_f_t cpx_atanh_f(cpx_f_t z) {
+    float r = 0.25f * logf(((1.0f + z.r)*(1.0f + z.r) + z.i*z.i) / ((1.0f - z.r)*(1.0f - z.r) + z.i*z.i));
+    float s = 0.5f * atan2f(2.0f * z.i, 1.0f - z.r*z.r - z.i*z.i);
+    return (cpx_f_t){r, s};
+}
+
+DEFINE_COMPLEX_UNARY_VEC(v_atanh_complex128, cpx_t, cpx_atanh)
+DEFINE_COMPLEX_UNARY_VEC(v_atanh_complex64, cpx_f_t, cpx_atanh_f)
+DEFINE_STRIDED_UNARY_OP(s_atanh_complex128, cpx_t, cpx_atanh)
+DEFINE_STRIDED_UNARY_OP(s_atanh_complex64, cpx_f_t, cpx_atanh_f)
+
+void v_hypot_complex128(const cpx_t *x1, const cpx_t *x2, double *res, int size) {
+    if (x1 == NULL || x2 == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = sqrt(x1[i].r*x1[i].r + x1[i].i*x1[i].i + x2[i].r*x2[i].r + x2[i].i*x2[i].i);
+    }
+}
+
+void v_hypot_complex64(const cpx_f_t *x1, const cpx_f_t *x2, float *res, int size) {
+    if (x1 == NULL || x2 == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = sqrtf(x1[i].r*x1[i].r + x1[i].i*x1[i].i + x2[i].r*x2[i].r + x2[i].i*x2[i].i);
+    }
+}
+
+void s_hypot_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank) {
+    if (x1 == NULL || x2 == NULL || res == NULL || shape == NULL || rank <= 0) return;
+    int coord[8] = {0};
+    int total_size = 1;
+    for (int d = 0; d < rank; d++) total_size *= shape[d];
+    for (int i = 0; i < total_size; i++) {
+        int offsetX1 = 0, offsetX2 = 0, offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetX1 += coord[d] * stridesX1[d];
+            offsetX2 += coord[d] * stridesX2[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        res[offsetRes] = sqrt(x1[offsetX1].r*x1[offsetX1].r + x1[offsetX1].i*x1[offsetX1].i + x2[offsetX2].r*x2[offsetX2].r + x2[offsetX2].i*x2[offsetX2].i);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_hypot_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank) {
+    if (x1 == NULL || x2 == NULL || res == NULL || shape == NULL || rank <= 0) return;
+    int coord[8] = {0};
+    int total_size = 1;
+    for (int d = 0; d < rank; d++) total_size *= shape[d];
+    for (int i = 0; i < total_size; i++) {
+        int offsetX1 = 0, offsetX2 = 0, offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetX1 += coord[d] * stridesX1[d];
+            offsetX2 += coord[d] * stridesX2[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        res[offsetRes] = sqrtf(x1[offsetX1].r*x1[offsetX1].r + x1[offsetX1].i*x1[offsetX1].i + x2[offsetX2].r*x2[offsetX2].r + x2[offsetX2].i*x2[offsetX2].i);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+static inline cpx_t cpx_pow(cpx_t z1, cpx_t z2) {
+    double mag = sqrt(z1.r*z1.r + z1.i*z1.i);
+    if (mag == 0.0) return (cpx_t){0.0, 0.0};
+    double L = log(mag);
+    double theta = atan2(z1.i, z1.r);
+    double R = z2.r * L - z2.i * theta;
+    double I = z2.i * L + z2.r * theta;
+    double eR = exp(R);
+    return (cpx_t){eR * cos(I), eR * sin(I)};
+}
+
+static inline cpx_f_t cpx_pow_f(cpx_f_t z1, cpx_f_t z2) {
+    float mag = sqrtf(z1.r*z1.r + z1.i*z1.i);
+    if (mag == 0.0f) return (cpx_f_t){0.0f, 0.0f};
+    float L = logf(mag);
+    float theta = atan2f(z1.i, z1.r);
+    float R = z2.r * L - z2.i * theta;
+    float I = z2.i * L + z2.r * theta;
+    float eR = expf(R);
+    return (cpx_f_t){eR * cosf(I), eR * sinf(I)};
+}
+
+void v_pow_complex128(const cpx_t *x1, const cpx_t *x2, cpx_t *res, int size) {
+    if (x1 == NULL || x2 == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = cpx_pow(x1[i], x2[i]);
+    }
+}
+
+void v_pow_complex64(const cpx_f_t *x1, const cpx_f_t *x2, cpx_f_t *res, int size) {
+    if (x1 == NULL || x2 == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = cpx_pow_f(x1[i], x2[i]);
+    }
+}
+
+void s_pow_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, cpx_t *res, const int *stridesRes, const int *shape, int rank) {
+    if (x1 == NULL || x2 == NULL || res == NULL || shape == NULL || rank <= 0) return;
+    int coord[8] = {0};
+    int total_size = 1;
+    for (int d = 0; d < rank; d++) total_size *= shape[d];
+    for (int i = 0; i < total_size; i++) {
+        int offsetX1 = 0, offsetX2 = 0, offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetX1 += coord[d] * stridesX1[d];
+            offsetX2 += coord[d] * stridesX2[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        res[offsetRes] = cpx_pow(x1[offsetX1], x2[offsetX2]);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_pow_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, cpx_f_t *res, const int *stridesRes, const int *shape, int rank) {
+    if (x1 == NULL || x2 == NULL || res == NULL || shape == NULL || rank <= 0) return;
+    int coord[8] = {0};
+    int total_size = 1;
+    for (int d = 0; d < rank; d++) total_size *= shape[d];
+    for (int i = 0; i < total_size; i++) {
+        int offsetX1 = 0, offsetX2 = 0, offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetX1 += coord[d] * stridesX1[d];
+            offsetX2 += coord[d] * stridesX2[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        res[offsetRes] = cpx_pow_f(x1[offsetX1], x2[offsetX2]);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}

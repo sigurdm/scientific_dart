@@ -2863,6 +2863,34 @@ void main() {
           expect(at.data[i].real, closeTo(a.data[i].real, 1e-8));
           expect(at.data[i].imag, closeTo(a.data[i].imag, 1e-8));
         }
+        // 6. complex atanh, hypot, power
+        final ath = atanh(a);
+        expect(ath.dtype, DType.complex128);
+        expect(
+          ath.data[1].real,
+          closeTo(
+            0.25 * math.log(((1.1) * (1.1) + 0.04) / ((0.9) * (0.9) + 0.04)),
+            1e-9,
+          ),
+        );
+        expect(
+          ath.data[1].imag,
+          closeTo(0.5 * math.atan2(0.4, 1.0 - 0.01 - 0.04), 1e-9),
+        );
+
+        final h = hypot(a, a);
+        expect(h.dtype, DType.float64);
+        expect(h.data[1], closeTo(math.sqrt(0.1), 1e-9));
+
+        final z2 = NDArray<Complex>.fromList(
+          List.filled(3, Complex(2.0, 0.0)),
+          [3],
+          DType.complex128,
+        );
+        final p = power(a, z2);
+        expect(p.dtype, DType.complex128);
+        expect(p.data[1].real, closeTo(-0.03, 1e-9));
+        expect(p.data[1].imag, closeTo(0.04, 1e-9));
       }),
     );
   });

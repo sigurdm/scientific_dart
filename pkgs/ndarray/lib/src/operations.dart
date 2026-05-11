@@ -5526,18 +5526,21 @@ NDArray<double> acosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<double> atanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
+NDArray atanh(NDArray a, {NDArray? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute atanh() on a disposed array.');
   }
-  final DType<double> targetDType = a.dtype == DType.float32
-      ? DType.float32 as DType<double>
-      : DType.float64 as DType<double>;
-  final result = out ?? NDArray<double>.create(a.shape, targetDType);
+  final DType<dynamic> targetDType;
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    targetDType = a.dtype;
+  } else {
+    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  }
+  final result = out ?? NDArray.create(a.shape, targetDType);
   if (out != null) {
-    if (!listEquals(out.shape, a.shape)) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
-        'Provided out buffer has incompatible shape for atanh.',
+        'Provided out buffer has incompatible shape or dtype for atanh.',
       );
     }
   }
@@ -5548,6 +5551,16 @@ NDArray<double> atanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
       return result;
     } else if (a.dtype == DType.float32) {
       v_atanh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.complex128) {
+      v_atanh_complex128(
+        a.pointer.cast(),
+        result.pointer.cast(),
+        a.data.length,
+      );
+      return result;
+    } else if (a.dtype == DType.complex64) {
+      v_atanh_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
     }
   } else {
@@ -5581,6 +5594,26 @@ NDArray<double> atanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
           rank,
         );
         return result;
+      } else if (a.dtype == DType.complex128) {
+        s_atanh_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.complex64) {
+        s_atanh_complex64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
       }
     } finally {
       malloc.free(cShape);
@@ -5589,8 +5622,9 @@ NDArray<double> atanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     }
   }
 
+  final aNum = a as NDArray<num>;
   for (var i = 0; i < a.data.length; i++) {
-    final x = (a.data[i] as num).toDouble();
+    final x = aNum.data[i].toDouble();
     result.data[i] = 0.5 * math.log((1 + x) / (1 - x));
   }
   return result;
@@ -5697,8 +5731,99 @@ NDArray atan2(NDArray y, NDArray x) {
 NDArray<double> hypot(NDArray x1, NDArray x2) {
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
-  final result = NDArray<double>.create(shape, DType.float64);
+  final DType<double> targetDType =
+      (x1.dtype == DType.complex64 || x2.dtype == DType.complex64)
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
+  final result = NDArray<double>.create(shape, targetDType);
   final resultStrides = NDArray.computeCStrides(shape);
+
+  if (x1.dtype == DType.complex128 ||
+      x2.dtype == DType.complex128 ||
+      x1.dtype == DType.complex64 ||
+      x2.dtype == DType.complex64) {
+    final aCpx = (x1.dtype == DType.complex128 || x1.dtype == DType.complex64)
+        ? x1
+        : NDArray<Complex>.fromList(
+            x1.data.map((e) => Complex((e as num).toDouble(), 0.0)).toList(),
+            x1.shape,
+            DType.complex128,
+          );
+    final bCpx = (x2.dtype == DType.complex128 || x2.dtype == DType.complex64)
+        ? x2
+        : NDArray<Complex>.fromList(
+            x2.data.map((e) => Complex((e as num).toDouble(), 0.0)).toList(),
+            x2.shape,
+            DType.complex128,
+          );
+    if (listEquals(x1.shape, x2.shape) &&
+        x1.isContiguous &&
+        x2.isContiguous &&
+        result.isContiguous) {
+      if (aCpx.dtype == DType.complex128) {
+        v_hypot_complex128(
+          aCpx.pointer.cast(),
+          bCpx.pointer.cast(),
+          result.pointer.cast(),
+          aCpx.data.length,
+        );
+        return result;
+      } else {
+        v_hypot_complex64(
+          aCpx.pointer.cast(),
+          bCpx.pointer.cast(),
+          result.pointer.cast(),
+          aCpx.data.length,
+        );
+        return result;
+      }
+    } else {
+      final rank = shape.length;
+      final cShape = malloc<ffi.Int>(rank);
+      final cStridesA = malloc<ffi.Int>(rank);
+      final cStridesB = malloc<ffi.Int>(rank);
+      final cStridesRes = malloc<ffi.Int>(rank);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = shape[i];
+        cStridesA[i] = broadcastResult.stridesA[i];
+        cStridesB[i] = broadcastResult.stridesB[i];
+        cStridesRes[i] = resultStrides[i];
+      }
+      try {
+        if (aCpx.dtype == DType.complex128) {
+          s_hypot_complex128(
+            aCpx.pointer.cast(),
+            cStridesA,
+            bCpx.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        } else {
+          s_hypot_complex64(
+            aCpx.pointer.cast(),
+            cStridesA,
+            bCpx.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        }
+      } finally {
+        malloc.free(cShape);
+        malloc.free(cStridesA);
+        malloc.free(cStridesB);
+        malloc.free(cStridesRes);
+      }
+    }
+  }
+
   final rData = result.data;
 
   double hypotOp(double x, double y) {
@@ -5738,15 +5863,110 @@ NDArray<double> hypot(NDArray x1, NDArray x2) {
 /// ```dart
 /// final p = power(a, b);
 /// ```
-NDArray<double> power(NDArray x1, NDArray x2) {
+NDArray power(NDArray x1, NDArray x2) {
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
-  final result = NDArray<double>.create(shape, DType.float64);
+  final DType<dynamic> targetDType;
+  if (x1.dtype == DType.complex128 ||
+      x2.dtype == DType.complex128 ||
+      x1.dtype == DType.complex64 ||
+      x2.dtype == DType.complex64) {
+    targetDType = (x1.dtype == DType.complex64 || x2.dtype == DType.complex64)
+        ? DType.complex64
+        : DType.complex128;
+  } else {
+    targetDType = (x1.dtype == DType.float32 || x2.dtype == DType.float32)
+        ? DType.float32
+        : DType.float64;
+  }
+  final result = NDArray.create(shape, targetDType);
   final resultStrides = NDArray.computeCStrides(shape);
-  final rData = result.data;
+
+  if (targetDType == DType.complex128 || targetDType == DType.complex64) {
+    final aCpx = (x1.dtype == DType.complex128 || x1.dtype == DType.complex64)
+        ? x1
+        : NDArray<Complex>.fromList(
+            x1.data.map((e) => Complex((e as num).toDouble(), 0.0)).toList(),
+            x1.shape,
+            DType.complex128,
+          );
+    final bCpx = (x2.dtype == DType.complex128 || x2.dtype == DType.complex64)
+        ? x2
+        : NDArray<Complex>.fromList(
+            x2.data.map((e) => Complex((e as num).toDouble(), 0.0)).toList(),
+            x2.shape,
+            DType.complex128,
+          );
+    if (listEquals(x1.shape, x2.shape) &&
+        x1.isContiguous &&
+        x2.isContiguous &&
+        result.isContiguous) {
+      if (aCpx.dtype == DType.complex128) {
+        v_pow_complex128(
+          aCpx.pointer.cast(),
+          bCpx.pointer.cast(),
+          result.pointer.cast(),
+          aCpx.data.length,
+        );
+        return result;
+      } else {
+        v_pow_complex64(
+          aCpx.pointer.cast(),
+          bCpx.pointer.cast(),
+          result.pointer.cast(),
+          aCpx.data.length,
+        );
+        return result;
+      }
+    } else {
+      final rank = shape.length;
+      final cShape = malloc<ffi.Int>(rank);
+      final cStridesA = malloc<ffi.Int>(rank);
+      final cStridesB = malloc<ffi.Int>(rank);
+      final cStridesRes = malloc<ffi.Int>(rank);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = shape[i];
+        cStridesA[i] = broadcastResult.stridesA[i];
+        cStridesB[i] = broadcastResult.stridesB[i];
+        cStridesRes[i] = resultStrides[i];
+      }
+      try {
+        if (aCpx.dtype == DType.complex128) {
+          s_pow_complex128(
+            aCpx.pointer.cast(),
+            cStridesA,
+            bCpx.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        } else {
+          s_pow_complex64(
+            aCpx.pointer.cast(),
+            cStridesA,
+            bCpx.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        }
+      } finally {
+        malloc.free(cShape);
+        malloc.free(cStridesA);
+        malloc.free(cStridesB);
+        malloc.free(cStridesRes);
+      }
+    }
+  }
 
   _elementWiseOp<num, num, double>(
-    rData,
+    result.data as List<double>,
     x1.data as List<num>,
     x2.data as List<num>,
     shape,
