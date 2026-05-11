@@ -2608,7 +2608,7 @@ void main() {
     );
 
     test(
-      'linalg.cumsum() and linalg.cumprod() cumulative accumulations correctness',
+      'linalg.cumsum(), cumprod(), cummin(), and cummax() cumulative accumulations correctness',
       () => NDArray.scope(() {
         final a = NDArray.fromList(
           [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
@@ -2641,11 +2641,46 @@ void main() {
         csT.dispose();
         aT.dispose();
 
-        // 6. in-place recycler out reuse
+        // 6. in-place recycler into reuse
         final outBuffer = NDArray<double>.zeros([2, 3], DType.float64);
         final csOut = cumsum(a, axis: 0, into: outBuffer);
         expect(identical(csOut, outBuffer), true);
         expect(csOut.toList(), [1.0, 2.0, 3.0, 5.0, 7.0, 9.0]);
+
+        // 7. Integer cumsum/cumprod
+        final aInt = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int64);
+        final csInt = cumsum(aInt, axis: 0);
+        expect(csInt.toList(), [1, 2, 4, 6]);
+
+        // 8. Complex cumsum/cumprod
+        final aComp = NDArray.fromList(
+          [
+            Complex(1.0, 2.0),
+            Complex(3.0, 4.0),
+            Complex(5.0, 6.0),
+            Complex(7.0, 8.0),
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+        final csComp = cumsum(aComp, axis: 0);
+        expect(csComp.data[0], Complex(1.0, 2.0));
+        expect(csComp.data[1], Complex(3.0, 4.0));
+        expect(csComp.data[2], Complex(6.0, 8.0));
+        expect(csComp.data[3], Complex(10.0, 12.0));
+
+        // 9. cummin and cummax (real numbers)
+        final b = NDArray.fromList(
+          [3.0, 1.0, 4.0, 2.0, 5.0, 0.0],
+          [2, 3],
+          DType.float64,
+        );
+
+        final cMin = cummin(b, axis: 1);
+        expect(cMin.toList(), [3.0, 1.0, 1.0, 2.0, 2.0, 0.0]);
+
+        final cMax = cummax(b, axis: 1);
+        expect(cMax.toList(), [3.0, 3.0, 4.0, 2.0, 5.0, 5.0]);
       }),
     );
   });

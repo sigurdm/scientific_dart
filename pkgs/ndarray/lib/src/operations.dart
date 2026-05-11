@@ -8801,7 +8801,7 @@ NDArray matrix_power(NDArray a, int n, {NDArray? out}) {
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<T> cumsum<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
+NDArray<T> cumsum<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumsum() on a disposed array.');
   }
@@ -8846,73 +8846,23 @@ NDArray<T> cumsum<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
     }
   }
 
-  if (a.dtype == DType.float64 || a.dtype == DType.float32) {
-    final rank = a.shape.length;
-    final cShape = malloc<ffi.Int>(rank);
-    final cStridesA = malloc<ffi.Int>(rank);
-    final cStridesRes = malloc<ffi.Int>(rank);
-
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-    }
-
-    try {
-      if (a.dtype == DType.float64) {
-        s_cumsum_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          targetAxis,
-        );
-      } else {
-        s_cumsum_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          targetAxis,
-        );
-      }
-    } finally {
-      malloc.free(cShape);
-      malloc.free(cStridesA);
-      malloc.free(cStridesRes);
-    }
-  } else {
-    _cumOpRecursive<T>(
-      a,
-      result,
-      List<int>.filled(a.shape.length, 0),
-      targetAxis,
-      0,
-      (acc, val) => ((acc as dynamic) + val) as dynamic,
-    );
-  }
-
-  return result;
+  return _cumOpFFI(a, targetAxis, result, _CumOpType.sum);
 }
 
 /// Compute the cumulative product of array elements along a specified axis.
 ///
 /// **Preconditions:**
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
-/// - If provided, the [out] recycler must have compatible shape and dtype.
+/// - If provided, the [into] recycler must have compatible shape and dtype.
 ///
 /// **Throws:**
 /// - [StateError] if the array is disposed.
 /// - [ArgumentError] if [axis] is out of bounds.
-/// - [ArgumentError] if [out] recycler shape or dtype is incompatible.
+/// - [ArgumentError] if [into] recycler shape or dtype is incompatible.
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<T> cumprod<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
+NDArray<T> cumprod<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumprod() on a disposed array.');
   }
@@ -8957,19 +8907,218 @@ NDArray<T> cumprod<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
     }
   }
 
-  if (a.dtype == DType.float64 || a.dtype == DType.float32) {
-    final rank = a.shape.length;
-    final cShape = malloc<ffi.Int>(rank);
-    final cStridesA = malloc<ffi.Int>(rank);
-    final cStridesRes = malloc<ffi.Int>(rank);
+  return _cumOpFFI(a, targetAxis, result, _CumOpType.prod);
+}
 
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
+/// Compute the cumulative minimum of array elements along a specified axis.
+///
+/// **Preconditions:**
+/// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
+/// - If provided, the [into] recycler must have compatible shape and dtype.
+///
+/// **Throws:**
+/// - [StateError] if the array is disposed.
+/// - [ArgumentError] if [axis] is out of bounds.
+/// - [ArgumentError] if [into] recycler shape or dtype is incompatible.
+///
+/// **Example:**
+/// {@example /example/cumulative_example.dart lang=dart}
+NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute cummin() on a disposed array.');
+  }
+
+  final NDArray<T> result;
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    result = into ?? NDArray<T>.create([size], a.dtype);
+    if (into != null) {
+      if (!listEquals(into.shape, [size]) || into.dtype != a.dtype) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype.',
+        );
+      }
     }
 
-    try {
+    final List elements = size == a.data.length ? a.data : a.toList();
+    dynamic acc;
+    for (var i = 0; i < elements.length; i++) {
+      acc = (i == 0)
+          ? elements[i]
+          : (((acc as Comparable).compareTo(elements[i]) < 0)
+                ? acc
+                : elements[i]);
+      result.data[i] = acc as T;
+    }
+    return result;
+  }
+
+  var targetAxis = axis;
+  if (targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  result = into ?? NDArray<T>.create(a.shape, a.dtype);
+  if (into != null) {
+    if (!listEquals(into.shape, a.shape) || into.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  return _cumOpFFI(a, targetAxis, result, _CumOpType.min);
+}
+
+/// Compute the cumulative maximum of array elements along a specified axis.
+///
+/// **Preconditions:**
+/// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
+/// - If provided, the [into] recycler must have compatible shape and dtype.
+///
+/// **Throws:**
+/// - [StateError] if the array is disposed.
+/// - [ArgumentError] if [axis] is out of bounds.
+/// - [ArgumentError] if [into] recycler shape or dtype is incompatible.
+///
+/// **Example:**
+/// {@example /example/cumulative_example.dart lang=dart}
+NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute cummax() on a disposed array.');
+  }
+
+  final NDArray<T> result;
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    result = into ?? NDArray<T>.create([size], a.dtype);
+    if (into != null) {
+      if (!listEquals(into.shape, [size]) || into.dtype != a.dtype) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype.',
+        );
+      }
+    }
+
+    final List elements = size == a.data.length ? a.data : a.toList();
+    dynamic acc;
+    for (var i = 0; i < elements.length; i++) {
+      acc = (i == 0)
+          ? elements[i]
+          : (((acc as Comparable).compareTo(elements[i]) > 0)
+                ? acc
+                : elements[i]);
+      result.data[i] = acc as T;
+    }
+    return result;
+  }
+
+  var targetAxis = axis;
+  if (targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  result = into ?? NDArray<T>.create(a.shape, a.dtype);
+  if (into != null) {
+    if (!listEquals(into.shape, a.shape) || into.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  return _cumOpFFI(a, targetAxis, result, _CumOpType.max);
+}
+
+enum _CumOpType { sum, prod, min, max }
+
+NDArray<T> _cumOpFFI<T>(
+  NDArray<T> a,
+  int axis,
+  NDArray<T> result,
+  _CumOpType opType,
+) {
+  final rank = a.shape.length;
+  final cShape = malloc<ffi.Int>(rank);
+  final cStridesA = malloc<ffi.Int>(rank);
+  final cStridesRes = malloc<ffi.Int>(rank);
+
+  for (var i = 0; i < rank; i++) {
+    cShape[i] = a.shape[i];
+    cStridesA[i] = a.strides[i];
+    cStridesRes[i] = result.strides[i];
+  }
+
+  try {
+    if (opType == _CumOpType.sum) {
+      if (a.dtype == DType.float64) {
+        s_cumsum_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      } else if (a.dtype == DType.float32) {
+        s_cumsum_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      } else if (a.dtype == DType.int64) {
+        s_cumsum_int64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      } else if (a.dtype == DType.int32) {
+        s_cumsum_int32(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      } else if (a.dtype == DType.complex128) {
+        s_cumsum_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      } else if (a.dtype == DType.complex64) {
+        s_cumsum_complex64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      }
+    } else if (opType == _CumOpType.prod) {
       if (a.dtype == DType.float64) {
         s_cumprod_double(
           a.pointer.cast(),
@@ -8978,9 +9127,9 @@ NDArray<T> cumprod<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
           cStridesRes,
           cShape,
           rank,
-          targetAxis,
+          axis,
         );
-      } else {
+      } else if (a.dtype == DType.float32) {
         s_cumprod_float(
           a.pointer.cast(),
           cStridesA,
@@ -8988,53 +9137,138 @@ NDArray<T> cumprod<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
           cStridesRes,
           cShape,
           rank,
-          targetAxis,
+          axis,
+        );
+      } else if (a.dtype == DType.int64) {
+        s_cumprod_int64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      } else if (a.dtype == DType.int32) {
+        s_cumprod_int32(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      } else if (a.dtype == DType.complex128) {
+        s_cumprod_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      } else if (a.dtype == DType.complex64) {
+        s_cumprod_complex64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
         );
       }
-    } finally {
-      malloc.free(cShape);
-      malloc.free(cStridesA);
-      malloc.free(cStridesRes);
+    } else if (opType == _CumOpType.min) {
+      if (a.dtype == DType.float64) {
+        s_cummin_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      } else if (a.dtype == DType.float32) {
+        s_cummin_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      } else if (a.dtype == DType.int64) {
+        s_cummin_int64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      } else if (a.dtype == DType.int32) {
+        s_cummin_int32(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      }
+    } else if (opType == _CumOpType.max) {
+      if (a.dtype == DType.float64) {
+        s_cummax_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      } else if (a.dtype == DType.float32) {
+        s_cummax_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      } else if (a.dtype == DType.int64) {
+        s_cummax_int64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      } else if (a.dtype == DType.int32) {
+        s_cummax_int32(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      }
     }
-  } else {
-    _cumOpRecursive<T>(
-      a,
-      result,
-      List<int>.filled(a.shape.length, 0),
-      targetAxis,
-      0,
-      (acc, val) => ((acc as dynamic) * val) as dynamic,
-    );
+  } finally {
+    malloc.free(cShape);
+    malloc.free(cStridesA);
+    malloc.free(cStridesRes);
   }
-
   return result;
-}
-
-void _cumOpRecursive<T>(
-  NDArray<T> a,
-  NDArray<T> result,
-  List<int> coord,
-  int axis,
-  int dim,
-  dynamic Function(dynamic acc, dynamic val) op,
-) {
-  if (dim == a.shape.length) {
-    dynamic acc;
-    for (var i = 0; i < a.shape[axis]; i++) {
-      coord[axis] = i;
-      final val = a.getCell(coord);
-      acc = (i == 0) ? val : op(acc, val);
-      result.setCell(coord, acc as T);
-    }
-    return;
-  }
-
-  if (dim == axis) {
-    _cumOpRecursive(a, result, coord, axis, dim + 1, op);
-  } else {
-    for (var i = 0; i < a.shape[dim]; i++) {
-      coord[dim] = i;
-      _cumOpRecursive(a, result, coord, axis, dim + 1, op);
-    }
-  }
 }

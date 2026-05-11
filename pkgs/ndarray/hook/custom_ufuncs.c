@@ -1898,130 +1898,82 @@ void v_triu_float(const float *src, float *res, int batch_count, int rows, int c
     }
 }
 
-void s_cumsum_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis) {
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
-    int coord[8] = {0};
-    int outer_size = 1;
-    for (int d = 0; d < rank; d++) {
-        if (d != axis) outer_size *= shape[d];
-    }
-    for (int o = 0; o < outer_size; o++) {
-        int offsetSrc = 0;
-        int offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            if (d != axis) {
-                offsetSrc += coord[d] * stridesSrc[d];
-                offsetRes += coord[d] * stridesRes[d];
-            }
-        }
-        double acc = 0.0;
-        for (int i = 0; i < shape[axis]; i++) {
-            int idxSrc = offsetSrc + i * stridesSrc[axis];
-            int idxRes = offsetRes + i * stridesRes[axis];
-            acc = (i == 0) ? src[idxSrc] : (acc + src[idxSrc]);
-            res[idxRes] = acc;
-        }
-        for (int d = rank - 1; d >= 0; d--) {
-            if (d == axis) continue;
-            coord[d]++;
-            if (coord[d] < shape[d]) break;
-            coord[d] = 0;
-        }
-    }
+#define DEFINE_STRIDED_CUM_OP(FUNCNAME, T, OP) \
+void FUNCNAME(const T *src, const int *stridesSrc, \
+              T *res, const int *stridesRes, \
+              const int *shape, int rank, int axis) { \
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return; \
+    int coord[8] = {0}; \
+    int outer_size = 1; \
+    for (int d = 0; d < rank; d++) { \
+        if (d != axis) outer_size *= shape[d]; \
+    } \
+    for (int o = 0; o < outer_size; o++) { \
+        int offsetSrc = 0; \
+        int offsetRes = 0; \
+        for (int d = 0; d < rank; d++) { \
+            if (d != axis) { \
+                offsetSrc += coord[d] * stridesSrc[d]; \
+                offsetRes += coord[d] * stridesRes[d]; \
+            } \
+        } \
+        T acc; \
+        for (int i = 0; i < shape[axis]; i++) { \
+            int idxSrc = offsetSrc + i * stridesSrc[axis]; \
+            int idxRes = offsetRes + i * stridesRes[axis]; \
+            acc = (i == 0) ? src[idxSrc] : OP(acc, src[idxSrc]); \
+            res[idxRes] = acc; \
+        } \
+        for (int d = rank - 1; d >= 0; d--) { \
+            if (d == axis) continue; \
+            coord[d]++; \
+            if (coord[d] < shape[d]) break; \
+            coord[d] = 0; \
+        } \
+    } \
 }
 
-void s_cumsum_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, int axis) {
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
-    int coord[8] = {0};
-    int outer_size = 1;
-    for (int d = 0; d < rank; d++) {
-        if (d != axis) outer_size *= shape[d];
-    }
-    for (int o = 0; o < outer_size; o++) {
-        int offsetSrc = 0;
-        int offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            if (d != axis) {
-                offsetSrc += coord[d] * stridesSrc[d];
-                offsetRes += coord[d] * stridesRes[d];
-            }
-        }
-        float acc = 0.0f;
-        for (int i = 0; i < shape[axis]; i++) {
-            int idxSrc = offsetSrc + i * stridesSrc[axis];
-            int idxRes = offsetRes + i * stridesRes[axis];
-            acc = (i == 0) ? src[idxSrc] : (acc + src[idxSrc]);
-            res[idxRes] = acc;
-        }
-        for (int d = rank - 1; d >= 0; d--) {
-            if (d == axis) continue;
-            coord[d]++;
-            if (coord[d] < shape[d]) break;
-            coord[d] = 0;
-        }
-    }
+// standard real ops
+#define OP_ADD(x, y) ((x) + (y))
+#define OP_MUL(x, y) ((x) * (y))
+#define OP_MIN(x, y) (((x) < (y)) ? (x) : (y))
+#define OP_MAX(x, y) (((x) > (y)) ? (x) : (y))
+
+DEFINE_STRIDED_CUM_OP(s_cumsum_double, double, OP_ADD)
+DEFINE_STRIDED_CUM_OP(s_cumsum_float, float, OP_ADD)
+DEFINE_STRIDED_CUM_OP(s_cumsum_int64, int64_t, OP_ADD)
+DEFINE_STRIDED_CUM_OP(s_cumsum_int32, int32_t, OP_ADD)
+
+DEFINE_STRIDED_CUM_OP(s_cumprod_double, double, OP_MUL)
+DEFINE_STRIDED_CUM_OP(s_cumprod_float, float, OP_MUL)
+DEFINE_STRIDED_CUM_OP(s_cumprod_int64, int64_t, OP_MUL)
+DEFINE_STRIDED_CUM_OP(s_cumprod_int32, int32_t, OP_MUL)
+
+DEFINE_STRIDED_CUM_OP(s_cummin_double, double, OP_MIN)
+DEFINE_STRIDED_CUM_OP(s_cummin_float, float, OP_MIN)
+DEFINE_STRIDED_CUM_OP(s_cummin_int64, int64_t, OP_MIN)
+DEFINE_STRIDED_CUM_OP(s_cummin_int32, int32_t, OP_MIN)
+
+DEFINE_STRIDED_CUM_OP(s_cummax_double, double, OP_MAX)
+DEFINE_STRIDED_CUM_OP(s_cummax_float, float, OP_MAX)
+DEFINE_STRIDED_CUM_OP(s_cummax_int64, int64_t, OP_MAX)
+DEFINE_STRIDED_CUM_OP(s_cummax_int32, int32_t, OP_MAX)
+
+// custom complex ops
+static inline cpx_t cpx_add(cpx_t a, cpx_t b) {
+    return (cpx_t){a.r + b.r, a.i + b.i};
+}
+static inline cpx_t cpx_mul(cpx_t a, cpx_t b) {
+    return (cpx_t){a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r};
+}
+static inline cpx_f_t cpx_add_f(cpx_f_t a, cpx_f_t b) {
+    return (cpx_f_t){a.r + b.r, a.i + b.i};
+}
+static inline cpx_f_t cpx_mul_f(cpx_f_t a, cpx_f_t b) {
+    return (cpx_f_t){a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r};
 }
 
-void s_cumprod_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis) {
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
-    int coord[8] = {0};
-    int outer_size = 1;
-    for (int d = 0; d < rank; d++) {
-        if (d != axis) outer_size *= shape[d];
-    }
-    for (int o = 0; o < outer_size; o++) {
-        int offsetSrc = 0;
-        int offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            if (d != axis) {
-                offsetSrc += coord[d] * stridesSrc[d];
-                offsetRes += coord[d] * stridesRes[d];
-            }
-        }
-        double acc = 1.0;
-        for (int i = 0; i < shape[axis]; i++) {
-            int idxSrc = offsetSrc + i * stridesSrc[axis];
-            int idxRes = offsetRes + i * stridesRes[axis];
-            acc = (i == 0) ? src[idxSrc] : (acc * src[idxSrc]);
-            res[idxRes] = acc;
-        }
-        for (int d = rank - 1; d >= 0; d--) {
-            if (d == axis) continue;
-            coord[d]++;
-            if (coord[d] < shape[d]) break;
-            coord[d] = 0;
-        }
-    }
-}
-
-void s_cumprod_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, int axis) {
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
-    int coord[8] = {0};
-    int outer_size = 1;
-    for (int d = 0; d < rank; d++) {
-        if (d != axis) outer_size *= shape[d];
-    }
-    for (int o = 0; o < outer_size; o++) {
-        int offsetSrc = 0;
-        int offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            if (d != axis) {
-                offsetSrc += coord[d] * stridesSrc[d];
-                offsetRes += coord[d] * stridesRes[d];
-            }
-        }
-        float acc = 1.0f;
-        for (int i = 0; i < shape[axis]; i++) {
-            int idxSrc = offsetSrc + i * stridesSrc[axis];
-            int idxRes = offsetRes + i * stridesRes[axis];
-            acc = (i == 0) ? src[idxSrc] : (acc * src[idxSrc]);
-            res[idxRes] = acc;
-        }
-        for (int d = rank - 1; d >= 0; d--) {
-            if (d == axis) continue;
-            coord[d]++;
-            if (coord[d] < shape[d]) break;
-            coord[d] = 0;
-        }
-    }
-}
+DEFINE_STRIDED_CUM_OP(s_cumsum_complex128, cpx_t, cpx_add)
+DEFINE_STRIDED_CUM_OP(s_cumsum_complex64, cpx_f_t, cpx_add_f)
+DEFINE_STRIDED_CUM_OP(s_cumprod_complex128, cpx_t, cpx_mul)
+DEFINE_STRIDED_CUM_OP(s_cumprod_complex64, cpx_f_t, cpx_mul_f)
