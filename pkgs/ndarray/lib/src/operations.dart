@@ -8801,17 +8801,17 @@ NDArray matrix_power(NDArray a, int n, {NDArray? out}) {
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray cumsum(NDArray a, {int? axis, NDArray? out}) {
+NDArray<T> cumsum<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumsum() on a disposed array.');
   }
 
-  final NDArray result;
+  final NDArray<T> result;
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result = out ?? NDArray.create([size], a.dtype);
-    if (out != null) {
-      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
+    result = into ?? NDArray<T>.create([size], a.dtype);
+    if (into != null) {
+      if (!listEquals(into.shape, [size]) || into.dtype != a.dtype) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
         );
@@ -8824,7 +8824,7 @@ NDArray cumsum(NDArray a, {int? axis, NDArray? out}) {
       acc = (i == 0)
           ? elements[i]
           : ((acc as dynamic) + elements[i]) as dynamic;
-      result.data[i] = acc;
+      result.data[i] = acc as T;
     }
     return result;
   }
@@ -8837,86 +8837,63 @@ NDArray cumsum(NDArray a, {int? axis, NDArray? out}) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  result = out ?? NDArray.create(a.shape, a.dtype);
-  if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+  result = into ?? NDArray<T>.create(a.shape, a.dtype);
+  if (into != null) {
+    if (!listEquals(into.shape, a.shape) || into.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
     }
   }
 
-  final rank = a.shape.length;
-  final cShape = malloc<ffi.Int>(rank);
-  final cStridesA = malloc<ffi.Int>(rank);
-  final cStridesRes = malloc<ffi.Int>(rank);
+  if (a.dtype == DType.float64 || a.dtype == DType.float32) {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
 
-  for (var i = 0; i < rank; i++) {
-    cShape[i] = a.shape[i];
-    cStridesA[i] = a.strides[i];
-    cStridesRes[i] = result.strides[i];
-  }
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
 
-  try {
-    if (a.dtype == DType.float64) {
-      s_cumsum_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    } else if (a.dtype == DType.float32) {
-      s_cumsum_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    } else {
-      final doubleA = NDArray<double>.create(a.shape, DType.float64);
-      for (var i = 0; i < a.data.length; i++) {
-        doubleA.data[i] = (a.data[i] as num).toDouble();
-      }
-      final doubleRes = NDArray<double>.create(a.shape, DType.float64);
-      final cStridesDoubleA = malloc<ffi.Int>(rank);
-      final cStridesDoubleRes = malloc<ffi.Int>(rank);
-
-      for (var i = 0; i < rank; i++) {
-        cStridesDoubleA[i] = doubleA.strides[i];
-        cStridesDoubleRes[i] = doubleRes.strides[i];
-      }
-
-      try {
+    try {
+      if (a.dtype == DType.float64) {
         s_cumsum_double(
-          doubleA.pointer.cast(),
-          cStridesDoubleA,
-          doubleRes.pointer.cast(),
-          cStridesDoubleRes,
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
           cShape,
           rank,
           targetAxis,
         );
-      } finally {
-        malloc.free(cStridesDoubleA);
-        malloc.free(cStridesDoubleRes);
+      } else {
+        s_cumsum_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
       }
-
-      for (var i = 0; i < result.data.length; i++) {
-        result.data[i] = _castValue(doubleRes.data[i], a.dtype);
-      }
-      doubleA.dispose();
-      doubleRes.dispose();
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
     }
-  } finally {
-    malloc.free(cShape);
-    malloc.free(cStridesA);
-    malloc.free(cStridesRes);
+  } else {
+    _cumOpRecursive<T>(
+      a,
+      result,
+      List<int>.filled(a.shape.length, 0),
+      targetAxis,
+      0,
+      (acc, val) => ((acc as dynamic) + val) as dynamic,
+    );
   }
 
   return result;
@@ -8935,17 +8912,17 @@ NDArray cumsum(NDArray a, {int? axis, NDArray? out}) {
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray cumprod(NDArray a, {int? axis, NDArray? out}) {
+NDArray<T> cumprod<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumprod() on a disposed array.');
   }
 
-  final NDArray result;
+  final NDArray<T> result;
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result = out ?? NDArray.create([size], a.dtype);
-    if (out != null) {
-      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
+    result = into ?? NDArray<T>.create([size], a.dtype);
+    if (into != null) {
+      if (!listEquals(into.shape, [size]) || into.dtype != a.dtype) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
         );
@@ -8958,7 +8935,7 @@ NDArray cumprod(NDArray a, {int? axis, NDArray? out}) {
       acc = (i == 0)
           ? elements[i]
           : ((acc as dynamic) * elements[i]) as dynamic;
-      result.data[i] = acc;
+      result.data[i] = acc as T;
     }
     return result;
   }
@@ -8971,87 +8948,93 @@ NDArray cumprod(NDArray a, {int? axis, NDArray? out}) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  result = out ?? NDArray.create(a.shape, a.dtype);
-  if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+  result = into ?? NDArray<T>.create(a.shape, a.dtype);
+  if (into != null) {
+    if (!listEquals(into.shape, a.shape) || into.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
     }
   }
 
-  final rank = a.shape.length;
-  final cShape = malloc<ffi.Int>(rank);
-  final cStridesA = malloc<ffi.Int>(rank);
-  final cStridesRes = malloc<ffi.Int>(rank);
+  if (a.dtype == DType.float64 || a.dtype == DType.float32) {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
 
-  for (var i = 0; i < rank; i++) {
-    cShape[i] = a.shape[i];
-    cStridesA[i] = a.strides[i];
-    cStridesRes[i] = result.strides[i];
-  }
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
 
-  try {
-    if (a.dtype == DType.float64) {
-      s_cumprod_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    } else if (a.dtype == DType.float32) {
-      s_cumprod_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    } else {
-      final doubleA = NDArray<double>.create(a.shape, DType.float64);
-      for (var i = 0; i < a.data.length; i++) {
-        doubleA.data[i] = (a.data[i] as num).toDouble();
-      }
-      final doubleRes = NDArray<double>.create(a.shape, DType.float64);
-      final cStridesDoubleA = malloc<ffi.Int>(rank);
-      final cStridesDoubleRes = malloc<ffi.Int>(rank);
-
-      for (var i = 0; i < rank; i++) {
-        cStridesDoubleA[i] = doubleA.strides[i];
-        cStridesDoubleRes[i] = doubleRes.strides[i];
-      }
-
-      try {
+    try {
+      if (a.dtype == DType.float64) {
         s_cumprod_double(
-          doubleA.pointer.cast(),
-          cStridesDoubleA,
-          doubleRes.pointer.cast(),
-          cStridesDoubleRes,
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
           cShape,
           rank,
           targetAxis,
         );
-      } finally {
-        malloc.free(cStridesDoubleA);
-        malloc.free(cStridesDoubleRes);
+      } else {
+        s_cumprod_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
       }
-
-      for (var i = 0; i < result.data.length; i++) {
-        result.data[i] = _castValue(doubleRes.data[i], a.dtype);
-      }
-      doubleA.dispose();
-      doubleRes.dispose();
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
     }
-  } finally {
-    malloc.free(cShape);
-    malloc.free(cStridesA);
-    malloc.free(cStridesRes);
+  } else {
+    _cumOpRecursive<T>(
+      a,
+      result,
+      List<int>.filled(a.shape.length, 0),
+      targetAxis,
+      0,
+      (acc, val) => ((acc as dynamic) * val) as dynamic,
+    );
   }
 
   return result;
+}
+
+void _cumOpRecursive<T>(
+  NDArray<T> a,
+  NDArray<T> result,
+  List<int> coord,
+  int axis,
+  int dim,
+  dynamic Function(dynamic acc, dynamic val) op,
+) {
+  if (dim == a.shape.length) {
+    dynamic acc;
+    for (var i = 0; i < a.shape[axis]; i++) {
+      coord[axis] = i;
+      final val = a.getCell(coord);
+      acc = (i == 0) ? val : op(acc, val);
+      result.setCell(coord, acc as T);
+    }
+    return;
+  }
+
+  if (dim == axis) {
+    _cumOpRecursive(a, result, coord, axis, dim + 1, op);
+  } else {
+    for (var i = 0; i < a.shape[dim]; i++) {
+      coord[dim] = i;
+      _cumOpRecursive(a, result, coord, axis, dim + 1, op);
+    }
+  }
 }

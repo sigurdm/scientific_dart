@@ -2643,7 +2643,7 @@ void main() {
 
         // 6. in-place recycler out reuse
         final outBuffer = NDArray<double>.zeros([2, 3], DType.float64);
-        final csOut = cumsum(a, axis: 0, out: outBuffer);
+        final csOut = cumsum(a, axis: 0, into: outBuffer);
         expect(identical(csOut, outBuffer), true);
         expect(csOut.toList(), [1.0, 2.0, 3.0, 5.0, 7.0, 9.0]);
       }),
