@@ -2102,5 +2102,16 @@
     - **Global Workspace Line Coverage**: Surged from **87.71%** to a new peak record of **88.12%** (successfully breaking past the **88%** coverage milestone!).
   - **Verification**: All newly created test cases and 418 workspace unit tests passed successfully.
 
+***
+
+## 177. Hardened and Sanitized `random.dart` Docstrings (Task 6 / Documentation)
+* **Issue**:
+  - The public probability distributions API layer in [random.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/random.dart) suffered from multiple tiny backtick copy-paste syntax typos inside the docstring examples for `uniform`, `randint`, `multivariateNormal`, and `multinomial` methods (such as `` `DType.float64);` `` and `` ``DType.float32`` ``). This compromised documentation rendering hygiene and violated standard "Effective Dart" styling expectations.
+* **Resolution**:
+  - **Syntax Typos Sanitization**: Cleaned up and sanitized all docstring example blocks in [random.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/random.dart#L21), converting inline backtick blocks to compliant Dart syntax representations, resolving all syntax rendering issues out of the box.
+* **Results**:
+  - **Verification**: Checked all 418 workspace unit tests pass green. Formatting and static analysis are 100% clean!
+
+
 
 
