@@ -4442,203 +4442,6 @@ void _copyStackRecursive(
   }
 }
 
-/// Constructs a new array by repeating [array] the number of times given by [reps].
-///
-/// This function corresponds to NumPy's `tile` function. It allocates new memory and
-/// copies elements.
-///
-/// If [reps] has a length shorter than `array.shape.length`, `1`s are prepended to [reps].
-/// If `array.shape.length` is shorter than [reps], `1`s are prepended to the array's shape
-/// (effectively expanding it with front dimensions of size 1).
-///
-/// **Preconditions:**
-/// - [reps] can be an [int] or a [List<int>]. If a list, all elements must be non-negative.
-///
-/// **Throws:**
-/// - [ArgumentError] if [reps] contains negative integers or is an invalid type.
-///
-/// **Example:**
-/// {@example /example/shape_examples.dart lang=dart}
-NDArray<T> tile<T>(NDArray<T> array, dynamic reps) {
-  List<int> repsList;
-  if (reps is int) {
-    repsList = [reps];
-  } else if (reps is List<int>) {
-    repsList = List<int>.from(reps);
-  } else {
-    throw ArgumentError('reps must be an int or a List<int>');
-  }
-
-  for (final rep in repsList) {
-    if (rep < 0) {
-      throw ArgumentError('reps values must be non-negative (was $rep)');
-    }
-  }
-
-  final srcShape = array.shape;
-  final maxLen = srcShape.length > repsList.length
-      ? srcShape.length
-      : repsList.length;
-
-  final promotedReps = List<int>.filled(maxLen, 1);
-  for (var i = 0; i < repsList.length; i++) {
-    promotedReps[maxLen - 1 - i] = repsList[repsList.length - 1 - i];
-  }
-
-  final promotedSrcShape = List<int>.filled(maxLen, 1);
-  for (var i = 0; i < srcShape.length; i++) {
-    promotedSrcShape[maxLen - 1 - i] = srcShape[srcShape.length - 1 - i];
-  }
-
-  final targetShape = List<int>.filled(maxLen, 0);
-  for (var i = 0; i < maxLen; i++) {
-    targetShape[i] = promotedSrcShape[i] * promotedReps[i];
-  }
-
-  final result = NDArray<T>.create(targetShape, array.dtype);
-
-  _tileCopyRecursive<T>(array, result, List<int>.filled(maxLen, 0), 0);
-
-  return result;
-}
-
-void _tileCopyRecursive<T>(
-  NDArray<T> src,
-  NDArray<T> dest,
-  List<int> destPos,
-  int currentDim,
-) {
-  if (currentDim == dest.shape.length) {
-    final diff = dest.shape.length - src.shape.length;
-    final srcPos = List<int>.filled(src.shape.length, 0);
-    for (var i = 0; i < src.shape.length; i++) {
-      srcPos[i] = destPos[i + diff] % src.shape[i];
-    }
-    dest[destPos] = src[srcPos];
-    return;
-  }
-
-  for (var i = 0; i < dest.shape[currentDim]; i++) {
-    destPos[currentDim] = i;
-    _tileCopyRecursive(src, dest, destPos, currentDim + 1);
-  }
-}
-
-/// Repeats elements of [array] a specified number of times.
-///
-/// This function corresponds to NumPy's `repeat` function. It allocates new memory and
-/// copies elements.
-///
-/// If [axis] is omitted/null, the array is flattened (via `ravel()`) to a 1D array first,
-/// and the elements are repeated along that flat 1D array.
-///
-/// **Preconditions:**
-/// - [repeats] can be an [int] or a [List<int>]. If an `int`, all elements along [axis]
-///   are repeated that number of times. If a list, its length must exactly match the size
-///   of the dimension along [axis].
-/// - All values in [repeats] must be non-negative.
-/// - If provided, [axis] must be within `[-rank, rank - 1]`.
-///
-/// **Throws:**
-/// - [RangeError] if [axis] is out of range.
-/// - [ArgumentError] if [repeats] has a mismatched size or contains negative integers.
-///
-/// **Example:**
-/// {@example /example/shape_examples.dart lang=dart}
-NDArray<T> repeat<T>(NDArray<T> array, dynamic repeats, {int? axis}) {
-  NDArray<T> srcArray = array;
-  int targetAxis;
-
-  if (axis == null) {
-    srcArray = array.ravel();
-    targetAxis = 0;
-  } else {
-    final rank = array.shape.length;
-    if (axis < -rank || axis >= rank) {
-      throw RangeError.range(axis, -rank, rank - 1, 'axis');
-    }
-    targetAxis = axis < 0 ? rank + axis : axis;
-  }
-
-  List<int> repList;
-  if (repeats is int) {
-    if (repeats < 0) {
-      throw ArgumentError('repeats must be non-negative (was $repeats)');
-    }
-    repList = List<int>.filled(srcArray.shape[targetAxis], repeats);
-  } else if (repeats is List<int>) {
-    for (final r in repeats) {
-      if (r < 0) {
-        throw ArgumentError('repeats values must be non-negative (was $r)');
-      }
-    }
-    if (repeats.length != srcArray.shape[targetAxis]) {
-      throw ArgumentError(
-        'repeats list length (${repeats.length}) must match dimension along axis $targetAxis (${srcArray.shape[targetAxis]})',
-      );
-    }
-    repList = List<int>.from(repeats);
-  } else {
-    throw ArgumentError('repeats must be an int or a List<int>');
-  }
-
-  final prefixSums = List<int>.filled(srcArray.shape[targetAxis] + 1, 0);
-  for (var i = 0; i < repList.length; i++) {
-    prefixSums[i + 1] = prefixSums[i] + repList[i];
-  }
-
-  final targetShape = List<int>.from(srcArray.shape);
-  targetShape[targetAxis] = prefixSums.last;
-
-  final result = NDArray<T>.create(targetShape, srcArray.dtype);
-
-  _repeatCopyRecursive<T>(
-    srcArray,
-    result,
-    List<int>.filled(srcArray.shape.length, 0),
-    0,
-    targetAxis,
-    prefixSums,
-  );
-
-  return result;
-}
-
-void _repeatCopyRecursive<T>(
-  NDArray<T> src,
-  NDArray<T> dest,
-  List<int> srcPos,
-  int currentDim,
-  int targetAxis,
-  List<int> prefixSums,
-) {
-  if (currentDim == src.shape.length) {
-    final startDestIdx = prefixSums[srcPos[targetAxis]];
-    final endDestIdx = prefixSums[srcPos[targetAxis] + 1];
-
-    if (startDestIdx == endDestIdx) return;
-
-    final destPos = List<int>.from(srcPos);
-    for (var dIdx = startDestIdx; dIdx < endDestIdx; dIdx++) {
-      destPos[targetAxis] = dIdx;
-      dest[destPos] = src[srcPos];
-    }
-    return;
-  }
-
-  for (var i = 0; i < src.shape[currentDim]; i++) {
-    srcPos[currentDim] = i;
-    _repeatCopyRecursive(
-      src,
-      dest,
-      srcPos,
-      currentDim + 1,
-      targetAxis,
-      prefixSums,
-    );
-  }
-}
-
 void _unaryOp<Ta, Tr>(
   List<Tr> result,
   List<Ta> a,
@@ -11223,3 +11026,288 @@ NDArray conj(NDArray a, {NDArray? out}) {
 
 /// Alias for [conj].
 NDArray conjugate(NDArray a, {NDArray? out}) => conj(a, out: out);
+
+/// Rolls array elements along a given axis.
+///
+/// Elements that roll beyond the last position are re-introduced at the first.
+///
+/// **Preconditions:**
+/// - [a] must not be disposed.
+/// - If [axis] is a list, [shift] must be an integer or a list of the same length.
+/// - Each axis must be a valid axis index for [a] (within `[-rank, rank - 1]`).
+/// - If [axis] is `null`, [shift] must be an integer.
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if [shift] and [axis] configurations are mismatched or invalid.
+/// - [RangeError] if any axis is out of bounds.
+///
+/// **Performance considerations:**
+/// - Algorithmic Time Complexity is $O(N)$ where $N$ is the total number of elements,
+///   as it creates a new array and copies elements.
+/// - Space Complexity is $O(N)$ for the newly allocated output array.
+///
+/// **Reference:**
+/// Refer to [NumPy roll documentation](https://numpy.org/doc/stable/reference/generated/numpy.roll.html).
+///
+/// {@example /example/rearranging_example.dart lang=dart}
+NDArray<T> roll<T extends Object>(NDArray<T> a, dynamic shift, {dynamic axis}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot roll a disposed array.');
+  }
+
+  // Parse shifts and axes
+  final List<int> shifts;
+  final List<int>? axes;
+
+  if (axis == null) {
+    if (shift is int) {
+      shifts = [shift];
+      axes = null;
+    } else if (shift is List<int>) {
+      if (shift.length != 1) {
+        throw ArgumentError('shift must be an integer when axis is null');
+      }
+      shifts = shift;
+      axes = null;
+    } else {
+      throw ArgumentError('shift must be an integer or a list of integers');
+    }
+  } else if (axis is int) {
+    if (shift is int) {
+      shifts = [shift];
+      axes = [axis];
+    } else if (shift is List<int>) {
+      if (shift.length != 1) {
+        throw ArgumentError(
+          'shift and axis must have the same number of elements',
+        );
+      }
+      shifts = shift;
+      axes = [axis];
+    } else {
+      throw ArgumentError('shift must be an integer or a list of integers');
+    }
+  } else if (axis is List<int>) {
+    if (shift is int) {
+      shifts = List<int>.filled(axis.length, shift);
+      axes = axis;
+    } else if (shift is List<int>) {
+      if (shift.length != axis.length) {
+        throw ArgumentError(
+          'shift and axis must have the same number of elements',
+        );
+      }
+      shifts = shift;
+      axes = axis;
+    } else {
+      throw ArgumentError('shift must be an integer or a list of integers');
+    }
+  } else {
+    throw ArgumentError('axis must be null, an integer, or a list of integers');
+  }
+
+  if (a.rank == 0) {
+    return a.copy();
+  }
+
+  return NDArray.scope(() {
+    NDArray<T> current = a;
+
+    if (axes == null) {
+      final flat = current.ravel();
+      final s = shifts[0];
+      final rolledFlat = _rollSingle1D(flat, s);
+      final result = rolledFlat.reshape(a.shape);
+      return result.detachToParentScope();
+    } else {
+      for (var i = 0; i < axes.length; i++) {
+        current = _rollSingle(current, shifts[i], axes[i]);
+      }
+      return current.copy().detachToParentScope();
+    }
+  });
+}
+
+NDArray<T> _rollSingle1D<T extends Object>(NDArray<T> a, int shift) {
+  final size = a.size;
+  if (size == 0) return a.copy();
+  final s = shift % size;
+  if (s == 0) return a.copy();
+
+  final realShift = s < 0 ? size + s : s;
+
+  final part1 = a.slice([Slice(start: size - realShift, stop: size)]);
+  final part2 = a.slice([Slice(start: 0, stop: size - realShift)]);
+  return concatenate([part1, part2], axis: 0);
+}
+
+NDArray<T> _rollSingle<T extends Object>(NDArray<T> a, int shift, int axis) {
+  final rank = a.rank;
+  final normAx = axis < 0 ? rank + axis : axis;
+  if (normAx < 0 || normAx >= rank) {
+    throw RangeError.range(normAx, 0, rank - 1, 'axis');
+  }
+
+  final dimSize = a.shape[normAx];
+  if (dimSize == 0) return a.copy();
+
+  final s = shift % dimSize;
+  if (s == 0) return a.copy();
+
+  final realShift = s < 0 ? dimSize + s : s;
+
+  final selectors1 = List<Selector>.generate(
+    rank,
+    (i) => i == normAx
+        ? Slice(start: dimSize - realShift, stop: dimSize)
+        : const Slice.all(),
+  );
+  final selectors2 = List<Selector>.generate(
+    rank,
+    (i) => i == normAx
+        ? Slice(start: 0, stop: dimSize - realShift)
+        : const Slice.all(),
+  );
+
+  final part1 = a.slice(selectors1);
+  final part2 = a.slice(selectors2);
+
+  return concatenate([part1, part2], axis: normAx);
+}
+
+/// Reverses the order of elements along the given axis/axes.
+///
+/// **Preconditions:**
+/// - [a] must not be disposed.
+/// - If [axis] is a list, all elements must be unique.
+/// - Each axis must be a valid axis index for [a] (within `[-rank, rank - 1]`).
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [RangeError] if any axis is out of bounds.
+/// - [ArgumentError] if [axis] contains duplicate indices.
+///
+/// **Performance considerations:**
+/// - Algorithmic Time Complexity is $O(1)$ because it returns a zero-copy strided view.
+/// - Space Complexity is $O(1)$ as no new array data is allocated.
+///
+/// **Reference:**
+/// Refer to [NumPy flip documentation](https://numpy.org/doc/stable/reference/generated/numpy.flip.html).
+///
+/// {@example /example/rearranging_example.dart lang=dart}
+NDArray<T> flip<T extends Object>(NDArray<T> a, {dynamic axis}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot flip a disposed array.');
+  }
+
+  final rank = a.rank;
+  if (rank == 0) {
+    return NDArray.view(
+      a,
+      shape: [],
+      strides: [],
+      offsetElements: a.offsetElements,
+    );
+  }
+
+  final List<int> axesToFlip;
+  if (axis == null) {
+    axesToFlip = List.generate(rank, (i) => i);
+  } else if (axis is int) {
+    final normAx = axis < 0 ? rank + axis : axis;
+    if (normAx < 0 || normAx >= rank) {
+      throw RangeError.range(normAx, 0, rank - 1, 'axis');
+    }
+    axesToFlip = [normAx];
+  } else if (axis is List<int>) {
+    final uniqueAxes = <int>{};
+    for (final ax in axis) {
+      final normAx = ax < 0 ? rank + ax : ax;
+      if (normAx < 0 || normAx >= rank) {
+        throw RangeError.range(normAx, 0, rank - 1, 'axis');
+      }
+      if (!uniqueAxes.add(normAx)) {
+        throw ArgumentError('axes must be unique');
+      }
+    }
+    axesToFlip = uniqueAxes.toList();
+  } else {
+    throw ArgumentError('axis must be null, an integer, or a list of integers');
+  }
+
+  final newStrides = List<int>.from(a.strides);
+  var offset = a.offsetElements;
+
+  for (final ax in axesToFlip) {
+    newStrides[ax] = a.strides[ax] * -1;
+    offset += (a.shape[ax] - 1) * a.strides[ax];
+  }
+
+  return NDArray.view(
+    a,
+    shape: a.shape,
+    strides: newStrides,
+    offsetElements: offset,
+  );
+}
+
+/// Flips the array in the left/right direction (column-wise).
+///
+/// Equivalent to `flip(a, axis: 1)`.
+///
+/// **Preconditions:**
+/// - [a] must not be disposed.
+/// - [a] must have a rank of at least 2.
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if [a] rank is less than 2.
+///
+/// **Performance considerations:**
+/// - Algorithmic Time Complexity is $O(1)$ because it returns a zero-copy strided view.
+/// - Space Complexity is $O(1)$ as no new array data is allocated.
+///
+/// **Reference:**
+/// Refer to [NumPy fliplr documentation](https://numpy.org/doc/stable/reference/generated/numpy.fliplr.html).
+///
+/// {@example /example/rearranging_example.dart lang=dart}
+NDArray<T> fliplr<T extends Object>(NDArray<T> a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot fliplr a disposed array.');
+  }
+  if (a.rank < 2) {
+    throw ArgumentError('Input must be >= 2-D.');
+  }
+  return flip(a, axis: 1);
+}
+
+/// Flips the array in the up/down direction (row-wise).
+///
+/// Equivalent to `flip(a, axis: 0)`.
+///
+/// **Preconditions:**
+/// - [a] must not be disposed.
+/// - [a] must have a rank of at least 1.
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if [a] rank is less than 1.
+///
+/// **Performance considerations:**
+/// - Algorithmic Time Complexity is $O(1)$ because it returns a zero-copy strided view.
+/// - Space Complexity is $O(1)$ as no new array data is allocated.
+///
+/// **Reference:**
+/// Refer to [NumPy flipud documentation](https://numpy.org/doc/stable/reference/generated/numpy.flipud.html).
+///
+/// {@example /example/rearranging_example.dart lang=dart}
+NDArray<T> flipud<T extends Object>(NDArray<T> a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot flipud a disposed array.');
+  }
+  if (a.rank < 1) {
+    throw ArgumentError('Input must be >= 1-D.');
+  }
+  return flip(a, axis: 0);
+}
