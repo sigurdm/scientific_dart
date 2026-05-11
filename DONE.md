@@ -2348,3 +2348,15 @@
   - Mapped switch branches directly on DType sealed subclass patterns (e.g., `Float64DType()`, `Float32DType()`, `Complex128DType()`, etc.) instead of JIT instance equality checks. This secures complete static verification and compiles into high-speed jump-tables natively in VM space.
 * **Results**:
   - **Verification**: Static analysis is completely clean, and all **436 unit tests pass flawlessly green!**
+
+***
+
+## 196. Holistic `ndarray` Codebase Review & Findings Roadmap Expansion (Task 4 / Review Code)
+* **What was done**:
+  - Performed a comprehensive holistic review of the `ndarray` scientific library, comparing feature sets and API ergonomics with standard NumPy models.
+  - **Expanded FINDINGS.md Roadmap**: Identified and cataloged 3 critical high-value scientific/DSP roadmap feature gaps in [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md#L101-L110):
+    1. **N-Dimensional Vectorized Padding (`pad`)**: Support for reflection, replication, and zero borders (essential for CNN boundary gates and PDE solvers).
+    2. **FFI-Accelerated Complex Conjugation (`conj`)**: Native C-offloaded imaginary sign inversion ($a + bi \rightarrow a - bi$) for signal processing pipelines.
+    3. **Array-Clip Broadcasting Bounds (`clip`)**: Broad-boundary spatial clipping envelopes instead of rigid scalar bounds limits.
+* **Results**:
+  - **Verification**: Formatting and static analysis pass completely clean. Staged and committed findings updates.
