@@ -2070,3 +2070,19 @@
     - **Global Workspace Line Coverage**: Surged from **71.74%** to a record peak of **87.70%** (a massive **+15.96%** global coverage increase!).
   - **Verification**: All 414 package tests passed successfully.
 
+***
+
+## 175. Optimized DFT Padding Sweeps and Broadcast Stack Shapes (Task 8 / Finding Fix / Optimization)
+* **Issue**:
+  - Resolves **Section 1.2** and **Section 4.2** inside [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md).
+  - **DFT Padding Sweeps (Section 1.2)**: Discrete Fourier transform functions `fft()` and `ifft()` in `fft.dart` unrolled an element copying and padding loop containing the branch `if (i < lastAxisDim)`. Evaluating this loop-invariant condition on every single element sweep introduced significant branch instruction penalties inside performance-critical DSP paths.
+  - **Stack Broadcasting (Section 4.2)**: The internal matrix multiplication stack shape broadcasting helper `_broadcastStackShapes` in `operations.dart` constructed lists using `result.insert(0, dim)`. Because Dart list inserts at index 0 trigger sequential element-shifting under the hood, this gave the shape builder a quadratic $O(N^2)$ complexity.
+* **Resolution**:
+  - **Branch-Free FFT Loop Splitting**: Split the single, branching FFT copy loop in both `fft()` and `ifft()` in [fft.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/fft.dart#L106) into two sequential, branch-free loops: an element copying loop up to `math.min(lastAxisDim, targetLen)`, followed by a separate zero-padding loop up to `targetLen`. Bypassed all loop conditional branches completely.
+  - **O(N) Stack Shape Pre-Allocation**: Refactored `_broadcastStackShapes` in [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart#L1283) to pre-allocate the output list shape using `List<int>.filled(maxLen, 0)` and assign elements directly at reverse index positions. Purged all `insert(0, dim)` operations, securing strict linear $O(N)$ complexity.
+  - **Findings Cleanup**: Excised both resolved items from [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md).
+* **Results**:
+  - **Performance**: Eliminated loop invariant branch penalties during FFT sweeps and avoided all list element-shifting during matrix broadcasting sweeps.
+  - **Verification**: Verified that all 414 workspace unit tests pass flawlessly green. Global line coverage reached a record peak of **87.71%**!
+
+

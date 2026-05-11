@@ -103,7 +103,7 @@ NDArray fft(NDArray a, {int? n}) {
     pin = malloc<kiss_fft_cpx>(targetLen);
     pout = malloc<kiss_fft_cpx>(targetLen);
 
-    // Walk every independent 1D row signal along the last dimension axis
+    final copyLen = targetLen < lastAxisDim ? targetLen : lastAxisDim;
     for (var s = 0; s < signalsCount; s++) {
       final srcStart = s * lastAxisDim;
       final destStart = s * targetLen;
@@ -111,25 +111,23 @@ NDArray fft(NDArray a, {int? n}) {
       // Populate input buffer, applying zero-padding or truncation if n is specified
       if (a.data is ComplexList) {
         final compList = a.data as ComplexList;
-        for (var i = 0; i < targetLen; i++) {
-          if (i < lastAxisDim) {
-            pin[i].r = compList.getReal(srcStart + i);
-            pin[i].i = compList.getImag(srcStart + i);
-          } else {
-            pin[i].r = 0.0;
-            pin[i].i = 0.0;
-          }
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = compList.getReal(srcStart + i);
+          pin[i].i = compList.getImag(srcStart + i);
+        }
+        for (var i = copyLen; i < targetLen; i++) {
+          pin[i].r = 0.0;
+          pin[i].i = 0.0;
         }
       } else {
-        for (var i = 0; i < targetLen; i++) {
-          if (i < lastAxisDim) {
-            final val = a.data[srcStart + i];
-            pin[i].r = (val as num).toDouble();
-            pin[i].i = 0.0;
-          } else {
-            pin[i].r = 0.0;
-            pin[i].i = 0.0;
-          }
+        for (var i = 0; i < copyLen; i++) {
+          final val = a.data[srcStart + i];
+          pin[i].r = (val as num).toDouble();
+          pin[i].i = 0.0;
+        }
+        for (var i = copyLen; i < targetLen; i++) {
+          pin[i].r = 0.0;
+          pin[i].i = 0.0;
         }
       }
 
@@ -258,31 +256,30 @@ NDArray ifft(NDArray a, {int? n}) {
     pin = malloc<kiss_fft_cpx>(targetLen);
     pout = malloc<kiss_fft_cpx>(targetLen);
 
+    final copyLen = targetLen < lastAxisDim ? targetLen : lastAxisDim;
     for (var s = 0; s < signalsCount; s++) {
       final srcStart = s * lastAxisDim;
       final destStart = s * targetLen;
 
       if (a.data is ComplexList) {
         final compList = a.data as ComplexList;
-        for (var i = 0; i < targetLen; i++) {
-          if (i < lastAxisDim) {
-            pin[i].r = compList.getReal(srcStart + i);
-            pin[i].i = compList.getImag(srcStart + i);
-          } else {
-            pin[i].r = 0.0;
-            pin[i].i = 0.0;
-          }
+        for (var i = 0; i < copyLen; i++) {
+          pin[i].r = compList.getReal(srcStart + i);
+          pin[i].i = compList.getImag(srcStart + i);
+        }
+        for (var i = copyLen; i < targetLen; i++) {
+          pin[i].r = 0.0;
+          pin[i].i = 0.0;
         }
       } else {
-        for (var i = 0; i < targetLen; i++) {
-          if (i < lastAxisDim) {
-            final val = a.data[srcStart + i];
-            pin[i].r = (val as num).toDouble();
-            pin[i].i = 0.0;
-          } else {
-            pin[i].r = 0.0;
-            pin[i].i = 0.0;
-          }
+        for (var i = 0; i < copyLen; i++) {
+          final val = a.data[srcStart + i];
+          pin[i].r = (val as num).toDouble();
+          pin[i].i = 0.0;
+        }
+        for (var i = copyLen; i < targetLen; i++) {
+          pin[i].r = 0.0;
+          pin[i].i = 0.0;
         }
       }
 

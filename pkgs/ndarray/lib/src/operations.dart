@@ -1281,21 +1281,21 @@ NDArray divide(NDArray a, NDArray b) {
 
 /// Matrix multiplication for Float64 arrays using OpenBLAS.
 List<int> _broadcastStackShapes(List<int> sA, List<int> sB) {
-  final result = <int>[];
   final lenA = sA.length;
   final lenB = sB.length;
   final maxLen = math.max(lenA, lenB);
+  final result = List<int>.filled(maxLen, 0);
 
   for (var i = 0; i < maxLen; i++) {
     final dimA = (lenA - 1 - i >= 0) ? sA[lenA - 1 - i] : 1;
     final dimB = (lenB - 1 - i >= 0) ? sB[lenB - 1 - i] : 1;
 
     if (dimA == dimB) {
-      result.insert(0, dimA);
+      result[maxLen - 1 - i] = dimA;
     } else if (dimA == 1) {
-      result.insert(0, dimB);
+      result[maxLen - 1 - i] = dimB;
     } else if (dimB == 1) {
-      result.insert(0, dimA);
+      result[maxLen - 1 - i] = dimA;
     } else {
       throw ArgumentError(
         'Incompatible stack shapes for broadcasting in matmul: $sA and $sB',
@@ -4372,6 +4372,7 @@ NDArray tanh(NDArray a) {
     final e2x = math.exp(2.0 * x);
     return (e2x - 1.0) / (e2x + 1.0);
   }
+
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
     _unaryOp<int, double>(
       result.data as List<double>,
@@ -7950,8 +7951,7 @@ NDArray select(
   // 2. Determine target upcasted DType
   var targetDType = choicelist[0].dtype;
   for (var i = 1; i < choicelist.length; i++) {
-    targetDType =
-        _resolveDType(targetDType, choicelist[i].dtype);
+    targetDType = _resolveDType(targetDType, choicelist[i].dtype);
   }
   if (defaultValue is double &&
       !targetDType.isFloating &&
