@@ -4,5 +4,17 @@
     "task_id": "9",
     "finding_id": null,
     "claimed_at": "2026-05-11T12:20:41.343008"
+  },
+  "Agent-Alpha": {
+    "agent_id": "Agent-Alpha",
+    "task_id": "3",
+    "finding_id": "3.1_trig",
+    "claimed_at": "2026-05-11T12:18:33.080886"
+  },
+  "Agent-Beta": {
+    "agent_id": "Agent-Beta",
+    "task_id": "6",
+    "finding_id": null,
+    "claimed_at": "2026-05-11T12:18:40.751911"
   }
 }

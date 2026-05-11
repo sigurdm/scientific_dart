@@ -36,7 +36,7 @@ Remember when adding new operations:
 ## 🧪 Section 3: NumPy Compatibility Roadmap (Missing Features)
 
 ### 3.1 Universal Functions (ufuncs)
-- **Math & Trigonometry**:
+- **Math & Trigonometry**: [CLAIMED: Agent-Alpha]
   - Trigonometric functions: `tan()`, inverse trig `asin()`, `acos()`, `atan()`, and `atan2(y, x)`.
   - (sinh(), cosh(), tanh(), asinh(), acosh(), and atanh() FFI-accelerated ufuncs have been fully resolved!)
   - Power & logarithmic: `square()`, element-wise `power()`, modulo `remainder()` / `mod()`, and combined division/modulo `divmod()`.
@@ -46,7 +46,6 @@ Remember when adding new operations:
 - **Bitwise Operations**:
   - Vectorized bitwise ufuncs for integer data types (`int32`, `int64`, `uint8`, `int16`): `bitwise_and()`, `bitwise_or()`, `bitwise_xor()`, bitwise negation `invert()`, shifts `left_shift()` and `right_shift()`.
 - **Fourier Transforms**:
-  - Multi-dimensional `axis` support inside `fft()` and `ifft()`. Currently, our FFT transforms are hardcoded to execute along the final axis (`a.shape.last`). Adding an `axis` parameter (default `-1`) and transposing dimensions internally before/after FFI plan runs would achieve full standard NumPy `np.fft.fft(a, axis=axis)` compatibility!
   - Spectrogram shifts: `fftshift()` and `ifftshift()`.
 
 ### 3.2 Array Manipulation & Geometry

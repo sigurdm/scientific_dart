@@ -2923,6 +2923,35 @@ void main() {
         final conjRes = conj(a, out: conjRecycler);
         expect(identical(conjRes, conjRecycler), true);
         expect(conjRes.data[1], Complex(0.1, -0.2));
+
+        // 8. Multi-dimensional axis support inside fft() and ifft()
+        final mat = NDArray<Complex>.create([2, 2], DType.complex128);
+        mat.data[0] = Complex(1.0, 0.0);
+        mat.data[1] = Complex(1.0, 0.0);
+        mat.data[2] = Complex(2.0, 0.0);
+        mat.data[3] = Complex(2.0, 0.0);
+
+        final fLast = fft(mat, axis: 1);
+        expect(fLast.shape, [2, 2]);
+        expect(fLast.data[0], Complex(2.0, 0.0));
+        expect(fLast.data[1], Complex(0.0, 0.0));
+        expect(fLast.data[2], Complex(4.0, 0.0));
+        expect(fLast.data[3], Complex(0.0, 0.0));
+
+        final fSwapped = fft(mat, axis: 0).copy();
+        expect(fSwapped.shape, [2, 2]);
+        expect(fSwapped.data[0], Complex(3.0, 0.0));
+        expect(fSwapped.data[1], Complex(3.0, 0.0));
+        expect(fSwapped.data[2], Complex(-1.0, 0.0));
+        expect(fSwapped.data[3], Complex(-1.0, 0.0));
+
+        final roundtrip = ifft(fSwapped, axis: 0).copy();
+        expect(roundtrip.shape, [2, 2]);
+        expect(roundtrip.data[0].real, closeTo(1.0, 1e-9));
+        expect(roundtrip.data[2].real, closeTo(2.0, 1e-9));
+
+        expect(() => fft(mat, axis: 2), throwsRangeError);
+        expect(() => fft(mat, axis: -3), throwsRangeError);
       }),
     );
   });

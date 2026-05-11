@@ -3,7 +3,7 @@ import 'package:ffi/ffi.dart';
 import 'package:pocketfft/pocketfft.dart';
 import 'ndarray.dart';
 
-/// Computes the 1D discrete Fourier Transform (FFT) along the last axis.
+/// Computes the 1D discrete Fourier Transform (FFT) along the specified [axis].
 ///
 /// Transforms discrete sequences from the time/space domain into frequency coefficients.
 /// The resulting array is **always complex** (``DType.complex128`` or ``DType.complex64`` depending on precision).
@@ -13,27 +13,44 @@ import 'ndarray.dart';
 ///
 /// **Preconditions:**
 /// - Input [a] must have rank $\ge 1$ (not empty or 0-dimensional).
+/// - The specified [axis] must be within valid rank boundaries `[-a.rank, a.rank - 1]`.
 /// - If provided, the target length [n] must be greater than 0.
 ///
 /// **Throws:**
 /// - [ArgumentError] if the input array shape is empty (scalar 0D).
+/// - [RangeError] if the specified [axis] is out of bounds.
 /// - [ArgumentError] if [n] is provided but is less than or equal to 0.
 /// - [StateError] if native FFI memory allocations or KissFFT plan allocation (`kiss_fft_alloc`) fail.
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N \log N)$ where $N$ is the transform length, scaling linearly even for prime lengths.
-/// - Memory allocations (`pin`, `pout`, `cfg`) are created on the unmanaged C-heap and are strictly released
-///   in a `finally` block to prevent memory leaks.
+/// - Swapping the selected [axis] to the final dimension is a zero-copy, zero-allocation transpose view ($O(1)$ complexity).
 ///
 /// **Example:**
 /// {@example /example/fft_example.dart lang=dart}
 ///
 /// Reference: [Cooley-Tukey FFT Algorithm](https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm)
-NDArray fft(NDArray a, {int? n}) {
+NDArray fft(NDArray a, {int? n, int axis = -1}) {
   if (a.shape.isEmpty) {
     throw ArgumentError(
       'Cannot compute FFT on a 0-dimensional or empty scalar array',
     );
+  }
+
+  final rank = a.shape.length;
+  final normAxis = axis < 0 ? rank + axis : axis;
+  if (normAxis < 0 || normAxis >= rank) {
+    throw RangeError.range(axis, -rank, rank - 1, 'axis');
+  }
+
+  if (normAxis != rank - 1) {
+    final axes = List.generate(rank, (i) => i);
+    axes[normAxis] = rank - 1;
+    axes[rank - 1] = normAxis;
+
+    final transposedInput = a.transpose(axes);
+    final transposedResult = fft(transposedInput, n: n);
+    return transposedResult.transpose(axes);
   }
 
   final NDArray inputA;
@@ -176,7 +193,7 @@ NDArray fft(NDArray a, {int? n}) {
   return result;
 }
 
-/// Computes the 1D inverse discrete Fourier Transform (IFFT) along the last axis.
+/// Computes the 1D inverse discrete Fourier Transform (IFFT) along the specified [axis].
 ///
 /// Transforms frequency domain coefficients back into complex time/space domain signals, applying
 /// standard `1 / N` normalization scaling automatically.
@@ -184,25 +201,42 @@ NDArray fft(NDArray a, {int? n}) {
 ///
 /// **Preconditions:**
 /// - Input [a] must have rank $\ge 1$ (not empty or 0-dimensional).
+/// - The specified [axis] must be within valid rank boundaries `[-a.rank, a.rank - 1]`.
 /// - If provided, the target length [n] must be greater than 0.
 ///
 /// **Throws:**
 /// - [ArgumentError] if the input array shape is empty (scalar 0D).
+/// - [RangeError] if the specified [axis] is out of bounds.
 /// - [ArgumentError] if [n] is provided but is less than or equal to 0.
 /// - [StateError] if native FFI memory allocations or KissFFT plan allocation (`kiss_fft_alloc`) fail.
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N \log N)$ where $N$ is the transform length.
-/// - Memory allocations (`pin`, `pout`, `cfg`) are created on the unmanaged C-heap and are strictly released
-///   in a `finally` block to prevent memory leaks.
+/// - Swapping the selected [axis] to the final dimension is a zero-copy, zero-allocation transpose view ($O(1)$ complexity).
 ///
 /// **Example:**
 /// {@example /example/fft_example.dart lang=dart}
-NDArray ifft(NDArray a, {int? n}) {
+NDArray ifft(NDArray a, {int? n, int axis = -1}) {
   if (a.shape.isEmpty) {
     throw ArgumentError(
       'Cannot compute IFFT on a 0-dimensional or empty scalar array',
     );
+  }
+
+  final rank = a.shape.length;
+  final normAxis = axis < 0 ? rank + axis : axis;
+  if (normAxis < 0 || normAxis >= rank) {
+    throw RangeError.range(axis, -rank, rank - 1, 'axis');
+  }
+
+  if (normAxis != rank - 1) {
+    final axes = List.generate(rank, (i) => i);
+    axes[normAxis] = rank - 1;
+    axes[rank - 1] = normAxis;
+
+    final transposedInput = a.transpose(axes);
+    final transposedResult = ifft(transposedInput, n: n);
+    return transposedResult.transpose(axes);
   }
 
   final NDArray inputA;
