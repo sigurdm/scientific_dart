@@ -1406,6 +1406,22 @@ void main() {
         // 4. Rank out of bounds throws ArgumentError
         final tensor3d = NDArray.zeros([2, 2, 2], DType.float64);
         expect(() => diag(tensor3d), throwsArgumentError);
+
+        // 5. In-place recycler out reuse
+        final outRecycler = NDArray<double>.zeros([3, 3], DType.float64);
+        final dMatRec = diag(vec, k: 1, out: outRecycler);
+        expect(identical(dMatRec, outRecycler), true);
+        expect(dMatRec.toList(), [
+          0.0,
+          10.0,
+          0.0,
+          0.0,
+          0.0,
+          20.0,
+          0.0,
+          0.0,
+          0.0,
+        ]);
       },
     );
 

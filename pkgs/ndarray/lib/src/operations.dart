@@ -7941,9 +7941,8 @@ Map<String, NDArray> svd(NDArray a) {
 /// {@example /example/diag_example.dart lang=dart}
 ///
 /// Reference: [Diagonal Matrix](https://en.wikipedia.org/wiki/Diagonal_matrix)
-NDArray diag(NDArray v, {int k = 0}) {
+NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
   if (v.shape.length == 2) {
-    // 1. Extracting a diagonal from a 2D matrix as a copy-free 1D view!
     final m = v.shape[0];
     final n = v.shape[1];
 
@@ -7955,38 +7954,47 @@ NDArray diag(NDArray v, {int k = 0}) {
       startRow = 0;
       startCol = k;
       if (startCol >= n) {
-        return NDArray.create([0], v.dtype);
+        return NDArray<T>.create([0], v.dtype);
       }
       len = math.min(m, n - k);
     } else {
       startRow = -k;
       startCol = 0;
       if (startRow >= m) {
-        return NDArray.create([0], v.dtype);
+        return NDArray<T>.create([0], v.dtype);
       }
       len = math.min(m + k, n);
     }
 
     if (len <= 0) {
-      return NDArray.create([0], v.dtype);
+      return NDArray<T>.create([0], v.dtype);
     }
 
-    // View offset in parent sequential coordinates
     final offsetElements = startRow * v.strides[0] + startCol * v.strides[1];
-    // Diagonal spacing stride: strides[0] + strides[1]!
     final diagStride = v.strides[0] + v.strides[1];
 
-    return NDArray.view(
+    return NDArray<T>.view(
       v,
       shape: [len],
       strides: [diagStride],
       offsetElements: offsetElements,
     );
   } else if (v.shape.length == 1) {
-    // 2. Constructing a 2D diagonal matrix from a 1D vector
     final n = v.shape[0];
     final size = n + k.abs();
-    final result = NDArray.zeros([size, size], v.dtype);
+    final targetShape = [size, size];
+
+    final result = out ?? NDArray<T>.zeros(targetShape, v.dtype);
+    if (out != null) {
+      if (!listEquals(out.shape, targetShape) || out.dtype != v.dtype) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype.',
+        );
+      }
+      for (var i = 0; i < result.data.length; i++) {
+        result.data[i] = _castValue(0, v.dtype) as T;
+      }
+    }
 
     int startRow;
     int startCol;
@@ -8684,14 +8692,14 @@ NDArray<double> hamming(int M, {DType dtype = DType.float64}) {
 ///
 /// **Example:**
 /// {@example /example/triangular_example.dart lang=dart}
-NDArray tril(NDArray a, {int k = 0, NDArray? out}) {
+NDArray<T> tril<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute tril() on a disposed array.');
   }
   if (a.shape.length < 2) {
     throw ArgumentError('Input array must have rank >= 2.');
   }
-  final result = out ?? NDArray.create(a.shape, a.dtype);
+  final result = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -8743,7 +8751,7 @@ NDArray tril(NDArray a, {int k = 0, NDArray? out}) {
     for (var r = 0; r < rows; r++) {
       for (var c = 0; c < cols; c++) {
         final idx = offset + r * cols + c;
-        resData[idx] = (c <= r + k) ? aList[idx] : _castValue(0, a.dtype);
+        resData[idx] = (c <= r + k) ? aList[idx] : _castValue(0, a.dtype) as T;
       }
     }
   }
@@ -8763,14 +8771,14 @@ NDArray tril(NDArray a, {int k = 0, NDArray? out}) {
 ///
 /// **Example:**
 /// {@example /example/triangular_example.dart lang=dart}
-NDArray triu(NDArray a, {int k = 0, NDArray? out}) {
+NDArray<T> triu<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute triu() on a disposed array.');
   }
   if (a.shape.length < 2) {
     throw ArgumentError('Input array must have rank >= 2.');
   }
-  final result = out ?? NDArray.create(a.shape, a.dtype);
+  final result = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -8822,7 +8830,7 @@ NDArray triu(NDArray a, {int k = 0, NDArray? out}) {
     for (var r = 0; r < rows; r++) {
       for (var c = 0; c < cols; c++) {
         final idx = offset + r * cols + c;
-        resData[idx] = (c >= r + k) ? aList[idx] : _castValue(0, a.dtype);
+        resData[idx] = (c >= r + k) ? aList[idx] : _castValue(0, a.dtype) as T;
       }
     }
   }
