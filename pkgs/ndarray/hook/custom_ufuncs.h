@@ -243,6 +243,9 @@ void s_acos_float(const float *src, const int *stridesSrc, float *res, const int
 void s_atan_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
 void s_atan_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
 
+void s_atan2_double(const double *y, const int *stridesY, const double *x, const int *stridesX, double *res, const int *stridesRes, const int *shape, int rank);
+void s_atan2_float(const float *y, const int *stridesY, const float *x, const int *stridesX, float *res, const int *stridesRes, const int *shape, int rank);
+
 void s_tan_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
 void s_tan_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
 void s_exp_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);

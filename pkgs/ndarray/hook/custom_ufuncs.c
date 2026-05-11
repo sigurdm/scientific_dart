@@ -137,6 +137,13 @@ void v_atan_double(const double *src, double *res, int size) {
     }
 }
 
+void v_atan2_double(const double *y, const double *x, double *res, int size) {
+    if (y == NULL || x == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = atan2(y[i], x[i]);
+    }
+}
+
 
 double r_sum_double(const double *src, int size) {
     if (src == NULL || size <= 0) return 0.0;
@@ -731,6 +738,13 @@ void v_atan_float(const float *src, float *res, int size) {
     if (src == NULL || res == NULL || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = atanf(src[i]);
+    }
+}
+
+void v_atan2_float(const float *y, const float *x, float *res, int size) {
+    if (y == NULL || x == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = atan2f(y[i], x[i]);
     }
 }
 
@@ -2324,6 +2338,64 @@ DEFINE_STRIDED_UNARY_OP(s_acos_double, double, OP_ACOS_D)
 DEFINE_STRIDED_UNARY_OP(s_acos_float, float, OP_ACOS_F)
 DEFINE_STRIDED_UNARY_OP(s_atan_double, double, OP_ATAN_D)
 DEFINE_STRIDED_UNARY_OP(s_atan_float, float, OP_ATAN_F)
+
+void s_atan2_double(const double *y, const int *stridesY,
+                   const double *x, const int *stridesX,
+                   double *res, const int *stridesRes,
+                   const int *shape, int rank) {
+    if (y == NULL || x == NULL || res == NULL || rank <= 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+
+    int coord[8] = {0};
+    int offsetY = 0, offsetX = 0, offsetRes = 0;
+    for (int el = 0; el < total_elements; el++) {
+        res[offsetRes] = atan2(y[offsetY], x[offsetX]);
+
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetY += stridesY[d];
+                offsetX += stridesX[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetY -= (shape[d] - 1) * stridesY[d];
+            offsetX -= (shape[d] - 1) * stridesX[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
+    }
+}
+
+void s_atan2_float(const float *y, const int *stridesY,
+                  const float *x, const int *stridesX,
+                  float *res, const int *stridesRes,
+                  const int *shape, int rank) {
+    if (y == NULL || x == NULL || res == NULL || rank <= 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+
+    int coord[8] = {0};
+    int offsetY = 0, offsetX = 0, offsetRes = 0;
+    for (int el = 0; el < total_elements; el++) {
+        res[offsetRes] = atan2f(y[offsetY], x[offsetX]);
+
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetY += stridesY[d];
+                offsetX += stridesX[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetY -= (shape[d] - 1) * stridesY[d];
+            offsetX -= (shape[d] - 1) * stridesX[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
+    }
+}
 
 #define OP_TAN_D(x) tan(x)
 #define OP_TAN_F(x) tanf(x)

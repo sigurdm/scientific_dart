@@ -10,10 +10,10 @@ Before starting a task, you MUST claim it and work on a dedicated branch to avoi
 5. **Commit**: Commit your changes to your branch.
 6. **Release Task**: `dart tool/agent_orchestrator.dart release <agent_id>`
 7. **Cleanup**: Switch back to the main branch after finishing (but do not delete your branch).
-
+8. **Merging**: Add the branch to a list of branches in `branches.md` for merging.
 ---
 
-Choose one of the following tasks to work on (by random choice, use awk as a random dice rolling tool `awk -v min=1 -v max=8 'BEGIN{srand(); print int(min+rand()*(max-min+1))}'`).
+Choose one of the following tasks to work on (by random choice, use awk as a random dice rolling tool `awk -v min=1 -v max=9 'BEGIN{srand(); print int(min+rand()*(max-min+1))}'`).
 After being done with the chosen task reschedule to do another task in 10 seconds with the following prompt:
 
 ```
@@ -37,6 +37,7 @@ If any item in FINDINGS.md is annotated with `NEXT` chose that one. If there are
 6. Documentation: Find a file in the repo and make sure all api members are documented and the documentation is correct and with usage examples where applicable. If not, fix it and leave a description of the work in `done/`.
 7. Same as 3.
 8. Same as 3.
+9. Merge a branch from `branches.md` into the main branch. Review the changes, merge it and if everything is OK, then delete the branch from `branches.md` and from git.
 
 If any of the questions have been answered, then remove the question from QUESTIONS.md and try to continue that thread of investigation.
 

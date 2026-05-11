@@ -216,6 +216,21 @@ external void v_atan_double(
 );
 
 @ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_atan2_double(
+  ffi.Pointer<ffi.Double> y,
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
 >()
 external void v_log_double(
@@ -593,6 +608,21 @@ external void v_acos_float(
 >()
 external void v_atan_float(
   ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_atan2_float(
+  ffi.Pointer<ffi.Float> y,
+  ffi.Pointer<ffi.Float> x,
   ffi.Pointer<ffi.Float> res,
   int size,
 );
@@ -2193,6 +2223,29 @@ external void s_atan_double(
 
 @ffi.Native<
   ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_atan2_double(
+  ffi.Pointer<ffi.Double> y,
+  ffi.Pointer<ffi.Int> stridesY,
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
     ffi.Pointer<ffi.Float>,
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<ffi.Float>,
@@ -2204,6 +2257,29 @@ external void s_atan_double(
 external void s_atan_float(
   ffi.Pointer<ffi.Float> src,
   ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_atan2_float(
+  ffi.Pointer<ffi.Float> y,
+  ffi.Pointer<ffi.Int> stridesY,
+  ffi.Pointer<ffi.Float> x,
+  ffi.Pointer<ffi.Int> stridesX,
   ffi.Pointer<ffi.Float> res,
   ffi.Pointer<ffi.Int> stridesRes,
   ffi.Pointer<ffi.Int> shape,
