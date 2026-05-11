@@ -2213,4 +2213,13 @@
 * **Results**:
   - **Verification**: Formatting and static analysis are perfectly immaculate, maintaining peak system stability!
 
+***
 
+## 185. Codebase Review Pass & FINDINGS.md Clean-Up (Task 2 / Review Code)
+* **What was done**:
+  - Audited the central findings and optimization roadmap log [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md).
+  - Confirmed that all previously logged critical correctness and unmanaged memory leak bugs (including Section 2.3 to 2.6: Cholesky view correctness, eigenvalue view correctness, matrix inversion FFI view leaks, and equations solver FFI memory leaks) have been completely fixed.
+  - Confirmed that Section 1.1 unmanaged PRNG loops offloading has been completely resolved.
+  - Cleaned up `FINDINGS.md` by deleting these resolved entries, preserving only active architectural and features roadmap items for future sprints.
+* **Results**:
+  - **Verification**: Confirmed formatting and static analysis pass clean. All committed changes are staged successfully!
