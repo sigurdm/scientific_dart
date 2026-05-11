@@ -36,9 +36,8 @@ Remember when adding new operations:
 ## 🧪 Section 3: NumPy Compatibility Roadmap (Missing Features)
 
 ### 3.1 Universal Functions (ufuncs)
-- **Math & Trigonometry**:
-  - Trigonometric functions: `tan()`, inverse trig `asin()`, `acos()`, `atan()`, and `atan2(y, x)`.
   - (sinh(), cosh(), tanh(), asinh(), acosh(), and atanh() FFI-accelerated ufuncs have been fully resolved!)
+  - (tan(), asin(), acos(), atan(), and atan2(y, x) FFI-accelerated ufuncs have been fully resolved!)
   - Power & logarithmic: `square()`, element-wise `power()`, modulo `remainder()` / `mod()`, and combined division/modulo `divmod()`.
   - Floating-point classification: `isnan()`, `isinf()`, `isfinite()`, sign copier `copysign()`.
 - **Logical Operations (Vectorized)**:
@@ -78,7 +77,7 @@ Remember when adding new operations:
 - **Calculus Solvers**: N-Dimensional gradients `gradient(f)` and trapezoidal integrals solver `trapz(y, x)`.
 
 ### 3.7 Vectorized Logical Reductions
-- **Axis-wise logical reductions**: `all(a, {int? axis})` (check if all elements along axis evaluate to true) and `any(a, {int? axis})` (check if any element along axis evaluates to true) over numeric or boolean tensor structures.
+- **Axis-wise logical reductions**: `all(a, {int? axis})` (check if all elements along axis evaluate to true) and `any(a, {int? axis})` (check if any element along axis evaluate to true) over numeric or boolean tensor structures.
 
 ### 3.8 Tabular Tabular Record Arrays (Heterogeneous Structured Data)
 - **Structured Fields Support**: Exposing composite data types matching standard C structs (equivalent to NumPy's `np.recarray` and structured dtype schemas), allowing heterogeneous fields elements to be packaged and walked sequentially inside unmanaged heap bytes segments.
