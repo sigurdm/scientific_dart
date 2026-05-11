@@ -18,7 +18,7 @@ bool _listEquals(List<int> a, List<int> b) {
 /// Generates an array with random values uniformly distributed in the half-open interval `[0.0, 1.0)`.
 ///
 /// **Preconditions:**
-/// - [dtype] must be a floating point type (``DType.float32`` or ``DType.float64`).`
+/// - [dtype] must be a floating point type (`DType.float32` or `DType.float64`).
 ///
 /// **Throws:**
 /// - [ArgumentError] if the provided [dtype] is not a supported floating point type.
@@ -72,7 +72,7 @@ NDArray<T> uniform<T extends num>(
 /// Generates an array with random integer values uniformly distributed in the half-open interval `[low, high)`.
 ///
 /// **Preconditions:**
-/// - [dtype] must be an integer type (``DType.int32`` or ``DType.int64`).`
+/// - [dtype] must be an integer type (`DType.int32` or `DType.int64`).
 /// - [low] must be strictly less than [high].
 ///
 /// **Throws:**
@@ -428,8 +428,8 @@ NDArray<T> binomial<T extends num>(
 ///
 /// **Example:**
 /// ```dart
-/// final mean = NDArray.fromList([1.0, 2.0], [2], `DType.float64);`
-/// final cov = NDArray.fromList([1.0, 0.0, 0.0, 1.0], [2, 2], `DType.float64);`
+/// final mean = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+/// final cov = NDArray.fromList([1.0, 0.0, 0.0, 1.0], [2, 2], DType.float64);
 /// final samples = multivariateNormal(mean, cov, size: [1000]);
 /// print(samples.shape); // [1000, 2]
 /// ```
@@ -534,7 +534,7 @@ NDArray<T> multivariateNormal<T extends num>(
 ///
 /// **Example:**
 /// ```dart
-/// final pvals = NDArray.fromList([0.2, 0.5, 0.3], [3], `DType.float64);`
+/// final pvals = NDArray.fromList([0.2, 0.5, 0.3], [3], DType.float64);
 /// final samples = multinomial(10, pvals, size: [1000]);
 /// print(samples.shape); // [1000, 3]
 /// ```
