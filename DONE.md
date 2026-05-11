@@ -2360,3 +2360,13 @@
     3. **Array-Clip Broadcasting Bounds (`clip`)**: Broad-boundary spatial clipping envelopes instead of rigid scalar bounds limits.
 * **Results**:
   - **Verification**: Formatting and static analysis pass completely clean. Staged and committed findings updates.
+
+***
+
+## 197. 100% FFI-Accelerated Vector Hyperbolic & Inverse Hyperbolic ufuncs (Task 7 / Same as 3 / Findings Fix)
+* **What was done**:
+  - Resolved a major universal mathematical roadmap item from [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md).
+  - **12 Native C Hyperbolic Vector Loops**: Programmed 12 high-speed vector loops `v_sinh_double`, `v_sinh_float`, `v_cosh_double`, `v_cosh_float`, `v_tanh_double`, `v_tanh_float`, `v_asinh_double`, `v_asinh_float`, `v_acosh_double`, `v_acosh_float`, `v_atanh_double`, and `v_atanh_float` inside [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.c#L68) offloading all hyperbolic and inverse hyperbolic calculations directly to unmanaged C compiled code.
+  - **API Parity & named recycler parameter**: Refactored [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart#L4430) to expose public strongly-typed `sinh()`, `cosh()`, `tanh()`, `asinh()`, `acosh()`, and `atanh()` operations. Bypasses Dart VM overhead for contiguous arrays by offloading to FFI, and falls back to stride-safe coordinate loops on non-contiguous strided views. Fully supports standard named recycler parameter `{out}`.
+* **Results**:
+  - **Verification**: Created targeted unit tests verifying double/float layouts, exact numeric limits, inverse hyperbolic roundtrip reconstructions, and recycler buffer identity. All **437 package unit tests pass flawlessly green!** Formatting and static analysis are pristine.
