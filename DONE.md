@@ -2271,3 +2271,19 @@
   - **Dynamic Promotion Fallback**: Non-float dtypes (integers, boolean, complex) are dynamically promoted to double-precision float FFI buffers, offloaded to high-speed C odometer sweeps, and converted back, running up to **50x-100x faster** than pure-Dart coordinate walk recursion!
 * **Results**:
   - **Verification**: Formatting and static analysis are pristine. Recompiled all dynamic libraries and confirmed all **435 unit tests continue to pass perfectly green!**
+
+***
+
+## 190. Strongly-Typed & Multi-Type Correct Cumulative ufuncs (User Request / Refactoring)
+* **Issue**:
+  - While offloading cumulative sum and product to a C-land double-precision float odometer resolved FFI performance barriers, it triggered complex number execution failures. `Complex` is a custom object and not a subclass of `num`, causing runtime type-cast coercion crashes. It also failed to preserve integer precision. Additionally, Sigurd preferred strongly typed signatures and naming uniformity using `into` instead of `out`.
+* **Resolution**:
+  - **Generic Dual-Tier Execution Track**: Refactored [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart) to implement a generic type-safe execution gate:
+    - **FFI Path**: Float64 and Float32 arrays map directly to native strided C odometer loops for absolute peak hardware acceleration.
+    - **Generic Fallback Path**: Complex, Integer, and Boolean arrays fall back to our zero-allocation recursive walker `_cumOpRecursive` operating directly on custom types.
+  - **Generic Type Signatures**: Exposed strongly-typed signatures:
+    - `NDArray<T> cumsum<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? into})`
+    - `NDArray<T> cumprod<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? into})`
+  - **Rename out to into**: Renamed all recycler named parameters from `out` to `into` across operations, unit tests, and examples.
+* **Results**:
+  - **Verification**: Updated and verified that all **435 unit tests pass flawlessly green!** Formatting and static analysis are perfectly immaculate.
