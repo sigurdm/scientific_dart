@@ -14,7 +14,7 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 ### 2.1 Linear Algebra & LAPACK Integration
 - **Issue**: `det()`, `eig()`, `qr()`, and `svd()` lack ND-stack support, violating NumPy conventions for tensor shapes like `[Batch, N, N]`.
 - **Issue**: `matmul()` lacks support for Complex64 (`cblas_cgemm`) and Complex128 (`cblas_zgemm`) BLAS routines. While Float32 (`cblas_sgemm`) and Float64 (`cblas_dgemm`) are bound and FFI-offloaded, complex matrix multiplications are still falling back to slower iterative loops.
-- **Issue**: Missing premium solvers like pseudo-inverse `linalg.pinv`, least-squares solver `linalg.lstsq`, matrix power `linalg.matrix_power`, and optimal matrix multiplication chain order optimizer `linalg.multi_dot`.
+- **Issue**: Missing premium solvers like least-squares solver `linalg.lstsq` and optimal matrix multiplication chain order optimizer `linalg.multi_dot`.
 - **Recommended Tweak**: Expose `cblas_cgemm` and `cblas_zgemm` via the FFI bridge. Refactor linear algebra algorithms to handle ND-stack broadcasting. Add advanced LAPACK solver bindings for pseudo-inverses and least-squares equations.
 
 ### 2.2 Advanced Indexing & Iteration Structures
@@ -46,7 +46,7 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 - **Repeating & Tiling**: Vector repeat `repeat()` and grid tiling `tile()`.
 - **Rearranging**: Axis roll `roll()`, flips `flip()`, `fliplr()`, and `flipud()`.
 - **Splitting**: Block splitting `split()`, `array_split()`, `hsplit()`, and `vsplit()`.
-- **Triangular Masks**: Lower triangular matrix extraction `tril()` and upper triangular matrix extraction `triu()` (extremely vital for causal mask scaling inside LLM / attention block layers).
+- **Triangular Masks**: (Lower triangular matrix extraction tril() and upper triangular matrix extraction triu() have been fully resolved!)
 
 ### 3.3 Statistics & Sorting
 - **Sorting**: Partial sorting `partition()` and index partial sorting `argpartition()` (extremely high performance benefit for top-K filtering), stable sorting indicator `kind` parameter inside `sort()`.
@@ -58,7 +58,7 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 
 ### 3.5 Advanced Linear Algebra & Vector Calculus (Roadmap)
 - **Tensors & Matrices**:
-  - `matrix_power(NDArray a, int n)`: Raise a square 2D matrix to integer power `n` using binary exponentiation.
+  - (matrix_power() exponentiation solver has been fully resolved!)
   - `kron(NDArray a, NDArray b)`: Kronecker product of two arrays.
 - **Vector Calculus**:
   - `cross(NDArray a, NDArray b)`: Vector cross product in 3D space.
