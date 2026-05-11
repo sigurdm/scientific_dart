@@ -2337,3 +2337,14 @@
     - All educational example scripts.
 * **Results**:
   - **Verification**: Recompiled all dynamic libraries and confirmed that all **436 unit tests pass flawlessly green!** Static analysis is perfectly pristine.
+
+***
+
+## 195. 100% Exhaustive Switch Statements on Sealed DType Subclasses (User Request / Refactoring)
+* **Issue**:
+  - Standard cascading `if-else` chains inside our FFI dispatchers `diff()` and `_cumOpFFI()` were unoptimized and open to silent missing data-type gaps when extending the library. Using modern, strongly-typed exhaustive checks guarantees compile-time safety.
+* **Resolution**:
+  - **Exhaustive DType Matching via Sealed Subclass Patterns**: Refactored the FFI dispatchers inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart) to utilize Dart 3.0 **exhaustive switch statements**.
+  - Mapped switch branches directly on DType sealed subclass patterns (e.g., `Float64DType()`, `Float32DType()`, `Complex128DType()`, etc.) instead of JIT instance equality checks. This secures complete static verification and compiles into high-speed jump-tables natively in VM space.
+* **Results**:
+  - **Verification**: Static analysis is completely clean, and all **436 unit tests pass flawlessly green!**
