@@ -391,6 +391,7 @@ extension Float64NDArrayOperations on NDArray<Float64> {
 // Float32NDArrayOperations (NDArray<Float32>)
 // =============================================================================
 
+/// Strongly-typed mathematical operations for [NDArray] with [Float32] elements.
 extension Float32NDArrayOperations on NDArray<Float32> {
   /// Element-wise addition returning strongly-typed Float32 NDArray.
   NDArray<Float32> add(NDArray<Float32> other, {NDArray<Float32>? out}) {
@@ -670,6 +671,7 @@ extension Float32NDArrayOperations on NDArray<Float32> {
 // Int64NDArrayOperations (NDArray<Int64>)
 // =============================================================================
 
+/// Strongly-typed mathematical operations for [NDArray] with [Int64] elements.
 extension Int64NDArrayOperations on NDArray<Int64> {
   /// Element-wise addition returning strongly-typed Int64 NDArray.
   NDArray<Int64> add(NDArray<Int64> other, {NDArray<Int64>? out}) {
@@ -942,6 +944,7 @@ extension Int64NDArrayOperations on NDArray<Int64> {
 // Int32NDArrayOperations (NDArray<Int32>)
 // =============================================================================
 
+/// Strongly-typed mathematical operations for [NDArray] with [Int32] elements.
 extension Int32NDArrayOperations on NDArray<Int32> {
   /// Element-wise addition returning strongly-typed Int32 NDArray.
   NDArray<Int32> add(NDArray<Int32> other, {NDArray<Int32>? out}) {
@@ -1143,6 +1146,7 @@ extension Int32NDArrayOperations on NDArray<Int32> {
 // ComplexNDArrayOperations (NDArray<Complex>)
 // =============================================================================
 
+/// Strongly-typed mathematical operations for [NDArray] with [Complex] elements.
 extension ComplexNDArrayOperations on NDArray<Complex> {
   /// Element-wise addition with Complex NDArray.
   NDArray<Complex> add(NDArray<Complex> other, {NDArray<Complex>? out}) {

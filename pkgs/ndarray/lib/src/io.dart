@@ -463,7 +463,7 @@ void savez(
 ///   archive bytes and decodes them fully in memory via `ZipDecoder().decodeBytes()`. When deserializing each `.npy` file,
 ///   it allocates a contiguous unmanaged C-heap memory block and copies the bytes block.
 ///   This creates a temporary **3x RAM footprint amplification factor** (compressed archive bytes list + fully
-///   inflated `ArchiveFile` list + unmanaged FFI pointer heap arrays). For gigabyte-scale scientific datasets
+///   inflated ArchiveFile list + unmanaged FFI pointer heap arrays). For gigabyte-scale scientific datasets
 ///   (e.g. large machine learning checkpoints or dense matrix grids logs), ensure the host system has sufficient
 ///   free memory pages to prevent Out-Of-Memory (OOM) isolate VM kills.
 ///

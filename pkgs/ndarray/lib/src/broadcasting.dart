@@ -37,12 +37,12 @@ final class BroadcastResult {
 ///   in zero unmanaged heap allocations.
 ///
 /// **Example:**
-/// ``dart
-/// final a = NDArray<Float64>.fromList([1.0, 2.0], [2, 1], DType.float64);
-/// final b = NDArray<Float64>.fromList([10.0, 20.0, 30.0], [1, 3], DType.float64);
+/// ```dart
+/// final a = `NDArray<Float64>`.fromList([1.0, 2.0], [2, 1], DType.float64);
+/// final b = `NDArray<Float64>`.fromList([10.0, 20.0, 30.0], [1, 3], DType.float64);
 /// final result = broadcast(a, b);
 /// print(result.shape); // [2, 3]
-/// ``
+/// ```
 BroadcastResult broadcast(NDArray a, NDArray b) {
   final shapeA = a.shape;
   final shapeB = b.shape;

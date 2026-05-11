@@ -491,12 +491,12 @@ NDArray<T> binomial<T extends num>(
 ///   yielding spectacular compiled execution speeds.
 ///
 /// **Example:**
-/// ``dart
+/// ```dart
 /// final mean = NDArray.fromList([1.0, 2.0], [2], DType.float64);
 /// final cov = NDArray.fromList([1.0, 0.0, 0.0, 1.0], [2, 2], DType.float64);
 /// final samples = multivariateNormal(mean, cov, size: [1000]);
 /// print(samples.shape); // [1000, 2]
-/// ``
+/// ```
 NDArray<T> multivariateNormal<T extends num>(
   NDArray mean,
   NDArray cov, {
@@ -597,11 +597,11 @@ NDArray<T> multivariateNormal<T extends num>(
 /// - [ArgumentError] if [pvals] contains negative probabilities, or if their sum exceeds 1.0 by a significant tolerance.
 ///
 /// **Example:**
-/// ``dart
+/// ```dart
 /// final pvals = NDArray.fromList([0.2, 0.5, 0.3], [3], DType.float64);
 /// final samples = multinomial(10, pvals, size: [1000]);
 /// print(samples.shape); // [1000, 3]
-/// ``
+/// ```
 NDArray<T> multinomial<T extends num>(
   int n,
   NDArray pvals, {
