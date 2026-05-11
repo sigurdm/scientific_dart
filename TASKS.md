@@ -37,7 +37,7 @@ If any item in FINDINGS.md is annotated with `NEXT` chose that one. If there are
 6. Documentation: Find a file in the repo and make sure all api members are documented and the documentation is correct and with usage examples where applicable. If not, fix it and leave a description of the work in `done/`.
 7. Same as 3.
 8. Same as 3.
-9. Merge a branch from `branches.md` into the main branch. Review the changes, merge it and if everything is OK, then delete the branch from `branches.md` and from git.
+9. Merge all branches from `branches.md` into the main branch. Review the changes, merge it and if everything is OK, then delete the branches from `branches.md` and from git.
 
 If any of the questions have been answered, then remove the question from QUESTIONS.md and try to continue that thread of investigation.
 

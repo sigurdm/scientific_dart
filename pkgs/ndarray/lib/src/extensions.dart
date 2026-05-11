@@ -8,6 +8,7 @@ import 'operations.dart' as ops;
 // Float64NDArrayOperations (NDArray<Float64>)
 // =============================================================================
 
+/// Strongly-typed mathematical operations for [NDArray] with [Float64] elements.
 extension Float64NDArrayOperations on NDArray<Float64> {
   /// Element-wise addition returning strongly-typed Float64 NDArray.
   NDArray<Float64> add(NDArray<Float64> other, {NDArray<Float64>? out}) {
