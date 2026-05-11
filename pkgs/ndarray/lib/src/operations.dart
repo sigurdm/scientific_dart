@@ -2146,6 +2146,43 @@ NDArray exp(NDArray a, {NDArray? out}) {
       v_exp_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
     }
+  } else {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    try {
+      if (a.dtype == DType.float64) {
+        s_exp_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.float32) {
+        s_exp_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
+    }
   }
 
   final aNum = a as NDArray<num>;
@@ -2193,6 +2230,43 @@ NDArray log(NDArray a, {NDArray? out}) {
     } else if (a.dtype == DType.float32) {
       v_log_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
+    }
+  } else {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    try {
+      if (a.dtype == DType.float64) {
+        s_log_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.float32) {
+        s_log_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
     }
   }
 
@@ -4554,7 +4628,27 @@ NDArray tan(NDArray a, {NDArray? out}) {
       cStridesRes[i] = result.strides[i];
     }
     try {
-      if (a.dtype == DType.complex128) {
+      if (a.dtype == DType.float64) {
+        s_tan_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.float32) {
+        s_tan_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.complex128) {
         s_tan_complex128(
           a.pointer.cast(),
           cStridesA,
@@ -5051,6 +5145,43 @@ NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
       v_sinh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
     }
+  } else {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    try {
+      if (a.dtype == DType.float64) {
+        s_sinh_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.float32) {
+        s_sinh_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
+    }
   }
 
   for (var i = 0; i < a.data.length; i++) {
@@ -5094,6 +5225,43 @@ NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     } else if (a.dtype == DType.float32) {
       v_cosh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
+    }
+  } else {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    try {
+      if (a.dtype == DType.float64) {
+        s_cosh_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.float32) {
+        s_cosh_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
     }
   }
 
@@ -5139,6 +5307,43 @@ NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
       v_tanh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
     }
+  } else {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    try {
+      if (a.dtype == DType.float64) {
+        s_tanh_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.float32) {
+        s_tanh_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
+    }
   }
 
   for (var i = 0; i < a.data.length; i++) {
@@ -5182,6 +5387,43 @@ NDArray<double> asinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     } else if (a.dtype == DType.float32) {
       v_asinh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
+    }
+  } else {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    try {
+      if (a.dtype == DType.float64) {
+        s_asinh_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.float32) {
+        s_asinh_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
     }
   }
 
@@ -5227,6 +5469,43 @@ NDArray<double> acosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
       v_acosh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
     }
+  } else {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    try {
+      if (a.dtype == DType.float64) {
+        s_acosh_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.float32) {
+        s_acosh_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
+    }
   }
 
   for (var i = 0; i < a.data.length; i++) {
@@ -5270,6 +5549,43 @@ NDArray<double> atanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     } else if (a.dtype == DType.float32) {
       v_atanh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
+    }
+  } else {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    try {
+      if (a.dtype == DType.float64) {
+        s_atanh_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.float32) {
+        s_atanh_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
     }
   }
 

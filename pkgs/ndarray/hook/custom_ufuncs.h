@@ -242,6 +242,27 @@ void s_acos_float(const float *src, const int *stridesSrc, float *res, const int
 void s_atan_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
 void s_atan_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
 
+void s_tan_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_tan_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_exp_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_exp_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_log_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_log_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+
+void s_sinh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_sinh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_cosh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_cosh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_tanh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_tanh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+
+void s_asinh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_asinh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_acosh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_acosh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_atanh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_atanh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+
 // ------------------------------------------------------------
 // Native C High-Speed Strided Flattening/Copying Kernels
 // ----------------------------------------------------------------------------
