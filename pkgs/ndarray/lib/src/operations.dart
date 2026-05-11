@@ -654,12 +654,32 @@ void _elementWiseOp<Ta, Tb, Tr>(
   int offsetResult,
   Tr Function(Ta, Tb) op,
 ) {
-  if (dim == shape.length) {
+  if (shape.isEmpty) {
     result[offsetResult] = op(a[offsetA], b[offsetB]);
     return;
   }
 
-  for (var i = 0; i < shape[dim]; i++) {
+  if (dim == shape.length - 1) {
+    final limit = shape[dim];
+    final strideA = stridesA[dim];
+    final strideB = stridesB[dim];
+    final strideResult = stridesResult[dim];
+
+    for (var i = 0; i < limit; i++) {
+      result[offsetResult + i * strideResult] = op(
+        a[offsetA + i * strideA],
+        b[offsetB + i * strideB],
+      );
+    }
+    return;
+  }
+
+  final limit = shape[dim];
+  final strideA = stridesA[dim];
+  final strideB = stridesB[dim];
+  final strideResult = stridesResult[dim];
+
+  for (var i = 0; i < limit; i++) {
     _elementWiseOp<Ta, Tb, Tr>(
       result,
       a,
@@ -669,9 +689,9 @@ void _elementWiseOp<Ta, Tb, Tr>(
       stridesB,
       stridesResult,
       dim + 1,
-      offsetA + i * stridesA[dim],
-      offsetB + i * stridesB[dim],
-      offsetResult + i * stridesResult[dim],
+      offsetA + i * strideA,
+      offsetB + i * strideB,
+      offsetResult + i * strideResult,
       op,
     );
   }
