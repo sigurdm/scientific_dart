@@ -2456,3 +2456,12 @@
   - **Angle Converters Refactoring**: Upgraded `deg2rad()` and `rad2deg()` to accept named `{NDArray? out}` parameters, passing them straight to their corresponding accelerated `multiply` operations.
 * **Results**:
   - **Verification**: All **438 package unit tests pass flawlessly green!** formatting and static analysis are perfectly clean. Staged and committed refactorings cleanly.
+
+***
+
+## 206. Comprehensive Documentation Upgrades for public NDArray members (Task 6 / Documentation)
+* **What was done**:
+  - Audited the core array definition file [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/ndarray.dart) to find public members lacking complete Effective Dart style comments.
+  - Fully documented `ravel()`, `transposed`, `scalar`, and `setCell()` to include clear precondition tags, throws declarations, performance notations (Big O time and space complexity), and rich code examples.
+* **Results**:
+  - **Verification**: All unit tests continue to pass flawlessly green. formatting and static analysis are perfectly clean. Staged and committed documentation cleanly.
