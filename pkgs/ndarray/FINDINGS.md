@@ -25,6 +25,14 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 - **Issue**: Missing structured multi-dimensional iteration utilities equivalent to NumPy's `nditer` and `ndenumerate`. Currently, hot loops are forced to nested dimension walks or explicit flat-index strided conversions, causing VM boundary crossing overhead and list allocations.
 - **Recommended Tweak**: Offload advanced indexing walks to a native C odometer kernel. Design a zero-allocation `nditer`-like class in Dart that yields strided coordinate buffers directly to consumer math closures.
 
+### 2.3 linalg.cholesky Correctness Failure on Strided Views
+- **Issue**: `cholesky()` in `operations.dart` copies elements from `a.data` sequentially using `setRange(0, n*n, a.data)` or a simple `for (var i = 0; i < n*n; i++) lMat.data[i] = a.data[i]`. If `a` is non-contiguous (e.g., transposed or sliced view), this copies incorrect data from the parent backing array index 0, yielding completely garbage results.
+- **Recommended Tweak**: Add a contiguous check `if (!a.isContiguous) a = a.copy();` at the beginning of `cholesky()`, and ensure the copied temporary array is disposed of cleanly in a `finally` block (exactly matching our `fft` leak-safety pattern!).
+
+### 2.4 linalg.eig Correctness Failure on Strided Views
+- **Issue**: `eig()` in `operations.dart` also copies elements from `a.data` sequentially to `aReal.data` using a flat `for` loop over `a.data[i]`. If the input array `a` is non-contiguous, it copies elements sequentially from the backing list, resulting in incorrect eigenvalue and eigenvector computations.
+- **Recommended Tweak**: Add a contiguous check `if (!a.isContiguous) a = a.copy();` at the beginning of `eig()`, disposing of the transient copy in a `finally` block.
+
 ---
 
 ## 🧪 Section 3: NumPy Compatibility Roadmap (Missing Features)
