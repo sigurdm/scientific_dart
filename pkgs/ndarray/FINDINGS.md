@@ -66,7 +66,7 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
   - `norm(NDArray a, {dynamic ord, int? axis})`: Calculate vector/matrix norms. Expose standard L1, L2 (Frobenius), and Chebyshev infinity norms, supporting Axis-wise reductions cleanly!
 
 ### 3.6 Calculus & Cumulative Accumulations
-- **Cumulative ufuncs**: `cumsum(a, {int? axis})` (cumulative sum) and `cumprod(a, {int? axis})` (cumulative product) to enable robust DSP time-series integrals calculations.
+- **Cumulative ufuncs**: (cumsum() and cumprod() ufuncs have been fully resolved!)
 - **Calculus Solvers**: N-Dimensional gradients `gradient(f)` and trapezoidal integrals solver `trapz(y, x)`.
 
 ### 3.7 Vectorized Logical Reductions
