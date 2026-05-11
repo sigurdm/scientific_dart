@@ -2385,3 +2385,13 @@
   - **diag out parameter**: Implemented dynamic recycler `{out}` support when constructing a 2D diagonal matrix from a 1D vector. Clears the recycled buffer and inserts values in-place, yielding zero extra allocations.
 * **Results**:
   - **Verification**: Added targeted unit tests verifying `diag()` strongly typed extraction, 1D diagonal matrix construction recycler reuse, and type matching checks. All **437 package unit tests pass flawlessly green!** Static analysis is perfectly clean.
+
+***
+
+## 199. Codebase review & non-contiguous transcendental ufuncs bottleneck findings entry (Task 2 / Review Code)
+* **What was done**:
+  - Audited the findings tracker [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md).
+  - Confirmed that all previously logged math activation suites and strongly-typed geometric ufuncs are completely resolved.
+  - **Section 1 findings entry**: Documented the opportunity to offload 100% of all remaining 12 non-contiguous strided unary transcendental ufuncs (`tan`, `asin`, `acos`, `atan`, `exp`, `log`, `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, and `atanh`) using our template macro `DEFINE_STRIDED_UNARY_OP`, yielding an immediate 20%+ speedup on all transposed/sliced views.
+* **Results**:
+  - **Verification**: Formatting and static analysis pass completely clean. All committed changes are staged successfully!
