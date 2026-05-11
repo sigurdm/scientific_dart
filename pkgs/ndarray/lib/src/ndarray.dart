@@ -650,54 +650,64 @@ final class NDArray<T> implements ffi.Finalizable {
       };
     }
 
+    final hasNegativeStrides = strides.any((s) => s < 0);
+
     ffi.Pointer<ffi.Void> pointer;
     List<T> data;
+    final int viewOffsetElements;
 
-    // Calculate the offset pointer
-    switch (parent.dtype) {
-      case Float64DType():
-        final p = parent._pointer.cast<ffi.Double>() + offsetElements;
-        pointer = p.cast();
-        data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-      case Float32DType():
-        final p = parent._pointer.cast<ffi.Float>() + offsetElements;
-        pointer = p.cast();
-        data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-      case Int32DType():
-        final p = parent._pointer.cast<ffi.Int32>() + offsetElements;
-        pointer = p.cast();
-        data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-      case Int64DType():
-        final p = parent._pointer.cast<ffi.Int64>() + offsetElements;
-        pointer = p.cast();
-        data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-      case Uint8DType():
-        final p = parent._pointer.cast<ffi.Uint8>() + offsetElements;
-        pointer = p.cast();
-        data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-      case Int16DType():
-        final p = parent._pointer.cast<ffi.Int16>() + offsetElements;
-        pointer = p.cast();
-        data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-      case Complex128DType():
-        final p = parent._pointer.cast<ffi.Double>() + (offsetElements * 2);
-        pointer = p.cast();
-        final doubleList = p.asTypedList(
-          parent.data.length * 2 - offsetElements * 2,
-        );
-        data = ComplexList(doubleList) as List<T>;
-      case Complex64DType():
-        final p = parent._pointer.cast<ffi.Float>() + (offsetElements * 2);
-        pointer = p.cast();
-        final floatList = p.asTypedList(
-          parent.data.length * 2 - offsetElements * 2,
-        );
-        data = ComplexList(floatList) as List<T>;
-      case BooleanDType():
-        final p = parent._pointer.cast<ffi.Uint8>() + offsetElements;
-        pointer = p.cast();
-        final uint8List = p.asTypedList(parent.data.length - offsetElements);
-        data = BoolList(uint8List) as List<T>;
+    if (hasNegativeStrides) {
+      pointer = parent.pointer;
+      data = parent.data as List<T>;
+      viewOffsetElements = offsetElements;
+    } else {
+      viewOffsetElements = 0;
+      // Calculate the offset pointer
+      switch (parent.dtype) {
+        case Float64DType():
+          final p = parent._pointer.cast<ffi.Double>() + offsetElements;
+          pointer = p.cast();
+          data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
+        case Float32DType():
+          final p = parent._pointer.cast<ffi.Float>() + offsetElements;
+          pointer = p.cast();
+          data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
+        case Int32DType():
+          final p = parent._pointer.cast<ffi.Int32>() + offsetElements;
+          pointer = p.cast();
+          data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
+        case Int64DType():
+          final p = parent._pointer.cast<ffi.Int64>() + offsetElements;
+          pointer = p.cast();
+          data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
+        case Uint8DType():
+          final p = parent._pointer.cast<ffi.Uint8>() + offsetElements;
+          pointer = p.cast();
+          data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
+        case Int16DType():
+          final p = parent._pointer.cast<ffi.Int16>() + offsetElements;
+          pointer = p.cast();
+          data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
+        case Complex128DType():
+          final p = parent._pointer.cast<ffi.Double>() + (offsetElements * 2);
+          pointer = p.cast();
+          final doubleList = p.asTypedList(
+            parent.data.length * 2 - offsetElements * 2,
+          );
+          data = ComplexList(doubleList) as List<T>;
+        case Complex64DType():
+          final p = parent._pointer.cast<ffi.Float>() + (offsetElements * 2);
+          pointer = p.cast();
+          final floatList = p.asTypedList(
+            parent.data.length * 2 - offsetElements * 2,
+          );
+          data = ComplexList(floatList) as List<T>;
+        case BooleanDType():
+          final p = parent._pointer.cast<ffi.Uint8>() + offsetElements;
+          pointer = p.cast();
+          final uint8List = p.asTypedList(parent.data.length - offsetElements);
+          data = BoolList(uint8List) as List<T>;
+      }
     }
 
     return NDArray._(
@@ -707,6 +717,7 @@ final class NDArray<T> implements ffi.Finalizable {
       shape: shape,
       strides: strides,
       dtype: parent.dtype as DType<T>,
+      offsetElements: viewOffsetElements,
     );
   }
 
@@ -1025,7 +1036,7 @@ final class NDArray<T> implements ffi.Finalizable {
       }
     }
 
-    fillWalk(0, 0);
+    fillWalk(0, offsetElements);
   }
 
   /// Transposes the dimensions of this array.
@@ -1168,7 +1179,7 @@ final class NDArray<T> implements ffi.Finalizable {
       }
       offset += idx * strides[i];
     }
-    return data[offset];
+    return data[offsetElements + offset];
   }
 
   /// Sets the single scalar element at the specified multi-dimensional [coords] to [value].
@@ -1207,7 +1218,7 @@ final class NDArray<T> implements ffi.Finalizable {
       }
       offset += idx * strides[i];
     }
-    data[offset] = value;
+    data[offsetElements + offset] = value;
   }
 
   /// Modifies elements where the provided boolean binary [mask] contains `1`.
@@ -1266,7 +1277,7 @@ final class NDArray<T> implements ffi.Finalizable {
       }
     }
 
-    walk(0, 0, 0);
+    walk(0, offsetElements, mask.offsetElements);
   }
 
   /// Modifies elements where the provided boolean binary [mask] contains `true`,
@@ -1305,7 +1316,7 @@ final class NDArray<T> implements ffi.Finalizable {
       }
     }
 
-    walk(0, 0, 0);
+    walk(0, offsetElements, mask.offsetElements);
   }
 
   /// Modifies entire sub-matrix rows or slices along the specified [axis] targeted by a 1D list of [indices], setting them all to a single [value].
@@ -1343,7 +1354,7 @@ final class NDArray<T> implements ffi.Finalizable {
         }
       }
 
-      overwriteSlice(0, targetIdx * strides[axis]);
+      overwriteSlice(0, offsetElements + targetIdx * strides[axis]);
     }
   }
 
@@ -1390,7 +1401,7 @@ final class NDArray<T> implements ffi.Finalizable {
         }
       }
 
-      writeSlice(0, targetIdx * strides[axis]);
+      writeSlice(0, offsetElements + targetIdx * strides[axis]);
     }
   }
 
@@ -2129,12 +2140,22 @@ final class NDArray<T> implements ffi.Finalizable {
         offsetElements += idx * strides[i];
         // Rank reduction: don't add to newShape or newStrides
       } else if (selector is Slice) {
-        final start = selector.start ?? (selector.step > 0 ? 0 : shape[i] - 1);
-        final stop = selector.stop ?? (selector.step > 0 ? shape[i] : -1);
         final step = selector.step;
+        final int startIdx;
+        if (selector.start == null) {
+          startIdx = step > 0 ? 0 : shape[i] - 1;
+        } else {
+          final s = selector.start!;
+          startIdx = s < 0 ? shape[i] + s : s;
+        }
 
-        final startIdx = start < 0 ? shape[i] + start : start;
-        final stopIdx = stop < 0 ? shape[i] + stop : stop;
+        final int stopIdx;
+        if (selector.stop == null) {
+          stopIdx = step > 0 ? shape[i] : -1;
+        } else {
+          final s = selector.stop!;
+          stopIdx = s < 0 ? shape[i] + s : s;
+        }
 
         // Bound checks
         final realStart = startIdx.clamp(0, shape[i] - 1);
@@ -2237,18 +2258,29 @@ final class NDArray<T> implements ffi.Finalizable {
         destDim,
       );
     } else if (selector is Slice) {
-      final start =
-          selector.start ?? (selector.step > 0 ? 0 : src.shape[srcDim] - 1);
-      final stop =
-          selector.stop ?? (selector.step > 0 ? src.shape[srcDim] : -1);
       final step = selector.step;
-      final startIdx = start < 0 ? src.shape[srcDim] + start : start;
+      final int startIdx;
+      if (selector.start == null) {
+        startIdx = step > 0 ? 0 : src.shape[srcDim] - 1;
+      } else {
+        final s = selector.start!;
+        startIdx = s < 0 ? src.shape[srcDim] + s : s;
+      }
+
+      final int stopIdx;
+      if (selector.stop == null) {
+        stopIdx = step > 0 ? src.shape[srcDim] : -1;
+      } else {
+        final s = selector.stop!;
+        stopIdx = s < 0 ? src.shape[srcDim] + s : s;
+      }
+
       final realStart = startIdx.clamp(0, src.shape[srcDim] - 1);
 
       var destIdx = 0;
       for (
         var idx = realStart;
-        selector.step > 0 ? idx < stop : idx > stop;
+        selector.step > 0 ? idx < stopIdx : idx > stopIdx;
         idx += step
       ) {
         srcIndices[srcDim] = idx;

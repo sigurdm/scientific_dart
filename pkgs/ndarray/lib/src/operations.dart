@@ -11223,3 +11223,224 @@ NDArray conj(NDArray a, {NDArray? out}) {
 
 /// Alias for [conj].
 NDArray conjugate(NDArray a, {NDArray? out}) => conj(a, out: out);
+
+/// Reverses the order of elements along the given [axis].
+///
+/// If [axis] is null, all axes are flipped. If [axis] is an int or a list of ints,
+/// only the specified axes are flipped.
+///
+/// **Preconditions:**
+/// - [axis] must be an [int], a [List<int>], or `null`.
+/// - Every axis in [axis] must be a valid axis index for the array.
+///
+/// **Throws:**
+/// - [ArgumentError] if [axis] type is invalid.
+/// - [RangeError] if any axis index is out of bounds.
+///
+/// {@example /example/rearranging_example.dart lang=dart}
+///
+/// Refer to [NumPy's flip](https://numpy.org/doc/stable/reference/generated/numpy.flip.html)
+/// for more information on behavioral specifications.
+NDArray<T> flip<T extends Object>(NDArray<T> a, {dynamic axis}) {
+  if (axis == null) {
+    final selectors = List<Selector>.generate(
+      a.shape.length,
+      (i) => const Slice(step: -1),
+    );
+    return a.slice(selectors);
+  } else if (axis is int) {
+    final normAxis = axis < 0 ? a.shape.length + axis : axis;
+    if (normAxis < 0 || normAxis >= a.shape.length) {
+      throw RangeError.range(axis, -a.shape.length, a.shape.length - 1, 'axis');
+    }
+    final selectors = List<Selector>.generate(
+      a.shape.length,
+      (i) => i == normAxis ? const Slice(step: -1) : const Slice.all(),
+    );
+    return a.slice(selectors);
+  } else if (axis is List<int>) {
+    final normAxes = axis.map((ax) {
+      final norm = ax < 0 ? a.shape.length + ax : ax;
+      if (norm < 0 || norm >= a.shape.length) {
+        throw RangeError.range(ax, -a.shape.length, a.shape.length - 1, 'axis');
+      }
+      return norm;
+    }).toSet();
+
+    final selectors = List<Selector>.generate(
+      a.shape.length,
+      (i) => normAxes.contains(i) ? const Slice(step: -1) : const Slice.all(),
+    );
+    return a.slice(selectors);
+  } else {
+    throw ArgumentError('axis must be null, an int, or a List<int>');
+  }
+}
+
+/// Reverses the order of elements along axis 1 (left/right direction).
+///
+/// **Preconditions:**
+/// - Array rank must be at least 2.
+///
+/// **Throws:**
+/// - [ArgumentError] if the array rank is less than 2.
+///
+/// {@example /example/rearranging_example.dart lang=dart}
+///
+/// Refer to [NumPy's fliplr](https://numpy.org/doc/stable/reference/generated/numpy.fliplr.html)
+/// for more information on behavioral specifications.
+NDArray<T> fliplr<T extends Object>(NDArray<T> a) {
+  if (a.shape.length < 2) {
+    throw ArgumentError('Input array must be at least 2-D');
+  }
+  return flip(a, axis: 1);
+}
+
+/// Reverses the order of elements along axis 0 (up/down direction).
+///
+/// **Preconditions:**
+/// - Array rank must be at least 1.
+///
+/// **Throws:**
+/// - [ArgumentError] if the array rank is less than 1.
+///
+/// {@example /example/rearranging_example.dart lang=dart}
+///
+/// Refer to [NumPy's flipud](https://numpy.org/doc/stable/reference/generated/numpy.flipud.html)
+/// for more information on behavioral specifications.
+NDArray<T> flipud<T extends Object>(NDArray<T> a) {
+  if (a.shape.length < 1) {
+    throw ArgumentError('Input array must be at least 1-D');
+  }
+  return flip(a, axis: 0);
+}
+
+/// Rolls array elements along a given axis.
+///
+/// Elements that roll beyond the last position are re-introduced at the first.
+///
+/// If [axis] is null, the array is flattened before rolling, then restored to the
+/// original shape.
+///
+/// **Preconditions:**
+/// - [shift] must be an [int] or a [List<int>].
+/// - [axis] must be an [int], a [List<int>], or `null`.
+/// - Every axis in [axis] must be a valid axis index for the array.
+///
+/// **Throws:**
+/// - [ArgumentError] if [shift] or [axis] types are invalid, or if their lengths mismatch.
+/// - [RangeError] if any axis index is out of bounds.
+///
+/// {@example /example/rearranging_example.dart lang=dart}
+///
+/// Refer to [NumPy's roll](https://numpy.org/doc/stable/reference/generated/numpy.roll.html)
+/// for more information on behavioral specifications.
+NDArray<T> roll<T extends Object>(NDArray<T> a, dynamic shift, {dynamic axis}) {
+  if (a.rank == 0) {
+    return a.copy();
+  }
+
+  if (axis == null) {
+    if (shift is! int) {
+      throw ArgumentError('shift must be an int when axis is null');
+    }
+    final shape = a.shape;
+    final flat = a.ravel();
+    final rolledFlat = _rollSingle1D(flat, shift);
+    final result = rolledFlat.reshape(shape);
+    if (flat != a) {
+      flat.dispose();
+    }
+    return result;
+  }
+
+  if (shift is int && axis is int) {
+    return _rollSingle(a, shift, axis);
+  }
+
+  if (shift is List<int> && axis is List<int>) {
+    if (shift.length != axis.length) {
+      throw ArgumentError('shift and axis must have the same length');
+    }
+    var current = a;
+    final toDispose = <NDArray>[];
+    for (var i = 0; i < shift.length; i++) {
+      final next = _rollSingle(current, shift[i], axis[i]);
+      if (current != a) {
+        toDispose.add(current);
+      }
+      current = next;
+    }
+    for (final arr in toDispose) {
+      arr.dispose();
+    }
+    return current;
+  }
+
+  if (shift is int && axis is List<int>) {
+    var current = a;
+    final toDispose = <NDArray>[];
+    for (var i = 0; i < axis.length; i++) {
+      final next = _rollSingle(current, shift, axis[i]);
+      if (current != a) {
+        toDispose.add(current);
+      }
+      current = next;
+    }
+    for (final arr in toDispose) {
+      arr.dispose();
+    }
+    return current;
+  }
+
+  throw ArgumentError(
+    'shift and axis combinations must be (int, int), (List<int>, List<int>), or (int, List<int>)',
+  );
+}
+
+NDArray<T> _rollSingle1D<T extends Object>(NDArray<T> a, int shift) {
+  final size = a.shape[0];
+  if (size == 0) return a.copy();
+  final realShift = shift % size;
+  if (realShift == 0) return a.copy();
+
+  final part1 = a.slice([Slice(start: size - realShift, stop: size)]);
+  final part2 = a.slice([Slice(start: 0, stop: size - realShift)]);
+  final result = concatenate([part1, part2], axis: 0);
+  part1.dispose();
+  part2.dispose();
+  return result;
+}
+
+NDArray<T> _rollSingle<T extends Object>(NDArray<T> a, int shift, int axis) {
+  final rank = a.shape.length;
+  final normAx = axis < 0 ? rank + axis : axis;
+  if (normAx < 0 || normAx >= rank) {
+    throw RangeError.range(axis, -rank, rank - 1, 'axis');
+  }
+
+  final size = a.shape[normAx];
+  if (size == 0) return a.copy();
+  final realShift = shift % size;
+  if (realShift == 0) return a.copy();
+
+  final selectors1 = List<Selector>.generate(
+    rank,
+    (j) => j == normAx
+        ? Slice(start: size - realShift, stop: size)
+        : const Slice.all(),
+  );
+  final selectors2 = List<Selector>.generate(
+    rank,
+    (j) => j == normAx
+        ? Slice(start: 0, stop: size - realShift)
+        : const Slice.all(),
+  );
+
+  final part1 = a.slice(selectors1);
+  final part2 = a.slice(selectors2);
+  final result = concatenate([part1, part2], axis: normAx);
+  part1.dispose();
+  part2.dispose();
+  return result;
+}
