@@ -1,14 +1,15 @@
 # Memory Management with NDArray Scopes
 
-The `ndarray` package uses unmanaged C-heap memory to achieve peak performance and zero-copy interoperability with native libraries like OpenBLAS and PocketFFT. While this provides massive speed advantages, it means memory must be explicitly freed.
+NDArrays are backed by  C-heap memory for its interoperability with native libraries like OpenBLAS and PocketFFT.
 
-To make this safe and ergonomic, `ndarray` provides an **Automatic Disposal Scope** mechanism.
+NDArrays will reclaim this memory when they are garbage collected. However the garbage collector cannot "feel" the pressure of the array allocations because they are made outside the Dart heap.
+
+This means memory should be explicitly freed for any serious programs.
+
+To make this safe and somewhat ergonomic, `ndarray` provides an **Automatic Disposal Scope** mechanism.
 
 ---
-
-## The Problem: Manual Disposal
-
-Without scopes, you must manually track and dispose of every array you create:
+Without setting up allocation scopes, you must manually track and dispose of every array you create:
 
 ```dart
 void calculate() {
@@ -41,7 +42,7 @@ This is verbose, prone to leaks if you forget a `dispose()` call, and especially
 
 ### Basic Usage
 
-Simply wrap your logic in `NDArray.scope`:
+Wrap your logic in `NDArray.scope`:
 
 ```dart
 void calculate() {
@@ -57,9 +58,9 @@ void calculate() {
 }
 ```
 
-### Returning Values with `detachFromScope()`
+### Returning Values with `attachToParentScope()`
 
-If you need a specific array to survive beyond the scope (e.g., as a return value), use `detachFromScope()`. This "unregisters" the array from the current scope.
+If you need a specific array to survive beyond the scope (e.g., as a return value), use `attachToParentScope()`. This "unregisters" the array from the current scope.
 
 ```dart
 NDArray computeResult() {
@@ -67,8 +68,8 @@ NDArray computeResult() {
     final a = NDArray.arange(0, 10);
     final b = a * 2;
     
-    // 'a' will be disposed, but 'b' will be returned to the caller.
-    return b.detachFromScope();
+    // 'a' will be disposed, but 'b' will be returned attached to the scope created by the caller (if any).
+    return b.attachToParentScope();
   });
 }
 ```
@@ -119,12 +120,9 @@ To create a buffer of the right shape for the result of a broadcasted operation,
 
 ## Returning Views from Scopes
 
-When returning a **view** (such as a `reshape`, `transpose`, `slice`, or index-view) of an internally allocated array from a scope, the memory management is handled **100% automatically**.
+When returning a **view** (such as a `reshape`, `transpose`, `slice`, or index-view) of an internally allocated array from a scope, the backing array still belongs to the parent array.
 
-### How it Works
-
-The scope mechanism tracks **allocating parent arrays** (where `_parent == null`), not their zero-copy views. 
-However, the detaching methods (`detachFromScope()` and `detachToParentScope()`) are engineered to **automatically walk the view parent chain and detach the root memory-allocating parent array**!
+However, the detaching methods (`detachFromScope()` and `detachToParentScope()`) are will attach/detach the parent array!
 
 Therefore, you can call detaching methods directly on the returned view, and the system will seamlessly promote the parent memory block, keeping the view fully valid and safe outside the scope:
 

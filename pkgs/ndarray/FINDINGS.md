@@ -1,6 +1,6 @@
 # Codebase Quality & Enhancements Review - FINDINGS.md
 
-This file logs architectural improvements and hidden flaws discovered during autonomous code-review loops.
+This file logs architectural improvements, optimization ideas, and feature gaps relative to the reference NumPy library, discovered during autonomous review loops.
 
 ---
 
@@ -15,33 +15,47 @@ This file logs architectural improvements and hidden flaws discovered during aut
 ## 🛠️ Section 2: Architectural & Memory Safety Gaps
 
 ### 2.1 Linear Algebra & LAPACK Integration
-- **Issue**: `det()`, `eig()`, `qr()`, and `svd()` lack ND stack support, violating NumPy conventions for tensor shapes like `[Batch, N, N]`.
-- **Issue**: `matmul()` lacks support for Float32, Complex64, and Complex128 BLAS routines, forcing slow/double-precision conversions.
-- **Issue**: Missing standard solvers like `linalg.solve`, `linalg.lstsq`, `linalg.norm`, and `linalg.pinv`.
-- **Recommended Tweak**: Expand the FFI bridge to expose the full suite of LAPACK routines and refactor high-level methods to handle ND-stack broadcasting.
+- **Issue**: `det()`, `eig()`, `qr()`, and `svd()` lack ND-stack support, violating NumPy conventions for tensor shapes like `[Batch, N, N]`.
+- **Issue**: `matmul()` lacks support for Complex64 (`cblas_cgemm`) and Complex128 (`cblas_zgemm`) BLAS routines. While Float32 (`cblas_sgemm`) and Float64 (`cblas_dgemm`) are bound and FFI-offloaded, complex matrix multiplications are still falling back to slower iterative loops.
+- **Issue**: Missing premium solvers like pseudo-inverse `linalg.pinv`, least-squares solver `linalg.lstsq`, matrix power `linalg.matrix_power`, and optimal matrix multiplication chain order optimizer `linalg.multi_dot`.
+- **Recommended Tweak**: Expose `cblas_cgemm` and `cblas_zgemm` via the FFI bridge. Refactor linear algebra algorithms to handle ND-stack broadcasting. Add advanced LAPACK solver bindings for pseudo-inverses and least-squares equations.
 
-### 2.2 Advanced Indexing
+### 2.2 Advanced Indexing & Iteration Structures
 - **Issue**: The recursive advanced indexing walker (`_copyAdvancedRecursive`) is functional but further C-level optimization for extreme ranks is an option.
-- **Recommended Tweak**: Offload advanced indexing walks to a native C odometer kernel.
+- **Issue**: Missing structured multi-dimensional iteration utilities equivalent to NumPy's `nditer` and `ndenumerate`. Currently, hot loops are forced to nested dimension walks or explicit flat-index strided conversions, causing VM boundary crossing overhead and list allocations.
+- **Recommended Tweak**: Offload advanced indexing walks to a native C odometer kernel. Design a zero-allocation `nditer`-like class in Dart that yields strided coordinate buffers directly to consumer math closures.
 
 ---
 
 ## 🧪 Section 3: NumPy Compatibility Roadmap (Missing Features)
 
 ### 3.1 Universal Functions (ufuncs)
-- **Math**: `diff` (still pending).
+- **Math & Trigonometry**:
+  - `diff` (difference calculation along a given axis).
+  - Trigonometric functions: `tan()`, inverse trig `asin()`, `acos()`, `atan()`, and `atan2(y, x)`.
+  - Hyperbolic functions: `sinh()`, `cosh()`, `tanh()`, `asinh()`, `acosh()`, `atanh()`.
+  - Power & logarithmic: `square()`, element-wise `power()`, modulo `remainder()` / `mod()`, and combined division/modulo `divmod()`.
+  - Floating-point classification: `isnan()`, `isinf()`, `isfinite()`, sign copier `copysign()`.
+- **Logical Operations (Vectorized)**:
+  - `logical_and()`, `logical_or()`, `logical_not()`, `logical_xor()`.
+- **Bitwise Operations**:
+  - Vectorized bitwise ufuncs for integer data types (`int32`, `int64`, `uint8`, `int16`): `bitwise_and()`, `bitwise_or()`, `bitwise_xor()`, bitwise negation `invert()`, shifts `left_shift()` and `right_shift()`.
 - **Fourier Transforms**:
   - Multi-dimensional `axis` support inside `fft()` and `ifft()`. Currently, our FFT transforms are hardcoded to execute along the final axis (`a.shape.last`). Adding an `axis` parameter (default `-1`) and transposing dimensions internally before/after FFI plan runs would achieve full standard NumPy `np.fft.fft(a, axis=axis)` compatibility!
+  - Spectrogram shifts: `fftshift()` and `ifftshift()`.
 
 ### 3.2 Array Manipulation
-- **Shaping**: `mgrid`/`ogrid`, `asStrided`, `slidingWindowView`.
+- **Shaping & Meshes**: `mgrid`/`ogrid`, `asStrided`, `slidingWindowView`.
+- **Repeating & Tiling**: Vector repeat `repeat()` and grid tiling `tile()`.
+- **Rearranging**: Axis roll `roll()`, flips `flip()`, `fliplr()`, and `flipud()`.
+- **Splitting**: Block splitting `split()`, `array_split()`, `hsplit()`, and `vsplit()`.
 
 ### 3.3 Statistics & Sorting
-- **Sorting**: `partition`, `argpartition`, `unique`, stable sort support (`kind` parameter).
-- **Searching**: `searchsorted`, `ravel_multi_index`/`unravel_index`.
+- **Sorting**: Partial sorting `partition()` and index partial sorting `argpartition()` (extremely high performance benefit for top-K filtering), stable sorting indicator `kind` parameter inside `sort()`.
+- **Searching**: Binary search insertion `searchsorted()`.
 
 ### 3.4 Random & DType
-- **Sampling**: `choice`, `shuffle`, `permutation`, `multinomial`.
+- **Sampling**: `choice()` (random selection from an array), `shuffle()` (in-place shuffling), and `permutation()`.
 - **Types**: Expansion to `uint8` and `int16` for image/audio processing.
 
 ### 3.5 Advanced Linear Algebra & Vector Calculus (Roadmap)
