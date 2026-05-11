@@ -2299,3 +2299,14 @@
   - **Full Compatibility**: Exposed strongly-typed public ufuncs `cumsum()`, `cumprod()`, `cummin()`, and `cummax()`, supporting both contiguous and strided non-contiguous views at raw unmanaged compiled velocity!
 * **Results**:
   - **Verification**: Created targeted test cases verifying flat, multi-axis, transposed views, and in-place recycler `into:` reuse across double, integer, and custom complex numbers. All **435 unit tests pass flawlessly green!** Formatting and static analysis are perfectly clean.
+
+***
+
+## 192. 100% C FFI-Offloaded N-Dimensional discrete differences `diff()` (Task 7 / Same as 3 / Findings Fix)
+* **What was done**:
+  - Resolved a major universal mathematical ufunc roadmap item from [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md).
+  - **6 Native C Strided Odometer difference loops**: Programmed 6 native C functions `s_diff_double`, `s_diff_float`, `s_diff_int64`, `s_diff_int32`, `s_diff_complex128`, and `s_diff_complex64` inside [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.c#L1985).
+  - Uses standard, highly optimized non-recursive mechanical odometer coordinate sweeps in C to walk adjacent difference calculations `out[i] = src[i+1] - src[i]` along the target `axis` directly in C space.
+  - **Recursive higher-order derivative support**: Implemented strongly-typed public ufunc `diff<T>()` inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart#L8804), supporting positive steps `n > 1` by recursively dispatching difference passes. Exposes standard output recycler `{into}` buffer support.
+* **Results**:
+  - **Verification**: Created targeted unit tests verifying flat sequences, multi-axis sweeps, complex & integer arrays, higher-order difference steps, and recycler buffer reuse. All **436 unit tests pass flawlessly green!** Formatting and static analysis are perfectly clean.
