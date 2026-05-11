@@ -711,6 +711,52 @@ void main() {
     );
 
     test(
+      'Cholesky decomposition on non-contiguous strided view correctness',
+      () => NDArray.scope(() {
+        // Symmetric positive-definite parent matrix
+        final parentNonContig = NDArray.fromList(
+          [4.0, 0.0, 12.0, 0.0, 0.0, 0.0, 12.0, 0.0, 37.0],
+          [3, 3],
+          DType.float64,
+        );
+        final viewNonContig = parentNonContig.slice([
+          Slice(start: 0, stop: 3, step: 2),
+          Slice(start: 0, stop: 3, step: 2),
+        ]);
+        expect(viewNonContig.isContiguous, false);
+        expect(viewNonContig.toList(), [4.0, 12.0, 12.0, 37.0]);
+
+        final res = cholesky(viewNonContig);
+        final l = res['L']!;
+        expect(l.shape, [2, 2]);
+        expect(l.toList(), [2.0, 0.0, 6.0, 1.0]);
+      }),
+    );
+
+    test(
+      'Matrix Inversion on non-contiguous transposed view with out recycler buffer',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          [4.0, 7.0, 2.0, 6.0],
+          [2, 2],
+          DType.float64,
+        );
+        final viewT = parent.transposed; // non-contiguous!
+        expect(viewT.isContiguous, false);
+
+        final out = NDArray<double>.create([2, 2], DType.float64);
+        final result = inv(viewT, out: out);
+
+        expect(result == out, true);
+        final expected = [0.6, -0.2, -0.7, 0.4];
+        final actual = result.toList();
+        for (var i = 0; i < 4; i++) {
+          expect(actual[i], closeTo(expected[i], 1e-9));
+        }
+      }),
+    );
+
+    test(
       'broadcastShapes() incompatible shapes throws ArgumentError',
       () => NDArray.scope(() {
         final a = NDArray.ones([2], DType.float64);
