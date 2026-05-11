@@ -2453,5 +2453,83 @@ void main() {
         expect(identical(r, bufferInt), true);
       }),
     );
+
+    test(
+      'Statistical reductions support into parameter recycler buffer reuse',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+
+        // 1. sum
+        final sumBuffer = NDArray<double>.zeros([2], DType.float64);
+        final s = sum(a, axis: 0, into: sumBuffer);
+        expect(identical(s, sumBuffer), true);
+        expect(s.toList(), [4.0, 6.0]);
+
+        final sum0DBuffer = NDArray<double>.zeros([], DType.float64);
+        final s0D = sum(a, into: sum0DBuffer);
+        expect(identical(s0D, sum0DBuffer), true);
+        expect(s0D.scalar, 10.0);
+
+        // 2. prod
+        final prodBuffer = NDArray<double>.zeros([2], DType.float64);
+        final p = prod(a, axis: 0, into: prodBuffer);
+        expect(identical(p, prodBuffer), true);
+        expect(p.toList(), [3.0, 8.0]);
+
+        // 3. mean
+        final meanBuffer = NDArray<double>.zeros([2], DType.float64);
+        final m = mean(a, axis: 0, into: meanBuffer);
+        expect(identical(m, meanBuffer), true);
+        expect(m.toList(), [2.0, 3.0]);
+
+        // 4. variance
+        final varBuffer = NDArray<double>.zeros([2], DType.float64);
+        final v = variance(a, axis: 0, into: varBuffer);
+        expect(identical(v, varBuffer), true);
+
+        // 5. std
+        final stdBuffer = NDArray<double>.zeros([2], DType.float64);
+        final st = std(a, axis: 0, into: stdBuffer);
+        expect(identical(st, stdBuffer), true);
+
+        // 6. all/any (bool)
+        final b = NDArray.fromList(
+          [true, false, true, true],
+          [2, 2],
+          DType.boolean,
+        );
+        final allBuffer = NDArray<bool>.zeros([2], DType.boolean);
+        final al = all(b, axis: 0, into: allBuffer);
+        expect(identical(al, allBuffer), true);
+        expect(al.toList(), [true, false]);
+
+        final anyBuffer = NDArray<bool>.zeros([2], DType.boolean);
+        final an = any(b, axis: 0, into: anyBuffer);
+        expect(identical(an, anyBuffer), true);
+        expect(an.toList(), [true, true]);
+
+        // 7. nansum/nanmean/nanvar/nanstd (with nan elements)
+        final nanArr = NDArray.fromList(
+          [1.0, double.nan, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final nanSumBuffer = NDArray<double>.zeros([2], DType.float64);
+        final ns = nansum(nanArr, axis: 0, into: nanSumBuffer);
+        expect(identical(ns, nanSumBuffer), true);
+
+        final nanMeanBuffer = NDArray<double>.zeros([2], DType.float64);
+        final nm = nanmean(nanArr, axis: 0, into: nanMeanBuffer);
+        expect(identical(nm, nanMeanBuffer), true);
+
+        final nanVarBuffer = NDArray<double>.zeros([2], DType.float64);
+        final nv = nanvar(nanArr, axis: 0, into: nanVarBuffer);
+        expect(identical(nv, nanVarBuffer), true);
+
+        final nanStdBuffer = NDArray<double>.zeros([2], DType.float64);
+        final nst = nanstd(nanArr, axis: 0, into: nanStdBuffer);
+        expect(identical(nst, nanStdBuffer), true);
+      }),
+    );
   });
 }

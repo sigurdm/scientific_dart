@@ -1565,7 +1565,16 @@ NDArray matmul(NDArray a, NDArray b) {
 /// final s0 = sum(a, axis: 0); // Sum along rows
 /// print(s0.data); // [4.0, 6.0]
 /// ```
-NDArray sum(NDArray a, {int? axis}) {
+NDArray sum(NDArray a, {int? axis, NDArray? into}) {
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (into != null) {
+    if (!listEquals(into.shape, targetShape) || into.dtype != a.dtype) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     dynamic acc;
@@ -1585,7 +1594,7 @@ NDArray sum(NDArray a, {int? axis}) {
         acc += elements[i];
       }
     }
-    final result = NDArray.create([], a.dtype);
+    final result = into ?? NDArray.create([], a.dtype);
     result.data[0] = acc;
     return result;
   }
@@ -1595,7 +1604,10 @@ NDArray sum(NDArray a, {int? axis}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = NDArray.zeros(newShape, a.dtype as dynamic);
+  final result = into ?? NDArray.zeros(newShape, a.dtype as dynamic);
+  if (into != null) {
+    result.fill(0);
+  }
 
   _reduceRecursive(
     a,
@@ -1620,7 +1632,16 @@ NDArray sum(NDArray a, {int? axis}) {
 /// final p0 = prod(a, axis: 0); // Product along rows
 /// print(p0.data); // [3.0, 8.0]
 /// ```
-NDArray prod(NDArray a, {int? axis}) {
+NDArray prod(NDArray a, {int? axis, NDArray? into}) {
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (into != null) {
+    if (!listEquals(into.shape, targetShape) || into.dtype != a.dtype) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     dynamic acc;
@@ -1640,7 +1661,7 @@ NDArray prod(NDArray a, {int? axis}) {
         acc *= elements[i];
       }
     }
-    final result = NDArray.create([], a.dtype);
+    final result = into ?? NDArray.create([], a.dtype);
     result.data[0] = acc;
     return result;
   }
@@ -1650,7 +1671,10 @@ NDArray prod(NDArray a, {int? axis}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = NDArray.ones(newShape, a.dtype as dynamic);
+  final result = into ?? NDArray.ones(newShape, a.dtype as dynamic);
+  if (into != null) {
+    result.fill(1);
+  }
 
   _reduceRecursive(
     a,
@@ -1681,12 +1705,26 @@ NDArray prod(NDArray a, {int? axis}) {
 /// final a = NDArray.fromList([true, true, false], [3], `DType.boolean);`
 /// final res = all(a); // false
 /// ```
-NDArray<bool> all(NDArray a, {int? axis}) {
+NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? into}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute all() on a disposed array.');
   }
 
-  if (axis == null) {
+  var targetAxis = axis;
+  if (targetAxis != null && targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+
+  final targetShape = targetAxis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(targetAxis));
+  if (into != null) {
+    if (!listEquals(into.shape, targetShape) || into.dtype != DType.boolean) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+
+  if (targetAxis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     final List elements = size == a.data.length ? a.data : a.toList();
     var allTrue = true;
@@ -1696,21 +1734,17 @@ NDArray<bool> all(NDArray a, {int? axis}) {
         break;
       }
     }
-    final result = NDArray<bool>.create([], DType.boolean);
+    final result = into ?? NDArray<bool>.create([], DType.boolean);
     result.data[0] = allTrue;
     return result;
   }
 
-  var targetAxis = axis;
-  if (targetAxis < 0) {
-    targetAxis = a.shape.length + targetAxis;
-  }
   if (targetAxis < 0 || targetAxis >= a.shape.length) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(targetAxis);
-  final result = NDArray<bool>.create(newShape, DType.boolean);
+  final result = into ?? NDArray<bool>.create(newShape, DType.boolean);
   result.fill(true); // Initialize to true everywhere
 
   _reduceRecursive(
@@ -1743,12 +1777,26 @@ NDArray<bool> all(NDArray a, {int? axis}) {
 /// final a = NDArray.fromList([true, false, false], [3], `DType.boolean);`
 /// final res = any(a); // true
 /// ```
-NDArray<bool> any(NDArray a, {int? axis}) {
+NDArray<bool> any(NDArray a, {int? axis, NDArray<bool>? into}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute any() on a disposed array.');
   }
 
-  if (axis == null) {
+  var targetAxis = axis;
+  if (targetAxis != null && targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+
+  final targetShape = targetAxis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(targetAxis));
+  if (into != null) {
+    if (!listEquals(into.shape, targetShape) || into.dtype != DType.boolean) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+
+  if (targetAxis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     final List elements = size == a.data.length ? a.data : a.toList();
     var anyTrue = false;
@@ -1758,24 +1806,22 @@ NDArray<bool> any(NDArray a, {int? axis}) {
         break;
       }
     }
-    final result = NDArray<bool>.create([], DType.boolean);
+    final result = into ?? NDArray<bool>.create([], DType.boolean);
     result.data[0] = anyTrue;
     return result;
   }
 
-  var targetAxis = axis;
-  if (targetAxis < 0) {
-    targetAxis = a.shape.length + targetAxis;
-  }
   if (targetAxis < 0 || targetAxis >= a.shape.length) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(targetAxis);
-  final result = NDArray<bool>.zeros(
-    newShape,
-    DType.boolean,
-  ); // Pre-initialized to false
+  final result =
+      into ??
+      NDArray<bool>.zeros(newShape, DType.boolean); // Pre-initialized to false
+  if (into != null) {
+    result.fill(false);
+  }
 
   _reduceRecursive(
     a as NDArray<Object>,
@@ -2045,10 +2091,19 @@ NDArray log(NDArray a, {NDArray? out}) {
 /// ```
 ///
 /// Reference: [Arithmetic Mean](https://en.wikipedia.org/wiki/Arithmetic_mean)
-NDArray mean(NDArray a, {int? axis}) {
+NDArray mean(NDArray a, {int? axis, NDArray? into}) {
   final DType targetDType = a.dtype.isComplex
       ? DType.complex128
       : DType.float64;
+
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (into != null) {
+    if (!listEquals(into.shape, targetShape) || into.dtype != targetDType) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
 
   NDArray promotedA;
   if (a.dtype == DType.float64 ||
@@ -2065,25 +2120,28 @@ NDArray mean(NDArray a, {int? axis}) {
     }
   }
 
-  final s = sum(promotedA, axis: axis);
-
-  if (promotedA != a) {
-    promotedA.dispose();
-  }
-
   if (axis == null) {
+    final s = sum(promotedA, axis: axis);
+    if (promotedA != a) {
+      promotedA.dispose();
+    }
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     final meanVal = s.data[0] / size;
-    final result = NDArray.create([], targetDType);
+    final result = into ?? NDArray.create([], targetDType);
     result.data[0] = meanVal;
     s.dispose();
     return result;
   } else {
-    final sizeAxis = a.shape[axis];
-    for (var i = 0; i < s.data.length; i++) {
-      s.data[i] = (s.data[i] / sizeAxis) as dynamic;
+    final result = into ?? NDArray.create(targetShape, targetDType);
+    sum(promotedA, axis: axis, into: result);
+    if (promotedA != a) {
+      promotedA.dispose();
     }
-    return s;
+    final sizeAxis = a.shape[axis];
+    for (var i = 0; i < result.data.length; i++) {
+      result.data[i] = (result.data[i] / sizeAxis) as dynamic;
+    }
+    return result;
   }
 }
 
@@ -2109,7 +2167,20 @@ NDArray mean(NDArray a, {int? axis}) {
 /// ```
 ///
 /// Reference: [Variance](https://en.wikipedia.org/wiki/Variance)
-NDArray<double> variance<T extends num>(NDArray<T> a, {int? axis}) {
+NDArray<double> variance<T extends num>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<double>? into,
+}) {
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (into != null) {
+    if (!listEquals(into.shape, targetShape) || into.dtype != DType.float64) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+
   final m = mean(a, axis: axis);
 
   if (axis == null) {
@@ -2126,7 +2197,7 @@ NDArray<double> variance<T extends num>(NDArray<T> a, {int? axis}) {
       final diff = elements[i].toDouble() - meanVal;
       sumSqDiff += diff * diff;
     }
-    final result = NDArray<double>.create([], DType.float64);
+    final result = into ?? NDArray<double>.create([], DType.float64);
     result.data[0] = sumSqDiff / elements.length;
     return result;
   } else {
@@ -2148,7 +2219,11 @@ NDArray<double> variance<T extends num>(NDArray<T> a, {int? axis}) {
     diff.dispose();
     sqDiff.dispose();
 
-    final res = mean(sqDiffDouble, axis: axis);
+    final res = mean(sqDiffDouble, axis: axis, into: into);
+    if (into != null) {
+      sqDiffDouble.dispose();
+      return into;
+    }
     final resultVal = NDArray<double>.view(
       res,
       shape: res.shape,
@@ -2181,16 +2256,33 @@ NDArray<double> variance<T extends num>(NDArray<T> a, {int? axis}) {
 /// ```
 ///
 /// Reference: [Standard Deviation](https://en.wikipedia.org/wiki/Standard_deviation)
-NDArray<double> std<T extends num>(NDArray<T> a, {int? axis}) {
+NDArray<double> std<T extends num>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<double>? into,
+}) {
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (into != null) {
+    if (!listEquals(into.shape, targetShape) || into.dtype != DType.float64) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+
   final v = variance(a, axis: axis);
   if (axis == null) {
     final stdVal = math.sqrt(v.data[0]);
-    final result = NDArray<double>.create([], DType.float64);
+    final result = into ?? NDArray<double>.create([], DType.float64);
     result.data[0] = stdVal;
     v.dispose();
     return result;
   } else {
-    final res = sqrt(v);
+    final res = sqrt(v, out: into);
+    if (into != null) {
+      v.dispose();
+      return into;
+    }
     final resultVal = NDArray<double>.view(
       res,
       shape: res.shape,
@@ -2217,7 +2309,16 @@ NDArray<double> std<T extends num>(NDArray<T> a, {int? axis}) {
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], `DType.float64);`
 /// final s = nansum(a); // returns 4.0
 /// ```
-NDArray nansum(NDArray a, {int? axis}) {
+NDArray nansum(NDArray a, {int? axis, NDArray? into}) {
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (into != null) {
+    if (!listEquals(into.shape, targetShape) || into.dtype != a.dtype) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
@@ -2245,7 +2346,7 @@ NDArray nansum(NDArray a, {int? axis}) {
       }
       acc = sumVal;
     }
-    final result = NDArray.create([], a.dtype);
+    final result = into ?? NDArray.create([], a.dtype);
     result.data[0] = acc;
     return result;
   }
@@ -2255,7 +2356,10 @@ NDArray nansum(NDArray a, {int? axis}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = NDArray.zeros(newShape, a.dtype as dynamic);
+  final result = into ?? NDArray.zeros(newShape, a.dtype as dynamic);
+  if (into != null) {
+    result.fill(0);
+  }
 
   _reduceRecursive(
     a,
@@ -2289,10 +2393,19 @@ NDArray nansum(NDArray a, {int? axis}) {
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], `DType.float64);`
 /// final m = nanmean(a); // returns 2.6666666666666665
 /// ```
-NDArray nanmean(NDArray a, {int? axis}) {
+NDArray nanmean(NDArray a, {int? axis, NDArray? into}) {
   final DType targetDType = a.dtype.isComplex
       ? DType.complex128
       : DType.float64;
+
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (into != null) {
+    if (!listEquals(into.shape, targetShape) || into.dtype != targetDType) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
 
   NDArray promotedA;
   if (a.dtype == DType.float64 ||
@@ -2327,7 +2440,7 @@ NDArray nanmean(NDArray a, {int? axis}) {
     if (promotedA != a) {
       promotedA.dispose();
     }
-    final result = NDArray<double>.create([], DType.float64);
+    final result = into ?? NDArray<double>.create([], DType.float64);
     if (count == 0) {
       result.data[0] = double.nan;
     } else {
@@ -2344,7 +2457,10 @@ NDArray nanmean(NDArray a, {int? axis}) {
   }
 
   final newShape = List<int>.from(promotedA.shape)..removeAt(axis);
-  final result = NDArray.zeros(newShape, targetDType as dynamic);
+  final result = into ?? NDArray.zeros(newShape, targetDType as dynamic);
+  if (into != null) {
+    result.fill(0);
+  }
   final counts = NDArray<int>.zeros(newShape, DType.int32);
 
   _nanReduceRecursive(
@@ -2421,7 +2537,20 @@ void _nanReduceRecursive(
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], `DType.float64);`
 /// final v = nanvar(a); // returns 0.6666666666666666
 /// ```
-NDArray<double> nanvar<T extends num>(NDArray<T> a, {int? axis}) {
+NDArray<double> nanvar<T extends num>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<double>? into,
+}) {
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (into != null) {
+    if (!listEquals(into.shape, targetShape) || into.dtype != DType.float64) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+
   final m = nanmean(a, axis: axis);
 
   if (axis == null) {
@@ -2429,7 +2558,7 @@ NDArray<double> nanvar<T extends num>(NDArray<T> a, {int? axis}) {
     final meanVal = m.data[0];
     m.dispose();
     if (meanVal.isNaN) {
-      final result = NDArray<double>.create([], DType.float64);
+      final result = into ?? NDArray<double>.create([], DType.float64);
       result.data[0] = double.nan;
       return result;
     }
@@ -2447,7 +2576,7 @@ NDArray<double> nanvar<T extends num>(NDArray<T> a, {int? axis}) {
       sumSqDiff += diff * diff;
       count++;
     }
-    final result = NDArray<double>.create([], DType.float64);
+    final result = into ?? NDArray<double>.create([], DType.float64);
     if (count == 0) {
       result.data[0] = double.nan;
     } else {
@@ -2474,7 +2603,11 @@ NDArray<double> nanvar<T extends num>(NDArray<T> a, {int? axis}) {
     diff.dispose();
     sqDiff.dispose();
 
-    final res = nanmean(sqDiffDouble, axis: axis);
+    final res = nanmean(sqDiffDouble, axis: axis, into: into);
+    if (into != null) {
+      sqDiffDouble.dispose();
+      return into;
+    }
     final resultVal = NDArray<double>.view(
       res,
       shape: res.shape,
@@ -2501,16 +2634,33 @@ NDArray<double> nanvar<T extends num>(NDArray<T> a, {int? axis}) {
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], `DType.float64);`
 /// final s = nanstd(a); // returns sqrt(0.6666666666666666)
 /// ```
-NDArray<double> nanstd<T extends num>(NDArray<T> a, {int? axis}) {
+NDArray<double> nanstd<T extends num>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<double>? into,
+}) {
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (into != null) {
+    if (!listEquals(into.shape, targetShape) || into.dtype != DType.float64) {
+      throw ArgumentError('Incompatible into buffer shape or dtype.');
+    }
+  }
+
   final v = nanvar(a, axis: axis);
   if (axis == null) {
     final stdVal = math.sqrt(v.data[0]);
-    final result = NDArray<double>.create([], DType.float64);
+    final result = into ?? NDArray<double>.create([], DType.float64);
     result.data[0] = stdVal;
     v.dispose();
     return result;
   } else {
-    final res = sqrt(v);
+    final res = sqrt(v, out: into);
+    if (into != null) {
+      v.dispose();
+      return into;
+    }
     final resultVal = NDArray<double>.view(
       res,
       shape: res.shape,

@@ -2,9 +2,13 @@ import 'dart:math' as math;
 import 'package:ndarray/ndarray.dart';
 
 void main() {
-  print('============================================================================');
+  print(
+    '============================================================================',
+  );
   print('            num_dart PRNG STATISTICAL QUALITY VALIDATION TOOL');
-  print('============================================================================');
+  print(
+    '============================================================================',
+  );
 
   NDArray.scope(() {
     runUniformTests();
@@ -12,14 +16,20 @@ void main() {
     runRandintTests();
   });
 
-  print('============================================================================');
+  print(
+    '============================================================================',
+  );
   print('            STATISTICAL QUALITY VALIDATION COMPLETE!');
-  print('============================================================================');
+  print(
+    '============================================================================',
+  );
 }
 
 void runUniformTests() {
   print('\n--- 1. CONTINUOUS UNIFORM DISTRIBUTION TESTS (Size: 100,000) ---');
-  print('Targeting Uniform [0.0, 1.0) - Theoretical Mean: 0.5000, Theoretical Var: 0.0833\n');
+  print(
+    'Targeting Uniform [0.0, 1.0) - Theoretical Mean: 0.5000, Theoretical Var: 0.0833\n',
+  );
 
   final size = 100000;
 
@@ -85,26 +95,50 @@ void _evaluateUniform(String label, NDArray<double> arr) {
   final uniformPass = chiSq <= chiSqCritical;
 
   print('[$label]');
-  print('  - Empirical Mean      : ${mean.toStringAsFixed(5)} (Target: 0.50000)');
-  print('  - Empirical Variance  : ${variance.toStringAsFixed(5)} (Target: 0.08333)');
-  print('  - Lag-1 Autocorrelation: ${lag1Auto.toStringAsFixed(5)} (Target: 0.00000)');
-  print('  - Chi-Square Statistic: ${chiSq.toStringAsFixed(3)} (Critical threshold: $chiSqCritical)');
-  print('  - Chi-Square Result   : ${uniformPass ? "PASS" : "FAIL"} (Uniformity verified)');
+  print(
+    '  - Empirical Mean      : ${mean.toStringAsFixed(5)} (Target: 0.50000)',
+  );
+  print(
+    '  - Empirical Variance  : ${variance.toStringAsFixed(5)} (Target: 0.08333)',
+  );
+  print(
+    '  - Lag-1 Autocorrelation: ${lag1Auto.toStringAsFixed(5)} (Target: 0.00000)',
+  );
+  print(
+    '  - Chi-Square Statistic: ${chiSq.toStringAsFixed(3)} (Critical threshold: $chiSqCritical)',
+  );
+  print(
+    '  - Chi-Square Result   : ${uniformPass ? "PASS" : "FAIL"} (Uniformity verified)',
+  );
   print('');
 }
 
 void runNormalTests() {
   print('--- 2. NORMAL (GAUSSIAN) DISTRIBUTION TESTS (Size: 100,000) ---');
-  print('Targeting Normal (0.0, 1.0) - Theoretical Mean: 0.0000, Theoretical SD: 1.0000\n');
+  print(
+    'Targeting Normal (0.0, 1.0) - Theoretical Mean: 0.0000, Theoretical SD: 1.0000\n',
+  );
 
   final size = 100000;
 
   // Standard: xoshiro256**
-  final nStd = normal([size], loc: 0.0, scale: 1.0, dtype: DType.float64, seed: 42);
+  final nStd = normal(
+    [size],
+    loc: 0.0,
+    scale: 1.0,
+    dtype: DType.float64,
+    seed: 42,
+  );
   _evaluateNormal('xoshiro256** (Standard FFI)', nStd);
 
   // Secure: /dev/urandom
-  final nSec = normal([size], loc: 0.0, scale: 1.0, dtype: DType.float64, secure: true);
+  final nSec = normal(
+    [size],
+    loc: 0.0,
+    scale: 1.0,
+    dtype: DType.float64,
+    secure: true,
+  );
   _evaluateNormal('/dev/urandom (Secure FFI)', nSec);
 }
 
@@ -144,16 +178,24 @@ void _evaluateNormal(String label, NDArray<double> arr) {
   final excessKurtosis = ((sumQuartDiff / len) / (sd * sd * sd * sd)) - 3.0;
 
   print('[$label]');
-  print('  - Empirical Mean      : ${mean.toStringAsFixed(5)} (Target: 0.00000)');
+  print(
+    '  - Empirical Mean      : ${mean.toStringAsFixed(5)} (Target: 0.00000)',
+  );
   print('  - Empirical Std Dev   : ${sd.toStringAsFixed(5)} (Target: 1.00000)');
-  print('  - Empirical Skewness  : ${skewness.toStringAsFixed(5)} (Target: 0.00000)');
-  print('  - Excess Kurtosis     : ${excessKurtosis.toStringAsFixed(5)} (Target: 0.00000)');
+  print(
+    '  - Empirical Skewness  : ${skewness.toStringAsFixed(5)} (Target: 0.00000)',
+  );
+  print(
+    '  - Excess Kurtosis     : ${excessKurtosis.toStringAsFixed(5)} (Target: 0.00000)',
+  );
   print('');
 }
 
 void runRandintTests() {
   print('--- 3. DISCRETE UNIFORM (RANDINT) TESTS (Size: 100,000) ---');
-  print('Rolling a 6-Sided Die (randint from 1 to 7) - Expected Frequency: 16.67% each\n');
+  print(
+    'Rolling a 6-Sided Die (randint from 1 to 7) - Expected Frequency: 16.67% each\n',
+  );
 
   final size = 100000;
 
@@ -162,7 +204,13 @@ void runRandintTests() {
   _evaluateRandint('xoshiro256** (Standard FFI)', rStd);
 
   // Secure: /dev/urandom
-  final rSec = randint([size], low: 1, high: 7, dtype: DType.int64, secure: true);
+  final rSec = randint(
+    [size],
+    low: 1,
+    high: 7,
+    dtype: DType.int64,
+    secure: true,
+  );
   _evaluateRandint('/dev/urandom (Secure FFI)', rSec);
 }
 
@@ -184,7 +232,9 @@ void _evaluateRandint(String label, NDArray<int> arr) {
   for (var i = 1; i <= 6; i++) {
     final count = frequencies[i] ?? 0;
     final percentage = (count / len) * 100.0;
-    print('  - Face $i frequency: ${percentage.toStringAsFixed(2)}% ($count rolls)');
+    print(
+      '  - Face $i frequency: ${percentage.toStringAsFixed(2)}% ($count rolls)',
+    );
   }
   print('');
 }
