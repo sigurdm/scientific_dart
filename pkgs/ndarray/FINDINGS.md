@@ -82,6 +82,18 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 ### 3.9 Progressive Scientific Generators
 - **Geometric Progressive Spacers**: Exposing logarithmic spacer `logspace()` and geometric spacer `geomspace()` generators to match high-end scientific computing specifications.
 
+### 3.10 Vectorized String Operations (char ufuncs)
+- **Text Datasets Operations**: Exposing a `DType.string` type tag and vectorized character manipulation library (e.g., `char.upper()`, `char.lower()`, `char.replace()`, `char.split()`, etc.) to perform highly optimized text operations directly inside unmanaged strides.
+
+### 3.11 1D Set Operations
+- **Categorical Elements Matching**: Vectorized 1D set operations equivalent to standard Python sets: `intersect1d()`, `setdiff1d()`, `setxor1d()`, `union1d()`, and element check `isin()` to accelerate classification preprocessing filters.
+
+### 3.12 Statistical Percentiles & Medians
+- **Descriptive Statistics**: Exposing robust Descriptive statistics solvers: `median(a, {int? axis})` (median calculation), `percentile(a, q, {int? axis})`, and `quantile(a, q, {int? axis})` along axes to compute IQR, outliers, and normalization parameters natively.
+
+### 3.13 1D Linear Interpolation
+- **Data Alignment Solver**: Exposing piece-wise linear interpolation solver `interp(x, xp, fp)` to align uneven scientific timeseries records natively.
+
 ---
 
 ## ✨ Section 4: Usability & Ergonomics
