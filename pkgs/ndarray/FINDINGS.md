@@ -45,7 +45,7 @@ Remember when adding new operations:
   - `logical_and()`, `logical_or()`, `logical_not()`, `logical_xor()`.
 - **Bitwise Operations**:
   - Vectorized bitwise ufuncs for integer data types (`int32`, `int64`, `uint8`, `int16`): `bitwise_and()`, `bitwise_or()`, `bitwise_xor()`, bitwise negation `invert()`, shifts `left_shift()` and `right_shift()`.
-- **Fourier Transforms**:
+- **Fourier Transforms**: [CLAIMED: antigravity]
   - Multi-dimensional `axis` support inside `fft()` and `ifft()`. Currently, our FFT transforms are hardcoded to execute along the final axis (`a.shape.last`). Adding an `axis` parameter (default `-1`) and transposing dimensions internally before/after FFI plan runs would achieve full standard NumPy `np.fft.fft(a, axis=axis)` compatibility!
   - Spectrogram shifts: `fftshift()` and `ifftshift()`.
 
