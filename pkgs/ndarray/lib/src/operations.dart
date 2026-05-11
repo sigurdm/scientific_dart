@@ -8787,3 +8787,172 @@ NDArray matrix_power(NDArray a, int n, {NDArray? out}) {
 
   return result;
 }
+
+/// Compute the cumulative sum of array elements along a specified axis.
+///
+/// **Preconditions:**
+/// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
+/// - If provided, the [out] recycler must have compatible shape and dtype.
+///
+/// **Throws:**
+/// - [StateError] if the array is disposed.
+/// - [ArgumentError] if [axis] is out of bounds.
+/// - [ArgumentError] if [out] recycler shape or dtype is incompatible.
+///
+/// **Example:**
+/// {@example /example/cumulative_example.dart lang=dart}
+NDArray cumsum(NDArray a, {int? axis, NDArray? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute cumsum() on a disposed array.');
+  }
+
+  final NDArray result;
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    result = out ?? NDArray.create([size], a.dtype);
+    if (out != null) {
+      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype.',
+        );
+      }
+    }
+
+    final List elements = size == a.data.length ? a.data : a.toList();
+    dynamic acc;
+    for (var i = 0; i < elements.length; i++) {
+      acc = (i == 0)
+          ? elements[i]
+          : ((acc as dynamic) + elements[i]) as dynamic;
+      result.data[i] = acc;
+    }
+    return result;
+  }
+
+  var targetAxis = axis;
+  if (targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  result = out ?? NDArray.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  _cumOpRecursive(
+    a,
+    result,
+    List<int>.filled(a.shape.length, 0),
+    targetAxis,
+    0,
+    (acc, val) => ((acc as dynamic) + val) as dynamic,
+  );
+
+  return result;
+}
+
+/// Compute the cumulative product of array elements along a specified axis.
+///
+/// **Preconditions:**
+/// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
+/// - If provided, the [out] recycler must have compatible shape and dtype.
+///
+/// **Throws:**
+/// - [StateError] if the array is disposed.
+/// - [ArgumentError] if [axis] is out of bounds.
+/// - [ArgumentError] if [out] recycler shape or dtype is incompatible.
+///
+/// **Example:**
+/// {@example /example/cumulative_example.dart lang=dart}
+NDArray cumprod(NDArray a, {int? axis, NDArray? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute cumprod() on a disposed array.');
+  }
+
+  final NDArray result;
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    result = out ?? NDArray.create([size], a.dtype);
+    if (out != null) {
+      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype.',
+        );
+      }
+    }
+
+    final List elements = size == a.data.length ? a.data : a.toList();
+    dynamic acc;
+    for (var i = 0; i < elements.length; i++) {
+      acc = (i == 0)
+          ? elements[i]
+          : ((acc as dynamic) * elements[i]) as dynamic;
+      result.data[i] = acc;
+    }
+    return result;
+  }
+
+  var targetAxis = axis;
+  if (targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  result = out ?? NDArray.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  _cumOpRecursive(
+    a,
+    result,
+    List<int>.filled(a.shape.length, 0),
+    targetAxis,
+    0,
+    (acc, val) => ((acc as dynamic) * val) as dynamic,
+  );
+
+  return result;
+}
+
+void _cumOpRecursive(
+  NDArray a,
+  NDArray result,
+  List<int> coord,
+  int axis,
+  int dim,
+  dynamic Function(dynamic acc, dynamic val) op,
+) {
+  if (dim == a.shape.length) {
+    dynamic acc;
+    for (var i = 0; i < a.shape[axis]; i++) {
+      coord[axis] = i;
+      final val = a.getCell(coord);
+      acc = (i == 0) ? val : op(acc, val);
+      result.setCell(coord, acc);
+    }
+    return;
+  }
+
+  if (dim == axis) {
+    _cumOpRecursive(a, result, coord, axis, dim + 1, op);
+  } else {
+    for (var i = 0; i < a.shape[dim]; i++) {
+      coord[dim] = i;
+      _cumOpRecursive(a, result, coord, axis, dim + 1, op);
+    }
+  }
+}

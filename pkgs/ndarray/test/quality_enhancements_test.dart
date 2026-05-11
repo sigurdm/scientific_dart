@@ -2606,5 +2606,47 @@ void main() {
         check.dispose();
       }),
     );
+
+    test(
+      'linalg.cumsum() and linalg.cumprod() cumulative accumulations correctness',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [2, 3],
+          DType.float64,
+        );
+
+        // 1. flat cumsum
+        final csFlat = cumsum(a);
+        expect(csFlat.shape, [6]);
+        expect(csFlat.toList(), [1.0, 3.0, 6.0, 10.0, 15.0, 21.0]);
+
+        // 2. cumsum along axis 0
+        final csRow = cumsum(a, axis: 0);
+        expect(csRow.shape, [2, 3]);
+        expect(csRow.toList(), [1.0, 2.0, 3.0, 5.0, 7.0, 9.0]);
+
+        // 3. cumsum along axis 1
+        final csCol = cumsum(a, axis: 1);
+        expect(csCol.toList(), [1.0, 3.0, 6.0, 4.0, 9.0, 15.0]);
+
+        // 4. cumprod along axis 1
+        final cpCol = cumprod(a, axis: 1);
+        expect(cpCol.toList(), [1.0, 2.0, 6.0, 4.0, 20.0, 120.0]);
+
+        // 5. stride-safe transposed views cumulative sum
+        final aT = a.transpose();
+        final csT = cumsum(aT, axis: 0);
+        expect(csT.toList(), [1.0, 4.0, 3.0, 9.0, 6.0, 15.0]);
+        csT.dispose();
+        aT.dispose();
+
+        // 6. in-place recycler out reuse
+        final outBuffer = NDArray<double>.zeros([2, 3], DType.float64);
+        final csOut = cumsum(a, axis: 0, out: outBuffer);
+        expect(identical(csOut, outBuffer), true);
+        expect(csOut.toList(), [1.0, 2.0, 3.0, 5.0, 7.0, 9.0]);
+      }),
+    );
   });
 }

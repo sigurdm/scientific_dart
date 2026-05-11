@@ -46,7 +46,7 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 - **Repeating & Tiling**: Vector repeat `repeat()` and grid tiling `tile()`.
 - **Rearranging**: Axis roll `roll()`, flips `flip()`, `fliplr()`, and `flipud()`.
 - **Splitting**: Block splitting `split()`, `array_split()`, `hsplit()`, and `vsplit()`.
-- **Triangular Masks**: (Lower triangular matrix extraction tril() and upper triangular matrix extraction triu() have been fully resolved!)
+
 
 ### 3.3 Statistics & Sorting
 - **Sorting**: Partial sorting `partition()` and index partial sorting `argpartition()` (extremely high performance benefit for top-K filtering), stable sorting indicator `kind` parameter inside `sort()`.
@@ -58,7 +58,6 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 
 ### 3.5 Advanced Linear Algebra & Vector Calculus (Roadmap)
 - **Tensors & Matrices**:
-  - (matrix_power() exponentiation solver has been fully resolved!)
   - `kron(NDArray a, NDArray b)`: Kronecker product of two arrays.
 - **Vector Calculus**:
   - `cross(NDArray a, NDArray b)`: Vector cross product in 3D space.
