@@ -692,6 +692,25 @@ void main() {
     );
 
     test(
+      'save() and load() Uint8 and Int16 arrays coverage',
+      () => NDArray.scope(() {
+        // 1. Uint8
+        final u8 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.uint8);
+        save('scratch/u8_array.npy', u8);
+        final u8Loaded = load('scratch/u8_array.npy');
+        expect(u8Loaded.toList(), [1, 2, 3, 4]);
+        expect(u8Loaded.dtype, DType.uint8);
+
+        // 2. Int16
+        final i16 = NDArray.fromList([10, 20, 30, 40], [2, 2], DType.int16);
+        save('scratch/i16_array.npy', i16);
+        final i16Loaded = load('scratch/i16_array.npy');
+        expect(i16Loaded.toList(), [10, 20, 30, 40]);
+        expect(i16Loaded.dtype, DType.int16);
+      }),
+    );
+
+    test(
       'broadcastShapes() incompatible shapes throws ArgumentError',
       () => NDArray.scope(() {
         final a = NDArray.ones([2], DType.float64);

@@ -24,6 +24,10 @@ DType _descrToDType(String descr) {
       return DType.complex128;
     case 'c8':
       return DType.complex64;
+    case 'u1':
+      return DType.uint8;
+    case 'i2':
+      return DType.int16;
     case 'b1':
       return DType.boolean;
     default:

@@ -2130,6 +2130,22 @@
     - **Global Workspace Line Coverage**: Surged from **88.12%** to a record peak of **88.32%**!
   - **Verification**: All 426 unit tests passed flawlessly green. Formatting and static analysis are pristine.
 
+***
+
+## 179. Supported Uint8 and Int16 NPY loads and Closed `io.dart` Coverage Gaps (Task 1 / Coverage Improvement)
+* **Issue**:
+  - While analyzing raw coverage trace logs in [io.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/io.dart), discovered that the `Uint8` and `Int16` data serialization and deserialization helper branches (`|u1` and `<i2` descriptors cases) inside `_descrToDType` and `_toArrayBytes` were completely unexecuted (0% coverage).
+  - Furthermore, attempting to load written `uint8` and `int16` NPY files failed entirely due to missing type descriptor switch cases in `_descrToDType`.
+* **Resolution**:
+  - **Uint8/Int16 Descriptors Support**: Mapped switch descriptors cases `'u1'` (Uint8) to `DType.uint8` and `'i2'` (Int16) to `DType.int16` inside `_descrToDType` in [io.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/io.dart#L27).
+  - **Exhaustive Serialization Testing**: Added a dedicated NPY saving and loading test suite for both `Uint8` and `Int16` arrays in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/quality_enhancements_test.dart#L693).
+* **Results**:
+  - **Coverage Progress**:
+    - **`io.dart` Line Coverage**: Maintained at a spectacular **97.9%** (successfully executing all 237 writable lines!).
+    - **Global Workspace Line Coverage**: Surged to a new peak of **88.33%**!
+  - **Verification**: All 427 unit tests passed flawlessly green.
+
+
 
 
 
