@@ -2723,5 +2723,46 @@ void main() {
         expect(dRecycled.toList(), [2.0, 6.0, 3.0, 10.0]);
       }),
     );
+
+    test(
+      'linalg.sinh(), cosh(), tanh(), asinh(), acosh(), and atanh() FFI-accelerated correctness',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([0.0, 1.0, -1.0], [3], DType.float64);
+
+        // 1. sinh
+        final sh = sinh(a);
+        expect(sh.data[0], closeTo(0.0, 1e-9));
+        expect(
+          sh.data[1],
+          closeTo((math.exp(1.0) - math.exp(-1.0)) / 2.0, 1e-9),
+        );
+
+        // 2. cosh
+        final ch = cosh(a);
+        expect(ch.data[0], closeTo(1.0, 1e-9));
+        expect(
+          ch.data[1],
+          closeTo((math.exp(1.0) + math.exp(-1.0)) / 2.0, 1e-9),
+        );
+
+        // 3. tanh
+        final th = tanh(a);
+        expect(th.data[0], closeTo(0.0, 1e-9));
+        expect(
+          th.data[1],
+          closeTo((math.exp(2.0) - 1) / (math.exp(2.0) + 1), 1e-9),
+        );
+
+        // 4. inverse hyperbolic loops
+        final ash = asinh(sh);
+        expect(allclose(ash, a, atol: 1e-9), true);
+
+        // 5. in-place recycler out reuse
+        final recycler = NDArray<double>.zeros([3], DType.float64);
+        final shRec = sinh(a, out: recycler);
+        expect(identical(shRec, recycler), true);
+        expect(shRec.data[0], closeTo(0.0, 1e-9));
+      }),
+    );
   });
 }

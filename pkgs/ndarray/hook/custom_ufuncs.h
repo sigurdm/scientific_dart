@@ -161,6 +161,19 @@ void v_atan_float(const float *src, float *res, int size);
 void v_atan2_double(const double *y, const double *x, double *res, int size);
 void v_atan2_float(const float *y, const float *x, float *res, int size);
 
+void v_sinh_double(const double *src, double *res, int size);
+void v_sinh_float(const float *src, float *res, int size);
+void v_cosh_double(const double *src, double *res, int size);
+void v_cosh_float(const float *src, float *res, int size);
+void v_tanh_double(const double *src, double *res, int size);
+void v_tanh_float(const float *src, float *res, int size);
+void v_asinh_double(const double *src, double *res, int size);
+void v_asinh_float(const float *src, float *res, int size);
+void v_acosh_double(const double *src, double *res, int size);
+void v_acosh_float(const float *src, float *res, int size);
+void v_atanh_double(const double *src, double *res, int size);
+void v_atanh_float(const float *src, float *res, int size);
+
 void s_cumsum_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis);
 void s_cumsum_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, int axis);
 void s_cumsum_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank, int axis);

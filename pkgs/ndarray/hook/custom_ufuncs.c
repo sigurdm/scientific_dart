@@ -62,6 +62,48 @@ void v_log_double(const double *src, double *res, int size) {
     }
 }
 
+void v_sinh_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = sinh(src[i]);
+    }
+}
+
+void v_cosh_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = cosh(src[i]);
+    }
+}
+
+void v_tanh_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = tanh(src[i]);
+    }
+}
+
+void v_asinh_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = asinh(src[i]);
+    }
+}
+
+void v_acosh_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = acosh(src[i]);
+    }
+}
+
+void v_atanh_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = atanh(src[i]);
+    }
+}
+
 double r_sum_double(const double *src, int size) {
     if (src == NULL || size <= 0) return 0.0;
     double acc0 = 0.0, acc1 = 0.0, acc2 = 0.0, acc3 = 0.0;
@@ -592,6 +634,48 @@ void v_log_float(const float *src, float *res, int size) {
     if (src == NULL || res == NULL || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = logf(src[i]);
+    }
+}
+
+void v_sinh_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = sinhf(src[i]);
+    }
+}
+
+void v_cosh_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = coshf(src[i]);
+    }
+}
+
+void v_tanh_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = tanhf(src[i]);
+    }
+}
+
+void v_asinh_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = asinhf(src[i]);
+    }
+}
+
+void v_acosh_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = acoshf(src[i]);
+    }
+}
+
+void v_atanh_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = atanhf(src[i]);
     }
 }
 

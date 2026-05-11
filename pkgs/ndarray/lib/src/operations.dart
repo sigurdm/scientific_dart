@@ -4429,6 +4429,270 @@ NDArray tan(NDArray a) {
   return result;
 }
 
+/// Compute the element-wise hyperbolic sine of the array.
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Example:**
+/// {@example /example/hyperbolic_example.dart lang=dart}
+NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute sinh() on a disposed array.');
+  }
+  final DType<double> targetDType = a.dtype == DType.float32
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
+  final result = out ?? NDArray<double>.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape)) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape for sinh.',
+      );
+    }
+  }
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_sinh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_sinh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
+  for (var i = 0; i < a.data.length; i++) {
+    final x = (a.data[i] as num).toDouble();
+    result.data[i] = (math.exp(x) - math.exp(-x)) / 2.0;
+  }
+  return result;
+}
+
+/// Compute the element-wise hyperbolic cosine of the array.
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Example:**
+/// {@example /example/hyperbolic_example.dart lang=dart}
+NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute cosh() on a disposed array.');
+  }
+  final DType<double> targetDType = a.dtype == DType.float32
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
+  final result = out ?? NDArray<double>.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape)) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape for cosh.',
+      );
+    }
+  }
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_cosh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_cosh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
+  for (var i = 0; i < a.data.length; i++) {
+    final x = (a.data[i] as num).toDouble();
+    result.data[i] = (math.exp(x) + math.exp(-x)) / 2.0;
+  }
+  return result;
+}
+
+/// Compute the element-wise hyperbolic tangent of the array.
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Example:**
+/// {@example /example/hyperbolic_example.dart lang=dart}
+NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute tanh() on a disposed array.');
+  }
+  final DType<double> targetDType = a.dtype == DType.float32
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
+  final result = out ?? NDArray<double>.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape)) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape for tanh.',
+      );
+    }
+  }
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_tanh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_tanh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
+  for (var i = 0; i < a.data.length; i++) {
+    final x = (a.data[i] as num).toDouble();
+    result.data[i] = (math.exp(2 * x) - 1) / (math.exp(2 * x) + 1);
+  }
+  return result;
+}
+
+/// Compute the element-wise inverse hyperbolic sine of the array.
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Example:**
+/// {@example /example/hyperbolic_example.dart lang=dart}
+NDArray<double> asinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute asinh() on a disposed array.');
+  }
+  final DType<double> targetDType = a.dtype == DType.float32
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
+  final result = out ?? NDArray<double>.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape)) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape for asinh.',
+      );
+    }
+  }
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_asinh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_asinh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
+  for (var i = 0; i < a.data.length; i++) {
+    final x = (a.data[i] as num).toDouble();
+    result.data[i] = math.log(x + math.sqrt(x * x + 1));
+  }
+  return result;
+}
+
+/// Compute the element-wise inverse hyperbolic cosine of the array.
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Example:**
+/// {@example /example/hyperbolic_example.dart lang=dart}
+NDArray<double> acosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute acosh() on a disposed array.');
+  }
+  final DType<double> targetDType = a.dtype == DType.float32
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
+  final result = out ?? NDArray<double>.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape)) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape for acosh.',
+      );
+    }
+  }
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_acosh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_acosh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
+  for (var i = 0; i < a.data.length; i++) {
+    final x = (a.data[i] as num).toDouble();
+    result.data[i] = math.log(x + math.sqrt(x * x - 1));
+  }
+  return result;
+}
+
+/// Compute the element-wise inverse hyperbolic tangent of the array.
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Example:**
+/// {@example /example/hyperbolic_example.dart lang=dart}
+NDArray<double> atanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute atanh() on a disposed array.');
+  }
+  final DType<double> targetDType = a.dtype == DType.float32
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
+  final result = out ?? NDArray<double>.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape)) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape for atanh.',
+      );
+    }
+  }
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_atanh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_atanh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  }
+
+  for (var i = 0; i < a.data.length; i++) {
+    final x = (a.data[i] as num).toDouble();
+    result.data[i] = 0.5 * math.log((1 + x) / (1 - x));
+  }
+  return result;
+}
+
 /// Compute the element-wise arc tangent of [y] / [x] with full broadcasting support.
 ///
 /// **Example:**
@@ -4593,139 +4857,6 @@ NDArray<double> power(NDArray x1, NDArray x2) {
     (valA, valB) => math.pow(valA.toDouble(), valB.toDouble()).toDouble(),
   );
 
-  return result;
-}
-
-/// Compute the element-wise hyperbolic sine of the array.
-///
-/// **Example:**
-/// {@example /example/ufuncs_example.dart lang=dart}
-NDArray sinh(NDArray a) {
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    throw UnsupportedError('Complex numbers are not supported for sinh');
-  }
-  final DType<dynamic> targetDType = a.dtype == DType.float32
-      ? DType.float32
-      : DType.float64;
-  final result = NDArray.create(a.shape, targetDType);
-  final resultStrides = NDArray.computeCStrides(a.shape);
-
-  double op(double x) => (math.exp(x) - math.exp(-x)) / 2.0;
-  if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    _unaryOp<int, double>(
-      result.data as List<double>,
-      a.data as List<int>,
-      a.shape,
-      a.strides,
-      resultStrides,
-      0,
-      0,
-      0,
-      (x) => op(x.toDouble()),
-    );
-  } else {
-    _unaryOp<double, double>(
-      result.data as List<double>,
-      a.data as List<double>,
-      a.shape,
-      a.strides,
-      resultStrides,
-      0,
-      0,
-      0,
-      op,
-    );
-  }
-  return result;
-}
-
-/// Compute the element-wise hyperbolic cosine of the array.
-///
-/// **Example:**
-/// {@example /example/ufuncs_example.dart lang=dart}
-NDArray cosh(NDArray a) {
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    throw UnsupportedError('Complex numbers are not supported for cosh');
-  }
-  final DType<dynamic> targetDType = a.dtype == DType.float32
-      ? DType.float32
-      : DType.float64;
-  final result = NDArray.create(a.shape, targetDType);
-  final resultStrides = NDArray.computeCStrides(a.shape);
-
-  double op(double x) => (math.exp(x) + math.exp(-x)) / 2.0;
-  if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    _unaryOp<int, double>(
-      result.data as List<double>,
-      a.data as List<int>,
-      a.shape,
-      a.strides,
-      resultStrides,
-      0,
-      0,
-      0,
-      (x) => op(x.toDouble()),
-    );
-  } else {
-    _unaryOp<double, double>(
-      result.data as List<double>,
-      a.data as List<double>,
-      a.shape,
-      a.strides,
-      resultStrides,
-      0,
-      0,
-      0,
-      op,
-    );
-  }
-  return result;
-}
-
-/// Compute the element-wise hyperbolic tangent of the array.
-///
-/// **Example:**
-/// {@example /example/ufuncs_example.dart lang=dart}
-NDArray tanh(NDArray a) {
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    throw UnsupportedError('Complex numbers are not supported for tanh');
-  }
-  final DType<dynamic> targetDType = a.dtype == DType.float32
-      ? DType.float32
-      : DType.float64;
-  final result = NDArray.create(a.shape, targetDType);
-  final resultStrides = NDArray.computeCStrides(a.shape);
-
-  double op(double x) {
-    final e2x = math.exp(2.0 * x);
-    return (e2x - 1.0) / (e2x + 1.0);
-  }
-
-  if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    _unaryOp<int, double>(
-      result.data as List<double>,
-      a.data as List<int>,
-      a.shape,
-      a.strides,
-      resultStrides,
-      0,
-      0,
-      0,
-      (x) => op(x.toDouble()),
-    );
-  } else {
-    _unaryOp<double, double>(
-      result.data as List<double>,
-      a.data as List<double>,
-      a.shape,
-      a.strides,
-      resultStrides,
-      0,
-      0,
-      0,
-      op,
-    );
-  }
   return result;
 }
 

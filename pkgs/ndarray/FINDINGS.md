@@ -122,3 +122,6 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 ## 🏗️ Section 5: DevOps & Build Hazards
 - **Issue**: **OpenBLAS compilation latency**. Building from source takes 5-10 minutes. Needs precompiled binary distribution.
 - **Issue**: **Windows MSVC breakage**. Hardcoded GCC flags in `pocketfft` build hook prevent Windows compilation.
+
+## Tidy custom_ufuncs `next`
+We should organize the c helpers better, write a bit of comments, perhaps split in multiple files.
