@@ -2236,3 +2236,15 @@
   - **Multi-Platform Parity**: Integrated an `#ifdef _WIN32` platform gate inside `fill_secure_bytes` to cleanly route secure bytes collection to BCrypt under Windows, and standard `/dev/urandom` otherwise.
 * **Results**:
   - **Verification**: Successfully compiled and ran the complete package unit test suite on Linux (proving standard Unix code paths remain 100% clean). All **432 tests passed flawlessly green!**
+
+***
+
+## 187. FFI-Accelerated Causal Masks (`tril`/`triu`), Moore-Penrose Pseudo-Inverse (`pinv`), and Matrix Power (`matrix_power`) (Task 8 / Same as 3 / Findings Fix)
+* **What was done**:
+  - Resolved two major advanced linalg roadmap entries in [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md).
+  - **FFI-Accelerated C-Loops for Causal Triangular Masks**: Implemented standard lower (`tril()`) and upper (`triu()`) triangular matrix extraction solvers. Added 4 native C loops `v_tril_double`, `v_tril_float`, `v_triu_double`, and `v_triu_float` inside [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.c) to offload contiguous N-Dimensional arrays (`[...Batch, M, N]`) at peak speed.
+  - **Moore-Penrose Pseudo-Inverse (`pinv()`)**: Programmed the high-performance pseudo-inverse algorithm utilizing our native OpenBLAS LAPACK `svd()` and native `matmul()` solvers. Dynamically thresholds singular values above $\text{rcond} \cdot \lambda_{\max}$, avoiding singular exceptions.
+  - **Fast Matrix Power (`matrix_power()`)**: Programmed highly optimized binary exponentiation (square-and-multiply) in $O(\log n)$ steps, utilizing LAPACK `inv()` to cleanly solve negative exponents.
+  - **In-place `out` Recyclers**: Added complete, memory-efficient output recycling support across all four new functions.
+* **Results**:
+  - **Verification**: Created targeted unit tests validating mathematical outcomes, positive/negative diagonals, singular matrices, negative exponents, and in-place buffer recycling. All **434 tests passed perfectly green!** Formatting and static analysis are pristine.
