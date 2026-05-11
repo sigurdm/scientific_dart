@@ -7,7 +7,7 @@ void main() {
     test('sin/cos/tan fallbacks (int types)', () {
       NDArray.scope(() {
         final a = NDArray.fromList([0, 1, 2], [3], DType.int32);
-        
+
         final s = sin(a);
         expect(s.dtype, DType.float64);
         expect(s.data[0], closeTo(math.sin(0), 1e-10));
@@ -29,7 +29,7 @@ void main() {
     test('asin/acos/atan fallbacks (int types)', () {
       NDArray.scope(() {
         final a = NDArray.fromList([0, 1], [2], DType.int32);
-        
+
         final s = asin(a);
         expect(s.data[0], closeTo(math.asin(0), 1e-10));
         expect(s.data[1], closeTo(math.asin(1), 1e-10));
@@ -54,7 +54,9 @@ void main() {
       NDArray.scope(() {
         // [0, 100, 1, 200, 2] -> slice [0, 1, 2]
         final a = NDArray.fromList([0, 100, 1, 200, 2], [5], DType.int32);
-        final sliced = a.slice([const Slice(start: 0, stop: 5, step: 2)]); // [0, 1, 2]
+        final sliced = a.slice([
+          const Slice(start: 0, stop: 5, step: 2),
+        ]); // [0, 1, 2]
         expect(sliced.shape, [3]);
         expect(sliced.isContiguous, false);
 
@@ -100,7 +102,7 @@ void main() {
         final y = NDArray.fromList([1.0, 2.0], [2], DType.float64);
         final x = NDArray.fromList([1.0, 2.0], [2, 1], DType.float64);
         final res = atan2(y, x);
-        
+
         expect(res.shape, [2, 2]);
         // [atan2(1,1), atan2(2,1)]
         // [atan2(1,2), atan2(2,2)]

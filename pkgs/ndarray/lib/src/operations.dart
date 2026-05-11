@@ -5732,8 +5732,8 @@ NDArray atan2(NDArray y, NDArray x) {
   final shape = broadcastResult.shape;
   final DType<dynamic> targetDType =
       (y.dtype == DType.float32 && x.dtype == DType.float32)
-          ? DType.float32
-          : DType.float64;
+      ? DType.float32
+      : DType.float64;
 
   final result = NDArray.create(shape, targetDType);
 
