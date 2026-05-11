@@ -1724,10 +1724,35 @@ void v_binomial_int32(int32_t *res, int size, int n, double p, unsigned long lon
     }
 }
 
+#ifdef _WIN32
+#include <windows.h>
+
+typedef LONG (WINAPI *BCryptGenRandomFunc)(
+    void* hAlgorithm,
+    unsigned char* pbBuffer,
+    unsigned long cbBuffer,
+    unsigned long dwFlags
+);
+
+static void fill_secure_bytes_win(void *dest, size_t size) {
+    HMODULE hBcrypt = LoadLibraryA("bcrypt.dll");
+    if (hBcrypt != NULL) {
+        BCryptGenRandomFunc pBCryptGenRandom = (BCryptGenRandomFunc)GetProcAddress(hBcrypt, "BCryptGenRandom");
+        if (pBCryptGenRandom != NULL) {
+            pBCryptGenRandom(NULL, (unsigned char*)dest, (unsigned long)size, 0x00000002);
+        }
+        FreeLibrary(hBcrypt);
+    }
+}
+#else
 #include <fcntl.h>
 #include <unistd.h>
+#endif
 
 static void fill_secure_bytes(void *dest, size_t size) {
+#ifdef _WIN32
+    fill_secure_bytes_win(dest, size);
+#else
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd >= 0) {
         size_t bytes_read = 0;
@@ -1738,6 +1763,7 @@ static void fill_secure_bytes(void *dest, size_t size) {
         }
         close(fd);
     }
+#endif
 }
 
 void v_secure_uniform_double(double *res, int size) {
@@ -1809,5 +1835,65 @@ void v_secure_normal_float(float *res, int size, float loc, float scale) {
             res[i + 1] = loc + mag * sinf(angle);
         }
         i += 2;
+    }
+}
+
+void v_tril_double(const double *src, double *res, int batch_count, int rows, int cols, int k) {
+    if (src == NULL || res == NULL || batch_count <= 0 || rows <= 0 || cols <= 0) return;
+    int matrix_size = rows * cols;
+    for (int b = 0; b < batch_count; b++) {
+        const double *s_mat = src + b * matrix_size;
+        double *r_mat = res + b * matrix_size;
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                int idx = r * cols + c;
+                r_mat[idx] = (c <= r + k) ? s_mat[idx] : 0.0;
+            }
+        }
+    }
+}
+
+void v_tril_float(const float *src, float *res, int batch_count, int rows, int cols, int k) {
+    if (src == NULL || res == NULL || batch_count <= 0 || rows <= 0 || cols <= 0) return;
+    int matrix_size = rows * cols;
+    for (int b = 0; b < batch_count; b++) {
+        const float *s_mat = src + b * matrix_size;
+        float *r_mat = res + b * matrix_size;
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                int idx = r * cols + c;
+                r_mat[idx] = (c <= r + k) ? s_mat[idx] : 0.0f;
+            }
+        }
+    }
+}
+
+void v_triu_double(const double *src, double *res, int batch_count, int rows, int cols, int k) {
+    if (src == NULL || res == NULL || batch_count <= 0 || rows <= 0 || cols <= 0) return;
+    int matrix_size = rows * cols;
+    for (int b = 0; b < batch_count; b++) {
+        const double *s_mat = src + b * matrix_size;
+        double *r_mat = res + b * matrix_size;
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                int idx = r * cols + c;
+                r_mat[idx] = (c >= r + k) ? s_mat[idx] : 0.0;
+            }
+        }
+    }
+}
+
+void v_triu_float(const float *src, float *res, int batch_count, int rows, int cols, int k) {
+    if (src == NULL || res == NULL || batch_count <= 0 || rows <= 0 || cols <= 0) return;
+    int matrix_size = rows * cols;
+    for (int b = 0; b < batch_count; b++) {
+        const float *s_mat = src + b * matrix_size;
+        float *r_mat = res + b * matrix_size;
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                int idx = r * cols + c;
+                r_mat[idx] = (c >= r + k) ? s_mat[idx] : 0.0f;
+            }
+        }
     }
 }
