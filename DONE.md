@@ -2370,3 +2370,18 @@
   - **API Parity & named recycler parameter**: Refactored [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart#L4430) to expose public strongly-typed `sinh()`, `cosh()`, `tanh()`, `asinh()`, `acosh()`, and `atanh()` operations. Bypasses Dart VM overhead for contiguous arrays by offloading to FFI, and falls back to stride-safe coordinate loops on non-contiguous strided views. Fully supports standard named recycler parameter `{out}`.
 * **Results**:
   - **Verification**: Created targeted unit tests verifying double/float layouts, exact numeric limits, inverse hyperbolic roundtrip reconstructions, and recycler buffer identity. All **437 package unit tests pass flawlessly green!** Formatting and static analysis are pristine.
+
+***
+
+## 198. Strongly-Typed Geometric ufuncs `tril()`, `triu()`, and `diag()` with out parameters (User Request / Refactoring)
+* **Issue**:
+  - Geometric array manipulation ufuncs (`tril`, `triu`, and `diag`) were weakly typed on their input and return NDArrays (`NDArray` instead of `NDArray<T>`), causing type-safety holes. Furthermore, `diag` lacked any `out:` recycler buffer reuse parameter, forcing full matrix allocations on diagonal constructions.
+* **Resolution**:
+  - **Strict `<T>` Type Propagation**: Upgraded signatures inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart#L8687) to:
+    - `NDArray<T> tril<T>(NDArray<T> a, {int k = 0, NDArray<T>? out})`
+    - `NDArray<T> triu<T>(NDArray<T> a, {int k = 0, NDArray<T>? out})`
+    - `NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out})`
+  - This ensures 100% static type safety and matches return types cleanly.
+  - **diag out parameter**: Implemented dynamic recycler `{out}` support when constructing a 2D diagonal matrix from a 1D vector. Clears the recycled buffer and inserts values in-place, yielding zero extra allocations.
+* **Results**:
+  - **Verification**: Added targeted unit tests verifying `diag()` strongly typed extraction, 1D diagonal matrix construction recycler reuse, and type matching checks. All **437 package unit tests pass flawlessly green!** Static analysis is perfectly clean.
