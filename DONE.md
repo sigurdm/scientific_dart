@@ -2473,3 +2473,13 @@
   - Augmented [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/ndarray.dart)'s public `ravel()` Dartdocs to explicitly clarify when it returns a zero-copy view (contiguous same-shape layout sharing backing memory pointer and mutations) vs a deep copy (non-contiguous strided layouts allocating a brand-new C heap array and decoupling mutations).
 * **Results**:
   - **Verification**: Formatting and static analysis pass perfectly clean. All unit tests continue to pass flawlessly green. Staged and committed changes cleanly.
+
+***
+
+## 208. Native C Library Structuring, Sectioning, and Documentation (Task 8 / Refactoring)
+* **What was done**:
+  - Refactored [custom_ufuncs.h](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.h) to systematically organize C helper ufunc signatures into 7 structured, descriptive logical sections.
+  - Added rich doc comments explaining unrolled vector contiguous math rules, multi-dimensional strided odometer walks, complex layouts, pocketfft integrations, and Timsort bounds.
+  - Removed the resolved Section 1.1 ("Non-Contiguous Strided Transcendental ufuncs") and organized custom_ufuncs finding from [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md).
+* **Results**:
+  - **Verification**: All **438 package unit tests pass flawlessly green!** formatting and static analysis are perfectly clean. Staged and committed refactorings cleanly.
