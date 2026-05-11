@@ -118,6 +118,9 @@ void v_hypot_complex64(const cpx_f_t *x1, const cpx_f_t *x2, float *res, int siz
 void v_pow_complex128(const cpx_t *x1, const cpx_t *x2, cpx_t *res, int size);
 void v_pow_complex64(const cpx_f_t *x1, const cpx_f_t *x2, cpx_f_t *res, int size);
 
+void v_conj_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_conj_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+
 /* ============================================================================
  * SECTION 3: STRIDED MULTI-DIMENSIONAL ODOMETER WALKS (ufuncs)
  * ============================================================================
@@ -193,6 +196,9 @@ void s_hypot_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x
 
 void s_pow_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, cpx_t *res, const int *stridesRes, const int *shape, int rank);
 void s_pow_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_conj_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_conj_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
 
 void s_cumsum_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis);
 void s_cumsum_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, int axis);

@@ -1,12 +1,15 @@
 # Multi-Agent Orchestration Protocol
 
-Before starting a task, you MUST claim it to avoid collisions with other agents.
-Use your unique Agent ID (e.g., your PID or a descriptive name).
+Before starting a task, you MUST claim it and work on a dedicated branch to avoid collisions.
 
 1. **Claim Task**: `dart tool/agent_orchestrator.dart claim <agent_id> <task_id> [finding_id]`
-2. **Work**: Perform the task as described below.
-3. **Log Progress**: Instead of appending to `DONE.md`, create a new file `done/<task_id>_<agent_id>.md`.
-4. **Release Task**: `dart tool/agent_orchestrator.dart release <agent_id>`
+2. **Branching**: Create and switch to a new branch for your work:
+   `git checkout -b agents/<task_id>-<agent_id>`
+3. **Work**: Perform the task as described below.
+4. **Log Progress**: Create a new file `done/<task_id>_<agent_id>.md`.
+5. **Commit**: Commit your changes to your branch.
+6. **Release Task**: `dart tool/agent_orchestrator.dart release <agent_id>`
+7. **Cleanup**: Switch back to the main branch after finishing (but do not delete your branch).
 
 ---
 

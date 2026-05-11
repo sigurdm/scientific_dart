@@ -31,7 +31,9 @@ void printUsage() {
   print('Usage: dart tool/agent_orchestrator.dart <command> [args]');
   print('Commands:');
   print('  claim <agent_id> <task_id> [finding_id]  Claims a task/finding');
-  print('  release <agent_id>                       Releases all tasks for an agent');
+  print(
+    '  release <agent_id>                       Releases all tasks for an agent',
+  );
   print('  list                                     Lists active tasks');
 }
 
@@ -51,7 +53,9 @@ Future<void> handleClaim(List<String> args, File registryFile) async {
   for (final entry in registry.values) {
     if (entry['task_id'] == taskId) {
       if (findingId == null || entry['finding_id'] == findingId) {
-        print('Task $taskId ${findingId != null ? "finding $findingId " : ""}is already claimed by ${entry['agent_id']}');
+        print(
+          'Task $taskId ${findingId != null ? "finding $findingId " : ""}is already claimed by ${entry['agent_id']}',
+        );
         exit(1);
       }
     }
@@ -65,7 +69,9 @@ Future<void> handleClaim(List<String> args, File registryFile) async {
   };
 
   await writeRegistry(registryFile, registry);
-  print('Agent $agentId successfully claimed task $taskId${findingId != null ? " ($findingId)" : ""}');
+  print(
+    'Agent $agentId successfully claimed task $taskId${findingId != null ? " ($findingId)" : ""}',
+  );
 }
 
 Future<void> handleRelease(List<String> args, File registryFile) async {
@@ -95,7 +101,9 @@ Future<void> handleList(File registryFile) async {
 
   print('Active Tasks:');
   registry.forEach((agentId, data) {
-    print('- $agentId: Task ${data['task_id']} ${data['finding_id'] ?? ""} (Claimed at ${data['claimed_at']})');
+    print(
+      '- $agentId: Task ${data['task_id']} ${data['finding_id'] ?? ""} (Claimed at ${data['claimed_at']})',
+    );
   });
 }
 

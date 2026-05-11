@@ -2891,6 +2891,38 @@ void main() {
         expect(p.dtype, DType.complex128);
         expect(p.data[1].real, closeTo(-0.03, 1e-9));
         expect(p.data[1].imag, closeTo(0.04, 1e-9));
+
+        // 7. FFI complex conjugation (conj)
+        final conjContig = conj(a);
+        expect(conjContig.dtype, DType.complex128);
+        expect(conjContig.data[0], Complex(0.0, 0.0));
+        expect(conjContig.data[1], Complex(0.1, -0.2));
+        expect(conjContig.data[2], Complex(0.1, 0.2));
+
+        // Strided complex view conjugation
+        final sliceA = a.slice([Slice(start: 1, stop: 3)]); // shape [2]
+        final conjSlice = conj(sliceA);
+        expect(conjSlice.dtype, DType.complex128);
+        expect(conjSlice.shape, [2]);
+        expect(conjSlice.data[0], Complex(0.1, -0.2));
+        expect(conjSlice.data[1], Complex(0.1, 0.2));
+
+        // Real array conjugation
+        final realA = NDArray<double>.fromList(
+          [1.0, 2.0, 3.0],
+          [3],
+          DType.float64,
+        );
+        final conjReal = conj(realA);
+        expect(conjReal.dtype, DType.float64);
+        expect(conjReal.data[0], 1.0);
+        expect(conjReal.data[1], 2.0);
+
+        // Recycler out buffer reuse
+        final conjRecycler = NDArray<Complex>.zeros([3], DType.complex128);
+        final conjRes = conj(a, out: conjRecycler);
+        expect(identical(conjRes, conjRecycler), true);
+        expect(conjRes.data[1], Complex(0.1, -0.2));
       }),
     );
   });

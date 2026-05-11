@@ -2759,6 +2759,62 @@ external void s_pow_complex64(
   int rank,
 );
 
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Void>, ffi.Int)
+>()
+external void v_conj_complex128(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Void> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Void>, ffi.Int)
+>()
+external void v_conj_complex64(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Void> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_conj_complex128(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Void> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_conj_complex64(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Void> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
 /// ----------------------------------------------------------------------------
 /// Native C High-Speed Strided Flattening/Copying Kernels
 /// ----------------------------------------------------------------------------

@@ -2517,3 +2517,61 @@ void s_pow_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2,
         }
     }
 }
+
+void v_conj_complex128(const cpx_t *src, cpx_t *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i].r = src[i].r;
+        res[i].i = -src[i].i;
+    }
+}
+
+void v_conj_complex64(const cpx_f_t *src, cpx_f_t *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i].r = src[i].r;
+        res[i].i = -src[i].i;
+    }
+}
+
+void s_conj_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank) {
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0) return;
+    int coord[8] = {0};
+    int total_size = 1;
+    for (int d = 0; d < rank; d++) total_size *= shape[d];
+    for (int i = 0; i < total_size; i++) {
+        int offsetSrc = 0, offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetSrc += coord[d] * stridesSrc[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        res[offsetRes].r = src[offsetSrc].r;
+        res[offsetRes].i = -src[offsetSrc].i;
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_conj_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank) {
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0) return;
+    int coord[8] = {0};
+    int total_size = 1;
+    for (int d = 0; d < rank; d++) total_size *= shape[d];
+    for (int i = 0; i < total_size; i++) {
+        int offsetSrc = 0, offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetSrc += coord[d] * stridesSrc[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        res[offsetRes].r = src[offsetSrc].r;
+        res[offsetRes].i = -src[offsetSrc].i;
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}

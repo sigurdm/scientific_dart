@@ -10921,3 +10921,182 @@ NDArray<T> _cumOpFFI<T>(
   }
   return result;
 }
+
+/// Compute the element-wise complex conjugate of the array elements.
+///
+/// **Preconditions:**
+/// - The array must not be disposed.
+///
+/// **Throws:**
+/// - [StateError] if the array has been disposed.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([Complex(1.0, 2.0)], [1], DType.complex128);
+/// final c = conj(a); // [Complex(1.0, -2.0)]
+/// ```
+NDArray conj(NDArray a, {NDArray? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute conj() on a disposed array.');
+  }
+  final targetDType = a.dtype;
+  final result = out ?? NDArray.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for conj.',
+      );
+    }
+  }
+
+  switch (targetDType) {
+    case Complex128DType():
+      if (a.isContiguous && result.isContiguous) {
+        v_conj_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      } else {
+        final rank = a.shape.length;
+        final cShape = malloc<ffi.Int>(rank);
+        final cStridesA = malloc<ffi.Int>(rank);
+        final cStridesRes = malloc<ffi.Int>(rank);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
+        try {
+          s_conj_complex128(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        } finally {
+          malloc.free(cShape);
+          malloc.free(cStridesA);
+          malloc.free(cStridesRes);
+        }
+      }
+    case Complex64DType():
+      if (a.isContiguous && result.isContiguous) {
+        v_conj_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      } else {
+        final rank = a.shape.length;
+        final cShape = malloc<ffi.Int>(rank);
+        final cStridesA = malloc<ffi.Int>(rank);
+        final cStridesRes = malloc<ffi.Int>(rank);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
+        try {
+          s_conj_complex64(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        } finally {
+          malloc.free(cShape);
+          malloc.free(cStridesA);
+          malloc.free(cStridesRes);
+        }
+      }
+    case Float64DType():
+    case Float32DType():
+    case Int64DType():
+    case Int32DType():
+    case Uint8DType():
+    case Int16DType():
+    case BooleanDType():
+      // Real/boolean numbers are their own complex conjugates!
+      if (a.isContiguous && result.isContiguous) {
+        final totalSize = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+        result.data.setRange(0, totalSize, a.data);
+      } else {
+        result.fill(0); // initialize
+        final rank = a.shape.length;
+        final cShape = malloc<ffi.Int>(rank);
+        final cStridesA = malloc<ffi.Int>(rank);
+        final cStridesRes = malloc<ffi.Int>(rank);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
+        try {
+          switch (targetDType) {
+            case Float64DType():
+              s_flatten_double(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cShape,
+                rank,
+              );
+            case Float32DType():
+              s_flatten_float(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cShape,
+                rank,
+              );
+            case Int64DType():
+              s_flatten_int64(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cShape,
+                rank,
+              );
+            case Int32DType():
+              s_flatten_int32(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cShape,
+                rank,
+              );
+            case BooleanDType():
+              s_flatten_boolean(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cShape,
+                rank,
+              );
+            default:
+              // Fallback recursive copy for other strided types
+              for (var i = 0; i < a.data.length; i++) {
+                result.data[i] = a.data[i];
+              }
+          }
+        } finally {
+          malloc.free(cShape);
+          malloc.free(cStridesA);
+          malloc.free(cStridesRes);
+        }
+      }
+      return result;
+  }
+}
+
+/// Alias for [conj].
+NDArray conjugate(NDArray a, {NDArray? out}) => conj(a, out: out);
