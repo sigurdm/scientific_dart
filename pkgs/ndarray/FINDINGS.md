@@ -10,6 +10,10 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 - **Issue**: `binomial()`, `exponential()`, and `poisson()` for small parameters use raw Dart JIT loops with billions of `rand.nextDouble()` calls, stalling simulations.
 - **Recommended Tweak**: Collapse these into unified streaming C kernels in `custom_ufuncs.c`. For statistics, use single-pass algorithms. For random sampling, move the entire loop into AOT C space.
 
+### 1.2 Loop Invariant Branching in Discrete Fourier Transforms (FFT/IFFT)
+- **Issue**: The discrete Fourier transforms `fft()` and `ifft()` in `fft.dart` unroll independent row signal sweeps where the condition `if (i < lastAxisDim)` is evaluated on every single element during padding copying. This unrolls loop invariant branching on hot pathways processing millions of scientific elements, degrading execution pipeline speeds and blocking compiler vectorizations.
+- **Recommended Tweak**: Split the loop into two sequential segments: a copying loop up to `math.min(lastAxisDim, targetLen)`, followed by a separate zero-filling loop up to `targetLen` (if padding is required), completely eliminating the branching overhead.
+
 ---
 
 ## 🛠️ Section 2: Architectural & Memory Safety Gaps
@@ -71,7 +75,13 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 ---
 
 ## ✨ Section 4: Usability & Ergonomics
-- **Recommended Tweak**: Expand `operator []=` to handle more complex NumPy-style selection objects (e.g. mixed lists).
+
+### 4.1 operator []= Selector Expansion
+- **Issue**: `operator []=` is currently constrained and can be expanded to handle more complex NumPy-style selection objects (e.g. mixed lists).
+
+### 4.2 List Inserter Overhead inside Stack Broadcasting
+- **Issue**: The internal stack shape broadcasting helper `_broadcastStackShapes` in `operations.dart` constructs stack list shapes by sequentially calling `result.insert(0, dim)`. Because Dart list inserts at index 0 trigger $O(K)$ element-shifting under the hood, executing this inside a loop yields $O(N^2)$ runtime complexity.
+- **Recommended Tweak**: Pre-allocate list buffers using `List.filled` or append elements sequentially via `.add()` followed by a single `.reversed.toList()` call to secure linear $O(N)$ efficiency.
 
 ---
 
