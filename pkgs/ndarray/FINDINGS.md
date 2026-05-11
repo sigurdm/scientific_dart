@@ -28,7 +28,7 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 
 ### 3.1 Universal Functions (ufuncs)
 - **Math & Trigonometry**:
-  - `diff` (difference calculation along a given axis).
+  - (diff() discrete difference calculations have been fully resolved!)
   - Trigonometric functions: `tan()`, inverse trig `asin()`, `acos()`, `atan()`, and `atan2(y, x)`.
   - Hyperbolic functions: `sinh()`, `cosh()`, `tanh()`, `asinh()`, `acosh()`, `atanh()`.
   - Power & logarithmic: `square()`, element-wise `power()`, modulo `remainder()` / `mod()`, and combined division/modulo `divmod()`.
