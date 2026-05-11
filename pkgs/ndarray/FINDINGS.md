@@ -6,6 +6,9 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 
 ## 🚀 Section 1: Critical Performance Bottlenecks
 
+### 1.1 Non-Contiguous Strided Transcendental ufuncs
+- **Issue**: Except for `sin` and `cos`, all remaining unary transcendental ufuncs (`tan`, `asin`, `acos`, `atan`, `exp`, `log`, `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, and `atanh`) fall back to slow cell-by-cell Dart VM loops when operating on non-contiguous strided views (like transposed matrices or sliced views).
+- **Recommended Tweak**: Generate native FFI strided odometer walk loops for the remaining 12 functions using our highly optimized C macro template `DEFINE_STRIDED_UNARY_OP`, offloading 100% of non-contiguous view walks completely to compiled C space for an immediate **20%+ execution speedup**.
 
 ---
 
