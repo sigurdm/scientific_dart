@@ -1,6 +1,7 @@
 # Codebase Quality & Enhancements Review - FINDINGS.md
 
 This file logs architectural improvements, optimization ideas, and feature gaps relative to the reference NumPy library, discovered during autonomous review loops.
+When a task is completed, describe it in DONE.md file and remove it from this file.
 
 ---
 
@@ -126,5 +127,5 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 - **Issue**: **OpenBLAS compilation latency**. Building from source takes 5-10 minutes. Needs precompiled binary distribution.
 - **Issue**: **Windows MSVC breakage**. Hardcoded GCC flags in `pocketfft` build hook prevent Windows compilation.
 
-## Tidy custom_ufuncs `next`
+## Tidy custom_ufuncs `NEXT`
 We should organize the c helpers better, write a bit of comments, perhaps split in multiple files.

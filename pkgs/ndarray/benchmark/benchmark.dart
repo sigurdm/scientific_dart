@@ -3,7 +3,7 @@ import 'dart:ffi' as ffi;
 import 'package:openblas/openblas.dart';
 
 void main() {
-  print('--- num_dart Benchmark ---');
+  print('--- ndarray Benchmark ---');
 
   final sizes = [10, 100, 1000, 10000, 100000, 1000000];
 

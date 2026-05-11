@@ -10,7 +10,7 @@ void main() {
   setNumThreads(1);
 
   print(
-    '        num_dart TIMSORT & ARGSORT COMPREHENSIVE BENCHMARK SUITE            ',
+    '        ndarray TIMSORT & ARGSORT COMPREHENSIVE BENCHMARK SUITE            ',
   );
   print(
     '============================================================================\n',

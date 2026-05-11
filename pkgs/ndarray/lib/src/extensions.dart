@@ -1,7 +1,7 @@
 import 'broadcasting.dart';
 
 import 'ndarray.dart';
-import 'numdart_bindings.dart';
+import 'ndarray_bindings.dart';
 import 'operations.dart' as ops;
 
 // =============================================================================

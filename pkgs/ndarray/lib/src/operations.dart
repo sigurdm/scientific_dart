@@ -9,7 +9,7 @@ import 'broadcasting.dart';
 import 'package:openblas/openblas.dart';
 import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
-import 'numdart_bindings.dart';
+import 'ndarray_bindings.dart';
 
 // LAPACK Extension Bindings linking explicitly to package:openblas asset via DefaultAsset
 
@@ -1898,14 +1898,17 @@ NDArray sqrt(NDArray a, {NDArray? out}) {
 ///
 /// Reference: [Trigonometric Sine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
 NDArray sin(NDArray a, {NDArray? out}) {
-  final DType<dynamic> targetDType = a.dtype == DType.float32
-      ? DType.float32
-      : DType.float64;
+  final DType<dynamic> targetDType;
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    targetDType = a.dtype;
+  } else {
+    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  }
   final result = out ?? NDArray.create(a.shape, targetDType);
   if (out != null) {
-    if (!listEquals(out.shape, a.shape)) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
-        'Provided out buffer has incompatible shape for sin.',
+        'Provided out buffer has incompatible shape or dtype for sin.',
       );
     }
   }
@@ -1916,6 +1919,12 @@ NDArray sin(NDArray a, {NDArray? out}) {
       return result;
     } else if (a.dtype == DType.float32) {
       v_sin_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.complex128) {
+      v_sin_complex128(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.complex64) {
+      v_sin_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
     }
   } else {
@@ -1941,6 +1950,26 @@ NDArray sin(NDArray a, {NDArray? out}) {
         return result;
       } else if (a.dtype == DType.float32) {
         s_sin_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.complex128) {
+        s_sin_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.complex64) {
+        s_sin_complex64(
           a.pointer.cast(),
           cStridesA,
           result.pointer.cast(),
@@ -1983,14 +2012,17 @@ NDArray sin(NDArray a, {NDArray? out}) {
 ///
 /// Reference: [Trigonometric Cosine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
 NDArray cos(NDArray a, {NDArray? out}) {
-  final DType<dynamic> targetDType = a.dtype == DType.float32
-      ? DType.float32
-      : DType.float64;
+  final DType<dynamic> targetDType;
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    targetDType = a.dtype;
+  } else {
+    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  }
   final result = out ?? NDArray.create(a.shape, targetDType);
   if (out != null) {
-    if (!listEquals(out.shape, a.shape)) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
-        'Provided out buffer has incompatible shape for cos.',
+        'Provided out buffer has incompatible shape or dtype for cos.',
       );
     }
   }
@@ -2001,6 +2033,12 @@ NDArray cos(NDArray a, {NDArray? out}) {
       return result;
     } else if (a.dtype == DType.float32) {
       v_cos_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.complex128) {
+      v_cos_complex128(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.complex64) {
+      v_cos_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
     }
   } else {
@@ -2026,6 +2064,26 @@ NDArray cos(NDArray a, {NDArray? out}) {
         return result;
       } else if (a.dtype == DType.float32) {
         s_cos_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.complex128) {
+        s_cos_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.complex64) {
+        s_cos_complex64(
           a.pointer.cast(),
           cStridesA,
           result.pointer.cast(),
@@ -4455,14 +4513,21 @@ void _unaryOp<Ta, Tr>(
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray tan(NDArray a) {
+NDArray tan(NDArray a, {NDArray? out}) {
+  final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    throw UnsupportedError('Complex numbers are not supported for tan');
+    targetDType = a.dtype;
+  } else {
+    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   }
-  final DType<dynamic> targetDType = a.dtype == DType.float32
-      ? DType.float32
-      : DType.float64;
-  final result = NDArray.create(a.shape, targetDType);
+  final result = out ?? NDArray.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for tan.',
+      );
+    }
+  }
 
   if (a.isContiguous) {
     if (a.dtype == DType.float64) {
@@ -4471,6 +4536,49 @@ NDArray tan(NDArray a) {
     } else if (a.dtype == DType.float32) {
       v_tan_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
+    } else if (a.dtype == DType.complex128) {
+      v_tan_complex128(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.complex64) {
+      v_tan_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  } else {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    try {
+      if (a.dtype == DType.complex128) {
+        s_tan_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.complex64) {
+        s_tan_complex64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
     }
   }
   final resultStrides = NDArray.computeCStrides(a.shape);

@@ -5,7 +5,7 @@ void main() {
   print(
     '============================================================================',
   );
-  print('            num_dart PRNG STATISTICAL QUALITY VALIDATION TOOL');
+  print('            ndarray PRNG STATISTICAL QUALITY VALIDATION TOOL');
   print(
     '============================================================================',
   );

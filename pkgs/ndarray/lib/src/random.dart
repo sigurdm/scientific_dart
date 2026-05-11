@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'dart:math' show Random;
 import 'dart:ffi' as ffi;
 import 'dart:typed_data';
-import 'numdart_bindings.dart';
+import 'ndarray_bindings.dart';
 import 'ndarray.dart';
 import 'operations.dart';
 

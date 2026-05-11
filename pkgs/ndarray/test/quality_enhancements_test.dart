@@ -2780,5 +2780,71 @@ void main() {
         expect(shRec.data[0], closeTo(0.0, 1e-9));
       }),
     );
+
+    test(
+      'linalg.sin(), cos(), and tan() complex FFI-accelerated correctness',
+      () => NDArray.scope(() {
+        final a = NDArray<Complex>.create([3], DType.complex128);
+        a.data[0] = Complex(0.0, 0.0);
+        a.data[1] = Complex(math.pi / 4, 1.0);
+        a.data[2] = Complex(-math.pi / 4, -1.0);
+
+        // 1. sin(z)
+        final s = sin(a);
+        expect(s.dtype, DType.complex128);
+        expect(s.data[0], Complex(0.0, 0.0));
+        expect(
+          s.data[1].real,
+          closeTo(
+            math.sin(math.pi / 4) * ((math.exp(1.0) + math.exp(-1.0)) / 2.0),
+            1e-9,
+          ),
+        );
+        expect(
+          s.data[1].imag,
+          closeTo(
+            math.cos(math.pi / 4) * ((math.exp(1.0) - math.exp(-1.0)) / 2.0),
+            1e-9,
+          ),
+        );
+
+        // 2. cos(z)
+        final c = cos(a);
+        expect(c.dtype, DType.complex128);
+        expect(c.data[0], Complex(1.0, 0.0));
+        expect(
+          c.data[1].real,
+          closeTo(
+            math.cos(math.pi / 4) * ((math.exp(1.0) + math.exp(-1.0)) / 2.0),
+            1e-9,
+          ),
+        );
+        expect(
+          c.data[1].imag,
+          closeTo(
+            -math.sin(math.pi / 4) * ((math.exp(1.0) - math.exp(-1.0)) / 2.0),
+            1e-9,
+          ),
+        );
+
+        // 3. tan(z)
+        final t = tan(a);
+        expect(t.dtype, DType.complex128);
+        expect(t.data[0], Complex(0.0, 0.0));
+        final denom =
+            math.cos(math.pi / 2) + ((math.exp(2.0) + math.exp(-2.0)) / 2.0);
+        expect(t.data[1].real, closeTo(math.sin(math.pi / 2) / denom, 1e-9));
+        expect(
+          t.data[1].imag,
+          closeTo(((math.exp(2.0) - math.exp(-2.0)) / 2.0) / denom, 1e-9),
+        );
+
+        // 4. in-place out recycler reuse
+        final recycler = NDArray<Complex>.zeros([3], DType.complex128);
+        final sRec = sin(a, out: recycler);
+        expect(identical(sRec, recycler), true);
+        expect(sRec.data[0], Complex(0.0, 0.0));
+      }),
+    );
   });
 }

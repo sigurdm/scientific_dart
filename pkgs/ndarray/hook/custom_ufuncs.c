@@ -2146,3 +2146,51 @@ DEFINE_STRIDED_UNARY_OP(s_sin_double, double, OP_SIN_D)
 DEFINE_STRIDED_UNARY_OP(s_sin_float, float, OP_SIN_F)
 DEFINE_STRIDED_UNARY_OP(s_cos_double, double, OP_COS_D)
 DEFINE_STRIDED_UNARY_OP(s_cos_float, float, OP_COS_F)
+
+// complex trig helper definitions
+static inline cpx_t cpx_sin(cpx_t z) {
+    return (cpx_t){sin(z.r) * cosh(z.i), cos(z.r) * sinh(z.i)};
+}
+static inline cpx_f_t cpx_sin_f(cpx_f_t z) {
+    return (cpx_f_t){sinf(z.r) * coshf(z.i), cosf(z.r) * sinhf(z.i)};
+}
+
+static inline cpx_t cpx_cos(cpx_t z) {
+    return (cpx_t){cos(z.r) * cosh(z.i), -sin(z.r) * sinh(z.i)};
+}
+static inline cpx_f_t cpx_cos_f(cpx_f_t z) {
+    return (cpx_f_t){cosf(z.r) * coshf(z.i), -sinf(z.r) * sinhf(z.i)};
+}
+
+static inline cpx_t cpx_tan(cpx_t z) {
+    double denom = cos(2.0 * z.r) + cosh(2.0 * z.i);
+    if (denom == 0.0) return (cpx_t){0.0, 0.0};
+    return (cpx_t){sin(2.0 * z.r) / denom, sinh(2.0 * z.i) / denom};
+}
+static inline cpx_f_t cpx_tan_f(cpx_f_t z) {
+    float denom = cosf(2.0f * z.r) + coshf(2.0f * z.i);
+    if (denom == 0.0f) return (cpx_f_t){0.0f, 0.0f};
+    return (cpx_f_t){sinf(2.0f * z.r) / denom, sinhf(2.0f * z.i) / denom};
+}
+
+#define DEFINE_COMPLEX_UNARY_VEC(FUNCNAME, T, OP) \
+void FUNCNAME(const T *src, T *res, int size) { \
+    if (src == NULL || res == NULL || size <= 0) return; \
+    for (int i = 0; i < size; i++) { \
+        res[i] = OP(src[i]); \
+    } \
+}
+
+DEFINE_COMPLEX_UNARY_VEC(v_sin_complex128, cpx_t, cpx_sin)
+DEFINE_COMPLEX_UNARY_VEC(v_sin_complex64, cpx_f_t, cpx_sin_f)
+DEFINE_COMPLEX_UNARY_VEC(v_cos_complex128, cpx_t, cpx_cos)
+DEFINE_COMPLEX_UNARY_VEC(v_cos_complex64, cpx_f_t, cpx_cos_f)
+DEFINE_COMPLEX_UNARY_VEC(v_tan_complex128, cpx_t, cpx_tan)
+DEFINE_COMPLEX_UNARY_VEC(v_tan_complex64, cpx_f_t, cpx_tan_f)
+
+DEFINE_STRIDED_UNARY_OP(s_sin_complex128, cpx_t, cpx_sin)
+DEFINE_STRIDED_UNARY_OP(s_sin_complex64, cpx_f_t, cpx_sin_f)
+DEFINE_STRIDED_UNARY_OP(s_cos_complex128, cpx_t, cpx_cos)
+DEFINE_STRIDED_UNARY_OP(s_cos_complex64, cpx_f_t, cpx_cos_f)
+DEFINE_STRIDED_UNARY_OP(s_tan_complex128, cpx_t, cpx_tan)
+DEFINE_STRIDED_UNARY_OP(s_tan_complex64, cpx_f_t, cpx_tan_f)

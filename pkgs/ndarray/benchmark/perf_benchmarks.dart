@@ -615,7 +615,7 @@ void main() {
     '============================================================================',
   );
   print(
-    '         num_dart ALL-INCLUSIVE PERFORMANCE BENCHMARK SUITE MASTER          ',
+    '         ndarray ALL-INCLUSIVE PERFORMANCE BENCHMARK SUITE MASTER          ',
   );
   print(
     '============================================================================',

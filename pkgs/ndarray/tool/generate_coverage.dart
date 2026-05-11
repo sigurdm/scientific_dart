@@ -4,7 +4,7 @@ void main() async {
   print(
     '============================================================================',
   );
-  print('         num_dart AUTOMATED TEST COVERAGE INFRASTRUCTURE TOOL');
+  print('         ndarray AUTOMATED TEST COVERAGE INFRASTRUCTURE TOOL');
   print(
     '============================================================================',
   );

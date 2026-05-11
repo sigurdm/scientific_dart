@@ -318,7 +318,7 @@ void main() {
           const path = 'scratch/fortran_simulated.npy';
           File(path).writeAsBytesSync(fullBuffer, flush: true);
 
-          // Load it via num_dart load()!
+          // Load it via ndarray load()!
           final loaded = load(path);
 
           expect(loaded.shape, [2, 3]);

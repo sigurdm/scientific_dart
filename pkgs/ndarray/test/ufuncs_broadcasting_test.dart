@@ -94,7 +94,10 @@ void main() {
           expect(b.data[1], closeTo(1.0, 1e-10));
 
           final c = NDArray<Complex>.create([1], DType.complex128);
-          expect(() => tan(c), throwsUnsupportedError);
+          c.data[0] = Complex(0.0, 0.0);
+          final resC = tan(c);
+          expect(resC.dtype, DType.complex128);
+          expect(resC.data[0], Complex(0.0, 0.0));
         }),
       );
 

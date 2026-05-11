@@ -1,8 +1,8 @@
-name: NumDartNativeBindings
+name: NDArrayNativeBindings
 description: Automatically generated type-safe Dart FFI bindings for package:ndarray custom C extensions.
-output: lib/src/numdart_bindings.dart
+output: lib/src/ndarray_bindings.dart
 ffi-native:
-  asset-id: 'package:ndarray/num_dart'
+  asset-id: 'package:ndarray/ndarray'
 headers:
   entry-points:
     - hook/custom_sorting.h

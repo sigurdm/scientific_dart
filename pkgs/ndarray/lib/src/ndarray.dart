@@ -5,7 +5,7 @@ import 'dart:async';
 import 'package:ffi/ffi.dart';
 import 'dart:collection';
 import 'broadcasting.dart';
-import 'numdart_bindings.dart';
+import 'ndarray_bindings.dart';
 import 'operations.dart' as ops;
 
 /// Supported data types for the elements of an [NDArray].
@@ -161,7 +161,7 @@ final class NDArray<T> implements ffi.Finalizable {
 
   static final _finalizer = ffi.NativeFinalizer(malloc.nativeFree);
 
-  static const _scopeKey = #num_dart.NDArrayScope;
+  static const _scopeKey = #ndarray.NDArrayScope;
 
   /// Executes [callback] within an automatic resource management scope.
   ///
