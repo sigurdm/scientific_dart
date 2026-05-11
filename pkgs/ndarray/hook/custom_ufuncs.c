@@ -104,6 +104,28 @@ void v_atanh_double(const double *src, double *res, int size) {
     }
 }
 
+void v_asin_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = asin(src[i]);
+    }
+}
+
+void v_acos_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = acos(src[i]);
+    }
+}
+
+void v_atan_double(const double *src, double *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = atan(src[i]);
+    }
+}
+
+
 double r_sum_double(const double *src, int size) {
     if (src == NULL || size <= 0) return 0.0;
     double acc0 = 0.0, acc1 = 0.0, acc2 = 0.0, acc3 = 0.0;
@@ -678,6 +700,28 @@ void v_atanh_float(const float *src, float *res, int size) {
         res[i] = atanhf(src[i]);
     }
 }
+
+void v_asin_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = asinf(src[i]);
+    }
+}
+
+void v_acos_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = acosf(src[i]);
+    }
+}
+
+void v_atan_float(const float *src, float *res, int size) {
+    if (src == NULL || res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = atanf(src[i]);
+    }
+}
+
 
 float r_sum_float(const float *src, int size) {
     if (src == NULL || size <= 0) return 0.0f;
@@ -2173,6 +2217,52 @@ static inline cpx_f_t cpx_tan_f(cpx_f_t z) {
     return (cpx_f_t){sinf(2.0f * z.r) / denom, sinhf(2.0f * z.i) / denom};
 }
 
+static inline cpx_t cpx_asin(cpx_t z) {
+    double A = 0.5 * sqrt((z.r + 1.0)*(z.r + 1.0) + z.i*z.i);
+    double B = 0.5 * sqrt((z.r - 1.0)*(z.r - 1.0) + z.i*z.i);
+    double u = A + B;
+    double v = A - B;
+    if (v < -1.0) v = -1.0;
+    if (v > 1.0) v = 1.0;
+    double r = asin(v);
+    double s = (z.i >= 0 ? 1.0 : -1.0) * log(u + sqrt(u*u - 1.0));
+    return (cpx_t){r, s};
+}
+
+static inline cpx_f_t cpx_asin_f(cpx_f_t z) {
+    float A = 0.5f * sqrtf((z.r + 1.0f)*(z.r + 1.0f) + z.i*z.i);
+    float B = 0.5f * sqrtf((z.r - 1.0f)*(z.r - 1.0f) + z.i*z.i);
+    float u = A + B;
+    float v = A - B;
+    if (v < -1.0f) v = -1.0f;
+    if (v > 1.0f) v = 1.0f;
+    float r = asinf(v);
+    float s = (z.i >= 0.0f ? 1.0f : -1.0f) * logf(u + sqrtf(u*u - 1.0f));
+    return (cpx_f_t){r, s};
+}
+
+static inline cpx_t cpx_acos(cpx_t z) {
+    cpx_t s = cpx_asin(z);
+    return (cpx_t){3.14159265358979323846 / 2.0 - s.r, -s.i};
+}
+
+static inline cpx_f_t cpx_acos_f(cpx_f_t z) {
+    cpx_f_t s = cpx_asin_f(z);
+    return (cpx_f_t){3.14159265358979323846f / 2.0f - s.r, -s.i};
+}
+
+static inline cpx_t cpx_atan(cpx_t z) {
+    double r = 0.5 * atan2(2.0 * z.r, 1.0 - z.r*z.r - z.i*z.i);
+    double s = 0.25 * log((z.r*z.r + (z.i + 1.0)*(z.i + 1.0)) / (z.r*z.r + (z.i - 1.0)*(z.i - 1.0)));
+    return (cpx_t){r, s};
+}
+
+static inline cpx_f_t cpx_atan_f(cpx_f_t z) {
+    float r = 0.5f * atan2f(2.0f * z.r, 1.0f - z.r*z.r - z.i*z.i);
+    float s = 0.25f * logf((z.r*z.r + (z.i + 1.0f)*(z.i + 1.0f)) / (z.r*z.r + (z.i - 1.0f)*(z.i - 1.0f)));
+    return (cpx_f_t){r, s};
+}
+
 #define DEFINE_COMPLEX_UNARY_VEC(FUNCNAME, T, OP) \
 void FUNCNAME(const T *src, T *res, int size) { \
     if (src == NULL || res == NULL || size <= 0) return; \
@@ -2188,9 +2278,37 @@ DEFINE_COMPLEX_UNARY_VEC(v_cos_complex64, cpx_f_t, cpx_cos_f)
 DEFINE_COMPLEX_UNARY_VEC(v_tan_complex128, cpx_t, cpx_tan)
 DEFINE_COMPLEX_UNARY_VEC(v_tan_complex64, cpx_f_t, cpx_tan_f)
 
+DEFINE_COMPLEX_UNARY_VEC(v_asin_complex128, cpx_t, cpx_asin)
+DEFINE_COMPLEX_UNARY_VEC(v_asin_complex64, cpx_f_t, cpx_asin_f)
+DEFINE_COMPLEX_UNARY_VEC(v_acos_complex128, cpx_t, cpx_acos)
+DEFINE_COMPLEX_UNARY_VEC(v_acos_complex64, cpx_f_t, cpx_acos_f)
+DEFINE_COMPLEX_UNARY_VEC(v_atan_complex128, cpx_t, cpx_atan)
+DEFINE_COMPLEX_UNARY_VEC(v_atan_complex64, cpx_f_t, cpx_atan_f)
+
 DEFINE_STRIDED_UNARY_OP(s_sin_complex128, cpx_t, cpx_sin)
 DEFINE_STRIDED_UNARY_OP(s_sin_complex64, cpx_f_t, cpx_sin_f)
 DEFINE_STRIDED_UNARY_OP(s_cos_complex128, cpx_t, cpx_cos)
 DEFINE_STRIDED_UNARY_OP(s_cos_complex64, cpx_f_t, cpx_cos_f)
 DEFINE_STRIDED_UNARY_OP(s_tan_complex128, cpx_t, cpx_tan)
 DEFINE_STRIDED_UNARY_OP(s_tan_complex64, cpx_f_t, cpx_tan_f)
+
+DEFINE_STRIDED_UNARY_OP(s_asin_complex128, cpx_t, cpx_asin)
+DEFINE_STRIDED_UNARY_OP(s_asin_complex64, cpx_f_t, cpx_asin_f)
+DEFINE_STRIDED_UNARY_OP(s_acos_complex128, cpx_t, cpx_acos)
+DEFINE_STRIDED_UNARY_OP(s_acos_complex64, cpx_f_t, cpx_acos_f)
+DEFINE_STRIDED_UNARY_OP(s_atan_complex128, cpx_t, cpx_atan)
+DEFINE_STRIDED_UNARY_OP(s_atan_complex64, cpx_f_t, cpx_atan_f)
+
+#define OP_ASIN_D(x) asin(x)
+#define OP_ASIN_F(x) asinf(x)
+#define OP_ACOS_D(x) acos(x)
+#define OP_ACOS_F(x) acosf(x)
+#define OP_ATAN_D(x) atan(x)
+#define OP_ATAN_F(x) atanf(x)
+
+DEFINE_STRIDED_UNARY_OP(s_asin_double, double, OP_ASIN_D)
+DEFINE_STRIDED_UNARY_OP(s_asin_float, float, OP_ASIN_F)
+DEFINE_STRIDED_UNARY_OP(s_acos_double, double, OP_ACOS_D)
+DEFINE_STRIDED_UNARY_OP(s_acos_float, float, OP_ACOS_F)
+DEFINE_STRIDED_UNARY_OP(s_atan_double, double, OP_ATAN_D)
+DEFINE_STRIDED_UNARY_OP(s_atan_float, float, OP_ATAN_F)

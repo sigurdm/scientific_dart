@@ -184,8 +184,19 @@ void s_sin_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, co
 void s_cos_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
 void s_cos_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
 void s_tan_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_tan_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_tan_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);void v_asin_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_asin_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_acos_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_acos_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_atan_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_atan_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
 
+void s_asin_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_asin_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_acos_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_acos_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_atan_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_atan_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
 
 
 void s_cumsum_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis);
@@ -223,6 +234,13 @@ void s_sin_double(const double *src, const int *stridesSrc, double *res, const i
 void s_sin_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
 void s_cos_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
 void s_cos_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+
+void s_asin_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_asin_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_acos_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_acos_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_atan_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_atan_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
 
 // ------------------------------------------------------------
 // Native C High-Speed Strided Flattening/Copying Kernels

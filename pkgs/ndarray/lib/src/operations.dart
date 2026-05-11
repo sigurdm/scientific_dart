@@ -4611,6 +4611,411 @@ NDArray tan(NDArray a, {NDArray? out}) {
   return result;
 }
 
+/// Compute the element-wise arc sine (inverse sine) of the array.
+///
+/// **Preconditions:**
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([0.0, 1.0], [2], DType.float64);
+/// final b = asin(a); // [0.0, 1.570796...]
+/// ```
+NDArray asin(NDArray a, {NDArray? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute asin() on a disposed array.');
+  }
+  final DType<dynamic> targetDType;
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    targetDType = a.dtype;
+  } else {
+    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  }
+  final result = out ?? NDArray.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for asin.',
+      );
+    }
+  }
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_asin_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_asin_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.complex128) {
+      v_asin_complex128(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.complex64) {
+      v_asin_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  } else {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    try {
+      if (a.dtype == DType.float64) {
+        s_asin_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.float32) {
+        s_asin_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.complex128) {
+        s_asin_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.complex64) {
+        s_asin_complex64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
+    }
+  }
+
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+    _unaryOp<int, double>(
+      result.data as List<double>,
+      a.data as List<int>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => math.asin(x.toDouble()),
+    );
+  } else {
+    _unaryOp<double, double>(
+      result.data as List<double>,
+      a.data as List<double>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => math.asin(x),
+    );
+  }
+  return result;
+}
+
+/// Compute the element-wise arc cosine (inverse cosine) of the array.
+///
+/// **Preconditions:**
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 0.0], [2], DType.float64);
+/// final b = acos(a); // [0.0, 1.570796...]
+/// ```
+NDArray acos(NDArray a, {NDArray? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute acos() on a disposed array.');
+  }
+  final DType<dynamic> targetDType;
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    targetDType = a.dtype;
+  } else {
+    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  }
+  final result = out ?? NDArray.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for acos.',
+      );
+    }
+  }
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_acos_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_acos_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.complex128) {
+      v_acos_complex128(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.complex64) {
+      v_acos_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  } else {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    try {
+      if (a.dtype == DType.float64) {
+        s_acos_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.float32) {
+        s_acos_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.complex128) {
+        s_acos_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.complex64) {
+        s_acos_complex64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
+    }
+  }
+
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+    _unaryOp<int, double>(
+      result.data as List<double>,
+      a.data as List<int>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => math.acos(x.toDouble()),
+    );
+  } else {
+    _unaryOp<double, double>(
+      result.data as List<double>,
+      a.data as List<double>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => math.acos(x),
+    );
+  }
+  return result;
+}
+
+/// Compute the element-wise arc tangent (inverse tangent) of the array.
+///
+/// **Preconditions:**
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([0.0, 1.0], [2], DType.float64);
+/// final b = atan(a); // [0.0, 0.785398...]
+/// ```
+NDArray atan(NDArray a, {NDArray? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute atan() on a disposed array.');
+  }
+  final DType<dynamic> targetDType;
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    targetDType = a.dtype;
+  } else {
+    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  }
+  final result = out ?? NDArray.create(a.shape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for atan.',
+      );
+    }
+  }
+
+  if (a.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_atan_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_atan_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.complex128) {
+      v_atan_complex128(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    } else if (a.dtype == DType.complex64) {
+      v_atan_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      return result;
+    }
+  } else {
+    final rank = a.shape.length;
+    final cShape = malloc<ffi.Int>(rank);
+    final cStridesA = malloc<ffi.Int>(rank);
+    final cStridesRes = malloc<ffi.Int>(rank);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    try {
+      if (a.dtype == DType.float64) {
+        s_atan_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.float32) {
+        s_atan_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.complex128) {
+        s_atan_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      } else if (a.dtype == DType.complex64) {
+        s_atan_complex64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesRes);
+    }
+  }
+
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+    _unaryOp<int, double>(
+      result.data as List<double>,
+      a.data as List<int>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => math.atan(x.toDouble()),
+    );
+  } else {
+    _unaryOp<double, double>(
+      result.data as List<double>,
+      a.data as List<double>,
+      a.shape,
+      a.strides,
+      resultStrides,
+      0,
+      0,
+      0,
+      (x) => math.atan(x),
+    );
+  }
+  return result;
+}
+
 /// Compute the element-wise hyperbolic sine of the array.
 ///
 /// **Preconditions:**

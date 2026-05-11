@@ -2786,8 +2786,8 @@ void main() {
       () => NDArray.scope(() {
         final a = NDArray<Complex>.create([3], DType.complex128);
         a.data[0] = Complex(0.0, 0.0);
-        a.data[1] = Complex(math.pi / 4, 1.0);
-        a.data[2] = Complex(-math.pi / 4, -1.0);
+        a.data[1] = Complex(0.1, 0.2);
+        a.data[2] = Complex(0.1, -0.2);
 
         // 1. sin(z)
         final s = sin(a);
@@ -2796,14 +2796,14 @@ void main() {
         expect(
           s.data[1].real,
           closeTo(
-            math.sin(math.pi / 4) * ((math.exp(1.0) + math.exp(-1.0)) / 2.0),
+            math.sin(0.1) * ((math.exp(0.2) + math.exp(-0.2)) / 2.0),
             1e-9,
           ),
         );
         expect(
           s.data[1].imag,
           closeTo(
-            math.cos(math.pi / 4) * ((math.exp(1.0) - math.exp(-1.0)) / 2.0),
+            math.cos(0.1) * ((math.exp(0.2) - math.exp(-0.2)) / 2.0),
             1e-9,
           ),
         );
@@ -2815,14 +2815,14 @@ void main() {
         expect(
           c.data[1].real,
           closeTo(
-            math.cos(math.pi / 4) * ((math.exp(1.0) + math.exp(-1.0)) / 2.0),
+            math.cos(0.1) * ((math.exp(0.2) + math.exp(-0.2)) / 2.0),
             1e-9,
           ),
         );
         expect(
           c.data[1].imag,
           closeTo(
-            -math.sin(math.pi / 4) * ((math.exp(1.0) - math.exp(-1.0)) / 2.0),
+            -math.sin(0.1) * ((math.exp(0.2) - math.exp(-0.2)) / 2.0),
             1e-9,
           ),
         );
@@ -2831,12 +2831,11 @@ void main() {
         final t = tan(a);
         expect(t.dtype, DType.complex128);
         expect(t.data[0], Complex(0.0, 0.0));
-        final denom =
-            math.cos(math.pi / 2) + ((math.exp(2.0) + math.exp(-2.0)) / 2.0);
-        expect(t.data[1].real, closeTo(math.sin(math.pi / 2) / denom, 1e-9));
+        final denom = math.cos(0.2) + ((math.exp(0.4) + math.exp(-0.4)) / 2.0);
+        expect(t.data[1].real, closeTo(math.sin(0.2) / denom, 1e-9));
         expect(
           t.data[1].imag,
-          closeTo(((math.exp(2.0) - math.exp(-2.0)) / 2.0) / denom, 1e-9),
+          closeTo(((math.exp(0.4) - math.exp(-0.4)) / 2.0) / denom, 1e-9),
         );
 
         // 4. in-place out recycler reuse
@@ -2844,6 +2843,26 @@ void main() {
         final sRec = sin(a, out: recycler);
         expect(identical(sRec, recycler), true);
         expect(sRec.data[0], Complex(0.0, 0.0));
+
+        // 5. inverse complex trig (asin, acos, atan)
+        final as = asin(s);
+
+        for (var i = 0; i < a.data.length; i++) {
+          expect(as.data[i].real, closeTo(a.data[i].real, 1e-8));
+          expect(as.data[i].imag, closeTo(a.data[i].imag, 1e-8));
+        }
+
+        final ac = acos(c);
+        for (var i = 0; i < a.data.length; i++) {
+          expect(ac.data[i].real, closeTo(a.data[i].real, 1e-8));
+          expect(ac.data[i].imag, closeTo(a.data[i].imag, 1e-8));
+        }
+
+        final at = atan(t);
+        for (var i = 0; i < a.data.length; i++) {
+          expect(at.data[i].real, closeTo(a.data[i].real, 1e-8));
+          expect(at.data[i].imag, closeTo(a.data[i].imag, 1e-8));
+        }
       }),
     );
   });
