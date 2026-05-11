@@ -1602,7 +1602,7 @@ NDArray matmul(NDArray a, NDArray b) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], `DType.float64);`
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 /// final s0 = sum(a, axis: 0); // Sum along rows
 /// print(s0.data); // [4.0, 6.0]
 /// ```
@@ -1669,7 +1669,7 @@ NDArray sum(NDArray a, {int? axis, NDArray? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], `DType.float64);`
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 /// final p0 = prod(a, axis: 0); // Product along rows
 /// print(p0.data); // [3.0, 8.0]
 /// ```
@@ -1743,7 +1743,7 @@ NDArray prod(NDArray a, {int? axis, NDArray? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([true, true, false], [3], `DType.boolean);`
+/// final a = NDArray.fromList([true, true, false], [3], DType.boolean);
 /// final res = all(a); // false
 /// ```
 NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? out}) {
@@ -1815,7 +1815,7 @@ NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([true, false, false], [3], `DType.boolean);`
+/// final a = NDArray.fromList([true, false, false], [3], DType.boolean);
 /// final res = any(a); // true
 /// ```
 NDArray<bool> any(NDArray a, {int? axis, NDArray<bool>? out}) {
@@ -1883,7 +1883,7 @@ NDArray<bool> any(NDArray a, {int? axis, NDArray<bool>? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, 4.0, 9.0], [3], `DType.float64);`
+/// final a = NDArray.fromList([1.0, 4.0, 9.0], [3], DType.float64);
 /// final b = sqrt(a);
 /// print(b.data); // [1.0, 2.0, 3.0]
 /// ```
@@ -2321,7 +2321,7 @@ NDArray log(NDArray a, {NDArray? out}) {
 /// Compute the arithmetic mean of array elements along a specified axis.
 ///
 /// **Preconditions:**
-/// - Input array [a] elements must be numeric (`T extends num` or `Complex`).
+/// - Input array [a] elements must be numeric (`T extends num` or Complex).
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
 /// **Throws:**
@@ -2332,7 +2332,7 @@ NDArray log(NDArray a, {NDArray? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], `DType.float64);`
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 /// final m = mean(a); // returns 2.5 scalar
 /// final m0 = mean(a, axis: 0); // returns NDArray [2.0, 3.0]
 /// ```
@@ -2409,7 +2409,7 @@ NDArray mean(NDArray a, {int? axis, NDArray? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], `DType.float64);`
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
 /// final v = variance(a); // returns 1.25 scalar
 /// ```
 ///
@@ -2498,7 +2498,7 @@ NDArray<double> variance<T extends num>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], `DType.float64);`
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
 /// final s = std(a); // returns sqrt(1.25) scalar
 /// ```
 ///
@@ -2553,7 +2553,7 @@ NDArray<double> std<T extends num>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], `DType.float64);`
+/// final a = NDArray<double>.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], DType.float64);
 /// final s = nansum(a); // returns 4.0
 /// ```
 NDArray nansum(NDArray a, {int? axis, NDArray? out}) {
@@ -2637,7 +2637,7 @@ NDArray nansum(NDArray a, {int? axis, NDArray? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], `DType.float64);`
+/// final a = NDArray<double>.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], DType.float64);
 /// final m = nanmean(a); // returns 2.6666666666666665
 /// ```
 NDArray nanmean(NDArray a, {int? axis, NDArray? out}) {
@@ -2781,7 +2781,7 @@ void _nanReduceRecursive(
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], `DType.float64);`
+/// final a = NDArray<double>.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
 /// final v = nanvar(a); // returns 0.6666666666666666
 /// ```
 NDArray<double> nanvar<T extends num>(
@@ -2878,7 +2878,7 @@ NDArray<double> nanvar<T extends num>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], `DType.float64);`
+/// final a = NDArray<double>.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
 /// final s = nanstd(a); // returns sqrt(0.6666666666666666)
 /// ```
 NDArray<double> nanstd<T extends num>(
@@ -2969,7 +2969,7 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], `DType.float64);`
+/// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
 /// print(nanmin(a)); // 1.0
 /// ```
 NDArray<T> nanmin<T extends Object>(NDArray<T> a, {int? axis}) {
@@ -3094,7 +3094,7 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], `DType.float64);`
+/// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
 /// print(nanmax(a)); // 3.0
 /// ```
 NDArray<T> nanmax<T extends Object>(NDArray<T> a, {int? axis}) {
@@ -3358,7 +3358,7 @@ void _elementWiseNanMaxRec(
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([4.0, 7.0, 2.0, 6.0], [2, 2], `DType.float64);`
+/// final a = NDArray.fromList([4.0, 7.0, 2.0, 6.0], [2, 2], DType.float64);
 /// final b = inv(a);
 /// print(b.toList()); // [0.6, -0.7, -0.2, 0.4]
 /// ```
@@ -3541,7 +3541,7 @@ NDArray inv(NDArray a, {NDArray? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], `DType.float64);`
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 /// final d = det(a);
 /// print(d); // -2.0
 /// ```
@@ -3697,8 +3697,8 @@ double det(NDArray a) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([3.0, 1.0, 1.0, 2.0], [2, 2], `DType.float64);`
-/// final b = `NDArray<double>`.fromList([9.0, 8.0], [2], `DType.float64);`
+/// final a = NDArray<double>.fromList([3.0, 1.0, 1.0, 2.0], [2, 2], DType.float64);
+/// final b = NDArray<double>.fromList([9.0, 8.0], [2], DType.float64);
 /// final x = solve(a, b);
 /// print(x.toList()); // [2.0, 3.0]
 /// ```
@@ -3896,7 +3896,7 @@ NDArray solve(NDArray a, NDArray b) {
 /// Compute the eigenvalues and right eigenvectors of a square array.
 ///
 /// Returns a Map with keys 'eigenvalues' and 'eigenvectors'.
-/// Both are returned as `NDArray<Complex>` because they can be complex
+/// Both are returned as NDArray<Complex> because they can be complex
 /// even for real matrices.
 Map<String, NDArray<Complex>> eig(NDArray a) {
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
@@ -4292,7 +4292,7 @@ NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1, 2], [2], `DType.int32);`
+/// final a = NDArray.fromList([1, 2], [2], DType.int32);
 /// final b = copy(a);
 /// b.data[0] = 99;
 /// print(a.data[0]); // 1 (decoupled memory!)
@@ -4318,8 +4318,8 @@ NDArray<T> copy<T extends Object>(NDArray<T> a) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1, 2], [2], `DType.int32);`
-/// final b = NDArray.fromList([3, 4], [2], `DType.int32);`
+/// final a = NDArray.fromList([1, 2], [2], DType.int32);
+/// final b = NDArray.fromList([3, 4], [2], DType.int32);
 /// final s = stack([a, b], axis: 0); // shape [2, 2], values [[1, 2], [3, 4]]
 /// ```
 NDArray stack(List<NDArray> arrays, {int axis = 0}) {
@@ -4406,7 +4406,7 @@ void _copyStackRecursive(
 /// (effectively expanding it with front dimensions of size 1).
 ///
 /// **Preconditions:**
-/// - [reps] can be an [int] or a [`List<int>`]. If a list, all elements must be non-negative.
+/// - [reps] can be an [int] or a [List<int>]. If a list, all elements must be non-negative.
 ///
 /// **Throws:**
 /// - [ArgumentError] if [reps] contains negative integers or is an invalid type.
@@ -4487,7 +4487,7 @@ void _tileCopyRecursive<T>(
 /// and the elements are repeated along that flat 1D array.
 ///
 /// **Preconditions:**
-/// - [repeats] can be an [int] or a [`List<int>`]. If an `int`, all elements along [axis]
+/// - [repeats] can be an [int] or a [List<int>]. If an `int`, all elements along [axis]
 ///   are repeated that number of times. If a list, its length must exactly match the size
 ///   of the dimension along [axis].
 /// - All values in [repeats] must be non-negative.
@@ -4728,7 +4728,7 @@ NDArray tan(NDArray a, {NDArray? out}) {
       0,
       0,
       0,
-      (x) => math.tan(x.toDouble()),
+      (x) => math.asin(x.toDouble()),
     );
   } else {
     _unaryOp<double, double>(
@@ -4740,7 +4740,7 @@ NDArray tan(NDArray a, {NDArray? out}) {
       0,
       0,
       0,
-      (x) => math.tan(x),
+      (x) => math.asin(x),
     );
   }
   return result;
@@ -5686,11 +5686,88 @@ NDArray atan2(NDArray y, NDArray x) {
   final shape = broadcastResult.shape;
   final DType<dynamic> targetDType =
       (y.dtype == DType.float32 && x.dtype == DType.float32)
-      ? DType.float32
-      : DType.float64;
+          ? DType.float32
+          : DType.float64;
 
   final result = NDArray.create(shape, targetDType);
+
+  // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
+  if (y.isContiguous && x.isContiguous && listEquals(y.shape, x.shape)) {
+    if (y.dtype == DType.float64 && x.dtype == DType.float64) {
+      v_atan2_double(
+        y.pointer.cast(),
+        x.pointer.cast(),
+        result.pointer.cast(),
+        y.data.length,
+      );
+      return result;
+    } else if (y.dtype == DType.float32 && x.dtype == DType.float32) {
+      v_atan2_float(
+        y.pointer.cast(),
+        x.pointer.cast(),
+        result.pointer.cast(),
+        y.data.length,
+      );
+      return result;
+    }
+  }
+
   final resultStrides = NDArray.computeCStrides(shape);
+  final stridesY = broadcastResult.stridesA;
+  final stridesX = broadcastResult.stridesB;
+
+  // 0C. General Multidimensional Strided Broadcasting Engine in C (Rank <= 8)
+  if (shape.length <= 8) {
+    final cShape = malloc<ffi.Int>(shape.length);
+    final cStridesY = malloc<ffi.Int>(stridesY.length);
+    final cStridesX = malloc<ffi.Int>(stridesX.length);
+    final cStridesRes = malloc<ffi.Int>(resultStrides.length);
+
+    for (var i = 0; i < shape.length; i++) {
+      cShape[i] = shape[i];
+      cStridesY[i] = stridesY[i];
+      cStridesX[i] = stridesX[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+
+    try {
+      if (targetDType == DType.float64 &&
+          y.dtype == DType.float64 &&
+          x.dtype == DType.float64) {
+        s_atan2_double(
+          y.pointer.cast(),
+          cStridesY,
+          x.pointer.cast(),
+          cStridesX,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          shape.length,
+        );
+        return result;
+      } else if (targetDType == DType.float32 &&
+          y.dtype == DType.float32 &&
+          x.dtype == DType.float32) {
+        s_atan2_float(
+          y.pointer.cast(),
+          cStridesY,
+          x.pointer.cast(),
+          cStridesX,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          shape.length,
+        );
+        return result;
+      }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesY);
+      malloc.free(cStridesX);
+      malloc.free(cStridesRes);
+    }
+  }
+
   final rData = result.data as List<double>;
 
   if (y.dtype == DType.float64 || y.dtype == DType.float32) {
@@ -6692,7 +6769,7 @@ NDArray round(NDArray a) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([10, 20, 30, 40], [2, 2], `DType.int32);`
+/// final a = NDArray.fromList([10, 20, 30, 40], [2, 2], DType.int32);
 /// for (final entry in ndenumerate(a)) {
 ///   print('coord: ${entry.$1}, value: ${entry.$2}');
 /// }
@@ -6751,7 +6828,7 @@ Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<Complex>`.create([2], `DType.complex128);`
+/// final a = NDArray<Complex>.create([2], `DType.complex128);`
 /// a.data[0] = Complex(3.0, 4.0);
 /// a.data[1] = Complex(-1.0, 0.0);
 /// final r = real(a); // [3.0, -1.0] (`DType.float64)`
@@ -6825,7 +6902,7 @@ NDArray real(NDArray a, {NDArray? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<Complex>`.create([2], `DType.complex128);`
+/// final a = NDArray<Complex>.create([2], `DType.complex128);`
 /// a.data[0] = Complex(3.0, 4.0);
 /// a.data[1] = Complex(-1.0, 0.0);
 /// final im = imag(a); // [4.0, 0.0] (`DType.float64)`
@@ -6890,7 +6967,7 @@ NDArray imag(NDArray a, {NDArray? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([180.0, 90.0, 45.0], [3], `DType.float64);`
+/// final a = NDArray.fromList([180.0, 90.0, 45.0], [3], DType.float64);
 /// final r = deg2rad(a); // [pi, pi / 2.0, pi / 4.0]
 /// ```
 NDArray deg2rad(NDArray a, {NDArray? out}) {
@@ -6920,7 +6997,7 @@ NDArray deg2rad(NDArray a, {NDArray? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([math.pi, math.pi / 2.0], [2], `DType.float64);`
+/// final a = NDArray.fromList([math.pi, math.pi / 2.0], [2], DType.float64);
 /// final d = rad2deg(a); // [180.0, 90.0]
 /// ```
 NDArray rad2deg(NDArray a, {NDArray? out}) {
@@ -6948,7 +7025,7 @@ NDArray rad2deg(NDArray a, {NDArray? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], `DType.float64);`
+/// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
 /// final mask = isnan(a); // [false, true, false]
 /// ```
 NDArray<bool> isnan(NDArray a) {
@@ -7008,7 +7085,7 @@ NDArray<bool> isnan(NDArray a) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, double.infinity, 3.0], [3], `DType.float64);`
+/// final a = NDArray.fromList([1.0, double.infinity, 3.0], [3], DType.float64);
 /// final mask = isinf(a); // [false, true, false]
 /// ```
 NDArray<bool> isinf(NDArray a) {
@@ -7068,7 +7145,7 @@ NDArray<bool> isinf(NDArray a) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, double.nan, double.infinity], [3], `DType.float64);`
+/// final a = NDArray.fromList([1.0, double.nan, double.infinity], [3], DType.float64);
 /// final mask = isfinite(a); // [true, false, false]
 /// ```
 NDArray<bool> isfinite(NDArray a) {
@@ -8313,7 +8390,7 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
 
 /// Returns the indices of the elements that are non-zero.
 ///
-/// Returns a ``List<`NDArray<int>``>` containing 1D integer arrays, one for each dimension
+/// Returns a List<NDArray<int>`>` containing 1D integer arrays, one for each dimension
 /// of [a], which give the coordinates of the non-zero elements along that dimension.
 ///
 /// **Example:**
@@ -8718,7 +8795,7 @@ Map<String, NDArray> cholesky(NDArray a) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([12.0, -51.0, 4.0, 6.0, 167.0, -68.0, -4.0, 24.0, -41.0], [3, 3], `DType.float64);`
+/// final a = NDArray<double>.fromList([12.0, -51.0, 4.0, 6.0, 167.0, -68.0, -4.0, 24.0, -41.0], [3, 3], DType.float64);
 /// final res = qr(a);
 /// final q = res['Q']!;
 /// final r = res['R']!;
@@ -8879,7 +8956,7 @@ Map<String, NDArray> qr(NDArray a) {
 /// Computes the Singular Value Decomposition (SVD) of a matrix $A = U S V^h$.
 ///
 /// Decomposes a matrix [a] out left singular vectors `U`, singular values `S`,
-/// and right singular vectors `Vh` such that `a = U * diag(S) * Vh`.
+/// and right singular vectors Vh such that `a = U * diag(S) * Vh`.
 /// Natively offloads to LAPACK solvers (`dgesdd` / `sgesdd`) depending on precision.
 ///
 /// **Preconditions:**
@@ -8894,7 +8971,7 @@ Map<String, NDArray> qr(NDArray a) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], `DType.float64);`
+/// final a = NDArray<double>.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], DType.float64);
 /// final res = svd(a);
 /// final u = res['U']!;
 /// final s = res['S']!;
@@ -9451,7 +9528,7 @@ NDArray squeeze(NDArray a, {List<int>? axis}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0], [5], `DType.float64);`
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0], [5], DType.float64);
 /// final view = slidingWindowView(a, [3]);
 /// print(view.shape); // [3, 3]
 /// print(view.toList()); // [[1.0, 2.0, 3.0], [2.0, 3.0, 4.0], [3.0, 4.0, 5.0]]
@@ -9560,10 +9637,10 @@ List<int> broadcastShapes(List<int> s1, List<int> s2) {
 ///
 /// **Example:**
 /// ```dart
-/// final cond1 = NDArray.fromList([true, false], [2], `DType.boolean);`
-/// final cond2 = NDArray.fromList([false, true], [2], `DType.boolean);`
-/// final choice1 = NDArray.fromList([10, 20], [2], `DType.int32);`
-/// final choice2 = NDArray.fromList([100, 200], [2], `DType.int32);`
+/// final cond1 = NDArray.fromList([true, false], [2], DType.boolean);
+/// final cond2 = NDArray.fromList([false, true], [2], DType.boolean);
+/// final choice1 = NDArray.fromList([10, 20], [2], DType.int32);
+/// final choice2 = NDArray.fromList([100, 200], [2], DType.int32);
 /// final res = select([cond1, cond2], [choice1, choice2], defaultValue: 999);
 /// print(res.toList()); // [10, 200]
 /// ```

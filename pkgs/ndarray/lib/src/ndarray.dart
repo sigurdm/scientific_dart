@@ -107,7 +107,7 @@ final class BooleanDType extends DType<bool> {
 /// **Example Usage:**
 /// ```dart
 /// // Create a 2x3 array filled with ones
-/// final a = `NDArray<double>`.ones([2, 3], `DType.float64);`
+/// final a = NDArray<double>.ones([2, 3], DType.float64);
 /// print(a.data); // [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 ///
 /// // Explicitly free memory when done
@@ -175,8 +175,8 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Example:**
   /// ```dart
   /// final result = NDArray.scope(() {
-  ///   final a = NDArray.zeros([100], `DType.float64);`
-  ///   final b = NDArray.ones([100], `DType.float64);`
+  ///   final a = NDArray.zeros([100], DType.float64);
+  ///   final b = NDArray.ones([100], DType.float64);
   ///   final c = add(a, b);
   ///   return c.detachFromScope(); // 'a' and 'b' are freed, 'c' survives.
   /// });
@@ -333,7 +333,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.create([2, 2], `DType.float64,` zeroInit: true);
+  /// final a = NDArray<double>.create([2, 2], DType.float64, zeroInit: true);
   /// print(a.toList()); // [0.0, 0.0, 0.0, 0.0]
   /// ```
   ///
@@ -414,11 +414,23 @@ final class NDArray<T> implements ffi.Finalizable {
 
   /// Factory to create a C-contiguous array from a Dart list (copies data).
   ///
+  /// The [list] is flattened and copied into the newly allocated array memory.
+  /// The total size of the [shape] must match the number of elements in [list].
+  ///
+  /// **Throws:**
+  /// - [ArgumentError] if the total size of [shape] does not match the length of [list].
+  ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], `DType.float64);`
+  /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
   /// ```
   factory NDArray.fromList(List list, List<int> shape, DType<T> dtype) {
+    final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+    if (totalSize != list.length) {
+      throw ArgumentError(
+        'Total size of shape $shape ($totalSize) must match list length (${list.length})',
+      );
+    }
     final arr = NDArray<T>.create(shape, dtype);
     final List eagerList = switch (dtype) {
       Float64DType() => Float64List.fromList(list.cast<double>()),
@@ -460,7 +472,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.zeros([2, 2], `DType.float64);`
+  /// final a = NDArray<double>.zeros([2, 2], DType.float64);
   /// print(a.toList()); // [0.0, 0.0, 0.0, 0.0]
   /// ```
   ///
@@ -474,7 +486,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.ones([2, 2], `DType.float64);`
+  /// final a = NDArray<double>.ones([2, 2], DType.float64);
   /// print(a.data); // [1.0, 1.0, 1.0, 1.0]
   /// ```
   factory NDArray.ones(List<int> shape, DType<T> dtype) {
@@ -495,7 +507,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.arange(0.0, 5.0, step: 1.0, dtype: `DType.float64);`
+  /// final a = NDArray<double>.arange(0.0, 5.0, step: 1.0, dtype: DType.float64);
   /// print(a.data); // [0.0, 1.0, 2.0, 3.0, 4.0]
   /// ```
   factory NDArray.arange(
@@ -528,7 +540,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.linspace(0.0, 1.0, 5, dtype: `DType.float64);`
+  /// final a = NDArray<double>.linspace(0.0, 1.0, 5, dtype: DType.float64);
   /// print(a.data); // [0.0, 0.25, 0.5, 0.75, 1.0]
   /// ```
   factory NDArray.linspace(
@@ -564,7 +576,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.eye(3, `DType.float64);`
+  /// final a = NDArray<double>.eye(3, DType.float64);
   /// print(a.data); // [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
   /// ```
   ///
@@ -733,7 +745,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], `DType.float64);`
+  /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
   /// final b = a.reshape([2, 2]);
   /// print(b.shape); // [2, 2]
   /// ```
@@ -776,7 +788,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], `DType.float64);`
+  /// final a = NDArray<double>.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
   /// final flat = a.flatten();
   /// print(flat.shape); // [4]
   /// print(flat.toList()); // [1.0, 2.0, 3.0, 4.0]
@@ -807,7 +819,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray.fromList([1, 2, 3, 4], [2, 2], `DType.int32);`
+  /// final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
   /// final b = a.copy();
   /// b.data[0] = 99;
   /// print(a.data[0]); // 1 (decoupled memory!)
@@ -964,7 +976,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.create([100], `DType.float64);`
+  /// final a = NDArray<double>.create([100], DType.float64);
   /// a.fill(42.0);
   /// ```
   void fill(dynamic value) {
@@ -1038,7 +1050,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], `DType.float64);`
+  /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], DType.float64);
   /// final b = a.transpose(); // b has shape [2, 3] view
   /// ```
   NDArray<T> transpose([List<int>? axes]) {
@@ -1386,9 +1398,9 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Behavior by Parameter Type:**
   /// - **[int]**: Equivalent to calling `slice([Index(spec)])`. Extracts a view along the first axis.
-  /// - **``List<int>``**: Equivalent to calling `getCell(spec)`. Fetches a single coordinate cell scalar.
-  /// - **``List<List<int>`>`**: Equivalent to calling `take(spec[0], axis: 0)`. Fetches sub-matrix row slices.
-  /// - **``NDArray<int>``**:
+  /// - **List<int>**: Equivalent to calling `getCell(spec)`. Fetches a single coordinate cell scalar.
+  /// - **List<List<int>>**: Equivalent to calling `take(spec[0], axis: 0)`. Fetches sub-matrix row slices.
+  /// - **NDArray<int>**:
   ///   - If shapes match exactly (`spec.shape == shape`), equivalent to calling `applyMask(spec)`.
   ///   - If shapes differ, equivalent to calling `take(spec.data, axis: 0)`.
   ///
@@ -1462,9 +1474,9 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Behavior by Parameter Type:**
   /// - **[int]**: Modifies an entire row or slice along the first axis via [setIndices] / [setIndicesScalar].
-  /// - **``List<int>``**: Modifies a single coordinate cell scalar via [setCell].
-  /// - **``List<List<int>`>`**: Modifies targeted row slices along the first axis via [setIndices] / [setIndicesScalar].
-  /// - **``NDArray<int>``**:
+  /// - **List<int>**: Modifies a single coordinate cell scalar via [setCell].
+  /// - **List<List<int>>**: Modifies targeted row slices along the first axis via [setIndices] / [setIndicesScalar].
+  /// - **NDArray<int>**:
   ///   - If shapes match exactly, equivalent to calling `setByMask(spec, value)`.
   ///   - If shapes differ, equivalent to calling `setIndices(spec, value)` or `setIndicesScalar(spec, value)`.
   ///
@@ -2172,7 +2184,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], `DType.float64);`
+  /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
   /// final b = a.take([0, 1], axis: 1); // Select columns 0 and 1
   /// ```
   NDArray<T> take(List<int> indices, {int axis = 0}) {
@@ -2355,7 +2367,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// same memory.
   ///
   /// Squeezes either all dimensions of size 1 (if [axis] is omitted/null), or only specific
-  /// axes (if [axis] is an `int` or ``List<int>``).
+  /// axes (if [axis] is an `int` or List<int>).
   ///
   /// **Preconditions:**
   /// - If an [axis] is specified, the target dimension(s) must have size equal to 1.
@@ -2464,7 +2476,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// relative order.
   ///
   /// **Preconditions:**
-  /// - [source] and [destination] can be `int` or ``List<int>``. If lists, they must have the same length.
+  /// - [source] and [destination] can be `int` or List<int>. If lists, they must have the same length.
   /// - All axis indices must be within `[-rank, rank - 1]`.
   /// - No duplicate axes can be specified in [source] or [destination].
   ///
