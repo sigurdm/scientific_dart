@@ -38,7 +38,7 @@ jobs:
       - name: Set up Dart SDK
         uses: dart-lang/setup-dart@v1
         with:
-          sdk: stable
+          sdk: 3.11.5
 
       - name: Install Dependencies
         run: dart pub get
