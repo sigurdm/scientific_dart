@@ -1977,3 +1977,54 @@ DEFINE_STRIDED_CUM_OP(s_cumsum_complex128, cpx_t, cpx_add)
 DEFINE_STRIDED_CUM_OP(s_cumsum_complex64, cpx_f_t, cpx_add_f)
 DEFINE_STRIDED_CUM_OP(s_cumprod_complex128, cpx_t, cpx_mul)
 DEFINE_STRIDED_CUM_OP(s_cumprod_complex64, cpx_f_t, cpx_mul_f)
+
+// complex subtraction helpers
+static inline cpx_t cpx_sub(cpx_t a, cpx_t b) {
+    return (cpx_t){a.r - b.r, a.i - b.i};
+}
+static inline cpx_f_t cpx_sub_f(cpx_f_t a, cpx_f_t b) {
+    return (cpx_f_t){a.r - b.r, a.i - b.i};
+}
+
+#define DEFINE_STRIDED_DIFF_OP(FUNCNAME, T, SUB_OP) \
+void FUNCNAME(const T *src, const int *stridesSrc, \
+              T *res, const int *stridesRes, \
+              const int *shape, int rank, int axis) { \
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return; \
+    int coord[8] = {0}; \
+    int outer_size = 1; \
+    for (int d = 0; d < rank; d++) { \
+        if (d != axis) outer_size *= shape[d]; \
+    } \
+    for (int o = 0; o < outer_size; o++) { \
+        int offsetSrc = 0; \
+        int offsetRes = 0; \
+        for (int d = 0; d < rank; d++) { \
+            if (d != axis) { \
+                offsetSrc += coord[d] * stridesSrc[d]; \
+                offsetRes += coord[d] * stridesRes[d]; \
+            } \
+        } \
+        for (int i = 0; i < shape[axis] - 1; i++) { \
+            int idxSrcCurr = offsetSrc + i * stridesSrc[axis]; \
+            int idxSrcNext = offsetSrc + (i + 1) * stridesSrc[axis]; \
+            int idxRes = offsetRes + i * stridesRes[axis]; \
+            res[idxRes] = SUB_OP(src[idxSrcNext], src[idxSrcCurr]); \
+        } \
+        for (int d = rank - 1; d >= 0; d--) { \
+            if (d == axis) continue; \
+            coord[d]++; \
+            if (coord[d] < shape[d]) break; \
+            coord[d] = 0; \
+        } \
+    } \
+}
+
+#define SUB_REAL(x, y) ((x) - (y))
+
+DEFINE_STRIDED_DIFF_OP(s_diff_double, double, SUB_REAL)
+DEFINE_STRIDED_DIFF_OP(s_diff_float, float, SUB_REAL)
+DEFINE_STRIDED_DIFF_OP(s_diff_int64, int64_t, SUB_REAL)
+DEFINE_STRIDED_DIFF_OP(s_diff_int32, int32_t, SUB_REAL)
+DEFINE_STRIDED_DIFF_OP(s_diff_complex128, cpx_t, cpx_sub)
+DEFINE_STRIDED_DIFF_OP(s_diff_complex64, cpx_f_t, cpx_sub_f)

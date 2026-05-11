@@ -185,7 +185,14 @@ void s_cummax_float(const float *src, const int *stridesSrc, float *res, const i
 void s_cummax_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank, int axis);
 void s_cummax_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank, int axis);
 
-// ----------------------------------------------------------------------------
+void s_diff_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_diff_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_diff_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_diff_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_diff_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_diff_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+
+// ------------------------------------------------------------
 // Native C High-Speed Strided Flattening/Copying Kernels
 // ----------------------------------------------------------------------------
 void s_flatten_double(const double *src, const int *stridesSrc, double *dest, const int *shape, int rank);
@@ -197,7 +204,7 @@ void s_flatten_complex64(const float *src, const int *stridesSrc, float *dest, c
 void s_flatten_boolean(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *shape, int rank);
 
 // ----------------------------------------------------------------------------
-// Native C High-Speed Elements Hashing Kernels
+// Hashing Kernels
 // ----------------------------------------------------------------------------
 uint32_t s_hash_double(const double *a, const int *strides, const int *shape, int rank, int is_contiguous);
 uint32_t s_hash_float(const float *a, const int *strides, const int *shape, int rank, int is_contiguous);
@@ -208,7 +215,7 @@ uint32_t s_hash_complex64(const float *a, const int *strides, const int *shape, 
 uint32_t s_hash_boolean(const uint8_t *a, const int *strides, const int *shape, int rank, int is_contiguous);
 
 // ----------------------------------------------------------------------------
-// Native C High-Speed Random Distribution Generators
+// Random Distribution Generators
 // ----------------------------------------------------------------------------
 void v_poisson_int64(int64_t *res, int size, double lam, unsigned long long seed);
 void v_poisson_int32(int32_t *res, int size, double lam, unsigned long long seed);

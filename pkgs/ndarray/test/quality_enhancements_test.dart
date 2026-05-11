@@ -2683,5 +2683,45 @@ void main() {
         expect(cMax.toList(), [3.0, 3.0, 4.0, 2.0, 5.0, 5.0]);
       }),
     );
+
+    test(
+      'linalg.diff() discrete difference correctness',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1, 2, 4, 7, 0], [5], DType.int64);
+
+        // 1. Flat diff (n=1)
+        final d1 = diff(a);
+        expect(d1.toList(), [1, 2, 3, -7]);
+
+        // 2. Flat diff (n=2)
+        final d2 = diff(a, n: 2);
+        expect(d2.toList(), [1, 1, -10]);
+
+        // 3. 2D Matrix diff along axis=1
+        final mat = NDArray.fromList(
+          [1.0, 3.0, 9.0, 2.0, 5.0, 15.0],
+          [2, 3],
+          DType.float64,
+        );
+        final dAxis1 = diff(mat, axis: 1);
+        expect(dAxis1.toList(), [2.0, 6.0, 3.0, 10.0]);
+
+        // 4. Complex diff
+        final aComp = NDArray.fromList(
+          [Complex(1.0, 2.0), Complex(3.0, 5.0), Complex(6.0, 10.0)],
+          [3],
+          DType.complex128,
+        );
+        final dComp = diff(aComp);
+        expect(dComp.data[0], Complex(2.0, 3.0));
+        expect(dComp.data[1], Complex(3.0, 5.0));
+
+        // 5. in-place recycler into reuse
+        final recycler = NDArray<double>.zeros([2, 2], DType.float64);
+        final dRecycled = diff(mat, axis: 1, into: recycler);
+        expect(identical(dRecycled, recycler), true);
+        expect(dRecycled.toList(), [2.0, 6.0, 3.0, 10.0]);
+      }),
+    );
   });
 }

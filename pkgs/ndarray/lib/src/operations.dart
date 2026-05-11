@@ -8801,6 +8801,194 @@ NDArray matrix_power(NDArray a, int n, {NDArray? out}) {
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
+/// Calculate the n-th discrete difference along the given axis.
+///
+/// The first difference is given by `out[i] = a[i+1] - a[i]` along the given axis.
+/// Higher differences are calculated recursively.
+///
+/// **Preconditions:**
+/// - Input [a] must not be disposed.
+/// - [n] must be >= 0.
+/// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
+/// - If provided, [into] must have compatible shape and dtype.
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if [n] is negative.
+/// - [ArgumentError] if [axis] is out of bounds.
+/// - [ArgumentError] if [into] shape or dtype is incompatible.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1, 2, 4, 7, 0], [5], DType.int64);
+/// final res = diff(a); // [1, 2, 3, -7]
+/// ```
+NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? into}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute diff() on a disposed array.');
+  }
+  if (n < 0) {
+    throw ArgumentError('Order of difference n must be >= 0 (was $n).');
+  }
+  if (n == 0) {
+    final result = into ?? a.copy();
+    if (into != null) {
+      for (var i = 0; i < result.data.length; i++) {
+        result.data[i] = a.data[i];
+      }
+    }
+    return result;
+  }
+
+  var targetAxis = axis;
+  if (targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  if (n >= a.shape[targetAxis]) {
+    final emptyShape = List<int>.from(a.shape);
+    emptyShape[targetAxis] = 0;
+    return into ?? NDArray<T>.create(emptyShape, a.dtype);
+  }
+
+  if (n > 1) {
+    final step = diff(a, n: n - 1, axis: targetAxis);
+    final result = diff(step, n: 1, axis: targetAxis, into: into);
+    step.dispose();
+    return result;
+  }
+
+  final targetShape = List<int>.from(a.shape);
+  targetShape[targetAxis] = a.shape[targetAxis] - 1;
+
+  final result = into ?? NDArray<T>.create(targetShape, a.dtype);
+  if (into != null) {
+    if (!listEquals(into.shape, targetShape) || into.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  final rank = a.shape.length;
+  final cShape = malloc<ffi.Int>(rank);
+  final cStridesA = malloc<ffi.Int>(rank);
+  final cStridesRes = malloc<ffi.Int>(rank);
+
+  for (var i = 0; i < rank; i++) {
+    cShape[i] = a.shape[i];
+    cStridesA[i] = a.strides[i];
+    cStridesRes[i] = result.strides[i];
+  }
+
+  try {
+    if (a.dtype == DType.float64) {
+      s_diff_double(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    } else if (a.dtype == DType.float32) {
+      s_diff_float(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    } else if (a.dtype == DType.int64) {
+      s_diff_int64(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    } else if (a.dtype == DType.int32) {
+      s_diff_int32(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    } else if (a.dtype == DType.complex128) {
+      s_diff_complex128(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    } else if (a.dtype == DType.complex64) {
+      s_diff_complex64(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    } else {
+      final doubleA = NDArray<double>.create(a.shape, DType.float64);
+      for (var i = 0; i < a.data.length; i++) {
+        doubleA.data[i] = (a.data[i] as num).toDouble();
+      }
+      final doubleRes = NDArray<double>.create(targetShape, DType.float64);
+      final cStridesDoubleA = malloc<ffi.Int>(rank);
+      final cStridesDoubleRes = malloc<ffi.Int>(rank);
+
+      for (var i = 0; i < rank; i++) {
+        cStridesDoubleA[i] = doubleA.strides[i];
+        cStridesDoubleRes[i] = doubleRes.strides[i];
+      }
+
+      try {
+        s_diff_double(
+          doubleA.pointer.cast(),
+          cStridesDoubleA,
+          doubleRes.pointer.cast(),
+          cStridesDoubleRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      } finally {
+        malloc.free(cStridesDoubleA);
+        malloc.free(cStridesDoubleRes);
+      }
+
+      for (var i = 0; i < result.data.length; i++) {
+        result.data[i] = _castValue(doubleRes.data[i], a.dtype) as T;
+      }
+      doubleA.dispose();
+      doubleRes.dispose();
+    }
+  } finally {
+    malloc.free(cShape);
+    malloc.free(cStridesA);
+    malloc.free(cStridesRes);
+  }
+
+  return result;
+}
+
 NDArray<T> cumsum<T>(NDArray<T> a, {int? axis, NDArray<T>? into}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumsum() on a disposed array.');
