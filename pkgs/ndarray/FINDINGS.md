@@ -113,7 +113,7 @@ Remember when adding new operations:
 ### 3.18 N-Dimensional Padding (pad category)
 - **Edge Border Manipulations**: Exposing high-performance vectorized N-Dimensional padding `pad(a, pad_width, {mode: 'constant', constant_values: 0})` to support edge reflection, border replication, and zero-padding, which are extremely vital for Convolutional Neural Network (CNN) boundary gates, signal windowing, and numeric differential equation boundaries.
 
-### 3.19 FFI-Accelerated Complex Conjugation (conj)
+### 3.19 FFI-Accelerated Complex Conjugation (conj) [CLAIMED: antigravity]
 - **Signal Processing Core**: Exposing FFI vector-accelerated complex number array conjugation `conj()` / `conjugate()` mapping straight to a C kernel to invert the sign of complex imaginary parts ($a + bi \rightarrow a - bi$) at peak compiled speeds.
 
 ### 3.20 Broad-Boundary Array Clipping (clip)
