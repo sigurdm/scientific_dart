@@ -2465,3 +2465,11 @@
   - Fully documented `ravel()`, `transposed`, `scalar`, and `setCell()` to include clear precondition tags, throws declarations, performance notations (Big O time and space complexity), and rich code examples.
 * **Results**:
   - **Verification**: All unit tests continue to pass flawlessly green. formatting and static analysis are perfectly clean. Staged and committed documentation cleanly.
+
+***
+
+## 207. Augmented NDArray.ravel() Dartdoc Memory Sharing Clarifications (User Request / Documentation)
+* **What was done**:
+  - Augmented [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/ndarray.dart)'s public `ravel()` Dartdocs to explicitly clarify when it returns a zero-copy view (contiguous same-shape layout sharing backing memory pointer and mutations) vs a deep copy (non-contiguous strided layouts allocating a brand-new C heap array and decoupling mutations).
+* **Results**:
+  - **Verification**: Formatting and static analysis pass perfectly clean. All unit tests continue to pass flawlessly green. Staged and committed changes cleanly.
