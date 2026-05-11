@@ -37,6 +37,10 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 - **Issue**: Inside `inv()` in `operations.dart` (lines 2987-2990), if the input array `a` is non-contiguous, it copies it to a contiguous temporary array `src = NDArray.fromList(...)`. If the user passes a valid `out` recycler buffer (`out != null`), `src`'s elements are copied into `out`, and the function returns `out`. However, the copied contiguous temporary array `src` is **never disposed of**, leaking its memory on the native C-heap.
 - **Recommended Tweak**: Track whether `src` was created via `final bool wasCopied = !a.isContiguous;`. If `wasCopied` is true and `out != null`, ensure `src.dispose()` is strictly called in the function's `finally` block to release its allocations.
 
+### 2.6 linalg.solve Memory Leak on Singular/Illegal Matrix Failure Exceptions
+- **Issue**: `solve()` in `operations.dart` (lines 3300-3390) creates intermediate copied arrays `aCopy` and `bCopy` on setup. However, if `LAPACKE_dgesv` or `LAPACKE_sgesv` fails (e.g., throwing `ArgumentError` due to a singular matrix or illegal value), the function exits immediately without disposing of either `aCopy` or `bCopy`, leaking their native memory blocks on the unmanaged C-heap.
+- **Recommended Tweak**: Wrap the solver inside a `try {} finally {}` block. Reclaim `aCopy` unconditionally, and reclaim `bCopy` on failure scenarios to prevent all unmanaged heap leaks.
+
 ---
 
 ## 🧪 Section 3: NumPy Compatibility Roadmap (Missing Features)
