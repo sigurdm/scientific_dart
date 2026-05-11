@@ -2446,3 +2446,13 @@
   - **API integrations**: Upgraded `atanh()`, `hypot()`, and `power()` inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart) to accept `Complex` arrays, handle base/exponent upcasting, and offload directly to FFI.
 * **Results**:
   - **Verification**: Created targeted unit tests in [quality_enhancements_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/quality_enhancements_test.dart) verifying correct complex atanh principal variable preservation, hypot Euclidean vector norm magnitudes, and complex base/exponent roundtrips. All **438 package unit tests pass flawlessly green!** Static analysis is pristine. Staged and committed all changes cleanly.
+
+***
+
+## 205. Exhaustive Architectural Audit of Operations & out Recycler Parameter Support (User Request / Refactoring)
+* **What was done**:
+  - Performed an exhaustive, line-by-line review of all `operations.dart` mathematical and algebraic ufuncs to ensure 100% structural alignment with scientific computing requirements (named `{out}` buffer recycling, FFI contiguous vectors, strided walks, and Complex layout support).
+  - **Arithmetic Refactoring**: Upgraded `subtract()`, `multiply()`, and `divide()` inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart) to accept named `{NDArray? out}` recycler buffers, passing them directly down to contiguous same-shape FFI vectors and strided FFI walks.
+  - **Angle Converters Refactoring**: Upgraded `deg2rad()` and `rad2deg()` to accept named `{NDArray? out}` parameters, passing them straight to their corresponding accelerated `multiply` operations.
+* **Results**:
+  - **Verification**: All **438 package unit tests pass flawlessly green!** formatting and static analysis are perfectly clean. Staged and committed refactorings cleanly.
