@@ -25,6 +25,10 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 - **Issue**: Missing structured multi-dimensional iteration utilities equivalent to NumPy's `nditer` and `ndenumerate`. Currently, hot loops are forced to nested dimension walks or explicit flat-index strided conversions, causing VM boundary crossing overhead and list allocations.
 - **Recommended Tweak**: Offload advanced indexing walks to a native C odometer kernel. Design a zero-allocation `nditer`-like class in Dart that yields strided coordinate buffers directly to consumer math closures.
 
+### 2.3 PocketFFT Transient Copy Memory Leak
+- **Issue**: Inside `fft()` and `ifft()` in [fft.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/fft.dart#L39), if the input array is non-contiguous (such as a transposed or sliced view), it is copied to a contiguous representation using `a = a.copy()`. Since `a` is reassigned to this newly allocated copy, but is **never disposed of** at the end of the function, the entire copied array is leaked on the unmanaged C-heap on every non-contiguous FFT/IFFT execution.
+- **Recommended Tweak**: Introduce a tracking boolean `wasCopied = !a.isContiguous` and bind `a = a.copy()` to a distinct `inputA` transient variable. Ensure `inputA.dispose()` is called inside the function's `finally` block to strictly reclaim pocketfft/KissFFT workspace allocations and prevent all native C-heap leaks.
+
 ---
 
 ## 🧪 Section 3: NumPy Compatibility Roadmap (Missing Features)
