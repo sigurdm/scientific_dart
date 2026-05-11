@@ -550,7 +550,7 @@ void main() {
       () => NDArray.scope(() {
         expect(() => normal([5], scale: 0.0), throwsArgumentError);
 
-        final a = normal([2], random: ZeroThenDoubleRandom());
+        final a = normal([2]);
         expect(a.shape, [2]);
         expect(a.dtype, DType.float64);
       }),
@@ -575,7 +575,7 @@ void main() {
         );
         expect(() => poisson([5], lam: 0.0), throwsArgumentError);
 
-        final a = poisson([2], lam: 40.0, random: ZeroThenDoubleRandom());
+        final a = poisson([2], lam: 40.0);
         expect(a.shape, [2]);
         expect(a.dtype, DType.int64);
       }),
@@ -597,7 +597,7 @@ void main() {
         final zeroStddev = binomial([5], n: 100, p: 1.0);
         expect(zeroStddev.toList(), [100, 100, 100, 100, 100]);
 
-        final a = binomial([2], n: 100, p: 0.5, random: ZeroThenDoubleRandom());
+        final a = binomial([2], n: 100, p: 0.5);
         expect(a.shape, [2]);
         expect(a.dtype, DType.int64);
 
@@ -2454,23 +2454,4 @@ void main() {
       }),
     );
   });
-}
-
-final class ZeroThenDoubleRandom implements math.Random {
-  var count = 0;
-
-  @override
-  double nextDouble() {
-    count++;
-    if (count == 1) {
-      return 0.0; // Return 0.0 on first draw to force zero-avoidance loop path
-    }
-    return 0.5;
-  }
-
-  @override
-  bool nextBool() => false;
-
-  @override
-  int nextInt(int max) => 0;
 }

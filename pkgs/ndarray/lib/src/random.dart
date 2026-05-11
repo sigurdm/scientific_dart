@@ -14,20 +14,6 @@ bool _listEquals(List<int> a, List<int> b) {
   return true;
 }
 
-int _secureNextInt64(Random rand, int low, int high) {
-  final range = high - low;
-  if (range <= 0) {
-    throw ArgumentError('low must be strictly less than high');
-  }
-  if (range <= 4294967296) {
-    return low + rand.nextInt(range);
-  }
-  final top = rand.nextInt(4294967296);
-  final bottom = rand.nextInt(4294967296);
-  final bits64 = (top << 32) | bottom;
-  return low + (bits64.abs() % range);
-}
-
 /// Generates an array with random values uniformly distributed in the half-open interval `[0.0, 1.0)`.
 ///
 /// **Preconditions:**
@@ -54,7 +40,6 @@ NDArray<T> uniform<T extends num>(
   List<int> shape, {
   DType<T>? dtype,
   int? seed,
-  Random? random,
   NDArray<T>? into,
   bool secure = false,
 }) {
@@ -72,23 +57,15 @@ NDArray<T> uniform<T extends num>(
   final len = arr.data.length;
 
   if (secure) {
-    final rand = random ?? Random.secure();
     if (identical(resolvedDType, DType.float64)) {
-      final data = arr.data as Float64List;
-      for (var i = 0; i < len; i++) {
-        data[i] = rand.nextDouble();
-      }
+      v_secure_uniform_double(arr.pointer.cast<ffi.Double>(), len);
     } else {
-      final data = arr.data as Float32List;
-      for (var i = 0; i < len; i++) {
-        data[i] = rand.nextDouble();
-      }
+      v_secure_uniform_float(arr.pointer.cast<ffi.Float>(), len);
     }
     return arr;
   }
 
-  final rand = random ?? Random();
-  final seedVal = seed ?? rand.nextInt(4294967296);
+  final seedVal = seed ?? Random().nextInt(4294967296);
 
   if (identical(resolvedDType, DType.float64)) {
     v_uniform_double(arr.pointer.cast<ffi.Double>(), len, seedVal);
@@ -128,7 +105,6 @@ NDArray<T> randint<T extends num>(
   required int high,
   DType<T>? dtype,
   int? seed,
-  Random? random,
   NDArray<T>? into,
   bool secure = false,
 }) {
@@ -149,23 +125,15 @@ NDArray<T> randint<T extends num>(
   final len = arr.data.length;
 
   if (secure) {
-    final rand = random ?? Random.secure();
     if (identical(resolvedDType, DType.int64)) {
-      final data = arr.data as Int64List;
-      for (var i = 0; i < len; i++) {
-        data[i] = _secureNextInt64(rand, low, high);
-      }
+      v_secure_randint_int64(arr.pointer.cast<ffi.Int64>(), len, low, high);
     } else {
-      final data = arr.data as Int32List;
-      for (var i = 0; i < len; i++) {
-        data[i] = _secureNextInt64(rand, low, high);
-      }
+      v_secure_randint_int32(arr.pointer.cast<ffi.Int32>(), len, low, high);
     }
     return arr;
   }
 
-  final rand = random ?? Random();
-  final seedVal = seed ?? rand.nextInt(4294967296);
+  final seedVal = seed ?? Random().nextInt(4294967296);
 
   if (identical(resolvedDType, DType.int64)) {
     v_randint_int64(arr.pointer.cast<ffi.Int64>(), len, low, high, seedVal);
@@ -209,7 +177,6 @@ NDArray<T> normal<T extends num>(
   double scale = 1.0,
   DType<T>? dtype,
   int? seed,
-  Random? random,
   NDArray<T>? into,
   bool secure = false,
 }) {
@@ -235,49 +202,15 @@ NDArray<T> normal<T extends num>(
   final len = arr.data.length;
 
   if (secure) {
-    final rand = random ?? Random.secure();
-    final doubleLoc = loc.toDouble();
-    final doubleScale = scale.toDouble();
     if (identical(resolvedDType, DType.float64)) {
-      final data = arr.data as Float64List;
-      var i = 0;
-      while (i < len) {
-        double u1;
-        do {
-          u1 = rand.nextDouble();
-        } while (u1 == 0.0);
-        final u2 = rand.nextDouble();
-        final mag = doubleScale * math.sqrt(-2.0 * math.log(u1));
-        final angle = 2.0 * math.pi * u2;
-        data[i] = doubleLoc + mag * math.cos(angle);
-        if (i + 1 < len) {
-          data[i + 1] = doubleLoc + mag * math.sin(angle);
-        }
-        i += 2;
-      }
+      v_secure_normal_double(arr.pointer.cast<ffi.Double>(), len, loc, scale);
     } else {
-      final data = arr.data as Float32List;
-      var i = 0;
-      while (i < len) {
-        double u1;
-        do {
-          u1 = rand.nextDouble();
-        } while (u1 == 0.0);
-        final u2 = rand.nextDouble();
-        final mag = doubleScale * math.sqrt(-2.0 * math.log(u1));
-        final angle = 2.0 * math.pi * u2;
-        data[i] = doubleLoc + mag * math.cos(angle);
-        if (i + 1 < len) {
-          data[i + 1] = doubleLoc + mag * math.sin(angle);
-        }
-        i += 2;
-      }
+      v_secure_normal_float(arr.pointer.cast<ffi.Float>(), len, loc, scale);
     }
     return arr;
   }
 
-  final rand = random ?? Random();
-  final seedVal = seed ?? rand.nextInt(4294967296);
+  final seedVal = seed ?? Random().nextInt(4294967296);
 
   if (identical(resolvedDType, DType.float64)) {
     v_normal_double(arr.pointer.cast<ffi.Double>(), len, loc, scale, seedVal);
@@ -316,7 +249,6 @@ NDArray<T> exponential<T extends num>(
   double? lam,
   DType<T>? dtype,
   int? seed,
-  Random? random,
   NDArray<T>? into,
   bool secure = false,
 }) {
@@ -343,31 +275,27 @@ NDArray<T> exponential<T extends num>(
   final len = arr.data.length;
 
   if (secure) {
-    final rand = random ?? Random.secure();
     if (identical(resolvedDType, DType.float64)) {
+      v_secure_uniform_double(arr.pointer.cast<ffi.Double>(), len);
       final data = arr.data as Float64List;
       for (var i = 0; i < len; i++) {
-        double u;
-        do {
-          u = rand.nextDouble();
-        } while (u >= 1.0);
+        var u = data[i];
+        if (u >= 1.0) u = 0.9999999999999999;
         data[i] = -targetScale * math.log(1.0 - u);
       }
     } else {
+      v_secure_uniform_float(arr.pointer.cast<ffi.Float>(), len);
       final data = arr.data as Float32List;
       for (var i = 0; i < len; i++) {
-        double u;
-        do {
-          u = rand.nextDouble();
-        } while (u >= 1.0);
+        var u = data[i];
+        if (u >= 1.0) u = 0.999999;
         data[i] = -targetScale * math.log(1.0 - u);
       }
     }
     return arr;
   }
 
-  final rand = random ?? Random();
-  final seedVal = seed ?? rand.nextInt(4294967296);
+  final seedVal = seed ?? Random().nextInt(4294967296);
 
   if (identical(resolvedDType, DType.float64)) {
     v_uniform_double(arr.pointer.cast<ffi.Double>(), len, seedVal);
@@ -424,7 +352,6 @@ NDArray<T> poisson<T extends num>(
   double lam = 1.0,
   DType<T>? dtype,
   int? seed,
-  Random? random,
   NDArray<T>? into,
   bool secure = false,
 }) {
@@ -445,37 +372,9 @@ NDArray<T> poisson<T extends num>(
   final arr = into ?? NDArray<T>.create(shape, resolvedDType);
   final len = arr.data.length;
 
-  if (secure) {
-    final rand = random ?? Random.secure();
-    final limit = math.exp(-lam);
-    if (identical(resolvedDType, DType.int64)) {
-      final data = arr.data as Int64List;
-      for (var i = 0; i < len; i++) {
-        var k = 0;
-        var p = 1.0;
-        do {
-          k++;
-          p *= rand.nextDouble();
-        } while (p > limit);
-        data[i] = k - 1;
-      }
-    } else {
-      final data = arr.data as Int32List;
-      for (var i = 0; i < len; i++) {
-        var k = 0;
-        var p = 1.0;
-        do {
-          k++;
-          p *= rand.nextDouble();
-        } while (p > limit);
-        data[i] = k - 1;
-      }
-    }
-    return arr;
-  }
-
-  final rand = random ?? Random();
-  final seedVal = seed ?? rand.nextInt(4294967296);
+  final seedVal = secure
+      ? Random.secure().nextInt(4294967296)
+      : (seed ?? Random().nextInt(4294967296));
 
   if (identical(resolvedDType, DType.int64)) {
     v_poisson_int64(arr.pointer.cast<ffi.Int64>(), len, lam, seedVal);
@@ -524,7 +423,6 @@ NDArray<T> binomial<T extends num>(
   required double p,
   DType<T>? dtype,
   int? seed,
-  Random? random,
   NDArray<T>? into,
   bool secure = false,
 }) {
@@ -550,96 +448,9 @@ NDArray<T> binomial<T extends num>(
   final arr = into ?? NDArray<T>.create(shape, resolvedDType);
   final len = arr.data.length;
 
-  if (secure) {
-    final rand = random ?? Random.secure();
-    if (n < 50) {
-      if (identical(resolvedDType, DType.int64)) {
-        final data = arr.data as Int64List;
-        for (var i = 0; i < len; i++) {
-          var successes = 0;
-          for (var t = 0; t < n; t++) {
-            if (rand.nextDouble() < p) {
-              successes++;
-            }
-          }
-          data[i] = successes;
-        }
-      } else {
-        final data = arr.data as Int32List;
-        for (var i = 0; i < len; i++) {
-          var successes = 0;
-          for (var t = 0; t < n; t++) {
-            if (rand.nextDouble() < p) {
-              successes++;
-            }
-          }
-          data[i] = successes;
-        }
-      }
-    } else {
-      final mean = n * p;
-      final stddev = math.sqrt(n * p * (1.0 - p));
-      if (identical(resolvedDType, DType.int64)) {
-        final data = arr.data as Int64List;
-        var i = 0;
-        while (i < len) {
-          double u1;
-          do {
-            u1 = rand.nextDouble();
-          } while (u1 == 0.0);
-          final u2 = rand.nextDouble();
-          final mag = math.sqrt(-2.0 * math.log(u1));
-          final angle = 2.0 * math.pi * u2;
-          final z0 = mag * math.cos(angle);
-          final z1 = mag * math.sin(angle);
-
-          var val0 = (mean + stddev * z0).round();
-          if (val0 < 0) val0 = 0;
-          if (val0 > n) val0 = n;
-          data[i] = val0;
-
-          if (i + 1 < len) {
-            var val1 = (mean + stddev * z1).round();
-            if (val1 < 0) val1 = 0;
-            if (val1 > n) val1 = n;
-            data[i + 1] = val1;
-          }
-          i += 2;
-        }
-      } else {
-        final data = arr.data as Int32List;
-        var i = 0;
-        while (i < len) {
-          double u1;
-          do {
-            u1 = rand.nextDouble();
-          } while (u1 == 0.0);
-          final u2 = rand.nextDouble();
-          final mag = math.sqrt(-2.0 * math.log(u1));
-          final angle = 2.0 * math.pi * u2;
-          final z0 = mag * math.cos(angle);
-          final z1 = mag * math.sin(angle);
-
-          var val0 = (mean + stddev * z0).round();
-          if (val0 < 0) val0 = 0;
-          if (val0 > n) val0 = n;
-          data[i] = val0;
-
-          if (i + 1 < len) {
-            var val1 = (mean + stddev * z1).round();
-            if (val1 < 0) val1 = 0;
-            if (val1 > n) val1 = n;
-            data[i + 1] = val1;
-          }
-          i += 2;
-        }
-      }
-    }
-    return arr;
-  }
-
-  final rand = random ?? Random();
-  final seedVal = seed ?? rand.nextInt(4294967296);
+  final seedVal = secure
+      ? Random.secure().nextInt(4294967296)
+      : (seed ?? Random().nextInt(4294967296));
 
   if (identical(resolvedDType, DType.int64)) {
     v_binomial_int64(arr.pointer.cast<ffi.Int64>(), len, n, p, seedVal);
@@ -692,7 +503,6 @@ NDArray<T> multivariateNormal<T extends num>(
   List<int>? size,
   DType<T>? dtype,
   int? seed,
-  Random? random,
   NDArray<T>? into,
   bool secure = false,
 }) {
@@ -745,13 +555,7 @@ NDArray<T> multivariateNormal<T extends num>(
         : sampleShape.reduce((a, b) => a * b);
 
     final zShape = [...sampleShape, d];
-    final z = normal(
-      zShape,
-      dtype: resolvedDType,
-      seed: seed,
-      random: random,
-      secure: secure,
-    );
+    final z = normal(zShape, dtype: resolvedDType, seed: seed, secure: secure);
     final lT = l.transpose();
 
     final z2D = z.reshape([sampleCount, d]);
@@ -804,7 +608,6 @@ NDArray<T> multinomial<T extends num>(
   List<int>? size,
   DType<T>? dtype,
   int? seed,
-  Random? random,
   NDArray<T>? into,
   bool secure = false,
 }) {
@@ -826,7 +629,7 @@ NDArray<T> multinomial<T extends num>(
   }
 
   final k = pvals.shape[0];
-  final rand = random ?? (secure ? Random.secure() : Random());
+  final rand = secure ? Random.secure() : Random();
 
   final cdf = List<double>.filled(k, 0.0);
   var sumP = 0.0;

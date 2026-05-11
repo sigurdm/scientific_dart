@@ -845,26 +845,58 @@ void s_where_float(const unsigned char *cond, const int *stridesCond,
             offsetCond -= (shape[d] - 1) * stridesCond[d];
             offsetX    -= (shape[d] - 1) * stridesX[d];
             offsetY    -= (shape[d] - 1) * stridesY[d];
-            offsetRes  -= (shape[d] - 1) * stridesRes[d];
         }
     }
+}
+
+static inline uint64_t splitmix64(uint64_t *x) {
+    uint64_t z = (*x += 0x9e3779b97f4a7c15ULL);
+    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
+    z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
+    return z ^ (z >> 31);
+}
+
+static inline void xoshiro256_seed(uint64_t seed, uint64_t s[4]) {
+    uint64_t x = seed;
+    s[0] = splitmix64(&x);
+    s[1] = splitmix64(&x);
+    s[2] = splitmix64(&x);
+    s[3] = splitmix64(&x);
+}
+
+static inline uint64_t rotl(const uint64_t x, int k) {
+    return (x << k) | (x >> (64 - k));
+}
+
+static inline uint64_t xoshiro256_next(uint64_t s[4]) {
+    const uint64_t result = rotl(s[1] * 5, 7) * 9;
+    const uint64_t t = s[1] << 17;
+
+    s[2] ^= s[0];
+    s[3] ^= s[1];
+    s[1] ^= s[2];
+    s[0] ^= s[3];
+
+    s[2] ^= t;
+    s[3] = rotl(s[3], 45);
+
+    return result;
 }
 
 void v_normal_double(double *res, int size, double loc, double scale, unsigned long long seed) {
     if (res == NULL || size <= 0 || scale <= 0.0) return;
 
-    unsigned long long state = seed ^ 0x5555555555555555ULL;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
 
     int i = 0;
     while (i < size) {
         double u1;
         do {
-            state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-            u1 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+            u1 = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
         } while (u1 == 0.0);
 
-        state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-        double u2 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+        double u2 = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
 
         double mag = scale * sqrt(-2.0 * log(u1));
         double angle = 2.0 * M_PI * u2;
@@ -880,18 +912,17 @@ void v_normal_double(double *res, int size, double loc, double scale, unsigned l
 void v_normal_float(float *res, int size, float loc, float scale, unsigned long long seed) {
     if (res == NULL || size <= 0 || scale <= 0.0f) return;
 
-    unsigned long long state = seed ^ 0x5555555555555555ULL;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
 
     int i = 0;
     while (i < size) {
         float u1;
         do {
-            state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-            u1 = (float)((double)(state >> 11) * (1.0 / 9007199254740992.0));
+            u1 = (float)((double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0));
         } while (u1 == 0.0f);
 
-        state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-        float u2 = (float)((double)(state >> 11) * (1.0 / 9007199254740992.0));
+        float u2 = (float)((double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0));
 
         float mag = scale * sqrtf(-2.0f * logf(u1));
         float angle = 2.0f * (float)M_PI * u2;
@@ -907,46 +938,46 @@ void v_normal_float(float *res, int size, float loc, float scale, unsigned long 
 void v_uniform_double(double *res, int size, unsigned long long seed) {
     if (res == NULL || size <= 0) return;
 
-    unsigned long long state = seed ^ 0x5555555555555555ULL;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
 
     for (int i = 0; i < size; i++) {
-        state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-        res[i] = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+        res[i] = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
     }
 }
 
 void v_uniform_float(float *res, int size, unsigned long long seed) {
     if (res == NULL || size <= 0) return;
 
-    unsigned long long state = seed ^ 0x5555555555555555ULL;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
 
     for (int i = 0; i < size; i++) {
-        state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-        res[i] = (float)((double)(state >> 11) * (1.0 / 9007199254740992.0));
+        res[i] = (float)((double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0));
     }
 }
 
 void v_randint_int64(int64_t *res, int size, int64_t low, int64_t high, unsigned long long seed) {
     if (res == NULL || size <= 0 || low >= high) return;
 
-    unsigned long long state = seed ^ 0x5555555555555555ULL;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
     int64_t range = high - low;
 
     for (int i = 0; i < size; i++) {
-        state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-        res[i] = low + (int64_t)(state % (unsigned long long)range);
+        res[i] = low + (int64_t)(xoshiro256_next(s) % (unsigned long long)range);
     }
 }
 
 void v_randint_int32(int32_t *res, int size, int32_t low, int32_t high, unsigned long long seed) {
     if (res == NULL || size <= 0 || low >= high) return;
 
-    unsigned long long state = seed ^ 0x5555555555555555ULL;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
     int32_t range = high - low;
 
     for (int i = 0; i < size; i++) {
-        state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-        res[i] = low + (int32_t)(state % (unsigned long long)range);
+        res[i] = low + (int32_t)(xoshiro256_next(s) % (unsigned long long)range);
     }
 }
 
@@ -1476,7 +1507,8 @@ uint32_t s_hash_boolean(const uint8_t *a, const int *strides, const int *shape, 
 void v_poisson_int64(int64_t *res, int size, double lam, unsigned long long seed) {
     if (res == NULL || size <= 0 || lam <= 0.0) return;
 
-    unsigned long long state = seed ^ 0x5555555555555555ULL;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
 
     if (lam < 30.0) {
         double limit = exp(-lam);
@@ -1485,8 +1517,7 @@ void v_poisson_int64(int64_t *res, int size, double lam, unsigned long long seed
             double p = 1.0;
             do {
                 k++;
-                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-                double u = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                double u = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
                 p *= u;
             } while (p > limit);
             res[i] = k - 1;
@@ -1497,12 +1528,10 @@ void v_poisson_int64(int64_t *res, int size, double lam, unsigned long long seed
         while (i < size) {
             double u1;
             do {
-                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-                u1 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                u1 = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
             } while (u1 == 0.0);
 
-            state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-            double u2 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+            double u2 = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
 
             double mag = sqrt(-2.0 * log(u1));
             double angle = 2.0 * M_PI * u2;
@@ -1525,7 +1554,8 @@ void v_poisson_int64(int64_t *res, int size, double lam, unsigned long long seed
 void v_poisson_int32(int32_t *res, int size, double lam, unsigned long long seed) {
     if (res == NULL || size <= 0 || lam <= 0.0) return;
 
-    unsigned long long state = seed ^ 0x5555555555555555ULL;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
 
     if (lam < 30.0) {
         double limit = exp(-lam);
@@ -1534,8 +1564,7 @@ void v_poisson_int32(int32_t *res, int size, double lam, unsigned long long seed
             double p = 1.0;
             do {
                 k++;
-                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-                double u = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                double u = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
                 p *= u;
             } while (p > limit);
             res[i] = k - 1;
@@ -1546,12 +1575,10 @@ void v_poisson_int32(int32_t *res, int size, double lam, unsigned long long seed
         while (i < size) {
             double u1;
             do {
-                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-                u1 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                u1 = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
             } while (u1 == 0.0);
 
-            state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-            double u2 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+            double u2 = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
 
             double mag = sqrt(-2.0 * log(u1));
             double angle = 2.0 * M_PI * u2;
@@ -1574,7 +1601,8 @@ void v_poisson_int32(int32_t *res, int size, double lam, unsigned long long seed
 void v_binomial_int64(int64_t *res, int size, int n, double p, unsigned long long seed) {
     if (res == NULL || size <= 0 || n < 0 || p < 0.0 || p > 1.0) return;
 
-    unsigned long long state = seed ^ 0x5555555555555555ULL;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
 
     if (n == 0) {
         for (int i = 0; i < size; i++) res[i] = 0;
@@ -1585,8 +1613,7 @@ void v_binomial_int64(int64_t *res, int size, int n, double p, unsigned long lon
         for (int i = 0; i < size; i++) {
             int successes = 0;
             for (int t = 0; t < n; t++) {
-                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-                double u = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                double u = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
                 if (u < p) {
                     successes++;
                 }
@@ -1606,12 +1633,10 @@ void v_binomial_int64(int64_t *res, int size, int n, double p, unsigned long lon
             while (i < size) {
                 double u1;
                 do {
-                    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-                    u1 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                    u1 = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
                 } while (u1 == 0.0);
 
-                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-                double u2 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                double u2 = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
 
                 double mag = sqrt(-2.0 * log(u1));
                 double angle = 2.0 * M_PI * u2;
@@ -1639,7 +1664,8 @@ void v_binomial_int64(int64_t *res, int size, int n, double p, unsigned long lon
 void v_binomial_int32(int32_t *res, int size, int n, double p, unsigned long long seed) {
     if (res == NULL || size <= 0 || n < 0 || p < 0.0 || p > 1.0) return;
 
-    unsigned long long state = seed ^ 0x5555555555555555ULL;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
 
     if (n == 0) {
         for (int i = 0; i < size; i++) res[i] = 0;
@@ -1650,8 +1676,7 @@ void v_binomial_int32(int32_t *res, int size, int n, double p, unsigned long lon
         for (int i = 0; i < size; i++) {
             int successes = 0;
             for (int t = 0; t < n; t++) {
-                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-                double u = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                double u = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
                 if (u < p) {
                     successes++;
                 }
@@ -1671,12 +1696,10 @@ void v_binomial_int32(int32_t *res, int size, int n, double p, unsigned long lon
             while (i < size) {
                 double u1;
                 do {
-                    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-                    u1 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                    u1 = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
                 } while (u1 == 0.0);
 
-                state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-                double u2 = (double)(state >> 11) * (1.0 / 9007199254740992.0);
+                double u2 = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
 
                 double mag = sqrt(-2.0 * log(u1));
                 double angle = 2.0 * M_PI * u2;
@@ -1698,5 +1721,93 @@ void v_binomial_int32(int32_t *res, int size, int n, double p, unsigned long lon
                 i += 2;
             }
         }
+    }
+}
+
+#include <fcntl.h>
+#include <unistd.h>
+
+static void fill_secure_bytes(void *dest, size_t size) {
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd >= 0) {
+        size_t bytes_read = 0;
+        while (bytes_read < size) {
+            ssize_t res = read(fd, (char *)dest + bytes_read, size - bytes_read);
+            if (res < 0) break;
+            bytes_read += res;
+        }
+        close(fd);
+    }
+}
+
+void v_secure_uniform_double(double *res, int size) {
+    if (res == NULL || size <= 0) return;
+    fill_secure_bytes(res, size * sizeof(double));
+    unsigned long long *temp = (unsigned long long *)res;
+    for (int i = 0; i < size; i++) {
+        res[i] = (double)(temp[i] >> 11) * (1.0 / 9007199254740992.0);
+    }
+}
+
+void v_secure_uniform_float(float *res, int size) {
+    if (res == NULL || size <= 0) return;
+    fill_secure_bytes(res, size * sizeof(float));
+    unsigned int *temp = (unsigned int *)res;
+    for (int i = 0; i < size; i++) {
+        res[i] = (float)((double)(temp[i] >> 5) * (1.0 / 134217728.0));
+    }
+}
+
+void v_secure_randint_int64(int64_t *res, int size, int64_t low, int64_t high) {
+    if (res == NULL || size <= 0 || low >= high) return;
+    fill_secure_bytes(res, size * sizeof(int64_t));
+    int64_t range = high - low;
+    for (int i = 0; i < size; i++) {
+        res[i] = low + (int64_t)((unsigned long long)res[i] % (unsigned long long)range);
+    }
+}
+
+void v_secure_randint_int32(int32_t *res, int size, int32_t low, int32_t high) {
+    if (res == NULL || size <= 0 || low >= high) return;
+    fill_secure_bytes(res, size * sizeof(int32_t));
+    int32_t range = high - low;
+    for (int i = 0; i < size; i++) {
+        res[i] = low + (int32_t)((unsigned int)res[i] % (unsigned int)range);
+    }
+}
+
+void v_secure_normal_double(double *res, int size, double loc, double scale) {
+    if (res == NULL || size <= 0 || scale <= 0.0) return;
+    v_secure_uniform_double(res, size);
+    int i = 0;
+    while (i < size) {
+        double u1 = res[i];
+        if (u1 == 0.0) u1 = 1e-15;
+        double u2 = (i + 1 < size) ? res[i + 1] : 0.5;
+        double mag = scale * sqrt(-2.0 * log(u1));
+        double angle = 2.0 * M_PI * u2;
+        res[i] = loc + mag * cos(angle);
+        if (i + 1 < size) {
+            res[i + 1] = loc + mag * sin(angle);
+        }
+        i += 2;
+    }
+}
+
+void v_secure_normal_float(float *res, int size, float loc, float scale) {
+    if (res == NULL || size <= 0 || scale <= 0.0f) return;
+    v_secure_uniform_float(res, size);
+    int i = 0;
+    while (i < size) {
+        float u1 = res[i];
+        if (u1 == 0.0f) u1 = 1e-15f;
+        float u2 = (i + 1 < size) ? res[i + 1] : 0.5f;
+        float mag = scale * sqrtf(-2.0f * logf(u1));
+        float angle = 2.0f * (float)M_PI * u2;
+        res[i] = loc + mag * cosf(angle);
+        if (i + 1 < size) {
+            res[i + 1] = loc + mag * sinf(angle);
+        }
+        i += 2;
     }
 }

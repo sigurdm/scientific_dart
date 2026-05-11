@@ -1,6 +1,5 @@
 import 'package:ndarray/ndarray.dart';
 import 'package:test/test.dart';
-import 'dart:math' as math;
 
 void main() {
   group('NDArray Random Distributions Tests', () {
@@ -142,24 +141,21 @@ void main() {
         () => NDArray.scope(() {
           final shape = [2, 3];
 
-          // Create two separate Random engines with matching seeds!
-          final r1 = math.Random(12345);
-          final r2 = math.Random(12345);
-
-          final n1 = normal(shape, loc: 5.0, scale: 2.0, random: r1);
-          final n2 = normal(shape, loc: 5.0, scale: 2.0, random: r2);
+          // Use exact FFI seeds for C-land reproducibility
+          final n1 = normal(shape, loc: 5.0, scale: 2.0, seed: 12345);
+          final n2 = normal(shape, loc: 5.0, scale: 2.0, seed: 12345);
           expect(n1.toList(), n2.toList()); // exact matching doubles!
 
-          final e1 = exponential([10], scale: 1.5, random: math.Random(42));
-          final e2 = exponential([10], scale: 1.5, random: math.Random(42));
+          final e1 = exponential([10], scale: 1.5, seed: 42);
+          final e2 = exponential([10], scale: 1.5, seed: 42);
           expect(e1.toList(), e2.toList());
 
-          final p1 = poisson([10], lam: 12.0, random: math.Random(7));
-          final p2 = poisson([10], lam: 12.0, random: math.Random(7));
+          final p1 = poisson([10], lam: 12.0, seed: 7);
+          final p2 = poisson([10], lam: 12.0, seed: 7);
           expect(p1.toList(), p2.toList());
 
-          final b1 = binomial([10], n: 100, p: 0.2, random: math.Random(999));
-          final b2 = binomial([10], n: 100, p: 0.2, random: math.Random(999));
+          final b1 = binomial([10], n: 100, p: 0.2, seed: 999);
+          final b2 = binomial([10], n: 100, p: 0.2, seed: 999);
           expect(b1.toList(), b2.toList());
         }),
       );

@@ -854,6 +854,52 @@ external void v_fill_int64(ffi.Pointer<ffi.Int64> res, int value, int size);
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int32>, ffi.Int32, ffi.Int)>()
 external void v_fill_int32(ffi.Pointer<ffi.Int32> res, int value, int size);
 
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
+external void v_secure_uniform_double(ffi.Pointer<ffi.Double> res, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
+external void v_secure_uniform_float(ffi.Pointer<ffi.Float> res, int size);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Int64>, ffi.Int, ffi.Int64, ffi.Int64)
+>()
+external void v_secure_randint_int64(
+  ffi.Pointer<ffi.Int64> res,
+  int size,
+  int low,
+  int high,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Int32>, ffi.Int, ffi.Int32, ffi.Int32)
+>()
+external void v_secure_randint_int32(
+  ffi.Pointer<ffi.Int32> res,
+  int size,
+  int low,
+  int high,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Int, ffi.Double, ffi.Double)
+>()
+external void v_secure_normal_double(
+  ffi.Pointer<ffi.Double> res,
+  int size,
+  double loc,
+  double scale,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Int, ffi.Float, ffi.Float)
+>()
+external void v_secure_normal_float(
+  ffi.Pointer<ffi.Float> res,
+  int size,
+  double loc,
+  double scale,
+);
+
 /// ----------------------------------------------------------------------------
 /// Native C High-Speed Strided Flattening/Copying Kernels
 /// ----------------------------------------------------------------------------

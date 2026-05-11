@@ -20,8 +20,9 @@ final class TunerResult {
 
   @override
   String toString() {
-    final status =
-        cents.abs() < 5 ? 'IN TUNE' : (cents > 0 ? 'TOO HIGH' : 'TOO LOW');
+    final status = cents.abs() < 5
+        ? 'IN TUNE'
+        : (cents > 0 ? 'TOO HIGH' : 'TOO LOW');
     final visual = _generateVisual();
     final vol = _generateVolumeBar();
     return 'Vol: $vol | $note |$visual| (${frequency.toStringAsFixed(1)} Hz) - $status (${cents.toStringAsFixed(1)} cents)';
@@ -68,7 +69,7 @@ final class TunerLogic {
   };
 
   TunerLogic({required this.sampleRate, required this.bufferSize})
-      : _window = hanning(bufferSize, dtype: DType.float32);
+    : _window = hanning(bufferSize, dtype: DType.float32);
 
   TunerResult process(NDArray<double> input, double rms) {
     return NDArray.scope(() {
@@ -99,7 +100,9 @@ final class TunerLogic {
       final minIdx = (50 * bufferSize / sampleRate).floor();
       final maxIdx = (1000 * bufferSize / sampleRate).ceil();
 
-      final searchRange = magnitudes.slice([Slice(start: minIdx, stop: maxIdx)]);
+      final searchRange = magnitudes.slice([
+        Slice(start: minIdx, stop: maxIdx),
+      ]);
       final peakIdxInSlice = argmax(searchRange) as int;
       final peakIdx = minIdx + peakIdxInSlice;
 

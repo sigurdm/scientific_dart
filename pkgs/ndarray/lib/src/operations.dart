@@ -2984,9 +2984,14 @@ NDArray inv(NDArray a, {NDArray? out}) {
     }
   }
 
-  NDArray src = a;
+  final NDArray src;
+  final bool wasCopied;
   if (!a.isContiguous) {
     src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+    wasCopied = true;
+  } else {
+    src = a;
+    wasCopied = false;
   }
 
   final ipiv = malloc<ffi.Int>(n);
@@ -3007,7 +3012,7 @@ NDArray inv(NDArray a, {NDArray? out}) {
             result.data[i] = (src.data[i] as num).toDouble();
           }
         }
-      } else if (!identical(a, src)) {
+      } else if (wasCopied) {
         result = src;
       } else {
         result = NDArray.create(src.shape, DType.float32);
@@ -3067,7 +3072,7 @@ NDArray inv(NDArray a, {NDArray? out}) {
             result.data[i] = (src.data[i] as num).toDouble();
           }
         }
-      } else if (!identical(a, src)) {
+      } else if (wasCopied) {
         result = src;
       } else {
         result = NDArray.create(src.shape, DType.float64);
@@ -3115,6 +3120,9 @@ NDArray inv(NDArray a, {NDArray? out}) {
     }
   } finally {
     malloc.free(ipiv);
+    if (wasCopied && out != null) {
+      src.dispose();
+    }
   }
 }
 
@@ -7160,71 +7168,87 @@ Map<String, NDArray> cholesky(NDArray a) {
       ? DType.float32
       : DType.float64;
 
-  // Create result matrix L and copy elements from a
+  final NDArray src;
+  final bool wasCopied;
+  if (!a.isContiguous) {
+    src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+    wasCopied = true;
+  } else {
+    src = a;
+    wasCopied = false;
+  }
+
+  // Create result matrix L and copy elements from src
   final lMat = targetDType == DType.float32
       ? NDArray<Float32>.zeros([n, n], DType.float32)
       : NDArray<Float64>.zeros([n, n], DType.float64);
 
-  if (a.dtype == DType.float64) {
-    (lMat.data as Float64List).setRange(0, n * n, a.data as Float64List);
-  } else if (a.dtype == DType.float32) {
-    (lMat.data as Float32List).setRange(0, n * n, a.data as Float32List);
-  } else {
-    for (var i = 0; i < n * n; i++) {
-      lMat.data[i] = (a.data[i] as num).toDouble();
-    }
-  }
-
-  // Char 'L' in ASCII is 76
-  const uploL = 76;
-
-  if (targetDType == DType.float64) {
-    final info = LAPACKE_dpotrf(
-      101, // ROW_MAJOR
-      uploL,
-      n,
-      lMat.pointer.cast<ffi.Double>(),
-      n,
-    );
-    if (info < 0) {
-      throw ArgumentError('Illegal value in call to LAPACKE_dpotrf: $info');
-    }
-    if (info > 0) {
-      throw ArgumentError(
-        'Matrix must be symmetric positive-definite for Cholesky decomposition',
-      );
-    }
-
-    // Zero-out strictly upper triangular part
-    final lData = lMat.data as Float64List;
-    for (var i = 0; i < n; i++) {
-      for (var j = i + 1; j < n; j++) {
-        lData[i * n + j] = 0.0;
+  try {
+    if (src.dtype == DType.float64) {
+      (lMat.data as Float64List).setRange(0, n * n, src.data as Float64List);
+    } else if (src.dtype == DType.float32) {
+      (lMat.data as Float32List).setRange(0, n * n, src.data as Float32List);
+    } else {
+      for (var i = 0; i < n * n; i++) {
+        lMat.data[i] = (src.data[i] as num).toDouble();
       }
     }
-  } else {
-    final info = LAPACKE_spotrf(
-      101, // ROW_MAJOR
-      uploL,
-      n,
-      lMat.pointer.cast<ffi.Float>(),
-      n,
-    );
-    if (info < 0) {
-      throw ArgumentError('Illegal value in call to LAPACKE_spotrf: $info');
-    }
-    if (info > 0) {
-      throw ArgumentError(
-        'Matrix must be symmetric positive-definite for Cholesky decomposition',
-      );
-    }
 
-    // Zero-out strictly upper triangular part
-    final lData = lMat.data as Float32List;
-    for (var i = 0; i < n; i++) {
-      for (var j = i + 1; j < n; j++) {
-        lData[i * n + j] = 0.0;
+    // Char 'L' in ASCII is 76
+    const uploL = 76;
+
+    if (targetDType == DType.float64) {
+      final info = LAPACKE_dpotrf(
+        101, // ROW_MAJOR
+        uploL,
+        n,
+        lMat.pointer.cast<ffi.Double>(),
+        n,
+      );
+      if (info < 0) {
+        throw ArgumentError('Illegal value in call to LAPACKE_dpotrf: $info');
       }
+      if (info > 0) {
+        throw ArgumentError(
+          'Matrix must be symmetric positive-definite for Cholesky decomposition',
+        );
+      }
+
+      // Zero-out strictly upper triangular part
+      final lData = lMat.data as Float64List;
+      for (var i = 0; i < n; i++) {
+        for (var j = i + 1; j < n; j++) {
+          lData[i * n + j] = 0.0;
+        }
+      }
+    } else {
+      final info = LAPACKE_spotrf(
+        101, // ROW_MAJOR
+        uploL,
+        n,
+        lMat.pointer.cast<ffi.Float>(),
+        n,
+      );
+      if (info < 0) {
+        throw ArgumentError('Illegal value in call to LAPACKE_spotrf: $info');
+      }
+      if (info > 0) {
+        throw ArgumentError(
+          'Matrix must be symmetric positive-definite for Cholesky decomposition',
+        );
+      }
+
+      // Zero-out strictly upper triangular part
+      final lData = lMat.data as Float32List;
+      for (var i = 0; i < n; i++) {
+        for (var j = i + 1; j < n; j++) {
+          lData[i * n + j] = 0.0;
+        }
+      }
+    }
+  } finally {
+    if (wasCopied) {
+      src.dispose();
     }
   }
 

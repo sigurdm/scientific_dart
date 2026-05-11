@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:ndarray/ndarray.dart';
 
 void main() {
@@ -56,11 +55,8 @@ void runBinomialDistributionExample() {
 void runSeededReproducibilityExample() {
   print('\n--- Seeded Reproducibility (Seeding for Science) ---');
   // Passing the same seed object guarantees exactly identical random draws!
-  final rand1 = Random(42);
-  final rand2 = Random(42);
-
-  final draw1 = normal([3], loc: 10.0, scale: 2.0, random: rand1);
-  final draw2 = normal([3], loc: 10.0, scale: 2.0, random: rand2);
+  final draw1 = normal([3], loc: 10.0, scale: 2.0, seed: 42);
+  final draw2 = normal([3], loc: 10.0, scale: 2.0, seed: 42);
 
   print('Draw 1 (Seed 42): ${draw1.data}');
   print('Draw 2 (Seed 42): ${draw2.data}');

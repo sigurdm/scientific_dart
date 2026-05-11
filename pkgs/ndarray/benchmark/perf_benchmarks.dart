@@ -1,4 +1,3 @@
-import 'dart:math' as standard_math;
 import 'dart:typed_data';
 import 'package:benchmark_harness/benchmark_harness.dart';
 import 'package:ndarray/ndarray.dart';
@@ -15,8 +14,7 @@ class NormalDistributionBenchmark extends BenchmarkBase {
 
   @override
   void run() {
-    // Distributions are top-level functions taking shape and math.Random objects for seeding!
-    final arr = normal([50000], random: standard_math.Random(42));
+    final arr = normal([50000], seed: 42);
     arr.dispose();
   }
 }
@@ -29,8 +27,7 @@ class PoissonDistributionBenchmark extends BenchmarkBase {
 
   @override
   void run() {
-    // lam >= 30.0 triggers Gaussian Normal approximation track natively
-    final arr = poisson([20000], lam: 35.0, random: standard_math.Random(42));
+    final arr = poisson([20000], lam: 35.0, seed: 42);
     arr.dispose();
   }
 }
@@ -44,12 +41,7 @@ class BinomialDistributionBenchmark extends BenchmarkBase {
   @override
   void run() {
     // n >= 50 triggers Normal distribution approximation track natively
-    final arr = binomial(
-      [20000],
-      n: 60,
-      p: 0.4,
-      random: standard_math.Random(42),
-    );
+    final arr = binomial([20000], n: 60, p: 0.4, seed: 42);
     arr.dispose();
   }
 }

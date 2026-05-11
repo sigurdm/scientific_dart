@@ -27,12 +27,7 @@ void main() {
 
   // 2. Inject RNG Gaussian Noise to simulate real-world measurement sensors
   // Noise distribution: loc = 0.0, scale = 0.5
-  final noise = normal(
-    [numPoints],
-    loc: 0.0,
-    scale: 0.5,
-    random: math.Random(42),
-  );
+  final noise = normal([numPoints], loc: 0.0, scale: 0.5, seed: 42);
   addTearDown(() => noise.dispose());
 
   // Combine pure signal + noise element-wise!

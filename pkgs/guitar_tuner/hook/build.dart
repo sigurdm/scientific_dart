@@ -23,7 +23,7 @@ void main(List<String> args) async {
     final libFile = File.fromUri(outputDir.uri.resolve(libName));
 
     final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
-    
+
     final compileArgs = <String>[
       '-shared',
       '-fPIC',
@@ -38,14 +38,21 @@ void main(List<String> args) async {
       compileArgs.add('-lpthread');
       compileArgs.add('-ldl');
     } else if (os == OS.macOS) {
-      compileArgs.addAll(['-framework', 'CoreAudio', '-framework', 'AudioToolbox', '-framework', 'AudioUnit', '-framework', 'CoreFoundation']);
+      compileArgs.addAll([
+        '-framework',
+        'CoreAudio',
+        '-framework',
+        'AudioToolbox',
+        '-framework',
+        'AudioUnit',
+        '-framework',
+        'CoreFoundation',
+      ]);
     }
 
     final res = await Process.run(compilerPath, compileArgs);
     if (res.exitCode != 0) {
-      throw StateError(
-        'Guitar tuner bridge compilation failed: ${res.stderr}',
-      );
+      throw StateError('Guitar tuner bridge compilation failed: ${res.stderr}');
     }
 
     output.assets.code.add(
