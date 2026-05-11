@@ -2,6 +2,13 @@
 
 This file logs architectural improvements, optimization ideas, and feature gaps relative to the reference NumPy library, discovered during autonomous review loops.
 When a task is completed, describe it in DONE.md file and remove it from this file.
+Remember when adding new operations:
+* always allow for an out: argument
+* always allow for complex float and integer inputs where it makes sense.
+* Always use strong typing and generics.
+* always use ffi with C implementation
+* always provide optimized flat contiguous version for speed
+* always allow for strided version of the operation
 
 
 ---

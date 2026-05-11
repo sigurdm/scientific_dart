@@ -701,11 +701,20 @@ void _elementWiseOp<Ta, Tb, Tr>(
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray subtract(NDArray a, NDArray b) {
+NDArray subtract(NDArray a, NDArray b, {NDArray? out}) {
+  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
+
   // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
   if (a.isContiguous && b.isContiguous && listEquals(a.shape, b.shape)) {
+    final result = out ?? NDArray.create(a.shape, targetDType);
+    if (out != null) {
+      if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype.',
+        );
+      }
+    }
     if (a.dtype == DType.float64 && b.dtype == DType.float64) {
-      final result = NDArray.create(a.shape, DType.float64);
       v_sub_double(
         a.pointer.cast(),
         b.pointer.cast(),
@@ -714,7 +723,6 @@ NDArray subtract(NDArray a, NDArray b) {
       );
       return result;
     } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
-      final result = NDArray.create(a.shape, DType.float32);
       v_sub_float(
         a.pointer.cast(),
         b.pointer.cast(),
@@ -730,8 +738,14 @@ NDArray subtract(NDArray a, NDArray b) {
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
-  final result = NDArray.create(commonShape, targetDType);
+  final result = out ?? NDArray.create(commonShape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for broadcasting.',
+      );
+    }
+  }
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   if (targetDType == DType.complex128 || targetDType == DType.complex64) {
@@ -899,11 +913,20 @@ NDArray subtract(NDArray a, NDArray b) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray multiply(NDArray a, NDArray b) {
+NDArray multiply(NDArray a, NDArray b, {NDArray? out}) {
+  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
+
   // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
   if (a.isContiguous && b.isContiguous && listEquals(a.shape, b.shape)) {
+    final result = out ?? NDArray.create(a.shape, targetDType);
+    if (out != null) {
+      if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype.',
+        );
+      }
+    }
     if (a.dtype == DType.float64 && b.dtype == DType.float64) {
-      final result = NDArray.create(a.shape, DType.float64);
       v_mul_double(
         a.pointer.cast(),
         b.pointer.cast(),
@@ -912,7 +935,6 @@ NDArray multiply(NDArray a, NDArray b) {
       );
       return result;
     } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
-      final result = NDArray.create(a.shape, DType.float32);
       v_mul_float(
         a.pointer.cast(),
         b.pointer.cast(),
@@ -928,8 +950,14 @@ NDArray multiply(NDArray a, NDArray b) {
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
-  final result = NDArray.create(commonShape, targetDType);
+  final result = out ?? NDArray.create(commonShape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for broadcasting.',
+      );
+    }
+  }
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   if (targetDType == DType.complex128 || targetDType == DType.complex64) {
@@ -1097,11 +1125,24 @@ NDArray multiply(NDArray a, NDArray b) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray divide(NDArray a, NDArray b) {
+NDArray divide(NDArray a, NDArray b, {NDArray? out}) {
+  // True division always upcasts to a floating or complex type!
+  DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
+  if (targetDType == DType.int32 || targetDType == DType.int64) {
+    targetDType = DType.float64;
+  }
+
   // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
   if (a.isContiguous && b.isContiguous && listEquals(a.shape, b.shape)) {
+    final result = out ?? NDArray.create(a.shape, targetDType);
+    if (out != null) {
+      if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype.',
+        );
+      }
+    }
     if (a.dtype == DType.float64 && b.dtype == DType.float64) {
-      final result = NDArray.create(a.shape, DType.float64);
       v_div_double(
         a.pointer.cast(),
         b.pointer.cast(),
@@ -1110,7 +1151,6 @@ NDArray divide(NDArray a, NDArray b) {
       );
       return result;
     } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
-      final result = NDArray.create(a.shape, DType.float32);
       v_div_float(
         a.pointer.cast(),
         b.pointer.cast(),
@@ -1126,13 +1166,14 @@ NDArray divide(NDArray a, NDArray b) {
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  // True division always upcasts to a floating or complex type!
-  DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
-  if (targetDType == DType.int32 || targetDType == DType.int64) {
-    targetDType = DType.float64;
+  final result = out ?? NDArray.create(commonShape, targetDType);
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for broadcasting.',
+      );
+    }
   }
-
-  final result = NDArray.create(commonShape, targetDType);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   if (targetDType == DType.complex128 || targetDType == DType.complex64) {
@@ -6852,7 +6893,7 @@ NDArray imag(NDArray a, {NDArray? out}) {
 /// final a = NDArray.fromList([180.0, 90.0, 45.0], [3], `DType.float64);`
 /// final r = deg2rad(a); // [pi, pi / 2.0, pi / 4.0]
 /// ```
-NDArray deg2rad(NDArray a) {
+NDArray deg2rad(NDArray a, {NDArray? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute deg2rad on a disposed array.');
   }
@@ -6864,7 +6905,7 @@ NDArray deg2rad(NDArray a) {
       ? DType.float32
       : DType.float64;
   final factor = NDArray.fromList([0.017453292519943295], [1], factorDType);
-  return multiply(a, factor);
+  return multiply(a, factor, out: out);
 }
 
 /// Converts angles from radians to degrees element-wise.
@@ -6882,7 +6923,7 @@ NDArray deg2rad(NDArray a) {
 /// final a = NDArray.fromList([math.pi, math.pi / 2.0], [2], `DType.float64);`
 /// final d = rad2deg(a); // [180.0, 90.0]
 /// ```
-NDArray rad2deg(NDArray a) {
+NDArray rad2deg(NDArray a, {NDArray? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute rad2deg on a disposed array.');
   }
@@ -6894,7 +6935,7 @@ NDArray rad2deg(NDArray a) {
       ? DType.float32
       : DType.float64;
   final factor = NDArray.fromList([57.29577951308232], [1], factorDType);
-  return multiply(a, factor);
+  return multiply(a, factor, out: out);
 }
 
 /// Returns an element-wise boolean mask indicating which elements of the array are NaN (Not-a-Number).
