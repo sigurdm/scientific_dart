@@ -9,6 +9,7 @@ Remember when adding new operations:
 * always use ffi with C implementation
 * always provide optimized flat contiguous version for speed
 * always allow for strided version of the operation
+* always use a switch to dispatch to the correct implementation based on DType.
 
 
 ---

@@ -911,7 +911,24 @@ final class NDArray<T> implements ffi.Finalizable {
     }
   }
 
-  /// Returns a 1D array containing the elements, as a view if contiguous, or a copy.
+  /// Returns a flattened one-dimensional view or copy of this array.
+  ///
+  /// **Preconditions:**
+  /// - The array must not be disposed.
+  ///
+  /// **Throws:**
+  /// - [StateError] if the array has been disposed.
+  ///
+  /// **Performance considerations:**
+  /// - If the array [isContiguous], this returns a zero-allocation, zero-copy 1D view sharing backing memory ($O(1)$ complexity).
+  /// - Otherwise, falls back to returning a deep flattened copy ($O(N)$ complexity).
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+  /// final r = a.ravel();
+  /// print(r.shape); // [4]
+  /// ```
   NDArray<T> ravel() {
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     if (isContiguous) {
@@ -1064,9 +1081,33 @@ final class NDArray<T> implements ffi.Finalizable {
   }
 
   /// Returns a view of the array with dimensions reversed.
+  ///
+  /// **Preconditions:**
+  /// - The array must not be disposed.
+  ///
+  /// **Performance considerations:**
+  /// - This is a zero-allocation, copy-free view manipulation ($O(1)$ complexity).
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+  /// final t = a.transposed; // shape [2, 2]
+  /// ```
   NDArray<T> get transposed => transpose();
 
   /// Returns the single scalar value of a 0-dimensional array.
+  ///
+  /// **Preconditions:**
+  /// - The array must be 0-dimensional (empty [shape]).
+  ///
+  /// **Throws:**
+  /// - [StateError] if the array has dimensions.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final a = NDArray.fromList([42], [], DType.int32);
+  /// print(a.scalar); // 42
+  /// ```
   T get scalar {
     if (shape.isNotEmpty) {
       throw StateError(
@@ -1113,6 +1154,19 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Polymorphic Equivalence:**
   /// Equivalent to calling `this[coords] = value` via a flat list parameter.
+  ///
+  /// **Preconditions:**
+  /// - [coords] length must match the rank of the array.
+  ///
+  /// **Throws:**
+  /// - [ArgumentError] if `coords.length` doesn't match array rank.
+  /// - [RangeError] if any coordinate is out of bounds for its dimension.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final a = NDArray.zeros([2, 2], DType.int32);
+  /// a.setCell([0, 1], 42);
+  /// ```
   void setCell(List<int> coords, T value) {
     if (coords.length != shape.length) {
       throw ArgumentError(
