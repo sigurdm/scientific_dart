@@ -44,11 +44,12 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
   - Multi-dimensional `axis` support inside `fft()` and `ifft()`. Currently, our FFT transforms are hardcoded to execute along the final axis (`a.shape.last`). Adding an `axis` parameter (default `-1`) and transposing dimensions internally before/after FFI plan runs would achieve full standard NumPy `np.fft.fft(a, axis=axis)` compatibility!
   - Spectrogram shifts: `fftshift()` and `ifftshift()`.
 
-### 3.2 Array Manipulation
+### 3.2 Array Manipulation & Geometry
 - **Shaping & Meshes**: `mgrid`/`ogrid`, `asStrided`, `slidingWindowView`.
 - **Repeating & Tiling**: Vector repeat `repeat()` and grid tiling `tile()`.
 - **Rearranging**: Axis roll `roll()`, flips `flip()`, `fliplr()`, and `flipud()`.
 - **Splitting**: Block splitting `split()`, `array_split()`, `hsplit()`, and `vsplit()`.
+- **Triangular Masks**: Lower triangular matrix extraction `tril()` and upper triangular matrix extraction `triu()` (extremely vital for causal mask scaling inside LLM / attention block layers).
 
 ### 3.3 Statistics & Sorting
 - **Sorting**: Partial sorting `partition()` and index partial sorting `argpartition()` (extremely high performance benefit for top-K filtering), stable sorting indicator `kind` parameter inside `sort()`.
@@ -67,6 +68,19 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
   - `outer(NDArray a, NDArray b)`: Vector outer product.
 - **Solvers & Norms**:
   - `norm(NDArray a, {dynamic ord, int? axis})`: Calculate vector/matrix norms. Expose standard L1, L2 (Frobenius), and Chebyshev infinity norms, supporting Axis-wise reductions cleanly!
+
+### 3.6 Calculus & Cumulative Accumulations
+- **Cumulative ufuncs**: `cumsum(a, {int? axis})` (cumulative sum) and `cumprod(a, {int? axis})` (cumulative product) to enable robust DSP time-series integrals calculations.
+- **Calculus Solvers**: N-Dimensional gradients `gradient(f)` and trapezoidal integrals solver `trapz(y, x)`.
+
+### 3.7 Vectorized Logical Reductions
+- **Axis-wise logical reductions**: `all(a, {int? axis})` (check if all elements along axis evaluate to true) and `any(a, {int? axis})` (check if any element along axis evaluates to true) over numeric or boolean tensor structures.
+
+### 3.8 Tabular Tabular Record Arrays (Heterogeneous Structured Data)
+- **Structured Fields Support**: Exposing composite data types matching standard C structs (equivalent to NumPy's `np.recarray` and structured dtype schemas), allowing heterogeneous fields elements to be packaged and walked sequentially inside unmanaged heap bytes segments.
+
+### 3.9 Progressive Scientific Generators
+- **Geometric Progressive Spacers**: Exposing logarithmic spacer `logspace()` and geometric spacer `geomspace()` generators to match high-end scientific computing specifications.
 
 ---
 
