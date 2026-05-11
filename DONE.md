@@ -2145,6 +2145,20 @@
     - **Global Workspace Line Coverage**: Surged to a new peak of **88.33%**!
   - **Verification**: All 427 unit tests passed flawlessly green.
 
+***
+
+## 180. Resolved PocketFFT Transient Copy Memory Leak (Task 3 / Same as 7 & 8 / Finding Fix)
+* **Issue**:
+  - Resolves **Section 2.3** in `FINDINGS.md`.
+  - The 1D discrete Fourier transforms functions `fft()` and `ifft()` in [fft.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/fft.dart) copied non-contiguous array views using `a = a.copy()`. However, because the resulting new native `NDArray` was never disposed of before return, it created a severe unmanaged memory leak on the C-heap on every non-contiguous FFT/IFFT run.
+* **Resolution**:
+  - **Leak-Safe Transient Copied Arrays Tracking**: Refactored both `fft()` and `ifft()` inside [fft.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/fft.dart) to bind the array execution to `final NDArray inputA` and track copying via `final bool wasCopied = !a.isContiguous`. Added a safe disposal hook `if (wasCopied) inputA.dispose()` inside the `finally` blocks of both functions.
+  - **Findings Cleanup**: Excised Section 2.3 from [FINDINGS.md](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/FINDINGS.md).
+* **Results**:
+  - **Memory Safety**: Reclaimed all transient heap arrays safely, preventing native leaks on non-contiguous FFT execution runs.
+  - **Verification**: Ran formatting, static analysis, and the full test suite confirming all 427 tests continue to pass perfectly green!
+
+
 
 
 

@@ -36,34 +36,46 @@ NDArray fft(NDArray a, {int? n}) {
     );
   }
 
+  final NDArray inputA;
+  final bool wasCopied;
   if (!a.isContiguous) {
-    a = a.copy();
+    inputA = a.copy();
+    wasCopied = true;
+  } else {
+    inputA = a;
+    wasCopied = false;
   }
 
-  final lastAxisDim = a.shape.last;
+  final lastAxisDim = inputA.shape.last;
   final targetLen = n ?? lastAxisDim;
   if (targetLen <= 0) {
+    if (wasCopied) {
+      inputA.dispose();
+    }
     throw ArgumentError(
       'Target transform length [n] must be greater than 0 (was $n)',
     );
   }
 
   // Formulate output shape by replacing the last axis with targetLen
-  final outShape = List<int>.from(a.shape);
+  final outShape = List<int>.from(inputA.shape);
   outShape[outShape.length - 1] = targetLen;
 
-  final targetDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+  final targetDType =
+      (inputA.dtype == DType.float32 || inputA.dtype == DType.complex64)
       ? DType.complex64
       : DType.complex128;
 
   final result = NDArray.zeros(outShape, targetDType);
 
   // Count how many 1D row sub-signals exist to execute strided walks
-  final totalElements = a.shape.reduce((x, y) => x * y);
+  final totalElements = inputA.shape.reduce((x, y) => x * y);
   final signalsCount = totalElements ~/ lastAxisDim;
 
   final isZeroCopyFastPath =
-      a.dtype == DType.complex128 && targetLen == lastAxisDim && a.isContiguous;
+      inputA.dtype == DType.complex128 &&
+      targetLen == lastAxisDim &&
+      inputA.isContiguous;
 
   kiss_fft_cfg cfg = ffi.nullptr.cast();
 
@@ -77,13 +89,16 @@ NDArray fft(NDArray a, {int? n}) {
       }
 
       for (var s = 0; s < signalsCount; s++) {
-        final rowPin = a.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
+        final rowPin = inputA.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
         final rowPout = result.pointer.cast<kiss_fft_cpx>() + s * targetLen;
         kiss_fft(cfg, rowPin, rowPout);
       }
     } finally {
       if (cfg.address != 0) {
         free(cfg.cast<ffi.Void>());
+      }
+      if (wasCopied) {
+        inputA.dispose();
       }
     }
     return result;
@@ -109,23 +124,25 @@ NDArray fft(NDArray a, {int? n}) {
       final destStart = s * targetLen;
 
       // Populate input buffer, applying zero-padding or truncation if n is specified
-      if (a.data is ComplexList) {
-        final compList = a.data as ComplexList;
+      if (inputA.data is ComplexList) {
+        final compList = inputA.data as ComplexList;
         for (var i = 0; i < copyLen; i++) {
           pin[i].r = compList.getReal(srcStart + i);
           pin[i].i = compList.getImag(srcStart + i);
         }
-        for (var i = copyLen; i < targetLen; i++) {
+        final zeroPaddingStart = copyLen;
+        for (var i = zeroPaddingStart; i < targetLen; i++) {
           pin[i].r = 0.0;
           pin[i].i = 0.0;
         }
       } else {
         for (var i = 0; i < copyLen; i++) {
-          final val = a.data[srcStart + i];
+          final val = inputA.data[srcStart + i];
           pin[i].r = (val as num).toDouble();
           pin[i].i = 0.0;
         }
-        for (var i = copyLen; i < targetLen; i++) {
+        final zeroPaddingStart = copyLen;
+        for (var i = zeroPaddingStart; i < targetLen; i++) {
           pin[i].r = 0.0;
           pin[i].i = 0.0;
         }
@@ -150,6 +167,9 @@ NDArray fft(NDArray a, {int? n}) {
     }
     if (pout.address != 0) {
       malloc.free(pout);
+    }
+    if (wasCopied) {
+      inputA.dispose();
     }
   }
 
@@ -185,32 +205,44 @@ NDArray ifft(NDArray a, {int? n}) {
     );
   }
 
+  final NDArray inputA;
+  final bool wasCopied;
   if (!a.isContiguous) {
-    a = a.copy();
+    inputA = a.copy();
+    wasCopied = true;
+  } else {
+    inputA = a;
+    wasCopied = false;
   }
 
-  final lastAxisDim = a.shape.last;
+  final lastAxisDim = inputA.shape.last;
   final targetLen = n ?? lastAxisDim;
   if (targetLen <= 0) {
+    if (wasCopied) {
+      inputA.dispose();
+    }
     throw ArgumentError(
       'Target transform length [n] must be greater than 0 (was $n)',
     );
   }
 
-  final outShape = List<int>.from(a.shape);
+  final outShape = List<int>.from(inputA.shape);
   outShape[outShape.length - 1] = targetLen;
 
-  final targetDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+  final targetDType =
+      (inputA.dtype == DType.float32 || inputA.dtype == DType.complex64)
       ? DType.complex64
       : DType.complex128;
 
   final result = NDArray.zeros(outShape, targetDType);
 
-  final totalElements = a.shape.reduce((x, y) => x * y);
+  final totalElements = inputA.shape.reduce((x, y) => x * y);
   final signalsCount = totalElements ~/ lastAxisDim;
 
   final isZeroCopyFastPath =
-      a.dtype == DType.complex128 && targetLen == lastAxisDim && a.isContiguous;
+      inputA.dtype == DType.complex128 &&
+      targetLen == lastAxisDim &&
+      inputA.isContiguous;
 
   kiss_fft_cfg cfg = ffi.nullptr.cast();
 
@@ -225,7 +257,7 @@ NDArray ifft(NDArray a, {int? n}) {
 
       final scaleFactor = 1.0 / targetLen;
       for (var s = 0; s < signalsCount; s++) {
-        final rowPin = a.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
+        final rowPin = inputA.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
         final rowPout = result.pointer.cast<kiss_fft_cpx>() + s * targetLen;
         kiss_fft(cfg, rowPin, rowPout);
 
@@ -237,6 +269,9 @@ NDArray ifft(NDArray a, {int? n}) {
     } finally {
       if (cfg.address != 0) {
         free(cfg.cast<ffi.Void>());
+      }
+      if (wasCopied) {
+        inputA.dispose();
       }
     }
     return result;
@@ -261,23 +296,25 @@ NDArray ifft(NDArray a, {int? n}) {
       final srcStart = s * lastAxisDim;
       final destStart = s * targetLen;
 
-      if (a.data is ComplexList) {
-        final compList = a.data as ComplexList;
+      if (inputA.data is ComplexList) {
+        final compList = inputA.data as ComplexList;
         for (var i = 0; i < copyLen; i++) {
           pin[i].r = compList.getReal(srcStart + i);
           pin[i].i = compList.getImag(srcStart + i);
         }
-        for (var i = copyLen; i < targetLen; i++) {
+        final zeroPaddingStart = copyLen;
+        for (var i = zeroPaddingStart; i < targetLen; i++) {
           pin[i].r = 0.0;
           pin[i].i = 0.0;
         }
       } else {
         for (var i = 0; i < copyLen; i++) {
-          final val = a.data[srcStart + i];
+          final val = inputA.data[srcStart + i];
           pin[i].r = (val as num).toDouble();
           pin[i].i = 0.0;
         }
-        for (var i = copyLen; i < targetLen; i++) {
+        final zeroPaddingStart = copyLen;
+        for (var i = zeroPaddingStart; i < targetLen; i++) {
           pin[i].r = 0.0;
           pin[i].i = 0.0;
         }
@@ -307,6 +344,9 @@ NDArray ifft(NDArray a, {int? n}) {
     }
     if (pout.address != 0) {
       malloc.free(pout);
+    }
+    if (wasCopied) {
+      inputA.dispose();
     }
   }
 
