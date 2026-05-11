@@ -1,8 +1,20 @@
+/* ============================================================================
+ * ndarray CUSTOM NATIVE EXTENSIONS LIBRARY (custom_ufuncs.c)
+ * ============================================================================
+ * Contains optimized contiguous vector mathematics, multi-dimensional strided
+ * odometer walks, custom complex trigonometric algorithms, pocketfft wrappers,
+ * and high-speed sorting utilities.
+ *
+ * Design Rules:
+ * 1. Thread-safe and platform-independent standard C99 arithmetic.
+ * 2. Zero-allocation sweeps offloading all layout loops to raw pointer space.
+ * 3. Systematically aligned logic groupings mapped directly to FFI bindings.
+ * ============================================================================
+ */
+
 #include "custom_ufuncs.h"
 #include <math.h>
 #include <stdlib.h>
-
-// ============================================================================
 // 1. DOUBLE PRECISION (FLOAT64) FLAT CONTIGUOUS KERNELS
 // ============================================================================
 
