@@ -2085,4 +2085,22 @@
   - **Performance**: Eliminated loop invariant branch penalties during FFT sweeps and avoided all list element-shifting during matrix broadcasting sweeps.
   - **Verification**: Verified that all 414 workspace unit tests pass flawlessly green. Global line coverage reached a record peak of **87.71%**!
 
+***
+
+## 176. Closed Critical Coverage Gaps inside `operations.dart` (Task 1 / Coverage Improvement)
+* **Issue**:
+  - Discovered multiple critical, unexecuted code blocks inside the core operations solver layer [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart):
+    - `setNumThreads(int numThreads)`: Existed with 0% coverage, missing validation testing for thread thresholds.
+    - **Contiguous Float32 ufuncs Fast Paths**: Fast OpenBLAS SIMD tracks for `multiply` and `divide` contiguous Float32 arrays had 0% coverage.
+    - **Mixed-Type Division Fallbacks**: Recursive strided division walker branches for mixed DType types (`Float64 / Int64`, `Int64 / Float64`, and `Int32 / Int32` views) were completely unexecuted.
+    - **High-Dimensional Stack-Broadcasted matmul**: Matrix multiplication batch dimensions zero-stride walking gates (where one operand possesses batch stacks that are absent in the other matrix) were completely untested.
+* **Resolution**:
+  - **Comprehensive Targeted Test Suite**: Created a dedicated new test file [operations_coverage_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/operations_coverage_test.dart) verifying thread thresholds boundaries, global Float32 ufunc multiplications/divisions contiguous FFI runs, mixed-type views recursive divisions fallback walks, and high-dimensional stack broadcasted batch matrix multiplications.
+* **Results**:
+  - **Coverage Progress**:
+    - **`operations.dart` Line Coverage**: Surged from **84.5%** to **85.3%** (executing 24 new lines!).
+    - **Global Workspace Line Coverage**: Surged from **87.71%** to a new peak record of **88.12%** (successfully breaking past the **88%** coverage milestone!).
+  - **Verification**: All newly created test cases and 418 workspace unit tests passed successfully.
+
+
 
