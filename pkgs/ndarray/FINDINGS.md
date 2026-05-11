@@ -101,6 +101,15 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 ### 3.17 Axis-Specific Matrix Splitting
 - **Standard Multi-Dimensional Segmentation**: Adding axis-specific sub-array splitting helpers `hsplit()`, `vsplit()`, and `dsplit()` to align with standard NumPy dataset segmentations.
 
+### 3.18 N-Dimensional Padding (pad category)
+- **Edge Border Manipulations**: Exposing high-performance vectorized N-Dimensional padding `pad(a, pad_width, {mode: 'constant', constant_values: 0})` to support edge reflection, border replication, and zero-padding, which are extremely vital for Convolutional Neural Network (CNN) boundary gates, signal windowing, and numeric differential equation boundaries.
+
+### 3.19 FFI-Accelerated Complex Conjugation (conj)
+- **Signal Processing Core**: Exposing FFI vector-accelerated complex number array conjugation `conj()` / `conjugate()` mapping straight to a C kernel to invert the sign of complex imaginary parts ($a + bi \rightarrow a - bi$) at peak compiled speeds.
+
+### 3.20 Broad-Boundary Array Clipping (clip)
+- **Broadcasting min/max bounds**: Expanding `clip(a, min, max)` to support **array bounds** that broadcast natively against the input array, allowing spatial envelope capping instead of rigid scalar limits.
+
 ---
 
 ## ✨ Section 4: Usability & Ergonomics
