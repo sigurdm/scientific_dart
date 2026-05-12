@@ -10361,7 +10361,18 @@ NDArray<T> flipud<T extends Object>(NDArray<T> a) {
 
 
 
-final _stridedOpBuffer = malloc<ffi.Int>(32);
+var _stridedOpBuffer = malloc<ffi.Int>(32);
+var _stridedOpBufferCapacity = 32;
+
+ffi.Pointer<ffi.Int> _getStridedOpBuffer(int ndim) {
+  final requiredSize = ndim * 4;
+  if (requiredSize > _stridedOpBufferCapacity) {
+    malloc.free(_stridedOpBuffer);
+    _stridedOpBuffer = malloc<ffi.Int>(requiredSize);
+    _stridedOpBufferCapacity = requiredSize;
+  }
+  return _stridedOpBuffer;
+}
 
 extension _ArithmeticNDArrayOperationsHelper<T> on NDArray<T> {
   @internal
@@ -10711,17 +10722,18 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   }
 
   // Specialized paths for Float64 (as in original extensions.dart)
-  if (commonShape.length <= 8) {
     final isContig =
         a.isContiguous &&
         b.isContiguous &&
         result.isContiguous &&
         listEquals(a.shape, b.shape);
 
-    final cShape = _stridedOpBuffer;
-    final cStridesA = _stridedOpBuffer.elementAt(8);
-    final cStridesB = _stridedOpBuffer.elementAt(16);
-    final cStridesRes = _stridedOpBuffer.elementAt(24);
+    final ndim = commonShape.length;
+    final cBuffer = _getStridedOpBuffer(ndim);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer.elementAt(ndim);
+    final cStridesB = cBuffer.elementAt(ndim * 2);
+    final cStridesRes = cBuffer.elementAt(ndim * 3);
 
     for (var i = 0; i < commonShape.length; i++) {
       cShape[i] = commonShape[i];
@@ -11028,8 +11040,6 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         break;
     }
 
-  }
-
   // Fallback to dynamic element-wise operation
   _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
     result,
@@ -11138,13 +11148,14 @@ NDArray<R> subtract<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
     return result;
   }
 
-  if (commonShape.length <= 8) {
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
-    final cShape = _stridedOpBuffer;
-    final cStridesA = _stridedOpBuffer.elementAt(8);
-    final cStridesB = _stridedOpBuffer.elementAt(16);
-    final cStridesRes = _stridedOpBuffer.elementAt(24);
+    final ndim = commonShape.length;
+    final cBuffer = _getStridedOpBuffer(ndim);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer.elementAt(ndim);
+    final cStridesB = cBuffer.elementAt(ndim * 2);
+    final cStridesRes = cBuffer.elementAt(ndim * 3);
 
     for (var i = 0; i < commonShape.length; i++) {
       cShape[i] = commonShape[i];
@@ -11451,8 +11462,6 @@ NDArray<R> subtract<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
         break;
     }
 
-  }
-
   _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
     result, b, commonShape, stridesA, stridesB, resultStrides, _safeSub, isSubtract: true);
   return result;
@@ -11487,13 +11496,14 @@ NDArray<R> multiply<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
     return result;
   }
 
-  if (commonShape.length <= 8) {
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
-    final cShape = _stridedOpBuffer;
-    final cStridesA = _stridedOpBuffer.elementAt(8);
-    final cStridesB = _stridedOpBuffer.elementAt(16);
-    final cStridesRes = _stridedOpBuffer.elementAt(24);
+    final ndim = commonShape.length;
+    final cBuffer = _getStridedOpBuffer(ndim);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer.elementAt(ndim);
+    final cStridesB = cBuffer.elementAt(ndim * 2);
+    final cStridesRes = cBuffer.elementAt(ndim * 3);
 
     for (var i = 0; i < commonShape.length; i++) {
       cShape[i] = commonShape[i];
@@ -11801,8 +11811,6 @@ NDArray<R> multiply<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
         break;
     }
 
-  }
-
   _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
     result, b, commonShape, stridesA, stridesB, resultStrides, _safeMul);
   return result;
@@ -11840,13 +11848,14 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     return result;
   }
 
-  if (commonShape.length <= 8) {
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
-    final cShape = _stridedOpBuffer;
-    final cStridesA = _stridedOpBuffer.elementAt(8);
-    final cStridesB = _stridedOpBuffer.elementAt(16);
-    final cStridesRes = _stridedOpBuffer.elementAt(24);
+    final ndim = commonShape.length;
+    final cBuffer = _getStridedOpBuffer(ndim);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer.elementAt(ndim);
+    final cStridesB = cBuffer.elementAt(ndim * 2);
+    final cStridesRes = cBuffer.elementAt(ndim * 3);
 
     for (var i = 0; i < commonShape.length; i++) {
       cShape[i] = commonShape[i];
@@ -12154,8 +12163,6 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
       default:
         break;
     }
-
-  }
 
   _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
     result, b, commonShape, stridesA, stridesB, resultStrides, _safeDiv, isDivide: true);
