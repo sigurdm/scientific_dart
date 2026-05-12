@@ -387,7 +387,22 @@ void v_triu_float(const float *src, float *res, int batch_count, int rows, int c
   MACRO(OP, cpx, int32, cpx, cpx_t, int32_t, cpx_t) \
   MACRO(OP, cpx, uint8, cpx, cpx_t, uint8_t, cpx_t) \
   MACRO(OP, cpx, int16, cpx, cpx_t, int16_t, cpx_t) \
-  MACRO(OP, cpx, cpx, cpx, cpx_t, cpx_t, cpx_t)
+  MACRO(OP, cpx, cpx, cpx, cpx_t, cpx_t, cpx_t) \
+  MACRO(OP, cpx64, double, cpx, cpx_f_t, double, cpx_t) \
+  MACRO(OP, cpx64, float, cpx64, cpx_f_t, float, cpx_f_t) \
+  MACRO(OP, cpx64, int64, cpx64, cpx_f_t, int64_t, cpx_f_t) \
+  MACRO(OP, cpx64, int32, cpx64, cpx_f_t, int32_t, cpx_f_t) \
+  MACRO(OP, cpx64, uint8, cpx64, cpx_f_t, uint8_t, cpx_f_t) \
+  MACRO(OP, cpx64, int16, cpx64, cpx_f_t, int16_t, cpx_f_t) \
+  MACRO(OP, cpx64, cpx, cpx, cpx_f_t, cpx_t, cpx_t) \
+  MACRO(OP, double, cpx64, cpx, double, cpx_f_t, cpx_t) \
+  MACRO(OP, float, cpx64, cpx64, float, cpx_f_t, cpx_f_t) \
+  MACRO(OP, int64, cpx64, cpx64, int64_t, cpx_f_t, cpx_f_t) \
+  MACRO(OP, int32, cpx64, cpx64, int32_t, cpx_f_t, cpx_f_t) \
+  MACRO(OP, uint8, cpx64, cpx64, uint8_t, cpx_f_t, cpx_f_t) \
+  MACRO(OP, int16, cpx64, cpx64, int16_t, cpx_f_t, cpx_f_t) \
+  MACRO(OP, cpx, cpx64, cpx, cpx_t, cpx_f_t, cpx_t) \
+  MACRO(OP, cpx64, cpx64, cpx64, cpx_f_t, cpx_f_t, cpx_f_t)
 
 #define GENERATE_DIV_COMBINATIONS(OP, MACRO) \
   MACRO(OP, double, double, double, double, double, double) \
@@ -438,7 +453,22 @@ void v_triu_float(const float *src, float *res, int batch_count, int rows, int c
   MACRO(OP, cpx, int32, cpx, cpx_t, int32_t, cpx_t) \
   MACRO(OP, cpx, uint8, cpx, cpx_t, uint8_t, cpx_t) \
   MACRO(OP, cpx, int16, cpx, cpx_t, int16_t, cpx_t) \
-  MACRO(OP, cpx, cpx, cpx, cpx_t, cpx_t, cpx_t)
+  MACRO(OP, cpx, cpx, cpx, cpx_t, cpx_t, cpx_t) \
+  MACRO(OP, cpx64, double, cpx, cpx_f_t, double, cpx_t) \
+  MACRO(OP, cpx64, float, cpx64, cpx_f_t, float, cpx_f_t) \
+  MACRO(OP, cpx64, int64, cpx64, cpx_f_t, int64_t, cpx_f_t) \
+  MACRO(OP, cpx64, int32, cpx64, cpx_f_t, int32_t, cpx_f_t) \
+  MACRO(OP, cpx64, uint8, cpx64, cpx_f_t, uint8_t, cpx_f_t) \
+  MACRO(OP, cpx64, int16, cpx64, cpx_f_t, int16_t, cpx_f_t) \
+  MACRO(OP, cpx64, cpx, cpx, cpx_f_t, cpx_t, cpx_t) \
+  MACRO(OP, double, cpx64, cpx, double, cpx_f_t, cpx_t) \
+  MACRO(OP, float, cpx64, cpx64, float, cpx_f_t, cpx_f_t) \
+  MACRO(OP, int64, cpx64, cpx64, int64_t, cpx_f_t, cpx_f_t) \
+  MACRO(OP, int32, cpx64, cpx64, int32_t, cpx_f_t, cpx_f_t) \
+  MACRO(OP, uint8, cpx64, cpx64, uint8_t, cpx_f_t, cpx_f_t) \
+  MACRO(OP, int16, cpx64, cpx64, int16_t, cpx_f_t, cpx_f_t) \
+  MACRO(OP, cpx, cpx64, cpx, cpx_t, cpx_f_t, cpx_t) \
+  MACRO(OP, cpx64, cpx64, cpx64, cpx_f_t, cpx_f_t, cpx_f_t)
 
 #define DECLARE_FFI_HELPER(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr) \
   void v_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const Tb *b, Tr *res, int size); \

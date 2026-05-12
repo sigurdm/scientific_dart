@@ -2749,10 +2749,20 @@ static inline cpx_t cpx_from_uint8(uint8_t v) { return (cpx_t){(double)v, 0.0}; 
 static inline cpx_t cpx_from_int16(int16_t v) { return (cpx_t){(double)v, 0.0}; }
 static inline cpx_t cpx_from_cpx(cpx_t v) { return v; }
 
+static inline cpx_t cpx_from_cpx64(cpx_f_t v) { return (cpx_t){(double)v.r, (double)v.i}; }
+
+static inline cpx_f_t cpx_f_from_cpx(cpx_t v) { return (cpx_f_t){(float)v.r, (float)v.i}; }
+
 static inline cpx_t cpx_div(cpx_t x, cpx_t y) {
     double denom = y.r * y.r + y.i * y.i;
     if (denom == 0.0) return (cpx_t){NAN, NAN};
     return (cpx_t){(x.r * y.r + x.i * y.i) / denom, (x.i * y.r - x.r * y.i) / denom};
+}
+
+static inline cpx_f_t cpx_div_f(cpx_f_t x, cpx_f_t y) {
+    float denom = y.r * y.r + y.i * y.i;
+    if (denom == 0.0f) return (cpx_f_t){NAN, NAN};
+    return (cpx_f_t){(x.r * y.r + x.i * y.i) / denom, (x.i * y.r - x.r * y.i) / denom};
 }
 
 #define EXPR_double(OP, Ta, Tb, x, y, OP_SYM) ((double)x OP_SYM (double)y)
@@ -2762,6 +2772,7 @@ static inline cpx_t cpx_div(cpx_t x, cpx_t y) {
 #define EXPR_int16(OP, Ta, Tb, x, y, OP_SYM) (x OP_SYM y)
 #define EXPR_uint8(OP, Ta, Tb, x, y, OP_SYM) (x OP_SYM y)
 #define EXPR_cpx(OP, Ta, Tb, x, y, OP_SYM) cpx_##OP(cpx_from_##Ta(x), cpx_from_##Tb(y))
+#define EXPR_cpx64(OP, Ta, Tb, x, y, OP_SYM) cpx_f_from_cpx(cpx_##OP(cpx_from_##Ta(x), cpx_from_##Tb(y)))
 
 #define DEFINE_V_UFUNC(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, OP_SYM) \
 void v_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const Tb *b, Tr *res, int size) { \
