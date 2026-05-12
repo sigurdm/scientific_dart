@@ -218,7 +218,7 @@ void _evaluateRandint(String label, NDArray<int> arr) {
   final len = arr.data.length;
   final data = arr.data;
 
-  final frequencies = Map<int, int>();
+  final frequencies = <int, int>{};
   for (var i = 1; i <= 6; i++) {
     frequencies[i] = 0;
   }

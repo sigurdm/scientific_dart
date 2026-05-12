@@ -52,14 +52,14 @@ void benchmarkType(String label, int size, Float64List template) {
   // --- 1. Direct sort() ---
   // Warmup
   for (var i = 0; i < 10; i++) {
-    target.data.setRange(0, size, template);
+    target.data.setRange(0, size, template.cast<Float64>());
     final res = sort(target);
     res.dispose();
   }
 
   var stopwatch = Stopwatch()..start();
   for (var i = 0; i < iterations; i++) {
-    target.data.setRange(0, size, template);
+    target.data.setRange(0, size, template.cast<Float64>());
     final res = sort(target);
     res.dispose();
   }
@@ -69,14 +69,14 @@ void benchmarkType(String label, int size, Float64List template) {
   // --- 2. Indirect argsort() ---
   // Warmup
   for (var i = 0; i < 10; i++) {
-    target.data.setRange(0, size, template);
+    target.data.setRange(0, size, template.cast<Float64>());
     final res = argsort(target);
     res.dispose();
   }
 
   stopwatch = Stopwatch()..start();
   for (var i = 0; i < iterations; i++) {
-    target.data.setRange(0, size, template);
+    target.data.setRange(0, size, template.cast<Float64>());
     final res = argsort(target);
     res.dispose();
   }

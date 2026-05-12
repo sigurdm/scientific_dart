@@ -18,17 +18,17 @@ void main() {
             DType.float64,
           );
 
-          final addRes = a.add(b);
+          final addRes = add(a, b);
           expect(addRes.dtype, DType.float64);
           expect(addRes.toList(), [3.0, 4.0, 5.0, 6.0]);
 
-          final subRes = a.subtract(b);
+          final subRes = subtract(a, b);
           expect(subRes.toList(), [-1.0, 0.0, 1.0, 2.0]);
 
-          final mulRes = a.multiply(b);
+          final mulRes = multiply(a, b);
           expect(mulRes.toList(), [2.0, 4.0, 6.0, 8.0]);
 
-          final divRes = a.divide(b);
+          final divRes = divide(a, b);
           expect(divRes.toList(), [0.5, 1.0, 1.5, 2.0]);
         });
       },
@@ -39,7 +39,7 @@ void main() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float32);
         final b = NDArray.fromList([1.0, 1.0, 1.0, 1.0], [4], DType.float32);
 
-        final addRes = a.add(b);
+        final addRes = add(a, b);
         expect(addRes.dtype, DType.float32);
         expect(addRes.toList(), [2.0, 3.0, 4.0, 5.0]);
       });
@@ -52,7 +52,7 @@ void main() {
         // Shape [2, 1] (broadcast column)
         final b = NDArray.fromList([10.0, 20.0], [2, 1], DType.float64);
 
-        final res = a.add(b);
+        final res = add(a, b);
         expect(res.shape, [2, 2]);
         expect(res.toList(), [11.0, 12.0, 23.0, 24.0]);
       });
@@ -68,7 +68,7 @@ void main() {
         final b = NDArray.fromList([10.0, 20.0], [2], DType.float64);
 
         // Explicit generic call to allow promotion
-        final res = a.add<Complex>(b);
+        final res = add<Complex, double, Complex>(a, b);
         expect(res.dtype, DType.complex128);
         expect(res.data[0].real, 11.0);
         expect(res.data[0].imag, 2.0);
@@ -83,19 +83,19 @@ void main() {
         final b = NDArray.fromList([2.0, 2.0], [2], DType.float64);
         final outValid = NDArray<Float64>.create([2], DType.float64);
 
-        final res = a.add<Float64>(b, out: outValid);
+        final res = add<double, double, double>(a, b, out: outValid);
         expect(identical(res, outValid), true);
         expect(outValid.toList(), [3.0, 4.0]);
 
         final outInvalidShape = NDArray<Float64>.create([3], DType.float64);
         expect(
-          () => a.add<Float64>(b, out: outInvalidShape),
+          () => add<double, double, double>(a, b, out: outInvalidShape),
           throwsArgumentError,
         );
 
         final outInvalidDType = NDArray<Int32>.create([2], DType.int32);
         expect(
-          () => a.add<Int32>(b, out: outInvalidDType),
+          () => add<double, double, int>(a, b, out: outInvalidDType),
           throwsArgumentError,
         );
       });

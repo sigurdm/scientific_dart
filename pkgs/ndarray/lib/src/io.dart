@@ -504,31 +504,31 @@ Map<String, NDArray> loadz(String filepath) {
 /// to avoid allocating a transient unmanaged [NDArray] structure on the C-heap.
 Uint8List _serializeDataContiguous(List flatList, DType dtype) {
   switch (dtype) {
-    case Float64DType():
+    case DType.float64:
       final list = Float64List.fromList(flatList.cast<double>());
       return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case Float32DType():
+    case DType.float32:
       final list = Float32List.fromList(flatList.cast<double>());
       return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case Int64DType():
+    case DType.int64:
       final list = Int64List.fromList(flatList.cast<int>());
       return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case Int32DType():
+    case DType.int32:
       final list = Int32List.fromList(flatList.cast<int>());
       return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case Uint8DType():
+    case DType.uint8:
       final list = Uint8List.fromList(flatList.cast<int>());
       return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case Int16DType():
+    case DType.int16:
       final list = Int16List.fromList(flatList.cast<int>());
       return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case BooleanDType():
+    case DType.boolean:
       final bytes = Uint8List(flatList.length);
       for (var i = 0; i < flatList.length; i++) {
         bytes[i] = (flatList[i] as bool) ? 1 : 0;
       }
       return bytes;
-    case Complex128DType():
+    case DType.complex128:
       final doubleList = Float64List(flatList.length * 2);
       for (var i = 0; i < flatList.length; i++) {
         final c = flatList[i] as Complex;
@@ -539,7 +539,7 @@ Uint8List _serializeDataContiguous(List flatList, DType dtype) {
         doubleList.offsetInBytes,
         doubleList.lengthInBytes,
       );
-    case Complex64DType():
+    case DType.complex64:
       final floatList = Float32List(flatList.length * 2);
       for (var i = 0; i < flatList.length; i++) {
         final c = flatList[i] as Complex;

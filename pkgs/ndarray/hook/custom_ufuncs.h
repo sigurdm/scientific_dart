@@ -94,6 +94,7 @@ void v_asinh_float(const float *src, float *res, int size);
 void v_acosh_double(const double *src, double *res, int size);
 void v_acosh_float(const float *src, float *res, int size);
 void v_atanh_double(const double *src, double *res, int size);
+void v_atanh_float(const float *src, float *res, int size);
 
 void v_sin_complex128(const cpx_t *src, cpx_t *res, int size);
 void v_sin_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
@@ -402,5 +403,19 @@ GENERATE_OP_COMBINATIONS(add, DECLARE_FFI_HELPER)
 GENERATE_OP_COMBINATIONS(sub, DECLARE_FFI_HELPER)
 GENERATE_OP_COMBINATIONS(mul, DECLARE_FFI_HELPER)
 GENERATE_DIV_COMBINATIONS(div, DECLARE_FFI_HELPER)
+
+/* ============================================================================
+ * SECTION 9: BUFFERED CONVERTER KERNELS (CASTING)
+ * ============================================================================
+ */
+void cast_uint8_to_double(const uint8_t *src, double *dst, int size);
+void cast_int16_to_double(const int16_t *src, double *dst, int size);
+void cast_double_to_uint8(const double *src, uint8_t *dst, int size);
+void cast_double_to_int16(const double *src, int16_t *dst, int size);
+
+void s_cast_uint8_to_double(const uint8_t *src, const int *stridesSrc, double *dst, const int *stridesDst, const int *shape, int rank);
+void s_cast_int16_to_double(const int16_t *src, const int *stridesSrc, double *dst, const int *stridesDst, const int *shape, int rank);
+void s_cast_double_to_uint8(const double *src, const int *stridesSrc, uint8_t *dst, const int *stridesDst, const int *shape, int rank);
+void s_cast_double_to_int16(const double *src, const int *stridesSrc, int16_t *dst, const int *stridesDst, const int *shape, int rank);
 
 #endif /* CUSTOM_UFUNCS_H */

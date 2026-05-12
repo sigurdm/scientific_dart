@@ -6,6 +6,8 @@ import 'ndarray_bindings.dart';
 import 'ndarray.dart';
 import 'operations.dart';
 
+import 'binary_ops.dart';
+
 bool _listEquals(List<int> a, List<int> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
@@ -562,7 +564,7 @@ NDArray<T> multivariateNormal<T extends num>(
     final x2D =
         out?.reshape([sampleCount, d]) ??
         NDArray<T>.create([sampleCount, d], resolvedDType);
-    matmul(z2D, lT).add(mean, out: x2D);
+    add(matmul(z2D, lT), mean, out: x2D);
 
     if (out != null) {
       return out;

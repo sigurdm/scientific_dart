@@ -17,7 +17,7 @@ void runNonzeroBenchmark() {
   // Populate some indices with non-zero entries
   for (var i = 0; i < size; i += 5) {
     for (var j = 0; j < size; j += 3) {
-      a.setCell([i, j], 9.9);
+      a.setCell([i, j], Float64(9.9));
     }
   }
 

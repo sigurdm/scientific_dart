@@ -15,6 +15,94 @@
 #include "custom_ufuncs.h"
 #include <math.h>
 #include <stdlib.h>
+
+// Macro to define strided binary operations
+#define DEFINE_STRIDED_BINARY_OP(name, typeA, typeB, typeResult, op) \
+void name(const typeA *a, const int *stridesA, \
+          const typeB *b, const int *stridesB, \
+          typeResult *res, const int *stridesRes, \
+          const int *shape, int rank) { \
+    if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return; \
+    int total_elements = 1; \
+    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
+    int coord[8] = {0}; \
+    int offsetA = 0, offsetB = 0, offsetRes = 0; \
+    for (int el = 0; el < total_elements; el++) { \
+        res[offsetRes] = op(a[offsetA], b[offsetB]); \
+        for (int d = rank - 1; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shape[d]) { \
+                offsetA += stridesA[d]; \
+                offsetB += stridesB[d]; \
+                offsetRes += stridesRes[d]; \
+                break; \
+            } \
+            coord[d] = 0; \
+            offsetA -= (shape[d] - 1) * stridesA[d]; \
+            offsetB -= (shape[d] - 1) * stridesB[d]; \
+            offsetRes -= (shape[d] - 1) * stridesRes[d]; \
+        } \
+    } \
+}
+
+#include <complex.h>
+
+static inline cpx_t cpx_add_cast(cpx_t x, cpx_t y) {
+    double complex cx = *((double complex*)&x);
+    double complex cy = *((double complex*)&y);
+    double complex cres = cx + cy;
+    return *((cpx_t*)&cres);
+}
+
+static inline cpx_t cpx_sub_cast(cpx_t x, cpx_t y) {
+    double complex cx = *((double complex*)&x);
+    double complex cy = *((double complex*)&y);
+    double complex cres = cx - cy;
+    return *((cpx_t*)&cres);
+}
+
+static inline cpx_t cpx_mul_cast(cpx_t x, cpx_t y) {
+    double complex cx = *((double complex*)&x);
+    double complex cy = *((double complex*)&y);
+    double complex cres = cx * cy;
+    return *((cpx_t*)&cres);
+}
+
+static inline cpx_t cpx_div_cast(cpx_t x, cpx_t y) {
+    double complex cx = *((double complex*)&x);
+    double complex cy = *((double complex*)&y);
+    double complex cres = cx / cy;
+    return *((cpx_t*)&cres);
+}
+
+static inline cpx_f_t cpx_add_f_cast(cpx_f_t x, cpx_f_t y) {
+    float complex cx = *((float complex*)&x);
+    float complex cy = *((float complex*)&y);
+    float complex cres = cx + cy;
+    return *((cpx_f_t*)&cres);
+}
+
+static inline cpx_f_t cpx_sub_f_cast(cpx_f_t x, cpx_f_t y) {
+    float complex cx = *((float complex*)&x);
+    float complex cy = *((float complex*)&y);
+    float complex cres = cx - cy;
+    return *((cpx_f_t*)&cres);
+}
+
+static inline cpx_f_t cpx_mul_f_cast(cpx_f_t x, cpx_f_t y) {
+    float complex cx = *((float complex*)&x);
+    float complex cy = *((float complex*)&y);
+    float complex cres = cx * cy;
+    return *((cpx_f_t*)&cres);
+}
+
+static inline cpx_f_t cpx_div_f_cast(cpx_f_t x, cpx_f_t y) {
+    float complex cx = *((float complex*)&x);
+    float complex cy = *((float complex*)&y);
+    float complex cres = cx / cy;
+    return *((cpx_f_t*)&cres);
+}
+
 // 1. DOUBLE PRECISION (FLOAT64) FLAT CONTIGUOUS KERNELS
 // ============================================================================
 
@@ -2518,9 +2606,9 @@ static inline cpx_t cpx_pow(cpx_t z1, cpx_t z2) {
     double L = log(mag);
     double theta = atan2(z1.i, z1.r);
     double R = z2.r * L - z2.i * theta;
-    double I = z2.i * L + z2.r * theta;
+    double imag_val = z2.i * L + z2.r * theta;
     double eR = exp(R);
-    return (cpx_t){eR * cos(I), eR * sin(I)};
+    return (cpx_t){eR * cos(imag_val), eR * sin(imag_val)};
 }
 
 static inline cpx_f_t cpx_pow_f(cpx_f_t z1, cpx_f_t z2) {
@@ -2529,9 +2617,9 @@ static inline cpx_f_t cpx_pow_f(cpx_f_t z1, cpx_f_t z2) {
     float L = logf(mag);
     float theta = atan2f(z1.i, z1.r);
     float R = z2.r * L - z2.i * theta;
-    float I = z2.i * L + z2.r * theta;
+    float imag_val = z2.i * L + z2.r * theta;
     float eR = expf(R);
-    return (cpx_f_t){eR * cosf(I), eR * sinf(I)};
+    return (cpx_f_t){eR * cosf(imag_val), eR * sinf(imag_val)};
 }
 
 void v_pow_complex128(const cpx_t *x1, const cpx_t *x2, cpx_t *res, int size) {
@@ -2733,4 +2821,120 @@ GENERATE_OP_COMBINATIONS(add, BUILD_ADD_COMBINATIONS)
 GENERATE_OP_COMBINATIONS(sub, BUILD_SUB_COMBINATIONS)
 GENERATE_OP_COMBINATIONS(mul, BUILD_MUL_COMBINATIONS)
 GENERATE_DIV_COMBINATIONS(div, BUILD_DIV_COMBINATIONS)
+
+void cast_uint8_to_double(const uint8_t *src, double *dst, int size) {
+    if (src == NULL || dst == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        dst[i] = (double)src[i];
+    }
+}
+
+void cast_int16_to_double(const int16_t *src, double *dst, int size) {
+    if (src == NULL || dst == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        dst[i] = (double)src[i];
+    }
+}
+
+void cast_double_to_uint8(const double *src, uint8_t *dst, int size) {
+    if (src == NULL || dst == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        dst[i] = (uint8_t)src[i];
+    }
+}
+
+void cast_double_to_int16(const double *src, int16_t *dst, int size) {
+    if (src == NULL || dst == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        dst[i] = (int16_t)src[i];
+    }
+}
+
+void s_cast_uint8_to_double(const uint8_t *src, const int *stridesSrc, double *dst, const int *stridesDst, const int *shape, int rank) {
+    if (src == NULL || dst == NULL || rank <= 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    int coord[8] = {0};
+    int offsetSrc = 0, offsetDst = 0;
+    for (int el = 0; el < total_elements; el++) {
+        dst[offsetDst] = (double)src[offsetSrc];
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetSrc += stridesSrc[d];
+                offsetDst += stridesDst[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+            offsetDst -= (shape[d] - 1) * stridesDst[d];
+        }
+    }
+}
+
+void s_cast_int16_to_double(const int16_t *src, const int *stridesSrc, double *dst, const int *stridesDst, const int *shape, int rank) {
+    if (src == NULL || dst == NULL || rank <= 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    int coord[8] = {0};
+    int offsetSrc = 0, offsetDst = 0;
+    for (int el = 0; el < total_elements; el++) {
+        dst[offsetDst] = (double)src[offsetSrc];
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetSrc += stridesSrc[d];
+                offsetDst += stridesDst[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+            offsetDst -= (shape[d] - 1) * stridesDst[d];
+        }
+    }
+}
+
+void s_cast_double_to_uint8(const double *src, const int *stridesSrc, uint8_t *dst, const int *stridesDst, const int *shape, int rank) {
+    if (src == NULL || dst == NULL || rank <= 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    int coord[8] = {0};
+    int offsetSrc = 0, offsetDst = 0;
+    for (int el = 0; el < total_elements; el++) {
+        dst[offsetDst] = (uint8_t)src[offsetSrc];
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetSrc += stridesSrc[d];
+                offsetDst += stridesDst[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+            offsetDst -= (shape[d] - 1) * stridesDst[d];
+        }
+    }
+}
+
+void s_cast_double_to_int16(const double *src, const int *stridesSrc, int16_t *dst, const int *stridesDst, const int *shape, int rank) {
+    if (src == NULL || dst == NULL || rank <= 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    int coord[8] = {0};
+    int offsetSrc = 0, offsetDst = 0;
+    for (int el = 0; el < total_elements; el++) {
+        dst[offsetDst] = (int16_t)src[offsetSrc];
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetSrc += stridesSrc[d];
+                offsetDst += stridesDst[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+            offsetDst -= (shape[d] - 1) * stridesDst[d];
+        }
+    }
+}
 

@@ -1650,11 +1650,6 @@ void main() {
         expect(() => concatenate(<NDArray<Object>>[]), throwsArgumentError);
 
         final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
-        final wrongShape = NDArray.fromList(
-          [1.0, 2.0, 3.0],
-          [3],
-          DType.float64,
-        );
         final wrongRank = NDArray.fromList([1.0, 2.0], [1, 2], DType.float64);
         final wrongDType = NDArray.fromList([1, 2], [2], DType.int32);
 

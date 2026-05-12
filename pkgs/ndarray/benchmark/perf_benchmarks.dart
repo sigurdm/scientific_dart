@@ -287,7 +287,7 @@ class ElementwiseAddBenchmark extends BenchmarkBase {
 
   @override
   void run() {
-    x.add(y, out: outBuffer);
+    add(x, y, out: outBuffer);
   }
 
   @override
@@ -319,7 +319,7 @@ class ScalarAdditionBroadcastBenchmark extends BenchmarkBase {
 
   @override
   void run() {
-    x.add(scalarArr, out: outBuffer);
+    add(x, scalarArr, out: outBuffer);
   }
 
   @override
@@ -589,7 +589,7 @@ class StridedElementwiseAddBenchmark extends BenchmarkBase {
 
   @override
   void run() {
-    xView.add(yView, out: outBuffer);
+    add(xView, yView, out: outBuffer);
   }
 
   @override

@@ -10,6 +10,9 @@ import 'package:openblas/openblas.dart';
 import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'ndarray_bindings.dart';
+import 'package:meta/meta.dart';
+
+import 'binary_ops.dart';
 
 // LAPACK Extension Bindings linking explicitly to package:openblas asset via DefaultAsset
 
@@ -1550,8 +1553,8 @@ NDArray<double> variance<T extends num>(
     targetShape[axis] = 1;
     final reshapedM = m.reshape(targetShape);
 
-    final diff = a.subtract(reshapedM);
-    final sqDiff = diff.multiply(diff);
+    final diff = subtract(a, reshapedM);
+    final sqDiff = multiply(diff, diff);
 
     final sqDiffDouble = NDArray<double>.create(sqDiff.shape, DType.float64);
     for (var i = 0; i < sqDiff.data.length; i++) {
@@ -1933,8 +1936,8 @@ NDArray<double> nanvar<T extends num>(
     targetShape[axis] = 1;
     final reshapedM = m.reshape(targetShape);
 
-    final diff = a.subtract(reshapedM);
-    final sqDiff = diff.multiply(diff);
+    final diff = subtract(a, reshapedM);
+    final sqDiff = multiply(diff, diff);
 
     // Convert to `NDArray<double>` to avoid truncation in nanmean
     final sqDiffDouble = NDArray<double>.create(sqDiff.shape, DType.float64);
@@ -5882,7 +5885,7 @@ NDArray deg2rad(NDArray a, {NDArray? out}) {
       ? DType.float32
       : DType.float64;
   final factor = NDArray.fromList([0.017453292519943295], [1], factorDType);
-  return a.multiply(factor, out: out);
+  return multiply(a, factor, out: out);
 }
 
 /// Converts angles from radians to degrees element-wise.
@@ -5912,7 +5915,7 @@ NDArray rad2deg(NDArray a, {NDArray? out}) {
       ? DType.float32
       : DType.float64;
   final factor = NDArray.fromList([57.29577951308232], [1], factorDType);
-  return a.multiply(factor, out: out);
+  return multiply(a, factor, out: out);
 }
 
 /// Returns an element-wise boolean mask indicating which elements of the array are NaN (Not-a-Number).
@@ -7290,7 +7293,7 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
 
 /// Returns the indices of the elements that are non-zero.
 ///
-/// Returns a List<NDArray<int>`>` containing 1D integer arrays, one for each dimension
+/// Returns a `List<NDArray<int>>` containing 1D integer arrays, one for each dimension
 /// of [a], which give the coordinates of the non-zero elements along that dimension.
 ///
 /// **Example:**
@@ -9167,7 +9170,7 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
   try {
     final dtype = a.dtype;
     switch (dtype) {
-      case Float64DType():
+      case DType.float64:
         s_diff_double(
           a.pointer.cast(),
           cStridesA,
@@ -9177,7 +9180,7 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
           rank,
           targetAxis,
         );
-      case Float32DType():
+      case DType.float32:
         s_diff_float(
           a.pointer.cast(),
           cStridesA,
@@ -9187,7 +9190,7 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
           rank,
           targetAxis,
         );
-      case Int64DType():
+      case DType.int64:
         s_diff_int64(
           a.pointer.cast(),
           cStridesA,
@@ -9197,7 +9200,7 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
           rank,
           targetAxis,
         );
-      case Int32DType():
+      case DType.int32:
         s_diff_int32(
           a.pointer.cast(),
           cStridesA,
@@ -9207,7 +9210,7 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
           rank,
           targetAxis,
         );
-      case Complex128DType():
+      case DType.complex128:
         s_diff_complex128(
           a.pointer.cast(),
           cStridesA,
@@ -9217,7 +9220,7 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
           rank,
           targetAxis,
         );
-      case Complex64DType():
+      case DType.complex64:
         s_diff_complex64(
           a.pointer.cast(),
           cStridesA,
@@ -9227,9 +9230,9 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
           rank,
           targetAxis,
         );
-      case Uint8DType():
-      case Int16DType():
-      case BooleanDType():
+      case DType.uint8:
+      case DType.int16:
+      case DType.boolean:
         final doubleA = NDArray<double>.create(a.shape, DType.float64);
         for (var i = 0; i < a.data.length; i++) {
           doubleA.data[i] = (a.data[i] as num).toDouble();
@@ -9532,7 +9535,7 @@ NDArray<T> _cumOpFFI<T>(
       case _CumOpType.sum:
         final dtype = a.dtype;
         switch (dtype) {
-          case Float64DType():
+          case DType.float64:
             s_cumsum_double(
               a.pointer.cast(),
               cStridesA,
@@ -9542,7 +9545,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Float32DType():
+          case DType.float32:
             s_cumsum_float(
               a.pointer.cast(),
               cStridesA,
@@ -9552,7 +9555,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Int64DType():
+          case DType.int64:
             s_cumsum_int64(
               a.pointer.cast(),
               cStridesA,
@@ -9562,7 +9565,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Int32DType():
+          case DType.int32:
             s_cumsum_int32(
               a.pointer.cast(),
               cStridesA,
@@ -9572,7 +9575,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Complex128DType():
+          case DType.complex128:
             s_cumsum_complex128(
               a.pointer.cast(),
               cStridesA,
@@ -9582,7 +9585,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Complex64DType():
+          case DType.complex64:
             s_cumsum_complex64(
               a.pointer.cast(),
               cStridesA,
@@ -9592,9 +9595,9 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Uint8DType():
-          case Int16DType():
-          case BooleanDType():
+          case DType.uint8:
+          case DType.int16:
+          case DType.boolean:
             final doubleA = NDArray<double>.create(a.shape, DType.float64);
             for (var i = 0; i < a.data.length; i++) {
               doubleA.data[i] = (a.data[i] as num).toDouble();
@@ -9630,7 +9633,7 @@ NDArray<T> _cumOpFFI<T>(
       case _CumOpType.prod:
         final dtype = a.dtype;
         switch (dtype) {
-          case Float64DType():
+          case DType.float64:
             s_cumprod_double(
               a.pointer.cast(),
               cStridesA,
@@ -9640,7 +9643,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Float32DType():
+          case DType.float32:
             s_cumprod_float(
               a.pointer.cast(),
               cStridesA,
@@ -9650,7 +9653,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Int64DType():
+          case DType.int64:
             s_cumprod_int64(
               a.pointer.cast(),
               cStridesA,
@@ -9660,7 +9663,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Int32DType():
+          case DType.int32:
             s_cumprod_int32(
               a.pointer.cast(),
               cStridesA,
@@ -9670,7 +9673,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Complex128DType():
+          case DType.complex128:
             s_cumprod_complex128(
               a.pointer.cast(),
               cStridesA,
@@ -9680,7 +9683,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Complex64DType():
+          case DType.complex64:
             s_cumprod_complex64(
               a.pointer.cast(),
               cStridesA,
@@ -9690,9 +9693,9 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Uint8DType():
-          case Int16DType():
-          case BooleanDType():
+          case DType.uint8:
+          case DType.int16:
+          case DType.boolean:
             final doubleA = NDArray<double>.create(a.shape, DType.float64);
             for (var i = 0; i < a.data.length; i++) {
               doubleA.data[i] = (a.data[i] as num).toDouble();
@@ -9728,7 +9731,7 @@ NDArray<T> _cumOpFFI<T>(
       case _CumOpType.min:
         final dtype = a.dtype;
         switch (dtype) {
-          case Float64DType():
+          case DType.float64:
             s_cummin_double(
               a.pointer.cast(),
               cStridesA,
@@ -9738,7 +9741,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Float32DType():
+          case DType.float32:
             s_cummin_float(
               a.pointer.cast(),
               cStridesA,
@@ -9748,7 +9751,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Int64DType():
+          case DType.int64:
             s_cummin_int64(
               a.pointer.cast(),
               cStridesA,
@@ -9758,7 +9761,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Int32DType():
+          case DType.int32:
             s_cummin_int32(
               a.pointer.cast(),
               cStridesA,
@@ -9768,9 +9771,9 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Uint8DType():
-          case Int16DType():
-          case BooleanDType():
+          case DType.uint8:
+          case DType.int16:
+          case DType.boolean:
             final doubleA = NDArray<double>.create(a.shape, DType.float64);
             for (var i = 0; i < a.data.length; i++) {
               doubleA.data[i] = (a.data[i] as num).toDouble();
@@ -9801,8 +9804,8 @@ NDArray<T> _cumOpFFI<T>(
             }
             doubleA.dispose();
             doubleRes.dispose();
-          case Complex128DType():
-          case Complex64DType():
+          case DType.complex128:
+          case DType.complex64:
             throw ArgumentError(
               'Cumulative minimum is not defined for complex numbers.',
             );
@@ -9811,7 +9814,7 @@ NDArray<T> _cumOpFFI<T>(
       case _CumOpType.max:
         final dtype = a.dtype;
         switch (dtype) {
-          case Float64DType():
+          case DType.float64:
             s_cummax_double(
               a.pointer.cast(),
               cStridesA,
@@ -9821,7 +9824,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Float32DType():
+          case DType.float32:
             s_cummax_float(
               a.pointer.cast(),
               cStridesA,
@@ -9831,7 +9834,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Int64DType():
+          case DType.int64:
             s_cummax_int64(
               a.pointer.cast(),
               cStridesA,
@@ -9841,7 +9844,7 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Int32DType():
+          case DType.int32:
             s_cummax_int32(
               a.pointer.cast(),
               cStridesA,
@@ -9851,9 +9854,9 @@ NDArray<T> _cumOpFFI<T>(
               rank,
               axis,
             );
-          case Uint8DType():
-          case Int16DType():
-          case BooleanDType():
+          case DType.uint8:
+          case DType.int16:
+          case DType.boolean:
             final doubleA = NDArray<double>.create(a.shape, DType.float64);
             for (var i = 0; i < a.data.length; i++) {
               doubleA.data[i] = (a.data[i] as num).toDouble();
@@ -9884,8 +9887,8 @@ NDArray<T> _cumOpFFI<T>(
             }
             doubleA.dispose();
             doubleRes.dispose();
-          case Complex128DType():
-          case Complex64DType():
+          case DType.complex128:
+          case DType.complex64:
             throw ArgumentError(
               'Cumulative maximum is not defined for complex numbers.',
             );
@@ -9927,7 +9930,7 @@ NDArray conj(NDArray a, {NDArray? out}) {
   }
 
   switch (targetDType) {
-    case Complex128DType():
+    case DType.complex128:
       if (a.isContiguous && result.isContiguous) {
         v_conj_complex128(
           a.pointer.cast(),
@@ -9961,7 +9964,7 @@ NDArray conj(NDArray a, {NDArray? out}) {
           malloc.free(cStridesRes);
         }
       }
-    case Complex64DType():
+    case DType.complex64:
       if (a.isContiguous && result.isContiguous) {
         v_conj_complex64(
           a.pointer.cast(),
@@ -9995,13 +9998,13 @@ NDArray conj(NDArray a, {NDArray? out}) {
           malloc.free(cStridesRes);
         }
       }
-    case Float64DType():
-    case Float32DType():
-    case Int64DType():
-    case Int32DType():
-    case Uint8DType():
-    case Int16DType():
-    case BooleanDType():
+    case DType.float64:
+    case DType.float32:
+    case DType.int64:
+    case DType.int32:
+    case DType.uint8:
+    case DType.int16:
+    case DType.boolean:
       // Real/boolean numbers are their own complex conjugates!
       if (a.isContiguous && result.isContiguous) {
         final totalSize = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
@@ -10019,7 +10022,7 @@ NDArray conj(NDArray a, {NDArray? out}) {
         }
         try {
           switch (targetDType) {
-            case Float64DType():
+            case DType.float64:
               s_flatten_double(
                 a.pointer.cast(),
                 cStridesA,
@@ -10027,7 +10030,7 @@ NDArray conj(NDArray a, {NDArray? out}) {
                 cShape,
                 rank,
               );
-            case Float32DType():
+            case DType.float32:
               s_flatten_float(
                 a.pointer.cast(),
                 cStridesA,
@@ -10035,7 +10038,7 @@ NDArray conj(NDArray a, {NDArray? out}) {
                 cShape,
                 rank,
               );
-            case Int64DType():
+            case DType.int64:
               s_flatten_int64(
                 a.pointer.cast(),
                 cStridesA,
@@ -10043,7 +10046,7 @@ NDArray conj(NDArray a, {NDArray? out}) {
                 cShape,
                 rank,
               );
-            case Int32DType():
+            case DType.int32:
               s_flatten_int32(
                 a.pointer.cast(),
                 cStridesA,
@@ -10051,7 +10054,7 @@ NDArray conj(NDArray a, {NDArray? out}) {
                 cShape,
                 rank,
               );
-            case BooleanDType():
+            case DType.boolean:
               s_flatten_boolean(
                 a.pointer.cast(),
                 cStridesA,
@@ -10363,3239 +10366,36 @@ NDArray<T> flipud<T extends Object>(NDArray<T> a) {
   return flip(a, axis: 0);
 }
 
-extension ArithmeticNDArrayOperations<T> on NDArray<T> {
-  /// Element-wise add with broadcasting and dtype upcasting support.
-  NDArray<R> add<R>(NDArray other, {NDArray<R>? out}) {
-    if (isDisposed || other.isDisposed) {
-      throw StateError('Cannot add disposed arrays.');
-    }
 
-    final DType<dynamic> targetDType = _resolveDType(dtype, other.dtype);
-    final broadcastResult = broadcast(this, other);
-    final commonShape = broadcastResult.shape;
-    final stridesA = broadcastResult.stridesA;
-    final stridesB = broadcastResult.stridesB;
 
-    final NDArray<R> result;
-    if (out != null) {
-      if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
-        throw ArgumentError(
-          'Provided out buffer has incompatible shape or dtype for broadcasting.',
-        );
-      }
-      result = out;
-    } else {
-      result = NDArray<R>.create(commonShape, targetDType as DType<R>);
-    }
-    final resultStrides = NDArray.computeCStrides(commonShape);
+@internal
+DType resolveDType(DType a, DType b) => _resolveDType(a, b);
 
-    if (commonShape.length <= 8) {
-      final isContig =
-          isContiguous &&
-          other.isContiguous &&
-          result.isContiguous &&
-          listEquals(shape, other.shape);
-
-      if (isContig) {
-        switch ((dtype, other.dtype)) {
-          case (Float64DType(), Float64DType()):
-            v_add_double_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Float32DType()):
-            v_add_double_float_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Int64DType()):
-            v_add_double_int64_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Int32DType()):
-            v_add_double_int32_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Complex128DType()):
-            v_add_double_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Complex64DType()):
-            v_add_double_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Float64DType()):
-            v_add_float_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Float32DType()):
-            v_add_float_float_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Int64DType()):
-            v_add_float_int64_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Int32DType()):
-            v_add_float_int32_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Complex128DType()):
-            v_add_float_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Complex64DType()):
-            v_add_float_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Float64DType()):
-            v_add_int64_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Float32DType()):
-            v_add_int64_float_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Int64DType()):
-            v_add_int64_int64_int64(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Int32DType()):
-            v_add_int64_int32_int64(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Complex128DType()):
-            v_add_int64_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Complex64DType()):
-            v_add_int64_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Float64DType()):
-            v_add_int32_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Float32DType()):
-            v_add_int32_float_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Int64DType()):
-            v_add_int32_int64_int64(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Int32DType()):
-            v_add_int32_int32_int32(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Complex128DType()):
-            v_add_int32_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Complex64DType()):
-            v_add_int32_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Float64DType()):
-            v_add_cpx_double_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Float32DType()):
-            v_add_cpx_float_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Int64DType()):
-            v_add_cpx_int64_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Int32DType()):
-            v_add_cpx_int32_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Complex128DType()):
-            v_add_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Complex64DType()):
-            v_add_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Float64DType()):
-            v_add_cpx_double_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Float32DType()):
-            v_add_cpx_float_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Int64DType()):
-            v_add_cpx_int64_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Int32DType()):
-            v_add_cpx_int32_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Complex128DType()):
-            v_add_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Complex64DType()):
-            v_add_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          default:
-            break;
-        }
-      } else {
-        final cShape = malloc<ffi.Int>(commonShape.length);
-        final cStridesA = malloc<ffi.Int>(stridesA.length);
-        final cStridesB = malloc<ffi.Int>(stridesB.length);
-        final cStridesRes = malloc<ffi.Int>(resultStrides.length);
-
-        for (var i = 0; i < commonShape.length; i++) {
-          cShape[i] = commonShape[i];
-          cStridesA[i] = stridesA[i];
-          cStridesB[i] = stridesB[i];
-          cStridesRes[i] = resultStrides[i];
-        }
-
-        try {
-          switch ((dtype, other.dtype)) {
-            case (Float64DType(), Float64DType()):
-              s_add_double_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Float32DType()):
-              s_add_double_float_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Int64DType()):
-              s_add_double_int64_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Int32DType()):
-              s_add_double_int32_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Complex128DType()):
-              s_add_double_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Complex64DType()):
-              s_add_double_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Float64DType()):
-              s_add_float_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Float32DType()):
-              s_add_float_float_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Int64DType()):
-              s_add_float_int64_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Int32DType()):
-              s_add_float_int32_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Complex128DType()):
-              s_add_float_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Complex64DType()):
-              s_add_float_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Float64DType()):
-              s_add_int64_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Float32DType()):
-              s_add_int64_float_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Int64DType()):
-              s_add_int64_int64_int64(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Int32DType()):
-              s_add_int64_int32_int64(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Complex128DType()):
-              s_add_int64_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Complex64DType()):
-              s_add_int64_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Float64DType()):
-              s_add_int32_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Float32DType()):
-              s_add_int32_float_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Int64DType()):
-              s_add_int32_int64_int64(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Int32DType()):
-              s_add_int32_int32_int32(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Complex128DType()):
-              s_add_int32_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Complex64DType()):
-              s_add_int32_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Float64DType()):
-              s_add_cpx_double_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Float32DType()):
-              s_add_cpx_float_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Int64DType()):
-              s_add_cpx_int64_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Int32DType()):
-              s_add_cpx_int32_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Complex128DType()):
-              s_add_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Complex64DType()):
-              s_add_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Float64DType()):
-              s_add_cpx_double_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Float32DType()):
-              s_add_cpx_float_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Int64DType()):
-              s_add_cpx_int64_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Int32DType()):
-              s_add_cpx_int32_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Complex128DType()):
-              s_add_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Complex64DType()):
-              s_add_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            default:
-              break;
-          }
-        } finally {
-          malloc.free(cShape);
-          malloc.free(cStridesA);
-          malloc.free(cStridesB);
-          malloc.free(cStridesRes);
-        }
-      }
-    }
-
-    _dynamicElementWiseOp(
+@internal
+extension ArithmeticNDArrayOperationsHelper<T> on NDArray<T> {
+  @internal
+  void dynamicElementWiseOp<R>(
+    NDArray<R> result,
+    NDArray other,
+    List<int> commonShape,
+    List<int> stridesA,
+    List<int> stridesB,
+    List<int> resultStrides,
+    dynamic Function(dynamic, dynamic) op, {
+    bool isSubtract = false,
+    bool isDivide = false,
+  }) {
+    _dynamicElementWiseOp<R>(
       result,
       other,
       commonShape,
       stridesA,
       stridesB,
       resultStrides,
-      (x, y) => x + y,
+      op,
+      isSubtract: isSubtract,
+      isDivide: isDivide,
     );
-    return result;
-  }
-
-  /// Element-wise subtract with broadcasting and dtype upcasting support.
-  NDArray<R> subtract<R>(NDArray other, {NDArray<R>? out}) {
-    if (isDisposed || other.isDisposed) {
-      throw StateError('Cannot subtract disposed arrays.');
-    }
-
-    final DType<dynamic> targetDType = _resolveDType(dtype, other.dtype);
-    final broadcastResult = broadcast(this, other);
-    final commonShape = broadcastResult.shape;
-    final stridesA = broadcastResult.stridesA;
-    final stridesB = broadcastResult.stridesB;
-
-    final NDArray<R> result;
-    if (out != null) {
-      if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
-        throw ArgumentError(
-          'Provided out buffer has incompatible shape or dtype for broadcasting.',
-        );
-      }
-      result = out;
-    } else {
-      result = NDArray<R>.create(commonShape, targetDType as DType<R>);
-    }
-    final resultStrides = NDArray.computeCStrides(commonShape);
-
-    if (commonShape.length <= 8) {
-      final isContig =
-          isContiguous &&
-          other.isContiguous &&
-          result.isContiguous &&
-          listEquals(shape, other.shape);
-
-      if (isContig) {
-        switch ((dtype, other.dtype)) {
-          case (Float64DType(), Float64DType()):
-            v_sub_double_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Float32DType()):
-            v_sub_double_float_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Int64DType()):
-            v_sub_double_int64_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Int32DType()):
-            v_sub_double_int32_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Complex128DType()):
-            v_sub_double_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Complex64DType()):
-            v_sub_double_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Float64DType()):
-            v_sub_float_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Float32DType()):
-            v_sub_float_float_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Int64DType()):
-            v_sub_float_int64_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Int32DType()):
-            v_sub_float_int32_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Complex128DType()):
-            v_sub_float_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Complex64DType()):
-            v_sub_float_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Float64DType()):
-            v_sub_int64_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Float32DType()):
-            v_sub_int64_float_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Int64DType()):
-            v_sub_int64_int64_int64(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Int32DType()):
-            v_sub_int64_int32_int64(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Complex128DType()):
-            v_sub_int64_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Complex64DType()):
-            v_sub_int64_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Float64DType()):
-            v_sub_int32_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Float32DType()):
-            v_sub_int32_float_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Int64DType()):
-            v_sub_int32_int64_int64(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Int32DType()):
-            v_sub_int32_int32_int32(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Complex128DType()):
-            v_sub_int32_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Complex64DType()):
-            v_sub_int32_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Float64DType()):
-            v_sub_cpx_double_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Float32DType()):
-            v_sub_cpx_float_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Int64DType()):
-            v_sub_cpx_int64_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Int32DType()):
-            v_sub_cpx_int32_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Complex128DType()):
-            v_sub_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Complex64DType()):
-            v_sub_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Float64DType()):
-            v_sub_cpx_double_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Float32DType()):
-            v_sub_cpx_float_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Int64DType()):
-            v_sub_cpx_int64_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Int32DType()):
-            v_sub_cpx_int32_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Complex128DType()):
-            v_sub_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Complex64DType()):
-            v_sub_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          default:
-            break;
-        }
-      } else {
-        final cShape = malloc<ffi.Int>(commonShape.length);
-        final cStridesA = malloc<ffi.Int>(stridesA.length);
-        final cStridesB = malloc<ffi.Int>(stridesB.length);
-        final cStridesRes = malloc<ffi.Int>(resultStrides.length);
-
-        for (var i = 0; i < commonShape.length; i++) {
-          cShape[i] = commonShape[i];
-          cStridesA[i] = stridesA[i];
-          cStridesB[i] = stridesB[i];
-          cStridesRes[i] = resultStrides[i];
-        }
-
-        try {
-          switch ((dtype, other.dtype)) {
-            case (Float64DType(), Float64DType()):
-              s_sub_double_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Float32DType()):
-              s_sub_double_float_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Int64DType()):
-              s_sub_double_int64_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Int32DType()):
-              s_sub_double_int32_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Complex128DType()):
-              s_sub_double_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Complex64DType()):
-              s_sub_double_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Float64DType()):
-              s_sub_float_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Float32DType()):
-              s_sub_float_float_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Int64DType()):
-              s_sub_float_int64_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Int32DType()):
-              s_sub_float_int32_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Complex128DType()):
-              s_sub_float_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Complex64DType()):
-              s_sub_float_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Float64DType()):
-              s_sub_int64_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Float32DType()):
-              s_sub_int64_float_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Int64DType()):
-              s_sub_int64_int64_int64(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Int32DType()):
-              s_sub_int64_int32_int64(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Complex128DType()):
-              s_sub_int64_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Complex64DType()):
-              s_sub_int64_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Float64DType()):
-              s_sub_int32_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Float32DType()):
-              s_sub_int32_float_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Int64DType()):
-              s_sub_int32_int64_int64(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Int32DType()):
-              s_sub_int32_int32_int32(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Complex128DType()):
-              s_sub_int32_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Complex64DType()):
-              s_sub_int32_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Float64DType()):
-              s_sub_cpx_double_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Float32DType()):
-              s_sub_cpx_float_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Int64DType()):
-              s_sub_cpx_int64_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Int32DType()):
-              s_sub_cpx_int32_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Complex128DType()):
-              s_sub_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Complex64DType()):
-              s_sub_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Float64DType()):
-              s_sub_cpx_double_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Float32DType()):
-              s_sub_cpx_float_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Int64DType()):
-              s_sub_cpx_int64_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Int32DType()):
-              s_sub_cpx_int32_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Complex128DType()):
-              s_sub_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Complex64DType()):
-              s_sub_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            default:
-              break;
-          }
-        } finally {
-          malloc.free(cShape);
-          malloc.free(cStridesA);
-          malloc.free(cStridesB);
-          malloc.free(cStridesRes);
-        }
-      }
-    }
-
-    _dynamicElementWiseOp(
-      result,
-      other,
-      commonShape,
-      stridesA,
-      stridesB,
-      resultStrides,
-      (x, y) => x - y,
-      isSubtract: true,
-    );
-    return result;
-  }
-
-  /// Element-wise multiply with broadcasting and dtype upcasting support.
-  NDArray<R> multiply<R>(NDArray other, {NDArray<R>? out}) {
-    if (isDisposed || other.isDisposed) {
-      throw StateError('Cannot multiply disposed arrays.');
-    }
-
-    final DType<dynamic> targetDType = _resolveDType(dtype, other.dtype);
-    final broadcastResult = broadcast(this, other);
-    final commonShape = broadcastResult.shape;
-    final stridesA = broadcastResult.stridesA;
-    final stridesB = broadcastResult.stridesB;
-
-    final NDArray<R> result;
-    if (out != null) {
-      if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
-        throw ArgumentError(
-          'Provided out buffer has incompatible shape or dtype for broadcasting.',
-        );
-      }
-      result = out;
-    } else {
-      result = NDArray<R>.create(commonShape, targetDType as DType<R>);
-    }
-    final resultStrides = NDArray.computeCStrides(commonShape);
-
-    if (commonShape.length <= 8) {
-      final isContig =
-          isContiguous &&
-          other.isContiguous &&
-          result.isContiguous &&
-          listEquals(shape, other.shape);
-
-      if (isContig) {
-        switch ((dtype, other.dtype)) {
-          case (Float64DType(), Float64DType()):
-            v_mul_double_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Float32DType()):
-            v_mul_double_float_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Int64DType()):
-            v_mul_double_int64_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Int32DType()):
-            v_mul_double_int32_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Complex128DType()):
-            v_mul_double_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Complex64DType()):
-            v_mul_double_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Float64DType()):
-            v_mul_float_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Float32DType()):
-            v_mul_float_float_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Int64DType()):
-            v_mul_float_int64_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Int32DType()):
-            v_mul_float_int32_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Complex128DType()):
-            v_mul_float_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Complex64DType()):
-            v_mul_float_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Float64DType()):
-            v_mul_int64_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Float32DType()):
-            v_mul_int64_float_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Int64DType()):
-            v_mul_int64_int64_int64(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Int32DType()):
-            v_mul_int64_int32_int64(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Complex128DType()):
-            v_mul_int64_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Complex64DType()):
-            v_mul_int64_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Float64DType()):
-            v_mul_int32_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Float32DType()):
-            v_mul_int32_float_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Int64DType()):
-            v_mul_int32_int64_int64(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Int32DType()):
-            v_mul_int32_int32_int32(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Complex128DType()):
-            v_mul_int32_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Complex64DType()):
-            v_mul_int32_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Float64DType()):
-            v_mul_cpx_double_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Float32DType()):
-            v_mul_cpx_float_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Int64DType()):
-            v_mul_cpx_int64_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Int32DType()):
-            v_mul_cpx_int32_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Complex128DType()):
-            v_mul_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Complex64DType()):
-            v_mul_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Float64DType()):
-            v_mul_cpx_double_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Float32DType()):
-            v_mul_cpx_float_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Int64DType()):
-            v_mul_cpx_int64_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Int32DType()):
-            v_mul_cpx_int32_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Complex128DType()):
-            v_mul_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Complex64DType()):
-            v_mul_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          default:
-            break;
-        }
-      } else {
-        final cShape = malloc<ffi.Int>(commonShape.length);
-        final cStridesA = malloc<ffi.Int>(stridesA.length);
-        final cStridesB = malloc<ffi.Int>(stridesB.length);
-        final cStridesRes = malloc<ffi.Int>(resultStrides.length);
-
-        for (var i = 0; i < commonShape.length; i++) {
-          cShape[i] = commonShape[i];
-          cStridesA[i] = stridesA[i];
-          cStridesB[i] = stridesB[i];
-          cStridesRes[i] = resultStrides[i];
-        }
-
-        try {
-          switch ((dtype, other.dtype)) {
-            case (Float64DType(), Float64DType()):
-              s_mul_double_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Float32DType()):
-              s_mul_double_float_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Int64DType()):
-              s_mul_double_int64_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Int32DType()):
-              s_mul_double_int32_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Complex128DType()):
-              s_mul_double_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Complex64DType()):
-              s_mul_double_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Float64DType()):
-              s_mul_float_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Float32DType()):
-              s_mul_float_float_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Int64DType()):
-              s_mul_float_int64_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Int32DType()):
-              s_mul_float_int32_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Complex128DType()):
-              s_mul_float_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Complex64DType()):
-              s_mul_float_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Float64DType()):
-              s_mul_int64_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Float32DType()):
-              s_mul_int64_float_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Int64DType()):
-              s_mul_int64_int64_int64(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Int32DType()):
-              s_mul_int64_int32_int64(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Complex128DType()):
-              s_mul_int64_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Complex64DType()):
-              s_mul_int64_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Float64DType()):
-              s_mul_int32_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Float32DType()):
-              s_mul_int32_float_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Int64DType()):
-              s_mul_int32_int64_int64(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Int32DType()):
-              s_mul_int32_int32_int32(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Complex128DType()):
-              s_mul_int32_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Complex64DType()):
-              s_mul_int32_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Float64DType()):
-              s_mul_cpx_double_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Float32DType()):
-              s_mul_cpx_float_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Int64DType()):
-              s_mul_cpx_int64_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Int32DType()):
-              s_mul_cpx_int32_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Complex128DType()):
-              s_mul_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Complex64DType()):
-              s_mul_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Float64DType()):
-              s_mul_cpx_double_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Float32DType()):
-              s_mul_cpx_float_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Int64DType()):
-              s_mul_cpx_int64_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Int32DType()):
-              s_mul_cpx_int32_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Complex128DType()):
-              s_mul_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Complex64DType()):
-              s_mul_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            default:
-              break;
-          }
-        } finally {
-          malloc.free(cShape);
-          malloc.free(cStridesA);
-          malloc.free(cStridesB);
-          malloc.free(cStridesRes);
-        }
-      }
-    }
-
-    _dynamicElementWiseOp(
-      result,
-      other,
-      commonShape,
-      stridesA,
-      stridesB,
-      resultStrides,
-      (x, y) => x * y,
-    );
-    return result;
-  }
-
-  /// Element-wise divide with broadcasting and dtype upcasting support.
-  NDArray<R> divide<R>(NDArray other, {NDArray<R>? out}) {
-    if (isDisposed || other.isDisposed) {
-      throw StateError('Cannot divide disposed arrays.');
-    }
-
-    final DType<dynamic> targetDType = _resolveDType(dtype, other.dtype);
-    final broadcastResult = broadcast(this, other);
-    final commonShape = broadcastResult.shape;
-    final stridesA = broadcastResult.stridesA;
-    final stridesB = broadcastResult.stridesB;
-
-    final NDArray<R> result;
-    if (out != null) {
-      if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
-        throw ArgumentError(
-          'Provided out buffer has incompatible shape or dtype for broadcasting.',
-        );
-      }
-      result = out;
-    } else {
-      result = NDArray<R>.create(commonShape, targetDType as DType<R>);
-    }
-    final resultStrides = NDArray.computeCStrides(commonShape);
-
-    if (commonShape.length <= 8) {
-      final isContig =
-          isContiguous &&
-          other.isContiguous &&
-          result.isContiguous &&
-          listEquals(shape, other.shape);
-
-      if (isContig) {
-        switch ((dtype, other.dtype)) {
-          case (Float64DType(), Float64DType()):
-            v_div_double_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Float32DType()):
-            v_div_double_float_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Int64DType()):
-            v_div_double_int64_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Int32DType()):
-            v_div_double_int32_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Complex128DType()):
-            v_div_double_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float64DType(), Complex64DType()):
-            v_div_double_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Float64DType()):
-            v_div_float_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Float32DType()):
-            v_div_float_float_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Int64DType()):
-            v_div_float_int64_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Int32DType()):
-            v_div_float_int32_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Complex128DType()):
-            v_div_float_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Float32DType(), Complex64DType()):
-            v_div_float_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Float64DType()):
-            v_div_int64_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Float32DType()):
-            v_div_int64_float_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Int64DType()):
-            v_div_int64_int64_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Int32DType()):
-            v_div_int64_int32_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Complex128DType()):
-            v_div_int64_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int64DType(), Complex64DType()):
-            v_div_int64_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Float64DType()):
-            v_div_int32_double_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Float32DType()):
-            v_div_int32_float_float(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Int64DType()):
-            v_div_int32_int64_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Int32DType()):
-            v_div_int32_int32_double(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Complex128DType()):
-            v_div_int32_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Int32DType(), Complex64DType()):
-            v_div_int32_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Float64DType()):
-            v_div_cpx_double_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Float32DType()):
-            v_div_cpx_float_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Int64DType()):
-            v_div_cpx_int64_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Int32DType()):
-            v_div_cpx_int32_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Complex128DType()):
-            v_div_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex128DType(), Complex64DType()):
-            v_div_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Float64DType()):
-            v_div_cpx_double_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Float32DType()):
-            v_div_cpx_float_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Int64DType()):
-            v_div_cpx_int64_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Int32DType()):
-            v_div_cpx_int32_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Complex128DType()):
-            v_div_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          case (Complex64DType(), Complex64DType()):
-            v_div_cpx_cpx_cpx(
-              pointer.cast(),
-              other.pointer.cast(),
-              result.pointer.cast(),
-              size,
-            );
-            return result;
-          default:
-            break;
-        }
-      } else {
-        final cShape = malloc<ffi.Int>(commonShape.length);
-        final cStridesA = malloc<ffi.Int>(stridesA.length);
-        final cStridesB = malloc<ffi.Int>(stridesB.length);
-        final cStridesRes = malloc<ffi.Int>(resultStrides.length);
-
-        for (var i = 0; i < commonShape.length; i++) {
-          cShape[i] = commonShape[i];
-          cStridesA[i] = stridesA[i];
-          cStridesB[i] = stridesB[i];
-          cStridesRes[i] = resultStrides[i];
-        }
-
-        try {
-          switch ((dtype, other.dtype)) {
-            case (Float64DType(), Float64DType()):
-              s_div_double_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Float32DType()):
-              s_div_double_float_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Int64DType()):
-              s_div_double_int64_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Int32DType()):
-              s_div_double_int32_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Complex128DType()):
-              s_div_double_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float64DType(), Complex64DType()):
-              s_div_double_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Float64DType()):
-              s_div_float_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Float32DType()):
-              s_div_float_float_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Int64DType()):
-              s_div_float_int64_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Int32DType()):
-              s_div_float_int32_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Complex128DType()):
-              s_div_float_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Float32DType(), Complex64DType()):
-              s_div_float_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Float64DType()):
-              s_div_int64_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Float32DType()):
-              s_div_int64_float_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Int64DType()):
-              s_div_int64_int64_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Int32DType()):
-              s_div_int64_int32_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Complex128DType()):
-              s_div_int64_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int64DType(), Complex64DType()):
-              s_div_int64_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Float64DType()):
-              s_div_int32_double_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Float32DType()):
-              s_div_int32_float_float(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Int64DType()):
-              s_div_int32_int64_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Int32DType()):
-              s_div_int32_int32_double(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Complex128DType()):
-              s_div_int32_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Int32DType(), Complex64DType()):
-              s_div_int32_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Float64DType()):
-              s_div_cpx_double_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Float32DType()):
-              s_div_cpx_float_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Int64DType()):
-              s_div_cpx_int64_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Int32DType()):
-              s_div_cpx_int32_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Complex128DType()):
-              s_div_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex128DType(), Complex64DType()):
-              s_div_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Float64DType()):
-              s_div_cpx_double_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Float32DType()):
-              s_div_cpx_float_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Int64DType()):
-              s_div_cpx_int64_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Int32DType()):
-              s_div_cpx_int32_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Complex128DType()):
-              s_div_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            case (Complex64DType(), Complex64DType()):
-              s_div_cpx_cpx_cpx(
-                pointer.cast(),
-                cStridesA,
-                other.pointer.cast(),
-                cStridesB,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                commonShape.length,
-              );
-              return result;
-            default:
-              break;
-          }
-        } finally {
-          malloc.free(cShape);
-          malloc.free(cStridesA);
-          malloc.free(cStridesB);
-          malloc.free(cStridesRes);
-        }
-      }
-    }
-
-    _dynamicElementWiseOp(
-      result,
-      other,
-      commonShape,
-      stridesA,
-      stridesB,
-      resultStrides,
-      (x, y) => x / y,
-      isDivide: true,
-    );
-    return result;
-  }
-
-  /// Element-wise addition with a scalar value.
-  NDArray<R> addScalar<R>(dynamic scalar, {NDArray<R>? out}) {
-    final scalarArr = NDArray.fromList(
-      [scalar],
-      List.filled(shape.length, 1),
-      dtype,
-    );
-    final res = add<R>(scalarArr, out: out);
-    scalarArr.dispose();
-    return res;
-  }
-
-  /// Element-wise subtraction with a scalar value.
-  NDArray<R> subtractScalar<R>(dynamic scalar, {NDArray<R>? out}) {
-    final scalarArr = NDArray.fromList(
-      [scalar],
-      List.filled(shape.length, 1),
-      dtype,
-    );
-    final res = subtract<R>(scalarArr, out: out);
-    scalarArr.dispose();
-    return res;
-  }
-
-  /// Element-wise multiplication with a scalar value.
-  NDArray<R> multiplyScalar<R>(dynamic scalar, {NDArray<R>? out}) {
-    final scalarArr = NDArray.fromList(
-      [scalar],
-      List.filled(shape.length, 1),
-      dtype,
-    );
-    final res = multiply<R>(scalarArr, out: out);
-    scalarArr.dispose();
-    return res;
-  }
-
-  /// Element-wise division with a scalar value.
-  NDArray<R> divideScalar<R>(dynamic scalar, {NDArray<R>? out}) {
-    final scalarArr = NDArray.fromList(
-      [scalar],
-      List.filled(shape.length, 1),
-      dtype,
-    );
-    final res = divide<R>(scalarArr, out: out);
-    scalarArr.dispose();
-    return res;
   }
 
   // Helper method to execute dynamic element-wise ops cleanly on the fallback branches
@@ -13612,16 +10412,16 @@ extension ArithmeticNDArrayOperations<T> on NDArray<T> {
   }) {
     final targetDType = result.dtype;
     switch (targetDType) {
-      case Complex128DType():
-      case Complex64DType():
+      case DType.complex128:
+      case DType.complex64:
         final rData = result.data as List<Complex>;
         switch (dtype) {
-          case Complex128DType():
-          case Complex64DType():
+          case DType.complex128:
+          case DType.complex64:
             final aData = data as List<Complex>;
             switch (other.dtype) {
-              case Complex128DType():
-              case Complex64DType():
+              case DType.complex128:
+              case DType.complex64:
                 _elementWiseOp<Complex, Complex, Complex>(
                   rData,
                   aData,
@@ -13637,8 +10437,8 @@ extension ArithmeticNDArrayOperations<T> on NDArray<T> {
                   (x, y) => op(x, y) as Complex,
                 );
                 break;
-              case Float64DType():
-              case Float32DType():
+              case DType.float64:
+              case DType.float32:
                 _elementWiseOp<Complex, double, Complex>(
                   rData,
                   aData,
@@ -13672,8 +10472,8 @@ extension ArithmeticNDArrayOperations<T> on NDArray<T> {
                 break;
             }
             break;
-          case Float64DType():
-          case Float32DType():
+          case DType.float64:
+          case DType.float32:
             final aData = data as List<double>;
             if (other.dtype.isComplex) {
               if (isSubtract) {
@@ -13748,8 +10548,8 @@ extension ArithmeticNDArrayOperations<T> on NDArray<T> {
         }
         break;
 
-      case Float64DType():
-      case Float32DType():
+      case DType.float64:
+      case DType.float32:
         final rData = result.data as List<double>;
         if (dtype.isFloating) {
           final aData = data as List<double>;
@@ -13786,20 +10586,37 @@ extension ArithmeticNDArrayOperations<T> on NDArray<T> {
           }
         } else {
           final aData = data as List<int>;
-          _elementWiseOp<int, double, double>(
-            rData,
-            aData,
-            other.data as List<double>,
-            commonShape,
-            stridesA,
-            stridesB,
-            resultStrides,
-            0,
-            offsetElements,
-            other.offsetElements,
-            result.offsetElements,
-            (x, y) => (op(x, y) as num).toDouble(),
-          );
+          if (other.dtype.isFloating) {
+            _elementWiseOp<int, double, double>(
+              rData,
+              aData,
+              other.data as List<double>,
+              commonShape,
+              stridesA,
+              stridesB,
+              resultStrides,
+              0,
+              offsetElements,
+              other.offsetElements,
+              result.offsetElements,
+              (x, y) => (op(x, y) as num).toDouble(),
+            );
+          } else {
+            _elementWiseOp<int, int, double>(
+              rData,
+              aData,
+              other.data as List<int>,
+              commonShape,
+              stridesA,
+              stridesB,
+              resultStrides,
+              0,
+              offsetElements,
+              other.offsetElements,
+              result.offsetElements,
+              (x, y) => (op(x, y) as num).toDouble(),
+            );
+          }
         }
         break;
 

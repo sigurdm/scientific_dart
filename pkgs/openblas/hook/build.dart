@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
