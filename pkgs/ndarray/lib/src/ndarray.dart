@@ -690,6 +690,7 @@ final class NDArray<T> implements ffi.Finalizable {
   }
 
   /// Helper to calculate default strides for a C-contiguous array (in elements).
+  @internal
   static List<int> computeCStrides(List<int> shape) {
     if (shape.isEmpty) return [];
     final strides = List<int>.filled(shape.length, 1);
