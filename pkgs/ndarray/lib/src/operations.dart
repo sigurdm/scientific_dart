@@ -10716,254 +10716,322 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         result.isContiguous &&
         listEquals(a.shape, b.shape);
 
-    switch ((a.dtype, b.dtype)) {
+    final cShape = malloc<ffi.Int>(commonShape.length);
+    final cStridesA = malloc<ffi.Int>(stridesA.length);
+    final cStridesB = malloc<ffi.Int>(stridesB.length);
+    final cStridesRes = malloc<ffi.Int>(resultStrides.length);
+
+    for (var i = 0; i < commonShape.length; i++) {
+      cShape[i] = commonShape[i];
+      cStridesA[i] = stridesA[i];
+      cStridesB[i] = stridesB[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+
+    try {
+      switch ((a.dtype, b.dtype)) {
       case (DType.float64, DType.float64) when isContig:
         v_add_double_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.float64, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_double_double_double);
+        s_add_double_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.float64, DType.float32) when isContig:
         v_add_double_float_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.float64, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_double_float_double);
+        s_add_double_float_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.float64, DType.int64) when isContig:
         v_add_double_int64_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.float64, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_double_int64_double);
+        s_add_double_int64_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.float64, DType.int32) when isContig:
         v_add_double_int32_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.float64, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_double_int32_double);
+        s_add_double_int32_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.float64, DType.uint8) when isContig:
         v_add_double_uint8_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.float64, DType.uint8):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_double_uint8_double);
+        s_add_double_uint8_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.float64, DType.int16) when isContig:
         v_add_double_int16_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.float64, DType.int16):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_double_int16_double);
+        s_add_double_int16_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.float64, DType.complex128) when isContig:
         v_add_double_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.float64, DType.complex128):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_double_cpx_cpx);
+        s_add_double_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.float32, DType.float64) when isContig:
         v_add_float_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.float32, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_float_double_double);
+        s_add_float_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.float32, DType.float32) when isContig:
         v_add_float_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.float32, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_float_float_float);
+        s_add_float_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.float32, DType.int64) when isContig:
         v_add_float_int64_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.float32, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_float_int64_float);
+        s_add_float_int64_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.float32, DType.int32) when isContig:
         v_add_float_int32_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.float32, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_float_int32_float);
+        s_add_float_int32_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.float32, DType.uint8) when isContig:
         v_add_float_uint8_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.float32, DType.uint8):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_float_uint8_float);
+        s_add_float_uint8_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.float32, DType.int16) when isContig:
         v_add_float_int16_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.float32, DType.int16):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_float_int16_float);
+        s_add_float_int16_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.float32, DType.complex128) when isContig:
         v_add_float_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.float32, DType.complex128):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_float_cpx_cpx);
+        s_add_float_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int64, DType.float64) when isContig:
         v_add_int64_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int64, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int64_double_double);
+        s_add_int64_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int64, DType.float32) when isContig:
         v_add_int64_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int64, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int64_float_float);
+        s_add_int64_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int64, DType.int64) when isContig:
         v_add_int64_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int64, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int64_int64_int64);
+        s_add_int64_int64_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int64, DType.int32) when isContig:
         v_add_int64_int32_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int64, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int64_int32_int64);
+        s_add_int64_int32_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int64, DType.uint8) when isContig:
         v_add_int64_uint8_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int64, DType.uint8):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int64_uint8_int64);
+        s_add_int64_uint8_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int64, DType.int16) when isContig:
         v_add_int64_int16_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int64, DType.int16):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int64_int16_int64);
+        s_add_int64_int16_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int64, DType.complex128) when isContig:
         v_add_int64_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int64, DType.complex128):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int64_cpx_cpx);
+        s_add_int64_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int32, DType.float64) when isContig:
         v_add_int32_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int32, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int32_double_double);
+        s_add_int32_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int32, DType.float32) when isContig:
         v_add_int32_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int32, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int32_float_float);
+        s_add_int32_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int32, DType.int64) when isContig:
         v_add_int32_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int32, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int32_int64_int64);
+        s_add_int32_int64_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int32, DType.int32) when isContig:
         v_add_int32_int32_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int32, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int32_int32_int32);
+        s_add_int32_int32_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int32, DType.uint8) when isContig:
         v_add_int32_uint8_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int32, DType.uint8):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int32_uint8_int32);
+        s_add_int32_uint8_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int32, DType.int16) when isContig:
         v_add_int32_int16_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int32, DType.int16):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int32_int16_int32);
+        s_add_int32_int16_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int32, DType.complex128) when isContig:
         v_add_int32_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int32, DType.complex128):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int32_cpx_cpx);
+        s_add_int32_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.uint8, DType.float64) when isContig:
         v_add_uint8_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.uint8, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_uint8_double_double);
+        s_add_uint8_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.uint8, DType.float32) when isContig:
         v_add_uint8_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.uint8, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_uint8_float_float);
+        s_add_uint8_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.uint8, DType.int64) when isContig:
         v_add_uint8_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.uint8, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_uint8_int64_int64);
+        s_add_uint8_int64_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.uint8, DType.int32) when isContig:
         v_add_uint8_int32_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.uint8, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_uint8_int32_int32);
+        s_add_uint8_int32_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.uint8, DType.uint8) when isContig:
         v_add_uint8_uint8_uint8(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.uint8, DType.uint8):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_uint8_uint8_uint8);
+        s_add_uint8_uint8_uint8(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.uint8, DType.int16) when isContig:
         v_add_uint8_int16_int16(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.uint8, DType.int16):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_uint8_int16_int16);
+        s_add_uint8_int16_int16(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.uint8, DType.complex128) when isContig:
         v_add_uint8_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.uint8, DType.complex128):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_uint8_cpx_cpx);
+        s_add_uint8_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int16, DType.float64) when isContig:
         v_add_int16_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int16, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int16_double_double);
+        s_add_int16_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int16, DType.float32) when isContig:
         v_add_int16_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int16, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int16_float_float);
+        s_add_int16_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int16, DType.int64) when isContig:
         v_add_int16_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int16, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int16_int64_int64);
+        s_add_int16_int64_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int16, DType.int32) when isContig:
         v_add_int16_int32_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int16, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int16_int32_int32);
+        s_add_int16_int32_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int16, DType.uint8) when isContig:
         v_add_int16_uint8_int16(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int16, DType.uint8):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int16_uint8_int16);
+        s_add_int16_uint8_int16(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int16, DType.int16) when isContig:
         v_add_int16_int16_int16(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int16, DType.int16):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int16_int16_int16);
+        s_add_int16_int16_int16(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.int16, DType.complex128) when isContig:
         v_add_int16_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.int16, DType.complex128):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int16_cpx_cpx);
+        s_add_int16_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.complex128, DType.float64) when isContig:
         v_add_cpx_double_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.complex128, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_cpx_double_cpx);
+        s_add_cpx_double_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.complex128, DType.float32) when isContig:
         v_add_cpx_float_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.complex128, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_cpx_float_cpx);
+        s_add_cpx_float_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.complex128, DType.int64) when isContig:
         v_add_cpx_int64_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.complex128, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_cpx_int64_cpx);
+        s_add_cpx_int64_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.complex128, DType.int32) when isContig:
         v_add_cpx_int32_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.complex128, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_cpx_int32_cpx);
+        s_add_cpx_int32_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.complex128, DType.uint8) when isContig:
         v_add_cpx_uint8_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.complex128, DType.uint8):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_cpx_uint8_cpx);
+        s_add_cpx_uint8_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.complex128, DType.int16) when isContig:
         v_add_cpx_int16_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.complex128, DType.int16):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_cpx_int16_cpx);
+        s_add_cpx_int16_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       case (DType.complex128, DType.complex128) when isContig:
         v_add_cpx_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case (DType.complex128, DType.complex128):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_cpx_cpx_cpx);
+        s_add_cpx_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       default:
         break;
+    }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesB);
+      malloc.free(cStridesRes);
     }
   }
 
@@ -11078,9 +11146,322 @@ NDArray<R> subtract<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
   if (commonShape.length <= 8) {
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
-    switch ((a.dtype, b.dtype)) {
+    final cShape = malloc<ffi.Int>(commonShape.length);
+    final cStridesA = malloc<ffi.Int>(stridesA.length);
+    final cStridesB = malloc<ffi.Int>(stridesB.length);
+    final cStridesRes = malloc<ffi.Int>(resultStrides.length);
+
+    for (var i = 0; i < commonShape.length; i++) {
+      cShape[i] = commonShape[i];
+      cStridesA[i] = stridesA[i];
+      cStridesB[i] = stridesB[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+
+    try {
+      switch ((a.dtype, b.dtype)) {
+      case (DType.float64, DType.float64) when isContig:
+        v_sub_double_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.float64):
+        s_sub_double_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.float32) when isContig:
+        v_sub_double_float_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.float32):
+        s_sub_double_float_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.int64) when isContig:
+        v_sub_double_int64_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.int64):
+        s_sub_double_int64_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.int32) when isContig:
+        v_sub_double_int32_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.int32):
+        s_sub_double_int32_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.uint8) when isContig:
+        v_sub_double_uint8_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.uint8):
+        s_sub_double_uint8_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.int16) when isContig:
+        v_sub_double_int16_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.int16):
+        s_sub_double_int16_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.complex128) when isContig:
+        v_sub_double_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.complex128):
+        s_sub_double_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.float64) when isContig:
+        v_sub_float_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.float64):
+        s_sub_float_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.float32) when isContig:
+        v_sub_float_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.float32):
+        s_sub_float_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.int64) when isContig:
+        v_sub_float_int64_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.int64):
+        s_sub_float_int64_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.int32) when isContig:
+        v_sub_float_int32_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.int32):
+        s_sub_float_int32_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.uint8) when isContig:
+        v_sub_float_uint8_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.uint8):
+        s_sub_float_uint8_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.int16) when isContig:
+        v_sub_float_int16_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.int16):
+        s_sub_float_int16_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.complex128) when isContig:
+        v_sub_float_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.complex128):
+        s_sub_float_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.float64) when isContig:
+        v_sub_int64_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.float64):
+        s_sub_int64_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.float32) when isContig:
+        v_sub_int64_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.float32):
+        s_sub_int64_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.int64) when isContig:
+        v_sub_int64_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.int64):
+        s_sub_int64_int64_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.int32) when isContig:
+        v_sub_int64_int32_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.int32):
+        s_sub_int64_int32_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.uint8) when isContig:
+        v_sub_int64_uint8_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.uint8):
+        s_sub_int64_uint8_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.int16) when isContig:
+        v_sub_int64_int16_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.int16):
+        s_sub_int64_int16_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.complex128) when isContig:
+        v_sub_int64_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.complex128):
+        s_sub_int64_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.float64) when isContig:
+        v_sub_int32_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.float64):
+        s_sub_int32_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.float32) when isContig:
+        v_sub_int32_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.float32):
+        s_sub_int32_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.int64) when isContig:
+        v_sub_int32_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.int64):
+        s_sub_int32_int64_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.int32) when isContig:
+        v_sub_int32_int32_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.int32):
+        s_sub_int32_int32_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.uint8) when isContig:
+        v_sub_int32_uint8_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.uint8):
+        s_sub_int32_uint8_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.int16) when isContig:
+        v_sub_int32_int16_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.int16):
+        s_sub_int32_int16_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.complex128) when isContig:
+        v_sub_int32_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.complex128):
+        s_sub_int32_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.float64) when isContig:
+        v_sub_uint8_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.float64):
+        s_sub_uint8_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.float32) when isContig:
+        v_sub_uint8_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.float32):
+        s_sub_uint8_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.int64) when isContig:
+        v_sub_uint8_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.int64):
+        s_sub_uint8_int64_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.int32) when isContig:
+        v_sub_uint8_int32_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.int32):
+        s_sub_uint8_int32_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.uint8) when isContig:
+        v_sub_uint8_uint8_uint8(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.uint8):
+        s_sub_uint8_uint8_uint8(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.int16) when isContig:
+        v_sub_uint8_int16_int16(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.int16):
+        s_sub_uint8_int16_int16(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.complex128) when isContig:
+        v_sub_uint8_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.complex128):
+        s_sub_uint8_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.float64) when isContig:
+        v_sub_int16_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.float64):
+        s_sub_int16_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.float32) when isContig:
+        v_sub_int16_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.float32):
+        s_sub_int16_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.int64) when isContig:
+        v_sub_int16_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.int64):
+        s_sub_int16_int64_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.int32) when isContig:
+        v_sub_int16_int32_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.int32):
+        s_sub_int16_int32_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.uint8) when isContig:
+        v_sub_int16_uint8_int16(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.uint8):
+        s_sub_int16_uint8_int16(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.int16) when isContig:
+        v_sub_int16_int16_int16(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.int16):
+        s_sub_int16_int16_int16(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.complex128) when isContig:
+        v_sub_int16_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.complex128):
+        s_sub_int16_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.float64) when isContig:
+        v_sub_cpx_double_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.float64):
+        s_sub_cpx_double_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.float32) when isContig:
+        v_sub_cpx_float_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.float32):
+        s_sub_cpx_float_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.int64) when isContig:
+        v_sub_cpx_int64_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.int64):
+        s_sub_cpx_int64_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.int32) when isContig:
+        v_sub_cpx_int32_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.int32):
+        s_sub_cpx_int32_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.uint8) when isContig:
+        v_sub_cpx_uint8_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.uint8):
+        s_sub_cpx_uint8_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.int16) when isContig:
+        v_sub_cpx_int16_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.int16):
+        s_sub_cpx_int16_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.complex128) when isContig:
+        v_sub_cpx_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.complex128):
+        s_sub_cpx_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       default:
         break;
+    }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesB);
+      malloc.free(cStridesRes);
     }
   }
 
@@ -11121,9 +11502,323 @@ NDArray<R> multiply<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
   if (commonShape.length <= 8) {
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
-    switch ((a.dtype, b.dtype)) {
+    final cShape = malloc<ffi.Int>(commonShape.length);
+    final cStridesA = malloc<ffi.Int>(stridesA.length);
+    final cStridesB = malloc<ffi.Int>(stridesB.length);
+    final cStridesRes = malloc<ffi.Int>(resultStrides.length);
+
+    for (var i = 0; i < commonShape.length; i++) {
+      cShape[i] = commonShape[i];
+      cStridesA[i] = stridesA[i];
+      cStridesB[i] = stridesB[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+
+    try {
+      switch ((a.dtype, b.dtype)) {
+// MUL cases
+      case (DType.float64, DType.float64) when isContig:
+        v_mul_double_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.float64):
+        s_mul_double_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.float32) when isContig:
+        v_mul_double_float_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.float32):
+        s_mul_double_float_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.int64) when isContig:
+        v_mul_double_int64_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.int64):
+        s_mul_double_int64_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.int32) when isContig:
+        v_mul_double_int32_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.int32):
+        s_mul_double_int32_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.uint8) when isContig:
+        v_mul_double_uint8_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.uint8):
+        s_mul_double_uint8_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.int16) when isContig:
+        v_mul_double_int16_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.int16):
+        s_mul_double_int16_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.complex128) when isContig:
+        v_mul_double_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.complex128):
+        s_mul_double_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.float64) when isContig:
+        v_mul_float_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.float64):
+        s_mul_float_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.float32) when isContig:
+        v_mul_float_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.float32):
+        s_mul_float_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.int64) when isContig:
+        v_mul_float_int64_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.int64):
+        s_mul_float_int64_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.int32) when isContig:
+        v_mul_float_int32_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.int32):
+        s_mul_float_int32_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.uint8) when isContig:
+        v_mul_float_uint8_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.uint8):
+        s_mul_float_uint8_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.int16) when isContig:
+        v_mul_float_int16_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.int16):
+        s_mul_float_int16_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.complex128) when isContig:
+        v_mul_float_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.complex128):
+        s_mul_float_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.float64) when isContig:
+        v_mul_int64_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.float64):
+        s_mul_int64_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.float32) when isContig:
+        v_mul_int64_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.float32):
+        s_mul_int64_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.int64) when isContig:
+        v_mul_int64_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.int64):
+        s_mul_int64_int64_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.int32) when isContig:
+        v_mul_int64_int32_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.int32):
+        s_mul_int64_int32_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.uint8) when isContig:
+        v_mul_int64_uint8_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.uint8):
+        s_mul_int64_uint8_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.int16) when isContig:
+        v_mul_int64_int16_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.int16):
+        s_mul_int64_int16_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.complex128) when isContig:
+        v_mul_int64_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.complex128):
+        s_mul_int64_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.float64) when isContig:
+        v_mul_int32_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.float64):
+        s_mul_int32_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.float32) when isContig:
+        v_mul_int32_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.float32):
+        s_mul_int32_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.int64) when isContig:
+        v_mul_int32_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.int64):
+        s_mul_int32_int64_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.int32) when isContig:
+        v_mul_int32_int32_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.int32):
+        s_mul_int32_int32_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.uint8) when isContig:
+        v_mul_int32_uint8_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.uint8):
+        s_mul_int32_uint8_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.int16) when isContig:
+        v_mul_int32_int16_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.int16):
+        s_mul_int32_int16_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.complex128) when isContig:
+        v_mul_int32_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.complex128):
+        s_mul_int32_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.float64) when isContig:
+        v_mul_uint8_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.float64):
+        s_mul_uint8_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.float32) when isContig:
+        v_mul_uint8_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.float32):
+        s_mul_uint8_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.int64) when isContig:
+        v_mul_uint8_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.int64):
+        s_mul_uint8_int64_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.int32) when isContig:
+        v_mul_uint8_int32_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.int32):
+        s_mul_uint8_int32_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.uint8) when isContig:
+        v_mul_uint8_uint8_uint8(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.uint8):
+        s_mul_uint8_uint8_uint8(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.int16) when isContig:
+        v_mul_uint8_int16_int16(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.int16):
+        s_mul_uint8_int16_int16(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.complex128) when isContig:
+        v_mul_uint8_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.complex128):
+        s_mul_uint8_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.float64) when isContig:
+        v_mul_int16_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.float64):
+        s_mul_int16_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.float32) when isContig:
+        v_mul_int16_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.float32):
+        s_mul_int16_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.int64) when isContig:
+        v_mul_int16_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.int64):
+        s_mul_int16_int64_int64(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.int32) when isContig:
+        v_mul_int16_int32_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.int32):
+        s_mul_int16_int32_int32(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.uint8) when isContig:
+        v_mul_int16_uint8_int16(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.uint8):
+        s_mul_int16_uint8_int16(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.int16) when isContig:
+        v_mul_int16_int16_int16(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.int16):
+        s_mul_int16_int16_int16(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.complex128) when isContig:
+        v_mul_int16_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.complex128):
+        s_mul_int16_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.float64) when isContig:
+        v_mul_cpx_double_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.float64):
+        s_mul_cpx_double_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.float32) when isContig:
+        v_mul_cpx_float_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.float32):
+        s_mul_cpx_float_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.int64) when isContig:
+        v_mul_cpx_int64_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.int64):
+        s_mul_cpx_int64_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.int32) when isContig:
+        v_mul_cpx_int32_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.int32):
+        s_mul_cpx_int32_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.uint8) when isContig:
+        v_mul_cpx_uint8_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.uint8):
+        s_mul_cpx_uint8_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.int16) when isContig:
+        v_mul_cpx_int16_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.int16):
+        s_mul_cpx_int16_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.complex128) when isContig:
+        v_mul_cpx_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.complex128):
+        s_mul_cpx_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       default:
         break;
+    }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesB);
+      malloc.free(cStridesRes);
     }
   }
 
@@ -11167,9 +11862,324 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   if (commonShape.length <= 8) {
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
-    switch ((a.dtype, b.dtype)) {
+    final cShape = malloc<ffi.Int>(commonShape.length);
+    final cStridesA = malloc<ffi.Int>(stridesA.length);
+    final cStridesB = malloc<ffi.Int>(stridesB.length);
+    final cStridesRes = malloc<ffi.Int>(resultStrides.length);
+
+    for (var i = 0; i < commonShape.length; i++) {
+      cShape[i] = commonShape[i];
+      cStridesA[i] = stridesA[i];
+      cStridesB[i] = stridesB[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+
+    try {
+      switch ((a.dtype, b.dtype)) {
+
+// DIV cases
+      case (DType.float64, DType.float64) when isContig:
+        v_div_double_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.float64):
+        s_div_double_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.float32) when isContig:
+        v_div_double_float_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.float32):
+        s_div_double_float_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.int64) when isContig:
+        v_div_double_int64_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.int64):
+        s_div_double_int64_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.int32) when isContig:
+        v_div_double_int32_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.int32):
+        s_div_double_int32_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.uint8) when isContig:
+        v_div_double_uint8_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.uint8):
+        s_div_double_uint8_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.int16) when isContig:
+        v_div_double_int16_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.int16):
+        s_div_double_int16_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float64, DType.complex128) when isContig:
+        v_div_double_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.complex128):
+        s_div_double_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.float64) when isContig:
+        v_div_float_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.float64):
+        s_div_float_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.float32) when isContig:
+        v_div_float_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.float32):
+        s_div_float_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.int64) when isContig:
+        v_div_float_int64_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.int64):
+        s_div_float_int64_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.int32) when isContig:
+        v_div_float_int32_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.int32):
+        s_div_float_int32_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.uint8) when isContig:
+        v_div_float_uint8_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.uint8):
+        s_div_float_uint8_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.int16) when isContig:
+        v_div_float_int16_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.int16):
+        s_div_float_int16_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.float32, DType.complex128) when isContig:
+        v_div_float_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.complex128):
+        s_div_float_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.float64) when isContig:
+        v_div_int64_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.float64):
+        s_div_int64_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.float32) when isContig:
+        v_div_int64_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.float32):
+        s_div_int64_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.int64) when isContig:
+        v_div_int64_int64_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.int64):
+        s_div_int64_int64_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.int32) when isContig:
+        v_div_int64_int32_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.int32):
+        s_div_int64_int32_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.uint8) when isContig:
+        v_div_int64_uint8_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.uint8):
+        s_div_int64_uint8_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.int16) when isContig:
+        v_div_int64_int16_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.int16):
+        s_div_int64_int16_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int64, DType.complex128) when isContig:
+        v_div_int64_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.complex128):
+        s_div_int64_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.float64) when isContig:
+        v_div_int32_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.float64):
+        s_div_int32_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.float32) when isContig:
+        v_div_int32_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.float32):
+        s_div_int32_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.int64) when isContig:
+        v_div_int32_int64_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.int64):
+        s_div_int32_int64_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.int32) when isContig:
+        v_div_int32_int32_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.int32):
+        s_div_int32_int32_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.uint8) when isContig:
+        v_div_int32_uint8_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.uint8):
+        s_div_int32_uint8_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.int16) when isContig:
+        v_div_int32_int16_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.int16):
+        s_div_int32_int16_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int32, DType.complex128) when isContig:
+        v_div_int32_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.complex128):
+        s_div_int32_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.float64) when isContig:
+        v_div_uint8_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.float64):
+        s_div_uint8_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.float32) when isContig:
+        v_div_uint8_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.float32):
+        s_div_uint8_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.int64) when isContig:
+        v_div_uint8_int64_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.int64):
+        s_div_uint8_int64_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.int32) when isContig:
+        v_div_uint8_int32_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.int32):
+        s_div_uint8_int32_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.uint8) when isContig:
+        v_div_uint8_uint8_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.uint8):
+        s_div_uint8_uint8_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.int16) when isContig:
+        v_div_uint8_int16_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.int16):
+        s_div_uint8_int16_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.uint8, DType.complex128) when isContig:
+        v_div_uint8_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.complex128):
+        s_div_uint8_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.float64) when isContig:
+        v_div_int16_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.float64):
+        s_div_int16_double_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.float32) when isContig:
+        v_div_int16_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.float32):
+        s_div_int16_float_float(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.int64) when isContig:
+        v_div_int16_int64_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.int64):
+        s_div_int16_int64_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.int32) when isContig:
+        v_div_int16_int32_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.int32):
+        s_div_int16_int32_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.uint8) when isContig:
+        v_div_int16_uint8_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.uint8):
+        s_div_int16_uint8_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.int16) when isContig:
+        v_div_int16_int16_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.int16):
+        s_div_int16_int16_double(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.int16, DType.complex128) when isContig:
+        v_div_int16_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.complex128):
+        s_div_int16_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.float64) when isContig:
+        v_div_cpx_double_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.float64):
+        s_div_cpx_double_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.float32) when isContig:
+        v_div_cpx_float_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.float32):
+        s_div_cpx_float_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.int64) when isContig:
+        v_div_cpx_int64_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.int64):
+        s_div_cpx_int64_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.int32) when isContig:
+        v_div_cpx_int32_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.int32):
+        s_div_cpx_int32_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.uint8) when isContig:
+        v_div_cpx_uint8_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.uint8):
+        s_div_cpx_uint8_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.int16) when isContig:
+        v_div_cpx_int16_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.int16):
+        s_div_cpx_int16_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
+      case (DType.complex128, DType.complex128) when isContig:
+        v_div_cpx_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.complex128):
+        s_div_cpx_cpx_cpx(a.pointer.cast(), cStridesA, b.pointer.cast(), cStridesB, result.pointer.cast(), cStridesRes, cShape, commonShape.length);
+        return result;
       default:
         break;
+    }
+    } finally {
+      malloc.free(cShape);
+      malloc.free(cStridesA);
+      malloc.free(cStridesB);
+      malloc.free(cStridesRes);
     }
   }
 
