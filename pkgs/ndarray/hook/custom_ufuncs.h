@@ -338,6 +338,44 @@ void v_triu_float(const float *src, float *res, int batch_count, int rows, int c
  * ============================================================================
  */
 
+#define GENERATE_COMMUTATIVE_COMBINATIONS(OP, MACRO) \
+  MACRO(OP, double, double, double, double, double, double) \
+  MACRO(OP, double, float, double, double, float, double) \
+  MACRO(OP, double, int64, double, double, int64_t, double) \
+  MACRO(OP, double, int32, double, double, int32_t, double) \
+  MACRO(OP, double, uint8, double, double, uint8_t, double) \
+  MACRO(OP, double, int16, double, double, int16_t, double) \
+  MACRO(OP, double, cpx, cpx, double, cpx_t, cpx_t) \
+  MACRO(OP, double, cpx64, cpx, double, cpx_f_t, cpx_t) \
+  MACRO(OP, float, float, float, float, float, float) \
+  MACRO(OP, float, int64, float, float, int64_t, float) \
+  MACRO(OP, float, int32, float, float, int32_t, float) \
+  MACRO(OP, float, uint8, float, float, uint8_t, float) \
+  MACRO(OP, float, int16, float, float, int16_t, float) \
+  MACRO(OP, float, cpx, cpx, float, cpx_t, cpx_t) \
+  MACRO(OP, float, cpx64, cpx64, float, cpx_f_t, cpx_f_t) \
+  MACRO(OP, int64, int64, int64, int64_t, int64_t, int64_t) \
+  MACRO(OP, int64, int32, int64, int64_t, int32_t, int64_t) \
+  MACRO(OP, int64, uint8, int64, int64_t, uint8_t, int64_t) \
+  MACRO(OP, int64, int16, int64, int64_t, int16_t, int64_t) \
+  MACRO(OP, int64, cpx, cpx, int64_t, cpx_t, cpx_t) \
+  MACRO(OP, int64, cpx64, cpx64, int64_t, cpx_f_t, cpx_f_t) \
+  MACRO(OP, int32, int32, int32, int32_t, int32_t, int32_t) \
+  MACRO(OP, int32, uint8, int32, int32_t, uint8_t, int32_t) \
+  MACRO(OP, int32, int16, int32, int32_t, int16_t, int32_t) \
+  MACRO(OP, int32, cpx, cpx, int32_t, cpx_t, cpx_t) \
+  MACRO(OP, int32, cpx64, cpx64, int32_t, cpx_f_t, cpx_f_t) \
+  MACRO(OP, uint8, uint8, uint8, uint8_t, uint8_t, uint8_t) \
+  MACRO(OP, uint8, int16, int16, uint8_t, int16_t, int16_t) \
+  MACRO(OP, uint8, cpx, cpx, uint8_t, cpx_t, cpx_t) \
+  MACRO(OP, uint8, cpx64, cpx64, uint8_t, cpx_f_t, cpx_f_t) \
+  MACRO(OP, int16, int16, int16, int16_t, int16_t, int16_t) \
+  MACRO(OP, int16, cpx, cpx, int16_t, cpx_t, cpx_t) \
+  MACRO(OP, int16, cpx64, cpx64, int16_t, cpx_f_t, cpx_f_t) \
+  MACRO(OP, cpx, cpx, cpx, cpx_t, cpx_t, cpx_t) \
+  MACRO(OP, cpx, cpx64, cpx, cpx_t, cpx_f_t, cpx_t) \
+  MACRO(OP, cpx64, cpx64, cpx64, cpx_f_t, cpx_f_t, cpx_f_t)
+
 #define GENERATE_OP_COMBINATIONS(OP, MACRO) \
   MACRO(OP, double, double, double, double, double, double) \
   MACRO(OP, double, float, double, double, float, double) \
@@ -477,9 +515,9 @@ void v_triu_float(const float *src, float *res, int batch_count, int rows, int c
                                                Tr *res, const int *stridesRes, \
                                                const int *shape, int rank);
 
-GENERATE_OP_COMBINATIONS(add, DECLARE_FFI_HELPER)
+GENERATE_COMMUTATIVE_COMBINATIONS(add, DECLARE_FFI_HELPER)
 GENERATE_OP_COMBINATIONS(sub, DECLARE_FFI_HELPER)
-GENERATE_OP_COMBINATIONS(mul, DECLARE_FFI_HELPER)
+GENERATE_COMMUTATIVE_COMBINATIONS(mul, DECLARE_FFI_HELPER)
 GENERATE_DIV_COMBINATIONS(div, DECLARE_FFI_HELPER)
 
 /* ============================================================================
