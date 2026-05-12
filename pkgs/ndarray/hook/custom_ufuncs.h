@@ -343,26 +343,50 @@ void v_triu_float(const float *src, float *res, int batch_count, int rows, int c
   MACRO(OP, double, float, double, double, float, double) \
   MACRO(OP, double, int64, double, double, int64_t, double) \
   MACRO(OP, double, int32, double, double, int32_t, double) \
+  MACRO(OP, double, uint8, double, double, uint8_t, double) \
+  MACRO(OP, double, int16, double, double, int16_t, double) \
   MACRO(OP, double, cpx, cpx, double, cpx_t, cpx_t) \
   MACRO(OP, float, double, double, float, double, double) \
   MACRO(OP, float, float, float, float, float, float) \
   MACRO(OP, float, int64, float, float, int64_t, float) \
   MACRO(OP, float, int32, float, float, int32_t, float) \
+  MACRO(OP, float, uint8, float, float, uint8_t, float) \
+  MACRO(OP, float, int16, float, float, int16_t, float) \
   MACRO(OP, float, cpx, cpx, float, cpx_t, cpx_t) \
   MACRO(OP, int64, double, double, int64_t, double, double) \
   MACRO(OP, int64, float, float, int64_t, float, float) \
   MACRO(OP, int64, int64, int64, int64_t, int64_t, int64_t) \
   MACRO(OP, int64, int32, int64, int64_t, int32_t, int64_t) \
+  MACRO(OP, int64, uint8, int64, int64_t, uint8_t, int64_t) \
+  MACRO(OP, int64, int16, int64, int64_t, int16_t, int64_t) \
   MACRO(OP, int64, cpx, cpx, int64_t, cpx_t, cpx_t) \
   MACRO(OP, int32, double, double, int32_t, double, double) \
   MACRO(OP, int32, float, float, int32_t, float, float) \
   MACRO(OP, int32, int64, int64, int32_t, int64_t, int64_t) \
   MACRO(OP, int32, int32, int32, int32_t, int32_t, int32_t) \
+  MACRO(OP, int32, uint8, int32, int32_t, uint8_t, int32_t) \
+  MACRO(OP, int32, int16, int32, int32_t, int16_t, int32_t) \
   MACRO(OP, int32, cpx, cpx, int32_t, cpx_t, cpx_t) \
+  MACRO(OP, uint8, double, double, uint8_t, double, double) \
+  MACRO(OP, uint8, float, float, uint8_t, float, float) \
+  MACRO(OP, uint8, int64, int64, uint8_t, int64_t, int64_t) \
+  MACRO(OP, uint8, int32, int32, uint8_t, int32_t, int32_t) \
+  MACRO(OP, uint8, uint8, uint8, uint8_t, uint8_t, uint8_t) \
+  MACRO(OP, uint8, int16, int16, uint8_t, int16_t, int16_t) \
+  MACRO(OP, uint8, cpx, cpx, uint8_t, cpx_t, cpx_t) \
+  MACRO(OP, int16, double, double, int16_t, double, double) \
+  MACRO(OP, int16, float, float, int16_t, float, float) \
+  MACRO(OP, int16, int64, int64, int16_t, int64_t, int64_t) \
+  MACRO(OP, int16, int32, int32, int16_t, int32_t, int32_t) \
+  MACRO(OP, int16, uint8, int16, int16_t, uint8_t, int16_t) \
+  MACRO(OP, int16, int16, int16, int16_t, int16_t, int16_t) \
+  MACRO(OP, int16, cpx, cpx, int16_t, cpx_t, cpx_t) \
   MACRO(OP, cpx, double, cpx, cpx_t, double, cpx_t) \
   MACRO(OP, cpx, float, cpx, cpx_t, float, cpx_t) \
   MACRO(OP, cpx, int64, cpx, cpx_t, int64_t, cpx_t) \
   MACRO(OP, cpx, int32, cpx, cpx_t, int32_t, cpx_t) \
+  MACRO(OP, cpx, uint8, cpx, cpx_t, uint8_t, cpx_t) \
+  MACRO(OP, cpx, int16, cpx, cpx_t, int16_t, cpx_t) \
   MACRO(OP, cpx, cpx, cpx, cpx_t, cpx_t, cpx_t)
 
 #define GENERATE_DIV_COMBINATIONS(OP, MACRO) \
@@ -370,26 +394,50 @@ void v_triu_float(const float *src, float *res, int batch_count, int rows, int c
   MACRO(OP, double, float, double, double, float, double) \
   MACRO(OP, double, int64, double, double, int64_t, double) \
   MACRO(OP, double, int32, double, double, int32_t, double) \
+  MACRO(OP, double, uint8, double, double, uint8_t, double) \
+  MACRO(OP, double, int16, double, double, int16_t, double) \
   MACRO(OP, double, cpx, cpx, double, cpx_t, cpx_t) \
   MACRO(OP, float, double, double, float, double, double) \
   MACRO(OP, float, float, float, float, float, float) \
   MACRO(OP, float, int64, float, float, int64_t, float) \
   MACRO(OP, float, int32, float, float, int32_t, float) \
+  MACRO(OP, float, uint8, float, float, uint8_t, float) \
+  MACRO(OP, float, int16, float, float, int16_t, float) \
   MACRO(OP, float, cpx, cpx, float, cpx_t, cpx_t) \
   MACRO(OP, int64, double, double, int64_t, double, double) \
   MACRO(OP, int64, float, float, int64_t, float, float) \
   MACRO(OP, int64, int64, double, int64_t, int64_t, double) \
   MACRO(OP, int64, int32, double, int64_t, int32_t, double) \
+  MACRO(OP, int64, uint8, double, int64_t, uint8_t, double) \
+  MACRO(OP, int64, int16, double, int64_t, int16_t, double) \
   MACRO(OP, int64, cpx, cpx, int64_t, cpx_t, cpx_t) \
   MACRO(OP, int32, double, double, int32_t, double, double) \
   MACRO(OP, int32, float, float, int32_t, float, float) \
   MACRO(OP, int32, int64, double, int32_t, int64_t, double) \
   MACRO(OP, int32, int32, double, int32_t, int32_t, double) \
+  MACRO(OP, int32, uint8, double, int32_t, uint8_t, double) \
+  MACRO(OP, int32, int16, double, int32_t, int16_t, double) \
   MACRO(OP, int32, cpx, cpx, int32_t, cpx_t, cpx_t) \
+  MACRO(OP, uint8, double, double, uint8_t, double, double) \
+  MACRO(OP, uint8, float, float, uint8_t, float, float) \
+  MACRO(OP, uint8, int64, double, uint8_t, int64_t, double) \
+  MACRO(OP, uint8, int32, double, uint8_t, int32_t, double) \
+  MACRO(OP, uint8, uint8, double, uint8_t, uint8_t, double) \
+  MACRO(OP, uint8, int16, double, uint8_t, int16_t, double) \
+  MACRO(OP, uint8, cpx, cpx, uint8_t, cpx_t, cpx_t) \
+  MACRO(OP, int16, double, double, int16_t, double, double) \
+  MACRO(OP, int16, float, float, int16_t, float, float) \
+  MACRO(OP, int16, int64, double, int16_t, int64_t, double) \
+  MACRO(OP, int16, int32, double, int16_t, int32_t, double) \
+  MACRO(OP, int16, uint8, double, int16_t, uint8_t, double) \
+  MACRO(OP, int16, int16, double, int16_t, int16_t, double) \
+  MACRO(OP, int16, cpx, cpx, int16_t, cpx_t, cpx_t) \
   MACRO(OP, cpx, double, cpx, cpx_t, double, cpx_t) \
   MACRO(OP, cpx, float, cpx, cpx_t, float, cpx_t) \
   MACRO(OP, cpx, int64, cpx, cpx_t, int64_t, cpx_t) \
   MACRO(OP, cpx, int32, cpx, cpx_t, int32_t, cpx_t) \
+  MACRO(OP, cpx, uint8, cpx, cpx_t, uint8_t, cpx_t) \
+  MACRO(OP, cpx, int16, cpx, cpx_t, int16_t, cpx_t) \
   MACRO(OP, cpx, cpx, cpx, cpx_t, cpx_t, cpx_t)
 
 #define DECLARE_FFI_HELPER(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr) \

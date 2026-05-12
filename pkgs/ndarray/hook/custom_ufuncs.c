@@ -2759,6 +2759,8 @@ static inline cpx_t cpx_div(cpx_t x, cpx_t y) {
 #define EXPR_float(OP, Ta, Tb, x, y, OP_SYM) ((float)x OP_SYM (float)y)
 #define EXPR_int64(OP, Ta, Tb, x, y, OP_SYM) (x OP_SYM y)
 #define EXPR_int32(OP, Ta, Tb, x, y, OP_SYM) (x OP_SYM y)
+#define EXPR_int16(OP, Ta, Tb, x, y, OP_SYM) (x OP_SYM y)
+#define EXPR_uint8(OP, Ta, Tb, x, y, OP_SYM) (x OP_SYM y)
 #define EXPR_cpx(OP, Ta, Tb, x, y, OP_SYM) cpx_##OP(cpx_from_##Ta(x), cpx_from_##Tb(y))
 
 #define DEFINE_V_UFUNC(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, OP_SYM) \

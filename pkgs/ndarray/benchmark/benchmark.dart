@@ -19,7 +19,7 @@ void main() {
     final b = NDArray<double>.ones([size], DType.float64);
 
     // 1. Benchmark Dart addition
-    ffiThresholds[Operation.add] = size + 1;
+
     for (var i = 0; i < warmup; i++) {
       final r = add(a, b);
       r.dispose();

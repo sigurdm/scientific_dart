@@ -288,13 +288,6 @@ external int LAPACKE_sgeev(
   int ldvr,
 );
 
-/// Operations that can call out to FFI.
-enum Operation { add, matmul }
-
-/// Global configuration for FFI breakover thresholds.
-/// Keys are operation names, values are array size thresholds.
-final Map<Operation, int> ffiThresholds = {Operation.matmul: 1};
-
 /// Configure the number of parallel execution threads used by OpenBLAS at runtime.
 ///
 /// **Preconditions:**
@@ -10368,11 +10361,7 @@ NDArray<T> flipud<T extends Object>(NDArray<T> a) {
 
 
 
-@internal
-DType resolveDType(DType a, DType b) => _resolveDType(a, b);
-
-@internal
-extension ArithmeticNDArrayOperationsHelper<T> on NDArray<T> {
+extension _ArithmeticNDArrayOperationsHelper<T> on NDArray<T> {
   @internal
   void dynamicElementWiseOp<R>(
     NDArray<R> result,
@@ -10685,7 +10674,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot add disposed arrays.');
   }
-  final targetDType = resolveDType(a.dtype, b.dtype);
+  final targetDType = _resolveDType(a.dtype, b.dtype);
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
   final stridesA = broadcastResult.stridesA;
@@ -10707,7 +10696,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 
   // Handle complex64 fallback as in original code
   if ((b.dtype as dynamic) == DType.complex64) {
-    ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
+    _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
       result,
       b,
       commonShape,
@@ -10748,6 +10737,21 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         return result;
       case (DType.float64, DType.int32):
         return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_double_int32_double);
+      case (DType.float64, DType.uint8) when isContig:
+        v_add_double_uint8_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.uint8):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_double_uint8_double);
+      case (DType.float64, DType.int16) when isContig:
+        v_add_double_int16_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.int16):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_double_int16_double);
+      case (DType.float64, DType.complex128) when isContig:
+        v_add_double_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float64, DType.complex128):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_double_cpx_cpx);
       case (DType.float32, DType.float64) when isContig:
         v_add_float_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
@@ -10768,6 +10772,21 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         return result;
       case (DType.float32, DType.int32):
         return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_float_int32_float);
+      case (DType.float32, DType.uint8) when isContig:
+        v_add_float_uint8_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.uint8):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_float_uint8_float);
+      case (DType.float32, DType.int16) when isContig:
+        v_add_float_int16_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.int16):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_float_int16_float);
+      case (DType.float32, DType.complex128) when isContig:
+        v_add_float_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.float32, DType.complex128):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_float_cpx_cpx);
       case (DType.int64, DType.float64) when isContig:
         v_add_int64_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
@@ -10788,6 +10807,21 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         return result;
       case (DType.int64, DType.int32):
         return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int64_int32_int64);
+      case (DType.int64, DType.uint8) when isContig:
+        v_add_int64_uint8_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.uint8):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int64_uint8_int64);
+      case (DType.int64, DType.int16) when isContig:
+        v_add_int64_int16_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.int16):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int64_int16_int64);
+      case (DType.int64, DType.complex128) when isContig:
+        v_add_int64_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int64, DType.complex128):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int64_cpx_cpx);
       case (DType.int32, DType.float64) when isContig:
         v_add_int32_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
         return result;
@@ -10808,13 +10842,133 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         return result;
       case (DType.int32, DType.int32):
         return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int32_int32_int32);
+      case (DType.int32, DType.uint8) when isContig:
+        v_add_int32_uint8_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.uint8):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int32_uint8_int32);
+      case (DType.int32, DType.int16) when isContig:
+        v_add_int32_int16_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.int16):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int32_int16_int32);
+      case (DType.int32, DType.complex128) when isContig:
+        v_add_int32_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int32, DType.complex128):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int32_cpx_cpx);
+      case (DType.uint8, DType.float64) when isContig:
+        v_add_uint8_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.float64):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_uint8_double_double);
+      case (DType.uint8, DType.float32) when isContig:
+        v_add_uint8_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.float32):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_uint8_float_float);
+      case (DType.uint8, DType.int64) when isContig:
+        v_add_uint8_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.int64):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_uint8_int64_int64);
+      case (DType.uint8, DType.int32) when isContig:
+        v_add_uint8_int32_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.int32):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_uint8_int32_int32);
+      case (DType.uint8, DType.uint8) when isContig:
+        v_add_uint8_uint8_uint8(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.uint8):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_uint8_uint8_uint8);
+      case (DType.uint8, DType.int16) when isContig:
+        v_add_uint8_int16_int16(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.int16):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_uint8_int16_int16);
+      case (DType.uint8, DType.complex128) when isContig:
+        v_add_uint8_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.uint8, DType.complex128):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_uint8_cpx_cpx);
+      case (DType.int16, DType.float64) when isContig:
+        v_add_int16_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.float64):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int16_double_double);
+      case (DType.int16, DType.float32) when isContig:
+        v_add_int16_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.float32):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int16_float_float);
+      case (DType.int16, DType.int64) when isContig:
+        v_add_int16_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.int64):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int16_int64_int64);
+      case (DType.int16, DType.int32) when isContig:
+        v_add_int16_int32_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.int32):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int16_int32_int32);
+      case (DType.int16, DType.uint8) when isContig:
+        v_add_int16_uint8_int16(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.uint8):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int16_uint8_int16);
+      case (DType.int16, DType.int16) when isContig:
+        v_add_int16_int16_int16(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.int16):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int16_int16_int16);
+      case (DType.int16, DType.complex128) when isContig:
+        v_add_int16_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.int16, DType.complex128):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_int16_cpx_cpx);
+      case (DType.complex128, DType.float64) when isContig:
+        v_add_cpx_double_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.float64):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_cpx_double_cpx);
+      case (DType.complex128, DType.float32) when isContig:
+        v_add_cpx_float_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.float32):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_cpx_float_cpx);
+      case (DType.complex128, DType.int64) when isContig:
+        v_add_cpx_int64_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.int64):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_cpx_int64_cpx);
+      case (DType.complex128, DType.int32) when isContig:
+        v_add_cpx_int32_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.int32):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_cpx_int32_cpx);
+      case (DType.complex128, DType.uint8) when isContig:
+        v_add_cpx_uint8_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.uint8):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_cpx_uint8_cpx);
+      case (DType.complex128, DType.int16) when isContig:
+        v_add_cpx_int16_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.int16):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_cpx_int16_cpx);
+      case (DType.complex128, DType.complex128) when isContig:
+        v_add_cpx_cpx_cpx(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case (DType.complex128, DType.complex128):
+        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_add_cpx_cpx_cpx);
       default:
         break;
     }
   }
 
   // Fallback to dynamic element-wise operation
-  ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
+  _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
     result,
     b,
     commonShape,
@@ -10897,7 +11051,7 @@ NDArray<R> subtract<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot subtract disposed arrays.');
   }
-  final targetDType = resolveDType(a.dtype, b.dtype);
+  final targetDType = _resolveDType(a.dtype, b.dtype);
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
   final stridesA = broadcastResult.stridesA;
@@ -10916,7 +11070,7 @@ NDArray<R> subtract<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   if (b.dtype == DType.complex64) {
-    ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
+    _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
       result, b, commonShape, stridesA, stridesB, resultStrides, _safeSub, isSubtract: true);
     return result;
   }
@@ -10925,92 +11079,12 @@ NDArray<R> subtract<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
     switch ((a.dtype, b.dtype)) {
-      case (DType.float64, DType.float64) when isContig:
-        v_sub_double_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float64, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_double_double_double);
-      case (DType.float64, DType.float32) when isContig:
-        v_sub_double_float_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float64, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_double_float_double);
-      case (DType.float64, DType.int64) when isContig:
-        v_sub_double_int64_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float64, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_double_int64_double);
-      case (DType.float64, DType.int32) when isContig:
-        v_sub_double_int32_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float64, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_double_int32_double);
-      case (DType.float32, DType.float64) when isContig:
-        v_sub_float_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float32, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_float_double_double);
-      case (DType.float32, DType.float32) when isContig:
-        v_sub_float_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float32, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_float_float_float);
-      case (DType.float32, DType.int64) when isContig:
-        v_sub_float_int64_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float32, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_float_int64_float);
-      case (DType.float32, DType.int32) when isContig:
-        v_sub_float_int32_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float32, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_float_int32_float);
-      case (DType.int64, DType.float64) when isContig:
-        v_sub_int64_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int64, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_int64_double_double);
-      case (DType.int64, DType.float32) when isContig:
-        v_sub_int64_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int64, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_int64_float_float);
-      case (DType.int64, DType.int64) when isContig:
-        v_sub_int64_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int64, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_int64_int64_int64);
-      case (DType.int64, DType.int32) when isContig:
-        v_sub_int64_int32_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int64, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_int64_int32_int64);
-      case (DType.int32, DType.float64) when isContig:
-        v_sub_int32_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int32, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_int32_double_double);
-      case (DType.int32, DType.float32) when isContig:
-        v_sub_int32_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int32, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_int32_float_float);
-      case (DType.int32, DType.int64) when isContig:
-        v_sub_int32_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int32, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_int32_int64_int64);
-      case (DType.int32, DType.int32) when isContig:
-        v_sub_int32_int32_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int32, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_sub_int32_int32_int32);
       default:
         break;
     }
   }
 
-  ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
+  _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
     result, b, commonShape, stridesA, stridesB, resultStrides, _safeSub, isSubtract: true);
   return result;
 }
@@ -11020,7 +11094,7 @@ NDArray<R> multiply<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot multiply disposed arrays.');
   }
-  final targetDType = resolveDType(a.dtype, b.dtype);
+  final targetDType = _resolveDType(a.dtype, b.dtype);
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
   final stridesA = broadcastResult.stridesA;
@@ -11039,7 +11113,7 @@ NDArray<R> multiply<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   if (b.dtype == DType.complex64) {
-    ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
+    _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
       result, b, commonShape, stridesA, stridesB, resultStrides, _safeMul);
     return result;
   }
@@ -11048,92 +11122,12 @@ NDArray<R> multiply<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
     switch ((a.dtype, b.dtype)) {
-      case (DType.float64, DType.float64) when isContig:
-        v_mul_double_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float64, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_double_double_double);
-      case (DType.float64, DType.float32) when isContig:
-        v_mul_double_float_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float64, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_double_float_double);
-      case (DType.float64, DType.int64) when isContig:
-        v_mul_double_int64_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float64, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_double_int64_double);
-      case (DType.float64, DType.int32) when isContig:
-        v_mul_double_int32_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float64, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_double_int32_double);
-      case (DType.float32, DType.float64) when isContig:
-        v_mul_float_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float32, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_float_double_double);
-      case (DType.float32, DType.float32) when isContig:
-        v_mul_float_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float32, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_float_float_float);
-      case (DType.float32, DType.int64) when isContig:
-        v_mul_float_int64_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float32, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_float_int64_float);
-      case (DType.float32, DType.int32) when isContig:
-        v_mul_float_int32_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float32, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_float_int32_float);
-      case (DType.int64, DType.float64) when isContig:
-        v_mul_int64_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int64, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_int64_double_double);
-      case (DType.int64, DType.float32) when isContig:
-        v_mul_int64_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int64, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_int64_float_float);
-      case (DType.int64, DType.int64) when isContig:
-        v_mul_int64_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int64, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_int64_int64_int64);
-      case (DType.int64, DType.int32) when isContig:
-        v_mul_int64_int32_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int64, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_int64_int32_int64);
-      case (DType.int32, DType.float64) when isContig:
-        v_mul_int32_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int32, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_int32_double_double);
-      case (DType.int32, DType.float32) when isContig:
-        v_mul_int32_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int32, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_int32_float_float);
-      case (DType.int32, DType.int64) when isContig:
-        v_mul_int32_int64_int64(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int32, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_int32_int64_int64);
-      case (DType.int32, DType.int32) when isContig:
-        v_mul_int32_int32_int32(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int32, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_mul_int32_int32_int32);
       default:
         break;
     }
   }
 
-  ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
+  _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
     result, b, commonShape, stridesA, stridesB, resultStrides, _safeMul);
   return result;
 }
@@ -11143,7 +11137,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot divide disposed arrays.');
   }
-  var targetDType = resolveDType(a.dtype, b.dtype);
+  var targetDType = _resolveDType(a.dtype, b.dtype);
   if (targetDType.isInteger) {
     targetDType = DType.float64;
   }
@@ -11165,7 +11159,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   if (b.dtype == DType.complex64) {
-    ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
+    _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
       result, b, commonShape, stridesA, stridesB, resultStrides, _safeDiv, isDivide: true);
     return result;
   }
@@ -11174,92 +11168,12 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
     switch ((a.dtype, b.dtype)) {
-      case (DType.float64, DType.float64) when isContig:
-        v_div_double_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float64, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_double_double_double);
-      case (DType.float64, DType.float32) when isContig:
-        v_div_double_float_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float64, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_double_float_double);
-      case (DType.float64, DType.int64) when isContig:
-        v_div_double_int64_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float64, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_double_int64_double);
-      case (DType.float64, DType.int32) when isContig:
-        v_div_double_int32_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float64, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_double_int32_double);
-      case (DType.float32, DType.float64) when isContig:
-        v_div_float_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float32, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_float_double_double);
-      case (DType.float32, DType.float32) when isContig:
-        v_div_float_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float32, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_float_float_float);
-      case (DType.float32, DType.int64) when isContig:
-        v_div_float_int64_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float32, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_float_int64_float);
-      case (DType.float32, DType.int32) when isContig:
-        v_div_float_int32_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.float32, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_float_int32_float);
-      case (DType.int64, DType.float64) when isContig:
-        v_div_int64_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int64, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_int64_double_double);
-      case (DType.int64, DType.float32) when isContig:
-        v_div_int64_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int64, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_int64_float_float);
-      case (DType.int64, DType.int64) when isContig:
-        v_div_int64_int64_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int64, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_int64_int64_double);
-      case (DType.int64, DType.int32) when isContig:
-        v_div_int64_int32_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int64, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_int64_int32_double);
-      case (DType.int32, DType.float64) when isContig:
-        v_div_int32_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int32, DType.float64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_int32_double_double);
-      case (DType.int32, DType.float32) when isContig:
-        v_div_int32_float_float(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int32, DType.float32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_int32_float_float);
-      case (DType.int32, DType.int64) when isContig:
-        v_div_int32_int64_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int32, DType.int64):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_int32_int64_double);
-      case (DType.int32, DType.int32) when isContig:
-        v_div_int32_int32_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
-        return result;
-      case (DType.int32, DType.int32):
-        return _stridedAdd(a, b, result, commonShape, stridesA, stridesB, resultStrides, s_div_int32_int32_double);
       default:
         break;
     }
   }
 
-  ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
+  _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
     result, b, commonShape, stridesA, stridesB, resultStrides, _safeDiv, isDivide: true);
   return result;
 }

@@ -283,7 +283,7 @@ void main() {
         ], DType.float64);
 
         // Force Dart path
-        ffiThresholds[Operation.add] = 10000;
+
 
         final c = add(a, b);
         expect(c.shape, [2, 2]);
