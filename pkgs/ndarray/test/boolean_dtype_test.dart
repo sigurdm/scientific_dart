@@ -80,5 +80,18 @@ void main() {
         // Success! Confirms zero-copy C heap pointer sharing works flawlessly on boolean bytes!
       }),
     );
+
+    test(
+      'Boolean array arithmetic (addition) falls through to uint8',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([true, false, true], [3], DType.boolean);
+        final b = NDArray.fromList([true, true, false], [3], DType.boolean);
+
+        final result = add(a, b);
+
+        expect(result.dtype, DType.uint8);
+        expect(result.toList(), [2, 1, 1]);
+      }),
+    );
   });
 }

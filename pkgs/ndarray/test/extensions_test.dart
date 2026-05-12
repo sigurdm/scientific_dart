@@ -45,7 +45,11 @@ void main() {
 
           // out incompatible shape/dtype throws ArgumentError
           expect(
-            () => add<double, double, double>(a, b, out: NDArray<Float64>.create([3], DType.float64)),
+            () => add<double, double, double>(
+              a,
+              b,
+              out: NDArray<Float64>.create([3], DType.float64),
+            ),
             throwsArgumentError,
           );
 
@@ -72,10 +76,22 @@ void main() {
           expect(divide(a, i64).toList(), [1.0, 1.0, 1.0, 1.0]);
 
           // Mixed Scalar
-          expect(add(a, NDArray.fromList([10.0], [1], DType.float64)).toList(), [11.0, 12.0, 13.0, 14.0]);
-          expect(subtract(a, NDArray.fromList([1.0], [1], DType.float64)).toList(), [0.0, 1.0, 2.0, 3.0]);
-          expect(multiply(a, NDArray.fromList([2.0], [1], DType.float64)).toList(), [2.0, 4.0, 6.0, 8.0]);
-          expect(divide(a, NDArray.fromList([0.5], [1], DType.float64)).toList(), [2.0, 4.0, 6.0, 8.0]);
+          expect(
+            add(a, NDArray.fromList([10.0], [1], DType.float64)).toList(),
+            [11.0, 12.0, 13.0, 14.0],
+          );
+          expect(
+            subtract(a, NDArray.fromList([1.0], [1], DType.float64)).toList(),
+            [0.0, 1.0, 2.0, 3.0],
+          );
+          expect(
+            multiply(a, NDArray.fromList([2.0], [1], DType.float64)).toList(),
+            [2.0, 4.0, 6.0, 8.0],
+          );
+          expect(
+            divide(a, NDArray.fromList([0.5], [1], DType.float64)).toList(),
+            [2.0, 4.0, 6.0, 8.0],
+          );
         });
       },
     );
@@ -118,7 +134,11 @@ void main() {
 
           // Incompatible recycler
           expect(
-            () => add<double, double, double>(a, b, out: NDArray<Float32>.create([3], DType.float32)),
+            () => add<double, double, double>(
+              a,
+              b,
+              out: NDArray<Float32>.create([3], DType.float32),
+            ),
             throwsArgumentError,
           );
 
@@ -134,10 +154,22 @@ void main() {
           expect(divide(a, f64).toList(), [1.0, 1.0, 1.0, 1.0]);
 
           // Mixed Scalar
-          expect(add(a, NDArray.fromList([10.0], [1], DType.float32)).toList(), [11.0, 12.0, 13.0, 14.0]);
-          expect(subtract(a, NDArray.fromList([1.0], [1], DType.float32)).toList(), [0.0, 1.0, 2.0, 3.0]);
-          expect(multiply(a, NDArray.fromList([2.0], [1], DType.float32)).toList(), [2.0, 4.0, 6.0, 8.0]);
-          expect(divide(a, NDArray.fromList([0.5], [1], DType.float32)).toList(), [2.0, 4.0, 6.0, 8.0]);
+          expect(
+            add(a, NDArray.fromList([10.0], [1], DType.float32)).toList(),
+            [11.0, 12.0, 13.0, 14.0],
+          );
+          expect(
+            subtract(a, NDArray.fromList([1.0], [1], DType.float32)).toList(),
+            [0.0, 1.0, 2.0, 3.0],
+          );
+          expect(
+            multiply(a, NDArray.fromList([2.0], [1], DType.float32)).toList(),
+            [2.0, 4.0, 6.0, 8.0],
+          );
+          expect(
+            divide(a, NDArray.fromList([0.5], [1], DType.float32)).toList(),
+            [2.0, 4.0, 6.0, 8.0],
+          );
         });
       },
     );
@@ -171,15 +203,26 @@ void main() {
           expect(add<int, int, int>(a, b, out: intoBuf), intoBuf);
 
           final intoDoubleBuf = NDArray<Float64>.create([2, 2], DType.float64);
-          expect(divide<int, int, double>(b, a, out: intoDoubleBuf), intoDoubleBuf);
+          expect(
+            divide<int, int, double>(b, a, out: intoDoubleBuf),
+            intoDoubleBuf,
+          );
 
           // Incompatible recycler
           expect(
-            () => add<int, int, int>(a, b, out: NDArray<Int64>.create([3], DType.int64)),
+            () => add<int, int, int>(
+              a,
+              b,
+              out: NDArray<Int64>.create([3], DType.int64),
+            ),
             throwsArgumentError,
           );
           expect(
-            () => divide<int, int, double>(b, a, out: NDArray<Float64>.create([3], DType.float64)),
+            () => divide<int, int, double>(
+              b,
+              a,
+              out: NDArray<Float64>.create([3], DType.float64),
+            ),
             throwsArgumentError,
           );
 
@@ -194,9 +237,20 @@ void main() {
           expect(multiply(a, f64).toList(), [1.0, 4.0, 9.0, 16.0]);
 
           // Mixed Scalar
-          expect(add(a, NDArray.fromList([10], [1], DType.int64)).toList(), [11, 12, 13, 14]);
-          expect(subtract(a, NDArray.fromList([1], [1], DType.int64)).toList(), [0, 1, 2, 3]);
-          expect(multiply(a, NDArray.fromList([2], [1], DType.int64)).toList(), [2, 4, 6, 8]);
+          expect(add(a, NDArray.fromList([10], [1], DType.int64)).toList(), [
+            11,
+            12,
+            13,
+            14,
+          ]);
+          expect(
+            subtract(a, NDArray.fromList([1], [1], DType.int64)).toList(),
+            [0, 1, 2, 3],
+          );
+          expect(
+            multiply(a, NDArray.fromList([2], [1], DType.int64)).toList(),
+            [2, 4, 6, 8],
+          );
         });
       },
     );
@@ -230,15 +284,26 @@ void main() {
           expect(add<int, int, int>(a, b, out: intoBuf), intoBuf);
 
           final intoDoubleBuf = NDArray<Float64>.create([2, 2], DType.float64);
-          expect(divide<int, int, double>(b, a, out: intoDoubleBuf), intoDoubleBuf);
+          expect(
+            divide<int, int, double>(b, a, out: intoDoubleBuf),
+            intoDoubleBuf,
+          );
 
           // Incompatible recycler
           expect(
-            () => add<int, int, int>(a, b, out: NDArray<Int32>.create([3], DType.int32)),
+            () => add<int, int, int>(
+              a,
+              b,
+              out: NDArray<Int32>.create([3], DType.int32),
+            ),
             throwsArgumentError,
           );
           expect(
-            () => divide<int, int, double>(b, a, out: NDArray<Float64>.create([3], DType.float64)),
+            () => divide<int, int, double>(
+              b,
+              a,
+              out: NDArray<Float64>.create([3], DType.float64),
+            ),
             throwsArgumentError,
           );
 
@@ -249,9 +314,20 @@ void main() {
           expect(multiply(a, i64).toList(), [1, 4, 9, 16]);
 
           // Mixed Scalar
-          expect(add(a, NDArray.fromList([10], [1], DType.int32)).toList(), [11, 12, 13, 14]);
-          expect(subtract(a, NDArray.fromList([1], [1], DType.int32)).toList(), [0, 1, 2, 3]);
-          expect(multiply(a, NDArray.fromList([2], [1], DType.int32)).toList(), [2, 4, 6, 8]);
+          expect(add(a, NDArray.fromList([10], [1], DType.int32)).toList(), [
+            11,
+            12,
+            13,
+            14,
+          ]);
+          expect(
+            subtract(a, NDArray.fromList([1], [1], DType.int32)).toList(),
+            [0, 1, 2, 3],
+          );
+          expect(
+            multiply(a, NDArray.fromList([2], [1], DType.int32)).toList(),
+            [2, 4, 6, 8],
+          );
         });
       },
     );
@@ -295,11 +371,18 @@ void main() {
           final aView = a.slice([const Slice(start: 0, stop: 2, step: 1)]);
           final bView = b.slice([const Slice(start: 0, stop: 2, step: 1)]);
           final intoBuf = NDArray<Complex>.create([2], DType.complex128);
-          expect(add<Complex, Complex, Complex>(aView, bView, out: intoBuf), intoBuf);
+          expect(
+            add<Complex, Complex, Complex>(aView, bView, out: intoBuf),
+            intoBuf,
+          );
 
           // Incompatible recycler
           expect(
-            () => add<Complex, Complex, Complex>(a, b, out: NDArray<Complex>.create([3], DType.complex128)),
+            () => add<Complex, Complex, Complex>(
+              a,
+              b,
+              out: NDArray<Complex>.create([3], DType.complex128),
+            ),
             throwsArgumentError,
           );
 
@@ -337,10 +420,34 @@ void main() {
           expect(resDivI64.toList()[0].real, 1.0);
 
           // Mixed Scalar
-          expect(add(a, NDArray.fromList([Complex(10, 10)], [1], DType.complex128)).toList()[0].real, 11.0);
-          expect(subtract(a, NDArray.fromList([Complex(1, 1)], [1], DType.complex128)).toList()[0].real, 0.0);
-          expect(multiply(a, NDArray.fromList([Complex(2.0, 0.0)], [1], DType.complex128)).toList()[0].real, 2.0);
-          expect(divide(a, NDArray.fromList([Complex(0.5, 0.0)], [1], DType.complex128)).toList()[0].real, 2.0);
+          expect(
+            add(
+              a,
+              NDArray.fromList([Complex(10, 10)], [1], DType.complex128),
+            ).toList()[0].real,
+            11.0,
+          );
+          expect(
+            subtract(
+              a,
+              NDArray.fromList([Complex(1, 1)], [1], DType.complex128),
+            ).toList()[0].real,
+            0.0,
+          );
+          expect(
+            multiply(
+              a,
+              NDArray.fromList([Complex(2.0, 0.0)], [1], DType.complex128),
+            ).toList()[0].real,
+            2.0,
+          );
+          expect(
+            divide(
+              a,
+              NDArray.fromList([Complex(0.5, 0.0)], [1], DType.complex128),
+            ).toList()[0].real,
+            2.0,
+          );
         });
       },
     );

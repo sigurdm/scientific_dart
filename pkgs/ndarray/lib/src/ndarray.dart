@@ -9,7 +9,6 @@ import 'ndarray_bindings.dart';
 
 import 'operations.dart' as ops;
 
-
 /// Supported data types for the elements of an [NDArray].
 extension type const Float64(double value) implements double {}
 extension type const Float32(double value) implements double {}
@@ -235,7 +234,7 @@ final class NDArray<T> implements ffi.Finalizable {
   NDArray get _rootParent {
     var current = this as NDArray;
     while (current._parent != null) {
-      current = current._parent!;
+      current = current._parent;
     }
     return current;
   }

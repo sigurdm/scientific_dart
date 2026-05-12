@@ -6,8 +6,6 @@ import 'ndarray_bindings.dart';
 import 'ndarray.dart';
 import 'operations.dart';
 
-
-
 bool _listEquals(List<int> a, List<int> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {

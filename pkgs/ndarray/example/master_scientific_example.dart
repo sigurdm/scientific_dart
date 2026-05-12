@@ -20,8 +20,9 @@ void main() {
   for (var i = 0; i < numPoints; i++) {
     final t = i / samplingRate;
     timeData[i] = Float64(t);
-    pureData[i] =
-        Float64(5.0 * math.sin(2.0 * math.pi * 10.0 * t)); // 10Hz sine wave, amplitude 5
+    pureData[i] = Float64(
+      5.0 * math.sin(2.0 * math.pi * 10.0 * t),
+    ); // 10Hz sine wave, amplitude 5
   }
   print('1. Generated pure 10 Hz sine wave signal (size: 128 points).');
 

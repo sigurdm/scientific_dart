@@ -284,7 +284,6 @@ void main() {
 
         // Force Dart path
 
-
         final c = add(a, b);
         expect(c.shape, [2, 2]);
         expect(c.data, [11.0, 22.0, 33.0, 44.0]);
