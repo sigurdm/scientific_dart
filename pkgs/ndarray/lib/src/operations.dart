@@ -10707,19 +10707,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 
   final resultStrides = NDArray.computeCStrides(commonShape);
 
-  // Handle complex64 fallback as in original code
-  if ((b.dtype as dynamic) == DType.complex64) {
-    _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
-      result,
-      b,
-      commonShape,
-      stridesA,
-      stridesB,
-      resultStrides,
-      _safeAdd,
-    );
-    return result;
-  }
+
 
   // Specialized paths for Float64 (as in original extensions.dart)
     final isContig =
@@ -11142,11 +11130,7 @@ NDArray<R> subtract<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
 
   final resultStrides = NDArray.computeCStrides(commonShape);
 
-  if (b.dtype == DType.complex64) {
-    _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
-      result, b, commonShape, stridesA, stridesB, resultStrides, _safeSub, isSubtract: true);
-    return result;
-  }
+
 
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
@@ -11490,11 +11474,7 @@ NDArray<R> multiply<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
 
   final resultStrides = NDArray.computeCStrides(commonShape);
 
-  if (b.dtype == DType.complex64) {
-    _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
-      result, b, commonShape, stridesA, stridesB, resultStrides, _safeMul);
-    return result;
-  }
+
 
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
@@ -11842,11 +11822,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 
   final resultStrides = NDArray.computeCStrides(commonShape);
 
-  if (b.dtype == DType.complex64) {
-    _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
-      result, b, commonShape, stridesA, stridesB, resultStrides, _safeDiv, isDivide: true);
-    return result;
-  }
+
 
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
