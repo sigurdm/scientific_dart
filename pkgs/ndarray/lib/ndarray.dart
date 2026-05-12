@@ -1,7 +1,7 @@
 library;
 
 export 'src/ndarray.dart';
-export 'src/binary_ops.dart';
+
 export 'src/extensions.dart';
 export 'src/broadcasting.dart';
 export 'src/operations.dart'

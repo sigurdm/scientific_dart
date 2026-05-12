@@ -32,7 +32,8 @@ Before starting, mark the item in FINDINGS.md as `[CLAIMED: <agent_id>]`.
 After finishing, remove the problem from FINDINGS.md, and leave a description of the work in `done/`. 
 If there are questions you cannot solve, describe them in QUESTIONS.md for me to help you async.
 If any item in FINDINGS.md is annotated with `NEXT` chose that one. If there are multiple `NEXT` annotations, chose one randomly. If there are none, then chose any.
-4. Try to look holistically at ndarray and think about what could be improved. Compare with what numpy can do and see what's missing. Write down your ideas in FINDINGS.md. 
+4. Try to look holistically at ndarray and think about what could be improved. Compare with what numpy can do and see what's missing. Write down your ideas in ISSUES
+.md. 
 5. Optimization: Find a slow benchmark (always write a numpy equivalent) and try to catch up. Or if you have any other ideas how to improve the performance, try it out. First write a benchmark to show the performance difference, fix it, then write a benchmark to show the improvement. Consider using a profiler to find bottlenecks if they are not obvious. Create a note in `done/` about what was done.
 6. Documentation: Find a file in the repo and make sure all api members are documented and the documentation is correct and with usage examples where applicable. If not, fix it and leave a description of the work in `done/`.
 7. Same as 3.

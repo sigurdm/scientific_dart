@@ -2745,6 +2745,8 @@ static inline cpx_t cpx_from_double(double v) { return (cpx_t){v, 0.0}; }
 static inline cpx_t cpx_from_float(float v) { return (cpx_t){(double)v, 0.0}; }
 static inline cpx_t cpx_from_int64(int64_t v) { return (cpx_t){(double)v, 0.0}; }
 static inline cpx_t cpx_from_int32(int32_t v) { return (cpx_t){(double)v, 0.0}; }
+static inline cpx_t cpx_from_uint8(uint8_t v) { return (cpx_t){(double)v, 0.0}; }
+static inline cpx_t cpx_from_int16(int16_t v) { return (cpx_t){(double)v, 0.0}; }
 static inline cpx_t cpx_from_cpx(cpx_t v) { return v; }
 
 static inline cpx_t cpx_div(cpx_t x, cpx_t y) {

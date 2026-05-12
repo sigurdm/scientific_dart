@@ -8,7 +8,7 @@ import 'broadcasting.dart';
 import 'ndarray_bindings.dart';
 
 import 'operations.dart' as ops;
-import 'binary_ops.dart';
+
 
 /// Supported data types for the elements of an [NDArray].
 extension type const Float64(double value) implements double {}
@@ -1789,25 +1789,25 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Element-wise addition with full broadcasting support.
   NDArray operator +(dynamic other) {
     final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
-    return add(this, otherArr);
+    return ops.add(this, otherArr);
   }
 
   /// Element-wise subtraction with full broadcasting support.
   NDArray operator -(dynamic other) {
     final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
-    return subtract(this, otherArr);
+    return ops.subtract(this, otherArr);
   }
 
   /// Element-wise multiplication with full broadcasting support.
   NDArray operator *(dynamic other) {
     final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
-    return multiply(this, otherArr);
+    return ops.multiply(this, otherArr);
   }
 
   /// Element-wise division with full broadcasting support.
   NDArray operator /(dynamic other) {
     final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
-    return divide(this, otherArr);
+    return ops.divide(this, otherArr);
   }
 
   /// Element-wise floor division with full broadcasting support.
