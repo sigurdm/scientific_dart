@@ -10361,6 +10361,8 @@ NDArray<T> flipud<T extends Object>(NDArray<T> a) {
 
 
 
+final _stridedOpBuffer = malloc<ffi.Int>(32);
+
 extension _ArithmeticNDArrayOperationsHelper<T> on NDArray<T> {
   @internal
   void dynamicElementWiseOp<R>(
@@ -10716,10 +10718,10 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         result.isContiguous &&
         listEquals(a.shape, b.shape);
 
-    final cShape = malloc<ffi.Int>(commonShape.length);
-    final cStridesA = malloc<ffi.Int>(stridesA.length);
-    final cStridesB = malloc<ffi.Int>(stridesB.length);
-    final cStridesRes = malloc<ffi.Int>(resultStrides.length);
+    final cShape = _stridedOpBuffer;
+    final cStridesA = _stridedOpBuffer.elementAt(8);
+    final cStridesB = _stridedOpBuffer.elementAt(16);
+    final cStridesRes = _stridedOpBuffer.elementAt(24);
 
     for (var i = 0; i < commonShape.length; i++) {
       cShape[i] = commonShape[i];
@@ -10727,8 +10729,6 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
       cStridesB[i] = stridesB[i];
       cStridesRes[i] = resultStrides[i];
     }
-
-    try {
       switch ((a.dtype, b.dtype)) {
       case (DType.float64, DType.float64) when isContig:
         v_add_double_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
@@ -11027,12 +11027,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
       default:
         break;
     }
-    } finally {
-      malloc.free(cShape);
-      malloc.free(cStridesA);
-      malloc.free(cStridesB);
-      malloc.free(cStridesRes);
-    }
+
   }
 
   // Fallback to dynamic element-wise operation
@@ -11146,10 +11141,10 @@ NDArray<R> subtract<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
   if (commonShape.length <= 8) {
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
-    final cShape = malloc<ffi.Int>(commonShape.length);
-    final cStridesA = malloc<ffi.Int>(stridesA.length);
-    final cStridesB = malloc<ffi.Int>(stridesB.length);
-    final cStridesRes = malloc<ffi.Int>(resultStrides.length);
+    final cShape = _stridedOpBuffer;
+    final cStridesA = _stridedOpBuffer.elementAt(8);
+    final cStridesB = _stridedOpBuffer.elementAt(16);
+    final cStridesRes = _stridedOpBuffer.elementAt(24);
 
     for (var i = 0; i < commonShape.length; i++) {
       cShape[i] = commonShape[i];
@@ -11157,8 +11152,6 @@ NDArray<R> subtract<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
       cStridesB[i] = stridesB[i];
       cStridesRes[i] = resultStrides[i];
     }
-
-    try {
       switch ((a.dtype, b.dtype)) {
       case (DType.float64, DType.float64) when isContig:
         v_sub_double_double_double(a.pointer.cast(), b.pointer.cast(), result.pointer.cast(), a.size);
@@ -11457,12 +11450,7 @@ NDArray<R> subtract<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
       default:
         break;
     }
-    } finally {
-      malloc.free(cShape);
-      malloc.free(cStridesA);
-      malloc.free(cStridesB);
-      malloc.free(cStridesRes);
-    }
+
   }
 
   _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
@@ -11502,10 +11490,10 @@ NDArray<R> multiply<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
   if (commonShape.length <= 8) {
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
-    final cShape = malloc<ffi.Int>(commonShape.length);
-    final cStridesA = malloc<ffi.Int>(stridesA.length);
-    final cStridesB = malloc<ffi.Int>(stridesB.length);
-    final cStridesRes = malloc<ffi.Int>(resultStrides.length);
+    final cShape = _stridedOpBuffer;
+    final cStridesA = _stridedOpBuffer.elementAt(8);
+    final cStridesB = _stridedOpBuffer.elementAt(16);
+    final cStridesRes = _stridedOpBuffer.elementAt(24);
 
     for (var i = 0; i < commonShape.length; i++) {
       cShape[i] = commonShape[i];
@@ -11513,8 +11501,6 @@ NDArray<R> multiply<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
       cStridesB[i] = stridesB[i];
       cStridesRes[i] = resultStrides[i];
     }
-
-    try {
       switch ((a.dtype, b.dtype)) {
 // MUL cases
       case (DType.float64, DType.float64) when isContig:
@@ -11814,12 +11800,7 @@ NDArray<R> multiply<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) 
       default:
         break;
     }
-    } finally {
-      malloc.free(cShape);
-      malloc.free(cStridesA);
-      malloc.free(cStridesB);
-      malloc.free(cStridesRes);
-    }
+
   }
 
   _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
@@ -11862,10 +11843,10 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   if (commonShape.length <= 8) {
     final isContig = a.isContiguous && b.isContiguous && result.isContiguous && listEquals(a.shape, b.shape);
 
-    final cShape = malloc<ffi.Int>(commonShape.length);
-    final cStridesA = malloc<ffi.Int>(stridesA.length);
-    final cStridesB = malloc<ffi.Int>(stridesB.length);
-    final cStridesRes = malloc<ffi.Int>(resultStrides.length);
+    final cShape = _stridedOpBuffer;
+    final cStridesA = _stridedOpBuffer.elementAt(8);
+    final cStridesB = _stridedOpBuffer.elementAt(16);
+    final cStridesRes = _stridedOpBuffer.elementAt(24);
 
     for (var i = 0; i < commonShape.length; i++) {
       cShape[i] = commonShape[i];
@@ -11873,8 +11854,6 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
       cStridesB[i] = stridesB[i];
       cStridesRes[i] = resultStrides[i];
     }
-
-    try {
       switch ((a.dtype, b.dtype)) {
 
 // DIV cases
@@ -12175,12 +12154,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
       default:
         break;
     }
-    } finally {
-      malloc.free(cShape);
-      malloc.free(cStridesA);
-      malloc.free(cStridesB);
-      malloc.free(cStridesRes);
-    }
+
   }
 
   _ArithmeticNDArrayOperationsHelper(a).dynamicElementWiseOp(
