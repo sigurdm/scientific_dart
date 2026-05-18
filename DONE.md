@@ -2496,3 +2496,24 @@
   - **Triple Backtick Restoration**: Repaired broken triple backticks in code blocks that were accidentally corrupted during regex-based automated cleanup phases.
 * **Results**:
   - **Verification**: Verified that the package compiles flawlessly with 0 analyzer warnings and 0 errors. All **438 package unit tests pass flawlessly green!**
+
+***
+
+## 210. Offloaded Complex Matrix Multiplication `matmul()` to Native BLAS `cblas_cgemm` / `cblas_zgemm` (Task 5 / Same as 3 / Findings Fix)
+* **What was done**:
+  - **Integration & offloading of complex GEMM**: Resolved Section 2.1 Issue in `ISSUES.md`. Leveraged native highly-optimized CBLAS routines **`cblas_cgemm`** (Complex64) and **`cblas_zgemm`** (Complex128) for unmanaged AOT matrix multiplication runs.
+  - **FFI Bindings centralization**: Defined these routines natively in [openblas_extensions.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/openblas/lib/src/openblas_extensions.dart) and exposed them to the `ndarray` operations layer.
+  - **Operations routing**: Refactored `matmul()` in [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart) to resolve `targetDType` for complex matrices, passing their interleaved double/float pointers directly down to native GEMM solvers.
+* **Results**:
+  - **Verification**: Authored new targeted unit tests in [complex_matmul_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/complex_matmul_test.dart) verifying contiguous, transposed, and sliced non-contiguous sub-views multiplications. All package unit tests pass flawlessly green!
+
+***
+
+## 211. Implemented Premium Numerical Solvers `linalg.lstsq` and `linalg.multi_dot`
+* **What was done**:
+  - **SVD Least-Squares Solver (`lstsq`)**: Implemented a generic, strongly-typed least-squares solver `lstsq()` wrapping native LAPACK divide-and-conquer SVD routines (`dgelsd`, `sgelsd`, `zgelsd`, `cgelsd`). Offloads both copying and type upcasting to a custom C-level FFI helper.
+  - **Zero-Allocation FFI Copy & Cast Helper**: Wrote a type-independent native FFI helper `copy_and_cast_strided` in C to flatten strided array views and cast their types in a single native pass, bypassing JIT allocations and GC overhead. Incorporated a hardware-level `memcpy` fast-path for matching contiguous layouts.
+  - **Optimal Matrix Chain Optimizer (`multi_dot`)**: Implemented `multi_dot()` matrix chain optimizer using $O(N^3)$ dynamic programming. Automatically resolves the fastest evaluation order and disposes of all intermediate transient matrices to ensure 100% memory safety.
+  - **Matmul Recycler Out Buffer**: Updated `matmul()` signature and bodies to support the recycler `out` parameter, allowing zero-allocation target writes.
+* **Results**:
+  - **Verification**: Authored 11 comprehensive unit test groups in [linear_algebra_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/linear_algebra_test.dart) validating over/under-determined systems, rank-deficient matrices, complex systems, upcasting, chain order, and `out` recyclers. Added full executable examples. All unit tests pass perfectly!

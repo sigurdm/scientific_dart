@@ -10916,6 +10916,27 @@ external void s_cast_double_to_int16(
   int rank,
 );
 
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void copy_and_cast_strided(
+  int src_type,
+  ffi.Pointer<ffi.Void> src_ptr,
+  ffi.Pointer<ffi.Int> strides_src,
+  int dest_type,
+  ffi.Pointer<ffi.Void> dest_ptr,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
 typedef ptrdiff_t = ffi.Long;
 typedef Dartptrdiff_t = int;
 

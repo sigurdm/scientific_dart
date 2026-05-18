@@ -141,7 +141,7 @@ List<int> _broadcastStackShapes(List<int> sA, List<int> sB) {
 }
 
 /// Matrix multiplication using OpenBLAS, supporting high-dimensional stack broadcasting and 1D vector promotions.
-NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b) {
+NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   final targetDType = _resolveDType(a.dtype, b.dtype);
 
   if (a.shape.length == 1 && b.shape.length == 1) {
@@ -151,6 +151,13 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b) {
         'Incompatible vector dimensions for 1D dot product in matmul: ${a.shape} and ${b.shape}',
       );
     }
+    if (out != null) {
+      if (!listEquals(out.shape, []) || out.dtype != targetDType) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype (expected shape [] and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).',
+        );
+      }
+    }
     if (targetDType == DType.float64) {
       final scalarRes = cblas_ddot(
         n,
@@ -159,7 +166,13 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b) {
         b.pointer.cast<ffi.Double>(),
         1,
       );
-      return NDArray.fromList([scalarRes], [], DType.float64) as NDArray<R>;
+      final result =
+          out ??
+          (NDArray.fromList([scalarRes], [], DType.float64) as NDArray<R>);
+      if (out != null) {
+        out.data[0] = scalarRes as R;
+      }
+      return result;
     } else if (targetDType == DType.float32) {
       final scalarRes = cblas_sdot(
         n,
@@ -168,7 +181,13 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b) {
         b.pointer.cast<ffi.Float>(),
         1,
       );
-      return NDArray.fromList([scalarRes], [], DType.float32) as NDArray<R>;
+      final result =
+          out ??
+          (NDArray.fromList([scalarRes], [], DType.float32) as NDArray<R>);
+      if (out != null) {
+        out.data[0] = scalarRes as R;
+      }
+      return result;
     }
   }
 
@@ -228,6 +247,26 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b) {
   final stackA = aView.shape.sublist(0, rankA - 2);
   final stackB = bView.shape.sublist(0, rankB - 2);
   final broadcastStack = _broadcastStackShapes(stackA, stackB);
+
+  final expectedFinalShape = <int>[];
+  if (aPromoted && bPromoted) {
+    // empty []
+  } else if (aPromoted) {
+    expectedFinalShape.addAll([...broadcastStack, n]);
+  } else if (bPromoted) {
+    expectedFinalShape.addAll([...broadcastStack, m]);
+  } else {
+    expectedFinalShape.addAll([...broadcastStack, m, n]);
+  }
+
+  if (out != null) {
+    if (!listEquals(out.shape, expectedFinalShape) ||
+        out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype (expected shape $expectedFinalShape and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).',
+      );
+    }
+  }
 
   final resShape = [...broadcastStack, m, n];
   final result = NDArray.zeros(resShape, targetDType as dynamic);
@@ -410,6 +449,28 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b) {
   if (alphaC.address != 0) malloc.free(alphaC);
   if (betaC.address != 0) malloc.free(betaC);
 
+  if (out != null) {
+    if (out.isContiguous && result.isContiguous) {
+      final byteCount = result.data.length * targetDType.byteWidth;
+      ffi.Pointer.fromAddress(out.pointer.address)
+          .cast<ffi.Uint8>()
+          .asTypedList(byteCount)
+          .setAll(
+            0,
+            ffi.Pointer.fromAddress(
+              result.pointer.address,
+            ).cast<ffi.Uint8>().asTypedList(byteCount),
+          );
+    } else {
+      final resFlat = result.toList();
+      for (var i = 0; i < resFlat.length; i++) {
+        out.data[i] = resFlat[i] as R;
+      }
+    }
+    result.dispose();
+    return out;
+  }
+
   // Post-calculation 1D dummy dimensions demotions
   if (aPromoted && bPromoted) {
     return result.reshape([])
@@ -425,6 +486,192 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b) {
   }
 
   return result as NDArray<R>;
+}
+
+/// Computes the product of two or more arrays in a single function call,
+/// while automatically selecting the fastest evaluation order.
+///
+/// Solves the matrix chain multiplication problem using standard dynamic programming in $O(N^3)$ time.
+///
+/// **Preconditions:**
+/// - [arrays] must contain at least 2 arrays.
+/// - The first array may be 1-dimensional (treated as a row vector) or 2-dimensional.
+/// - The last array may be 1-dimensional (treated as a column vector) or 2-dimensional.
+/// - All intermediate arrays must be 2-dimensional.
+/// - Adjacent arrays must have compatible inner dimensions for matrix multiplication.
+/// - If provided, the recycler [out] must have matching shape and dtype.
+///
+/// **Throws:**
+/// - [ArgumentError] if [arrays] has fewer than 2 elements.
+/// - [ArgumentError] if any intermediate array is not 2-dimensional.
+/// - [ArgumentError] if first or last array has rank > 2 or rank < 1.
+/// - [ArgumentError] if inner dimensions of adjacent matrices are incompatible.
+/// - [ArgumentError] if [out] shape or dtype is incompatible.
+///
+/// **Performance considerations:**
+/// - Automatically optimizes the order of operations to minimize total scalar multiplications.
+/// - All intermediate transient arrays are automatically disposed of to guarantee zero memory leaks.
+///
+/// **Example:**
+/// {@example /example/linalg_multi_dot_example.dart lang=dart}
+///
+/// Reference: [NumPy linalg.multi_dot](https://numpy.org/doc/stable/reference/generated/numpy.linalg.multi_dot.html)
+NDArray multi_dot(List<NDArray> arrays, {NDArray? out}) {
+  if (arrays.length < 2) {
+    throw ArgumentError(
+      'multi_dot requires at least 2 arrays (got ${arrays.length}).',
+    );
+  }
+
+  final n = arrays.length;
+
+  // Check dimensions & validate rank preconditions
+  for (var i = 0; i < n; i++) {
+    final rank = arrays[i].shape.length;
+    if (i == 0 || i == n - 1) {
+      if (rank != 1 && rank != 2) {
+        throw ArgumentError(
+          'First and last arrays in multi_dot must be 1D or 2D (array $i was shape ${arrays[i].shape}).',
+        );
+      }
+    } else {
+      if (rank != 2) {
+        throw ArgumentError(
+          'All intermediate arrays in multi_dot must be 2D (array $i was shape ${arrays[i].shape}).',
+        );
+      }
+    }
+  }
+
+  // Build dimensions list p
+  final p = List<int>.filled(n + 1, 0);
+  if (arrays[0].shape.length == 1) {
+    p[0] = 1;
+    p[1] = arrays[0].shape[0];
+  } else {
+    p[0] = arrays[0].shape[0];
+    p[1] = arrays[0].shape[1];
+  }
+
+  for (var i = 1; i < n - 1; i++) {
+    final shape = arrays[i].shape;
+    if (shape[0] != p[i]) {
+      throw ArgumentError(
+        'Incompatible matrix dimensions in multi_dot: array $i first dimension (${shape[0]}) must match previous dimension (${p[i]}).',
+      );
+    }
+    p[i + 1] = shape[1];
+  }
+
+  // Last array
+  final lastIdx = n - 1;
+  final lastShape = arrays[lastIdx].shape;
+  if (lastShape[0] != p[lastIdx]) {
+    throw ArgumentError(
+      'Incompatible matrix dimensions in multi_dot: last array first dimension (${lastShape[0]}) must match previous dimension (${p[lastIdx]}).',
+    );
+  }
+  if (lastShape.length == 1) {
+    p[n] = 1;
+  } else {
+    p[n] = lastShape[1];
+  }
+
+  // Resolve target DType and upcasted type
+  var targetDType = arrays[0].dtype;
+  for (var i = 1; i < n; i++) {
+    targetDType = _resolveDType(targetDType, arrays[i].dtype);
+  }
+  if (!targetDType.isFloating && !targetDType.isComplex) {
+    targetDType = DType.float64;
+  }
+
+  // If out is provided, validate it
+  final expectedFinalShape = <int>[];
+  final first1D = arrays[0].shape.length == 1;
+  final last1D = arrays[lastIdx].shape.length == 1;
+  if (first1D && last1D) {
+    // Result is 0D scalar shape []
+  } else if (first1D) {
+    expectedFinalShape.add(p[n]);
+  } else if (last1D) {
+    expectedFinalShape.add(p[0]);
+  } else {
+    expectedFinalShape.addAll([p[0], p[n]]);
+  }
+
+  if (out != null) {
+    if (!listEquals(out.shape, expectedFinalShape) ||
+        out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out recycler has incompatible shape or dtype (expected shape $expectedFinalShape and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).',
+      );
+    }
+  }
+
+  // Dynamic programming to find the optimal parenthesization
+  final m = List.generate(n + 1, (_) => List<int>.filled(n + 1, 0));
+  final s = List.generate(n + 1, (_) => List<int>.filled(n + 1, 0));
+
+  for (var l = 2; l <= n; l++) {
+    for (var i = 1; i <= n - l + 1; i++) {
+      final j = i + l - 1;
+      m[i][j] = 99999999999999; // large number as infinity
+      for (var k = i; k < j; k++) {
+        final cost = m[i][k] + m[k + 1][j] + p[i - 1] * p[k] * p[j];
+        if (cost < m[i][j]) {
+          m[i][j] = cost;
+          s[i][j] = k;
+        }
+      }
+    }
+  }
+
+  // Helper function to recursively evaluate matrix multiplication chain
+  NDArray eval(int i, int j) {
+    if (i == j) {
+      // Return a contiguous copy of arrays[i-1] casted to the correct targetDType
+      final src = arrays[i - 1];
+      final copy = NDArray.create(src.shape, targetDType);
+      if (src.isContiguous && src.dtype == targetDType) {
+        if (targetDType.isComplex) {
+          copy.data.setRange(0, src.data.length, src.data as List<Complex>);
+        } else {
+          copy.data.setRange(0, src.data.length, src.data as List<num>);
+        }
+      } else {
+        final flat = src.toList();
+        if (targetDType.isComplex) {
+          copy.data.setRange(0, flat.length, flat.cast<Complex>());
+        } else {
+          copy.data.setRange(0, flat.length, flat.cast<num>());
+        }
+      }
+      return copy;
+    }
+
+    final k = s[i][j];
+    final left = eval(i, k);
+    final right = eval(k + 1, j);
+
+    // Perform matrix multiplication
+    final res = matmul(left, right);
+    left.dispose();
+    right.dispose();
+    return res;
+  }
+
+  // Top-level split point evaluation
+  final k = s[1][n];
+  final left = eval(1, k);
+  final right = eval(k + 1, n);
+
+  final finalResult = matmul(left, right, out: out);
+  left.dispose();
+  right.dispose();
+
+  finalResult.detachToParentScope();
+  return finalResult;
 }
 
 /// Compute the sum of elements in the array.
@@ -8675,6 +8922,332 @@ NDArray<T> triu<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
     }
   }
   return result;
+}
+
+/// Result of a least-squares solver [lstsq].
+///
+/// Reference: [NumPy linalg.lstsq](https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html)
+final class LstsqResult<T, R> {
+  /// Least-squares solution.
+  ///
+  /// If the input [b] is 1-dimensional, [x] has shape `[N]`.
+  /// If [b] is 2-dimensional, [x] has shape `[N, K]`.
+  final NDArray<T> x;
+
+  /// Sums of squared residuals.
+  ///
+  /// Squared Euclidean 2-norm for each column in $b - a x$.
+  /// If the input [b] is 1-dimensional, [residuals] has shape `[1]`.
+  /// If [b] is 2-dimensional, [residuals] has shape `[K]`.
+  ///
+  /// **Note:** Residuals are only computed if the first dimension of the input matrix $a$
+  /// is strictly greater than its second dimension ($M > N$) and the effective rank is $N$.
+  /// Otherwise, it is returned as an empty array of shape `[0]`.
+  final NDArray<R> residuals;
+
+  /// Effective rank of the input matrix $a$.
+  final int rank;
+
+  /// Singular values of the input matrix $a$.
+  ///
+  /// Stored in descending order of magnitude.
+  /// Shape is `[min(M, N)]`.
+  final NDArray<R> s;
+
+  /// Creates a new [LstsqResult] instance.
+  LstsqResult({
+    required this.x,
+    required this.residuals,
+    required this.rank,
+    required this.s,
+  });
+}
+
+/// Computes the least-squares solution to a linear matrix equation $a x = b$.
+///
+/// Solves the equation $a x = b$ by computing a vector/matrix $x$ that minimizes the
+/// Euclidean 2-norm $\|b - a x\|_2^2$.
+///
+/// Natively offloads to LAPACK divide-and-conquer SVD-based least-squares solvers
+/// (`dgelsd`, `sgelsd`, `zgelsd`, `cgelsd`) depending on precision.
+///
+/// **Preconditions:**
+/// - Input matrix [a] must be 2-dimensional of shape `[M, N]`.
+/// - Input array [b] must be 1-dimensional of shape `[M]` or 2-dimensional of shape `[M, K]`.
+/// - The first dimension of [b] must exactly match the first dimension of [a] ($M$).
+///
+/// **Throws:**
+/// - [StateError] if [a] or [b] is disposed.
+/// - [ArgumentError] if [a] is not 2D, or [b] is not 1D or 2D.
+/// - [ArgumentError] if [b]'s first dimension does not match [a]'s first dimension.
+/// - [StateError] if native FFI memory allocation fails or the SVD solver fails to converge.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(M N \min(M, N))$ operations executed in highly-optimized native C space.
+///
+/// **Example:**
+/// {@example /example/linalg_lstsq_example.dart lang=dart}
+///
+/// Reference: [NumPy linalg.lstsq](https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html)
+LstsqResult<T, R> lstsq<T, R>(NDArray a, NDArray b, {double? rcond}) {
+  if (a.isDisposed || b.isDisposed) {
+    throw StateError('Cannot execute lstsq() on a disposed array.');
+  }
+  if (a.shape.length != 2) {
+    throw ArgumentError(
+      'Input matrix a must be 2-dimensional (was shape ${a.shape}).',
+    );
+  }
+  if (b.shape.length != 1 && b.shape.length != 2) {
+    throw ArgumentError(
+      'Input right-hand side b must be 1D or 2D (was shape ${b.shape}).',
+    );
+  }
+  final m = a.shape[0];
+  final n = a.shape[1];
+  if (b.shape[0] != m) {
+    throw ArgumentError(
+      'First dimension of b (${b.shape[0]}) must match first dimension of a ($m).',
+    );
+  }
+
+  // Resolve upcasted target DType
+  var targetDType = _resolveDType(a.dtype, b.dtype);
+  if (!targetDType.isFloating && !targetDType.isComplex) {
+    targetDType = DType.float64;
+  }
+
+  final nrhs = b.shape.length > 1 ? b.shape[1] : 1;
+
+  // Create a contiguous copy of `a`
+  final aCopy = NDArray.create([m, n], targetDType);
+  if (a.isContiguous && a.dtype == targetDType) {
+    final byteCount = a.data.length * targetDType.byteWidth;
+    ffi.Pointer.fromAddress(aCopy.pointer.address)
+        .cast<ffi.Uint8>()
+        .asTypedList(byteCount)
+        .setAll(
+          0,
+          ffi.Pointer.fromAddress(
+            a.pointer.address,
+          ).cast<ffi.Uint8>().asTypedList(byteCount),
+        );
+  } else {
+    final rankA = a.shape.length;
+    final cShapeA = malloc<ffi.Int>(rankA);
+    final cStridesA = malloc<ffi.Int>(rankA);
+    for (var i = 0; i < rankA; i++) {
+      cShapeA[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+    }
+    try {
+      copy_and_cast_strided(
+        a.dtype.index,
+        a.pointer,
+        cStridesA,
+        targetDType.index,
+        aCopy.pointer,
+        cShapeA,
+        rankA,
+      );
+    } finally {
+      malloc.free(cShapeA);
+      malloc.free(cStridesA);
+    }
+  }
+
+  // Row-major LAPACKE_gelsd requires b array size to be max(m, n) * nrhs
+  final maxMN = m > n ? m : n;
+  final bCopyShape = b.shape.length > 1 ? [maxMN, nrhs] : [maxMN];
+  final bCopy = NDArray.zeros(bCopyShape, targetDType as dynamic);
+
+  // Copy b into bCopy
+  if (b.isContiguous && b.dtype == targetDType) {
+    final byteCount = b.data.length * targetDType.byteWidth;
+    ffi.Pointer.fromAddress(bCopy.pointer.address)
+        .cast<ffi.Uint8>()
+        .asTypedList(byteCount)
+        .setAll(
+          0,
+          ffi.Pointer.fromAddress(
+            b.pointer.address,
+          ).cast<ffi.Uint8>().asTypedList(byteCount),
+        );
+  } else {
+    final rankB = b.shape.length;
+    final cShapeB = malloc<ffi.Int>(rankB);
+    final cStridesB = malloc<ffi.Int>(rankB);
+    for (var i = 0; i < rankB; i++) {
+      cShapeB[i] = b.shape[i];
+      cStridesB[i] = b.strides[i];
+    }
+    try {
+      copy_and_cast_strided(
+        b.dtype.index,
+        b.pointer,
+        cStridesB,
+        targetDType.index,
+        bCopy.pointer,
+        cShapeB,
+        rankB,
+      );
+    } finally {
+      malloc.free(cShapeB);
+      malloc.free(cStridesB);
+    }
+  }
+
+  final minMN = m < n ? m : n;
+  // Singular values s is always real
+  final sDType =
+      (targetDType == DType.complex64 || targetDType == DType.float32)
+      ? DType.float32
+      : DType.float64;
+  final s = NDArray.zeros([minMN], sDType as dynamic);
+
+  final rankPtr = malloc<ffi.Int>();
+  final resolvedRcond = rcond ?? -1.0; // negative rcond uses machine precision
+
+  try {
+    int info;
+    switch (targetDType) {
+      case DType.float64:
+        info = LAPACKE_dgelsd(
+          101, // ROW_MAJOR
+          m,
+          n,
+          nrhs,
+          aCopy.pointer.cast<ffi.Double>(),
+          n,
+          bCopy.pointer.cast<ffi.Double>(),
+          nrhs,
+          s.pointer.cast<ffi.Double>(),
+          resolvedRcond,
+          rankPtr,
+        );
+      case DType.float32:
+        info = LAPACKE_sgelsd(
+          101,
+          m,
+          n,
+          nrhs,
+          aCopy.pointer.cast<ffi.Float>(),
+          n,
+          bCopy.pointer.cast<ffi.Float>(),
+          nrhs,
+          s.pointer.cast<ffi.Float>(),
+          resolvedRcond,
+          rankPtr,
+        );
+      case DType.complex128:
+        info = LAPACKE_zgelsd(
+          101,
+          m,
+          n,
+          nrhs,
+          aCopy.pointer.cast<ffi.Double>(),
+          n,
+          bCopy.pointer.cast<ffi.Double>(),
+          nrhs,
+          s.pointer.cast<ffi.Double>(),
+          resolvedRcond,
+          rankPtr,
+        );
+      case DType.complex64:
+        info = LAPACKE_cgelsd(
+          101,
+          m,
+          n,
+          nrhs,
+          aCopy.pointer.cast<ffi.Float>(),
+          n,
+          bCopy.pointer.cast<ffi.Float>(),
+          nrhs,
+          s.pointer.cast<ffi.Float>(),
+          resolvedRcond,
+          rankPtr,
+        );
+      default:
+        throw UnimplementedError(
+          'Unsupported target DType for lstsq: $targetDType',
+        );
+    }
+
+    if (info < 0) {
+      throw ArgumentError('Illegal value in call to LAPACKE gelsd: $info');
+    }
+    if (info > 0) {
+      throw StateError(
+        'The SVD algorithm in LAPACKE gelsd failed to converge ($info).',
+      );
+    }
+
+    final rank = rankPtr.value;
+
+    // Extract solution x: first n rows of bCopy
+    final xShape = b.shape.length > 1 ? [n, nrhs] : [n];
+    final x = NDArray.zeros(xShape, targetDType as dynamic);
+    final elementsToCopy = n * nrhs;
+    if (targetDType.isComplex) {
+      x.data.setRange(
+        0,
+        elementsToCopy,
+        bCopy.data.sublist(0, elementsToCopy) as List<Complex>,
+      );
+    } else {
+      x.data.setRange(
+        0,
+        elementsToCopy,
+        bCopy.data.sublist(0, elementsToCopy) as List<num>,
+      );
+    }
+
+    // Extract residuals: sum of squares of elements from row n to m-1 for each column
+    final NDArray residuals;
+    if (m > n && rank == n) {
+      final resShape = b.shape.length > 1 ? [nrhs] : [1];
+      residuals = NDArray.zeros(resShape, sDType as dynamic);
+      if (targetDType.isComplex) {
+        for (var j = 0; j < nrhs; j++) {
+          var sum = 0.0;
+          for (var i = n; i < m; i++) {
+            final complexVal = bCopy.data[i * nrhs + j] as Complex;
+            sum +=
+                complexVal.real * complexVal.real +
+                complexVal.imag * complexVal.imag;
+          }
+          residuals.data[j] = sum;
+        }
+      } else {
+        for (var j = 0; j < nrhs; j++) {
+          var sum = 0.0;
+          for (var i = n; i < m; i++) {
+            final val = bCopy.data[i * nrhs + j] as num;
+            sum += val * val;
+          }
+          residuals.data[j] = sum;
+        }
+      }
+    } else {
+      residuals = NDArray.zeros([0], sDType as dynamic);
+    }
+
+    // Attach to scope or return
+    x.detachToParentScope();
+    residuals.detachToParentScope();
+    s.detachToParentScope();
+
+    return LstsqResult<T, R>(
+      x: x as NDArray<T>,
+      residuals: residuals as NDArray<R>,
+      rank: rank,
+      s: s as NDArray<R>,
+    );
+  } finally {
+    malloc.free(rankPtr);
+    aCopy.dispose();
+    bCopy.dispose();
+  }
 }
 
 /// Compute the Moore-Penrose pseudo-inverse of a 2D matrix.

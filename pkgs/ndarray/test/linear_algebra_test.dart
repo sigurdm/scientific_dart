@@ -595,5 +595,212 @@ void main() {
         }),
       );
     });
+
+    group('Least-Squares Solver (lstsq) tests', () {
+      test(
+        'Solve over-determined system (m > n)',
+        () => NDArray.scope(() {
+          // y = c + m * x
+          // Data points: (1, 2), (2, 3.9), (3, 6.1)
+          // A = [[1, 1], [1, 2], [1, 3]]
+          // B = [2.0, 3.9, 6.1]
+          final a = NDArray.fromList(
+            [1.0, 1.0, 1.0, 2.0, 1.0, 3.0],
+            [3, 2],
+            DType.float64,
+          );
+          final b = NDArray.fromList([2.0, 3.9, 6.1], [3], DType.float64);
+
+          final res = lstsq(a, b);
+
+          expect(res.rank, 2);
+          expect(res.s.shape, [2]);
+          expect(res.residuals.shape, [1]);
+
+          // Analytical solution: c = -0.1, m = 2.05
+          expect(res.x.data[0], closeTo(-0.1, 1e-9));
+          expect(res.x.data[1], closeTo(2.05, 1e-9));
+
+          // Residual: sum of squared errors = 0.05^2 + (-0.1)^2 + 0.05^2 = 0.0025 + 0.01 + 0.0025 = 0.015
+          expect(res.residuals.data[0], closeTo(0.015, 1e-9));
+        }),
+      );
+
+      test(
+        'Solve under-determined system (m < n) returns minimum norm solution',
+        () => NDArray.scope(() {
+          // A = [[1.0, 2.0, 3.0]]
+          // B = [6.0]
+          final a = NDArray.fromList([1.0, 2.0, 3.0], [1, 3], DType.float64);
+          final b = NDArray.fromList([6.0], [1], DType.float64);
+
+          final res = lstsq(a, b);
+
+          expect(res.rank, 1);
+          expect(res.residuals.shape, [0]); // no residuals computed
+
+          // Minimum norm solution: x_i = 6 * a_i / sum(a_i^2) = 6 * a_i / 14
+          expect(res.x.data[0], closeTo(6.0 / 14.0, 1e-9));
+          expect(res.x.data[1], closeTo(12.0 / 14.0, 1e-9));
+          expect(res.x.data[2], closeTo(18.0 / 14.0, 1e-9));
+        }),
+      );
+
+      test(
+        'Solve full rank square matrix matching solve()',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [3.0, 1.0, 1.0, 2.0],
+            [2, 2],
+            DType.float64,
+          );
+          final b = NDArray.fromList([9.0, 8.0], [2], DType.float64);
+
+          final res = lstsq(a, b);
+          final xSolve = solve(a, b);
+
+          expect(res.rank, 2);
+          expect(res.residuals.shape, [
+            0,
+          ]); // square full rank -> empty residuals
+          expect(res.x.data[0], closeTo(xSolve.data[0], 1e-9));
+          expect(res.x.data[1], closeTo(xSolve.data[1], 1e-9));
+        }),
+      );
+
+      test(
+        'lstsq with integer upcasting and float32 support',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+          final b = NDArray.fromList([5, 11], [2], DType.int32);
+
+          final res = lstsq(a, b);
+          expect(res.x.dtype, DType.float64);
+          expect(res.x.data[0], closeTo(1.0, 1e-9));
+          expect(res.x.data[1], closeTo(2.0, 1e-9));
+        }),
+      );
+
+      test(
+        'Complex128 least-squares solver',
+        () => NDArray.scope(() {
+          final a = NDArray<Complex>.create([2, 2], DType.complex128);
+          a.data[0] = Complex(3.0, 0.0);
+          a.data[1] = Complex(1.0, 0.0);
+          a.data[2] = Complex(1.0, 0.0);
+          a.data[3] = Complex(2.0, 0.0);
+
+          final b = NDArray<Complex>.create([2, 1], DType.complex128);
+          b.data[0] = Complex(9.0, 0.0);
+          b.data[1] = Complex(8.0, 0.0);
+
+          final res = lstsq(a, b);
+          expect(res.x.dtype, DType.complex128);
+          expect(res.residuals.dtype, DType.float64);
+          expect(res.x.data[0].real, closeTo(2.0, 1e-9));
+          expect(res.x.data[0].imag, closeTo(0.0, 1e-9));
+          expect(res.x.data[1].real, closeTo(3.0, 1e-9));
+          expect(res.x.data[1].imag, closeTo(0.0, 1e-9));
+        }),
+      );
+    });
+
+    group('Optimal Matrix Chain Product (multi_dot) tests', () {
+      test(
+        'Multiply 3 matrices with optimal parenthesization',
+        () => NDArray.scope(() {
+          // shapes: A[2, 10] * B[10, 5] * C[5, 3] -> result [2, 3]
+          final a = NDArray.ones([2, 10], DType.float64);
+          final b = NDArray.ones([10, 5], DType.float64);
+          final c = NDArray.ones([5, 3], DType.float64);
+
+          final res = multi_dot([a, b, c]);
+
+          expect(res.shape, [2, 3]);
+          // Each cell = sum_{k} (1 * sum_{m} (1 * 1)) = 10 * 5 = 50
+          for (var i = 0; i < 6; i++) {
+            expect(res.data[i], 50.0);
+          }
+        }),
+      );
+
+      test(
+        'multi_dot with 1D squeezing at first array',
+        () => NDArray.scope(() {
+          // A[10] * B[10, 5] * C[5, 3] -> result [3]
+          final a = NDArray.ones([10], DType.float64);
+          final b = NDArray.ones([10, 5], DType.float64);
+          final c = NDArray.ones([5, 3], DType.float64);
+
+          final res = multi_dot([a, b, c]);
+
+          expect(res.shape, [3]);
+          for (var i = 0; i < 3; i++) {
+            expect(res.data[i], 50.0);
+          }
+        }),
+      );
+
+      test(
+        'multi_dot with 1D squeezing at last array',
+        () => NDArray.scope(() {
+          // A[2, 10] * B[10, 5] * C[5] -> result [2]
+          final a = NDArray.ones([2, 10], DType.float64);
+          final b = NDArray.ones([10, 5], DType.float64);
+          final c = NDArray.ones([5], DType.float64);
+
+          final res = multi_dot([a, b, c]);
+
+          expect(res.shape, [2]);
+          for (var i = 0; i < 2; i++) {
+            expect(res.data[i], 50.0);
+          }
+        }),
+      );
+
+      test(
+        'multi_dot with squeezing at both first and last arrays',
+        () => NDArray.scope(() {
+          // A[10] * B[10, 5] * C[5] -> result [] (scalar)
+          final a = NDArray.ones([10], DType.float64);
+          final b = NDArray.ones([10, 5], DType.float64);
+          final c = NDArray.ones([5], DType.float64);
+
+          final res = multi_dot([a, b, c]);
+
+          expect(res.shape, []);
+          expect(res.scalar, 50.0);
+        }),
+      );
+
+      test(
+        'multi_dot using out recycler buffer',
+        () => NDArray.scope(() {
+          final a = NDArray.ones([2, 10], DType.float64);
+          final b = NDArray.ones([10, 5], DType.float64);
+          final c = NDArray.ones([5, 3], DType.float64);
+
+          final out = NDArray<double>.zeros([2, 3], DType.float64);
+          final res = multi_dot([a, b, c], out: out);
+
+          expect(res == out, true);
+          expect(out.shape, [2, 3]);
+          for (var i = 0; i < 6; i++) {
+            expect(out.data[i], 50.0);
+          }
+        }),
+      );
+
+      test(
+        'Incompatible dimensions throw ArgumentError',
+        () => NDArray.scope(() {
+          final a = NDArray.ones([2, 10], DType.float64);
+          final b = NDArray.ones([9, 5], DType.float64); // 9 != 10
+          final c = NDArray.ones([5, 3], DType.float64);
+
+          expect(() => multi_dot([a, b, c]), throwsArgumentError);
+        }),
+      );
+    });
   });
 }

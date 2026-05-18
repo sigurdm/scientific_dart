@@ -2953,5 +2953,122 @@ void s_cast_double_to_int16(const double *src, const int *stridesSrc, int16_t *d
     }
 }
 
+/* ============================================================================
+ * copy_and_cast_strided
+ * ============================================================================
+ * A fused native C kernel that flattens any strided multi-dimensional view
+ * (ranks 0 to 8) and casts its elements to the target data type in a single
+ * contiguous pass.
+ *
+ * RATIONALE & DESIGN TRADE-OFFS (LOOP FUSION OPTIMIZATION):
+ * - While it is modular to split this into a type-independent blind copy
+ *   (memcpy elements along strides) followed by a contiguous linear cast sweep,
+ *   that modularity requires allocating temporary contiguous arrays on the unmanaged
+ *   heap, writing to them, reading them back to cast, and disposing them.
+ * - This fused implementation performs both layout flattening and type upcasting
+ *   simultaneously in a single native pass directly into the destination FFI buffer,
+ *   bypassing intermediate allocations and halving memory bus traffic.
+ * - Type dispatching is done via nested switch blocks. Since type tags remain
+ *   constant throughout the entire loop, CPU branch prediction completely
+ *   eliminates the branching overhead inside the hot loop.
+ */
+void copy_and_cast_strided(
+    int src_type, const void *src_ptr, const int *strides_src,
+    int dest_type, void *dest_ptr, const int *shape, int rank) {
+    
+    if (src_ptr == NULL || dest_ptr == NULL || rank < 0 || rank > 8) return;
+
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+
+    int coord[8] = {0};
+    int offsetSrc = 0;
+
+    for (int el = 0; el < total_elements; el++) {
+        double r_val = 0.0;
+        double i_val = 0.0;
+
+        if (rank == 0) {
+            offsetSrc = 0;
+        }
+
+        switch (src_type) {
+            case 0: // float32
+                r_val = (double)((const float*)src_ptr)[offsetSrc];
+                break;
+            case 1: // float64
+                r_val = ((const double*)src_ptr)[offsetSrc];
+                break;
+            case 2: // int32
+                r_val = (double)((const int32_t*)src_ptr)[offsetSrc];
+                break;
+            case 3: // int64
+                r_val = (double)((const int64_t*)src_ptr)[offsetSrc];
+                break;
+            case 4: // uint8
+                r_val = (double)((const uint8_t*)src_ptr)[offsetSrc];
+                break;
+            case 5: // int16
+                r_val = (double)((const int16_t*)src_ptr)[offsetSrc];
+                break;
+            case 6: // complex64
+                r_val = (double)((const cpx_f_t*)src_ptr)[offsetSrc].r;
+                i_val = (double)((const cpx_f_t*)src_ptr)[offsetSrc].i;
+                break;
+            case 7: // complex128
+                r_val = ((const cpx_t*)src_ptr)[offsetSrc].r;
+                i_val = ((const cpx_t*)src_ptr)[offsetSrc].i;
+                break;
+            case 8: // boolean
+                r_val = ((const uint8_t*)src_ptr)[offsetSrc] ? 1.0 : 0.0;
+                break;
+        }
+
+        switch (dest_type) {
+            case 0: // float32
+                ((float*)dest_ptr)[el] = (float)r_val;
+                break;
+            case 1: // float64
+                ((double*)dest_ptr)[el] = r_val;
+                break;
+            case 2: // int32
+                ((int32_t*)dest_ptr)[el] = (int32_t)r_val;
+                break;
+            case 3: // int64
+                ((int64_t*)dest_ptr)[el] = (int64_t)r_val;
+                break;
+            case 4: // uint8
+                ((uint8_t*)dest_ptr)[el] = (uint8_t)r_val;
+                break;
+            case 5: // int16
+                ((int16_t*)dest_ptr)[el] = (int16_t)r_val;
+                break;
+            case 6: // complex64
+                ((cpx_f_t*)dest_ptr)[el].r = (float)r_val;
+                ((cpx_f_t*)dest_ptr)[el].i = (float)i_val;
+                break;
+            case 7: // complex128
+                ((cpx_t*)dest_ptr)[el].r = r_val;
+                ((cpx_t*)dest_ptr)[el].i = i_val;
+                break;
+            case 8: // boolean
+                ((uint8_t*)dest_ptr)[el] = (r_val != 0.0 || i_val != 0.0) ? 1 : 0;
+                break;
+        }
+
+        if (rank > 0) {
+            for (int d = rank - 1; d >= 0; d--) {
+                coord[d]++;
+                if (coord[d] < shape[d]) {
+                    offsetSrc += strides_src[d];
+                    break;
+                }
+                coord[d] = 0;
+                offsetSrc -= (shape[d] - 1) * strides_src[d];
+            }
+        }
+    }
+}
+
 
 

@@ -622,6 +622,122 @@ external int LAPACKE_cgeev(
   int ldvr,
 );
 
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    lapack_int,
+    lapack_int,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Double,
+    ffi.Pointer<lapack_int>,
+  )
+>()
+external int LAPACKE_dgelsd(
+  int matrix_layout,
+  int m,
+  int n,
+  int nrhs,
+  ffi.Pointer<ffi.Double> a,
+  int lda,
+  ffi.Pointer<ffi.Double> b,
+  int ldb,
+  ffi.Pointer<ffi.Double> s,
+  double rcond,
+  ffi.Pointer<lapack_int> rank,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    lapack_int,
+    lapack_int,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Float,
+    ffi.Pointer<lapack_int>,
+  )
+>()
+external int LAPACKE_sgelsd(
+  int matrix_layout,
+  int m,
+  int n,
+  int nrhs,
+  ffi.Pointer<ffi.Float> a,
+  int lda,
+  ffi.Pointer<ffi.Float> b,
+  int ldb,
+  ffi.Pointer<ffi.Float> s,
+  double rcond,
+  ffi.Pointer<lapack_int> rank,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    lapack_int,
+    lapack_int,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    lapack_int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Double,
+    ffi.Pointer<lapack_int>,
+  )
+>()
+external int LAPACKE_zgelsd(
+  int matrix_layout,
+  int m,
+  int n,
+  int nrhs,
+  ffi.Pointer<ffi.Double> a,
+  int lda,
+  ffi.Pointer<ffi.Double> b,
+  int ldb,
+  ffi.Pointer<ffi.Double> s,
+  double rcond,
+  ffi.Pointer<lapack_int> rank,
+);
+
+@ffi.Native<
+  lapack_int Function(
+    ffi.Int,
+    lapack_int,
+    lapack_int,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    lapack_int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Float,
+    ffi.Pointer<lapack_int>,
+  )
+>()
+external int LAPACKE_cgelsd(
+  int matrix_layout,
+  int m,
+  int n,
+  int nrhs,
+  ffi.Pointer<ffi.Float> a,
+  int lda,
+  ffi.Pointer<ffi.Float> b,
+  int ldb,
+  ffi.Pointer<ffi.Float> s,
+  double rcond,
+  ffi.Pointer<lapack_int> rank,
+);
+
 typedef blasint = ffi.Int;
 typedef Dartblasint = int;
 typedef lapack_int = ffi.Int;
