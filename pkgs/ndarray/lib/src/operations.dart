@@ -516,7 +516,7 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 /// {@example /example/linalg_multi_dot_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.multi_dot](https://numpy.org/doc/stable/reference/generated/numpy.linalg.multi_dot.html)
-NDArray multi_dot(List<NDArray> arrays, {NDArray? out}) {
+NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
   if (arrays.length < 2) {
     throw ArgumentError(
       'multi_dot requires at least 2 arrays (got ${arrays.length}).',
@@ -578,7 +578,7 @@ NDArray multi_dot(List<NDArray> arrays, {NDArray? out}) {
   }
 
   // Resolve target DType and upcasted type
-  var targetDType = arrays[0].dtype;
+  DType<dynamic> targetDType = arrays[0].dtype;
   for (var i = 1; i < n; i++) {
     targetDType = _resolveDType(targetDType, arrays[i].dtype);
   }
@@ -8927,7 +8927,7 @@ NDArray<T> triu<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
 /// Result of a least-squares solver [lstsq].
 ///
 /// Reference: [NumPy linalg.lstsq](https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html)
-final class LstsqResult<T, R> {
+final class LstsqResult<T> {
   /// Least-squares solution.
   ///
   /// If the input [b] is 1-dimensional, [x] has shape `[N]`.
@@ -8943,7 +8943,7 @@ final class LstsqResult<T, R> {
   /// **Note:** Residuals are only computed if the first dimension of the input matrix $a$
   /// is strictly greater than its second dimension ($M > N$) and the effective rank is $N$.
   /// Otherwise, it is returned as an empty array of shape `[0]`.
-  final NDArray<R> residuals;
+  final NDArray<double> residuals;
 
   /// Effective rank of the input matrix $a$.
   final int rank;
@@ -8952,7 +8952,7 @@ final class LstsqResult<T, R> {
   ///
   /// Stored in descending order of magnitude.
   /// Shape is `[min(M, N)]`.
-  final NDArray<R> s;
+  final NDArray<double> s;
 
   /// Creates a new [LstsqResult] instance.
   LstsqResult({
@@ -8989,7 +8989,7 @@ final class LstsqResult<T, R> {
 /// {@example /example/linalg_lstsq_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.lstsq](https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html)
-LstsqResult<T, R> lstsq<T, R>(NDArray a, NDArray b, {double? rcond}) {
+LstsqResult<T> lstsq<T>(NDArray<T> a, NDArray<T> b, {double? rcond}) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot execute lstsq() on a disposed array.');
   }
@@ -9103,7 +9103,7 @@ LstsqResult<T, R> lstsq<T, R>(NDArray a, NDArray b, {double? rcond}) {
       (targetDType == DType.complex64 || targetDType == DType.float32)
       ? DType.float32
       : DType.float64;
-  final s = NDArray.zeros([minMN], sDType as dynamic);
+  final s = NDArray<double>.zeros([minMN], sDType as dynamic);
 
   final rankPtr = malloc<ffi.Int>();
   final resolvedRcond = rcond ?? -1.0; // negative rcond uses machine precision
@@ -9186,27 +9186,27 @@ LstsqResult<T, R> lstsq<T, R>(NDArray a, NDArray b, {double? rcond}) {
 
     // Extract solution x: first n rows of bCopy
     final xShape = b.shape.length > 1 ? [n, nrhs] : [n];
-    final x = NDArray.zeros(xShape, targetDType as dynamic);
+    final x = NDArray<T>.zeros(xShape, targetDType as dynamic);
     final elementsToCopy = n * nrhs;
     if (targetDType.isComplex) {
       x.data.setRange(
         0,
         elementsToCopy,
-        bCopy.data.sublist(0, elementsToCopy) as List<Complex>,
+        bCopy.data.sublist(0, elementsToCopy) as List<T>,
       );
     } else {
       x.data.setRange(
         0,
         elementsToCopy,
-        bCopy.data.sublist(0, elementsToCopy) as List<num>,
+        bCopy.data.sublist(0, elementsToCopy) as List<T>,
       );
     }
 
     // Extract residuals: sum of squares of elements from row n to m-1 for each column
-    final NDArray residuals;
+    final NDArray<double> residuals;
     if (m > n && rank == n) {
       final resShape = b.shape.length > 1 ? [nrhs] : [1];
-      residuals = NDArray.zeros(resShape, sDType as dynamic);
+      residuals = NDArray<double>.zeros(resShape, sDType as dynamic);
       if (targetDType.isComplex) {
         for (var j = 0; j < nrhs; j++) {
           var sum = 0.0;
@@ -9229,7 +9229,7 @@ LstsqResult<T, R> lstsq<T, R>(NDArray a, NDArray b, {double? rcond}) {
         }
       }
     } else {
-      residuals = NDArray.zeros([0], sDType as dynamic);
+      residuals = NDArray<double>.zeros([0], sDType as dynamic);
     }
 
     // Attach to scope or return
@@ -9237,12 +9237,7 @@ LstsqResult<T, R> lstsq<T, R>(NDArray a, NDArray b, {double? rcond}) {
     residuals.detachToParentScope();
     s.detachToParentScope();
 
-    return LstsqResult<T, R>(
-      x: x as NDArray<T>,
-      residuals: residuals as NDArray<R>,
-      rank: rank,
-      s: s as NDArray<R>,
-    );
+    return LstsqResult<T>(x: x, residuals: residuals, rank: rank, s: s);
   } finally {
     malloc.free(rankPtr);
     aCopy.dispose();

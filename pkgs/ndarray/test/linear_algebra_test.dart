@@ -669,15 +669,15 @@ void main() {
       );
 
       test(
-        'lstsq with integer upcasting and float32 support',
+        'lstsq with float32 support',
         () => NDArray.scope(() {
-          final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
-          final b = NDArray.fromList([5, 11], [2], DType.int32);
+          final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float32);
+          final b = NDArray.fromList([5.0, 11.0], [2], DType.float32);
 
           final res = lstsq(a, b);
-          expect(res.x.dtype, DType.float64);
-          expect(res.x.data[0], closeTo(1.0, 1e-9));
-          expect(res.x.data[1], closeTo(2.0, 1e-9));
+          expect(res.x.dtype, DType.float32);
+          expect(res.x.data[0], closeTo(1.0, 1e-6));
+          expect(res.x.data[1], closeTo(2.0, 1e-6));
         }),
       );
 

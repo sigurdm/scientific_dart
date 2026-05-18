@@ -24,7 +24,7 @@ void main() {
     print('\nRight-Hand Side (b):');
     print('  ${b.toList()}');
 
-    final res = lstsq<double, double>(a, b);
+    final res = lstsq<double>(a, b);
 
     print('\nLeast-Squares Solution (x):');
     print('  Intercept (c): ${res.x.data[0].toStringAsFixed(4)}');
