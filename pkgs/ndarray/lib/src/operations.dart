@@ -9041,26 +9041,22 @@ LstsqResult<T> lstsq<T>(
   } else {
     aCopy = NDArray<T>.create([m, n], targetDType as DType<T>);
     final rankA = a.shape.length;
-    final cShapeA = malloc<ffi.Int>(rankA);
-    final cStridesA = malloc<ffi.Int>(rankA);
+    final cBuffer = _getStridedOpBuffer(rankA);
+    final cShapeA = cBuffer;
+    final cStridesA = cBuffer + rankA;
     for (var i = 0; i < rankA; i++) {
       cShapeA[i] = a.shape[i];
       cStridesA[i] = a.strides[i];
     }
-    try {
-      copy_and_cast_strided(
-        a.dtype.index,
-        a.pointer,
-        cStridesA,
-        targetDType.index,
-        aCopy.pointer,
-        cShapeA,
-        rankA,
-      );
-    } finally {
-      malloc.free(cShapeA);
-      malloc.free(cStridesA);
-    }
+    copy_and_cast_strided(
+      a.dtype.index,
+      a.pointer,
+      cStridesA,
+      targetDType.index,
+      aCopy.pointer,
+      cShapeA,
+      rankA,
+    );
   }
 
   // Row-major LAPACKE_gelsd requires b array size to be max(m, n) * nrhs
@@ -9096,26 +9092,22 @@ LstsqResult<T> lstsq<T>(
     }
   } else {
     final rankB = b.shape.length;
-    final cShapeB = malloc<ffi.Int>(rankB);
-    final cStridesB = malloc<ffi.Int>(rankB);
+    final cBuffer = _getStridedOpBuffer(rankB);
+    final cShapeB = cBuffer;
+    final cStridesB = cBuffer + rankB;
     for (var i = 0; i < rankB; i++) {
       cShapeB[i] = b.shape[i];
       cStridesB[i] = b.strides[i];
     }
-    try {
-      copy_and_cast_strided(
-        b.dtype.index,
-        b.pointer,
-        cStridesB,
-        targetDType.index,
-        bCopy.pointer,
-        cShapeB,
-        rankB,
-      );
-    } finally {
-      malloc.free(cShapeB);
-      malloc.free(cStridesB);
-    }
+    copy_and_cast_strided(
+      b.dtype.index,
+      b.pointer,
+      cStridesB,
+      targetDType.index,
+      bCopy.pointer,
+      cShapeB,
+      rankB,
+    );
   }
 
   final minMN = m < n ? m : n;
