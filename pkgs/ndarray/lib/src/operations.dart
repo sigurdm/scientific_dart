@@ -8989,7 +8989,12 @@ final class LstsqResult<T> {
 /// {@example /example/linalg_lstsq_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.lstsq](https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html)
-LstsqResult<T> lstsq<T>(NDArray<T> a, NDArray<T> b, {double? rcond}) {
+LstsqResult<T> lstsq<T>(
+  NDArray<T> a,
+  NDArray<T> b, {
+  double? rcond,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot execute lstsq() on a disposed array.');
   }
@@ -9019,20 +9024,22 @@ LstsqResult<T> lstsq<T>(NDArray<T> a, NDArray<T> b, {double? rcond}) {
 
   final nrhs = b.shape.length > 1 ? b.shape[1] : 1;
 
+  if (out != null) {
+    if (out.isDisposed) {
+      throw StateError('Cannot write to a disposed out buffer.');
+    }
+    final expectedXShape = b.shape.length > 1 ? [n, nrhs] : [n];
+    if (!listEquals(out.shape, expectedXShape) || out.dtype != targetDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
   // Create a contiguous copy of `a`
-  final aCopy = NDArray.create([m, n], targetDType);
-  if (a.isContiguous && a.dtype == targetDType) {
-    final byteCount = a.data.length * targetDType.byteWidth;
-    ffi.Pointer.fromAddress(aCopy.pointer.address)
-        .cast<ffi.Uint8>()
-        .asTypedList(byteCount)
-        .setAll(
-          0,
-          ffi.Pointer.fromAddress(
-            a.pointer.address,
-          ).cast<ffi.Uint8>().asTypedList(byteCount),
-        );
+  final NDArray<T> aCopy;
+  if (a.dtype == targetDType) {
+    aCopy = a.copy();
   } else {
+    aCopy = NDArray<T>.create([m, n], targetDType as DType<T>);
     final rankA = a.shape.length;
     final cShapeA = malloc<ffi.Int>(rankA);
     final cStridesA = malloc<ffi.Int>(rankA);
@@ -9059,20 +9066,34 @@ LstsqResult<T> lstsq<T>(NDArray<T> a, NDArray<T> b, {double? rcond}) {
   // Row-major LAPACKE_gelsd requires b array size to be max(m, n) * nrhs
   final maxMN = m > n ? m : n;
   final bCopyShape = b.shape.length > 1 ? [maxMN, nrhs] : [maxMN];
-  final bCopy = NDArray.zeros(bCopyShape, targetDType as dynamic);
+  final bCopy = NDArray<T>.zeros(bCopyShape, targetDType as dynamic);
 
   // Copy b into bCopy
-  if (b.isContiguous && b.dtype == targetDType) {
+  if (b.dtype == targetDType) {
     final byteCount = b.data.length * targetDType.byteWidth;
-    ffi.Pointer.fromAddress(bCopy.pointer.address)
-        .cast<ffi.Uint8>()
-        .asTypedList(byteCount)
-        .setAll(
-          0,
-          ffi.Pointer.fromAddress(
-            b.pointer.address,
-          ).cast<ffi.Uint8>().asTypedList(byteCount),
-        );
+    if (b.isContiguous) {
+      ffi.Pointer.fromAddress(bCopy.pointer.address)
+          .cast<ffi.Uint8>()
+          .asTypedList(byteCount)
+          .setAll(
+            0,
+            ffi.Pointer.fromAddress(
+              b.pointer.address,
+            ).cast<ffi.Uint8>().asTypedList(byteCount),
+          );
+    } else {
+      final bContig = b.copy();
+      ffi.Pointer.fromAddress(bCopy.pointer.address)
+          .cast<ffi.Uint8>()
+          .asTypedList(byteCount)
+          .setAll(
+            0,
+            ffi.Pointer.fromAddress(
+              bContig.pointer.address,
+            ).cast<ffi.Uint8>().asTypedList(byteCount),
+          );
+      bContig.dispose();
+    }
   } else {
     final rankB = b.shape.length;
     final cShapeB = malloc<ffi.Int>(rankB);
@@ -9186,20 +9207,12 @@ LstsqResult<T> lstsq<T>(NDArray<T> a, NDArray<T> b, {double? rcond}) {
 
     // Extract solution x: first n rows of bCopy
     final xShape = b.shape.length > 1 ? [n, nrhs] : [n];
-    final x = NDArray<T>.zeros(xShape, targetDType as dynamic);
+    final x = out ?? NDArray<T>.zeros(xShape, targetDType as dynamic);
     final elementsToCopy = n * nrhs;
     if (targetDType.isComplex) {
-      x.data.setRange(
-        0,
-        elementsToCopy,
-        bCopy.data.sublist(0, elementsToCopy) as List<T>,
-      );
+      x.data.setRange(0, elementsToCopy, bCopy.data.sublist(0, elementsToCopy));
     } else {
-      x.data.setRange(
-        0,
-        elementsToCopy,
-        bCopy.data.sublist(0, elementsToCopy) as List<T>,
-      );
+      x.data.setRange(0, elementsToCopy, bCopy.data.sublist(0, elementsToCopy));
     }
 
     // Extract residuals: sum of squares of elements from row n to m-1 for each column
@@ -9233,7 +9246,9 @@ LstsqResult<T> lstsq<T>(NDArray<T> a, NDArray<T> b, {double? rcond}) {
     }
 
     // Attach to scope or return
-    x.detachToParentScope();
+    if (out == null) {
+      x.detachToParentScope();
+    }
     residuals.detachToParentScope();
     s.detachToParentScope();
 

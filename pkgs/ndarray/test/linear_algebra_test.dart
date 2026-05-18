@@ -671,7 +671,11 @@ void main() {
       test(
         'lstsq with float32 support',
         () => NDArray.scope(() {
-          final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float32);
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float32,
+          );
           final b = NDArray.fromList([5.0, 11.0], [2], DType.float32);
 
           final res = lstsq(a, b);
@@ -701,6 +705,25 @@ void main() {
           expect(res.x.data[0].imag, closeTo(0.0, 1e-9));
           expect(res.x.data[1].real, closeTo(3.0, 1e-9));
           expect(res.x.data[1].imag, closeTo(0.0, 1e-9));
+        }),
+      );
+
+      test(
+        'lstsq using out recycler buffer',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 1.0, 1.0, 2.0, 1.0, 3.0],
+            [3, 2],
+            DType.float64,
+          );
+          final b = NDArray.fromList([2.0, 3.9, 6.1], [3], DType.float64);
+          final outBuffer = NDArray<double>.zeros([2], DType.float64);
+
+          final res = lstsq(a, b, out: outBuffer);
+
+          expect(identical(res.x, outBuffer), true);
+          expect(res.x.data[0], closeTo(-0.1, 1e-9));
+          expect(res.x.data[1], closeTo(2.05, 1e-9));
         }),
       );
     });
