@@ -550,7 +550,7 @@ void main() {
           2,
         ], DType.float64);
         final d = det(a);
-        expect(d, closeTo(-2.0, 1e-10)); // 1*4 - 2*3 = -2
+        expect(d.scalar, closeTo(-2.0, 1e-10)); // 1*4 - 2*3 = -2
 
         final a3 = NDArray.fromList(
           Float64List.fromList([1.0, 2.0, 3.0, 0.0, 1.0, 4.0, 5.0, 6.0, 0.0]),
@@ -559,7 +559,7 @@ void main() {
         );
         final d3 = det(a3);
         expect(
-          d3,
+          d3.scalar,
           closeTo(1.0, 1e-10),
         ); // 1*(0-24) - 2*(0-20) + 3*(0-5) = -24 + 40 - 15 = 1
       }),
@@ -573,7 +573,7 @@ void main() {
           2,
         ], DType.float64);
         final d = det(a);
-        expect(d, closeTo(0.0, 1e-10));
+        expect(d.scalar, closeTo(0.0, 1e-10));
       }),
     );
 

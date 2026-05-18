@@ -1535,7 +1535,7 @@ void main() {
           [2, 2],
           DType.float64,
         );
-        expect(det(singularMat), 0.0);
+        expect(det(singularMat).scalar, 0.0);
 
         // 2. solve() non-square matrix throws ArgumentError
         final nonSquareA = NDArray.fromList(

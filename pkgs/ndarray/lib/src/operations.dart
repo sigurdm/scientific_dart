@@ -10,280 +10,7 @@ import 'package:openblas/openblas.dart';
 import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'ndarray_bindings.dart';
-
-// LAPACK Extension Bindings linking explicitly to package:openblas asset via DefaultAsset
-
-@ffi.Native<
-  ffi.Int Function(
-    ffi.Int,
-    ffi.Uint8,
-    ffi.Int,
-    ffi.Pointer<ffi.Double>,
-    ffi.Int,
-  )
->()
-external int LAPACKE_dpotrf(
-  int matrix_layout,
-  int uplo,
-  int n,
-  ffi.Pointer<ffi.Double> a,
-  int lda,
-);
-
-@ffi.Native<
-  ffi.Int Function(ffi.Int, ffi.Uint8, ffi.Int, ffi.Pointer<ffi.Float>, ffi.Int)
->()
-external int LAPACKE_spotrf(
-  int matrix_layout,
-  int uplo,
-  int n,
-  ffi.Pointer<ffi.Float> a,
-  int lda,
-);
-
-@ffi.Native<
-  ffi.Int Function(
-    ffi.Int,
-    ffi.Int,
-    ffi.Int,
-    ffi.Pointer<ffi.Double>,
-    ffi.Int,
-    ffi.Pointer<ffi.Double>,
-  )
->()
-external int LAPACKE_dgeqrf(
-  int matrix_layout,
-  int m,
-  int n,
-  ffi.Pointer<ffi.Double> a,
-  int lda,
-  ffi.Pointer<ffi.Double> tau,
-);
-
-@ffi.Native<
-  ffi.Int Function(
-    ffi.Int,
-    ffi.Int,
-    ffi.Int,
-    ffi.Pointer<ffi.Float>,
-    ffi.Int,
-    ffi.Pointer<ffi.Float>,
-  )
->()
-external int LAPACKE_sgeqrf(
-  int matrix_layout,
-  int m,
-  int n,
-  ffi.Pointer<ffi.Float> a,
-  int lda,
-  ffi.Pointer<ffi.Float> tau,
-);
-
-@ffi.Native<
-  ffi.Int Function(
-    ffi.Int,
-    ffi.Int,
-    ffi.Int,
-    ffi.Int,
-    ffi.Pointer<ffi.Double>,
-    ffi.Int,
-    ffi.Pointer<ffi.Double>,
-  )
->()
-external int LAPACKE_dorgqr(
-  int matrix_layout,
-  int m,
-  int n,
-  int k,
-  ffi.Pointer<ffi.Double> a,
-  int lda,
-  ffi.Pointer<ffi.Double> tau,
-);
-
-@ffi.Native<
-  ffi.Int Function(
-    ffi.Int,
-    ffi.Int,
-    ffi.Int,
-    ffi.Int,
-    ffi.Pointer<ffi.Float>,
-    ffi.Int,
-    ffi.Pointer<ffi.Float>,
-  )
->()
-external int LAPACKE_sorgqr(
-  int matrix_layout,
-  int m,
-  int n,
-  int k,
-  ffi.Pointer<ffi.Float> a,
-  int lda,
-  ffi.Pointer<ffi.Float> tau,
-);
-
-@ffi.Native<
-  ffi.Int Function(
-    ffi.Int,
-    ffi.Uint8,
-    ffi.Uint8,
-    ffi.Int,
-    ffi.Int,
-    ffi.Pointer<ffi.Double>,
-    ffi.Int,
-    ffi.Pointer<ffi.Double>,
-    ffi.Pointer<ffi.Double>,
-    ffi.Int,
-    ffi.Pointer<ffi.Double>,
-    ffi.Int,
-    ffi.Pointer<ffi.Double>,
-  )
->()
-external int LAPACKE_dgesvd(
-  int matrix_layout,
-  int jobu,
-  int jobvt,
-  int m,
-  int n,
-  ffi.Pointer<ffi.Double> a,
-  int lda,
-  ffi.Pointer<ffi.Double> s,
-  ffi.Pointer<ffi.Double> u,
-  int ldu,
-  ffi.Pointer<ffi.Double> vt,
-  int ldvt,
-  ffi.Pointer<ffi.Double> superb,
-);
-
-@ffi.Native<
-  ffi.Int Function(
-    ffi.Int,
-    ffi.Uint8,
-    ffi.Uint8,
-    ffi.Int,
-    ffi.Int,
-    ffi.Pointer<ffi.Float>,
-    ffi.Int,
-    ffi.Pointer<ffi.Float>,
-    ffi.Pointer<ffi.Float>,
-    ffi.Int,
-    ffi.Pointer<ffi.Float>,
-    ffi.Int,
-    ffi.Pointer<ffi.Float>,
-  )
->()
-external int LAPACKE_sgesvd(
-  int matrix_layout,
-  int jobu,
-  int jobvt,
-  int m,
-  int n,
-  ffi.Pointer<ffi.Float> a,
-  int lda,
-  ffi.Pointer<ffi.Float> s,
-  ffi.Pointer<ffi.Float> u,
-  int ldu,
-  ffi.Pointer<ffi.Float> vt,
-  int ldvt,
-  ffi.Pointer<ffi.Float> superb,
-);
-
-@ffi.Native<
-  ffi.Int Function(
-    ffi.Int,
-    ffi.Int,
-    ffi.Int,
-    ffi.Pointer<ffi.Float>,
-    ffi.Int,
-    ffi.Pointer<ffi.Int>,
-  )
->()
-external int LAPACKE_sgetrf(
-  int matrix_layout,
-  int m,
-  int n,
-  ffi.Pointer<ffi.Float> a,
-  int lda,
-  ffi.Pointer<ffi.Int> ipiv,
-);
-
-@ffi.Native<
-  ffi.Int Function(
-    ffi.Int,
-    ffi.Int,
-    ffi.Pointer<ffi.Float>,
-    ffi.Int,
-    ffi.Pointer<ffi.Int>,
-  )
->()
-external int LAPACKE_sgetri(
-  int matrix_layout,
-  int n,
-  ffi.Pointer<ffi.Float> a,
-  int lda,
-  ffi.Pointer<ffi.Int> ipiv,
-);
-
-@ffi.Native<
-  ffi.Int Function(
-    ffi.Int,
-    ffi.Uint8,
-    ffi.Uint8,
-    ffi.Int,
-    ffi.Pointer<ffi.Double>,
-    ffi.Int,
-    ffi.Pointer<ffi.Double>,
-    ffi.Pointer<ffi.Double>,
-    ffi.Pointer<ffi.Double>,
-    ffi.Int,
-    ffi.Pointer<ffi.Double>,
-    ffi.Int,
-  )
->()
-external int LAPACKE_dgeev(
-  int matrix_layout,
-  int jobvl,
-  int jobvr,
-  int n,
-  ffi.Pointer<ffi.Double> a,
-  int lda,
-  ffi.Pointer<ffi.Double> wr,
-  ffi.Pointer<ffi.Double> wi,
-  ffi.Pointer<ffi.Double> vl,
-  int ldvl,
-  ffi.Pointer<ffi.Double> vr,
-  int ldvr,
-);
-
-@ffi.Native<
-  ffi.Int Function(
-    ffi.Int,
-    ffi.Uint8,
-    ffi.Uint8,
-    ffi.Int,
-    ffi.Pointer<ffi.Float>,
-    ffi.Int,
-    ffi.Pointer<ffi.Float>,
-    ffi.Pointer<ffi.Float>,
-    ffi.Pointer<ffi.Float>,
-    ffi.Int,
-    ffi.Pointer<ffi.Float>,
-    ffi.Int,
-  )
->()
-external int LAPACKE_sgeev(
-  int matrix_layout,
-  int jobvl,
-  int jobvr,
-  int n,
-  ffi.Pointer<ffi.Float> a,
-  int lda,
-  ffi.Pointer<ffi.Float> wr,
-  ffi.Pointer<ffi.Float> wi,
-  ffi.Pointer<ffi.Float> vl,
-  int ldvl,
-  ffi.Pointer<ffi.Float> vr,
-  int ldvr,
-);
+import 'openblas_extensions_bindings.dart';
 
 /// Configure the number of parallel execution threads used by OpenBLAS at runtime.
 ///
@@ -413,12 +140,9 @@ List<int> _broadcastStackShapes(List<int> sA, List<int> sB) {
   return result;
 }
 
-/// Matrix multiplication for Float64 and Float32 arrays using OpenBLAS, supporting high-dimensional stack broadcasting and 1D vector promotions.
-NDArray matmul(NDArray a, NDArray b) {
-  final DType<dynamic> targetDType =
-      (a.dtype == DType.float32 || b.dtype == DType.float32)
-      ? DType.float32
-      : DType.float64;
+/// Matrix multiplication using OpenBLAS, supporting high-dimensional stack broadcasting and 1D vector promotions.
+NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b) {
+  final targetDType = _resolveDType(a.dtype, b.dtype);
 
   if (a.shape.length == 1 && b.shape.length == 1) {
     final n = a.shape[0];
@@ -435,8 +159,8 @@ NDArray matmul(NDArray a, NDArray b) {
         b.pointer.cast<ffi.Double>(),
         1,
       );
-      return NDArray.fromList([scalarRes], [], DType.float64);
-    } else {
+      return NDArray.fromList([scalarRes], [], DType.float64) as NDArray<R>;
+    } else if (targetDType == DType.float32) {
       final scalarRes = cblas_sdot(
         n,
         a.pointer.cast<ffi.Float>(),
@@ -444,7 +168,7 @@ NDArray matmul(NDArray a, NDArray b) {
         b.pointer.cast<ffi.Float>(),
         1,
       );
-      return NDArray.fromList([scalarRes], [], DType.float32);
+      return NDArray.fromList([scalarRes], [], DType.float32) as NDArray<R>;
     }
   }
 
@@ -569,6 +293,27 @@ NDArray matmul(NDArray a, NDArray b) {
     resStride *= broadcastStack[i];
   }
 
+  ffi.Pointer<ffi.Double> alphaZ = ffi.nullptr.cast();
+  ffi.Pointer<ffi.Double> betaZ = ffi.nullptr.cast();
+  ffi.Pointer<ffi.Float> alphaC = ffi.nullptr.cast();
+  ffi.Pointer<ffi.Float> betaC = ffi.nullptr.cast();
+
+  if (targetDType == DType.complex128) {
+    alphaZ = malloc<ffi.Double>(2);
+    alphaZ[0] = 1.0;
+    alphaZ[1] = 0.0;
+    betaZ = malloc<ffi.Double>(2);
+    betaZ[0] = 0.0;
+    betaZ[1] = 0.0;
+  } else if (targetDType == DType.complex64) {
+    alphaC = malloc<ffi.Float>(2);
+    alphaC[0] = 1.0;
+    alphaC[1] = 0.0;
+    betaC = malloc<ffi.Float>(2);
+    betaC[0] = 0.0;
+    betaC[1] = 0.0;
+  }
+
   void walk(int dim, int offsetA, int offsetB, int offsetRes) {
     if (dim == lenResult) {
       if (targetDType == DType.float64) {
@@ -588,7 +333,7 @@ NDArray matmul(NDArray a, NDArray b) {
           result.pointer.cast<ffi.Double>() + offsetRes,
           n, // ldc (result is always contiguous row-major)
         );
-      } else {
+      } else if (targetDType == DType.float32) {
         cblas_sgemm(
           101, // CblasRowMajor
           transA,
@@ -604,6 +349,40 @@ NDArray matmul(NDArray a, NDArray b) {
           0.0,
           result.pointer.cast<ffi.Float>() + offsetRes,
           n, // ldc (result is always contiguous row-major)
+        );
+      } else if (targetDType == DType.complex128) {
+        cblas_zgemm(
+          101,
+          transA,
+          transB,
+          m,
+          n,
+          kA,
+          alphaZ,
+          aView.pointer.cast<ffi.Double>() + (offsetA * 2),
+          lda,
+          bView.pointer.cast<ffi.Double>() + (offsetB * 2),
+          ldb,
+          betaZ,
+          result.pointer.cast<ffi.Double>() + (offsetRes * 2),
+          n,
+        );
+      } else if (targetDType == DType.complex64) {
+        cblas_cgemm(
+          101,
+          transA,
+          transB,
+          m,
+          n,
+          kA,
+          alphaC,
+          aView.pointer.cast<ffi.Float>() + (offsetA * 2),
+          lda,
+          bView.pointer.cast<ffi.Float>() + (offsetB * 2),
+          ldb,
+          betaC,
+          result.pointer.cast<ffi.Float>() + (offsetRes * 2),
+          n,
         );
       }
       return;
@@ -626,20 +405,26 @@ NDArray matmul(NDArray a, NDArray b) {
 
   walk(0, 0, 0, 0);
 
+  if (alphaZ.address != 0) malloc.free(alphaZ);
+  if (betaZ.address != 0) malloc.free(betaZ);
+  if (alphaC.address != 0) malloc.free(alphaC);
+  if (betaC.address != 0) malloc.free(betaC);
+
   // Post-calculation 1D dummy dimensions demotions
   if (aPromoted && bPromoted) {
-    return result.reshape([]); // 0D scalar array for pure vector dot products
+    return result.reshape([])
+        as NDArray<R>; // 0D scalar array for pure vector dot products
   } else if (aPromoted) {
     final newShape = List<int>.from(result.shape)
       ..removeAt(result.shape.length - 2);
-    return result.reshape(newShape);
+    return result.reshape(newShape) as NDArray<R>;
   } else if (bPromoted) {
     final newShape = List<int>.from(result.shape)
       ..removeAt(result.shape.length - 1);
-    return result.reshape(newShape);
+    return result.reshape(newShape) as NDArray<R>;
   }
 
-  return result;
+  return result as NDArray<R>;
 }
 
 /// Compute the sum of elements in the array.
@@ -2641,133 +2426,115 @@ NDArray inv(NDArray a, {NDArray? out}) {
 ///
 /// Refer to the [Determinant Reference](https://en.wikipedia.org/wiki/Determinant)
 /// and [LAPACK LU solver](https://en.wikipedia.org/wiki/LU_decomposition) for additional details.
-double det(NDArray a) {
+NDArray<double> det<T>(NDArray<T> a) {
   if (a.dtype != DType.float64 && a.dtype != DType.float32) {
     throw ArgumentError('det only supports Float64 and Float32 dtypes');
   }
-  if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
-    throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
+  final rank = a.shape.length;
+  if (rank < 2 || a.shape[rank - 1] != a.shape[rank - 2]) {
+    throw ArgumentError(
+      'Matrix must be square and at least 2D (was ${a.shape})',
+    );
   }
-  final n = a.shape[0];
+  final n = a.shape[rank - 1];
+  final stackShape = a.shape.sublist(0, rank - 2);
+  final result = NDArray.zeros(stackShape, DType.float64);
 
   if (a.dtype == DType.float64) {
-    // Create a copy of the matrix because dgetrf overwrites it
-    final aCopy = NDArray<double>.create(a.shape, DType.float64);
-    if (a.isContiguous) {
-      (aCopy.data as Float64List).setRange(
-        0,
-        a.data.length,
-        a.data as Float64List,
-      );
-    } else {
-      aCopy.data.setRange(
-        0,
-        a.data.length,
-        a.toList().cast<double>() as dynamic,
-      );
+    final cBuffer = _getStridedOpBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+    }
+    for (var i = 0; i < stackShape.length; i++) {
+      cStridesRes[i] = result.strides[i];
     }
 
-    final ipiv = malloc<ffi.Int>(n);
-
-    try {
-      final info = LAPACKE_dgetrf(
-        101, // LAPACK_ROW_MAJOR
-        n,
-        n,
-        aCopy.pointer.cast<ffi.Double>(),
-        n,
-        ipiv,
-      );
-
-      if (info < 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_dgetrf: $info');
-      }
-
-      // If info > 0, U(i,i) is exactly zero. The factorization has been completed,
-      // but the factor U is exactly singular.
-      // In this case, the determinant is 0.
-      if (info > 0) {
-        return 0.0;
-      }
-
-      var detValue = 1.0;
-      var swaps = 0;
-
-      final aCopyData = aCopy.data;
-      for (var i = 0; i < n; i++) {
-        detValue *= aCopyData[i * n + i];
-        if (ipiv[i] != i + 1) {
-          swaps++;
-        }
-      }
-
-      if (swaps % 2 != 0) {
-        detValue = -detValue;
-      }
-
-      return detValue;
-    } finally {
-      malloc.free(ipiv);
-      aCopy.dispose();
-    }
+    s_det_double(
+      a.pointer.cast<ffi.Double>(),
+      cStridesA,
+      result.pointer.cast<ffi.Double>(),
+      cStridesRes,
+      cShape,
+      rank,
+    );
   } else {
-    // Create a copy of the matrix because sgetrf overwrites it
-    final aCopy = NDArray<double>.create(a.shape, DType.float32);
-    if (a.isContiguous) {
-      (aCopy.data as Float32List).setRange(
-        0,
-        a.data.length,
-        a.data as Float32List,
-      );
-    } else {
-      aCopy.data.setRange(
-        0,
-        a.data.length,
-        a.toList().cast<double>() as dynamic,
-      );
-    }
-
+    // Fallback for Float32: use the Dart walk loop!
+    final aCopy = NDArray.create([n, n], a.dtype);
     final ipiv = malloc<ffi.Int>(n);
 
-    try {
-      final info = LAPACKE_sgetrf(
-        101, // LAPACK_ROW_MAJOR
-        n,
-        n,
-        aCopy.pointer.cast<ffi.Float>(),
-        n,
-        ipiv,
-      );
-
-      if (info < 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_sgetrf: $info');
-      }
-
-      if (info > 0) {
-        return 0.0;
-      }
-
-      var detValue = 1.0;
-      var swaps = 0;
-
-      final aCopyData = aCopy.data;
-      for (var i = 0; i < n; i++) {
-        detValue *= aCopyData[i * n + i];
-        if (ipiv[i] != i + 1) {
-          swaps++;
+    void walk(int dim, int offsetA, int offsetRes) {
+      if (dim == rank - 2) {
+        // Leaf: process one matrix!
+        if (a.isContiguous) {
+          final aData = a.data as Float32List;
+          final cData = aCopy.data as Float32List;
+          cData.setRange(0, n * n, aData, offsetA);
+        } else {
+          final sliceView = NDArray.view(
+            a,
+            shape: [n, n],
+            strides: a.strides.sublist(rank - 2),
+            offsetElements: offsetA,
+          );
+          final sliceData = sliceView.toList();
+          (aCopy.data as Float32List).setRange(
+            0,
+            n * n,
+            sliceData.cast<double>(),
+          );
         }
+
+        double detValue = 1.0;
+        final info = LAPACKE_sgetrf(
+          101,
+          n,
+          n,
+          aCopy.pointer.cast<ffi.Float>(),
+          n,
+          ipiv,
+        );
+        if (info < 0) throw ArgumentError('Illegal value in sgetrf: $info');
+        if (info > 0) {
+          detValue = 0.0;
+        } else {
+          final data = aCopy.data as Float32List;
+          for (var i = 0; i < n; i++) {
+            detValue *= data[i * n + i];
+          }
+          var swaps = 0;
+          for (var i = 0; i < n; i++) {
+            if (ipiv[i] != i + 1) swaps++;
+          }
+          if (swaps % 2 != 0) detValue = -detValue;
+        }
+
+        (result.data as List<double>)[offsetRes] = detValue;
+        return;
       }
 
-      if (swaps % 2 != 0) {
-        detValue = -detValue;
-      }
+      final size = a.shape[dim];
+      final strideA = a.strides[dim];
+      final strideRes = result.strides.isEmpty ? 1 : result.strides[dim];
 
-      return detValue;
+      for (var i = 0; i < size; i++) {
+        walk(dim + 1, offsetA + i * strideA, offsetRes + i * strideRes);
+      }
+    }
+
+    try {
+      walk(0, 0, 0);
     } finally {
       malloc.free(ipiv);
       aCopy.dispose();
     }
   }
+
+  return result;
 }
 
 /// Solve a linear matrix equation, or system of linear scalar equations.
@@ -15865,5 +15632,6 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
       );
       return result;
   }
+  // ignore: dead_code
   throw UnsupportedError('Unsupported operand types');
 }

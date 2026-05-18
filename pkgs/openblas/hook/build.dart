@@ -128,6 +128,45 @@ void main(List<String> args) async {
           );
           output.dependencies.add(libFile.uri);
           print('Using built OpenBLAS library at ${libFile.path}');
+
+          // Compile custom extensions!
+          final extLibFile = File(
+            outputDir.uri.resolve('libopenblas_extensions.so').toFilePath(),
+          );
+          final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
+          final compileArgs = [
+            '-shared',
+            '-fPIC',
+            '-O3',
+            '-I${extractDir}lapack-netlib/LAPACKE/include',
+            input.packageRoot.resolve('hook/custom_extensions.c').toFilePath(),
+            '-o',
+            extLibFile.path,
+            '-L$extractDir',
+            '-Wl,-rpath,$extractDir',
+            '-lopenblas',
+            '-lm',
+          ];
+          print(
+            'Compiling custom extensions with: $compilerPath ${compileArgs.join(' ')}',
+          );
+          final extRes = await Process.run(compilerPath, compileArgs);
+          if (extRes.exitCode != 0) {
+            print('Failed to compile custom extensions: ${extRes.stderr}');
+            exit(1);
+          }
+          print(
+            'Compiled custom extensions successfully at: ${extLibFile.path}',
+          );
+
+          output.assets.code.add(
+            CodeAsset(
+              package: packageName,
+              name: 'openblas_extensions',
+              linkMode: DynamicLoadingBundled(),
+              file: extLibFile.uri,
+            ),
+          );
         } else {
           print('Built library not found at ${libFile.path}');
         }

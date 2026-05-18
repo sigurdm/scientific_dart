@@ -219,5 +219,65 @@ void main() {
         expect(() => ifft(a, n: hugeN), throwsA(anything));
       }),
     );
+
+    group('Multi-dimensional FFT with axis parameter', () {
+      test(
+        '2D FFT along axis 0 (columns)',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Float64List.fromList([1.0, 2.0, 3.0, 4.0]),
+            [2, 2],
+            DType.float64,
+          );
+          final freq = fft(a, axis: 0).copy();
+          expect(freq.shape, [2, 2]);
+          expect(freq.dtype, DType.complex128);
+          expect(freq.data[0].real, closeTo(4.0, 1e-9));
+          expect(freq.data[1].real, closeTo(6.0, 1e-9));
+          expect(freq.data[2].real, closeTo(-2.0, 1e-9));
+          expect(freq.data[3].real, closeTo(-2.0, 1e-9));
+        }),
+      );
+
+      test(
+        '2D FFT along axis 1 (rows)',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Float64List.fromList([1.0, 2.0, 3.0, 4.0]),
+            [2, 2],
+            DType.float64,
+          );
+          final freq = fft(a, axis: 1).copy();
+          expect(freq.shape, [2, 2]);
+          expect(freq.dtype, DType.complex128);
+          expect(freq.data[0].real, closeTo(3.0, 1e-9));
+          expect(freq.data[1].real, closeTo(-1.0, 1e-9));
+          expect(freq.data[2].real, closeTo(7.0, 1e-9));
+          expect(freq.data[3].real, closeTo(-1.0, 1e-9));
+        }),
+      );
+
+      test(
+        '2D IFFT along axis 0',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [
+              Complex(4.0, 0.0),
+              Complex(6.0, 0.0),
+              Complex(-2.0, 0.0),
+              Complex(-2.0, 0.0),
+            ],
+            [2, 2],
+            DType.complex128,
+          );
+          final restored = ifft(a, axis: 0).copy();
+          expect(restored.shape, [2, 2]);
+          expect(restored.data[0].real, closeTo(1.0, 1e-9));
+          expect(restored.data[1].real, closeTo(2.0, 1e-9));
+          expect(restored.data[2].real, closeTo(3.0, 1e-9));
+          expect(restored.data[3].real, closeTo(4.0, 1e-9));
+        }),
+      );
+    });
   });
 }

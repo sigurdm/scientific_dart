@@ -2,3 +2,4 @@
 library;
 
 export 'src/openblas_bindings.dart';
+export 'src/openblas_extensions.dart';

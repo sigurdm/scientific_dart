@@ -1,9 +1,0 @@
-# ffigen configuration for OpenBLAS
-name: OpenBlas
-description: Bindings to OpenBLAS
-output: 'lib/src/openblas_bindings.dart'
-headers:
-  entry-points:
-    - 'third_party/openblas/cblas.h'
-    - 'third_party/openblas/lapacke_minimal.h'
-ffi-native: true

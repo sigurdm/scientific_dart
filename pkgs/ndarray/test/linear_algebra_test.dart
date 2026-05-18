@@ -304,7 +304,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          expect(det(a), closeTo(-2.0, 1e-9));
+          expect(det(a).scalar, closeTo(-2.0, 1e-9));
         }),
       );
 
@@ -316,7 +316,7 @@ void main() {
             [2, 2],
             DType.float32,
           );
-          expect(det(a), closeTo(-2.0, 1e-5));
+          expect(det(a).scalar, closeTo(-2.0, 1e-5));
         }),
       );
 
