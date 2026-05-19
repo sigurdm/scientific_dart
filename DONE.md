@@ -2517,3 +2517,16 @@
   - **Matmul Recycler Out Buffer**: Updated `matmul()` signature and bodies to support the recycler `out` parameter, allowing zero-allocation target writes.
 * **Results**:
   - **Verification**: Authored 11 comprehensive unit test groups in [linear_algebra_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/linear_algebra_test.dart) validating over/under-determined systems, rank-deficient matrices, complex systems, upcasting, chain order, and `out` recyclers. Added full executable examples. All unit tests pass perfectly!
+
+***
+
+## 212. Multi-Dimensional Stack (ND-Stack) Support for det(), eig(), qr(), and svd() (Task Completion)
+* **What was done**:
+  - **Resolves Section 2.1 Issue in ISSUES.md / FINDINGS.md**.
+  - **ND-Stack Coordinate Walking**: Programmed a private recursive helper `_walkStackCoords` that traverses multidimensional stack coordinates with zero dynamic allocations.
+  - **det() Stack Support**: Refactored `det()` to support arbitrary stack structures `[..., N, N]`, and swapped raw FFI `malloc` calls with the high-performance `_ScratchArena` allocator.
+  - **eig() Stack Support**: Extended eigenvalues and eigenvectors calculation to handle arbitrary stacks, returning complex eigenvalues `[..., N]` and eigenvectors `[..., N, N]`.
+  - **qr() Stack Support**: Refactored QR decomposition to support stacks, optimizing memory usage by allocating the `tau` reflector buffer once from `_ScratchArena` outside the batch walk loop.
+  - **svd() Stack Support**: Added SVD stack support, dynamically handling wide stacked matrices via axis-permuting transpositions, and optimizing the `superb` workspace buffer using `_ScratchArena`.
+* **Results**:
+  - **Verification**: Created dedicated test cases in [linear_algebra_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/linear_algebra_test.dart) verifying Float64, Float32, 4D stacked tensors, complex/real eigenvalues, QR orthogonality/triangularity, tall/wide SVD configurations, and strided views. All tests pass flawlessly green.
