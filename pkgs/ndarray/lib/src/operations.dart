@@ -10,7 +10,6 @@ import 'package:openblas/openblas.dart';
 import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'ndarray_bindings.dart';
-import 'openblas_extensions_bindings.dart';
 
 /// Configure the number of parallel execution threads used by OpenBLAS at runtime.
 ///
@@ -2648,17 +2647,17 @@ NDArray inv(NDArray a, {NDArray? out}) {
   }
 }
 
-/// Compute the determinant of a square 2D matrix using OpenBLAS.
+/// Compute the determinant of a square matrix or a stack of square matrices using OpenBLAS.
 ///
 /// Transforms the matrix and calculates its determinant natively via LAPACK LU decomposition.
-/// Returns the determinant as a double.
+/// Returns the determinant as a double or a stack of determinants.
 ///
 /// **Preconditions:**
-/// - Matrix [a] must be square (size $N \times N$) and 2-dimensional.
+/// - Matrix [a] must be square in its last two dimensions (size $N \times N$) and at least 2-dimensional.
 /// - Data type [a.dtype] must be float32 or float64.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [a] is not square or not 2D.
+/// - [ArgumentError] if [a] is not square or less than 2D.
 /// - [ArgumentError] if [a.dtype] is not a supported floating point data type.
 ///
 /// **Performance considerations:**
@@ -2687,40 +2686,28 @@ NDArray<double> det<T>(NDArray<T> a) {
   final stackShape = a.shape.sublist(0, rank - 2);
   final result = NDArray.zeros(stackShape, DType.float64);
 
-  if (a.dtype == DType.float64) {
-    final cBuffer = _ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
+  final aCopy = NDArray.create([n, n], a.dtype);
+  final marker = _ScratchArena.marker;
+  final ipiv = _ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
 
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-    }
-    for (var i = 0; i < stackShape.length; i++) {
-      cStridesRes[i] = result.strides[i];
-    }
+  try {
+    _walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+      coords,
+    ) {
+      var offsetA = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetA += coords[i] * a.strides[i];
+      }
+      var offsetRes = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetRes += coords[i] * result.strides[i];
+      }
 
-    s_det_double(
-      a.pointer.cast<ffi.Double>(),
-      cStridesA,
-      result.pointer.cast<ffi.Double>(),
-      cStridesRes,
-      cShape,
-      rank,
-    );
-  } else {
-    // Fallback for Float32: use the Dart walk loop!
-    final aCopy = NDArray.create([n, n], a.dtype);
-    final ipiv = malloc<ffi.Int>(n);
-
-    void walk(int dim, int offsetA, int offsetRes) {
-      if (dim == rank - 2) {
-        // Leaf: process one matrix!
+      if (a.dtype == DType.float64) {
+        final aCopyData = aCopy.data as Float64List;
         if (a.isContiguous) {
-          final aData = a.data as Float32List;
-          final cData = aCopy.data as Float32List;
-          cData.setRange(0, n * n, aData, offsetA);
+          final aData = a.data as Float64List;
+          aCopyData.setRange(0, n * n, aData, offsetA);
         } else {
           final sliceView = NDArray.view(
             a,
@@ -2728,17 +2715,51 @@ NDArray<double> det<T>(NDArray<T> a) {
             strides: a.strides.sublist(rank - 2),
             offsetElements: offsetA,
           );
-          final sliceData = sliceView.toList();
-          (aCopy.data as Float32List).setRange(
-            0,
-            n * n,
-            sliceData.cast<double>(),
+          aCopyData.setRange(0, n * n, sliceView.toList().cast<double>());
+        }
+
+        double detValue = 1.0;
+        final info = LAPACKE_dgetrf(
+          101, // ROW_MAJOR
+          n,
+          n,
+          aCopy.pointer.cast<ffi.Double>(),
+          n,
+          ipiv,
+        );
+        if (info < 0) throw ArgumentError('Illegal value in dgetrf: $info');
+        if (info > 0) {
+          detValue = 0.0;
+        } else {
+          final data = aCopy.data as Float64List;
+          for (var i = 0; i < n; i++) {
+            detValue *= data[i * n + i];
+          }
+          var swaps = 0;
+          for (var i = 0; i < n; i++) {
+            if (ipiv[i] != i + 1) swaps++;
+          }
+          if (swaps % 2 != 0) detValue = -detValue;
+        }
+        (result.data as Float64List)[offsetRes] = detValue;
+      } else {
+        final aCopyData = aCopy.data as Float32List;
+        if (a.isContiguous) {
+          final aData = a.data as Float32List;
+          aCopyData.setRange(0, n * n, aData, offsetA);
+        } else {
+          final sliceView = NDArray.view(
+            a,
+            shape: [n, n],
+            strides: a.strides.sublist(rank - 2),
+            offsetElements: offsetA,
           );
+          aCopyData.setRange(0, n * n, sliceView.toList().cast<double>());
         }
 
         double detValue = 1.0;
         final info = LAPACKE_sgetrf(
-          101,
+          101, // ROW_MAJOR
           n,
           n,
           aCopy.pointer.cast<ffi.Float>(),
@@ -2759,26 +2780,12 @@ NDArray<double> det<T>(NDArray<T> a) {
           }
           if (swaps % 2 != 0) detValue = -detValue;
         }
-
-        (result.data as List<double>)[offsetRes] = detValue;
-        return;
+        (result.data as Float64List)[offsetRes] = detValue;
       }
-
-      final size = a.shape[dim];
-      final strideA = a.strides[dim];
-      final strideRes = result.strides.isEmpty ? 1 : result.strides[dim];
-
-      for (var i = 0; i < size; i++) {
-        walk(dim + 1, offsetA + i * strideA, offsetRes + i * strideRes);
-      }
-    }
-
-    try {
-      walk(0, 0, 0);
-    } finally {
-      malloc.free(ipiv);
-      aCopy.dispose();
-    }
+    });
+  } finally {
+    _ScratchArena.reset(marker);
+    aCopy.dispose();
   }
 
   return result;
@@ -3000,226 +3007,387 @@ NDArray solve(NDArray a, NDArray b) {
   }
 }
 
-/// Compute the eigenvalues and right eigenvectors of a square array.
+/// Compute the eigenvalues and right eigenvectors of a square array or stack of square arrays.
 ///
 /// Returns a Map with keys 'eigenvalues' and 'eigenvectors'.
 /// Both are returned as `NDArray<Complex>` because they can be complex
 /// even for real matrices.
+///
+/// **Preconditions:**
+/// - Matrix [a] must be square in its last two dimensions (size $N \times N$) and at least 2-dimensional.
+///
+/// **Throws:**
+/// - [ArgumentError] if [a] is not square or less than 2D.
+/// - [UnimplementedError] if the DType of [a] is not supported.
 Map<String, NDArray<Complex>> eig(NDArray a) {
-  if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
-    throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
+  final rank = a.shape.length;
+  if (rank < 2 || a.shape[rank - 1] != a.shape[rank - 2]) {
+    throw ArgumentError(
+      'Matrix must be square and at least 2D (was ${a.shape})',
+    );
   }
-  final n = a.shape[0];
+  final n = a.shape[rank - 1];
+  final stackShape = a.shape.sublist(0, rank - 2);
+
+  final DType<Complex> compDType =
+      (a.dtype == DType.float32 || a.dtype == DType.complex64)
+      ? DType.complex64
+      : DType.complex128;
+
+  final wShape = [...stackShape, n];
+  final vrShape = [...stackShape, n, n];
+
+  final w = NDArray<Complex>.create(wShape, compDType);
+  final vr = NDArray<Complex>.create(vrShape, compDType);
 
   final jobvl = 'N'.codeUnitAt(0);
   final jobvr = 'V'.codeUnitAt(0);
 
-  if (a.dtype == DType.complex128) {
-    final aComplex = NDArray<Complex>.create(a.shape, DType.complex128);
-    final backing = (a.data as ComplexList).backingList;
-    (aComplex.data as ComplexList).backingList.setRange(
-      0,
-      backing.length,
-      backing,
-    );
-
-    final w = NDArray<Complex>.create([n], DType.complex128);
-    final vr = NDArray<Complex>.create([n, n], DType.complex128);
-
-    final info = LAPACKE_zgeev(
-      101, // LAPACK_ROW_MAJOR
-      jobvl,
-      jobvr,
-      n,
-      aComplex.pointer.cast<ffi.Double>(),
-      n,
-      w.pointer.cast<ffi.Double>(),
-      ffi.nullptr.cast<ffi.Double>(),
-      n,
-      vr.pointer.cast<ffi.Double>(),
-      n,
-    );
-
-    if (info < 0) {
-      throw ArgumentError('Illegal value in call to LAPACKE_zgeev: $info');
-    }
-    if (info > 0) {
-      throw ArgumentError(
-        'The QR algorithm failed to compute all eigenvalues.',
-      );
-    }
-
-    aComplex.dispose();
-    return {'eigenvalues': w, 'eigenvectors': vr};
-  } else if (a.dtype == DType.complex64) {
-    final aComplex = NDArray<Complex>.create(a.shape, DType.complex64);
-    final backing = (a.data as ComplexList).backingList;
-    (aComplex.data as ComplexList).backingList.setRange(
-      0,
-      backing.length,
-      backing,
-    );
-
-    final w = NDArray<Complex>.create([n], DType.complex64);
-    final vr = NDArray<Complex>.create([n, n], DType.complex64);
-
-    final info = LAPACKE_cgeev(
-      101, // LAPACK_ROW_MAJOR
-      jobvl,
-      jobvr,
-      n,
-      aComplex.pointer.cast<ffi.Float>(),
-      n,
-      w.pointer.cast<ffi.Float>(),
-      ffi.nullptr.cast<ffi.Float>(),
-      n,
-      vr.pointer.cast<ffi.Float>(),
-      n,
-    );
-
-    if (info < 0) {
-      throw ArgumentError('Illegal value in call to LAPACKE_cgeev: $info');
-    }
-    if (info > 0) {
-      throw ArgumentError(
-        'The QR algorithm failed to compute all eigenvalues.',
-      );
-    }
-
-    aComplex.dispose();
-    return {'eigenvalues': w, 'eigenvectors': vr};
-  } else if (a.dtype == DType.float64 ||
-      a.dtype == DType.int32 ||
-      a.dtype == DType.int64) {
-    final aReal = NDArray<double>.create(a.shape, DType.float64);
-    for (var i = 0; i < a.data.length; i++) {
-      aReal.data[i] = (a.data[i] as num).toDouble();
-    }
-
-    final wr = NDArray<double>.zeros([n], DType.float64);
-    final wi = NDArray<double>.zeros([n], DType.float64);
-    final vrReal = NDArray<double>.create([n, n], DType.float64);
-
-    final info = LAPACKE_dgeev(
-      101,
-      jobvl,
-      jobvr,
-      n,
-      aReal.pointer.cast<ffi.Double>(),
-      n,
-      wr.pointer.cast<ffi.Double>(),
-      wi.pointer.cast<ffi.Double>(),
-      ffi.nullptr.cast<ffi.Double>(),
-      n,
-      vrReal.pointer.cast<ffi.Double>(),
-      n,
-    );
-
-    if (info < 0) {
-      throw ArgumentError('Illegal value in call to LAPACKE_dgeev: $info');
-    }
-    if (info > 0) {
-      throw ArgumentError(
-        'The QR algorithm failed to compute all eigenvalues.',
-      );
-    }
-
-    final w = NDArray<Complex>.create([n], DType.complex128);
-    final vr = NDArray<Complex>.create([n, n], DType.complex128);
-
-    for (var j = 0; j < n; j++) {
-      w.data[j] = Complex(wr.data[j], wi.data[j]);
-    }
-
-    var j = 0;
-    while (j < n) {
-      if (wi.data[j] == 0.0) {
-        for (var r = 0; r < n; r++) {
-          vr.data[r * n + j] = Complex(vrReal.data[r * n + j], 0.0);
-        }
-        j++;
-      } else {
-        for (var r = 0; r < n; r++) {
-          final realPart = vrReal.data[r * n + j];
-          final imagPart = vrReal.data[r * n + j + 1];
-          vr.data[r * n + j] = Complex(realPart, imagPart);
-          vr.data[r * n + j + 1] = Complex(realPart, -imagPart);
-        }
-        j += 2;
-      }
-    }
-
-    aReal.dispose();
-    wr.dispose();
-    wi.dispose();
-    vrReal.dispose();
-    return {'eigenvalues': w, 'eigenvectors': vr};
-  } else if (a.dtype == DType.float32) {
-    final aReal = NDArray<double>.create(a.shape, DType.float32);
-    for (var i = 0; i < a.data.length; i++) {
-      aReal.data[i] = (a.data[i] as num).toDouble();
-    }
-
-    final wr = NDArray<double>.zeros([n], DType.float32);
-    final wi = NDArray<double>.zeros([n], DType.float32);
-    final vrReal = NDArray<double>.create([n, n], DType.float32);
-
-    final info = LAPACKE_sgeev(
-      101,
-      jobvl,
-      jobvr,
-      n,
-      aReal.pointer.cast<ffi.Float>(),
-      n,
-      wr.pointer.cast<ffi.Float>(),
-      wi.pointer.cast<ffi.Float>(),
-      ffi.nullptr.cast<ffi.Float>(),
-      n,
-      vrReal.pointer.cast<ffi.Float>(),
-      n,
-    );
-
-    if (info < 0) {
-      throw ArgumentError('Illegal value in call to LAPACKE_sgeev: $info');
-    }
-    if (info > 0) {
-      throw ArgumentError(
-        'The QR algorithm failed to compute all eigenvalues.',
-      );
-    }
-
-    final w = NDArray<Complex>.create([n], DType.complex64);
-    final vr = NDArray<Complex>.create([n, n], DType.complex64);
-
-    for (var j = 0; j < n; j++) {
-      w.data[j] = Complex(wr.data[j], wi.data[j]);
-    }
-
-    var j = 0;
-    while (j < n) {
-      if (wi.data[j] == 0.0) {
-        for (var r = 0; r < n; r++) {
-          vr.data[r * n + j] = Complex(vrReal.data[r * n + j], 0.0);
-        }
-        j++;
-      } else {
-        for (var r = 0; r < n; r++) {
-          final realPart = vrReal.data[r * n + j];
-          final imagPart = vrReal.data[r * n + j + 1];
-          vr.data[r * n + j] = Complex(realPart, imagPart);
-          vr.data[r * n + j + 1] = Complex(realPart, -imagPart);
-        }
-        j += 2;
-      }
-    }
-
-    aReal.dispose();
-    wr.dispose();
-    wi.dispose();
-    vrReal.dispose();
-    return {'eigenvalues': w, 'eigenvectors': vr};
-  } else {
+  if (a.dtype != DType.complex128 &&
+      a.dtype != DType.complex64 &&
+      a.dtype != DType.float64 &&
+      a.dtype != DType.int32 &&
+      a.dtype != DType.int64 &&
+      a.dtype != DType.float32) {
     throw UnimplementedError('Type ${a.dtype} not supported for eig');
+  }
+
+  final sliceCopy = NDArray.create([n, n], a.dtype);
+
+  try {
+    _walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+      coords,
+    ) {
+      var offsetA = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetA += coords[i] * a.strides[i];
+      }
+
+      if (a.dtype == DType.complex128) {
+        final sliceCopyData = (sliceCopy.data as ComplexList).backingList;
+        if (a.isContiguous) {
+          final aData = (a.data as ComplexList).backingList;
+          sliceCopyData.setRange(0, n * n * 2, aData, offsetA * 2);
+        } else {
+          final sliceView = NDArray.view(
+            a,
+            shape: [n, n],
+            strides: a.strides.sublist(rank - 2),
+            offsetElements: offsetA,
+          );
+          final backing = (sliceView.data as ComplexList).backingList;
+          sliceCopyData.setRange(0, n * n * 2, backing);
+        }
+      } else if (a.dtype == DType.complex64) {
+        final sliceCopyData = (sliceCopy.data as ComplexList).backingList;
+        if (a.isContiguous) {
+          final aData = (a.data as ComplexList).backingList;
+          sliceCopyData.setRange(0, n * n * 2, aData, offsetA * 2);
+        } else {
+          final sliceView = NDArray.view(
+            a,
+            shape: [n, n],
+            strides: a.strides.sublist(rank - 2),
+            offsetElements: offsetA,
+          );
+          final backing = (sliceView.data as ComplexList).backingList;
+          sliceCopyData.setRange(0, n * n * 2, backing);
+        }
+      } else if (a.dtype == DType.float64 ||
+          a.dtype == DType.int32 ||
+          a.dtype == DType.int64) {
+        final sliceCopyData = sliceCopy.data as Float64List;
+        if (a.isContiguous && a.dtype == DType.float64) {
+          final aData = a.data as Float64List;
+          sliceCopyData.setRange(0, n * n, aData, offsetA);
+        } else {
+          final sliceView = NDArray.view(
+            a,
+            shape: [n, n],
+            strides: a.strides.sublist(rank - 2),
+            offsetElements: offsetA,
+          );
+          final list = sliceView.toList();
+          for (var i = 0; i < n * n; i++) {
+            sliceCopyData[i] = (list[i] as num).toDouble();
+          }
+        }
+      } else if (a.dtype == DType.float32) {
+        final sliceCopyData = sliceCopy.data as Float32List;
+        if (a.isContiguous && a.dtype == DType.float32) {
+          final aData = a.data as Float32List;
+          sliceCopyData.setRange(0, n * n, aData, offsetA);
+        } else {
+          final sliceView = NDArray.view(
+            a,
+            shape: [n, n],
+            strides: a.strides.sublist(rank - 2),
+            offsetElements: offsetA,
+          );
+          final list = sliceView.toList();
+          for (var i = 0; i < n * n; i++) {
+            sliceCopyData[i] = (list[i] as num).toDouble();
+          }
+        }
+      }
+
+      var offsetW = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetW += coords[i] * w.strides[i];
+      }
+      var offsetVR = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetVR += coords[i] * vr.strides[i];
+      }
+
+      if (a.dtype == DType.complex128) {
+        final w2D = NDArray<Complex>.create([n], DType.complex128);
+        final vr2D = NDArray<Complex>.create([n, n], DType.complex128);
+
+        final info = LAPACKE_zgeev(
+          101, // ROW_MAJOR
+          jobvl,
+          jobvr,
+          n,
+          sliceCopy.pointer.cast<ffi.Double>(),
+          n,
+          w2D.pointer.cast<ffi.Double>(),
+          ffi.nullptr.cast<ffi.Double>(),
+          n,
+          vr2D.pointer.cast<ffi.Double>(),
+          n,
+        );
+
+        if (info < 0) {
+          throw ArgumentError('Illegal value in call to LAPACKE_zgeev: $info');
+        }
+        if (info > 0) {
+          throw ArgumentError(
+            'The QR algorithm failed to compute all eigenvalues.',
+          );
+        }
+
+        final w2DData = w2D.data;
+        final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
+        for (var j = 0; j < n; j++) {
+          w.data[offsetW + j * strideWLast] = w2DData[j];
+        }
+
+        final vr2DData = vr2D.data;
+        final strideVR1 = vr.strides[rank - 2];
+        final strideVR2 = vr.strides[rank - 1];
+        for (var r = 0; r < n; r++) {
+          for (var c = 0; c < n; c++) {
+            vr.data[offsetVR + r * strideVR1 + c * strideVR2] =
+                vr2DData[r * n + c];
+          }
+        }
+        w2D.dispose();
+        vr2D.dispose();
+      } else if (a.dtype == DType.complex64) {
+        final w2D = NDArray<Complex>.create([n], DType.complex64);
+        final vr2D = NDArray<Complex>.create([n, n], DType.complex64);
+
+        final info = LAPACKE_cgeev(
+          101, // ROW_MAJOR
+          jobvl,
+          jobvr,
+          n,
+          sliceCopy.pointer.cast<ffi.Float>(),
+          n,
+          w2D.pointer.cast<ffi.Float>(),
+          ffi.nullptr.cast<ffi.Float>(),
+          n,
+          vr2D.pointer.cast<ffi.Float>(),
+          n,
+        );
+
+        if (info < 0) {
+          throw ArgumentError('Illegal value in call to LAPACKE_cgeev: $info');
+        }
+        if (info > 0) {
+          throw ArgumentError(
+            'The QR algorithm failed to compute all eigenvalues.',
+          );
+        }
+
+        final w2DData = w2D.data;
+        final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
+        for (var j = 0; j < n; j++) {
+          w.data[offsetW + j * strideWLast] = w2DData[j];
+        }
+
+        final vr2DData = vr2D.data;
+        final strideVR1 = vr.strides[rank - 2];
+        final strideVR2 = vr.strides[rank - 1];
+        for (var r = 0; r < n; r++) {
+          for (var c = 0; c < n; c++) {
+            vr.data[offsetVR + r * strideVR1 + c * strideVR2] =
+                vr2DData[r * n + c];
+          }
+        }
+        w2D.dispose();
+        vr2D.dispose();
+      } else if (a.dtype == DType.float64 ||
+          a.dtype == DType.int32 ||
+          a.dtype == DType.int64) {
+        final wr = NDArray<double>.zeros([n], DType.float64);
+        final wi = NDArray<double>.zeros([n], DType.float64);
+        final vrReal = NDArray<double>.create([n, n], DType.float64);
+
+        final info = LAPACKE_dgeev(
+          101,
+          jobvl,
+          jobvr,
+          n,
+          sliceCopy.pointer.cast<ffi.Double>(),
+          n,
+          wr.pointer.cast<ffi.Double>(),
+          wi.pointer.cast<ffi.Double>(),
+          ffi.nullptr.cast<ffi.Double>(),
+          n,
+          vrReal.pointer.cast<ffi.Double>(),
+          n,
+        );
+
+        if (info < 0) {
+          throw ArgumentError('Illegal value in call to LAPACKE_dgeev: $info');
+        }
+        if (info > 0) {
+          throw ArgumentError(
+            'The QR algorithm failed to compute all eigenvalues.',
+          );
+        }
+
+        final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
+        for (var j = 0; j < n; j++) {
+          w.data[offsetW + j * strideWLast] = Complex(wr.data[j], wi.data[j]);
+        }
+
+        final strideVR1 = vr.strides[rank - 2];
+        final strideVR2 = vr.strides[rank - 1];
+        var j = 0;
+        while (j < n) {
+          if (wi.data[j] == 0.0) {
+            for (var r = 0; r < n; r++) {
+              vr.data[offsetVR + r * strideVR1 + j * strideVR2] = Complex(
+                vrReal.data[r * n + j],
+                0.0,
+              );
+            }
+            j++;
+          } else {
+            for (var r = 0; r < n; r++) {
+              final realPart = vrReal.data[r * n + j];
+              final imagPart = vrReal.data[r * n + j + 1];
+              vr.data[offsetVR + r * strideVR1 + j * strideVR2] = Complex(
+                realPart,
+                imagPart,
+              );
+              vr.data[offsetVR + r * strideVR1 + (j + 1) * strideVR2] = Complex(
+                realPart,
+                -imagPart,
+              );
+            }
+            j += 2;
+          }
+        }
+
+        wr.dispose();
+        wi.dispose();
+        vrReal.dispose();
+      } else if (a.dtype == DType.float32) {
+        final wr = NDArray<double>.zeros([n], DType.float32);
+        final wi = NDArray<double>.zeros([n], DType.float32);
+        final vrReal = NDArray<double>.create([n, n], DType.float32);
+
+        final info = LAPACKE_sgeev(
+          101,
+          jobvl,
+          jobvr,
+          n,
+          sliceCopy.pointer.cast<ffi.Float>(),
+          n,
+          wr.pointer.cast<ffi.Float>(),
+          wi.pointer.cast<ffi.Float>(),
+          ffi.nullptr.cast<ffi.Float>(),
+          n,
+          vrReal.pointer.cast<ffi.Float>(),
+          n,
+        );
+
+        if (info < 0) {
+          throw ArgumentError('Illegal value in call to LAPACKE_sgeev: $info');
+        }
+        if (info > 0) {
+          throw ArgumentError(
+            'The QR algorithm failed to compute all eigenvalues.',
+          );
+        }
+
+        final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
+        for (var j = 0; j < n; j++) {
+          w.data[offsetW + j * strideWLast] = Complex(wr.data[j], wi.data[j]);
+        }
+
+        final strideVR1 = vr.strides[rank - 2];
+        final strideVR2 = vr.strides[rank - 1];
+        var j = 0;
+        while (j < n) {
+          if (wi.data[j] == 0.0) {
+            for (var r = 0; r < n; r++) {
+              vr.data[offsetVR + r * strideVR1 + j * strideVR2] = Complex(
+                vrReal.data[r * n + j],
+                0.0,
+              );
+            }
+            j++;
+          } else {
+            for (var r = 0; r < n; r++) {
+              final realPart = vrReal.data[r * n + j];
+              final imagPart = vrReal.data[r * n + j + 1];
+              vr.data[offsetVR + r * strideVR1 + j * strideVR2] = Complex(
+                realPart,
+                imagPart,
+              );
+              vr.data[offsetVR + r * strideVR1 + (j + 1) * strideVR2] = Complex(
+                realPart,
+                -imagPart,
+              );
+            }
+            j += 2;
+          }
+        }
+
+        wr.dispose();
+        wi.dispose();
+        vrReal.dispose();
+      }
+    });
+  } finally {
+    sliceCopy.dispose();
+  }
+
+  return {'eigenvalues': w, 'eigenvectors': vr};
+}
+
+/// Recursive helper to traverse the leading stack dimensions of a multi-dimensional array.
+///
+/// Generates multidimensional coordinates of the stack/batch dimensions.
+void _walkStackCoords(
+  List<int> stackShape,
+  List<int> currentCoords,
+  int dim,
+  void Function(List<int> coords) leafCallback,
+) {
+  if (dim == stackShape.length) {
+    leafCallback(currentCoords);
+    return;
+  }
+  final limit = stackShape[dim];
+  for (var i = 0; i < limit; i++) {
+    currentCoords[dim] = i;
+    _walkStackCoords(stackShape, currentCoords, dim + 1, leafCallback);
   }
 }
 
@@ -7697,17 +7865,17 @@ Map<String, NDArray> cholesky(NDArray a) {
   return {'L': lMat};
 }
 
-/// Computes the QR decomposition of a matrix $A = Q R$.
+/// Computes the QR decomposition of a matrix or a stack of matrices $A = Q R$.
 ///
 /// Decomposes a matrix [a] out an orthogonal matrix `Q` and an upper triangular matrix `R`
 /// such that `a = Q * R`.
 /// Natively offloads to LAPACK solvers (`dgeqrf` / `sgeqrf` and `dorgqr` / `sorgqr`) depending on precision.
 ///
 /// **Preconditions:**
-/// - Input matrix [a] must be 2-dimensional.
+/// - Input matrix [a] must be at least 2-dimensional.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [a] is not 2D.
+/// - [ArgumentError] if [a] rank is less than 2.
 /// - [StateError] if native FFI memory allocation or LAPACK solver initialization fails.
 ///
 /// **Performance considerations:**
@@ -7721,169 +7889,226 @@ Map<String, NDArray> cholesky(NDArray a) {
 /// final r = res['R']!;
 /// ```
 Map<String, NDArray> qr(NDArray a) {
-  if (a.shape.length != 2) {
-    throw ArgumentError('Matrix must be 2D (was ${a.shape})');
+  final rank = a.shape.length;
+  if (rank < 2) {
+    throw ArgumentError('Matrix must be at least 2D (was ${a.shape})');
   }
-  final m = a.shape[0];
-  final n = a.shape[1];
+  final m = a.shape[rank - 2];
+  final n = a.shape[rank - 1];
   final k = m < n ? m : n;
+  final stackShape = a.shape.sublist(0, rank - 2);
+
   final DType<dynamic> targetDType = a.dtype == DType.float32
       ? DType.float32
       : DType.float64;
 
+  final qShape = [...stackShape, m, k];
+  final rShape = [...stackShape, k, n];
+
+  final qMat = NDArray.zeros(qShape, targetDType);
+  final rMat = NDArray.zeros(rShape, targetDType);
+
   final aCopy = NDArray.create([m, n], targetDType);
-  if (a.isContiguous && a.dtype == targetDType) {
+  final marker = _ScratchArena.marker;
+
+  try {
+    final ffi.Pointer<ffi.Void> tau;
     if (targetDType == DType.float64) {
-      aCopy.pointer
-          .cast<ffi.Double>()
-          .asTypedList(m * n)
-          .setRange(0, m * n, a.data as List<double>);
+      tau = _ScratchArena.allocate<ffi.Double>(
+        k * ffi.sizeOf<ffi.Double>(),
+      ).cast<ffi.Void>();
     } else {
-      aCopy.pointer
-          .cast<ffi.Float>()
-          .asTypedList(m * n)
-          .setRange(0, m * n, a.data as List<double>);
+      tau = _ScratchArena.allocate<ffi.Float>(
+        k * ffi.sizeOf<ffi.Float>(),
+      ).cast<ffi.Void>();
     }
-  } else {
-    final flat = a.toList();
-    if (targetDType == DType.float64) {
-      aCopy.pointer
-          .cast<ffi.Double>()
-          .asTypedList(m * n)
-          .setRange(0, m * n, flat.cast<double>());
-    } else {
-      aCopy.pointer
-          .cast<ffi.Float>()
-          .asTypedList(m * n)
-          .setRange(0, m * n, flat.cast<double>());
-    }
-  }
 
-  final rMat = targetDType == DType.float32
-      ? NDArray<Float32>.zeros([k, n], DType.float32)
-      : NDArray<Float64>.zeros([k, n], DType.float64);
-  final qMat = targetDType == DType.float32
-      ? NDArray<Float32>.zeros([m, k], DType.float32)
-      : NDArray<Float64>.zeros([m, k], DType.float64);
-
-  if (targetDType == DType.float64) {
-    final tau = malloc<ffi.Double>(k);
-    try {
-      final info = LAPACKE_dgeqrf(
-        101, // ROW_MAJOR
-        m,
-        n,
-        aCopy.pointer.cast<ffi.Double>(),
-        n,
-        tau,
-      );
-      if (info != 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_dgeqrf: $info');
+    _walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+      coords,
+    ) {
+      var offsetA = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetA += coords[i] * a.strides[i];
       }
 
-      // Extract upper triangular matrix R from aCopy
-      final rData = rMat.data;
-      final aCopyData = aCopy.data as List<double>;
-      for (var i = 0; i < k; i++) {
-        for (var j = i; j < n; j++) {
-          rData[i * n + j] = aCopyData[i * n + j];
+      if (targetDType == DType.float64) {
+        final aCopyData = aCopy.data as Float64List;
+        if (a.isContiguous && a.dtype == DType.float64) {
+          final aData = a.data as Float64List;
+          aCopyData.setRange(0, m * n, aData, offsetA);
+        } else {
+          final sliceView = NDArray.view(
+            a,
+            shape: [m, n],
+            strides: a.strides.sublist(rank - 2),
+            offsetElements: offsetA,
+          );
+          final list = sliceView.toList();
+          for (var i = 0; i < m * n; i++) {
+            aCopyData[i] = (list[i] as num).toDouble();
+          }
+        }
+      } else {
+        final aCopyData = aCopy.data as Float32List;
+        if (a.isContiguous && a.dtype == DType.float32) {
+          final aData = a.data as Float32List;
+          aCopyData.setRange(0, m * n, aData, offsetA);
+        } else {
+          final sliceView = NDArray.view(
+            a,
+            shape: [m, n],
+            strides: a.strides.sublist(rank - 2),
+            offsetElements: offsetA,
+          );
+          final list = sliceView.toList();
+          for (var i = 0; i < m * n; i++) {
+            aCopyData[i] = (list[i] as num).toDouble();
+          }
         }
       }
 
-      // Copy reflectors to qMat (first k columns of aCopy)
-      final qData = qMat.data;
-      for (var i = 0; i < m; i++) {
-        for (var j = 0; j < k; j++) {
-          qData[i * k + j] = aCopyData[i * n + j];
-        }
-      }
+      final r2D = targetDType == DType.float32
+          ? NDArray<Float32>.zeros([k, n], DType.float32)
+          : NDArray<Float64>.zeros([k, n], DType.float64);
+      final q2D = targetDType == DType.float32
+          ? NDArray<Float32>.zeros([m, k], DType.float32)
+          : NDArray<Float64>.zeros([m, k], DType.float64);
 
-      // Call dorgqr to reconstruct the orthonormal columns of Q in-place in qMat
-      final infoOrg = LAPACKE_dorgqr(
-        101, // ROW_MAJOR
-        m,
-        k,
-        k,
-        qMat.pointer.cast<ffi.Double>(),
-        k,
-        tau,
-      );
-      if (infoOrg != 0) {
-        throw ArgumentError(
-          'Illegal value in call to LAPACKE_dorgqr: $infoOrg',
+      if (targetDType == DType.float64) {
+        final info = LAPACKE_dgeqrf(
+          101, // ROW_MAJOR
+          m,
+          n,
+          aCopy.pointer.cast<ffi.Double>(),
+          n,
+          tau.cast<ffi.Double>(),
         );
-      }
-    } finally {
-      malloc.free(tau);
-      aCopy.dispose();
-    }
-  } else {
-    final tau = malloc<ffi.Float>(k);
-    try {
-      final info = LAPACKE_sgeqrf(
-        101, // ROW_MAJOR
-        m,
-        n,
-        aCopy.pointer.cast<ffi.Float>(),
-        n,
-        tau,
-      );
-      if (info != 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_sgeqrf: $info');
-      }
-
-      // Extract upper triangular matrix R from aCopy
-      final rData = rMat.data;
-      final aCopyData = aCopy.data as List<double>;
-      for (var i = 0; i < k; i++) {
-        for (var j = i; j < n; j++) {
-          rData[i * n + j] = aCopyData[i * n + j];
+        if (info != 0) {
+          throw ArgumentError('Illegal value in call to LAPACKE_dgeqrf: $info');
         }
-      }
 
-      // Copy reflectors to qMat (first k columns of aCopy)
-      final qData = qMat.data;
-      for (var i = 0; i < m; i++) {
-        for (var j = 0; j < k; j++) {
-          qData[i * k + j] = aCopyData[i * n + j];
+        final r2DData = r2D.data as Float64List;
+        final aCopyData = aCopy.data as Float64List;
+        for (var i = 0; i < k; i++) {
+          for (var j = i; j < n; j++) {
+            r2DData[i * n + j] = aCopyData[i * n + j];
+          }
         }
-      }
 
-      // Call sorgqr to reconstruct the orthonormal columns of Q in-place in qMat
-      final infoOrg = LAPACKE_sorgqr(
-        101, // ROW_MAJOR
-        m,
-        k,
-        k,
-        qMat.pointer.cast<ffi.Float>(),
-        k,
-        tau,
-      );
-      if (infoOrg != 0) {
-        throw ArgumentError(
-          'Illegal value in call to LAPACKE_sorgqr: $infoOrg',
+        final q2DData = q2D.data as Float64List;
+        for (var i = 0; i < m; i++) {
+          for (var j = 0; j < k; j++) {
+            q2DData[i * k + j] = aCopyData[i * n + j];
+          }
+        }
+
+        final infoOrg = LAPACKE_dorgqr(
+          101, // ROW_MAJOR
+          m,
+          k,
+          k,
+          q2D.pointer.cast<ffi.Double>(),
+          k,
+          tau.cast<ffi.Double>(),
         );
+        if (infoOrg != 0) {
+          throw ArgumentError(
+            'Illegal value in call to LAPACKE_dorgqr: $infoOrg',
+          );
+        }
+      } else {
+        final info = LAPACKE_sgeqrf(
+          101, // ROW_MAJOR
+          m,
+          n,
+          aCopy.pointer.cast<ffi.Float>(),
+          n,
+          tau.cast<ffi.Float>(),
+        );
+        if (info != 0) {
+          throw ArgumentError('Illegal value in call to LAPACKE_sgeqrf: $info');
+        }
+
+        final r2DData = r2D.data as Float32List;
+        final aCopyData = aCopy.data as Float32List;
+        for (var i = 0; i < k; i++) {
+          for (var j = i; j < n; j++) {
+            r2DData[i * n + j] = aCopyData[i * n + j];
+          }
+        }
+
+        final q2DData = q2D.data as Float32List;
+        for (var i = 0; i < m; i++) {
+          for (var j = 0; j < k; j++) {
+            q2DData[i * k + j] = aCopyData[i * n + j];
+          }
+        }
+
+        final infoOrg = LAPACKE_sorgqr(
+          101, // ROW_MAJOR
+          m,
+          k,
+          k,
+          q2D.pointer.cast<ffi.Float>(),
+          k,
+          tau.cast<ffi.Float>(),
+        );
+        if (infoOrg != 0) {
+          throw ArgumentError(
+            'Illegal value in call to LAPACKE_sorgqr: $infoOrg',
+          );
+        }
       }
-    } finally {
-      malloc.free(tau);
-      aCopy.dispose();
-    }
+
+      var offsetQ = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetQ += coords[i] * qMat.strides[i];
+      }
+      var offsetR = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetR += coords[i] * rMat.strides[i];
+      }
+
+      final strideQ1 = qMat.strides[rank - 2];
+      final strideQ2 = qMat.strides[rank - 1];
+      final q2DData = q2D.data;
+      for (var r = 0; r < m; r++) {
+        for (var c = 0; c < k; c++) {
+          qMat.data[offsetQ + r * strideQ1 + c * strideQ2] = q2DData[r * k + c];
+        }
+      }
+
+      final strideR1 = rMat.strides[rank - 2];
+      final strideR2 = rMat.strides[rank - 1];
+      final r2DData = r2D.data;
+      for (var r = 0; r < k; r++) {
+        for (var c = 0; c < n; c++) {
+          rMat.data[offsetR + r * strideR1 + c * strideR2] = r2DData[r * n + c];
+        }
+      }
+
+      q2D.dispose();
+      r2D.dispose();
+    });
+  } finally {
+    _ScratchArena.reset(marker);
+    aCopy.dispose();
   }
 
   return {'Q': qMat, 'R': rMat};
 }
 
-/// Computes the Singular Value Decomposition (SVD) of a matrix $A = U S V^h$.
+/// Computes the Singular Value Decomposition (SVD) of a matrix or a stack of matrices $A = U S V^h$.
 ///
 /// Decomposes a matrix [a] out left singular vectors `U`, singular values `S`,
 /// and right singular vectors Vh such that `a = U * diag(S) * Vh`.
 /// Natively offloads to LAPACK solvers (`dgesdd` / `sgesdd`) depending on precision.
 ///
 /// **Preconditions:**
-/// - Input matrix [a] must be 2-dimensional.
+/// - Input matrix [a] must be at least 2-dimensional.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [a] is not 2D.
+/// - [ArgumentError] if [a] rank is less than 2.
 /// - [StateError] if native FFI memory allocation or LAPACK solver initialization fails.
 ///
 /// **Performance considerations:**
@@ -7898,116 +8123,198 @@ Map<String, NDArray> qr(NDArray a) {
 /// final vh = res['Vh']!;
 /// ```
 Map<String, NDArray> svd(NDArray a) {
-  if (a.shape.length != 2) {
-    throw ArgumentError('Matrix must be 2D (was ${a.shape})');
+  final rank = a.shape.length;
+  if (rank < 2) {
+    throw ArgumentError('Matrix must be at least 2D (was ${a.shape})');
   }
-  final m = a.shape[0];
-  final n = a.shape[1];
-  final DType<dynamic> targetDType = a.dtype == DType.float32
-      ? DType.float32
-      : DType.float64;
+  final m = a.shape[rank - 2];
+  final n = a.shape[rank - 1];
+  final stackShape = a.shape.sublist(0, rank - 2);
 
   if (m < n) {
-    final aT = a.transpose();
+    final axes = List<int>.generate(rank, (i) => i);
+    axes[rank - 2] = rank - 1;
+    axes[rank - 1] = rank - 2;
+
+    final aT = a.transpose(axes);
     final resT = svd(aT);
     final uNew = resT['U']!;
     final sNew = resT['S']!;
     final vhNew = resT['Vh']!;
 
-    final uResult = vhNew.transpose();
-    final vhResult = uNew.transpose();
+    final uResult = vhNew.transpose(axes);
+    final vhResult = uNew.transpose(axes);
 
     return {'U': uResult, 'S': sNew, 'Vh': vhResult};
   }
 
+  final DType<dynamic> targetDType = a.dtype == DType.float32
+      ? DType.float32
+      : DType.float64;
+
+  final uShape = [...stackShape, m, m];
+  final sShape = [...stackShape, n];
+  final vtShape = [...stackShape, n, n];
+
+  final uMat = NDArray.zeros(uShape, targetDType);
+  final sMat = NDArray.zeros(sShape, targetDType);
+  final vtMat = NDArray.zeros(vtShape, targetDType);
+
   final aCopy = NDArray.create([m, n], targetDType);
-  if (a.isContiguous && a.dtype == targetDType) {
-    if (targetDType == DType.float64) {
-      aCopy.pointer
-          .cast<ffi.Double>()
-          .asTypedList(m * n)
-          .setRange(0, m * n, a.data as List<double>);
-    } else {
-      aCopy.pointer
-          .cast<ffi.Float>()
-          .asTypedList(m * n)
-          .setRange(0, m * n, a.data as List<double>);
-    }
-  } else {
-    final flat = a.toList();
-    if (targetDType == DType.float64) {
-      aCopy.pointer
-          .cast<ffi.Double>()
-          .asTypedList(m * n)
-          .setRange(0, m * n, flat.cast<double>());
-    } else {
-      aCopy.pointer
-          .cast<ffi.Float>()
-          .asTypedList(m * n)
-          .setRange(0, m * n, flat.cast<double>());
-    }
-  }
+  final marker = _ScratchArena.marker;
 
-  final sMat = targetDType == DType.float32
-      ? NDArray<Float32>.zeros([n], DType.float32)
-      : NDArray<Float64>.zeros([n], DType.float64);
-  final uMat = targetDType == DType.float32
-      ? NDArray<Float32>.zeros([m, m], DType.float32)
-      : NDArray<Float64>.zeros([m, m], DType.float64);
-  final vtMat = targetDType == DType.float32
-      ? NDArray<Float32>.zeros([n, n], DType.float32)
-      : NDArray<Float64>.zeros([n, n], DType.float64);
+  try {
+    final ffi.Pointer<ffi.Void> superb;
+    final superbLen = math.max(1, n - 1);
+    if (targetDType == DType.float64) {
+      superb = _ScratchArena.allocate<ffi.Double>(
+        superbLen * ffi.sizeOf<ffi.Double>(),
+      ).cast<ffi.Void>();
+    } else {
+      superb = _ScratchArena.allocate<ffi.Float>(
+        superbLen * ffi.sizeOf<ffi.Float>(),
+      ).cast<ffi.Void>();
+    }
 
-  if (targetDType == DType.float64) {
-    final superb = malloc<ffi.Double>(math.max(1, n - 1));
-    try {
-      final info = LAPACKE_dgesvd(
-        101, // ROW_MAJOR
-        65, // 'A'
-        65, // 'A'
-        m,
-        n,
-        aCopy.pointer.cast<ffi.Double>(),
-        n,
-        sMat.pointer.cast<ffi.Double>(),
-        uMat.pointer.cast<ffi.Double>(),
-        m,
-        vtMat.pointer.cast<ffi.Double>(),
-        n,
-        superb,
-      );
-      if (info != 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_dgesvd: $info');
+    _walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+      coords,
+    ) {
+      var offsetA = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetA += coords[i] * a.strides[i];
       }
-    } finally {
-      malloc.free(superb);
-      aCopy.dispose();
-    }
-  } else {
-    final superb = malloc<ffi.Float>(math.max(1, n - 1));
-    try {
-      final info = LAPACKE_sgesvd(
-        101, // ROW_MAJOR
-        65, // 'A'
-        65, // 'A'
-        m,
-        n,
-        aCopy.pointer.cast<ffi.Float>(),
-        n,
-        sMat.pointer.cast<ffi.Float>(),
-        uMat.pointer.cast<ffi.Float>(),
-        m,
-        vtMat.pointer.cast<ffi.Float>(),
-        n,
-        superb,
-      );
-      if (info != 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_sgesvd: $info');
+
+      if (targetDType == DType.float64) {
+        final aCopyData = aCopy.data as Float64List;
+        if (a.isContiguous && a.dtype == DType.float64) {
+          final aData = a.data as Float64List;
+          aCopyData.setRange(0, m * n, aData, offsetA);
+        } else {
+          final sliceView = NDArray.view(
+            a,
+            shape: [m, n],
+            strides: a.strides.sublist(rank - 2),
+            offsetElements: offsetA,
+          );
+          final list = sliceView.toList();
+          for (var i = 0; i < m * n; i++) {
+            aCopyData[i] = (list[i] as num).toDouble();
+          }
+        }
+      } else {
+        final aCopyData = aCopy.data as Float32List;
+        if (a.isContiguous && a.dtype == DType.float32) {
+          final aData = a.data as Float32List;
+          aCopyData.setRange(0, m * n, aData, offsetA);
+        } else {
+          final sliceView = NDArray.view(
+            a,
+            shape: [m, n],
+            strides: a.strides.sublist(rank - 2),
+            offsetElements: offsetA,
+          );
+          final list = sliceView.toList();
+          for (var i = 0; i < m * n; i++) {
+            aCopyData[i] = (list[i] as num).toDouble();
+          }
+        }
       }
-    } finally {
-      malloc.free(superb);
-      aCopy.dispose();
-    }
+
+      final s2D = targetDType == DType.float32
+          ? NDArray<Float32>.zeros([n], DType.float32)
+          : NDArray<Float64>.zeros([n], DType.float64);
+      final u2D = targetDType == DType.float32
+          ? NDArray<Float32>.zeros([m, m], DType.float32)
+          : NDArray<Float64>.zeros([m, m], DType.float64);
+      final vt2D = targetDType == DType.float32
+          ? NDArray<Float32>.zeros([n, n], DType.float32)
+          : NDArray<Float64>.zeros([n, n], DType.float64);
+
+      if (targetDType == DType.float64) {
+        final info = LAPACKE_dgesvd(
+          101, // ROW_MAJOR
+          65, // 'A'
+          65, // 'A'
+          m,
+          n,
+          aCopy.pointer.cast<ffi.Double>(),
+          n,
+          s2D.pointer.cast<ffi.Double>(),
+          u2D.pointer.cast<ffi.Double>(),
+          m,
+          vt2D.pointer.cast<ffi.Double>(),
+          n,
+          superb.cast<ffi.Double>(),
+        );
+        if (info != 0) {
+          throw ArgumentError('Illegal value in call to LAPACKE_dgesvd: $info');
+        }
+      } else {
+        final info = LAPACKE_sgesvd(
+          101, // ROW_MAJOR
+          65, // 'A'
+          65, // 'A'
+          m,
+          n,
+          aCopy.pointer.cast<ffi.Float>(),
+          n,
+          s2D.pointer.cast<ffi.Float>(),
+          u2D.pointer.cast<ffi.Float>(),
+          m,
+          vt2D.pointer.cast<ffi.Float>(),
+          n,
+          superb.cast<ffi.Float>(),
+        );
+        if (info != 0) {
+          throw ArgumentError('Illegal value in call to LAPACKE_sgesvd: $info');
+        }
+      }
+
+      var offsetU = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetU += coords[i] * uMat.strides[i];
+      }
+      var offsetS = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetS += coords[i] * sMat.strides[i];
+      }
+      var offsetVt = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetVt += coords[i] * vtMat.strides[i];
+      }
+
+      final strideU1 = uMat.strides[rank - 2];
+      final strideU2 = uMat.strides[rank - 1];
+      final u2DData = u2D.data;
+      for (var r = 0; r < m; r++) {
+        for (var c = 0; c < m; c++) {
+          uMat.data[offsetU + r * strideU1 + c * strideU2] = u2DData[r * m + c];
+        }
+      }
+
+      final strideSLast = sMat.strides.isEmpty ? 1 : sMat.strides.last;
+      final s2DData = s2D.data;
+      for (var j = 0; j < n; j++) {
+        sMat.data[offsetS + j * strideSLast] = s2DData[j];
+      }
+
+      final strideVt1 = vtMat.strides[rank - 2];
+      final strideVt2 = vtMat.strides[rank - 1];
+      final vt2DData = vt2D.data;
+      for (var r = 0; r < n; r++) {
+        for (var c = 0; c < n; c++) {
+          vtMat.data[offsetVt + r * strideVt1 + c * strideVt2] =
+              vt2DData[r * n + c];
+        }
+      }
+
+      s2D.dispose();
+      u2D.dispose();
+      vt2D.dispose();
+    });
+  } finally {
+    _ScratchArena.reset(marker);
+    aCopy.dispose();
   }
 
   return {'U': uMat, 'S': sMat, 'Vh': vtMat};

@@ -833,5 +833,206 @@ void main() {
         }),
       );
     });
+
+    group('Stacked/Batch Linear Algebra Tests', () {
+      test(
+        'Stacked det() double and float32',
+        () => NDArray.scope(() {
+          // Double precision stacked matrix [2, 2, 2]
+          final a64 = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+            [2, 2, 2],
+            DType.float64,
+          );
+
+          final d64 = det(a64);
+          expect(d64.shape, [2]);
+          expect(d64.dtype, DType.float64);
+          expect(d64.data[0], closeTo(-2.0, 1e-9));
+          expect(d64.data[1], closeTo(-2.0, 1e-9));
+
+          // Float32 precision stacked matrix [2, 2, 2]
+          final a32 = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+            [2, 2, 2],
+            DType.float32,
+          );
+
+          final d32 = det(a32);
+          expect(d32.shape, [2]);
+          expect(d32.data[0], closeTo(-2.0, 1e-5));
+          expect(d32.data[1], closeTo(-2.0, 1e-5));
+
+          // High rank 4D stack det [2, 2, 2, 2]
+          final a4d = NDArray.fromList(
+            List<double>.generate(
+              16,
+              (i) => (i % 4) == 0 ? 2.0 : ((i % 4) == 3 ? 3.0 : 1.0),
+            ),
+            [2, 2, 2, 2],
+            DType.float64,
+          ); // Each matrix is [[2, 1], [1, 3]] -> det = 5.0
+          final d4d = det(a4d);
+          expect(d4d.shape, [2, 2]);
+          for (var i = 0; i < 4; i++) {
+            expect(d4d.data[i], closeTo(5.0, 1e-9));
+          }
+        }),
+      );
+
+      test(
+        'Stacked eig()',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [0.0, 1.0, -2.0, -3.0, 0.0, 1.0, -2.0, -3.0],
+            [2, 2, 2],
+            DType.float64,
+          );
+
+          final res = eig(a);
+          final w = res['eigenvalues']!;
+          final vr = res['eigenvectors']!;
+
+          expect(w.shape, [2, 2]);
+          expect(vr.shape, [2, 2, 2]);
+          expect(w.dtype, DType.complex128);
+          expect(vr.dtype, DType.complex128);
+
+          // Slice 0
+          expect(w.data[0].real, closeTo(-1.0, 1e-9));
+          expect(w.data[1].real, closeTo(-2.0, 1e-9));
+          // Slice 1
+          expect(w.data[2].real, closeTo(-1.0, 1e-9));
+          expect(w.data[3].real, closeTo(-2.0, 1e-9));
+        }),
+      );
+
+      test(
+        'Stacked qr()',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [
+              12.0,
+              -51.0,
+              4.0,
+              6.0,
+              167.0,
+              -68.0,
+              -4.0,
+              24.0,
+              -41.0,
+              12.0,
+              -51.0,
+              4.0,
+              6.0,
+              167.0,
+              -68.0,
+              -4.0,
+              24.0,
+              -41.0,
+            ],
+            [2, 3, 3],
+            DType.float64,
+          );
+
+          final res = qr(a);
+          final q = res['Q']!;
+          final r = res['R']!;
+
+          expect(q.shape, [2, 3, 3]);
+          expect(r.shape, [2, 3, 3]);
+
+          // Verify upper triangular slice 0 and 1
+          expect(r.data[3], 0.0); // r[0, 1, 0]
+          expect(r.data[6], 0.0); // r[0, 2, 0]
+          expect(r.data[7], 0.0); // r[0, 2, 1]
+
+          expect(r.data[12], 0.0); // r[1, 1, 0]
+          expect(r.data[15], 0.0); // r[1, 2, 0]
+          expect(r.data[16], 0.0); // r[1, 2, 1]
+
+          // Verify Q slice 0 orthogonality: dot product of row 0 and row 1 is 0
+          double dotRow(NDArray mat, int slice, int rA, int rB) {
+            var s = 0.0;
+            final offset = slice * 9;
+            for (var i = 0; i < 3; i++) {
+              s +=
+                  mat.data[offset + rA * 3 + i] * mat.data[offset + rB * 3 + i];
+            }
+            return s;
+          }
+
+          expect(dotRow(q, 0, 0, 0), closeTo(1.0, 1e-9));
+          expect(dotRow(q, 0, 0, 1), closeTo(0.0, 1e-9));
+          expect(dotRow(q, 1, 0, 0), closeTo(1.0, 1e-9));
+          expect(dotRow(q, 1, 0, 1), closeTo(0.0, 1e-9));
+        }),
+      );
+
+      test(
+        'Stacked svd() tall and wide',
+        () => NDArray.scope(() {
+          // 1. Tall matrix svd: [2, 3, 2]
+          final aTall = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            [2, 3, 2],
+            DType.float64,
+          );
+
+          final resTall = svd(aTall);
+          final uT = resTall['U']!;
+          final sT = resTall['S']!;
+          final vhT = resTall['Vh']!;
+
+          expect(uT.shape, [2, 3, 3]);
+          expect(sT.shape, [2, 2]);
+          expect(vhT.shape, [2, 2, 2]);
+          expect(sT.data[0], greaterThan(sT.data[1]));
+          expect(sT.data[2], greaterThan(sT.data[3]));
+
+          // 2. Wide matrix svd: [2, 2, 3] (tests transposed wide matrix path under batch)
+          final aWide = NDArray.fromList(
+            [1.0, 3.0, 5.0, 2.0, 4.0, 6.0, 1.0, 3.0, 5.0, 2.0, 4.0, 6.0],
+            [2, 2, 3],
+            DType.float64,
+          );
+
+          final resWide = svd(aWide);
+          final uW = resWide['U']!;
+          final sW = resWide['S']!;
+          final vhW = resWide['Vh']!;
+
+          expect(uW.shape, [2, 2, 2]);
+          expect(sW.shape, [2, 2]);
+          expect(vhW.shape, [2, 3, 3]);
+        }),
+      );
+
+      test(
+        'Stacked operations with strided inputs (views)',
+        () => NDArray.scope(() {
+          final parent = NDArray.fromList(
+            [1.0, 3.0, 2.0, 4.0, 5.0, 7.0, 6.0, 8.0],
+            [2, 2, 2],
+            DType.float64,
+          );
+
+          // Take the transpose of the last two axes
+          final axes = [0, 2, 1];
+          final view = parent.transpose(
+            axes,
+          ); // Shape [2, 2, 2], non-contiguous
+          expect(view.isContiguous, false);
+
+          // Det of non-contiguous stacked view
+          final d = det(view);
+          expect(d.shape, [2]);
+          // slice 0: [[1, 2], [3, 4]] -> det = -2
+          // slice 1: [[5, 6], [7, 8]] -> det = -2
+          expect(d.data[0], closeTo(-2.0, 1e-9));
+          expect(d.data[1], closeTo(-2.0, 1e-9));
+        }),
+      );
+    });
   });
 }
