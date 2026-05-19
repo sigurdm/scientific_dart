@@ -10916,25 +10916,38 @@ external void s_cast_double_to_int16(
   int rank,
 );
 
+/// Optimized native advanced indexing recursive copy kernel
 @ffi.Native<
   ffi.Void Function(
-    ffi.Int,
+    ffi.Pointer<ffi.Void>,
     ffi.Pointer<ffi.Void>,
     ffi.Pointer<ffi.Int>,
-    ffi.Int,
-    ffi.Pointer<ffi.Void>,
     ffi.Pointer<ffi.Int>,
     ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Pointer<ffi.Int>>,
+    ffi.Pointer<ffi.Int>,
   )
 >()
-external void copy_and_cast_strided(
-  int src_type,
+external void copy_advanced_c(
   ffi.Pointer<ffi.Void> src_ptr,
-  ffi.Pointer<ffi.Int> strides_src,
-  int dest_type,
   ffi.Pointer<ffi.Void> dest_ptr,
-  ffi.Pointer<ffi.Int> shape,
+  ffi.Pointer<ffi.Int> src_strides,
+  ffi.Pointer<ffi.Int> src_shape,
   int rank,
+  int byte_width,
+  ffi.Pointer<ffi.Int> types,
+  ffi.Pointer<ffi.Int> index_vals,
+  ffi.Pointer<ffi.Int> slice_starts,
+  ffi.Pointer<ffi.Int> slice_stops,
+  ffi.Pointer<ffi.Int> slice_steps,
+  ffi.Pointer<ffi.Pointer<ffi.Int>> indices_ptrs,
+  ffi.Pointer<ffi.Int> indices_lens,
 );
 
 typedef ptrdiff_t = ffi.Long;

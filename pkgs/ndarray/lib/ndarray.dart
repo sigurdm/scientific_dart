@@ -9,3 +9,4 @@ export 'src/repeating_tiling.dart';
 export 'src/io.dart';
 export 'src/random.dart';
 export 'src/fft.dart';
+export 'src/nditer.dart';

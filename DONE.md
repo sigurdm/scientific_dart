@@ -2530,3 +2530,15 @@
   - **svd() Stack Support**: Added SVD stack support, dynamically handling wide stacked matrices via axis-permuting transpositions, and optimizing the `superb` workspace buffer using `_ScratchArena`.
 * **Results**:
   - **Verification**: Created dedicated test cases in [linear_algebra_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/linear_algebra_test.dart) verifying Float64, Float32, 4D stacked tensors, complex/real eigenvalues, QR orthogonality/triangularity, tall/wide SVD configurations, and strided views. All tests pass flawlessly green.
+
+***
+
+## 213. Native C Advanced Indexing copy kernel and zero-allocation NDIter/NDEnumerate structures
+* **What was done**:
+  - **Resolves Section 2.1 Issue in ISSUES.md**:
+    - **C Advanced Indexing Kernel**: Implemented a native C recursive copying kernel `copy_advanced_c` inside [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.c) and [custom_ufuncs.h](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.h). It executes advanced indexing coordinate copy walks directly in unmanaged C pointer space using high-speed `memcpy` transfers, bypassing VM crossing and recursive list allocations completely!
+    - **FFI Binding & slice() Integration**: Automatically regenerated the bindings via `ffigen` and updated `slice()` in [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/ndarray.dart) to serialize, normalize, and allocate selector parameters using the FFI `using` allocator block. It completely replaces the slow recursive Dart `_copyAdvancedRecursive` walker.
+    - **High-Performance Zero-Allocation NDIter**: Implemented `NDIter` and `NDEnumerate` in [nditer.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/nditer.dart) and exported them package-wide. `NDIter` mutates coordinates in-place to achieve true zero-allocation iteration, and supports single-array iteration as well as multi-array broadcasting iteration via `NDIter.broadcast()`.
+* **Results**:
+  - **Verification**: Added comprehensive test suites in [nditer_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/nditer_test.dart) validating single matrix walks, zero-allocation identical List instance checks, dual-array broadcast walks, multi-array broadcast compatibility, and NDEnumerate coordinates/values matching. All 519 package unit tests pass flawlessly green!
+

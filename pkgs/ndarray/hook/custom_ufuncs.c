@@ -3070,5 +3070,116 @@ void copy_and_cast_strided(
     }
 }
 
+#include <string.h>
+
+static void copy_advanced_recursive_c(
+    const char *src_ptr,
+    char **dest_ptr_ref,
+    const int *src_strides,
+    const int *src_shape,
+    int rank,
+    int byte_width,
+    const int *types,
+    const int *index_vals,
+    const int *slice_starts,
+    const int *slice_stops,
+    const int *slice_steps,
+    int **indices_ptrs,
+    const int *indices_lens,
+    int src_dim,
+    int current_offset
+) {
+    if (src_dim == rank) {
+        memcpy(*dest_ptr_ref, src_ptr + current_offset, byte_width);
+        *dest_ptr_ref += byte_width;
+        return;
+    }
+
+    int type = types[src_dim];
+    int stride = src_strides[src_dim];
+
+    if (type == 0) { // Index
+        int idx = index_vals[src_dim];
+        copy_advanced_recursive_c(
+            src_ptr, dest_ptr_ref, src_strides, src_shape, rank, byte_width,
+            types, index_vals, slice_starts, slice_stops, slice_steps,
+            indices_ptrs, indices_lens, src_dim + 1,
+            current_offset + idx * stride * byte_width
+        );
+    } else if (type == 1) { // Slice
+        int start = slice_starts[src_dim];
+        int stop = slice_stops[src_dim];
+        int step = slice_steps[src_dim];
+        
+        if (step > 0) {
+            for (int idx = start; idx < stop; idx += step) {
+                copy_advanced_recursive_c(
+                    src_ptr, dest_ptr_ref, src_strides, src_shape, rank, byte_width,
+                    types, index_vals, slice_starts, slice_stops, slice_steps,
+                    indices_ptrs, indices_lens, src_dim + 1,
+                    current_offset + idx * stride * byte_width
+                );
+            }
+        } else {
+            for (int idx = start; idx > stop; idx += step) {
+                copy_advanced_recursive_c(
+                    src_ptr, dest_ptr_ref, src_strides, src_shape, rank, byte_width,
+                    types, index_vals, slice_starts, slice_stops, slice_steps,
+                    indices_ptrs, indices_lens, src_dim + 1,
+                    current_offset + idx * stride * byte_width
+                );
+            }
+        }
+    } else if (type == 2) { // Indices
+        int *indices = indices_ptrs[src_dim];
+        int len = indices_lens[src_dim];
+        for (int i = 0; i < len; i++) {
+            int idx = indices[i];
+            copy_advanced_recursive_c(
+                src_ptr, dest_ptr_ref, src_strides, src_shape, rank, byte_width,
+                types, index_vals, slice_starts, slice_stops, slice_steps,
+                indices_ptrs, indices_lens, src_dim + 1,
+                current_offset + idx * stride * byte_width
+            );
+        }
+    }
+}
+
+void copy_advanced_c(
+    const void *src_ptr,
+    void *dest_ptr,
+    const int *src_strides,
+    const int *src_shape,
+    int rank,
+    int byte_width,
+    const int *types,
+    const int *index_vals,
+    const int *slice_starts,
+    const int *slice_stops,
+    const int *slice_steps,
+    int **indices_ptrs,
+    const int *indices_lens
+) {
+    if (src_ptr == NULL || dest_ptr == NULL || rank <= 0) return;
+    char *dest_ptr_cursor = (char *)dest_ptr;
+    copy_advanced_recursive_c(
+        (const char *)src_ptr,
+        &dest_ptr_cursor,
+        src_strides,
+        src_shape,
+        rank,
+        byte_width,
+        types,
+        index_vals,
+        slice_starts,
+        slice_stops,
+        slice_steps,
+        indices_ptrs,
+        indices_lens,
+        0,
+        0
+    );
+}
+
 
 

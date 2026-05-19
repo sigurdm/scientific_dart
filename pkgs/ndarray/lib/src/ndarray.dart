@@ -2147,15 +2147,109 @@ final class NDArray<T> implements ffi.Finalizable {
 
     if (isAdvanced) {
       final result = NDArray<T>.create(newShape, dtype);
-      _copyAdvancedRecursive(
-        this,
-        result,
-        processedSelectors,
-        List<int>.filled(shape.length, 0),
-        List<int>.filled(newShape.length, 0),
-        0,
-        0,
-      );
+      final rank = shape.length;
+
+      using((arena) {
+        final pTypes = arena.allocate<ffi.Int>(rank);
+        final pIndexVals = arena.allocate<ffi.Int>(rank);
+        final pSliceStarts = arena.allocate<ffi.Int>(rank);
+        final pSliceStops = arena.allocate<ffi.Int>(rank);
+        final pSliceSteps = arena.allocate<ffi.Int>(rank);
+        final pIndicesPtrs = arena.allocate<ffi.Pointer<ffi.Int>>(rank);
+        final pIndicesLens = arena.allocate<ffi.Int>(rank);
+
+        for (var i = 0; i < rank; i++) {
+          final selector = i < processedSelectors.length
+              ? processedSelectors[i]
+              : Slice.all();
+
+          if (selector is Index) {
+            pTypes[i] = 0;
+            final idx = selector.value < 0
+                ? shape[i] + selector.value
+                : selector.value;
+            pIndexVals[i] = idx;
+            pSliceStarts[i] = 0;
+            pSliceStops[i] = 0;
+            pSliceSteps[i] = 0;
+            pIndicesPtrs[i] = ffi.Pointer.fromAddress(0);
+            pIndicesLens[i] = 0;
+          } else if (selector is Slice) {
+            pTypes[i] = 1;
+            pIndexVals[i] = 0;
+
+            final step = selector.step;
+            final int startIdx;
+            if (selector.start == null) {
+              startIdx = step > 0 ? 0 : shape[i] - 1;
+            } else {
+              final s = selector.start!;
+              startIdx = s < 0 ? shape[i] + s : s;
+            }
+
+            final int stopIdx;
+            if (selector.stop == null) {
+              stopIdx = step > 0 ? shape[i] : -1;
+            } else {
+              final s = selector.stop!;
+              stopIdx = s < 0 ? shape[i] + s : s;
+            }
+
+            pSliceStarts[i] = startIdx.clamp(0, shape[i] - 1);
+            pSliceStops[i] = stopIdx.clamp(-1, shape[i]);
+            pSliceSteps[i] = step;
+            pIndicesPtrs[i] = ffi.Pointer.fromAddress(0);
+            pIndicesLens[i] = 0;
+          } else if (selector is Indices) {
+            pTypes[i] = 2;
+            pIndexVals[i] = 0;
+            pSliceStarts[i] = 0;
+            pSliceStops[i] = 0;
+            pSliceSteps[i] = 0;
+
+            final values = selector.values;
+            final pIndices = arena.allocate<ffi.Int>(values.length);
+            for (var j = 0; j < values.length; j++) {
+              final idx = values[j];
+              final realIdx = idx < 0 ? shape[i] + idx : idx;
+              if (realIdx < 0 || realIdx >= shape[i]) {
+                throw RangeError.index(
+                  realIdx,
+                  shape,
+                  'index out of range for dimension $i',
+                );
+              }
+              pIndices[j] = realIdx;
+            }
+            pIndicesPtrs[i] = pIndices;
+            pIndicesLens[i] = values.length;
+          }
+        }
+
+        final pSrcStrides = arena.allocate<ffi.Int>(rank);
+        final pSrcShape = arena.allocate<ffi.Int>(rank);
+        for (var i = 0; i < rank; i++) {
+          pSrcStrides[i] = strides[i];
+          pSrcShape[i] = shape[i];
+        }
+
+        copy_advanced_c(
+          pointer.cast(),
+          result.pointer.cast(),
+          pSrcStrides,
+          pSrcShape,
+          rank,
+          dtype.byteWidth,
+          pTypes,
+          pIndexVals,
+          pSliceStarts,
+          pSliceStops,
+          pSliceSteps,
+          pIndicesPtrs,
+          pIndicesLens,
+        );
+      });
+
       return result;
     }
 

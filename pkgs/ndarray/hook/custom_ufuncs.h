@@ -534,8 +534,21 @@ void s_cast_int16_to_double(const int16_t *src, const int *stridesSrc, double *d
 void s_cast_double_to_uint8(const double *src, const int *stridesSrc, uint8_t *dst, const int *stridesDst, const int *shape, int rank);
 void s_cast_double_to_int16(const double *src, const int *stridesSrc, int16_t *dst, const int *stridesDst, const int *shape, int rank);
 
-/* Fused strided layout copy and type casting kernel (Loop Fusion Optimization) */
-void copy_and_cast_strided(int src_type, const void *src_ptr, const int *strides_src,
-                           int dest_type, void *dest_ptr, const int *shape, int rank);
+/* Optimized native advanced indexing recursive copy kernel */
+void copy_advanced_c(
+    const void *src_ptr,
+    void *dest_ptr,
+    const int *src_strides,
+    const int *src_shape,
+    int rank,
+    int byte_width,
+    const int *types,
+    const int *index_vals,
+    const int *slice_starts,
+    const int *slice_stops,
+    const int *slice_steps,
+    int **indices_ptrs,
+    const int *indices_lens
+);
 
 #endif /* CUSTOM_UFUNCS_H */
