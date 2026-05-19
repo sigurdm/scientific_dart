@@ -726,6 +726,14 @@ void main() {
           expect(res.x.data[1], closeTo(2.05, 1e-9));
         }),
       );
+      test(
+        'lstsq with integer matrices throws ArgumentError',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1, 1, 1, 2, 1, 3], [3, 2], DType.int32);
+          final b = NDArray.fromList([2, 4, 6], [3], DType.int32);
+          expect(() => lstsq(a, b), throwsArgumentError);
+        }),
+      );
     });
 
     group('Optimal Matrix Chain Product (multi_dot) tests', () {

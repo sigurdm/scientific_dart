@@ -1056,7 +1056,7 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   } else {
     final rank = a.shape.length;
-    final cBuffer = _getStridedOpBuffer(rank);
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
     final cShape = cBuffer;
     final cStridesA = cBuffer + rank;
     final cStridesRes = cBuffer + (rank * 2);
@@ -1193,7 +1193,7 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   } else {
     final rank = a.shape.length;
-    final cBuffer = _getStridedOpBuffer(rank);
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
     final cShape = cBuffer;
     final cStridesA = cBuffer + rank;
     final cStridesRes = cBuffer + (rank * 2);
@@ -1319,7 +1319,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   } else {
     final rank = a.shape.length;
-    final cBuffer = _getStridedOpBuffer(rank);
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
     final cShape = cBuffer;
     final cStridesA = cBuffer + rank;
     final cStridesRes = cBuffer + (rank * 2);
@@ -1403,7 +1403,7 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   } else {
     final rank = a.shape.length;
-    final cBuffer = _getStridedOpBuffer(rank);
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
     final cShape = cBuffer;
     final cStridesA = cBuffer + rank;
     final cStridesRes = cBuffer + (rank * 2);
@@ -2688,7 +2688,7 @@ NDArray<double> det<T>(NDArray<T> a) {
   final result = NDArray.zeros(stackShape, DType.float64);
 
   if (a.dtype == DType.float64) {
-    final cBuffer = _getStridedOpBuffer(rank);
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
     final cShape = cBuffer;
     final cStridesA = cBuffer + rank;
     final cStridesRes = cBuffer + (rank * 2);
@@ -3574,7 +3574,7 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   } else {
     final rank = a.shape.length;
-    final cBuffer = _getStridedOpBuffer(rank);
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
     final cShape = cBuffer;
     final cStridesA = cBuffer + rank;
     final cStridesRes = cBuffer + (rank * 2);
@@ -3709,7 +3709,7 @@ NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   } else {
     final rank = a.shape.length;
-    final cBuffer = _getStridedOpBuffer(rank);
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
     final cShape = cBuffer;
     final cStridesA = cBuffer + rank;
     final cStridesRes = cBuffer + (rank * 2);
@@ -3843,7 +3843,7 @@ NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   } else {
     final rank = a.shape.length;
-    final cBuffer = _getStridedOpBuffer(rank);
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
     final cShape = cBuffer;
     final cStridesA = cBuffer + rank;
     final cStridesRes = cBuffer + (rank * 2);
@@ -3977,7 +3977,7 @@ NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   } else {
     final rank = a.shape.length;
-    final cBuffer = _getStridedOpBuffer(rank);
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
     final cShape = cBuffer;
     final cStridesA = cBuffer + rank;
     final cStridesRes = cBuffer + (rank * 2);
@@ -4518,7 +4518,7 @@ NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   } else {
     final rank = a.shape.length;
-    final cBuffer = _getStridedOpBuffer(rank);
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
     final cShape = cBuffer;
     final cStridesA = cBuffer + rank;
     final cStridesRes = cBuffer + (rank * 2);
@@ -8971,15 +8971,31 @@ final class LstsqResult<T> {
 /// Natively offloads to LAPACK divide-and-conquer SVD-based least-squares solvers
 /// (`dgelsd`, `sgelsd`, `zgelsd`, `cgelsd`) depending on precision.
 ///
+/// The optional parameter [rcond] acts as the cut-off ratio for small singular values.
+/// Singular values smaller than `rcond * largest_singular_value` are treated as zero.
+/// If [rcond] is omitted or null, a negative value is passed to the LAPACK solver,
+/// which falls back to using the machine precision to determine the effective rank.
+///
+/// The optional recycler parameter [out] allows reusing an existing array for the output,
+/// avoiding new memory allocation.
+///
 /// **Preconditions:**
 /// - Input matrix [a] must be 2-dimensional of shape `[M, N]`.
 /// - Input array [b] must be 1-dimensional of shape `[M]` or 2-dimensional of shape `[M, K]`.
 /// - The first dimension of [b] must exactly match the first dimension of [a] ($M$).
+/// - Input arrays [a] and [b] must have the matching floating-point or complex [DType]. Integers or boolean
+///   arrays are not supported.
+/// - If provided, the recycler [out] must have the shape `[N]` (if [b] is 1D) or `[N, K]` (if [b] is 2D),
+///   and its dtype must exactly match the dtype of [a] and [b].
 ///
 /// **Throws:**
 /// - [StateError] if [a] or [b] is disposed.
+/// - [ArgumentError] if [a] or [b] does not have a floating-point or complex DType.
+/// - [ArgumentError] if [b]'s DType does not match [a]'s DType.
 /// - [ArgumentError] if [a] is not 2D, or [b] is not 1D or 2D.
 /// - [ArgumentError] if [b]'s first dimension does not match [a]'s first dimension.
+/// - [StateError] if [out] is provided but disposed.
+/// - [ArgumentError] if [out] has mismatched shape or dtype.
 /// - [StateError] if native FFI memory allocation fails or the SVD solver fails to converge.
 ///
 /// **Performance considerations:**
@@ -8997,6 +9013,16 @@ LstsqResult<T> lstsq<T>(
 }) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot execute lstsq() on a disposed array.');
+  }
+  if (!a.dtype.isFloating && !a.dtype.isComplex) {
+    throw ArgumentError(
+      'Input array a must have a floating-point or complex DType (was ${a.dtype}).',
+    );
+  }
+  if (a.dtype != b.dtype) {
+    throw ArgumentError(
+      'Input array b must have the matching DType as a (expected ${a.dtype}, was ${b.dtype}).',
+    );
   }
   if (a.shape.length != 2) {
     throw ArgumentError(
@@ -9016,12 +9042,6 @@ LstsqResult<T> lstsq<T>(
     );
   }
 
-  // Resolve upcasted target DType
-  var targetDType = _resolveDType(a.dtype, b.dtype);
-  if (!targetDType.isFloating && !targetDType.isComplex) {
-    targetDType = DType.float64;
-  }
-
   final nrhs = b.shape.length > 1 ? b.shape[1] : 1;
 
   if (out != null) {
@@ -9029,101 +9049,59 @@ LstsqResult<T> lstsq<T>(
       throw StateError('Cannot write to a disposed out buffer.');
     }
     final expectedXShape = b.shape.length > 1 ? [n, nrhs] : [n];
-    if (!listEquals(out.shape, expectedXShape) || out.dtype != targetDType) {
+    if (!listEquals(out.shape, expectedXShape) || out.dtype != a.dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
-  // Create a contiguous copy of `a`
-  final NDArray<T> aCopy;
-  if (a.dtype == targetDType) {
-    aCopy = a.copy();
-  } else {
-    aCopy = NDArray<T>.create([m, n], targetDType as DType<T>);
-    final rankA = a.shape.length;
-    final cBuffer = _getStridedOpBuffer(rankA);
-    final cShapeA = cBuffer;
-    final cStridesA = cBuffer + rankA;
-    for (var i = 0; i < rankA; i++) {
-      cShapeA[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-    }
-    copy_and_cast_strided(
-      a.dtype.index,
-      a.pointer,
-      cStridesA,
-      targetDType.index,
-      aCopy.pointer,
-      cShapeA,
-      rankA,
-    );
-  }
+  // Create a contiguous copy of `a` (overwrite-safe)
+  final aCopy = a.copy();
 
   // Row-major LAPACKE_gelsd requires b array size to be max(m, n) * nrhs
   final maxMN = m > n ? m : n;
   final bCopyShape = b.shape.length > 1 ? [maxMN, nrhs] : [maxMN];
-  final bCopy = NDArray<T>.zeros(bCopyShape, targetDType as dynamic);
+  final bCopy = NDArray<T>.zeros(bCopyShape, a.dtype);
 
   // Copy b into bCopy
-  if (b.dtype == targetDType) {
-    final byteCount = b.data.length * targetDType.byteWidth;
-    if (b.isContiguous) {
-      ffi.Pointer.fromAddress(bCopy.pointer.address)
-          .cast<ffi.Uint8>()
-          .asTypedList(byteCount)
-          .setAll(
-            0,
-            ffi.Pointer.fromAddress(
-              b.pointer.address,
-            ).cast<ffi.Uint8>().asTypedList(byteCount),
-          );
-    } else {
-      final bContig = b.copy();
-      ffi.Pointer.fromAddress(bCopy.pointer.address)
-          .cast<ffi.Uint8>()
-          .asTypedList(byteCount)
-          .setAll(
-            0,
-            ffi.Pointer.fromAddress(
-              bContig.pointer.address,
-            ).cast<ffi.Uint8>().asTypedList(byteCount),
-          );
-      bContig.dispose();
-    }
+  final byteCount = b.data.length * a.dtype.byteWidth;
+  if (b.isContiguous) {
+    ffi.Pointer.fromAddress(bCopy.pointer.address)
+        .cast<ffi.Uint8>()
+        .asTypedList(byteCount)
+        .setAll(
+          0,
+          ffi.Pointer.fromAddress(
+            b.pointer.address,
+          ).cast<ffi.Uint8>().asTypedList(byteCount),
+        );
   } else {
-    final rankB = b.shape.length;
-    final cBuffer = _getStridedOpBuffer(rankB);
-    final cShapeB = cBuffer;
-    final cStridesB = cBuffer + rankB;
-    for (var i = 0; i < rankB; i++) {
-      cShapeB[i] = b.shape[i];
-      cStridesB[i] = b.strides[i];
-    }
-    copy_and_cast_strided(
-      b.dtype.index,
-      b.pointer,
-      cStridesB,
-      targetDType.index,
-      bCopy.pointer,
-      cShapeB,
-      rankB,
-    );
+    final bContig = b.copy();
+    ffi.Pointer.fromAddress(bCopy.pointer.address)
+        .cast<ffi.Uint8>()
+        .asTypedList(byteCount)
+        .setAll(
+          0,
+          ffi.Pointer.fromAddress(
+            bContig.pointer.address,
+          ).cast<ffi.Uint8>().asTypedList(byteCount),
+        );
+    bContig.dispose();
   }
 
   final minMN = m < n ? m : n;
   // Singular values s is always real
-  final sDType =
-      (targetDType == DType.complex64 || targetDType == DType.float32)
+  final sDType = (a.dtype == DType.complex64 || a.dtype == DType.float32)
       ? DType.float32
       : DType.float64;
   final s = NDArray<double>.zeros([minMN], sDType as dynamic);
 
-  final rankPtr = malloc<ffi.Int>();
+  final marker = _ScratchArena.marker;
+  final rankPtr = _ScratchArena.allocate<ffi.Int>(4);
   final resolvedRcond = rcond ?? -1.0; // negative rcond uses machine precision
 
   try {
     int info;
-    switch (targetDType) {
+    switch (a.dtype) {
       case DType.float64:
         info = LAPACKE_dgelsd(
           101, // ROW_MAJOR
@@ -9182,7 +9160,7 @@ LstsqResult<T> lstsq<T>(
         );
       default:
         throw UnimplementedError(
-          'Unsupported target DType for lstsq: $targetDType',
+          'Unsupported target DType for lstsq: ${a.dtype}',
         );
     }
 
@@ -9199,20 +9177,16 @@ LstsqResult<T> lstsq<T>(
 
     // Extract solution x: first n rows of bCopy
     final xShape = b.shape.length > 1 ? [n, nrhs] : [n];
-    final x = out ?? NDArray<T>.zeros(xShape, targetDType as dynamic);
+    final x = out ?? NDArray<T>.zeros(xShape, a.dtype);
     final elementsToCopy = n * nrhs;
-    if (targetDType.isComplex) {
-      x.data.setRange(0, elementsToCopy, bCopy.data.sublist(0, elementsToCopy));
-    } else {
-      x.data.setRange(0, elementsToCopy, bCopy.data.sublist(0, elementsToCopy));
-    }
+    x.data.setRange(0, elementsToCopy, bCopy.data.sublist(0, elementsToCopy));
 
     // Extract residuals: sum of squares of elements from row n to m-1 for each column
     final NDArray<double> residuals;
     if (m > n && rank == n) {
       final resShape = b.shape.length > 1 ? [nrhs] : [1];
       residuals = NDArray<double>.zeros(resShape, sDType as dynamic);
-      if (targetDType.isComplex) {
+      if (a.dtype.isComplex) {
         for (var j = 0; j < nrhs; j++) {
           var sum = 0.0;
           for (var i = n; i < m; i++) {
@@ -9246,7 +9220,7 @@ LstsqResult<T> lstsq<T>(
 
     return LstsqResult<T>(x: x, residuals: residuals, rank: rank, s: s);
   } finally {
-    malloc.free(rankPtr);
+    _ScratchArena.reset(marker);
     aCopy.dispose();
     bCopy.dispose();
   }
@@ -10711,17 +10685,79 @@ NDArray<T> flipud<T extends Object>(NDArray<T> a) {
   return flip(a, axis: 0);
 }
 
-var _stridedOpBuffer = malloc<ffi.Int>(32);
-var _stridedOpBufferCapacity = 32;
+/// An Isolate-local scratch memory arena for high-performance transient FFI allocations.
+///
+/// Bypasses malloc/free boundary overhead by maintaining pre-allocated persistent C heap memory.
+final class _ScratchArena {
+  _ScratchArena._();
 
-ffi.Pointer<ffi.Int> _getStridedOpBuffer(int ndim) {
-  final requiredSize = ndim * 4;
-  if (requiredSize > _stridedOpBufferCapacity) {
-    malloc.free(_stridedOpBuffer);
-    _stridedOpBuffer = malloc<ffi.Int>(requiredSize);
-    _stridedOpBufferCapacity = requiredSize;
+  static ffi.Pointer<ffi.Uint8>? _arena;
+  static int _capacity =
+      4096; // 4KB page is plenty for rank pointers, temp arrays etc.
+  static int _offset = 0;
+
+  static ffi.Pointer<ffi.Int>? _stridedBuffer;
+  static int _stridedCapacity = 0;
+
+  static void _init() {
+    _arena ??= malloc<ffi.Uint8>(_capacity);
   }
-  return _stridedOpBuffer;
+
+  /// Allocates [bytes] of memory from the arena stack, aligned to 8 bytes.
+  ///
+  /// To free allocations, record [marker] before calling this and reset the stack
+  /// back to the marker using [reset] when done.
+  static ffi.Pointer<T> allocate<T extends ffi.NativeType>(int bytes) {
+    _init();
+
+    // Ensure 8-byte alignment for native FFI alignment requirements
+    final alignedBytes = (bytes + 7) & ~7;
+
+    if (_offset + alignedBytes > _capacity) {
+      final newCapacity = _capacity * 2 + alignedBytes;
+      final newArena = malloc<ffi.Uint8>(newCapacity);
+      if (_offset > 0) {
+        newArena
+            .asTypedList(newCapacity)
+            .setRange(
+              0,
+              _offset,
+              _arena!.asTypedList(_capacity).sublist(0, _offset),
+            );
+      }
+      malloc.free(_arena!);
+      _arena = newArena;
+      _capacity = newCapacity;
+    }
+
+    final ptr = ffi.Pointer<T>.fromAddress(_arena!.address + _offset);
+    _offset += alignedBytes;
+    return ptr;
+  }
+
+  /// Gets the current stack marker (offset) in the arena.
+  static int get marker => _offset;
+
+  /// Resets the arena stack back to the given [marker].
+  static void reset(int marker) {
+    assert(marker <= _offset);
+    _offset = marker;
+  }
+
+  /// Gets or grows a persistent thread-local static buffer for leaf strided operations.
+  ///
+  /// Designed for synchronous leaf operations that do not make nested calls.
+  static ffi.Pointer<ffi.Int> getStridedBuffer(int ndim) {
+    final requiredSize = ndim * 4;
+    if (_stridedBuffer == null || _stridedCapacity < requiredSize) {
+      if (_stridedBuffer != null) {
+        malloc.free(_stridedBuffer!);
+      }
+      _stridedBuffer = malloc<ffi.Int>(requiredSize);
+      _stridedCapacity = requiredSize;
+    }
+    return _stridedBuffer!;
+  }
 }
 
 /// Signature for C function strided binary operations.
@@ -10772,7 +10808,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
       listEquals(a.shape, b.shape);
 
   final ndim = commonShape.length;
-  final cBuffer = _getStridedOpBuffer(ndim);
+  final cBuffer = _ScratchArena.getStridedBuffer(ndim);
   final cShape = cBuffer;
   final cStridesA = cBuffer + ndim;
   final cStridesB = cBuffer + (ndim * 2);
@@ -12142,7 +12178,7 @@ NDArray<R> subtract<Ta, Tb, R>(
       listEquals(a.shape, b.shape);
 
   final ndim = commonShape.length;
-  final cBuffer = _getStridedOpBuffer(ndim);
+  final cBuffer = _ScratchArena.getStridedBuffer(ndim);
   final cShape = cBuffer;
   final cStridesA = cBuffer + ndim;
   final cStridesB = cBuffer + (ndim * 2);
@@ -13510,7 +13546,7 @@ NDArray<R> multiply<Ta, Tb, R>(
       listEquals(a.shape, b.shape);
 
   final ndim = commonShape.length;
-  final cBuffer = _getStridedOpBuffer(ndim);
+  final cBuffer = _ScratchArena.getStridedBuffer(ndim);
   final cShape = cBuffer;
   final cStridesA = cBuffer + ndim;
   final cStridesB = cBuffer + (ndim * 2);
@@ -14878,7 +14914,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
       listEquals(a.shape, b.shape);
 
   final ndim = commonShape.length;
-  final cBuffer = _getStridedOpBuffer(ndim);
+  final cBuffer = _ScratchArena.getStridedBuffer(ndim);
   final cShape = cBuffer;
   final cStridesA = cBuffer + ndim;
   final cStridesB = cBuffer + (ndim * 2);
