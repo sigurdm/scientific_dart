@@ -22,11 +22,7 @@ When a task is completed, describe it in DONE.md file and remove it from this fi
 (Completed sorting, partitioning, and searchsorted features)
 
 ### 3.4 Random & DType
-- **Sampling**: `choice()` (random selection from an array), `shuffle()` (in-place shuffling), and `permutation()`.
-- **Types**: Expansion to `uint8` and `int16` for image/audio processing.
-
-### 3.5 Advanced Linear Algebra & Vector Calculus
-(Completed Kronecker product, outer product, cross product, and multi-dimensional vector/matrix norms)
+(Completed sampling choice, shuffle, permutation, and media types expansion)
 
 ### 3.6 Calculus & Cumulative Accumulations
 - **Cumulative ufuncs**: (cumsum() and cumprod() ufuncs have been fully resolved!)

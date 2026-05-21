@@ -2669,3 +2669,20 @@
 * **Results**:
   * **Comprehensive Unit Test Suites**: Refactored [ufuncs_broadcasting_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/ufuncs_broadcasting_test.dart) to run distinct groups for `clip` (scalar bounds) and `clipArray` (broadcasting bounds matrices), validating exact matching shapes, row/column vector stretchings, mixed scalar/array types on integers, and incompatible dimension assertions.
   * **Pristine Quality**: All 604 global workspace tests execute and pass 100% successfully!
+
+***
+
+## 75. N-Dimensional Random Sampling (choice, shuffle, permutation) and Media Types Expansion (uint8 and int16)
+* **What was done**:
+  * **Sampling Capabilities**:
+    * **`choice()`**: Implemented random sampling from 1-D arrays supporting replacement (`replace = true`/`false`) and custom category probability distributions (`NDArray<double>? p`). Samples non-uniform indices via CDF binary sweep, and samples without replacement uniformly via partial Fisher-Yates index swaps or non-uniformly via dynamic probability normalization.
+    * **`shuffle()`**: Implemented in-place coordinate Fisher-Yates shuffling along axis 0. Features a fast-path for 1-D arrays and generic recursive slice swapping (`_copySlice`) for strided N-Dimensional views.
+    * **`permutation()`**: Implemented permuted array copies along axis 0, safely cloning the source array first and calling `shuffle()` on the contiguous clone.
+  * **Media Types Expansion**:
+    * Extended `randint()` to support generating random numbers natively for `uint8` (image pixel matrices) and `int16` (sound wave vectors) data types.
+    * Added optimized FFI C functions `v_randint_uint8`, `v_randint_int16`, `v_secure_randint_uint8`, and `v_secure_randint_int16` to offload simulations to high-speed native C heap sweeps using cryptographically secure or xoshiro256 generator.
+* **Results**:
+  * **Thorough Unit Test Suites**: Created robust testing blocks inside [random_coverage_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/random_coverage_test.dart) validating uint8/int16 bounds, 1D/ND in-place shuffling, permutation copies, replacement/non-replacement choice, probabilities, and argument boundaries.
+  * **Premium Executable Example**: Extended [random_example.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/example/random_example.dart) showing 4x4 uint8 image pixel grids, 10-element int16 audio waves, choices, and permutations.
+  * **Pristine Quality**: All 611 workspace unit tests pass successfully!
+

@@ -91,6 +91,7 @@ NDArray<T> uniform<T extends num>(
 ///
 /// By default, uses Dart's standard [Random] class, which is not cryptographically secure.
 /// You can pass a secure random object via the [random] parameter if needed.
+
 NDArray<T> randint<T extends num>(
   List<int> shape, {
   required int low,
@@ -102,8 +103,12 @@ NDArray<T> randint<T extends num>(
 }) {
   final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
   if (!identical(resolvedDType, DType.int32) &&
-      !identical(resolvedDType, DType.int64)) {
-    throw ArgumentError('randint only supports integer types');
+      !identical(resolvedDType, DType.int64) &&
+      !identical(resolvedDType, DType.uint8) &&
+      !identical(resolvedDType, DType.int16)) {
+    throw ArgumentError(
+      'randint only supports integer types (int64, int32, int16, uint8)',
+    );
   }
   if (low >= high) {
     throw ArgumentError('low must be less than high');
@@ -119,8 +124,12 @@ NDArray<T> randint<T extends num>(
   if (secure) {
     if (identical(resolvedDType, DType.int64)) {
       v_secure_randint_int64(arr.pointer.cast<ffi.Int64>(), len, low, high);
-    } else {
+    } else if (identical(resolvedDType, DType.int32)) {
       v_secure_randint_int32(arr.pointer.cast<ffi.Int32>(), len, low, high);
+    } else if (identical(resolvedDType, DType.uint8)) {
+      v_secure_randint_uint8(arr.pointer.cast<ffi.Uint8>(), len, low, high);
+    } else if (identical(resolvedDType, DType.int16)) {
+      v_secure_randint_int16(arr.pointer.cast<ffi.Int16>(), len, low, high);
     }
     return arr;
   }
@@ -129,8 +138,12 @@ NDArray<T> randint<T extends num>(
 
   if (identical(resolvedDType, DType.int64)) {
     v_randint_int64(arr.pointer.cast<ffi.Int64>(), len, low, high, seedVal);
-  } else {
+  } else if (identical(resolvedDType, DType.int32)) {
     v_randint_int32(arr.pointer.cast<ffi.Int32>(), len, low, high, seedVal);
+  } else if (identical(resolvedDType, DType.uint8)) {
+    v_randint_uint8(arr.pointer.cast<ffi.Uint8>(), len, low, high, seedVal);
+  } else if (identical(resolvedDType, DType.int16)) {
+    v_randint_int16(arr.pointer.cast<ffi.Int16>(), len, low, high, seedVal);
   }
   return arr;
 }
@@ -679,4 +692,329 @@ NDArray<T> multinomial<T extends num>(
   }
 
   return result;
+}
+
+/// Generates a random sample from a given 1-D array.
+///
+/// **Preconditions:**
+/// - [a] must be a 1-D array and not disposed.
+/// - [size] if specified must be a valid shape list.
+/// - If [replace] is false, the total sample count must be $\le$ [a.size].
+/// - If [p] is specified:
+///   - It must be a 1-D array of the same size as [a].
+///   - Its values must be non-negative probabilities summing to approximately 1.0.
+///
+/// **Throws:**
+/// - [StateError] if [a] or [p] is disposed.
+/// - [ArgumentError] if [a] is not 1-D.
+/// - [ArgumentError] if [replace] is false and sample size exceeds [a.size].
+/// - [ArgumentError] if [p] size is mismatched, negative, or does not sum to 1.0.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([10, 20, 30, 40], [4], DType.int32);
+/// final sampled = choice(a, size: [2], replace: false); // e.g., [20, 40]
+/// ```
+///
+/// Reference: [NumPy choice](https://numpy.org/doc/stable/reference/generated/numpy.random.choice.html)
+NDArray<T> choice<T>(
+  NDArray<T> a, {
+  List<int>? size,
+  bool replace = true,
+  NDArray<double>? p,
+  int? seed,
+  bool secure = false,
+}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute choice on a disposed array.');
+  }
+  if (a.shape.length != 1) {
+    throw ArgumentError('choice only supports 1-D input arrays.');
+  }
+  if (p != null) {
+    if (p.isDisposed) {
+      throw StateError('Provided probability array p is disposed.');
+    }
+    if (p.shape.length != 1 || p.shape[0] != a.shape[0]) {
+      throw ArgumentError(
+        'Probability array p must be 1-D and match the size of a.',
+      );
+    }
+  }
+
+  final sampleShape = size ?? <int>[];
+  final sampleCount = sampleShape.isEmpty
+      ? 1
+      : sampleShape.reduce((x, y) => x * y);
+
+  if (!replace && sampleCount > a.size) {
+    throw ArgumentError(
+      'Cannot choose $sampleCount elements without replacement from an array of size ${a.size}.',
+    );
+  }
+
+  final rand = secure
+      ? Random.secure()
+      : Random(seed ?? Random().nextInt(4294967296));
+  final result = NDArray<T>.create(sampleShape, a.dtype);
+
+  // Pre-calculate CDF if probability array p is specified
+  List<double>? cdf;
+  if (p != null) {
+    final nonNullP = p;
+    cdf = List<double>.filled(a.size, 0.0);
+    var sumP = 0.0;
+    for (var i = 0; i < a.size; i++) {
+      final prob =
+          nonNullP.data[nonNullP.offsetElements + i * nonNullP.strides[0]];
+      if (prob < 0.0) {
+        throw ArgumentError(
+          'pvals must contain non-negative probabilities (was $prob at index $i)',
+        );
+      }
+      sumP += prob;
+      cdf[i] = sumP;
+    }
+    if ((sumP - 1.0).abs() > 1e-3) {
+      for (var i = 0; i < a.size; i++) {
+        cdf[i] /= sumP;
+      }
+    }
+  }
+
+  final aOffset = a.offsetElements;
+  final aStride = a.strides[0];
+  final data = a.data;
+
+  if (replace) {
+    // Draw with replacement
+    for (var i = 0; i < sampleCount; i++) {
+      var index = 0;
+      if (cdf != null) {
+        // Draw using CDF
+        final u = rand.nextDouble();
+        index = a.size - 1;
+        for (var j = 0; j < a.size; j++) {
+          if (u <= cdf[j]) {
+            index = j;
+            break;
+          }
+        }
+      } else {
+        // Uniform draw
+        index = rand.nextInt(a.size);
+      }
+      result.data[i] = data[aOffset + index * aStride];
+    }
+  } else {
+    // Draw without replacement
+    if (cdf == null) {
+      final indices = List<int>.generate(a.size, (i) => i);
+      for (var i = a.size - 1; i > a.size - 1 - sampleCount; i--) {
+        final j = rand.nextInt(i + 1);
+        final temp = indices[i];
+        indices[i] = indices[j];
+        indices[j] = temp;
+      }
+      for (var i = 0; i < sampleCount; i++) {
+        final idx = indices[a.size - 1 - i];
+        result.data[i] = data[aOffset + idx * aStride];
+      }
+    } else {
+      final nonNullP = p!;
+      final tempProbs = List<double>.generate(
+        a.size,
+        (i) => nonNullP.data[nonNullP.offsetElements + i * nonNullP.strides[0]],
+      );
+      final drawn = List<bool>.filled(a.size, false);
+
+      for (var draw = 0; draw < sampleCount; draw++) {
+        final drawCdf = List<double>.filled(a.size, 0.0);
+        var sumP = 0.0;
+        for (var i = 0; i < a.size; i++) {
+          if (!drawn[i]) {
+            sumP += tempProbs[i];
+          }
+          drawCdf[i] = sumP;
+        }
+
+        final u = rand.nextDouble() * sumP;
+        var index = a.size - 1;
+        for (var j = 0; j < a.size; j++) {
+          if (!drawn[j] && u <= drawCdf[j]) {
+            index = j;
+            break;
+          }
+        }
+
+        drawn[index] = true;
+        result.data[draw] = data[aOffset + index * aStride];
+      }
+    }
+  }
+
+  return result;
+}
+
+/// Shuffles the array in-place along the first axis.
+///
+/// For N-Dimensional arrays, shuffles sub-arrays along axis 0.
+/// For 1-Dimensional arrays, shuffles individual elements.
+///
+/// **Preconditions:**
+/// - The array [a] must not be disposed.
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+///
+/// **Performance considerations:**
+/// - Uses Fisher-Yates shuffle, performing $O(D_0)$ swaps where $D_0$ is the size of the first dimension.
+/// - Time complexity is $O(D_0 \cdot S)$ where $S$ is the size of each sub-array slice.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+/// shuffle(a); // a is now shuffled in-place, e.g., [2.0, 1.0, 3.0]
+/// ```
+void shuffle(NDArray a, {int? seed, bool secure = false}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot shuffle a disposed array.');
+  }
+
+  final rand = secure
+      ? Random.secure()
+      : Random(seed ?? Random().nextInt(4294967296));
+  final d0 = a.shape.isEmpty ? 1 : a.shape[0];
+  if (d0 <= 1) return;
+
+  if (a.shape.length == 1) {
+    final data = a.data;
+    final offset = a.offsetElements;
+    final stride = a.strides[0];
+    for (var i = d0 - 1; i > 0; i--) {
+      final j = rand.nextInt(i + 1);
+      if (i != j) {
+        final temp = data[offset + i * stride];
+        data[offset + i * stride] = data[offset + j * stride];
+        data[offset + j * stride] = temp;
+      }
+    }
+    return;
+  }
+
+  final sliceShape = a.shape.sublist(1);
+  final sliceStrides = a.strides.sublist(1);
+
+  final tempSlice = NDArray.create(sliceShape, a.dtype);
+  try {
+    final stepStride = a.strides[0];
+    final data = a.data;
+
+    for (var i = d0 - 1; i > 0; i--) {
+      final j = rand.nextInt(i + 1);
+      if (i != j) {
+        final offsetI = a.offsetElements + i * stepStride;
+        final offsetJ = a.offsetElements + j * stepStride;
+
+        _copySlice(
+          data,
+          offsetI,
+          tempSlice.data,
+          0,
+          sliceShape,
+          sliceStrides,
+          tempSlice.strides,
+          0,
+        );
+        _copySlice(
+          data,
+          offsetJ,
+          data,
+          offsetI,
+          sliceShape,
+          sliceStrides,
+          sliceStrides,
+          0,
+        );
+        _copySlice(
+          tempSlice.data,
+          0,
+          data,
+          offsetJ,
+          sliceShape,
+          tempSlice.strides,
+          sliceStrides,
+          0,
+        );
+      }
+    }
+  } finally {
+    tempSlice.dispose();
+  }
+}
+
+/// Returns a permuted copy of an array along axis 0.
+///
+/// **Preconditions:**
+/// - The array [a] must not be disposed.
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+///
+/// **Performance considerations:**
+/// - Returns a brand new contiguous deep copy of the array permuted along axis 0.
+/// - Time complexity matches [shuffle].
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+/// final perm = permutation(a); // perm is a permuted copy, a remains unchanged
+/// ```
+NDArray<T> permutation<T>(NDArray<T> a, {int? seed, bool secure = false}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot permute a disposed array.');
+  }
+  final copyArr = a.copy();
+  shuffle(copyArr, seed: seed, secure: secure);
+  return copyArr;
+}
+
+void _copySlice(
+  List src,
+  int srcOffset,
+  List dest,
+  int destOffset,
+  List<int> shape,
+  List<int> stridesSrc,
+  List<int> stridesDest,
+  int dim,
+) {
+  if (shape.isEmpty) {
+    dest[destOffset] = src[srcOffset];
+    return;
+  }
+  if (dim == shape.length - 1) {
+    final limit = shape[dim];
+    final strideSrc = stridesSrc[dim];
+    final strideDest = stridesDest[dim];
+    for (var i = 0; i < limit; i++) {
+      dest[destOffset + i * strideDest] = src[srcOffset + i * strideSrc];
+    }
+    return;
+  }
+  final limit = shape[dim];
+  final strideSrc = stridesSrc[dim];
+  final strideDest = stridesDest[dim];
+  for (var i = 0; i < limit; i++) {
+    _copySlice(
+      src,
+      srcOffset + i * strideSrc,
+      dest,
+      destOffset + i * strideDest,
+      shape,
+      stridesSrc,
+      stridesDest,
+      dim + 1,
+    );
+  }
 }

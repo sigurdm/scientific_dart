@@ -1223,6 +1223,26 @@ void v_randint_int32(int32_t *res, int size, int32_t low, int32_t high, unsigned
     }
 }
 
+void v_randint_uint8(uint8_t *res, int size, int low, int high, unsigned long long seed) {
+    if (res == NULL || size <= 0 || low >= high) return;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
+    int range = high - low;
+    for (int i = 0; i < size; i++) {
+        res[i] = (uint8_t)(low + (int)(xoshiro256_next(s) % (unsigned long long)range));
+    }
+}
+
+void v_randint_int16(int16_t *res, int size, int low, int high, unsigned long long seed) {
+    if (res == NULL || size <= 0 || low >= high) return;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
+    int range = high - low;
+    for (int i = 0; i < size; i++) {
+        res[i] = (int16_t)(low + (int)(xoshiro256_next(s) % (unsigned long long)range));
+    }
+}
+
 void v_fill_double(double *res, double value, int size) {
     if (res == NULL || size <= 0) return;
     for (int i = 0; i < size; i++) {
@@ -2041,6 +2061,24 @@ void v_secure_randint_int32(int32_t *res, int size, int32_t low, int32_t high) {
     int32_t range = high - low;
     for (int i = 0; i < size; i++) {
         res[i] = low + (int32_t)((unsigned int)res[i] % (unsigned int)range);
+    }
+}
+
+void v_secure_randint_uint8(uint8_t *res, int size, int low, int high) {
+    if (res == NULL || size <= 0 || low >= high) return;
+    fill_secure_bytes(res, size * sizeof(uint8_t));
+    int range = high - low;
+    for (int i = 0; i < size; i++) {
+        res[i] = (uint8_t)(low + (int)((unsigned int)res[i] % (unsigned int)range));
+    }
+}
+
+void v_secure_randint_int16(int16_t *res, int size, int low, int high) {
+    if (res == NULL || size <= 0 || low >= high) return;
+    fill_secure_bytes(res, size * sizeof(int16_t));
+    int range = high - low;
+    for (int i = 0; i < size; i++) {
+        res[i] = (int16_t)(low + (int)((unsigned int)res[i] % (unsigned int)range));
     }
 }
 

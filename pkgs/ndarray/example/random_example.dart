@@ -9,7 +9,47 @@ void main() {
   runUniformDistributionExample();
   runRandintDistributionExample();
   runSeededReproducibilityExample();
+  runChoiceShufflePermutationExample();
+  runAudioImageRandintExample();
 }
+
+void runChoiceShufflePermutationExample() {
+  print('\n--- Choice, Shuffle, & Permutation ---');
+  NDArray.scope(() {
+    final a = NDArray.fromList([10, 20, 30, 40, 50], [5], DType.int32);
+    print('Original array a: ${a.toList()}');
+
+    // Sample 3 items without replacement
+    final sampled = choice(a, size: [3], replace: false, seed: 42);
+    print('choice(a, size: [3], replace: false): ${sampled.toList()}');
+
+    // Shuffling in-place
+    final toShuffle = a.copy();
+    shuffle(toShuffle, seed: 100);
+    print('shuffle(a) in-place: ${toShuffle.toList()}');
+
+    // Permutation (returns permuted copy)
+    final perm = permutation(a, seed: 200);
+    print('permutation(a): ${perm.toList()}');
+    print('Original array still intact: ${a.toList()}');
+  });
+}
+
+void runAudioImageRandintExample() {
+  print('\n--- Media Types Expansion (uint8 Image & int16 Audio) ---');
+  NDArray.scope(() {
+    // uint8 Image Pixel Sampling
+    final pixels = randint([4, 4], low: 0, high: 256, dtype: DType.uint8);
+    print('4x4 uint8 Image Pixel Grid:\n${pixels.toList()}');
+    print('Image DType: ${pixels.dtype}');
+
+    // int16 Audio Sample Sampling
+    final audio = randint([10], low: -32768, high: 32767, dtype: DType.int16);
+    print('10-element int16 Audio Samples: ${audio.toList()}');
+    print('Audio DType: ${audio.dtype}');
+  });
+}
+
 
 void runNormalDistributionExample() {
   print('--- Normal (Gaussian) Distribution ---');

@@ -5360,6 +5360,40 @@ external void v_randint_int32(
   int seed,
 );
 
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void v_randint_uint8(
+  ffi.Pointer<ffi.Uint8> res,
+  int size,
+  int low,
+  int high,
+  int seed,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void v_randint_int16(
+  ffi.Pointer<ffi.Int16> res,
+  int size,
+  int low,
+  int high,
+  int seed,
+);
+
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Double, ffi.Int)>()
 external void v_fill_double(
   ffi.Pointer<ffi.Double> res,
@@ -5397,6 +5431,26 @@ external void v_secure_randint_int64(
 >()
 external void v_secure_randint_int32(
   ffi.Pointer<ffi.Int32> res,
+  int size,
+  int low,
+  int high,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Uint8>, ffi.Int, ffi.Int, ffi.Int)
+>()
+external void v_secure_randint_uint8(
+  ffi.Pointer<ffi.Uint8> res,
+  int size,
+  int low,
+  int high,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Int16>, ffi.Int, ffi.Int, ffi.Int)
+>()
+external void v_secure_randint_int16(
+  ffi.Pointer<ffi.Int16> res,
   int size,
   int low,
   int high,

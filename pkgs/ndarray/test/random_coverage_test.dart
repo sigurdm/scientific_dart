@@ -350,5 +350,165 @@ void main() {
         expect(multiSec.shape, [5, 3]);
       });
     });
+
+    group('Random Sampling & Types Expansion Tests', () {
+      test('randint support for uint8 and int16', () {
+        NDArray.scope(() {
+          // uint8 randint
+          final u8 = randint([10], low: 5, high: 150, dtype: DType.uint8);
+          expect(u8.dtype, DType.uint8);
+          expect(u8.shape, [10]);
+          for (var i = 0; i < 10; i++) {
+            expect(u8.data[i], greaterThanOrEqualTo(5));
+            expect(u8.data[i], lessThan(150));
+          }
+
+          // int16 randint
+          final i16 = randint([10], low: -1000, high: 1000, dtype: DType.int16);
+          expect(i16.dtype, DType.int16);
+          expect(i16.shape, [10]);
+          for (var i = 0; i < 10; i++) {
+            expect(i16.data[i], greaterThanOrEqualTo(-1000));
+            expect(i16.data[i], lessThan(1000));
+          }
+
+          // secure randint uint8
+          final u8Sec = randint(
+            [5],
+            low: 0,
+            high: 255,
+            dtype: DType.uint8,
+            secure: true,
+          );
+          expect(u8Sec.dtype, DType.uint8);
+
+          // secure randint int16
+          final i16Sec = randint(
+            [5],
+            low: -32768,
+            high: 32767,
+            dtype: DType.int16,
+            secure: true,
+          );
+          expect(i16Sec.dtype, DType.int16);
+        });
+      });
+
+      test('shuffle 1D and N-D arrays', () {
+        NDArray.scope(() {
+          // 1D shuffle
+          final a1 = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0],
+            [5],
+            DType.float64,
+          );
+          shuffle(a1, seed: 42);
+          expect(a1.shape, [5]);
+          expect(a1.toList(), containsAll([1.0, 2.0, 3.0, 4.0, 5.0]));
+
+          // ND shuffle along axis 0
+          final a2 = NDArray.fromList(
+            [
+              1.0, 1.0, // row 0
+              2.0, 2.0, // row 1
+              3.0, 3.0, // row 2
+            ],
+            [3, 2],
+            DType.float64,
+          );
+          shuffle(a2, seed: 100);
+          expect(a2.shape, [3, 2]);
+          final list = a2.toList();
+          // Check that rows are preserved as units
+          expect(list[0] == list[1], true);
+          expect(list[2] == list[3], true);
+          expect(list[4] == list[5], true);
+          expect(list, containsAll([1.0, 1.0, 2.0, 2.0, 3.0, 3.0]));
+        });
+      });
+
+      test('permutation along axis 0', () {
+        NDArray.scope(() {
+          final a = NDArray.fromList([1, 2, 3, 4], [4], DType.int32);
+          final perm = permutation(a, seed: 42);
+          expect(perm != a, true); // Brand new copy
+          expect(perm.shape, [4]);
+          expect(perm.toList(), containsAll([1, 2, 3, 4]));
+          expect(a.toList(), [1, 2, 3, 4]); // Original unchanged
+        });
+      });
+
+      test('choice sampling with and without replacement', () {
+        NDArray.scope(() {
+          final a = NDArray.fromList(
+            [10.0, 20.0, 30.0, 40.0, 50.0],
+            [5],
+            DType.float64,
+          );
+
+          // Choice with replacement
+          final c1 = choice(a, size: [10], replace: true, seed: 42);
+          expect(c1.shape, [10]);
+          for (var i = 0; i < 10; i++) {
+            expect(a.toList(), contains(c1.data[i]));
+          }
+
+          // Choice without replacement
+          final c2 = choice(a, size: [3], replace: false, seed: 42);
+          expect(c2.shape, [3]);
+          expect(c2.toList().toSet().length, 3); // All unique
+
+          // Choice with probabilities
+          final p = NDArray.fromList(
+            [0.0, 1.0, 0.0, 0.0, 0.0],
+            [5],
+            DType.float64,
+          );
+          final c3 = choice(a, size: [5], replace: true, p: p, seed: 42);
+          expect(c3.toList(), [
+            20.0,
+            20.0,
+            20.0,
+            20.0,
+            20.0,
+          ]); // 100% probability on 20.0
+
+          // Choice without replacement and non-uniform probabilities
+          final c4 = choice(a, size: [2], replace: false, p: p, seed: 42);
+          expect(c4.shape, [2]);
+          expect(c4.toList(), contains(20.0)); // Must contain 20.0
+        });
+      });
+
+      test('choice and shuffle edge cases and exceptions', () {
+        NDArray.scope(() {
+          final a = NDArray.fromList([1, 2, 3], [3], DType.int32);
+          final disposed = NDArray<int>.create([3], DType.int32)..dispose();
+
+          // Disposed exceptions
+          expect(() => choice(disposed), throwsStateError);
+          expect(() => shuffle(disposed), throwsStateError);
+          expect(() => permutation(disposed), throwsStateError);
+
+          // Non 1-D input for choice
+          final a2D = NDArray.zeros([2, 2], DType.float64);
+          expect(() => choice(a2D), throwsArgumentError);
+
+          // Mismatched probability size
+          final pBad = NDArray.fromList([0.5, 0.5], [2], DType.float64);
+          expect(() => choice(a, p: pBad), throwsArgumentError);
+
+          // Probability contains negative values
+          final pNeg = NDArray.fromList([-0.2, 0.8, 0.4], [3], DType.float64);
+          expect(() => choice(a, p: pNeg), throwsArgumentError);
+
+          // Choice without replacement where size > a.size
+          expect(
+            () => choice(a, size: [4], replace: false),
+            throwsArgumentError,
+          );
+        });
+      });
+    });
   });
 }

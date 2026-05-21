@@ -446,16 +446,24 @@ void v_normal_double(double *res, int size, double loc, double scale, unsigned l
 void v_normal_float(float *res, int size, float loc, float scale, unsigned long long seed);
 void v_uniform_double(double *res, int size, unsigned long long seed);
 void v_uniform_float(float *res, int size, unsigned long long seed);
+
 void v_randint_int64(int64_t *res, int size, int64_t low, int64_t high, unsigned long long seed);
 void v_randint_int32(int32_t *res, int size, int32_t low, int32_t high, unsigned long long seed);
+void v_randint_int16(int16_t *res, int size, int low, int high, unsigned long long seed);
+void v_randint_uint8(uint8_t *res, int size, int low, int high, unsigned long long seed);
+
 void v_fill_double(double *res, double value, int size);
 void v_fill_float(float *res, float value, int size);
 void v_fill_int64(int64_t *res, int64_t value, int size);
 void v_fill_int32(int32_t *res, int32_t value, int size);
+
 void v_secure_uniform_double(double *res, int size);
 void v_secure_uniform_float(float *res, int size);
 void v_secure_randint_int64(int64_t *res, int size, int64_t low, int64_t high);
 void v_secure_randint_int32(int32_t *res, int size, int32_t low, int32_t high);
+void v_secure_randint_int16(int16_t *res, int size, int low, int high);
+void v_secure_randint_uint8(uint8_t *res, int size, int low, int high);
+
 void v_secure_normal_double(double *res, int size, double loc, double scale);
 void v_secure_normal_float(float *res, int size, float loc, float scale);
 void v_poisson_int64(int64_t *res, int size, double lam, unsigned long long seed);
