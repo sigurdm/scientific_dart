@@ -78,8 +78,8 @@ void main() async {
       // Small sleep for responsiveness
       await Future.delayed(const Duration(milliseconds: 50));
     }
-  } catch (e) {
-    print('\nError: $e');
+  } catch (e, s) {
+    print('\nError: $e\n$s');
   } finally {
     capture.close();
     captureBuffer.dispose();
