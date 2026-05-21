@@ -10633,19 +10633,32 @@ dynamic _castValue(dynamic val, DType dtype) {
 /// ```dart
 /// final window = hanning(512);
 /// ```
-NDArray<double> hanning(int M, {DType<double> dtype = DType.float64}) {
-  if (M < 1) return NDArray.create([0], dtype);
+NDArray<T> hanning<T>(int M, {DType<T>? dtype}) {
+  final resolvedDType = dtype ?? (DType.float64 as DType<T>);
+  if (M < 1) return NDArray.create([0], resolvedDType);
   if (M == 1) {
-    return NDArray.fromList([1.0], [1], dtype);
+    return NDArray.fromList(
+      [_castValue(1.0, resolvedDType)],
+      [1],
+      resolvedDType,
+    );
   }
 
-  final res = NDArray.create([M], dtype);
-  if (dtype == DType.float32) {
+  if (resolvedDType == DType.float32) {
+    final res = NDArray<T>.create([M], resolvedDType);
     v_hanning_float(res.pointer.cast(), M);
-  } else {
+    return res;
+  } else if (resolvedDType == DType.float64) {
+    final res = NDArray<T>.create([M], resolvedDType);
     v_hanning_double(res.pointer.cast(), M);
+    return res;
+  } else {
+    final temp = NDArray<double>.create([M], DType.float64);
+    v_hanning_double(temp.pointer.cast(), M);
+    final res = _castNDArray(temp, resolvedDType);
+    temp.dispose();
+    return res;
   }
-  return res;
 }
 
 /// Return the Hamming window.
@@ -10656,19 +10669,32 @@ NDArray<double> hanning(int M, {DType<double> dtype = DType.float64}) {
 /// ```dart
 /// final window = hamming(512);
 /// ```
-NDArray<double> hamming(int M, {DType<double> dtype = DType.float64}) {
-  if (M < 1) return NDArray.create([0], dtype);
+NDArray<T> hamming<T>(int M, {DType<T>? dtype}) {
+  final resolvedDType = dtype ?? (DType.float64 as DType<T>);
+  if (M < 1) return NDArray.create([0], resolvedDType);
   if (M == 1) {
-    return NDArray.fromList([1.0], [1], dtype);
+    return NDArray.fromList(
+      [_castValue(1.0, resolvedDType)],
+      [1],
+      resolvedDType,
+    );
   }
 
-  final res = NDArray.create([M], dtype);
-  if (dtype == DType.float32) {
+  if (resolvedDType == DType.float32) {
+    final res = NDArray<T>.create([M], resolvedDType);
     v_hamming_float(res.pointer.cast(), M);
-  } else {
+    return res;
+  } else if (resolvedDType == DType.float64) {
+    final res = NDArray<T>.create([M], resolvedDType);
     v_hamming_double(res.pointer.cast(), M);
+    return res;
+  } else {
+    final temp = NDArray<double>.create([M], DType.float64);
+    v_hamming_double(temp.pointer.cast(), M);
+    final res = _castNDArray(temp, resolvedDType);
+    temp.dispose();
+    return res;
   }
-  return res;
 }
 
 /// Extract a lower triangular matrix (on and below the k-th diagonal) element-wise.

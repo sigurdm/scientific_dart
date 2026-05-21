@@ -122,6 +122,17 @@ void main() {
           expect(h2_32.dtype, DType.float32);
           expect(h2_32.data[2], 1.0);
 
+          // Complex window functions
+          final hc128 = hanning(5, dtype: DType.complex128);
+          expect(hc128.dtype, DType.complex128);
+          expect(hc128.data[2].real, 1.0);
+          expect(hc128.data[2].imag, 0.0);
+
+          final hc64 = hamming(5, dtype: DType.complex64);
+          expect(hc64.dtype, DType.complex64);
+          expect(hc64.data[2].real, 1.0);
+          expect(hc64.data[2].imag, 0.0);
+
           // M <= 1 edge cases
           final zeroH = hanning(0);
           expect(zeroH.shape, [0]);
