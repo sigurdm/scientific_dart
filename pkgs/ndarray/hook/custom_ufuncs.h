@@ -119,8 +119,79 @@ void v_hypot_complex64(const cpx_f_t *x1, const cpx_f_t *x2, float *res, int siz
 void v_pow_complex128(const cpx_t *x1, const cpx_t *x2, cpx_t *res, int size);
 void v_pow_complex64(const cpx_f_t *x1, const cpx_f_t *x2, cpx_f_t *res, int size);
 
+
 void v_conj_complex128(const cpx_t *src, cpx_t *res, int size);
 void v_conj_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+
+void v_square_double(const double *src, double *res, int size);
+void v_square_float(const float *src, float *res, int size);
+void v_square_int64(const int64_t *src, int64_t *res, int size);
+void v_square_int32(const int32_t *src, int32_t *res, int size);
+void v_square_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_square_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+
+void v_pow_double(const double *x1, const double *x2, double *res, int size);
+void v_pow_float(const float *x1, const float *x2, float *res, int size);
+
+void v_floordiv_double(const double *x1, const double *x2, double *res, int size);
+void v_floordiv_float(const float *x1, const float *x2, float *res, int size);
+void v_floordiv_int64(const int64_t *x1, const int64_t *x2, int64_t *res, int size);
+void v_floordiv_int32(const int32_t *x1, const int32_t *x2, int32_t *res, int size);
+
+void v_remainder_double(const double *x1, const double *x2, double *res, int size);
+void v_remainder_float(const float *x1, const float *x2, float *res, int size);
+void v_remainder_int64(const int64_t *x1, const int64_t *x2, int64_t *res, int size);
+void v_remainder_int32(const int32_t *x1, const int32_t *x2, int32_t *res, int size);
+
+void v_isnan_double(const double *src, uint8_t *res, int size);
+void v_isnan_float(const float *src, uint8_t *res, int size);
+void v_isnan_complex128(const cpx_t *src, uint8_t *res, int size);
+void v_isnan_complex64(const cpx_f_t *src, uint8_t *res, int size);
+
+void v_isinf_double(const double *src, uint8_t *res, int size);
+void v_isinf_float(const float *src, uint8_t *res, int size);
+void v_isinf_complex128(const cpx_t *src, uint8_t *res, int size);
+void v_isinf_complex64(const cpx_f_t *src, uint8_t *res, int size);
+
+void v_isfinite_double(const double *src, uint8_t *res, int size);
+void v_isfinite_float(const float *src, uint8_t *res, int size);
+void v_isfinite_complex128(const cpx_t *src, uint8_t *res, int size);
+void v_isfinite_complex64(const cpx_f_t *src, uint8_t *res, int size);
+
+void v_copysign_double(const double *x1, const double *x2, double *res, int size);
+void v_copysign_float(const float *x1, const float *x2, float *res, int size);
+
+/* Vectorized Bitwise Universal Functions */
+void v_bitwise_and_int32(const int32_t *a, const int32_t *b, int32_t *res, int size);
+void v_bitwise_and_int64(const int64_t *a, const int64_t *b, int64_t *res, int size);
+void v_bitwise_and_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
+void v_bitwise_and_int16(const int16_t *a, const int16_t *b, int16_t *res, int size);
+
+void v_bitwise_or_int32(const int32_t *a, const int32_t *b, int32_t *res, int size);
+void v_bitwise_or_int64(const int64_t *a, const int64_t *b, int64_t *res, int size);
+void v_bitwise_or_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
+void v_bitwise_or_int16(const int16_t *a, const int16_t *b, int16_t *res, int size);
+
+void v_bitwise_xor_int32(const int32_t *a, const int32_t *b, int32_t *res, int size);
+void v_bitwise_xor_int64(const int64_t *a, const int64_t *b, int64_t *res, int size);
+void v_bitwise_xor_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
+void v_bitwise_xor_int16(const int16_t *a, const int16_t *b, int16_t *res, int size);
+
+void v_left_shift_int32(const int32_t *a, const int32_t *b, int32_t *res, int size);
+void v_left_shift_int64(const int64_t *a, const int64_t *b, int64_t *res, int size);
+void v_left_shift_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
+void v_left_shift_int16(const int16_t *a, const int16_t *b, int16_t *res, int size);
+
+void v_right_shift_int32(const int32_t *a, const int32_t *b, int32_t *res, int size);
+void v_right_shift_int64(const int64_t *a, const int64_t *b, int64_t *res, int size);
+void v_right_shift_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
+void v_right_shift_int16(const int16_t *a, const int16_t *b, int16_t *res, int size);
+
+void v_invert_int32(const int32_t *src, int32_t *res, int size);
+void v_invert_int64(const int64_t *src, int64_t *res, int size);
+void v_invert_uint8(const uint8_t *src, uint8_t *res, int size);
+void v_invert_int16(const int16_t *src, int16_t *res, int size);
+
 
 /* ============================================================================
  * SECTION 3: STRIDED MULTI-DIMENSIONAL ODOMETER WALKS (ufuncs)
@@ -267,6 +338,75 @@ void s_acosh_double(const double *src, const int *stridesSrc, double *res, const
 void s_acosh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
 void s_atanh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
 void s_atanh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_square_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_square_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_square_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank);
+void s_square_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank);
+void s_square_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_square_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_pow_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank);
+void s_pow_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank);
+
+void s_floordiv_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank);
+void s_floordiv_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank);
+void s_floordiv_int64(const int64_t *x1, const int *stridesX1, const int64_t *x2, const int *stridesX2, int64_t *res, const int *stridesRes, const int *shape, int rank);
+void s_floordiv_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, const int *stridesX2, int32_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_remainder_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank);
+void s_remainder_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank);
+void s_remainder_int64(const int64_t *x1, const int *stridesX1, const int64_t *x2, const int *stridesX2, int64_t *res, const int *stridesRes, const int *shape, int rank);
+void s_remainder_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, const int *stridesX2, int32_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_isnan_double(const double *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_isnan_float(const float *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_isnan_complex128(const cpx_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_isnan_complex64(const cpx_f_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_isinf_double(const double *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_isinf_float(const float *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_isinf_complex128(const cpx_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_isinf_complex64(const cpx_f_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_isfinite_double(const double *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_isfinite_float(const float *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_isfinite_complex128(const cpx_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_isfinite_complex64(const cpx_f_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_copysign_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank);
+void s_copysign_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank);
+
+/* Strided Vectorized Bitwise Universal Functions */
+void s_bitwise_and_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank);
+void s_bitwise_and_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank);
+void s_bitwise_and_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_bitwise_and_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_bitwise_or_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank);
+void s_bitwise_or_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank);
+void s_bitwise_or_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_bitwise_or_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_bitwise_xor_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank);
+void s_bitwise_xor_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank);
+void s_bitwise_xor_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_bitwise_xor_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_left_shift_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank);
+void s_left_shift_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank);
+void s_left_shift_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_left_shift_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_right_shift_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank);
+void s_right_shift_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank);
+void s_right_shift_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_right_shift_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_invert_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank);
+void s_invert_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank);
+void s_invert_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_invert_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank);
+
 
 /* ============================================================================
  * SECTION 4: FLAT FLATTENING & STRIDED COPYING KERNELS
@@ -534,6 +674,35 @@ void s_cast_int16_to_double(const int16_t *src, const int *stridesSrc, double *d
 void s_cast_double_to_uint8(const double *src, const int *stridesSrc, uint8_t *dst, const int *stridesDst, const int *shape, int rank);
 void s_cast_double_to_int16(const double *src, const int *stridesSrc, int16_t *dst, const int *stridesDst, const int *shape, int rank);
 
+/* Logical & Casting-to-Boolean operations */
+void v_to_bool_double(const double *src, uint8_t *res, int size);
+void v_to_bool_float(const float *src, uint8_t *res, int size);
+void v_to_bool_int64(const int64_t *src, uint8_t *res, int size);
+void v_to_bool_int32(const int32_t *src, uint8_t *res, int size);
+void v_to_bool_uint8(const uint8_t *src, uint8_t *res, int size);
+void v_to_bool_int16(const int16_t *src, uint8_t *res, int size);
+void v_to_bool_complex128(const cpx_t *src, uint8_t *res, int size);
+void v_to_bool_complex64(const cpx_f_t *src, uint8_t *res, int size);
+
+void s_to_bool_double(const double *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_to_bool_float(const float *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_to_bool_int64(const int64_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_to_bool_int32(const int32_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_to_bool_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_to_bool_int16(const int16_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_to_bool_complex128(const cpx_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_to_bool_complex64(const cpx_f_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+
+void v_logical_and(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
+void v_logical_or(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
+void v_logical_xor(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
+void v_logical_not(const uint8_t *src, uint8_t *res, int size);
+
+void s_logical_and(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_logical_or(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_logical_xor(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_logical_not(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+
 /* Optimized native advanced indexing recursive copy kernel */
 void copy_advanced_c(
     const void *src_ptr,
@@ -549,6 +718,14 @@ void copy_advanced_c(
     const int *slice_steps,
     int **indices_ptrs,
     const int *indices_lens
+);
+
+/* Optimized native boolean mask unpacking kernel */
+int unpack_mask_c(
+    const uint8_t *mask_ptr,
+    int size,
+    int stride,
+    int *out_indices
 );
 
 #endif /* CUSTOM_UFUNCS_H */

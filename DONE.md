@@ -2542,3 +2542,92 @@
 * **Results**:
   - **Verification**: Added comprehensive test suites in [nditer_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/nditer_test.dart) validating single matrix walks, zero-allocation identical List instance checks, dual-array broadcast walks, multi-array broadcast compatibility, and NDEnumerate coordinates/values matching. All 519 package unit tests pass flawlessly green!
 
+***
+
+## 214. NumPy-Compatible Universal Functions (ufuncs) and Floating-Point Classifications
+* **What was done**:
+  - **Resolves Section 3.1 Issue in ISSUES.md / FINDINGS.md**:
+    - **C Native Kernels**: Implemented optimized contiguous C vector sweeps and strided multidimensional odometer walk C kernels inside [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.c) and [custom_ufuncs.h](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.h) for all new operations (`square`, `power`, `floor_divide`, `remainder`, `isnan`, `isinf`, `isfinite`, `copysign`).
+    - **FFI Bindings Centralization**: Exposed the newly compiled shared C library declarations via standard `@ffi.Native` annotations inside generated bindings file [ndarray_bindings.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/ndarray_bindings.dart).
+    - **Unified Switch API & Stride Correctness**: Refactored `square()` in [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart) to use exhaustive `switch(a.dtype)` dispatches, utilizing highly optimized flat contiguous loops for contiguous layouts, and correct logical `_unaryOp` recursive walks for non-contiguous views.
+    - **Type-Safe FFI Gates**: Infused all mathematical FFI gates (such as `power()`, `remainder()`, `floor_divide()`, `copysign()`) with strict type-safety checks to ensure both input arrays share identical floating-point/integer `DType` tags before raw pointer castings.
+    - ** Tensors Modulo Math**: Upgraded `remainder()` and `floor_divide()` FFI kernels and Dart fallbacks to conform exactly to standard Python/NumPy floor division and signed floor modulo constraints (e.g. `5 % -2 = -1`).
+    - **divmod() Combined Tuple**: Defined `divmod()` returning a Record `(NDArray, NDArray)` of `(floor_divide(a, b), remainder(a, b))` natively.
+    - **isnan(), isinf(), isfinite()**: Added high-performance FFI-accelerated classifications, returning clean boolean mask arrays.
+    - **copysign() Sign Copier**: Added full broadcast-aware sign copier FFI ufunc.
+* **Results**:
+  - **Verification**: Authored a comprehensive new test suite [numpy_compatibility_ufuncs_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/numpy_compatibility_ufuncs_test.dart) verifying contiguous basic types, complex types, strided views, boolean array fallbacks, out Recycler buffers, floor division, floor modulo, divmod Record tuple, division-by-zero error boundaries, and copysign negative zero transfers.
+  - **Green Test Suite**: All 16 ufuncs tests and all 535 package unit tests pass flawlessly green!
+
+
+***
+
+## 68. Highly-Optimized, FFI-Backed Logical Operations (logical_and, logical_or, logical_not, logical_xor)
+* **What was done**:
+  * Implemented optimized contiguous and strided C kernels in [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.c) and [custom_ufuncs.h](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.h) to perform logical negation, conjunction, disjunction, and exclusive disjunction.
+  * Programmed optimized contiguous and strided C-level casting converters (`v_to_bool_*` / `s_to_bool_*`) to resolve on-the-fly conversion of all 9 supported `DType` tags to boolean arrays (`uint8_t` true values) directly inside the unmanaged heap, completely avoiding costly intermediate object allocations.
+  * Regenerated type-safe FFI bindings using `ffigen` to expose these new native functions directly in [ndarray_bindings.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/ndarray_bindings.dart).
+  * Completely replaced the slow, non-standard, pure-Dart JIT loops in [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart) with highly-optimized, FFI-backed logical implementations that return clean `DType.boolean` arrays, support the named `{NDArray<bool>? out}` recycler buffer for zero-allocation pipelines, and perform zero heap allocations when operating directly on boolean matrices.
+  * Added robust checks to verify disposal states, shape compatibility, and out-recycler type mismatches.
+  * Fixed a pre-existing gap in `custom_ufuncs.h` by declaring the missing `s_atanh_float` C function and regenerated the FFI bindings to resolve unrelated static analyzer warnings.
+* **Results**:
+  * **Verification**: Updated `logical_reductions_test.dart` and `ufuncs_broadcasting_test.dart` to expect the standard `DType.boolean` return types and assert true/false elements structure.
+  * **Green Test Suite**: All 535 package tests pass successfully and execute flawlessly!
+
+***
+
+## 69. Highly-Optimized Vectorized Bitwise Operations (bitwise_and, bitwise_or, bitwise_xor, invert, left_shift, right_shift)
+* **What was done**:
+  * **High-Speed Native C Kernels**: Implemented highly-optimized contiguous C vector sweeps and strided multidimensional odometer walk C kernels inside [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.c) and [custom_ufuncs.h](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.h) for all integer data types (`int32`, `int64`, `uint8`, `int16`): `v_bitwise_and_T` / `s_bitwise_and_T`, `v_bitwise_or_T` / `s_bitwise_or_T`, `v_bitwise_xor_T` / `s_bitwise_xor_T`, shifts `v_left_shift_T` / `s_left_shift_T` and `v_right_shift_T` / `s_right_shift_T`, and bitwise negation `v_invert_T` / `s_invert_T`.
+  * **Safe Shifts Guards**: Implemented inline safe shift helpers in C (`safe_left_shift_T` and `safe_right_shift_T`) to check boundaries and clamp out-of-range shift inputs, completely eliminating undefined compiler/architecture behaviors.
+  * **FFI Bindings Regeneration**: Ran standard Dart `ffigen` script from the workspace root to automatically generate type-safe Dart FFI bindings mapping directly to our custom C library in [ndarray_bindings.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/ndarray_bindings.dart).
+  * **Direct Strongly-Typed Inlined FFI Dispatches**: Extracted all shared setup, upcasting, broadcasting, and output buffer preparation logic to a clean, zero-allocation Dart Record helper `_prepareBinaryBitwise()`. The public operations themselves (`bitwise_and`, `bitwise_or`, `bitwise_xor`, `left_shift`, and `right_shift`) inline the direct C FFI function calls, completely avoiding closure delegation overhead or operator strings.
+  * **Casting-Free Same-Type Paths**: Bypasses all dynamic upcasting, copies, and allocations when inputs are already of identical data types, running at absolute hardware register execution speeds.
+  * **Broadcasting & Recycler out Support**: Upgraded all ufuncs to support named recycler `{NDArray<T>? out}` buffer reuse for true allocation-free loops in machine learning or signal processing, while maintaining full broadcasting compliance across all layouts.
+  * **Standardized Operator Overloading**: Integrated the newly created universal functions back into the core `NDArray` class operators overloads (`&`, `|`, `^`, `~`, `<<`, `>>`) inside [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/ndarray.dart).
+  * **Leak-Safe finally Cleanups**: Wrapped all C FFI dispatches inside try-finally blocks to ensure that temporary upcast arrays are *always* properly disposed of, completely eliminating any unmanaged heap memory leaks if an exception is raised.
+* **Results**:
+  * **Rich Executable Examples**: Created [bitwise_example.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/example/bitwise_example.dart) verifying basic bitwise AND/OR/XOR, shift and negation ufuncs, as well as allocation-free recycled loop left shifting.
+  * **Robust Unit Test Suite**: Authored a comprehensive unit test suite [bitwise_operations_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/bitwise_operations_test.dart) checking all operations, all four integer dtypes, broadcasting, mixed-type upcasting, recycler parameter validation boundaries, out-of-range shifts, and incorrect/non-integer input error checks.
+  * **Perfect Clean Status**: All 544 package unit tests passed flawlessly, formatting is clean, and analysis reports 0 errors!
+
+***
+
+## 70. Highly-Optimized Spectrum Shifting Utilities (fftshift and ifftshift)
+* **What was done**:
+  * **Mathematical Shifting Logic**: Designed and implemented zero-leak spectrum shifting universal functions `fftshift()` and `ifftshift()` inside [fft.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/fft.dart).
+    * `fftshift()` rolls elements by `N ~/ 2` (moving positive frequencies to the center and negative/DC frequencies to the boundaries) along each specified axis.
+    * `ifftshift()` rolls elements by `(N + 1) ~/ 2` (restoring the zero-frequency component to the starting index 0) along each specified axis.
+  * **Axis Parsing Compatibility**: Programmed robust multi-dimensional axes resolution. If no `axes` parameter is provided, all axes are shifted sequentially (exactly matching standard NumPy behavior). Single axis integer indexes and lists of axes are normalized and validated (handling negative axes indexes cleanly).
+  * **Object-Oriented Extensions**: Exposed high-usability extension methods `fftshift()` and `ifftshift()` directly on the core `NDArray` class inside [extensions.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/extensions.dart) by delegating cleanly to the core FFT functions.
+  * **Rigorous Preconditions & Error Gates**: Injected strict input validations checking disposal states, out-of-bounds axis selections (`RangeError`), duplicate axes indexes (`ArgumentError`), and invalid axes types, guaranteeing total runtime type safety.
+* **Results**:
+  * **Rich Executable Examples**: Created [fftshift_example.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/example/fftshift_example.dart) demonstrating 1D odd/even length shifts, 2D grid multi-axis shifts, single-axis shifts, and full round-trip restorations.
+  * **Comprehensive Test Suite**: Added thorough tests in [fft_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/fft_test.dart) validating odd/even 1D signals, 2D matrices shifting, specific single axis selections, object extensions, and all exception-throwing boundary conditions.
+  * **Pristine Quality**: All 17 FFT tests and all 550 package unit tests pass perfectly. Formatting and static analysis report 0 errors/warnings across our modified files!
+
+***
+
+## 71. Shaping, Meshgrid, and Array Splitting Utilities
+* **What was done**:
+  * **Zero-Allocation low-level striding (asStrided)**: Implemented `asStrided()` inside [shaping_meshes.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/shaping_meshes.dart) to create a zero-allocation, zero-copy `NDArray` view with customized shapes and strides pointing to the same unmanaged C-heap memory buffer.
+  * **Multi-dimensional coordinate meshgrids (mgrid and ogrid)**: Implemented GridRange specification class along with dense meshgrid generator `mgrid()` and open meshgrid generator `ogrid()` inside [shaping_meshes.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/shaping_meshes.dart).
+    * `GridRange` encapsulates grid dimension start, stop, step, and optional `numPoints` count. Bridges standard Dart ergonomics with NumPy-compatible API mappings by providing a `GridRange.numpy()` factory supporting complex number step parameters.
+    * `ogrid()` generates open coordinate grid lists, returning zero-allocation broadcasted reshaping views for each dimension.
+    * `mgrid()` generates dense coordinate grids, utilizing a highly optimized, sequential recursive coordinate walker to fill flat contiguous buffers directly in-place without any transient object/list allocations inside loops.
+  * **Zero-Copy Array Splitting (split, array_split, hsplit, vsplit)**: Implemented high-usability array splitting operations inside [splitting.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/splitting.dart).
+    * `array_split()` divides an array along a given axis into $N$ as-equal-as-possible sections (handling unequal division sizes automatically) or splits at a list of specific index boundary points, returning zero-copy `slice()` views sharing the original backing memory.
+    * `split()` behaves identically but enforces strictly equal divisions, throwing `ArgumentError` if the dimension size is not evenly divisible.
+    * `hsplit()` dispatches horizontal column-wise splits along axis 1 (or axis 0 for 1D arrays).
+    * `vsplit()` dispatches vertical row-wise splits along axis 0 for arrays of rank $\ge 2$, throwing `ArgumentError` on 1D arrays.
+  * **Pristine Memory Safety**: Integrated automatic resource management by invoking `detachToParentScope()` on all generated view arrays, ensuring that transient sub-arrays and views safely promote to parent scopes and survive beyond local execution zones.
+  * **Library Exports**: Exported the new files in the main library entrypoint [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/ndarray.dart).
+* **Results**:
+  * **Rich Executable Examples**: Created two separate examples [shaping_example.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/example/shaping_example.dart) and [splitting_example.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/example/splitting_example.dart) demonstrating basic and advanced usage of all operations.
+  * **Comprehensive Unit Test Suites**: Authored thorough test files [shaping_meshes_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/shaping_meshes_test.dart) and [splitting_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/splitting_test.dart) checking shapes, strides, value coordinates, equal/unequal partitioning, out-of-bounds conditions, type cast safety, and view mutation correctness.
+  * **Pristine Quality**: All 22 new tests and all 572 global unit tests pass successfully. Formatting and static analysis are perfectly clean with 0 errors.
+
+
+
+
+

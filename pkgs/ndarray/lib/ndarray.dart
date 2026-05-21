@@ -10,3 +10,5 @@ export 'src/io.dart';
 export 'src/random.dart';
 export 'src/fft.dart';
 export 'src/nditer.dart';
+export 'src/shaping_meshes.dart';
+export 'src/splitting.dart';

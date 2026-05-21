@@ -279,5 +279,104 @@ void main() {
         }),
       );
     });
+
+    group('fftshift and ifftshift spectrum shifting tests', () {
+      test(
+        '1D Odd Length (N=5) fftshift & ifftshift round-trip',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [0.0, 1.0, 2.0, 3.0, 4.0],
+            [5],
+            DType.float64,
+          );
+
+          final shifted = fftshift(a);
+          expect(shifted.toList(), [3.0, 4.0, 0.0, 1.0, 2.0]);
+
+          final restored = ifftshift(shifted);
+          expect(restored.toList(), [0.0, 1.0, 2.0, 3.0, 4.0]);
+        }),
+      );
+
+      test(
+        '1D Even Length (N=6) fftshift & ifftshift round-trip',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [0.0, 1.0, 2.0, 3.0, 4.0, 5.0],
+            [6],
+            DType.float64,
+          );
+
+          final shifted = fftshift(a);
+          expect(shifted.toList(), [3.0, 4.0, 5.0, 0.0, 1.0, 2.0]);
+
+          final restored = ifftshift(shifted);
+          expect(restored.toList(), [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]);
+        }),
+      );
+
+      test(
+        '2D Matrix shifting along all axes',
+        () => NDArray.scope(() {
+          final grid = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            [2, 3],
+            DType.float64,
+          );
+
+          final shifted = fftshift(grid);
+          expect(shifted.toList(), [6.0, 4.0, 5.0, 3.0, 1.0, 2.0]);
+
+          final restored = ifftshift(shifted);
+          expect(restored.toList(), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        }),
+      );
+
+      test(
+        '2D Matrix shifting along specific axis (axis 0)',
+        () => NDArray.scope(() {
+          final grid = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            [2, 3],
+            DType.float64,
+          );
+
+          final shifted = fftshift(grid, axes: 0);
+          expect(shifted.toList(), [4.0, 5.0, 6.0, 1.0, 2.0, 3.0]);
+        }),
+      );
+
+      test(
+        'fftshift / ifftshift extension methods on NDArray',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [0.0, 1.0, 2.0, 3.0, 4.0],
+            [5],
+            DType.float64,
+          );
+
+          final shifted = a.fftshift();
+          expect(shifted.toList(), [3.0, 4.0, 0.0, 1.0, 2.0]);
+
+          final restored = shifted.ifftshift();
+          expect(restored.toList(), [0.0, 1.0, 2.0, 3.0, 4.0]);
+        }),
+      );
+
+      test(
+        'Preconditions & error handling',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([0.0, 1.0], [2], DType.float64);
+
+          expect(() => fftshift(a, axes: 2), throwsRangeError);
+          expect(() => fftshift(a, axes: -3), throwsRangeError);
+          expect(() => fftshift(a, axes: [0, 0]), throwsArgumentError);
+          expect(() => fftshift(a, axes: 'invalid'), throwsArgumentError);
+
+          a.dispose();
+          expect(() => fftshift(a), throwsStateError);
+        }),
+      );
+    });
   });
 }

@@ -87,16 +87,16 @@ void main() {
         final mask2 = NDArray.fromList([true, true, false], [3], DType.boolean);
 
         final resAnd = logical_and(mask1, mask2);
-        expect(resAnd.dtype, DType.int32);
-        expect(resAnd.toList(), [1, 0, 0]); // 1 is true, 0 is false
+        expect(resAnd.dtype, DType.boolean);
+        expect(resAnd.toList(), [true, false, false]);
 
         final resOr = logical_or(mask1, mask2);
-        expect(resOr.dtype, DType.int32);
-        expect(resOr.toList(), [1, 1, 1]);
+        expect(resOr.dtype, DType.boolean);
+        expect(resOr.toList(), [true, true, true]);
 
         final resXor = logical_xor(mask1, mask2);
-        expect(resXor.dtype, DType.int32);
-        expect(resXor.toList(), [0, 1, 1]);
+        expect(resXor.dtype, DType.boolean);
+        expect(resXor.toList(), [false, true, true]);
       }),
     );
 
@@ -108,9 +108,11 @@ void main() {
         // Float64 / boolean
         final f64 = NDArray.fromList([0.0, 2.5, 0.0], [3], DType.float64);
         final resF1 = logical_and(f64, mask);
-        expect(resF1.toList(), [0, 1, 0]);
+        expect(resF1.dtype, DType.boolean);
+        expect(resF1.toList(), [false, true, false]);
         final resF2 = logical_and(mask, f64);
-        expect(resF2.toList(), [0, 1, 0]);
+        expect(resF2.dtype, DType.boolean);
+        expect(resF2.toList(), [false, true, false]);
 
         // Complex128 / boolean
         final c128 = NDArray<Complex>.create([3], DType.complex128);
@@ -118,16 +120,20 @@ void main() {
         c128.data[1] = Complex(1.0, -1.0); // true
         c128.data[2] = Complex(0.0, 0.0);
         final resC1 = logical_and(c128, mask);
-        expect(resC1.toList(), [0, 1, 0]);
+        expect(resC1.dtype, DType.boolean);
+        expect(resC1.toList(), [false, true, false]);
         final resC2 = logical_and(mask, c128);
-        expect(resC2.toList(), [0, 1, 0]);
+        expect(resC2.dtype, DType.boolean);
+        expect(resC2.toList(), [false, true, false]);
 
         // Int32 / boolean
         final i32 = NDArray.fromList([0, 5, 0], [3], DType.int32);
         final resI1 = logical_and(i32, mask);
-        expect(resI1.toList(), [0, 1, 0]);
+        expect(resI1.dtype, DType.boolean);
+        expect(resI1.toList(), [false, true, false]);
         final resI2 = logical_and(mask, i32);
-        expect(resI2.toList(), [0, 1, 0]);
+        expect(resI2.dtype, DType.boolean);
+        expect(resI2.toList(), [false, true, false]);
       }),
     );
 

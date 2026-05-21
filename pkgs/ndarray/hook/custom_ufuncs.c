@@ -3181,5 +3181,378 @@ void copy_advanced_c(
     );
 }
 
+/* ============================================================================
+ * SECTION 10: NumPy-Compatible Universal Functions (ufuncs)
+ * ============================================================================
+ */
 
+static inline double double_floordiv(double x, double y) {
+    if (y == 0.0) return NAN;
+    return floor(x / y);
+}
+static inline float float_floordiv(float x, float y) {
+    if (y == 0.0f) return NAN;
+    return floorf(x / y);
+}
+static inline int64_t int64_floordiv(int64_t x, int64_t y) {
+    if (y == 0) return 0;
+    int64_t res = x / y;
+    int64_t rem = x % y;
+    if (rem != 0 && ((x < 0) ^ (y < 0))) {
+        res--;
+    }
+    return res;
+}
+static inline int32_t int32_floordiv(int32_t x, int32_t y) {
+    if (y == 0) return 0;
+    int32_t res = x / y;
+    int32_t rem = x % y;
+    if (rem != 0 && ((x < 0) ^ (y < 0))) {
+        res--;
+    }
+    return res;
+}
 
+static inline double double_remainder(double x, double y) {
+    if (y == 0.0) return NAN;
+    double rem = fmod(x, y);
+    if (rem != 0.0 && ((rem < 0.0) != (y < 0.0))) {
+        rem += y;
+    }
+    return rem;
+}
+static inline float float_remainder(float x, float y) {
+    if (y == 0.0f) return NAN;
+    float rem = fmodf(x, y);
+    if (rem != 0.0f && ((rem < 0.0f) != (y < 0.0f))) {
+        rem += y;
+    }
+    return rem;
+}
+static inline int64_t int64_remainder(int64_t x, int64_t y) {
+    if (y == 0) return 0;
+    int64_t rem = x % y;
+    if (rem != 0 && ((rem < 0) != (y < 0))) {
+        rem += y;
+    }
+    return rem;
+}
+static inline int32_t int32_remainder(int32_t x, int32_t y) {
+    if (y == 0) return 0;
+    int32_t rem = x % y;
+    if (rem != 0 && ((rem < 0) != (y < 0))) {
+        rem += y;
+    }
+    return rem;
+}
+
+static inline cpx_t cpx_square(cpx_t z) {
+    return (cpx_t){z.r * z.r - z.i * z.i, 2.0 * z.r * z.i};
+}
+static inline cpx_f_t cpx_square_f(cpx_f_t z) {
+    return (cpx_f_t){z.r * z.r - z.i * z.i, 2.0f * z.r * z.i};
+}
+
+#define DEFINE_CONTIGUOUS_UNARY_IMPL(name, typeSrc, typeRes, expr) \
+void name(const typeSrc *src, typeRes *res, int size) { \
+    if (src == NULL || res == NULL || size <= 0) return; \
+    for (int i = 0; i < size; i++) { \
+        typeSrc x = src[i]; \
+        res[i] = (expr); \
+    } \
+}
+
+#define DEFINE_CONTIGUOUS_BINARY_IMPL(name, typeA, typeB, typeRes, expr) \
+void name(const typeA *a, const typeB *b, typeRes *res, int size) { \
+    if (a == NULL || b == NULL || res == NULL || size <= 0) return; \
+    for (int i = 0; i < size; i++) { \
+        typeA x = a[i]; \
+        typeB y = b[i]; \
+        res[i] = (expr); \
+    } \
+}
+
+/* 1. Contiguous (Vector) Implementations */
+
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_square_double, double, double, x * x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_square_float, float, float, x * x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_square_int64, int64_t, int64_t, x * x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_square_int32, int32_t, int32_t, x * x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_square_complex128, cpx_t, cpx_t, cpx_square(x))
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_square_complex64, cpx_f_t, cpx_f_t, cpx_square_f(x))
+
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_pow_double, double, double, double, pow(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_pow_float, float, float, float, powf(x, y))
+
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_floordiv_double, double, double, double, double_floordiv(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_floordiv_float, float, float, float, float_floordiv(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_floordiv_int64, int64_t, int64_t, int64_t, int64_floordiv(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_floordiv_int32, int32_t, int32_t, int32_t, int32_floordiv(x, y))
+
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_remainder_double, double, double, double, double_remainder(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_remainder_float, float, float, float, float_remainder(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_remainder_int64, int64_t, int64_t, int64_t, int64_remainder(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_remainder_int32, int32_t, int32_t, int32_t, int32_remainder(x, y))
+
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_isnan_double, double, uint8_t, isnan(x) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_isnan_float, float, uint8_t, isnan(x) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_isnan_complex128, cpx_t, uint8_t, (isnan(x.r) || isnan(x.i)) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_isnan_complex64, cpx_f_t, uint8_t, (isnan(x.r) || isnan(x.i)) ? 1 : 0)
+
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_isinf_double, double, uint8_t, isinf(x) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_isinf_float, float, uint8_t, isinf(x) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_isinf_complex128, cpx_t, uint8_t, (isinf(x.r) || isinf(x.i)) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_isinf_complex64, cpx_f_t, uint8_t, (isinf(x.r) || isinf(x.i)) ? 1 : 0)
+
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_isfinite_double, double, uint8_t, isfinite(x) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_isfinite_float, float, uint8_t, isfinite(x) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_isfinite_complex128, cpx_t, uint8_t, (isfinite(x.r) && isfinite(x.i)) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_isfinite_complex64, cpx_f_t, uint8_t, (isfinite(x.r) && isfinite(x.i)) ? 1 : 0)
+
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_copysign_double, double, double, double, copysign(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_copysign_float, float, float, float, copysignf(x, y))
+
+/* 2. Strided Multidimensional Implementations */
+
+#define DEFINE_STRIDED_UNARY_IMPL(name, typeSrc, typeRes, expr) \
+void name(const typeSrc *src, const int *stridesSrc, \
+          typeRes *res, const int *stridesRes, \
+          const int *shape, int rank) { \
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || rank > 8) return; \
+    int total_elements = 1; \
+    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
+    int coord[8] = {0}; \
+    int offsetSrc = 0, offsetRes = 0; \
+    for (int el = 0; el < total_elements; el++) { \
+        typeSrc x = src[offsetSrc]; \
+        res[offsetRes] = (expr); \
+        for (int d = rank - 1; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shape[d]) { \
+                offsetSrc += stridesSrc[d]; \
+                offsetRes += stridesRes[d]; \
+                break; \
+            } \
+            coord[d] = 0; \
+            offsetSrc -= (shape[d] - 1) * stridesSrc[d]; \
+            offsetRes -= (shape[d] - 1) * stridesRes[d]; \
+        } \
+    } \
+}
+
+DEFINE_STRIDED_UNARY_IMPL(s_square_double, double, double, x * x)
+DEFINE_STRIDED_UNARY_IMPL(s_square_float, float, float, x * x)
+DEFINE_STRIDED_UNARY_IMPL(s_square_int64, int64_t, int64_t, x * x)
+DEFINE_STRIDED_UNARY_IMPL(s_square_int32, int32_t, int32_t, x * x)
+DEFINE_STRIDED_UNARY_IMPL(s_square_complex128, cpx_t, cpx_t, cpx_square(x))
+DEFINE_STRIDED_UNARY_IMPL(s_square_complex64, cpx_f_t, cpx_f_t, cpx_square_f(x))
+
+#define DEFINE_STRIDED_BINARY_IMPL(name, typeA, typeB, typeRes, expr) \
+void name(const typeA *a, const int *stridesA, \
+          const typeB *b, const int *stridesB, \
+          typeRes *res, const int *stridesRes, \
+          const int *shape, int rank) { \
+    if (a == NULL || b == NULL || res == NULL || shape == NULL || rank <= 0 || rank > 8) return; \
+    int total_elements = 1; \
+    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
+    int coord[8] = {0}; \
+    int offsetA = 0, offsetB = 0, offsetRes = 0; \
+    for (int el = 0; el < total_elements; el++) { \
+        typeA x = a[offsetA]; \
+        typeB y = b[offsetB]; \
+        res[offsetRes] = (expr); \
+        for (int d = rank - 1; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shape[d]) { \
+                offsetA += stridesA[d]; \
+                offsetB += stridesB[d]; \
+                offsetRes += stridesRes[d]; \
+                break; \
+            } \
+            coord[d] = 0; \
+            offsetA -= (shape[d] - 1) * stridesA[d]; \
+            offsetB -= (shape[d] - 1) * stridesB[d]; \
+            offsetRes -= (shape[d] - 1) * stridesRes[d]; \
+        } \
+    } \
+}
+
+DEFINE_STRIDED_BINARY_IMPL(s_pow_double, double, double, double, pow(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_pow_float, float, float, float, powf(x, y))
+
+DEFINE_STRIDED_BINARY_IMPL(s_floordiv_double, double, double, double, double_floordiv(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_floordiv_float, float, float, float, float_floordiv(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_floordiv_int64, int64_t, int64_t, int64_t, int64_floordiv(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_floordiv_int32, int32_t, int32_t, int32_t, int32_floordiv(x, y))
+
+DEFINE_STRIDED_BINARY_IMPL(s_remainder_double, double, double, double, double_remainder(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_remainder_float, float, float, float, float_remainder(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_remainder_int64, int64_t, int64_t, int64_t, int64_remainder(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_remainder_int32, int32_t, int32_t, int32_t, int32_remainder(x, y))
+
+DEFINE_STRIDED_BINARY_IMPL(s_copysign_double, double, double, double, copysign(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_copysign_float, float, float, float, copysignf(x, y))
+
+DEFINE_STRIDED_UNARY_IMPL(s_isnan_double, double, uint8_t, isnan(x) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_isnan_float, float, uint8_t, isnan(x) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_isnan_complex128, cpx_t, uint8_t, (isnan(x.r) || isnan(x.i)) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_isnan_complex64, cpx_f_t, uint8_t, (isnan(x.r) || isnan(x.i)) ? 1 : 0)
+
+DEFINE_STRIDED_UNARY_IMPL(s_isinf_double, double, uint8_t, isinf(x) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_isinf_float, float, uint8_t, isinf(x) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_isinf_complex128, cpx_t, uint8_t, (isinf(x.r) || isinf(x.i)) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_isinf_complex64, cpx_f_t, uint8_t, (isinf(x.r) || isinf(x.i)) ? 1 : 0)
+
+DEFINE_STRIDED_UNARY_IMPL(s_isfinite_double, double, uint8_t, isfinite(x) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_isfinite_float, float, uint8_t, isfinite(x) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_isfinite_complex128, cpx_t, uint8_t, (isfinite(x.r) && isfinite(x.i)) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_isfinite_complex64, cpx_f_t, uint8_t, (isfinite(x.r) && isfinite(x.i)) ? 1 : 0)
+
+/* Logical and Casting-to-Boolean Implementations */
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_to_bool_double, double, uint8_t, (x != 0.0) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_to_bool_float, float, uint8_t, (x != 0.0f) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_to_bool_int64, int64_t, uint8_t, (x != 0) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_to_bool_int32, int32_t, uint8_t, (x != 0) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_to_bool_uint8, uint8_t, uint8_t, (x != 0) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_to_bool_int16, int16_t, uint8_t, (x != 0) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_to_bool_complex128, cpx_t, uint8_t, (x.r != 0.0 || x.i != 0.0) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_to_bool_complex64, cpx_f_t, uint8_t, (x.r != 0.0f || x.i != 0.0f) ? 1 : 0)
+
+DEFINE_STRIDED_UNARY_IMPL(s_to_bool_double, double, uint8_t, (x != 0.0) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_to_bool_float, float, uint8_t, (x != 0.0f) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_to_bool_int64, int64_t, uint8_t, (x != 0) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_to_bool_int32, int32_t, uint8_t, (x != 0) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_to_bool_uint8, uint8_t, uint8_t, (x != 0) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_to_bool_int16, int16_t, uint8_t, (x != 0) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_to_bool_complex128, cpx_t, uint8_t, (x.r != 0.0 || x.i != 0.0) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_to_bool_complex64, cpx_f_t, uint8_t, (x.r != 0.0f || x.i != 0.0f) ? 1 : 0)
+
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_logical_and, uint8_t, uint8_t, uint8_t, (x && y) ? 1 : 0)
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_logical_or, uint8_t, uint8_t, uint8_t, (x || y) ? 1 : 0)
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_logical_xor, uint8_t, uint8_t, uint8_t, ((x != 0) != (y != 0)) ? 1 : 0)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_logical_not, uint8_t, uint8_t, (!x) ? 1 : 0)
+
+DEFINE_STRIDED_BINARY_IMPL(s_logical_and, uint8_t, uint8_t, uint8_t, (x && y) ? 1 : 0)
+DEFINE_STRIDED_BINARY_IMPL(s_logical_or, uint8_t, uint8_t, uint8_t, (x || y) ? 1 : 0)
+DEFINE_STRIDED_BINARY_IMPL(s_logical_xor, uint8_t, uint8_t, uint8_t, ((x != 0) != (y != 0)) ? 1 : 0)
+DEFINE_STRIDED_UNARY_IMPL(s_logical_not, uint8_t, uint8_t, (!x) ? 1 : 0)
+
+/* Safe shift helpers to prevent undefined C behavior */
+static inline int32_t safe_left_shift_int32(int32_t x, int32_t y) {
+    if (y < 0 || y >= 32) return 0;
+    return x << y;
+}
+static inline int32_t safe_right_shift_int32(int32_t x, int32_t y) {
+    if (y < 0 || y >= 32) return 0;
+    return x >> y;
+}
+
+static inline int64_t safe_left_shift_int64(int64_t x, int64_t y) {
+    if (y < 0 || y >= 64) return 0;
+    return x << y;
+}
+static inline int64_t safe_right_shift_int64(int64_t x, int64_t y) {
+    if (y < 0 || y >= 64) return 0;
+    return x >> y;
+}
+
+static inline uint8_t safe_left_shift_uint8(uint8_t x, uint8_t y) {
+    if (y >= 8) return 0;
+    return (uint8_t)(x << y);
+}
+static inline uint8_t safe_right_shift_uint8(uint8_t x, uint8_t y) {
+    if (y >= 8) return 0;
+    return (uint8_t)(x >> y);
+}
+
+static inline int16_t safe_left_shift_int16(int16_t x, int16_t y) {
+    if (y < 0 || y >= 16) return 0;
+    return (int16_t)(x << y);
+}
+static inline int16_t safe_right_shift_int16(int16_t x, int16_t y) {
+    if (y < 0 || y >= 16) return 0;
+    return (int16_t)(x >> y);
+}
+
+/* Bitwise AND implementations */
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_bitwise_and_int32, int32_t, int32_t, int32_t, x & y)
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_bitwise_and_int64, int64_t, int64_t, int64_t, x & y)
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_bitwise_and_uint8, uint8_t, uint8_t, uint8_t, x & y)
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_bitwise_and_int16, int16_t, int16_t, int16_t, x & y)
+
+DEFINE_STRIDED_BINARY_IMPL(s_bitwise_and_int32, int32_t, int32_t, int32_t, x & y)
+DEFINE_STRIDED_BINARY_IMPL(s_bitwise_and_int64, int64_t, int64_t, int64_t, x & y)
+DEFINE_STRIDED_BINARY_IMPL(s_bitwise_and_uint8, uint8_t, uint8_t, uint8_t, x & y)
+DEFINE_STRIDED_BINARY_IMPL(s_bitwise_and_int16, int16_t, int16_t, int16_t, x & y)
+
+/* Bitwise OR implementations */
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_bitwise_or_int32, int32_t, int32_t, int32_t, x | y)
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_bitwise_or_int64, int64_t, int64_t, int64_t, x | y)
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_bitwise_or_uint8, uint8_t, uint8_t, uint8_t, x | y)
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_bitwise_or_int16, int16_t, int16_t, int16_t, x | y)
+
+DEFINE_STRIDED_BINARY_IMPL(s_bitwise_or_int32, int32_t, int32_t, int32_t, x | y)
+DEFINE_STRIDED_BINARY_IMPL(s_bitwise_or_int64, int64_t, int64_t, int64_t, x | y)
+DEFINE_STRIDED_BINARY_IMPL(s_bitwise_or_uint8, uint8_t, uint8_t, uint8_t, x | y)
+DEFINE_STRIDED_BINARY_IMPL(s_bitwise_or_int16, int16_t, int16_t, int16_t, x | y)
+
+/* Bitwise XOR implementations */
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_bitwise_xor_int32, int32_t, int32_t, int32_t, x ^ y)
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_bitwise_xor_int64, int64_t, int64_t, int64_t, x ^ y)
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_bitwise_xor_uint8, uint8_t, uint8_t, uint8_t, x ^ y)
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_bitwise_xor_int16, int16_t, int16_t, int16_t, x ^ y)
+
+DEFINE_STRIDED_BINARY_IMPL(s_bitwise_xor_int32, int32_t, int32_t, int32_t, x ^ y)
+DEFINE_STRIDED_BINARY_IMPL(s_bitwise_xor_int64, int64_t, int64_t, int64_t, x ^ y)
+DEFINE_STRIDED_BINARY_IMPL(s_bitwise_xor_uint8, uint8_t, uint8_t, uint8_t, x ^ y)
+DEFINE_STRIDED_BINARY_IMPL(s_bitwise_xor_int16, int16_t, int16_t, int16_t, x ^ y)
+
+/* Left Shift implementations */
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_left_shift_int32, int32_t, int32_t, int32_t, safe_left_shift_int32(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_left_shift_int64, int64_t, int64_t, int64_t, safe_left_shift_int64(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_left_shift_uint8, uint8_t, uint8_t, uint8_t, safe_left_shift_uint8(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_left_shift_int16, int16_t, int16_t, int16_t, safe_left_shift_int16(x, y))
+
+DEFINE_STRIDED_BINARY_IMPL(s_left_shift_int32, int32_t, int32_t, int32_t, safe_left_shift_int32(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_left_shift_int64, int64_t, int64_t, int64_t, safe_left_shift_int64(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_left_shift_uint8, uint8_t, uint8_t, uint8_t, safe_left_shift_uint8(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_left_shift_int16, int16_t, int16_t, int16_t, safe_left_shift_int16(x, y))
+
+/* Right Shift implementations */
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_right_shift_int32, int32_t, int32_t, int32_t, safe_right_shift_int32(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_right_shift_int64, int64_t, int64_t, int64_t, safe_right_shift_int64(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_right_shift_uint8, uint8_t, uint8_t, uint8_t, safe_right_shift_uint8(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_right_shift_int16, int16_t, int16_t, int16_t, safe_right_shift_int16(x, y))
+
+DEFINE_STRIDED_BINARY_IMPL(s_right_shift_int32, int32_t, int32_t, int32_t, safe_right_shift_int32(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_right_shift_int64, int64_t, int64_t, int64_t, safe_right_shift_int64(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_right_shift_uint8, uint8_t, uint8_t, uint8_t, safe_right_shift_uint8(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_right_shift_int16, int16_t, int16_t, int16_t, safe_right_shift_int16(x, y))
+
+/* Invert (Bitwise Negation) implementations */
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_invert_int32, int32_t, int32_t, ~x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_invert_int64, int64_t, int64_t, ~x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_invert_uint8, uint8_t, uint8_t, (uint8_t)(~x))
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_invert_int16, int16_t, int16_t, (int16_t)(~x))
+
+DEFINE_STRIDED_UNARY_IMPL(s_invert_int32, int32_t, int32_t, ~x)
+DEFINE_STRIDED_UNARY_IMPL(s_invert_int64, int64_t, int64_t, ~x)
+DEFINE_STRIDED_UNARY_IMPL(s_invert_uint8, uint8_t, uint8_t, (uint8_t)(~x))
+DEFINE_STRIDED_UNARY_IMPL(s_invert_int16, int16_t, int16_t, (int16_t)(~x))
+
+/* Optimized native boolean mask unpacking kernel */
+int unpack_mask_c(
+    const uint8_t *mask_ptr,
+    int size,
+    int stride,
+    int *out_indices
+) {
+    if (mask_ptr == NULL || out_indices == NULL || size <= 0) return 0;
+    int count = 0;
+    for (int j = 0; j < size; j++) {
+        if (mask_ptr[j * stride] != 0) {
+            out_indices[count++] = j;
+        }
+    }
+    return count;
+}

@@ -1001,6 +1001,178 @@ NDArray<R> sqrt<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
+/// Compute the element-wise square of the input array.
+///
+/// **Throws:**
+/// - [StateError] if the array has been disposed.
+/// - [ArgumentError] if the provided [out] buffer shape or dtype is incompatible.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([2.0, 3.0], [2], DType.float64);
+/// final b = square(a); // [4.0, 9.0]
+/// ```
+NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute square() on a disposed array.');
+  }
+  final result = out ?? NDArray<T>.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for square.',
+      );
+    }
+  }
+
+  if (a.isContiguous && result.isContiguous) {
+    switch (a.dtype) {
+      case DType.float64:
+        v_square_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_square_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.int64:
+        v_square_int64(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.int32:
+        v_square_int32(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.complex128:
+        v_square_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.complex64:
+        v_square_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.boolean:
+        final aBool = a as NDArray<bool>;
+        final rBool = result as NDArray<bool>;
+        for (var i = 0; i < a.data.length; i++) {
+          rBool.data[i] = aBool.data[i];
+        }
+        return result;
+      case DType.uint8:
+      case DType.int16:
+        final aNum = a as NDArray<num>;
+        final rNum = result as NDArray<num>;
+        for (var i = 0; i < a.data.length; i++) {
+          final val = aNum.data[i];
+          rNum.data[i] = val * val;
+        }
+        return result;
+    }
+  } else {
+    final rank = a.shape.length;
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    switch (a.dtype) {
+      case DType.float64:
+        s_square_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.float32:
+        s_square_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.int64:
+        s_square_int64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.int32:
+        s_square_int32(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.complex128:
+        s_square_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.complex64:
+        s_square_complex64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.boolean:
+        _unaryOp<bool, bool>(
+          result.data as List<bool>,
+          a.data as List<bool>,
+          a.shape,
+          a.strides,
+          NDArray.computeCStrides(a.shape),
+          0,
+          0,
+          0,
+          (x) => x,
+        );
+        return result;
+      case DType.uint8:
+      case DType.int16:
+        _unaryOp<num, num>(
+          result.data as List<num>,
+          a.data as List<num>,
+          a.shape,
+          a.strides,
+          NDArray.computeCStrides(a.shape),
+          0,
+          0,
+          0,
+          (x) => x * x,
+        );
+        return result;
+    }
+  }
+}
+
 /// Compute the element-wise sine of the array.
 ///
 /// **Preconditions:**
@@ -5159,6 +5331,75 @@ NDArray power(NDArray x1, NDArray x2) {
     }
   }
 
+  if (x1.isContiguous &&
+      x2.isContiguous &&
+      listEquals(x1.shape, x2.shape) &&
+      result.isContiguous) {
+    if (targetDType == DType.float64 &&
+        x1.dtype == DType.float64 &&
+        x2.dtype == DType.float64) {
+      v_pow_double(
+        x1.pointer.cast(),
+        x2.pointer.cast(),
+        result.pointer.cast(),
+        x1.data.length,
+      );
+      return result;
+    } else if (targetDType == DType.float32 &&
+        x1.dtype == DType.float32 &&
+        x2.dtype == DType.float32) {
+      v_pow_float(
+        x1.pointer.cast(),
+        x2.pointer.cast(),
+        result.pointer.cast(),
+        x1.data.length,
+      );
+      return result;
+    }
+  } else if (shape.length <= 8) {
+    final rank = shape.length;
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesB = cBuffer + (rank * 2);
+    final cStridesRes = cBuffer + (rank * 3);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = shape[i];
+      cStridesA[i] = broadcastResult.stridesA[i];
+      cStridesB[i] = broadcastResult.stridesB[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+    if (targetDType == DType.float64 &&
+        x1.dtype == DType.float64 &&
+        x2.dtype == DType.float64) {
+      s_pow_double(
+        x1.pointer.cast(),
+        cStridesA,
+        x2.pointer.cast(),
+        cStridesB,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (targetDType == DType.float32 &&
+        x1.dtype == DType.float32 &&
+        x2.dtype == DType.float32) {
+      s_pow_float(
+        x1.pointer.cast(),
+        cStridesA,
+        x2.pointer.cast(),
+        cStridesB,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    }
+  }
+
   _elementWiseOp<num, num, double>(
     result.data as List<double>,
     x1.data as List<num>,
@@ -5247,8 +5488,153 @@ NDArray floor_divide(NDArray a, NDArray b) {
   if (targetDType.isComplex) {
     throw UnsupportedError('Complex numbers do not support floor division');
   }
+
+  if (b.dtype.isInteger) {
+    if (b.data.any((x) => x == 0)) {
+      throw UnsupportedError('Integer division by zero');
+    }
+  }
+
   final result = NDArray.create(commonShape, targetDType);
   final resultStrides = NDArray.computeCStrides(commonShape);
+
+  if (a.isContiguous &&
+      b.isContiguous &&
+      listEquals(a.shape, b.shape) &&
+      result.isContiguous) {
+    switch (targetDType) {
+      case DType.float64:
+        if (a.dtype == DType.float64 && b.dtype == DType.float64) {
+          v_floordiv_double(
+            a.pointer.cast(),
+            b.pointer.cast(),
+            result.pointer.cast(),
+            a.data.length,
+          );
+          return result;
+        }
+      case DType.float32:
+        if (a.dtype == DType.float32 && b.dtype == DType.float32) {
+          v_floordiv_float(
+            a.pointer.cast(),
+            b.pointer.cast(),
+            result.pointer.cast(),
+            a.data.length,
+          );
+          return result;
+        }
+      case DType.int64:
+        if (a.dtype == DType.int64 && b.dtype == DType.int64) {
+          v_floordiv_int64(
+            a.pointer.cast(),
+            b.pointer.cast(),
+            result.pointer.cast(),
+            a.data.length,
+          );
+          return result;
+        }
+      case DType.int32:
+        if (a.dtype == DType.int32 && b.dtype == DType.int32) {
+          v_floordiv_int32(
+            a.pointer.cast(),
+            b.pointer.cast(),
+            result.pointer.cast(),
+            a.data.length,
+          );
+          return result;
+        }
+      default:
+        break;
+    }
+  } else if (commonShape.length <= 8) {
+    final rank = commonShape.length;
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesB = cBuffer + (rank * 2);
+    final cStridesRes = cBuffer + (rank * 3);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = commonShape[i];
+      cStridesA[i] = stridesA[i];
+      cStridesB[i] = stridesB[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+    switch (targetDType) {
+      case DType.float64:
+        if (a.dtype == DType.float64 && b.dtype == DType.float64) {
+          s_floordiv_double(
+            a.pointer.cast(),
+            cStridesA,
+            b.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        }
+      case DType.float32:
+        if (a.dtype == DType.float32 && b.dtype == DType.float32) {
+          s_floordiv_float(
+            a.pointer.cast(),
+            cStridesA,
+            b.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        }
+      case DType.int64:
+        if (a.dtype == DType.int64 && b.dtype == DType.int64) {
+          s_floordiv_int64(
+            a.pointer.cast(),
+            cStridesA,
+            b.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        }
+      case DType.int32:
+        if (a.dtype == DType.int32 && b.dtype == DType.int32) {
+          s_floordiv_int32(
+            a.pointer.cast(),
+            cStridesA,
+            b.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        }
+      default:
+        break;
+    }
+  }
+
+  double doubleFloorDiv(double x, double y) {
+    if (y == 0.0) return double.nan;
+    return (x / y).floorToDouble();
+  }
+
+  int intFloorDiv(int x, int y) {
+    if (y == 0) return 0;
+    final res = x ~/ y;
+    final rem = x % y;
+    if (rem != 0 && ((x < 0) ^ (y < 0))) {
+      return res - 1;
+    }
+    return res;
+  }
 
   if (targetDType == DType.float64 || targetDType == DType.float32) {
     _elementWiseOp<double, double, double>(
@@ -5263,7 +5649,7 @@ NDArray floor_divide(NDArray a, NDArray b) {
       0,
       0,
       0,
-      (x, y) => (x ~/ y).toDouble(),
+      (x, y) => doubleFloorDiv(x, y),
     );
   } else {
     _elementWiseOp<int, int, int>(
@@ -5278,7 +5664,7 @@ NDArray floor_divide(NDArray a, NDArray b) {
       0,
       0,
       0,
-      (x, y) => x ~/ y,
+      (x, y) => intFloorDiv(x, y),
     );
   }
   return result;
@@ -5302,8 +5688,156 @@ NDArray remainder(NDArray a, NDArray b) {
   if (targetDType.isComplex) {
     throw UnsupportedError('Complex numbers do not support remainder');
   }
+
+  if (b.dtype.isInteger) {
+    if (b.data.any((x) => x == 0)) {
+      throw UnsupportedError('Integer division by zero');
+    }
+  }
+
   final result = NDArray.create(commonShape, targetDType);
   final resultStrides = NDArray.computeCStrides(commonShape);
+
+  if (a.isContiguous &&
+      b.isContiguous &&
+      listEquals(a.shape, b.shape) &&
+      result.isContiguous) {
+    switch (targetDType) {
+      case DType.float64:
+        if (a.dtype == DType.float64 && b.dtype == DType.float64) {
+          v_remainder_double(
+            a.pointer.cast(),
+            b.pointer.cast(),
+            result.pointer.cast(),
+            a.data.length,
+          );
+          return result;
+        }
+      case DType.float32:
+        if (a.dtype == DType.float32 && b.dtype == DType.float32) {
+          v_remainder_float(
+            a.pointer.cast(),
+            b.pointer.cast(),
+            result.pointer.cast(),
+            a.data.length,
+          );
+          return result;
+        }
+      case DType.int64:
+        if (a.dtype == DType.int64 && b.dtype == DType.int64) {
+          v_remainder_int64(
+            a.pointer.cast(),
+            b.pointer.cast(),
+            result.pointer.cast(),
+            a.data.length,
+          );
+          return result;
+        }
+      case DType.int32:
+        if (a.dtype == DType.int32 && b.dtype == DType.int32) {
+          v_remainder_int32(
+            a.pointer.cast(),
+            b.pointer.cast(),
+            result.pointer.cast(),
+            a.data.length,
+          );
+          return result;
+        }
+      default:
+        break;
+    }
+  } else if (commonShape.length <= 8) {
+    final rank = commonShape.length;
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesB = cBuffer + (rank * 2);
+    final cStridesRes = cBuffer + (rank * 3);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = commonShape[i];
+      cStridesA[i] = stridesA[i];
+      cStridesB[i] = stridesB[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+    switch (targetDType) {
+      case DType.float64:
+        if (a.dtype == DType.float64 && b.dtype == DType.float64) {
+          s_remainder_double(
+            a.pointer.cast(),
+            cStridesA,
+            b.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        }
+      case DType.float32:
+        if (a.dtype == DType.float32 && b.dtype == DType.float32) {
+          s_remainder_float(
+            a.pointer.cast(),
+            cStridesA,
+            b.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        }
+      case DType.int64:
+        if (a.dtype == DType.int64 && b.dtype == DType.int64) {
+          s_remainder_int64(
+            a.pointer.cast(),
+            cStridesA,
+            b.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        }
+      case DType.int32:
+        if (a.dtype == DType.int32 && b.dtype == DType.int32) {
+          s_remainder_int32(
+            a.pointer.cast(),
+            cStridesA,
+            b.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        }
+      default:
+        break;
+    }
+  }
+
+  double doubleMod(double x, double y) {
+    if (y == 0.0) return double.nan;
+    final rem = x % y;
+    if (rem != 0.0 && ((rem < 0.0) != (y < 0.0))) {
+      return rem + y;
+    }
+    return rem;
+  }
+
+  int intMod(int x, int y) {
+    if (y == 0) return 0;
+    final rem = x % y;
+    if (rem != 0 && ((rem < 0) != (y < 0))) {
+      return rem + y;
+    }
+    return rem;
+  }
 
   if (targetDType == DType.float64 || targetDType == DType.float32) {
     _elementWiseOp<double, double, double>(
@@ -5318,7 +5852,7 @@ NDArray remainder(NDArray a, NDArray b) {
       0,
       0,
       0,
-      (x, y) => x % y,
+      (x, y) => doubleMod(x, y),
     );
   } else {
     _elementWiseOp<int, int, int>(
@@ -5333,229 +5867,27 @@ NDArray remainder(NDArray a, NDArray b) {
       0,
       0,
       0,
-      (x, y) => x % y,
+      (x, y) => intMod(x, y),
     );
   }
   return result;
 }
 
-/// Element-wise bitwise AND with broadcasting support.
+/// Alias for [remainder].
+NDArray mod(NDArray a, NDArray b) => remainder(a, b);
+
+/// Return element-wise quotient and remainder simultaneously.
+///
+/// Returns a Record `(NDArray, NDArray)` representing `(floor_divide(a, b), remainder(a, b))`.
 ///
 /// **Example:**
 /// ```dart
-/// final c = bitwise_and(a, b);
+/// final res = divmod(a, b);
+/// final q = res.$1;
+/// final r = res.$2;
 /// ```
-NDArray bitwise_and(NDArray a, NDArray b) {
-  final broadcastResult = broadcast(a, b);
-  final commonShape = broadcastResult.shape;
-  final stridesA = broadcastResult.stridesA;
-  final stridesB = broadcastResult.stridesB;
-
-  if (!a.dtype.isInteger || !b.dtype.isInteger) {
-    throw UnsupportedError(
-      'Bitwise operations only supported for integer dtypes',
-    );
-  }
-  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
-  final result = NDArray.create(commonShape, targetDType);
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
-  _elementWiseOp<int, int, int>(
-    result.data as List<int>,
-    a.data as List<int>,
-    b.data as List<int>,
-    commonShape,
-    stridesA,
-    stridesB,
-    resultStrides,
-    0,
-    0,
-    0,
-    0,
-    (x, y) => x & y,
-  );
-  return result;
-}
-
-/// Element-wise bitwise OR with broadcasting support.
-///
-/// **Example:**
-/// ```dart
-/// final c = bitwise_or(a, b);
-/// ```
-NDArray bitwise_or(NDArray a, NDArray b) {
-  final broadcastResult = broadcast(a, b);
-  final commonShape = broadcastResult.shape;
-  final stridesA = broadcastResult.stridesA;
-  final stridesB = broadcastResult.stridesB;
-
-  if (!a.dtype.isInteger || !b.dtype.isInteger) {
-    throw UnsupportedError(
-      'Bitwise operations only supported for integer dtypes',
-    );
-  }
-  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
-  final result = NDArray.create(commonShape, targetDType);
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
-  _elementWiseOp<int, int, int>(
-    result.data as List<int>,
-    a.data as List<int>,
-    b.data as List<int>,
-    commonShape,
-    stridesA,
-    stridesB,
-    resultStrides,
-    0,
-    0,
-    0,
-    0,
-    (x, y) => x | y,
-  );
-  return result;
-}
-
-/// Element-wise bitwise XOR with broadcasting support.
-///
-/// **Example:**
-/// ```dart
-/// final c = bitwise_xor(a, b);
-/// ```
-NDArray bitwise_xor(NDArray a, NDArray b) {
-  final broadcastResult = broadcast(a, b);
-  final commonShape = broadcastResult.shape;
-  final stridesA = broadcastResult.stridesA;
-  final stridesB = broadcastResult.stridesB;
-
-  if (!a.dtype.isInteger || !b.dtype.isInteger) {
-    throw UnsupportedError(
-      'Bitwise operations only supported for integer dtypes',
-    );
-  }
-  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
-  final result = NDArray.create(commonShape, targetDType);
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
-  _elementWiseOp<int, int, int>(
-    result.data as List<int>,
-    a.data as List<int>,
-    b.data as List<int>,
-    commonShape,
-    stridesA,
-    stridesB,
-    resultStrides,
-    0,
-    0,
-    0,
-    0,
-    (x, y) => x ^ y,
-  );
-  return result;
-}
-
-/// Element-wise bitwise NOT.
-///
-/// **Example:**
-/// ```dart
-/// final b = bitwise_not(a);
-/// ```
-NDArray bitwise_not(NDArray a) {
-  if (!a.dtype.isInteger) {
-    throw UnsupportedError(
-      'Bitwise operations only supported for integer dtypes',
-    );
-  }
-  final result = NDArray.create(a.shape, a.dtype);
-  final resultStrides = NDArray.computeCStrides(a.shape);
-
-  _unaryOp<int, int>(
-    result.data as List<int>,
-    a.data as List<int>,
-    a.shape,
-    a.strides,
-    resultStrides,
-    0,
-    0,
-    0,
-    (x) => ~x,
-  );
-  return result;
-}
-
-/// Element-wise left shift with broadcasting support.
-///
-/// **Example:**
-/// ```dart
-/// final c = left_shift(a, b);
-/// ```
-NDArray left_shift(NDArray a, NDArray b) {
-  final broadcastResult = broadcast(a, b);
-  final commonShape = broadcastResult.shape;
-  final stridesA = broadcastResult.stridesA;
-  final stridesB = broadcastResult.stridesB;
-
-  if (!a.dtype.isInteger || !b.dtype.isInteger) {
-    throw UnsupportedError(
-      'Shift operations only supported for integer dtypes',
-    );
-  }
-  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
-  final result = NDArray.create(commonShape, targetDType);
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
-  _elementWiseOp<int, int, int>(
-    result.data as List<int>,
-    a.data as List<int>,
-    b.data as List<int>,
-    commonShape,
-    stridesA,
-    stridesB,
-    resultStrides,
-    0,
-    0,
-    0,
-    0,
-    (x, y) => x << y,
-  );
-  return result;
-}
-
-/// Element-wise right shift with broadcasting support.
-///
-/// **Example:**
-/// ```dart
-/// final c = right_shift(a, b);
-/// ```
-NDArray right_shift(NDArray a, NDArray b) {
-  final broadcastResult = broadcast(a, b);
-  final commonShape = broadcastResult.shape;
-  final stridesA = broadcastResult.stridesA;
-  final stridesB = broadcastResult.stridesB;
-
-  if (!a.dtype.isInteger || !b.dtype.isInteger) {
-    throw UnsupportedError(
-      'Shift operations only supported for integer dtypes',
-    );
-  }
-  final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
-  final result = NDArray.create(commonShape, targetDType);
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
-  _elementWiseOp<int, int, int>(
-    result.data as List<int>,
-    a.data as List<int>,
-    b.data as List<int>,
-    commonShape,
-    stridesA,
-    stridesB,
-    resultStrides,
-    0,
-    0,
-    0,
-    0,
-    (x, y) => x >> y,
-  );
-  return result;
+(NDArray, NDArray) divmod(NDArray a, NDArray b) {
+  return (floor_divide(a, b), remainder(a, b));
 }
 
 /// Compute the element-wise absolute value of the array.
@@ -6123,6 +6455,96 @@ NDArray<bool> isnan(NDArray a) {
   final result = NDArray<bool>.create(a.shape, DType.boolean);
   final resultStrides = NDArray.computeCStrides(a.shape);
 
+  if (a.isContiguous && result.isContiguous) {
+    switch (a.dtype) {
+      case DType.float64:
+        v_isnan_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_isnan_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.complex128:
+        v_isnan_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.complex64:
+        v_isnan_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.int32:
+      case DType.int64:
+        result.fill(false);
+        return result;
+      default:
+        break;
+    }
+  } else {
+    final rank = a.shape.length;
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+    switch (a.dtype) {
+      case DType.float64:
+        s_isnan_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.float32:
+        s_isnan_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.complex128:
+        s_isnan_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.complex64:
+        s_isnan_complex64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.int32:
+      case DType.int64:
+        result.fill(false);
+        return result;
+      default:
+        break;
+    }
+  }
+
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     _unaryOp<Complex, bool>(
       result.data,
@@ -6135,18 +6557,8 @@ NDArray<bool> isnan(NDArray a) {
       0,
       (x) => x.real.isNaN || x.imag.isNaN,
     );
-  } else if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    _unaryOp<int, bool>(
-      result.data,
-      a.data as List<int>,
-      a.shape,
-      a.strides,
-      resultStrides,
-      0,
-      0,
-      0,
-      (x) => false,
-    );
+  } else if (a.dtype.isInteger) {
+    result.fill(false);
   } else {
     _unaryOp<double, bool>(
       result.data,
@@ -6183,6 +6595,96 @@ NDArray<bool> isinf(NDArray a) {
   final result = NDArray<bool>.create(a.shape, DType.boolean);
   final resultStrides = NDArray.computeCStrides(a.shape);
 
+  if (a.isContiguous && result.isContiguous) {
+    switch (a.dtype) {
+      case DType.float64:
+        v_isinf_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_isinf_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.complex128:
+        v_isinf_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.complex64:
+        v_isinf_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.int32:
+      case DType.int64:
+        result.fill(false);
+        return result;
+      default:
+        break;
+    }
+  } else {
+    final rank = a.shape.length;
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+    switch (a.dtype) {
+      case DType.float64:
+        s_isinf_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.float32:
+        s_isinf_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.complex128:
+        s_isinf_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.complex64:
+        s_isinf_complex64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.int32:
+      case DType.int64:
+        result.fill(false);
+        return result;
+      default:
+        break;
+    }
+  }
+
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     _unaryOp<Complex, bool>(
       result.data,
@@ -6195,18 +6697,8 @@ NDArray<bool> isinf(NDArray a) {
       0,
       (x) => x.real.isInfinite || x.imag.isInfinite,
     );
-  } else if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    _unaryOp<int, bool>(
-      result.data,
-      a.data as List<int>,
-      a.shape,
-      a.strides,
-      resultStrides,
-      0,
-      0,
-      0,
-      (x) => false,
-    );
+  } else if (a.dtype.isInteger) {
+    result.fill(false);
   } else {
     _unaryOp<double, bool>(
       result.data,
@@ -6243,6 +6735,104 @@ NDArray<bool> isfinite(NDArray a) {
   final result = NDArray<bool>.create(a.shape, DType.boolean);
   final resultStrides = NDArray.computeCStrides(a.shape);
 
+  if (a.isContiguous && result.isContiguous) {
+    switch (a.dtype) {
+      case DType.float64:
+        v_isfinite_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.float32:
+        v_isfinite_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.complex128:
+        v_isfinite_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.complex64:
+        v_isfinite_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.int32:
+      case DType.int64:
+        result.fill(true);
+        return result;
+      default:
+        break;
+    }
+  } else {
+    final rank = a.shape.length;
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+    switch (a.dtype) {
+      case DType.float64:
+        s_isfinite_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.float32:
+        s_isfinite_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.complex128:
+        s_isfinite_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.complex64:
+        s_isfinite_complex64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.int32:
+      case DType.int64:
+        result.fill(true);
+        return result;
+      default:
+        break;
+    }
+  }
+
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     _unaryOp<Complex, bool>(
       result.data,
@@ -6255,18 +6845,8 @@ NDArray<bool> isfinite(NDArray a) {
       0,
       (x) => x.real.isFinite && x.imag.isFinite,
     );
-  } else if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    _unaryOp<int, bool>(
-      result.data,
-      a.data as List<int>,
-      a.shape,
-      a.strides,
-      resultStrides,
-      0,
-      0,
-      0,
-      (x) => true,
-    );
+  } else if (a.dtype.isInteger) {
+    result.fill(true);
   } else {
     _unaryOp<double, bool>(
       result.data,
@@ -6280,6 +6860,131 @@ NDArray<bool> isfinite(NDArray a) {
       (x) => x.isFinite,
     );
   }
+  return result;
+}
+
+/// Return first element-wise argument with the sign of the second element-wise argument.
+///
+/// **Throws:**
+/// - [StateError] if either array has been disposed.
+/// - [UnsupportedError] if either array is complex (copysign is not defined for complex numbers).
+///
+/// **Example:**
+/// ```dart
+/// final res = copysign(x1, x2);
+/// ```
+NDArray copysign(NDArray x1, NDArray x2) {
+  if (x1.isDisposed || x2.isDisposed) {
+    throw StateError('Cannot execute copysign on a disposed array.');
+  }
+  if (x1.dtype.isComplex || x2.dtype.isComplex) {
+    throw UnsupportedError('Complex numbers are not supported for copysign');
+  }
+
+  final broadcastResult = broadcast(x1, x2);
+  final shape = broadcastResult.shape;
+  final stridesA = broadcastResult.stridesA;
+  final stridesB = broadcastResult.stridesB;
+
+  final DType<dynamic> targetDType =
+      (x1.dtype == DType.float32 && x2.dtype == DType.float32)
+      ? DType.float32
+      : DType.float64;
+
+  final result = NDArray.create(shape, targetDType);
+  final resultStrides = NDArray.computeCStrides(shape);
+
+  if (x1.isContiguous &&
+      x2.isContiguous &&
+      listEquals(x1.shape, x2.shape) &&
+      result.isContiguous) {
+    if (targetDType == DType.float64 &&
+        x1.dtype == DType.float64 &&
+        x2.dtype == DType.float64) {
+      v_copysign_double(
+        x1.pointer.cast(),
+        x2.pointer.cast(),
+        result.pointer.cast(),
+        x1.data.length,
+      );
+      return result;
+    } else if (targetDType == DType.float32 &&
+        x1.dtype == DType.float32 &&
+        x2.dtype == DType.float32) {
+      v_copysign_float(
+        x1.pointer.cast(),
+        x2.pointer.cast(),
+        result.pointer.cast(),
+        x1.data.length,
+      );
+      return result;
+    }
+  } else if (shape.length <= 8) {
+    final rank = shape.length;
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesB = cBuffer + (rank * 2);
+    final cStridesRes = cBuffer + (rank * 3);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = shape[i];
+      cStridesA[i] = stridesA[i];
+      cStridesB[i] = stridesB[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+    if (targetDType == DType.float64 &&
+        x1.dtype == DType.float64 &&
+        x2.dtype == DType.float64) {
+      s_copysign_double(
+        x1.pointer.cast(),
+        cStridesA,
+        x2.pointer.cast(),
+        cStridesB,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (targetDType == DType.float32 &&
+        x1.dtype == DType.float32 &&
+        x2.dtype == DType.float32) {
+      s_copysign_float(
+        x1.pointer.cast(),
+        cStridesA,
+        x2.pointer.cast(),
+        cStridesB,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    }
+  }
+
+  double copysignOp(double a, double b) {
+    if (b == 0.0) {
+      return b.isNegative ? -a.abs() : a.abs();
+    }
+    return b < 0.0 ? -a.abs() : a.abs();
+  }
+
+  _elementWiseOp<num, num, double>(
+    result.data as List<double>,
+    x1.data as List<num>,
+    x2.data as List<num>,
+    shape,
+    stridesA,
+    stridesB,
+    resultStrides,
+    0,
+    0,
+    0,
+    0,
+    (x, y) => copysignOp(x.toDouble(), y.toDouble()),
+  );
+
   return result;
 }
 
@@ -6378,50 +7083,189 @@ bool _isTrue(dynamic x) {
 
 /// Compute the element-wise truth value of NOT [a].
 ///
+/// Returns a boolean array of the same shape as [a] containing the element-wise logical negation.
+///
+/// **Preconditions:**
+/// - [a] must not be disposed.
+/// - If provided, the [out] recycler array must exactly match [a]'s shape and have [DType.boolean] dtype.
+///
+/// **Throws:**
+/// - [StateError] if the input array [a] has been disposed.
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For C-contiguous layout layouts, offloads the loop directly to high-speed native C
+///   vector logical kernels (`v_logical_not`), bypassing all Dart VM loop overhead.
+///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray logical_not(NDArray a) {
-  final result = NDArray.create(a.shape, DType.int32);
-  final resultStrides = NDArray.computeCStrides(a.shape);
-  final rData = result.data as List<int>;
-
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    _unaryOp<Complex, int>(
-      rData,
-      a.data as List<Complex>,
-      a.shape,
-      a.strides,
-      resultStrides,
-      0,
-      0,
-      0,
-      (x) => _isTrue(x) ? 0 : 1,
-    );
-  } else if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    _unaryOp<int, int>(
-      rData,
-      a.data as List<int>,
-      a.shape,
-      a.strides,
-      resultStrides,
-      0,
-      0,
-      0,
-      (x) => _isTrue(x) ? 0 : 1,
-    );
+///
+/// Reference: [NumPy logical_not](https://numpy.org/doc/stable/reference/generated/numpy.logical_not.html)
+NDArray<bool> logical_not(NDArray a, {NDArray<bool>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute logical_not on a disposed array.');
+  }
+  final NDArray<bool> result;
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != DType.boolean) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for logical_not.',
+      );
+    }
+    result = out;
   } else {
-    _unaryOp<double, int>(
-      rData,
-      a.data as List<double>,
-      a.shape,
-      a.strides,
-      resultStrides,
-      0,
-      0,
-      0,
-      (x) => _isTrue(x) ? 0 : 1,
+    result = NDArray<bool>.create(a.shape, DType.boolean);
+  }
+
+  final resultStrides = NDArray.computeCStrides(a.shape);
+  final marker = _ScratchArena.marker;
+
+  final ffi.Pointer<ffi.Uint8> aBoolPtr;
+  final List<int> aBoolStrides;
+  if (a.dtype == DType.boolean) {
+    aBoolPtr = a.pointer.cast();
+    aBoolStrides = a.strides;
+  } else {
+    aBoolPtr = _ScratchArena.allocate<ffi.Uint8>(a.size);
+    aBoolStrides = NDArray.computeCStrides(a.shape);
+    if (a.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_to_bool_double(a.pointer.cast(), aBoolPtr, a.size);
+        case DType.float32:
+          v_to_bool_float(a.pointer.cast(), aBoolPtr, a.size);
+        case DType.int64:
+          v_to_bool_int64(a.pointer.cast(), aBoolPtr, a.size);
+        case DType.int32:
+          v_to_bool_int32(a.pointer.cast(), aBoolPtr, a.size);
+        case DType.uint8:
+          v_to_bool_uint8(a.pointer.cast(), aBoolPtr, a.size);
+        case DType.int16:
+          v_to_bool_int16(a.pointer.cast(), aBoolPtr, a.size);
+        case DType.complex128:
+          v_to_bool_complex128(a.pointer.cast(), aBoolPtr, a.size);
+        case DType.complex64:
+          v_to_bool_complex64(a.pointer.cast(), aBoolPtr, a.size);
+        case DType.boolean:
+          break;
+      }
+    } else {
+      final ndim = a.shape.length;
+      final cBuffer = _ScratchArena.getStridedBuffer(ndim);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + ndim;
+      final cStridesTemp = cBuffer + (ndim * 2);
+      for (var i = 0; i < ndim; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+        cStridesTemp[i] = aBoolStrides[i];
+      }
+      switch (a.dtype) {
+        case DType.float64:
+          s_to_bool_double(
+            a.pointer.cast(),
+            cStridesA,
+            aBoolPtr,
+            cStridesTemp,
+            cShape,
+            ndim,
+          );
+        case DType.float32:
+          s_to_bool_float(
+            a.pointer.cast(),
+            cStridesA,
+            aBoolPtr,
+            cStridesTemp,
+            cShape,
+            ndim,
+          );
+        case DType.int64:
+          s_to_bool_int64(
+            a.pointer.cast(),
+            cStridesA,
+            aBoolPtr,
+            cStridesTemp,
+            cShape,
+            ndim,
+          );
+        case DType.int32:
+          s_to_bool_int32(
+            a.pointer.cast(),
+            cStridesA,
+            aBoolPtr,
+            cStridesTemp,
+            cShape,
+            ndim,
+          );
+        case DType.uint8:
+          s_to_bool_uint8(
+            a.pointer.cast(),
+            cStridesA,
+            aBoolPtr,
+            cStridesTemp,
+            cShape,
+            ndim,
+          );
+        case DType.int16:
+          s_to_bool_int16(
+            a.pointer.cast(),
+            cStridesA,
+            aBoolPtr,
+            cStridesTemp,
+            cShape,
+            ndim,
+          );
+        case DType.complex128:
+          s_to_bool_complex128(
+            a.pointer.cast(),
+            cStridesA,
+            aBoolPtr,
+            cStridesTemp,
+            cShape,
+            ndim,
+          );
+        case DType.complex64:
+          s_to_bool_complex64(
+            a.pointer.cast(),
+            cStridesA,
+            aBoolPtr,
+            cStridesTemp,
+            cShape,
+            ndim,
+          );
+        case DType.boolean:
+          break;
+      }
+    }
+  }
+
+  if (a.isContiguous && result.isContiguous) {
+    v_logical_not(aBoolPtr, result.pointer.cast(), a.size);
+  } else {
+    final ndim = a.shape.length;
+    final cBuffer = _ScratchArena.getStridedBuffer(ndim);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + ndim;
+    final cStridesRes = cBuffer + (ndim * 2);
+
+    for (var i = 0; i < ndim; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = aBoolStrides[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+
+    s_logical_not(
+      aBoolPtr,
+      cStridesA,
+      result.pointer.cast(),
+      cStridesRes,
+      cShape,
+      ndim,
     );
   }
+
+  _ScratchArena.reset(marker);
   return result;
 }
 
@@ -6621,339 +7465,371 @@ NDArray<bool> less_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
 
 /// Compute the element-wise truth value of [a] AND [b] with broadcasting support.
 ///
+/// Returns a boolean array containing the element-wise logical AND results.
+///
+/// **Preconditions:**
+/// - [a] and [b] must not be disposed.
+/// - If provided, the [out] recycler array must exactly match the broadcasted shape of [a] and [b], and have [DType.boolean] dtype.
+///
+/// **Throws:**
+/// - [StateError] if any input array has been disposed.
+/// - [ArgumentError] if shapes of [a] and [b] are incompatible for broadcasting.
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For C-contiguous layout layouts, offloads the loop directly to high-speed native C
+///   vector logical kernels (`v_logical_and`), bypassing all Dart VM loop overhead.
+///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray logical_and(NDArray a, NDArray b) {
-  final broadcastResult = broadcast(a, b);
-  final shape = broadcastResult.shape;
-  final result = NDArray.create(shape, DType.int32);
-  final resultStrides = NDArray.computeCStrides(shape);
-  final rData = result.data as List<int>;
-
-  _dispatchBinaryLogical(
-    rData,
+///
+/// Reference: [NumPy logical_and](https://numpy.org/doc/stable/reference/generated/numpy.logical_and.html)
+NDArray<bool> logical_and(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  return _runBinaryLogical(
     a,
     b,
-    shape,
-    broadcastResult.stridesA,
-    broadcastResult.stridesB,
-    resultStrides,
-    (x, y) => (_isTrue(x) && _isTrue(y)) ? 1 : 0,
+    out,
+    v_logical_and,
+    s_logical_and,
+    'logical_and',
   );
-  return result;
 }
 
 /// Compute the element-wise truth value of [a] OR [b] with broadcasting support.
 ///
+/// Returns a boolean array containing the element-wise logical OR results.
+///
+/// **Preconditions:**
+/// - [a] and [b] must not be disposed.
+/// - If provided, the [out] recycler array must exactly match the broadcasted shape of [a] and [b], and have [DType.boolean] dtype.
+///
+/// **Throws:**
+/// - [StateError] if any input array has been disposed.
+/// - [ArgumentError] if shapes of [a] and [b] are incompatible for broadcasting.
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For C-contiguous layout layouts, offloads the loop directly to high-speed native C
+///   vector logical kernels (`v_logical_or`), bypassing all Dart VM loop overhead.
+///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray logical_or(NDArray a, NDArray b) {
-  final broadcastResult = broadcast(a, b);
-  final shape = broadcastResult.shape;
-  final result = NDArray.create(shape, DType.int32);
-  final resultStrides = NDArray.computeCStrides(shape);
-  final rData = result.data as List<int>;
-
-  _dispatchBinaryLogical(
-    rData,
-    a,
-    b,
-    shape,
-    broadcastResult.stridesA,
-    broadcastResult.stridesB,
-    resultStrides,
-    (x, y) => (_isTrue(x) || _isTrue(y)) ? 1 : 0,
-  );
-  return result;
+///
+/// Reference: [NumPy logical_or](https://numpy.org/doc/stable/reference/generated/numpy.logical_or.html)
+NDArray<bool> logical_or(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  return _runBinaryLogical(a, b, out, v_logical_or, s_logical_or, 'logical_or');
 }
 
 /// Compute the element-wise truth value of [a] XOR [b] with broadcasting support.
 ///
+/// Returns a boolean array containing the element-wise logical XOR results.
+///
+/// **Preconditions:**
+/// - [a] and [b] must not be disposed.
+/// - If provided, the [out] recycler array must exactly match the broadcasted shape of [a] and [b], and have [DType.boolean] dtype.
+///
+/// **Throws:**
+/// - [StateError] if any input array has been disposed.
+/// - [ArgumentError] if shapes of [a] and [b] are incompatible for broadcasting.
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For C-contiguous layout layouts, offloads the loop directly to high-speed native C
+///   vector logical kernels (`v_logical_xor`), bypassing all Dart VM loop overhead.
+///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray logical_xor(NDArray a, NDArray b) {
-  final broadcastResult = broadcast(a, b);
-  final shape = broadcastResult.shape;
-  final result = NDArray.create(shape, DType.int32);
-  final resultStrides = NDArray.computeCStrides(shape);
-  final rData = result.data as List<int>;
-
-  _dispatchBinaryLogical(
-    rData,
+///
+/// Reference: [NumPy logical_xor](https://numpy.org/doc/stable/reference/generated/numpy.logical_xor.html)
+NDArray<bool> logical_xor(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  return _runBinaryLogical(
     a,
     b,
-    shape,
-    broadcastResult.stridesA,
-    broadcastResult.stridesB,
-    resultStrides,
-    (x, y) => (_isTrue(x) != _isTrue(y)) ? 1 : 0,
+    out,
+    v_logical_xor,
+    s_logical_xor,
+    'logical_xor',
   );
-  return result;
 }
 
-void _dispatchBinaryLogical(
-  List<int> rData,
-  NDArray a,
-  NDArray b,
-  List<int> shape,
-  List<int> sA,
-  List<int> sB,
-  List<int> sR,
-  int Function(dynamic, dynamic) op,
+BroadcastResult _broadcastBinaryStrides(
+  List<int> shapeA,
+  List<int> stridesA,
+  List<int> shapeB,
+  List<int> stridesB,
 ) {
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    final aData = a.data as List<Complex>;
-    if (b.dtype == DType.complex128 || b.dtype == DType.complex64) {
-      _elementWiseOp<Complex, Complex, int>(
-        rData,
-        aData,
-        b.data as List<Complex>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
-    } else if (b.dtype == DType.float64 || b.dtype == DType.float32) {
-      _elementWiseOp<Complex, double, int>(
-        rData,
-        aData,
-        b.data as List<double>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
-    } else if (b.dtype == DType.boolean) {
-      _elementWiseOp<Complex, bool, int>(
-        rData,
-        aData,
-        b.data as List<bool>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
+  if (listEquals(shapeA, shapeB)) {
+    return BroadcastResult(shapeA, stridesA, stridesB);
+  }
+  final maxLen = shapeA.length > shapeB.length ? shapeA.length : shapeB.length;
+  final commonShape = List<int>.filled(maxLen, 1);
+  final newStridesA = List<int>.filled(maxLen, 0);
+  final newStridesB = List<int>.filled(maxLen, 0);
+
+  for (var i = 0; i < maxLen; i++) {
+    final dimA = i < shapeA.length ? shapeA[shapeA.length - 1 - i] : 1;
+    final dimB = i < shapeB.length ? shapeB[shapeB.length - 1 - i] : 1;
+
+    if (dimA == dimB) {
+      commonShape[maxLen - 1 - i] = dimA;
+      if (i < shapeA.length) {
+        newStridesA[maxLen - 1 - i] = stridesA[shapeA.length - 1 - i];
+      }
+      if (i < shapeB.length) {
+        newStridesB[maxLen - 1 - i] = stridesB[shapeB.length - 1 - i];
+      }
+    } else if (dimA == 1) {
+      commonShape[maxLen - 1 - i] = dimB;
+      if (i < shapeB.length) {
+        newStridesB[maxLen - 1 - i] = stridesB[shapeB.length - 1 - i];
+      }
+    } else if (dimB == 1) {
+      commonShape[maxLen - 1 - i] = dimA;
+      if (i < shapeA.length) {
+        newStridesA[maxLen - 1 - i] = stridesA[shapeA.length - 1 - i];
+      }
     } else {
-      _elementWiseOp<Complex, int, int>(
-        rData,
-        aData,
-        b.data as List<int>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
-    }
-  } else if (a.dtype == DType.float64 || a.dtype == DType.float32) {
-    final aData = a.data as List<double>;
-    if (b.dtype == DType.complex128 || b.dtype == DType.complex64) {
-      _elementWiseOp<double, Complex, int>(
-        rData,
-        aData,
-        b.data as List<Complex>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
-    } else if (b.dtype == DType.float64 || b.dtype == DType.float32) {
-      _elementWiseOp<double, double, int>(
-        rData,
-        aData,
-        b.data as List<double>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
-    } else if (b.dtype == DType.boolean) {
-      _elementWiseOp<double, bool, int>(
-        rData,
-        aData,
-        b.data as List<bool>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
-    } else {
-      _elementWiseOp<double, int, int>(
-        rData,
-        aData,
-        b.data as List<int>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
-    }
-  } else if (a.dtype == DType.boolean) {
-    final aData = a.data as List<bool>;
-    if (b.dtype == DType.complex128 || b.dtype == DType.complex64) {
-      _elementWiseOp<bool, Complex, int>(
-        rData,
-        aData,
-        b.data as List<Complex>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
-    } else if (b.dtype == DType.float64 || b.dtype == DType.float32) {
-      _elementWiseOp<bool, double, int>(
-        rData,
-        aData,
-        b.data as List<double>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
-    } else if (b.dtype == DType.boolean) {
-      _elementWiseOp<bool, bool, int>(
-        rData,
-        aData,
-        b.data as List<bool>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
-    } else {
-      _elementWiseOp<bool, int, int>(
-        rData,
-        aData,
-        b.data as List<int>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
-    }
-  } else {
-    final aData = a.data as List<int>;
-    if (b.dtype == DType.complex128 || b.dtype == DType.complex64) {
-      _elementWiseOp<int, Complex, int>(
-        rData,
-        aData,
-        b.data as List<Complex>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
-    } else if (b.dtype == DType.float64 || b.dtype == DType.float32) {
-      _elementWiseOp<int, double, int>(
-        rData,
-        aData,
-        b.data as List<double>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
-    } else if (b.dtype == DType.boolean) {
-      _elementWiseOp<int, bool, int>(
-        rData,
-        aData,
-        b.data as List<bool>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
-      );
-    } else {
-      _elementWiseOp<int, int, int>(
-        rData,
-        aData,
-        b.data as List<int>,
-        shape,
-        sA,
-        sB,
-        sR,
-        0,
-        0,
-        0,
-        0,
-        op,
+      throw ArgumentError(
+        'Shapes $shapeA and $shapeB are not compatible for broadcasting',
       );
     }
   }
+  return BroadcastResult(commonShape, newStridesA, newStridesB);
+}
+
+ffi.Pointer<ffi.Uint8> _castToBoolean(
+  NDArray x,
+  ffi.Pointer<ffi.Uint8> destPtr,
+  List<int> destStrides,
+) {
+  if (x.isContiguous) {
+    switch (x.dtype) {
+      case DType.float64:
+        v_to_bool_double(x.pointer.cast(), destPtr, x.size);
+      case DType.float32:
+        v_to_bool_float(x.pointer.cast(), destPtr, x.size);
+      case DType.int64:
+        v_to_bool_int64(x.pointer.cast(), destPtr, x.size);
+      case DType.int32:
+        v_to_bool_int32(x.pointer.cast(), destPtr, x.size);
+      case DType.uint8:
+        v_to_bool_uint8(x.pointer.cast(), destPtr, x.size);
+      case DType.int16:
+        v_to_bool_int16(x.pointer.cast(), destPtr, x.size);
+      case DType.complex128:
+        v_to_bool_complex128(x.pointer.cast(), destPtr, x.size);
+      case DType.complex64:
+        v_to_bool_complex64(x.pointer.cast(), destPtr, x.size);
+      case DType.boolean:
+        break;
+    }
+  } else {
+    final ndim = x.shape.length;
+    final cBuffer = _ScratchArena.getStridedBuffer(ndim);
+    final cShape = cBuffer;
+    final cStridesX = cBuffer + ndim;
+    final cStridesTemp = cBuffer + (ndim * 2);
+    for (var i = 0; i < ndim; i++) {
+      cShape[i] = x.shape[i];
+      cStridesX[i] = x.strides[i];
+      cStridesTemp[i] = destStrides[i];
+    }
+    switch (x.dtype) {
+      case DType.float64:
+        s_to_bool_double(
+          x.pointer.cast(),
+          cStridesX,
+          destPtr,
+          cStridesTemp,
+          cShape,
+          ndim,
+        );
+      case DType.float32:
+        s_to_bool_float(
+          x.pointer.cast(),
+          cStridesX,
+          destPtr,
+          cStridesTemp,
+          cShape,
+          ndim,
+        );
+      case DType.int64:
+        s_to_bool_int64(
+          x.pointer.cast(),
+          cStridesX,
+          destPtr,
+          cStridesTemp,
+          cShape,
+          ndim,
+        );
+      case DType.int32:
+        s_to_bool_int32(
+          x.pointer.cast(),
+          cStridesX,
+          destPtr,
+          cStridesTemp,
+          cShape,
+          ndim,
+        );
+      case DType.uint8:
+        s_to_bool_uint8(
+          x.pointer.cast(),
+          cStridesX,
+          destPtr,
+          cStridesTemp,
+          cShape,
+          ndim,
+        );
+      case DType.int16:
+        s_to_bool_int16(
+          x.pointer.cast(),
+          cStridesX,
+          destPtr,
+          cStridesTemp,
+          cShape,
+          ndim,
+        );
+      case DType.complex128:
+        s_to_bool_complex128(
+          x.pointer.cast(),
+          cStridesX,
+          destPtr,
+          cStridesTemp,
+          cShape,
+          ndim,
+        );
+      case DType.complex64:
+        s_to_bool_complex64(
+          x.pointer.cast(),
+          cStridesX,
+          destPtr,
+          cStridesTemp,
+          cShape,
+          ndim,
+        );
+      case DType.boolean:
+        break;
+    }
+  }
+  return destPtr;
+}
+
+NDArray<bool> _runBinaryLogical(
+  NDArray a,
+  NDArray b,
+  NDArray<bool>? out,
+  void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Uint8>,
+    int,
+  )
+  contiguousFn,
+  void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    int,
+  )
+  stridedFn,
+  String opName,
+) {
+  if (a.isDisposed || b.isDisposed) {
+    throw StateError('Cannot perform $opName on disposed arrays.');
+  }
+
+  final marker = _ScratchArena.marker;
+
+  final ffi.Pointer<ffi.Uint8> aBoolPtr;
+  final List<int> aBoolStrides;
+  if (a.dtype == DType.boolean) {
+    aBoolPtr = a.pointer.cast();
+    aBoolStrides = a.strides;
+  } else {
+    aBoolPtr = _ScratchArena.allocate<ffi.Uint8>(a.size);
+    aBoolStrides = NDArray.computeCStrides(a.shape);
+    _castToBoolean(a, aBoolPtr, aBoolStrides);
+  }
+
+  final ffi.Pointer<ffi.Uint8> bBoolPtr;
+  final List<int> bBoolStrides;
+  if (b.dtype == DType.boolean) {
+    bBoolPtr = b.pointer.cast();
+    bBoolStrides = b.strides;
+  } else {
+    bBoolPtr = _ScratchArena.allocate<ffi.Uint8>(b.size);
+    bBoolStrides = NDArray.computeCStrides(b.shape);
+    _castToBoolean(b, bBoolPtr, bBoolStrides);
+  }
+
+  final broadcastResult = _broadcastBinaryStrides(
+    a.shape,
+    aBoolStrides,
+    b.shape,
+    bBoolStrides,
+  );
+  final commonShape = broadcastResult.shape;
+  final stridesA = broadcastResult.stridesA;
+  final stridesB = broadcastResult.stridesB;
+
+  final NDArray<bool> result;
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for $opName.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray<bool>.create(commonShape, DType.boolean);
+  }
+
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  final isContig =
+      a.isContiguous &&
+      b.isContiguous &&
+      result.isContiguous &&
+      listEquals(a.shape, b.shape);
+
+  if (isContig) {
+    contiguousFn(aBoolPtr, bBoolPtr, result.pointer.cast(), result.size);
+  } else {
+    final ndim = commonShape.length;
+    final cBuffer = _ScratchArena.getStridedBuffer(ndim);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + ndim;
+    final cStridesB = cBuffer + (ndim * 2);
+    final cStridesRes = cBuffer + (ndim * 3);
+
+    for (var i = 0; i < ndim; i++) {
+      cShape[i] = commonShape[i];
+      cStridesA[i] = stridesA[i];
+      cStridesB[i] = stridesB[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+
+    stridedFn(
+      aBoolPtr,
+      cStridesA,
+      bBoolPtr,
+      cStridesB,
+      result.pointer.cast(),
+      cStridesRes,
+      cShape,
+      ndim,
+    );
+  }
+
+  _ScratchArena.reset(marker);
+  return result;
 }
 
 /// Returns a sorted copy of an array along a specified [axis].
@@ -16552,4 +17428,932 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   }
   // ignore: dead_code
   throw UnsupportedError('Unsupported operand types');
+}
+
+// ============================================================================
+// SECTION: VECTORIZED BITWISE UNIVERSAL FUNCTIONS (ufuncs)
+// ============================================================================
+
+/// Compute the bitwise AND of two arrays, element-wise.
+///
+/// Calculates the bitwise AND of two integer arrays, element-wise.
+///
+/// **Preconditions:**
+/// - [a] and [b] must be integer-typed arrays (`int32`, `int64`, `uint8`, `int16`).
+/// - [a] and [b] must not be disposed.
+/// - [a] and [b] must be broadcast-compatible.
+/// - If provided, [out] must match the broadcasted shape and resolved integer dtype.
+///
+/// **Throws:**
+/// - [StateError] if [a] or [b] is disposed.
+/// - [ArgumentError] if [a] or [b] is not integer-typed.
+/// - [ArgumentError] if shapes are incompatible for broadcasting.
+/// - [ArgumentError] if [out] shape or dtype is incompatible.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For contiguous layouts, offloads the loop directly to optimized native C vector bitwise kernels, bypassing Dart VM loop overhead.
+///
+/// **Example:**
+/// {@example /example/bitwise_example.dart lang=dart}
+///
+/// Reference: [NumPy bitwise_and](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_and.html)
+NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<Tr>? out,
+}) {
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'bitwise_and');
+  final aCast = prep.aCast;
+  final bCast = prep.bCast;
+  final result = prep.result;
+
+  try {
+    if (prep.isContig) {
+      final size = aCast.size;
+      switch (result.dtype) {
+        case DType.int32:
+          v_bitwise_and_int32(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.int64:
+          v_bitwise_and_int64(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.uint8:
+          v_bitwise_and_uint8(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.int16:
+          v_bitwise_and_int16(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        default:
+          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+      }
+    } else {
+      final rank = prep.commonShape.length;
+      final cBuffer = _ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesB = cBuffer + (rank * 2);
+      final cStridesRes = cBuffer + (rank * 3);
+
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = prep.commonShape[i];
+        cStridesA[i] = prep.stridesA[i];
+        cStridesB[i] = prep.stridesB[i];
+        cStridesRes[i] = prep.resultStrides[i];
+      }
+
+      switch (result.dtype) {
+        case DType.int32:
+          s_bitwise_and_int32(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.int64:
+          s_bitwise_and_int64(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.uint8:
+          s_bitwise_and_uint8(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.int16:
+          s_bitwise_and_int16(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        default:
+          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+      }
+    }
+  } finally {
+    if (aCast != a) {
+      aCast.dispose();
+    }
+    if (bCast != b) {
+      bCast.dispose();
+    }
+  }
+
+  return result;
+}
+
+/// Compute the bitwise OR of two arrays, element-wise.
+///
+/// Calculates the bitwise OR of two integer arrays, element-wise.
+///
+/// **Preconditions:**
+/// - [a] and [b] must be integer-typed arrays (`int32`, `int64`, `uint8`, `int16`).
+/// - [a] and [b] must not be disposed.
+/// - [a] and [b] must be broadcast-compatible.
+/// - If provided, [out] must match the broadcasted shape and resolved integer dtype.
+///
+/// **Throws:**
+/// - [StateError] if [a] or [b] is disposed.
+/// - [ArgumentError] if [a] or [b] is not integer-typed.
+/// - [ArgumentError] if shapes are incompatible for broadcasting.
+/// - [ArgumentError] if [out] shape or dtype is incompatible.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For contiguous layouts, offloads the loop directly to optimized native C vector bitwise kernels, bypassing Dart VM loop overhead.
+///
+/// **Example:**
+/// {@example /example/bitwise_example.dart lang=dart}
+///
+/// Reference: [NumPy bitwise_or](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_or.html)
+NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<Tr>? out,
+}) {
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'bitwise_or');
+  final aCast = prep.aCast;
+  final bCast = prep.bCast;
+  final result = prep.result;
+
+  try {
+    if (prep.isContig) {
+      final size = aCast.size;
+      switch (result.dtype) {
+        case DType.int32:
+          v_bitwise_or_int32(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.int64:
+          v_bitwise_or_int64(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.uint8:
+          v_bitwise_or_uint8(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.int16:
+          v_bitwise_or_int16(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        default:
+          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+      }
+    } else {
+      final rank = prep.commonShape.length;
+      final cBuffer = _ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesB = cBuffer + (rank * 2);
+      final cStridesRes = cBuffer + (rank * 3);
+
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = prep.commonShape[i];
+        cStridesA[i] = prep.stridesA[i];
+        cStridesB[i] = prep.stridesB[i];
+        cStridesRes[i] = prep.resultStrides[i];
+      }
+
+      switch (result.dtype) {
+        case DType.int32:
+          s_bitwise_or_int32(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.int64:
+          s_bitwise_or_int64(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.uint8:
+          s_bitwise_or_uint8(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.int16:
+          s_bitwise_or_int16(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        default:
+          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+      }
+    }
+  } finally {
+    if (aCast != a) {
+      aCast.dispose();
+    }
+    if (bCast != b) {
+      bCast.dispose();
+    }
+  }
+
+  return result;
+}
+
+/// Compute the bitwise XOR of two arrays, element-wise.
+///
+/// Calculates the bitwise XOR of two integer arrays, element-wise.
+///
+/// **Preconditions:**
+/// - [a] and [b] must be integer-typed arrays (`int32`, `int64`, `uint8`, `int16`).
+/// - [a] and [b] must not be disposed.
+/// - [a] and [b] must be broadcast-compatible.
+/// - If provided, [out] must match the broadcasted shape and resolved integer dtype.
+///
+/// **Throws:**
+/// - [StateError] if [a] or [b] is disposed.
+/// - [ArgumentError] if [a] or [b] is not integer-typed.
+/// - [ArgumentError] if shapes are incompatible for broadcasting.
+/// - [ArgumentError] if [out] shape or dtype is incompatible.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For contiguous layouts, offloads the loop directly to optimized native C vector bitwise kernels, bypassing Dart VM loop overhead.
+///
+/// **Example:**
+/// {@example /example/bitwise_example.dart lang=dart}
+///
+/// Reference: [NumPy bitwise_xor](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_xor.html)
+NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<Tr>? out,
+}) {
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'bitwise_xor');
+  final aCast = prep.aCast;
+  final bCast = prep.bCast;
+  final result = prep.result;
+
+  try {
+    if (prep.isContig) {
+      final size = aCast.size;
+      switch (result.dtype) {
+        case DType.int32:
+          v_bitwise_xor_int32(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.int64:
+          v_bitwise_xor_int64(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.uint8:
+          v_bitwise_xor_uint8(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.int16:
+          v_bitwise_xor_int16(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        default:
+          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+      }
+    } else {
+      final rank = prep.commonShape.length;
+      final cBuffer = _ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesB = cBuffer + (rank * 2);
+      final cStridesRes = cBuffer + (rank * 3);
+
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = prep.commonShape[i];
+        cStridesA[i] = prep.stridesA[i];
+        cStridesB[i] = prep.stridesB[i];
+        cStridesRes[i] = prep.resultStrides[i];
+      }
+
+      switch (result.dtype) {
+        case DType.int32:
+          s_bitwise_xor_int32(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.int64:
+          s_bitwise_xor_int64(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.uint8:
+          s_bitwise_xor_uint8(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.int16:
+          s_bitwise_xor_int16(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        default:
+          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+      }
+    }
+  } finally {
+    if (aCast != a) {
+      aCast.dispose();
+    }
+    if (bCast != b) {
+      bCast.dispose();
+    }
+  }
+
+  return result;
+}
+
+/// Shift the bits of an integer to the left, element-wise.
+///
+/// Bits are shifted to the left by appending 0s at the right.
+///
+/// **Preconditions:**
+/// - [a] and [b] must be integer-typed arrays (`int32`, `int64`, `uint8`, `int16`).
+/// - [a] and [b] must not be disposed.
+/// - [a] and [b] must be broadcast-compatible.
+/// - If provided, [out] must match the broadcasted shape and resolved integer dtype.
+///
+/// **Throws:**
+/// - [StateError] if [a] or [b] is disposed.
+/// - [ArgumentError] if [a] or [b] is not integer-typed.
+/// - [ArgumentError] if shapes are incompatible for broadcasting.
+/// - [ArgumentError] if [out] shape or dtype is incompatible.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For contiguous layouts, offloads the loop directly to optimized native C vector bitwise kernels, bypassing Dart VM loop overhead.
+///
+/// **Example:**
+/// {@example /example/bitwise_example.dart lang=dart}
+///
+/// Reference: [NumPy left_shift](https://numpy.org/doc/stable/reference/generated/numpy.left_shift.html)
+NDArray<Tr> left_shift<Ta, Tb, Tr>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<Tr>? out,
+}) {
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'left_shift');
+  final aCast = prep.aCast;
+  final bCast = prep.bCast;
+  final result = prep.result;
+
+  try {
+    if (prep.isContig) {
+      final size = aCast.size;
+      switch (result.dtype) {
+        case DType.int32:
+          v_left_shift_int32(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.int64:
+          v_left_shift_int64(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.uint8:
+          v_left_shift_uint8(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.int16:
+          v_left_shift_int16(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        default:
+          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+      }
+    } else {
+      final rank = prep.commonShape.length;
+      final cBuffer = _ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesB = cBuffer + (rank * 2);
+      final cStridesRes = cBuffer + (rank * 3);
+
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = prep.commonShape[i];
+        cStridesA[i] = prep.stridesA[i];
+        cStridesB[i] = prep.stridesB[i];
+        cStridesRes[i] = prep.resultStrides[i];
+      }
+
+      switch (result.dtype) {
+        case DType.int32:
+          s_left_shift_int32(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.int64:
+          s_left_shift_int64(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.uint8:
+          s_left_shift_uint8(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.int16:
+          s_left_shift_int16(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        default:
+          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+      }
+    }
+  } finally {
+    if (aCast != a) {
+      aCast.dispose();
+    }
+    if (bCast != b) {
+      bCast.dispose();
+    }
+  }
+
+  return result;
+}
+
+/// Shift the bits of an integer to the right, element-wise.
+///
+/// Bits are shifted to the right.
+///
+/// **Preconditions:**
+/// - [a] and [b] must be integer-typed arrays (`int32`, `int64`, `uint8`, `int16`).
+/// - [a] and [b] must not be disposed.
+/// - [a] and [b] must be broadcast-compatible.
+/// - If provided, [out] must match the broadcasted shape and resolved integer dtype.
+///
+/// **Throws:**
+/// - [StateError] if [a] or [b] is disposed.
+/// - [ArgumentError] if [a] or [b] is not integer-typed.
+/// - [ArgumentError] if shapes are incompatible for broadcasting.
+/// - [ArgumentError] if [out] shape or dtype is incompatible.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For contiguous layouts, offloads the loop directly to optimized native C vector bitwise kernels, bypassing Dart VM loop overhead.
+///
+/// **Example:**
+/// {@example /example/bitwise_example.dart lang=dart}
+///
+/// Reference: [NumPy right_shift](https://numpy.org/doc/stable/reference/generated/numpy.right_shift.html)
+NDArray<Tr> right_shift<Ta, Tb, Tr>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<Tr>? out,
+}) {
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'right_shift');
+  final aCast = prep.aCast;
+  final bCast = prep.bCast;
+  final result = prep.result;
+
+  try {
+    if (prep.isContig) {
+      final size = aCast.size;
+      switch (result.dtype) {
+        case DType.int32:
+          v_right_shift_int32(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.int64:
+          v_right_shift_int64(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.uint8:
+          v_right_shift_uint8(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        case DType.int16:
+          v_right_shift_int16(
+            aCast.pointer.cast(),
+            bCast.pointer.cast(),
+            result.pointer.cast(),
+            size,
+          );
+        default:
+          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+      }
+    } else {
+      final rank = prep.commonShape.length;
+      final cBuffer = _ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesB = cBuffer + (rank * 2);
+      final cStridesRes = cBuffer + (rank * 3);
+
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = prep.commonShape[i];
+        cStridesA[i] = prep.stridesA[i];
+        cStridesB[i] = prep.stridesB[i];
+        cStridesRes[i] = prep.resultStrides[i];
+      }
+
+      switch (result.dtype) {
+        case DType.int32:
+          s_right_shift_int32(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.int64:
+          s_right_shift_int64(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.uint8:
+          s_right_shift_uint8(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        case DType.int16:
+          s_right_shift_int16(
+            aCast.pointer.cast(),
+            cStridesA,
+            bCast.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+        default:
+          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+      }
+    }
+  } finally {
+    if (aCast != a) {
+      aCast.dispose();
+    }
+    if (bCast != b) {
+      bCast.dispose();
+    }
+  }
+
+  return result;
+}
+
+/// Compute bitwise inversion, or bitwise NOT, element-wise.
+///
+/// Calculates the bitwise NOT of an integer array, element-wise.
+///
+/// **Preconditions:**
+/// - [a] must be an integer-typed array (`int32`, `int64`, `uint8`, `int16`).
+/// - [a] must not be disposed.
+/// - If provided, [out] must match the shape and dtype of [a].
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if [a] is not integer-typed.
+/// - [ArgumentError] if [out] shape or dtype is incompatible.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For contiguous layouts, offloads the loop directly to optimized native C vector bitwise kernels, bypassing Dart VM loop overhead.
+///
+/// **Example:**
+/// {@example /example/bitwise_example.dart lang=dart}
+///
+/// Reference: [NumPy invert](https://numpy.org/doc/stable/reference/generated/numpy.invert.html)
+NDArray<Tr> invert<Ta, Tr>(NDArray<Ta> a, {NDArray<Tr>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot perform invert on a disposed array.');
+  }
+
+  if (!a.dtype.isInteger) {
+    throw ArgumentError(
+      'Bitwise operations are only supported for integer data types.',
+    );
+  }
+
+  final NDArray<Tr> result;
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for invert.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray<Tr>.create(a.shape, a.dtype as DType<Tr>);
+  }
+
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  if (a.isContiguous && result.isContiguous) {
+    final size = a.size;
+    switch (a.dtype) {
+      case DType.int32:
+        v_invert_int32(a.pointer.cast(), result.pointer.cast(), size);
+      case DType.int64:
+        v_invert_int64(a.pointer.cast(), result.pointer.cast(), size);
+      case DType.uint8:
+        v_invert_uint8(a.pointer.cast(), result.pointer.cast(), size);
+      case DType.int16:
+        v_invert_int16(a.pointer.cast(), result.pointer.cast(), size);
+      default:
+        throw UnsupportedError('Unsupported integer DType: ${a.dtype}');
+    }
+  } else {
+    final rank = a.shape.length;
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesSrc = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesSrc[i] = a.strides[i];
+      cStridesRes[i] = resultStrides[i];
+    }
+
+    switch (a.dtype) {
+      case DType.int32:
+        s_invert_int32(
+          a.pointer.cast(),
+          cStridesSrc,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+      case DType.int64:
+        s_invert_int64(
+          a.pointer.cast(),
+          cStridesSrc,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+      case DType.uint8:
+        s_invert_uint8(
+          a.pointer.cast(),
+          cStridesSrc,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+      case DType.int16:
+        s_invert_int16(
+          a.pointer.cast(),
+          cStridesSrc,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+      default:
+        throw UnsupportedError('Unsupported integer DType: ${a.dtype}');
+    }
+  }
+
+  return result;
+}
+
+// ============================================================================
+// SECTION: INTERNAL BITWISE PRIVATE HELPERS
+// ============================================================================
+
+({
+  NDArray aCast,
+  NDArray bCast,
+  NDArray<Tr> result,
+  List<int> commonShape,
+  List<int> stridesA,
+  List<int> stridesB,
+  List<int> resultStrides,
+  bool isContig,
+})
+_prepareBinaryBitwise<Ta, Tb, Tr>(
+  NDArray<Ta> a,
+  NDArray<Tb> b,
+  NDArray<Tr>? out,
+  String opName,
+) {
+  if (a.isDisposed || b.isDisposed) {
+    throw StateError('Cannot perform $opName on disposed arrays.');
+  }
+
+  if (!a.dtype.isInteger || !b.dtype.isInteger) {
+    throw ArgumentError(
+      'Bitwise operations are only supported for integer data types.',
+    );
+  }
+
+  final DType targetDType = _resolveDType(a.dtype, b.dtype);
+
+  // Upcast inputs if they do not match the resolved target integer type
+  NDArray aCast = a;
+  if (a.dtype != targetDType) {
+    aCast = NDArray.fromList(a.toList(), a.shape, targetDType);
+  }
+
+  NDArray bCast = b;
+  if (b.dtype != targetDType) {
+    bCast = NDArray.fromList(b.toList(), b.shape, targetDType);
+  }
+
+  final broadcastResult = broadcast(aCast, bCast);
+  final commonShape = broadcastResult.shape;
+  final stridesA = broadcastResult.stridesA;
+  final stridesB = broadcastResult.stridesB;
+
+  final NDArray<Tr> result;
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for $opName.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray<Tr>.create(commonShape, targetDType as DType<Tr>);
+  }
+
+  final resultStrides = NDArray.computeCStrides(commonShape);
+
+  final isContig =
+      aCast.isContiguous &&
+      bCast.isContiguous &&
+      result.isContiguous &&
+      listEquals(aCast.shape, bCast.shape);
+
+  return (
+    aCast: aCast,
+    bCast: bCast,
+    result: result,
+    commonShape: commonShape,
+    stridesA: stridesA,
+    stridesB: stridesB,
+    resultStrides: resultStrides,
+    isContig: isContig,
+  );
 }

@@ -2,6 +2,7 @@ import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'package:pocketfft/pocketfft.dart';
 import 'ndarray.dart';
+import 'operations.dart';
 
 /// Computes the 1D discrete Fourier Transform (FFT) along the specified [axis].
 ///
@@ -385,4 +386,146 @@ NDArray ifft(NDArray a, {int? n, int axis = -1}) {
   }
 
   return result;
+}
+
+/// Shifts the zero-frequency component to the center of the spectrum.
+///
+/// Swaps half-spaces along all specified [axes].
+/// This is extremely useful for re-positioning frequency components so that the zero-frequency (DC)
+/// component is centered in the middle of the grid/spectrum.
+///
+/// **Preconditions:**
+/// - Input [a] must not be disposed.
+/// - If [axes] is a list of integers, all elements must be unique and within valid range `[-a.rank, a.rank - 1]`.
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if [axes] contains duplicate indices or invalid types.
+/// - [RangeError] if any axis index is out of bounds.
+///
+/// **Performance considerations:**
+/// - Algorithmic Time Complexity is $O(N)$ where $N$ is the total number of elements.
+/// - Space Complexity is $O(N)$ as it allocates a new array and copies elements to construct the shifted spectrum.
+///
+/// **Example:**
+/// {@example /example/fftshift_example.dart lang=dart}
+///
+/// Reference: [NumPy fftshift](https://numpy.org/doc/stable/reference/generated/numpy.fft.fftshift.html)
+NDArray<T> fftshift<T extends Object>(NDArray<T> a, {dynamic axes}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot shift a disposed array.');
+  }
+
+  final rank = a.rank;
+  if (rank == 0) {
+    return a.copy();
+  }
+
+  // Resolve axes
+  final List<int> resolvedAxes;
+  if (axes == null) {
+    resolvedAxes = List.generate(rank, (i) => i);
+  } else if (axes is int) {
+    final norm = axes < 0 ? rank + axes : axes;
+    if (norm < 0 || norm >= rank) {
+      throw RangeError.range(axes, -rank, rank - 1, 'axes');
+    }
+    resolvedAxes = [norm];
+  } else if (axes is List<int>) {
+    resolvedAxes = [];
+    for (var axis in axes) {
+      final norm = axis < 0 ? rank + axis : axis;
+      if (norm < 0 || norm >= rank) {
+        throw RangeError.range(axis, -rank, rank - 1, 'axes');
+      }
+      if (resolvedAxes.contains(norm)) {
+        throw ArgumentError('Duplicate axis $norm specified in axes.');
+      }
+      resolvedAxes.add(norm);
+    }
+  } else {
+    throw ArgumentError(
+      'axes must be null, an integer, or a list of integers.',
+    );
+  }
+
+  return NDArray.scope(() {
+    NDArray<T> current = a;
+    for (final axis in resolvedAxes) {
+      final dimSize = current.shape[axis];
+      final shift = dimSize ~/ 2;
+      current = roll(current, shift, axis: axis);
+    }
+    return current.copy().detachToParentScope();
+  });
+}
+
+/// Inverse of [fftshift].
+///
+/// Shifts the zero-frequency component back to the beginning of the spectrum.
+///
+/// **Preconditions:**
+/// - Input [a] must not be disposed.
+/// - If [axes] is a list of integers, all elements must be unique and within valid range `[-a.rank, a.rank - 1]`.
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if [axes] contains duplicate indices or invalid types.
+/// - [RangeError] if any axis index is out of bounds.
+///
+/// **Performance considerations:**
+/// - Algorithmic Time Complexity is $O(N)$ where $N$ is the total number of elements.
+/// - Space Complexity is $O(N)$ as it allocates a new array and copies elements to construct the shifted spectrum.
+///
+/// **Example:**
+/// {@example /example/fftshift_example.dart lang=dart}
+///
+/// Reference: [NumPy ifftshift](https://numpy.org/doc/stable/reference/generated/numpy.fft.ifftshift.html)
+NDArray<T> ifftshift<T extends Object>(NDArray<T> a, {dynamic axes}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot shift a disposed array.');
+  }
+
+  final rank = a.rank;
+  if (rank == 0) {
+    return a.copy();
+  }
+
+  // Resolve axes
+  final List<int> resolvedAxes;
+  if (axes == null) {
+    resolvedAxes = List.generate(rank, (i) => i);
+  } else if (axes is int) {
+    final norm = axes < 0 ? rank + axes : axes;
+    if (norm < 0 || norm >= rank) {
+      throw RangeError.range(axes, -rank, rank - 1, 'axes');
+    }
+    resolvedAxes = [norm];
+  } else if (axes is List<int>) {
+    resolvedAxes = [];
+    for (var axis in axes) {
+      final norm = axis < 0 ? rank + axis : axis;
+      if (norm < 0 || norm >= rank) {
+        throw RangeError.range(axis, -rank, rank - 1, 'axes');
+      }
+      if (resolvedAxes.contains(norm)) {
+        throw ArgumentError('Duplicate axis $norm specified in axes.');
+      }
+      resolvedAxes.add(norm);
+    }
+  } else {
+    throw ArgumentError(
+      'axes must be null, an integer, or a list of integers.',
+    );
+  }
+
+  return NDArray.scope(() {
+    NDArray<T> current = a;
+    for (final axis in resolvedAxes) {
+      final dimSize = current.shape[axis];
+      final shift = (dimSize + 1) ~/ 2;
+      current = roll(current, shift, axis: axis);
+    }
+    return current.copy().detachToParentScope();
+  });
 }

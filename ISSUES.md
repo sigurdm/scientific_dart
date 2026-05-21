@@ -13,21 +13,9 @@ When a task is completed, describe it in DONE.md file and remove it from this fi
 ## 🧪 Section 3: NumPy Compatibility Roadmap (Missing Features)
 
 ### 3.1 Universal Functions (ufuncs)
-  - Power & logarithmic: `square()`, element-wise `power()`, modulo `remainder()` / `mod()`, and combined division/modulo `divmod()`.
-  - Floating-point classification: `isnan()`, `isinf()`, `isfinite()`, sign copier `copysign()`.
-- **Logical Operations (Vectorized)**:
-  - `logical_and()`, `logical_or()`, `logical_not()`, `logical_xor()`.
-- **Bitwise Operations**:
-  - Vectorized bitwise ufuncs for integer data types (`int32`, `int64`, `uint8`, `int16`): `bitwise_and()`, `bitwise_or()`, `bitwise_xor()`, bitwise negation `invert()`, shifts `left_shift()` and `right_shift()`.
-- **Fourier Transforms**:
-  - Multi-dimensional `axis` support inside `fft()` and `ifft()`. Currently, our FFT transforms are hardcoded to execute along the final axis (`a.shape.last`). Adding an `axis` parameter (default `-1`) and transposing dimensions internally before/after FFI plan runs would achieve full standard NumPy `np.fft.fft(a, axis=axis)` compatibility!
-  - Spectrogram shifts: `fftshift()` and `ifftshift()`.
 
 ### 3.2 Array Manipulation & Geometry
-- **Shaping & Meshes**: `mgrid`/`ogrid`, `asStrided`, `slidingWindowView`.
-- **Repeating & Tiling**: Vector repeat `repeat()` and grid tiling `tile()`.
-- **Rearranging**: Axis roll `roll()`, flips `flip()`, `fliplr()`, and `flipud()`.
-- **Splitting**: Block splitting `split()`, `array_split()`, `hsplit()`, and `vsplit()`.
+(Completed shaping, repeating, rearranging, and splitting features)
 
 
 ### 3.3 Statistics & Sorting

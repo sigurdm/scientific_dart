@@ -1847,7 +1847,7 @@ final class NDArray<T> implements ffi.Finalizable {
 
   /// Element-wise bitwise NOT.
   NDArray operator ~() {
-    return ops.bitwise_not(this);
+    return ops.invert(this);
   }
 
   /// Element-wise left shift with full broadcasting support.
@@ -2080,11 +2080,17 @@ final class NDArray<T> implements ffi.Finalizable {
             'Boolean mask shape must match the size of dimension $i',
           );
         }
-        final indices = <int>[];
-        final maskData = mask.mask.toList();
-        for (var j = 0; j < maskData.length; j++) {
-          if (maskData[j]) indices.add(j);
-        }
+        final size = shape[i];
+        final indices = using((arena) {
+          final pIndices = arena.allocate<ffi.Int>(size);
+          final count = unpack_mask_c(
+            mask.mask.pointer.cast(),
+            size,
+            mask.mask.strides[0],
+            pIndices,
+          );
+          return pIndices.cast<ffi.Int32>().asTypedList(count).toList();
+        });
         processedSelectors[i] = Indices(indices);
       }
     }

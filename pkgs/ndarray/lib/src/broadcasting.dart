@@ -103,3 +103,92 @@ bool _listEquals<E>(List<E>? list1, List<E>? list2) {
   }
   return true;
 }
+
+/// Broadcasts an array [a] to a new target shape [targetShape].
+///
+/// Returns a zero-allocation, zero-copy [NDArray] view sharing the exact same
+/// backing unmanaged C memory as [a], but with adjusted shape and strides.
+/// Dimensions that are stretched (i.e. size 1 broadcasted to size $N$) are
+/// assigned a stride of `0`.
+///
+/// **Preconditions:**
+/// - The input array [a] must not be disposed.
+/// - [targetShape] must have at least as many dimensions as [a.shape] (rank is $\ge$ input rank).
+/// - Trailing dimensions of [a.shape] and [targetShape] comparing from right-to-left
+///   must be compatible (either equal, or the input dimension is 1).
+///
+/// **Throws:**
+/// - [StateError] if the array [a] has been disposed.
+/// - [ArgumentError] if [targetShape] has fewer dimensions than [a.shape].
+/// - [ArgumentError] if [targetShape] is incompatible with [a.shape] for broadcasting.
+///
+/// **Performance considerations:**
+/// - Algorithmic time complexity is $O(D)$ and space complexity is $O(D)$ where $D$ is the rank of
+///   [targetShape], as it only allocates the shape and strides metadata without copying any data.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+/// final b = broadcastTo(a, [2, 2]);
+/// print(b.shape); // [2, 2]
+/// print(b.toList()); // [[1.0, 1.0], [2.0, 2.0]]
+/// ```
+///
+/// Refer to the [NumPy broadcast_to reference](https://numpy.org/doc/stable/reference/generated/numpy.broadcast_to.html)
+/// for additional details.
+NDArray<T> broadcastTo<T>(NDArray<T> a, List<int> targetShape) {
+  if (a.isDisposed) {
+    throw StateError('Cannot access a disposed NDArray.');
+  }
+
+  final shapeA = a.shape;
+  final stridesA = a.strides;
+
+  if (_listEquals(shapeA, targetShape)) {
+    return NDArray<T>.view(
+      a,
+      shape: targetShape,
+      strides: stridesA,
+      offsetElements: a.offsetElements,
+    );
+  }
+
+  if (targetShape.length < shapeA.length) {
+    throw ArgumentError(
+      'Cannot broadcast to a shape with fewer dimensions: '
+      'input shape $shapeA, target shape $targetShape',
+    );
+  }
+
+  final newStrides = List<int>.filled(targetShape.length, 0);
+
+  for (var i = 0; i < targetShape.length; i++) {
+    // Compare from right to left
+    final idxA = shapeA.length - 1 - i;
+    final idxT = targetShape.length - 1 - i;
+
+    final dimA = idxA >= 0 ? shapeA[idxA] : 1;
+    final dimT = targetShape[idxT];
+
+    if (dimA == dimT) {
+      if (idxA >= 0) {
+        newStrides[idxT] = stridesA[idxA];
+      } else {
+        newStrides[idxT] = 0;
+      }
+    } else if (dimA == 1) {
+      newStrides[idxT] = 0;
+    } else {
+      throw ArgumentError(
+        'Shape $shapeA cannot be broadcast to target shape $targetShape',
+      );
+    }
+  }
+
+  return NDArray<T>.view(
+    a,
+    shape: targetShape,
+    strides: newStrides,
+    offsetElements: a.offsetElements,
+  );
+}

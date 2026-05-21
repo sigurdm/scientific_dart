@@ -3,7 +3,14 @@
 [![Pub Version](https://img.shields.io/pub/v/ndarray)](https://pub.dev/packages/ndarray)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-**ndarray** is a high-performance, FFI-accelerated N-dimensional array and numerical computing library for Dart, heavily inspired by NumPy. It features automatic resource management scopes (`NDArray.scope()`), unmanaged C-heap memory allocations, vectorised ufuncs, parallelized builds, and native OpenBLAS-backed linear algebra solvers.
+**ndarray** is a high-performance N-dimensional array and numerical computing library for Dart, heavily inspired by NumPy. It supports a rich suite of mathematical, signal processing, and linear algebra operations, including:
+
+- **Element-wise Mathematics**: Trigonometric (`sin`, `cos`, `tan`), hyperbolic (`sinh`, `cosh`, `tanh`), exponential (`exp`), and logarithmic (`log`) operations.
+- **Linear Algebra (OpenBLAS/LAPACK)**: Matrix multiplications (`matmul`), determinants (`det`), inversion (`inv`), QR, SVD decompositions, and linear system solvers (`solve`).
+- **Discrete Fourier Transforms**: Mixed-radix spectral mappings (`fft`, `ifft`) and spectrum shifts (`fftshift`, `ifftshift`).
+- **Geometry & Manipulation**: Stride-based zero-copy slices, transposes, shape views (`reshape`, `expand_dims`, `squeeze`), mesh grid spacers (`mgrid`, `ogrid`), repeating/tiling (`repeat`, `tile`), and block splitting (`split`, `array_split`, `hsplit`, `vsplit`).
+- **Statistics & Reductions**: Sum, product, mean, variance, standard deviation, and NaN-ignoring reductions (`nansum`, `nanmean`, `nanvar`, `nanstd`).
+- **RNG Distributions**: Normal (Gaussian), Poisson, and Binomial sample generation.
 
 ---
 
@@ -114,6 +121,18 @@ dependencies:
 
 These are automatically compiled on the fly via the modern Dart Native Assets system (integrated seamlessly into build/run pipelines) when executing your application or running tests. No manual compilation steps are necessary!
 This parallelizes compilation over available hardware CPU cores to complete setup in seconds.
+
+### Limitations relative to numpy.
+
+NdArray is not a drop in replacement for numpy.
+
+NDArrays are strictly numerical, and only supports a fixed number of dtypes. 
+The supported types are: int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, complex64, complex128.
+
+Memory is manually allocated and released. You can use NDArray.scope() to automatically release memory, but you still have to be aware of what you are doing. See [memory management](doc/memory_management.md).
+
+NDArrays support arbitrary non-contiguous strided layouts, including transposed column-major (Fortran-ordered) views.
+
 
 ---
 

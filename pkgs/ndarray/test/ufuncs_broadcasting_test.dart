@@ -260,11 +260,11 @@ void main() {
             3,
           ], DType.float64);
           final resNot = logical_not(a);
-          expect(resNot.data, [
-            1,
-            0,
-            0,
-          ]); // 0.0 is false (so not is 1), others are true (so not is 0)
+          expect(resNot.dtype, DType.boolean);
+          expect(
+            resNot.toList(),
+            [true, false, false],
+          ); // 0.0 is false (so not is true), others are true (so not is false)
         }),
       );
 
@@ -287,22 +287,25 @@ void main() {
           // m2 expanded: [[0, 1], [0, 1]]
 
           final andRes = logical_and(m1, m2);
+          expect(andRes.dtype, DType.boolean);
           expect(andRes.shape, [2, 2]);
           expect(andRes.toList(), [
-            0, 0, // 0&&0, 0&&1
-            0, 1, // 1&&0, 1&&1
+            false, false, // false&&false, false&&true
+            false, true, // true&&false, true&&true
           ]);
 
           final orRes = logical_or(m1, m2);
+          expect(orRes.dtype, DType.boolean);
           expect(orRes.toList(), [
-            0, 1, // 0||0, 0||1
-            1, 1, // 1||0, 1||1
+            false, true, // false||false, false||true
+            true, true, // true||false, true||true
           ]);
 
           final xorRes = logical_xor(m1, m2);
+          expect(xorRes.dtype, DType.boolean);
           expect(xorRes.toList(), [
-            0, 1, // 0^0, 0^1
-            1, 0, // 1^0, 1^1
+            false, true, // false^false, false^true
+            true, false, // true^false, true^true
           ]);
         }),
       );
