@@ -2197,6 +2197,168 @@ external void s_where_float(
 
 @ffi.Native<
   ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_clip_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> min,
+  ffi.Pointer<ffi.Int> stridesMin,
+  ffi.Pointer<ffi.Double> max,
+  ffi.Pointer<ffi.Int> stridesMax,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_clip_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> min,
+  ffi.Pointer<ffi.Int> stridesMin,
+  ffi.Pointer<ffi.Float> max,
+  ffi.Pointer<ffi.Int> stridesMax,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_clip_int64(
+  ffi.Pointer<ffi.Int64> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int64> min,
+  ffi.Pointer<ffi.Int> stridesMin,
+  ffi.Pointer<ffi.Int64> max,
+  ffi.Pointer<ffi.Int> stridesMax,
+  ffi.Pointer<ffi.Int64> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_clip_int32(
+  ffi.Pointer<ffi.Int32> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int32> min,
+  ffi.Pointer<ffi.Int> stridesMin,
+  ffi.Pointer<ffi.Int32> max,
+  ffi.Pointer<ffi.Int> stridesMax,
+  ffi.Pointer<ffi.Int32> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_clip_uint8(
+  ffi.Pointer<ffi.Uint8> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Uint8> min,
+  ffi.Pointer<ffi.Int> stridesMin,
+  ffi.Pointer<ffi.Uint8> max,
+  ffi.Pointer<ffi.Int> stridesMax,
+  ffi.Pointer<ffi.Uint8> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_clip_int16(
+  ffi.Pointer<ffi.Int16> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Int16> min,
+  ffi.Pointer<ffi.Int> stridesMin,
+  ffi.Pointer<ffi.Int16> max,
+  ffi.Pointer<ffi.Int> stridesMax,
+  ffi.Pointer<ffi.Int16> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
     ffi.Pointer<cpx_t>,
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<cpx_t>,

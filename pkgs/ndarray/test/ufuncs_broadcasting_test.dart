@@ -177,7 +177,7 @@ void main() {
       );
 
       test(
-        'clip',
+        'clip with scalar bounds',
         () => NDArray.scope(() {
           final a = NDArray.fromList(Float64List.fromList([-5.0, 1.5, 10.0]), [
             3,
@@ -188,6 +188,158 @@ void main() {
           // Verify Complex clip throws UnsupportedError
           final c = NDArray<Complex>.create([2], DType.complex128);
           expect(() => clip(c, min: -1.0, max: 5.0), throwsUnsupportedError);
+        }),
+      );
+
+      test(
+        'clip with array bounds (exact matching shape)',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(Float64List.fromList([1.0, 5.0, 10.0]), [
+            3,
+          ], DType.float64);
+          final minBounds = NDArray.fromList(
+            Float64List.fromList([2.0, 2.0, 2.0]),
+            [3],
+            DType.float64,
+          );
+          final maxBounds = NDArray.fromList(
+            Float64List.fromList([8.0, 8.0, 8.0]),
+            [3],
+            DType.float64,
+          );
+
+          final b = clipArray(a, min: minBounds, max: maxBounds);
+          expect(b.data, [2.0, 5.0, 8.0]);
+        }),
+      );
+
+      test(
+        'clip with broadcasted array bounds',
+        () => NDArray.scope(() {
+          // Input is 2x3 matrix
+          final a = NDArray.fromList(
+            Float64List.fromList([
+              1.0, 2.0, 3.0, // row 0
+              4.0, 5.0, 6.0, // row 1
+            ]),
+            [2, 3],
+            DType.float64,
+          );
+
+          // min bounds is a 1D row vector [2.5, 2.5, 2.5] (shape [3]) -> broadcasts to [2, 3]
+          final minBounds = NDArray.fromList(
+            Float64List.fromList([2.5, 2.5, 2.5]),
+            [3],
+            DType.float64,
+          );
+
+          // max bounds is a 2D column vector [[4.5], [4.5]] (shape [2, 1]) -> broadcasts to [2, 3]
+          final maxBounds = NDArray.fromList(Float64List.fromList([4.5, 4.5]), [
+            2,
+            1,
+          ], DType.float64);
+
+          // Clip bounds for row 0: min=2.5, max=4.5
+          // row 0 values: [1.0, 2.0, 3.0] -> clipped: [2.5, 2.5, 3.0]
+          // Clip bounds for row 1: min=2.5, max=4.5
+          // row 1 values: [4.0, 5.0, 6.0] -> clipped: [4.0, 4.5, 4.5]
+          final b = clipArray(a, min: minBounds, max: maxBounds);
+          expect(b.shape, [2, 3]);
+          expect(b.toList(), [2.5, 2.5, 3.0, 4.0, 4.5, 4.5]);
+        }),
+      );
+
+      test(
+        'clip with mixed scalar and array bounds on integer DType',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(Int32List.fromList([1, 5, 10]), [
+            3,
+          ], DType.int32);
+
+          // min is scalar, max is array
+          final maxBounds = NDArray.fromList(Int32List.fromList([3, 7, 12]), [
+            3,
+          ], DType.int32);
+          final minBounds = NDArray.fromList(Int32List.fromList([2]), [
+            1,
+          ], DType.int32);
+
+          final b = clipArray(a, min: minBounds, max: maxBounds);
+          expect(b.dtype, DType.int32);
+          expect(b.data, [2, 5, 10]);
+        }),
+      );
+
+      test(
+        'clip throws ArgumentError on incompatible shape broadcasting',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0]), [
+            3,
+          ], DType.float64);
+          final incompatible = NDArray.fromList(
+            Float64List.fromList([1.0, 2.0]),
+            [2],
+            DType.float64,
+          );
+          final maxBounds = NDArray.fromList(Float64List.fromList([5.0]), [
+            1,
+          ], DType.float64);
+
+          expect(
+            () => clipArray(a, min: incompatible, max: maxBounds),
+            throwsArgumentError,
+          );
+        }),
+      );
+      test(
+        'clip with one-sided (nullable) scalar bounds',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(Float64List.fromList([-5.0, 1.5, 10.0]), [
+            3,
+          ], DType.float64);
+
+          // Clip with min only
+          final b1 = clip(a, min: -1.0);
+          expect(b1.data, [-1.0, 1.5, 10.0]);
+
+          // Clip with max only
+          final b2 = clip(a, max: 5.0);
+          expect(b2.data, [-5.0, 1.5, 5.0]);
+
+          // Clip with neither (should return exact copy)
+          final b3 = clip(a);
+          expect(b3.data, [-5.0, 1.5, 10.0]);
+        }),
+      );
+
+      test(
+        'clipArray with one-sided (nullable) array bounds',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(Float64List.fromList([1.0, 5.0, 10.0]), [
+            3,
+          ], DType.float64);
+          final minBounds = NDArray.fromList(
+            Float64List.fromList([2.0, 2.0, 2.0]),
+            [3],
+            DType.float64,
+          );
+          final maxBounds = NDArray.fromList(
+            Float64List.fromList([8.0, 8.0, 8.0]),
+            [3],
+            DType.float64,
+          );
+
+          // Clip with min only
+          final b1 = clipArray(a, min: minBounds);
+          expect(b1.data, [2.0, 5.0, 10.0]);
+
+          // Clip with max only
+          final b2 = clipArray(a, max: maxBounds);
+          expect(b2.data, [1.0, 5.0, 8.0]);
+
+          // Clip with neither (should return exact copy)
+          final b3 = clipArray(a);
+          expect(b3.data, [1.0, 5.0, 10.0]);
         }),
       );
     });

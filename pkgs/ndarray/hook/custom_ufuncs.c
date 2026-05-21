@@ -3957,3 +3957,77 @@ void v_hamming_float(float *res, int M) {
         res[n] = 0.54f - 0.46f * cosf(pi2 * n / (M - 1));
     }
 }
+
+// ============================================================================
+// 14. STRIDED TERNARY CLIP FUNCTIONS FOR ALL NUMERIC TYPES
+// ============================================================================
+
+#define IMPLEMENT_S_CLIP(TYPE_NAME, TYPE) \
+void s_clip_##TYPE_NAME(const TYPE *a, const int *stridesA, \
+                        const TYPE *min_val, const int *stridesMin, \
+                        const TYPE *max_val, const int *stridesMax, \
+                        TYPE *res, const int *stridesRes, \
+                        const int *shape, int rank) { \
+    if (a == NULL || min_val == NULL || max_val == NULL || res == NULL || rank < 0 || rank > 8) return; \
+    int total_elements = 1; \
+    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
+    if (rank == 0) { \
+        TYPE val = a[0]; \
+        if (val < min_val[0]) val = min_val[0]; \
+        if (val > max_val[0]) val = max_val[0]; \
+        res[0] = val; \
+        return; \
+    } \
+    int is_contiguous = 1; \
+    int expected_stride = 1; \
+    for (int i = rank - 1; i >= 0; i--) { \
+        if (stridesA[i] != expected_stride || \
+            stridesMin[i] != expected_stride || \
+            stridesMax[i] != expected_stride || \
+            stridesRes[i] != expected_stride) { \
+            is_contiguous = 0; \
+            break; \
+        } \
+        expected_stride *= shape[i]; \
+    } \
+    if (is_contiguous) { \
+        for (int i = 0; i < total_elements; i++) { \
+            TYPE val = a[i]; \
+            if (val < min_val[i]) val = min_val[i]; \
+            if (val > max_val[i]) val = max_val[i]; \
+            res[i] = val; \
+        } \
+        return; \
+    } \
+    int coord[8] = {0}; \
+    int offsetA = 0, offsetMin = 0, offsetMax = 0, offsetRes = 0; \
+    for (int el = 0; el < total_elements; el++) { \
+        TYPE val = a[offsetA]; \
+        if (val < min_val[offsetMin]) val = min_val[offsetMin]; \
+        if (val > max_val[offsetMax]) val = max_val[offsetMax]; \
+        res[offsetRes] = val; \
+        for (int d = rank - 1; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shape[d]) { \
+                offsetA   += stridesA[d]; \
+                offsetMin += stridesMin[d]; \
+                offsetMax += stridesMax[d]; \
+                offsetRes += stridesRes[d]; \
+                break; \
+            } \
+            coord[d] = 0; \
+            offsetA   -= (shape[d] - 1) * stridesA[d]; \
+            offsetMin -= (shape[d] - 1) * stridesMin[d]; \
+            offsetMax -= (shape[d] - 1) * stridesMax[d]; \
+            offsetRes -= (shape[d] - 1) * stridesRes[d]; \
+        } \
+    } \
+}
+
+IMPLEMENT_S_CLIP(double, double)
+IMPLEMENT_S_CLIP(float, float)
+IMPLEMENT_S_CLIP(int64, int64_t)
+IMPLEMENT_S_CLIP(int32, int32_t)
+IMPLEMENT_S_CLIP(uint8, uint8_t)
+IMPLEMENT_S_CLIP(int16, int16_t)
+

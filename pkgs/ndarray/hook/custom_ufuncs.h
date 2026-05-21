@@ -837,4 +837,12 @@ void v_hanning_float(float *res, int M);
 void v_hamming_double(double *res, int M);
 void v_hamming_float(float *res, int M);
 
+/* Strided Ternary Clip Functions */
+void s_clip_double(const double *a, const int *stridesA, const double *min_val, const int *stridesMin, const double *max_val, const int *stridesMax, double *res, const int *stridesRes, const int *shape, int rank);
+void s_clip_float(const float *a, const int *stridesA, const float *min_val, const int *stridesMin, const float *max_val, const int *stridesMax, float *res, const int *stridesRes, const int *shape, int rank);
+void s_clip_int64(const int64_t *a, const int *stridesA, const int64_t *min_val, const int *stridesMin, const int64_t *max_val, const int *stridesMax, int64_t *res, const int *stridesRes, const int *shape, int rank);
+void s_clip_int32(const int32_t *a, const int *stridesA, const int32_t *min_val, const int *stridesMin, const int32_t *max_val, const int *stridesMax, int32_t *res, const int *stridesRes, const int *shape, int rank);
+void s_clip_uint8(const uint8_t *a, const int *stridesA, const uint8_t *min_val, const int *stridesMin, const uint8_t *max_val, const int *stridesMax, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_clip_int16(const int16_t *a, const int *stridesA, const int16_t *min_val, const int *stridesMin, const int16_t *max_val, const int *stridesMax, int16_t *res, const int *stridesRes, const int *shape, int rank);
+
 #endif /* CUSTOM_UFUNCS_H */

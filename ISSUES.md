@@ -63,7 +63,7 @@ When a task is completed, describe it in DONE.md file and remove it from this fi
 - **Edge Border Manipulations**: Exposing high-performance vectorized N-Dimensional padding `pad(a, pad_width, {mode: 'constant', constant_values: 0})` to support edge reflection, border replication, and zero-padding, which are extremely vital for Convolutional Neural Network (CNN) boundary gates, signal windowing, and numeric differential equation boundaries.
 
 ### 3.20 Broad-Boundary Array Clipping (clip)
-- **Broadcasting min/max bounds**: Expanding `clip(a, min, max)` to support **array bounds** that broadcast natively against the input array, allowing spatial envelope capping instead of rigid scalar limits.
+(Completed native broadcasting array bounds clipping feature)
 
 ---
 

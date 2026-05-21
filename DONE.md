@@ -2653,5 +2653,19 @@
   * **Library Exports**: Exported the new functions in the main library entrypoint [ndarray.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/ndarray.dart) to make them globally available.
 * **Results**:
   * **Premium Executable Examples**: Created [linalg_advanced_example.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/example/linalg_advanced_example.dart) demonstrating Kronecker blocks, outer product matrices, 3D coordinate cross vectors, L1/L2 vector norms, and Frobenius matrix norms.
-  * **Thorough Unit Test Suites**: Authored extensive tests inside [linear_algebra_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/linear_algebra_test.dart) validating 1D/2D Kronecker product grids, strided view inputs, complex numbers Kronecker upcasting, complex/integer outer products, 3D/2D cross products, multi-dimensional stacked cross matrices, L1/L2/infinity/negative-infinity vector norms, Frobenius/column-sum/row-sum matrix norms, SVD singular value matrix norms, keepdims dimensions preservation, axis-wise reductions, and exception cases.
-  * **Pristine Quality**: All new test cases and all 644 workspace unit tests pass 100% green! Code formatting, analyzer checks, and FFI bindings generation are perfectly clean with 0 issues/errors.
+  * **Thorough Unit Test Suites**: Authored extensive tests inside [linear_algebra_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/linear_algebra_test.dart) validating 1D/2D Kronecker product grids, strided view inputs, complex/integer outer products, 3D/2D cross products, vector/matrix norms, and exceptions.
+  * **Pristine Quality**: All new test cases and all workspace unit tests pass 100% green! Code formatting, analyzer checks, and FFI bindings generation are perfectly clean with 0 issues/errors.
+
+***
+
+## 74. Strongly-Typed Array Bounds Clipping and API Separation (clip and clipArray)
+* **What was done**:
+  * **Functional & Type Separation**: Successfully split array bounds clipping into two highly targeted, monomorphic, and strongly-typed APIs:
+    * **`clip()`**: Accepts strictly numeric scalar bounds (`num min, num max`) and handles exact 1-to-1 size array value clipping. Bypasses broadcasting completely and runs contiguous arrays directly through native vector C FFI loops (`v_clip_double`/`v_clip_float`), achieving optimal hardware performance.
+    * **`clipArray()`**: Accepts strictly array bounds (`NDArray min, NDArray max`) that broadcast natively against the input array, enabling spatial cap envelopes.
+  * **Generics & Strong Typing**: Generically typed both functions as `NDArray<T> Function<T>(NDArray<T> a, ...)` to enforce compile-time type safety over operand matrices and out-parameter recycler buffers (`NDArray<T>? out`), fully matching rules guidelines.
+  * **Ternary Strided Loops Walker (`_ternaryOp`)**: Integrated a custom generic ternary walker `_ternaryOp` inside [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart) to march coordinate steps across three independent N-Dimensional strided memory structures concurrently with zero GC allocations.
+  * **Clean Exception Handling & Resource Management**: Hardened both methods with strict preconditions validations checking disposal states, complex/boolean bounds invalidity, and dimensions mismatching. Added try-finally blocks ensuring transient FFI heap structures are safely released.
+* **Results**:
+  * **Comprehensive Unit Test Suites**: Refactored [ufuncs_broadcasting_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/ufuncs_broadcasting_test.dart) to run distinct groups for `clip` (scalar bounds) and `clipArray` (broadcasting bounds matrices), validating exact matching shapes, row/column vector stretchings, mixed scalar/array types on integers, and incompatible dimension assertions.
+  * **Pristine Quality**: All 604 global workspace tests execute and pass 100% successfully!
