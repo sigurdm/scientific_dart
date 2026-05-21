@@ -121,6 +121,18 @@ final class NDArray<T> implements ffi.Finalizable {
   /// The parent array if this is a view, to prevent it from being garbage collected.
   final NDArray? _parent;
 
+  /// Whether the backing native memory is externally/user-allocated.
+  final bool _isExternallyOwned;
+
+  /// Optional user-provided native finalizer to deallocate external memory.
+  final ffi.Pointer<
+    ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>
+  >?
+  _customNativeFinalizer;
+
+  /// The custom native finalizer instance for this array if it has one.
+  final ffi.NativeFinalizer? _customFinalizerInstance;
+
   /// The total number of elements in the n-dimensional array.
   int get size => shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
 
@@ -203,7 +215,18 @@ final class NDArray<T> implements ffi.Finalizable {
     required List<int> strides,
     required this.dtype,
     this.offsetElements = 0,
-  }) : shape = List<int>.unmodifiable(shape),
+    bool isExternallyOwned = false,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>?
+    customNativeFinalizer,
+  }) : _isExternallyOwned = isExternallyOwned,
+       _customNativeFinalizer = customNativeFinalizer,
+       _customFinalizerInstance =
+           (_parent == null &&
+               isExternallyOwned &&
+               customNativeFinalizer != null)
+           ? ffi.NativeFinalizer(customNativeFinalizer)
+           : null,
+       shape = List<int>.unmodifiable(shape),
        strides = List<int>.unmodifiable(strides),
        isContiguous = _checkContiguous(shape, strides) {
     assert(
@@ -224,7 +247,11 @@ final class NDArray<T> implements ffi.Finalizable {
       'Only the following allowed types are supported: Float64, Float32, Int64, Int32, Uint8, Int16, double, int, Complex, bool.',
     );
     if (_parent == null) {
-      _finalizer.attach(this, _pointer, detach: this);
+      if (!_isExternallyOwned) {
+        _finalizer.attach(this, _pointer, detach: this);
+      } else if (_customFinalizerInstance != null) {
+        _customFinalizerInstance.attach(this, _pointer, detach: this);
+      }
       final scope = Zone.current[_scopeKey] as _NDArrayScope?;
       scope?._track(this);
     }
@@ -685,6 +712,83 @@ final class NDArray<T> implements ffi.Finalizable {
       strides: strides,
       dtype: parent.dtype as DType<T>,
       offsetElements: viewOffsetElements,
+    );
+  }
+
+  /// Factory to create a new [NDArray] view backed by a user-allocated external C memory pointer.
+  ///
+  /// The user must ensure that [pointer] points to a valid block of contiguous memory
+  /// of at least `size * dtype.byteWidth` bytes, where `size` is the product of all dimensions in [shape].
+  ///
+  /// **Preconditions:**
+  /// - [pointer] must not be null or point to an invalid memory location.
+  /// - All dimensions in [shape] must be strictly non-negative ($\ge 0$).
+  ///
+  /// **Lifetime Management Options:**
+  /// - **Externally Managed (Default):** If [nativeFinalizer] is omitted or `null`, the array does not
+  ///   own the memory. Calling [dispose] will invalidate the array and any of its views, but will **not**
+  ///   free the raw C memory pointer. The user is fully responsible for freeing the memory.
+  /// - **Custom Finalization:** If [nativeFinalizer] is provided, it will be registered with a Dart
+  ///   [NativeFinalizer] to automatically deallocate the backing C pointer when this array is garbage collected,
+  ///   or when [dispose] is called.
+  ///
+  /// **Throws:**
+  /// - [ArgumentError] if any dimension in [shape] is negative.
+  ///
+  /// **Performance Considerations:**
+  /// - This is an $O(1)$ operation that performs zero copies, constructing a direct list view over
+  ///   the provided raw C memory address.
+  ///
+  /// **Example:**
+  /// {@example /example/external_memory_example.dart}
+  factory NDArray.fromPointer(
+    ffi.Pointer<ffi.Void> pointer,
+    List<int> shape,
+    DType<T> dtype, {
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>?
+    nativeFinalizer,
+    List<int>? strides,
+  }) {
+    final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+    final finalStrides = strides ?? computeCStrides(shape);
+
+    List<T> data;
+    switch (dtype) {
+      case DType.float64:
+        data = pointer.cast<ffi.Double>().asTypedList(totalSize) as List<T>;
+      case DType.float32:
+        data = pointer.cast<ffi.Float>().asTypedList(totalSize) as List<T>;
+      case DType.int32:
+        data = pointer.cast<ffi.Int32>().asTypedList(totalSize) as List<T>;
+      case DType.int64:
+        data = pointer.cast<ffi.Int64>().asTypedList(totalSize) as List<T>;
+      case DType.uint8:
+        data = pointer.cast<ffi.Uint8>().asTypedList(totalSize) as List<T>;
+      case DType.int16:
+        data = pointer.cast<ffi.Int16>().asTypedList(totalSize) as List<T>;
+      case DType.complex128:
+        data =
+            ComplexList(pointer.cast<ffi.Double>().asTypedList(totalSize * 2))
+                as List<T>;
+      case DType.complex64:
+        data =
+            ComplexList(pointer.cast<ffi.Float>().asTypedList(totalSize * 2))
+                as List<T>;
+      case DType.boolean:
+        data =
+            BoolList(pointer.cast<ffi.Uint8>().asTypedList(totalSize))
+                as List<T>;
+    }
+
+    return NDArray._(
+      pointer,
+      data,
+      null,
+      shape: shape,
+      strides: finalStrides,
+      dtype: dtype,
+      isExternallyOwned: true,
+      customNativeFinalizer: nativeFinalizer,
     );
   }
 
@@ -2673,8 +2777,20 @@ final class NDArray<T> implements ffi.Finalizable {
     if (_parent != null) return; // Views don't own memory
     if (_isDisposed) return; // Guard against double-free!
     _isDisposed = true;
-    _finalizer.detach(this);
-    malloc.free(_pointer);
+
+    if (!_isExternallyOwned) {
+      _finalizer.detach(this);
+      malloc.free(_pointer);
+    } else {
+      if (_customFinalizerInstance != null) {
+        _customFinalizerInstance.detach(this);
+      }
+      if (_customNativeFinalizer != null) {
+        final freeFunc = _customNativeFinalizer
+            .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+        freeFunc(_pointer);
+      }
+    }
   }
 
   @override

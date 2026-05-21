@@ -122,7 +122,7 @@ To create a buffer of the right shape for the result of a broadcasted operation,
 
 When returning a **view** (such as a `reshape`, `transpose`, `slice`, or index-view) of an internally allocated array from a scope, the backing array still belongs to the parent array.
 
-However, the detaching methods (`detachFromScope()` and `detachToParentScope()`) are will attach/detach the parent array!
+However, the detaching methods (`detachFromScope()` and `detachToParentScope()`) will attach/detach the parent array!
 
 Therefore, you can call detaching methods directly on the returned view, and the system will seamlessly promote the parent memory block, keeping the view fully valid and safe outside the scope:
 
@@ -141,5 +141,83 @@ NDArray<Float64> getReshapedSamples() {
   }); 
 }
 ```
+
+---
+
+## User-Allocated (External) Memory
+
+By default, `NDArray` allocations are made on the C heap via `malloc` or `calloc`, and their lifecycles are managed by Dart’s `NativeFinalizer` or `NDArray.scope`. However, there are situations (e.g., calling external native FFI libraries, or using custom C-side arena allocators) where it is much faster or necessary to wrap pre-existing native pointers directly without copying them.
+
+For this purpose, `ndarray` provides the `NDArray.fromPointer` factory constructor.
+
+### Wrapping an External Pointer (Zero-Copy)
+
+You can wrap any raw `ffi.Pointer<ffi.Void>` using `NDArray.fromPointer`. This is a constant-time $O(1)$ operation that performs no data copies, wrapping the pointer directly with Dart TypedData list views.
+
+`NDArray.fromPointer` offers two distinct lifetime management modes:
+
+#### 1. Externally Managed (Default)
+If you do **not** supply a `nativeFinalizer` argument, the `NDArray` does **not** own the backing memory:
+- Calling `dispose()` on the array will invalidate the array (causing subsequent access attempts to throw a `StateError`) and any views derived from it, but **will not free** the underlying C pointer.
+- The user is fully responsible for deallocating the pointer using the appropriate native allocator.
+- If the array is garbage collected by Dart, the backing C memory **will not** be automatically freed.
+
+```dart
+import 'dart:ffi' as ffi;
+import 'package:ffi/ffi.dart';
+import 'package:ndarray/ndarray.dart';
+
+void processExternalBuffer() {
+  // 1. External system/allocator allocates raw C memory
+  final ffi.Pointer<ffi.Double> rawBuffer = malloc<ffi.Double>(100);
+
+  // 2. Wrap it in an NDArray. Since no finalizer is passed, this is externally managed.
+  final arr = NDArray<double>.fromPointer(rawBuffer.cast(), [10, 10], DType.float64);
+
+  // 3. Run calculations on it zero-copy
+  final columnSlice = arr.slice([Slice.all(), Slice(start: 5)]);
+  
+  // 4. Invalidate Dart-side NDArrays when done
+  arr.dispose(); // ColumnSlice is also invalidated
+
+  // 5. External allocator cleans up the raw pointer
+  malloc.free(rawBuffer);
+}
+```
+
+#### 2. Custom Finalization (Self-Managed)
+If you pass a native function pointer to the `nativeFinalizer` argument, the `NDArray` **takes ownership** of the pointer's deallocation lifecycle:
+- It registers the pointer and function with a Dart `NativeFinalizer`. If the `NDArray` is garbage collected, the finalizer automatically executes the native deallocator.
+- Calling `dispose()` manually will detach the finalizer and immediately invoke the deallocation function on the backing pointer.
+
+```dart
+import 'dart:ffi' as ffi;
+import 'package:ffi/ffi.dart';
+import 'package:ndarray/ndarray.dart';
+
+void useSelfManagedBuffer() {
+  final ffi.Pointer<ffi.Double> rawBuffer = malloc<ffi.Double>(100);
+
+  // Wrap and pass malloc.nativeFree as the custom native finalizer.
+  // The array now owns the lifecycle of the buffer!
+  final arr = NDArray<double>.fromPointer(
+    rawBuffer.cast(),
+    [100],
+    DType.float64,
+    nativeFinalizer: malloc.nativeFree.cast(),
+  );
+
+  // Manual dispose detaches the finalizer and frees the raw pointer immediately
+  arr.dispose(); 
+}
+```
+
+### Crucial Safety Guidelines
+
+> [!WARNING]
+> Exposing raw pointer wrapping bypasses Dart's standard memory safety boundaries. Always adhere to the following guidelines:
+> 1. **No Dart Heap/GC Pinning:** You **cannot** wrap standard Dart-heap lists (e.g., `Float64List`) zero-copy using this factory. Dart's moving GC does not guarantee stable pointer addresses.
+> 2. **Avoid Use-After-Free:** If you use the *Externally Managed* mode, ensure the backing C pointer remains valid for the entire duration that the `NDArray` (or any of its views, transposes, or slices) is active.
+> 3. **Metadata Integrity:** You must guarantee that the provided `shape` and `strides` match the actual allocated size of the raw memory block. Incorrect metadata will lead to out-of-bounds reads/writes and hard segmentation faults.
 
 
