@@ -3908,3 +3908,52 @@ float r_norm_neg_inf_complex64(const cpx_f_t *src, int stride, int size) {
     }
     return min_val;
 }
+
+/* Window Functions */
+void v_hanning_double(double *res, int M) {
+    if (res == NULL || M <= 0) return;
+    if (M == 1) {
+        res[0] = 1.0;
+        return;
+    }
+    double pi2 = 2.0 * M_PI;
+    for (int n = 0; n < M; n++) {
+        res[n] = 0.5 - 0.5 * cos(pi2 * n / (M - 1));
+    }
+}
+
+void v_hanning_float(float *res, int M) {
+    if (res == NULL || M <= 0) return;
+    if (M == 1) {
+        res[0] = 1.0f;
+        return;
+    }
+    float pi2 = 2.0f * (float)M_PI;
+    for (int n = 0; n < M; n++) {
+        res[n] = 0.5f - 0.5f * cosf(pi2 * n / (M - 1));
+    }
+}
+
+void v_hamming_double(double *res, int M) {
+    if (res == NULL || M <= 0) return;
+    if (M == 1) {
+        res[0] = 1.0;
+        return;
+    }
+    double pi2 = 2.0 * M_PI;
+    for (int n = 0; n < M; n++) {
+        res[n] = 0.54 - 0.46 * cos(pi2 * n / (M - 1));
+    }
+}
+
+void v_hamming_float(float *res, int M) {
+    if (res == NULL || M <= 0) return;
+    if (M == 1) {
+        res[0] = 1.0f;
+        return;
+    }
+    float pi2 = 2.0f * (float)M_PI;
+    for (int n = 0; n < M; n++) {
+        res[n] = 0.54f - 0.46f * cosf(pi2 * n / (M - 1));
+    }
+}

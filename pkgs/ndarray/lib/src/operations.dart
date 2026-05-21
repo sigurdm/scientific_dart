@@ -10633,16 +10633,17 @@ dynamic _castValue(dynamic val, DType dtype) {
 /// ```dart
 /// final window = hanning(512);
 /// ```
-NDArray<double> hanning(int M, {DType dtype = DType.float64}) {
-  final resolvedDType = dtype as DType<double>;
-  if (M < 1) return NDArray.create([0], resolvedDType);
+NDArray<double> hanning(int M, {DType<double> dtype = DType.float64}) {
+  if (M < 1) return NDArray.create([0], dtype);
   if (M == 1) {
-    return NDArray.fromList([1.0], [1], resolvedDType);
+    return NDArray.fromList([1.0], [1], dtype);
   }
 
-  final res = NDArray.create([M], resolvedDType);
-  for (var n = 0; n < M; n++) {
-    res.data[n] = 0.5 - 0.5 * math.cos(2.0 * math.pi * n / (M - 1));
+  final res = NDArray.create([M], dtype);
+  if (dtype == DType.float32) {
+    v_hanning_float(res.pointer.cast(), M);
+  } else {
+    v_hanning_double(res.pointer.cast(), M);
   }
   return res;
 }
@@ -10655,16 +10656,17 @@ NDArray<double> hanning(int M, {DType dtype = DType.float64}) {
 /// ```dart
 /// final window = hamming(512);
 /// ```
-NDArray<double> hamming(int M, {DType dtype = DType.float64}) {
-  final resolvedDType = dtype as DType<double>;
-  if (M < 1) return NDArray.create([0], resolvedDType);
+NDArray<double> hamming(int M, {DType<double> dtype = DType.float64}) {
+  if (M < 1) return NDArray.create([0], dtype);
   if (M == 1) {
-    return NDArray.fromList([1.0], [1], resolvedDType);
+    return NDArray.fromList([1.0], [1], dtype);
   }
 
-  final res = NDArray.create([M], resolvedDType);
-  for (var n = 0; n < M; n++) {
-    res.data[n] = 0.54 - 0.46 * math.cos(2.0 * math.pi * n / (M - 1));
+  final res = NDArray.create([M], dtype);
+  if (dtype == DType.float32) {
+    v_hamming_float(res.pointer.cast(), M);
+  } else {
+    v_hamming_double(res.pointer.cast(), M);
   }
   return res;
 }

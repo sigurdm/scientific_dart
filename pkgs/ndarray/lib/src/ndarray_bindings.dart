@@ -14483,6 +14483,19 @@ external double r_norm_neg_inf_complex64(
   int size,
 );
 
+/// Window Functions
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
+external void v_hanning_double(ffi.Pointer<ffi.Double> res, int M);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
+external void v_hanning_float(ffi.Pointer<ffi.Float> res, int M);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
+external void v_hamming_double(ffi.Pointer<ffi.Double> res, int M);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
+external void v_hamming_float(ffi.Pointer<ffi.Float> res, int M);
+
 typedef ptrdiff_t = ffi.Long;
 typedef Dartptrdiff_t = int;
 

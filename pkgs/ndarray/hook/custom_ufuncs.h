@@ -831,4 +831,10 @@ float r_norm_lp_complex64(const cpx_f_t *src, int stride, int size, float p);
 float r_norm_inf_complex64(const cpx_f_t *src, int stride, int size);
 float r_norm_neg_inf_complex64(const cpx_f_t *src, int stride, int size);
 
+/* Window Functions */
+void v_hanning_double(double *res, int M);
+void v_hanning_float(float *res, int M);
+void v_hamming_double(double *res, int M);
+void v_hamming_float(float *res, int M);
+
 #endif /* CUSTOM_UFUNCS_H */
