@@ -3556,3 +3556,355 @@ int unpack_mask_c(
     }
     return count;
 }
+
+/* ============================================================================
+ * SECTION: Kronecker Product, Vector Outer Product, Cross Product & Norms
+ * ============================================================================
+ */
+
+#define DEFINE_KRON_IMPL(name, type, op) \
+void name(const type *a, const int *stridesA, const int *shapeA, \
+          const type *b, const int *stridesB, const int *shapeB, \
+          type *res, const int *stridesRes, const int *shapeRes, int rank) { \
+    if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return; \
+    int total_elements = 1; \
+    for (int i = 0; i < rank; i++) total_elements *= shapeRes[i]; \
+    int coord[8] = {0}; \
+    for (int el = 0; el < total_elements; el++) { \
+        int offsetA = 0; \
+        int offsetB = 0; \
+        int offsetRes = 0; \
+        for (int i = 0; i < rank; i++) { \
+            int ca = coord[i] / shapeB[i]; \
+            int cb = coord[i] % shapeB[i]; \
+            offsetA += ca * stridesA[i]; \
+            offsetB += cb * stridesB[i]; \
+            offsetRes += coord[i] * stridesRes[i]; \
+        } \
+        res[offsetRes] = op(a[offsetA], b[offsetB]); \
+        for (int d = rank - 1; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shapeRes[d]) break; \
+            coord[d] = 0; \
+        } \
+    } \
+}
+
+#define NUM_MUL_OP(x, y) ((x) * (y))
+#define BOOL_AND_OP(x, y) ((x) && (y))
+
+DEFINE_KRON_IMPL(s_kron_double, double, NUM_MUL_OP)
+DEFINE_KRON_IMPL(s_kron_float, float, NUM_MUL_OP)
+DEFINE_KRON_IMPL(s_kron_int64, int64_t, NUM_MUL_OP)
+DEFINE_KRON_IMPL(s_kron_int32, int32_t, NUM_MUL_OP)
+DEFINE_KRON_IMPL(s_kron_uint8, uint8_t, NUM_MUL_OP)
+DEFINE_KRON_IMPL(s_kron_int16, int16_t, NUM_MUL_OP)
+DEFINE_KRON_IMPL(s_kron_boolean, uint8_t, BOOL_AND_OP)
+
+static inline cpx_t cpx_kron_mul(cpx_t c1, cpx_t c2) {
+    cpx_t res;
+    res.r = c1.r * c2.r - c1.i * c2.i;
+    res.i = c1.r * c2.i + c1.i * c2.r;
+    return res;
+}
+
+static inline cpx_f_t cpx_f_kron_mul(cpx_f_t c1, cpx_f_t c2) {
+    cpx_f_t res;
+    res.r = c1.r * c2.r - c1.i * c2.i;
+    res.i = c1.r * c2.i + c1.i * c2.r;
+    return res;
+}
+
+DEFINE_KRON_IMPL(s_kron_complex128, cpx_t, cpx_kron_mul)
+DEFINE_KRON_IMPL(s_kron_complex64, cpx_f_t, cpx_f_kron_mul)
+
+/* Vector Outer Product */
+#define DEFINE_OUTER_IMPL(name, type, op) \
+void name(const type *a, int strideA, int sizeA, \
+          const type *b, int strideB, int sizeB, \
+          type *res, int strideRowRes, int strideColRes) { \
+    if (a == NULL || b == NULL || res == NULL || sizeA <= 0 || sizeB <= 0) return; \
+    for (int i = 0; i < sizeA; i++) { \
+        type valA = a[i * strideA]; \
+        for (int j = 0; j < sizeB; j++) { \
+            res[i * strideRowRes + j * strideColRes] = op(valA, b[j * strideB]); \
+        } \
+    } \
+}
+
+DEFINE_OUTER_IMPL(s_outer_double, double, NUM_MUL_OP)
+DEFINE_OUTER_IMPL(s_outer_float, float, NUM_MUL_OP)
+DEFINE_OUTER_IMPL(s_outer_int64, int64_t, NUM_MUL_OP)
+DEFINE_OUTER_IMPL(s_outer_int32, int32_t, NUM_MUL_OP)
+DEFINE_OUTER_IMPL(s_outer_uint8, uint8_t, NUM_MUL_OP)
+DEFINE_OUTER_IMPL(s_outer_int16, int16_t, NUM_MUL_OP)
+DEFINE_OUTER_IMPL(s_outer_boolean, uint8_t, BOOL_AND_OP)
+DEFINE_OUTER_IMPL(s_outer_complex128, cpx_t, cpx_kron_mul)
+DEFINE_OUTER_IMPL(s_outer_complex64, cpx_f_t, cpx_f_kron_mul)
+
+/* Vector Cross Product */
+#define DEFINE_CROSS_3D_IMPL(name, type, op_mul, op_sub) \
+void name(const type *a, int strideA, const type *b, int strideB, type *res, int strideRes) { \
+    type a0 = a[0], a1 = a[strideA], a2 = a[2 * strideA]; \
+    type b0 = b[0], b1 = b[strideB], b2 = b[2 * strideB]; \
+    res[0] = op_sub(op_mul(a1, b2), op_mul(a2, b1)); \
+    res[strideRes] = op_sub(op_mul(a2, b0), op_mul(a0, b2)); \
+    res[2 * strideRes] = op_sub(op_mul(a0, b1), op_mul(a1, b0)); \
+}
+
+#define DEFINE_CROSS_2D_IMPL(name, type, op_mul, op_sub) \
+void name(const type *a, int strideA, const type *b, int strideB, type *res) { \
+    type a0 = a[0], a1 = a[strideA]; \
+    type b0 = b[0], b1 = b[strideB]; \
+    res[0] = op_sub(op_mul(a0, b1), op_mul(a1, b0)); \
+}
+
+#define NUM_SUB_OP(x, y) ((x) - (y))
+#define BOOL_SUB_OP(x, y) ((x) ^ (y))
+
+DEFINE_CROSS_3D_IMPL(s_cross_3d_double, double, NUM_MUL_OP, NUM_SUB_OP)
+DEFINE_CROSS_2D_IMPL(s_cross_2d_double, double, NUM_MUL_OP, NUM_SUB_OP)
+
+DEFINE_CROSS_3D_IMPL(s_cross_3d_float, float, NUM_MUL_OP, NUM_SUB_OP)
+DEFINE_CROSS_2D_IMPL(s_cross_2d_float, float, NUM_MUL_OP, NUM_SUB_OP)
+
+DEFINE_CROSS_3D_IMPL(s_cross_3d_int64, int64_t, NUM_MUL_OP, NUM_SUB_OP)
+DEFINE_CROSS_2D_IMPL(s_cross_2d_int64, int64_t, NUM_MUL_OP, NUM_SUB_OP)
+
+DEFINE_CROSS_3D_IMPL(s_cross_3d_int32, int32_t, NUM_MUL_OP, NUM_SUB_OP)
+DEFINE_CROSS_2D_IMPL(s_cross_2d_int32, int32_t, NUM_MUL_OP, NUM_SUB_OP)
+
+DEFINE_CROSS_3D_IMPL(s_cross_3d_uint8, uint8_t, NUM_MUL_OP, NUM_SUB_OP)
+DEFINE_CROSS_2D_IMPL(s_cross_2d_uint8, uint8_t, NUM_MUL_OP, NUM_SUB_OP)
+
+DEFINE_CROSS_3D_IMPL(s_cross_3d_int16, int16_t, NUM_MUL_OP, NUM_SUB_OP)
+DEFINE_CROSS_2D_IMPL(s_cross_2d_int16, int16_t, NUM_MUL_OP, NUM_SUB_OP)
+
+DEFINE_CROSS_3D_IMPL(s_cross_3d_boolean, uint8_t, BOOL_AND_OP, BOOL_SUB_OP)
+DEFINE_CROSS_2D_IMPL(s_cross_2d_boolean, uint8_t, BOOL_AND_OP, BOOL_SUB_OP)
+
+DEFINE_CROSS_3D_IMPL(s_cross_3d_complex128, cpx_t, cpx_kron_mul, cpx_sub)
+DEFINE_CROSS_2D_IMPL(s_cross_2d_complex128, cpx_t, cpx_kron_mul, cpx_sub)
+
+DEFINE_CROSS_3D_IMPL(s_cross_3d_complex64, cpx_f_t, cpx_f_kron_mul, cpx_sub_f)
+DEFINE_CROSS_2D_IMPL(s_cross_2d_complex64, cpx_f_t, cpx_f_kron_mul, cpx_sub_f)
+
+/* Vector Norm Reductions */
+#define DEFINE_NORM_REDUCTIONS(suffix, type) \
+double r_norm_l1_##suffix(const type *src, int stride, int size) { \
+    if (src == NULL || size <= 0) return 0.0; \
+    double sum = 0.0; \
+    for (int i = 0; i < size; i++) { \
+        double val = (double)src[i * stride]; \
+        sum += val >= 0 ? val : -val; \
+    } \
+    return sum; \
+} \
+double r_norm_l2_##suffix(const type *src, int stride, int size) { \
+    if (src == NULL || size <= 0) return 0.0; \
+    double sum = 0.0; \
+    for (int i = 0; i < size; i++) { \
+        double val = (double)src[i * stride]; \
+        sum += val * val; \
+    } \
+    return sum; \
+} \
+double r_norm_lp_##suffix(const type *src, int stride, int size, double p) { \
+    if (src == NULL || size <= 0) return 0.0; \
+    double sum = 0.0; \
+    for (int i = 0; i < size; i++) { \
+        double val = (double)src[i * stride]; \
+        double abs_val = val >= 0 ? val : -val; \
+        sum += pow(abs_val, p); \
+    } \
+    return sum; \
+} \
+double r_norm_inf_##suffix(const type *src, int stride, int size) { \
+    if (src == NULL || size <= 0) return 0.0; \
+    double max_val = -1.0; \
+    for (int i = 0; i < size; i++) { \
+        double val = (double)src[i * stride]; \
+        double abs_val = val >= 0 ? val : -val; \
+        if (abs_val > max_val || max_val < 0) max_val = abs_val; \
+    } \
+    return max_val; \
+} \
+double r_norm_neg_inf_##suffix(const type *src, int stride, int size) { \
+    if (src == NULL || size <= 0) return 0.0; \
+    double min_val = -1.0; \
+    for (int i = 0; i < size; i++) { \
+        double val = (double)src[i * stride]; \
+        double abs_val = val >= 0 ? val : -val; \
+        if (abs_val < min_val || min_val < 0) min_val = abs_val; \
+    } \
+    return min_val; \
+}
+
+DEFINE_NORM_REDUCTIONS(double, double)
+
+#define DEFINE_NORM_REDUCTIONS_FLOAT(suffix, type) \
+float r_norm_l1_##suffix(const type *src, int stride, int size) { \
+    if (src == NULL || size <= 0) return 0.0f; \
+    float sum = 0.0f; \
+    for (int i = 0; i < size; i++) { \
+        float val = (float)src[i * stride]; \
+        sum += val >= 0 ? val : -val; \
+    } \
+    return sum; \
+} \
+float r_norm_l2_##suffix(const type *src, int stride, int size) { \
+    if (src == NULL || size <= 0) return 0.0f; \
+    float sum = 0.0f; \
+    for (int i = 0; i < size; i++) { \
+        float val = (float)src[i * stride]; \
+        sum += val * val; \
+    } \
+    return sum; \
+} \
+float r_norm_lp_##suffix(const type *src, int stride, int size, float p) { \
+    if (src == NULL || size <= 0) return 0.0f; \
+    float sum = 0.0f; \
+    for (int i = 0; i < size; i++) { \
+        float val = (float)src[i * stride]; \
+        float abs_val = val >= 0 ? val : -val; \
+        sum += powf(abs_val, p); \
+    } \
+    return sum; \
+} \
+float r_norm_inf_##suffix(const type *src, int stride, int size) { \
+    if (src == NULL || size <= 0) return 0.0f; \
+    float max_val = -1.0f; \
+    for (int i = 0; i < size; i++) { \
+        float val = (float)src[i * stride]; \
+        float abs_val = val >= 0 ? val : -val; \
+        if (abs_val > max_val || max_val < 0) max_val = abs_val; \
+    } \
+    return max_val; \
+} \
+float r_norm_neg_inf_##suffix(const type *src, int stride, int size) { \
+    if (src == NULL || size <= 0) return 0.0f; \
+    float min_val = -1.0f; \
+    for (int i = 0; i < size; i++) { \
+        float val = (float)src[i * stride]; \
+        float abs_val = val >= 0 ? val : -val; \
+        if (abs_val < min_val || min_val < 0) min_val = abs_val; \
+    } \
+    return min_val; \
+}
+
+DEFINE_NORM_REDUCTIONS_FLOAT(float, float)
+
+/* Complex Norms */
+double r_norm_l1_complex128(const cpx_t *src, int stride, int size) {
+    if (src == NULL || size <= 0) return 0.0;
+    double sum = 0.0;
+    for (int i = 0; i < size; i++) {
+        double r = src[i * stride].r;
+        double imag = src[i * stride].i;
+        sum += sqrt(r * r + imag * imag);
+    }
+    return sum;
+}
+
+double r_norm_l2_complex128(const cpx_t *src, int stride, int size) {
+    if (src == NULL || size <= 0) return 0.0;
+    double sum = 0.0;
+    for (int i = 0; i < size; i++) {
+        double r = src[i * stride].r;
+        double imag = src[i * stride].i;
+        sum += r * r + imag * imag;
+    }
+    return sum;
+}
+
+double r_norm_lp_complex128(const cpx_t *src, int stride, int size, double p) {
+    if (src == NULL || size <= 0) return 0.0;
+    double sum = 0.0;
+    for (int i = 0; i < size; i++) {
+        double r = src[i * stride].r;
+        double imag = src[i * stride].i;
+        sum += pow(sqrt(r * r + imag * imag), p);
+    }
+    return sum;
+}
+
+double r_norm_inf_complex128(const cpx_t *src, int stride, int size) {
+    if (src == NULL || size <= 0) return 0.0;
+    double max_val = -1.0;
+    for (int i = 0; i < size; i++) {
+        double r = src[i * stride].r;
+        double imag = src[i * stride].i;
+        double val = sqrt(r * r + imag * imag);
+        if (val > max_val || max_val < 0) max_val = val;
+    }
+    return max_val;
+}
+
+double r_norm_neg_inf_complex128(const cpx_t *src, int stride, int size) {
+    if (src == NULL || size <= 0) return 0.0;
+    double min_val = -1.0;
+    for (int i = 0; i < size; i++) {
+        double r = src[i * stride].r;
+        double imag = src[i * stride].i;
+        double val = sqrt(r * r + imag * imag);
+        if (val < min_val || min_val < 0) min_val = val;
+    }
+    return min_val;
+}
+
+float r_norm_l1_complex64(const cpx_f_t *src, int stride, int size) {
+    if (src == NULL || size <= 0) return 0.0f;
+    float sum = 0.0f;
+    for (int i = 0; i < size; i++) {
+        float r = src[i * stride].r;
+        float imag = src[i * stride].i;
+        sum += sqrtf(r * r + imag * imag);
+    }
+    return sum;
+}
+
+float r_norm_l2_complex64(const cpx_f_t *src, int stride, int size) {
+    if (src == NULL || size <= 0) return 0.0f;
+    float sum = 0.0f;
+    for (int i = 0; i < size; i++) {
+        float r = src[i * stride].r;
+        float imag = src[i * stride].i;
+        sum += r * r + imag * imag;
+    }
+    return sum;
+}
+
+float r_norm_lp_complex64(const cpx_f_t *src, int stride, int size, float p) {
+    if (src == NULL || size <= 0) return 0.0f;
+    float sum = 0.0f;
+    for (int i = 0; i < size; i++) {
+        float r = src[i * stride].r;
+        float imag = src[i * stride].i;
+        sum += powf(sqrtf(r * r + imag * imag), p);
+    }
+    return sum;
+}
+
+float r_norm_inf_complex64(const cpx_f_t *src, int stride, int size) {
+    if (src == NULL || size <= 0) return 0.0f;
+    float max_val = -1.0f;
+    for (int i = 0; i < size; i++) {
+        float r = src[i * stride].r;
+        float imag = src[i * stride].i;
+        float val = sqrtf(r * r + imag * imag);
+        if (val > max_val || max_val < 0) max_val = val;
+    }
+    return max_val;
+}
+
+float r_norm_neg_inf_complex64(const cpx_f_t *src, int stride, int size) {
+    if (src == NULL || size <= 0) return 0.0f;
+    float min_val = -1.0f;
+    for (int i = 0; i < size; i++) {
+        float r = src[i * stride].r;
+        float imag = src[i * stride].i;
+        float val = sqrtf(r * r + imag * imag);
+        if (val < min_val || min_val < 0) min_val = val;
+    }
+    return min_val;
+}

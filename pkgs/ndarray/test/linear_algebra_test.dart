@@ -1,5 +1,6 @@
 import 'package:ndarray/ndarray.dart';
 import 'package:test/test.dart';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 void main() {
@@ -1031,6 +1032,443 @@ void main() {
           // slice 1: [[5, 6], [7, 8]] -> det = -2
           expect(d.data[0], closeTo(-2.0, 1e-9));
           expect(d.data[1], closeTo(-2.0, 1e-9));
+        }),
+      );
+    });
+
+    group('Advanced Linear Algebra (kron, outer, cross, norm) tests', () {
+      test(
+        'Kronecker product (kron) tests',
+        () => NDArray.scope(() {
+          // 1D vector kron
+          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final b = NDArray.fromList([3.0, 4.0], [2], DType.float64);
+          final res1 = kron(a, b);
+          expect(res1.shape, [4]);
+          expect(res1.dtype, DType.float64);
+          expect(res1.toList(), [3.0, 4.0, 6.0, 8.0]);
+
+          // 2D matrix kron
+          final a2 = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          final b2 = NDArray.fromList(
+            [0.0, 5.0, 6.0, 7.0],
+            [2, 2],
+            DType.float64,
+          );
+          final res2 = kron(a2, b2);
+          expect(res2.shape, [4, 4]);
+          expect(res2.toList(), [
+            0.0,
+            5.0,
+            0.0,
+            10.0,
+            6.0,
+            7.0,
+            12.0,
+            14.0,
+            0.0,
+            15.0,
+            0.0,
+            20.0,
+            18.0,
+            21.0,
+            24.0,
+            28.0,
+          ]);
+
+          // Strided view inputs
+          final viewA = a2.transpose();
+          final resView = kron(viewA, b2);
+          expect(resView.shape, [4, 4]);
+
+          // Complex types
+          final ac = NDArray.fromList(
+            [Complex(1.0, 2.0)],
+            [1],
+            DType.complex128,
+          );
+          final bc = NDArray.fromList(
+            [Complex(3.0, 4.0)],
+            [1],
+            DType.complex128,
+          );
+          final resc = kron(ac, bc);
+          expect(resc.dtype, DType.complex128);
+          expect(resc.data[0].real, -5.0);
+          expect(resc.data[0].imag, 10.0);
+        }),
+      );
+
+      test(
+        'Vector Outer Product (outer) tests',
+        () => NDArray.scope(() {
+          // Basic outer product
+          final u = NDArray.fromList([1, 2], [2], DType.int32);
+          final v = NDArray.fromList([3, 4, 5], [3], DType.int32);
+          final res = outer(u, v);
+          expect(res.shape, [2, 3]);
+          expect(res.toList(), [3, 4, 5, 6, 8, 10]);
+
+          // Complex outer product
+          final uc = NDArray.fromList(
+            [Complex(1.0, 0.0)],
+            [1],
+            DType.complex128,
+          );
+          final vc = NDArray.fromList(
+            [Complex(0.0, 2.0)],
+            [1],
+            DType.complex128,
+          );
+          final resc = outer(uc, vc);
+          expect(resc.dtype, DType.complex128);
+          expect(resc.data[0].real, 0.0);
+          expect(resc.data[0].imag, 2.0);
+        }),
+      );
+
+      test(
+        'Vector Cross Product (cross) tests',
+        () => NDArray.scope(() {
+          // 3D cross product
+          final v1 = NDArray.fromList([1.0, 0.0, 0.0], [3], DType.float64);
+          final v2 = NDArray.fromList([0.0, 1.0, 0.0], [3], DType.float64);
+          final res3d = cross(v1, v2);
+          expect(res3d.shape, [3]);
+          expect(res3d.toList(), [0.0, 0.0, 1.0]);
+
+          // 2D cross product (returns scalar/z-component)
+          final u1 = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final u2 = NDArray.fromList([3.0, 4.0], [2], DType.float64);
+          final res2d = cross(u1, u2);
+          expect(res2d.shape, []);
+          expect(res2d.data[0], -2.0);
+
+          // Stacked/multidimensional cross product
+          final sa = NDArray.fromList(
+            [1.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+            [2, 3],
+            DType.float64,
+          );
+          final sb = NDArray.fromList(
+            [0.0, 1.0, 0.0, 1.0, 0.0, 0.0],
+            [2, 3],
+            DType.float64,
+          );
+          final resStack = cross(sa, sb);
+          expect(resStack.shape, [2, 3]);
+          expect(resStack.toList(), [0.0, 0.0, 1.0, 0.0, 0.0, -1.0]);
+        }),
+      );
+
+      test(
+        'Vector/Matrix Norm (norm) tests',
+        () => NDArray.scope(() {
+          // 1D Vector Norms
+          final x = NDArray.fromList(
+            [1.0, -2.0, 3.0, -4.0],
+            [4],
+            DType.float64,
+          );
+          expect(norm(x, ord: 1).data[0], 10.0);
+          expect(norm(x, ord: 2).data[0], closeTo(math.sqrt(30.0), 1e-9));
+          expect(norm(x, ord: double.infinity).data[0], 4.0);
+          expect(norm(x, ord: double.negativeInfinity).data[0], 1.0);
+
+          // Matrix Norms
+          final m = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          expect(norm(m, ord: 'fro').data[0], closeTo(math.sqrt(30.0), 1e-9));
+          expect(norm(m, ord: 1).data[0], 6.0); // max of col sums ([4, 6])
+          expect(
+            norm(m, ord: double.infinity).data[0],
+            7.0,
+          ); // max of row sums ([3, 7])
+
+          // Singular value matrix norms (ord=2)
+          final sNorm = norm(m, ord: 2);
+          expect(sNorm.data[0], greaterThan(0.0));
+
+          // keepdims support
+          final kd = norm(x, ord: 1, keepdims: true);
+          expect(kd.shape, [1]);
+          expect(kd.data[0], 10.0);
+
+          // Axis reductions
+          final m3 = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          final normAxis = norm(m3, ord: 1, axis: 0);
+          expect(normAxis.shape, [2]);
+          expect(normAxis.data[0], 4.0); // 1 + 3
+          expect(normAxis.data[1], 6.0); // 2 + 4
+        }),
+      );
+
+      test(
+        'Kronecker product (kron) all dtypes coverage',
+        () => NDArray.scope(() {
+          final dtypes = [
+            DType.float64,
+            DType.float32,
+            DType.int64,
+            DType.int32,
+            DType.uint8,
+            DType.int16,
+            DType.complex128,
+            DType.complex64,
+            DType.boolean,
+          ];
+
+          for (final dtype in dtypes) {
+            final a = dtype == DType.boolean
+                ? NDArray.fromList([true, false], [2], DType.boolean)
+                : (dtype.isComplex
+                      ? NDArray.fromList(
+                          [Complex(1.0, 0.0), Complex(2.0, 0.0)],
+                          [2],
+                          dtype,
+                        )
+                      : (dtype.isFloating
+                            ? NDArray.fromList([1.0, 2.0], [2], dtype)
+                            : NDArray.fromList([1, 2], [2], dtype)));
+
+            final b = dtype == DType.boolean
+                ? NDArray.fromList([true, true], [2], DType.boolean)
+                : (dtype.isComplex
+                      ? NDArray.fromList(
+                          [Complex(3.0, 0.0), Complex(4.0, 0.0)],
+                          [2],
+                          dtype,
+                        )
+                      : (dtype.isFloating
+                            ? NDArray.fromList([3.0, 4.0], [2], dtype)
+                            : NDArray.fromList([3, 4], [2], dtype)));
+
+            final res = kron(a, b);
+            expect(res.shape, [4]);
+            final expectedDType = dtype == DType.boolean ? DType.uint8 : dtype;
+            expect(res.dtype, expectedDType);
+
+            if (dtype == DType.boolean) {
+              expect(res.toList(), [1, 1, 0, 0]);
+            } else if (dtype.isComplex) {
+              expect(res.data[0].real, 3.0);
+              expect(res.data[1].real, 4.0);
+              expect(res.data[2].real, 6.0);
+              expect(res.data[3].real, 8.0);
+            } else {
+              expect(
+                res.toList(),
+                [
+                  3.0,
+                  4.0,
+                  6.0,
+                  8.0,
+                ].map((x) => dtype.isFloating ? x : x.toInt()).toList(),
+              );
+            }
+          }
+        }),
+      );
+
+      test(
+        'Vector Outer Product (outer) all dtypes coverage',
+        () => NDArray.scope(() {
+          final dtypes = [
+            DType.float64,
+            DType.float32,
+            DType.int64,
+            DType.int32,
+            DType.uint8,
+            DType.int16,
+            DType.complex128,
+            DType.complex64,
+            DType.boolean,
+          ];
+
+          for (final dtype in dtypes) {
+            final a = dtype == DType.boolean
+                ? NDArray.fromList([true, false], [2], DType.boolean)
+                : (dtype.isComplex
+                      ? NDArray.fromList(
+                          [Complex(2.0, 0.0), Complex(3.0, 0.0)],
+                          [2],
+                          dtype,
+                        )
+                      : (dtype.isFloating
+                            ? NDArray.fromList([2.0, 3.0], [2], dtype)
+                            : NDArray.fromList([2, 3], [2], dtype)));
+
+            final b = dtype == DType.boolean
+                ? NDArray.fromList([true, true], [2], DType.boolean)
+                : (dtype.isComplex
+                      ? NDArray.fromList(
+                          [Complex(4.0, 0.0), Complex(5.0, 0.0)],
+                          [2],
+                          dtype,
+                        )
+                      : (dtype.isFloating
+                            ? NDArray.fromList([4.0, 5.0], [2], dtype)
+                            : NDArray.fromList([4, 5], [2], dtype)));
+
+            final res = outer(a, b);
+            expect(res.shape, [2, 2]);
+            final expectedDType = dtype == DType.boolean ? DType.uint8 : dtype;
+            expect(res.dtype, expectedDType);
+
+            if (dtype == DType.boolean) {
+              expect(res.toList(), [1, 1, 0, 0]);
+            } else if (dtype.isComplex) {
+              expect(res.data[0].real, 8.0);
+              expect(res.data[1].real, 10.0);
+              expect(res.data[2].real, 12.0);
+              expect(res.data[3].real, 15.0);
+            } else {
+              expect(
+                res.toList(),
+                [
+                  8.0,
+                  10.0,
+                  12.0,
+                  15.0,
+                ].map((x) => dtype.isFloating ? x : x.toInt()).toList(),
+              );
+            }
+          }
+        }),
+      );
+
+      test(
+        'Vector Cross Product (cross) all dtypes coverage',
+        () => NDArray.scope(() {
+          final dtypes = [
+            DType.float64,
+            DType.float32,
+            DType.int64,
+            DType.int32,
+            DType.uint8,
+            DType.int16,
+            DType.complex128,
+            DType.complex64,
+            DType.boolean,
+          ];
+
+          for (final dtype in dtypes) {
+            final a = dtype == DType.boolean
+                ? NDArray.fromList([true, false, false], [3], DType.boolean)
+                : (dtype.isComplex
+                      ? NDArray.fromList(
+                          [
+                            Complex(1.0, 0.0),
+                            Complex(0.0, 0.0),
+                            Complex(0.0, 0.0),
+                          ],
+                          [3],
+                          dtype,
+                        )
+                      : (dtype.isFloating
+                            ? NDArray.fromList([1.0, 0.0, 0.0], [3], dtype)
+                            : NDArray.fromList([1, 0, 0], [3], dtype)));
+
+            final b = dtype == DType.boolean
+                ? NDArray.fromList([false, true, false], [3], DType.boolean)
+                : (dtype.isComplex
+                      ? NDArray.fromList(
+                          [
+                            Complex(0.0, 0.0),
+                            Complex(1.0, 0.0),
+                            Complex(0.0, 0.0),
+                          ],
+                          [3],
+                          dtype,
+                        )
+                      : (dtype.isFloating
+                            ? NDArray.fromList([0.0, 1.0, 0.0], [3], dtype)
+                            : NDArray.fromList([0, 1, 0], [3], dtype)));
+
+            final res = cross(a, b);
+            expect(res.shape, [3]);
+            final expectedDType = dtype == DType.boolean ? DType.uint8 : dtype;
+            expect(res.dtype, expectedDType);
+
+            if (dtype == DType.boolean) {
+              expect(res.toList(), [0, 0, 1]);
+            } else if (dtype.isComplex) {
+              expect(res.data[0].real, 0.0);
+              expect(res.data[1].real, 0.0);
+              expect(res.data[2].real, 1.0);
+            } else {
+              expect(
+                res.toList(),
+                [
+                  0.0,
+                  0.0,
+                  1.0,
+                ].map((x) => dtype.isFloating ? x : x.toInt()).toList(),
+              );
+            }
+          }
+        }),
+      );
+
+      test(
+        'Vector Norm (norm) all dtypes coverage',
+        () => NDArray.scope(() {
+          final dtypes = [
+            DType.float64,
+            DType.float32,
+            DType.int64,
+            DType.int32,
+            DType.uint8,
+            DType.int16,
+            DType.complex128,
+            DType.complex64,
+            DType.boolean,
+          ];
+
+          for (final dtype in dtypes) {
+            final x = dtype == DType.boolean
+                ? NDArray.fromList([true, false, true], [3], DType.boolean)
+                : (dtype.isComplex
+                      ? NDArray.fromList(
+                          [
+                            Complex(1.0, 0.0),
+                            Complex(-2.0, 0.0),
+                            Complex(3.0, 0.0),
+                          ],
+                          [3],
+                          dtype,
+                        )
+                      : (dtype.isFloating
+                            ? NDArray.fromList([1.0, -2.0, 3.0], [3], dtype)
+                            : NDArray.fromList([1, -2, 3], [3], dtype)));
+
+            final res = norm(x, ord: 1);
+            expect(res.shape, []);
+            final expectedDType =
+                (dtype == DType.float32 || dtype == DType.complex64)
+                ? DType.float32
+                : DType.float64;
+            expect(res.dtype, expectedDType);
+
+            if (dtype == DType.boolean) {
+              expect(res.data[0], 2.0);
+            } else if (dtype == DType.uint8) {
+              expect(res.data[0], 258.0);
+            } else {
+              expect(res.data[0], 6.0);
+            }
+          }
         }),
       );
     });

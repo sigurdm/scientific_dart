@@ -25,14 +25,8 @@ When a task is completed, describe it in DONE.md file and remove it from this fi
 - **Sampling**: `choice()` (random selection from an array), `shuffle()` (in-place shuffling), and `permutation()`.
 - **Types**: Expansion to `uint8` and `int16` for image/audio processing.
 
-### 3.5 Advanced Linear Algebra & Vector Calculus (Roadmap)
-- **Tensors & Matrices**:
-  - `kron(NDArray a, NDArray b)`: Kronecker product of two arrays.
-- **Vector Calculus**:
-  - `cross(NDArray a, NDArray b)`: Vector cross product in 3D space.
-  - `outer(NDArray a, NDArray b)`: Vector outer product.
-- **Solvers & Norms**:
-  - `norm(NDArray a, {dynamic ord, int? axis})`: Calculate vector/matrix norms. Expose standard L1, L2 (Frobenius), and Chebyshev infinity norms, supporting Axis-wise reductions cleanly!
+### 3.5 Advanced Linear Algebra & Vector Calculus
+(Completed Kronecker product, outer product, cross product, and multi-dimensional vector/matrix norms)
 
 ### 3.6 Calculus & Cumulative Accumulations
 - **Cumulative ufuncs**: (cumsum() and cumprod() ufuncs have been fully resolved!)

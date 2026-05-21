@@ -728,4 +728,107 @@ int unpack_mask_c(
     int *out_indices
 );
 
+/* Kronecker Product */
+void s_kron_double(const double *a, const int *stridesA, const int *shapeA,
+                   const double *b, const int *stridesB, const int *shapeB,
+                   double *res, const int *stridesRes, const int *shapeRes, int rank);
+void s_kron_float(const float *a, const int *stridesA, const int *shapeA,
+                  const float *b, const int *stridesB, const int *shapeB,
+                  float *res, const int *stridesRes, const int *shapeRes, int rank);
+void s_kron_int64(const int64_t *a, const int *stridesA, const int *shapeA,
+                  const int64_t *b, const int *stridesB, const int *shapeB,
+                  int64_t *res, const int *stridesRes, const int *shapeRes, int rank);
+void s_kron_int32(const int32_t *a, const int *stridesA, const int *shapeA,
+                  const int32_t *b, const int *stridesB, const int *shapeB,
+                  int32_t *res, const int *stridesRes, const int *shapeRes, int rank);
+void s_kron_uint8(const uint8_t *a, const int *stridesA, const int *shapeA,
+                  const uint8_t *b, const int *stridesB, const int *shapeB,
+                  uint8_t *res, const int *stridesRes, const int *shapeRes, int rank);
+void s_kron_int16(const int16_t *a, const int *stridesA, const int *shapeA,
+                  const int16_t *b, const int *stridesB, const int *shapeB,
+                  int16_t *res, const int *stridesRes, const int *shapeRes, int rank);
+void s_kron_complex128(const cpx_t *a, const int *stridesA, const int *shapeA,
+                       const cpx_t *b, const int *stridesB, const int *shapeB,
+                       cpx_t *res, const int *stridesRes, const int *shapeRes, int rank);
+void s_kron_complex64(const cpx_f_t *a, const int *stridesA, const int *shapeA,
+                      const cpx_f_t *b, const int *stridesB, const int *shapeB,
+                      cpx_f_t *res, const int *stridesRes, const int *shapeRes, int rank);
+void s_kron_boolean(const uint8_t *a, const int *stridesA, const int *shapeA,
+                    const uint8_t *b, const int *stridesB, const int *shapeB,
+                    uint8_t *res, const int *stridesRes, const int *shapeRes, int rank);
+
+/* Vector Outer Product */
+void s_outer_double(const double *a, int strideA, int sizeA,
+                    const double *b, int strideB, int sizeB,
+                    double *res, int strideRowRes, int strideColRes);
+void s_outer_float(const float *a, int strideA, int sizeA,
+                   const float *b, int strideB, int sizeB,
+                   float *res, int strideRowRes, int strideColRes);
+void s_outer_int64(const int64_t *a, int strideA, int sizeA,
+                   const int64_t *b, int strideB, int sizeB,
+                   int64_t *res, int strideRowRes, int strideColRes);
+void s_outer_int32(const int32_t *a, int strideA, int sizeA,
+                   const int32_t *b, int strideB, int sizeB,
+                   int32_t *res, int strideRowRes, int strideColRes);
+void s_outer_uint8(const uint8_t *a, int strideA, int sizeA,
+                   const uint8_t *b, int strideB, int sizeB,
+                   uint8_t *res, int strideRowRes, int strideColRes);
+void s_outer_int16(const int16_t *a, int strideA, int sizeA,
+                   const int16_t *b, int strideB, int sizeB,
+                   int16_t *res, int strideRowRes, int strideColRes);
+void s_outer_complex128(const cpx_t *a, int strideA, int sizeA,
+                        const cpx_t *b, int strideB, int sizeB,
+                        cpx_t *res, int strideRowRes, int strideColRes);
+void s_outer_complex64(const cpx_f_t *a, int strideA, int sizeA,
+                       const cpx_f_t *b, int strideB, int sizeB,
+                       cpx_f_t *res, int strideRowRes, int strideColRes);
+void s_outer_boolean(const uint8_t *a, int strideA, int sizeA,
+                     const uint8_t *b, int strideB, int sizeB,
+                     uint8_t *res, int strideRowRes, int strideColRes);
+
+/* Vector Cross Product */
+void s_cross_3d_double(const double *a, int strideA, const double *b, int strideB, double *res, int strideRes);
+void s_cross_2d_double(const double *a, int strideA, const double *b, int strideB, double *res);
+void s_cross_3d_float(const float *a, int strideA, const float *b, int strideB, float *res, int strideRes);
+void s_cross_2d_float(const float *a, int strideA, const float *b, int strideB, float *res);
+void s_cross_3d_int64(const int64_t *a, int strideA, const int64_t *b, int strideB, int64_t *res, int strideRes);
+void s_cross_2d_int64(const int64_t *a, int strideA, const int64_t *b, int strideB, int64_t *res);
+void s_cross_3d_int32(const int32_t *a, int strideA, const int32_t *b, int strideB, int32_t *res, int strideRes);
+void s_cross_2d_int32(const int32_t *a, int strideA, const int32_t *b, int strideB, int32_t *res);
+void s_cross_3d_uint8(const uint8_t *a, int strideA, const uint8_t *b, int strideB, uint8_t *res, int strideRes);
+void s_cross_2d_uint8(const uint8_t *a, int strideA, const uint8_t *b, int strideB, uint8_t *res);
+void s_cross_3d_int16(const int16_t *a, int strideA, const int16_t *b, int strideB, int16_t *res, int strideRes);
+void s_cross_2d_int16(const int16_t *a, int strideA, const int16_t *b, int strideB, int16_t *res);
+void s_cross_3d_complex128(const cpx_t *a, int strideA, const cpx_t *b, int strideB, cpx_t *res, int strideRes);
+void s_cross_2d_complex128(const cpx_t *a, int strideA, const cpx_t *b, int strideB, cpx_t *res);
+void s_cross_3d_complex64(const cpx_f_t *a, int strideA, const cpx_f_t *b, int strideB, cpx_f_t *res, int strideRes);
+void s_cross_2d_complex64(const cpx_f_t *a, int strideA, const cpx_f_t *b, int strideB, cpx_f_t *res);
+void s_cross_3d_boolean(const uint8_t *a, int strideA, const uint8_t *b, int strideB, uint8_t *res, int strideRes);
+void s_cross_2d_boolean(const uint8_t *a, int strideA, const uint8_t *b, int strideB, uint8_t *res);
+
+/* Vector Norm Reductions */
+double r_norm_l1_double(const double *src, int stride, int size);
+double r_norm_l2_double(const double *src, int stride, int size);
+double r_norm_lp_double(const double *src, int stride, int size, double p);
+double r_norm_inf_double(const double *src, int stride, int size);
+double r_norm_neg_inf_double(const double *src, int stride, int size);
+
+float r_norm_l1_float(const float *src, int stride, int size);
+float r_norm_l2_float(const float *src, int stride, int size);
+float r_norm_lp_float(const float *src, int stride, int size, float p);
+float r_norm_inf_float(const float *src, int stride, int size);
+float r_norm_neg_inf_float(const float *src, int stride, int size);
+
+double r_norm_l1_complex128(const cpx_t *src, int stride, int size);
+double r_norm_l2_complex128(const cpx_t *src, int stride, int size);
+double r_norm_lp_complex128(const cpx_t *src, int stride, int size, double p);
+double r_norm_inf_complex128(const cpx_t *src, int stride, int size);
+double r_norm_neg_inf_complex128(const cpx_t *src, int stride, int size);
+
+float r_norm_l1_complex64(const cpx_f_t *src, int stride, int size);
+float r_norm_l2_complex64(const cpx_f_t *src, int stride, int size);
+float r_norm_lp_complex64(const cpx_f_t *src, int stride, int size, float p);
+float r_norm_inf_complex64(const cpx_f_t *src, int stride, int size);
+float r_norm_neg_inf_complex64(const cpx_f_t *src, int stride, int size);
+
 #endif /* CUSTOM_UFUNCS_H */
