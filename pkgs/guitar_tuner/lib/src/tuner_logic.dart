@@ -58,6 +58,7 @@ final class TunerLogic {
   final int sampleRate;
   final int bufferSize;
   final NDArray<double> _window;
+  double? _smoothedFrequency;
 
   static const Map<String, double> guitarNotes = {
     'E2': 82.41,
@@ -86,6 +87,7 @@ final class TunerLogic {
       final String spectrumLine = _generateSpectrumLine(magnitudes);
 
       if (rms < 0.005) {
+        _smoothedFrequency = null;
         return TunerResult(
           note: '--',
           frequency: 0.0,
@@ -122,6 +124,7 @@ final class TunerLogic {
       }
 
       if (peakMag < 4.0 * meanMag || !isSharp) {
+        _smoothedFrequency = null;
         return TunerResult(
           note: '--',
           frequency: 0.0,
@@ -148,13 +151,22 @@ final class TunerLogic {
 
       final freq = refinedPeakIdx * sampleRate / bufferSize;
 
+      // Exponential Moving Average (EMA) frequency smoothing (filters out measurement jitter)
+      if (_smoothedFrequency == null) {
+        _smoothedFrequency = freq;
+      } else {
+        const alpha = 0.25; // Smoothness vs response delay factor
+        _smoothedFrequency = alpha * freq + (1.0 - alpha) * _smoothedFrequency!;
+      }
+      final displayFreq = _smoothedFrequency!;
+
       // 8. Find closest note
       String closestNote = 'Unknown';
       double minDiff = double.infinity;
       double targetFreq = 0.0;
 
       guitarNotes.forEach((note, noteFreq) {
-        final diff = (freq - noteFreq).abs();
+        final diff = (displayFreq - noteFreq).abs();
         if (diff < minDiff) {
           minDiff = diff;
           closestNote = note;
@@ -163,11 +175,11 @@ final class TunerLogic {
       });
 
       // 9. Calculate cents difference
-      final cents = 1200 * math.log(freq / targetFreq) / math.log(2);
+      final cents = 1200 * math.log(displayFreq / targetFreq) / math.log(2);
 
       return TunerResult(
         note: closestNote,
-        frequency: freq,
+        frequency: displayFreq,
         targetFrequency: targetFreq,
         cents: cents,
         rms: rms,
