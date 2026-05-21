@@ -1,146 +1,190 @@
 import time
 import numpy as np
 
-# ============================================================================
-# BENCHMARK HELPER RUNNER
-# ============================================================================
-def run_benchmark(name, fn_run, fn_setup=None, reps=200, warmup=15):
-    """
-    A custom Python benchmarking runner mimicking Dart's benchmark_harness.
-    Performs warmup iterations and averages repetition counts to compute precise microseconds.
-    """
-    # 1. Setup if needed
-    context = fn_setup() if fn_setup else None
-    
-    # 2. Warmup cycles to heat cache and memory pages
-    for _ in range(warmup):
-        fn_run(context)
+def run_benchmark(name, setup_fn, run_fn, iterations=100):
+    # Warmup
+    setup_fn()
+    for _ in range(10):
+        run_fn()
         
-    # 3. Timed execution repetitions loop
-    start_time = time.perf_counter()
-    for _ in range(reps):
-        fn_run(context)
-    end_time = time.perf_counter()
-    
-    total_duration_seconds = end_time - start_time
-    # Convert total duration to average microseconds per single run!
-    avg_microseconds = (total_duration_seconds / reps) * 1_000_000
-    
-    print(f"{name}: {avg_microseconds:.2f} us per run")
+    times = []
+    for _ in range(iterations):
+        setup_fn()
+        t0 = time.perf_counter()
+        run_fn()
+        t1 = time.perf_counter()
+        times.append((t1 - t0) * 1_000_000) # Convert to microseconds
+    return np.mean(times)
 
-# ============================================================================
-# 1. PROBABILITY DISTRIBUTIONS & RNG TRACK (Section 2)
-# ============================================================================
-def bench_normal(ctx):
-    rng = np.random.default_rng(42)
+print("============================================================================")
+print("         NumPy EQUIVALENT PERFORMANCE BENCHMARK SUITE")
+print("============================================================================")
+
+# TRACK A: RNG
+rng = np.random.default_rng(42)
+
+# 1. Normal
+def run_normal():
     rng.normal(loc=0.0, scale=1.0, size=50000)
+t_normal = run_benchmark("Normal", lambda: None, run_normal, 200)
+print(f"RNG Track  | Seeded normal() (Gaussian samples)       [size=50,000]: {t_normal:.2f} us")
 
-def bench_poisson(ctx):
-    rng = np.random.default_rng(42)
+# 2. Poisson
+def run_poisson():
     rng.poisson(lam=35.0, size=20000)
+t_poisson = run_benchmark("Poisson", lambda: None, run_poisson, 200)
+print(f"RNG Track  | Seeded poisson() (Knuth vs Gaussian)      [size=20,000]: {t_poisson:.2f} us")
 
-def bench_binomial(ctx):
-    rng = np.random.default_rng(42)
+# 3. Binomial
+def run_binomial():
     rng.binomial(n=60, p=0.4, size=20000)
+t_binomial = run_benchmark("Binomial", lambda: None, run_binomial, 200)
+print(f"RNG Track  | Seeded binomial() (Bernoulli vs Normal)   [size=20,000]: {t_binomial:.2f} us")
 
-# ============================================================================
-# 2. SORTING & SEARCHING TRACK (Section 7)
-# ============================================================================
-def setup_qsort():
-    template = np.arange(30000, 0, -1, dtype=np.float64)
-    target = np.zeros(30000, dtype=np.float64)
-    return template, target
+print("\n--- TRACK B: NATIVE C HEAP SORTING & SEARCHING ---")
 
-def bench_qsort(ctx):
-    template, target = ctx
-    # High-speed C-level bit copy, bypassing object allocations inside timed loops!
-    np.copyto(target, template)
-    np.sort(target)
+# 1. Sort
+sort_arr = np.zeros(30000, dtype=np.float64)
+template_sort = np.arange(30000, 0, -1, dtype=np.float64)
+def run_sort():
+    np.sort(sort_arr)
+t_sort = run_benchmark("Sort", lambda: np.copyto(sort_arr, template_sort), run_sort, 100)
+print(f"SORT Track | NumPy sort() (Contiguous vector)         [size=30,000]: {t_sort:.2f} us")
 
-def setup_where():
-    cond = np.zeros((100, 100), dtype=np.int32)
-    x = np.ones(100, dtype=np.float64) # 1D vector stretching broadcast
-    y = np.ones((100, 100), dtype=np.float64)
-    return cond, x, y
+# 2. Argsort
+def run_argsort():
+    np.argsort(sort_arr)
+t_argsort = run_benchmark("Argsort", lambda: np.copyto(sort_arr, template_sort), run_argsort, 100)
+print(f"SORT Track | Argsort (argsort)                         [size=30,000]: {t_argsort:.2f} us")
 
-def bench_where(ctx):
-    cond, x, y = ctx
-    np.where(cond, x, y)
+# 3. Where
+cond_where = np.zeros((100, 100), dtype=bool)
+x_where = np.ones(100, dtype=np.float64)
+y_where = np.ones((100, 100), dtype=np.float64)
+def run_where():
+    np.where(cond_where, x_where, y_where)
+t_where = run_benchmark("Where", lambda: None, run_where, 500)
+print(f"SORT Track | Ternary where() 3-Way Broadcasting       [shape=100x100]: {t_where:.2f} us")
 
-# ============================================================================
-# 3. ADVANCED LINEAR ALGEBRA & SIGNALS TRACK (Section 6)
-# ============================================================================
-def setup_inv():
-    return np.eye(100, dtype=np.float64)
+print("\n--- TRACK C: LINEAR ALGEBRA & SIGNALS ---")
 
-def bench_inv(a):
-    np.linalg.inv(a)
+# 1. Inversion
+inv_arr = np.eye(100, dtype=np.float64)
+def run_inv():
+    np.linalg.inv(inv_arr)
+t_inv = run_benchmark("Inv", lambda: None, run_inv, 200)
+print(f"LINALG Track| LU Matrix Inversion (inv)                 [shape=100x100]: {t_inv:.2f} us")
 
-def setup_fft():
-    return np.zeros(2048, dtype=np.float64)
+# 2. QR
+qr_arr = np.zeros((30, 30), dtype=np.float64)
+for i in range(30):
+    for j in range(30):
+        qr_arr[i, j] = (i + j + 1.0) / 10.0
+        if i == j:
+            qr_arr[i, j] += 1.0
+def run_qr():
+    np.linalg.qr(qr_arr)
+t_qr = run_benchmark("QR", lambda: None, run_qr, 500)
+print(f"LINALG Track| QR Decomposition (qr)                    [shape=30x30]: {t_qr:.2f} us")
 
-def bench_fft(signal):
-    np.fft.fft(signal)
+# 3. SVD
+def run_svd():
+    np.linalg.svd(qr_arr)
+t_svd = run_benchmark("SVD", lambda: None, run_svd, 500)
+print(f"LINALG Track| SVD Decomposition (svd)                  [shape=30x30]: {t_svd:.2f} us")
 
-# ============================================================================
-# 4. UFUNCS, REDUCTIONS & MEMORY TRACK (Section 9 Target)
-# ============================================================================
-def setup_add():
-    x = np.ones(300000, dtype=np.float64)
-    y = np.ones(300000, dtype=np.float64)
-    return x, y
+# 4. FFT
+fft_arr = np.zeros(2048, dtype=np.float64)
+def run_fft():
+    np.fft.fft(fft_arr)
+t_fft = run_benchmark("FFT", lambda: None, run_fft, 500)
+print(f"LINALG Track| FFT pocketfft (fft)                       [length=2048]: {t_fft:.2f} us")
 
-def bench_add(ctx):
-    x, y = ctx
-    np.add(x, y)
+print("\n--- TRACK D: UNIVERSAL UFUNCS, REDUCTIONS & MEMORY STRIDES ---")
 
-def setup_scalar():
-    return np.ones(300000, dtype=np.float64)
+# 1. Elementwise Add
+add_x = np.ones(300000, dtype=np.float64)
+add_y = np.ones(300000, dtype=np.float64)
+add_out = np.zeros(300000, dtype=np.float64)
+def run_add():
+    np.add(add_x, add_y, out=add_out)
+t_add = run_benchmark("Add", lambda: None, run_add, 500)
+print(f"MEMORY Track| Element-wise Same-Shape add(x, y)       [size=300,000]: {t_add:.2f} us")
 
-def bench_scalar(x):
-    # Scalar array broadcasting
-    x + 5.0
+# 2. Scalar Broadcast Add
+scalar_arr = np.array([5.0], dtype=np.float64)
+def run_scalar_add():
+    np.add(add_x, scalar_arr, out=add_out)
+t_scalar_add = run_benchmark("ScalarAdd", lambda: None, run_scalar_add, 500)
+print(f"MEMORY Track| Scalar Array Broadcast add(x, scalar)   [size=300,000]: {t_scalar_add:.2f} us")
 
-def setup_sin():
-    return np.ones(100000, dtype=np.float64)
+# 3. Sin
+sin_x = np.ones(100000, dtype=np.float64)
+sin_out = np.zeros(100000, dtype=np.float64)
+def run_sin():
+    np.sin(sin_x, out=sin_out)
+t_sin = run_benchmark("Sin", lambda: None, run_sin, 500)
+print(f"MEMORY Track| Universal math function sin(x)          [size=100,000]: {t_sin:.2f} us")
 
-def bench_sin(x):
-    np.sin(x)
+# 4. Cos
+def run_cos():
+    np.cos(sin_x, out=sin_out)
+t_cos = run_benchmark("Cos", lambda: None, run_cos, 500)
+print(f"MEMORY Track| Universal math function cos(x)          [size=100,000]: {t_cos:.2f} us")
 
-def setup_sum():
-    return np.ones(300000, dtype=np.float64)
+# 5. Exp
+def run_exp():
+    np.exp(sin_x, out=sin_out)
+t_exp = run_benchmark("Exp", lambda: None, run_exp, 500)
+print(f"MEMORY Track| Universal math function exp(x)          [size=100,000]: {t_exp:.2f} us")
 
-def bench_sum(x):
-    np.sum(x)
+# 6. Sum
+def run_sum():
+    np.sum(add_x)
+t_sum = run_benchmark("Sum", lambda: None, run_sum, 500)
+print(f"MEMORY Track| Flat Memory Reduction walk sum(x)       [size=300,000]: {t_sum:.2f} us")
 
-# ============================================================================
-# MAIN EXECUTION ENTRYPOINT
-# ============================================================================
-if __name__ == "__main__":
-    print("============================================================================")
-    print("         PYTHON NUMPY ALL-INCLUSIVE PERFORMANCE BENCHMARK SUITE MASTER       ")
-    print("============================================================================")
-    print("Establishing high-precision NumPy baseline metrics for twin comparison...\n")
+# 7. Zeros
+def run_zeros():
+    np.zeros((1000, 1000), dtype=np.float64)
+t_zeros = run_benchmark("Zeros", lambda: None, run_zeros, 200)
+print(f"MEMORY Track| Zeros Array Creation (zeros)         [size=1,000,000]: {t_zeros:.2f} us")
 
-    print("--- TRACK A: RANDOM DISTRIBUTIONS & RNG SOLVERS ---")
-    run_benchmark("RNG Track  | Seeded normal() (Gaussian samples)       [size=50,000]", bench_normal, reps=150)
-    run_benchmark("RNG Track  | Seeded poisson() (Knuth vs Gaussian)      [size=20,000]", bench_poisson, reps=150)
-    run_benchmark("RNG Track  | Seeded binomial() (Bernoulli vs Normal)   [size=20,000]", bench_binomial, reps=150)
+# 8. Concatenate
+cat_a = np.ones(500000, dtype=np.float64)
+cat_b = np.ones(500000, dtype=np.float64)
+def run_concat():
+    np.concatenate((cat_a, cat_b), axis=0)
+t_concat = run_benchmark("Concat", lambda: None, run_concat, 100)
+print(f"MEMORY Track| Flat Array Concatenation (concatenate) [size=1,000,000]: {t_concat:.2f} us")
 
-    print("\n--- TRACK B: NATIVE C HEAP SORTING & SEARCHING BROADCASTS ---")
-    run_benchmark("SORT Track | Native C Heap sort() (Contiguous vector)   [size=30,000]", bench_qsort, setup_qsort, reps=100)
-    run_benchmark("SORT Track | Ternary where() 3-Way Broadcasting       [shape=100x100]", bench_where, setup_where, reps=200)
+# 9. Clip
+def run_clip():
+    np.clip(add_x, 0.0, 0.5, out=add_out)
+t_clip = run_benchmark("Clip", lambda: None, run_clip, 500)
+print(f"MEMORY Track| Universal math function clip(x)          [size=300,000]: {t_clip:.2f} us")
 
-    print("\n--- TRACK C: OPENBLAS LINEAR ALGEBRA & NATIVE POCKETFFT SIGNALS ---")
-    run_benchmark("LINALG Track| OpenBLAS LU Matrix Inversion (inv)       [shape=100x100]", bench_inv, setup_inv, reps=300)
-    run_benchmark("LINALG Track| Native Mixed-Radix C FFI pocketfft (fft) [length=2048]", bench_fft, setup_fft, reps=300)
+# 10. Flatten
+parent_flat = np.ones(600000, dtype=np.float64)
+view_flat = parent_flat[0:300000]
+def run_flatten():
+    view_flat.flatten()
+t_flatten = run_benchmark("Flatten", lambda: None, run_flatten, 500)
+print(f"MEMORY Track| Contiguous View Flatten (flatten)       [size=300,000]: {t_flatten:.2f} us")
 
-    print("\n--- TRACK D: UNIVERSAL UFUNCS, REDUCTIONS & MEMORY STRIDES (SECTION 9 TARGET) ---")
-    run_benchmark("MEMORY Track| Element-wise Same-Shape add(x, y)       [size=300,000]", bench_add, setup_add, reps=200)
-    run_benchmark("MEMORY Track| Scalar Array Broadcast add(x, scalar)   [size=300,000]", bench_scalar, setup_scalar, reps=200)
-    run_benchmark("MEMORY Track| Universal math function sin(x)          [size=100,000]", bench_sin, setup_sin, reps=300)
-    run_benchmark("MEMORY Track| Flat Memory Reduction walk sum(x)       [size=300,000]", bench_sum, setup_sum, reps=200)
+# 11. Contiguous view sum
+def run_view_sum():
+    np.sum(view_flat)
+t_view_sum = run_benchmark("ViewSum", lambda: None, run_view_sum, 500)
+print(f"MEMORY Track| Contiguous View Sum Reduction (sum)     [size=300,000]: {t_view_sum:.2f} us")
 
-    print("\n============================================================================")
-    print("Exhaustive Python NumPy Baseline Performance Benchmarks completed.")
-    print("============================================================================")
+# 12. Strided transposed add
+parent_strided_x = np.ones((500, 500), dtype=np.float64)
+parent_strided_y = np.ones((500, 500), dtype=np.float64)
+strided_x = parent_strided_x.T
+strided_y = parent_strided_y.T
+strided_out = np.zeros((500, 500), dtype=np.float64)
+def run_strided_add():
+    np.add(strided_x, strided_y, out=strided_out)
+t_strided_add = run_benchmark("StridedAdd", lambda: None, run_strided_add, 200)
+print(f"MEMORY Track| Strided non-contiguous add(x, y)         [shape=500x500]: {t_strided_add:.2f} us")
