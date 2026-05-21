@@ -16,6 +16,20 @@
 #include <math.h>
 #include <stdlib.h>
 
+#if defined(_MSC_VER)
+#define RESTRICT __restrict
+#elif defined(__GNUC__) || defined(__clang__)
+#define RESTRICT __restrict__
+#else
+#define RESTRICT restrict
+#endif
+
+#if (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(__i386__)) && !defined(_WIN32)
+#define VECTORIZED_TARGETS __attribute__((target_clones("avx512f", "avx2", "sse4.2", "default")))
+#else
+#define VECTORIZED_TARGETS
+#endif
+
 // Macro to define strided binary operations
 #define DEFINE_STRIDED_BINARY_OP(name, typeA, typeB, typeResult, op) \
 void name(const typeA *a, const int *stridesA, \
@@ -107,7 +121,8 @@ static inline cpx_f_t cpx_div_f_cast(cpx_f_t x, cpx_f_t y) {
 // ============================================================================
 
 #define IMPLEMENT_V_BINARY(name, type, op) \
-void v_##name##_##type(const type *a, const type *b, type *res, int size) { \
+VECTORIZED_TARGETS \
+void v_##name##_##type(const type * RESTRICT a, const type * RESTRICT b, type * RESTRICT res, int size) { \
     if (a == NULL || b == NULL || res == NULL || size <= 0) return; \
     for (int i = 0; i < size; i++) { \
         res[i] = a[i] op b[i]; \
@@ -115,7 +130,8 @@ void v_##name##_##type(const type *a, const type *b, type *res, int size) { \
 }
 
 #define IMPLEMENT_V_UNARY(name, type, func) \
-void v_##name##_##type(const type *src, type *res, int size) { \
+VECTORIZED_TARGETS \
+void v_##name##_##type(const type * RESTRICT src, type * RESTRICT res, int size) { \
     if (src == NULL || res == NULL || size <= 0) return; \
     for (int i = 0; i < size; i++) { \
         res[i] = func(src[i]); \
@@ -123,7 +139,8 @@ void v_##name##_##type(const type *src, type *res, int size) { \
 }
 
 #define IMPLEMENT_V_BINARY_FUNC(name, type, func) \
-void v_##name##_##type(const type *a, const type *b, type *res, int size) { \
+VECTORIZED_TARGETS \
+void v_##name##_##type(const type * RESTRICT a, const type * RESTRICT b, type * RESTRICT res, int size) { \
     if (a == NULL || b == NULL || res == NULL || size <= 0) return; \
     for (int i = 0; i < size; i++) { \
         res[i] = func(a[i], b[i]); \
@@ -1135,7 +1152,8 @@ IMPLEMENT_V_RANDINT(int16, int16_t, int, int)
 IMPLEMENT_V_RANDINT(uint8, uint8_t, int, int)
 
 #define IMPLEMENT_V_FILL(TYPE_NAME, TYPE) \
-void v_fill_##TYPE_NAME(TYPE *res, TYPE value, int size) { \
+VECTORIZED_TARGETS \
+void v_fill_##TYPE_NAME(TYPE * RESTRICT res, TYPE value, int size) { \
     if (res == NULL || size <= 0) return; \
     for (int i = 0; i < size; i++) { \
         res[i] = value; \
