@@ -10634,16 +10634,17 @@ dynamic _castValue(dynamic val, DType dtype) {
 /// final window = hanning(512);
 /// ```
 NDArray<double> hanning(int M, {DType dtype = DType.float64}) {
-  if (M < 1) return NDArray.create([0], dtype as dynamic) as NDArray<double>;
+  final resolvedDType = dtype as DType<double>;
+  if (M < 1) return NDArray.create([0], resolvedDType);
   if (M == 1) {
-    return NDArray.fromList([1.0], [1], dtype as dynamic) as NDArray<double>;
+    return NDArray.fromList([1.0], [1], resolvedDType);
   }
 
-  final res = NDArray.create([M], dtype as dynamic);
+  final res = NDArray.create([M], resolvedDType);
   for (var n = 0; n < M; n++) {
     res.data[n] = 0.5 - 0.5 * math.cos(2.0 * math.pi * n / (M - 1));
   }
-  return res as NDArray<double>;
+  return res;
 }
 
 /// Return the Hamming window.
@@ -10655,16 +10656,17 @@ NDArray<double> hanning(int M, {DType dtype = DType.float64}) {
 /// final window = hamming(512);
 /// ```
 NDArray<double> hamming(int M, {DType dtype = DType.float64}) {
-  if (M < 1) return NDArray.create([0], dtype as dynamic) as NDArray<double>;
+  final resolvedDType = dtype as DType<double>;
+  if (M < 1) return NDArray.create([0], resolvedDType);
   if (M == 1) {
-    return NDArray.fromList([1.0], [1], dtype as dynamic) as NDArray<double>;
+    return NDArray.fromList([1.0], [1], resolvedDType);
   }
 
-  final res = NDArray.create([M], dtype as dynamic);
+  final res = NDArray.create([M], resolvedDType);
   for (var n = 0; n < M; n++) {
     res.data[n] = 0.54 - 0.46 * math.cos(2.0 * math.pi * n / (M - 1));
   }
-  return res as NDArray<double>;
+  return res;
 }
 
 /// Extract a lower triangular matrix (on and below the k-th diagonal) element-wise.

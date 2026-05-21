@@ -93,5 +93,43 @@ void main() {
         expect(res2.toList(), [1.0, 2.0, 3.0, 4.0, 2.0, 4.0, 6.0, 8.0]);
       });
     });
+
+    test(
+      'hanning and hamming window functions type safety and calculation',
+      () {
+        NDArray.scope(() {
+          // Hanning window
+          final h1 = hanning(5, dtype: DType.float64);
+          expect(h1.shape, [5]);
+          expect(h1.dtype, DType.float64);
+          expect(h1.data[0], 0.0);
+          expect(h1.data[2], 1.0); // center value
+          expect(h1.data[4], 0.0);
+
+          final h1_32 = hanning(5, dtype: DType.float32);
+          expect(h1_32.dtype, DType.float32);
+          expect(h1_32.data[2], 1.0);
+
+          // Hamming window
+          final h2 = hamming(5, dtype: DType.float64);
+          expect(h2.shape, [5]);
+          expect(h2.dtype, DType.float64);
+          expect(h2.data[0], closeTo(0.08, 1e-9));
+          expect(h2.data[2], 1.0); // center value
+          expect(h2.data[4], closeTo(0.08, 1e-9));
+
+          final h2_32 = hamming(5, dtype: DType.float32);
+          expect(h2_32.dtype, DType.float32);
+          expect(h2_32.data[2], 1.0);
+
+          // M <= 1 edge cases
+          final zeroH = hanning(0);
+          expect(zeroH.shape, [0]);
+          final oneH = hanning(1);
+          expect(oneH.shape, [1]);
+          expect(oneH.data[0], 1.0);
+        });
+      },
+    );
   });
 }
