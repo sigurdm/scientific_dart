@@ -74,7 +74,7 @@ final class TunerLogic {
   TunerResult process(NDArray<double> input, double rms) {
     return NDArray.scope(() {
       // 2. Apply Hanning window to reduce spectral leakage
-      final windowedInput = multiply(input, _window) as NDArray<double>;
+      final NDArray<double> windowedInput = multiply(input, _window);
 
       // 3. Perform FFT
       final spectrum = fft(windowedInput);
