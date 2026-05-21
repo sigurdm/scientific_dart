@@ -106,6 +106,32 @@ final class TunerLogic {
       final peakIdxInSlice = argmax(searchRange) as int;
       final peakIdx = minIdx + peakIdxInSlice;
 
+      // Denoising: SNR (Signal-to-Noise Ratio) & Sharpness Thresholds
+      // Guitar plucks produce very narrow, high-energy spectral peaks compared to broadband room noise.
+      final double meanMag = mean(searchRange).scalar as double;
+      final magsList = magnitudes.toList();
+      final double peakMag = magsList[peakIdx];
+
+      bool isSharp = true;
+      if (peakIdx > minIdx && peakIdx < maxIdx - 1) {
+        final double leftMag = magsList[peakIdx - 1];
+        final double rightMag = magsList[peakIdx + 1];
+        if (peakMag < 1.5 * (leftMag + rightMag) / 2.0) {
+          isSharp = false;
+        }
+      }
+
+      if (peakMag < 4.0 * meanMag || !isSharp) {
+        return TunerResult(
+          note: '--',
+          frequency: 0.0,
+          targetFrequency: 0.0,
+          cents: 0.0,
+          rms: rms,
+          spectrumLine: spectrumLine,
+        );
+      }
+
       // 7. Parabolic interpolation for more accurate peak frequency
       double refinedPeakIdx = peakIdx.toDouble();
       if (peakIdx > 0 && peakIdx < magnitudes.shape[0] - 1) {
