@@ -106,131 +106,50 @@ static inline cpx_f_t cpx_div_f_cast(cpx_f_t x, cpx_f_t y) {
 // 1. DOUBLE PRECISION (FLOAT64) FLAT CONTIGUOUS KERNELS
 // ============================================================================
 
-void v_add_double(const double *a, const double *b, double *res, int size) {
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = a[i] + b[i];
-    }
+#define IMPLEMENT_V_BINARY(name, type, op) \
+void v_##name##_##type(const type *a, const type *b, type *res, int size) { \
+    if (a == NULL || b == NULL || res == NULL || size <= 0) return; \
+    for (int i = 0; i < size; i++) { \
+        res[i] = a[i] op b[i]; \
+    } \
 }
 
-void v_sub_double(const double *a, const double *b, double *res, int size) {
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = a[i] - b[i];
-    }
+#define IMPLEMENT_V_UNARY(name, type, func) \
+void v_##name##_##type(const type *src, type *res, int size) { \
+    if (src == NULL || res == NULL || size <= 0) return; \
+    for (int i = 0; i < size; i++) { \
+        res[i] = func(src[i]); \
+    } \
 }
 
-void v_mul_double(const double *a, const double *b, double *res, int size) {
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = a[i] * b[i];
-    }
+#define IMPLEMENT_V_BINARY_FUNC(name, type, func) \
+void v_##name##_##type(const type *a, const type *b, type *res, int size) { \
+    if (a == NULL || b == NULL || res == NULL || size <= 0) return; \
+    for (int i = 0; i < size; i++) { \
+        res[i] = func(a[i], b[i]); \
+    } \
 }
 
-void v_div_double(const double *a, const double *b, double *res, int size) {
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = a[i] / b[i];
-    }
-}
+IMPLEMENT_V_BINARY(add, double, +)
+IMPLEMENT_V_BINARY(sub, double, -)
+IMPLEMENT_V_BINARY(mul, double, *)
+IMPLEMENT_V_BINARY(div, double, /)
 
-void v_sin_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = sin(src[i]);
-    }
-}
+IMPLEMENT_V_UNARY(sin, double, sin)
+IMPLEMENT_V_UNARY(cos, double, cos)
+IMPLEMENT_V_UNARY(exp, double, exp)
+IMPLEMENT_V_UNARY(log, double, log)
+IMPLEMENT_V_UNARY(sinh, double, sinh)
+IMPLEMENT_V_UNARY(cosh, double, cosh)
+IMPLEMENT_V_UNARY(tanh, double, tanh)
+IMPLEMENT_V_UNARY(asinh, double, asinh)
+IMPLEMENT_V_UNARY(acosh, double, acosh)
+IMPLEMENT_V_UNARY(atanh, double, atanh)
+IMPLEMENT_V_UNARY(asin, double, asin)
+IMPLEMENT_V_UNARY(acos, double, acos)
+IMPLEMENT_V_UNARY(atan, double, atan)
 
-void v_cos_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = cos(src[i]);
-    }
-}
-
-void v_exp_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = exp(src[i]);
-    }
-}
-
-void v_log_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = log(src[i]);
-    }
-}
-
-void v_sinh_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = sinh(src[i]);
-    }
-}
-
-void v_cosh_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = cosh(src[i]);
-    }
-}
-
-void v_tanh_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = tanh(src[i]);
-    }
-}
-
-void v_asinh_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = asinh(src[i]);
-    }
-}
-
-void v_acosh_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = acosh(src[i]);
-    }
-}
-
-void v_atanh_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = atanh(src[i]);
-    }
-}
-
-void v_asin_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = asin(src[i]);
-    }
-}
-
-void v_acos_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = acos(src[i]);
-    }
-}
-
-void v_atan_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = atan(src[i]);
-    }
-}
-
-void v_atan2_double(const double *y, const double *x, double *res, int size) {
-    if (y == NULL || x == NULL || res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = atan2(y[i], x[i]);
-    }
-}
+IMPLEMENT_V_BINARY_FUNC(atan2, double, atan2)
 
 
 double r_sum_double(const double *src, int size) {
@@ -1199,77 +1118,34 @@ void v_uniform_float(float *res, int size, unsigned long long seed) {
     }
 }
 
-void v_randint_int64(int64_t *res, int size, int64_t low, int64_t high, unsigned long long seed) {
-    if (res == NULL || size <= 0 || low >= high) return;
-
-    uint64_t s[4];
-    xoshiro256_seed(seed, s);
-    int64_t range = high - low;
-
-    for (int i = 0; i < size; i++) {
-        res[i] = low + (int64_t)(xoshiro256_next(s) % (unsigned long long)range);
-    }
+#define IMPLEMENT_V_RANDINT(TYPE_NAME, TYPE, BOUNDS_TYPE, RANGE_TYPE) \
+void v_randint_##TYPE_NAME(TYPE *res, int size, BOUNDS_TYPE low, BOUNDS_TYPE high, unsigned long long seed) { \
+    if (res == NULL || size <= 0 || low >= high) return; \
+    uint64_t s[4]; \
+    xoshiro256_seed(seed, s); \
+    RANGE_TYPE range = (RANGE_TYPE)high - (RANGE_TYPE)low; \
+    for (int i = 0; i < size; i++) { \
+        res[i] = (TYPE)(low + (RANGE_TYPE)(xoshiro256_next(s) % (unsigned long long)range)); \
+    } \
 }
 
-void v_randint_int32(int32_t *res, int size, int32_t low, int32_t high, unsigned long long seed) {
-    if (res == NULL || size <= 0 || low >= high) return;
+IMPLEMENT_V_RANDINT(int64, int64_t, int64_t, int64_t)
+IMPLEMENT_V_RANDINT(int32, int32_t, int32_t, int32_t)
+IMPLEMENT_V_RANDINT(int16, int16_t, int, int)
+IMPLEMENT_V_RANDINT(uint8, uint8_t, int, int)
 
-    uint64_t s[4];
-    xoshiro256_seed(seed, s);
-    int32_t range = high - low;
-
-    for (int i = 0; i < size; i++) {
-        res[i] = low + (int32_t)(xoshiro256_next(s) % (unsigned long long)range);
-    }
+#define IMPLEMENT_V_FILL(TYPE_NAME, TYPE) \
+void v_fill_##TYPE_NAME(TYPE *res, TYPE value, int size) { \
+    if (res == NULL || size <= 0) return; \
+    for (int i = 0; i < size; i++) { \
+        res[i] = value; \
+    } \
 }
 
-void v_randint_uint8(uint8_t *res, int size, int low, int high, unsigned long long seed) {
-    if (res == NULL || size <= 0 || low >= high) return;
-    uint64_t s[4];
-    xoshiro256_seed(seed, s);
-    int range = high - low;
-    for (int i = 0; i < size; i++) {
-        res[i] = (uint8_t)(low + (int)(xoshiro256_next(s) % (unsigned long long)range));
-    }
-}
-
-void v_randint_int16(int16_t *res, int size, int low, int high, unsigned long long seed) {
-    if (res == NULL || size <= 0 || low >= high) return;
-    uint64_t s[4];
-    xoshiro256_seed(seed, s);
-    int range = high - low;
-    for (int i = 0; i < size; i++) {
-        res[i] = (int16_t)(low + (int)(xoshiro256_next(s) % (unsigned long long)range));
-    }
-}
-
-void v_fill_double(double *res, double value, int size) {
-    if (res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = value;
-    }
-}
-
-void v_fill_float(float *res, float value, int size) {
-    if (res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = value;
-    }
-}
-
-void v_fill_int64(int64_t *res, int64_t value, int size) {
-    if (res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = value;
-    }
-}
-
-void v_fill_int32(int32_t *res, int32_t value, int size) {
-    if (res == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = value;
-    }
-}
+IMPLEMENT_V_FILL(double, double)
+IMPLEMENT_V_FILL(float, float)
+IMPLEMENT_V_FILL(int64, int64_t)
+IMPLEMENT_V_FILL(int32, int32_t)
 
 // Helper functions to perform rolling FNV-1a hash updates
 static inline void hash_double(uint32_t *hash, double val) {
@@ -2046,41 +1922,20 @@ void v_secure_uniform_float(float *res, int size) {
     }
 }
 
-void v_secure_randint_int64(int64_t *res, int size, int64_t low, int64_t high) {
-    if (res == NULL || size <= 0 || low >= high) return;
-    fill_secure_bytes(res, size * sizeof(int64_t));
-    int64_t range = high - low;
-    for (int i = 0; i < size; i++) {
-        res[i] = low + (int64_t)((unsigned long long)res[i] % (unsigned long long)range);
-    }
+#define IMPLEMENT_V_SECURE_RANDINT(TYPE_NAME, TYPE, BOUNDS_TYPE, RANGE_TYPE) \
+void v_secure_randint_##TYPE_NAME(TYPE *res, int size, BOUNDS_TYPE low, BOUNDS_TYPE high) { \
+    if (res == NULL || size <= 0 || low >= high) return; \
+    fill_secure_bytes(res, size * sizeof(TYPE)); \
+    RANGE_TYPE range = (RANGE_TYPE)high - (RANGE_TYPE)low; \
+    for (int i = 0; i < size; i++) { \
+        res[i] = (TYPE)(low + (RANGE_TYPE)((unsigned long long)res[i] % (unsigned long long)range)); \
+    } \
 }
 
-void v_secure_randint_int32(int32_t *res, int size, int32_t low, int32_t high) {
-    if (res == NULL || size <= 0 || low >= high) return;
-    fill_secure_bytes(res, size * sizeof(int32_t));
-    int32_t range = high - low;
-    for (int i = 0; i < size; i++) {
-        res[i] = low + (int32_t)((unsigned int)res[i] % (unsigned int)range);
-    }
-}
-
-void v_secure_randint_uint8(uint8_t *res, int size, int low, int high) {
-    if (res == NULL || size <= 0 || low >= high) return;
-    fill_secure_bytes(res, size * sizeof(uint8_t));
-    int range = high - low;
-    for (int i = 0; i < size; i++) {
-        res[i] = (uint8_t)(low + (int)((unsigned int)res[i] % (unsigned int)range));
-    }
-}
-
-void v_secure_randint_int16(int16_t *res, int size, int low, int high) {
-    if (res == NULL || size <= 0 || low >= high) return;
-    fill_secure_bytes(res, size * sizeof(int16_t));
-    int range = high - low;
-    for (int i = 0; i < size; i++) {
-        res[i] = (int16_t)(low + (int)((unsigned int)res[i] % (unsigned int)range));
-    }
-}
+IMPLEMENT_V_SECURE_RANDINT(int64, int64_t, int64_t, int64_t)
+IMPLEMENT_V_SECURE_RANDINT(int32, int32_t, int32_t, int32_t)
+IMPLEMENT_V_SECURE_RANDINT(int16, int16_t, int, int)
+IMPLEMENT_V_SECURE_RANDINT(uint8, uint8_t, int, int)
 
 void v_secure_normal_double(double *res, int size, double loc, double scale) {
     if (res == NULL || size <= 0 || scale <= 0.0) return;
@@ -3833,119 +3688,62 @@ float r_norm_neg_inf_##suffix(const type *src, int stride, int size) { \
 DEFINE_NORM_REDUCTIONS_FLOAT(float, float)
 
 /* Complex Norms */
-double r_norm_l1_complex128(const cpx_t *src, int stride, int size) {
-    if (src == NULL || size <= 0) return 0.0;
-    double sum = 0.0;
-    for (int i = 0; i < size; i++) {
-        double r = src[i * stride].r;
-        double imag = src[i * stride].i;
-        sum += sqrt(r * r + imag * imag);
-    }
-    return sum;
+#define DEFINE_COMPLEX_NORM_REDUCTIONS(suffix, type, float_type, sqrt_fn, pow_fn) \
+float_type r_norm_l1_##suffix(const type *src, int stride, int size) { \
+    if (src == NULL || size <= 0) return (float_type)0.0; \
+    float_type sum = (float_type)0.0; \
+    for (int i = 0; i < size; i++) { \
+        float_type r = (float_type)src[i * stride].r; \
+        float_type imag = (float_type)src[i * stride].i; \
+        sum += sqrt_fn(r * r + imag * imag); \
+    } \
+    return sum; \
+} \
+float_type r_norm_l2_##suffix(const type *src, int stride, int size) { \
+    if (src == NULL || size <= 0) return (float_type)0.0; \
+    float_type sum = (float_type)0.0; \
+    for (int i = 0; i < size; i++) { \
+        float_type r = (float_type)src[i * stride].r; \
+        float_type imag = (float_type)src[i * stride].i; \
+        sum += r * r + imag * imag; \
+    } \
+    return sum; \
+} \
+float_type r_norm_lp_##suffix(const type *src, int stride, int size, float_type p) { \
+    if (src == NULL || size <= 0) return (float_type)0.0; \
+    float_type sum = (float_type)0.0; \
+    for (int i = 0; i < size; i++) { \
+        float_type r = (float_type)src[i * stride].r; \
+        float_type imag = (float_type)src[i * stride].i; \
+        sum += pow_fn(sqrt_fn(r * r + imag * imag), p); \
+    } \
+    return sum; \
+} \
+float_type r_norm_inf_##suffix(const type *src, int stride, int size) { \
+    if (src == NULL || size <= 0) return (float_type)0.0; \
+    float_type max_val = (float_type)-1.0; \
+    for (int i = 0; i < size; i++) { \
+        float_type r = (float_type)src[i * stride].r; \
+        float_type imag = (float_type)src[i * stride].i; \
+        float_type val = sqrt_fn(r * r + imag * imag); \
+        if (val > max_val || max_val < (float_type)0.0) max_val = val; \
+    } \
+    return max_val; \
+} \
+float_type r_norm_neg_inf_##suffix(const type *src, int stride, int size) { \
+    if (src == NULL || size <= 0) return (float_type)0.0; \
+    float_type min_val = (float_type)-1.0; \
+    for (int i = 0; i < size; i++) { \
+        float_type r = (float_type)src[i * stride].r; \
+        float_type imag = (float_type)src[i * stride].i; \
+        float_type val = sqrt_fn(r * r + imag * imag); \
+        if (val < min_val || min_val < (float_type)0.0) min_val = val; \
+    } \
+    return min_val; \
 }
 
-double r_norm_l2_complex128(const cpx_t *src, int stride, int size) {
-    if (src == NULL || size <= 0) return 0.0;
-    double sum = 0.0;
-    for (int i = 0; i < size; i++) {
-        double r = src[i * stride].r;
-        double imag = src[i * stride].i;
-        sum += r * r + imag * imag;
-    }
-    return sum;
-}
-
-double r_norm_lp_complex128(const cpx_t *src, int stride, int size, double p) {
-    if (src == NULL || size <= 0) return 0.0;
-    double sum = 0.0;
-    for (int i = 0; i < size; i++) {
-        double r = src[i * stride].r;
-        double imag = src[i * stride].i;
-        sum += pow(sqrt(r * r + imag * imag), p);
-    }
-    return sum;
-}
-
-double r_norm_inf_complex128(const cpx_t *src, int stride, int size) {
-    if (src == NULL || size <= 0) return 0.0;
-    double max_val = -1.0;
-    for (int i = 0; i < size; i++) {
-        double r = src[i * stride].r;
-        double imag = src[i * stride].i;
-        double val = sqrt(r * r + imag * imag);
-        if (val > max_val || max_val < 0) max_val = val;
-    }
-    return max_val;
-}
-
-double r_norm_neg_inf_complex128(const cpx_t *src, int stride, int size) {
-    if (src == NULL || size <= 0) return 0.0;
-    double min_val = -1.0;
-    for (int i = 0; i < size; i++) {
-        double r = src[i * stride].r;
-        double imag = src[i * stride].i;
-        double val = sqrt(r * r + imag * imag);
-        if (val < min_val || min_val < 0) min_val = val;
-    }
-    return min_val;
-}
-
-float r_norm_l1_complex64(const cpx_f_t *src, int stride, int size) {
-    if (src == NULL || size <= 0) return 0.0f;
-    float sum = 0.0f;
-    for (int i = 0; i < size; i++) {
-        float r = src[i * stride].r;
-        float imag = src[i * stride].i;
-        sum += sqrtf(r * r + imag * imag);
-    }
-    return sum;
-}
-
-float r_norm_l2_complex64(const cpx_f_t *src, int stride, int size) {
-    if (src == NULL || size <= 0) return 0.0f;
-    float sum = 0.0f;
-    for (int i = 0; i < size; i++) {
-        float r = src[i * stride].r;
-        float imag = src[i * stride].i;
-        sum += r * r + imag * imag;
-    }
-    return sum;
-}
-
-float r_norm_lp_complex64(const cpx_f_t *src, int stride, int size, float p) {
-    if (src == NULL || size <= 0) return 0.0f;
-    float sum = 0.0f;
-    for (int i = 0; i < size; i++) {
-        float r = src[i * stride].r;
-        float imag = src[i * stride].i;
-        sum += powf(sqrtf(r * r + imag * imag), p);
-    }
-    return sum;
-}
-
-float r_norm_inf_complex64(const cpx_f_t *src, int stride, int size) {
-    if (src == NULL || size <= 0) return 0.0f;
-    float max_val = -1.0f;
-    for (int i = 0; i < size; i++) {
-        float r = src[i * stride].r;
-        float imag = src[i * stride].i;
-        float val = sqrtf(r * r + imag * imag);
-        if (val > max_val || max_val < 0) max_val = val;
-    }
-    return max_val;
-}
-
-float r_norm_neg_inf_complex64(const cpx_f_t *src, int stride, int size) {
-    if (src == NULL || size <= 0) return 0.0f;
-    float min_val = -1.0f;
-    for (int i = 0; i < size; i++) {
-        float r = src[i * stride].r;
-        float imag = src[i * stride].i;
-        float val = sqrtf(r * r + imag * imag);
-        if (val < min_val || min_val < 0) min_val = val;
-    }
-    return min_val;
-}
+DEFINE_COMPLEX_NORM_REDUCTIONS(complex128, cpx_t, double, sqrt, pow)
+DEFINE_COMPLEX_NORM_REDUCTIONS(complex64, cpx_f_t, float, sqrtf, powf)
 
 /* Window Functions */
 void v_hanning_double(double *res, int M) {
