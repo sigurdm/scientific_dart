@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
 // ----------------------------------------------------------------------------
 // Struct definitions for Complex number representations
@@ -237,82 +238,550 @@ static inline int compare_indices_int32_timsort(int idx_a, int idx_b) {
 #undef SORT_CMP
 
 // ----------------------------------------------------------------------------
-// Public Sorters (Routings to Christopher Swenson's TimSort)
+// Generic Macro Engine for Sorting, Partitioning, and Binary Searching
 // ----------------------------------------------------------------------------
 
-void native_sort_double(double *array, int size) {
-    if (array == NULL || size <= 1) return;
-    tim_double_tim_sort(array, size);
+#define DEFINE_INSERTION_SORT(NAME, TYPE, CMP) \
+static void NAME##_insertion_sort(TYPE *arr, int left, int right) { \
+    for (int i = left + 1; i <= right; i++) { \
+        TYPE key = arr[i]; \
+        int j = i - 1; \
+        while (j >= left && CMP(key, arr[j]) < 0) { \
+            arr[j + 1] = arr[j]; \
+            j--; \
+        } \
+        arr[j + 1] = key; \
+    } \
 }
 
-void native_sort_float(float *array, int size) {
-    if (array == NULL || size <= 1) return;
-    tim_float_tim_sort(array, size);
+#define DEFINE_QUICKSORT(NAME, TYPE, CMP) \
+static void NAME##_quicksort_rec(TYPE *arr, int left, int right) { \
+    if (right - left <= 10) { \
+        NAME##_insertion_sort(arr, left, right); \
+        return; \
+    } \
+    int mid = left + (right - left) / 2; \
+    if (CMP(arr[mid], arr[left]) < 0) { TYPE t = arr[left]; arr[left] = arr[mid]; arr[mid] = t; } \
+    if (CMP(arr[right], arr[left]) < 0) { TYPE t = arr[left]; arr[left] = arr[right]; arr[right] = t; } \
+    if (CMP(arr[right], arr[mid]) < 0) { TYPE t = arr[mid]; arr[mid] = arr[right]; arr[right] = t; } \
+    TYPE pivot = arr[mid]; \
+    TYPE t1 = arr[mid]; arr[mid] = arr[right - 1]; arr[right - 1] = t1; \
+    int i = left; \
+    int j = right - 1; \
+    while (1) { \
+        while (CMP(arr[++i], pivot) < 0); \
+        while (CMP(pivot, arr[--j]) < 0); \
+        if (i >= j) break; \
+        TYPE t2 = arr[i]; arr[i] = arr[j]; arr[j] = t2; \
+    } \
+    TYPE t3 = arr[i]; arr[i] = arr[right - 1]; arr[right - 1] = t3; \
+    NAME##_quicksort_rec(arr, left, i - 1); \
+    NAME##_quicksort_rec(arr, i + 1, right); \
+} \
+void NAME##_quicksort(TYPE *arr, int size) { \
+    if (arr == NULL || size <= 1) return; \
+    NAME##_quicksort_rec(arr, 0, size - 1); \
 }
 
-void native_sort_int64(long long *array, int size) {
-    if (array == NULL || size <= 1) return;
-    tim_int64_tim_sort(array, size);
+#define DEFINE_HEAPSORT(NAME, TYPE, CMP) \
+static void NAME##_heapify(TYPE *arr, int n, int i) { \
+    int largest = i; \
+    int l = 2 * i + 1; \
+    int r = 2 * i + 2; \
+    if (l < n && CMP(arr[l], arr[largest]) > 0) largest = l; \
+    if (r < n && CMP(arr[r], arr[largest]) > 0) largest = r; \
+    if (largest != i) { \
+        TYPE tmp = arr[i]; \
+        arr[i] = arr[largest]; \
+        arr[largest] = tmp; \
+        NAME##_heapify(arr, n, largest); \
+    } \
+} \
+void NAME##_heapsort(TYPE *arr, int size) { \
+    if (arr == NULL || size <= 1) return; \
+    for (int i = size / 2 - 1; i >= 0; i--) \
+        NAME##_heapify(arr, size, i); \
+    for (int i = size - 1; i > 0; i--) { \
+        TYPE tmp = arr[0]; \
+        arr[0] = arr[i]; \
+        arr[i] = tmp; \
+        NAME##_heapify(arr, i, 0); \
+    } \
 }
 
-void native_sort_int32(int *array, int size) {
-    if (array == NULL || size <= 1) return;
-    tim_int32_tim_sort(array, size);
+#define DEFINE_QUICKSELECT(NAME, TYPE, CMP) \
+static void NAME##_quickselect(TYPE *arr, int left, int right, int k) { \
+    while (left < right) { \
+        if (right - left <= 10) { \
+            NAME##_insertion_sort(arr, left, right); \
+            return; \
+        } \
+        int pivot_idx = left + (right - left) / 2; \
+        TYPE pivot = arr[pivot_idx]; \
+        arr[pivot_idx] = arr[right]; \
+        arr[right] = pivot; \
+        int i = left; \
+        for (int j = left; j < right; j++) { \
+            if (CMP(arr[j], pivot) < 0) { \
+                TYPE tmp = arr[i]; \
+                arr[i] = arr[j]; \
+                arr[j] = tmp; \
+                i++; \
+            } \
+        } \
+        arr[right] = arr[i]; \
+        arr[i] = pivot; \
+        if (i == k) { \
+            return; \
+        } else if (i < k) { \
+            left = i + 1; \
+        } else { \
+            right = i - 1; \
+        } \
+    } \
+} \
+static void NAME##_quickselect_multi(TYPE *arr, int left, int right, const int *k_list, int k_start, int k_end) { \
+    if (k_start > k_end || left >= right) return; \
+    int mid_k_idx = k_start + (k_end - k_start) / 2; \
+    int k = k_list[mid_k_idx]; \
+    NAME##_quickselect(arr, left, right, k); \
+    NAME##_quickselect_multi(arr, left, k - 1, k_list, k_start, mid_k_idx - 1); \
+    NAME##_quickselect_multi(arr, k + 1, right, k_list, mid_k_idx + 1, k_end); \
+} \
+void NAME##_partition(TYPE *arr, int size, const int *k_list, int k_size) { \
+    if (arr == NULL || size <= 1 || k_list == NULL || k_size <= 0) return; \
+    NAME##_quickselect_multi(arr, 0, size - 1, k_list, 0, k_size - 1); \
 }
 
-void native_sort_complex128(double *array, int size) {
-    if (array == NULL || size <= 1) return;
-    tim_complex128_tim_sort((complex128_t *)array, size);
+#define DEFINE_ARGQUICKSELECT(NAME, TYPE, CMP) \
+static void NAME##_arg_insertion_sort(const TYPE *arr, int *indices, int left, int right) { \
+    for (int i = left + 1; i <= right; i++) { \
+        int key = indices[i]; \
+        int j = i - 1; \
+        while (j >= left && CMP(arr[key], arr[indices[j]]) < 0) { \
+            indices[j + 1] = indices[j]; \
+            j--; \
+        } \
+        indices[j + 1] = key; \
+    } \
+} \
+static void NAME##_arg_quickselect(const TYPE *arr, int *indices, int left, int right, int k) { \
+    while (left < right) { \
+        if (right - left <= 10) { \
+            NAME##_arg_insertion_sort(arr, indices, left, right); \
+            return; \
+        } \
+        int pivot_idx = left + (right - left) / 2; \
+        int pivot_val = indices[pivot_idx]; \
+        indices[pivot_idx] = indices[right]; \
+        indices[right] = pivot_val; \
+        int i = left; \
+        for (int j = left; j < right; j++) { \
+            if (CMP(arr[indices[j]], arr[pivot_val]) < 0) { \
+                int tmp = indices[i]; \
+                indices[i] = indices[j]; \
+                indices[j] = tmp; \
+                i++; \
+            } \
+        } \
+        indices[right] = indices[i]; \
+        indices[i] = pivot_val; \
+        if (i == k) { \
+            return; \
+        } else if (i < k) { \
+            left = i + 1; \
+        } else { \
+            right = i - 1; \
+        } \
+    } \
+} \
+static void NAME##_arg_quickselect_multi(const TYPE *arr, int *indices, int left, int right, const int *k_list, int k_start, int k_end) { \
+    if (k_start > k_end || left >= right) return; \
+    int mid_k_idx = k_start + (k_end - k_start) / 2; \
+    int k = k_list[mid_k_idx]; \
+    NAME##_arg_quickselect(arr, indices, left, right, k); \
+    NAME##_arg_quickselect_multi(arr, indices, left, k - 1, k_list, k_start, mid_k_idx - 1); \
+    NAME##_arg_quickselect_multi(arr, indices, k + 1, right, k_list, mid_k_idx + 1, k_end); \
+} \
+void NAME##_argpartition(const TYPE *arr, int *indices, int size, const int *k_list, int k_size) { \
+    if (arr == NULL || indices == NULL || size <= 0 || k_list == NULL || k_size <= 0) return; \
+    for (int i = 0; i < size; i++) indices[i] = i; \
+    NAME##_arg_quickselect_multi(arr, indices, 0, size - 1, k_list, 0, k_size - 1); \
 }
 
-void native_sort_complex64(float *array, int size) {
-    if (array == NULL || size <= 1) return;
-    tim_complex64_tim_sort((complex64_t *)array, size);
+#define DEFINE_IND_QUICKSORT(NAME, TYPE, CMP) \
+static void NAME##_ind_quicksort_rec(const TYPE *arr, int *indices, int left, int right) { \
+    if (right - left <= 10) { \
+        NAME##_arg_insertion_sort(arr, indices, left, right); \
+        return; \
+    } \
+    int mid = left + (right - left) / 2; \
+    if (CMP(arr[indices[mid]], arr[indices[left]]) < 0) { int t = indices[left]; indices[left] = indices[mid]; indices[mid] = t; } \
+    if (CMP(arr[indices[right]], arr[indices[left]]) < 0) { int t = indices[left]; indices[left] = indices[right]; indices[right] = t; } \
+    if (CMP(arr[indices[right]], arr[indices[mid]]) < 0) { int t = indices[mid]; indices[mid] = indices[right]; indices[right] = t; } \
+    int pivot = indices[mid]; \
+    int t1 = indices[mid]; indices[mid] = indices[right - 1]; indices[right - 1] = t1; \
+    int i = left; \
+    int j = right - 1; \
+    while (1) { \
+        while (CMP(arr[indices[++i]], arr[pivot]) < 0); \
+        while (CMP(arr[pivot], arr[indices[--j]]) < 0); \
+        if (i >= j) break; \
+        int t2 = indices[i]; indices[i] = indices[j]; indices[j] = t2; \
+    } \
+    int t3 = indices[i]; indices[i] = indices[right - 1]; indices[right - 1] = t3; \
+    NAME##_ind_quicksort_rec(arr, indices, left, i - 1); \
+    NAME##_ind_quicksort_rec(arr, indices, i + 1, right); \
+} \
+void NAME##_ind_quicksort(const TYPE *arr, int *indices, int size) { \
+    if (arr == NULL || indices == NULL || size <= 1) return; \
+    for (int i = 0; i < size; i++) indices[i] = i; \
+    NAME##_ind_quicksort_rec(arr, indices, 0, size - 1); \
+}
+
+#define DEFINE_IND_HEAPSORT(NAME, TYPE, CMP) \
+static void NAME##_ind_heapify(const TYPE *arr, int *indices, int n, int i) { \
+    int largest = i; \
+    int l = 2 * i + 1; \
+    int r = 2 * i + 2; \
+    if (l < n && CMP(arr[indices[l]], arr[indices[largest]]) > 0) largest = l; \
+    if (r < n && CMP(arr[indices[r]], arr[indices[largest]]) > 0) largest = r; \
+    if (largest != i) { \
+        int tmp = indices[i]; \
+        indices[i] = indices[largest]; \
+        indices[largest] = tmp; \
+        NAME##_ind_heapify(arr, indices, n, largest); \
+    } \
+} \
+void NAME##_ind_heapsort(const TYPE *arr, int *indices, int size) { \
+    if (arr == NULL || indices == NULL || size <= 1) return; \
+    for (int i = 0; i < size; i++) indices[i] = i; \
+    for (int i = size / 2 - 1; i >= 0; i--) \
+        NAME##_ind_heapify(arr, indices, size, i); \
+    for (int i = size - 1; i > 0; i--) { \
+        int tmp = indices[0]; \
+        indices[0] = indices[i]; \
+        indices[i] = tmp; \
+        NAME##_ind_heapify(arr, indices, i, 0); \
+    } \
+}
+
+#define DEFINE_SEARCHSORTED(NAME, TYPE, CMP) \
+void NAME##_searchsorted(const TYPE *arr, int size, const TYPE *values, int *out_indices, int num_values, int side_left, const int *sorter) { \
+    if (arr == NULL || values == NULL || out_indices == NULL || num_values <= 0) return; \
+    for (int v_idx = 0; v_idx < num_values; v_idx++) { \
+        TYPE val = values[v_idx]; \
+        int low = 0; \
+        int high = size; \
+        while (low < high) { \
+            int mid = low + (high - low) / 2; \
+            TYPE mid_val = (sorter != NULL) ? arr[sorter[mid]] : arr[mid]; \
+            int comp = CMP(mid_val, val); \
+            if (side_left) { \
+                if (comp < 0) { \
+                    low = mid + 1; \
+                } else { \
+                    high = mid; \
+                } \
+            } else { \
+                if (comp <= 0) { \
+                    low = mid + 1; \
+                } else { \
+                    high = mid; \
+                } \
+            } \
+        } \
+        out_indices[v_idx] = low; \
+    } \
 }
 
 // ----------------------------------------------------------------------------
-// Public Argsort Sorters (Routings to Christopher Swenson's TimSort)
+// Macro Instantiations
 // ----------------------------------------------------------------------------
 
-void native_argsort_double(const double *data, int *indices, int size) {
-    if (data == NULL || indices == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        indices[i] = i;
+// double (f64)
+DEFINE_INSERTION_SORT(f64, double, compare_double_inline)
+DEFINE_QUICKSORT(f64, double, compare_double_inline)
+DEFINE_HEAPSORT(f64, double, compare_double_inline)
+DEFINE_QUICKSELECT(f64, double, compare_double_inline)
+DEFINE_ARGQUICKSELECT(f64, double, compare_double_inline)
+DEFINE_IND_QUICKSORT(f64, double, compare_double_inline)
+DEFINE_IND_HEAPSORT(f64, double, compare_double_inline)
+DEFINE_SEARCHSORTED(f64, double, compare_double_inline)
+
+// float (f32)
+DEFINE_INSERTION_SORT(f32, float, compare_float_inline)
+DEFINE_QUICKSORT(f32, float, compare_float_inline)
+DEFINE_HEAPSORT(f32, float, compare_float_inline)
+DEFINE_QUICKSELECT(f32, float, compare_float_inline)
+DEFINE_ARGQUICKSELECT(f32, float, compare_float_inline)
+DEFINE_IND_QUICKSORT(f32, float, compare_float_inline)
+DEFINE_IND_HEAPSORT(f32, float, compare_float_inline)
+DEFINE_SEARCHSORTED(f32, float, compare_float_inline)
+
+// int64 (i64)
+DEFINE_INSERTION_SORT(i64, long long, compare_int64_inline)
+DEFINE_QUICKSORT(i64, long long, compare_int64_inline)
+DEFINE_HEAPSORT(i64, long long, compare_int64_inline)
+DEFINE_QUICKSELECT(i64, long long, compare_int64_inline)
+DEFINE_ARGQUICKSELECT(i64, long long, compare_int64_inline)
+DEFINE_IND_QUICKSORT(i64, long long, compare_int64_inline)
+DEFINE_IND_HEAPSORT(i64, long long, compare_int64_inline)
+DEFINE_SEARCHSORTED(i64, long long, compare_int64_inline)
+
+// int32 (i32)
+DEFINE_INSERTION_SORT(i32, int, compare_int32_inline)
+DEFINE_QUICKSORT(i32, int, compare_int32_inline)
+DEFINE_HEAPSORT(i32, int, compare_int32_inline)
+DEFINE_QUICKSELECT(i32, int, compare_int32_inline)
+DEFINE_ARGQUICKSELECT(i32, int, compare_int32_inline)
+DEFINE_IND_QUICKSORT(i32, int, compare_int32_inline)
+DEFINE_IND_HEAPSORT(i32, int, compare_int32_inline)
+DEFINE_SEARCHSORTED(i32, int, compare_int32_inline)
+
+// complex128 (c128)
+DEFINE_INSERTION_SORT(c128, complex128_t, compare_complex128_inline)
+DEFINE_QUICKSORT(c128, complex128_t, compare_complex128_inline)
+DEFINE_HEAPSORT(c128, complex128_t, compare_complex128_inline)
+DEFINE_QUICKSELECT(c128, complex128_t, compare_complex128_inline)
+DEFINE_ARGQUICKSELECT(c128, complex128_t, compare_complex128_inline)
+DEFINE_SEARCHSORTED(c128, complex128_t, compare_complex128_inline)
+
+// complex64 (c64)
+DEFINE_INSERTION_SORT(c64, complex64_t, compare_complex64_inline)
+DEFINE_QUICKSORT(c64, complex64_t, compare_complex64_inline)
+DEFINE_HEAPSORT(c64, complex64_t, compare_complex64_inline)
+DEFINE_QUICKSELECT(c64, complex64_t, compare_complex64_inline)
+DEFINE_ARGQUICKSELECT(c64, complex64_t, compare_complex64_inline)
+DEFINE_SEARCHSORTED(c64, complex64_t, compare_complex64_inline)
+
+// ----------------------------------------------------------------------------
+// Public Sorters with Kind Routing
+// kind: 0 = quicksort, 1 = mergesort/stable, 2 = heapsort
+// ----------------------------------------------------------------------------
+
+void native_sort_double(double *array, int size, int kind) {
+    if (array == NULL || size <= 1) return;
+    if (kind == 0) {
+        f64_quicksort(array, size);
+    } else if (kind == 2) {
+        f64_heapsort(array, size);
+    } else {
+        tim_double_tim_sort(array, size);
     }
-    global_double_data = data;
-    tim_indices_double_tim_sort(indices, size);
-    global_double_data = NULL;
 }
 
-void native_argsort_float(const float *data, int *indices, int size) {
-    if (data == NULL || indices == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        indices[i] = i;
+void native_sort_float(float *array, int size, int kind) {
+    if (array == NULL || size <= 1) return;
+    if (kind == 0) {
+        f32_quicksort(array, size);
+    } else if (kind == 2) {
+        f32_heapsort(array, size);
+    } else {
+        tim_float_tim_sort(array, size);
     }
-    global_float_data = data;
-    tim_indices_float_tim_sort(indices, size);
-    global_float_data = NULL;
 }
 
-void native_argsort_int64(const long long *data, int *indices, int size) {
-    if (data == NULL || indices == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        indices[i] = i;
+void native_sort_int64(long long *array, int size, int kind) {
+    if (array == NULL || size <= 1) return;
+    if (kind == 0) {
+        i64_quicksort(array, size);
+    } else if (kind == 2) {
+        i64_heapsort(array, size);
+    } else {
+        tim_int64_tim_sort(array, size);
     }
-    global_int64_data = data;
-    tim_indices_int64_tim_sort(indices, size);
-    global_int64_data = NULL;
 }
 
-void native_argsort_int32(const int *data, int *indices, int size) {
-    if (data == NULL || indices == NULL || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        indices[i] = i;
+void native_sort_int32(int *array, int size, int kind) {
+    if (array == NULL || size <= 1) return;
+    if (kind == 0) {
+        i32_quicksort(array, size);
+    } else if (kind == 2) {
+        i32_heapsort(array, size);
+    } else {
+        tim_int32_tim_sort(array, size);
     }
-    global_int32_data = data;
-    tim_indices_int32_tim_sort(indices, size);
-    global_int32_data = NULL;
 }
+
+void native_sort_complex128(double *array, int size, int kind) {
+    if (array == NULL || size <= 1) return;
+    if (kind == 0) {
+        c128_quicksort((complex128_t *)array, size);
+    } else if (kind == 2) {
+        c128_heapsort((complex128_t *)array, size);
+    } else {
+        tim_complex128_tim_sort((complex128_t *)array, size);
+    }
+}
+
+void native_sort_complex64(float *array, int size, int kind) {
+    if (array == NULL || size <= 1) return;
+    if (kind == 0) {
+        c64_quicksort((complex64_t *)array, size);
+    } else if (kind == 2) {
+        c64_heapsort((complex64_t *)array, size);
+    } else {
+        tim_complex64_tim_sort((complex64_t *)array, size);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Public Argsort Sorters with Kind Routing
+// kind: 0 = quicksort, 1 = mergesort/stable, 2 = heapsort
+// ----------------------------------------------------------------------------
+
+void native_argsort_double(const double *data, int *indices, int size, int kind) {
+    if (data == NULL || indices == NULL || size <= 0) return;
+    if (kind == 0) {
+        f64_ind_quicksort(data, indices, size);
+    } else if (kind == 2) {
+        f64_ind_heapsort(data, indices, size);
+    } else {
+        for (int i = 0; i < size; i++) {
+            indices[i] = i;
+        }
+        global_double_data = data;
+        tim_indices_double_tim_sort(indices, size);
+        global_double_data = NULL;
+    }
+}
+
+void native_argsort_float(const float *data, int *indices, int size, int kind) {
+    if (data == NULL || indices == NULL || size <= 0) return;
+    if (kind == 0) {
+        f32_ind_quicksort(data, indices, size);
+    } else if (kind == 2) {
+        f32_ind_heapsort(data, indices, size);
+    } else {
+        for (int i = 0; i < size; i++) {
+            indices[i] = i;
+        }
+        global_float_data = data;
+        tim_indices_float_tim_sort(indices, size);
+        global_float_data = NULL;
+    }
+}
+
+void native_argsort_int64(const long long *data, int *indices, int size, int kind) {
+    if (data == NULL || indices == NULL || size <= 0) return;
+    if (kind == 0) {
+        i64_ind_quicksort(data, indices, size);
+    } else if (kind == 2) {
+        i64_ind_heapsort(data, indices, size);
+    } else {
+        for (int i = 0; i < size; i++) {
+            indices[i] = i;
+        }
+        global_int64_data = data;
+        tim_indices_int64_tim_sort(indices, size);
+        global_int64_data = NULL;
+    }
+}
+
+void native_argsort_int32(const int *data, int *indices, int size, int kind) {
+    if (data == NULL || indices == NULL || size <= 0) return;
+    if (kind == 0) {
+        i32_ind_quicksort(data, indices, size);
+    } else if (kind == 2) {
+        i32_ind_heapsort(data, indices, size);
+    } else {
+        for (int i = 0; i < size; i++) {
+            indices[i] = i;
+        }
+        global_int32_data = data;
+        tim_indices_int32_tim_sort(indices, size);
+        global_int32_data = NULL;
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Public Partition Sorters
+// ----------------------------------------------------------------------------
+
+void native_partition_double(double *array, int size, const int *k_list, int k_size) {
+    f64_partition(array, size, k_list, k_size);
+}
+
+void native_partition_float(float *array, int size, const int *k_list, int k_size) {
+    f32_partition(array, size, k_list, k_size);
+}
+
+void native_partition_int64(long long *array, int size, const int *k_list, int k_size) {
+    i64_partition(array, size, k_list, k_size);
+}
+
+void native_partition_int32(int *array, int size, const int *k_list, int k_size) {
+    i32_partition(array, size, k_list, k_size);
+}
+
+void native_partition_complex128(double *array, int size, const int *k_list, int k_size) {
+    c128_partition((complex128_t *)array, size, k_list, k_size);
+}
+
+void native_partition_complex64(float *array, int size, const int *k_list, int k_size) {
+    c64_partition((complex64_t *)array, size, k_list, k_size);
+}
+
+// ----------------------------------------------------------------------------
+// Public Argpartition Sorters
+// ----------------------------------------------------------------------------
+
+void native_argpartition_double(const double *data, int *indices, int size, const int *k_list, int k_size) {
+    f64_argpartition(data, indices, size, k_list, k_size);
+}
+
+void native_argpartition_float(const float *data, int *indices, int size, const int *k_list, int k_size) {
+    f32_argpartition(data, indices, size, k_list, k_size);
+}
+
+void native_argpartition_int64(const long long *data, int *indices, int size, const int *k_list, int k_size) {
+    i64_argpartition(data, indices, size, k_list, k_size);
+}
+
+void native_argpartition_int32(const int *data, int *indices, int size, const int *k_list, int k_size) {
+    i32_argpartition(data, indices, size, k_list, k_size);
+}
+
+void native_argpartition_complex128(const double *data, int *indices, int size, const int *k_list, int k_size) {
+    c128_argpartition((const complex128_t *)data, indices, size, k_list, k_size);
+}
+
+void native_argpartition_complex64(const float *data, int *indices, int size, const int *k_list, int k_size) {
+    c64_argpartition((const complex64_t *)data, indices, size, k_list, k_size);
+}
+
+// ----------------------------------------------------------------------------
+// Public Searchsorted Functions
+// ----------------------------------------------------------------------------
+
+void native_searchsorted_double(const double *array, int size, const double *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    f64_searchsorted(array, size, values, out_indices, num_values, side_left, sorter);
+}
+
+void native_searchsorted_float(const float *array, int size, const float *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    f32_searchsorted(array, size, values, out_indices, num_values, side_left, sorter);
+}
+
+void native_searchsorted_int64(const long long *array, int size, const long long *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    i64_searchsorted(array, size, values, out_indices, num_values, side_left, sorter);
+}
+
+void native_searchsorted_int32(const int *array, int size, const int *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    i32_searchsorted(array, size, values, out_indices, num_values, side_left, sorter);
+}
+
+void native_searchsorted_complex128(const double *array, int size, const double *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    c128_searchsorted((const complex128_t *)array, size, (const complex128_t *)values, out_indices, num_values, side_left, sorter);
+}
+
+void native_searchsorted_complex64(const float *array, int size, const float *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    c64_searchsorted((const complex64_t *)array, size, (const complex64_t *)values, out_indices, num_values, side_left, sorter);
+}
+
+// ----------------------------------------------------------------------------
+// Utility Operations
+// ----------------------------------------------------------------------------
 
 int custom_memcmp(const void *s1, const void *s2, size_t n) {
     if (s1 == NULL || s2 == NULL) return s1 == s2 ? 0 : (s1 == NULL ? -1 : 1);

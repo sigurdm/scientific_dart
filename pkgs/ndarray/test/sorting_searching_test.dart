@@ -370,5 +370,229 @@ void main() {
         }),
       );
     });
+
+    group('SortKind custom quicksort/heapsort/mergesort/stable tests', () {
+      test(
+        'Sort with quicksort',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [5.0, 3.0, 8.0, 1.0, 2.0],
+            [5],
+            DType.float64,
+          );
+          final s = sort(a, kind: SortKind.quicksort);
+          expect(s.toList(), [1.0, 2.0, 3.0, 5.0, 8.0]);
+        }),
+      );
+
+      test(
+        'Sort with heapsort',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([5, 3, 8, 1, 2], [5], DType.int32);
+          final s = sort(a, kind: SortKind.heapsort);
+          expect(s.toList(), [1, 2, 3, 5, 8]);
+        }),
+      );
+
+      test(
+        'Sort with stable mergesort',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([5, 3, 8, 1, 2], [5], DType.int64);
+          final s = sort(a, kind: SortKind.mergesort);
+          expect(s.toList(), [1, 2, 3, 5, 8]);
+        }),
+      );
+
+      test(
+        'Argsort with different kinds',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [5.0, 3.0, 8.0, 1.0, 2.0],
+            [5],
+            DType.float64,
+          );
+          final idxQ = argsort(a, kind: SortKind.quicksort);
+          final idxH = argsort(a, kind: SortKind.heapsort);
+          final idxM = argsort(a, kind: SortKind.mergesort);
+          expect(idxQ.toList(), [3, 4, 1, 0, 2]);
+          expect(idxH.toList(), [3, 4, 1, 0, 2]);
+          expect(idxM.toList(), [3, 4, 1, 0, 2]);
+        }),
+      );
+
+      test(
+        'Boolean sort correctness',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [true, false, true, false, true],
+            [5],
+            DType.boolean,
+          );
+          final s = sort(a);
+          expect(s.toList(), [false, false, true, true, true]);
+        }),
+      );
+    });
+
+    group('partition & argpartition tests', () {
+      test(
+        'Simple partition with single kth',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([3.0, 4.0, 2.0, 1.0], [4], DType.float64);
+          final p = partition(a, 1);
+          expect(p.data[1], 2.0);
+          expect(p.data[0] <= 2.0, true);
+          expect(p.data[2] >= 2.0, true);
+          expect(p.data[3] >= 2.0, true);
+        }),
+      );
+
+      test(
+        'Partition with multiple kth',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [9, 5, 7, 1, 4, 2, 8, 6, 3],
+            [9],
+            DType.int32,
+          );
+          final p = partition(a, [2, 6]);
+          expect(p.data[2], 3);
+          expect(p.data[6], 7);
+          for (var i = 0; i < 2; i++) {
+            expect(p.data[i] <= 3, true);
+          }
+          for (var i = 3; i < 6; i++) {
+            expect(p.data[i] >= 3 && p.data[i] <= 7, true);
+          }
+          for (var i = 7; i < 9; i++) {
+            expect(p.data[i] >= 7, true);
+          }
+        }),
+      );
+
+      test(
+        'Partition non-contiguous view',
+        () => NDArray.scope(() {
+          final mat = NDArray.fromList(
+            Float64List.fromList([5.0, 1.0, 4.0, 2.0, 6.0, 3.0]),
+            [2, 3],
+            DType.float64,
+          );
+          final colView = mat.slice([Slice.all(), Index(0)]);
+          final p = partition(colView, 0);
+          expect(p.toList(), [2.0, 5.0]);
+        }),
+      );
+
+      test(
+        'Argpartition with single kth',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([3.0, 4.0, 2.0, 1.0], [4], DType.float64);
+          final idx = argpartition(a, 1);
+          expect(a.data[idx.data[1]], 2.0);
+          expect(a.data[idx.data[0]] <= 2.0, true);
+          expect(a.data[idx.data[2]] >= 2.0, true);
+          expect(a.data[idx.data[3]] >= 2.0, true);
+        }),
+      );
+
+      test(
+        'Boolean partition',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [true, false, true, false],
+            [4],
+            DType.boolean,
+          );
+          final p = partition(a, 1);
+          expect(p.toList(), [false, false, true, true]);
+        }),
+      );
+    });
+
+    group('searchsorted tests', () {
+      test(
+        'Simple searchsorted numeric inputs',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0],
+            [5],
+            DType.float64,
+          );
+
+          final idxL = searchsorted(
+            a,
+            NDArray.fromList([2.5, 3.0, 5.5], [3], DType.float64),
+            side: SearchSide.left,
+          );
+          expect(idxL.toList(), [2, 2, 5]);
+
+          final idxR = searchsorted(
+            a,
+            NDArray.fromList([2.5, 3.0, 5.5], [3], DType.float64),
+            side: SearchSide.right,
+          );
+          expect(idxR.toList(), [2, 3, 5]);
+        }),
+      );
+
+      test(
+        'searchsorted with sorter',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([3.0, 1.0, 2.0], [3], DType.float64);
+          final sorter = argsort(a);
+
+          final idxL = searchsorted(
+            a,
+            NDArray.fromList([1.5, 2.0], [2], DType.float64),
+            side: SearchSide.left,
+            sorter: sorter,
+          );
+          expect(idxL.toList(), [1, 1]);
+        }),
+      );
+
+      test(
+        'searchsorted multidimensional input shape matching',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+          final v = NDArray.fromList(
+            [1.5, 2.5, 0.5, 3.5],
+            [2, 2],
+            DType.float64,
+          );
+
+          final idx = searchsorted(a, v);
+          expect(idx.shape, [2, 2]);
+          expect(idx.toList(), [1, 2, 0, 3]);
+        }),
+      );
+
+      test(
+        'searchsorted complex and boolean support',
+        () => NDArray.scope(() {
+          final aComp = NDArray<Complex>.create([3], DType.complex128);
+          aComp.data[0] = Complex(1.0, 1.0);
+          aComp.data[1] = Complex(2.0, 2.0);
+          aComp.data[2] = Complex(3.0, 3.0);
+
+          final vComp = NDArray<Complex>.create([2], DType.complex128);
+          vComp.data[0] = Complex(1.5, 1.5);
+          vComp.data[1] = Complex(2.0, 2.0);
+
+          final idxComp = searchsorted(aComp, vComp, side: SearchSide.left);
+          expect(idxComp.toList(), [1, 1]);
+
+          final aBool = NDArray.fromList(
+            [false, false, true, true],
+            [4],
+            DType.boolean,
+          );
+          final vBool = NDArray.fromList([false, true], [2], DType.boolean);
+          final idxBool = searchsorted(aBool, vBool, side: SearchSide.left);
+          expect(idxBool.toList(), [0, 2]);
+        }),
+      );
+    });
   });
 }

@@ -6,14 +6,6 @@ import 'ndarray_bindings.dart';
 import 'ndarray.dart';
 import 'operations.dart';
 
-bool _listEquals(List<int> a, List<int> b) {
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
-}
-
 /// Generates an array with random values uniformly distributed in the half-open interval `[0.0, 1.0)`.
 ///
 /// **Preconditions:**
@@ -49,7 +41,7 @@ NDArray<T> uniform<T extends num>(
     throw ArgumentError('uniform only supports float types for now');
   }
   if (out != null) {
-    if (!_listEquals(out.shape, shape) || out.dtype != resolvedDType) {
+    if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -117,7 +109,7 @@ NDArray<T> randint<T extends num>(
     throw ArgumentError('low must be less than high');
   }
   if (out != null) {
-    if (!_listEquals(out.shape, shape) || out.dtype != resolvedDType) {
+    if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -194,7 +186,7 @@ NDArray<T> normal<T extends num>(
   }
 
   if (out != null) {
-    if (!_listEquals(out.shape, shape) || out.dtype != resolvedDType) {
+    if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -267,7 +259,7 @@ NDArray<T> exponential<T extends num>(
   }
 
   if (out != null) {
-    if (!_listEquals(out.shape, shape) || out.dtype != resolvedDType) {
+    if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -365,7 +357,7 @@ NDArray<T> poisson<T extends num>(
   }
 
   if (out != null) {
-    if (!_listEquals(out.shape, shape) || out.dtype != resolvedDType) {
+    if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -441,7 +433,7 @@ NDArray<T> binomial<T extends num>(
   }
 
   if (out != null) {
-    if (!_listEquals(out.shape, shape) || out.dtype != resolvedDType) {
+    if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -537,7 +529,7 @@ NDArray<T> multivariateNormal<T extends num>(
   }
   final finalShape = [...sampleShape, d];
   if (out != null) {
-    if (!_listEquals(out.shape, finalShape) || out.dtype != resolvedDType) {
+    if (!listEquals(out.shape, finalShape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -660,7 +652,7 @@ NDArray<T> multinomial<T extends num>(
 
   final finalShape = [...sampleShape, k];
   if (out != null) {
-    if (!_listEquals(out.shape, finalShape) || out.dtype != resolvedDType) {
+    if (!listEquals(out.shape, finalShape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }

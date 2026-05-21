@@ -9,6 +9,7 @@ void main() {
   runWhereTernaryExample();
   runNonzeroAndCountingExample();
   runArgMinMaxExample();
+  runSearchSortedExample();
 }
 
 void runNativeSortExample() {
@@ -136,4 +137,24 @@ void runArgMinMaxExample() {
   print(
     'argmax along axis 0 (columns max): ${axis0Max.data}',
   ); // [1, 0, 1] -> col0 max row is 1(40.0), col1 row 0(30.0), col2 row 1(60.0)
+}
+
+void runSearchSortedExample() {
+  print('\n--- Binary Search Insertion (searchsorted) ---');
+  final a = NDArray.fromList(
+    [10.0, 20.0, 30.0, 40.0, 50.0],
+    [5],
+    DType.float64,
+  );
+  final v = NDArray.fromList([15.0, 30.0, 5.0, 55.0], [4], DType.float64);
+  print('Sorted array a: ${a.toList()}');
+  print('Search values v: ${v.toList()}');
+
+  // Left side: returns the first suitable index where element should be inserted
+  final idxL = searchsorted(a, v, side: SearchSide.left);
+  print('searchsorted(left): ${idxL.toList()}'); // [1, 2, 0, 5]
+
+  // Right side: returns the last suitable index
+  final idxR = searchsorted(a, v, side: SearchSide.right);
+  print('searchsorted(right): ${idxR.toList()}'); // [1, 3, 0, 5]
 }

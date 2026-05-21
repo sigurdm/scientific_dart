@@ -19,8 +19,7 @@ When a task is completed, describe it in DONE.md file and remove it from this fi
 
 
 ### 3.3 Statistics & Sorting
-- **Sorting**: Partial sorting `partition()` and index partial sorting `argpartition()` (extremely high performance benefit for top-K filtering), stable sorting indicator `kind` parameter inside `sort()`.
-- **Searching**: Binary search insertion `searchsorted()`.
+(Completed sorting, partitioning, and searchsorted features)
 
 ### 3.4 Random & DType
 - **Sampling**: `choice()` (random selection from an array), `shuffle()` (in-place shuffling), and `permutation()`.
@@ -42,14 +41,8 @@ When a task is completed, describe it in DONE.md file and remove it from this fi
 ### 3.7 Vectorized Logical Reductions
 - **Axis-wise logical reductions**: `all(a, {int? axis})` (check if all elements along axis evaluate to true) and `any(a, {int? axis})` (check if any element along axis evaluate to true) over numeric or boolean tensor structures.
 
-### 3.8 Tabular Tabular Record Arrays (Heterogeneous Structured Data)
-- **Structured Fields Support**: Exposing composite data types matching standard C structs (equivalent to NumPy's `np.recarray` and structured dtype schemas), allowing heterogeneous fields elements to be packaged and walked sequentially inside unmanaged heap bytes segments.
-
 ### 3.9 Progressive Scientific Generators
 - **Geometric Progressive Spacers**: Exposing logarithmic spacer `logspace()` and geometric spacer `geomspace()` generators to match high-end scientific computing specifications.
-
-### 3.10 Vectorized String Operations (char ufuncs)
-- **Text Datasets Operations**: Exposing a `DType.string` type tag and vectorized character manipulation library (e.g., `char.upper()`, `char.lower()`, `char.replace()`, `char.split()`, etc.) to perform highly optimized text operations directly inside unmanaged strides.
 
 ### 3.11 1D Set Operations
 - **Categorical Elements Matching**: Vectorized 1D set operations equivalent to standard Python sets: `intersect1d()`, `setdiff1d()`, `setxor1d()`, `union1d()`, and element check `isin()` to accelerate classification preprocessing filters.

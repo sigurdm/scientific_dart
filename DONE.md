@@ -2627,7 +2627,14 @@
   * **Comprehensive Unit Test Suites**: Authored thorough test files [shaping_meshes_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/shaping_meshes_test.dart) and [splitting_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/splitting_test.dart) checking shapes, strides, value coordinates, equal/unequal partitioning, out-of-bounds conditions, type cast safety, and view mutation correctness.
   * **Pristine Quality**: All 22 new tests and all 572 global unit tests pass successfully. Formatting and static analysis are perfectly clean with 0 errors.
 
+***
 
-
-
-
+## 72. High-Performance Custom C Sorting (SortKind), Partitions, and Binary Search (searchsorted)
+* **What was done**:
+  * **Custom Sorting Algorithms with `SortKind`**: Implemented custom, high-performance QuickSort (unstable with median-of-three pivot selection) and HeapSort ($O(N \log N)$ guaranteed worst-case) in C, completely avoiding C stdlib `qsort` dependencies. Redefined `SortKind` enum (`quicksort`, `mergesort`, `heapsort`, `stable`) in Dart and integrated it into FFI-bound `sort` and `argsort` APIs.
+  * **High-Performance Zero-Allocation Partitions (`partition` and `argpartition`)**: Programmed a multi-pivot recursive Quickselect algorithm in C capable of partitioning any array around single or multiple `kth` pivot indices in $O(N)$ average complexity ($O(N \log M)$ for multiple $M$ pivots). Exposed public `partition` and `argpartition` APIs supporting axis-swapping to perform contiguous partitions on the C heap, fully supporting float64, float32, int64, int32, complex128, complex64, and boolean DTypes.
+  * **Vectorized Binary Search (`searchsorted`)**: Programmed a binary search insertion index finder in C. Bound it in Dart with signature `searchsorted(NDArray a, NDArray v, {SearchSide side, NDArray<int>? sorter})` supporting both `SearchSide.left`/`SearchSide.right` and indirect searching via an optional pre-sorted `sorter` list, perfectly mirroring NumPy behavior by supporting arbitrary N-D shapes for `v` and returning index arrays matching `v.shape`.
+  * **Robust Boolean & Complex Lexicographical Logic**: Fully supported boolean arrays and lexicographical complex sorting and binary searching natively across all sorting, partitioning, and searchsorted tracks.
+* **Results**:
+  * **Comprehensive Unit Test Suites**: Authored extensive test suites in [sorting_searching_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/sorting_searching_test.dart) validating SortKind combinations, single/multiple kth partitions, sliced-views, argpartitions, searchsorted left/right boundaries, sorter indirect searches, multidimensional inputs shape matching, and boolean/complex type support.
+  * **Pristine Quality**: All 16 new test cases and all 588 workspace unit tests pass 100% green! Code formatting and static analysis are perfectly clean with 0 issues.

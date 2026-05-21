@@ -11,67 +11,432 @@ library;
 import 'dart:ffi' as ffi;
 
 /// Natively sort a double precision float64 array in-place on the FFI heap.
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
-external void native_sort_double(ffi.Pointer<ffi.Double> array, int size);
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Int, ffi.Int)>()
+external void native_sort_double(
+  ffi.Pointer<ffi.Double> array,
+  int size,
+  int kind,
+);
 
 /// Natively sort a single precision float32 array in-place.
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
-external void native_sort_float(ffi.Pointer<ffi.Float> array, int size);
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Int, ffi.Int)>()
+external void native_sort_float(
+  ffi.Pointer<ffi.Float> array,
+  int size,
+  int kind,
+);
 
 /// Natively sort an int64 array in-place.
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.LongLong>, ffi.Int)>()
-external void native_sort_int64(ffi.Pointer<ffi.LongLong> array, int size);
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.LongLong>, ffi.Int, ffi.Int)>()
+external void native_sort_int64(
+  ffi.Pointer<ffi.LongLong> array,
+  int size,
+  int kind,
+);
 
 /// Natively sort an int32 array in-place.
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int>, ffi.Int)>()
-external void native_sort_int32(ffi.Pointer<ffi.Int> array, int size);
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int>, ffi.Int, ffi.Int)>()
+external void native_sort_int32(ffi.Pointer<ffi.Int> array, int size, int kind);
 
 /// Natively sort a complex128 array in-place lexicographically.
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
-external void native_sort_complex128(ffi.Pointer<ffi.Double> array, int size);
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Int, ffi.Int)>()
+external void native_sort_complex128(
+  ffi.Pointer<ffi.Double> array,
+  int size,
+  int kind,
+);
 
 /// Natively sort a complex64 array in-place lexicographically.
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
-external void native_sort_complex64(ffi.Pointer<ffi.Float> array, int size);
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Int, ffi.Int)>()
+external void native_sort_complex64(
+  ffi.Pointer<ffi.Float> array,
+  int size,
+  int kind,
+);
 
 /// Natively compute indirect sort indices for double precision float64 array.
 @ffi.Native<
-  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Int>, ffi.Int)
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
 >()
 external void native_argsort_double(
   ffi.Pointer<ffi.Double> data,
   ffi.Pointer<ffi.Int> indices,
   int size,
+  int kind,
 );
 
 /// Natively compute indirect sort indices for single precision float32 array.
 @ffi.Native<
-  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Int>, ffi.Int)
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
 >()
 external void native_argsort_float(
   ffi.Pointer<ffi.Float> data,
   ffi.Pointer<ffi.Int> indices,
   int size,
+  int kind,
 );
 
 /// Natively compute indirect sort indices for int64 array.
 @ffi.Native<
-  ffi.Void Function(ffi.Pointer<ffi.LongLong>, ffi.Pointer<ffi.Int>, ffi.Int)
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
 >()
 external void native_argsort_int64(
   ffi.Pointer<ffi.LongLong> data,
   ffi.Pointer<ffi.Int> indices,
   int size,
+  int kind,
 );
 
 /// Natively compute indirect sort indices for int32 array.
 @ffi.Native<
-  ffi.Void Function(ffi.Pointer<ffi.Int>, ffi.Pointer<ffi.Int>, ffi.Int)
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
 >()
 external void native_argsort_int32(
   ffi.Pointer<ffi.Int> data,
   ffi.Pointer<ffi.Int> indices,
   int size,
+  int kind,
+);
+
+/// Natively partition a double precision float64 array.
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_partition_double(
+  ffi.Pointer<ffi.Double> array,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_partition_float(
+  ffi.Pointer<ffi.Float> array,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_partition_int64(
+  ffi.Pointer<ffi.LongLong> array,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_partition_int32(
+  ffi.Pointer<ffi.Int> array,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_partition_complex128(
+  ffi.Pointer<ffi.Double> array,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_partition_complex64(
+  ffi.Pointer<ffi.Float> array,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+/// Natively compute argpartition indices for double precision float64 array.
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_argpartition_double(
+  ffi.Pointer<ffi.Double> data,
+  ffi.Pointer<ffi.Int> indices,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_argpartition_float(
+  ffi.Pointer<ffi.Float> data,
+  ffi.Pointer<ffi.Int> indices,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_argpartition_int64(
+  ffi.Pointer<ffi.LongLong> data,
+  ffi.Pointer<ffi.Int> indices,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_argpartition_int32(
+  ffi.Pointer<ffi.Int> data,
+  ffi.Pointer<ffi.Int> indices,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_argpartition_complex128(
+  ffi.Pointer<ffi.Double> data,
+  ffi.Pointer<ffi.Int> indices,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_argpartition_complex64(
+  ffi.Pointer<ffi.Float> data,
+  ffi.Pointer<ffi.Int> indices,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+/// Natively searchsorted for double precision float64 array.
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+  )
+>()
+external void native_searchsorted_double(
+  ffi.Pointer<ffi.Double> array,
+  int size,
+  ffi.Pointer<ffi.Double> values,
+  ffi.Pointer<ffi.Int> out_indices,
+  int num_values,
+  int side_left,
+  ffi.Pointer<ffi.Int> sorter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+  )
+>()
+external void native_searchsorted_float(
+  ffi.Pointer<ffi.Float> array,
+  int size,
+  ffi.Pointer<ffi.Float> values,
+  ffi.Pointer<ffi.Int> out_indices,
+  int num_values,
+  int side_left,
+  ffi.Pointer<ffi.Int> sorter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Int,
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+  )
+>()
+external void native_searchsorted_int64(
+  ffi.Pointer<ffi.LongLong> array,
+  int size,
+  ffi.Pointer<ffi.LongLong> values,
+  ffi.Pointer<ffi.Int> out_indices,
+  int num_values,
+  int side_left,
+  ffi.Pointer<ffi.Int> sorter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+  )
+>()
+external void native_searchsorted_int32(
+  ffi.Pointer<ffi.Int> array,
+  int size,
+  ffi.Pointer<ffi.Int> values,
+  ffi.Pointer<ffi.Int> out_indices,
+  int num_values,
+  int side_left,
+  ffi.Pointer<ffi.Int> sorter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+  )
+>()
+external void native_searchsorted_complex128(
+  ffi.Pointer<ffi.Double> array,
+  int size,
+  ffi.Pointer<ffi.Double> values,
+  ffi.Pointer<ffi.Int> out_indices,
+  int num_values,
+  int side_left,
+  ffi.Pointer<ffi.Int> sorter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+  )
+>()
+external void native_searchsorted_complex64(
+  ffi.Pointer<ffi.Float> array,
+  int size,
+  ffi.Pointer<ffi.Float> values,
+  ffi.Pointer<ffi.Int> out_indices,
+  int num_values,
+  int side_left,
+  ffi.Pointer<ffi.Int> sorter,
 );
 
 /// Zero-allocation optimized direct C memcmp block byte compare.

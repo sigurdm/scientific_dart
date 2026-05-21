@@ -11,6 +11,72 @@ import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'ndarray_bindings.dart';
 
+/// Supported sorting algorithms.
+///
+/// {@example /example/sorting_searching_example.dart lang=dart}
+enum SortKind {
+  /// Unstable, fast QuickSort.
+  quicksort,
+
+  /// Stable, mergesort-based TimSort.
+  mergesort,
+
+  /// Unstable, HeapSort.
+  heapsort,
+
+  /// Alias for mergesort (guaranteed stable).
+  stable,
+}
+
+/// Search boundary behavior selector for binary search insertion points in [searchsorted].
+///
+/// This determines the index returned when a query value matches existing elements
+/// in the sorted target array:
+/// - [SearchSide.left] returns the index of the **first** suitable location found (the leftmost match).
+/// - [SearchSide.right] returns the index of the **last** suitable location found (the rightmost match).
+///
+/// ### Inline Example:
+/// ```dart
+/// import 'package:ndarray/ndarray.dart';
+///
+/// void main() {
+///   // Given a sorted 1-D target array with duplicate elements:
+///   final a = NDArray.fromList([10.0, 20.0, 20.0, 20.0, 30.0], [5], DType.float64);
+///
+///   // Value to insert:
+///   final v = NDArray.fromList([20.0], [1], DType.float64);
+///
+///   // 1. Using SearchSide.left:
+///   // Finds the index of the first occurrence (index 1).
+///   final idxLeft = searchsorted(a, v, side: SearchSide.left);
+///   print(idxLeft.toList()); // [1]
+///
+///   // 2. Using SearchSide.right:
+///   // Finds the index after the last occurrence (index 4).
+///   final idxRight = searchsorted(a, v, side: SearchSide.right);
+///   print(idxRight.toList()); // [4]
+/// }
+/// ```
+enum SearchSide {
+  /// Finds the first suitable index to insert to maintain sorted order.
+  left,
+
+  /// Finds the last suitable index to insert to maintain sorted order.
+  right,
+}
+
+int _mapSortKind(SortKind kind) {
+  switch (kind) {
+    case SortKind.quicksort:
+      return 0;
+    case SortKind.mergesort:
+    case SortKind.stable:
+      return 1;
+    case SortKind.heapsort:
+      return 2;
+  }
+}
+
 /// Configure the number of parallel execution threads used by OpenBLAS at runtime.
 ///
 /// **Preconditions:**
@@ -30,14 +96,6 @@ void setNumThreads(int numThreads) {
     );
   }
   openblas_set_num_threads(numThreads);
-}
-
-bool listEquals(List<int> a, List<int> b) {
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
 }
 
 DType _resolveDType(DType a, DType b) {
@@ -7851,7 +7909,7 @@ NDArray<bool> _runBinaryLogical(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray sort(NDArray a, {int axis = -1}) {
+NDArray sort(NDArray a, {int axis = -1, SortKind kind = SortKind.quicksort}) {
   final rank = a.shape.length;
   if (rank == 0) {
     return NDArray.fromList(List.from(a.data), [], a.dtype);
@@ -7864,7 +7922,7 @@ NDArray sort(NDArray a, {int axis = -1}) {
 
   if (targetAxis != rank - 1) {
     final swappedView = a.swapaxes(targetAxis, rank - 1);
-    final sortedView = sort(swappedView, axis: rank - 1);
+    final sortedView = sort(swappedView, axis: rank - 1, kind: kind);
     return sortedView.swapaxes(targetAxis, rank - 1);
   }
 
@@ -7916,6 +7974,26 @@ NDArray sort(NDArray a, {int axis = -1}) {
   final totalSize = src.shape.isEmpty ? 1 : src.shape.reduce((x, y) => x * y);
   final numRows = totalSize ~/ n;
 
+  if (src.dtype == DType.boolean) {
+    // Sort boolean rows in $O(N)$
+    for (var r = 0; r < numRows; r++) {
+      final rowStart = r * n;
+      final rowEnd = rowStart + n;
+      final resBacking = (result.data as BoolList).backingList;
+      var falses = 0;
+      for (var i = rowStart; i < rowEnd; i++) {
+        if (resBacking[i] == 0) falses++;
+      }
+      for (var i = rowStart; i < rowStart + falses; i++) {
+        resBacking[i] = 0;
+      }
+      for (var i = rowStart + falses; i < rowEnd; i++) {
+        resBacking[i] = 1;
+      }
+    }
+    return result;
+  }
+
   int elementSizeInBytes;
   if (src.dtype == DType.float64 || src.dtype == DType.int64) {
     elementSizeInBytes = 8;
@@ -7931,23 +8009,24 @@ NDArray sort(NDArray a, {int axis = -1}) {
 
   final baseCast = result.pointer.cast<ffi.Uint8>();
   final rowSizeInBytes = n * elementSizeInBytes;
+  final nativeKind = _mapSortKind(kind);
 
   for (var r = 0; r < numRows; r++) {
     final rowPtr = baseCast + (r * rowSizeInBytes);
 
     // High-speed direct C sorters bypassing FFI context switches
     if (src.dtype == DType.float64) {
-      native_sort_double(rowPtr.cast<ffi.Double>(), n);
+      native_sort_double(rowPtr.cast<ffi.Double>(), n, nativeKind);
     } else if (src.dtype == DType.float32) {
-      native_sort_float(rowPtr.cast<ffi.Float>(), n);
+      native_sort_float(rowPtr.cast<ffi.Float>(), n, nativeKind);
     } else if (src.dtype == DType.int64) {
-      native_sort_int64(rowPtr.cast<ffi.LongLong>(), n);
+      native_sort_int64(rowPtr.cast<ffi.LongLong>(), n, nativeKind);
     } else if (src.dtype == DType.int32) {
-      native_sort_int32(rowPtr.cast<ffi.Int>(), n);
+      native_sort_int32(rowPtr.cast<ffi.Int>(), n, nativeKind);
     } else if (src.dtype == DType.complex128) {
-      native_sort_complex128(rowPtr.cast<ffi.Double>(), n);
+      native_sort_complex128(rowPtr.cast<ffi.Double>(), n, nativeKind);
     } else if (src.dtype == DType.complex64) {
-      native_sort_complex64(rowPtr.cast<ffi.Float>(), n);
+      native_sort_complex64(rowPtr.cast<ffi.Float>(), n, nativeKind);
     }
   }
 
@@ -7969,7 +8048,11 @@ NDArray sort(NDArray a, {int axis = -1}) {
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<int> argsort(NDArray a, {int axis = -1}) {
+NDArray<int> argsort(
+  NDArray a, {
+  int axis = -1,
+  SortKind kind = SortKind.quicksort,
+}) {
   final rank = a.shape.length;
   if (rank == 0) {
     return NDArray.fromList(<int>[0], [], DType.int32);
@@ -7982,7 +8065,7 @@ NDArray<int> argsort(NDArray a, {int axis = -1}) {
 
   if (targetAxis != rank - 1) {
     final swappedView = a.swapaxes(targetAxis, rank - 1);
-    final sortedIndicesView = argsort(swappedView, axis: rank - 1);
+    final sortedIndicesView = argsort(swappedView, axis: rank - 1, kind: kind);
     return sortedIndicesView.swapaxes(targetAxis, rank - 1);
   }
 
@@ -8000,33 +8083,34 @@ NDArray<int> argsort(NDArray a, {int axis = -1}) {
     final numRows = totalSize ~/ n;
 
     final result = NDArray<int>.create(src.shape, DType.int32);
+    final nativeKind = _mapSortKind(kind);
 
     if (src.dtype == DType.float64) {
       final dataPtr = src.pointer.cast<ffi.Double>();
       final resPtr = result.pointer.cast<ffi.Int>();
       for (var r = 0; r < numRows; r++) {
-        native_argsort_double(dataPtr + r * n, resPtr + r * n, n);
+        native_argsort_double(dataPtr + r * n, resPtr + r * n, n, nativeKind);
       }
       return result;
     } else if (src.dtype == DType.float32) {
       final dataPtr = src.pointer.cast<ffi.Float>();
       final resPtr = result.pointer.cast<ffi.Int>();
       for (var r = 0; r < numRows; r++) {
-        native_argsort_float(dataPtr + r * n, resPtr + r * n, n);
+        native_argsort_float(dataPtr + r * n, resPtr + r * n, n, nativeKind);
       }
       return result;
     } else if (src.dtype == DType.int64) {
       final dataPtr = src.pointer.cast<ffi.LongLong>();
       final resPtr = result.pointer.cast<ffi.Int>();
       for (var r = 0; r < numRows; r++) {
-        native_argsort_int64(dataPtr + r * n, resPtr + r * n, n);
+        native_argsort_int64(dataPtr + r * n, resPtr + r * n, n, nativeKind);
       }
       return result;
     } else if (src.dtype == DType.int32) {
       final dataPtr = src.pointer.cast<ffi.Int>();
       final resPtr = result.pointer.cast<ffi.Int>();
       for (var r = 0; r < numRows; r++) {
-        native_argsort_int32(dataPtr + r * n, resPtr + r * n, n);
+        native_argsort_int32(dataPtr + r * n, resPtr + r * n, n, nativeKind);
       }
       return result;
     }
@@ -8043,6 +8127,14 @@ NDArray<int> argsort(NDArray a, {int axis = -1}) {
           if (cA.real != cB.real) return cA.real.compareTo(cB.real);
           return cA.imag.compareTo(cB.imag);
         });
+      } else if (src.dtype == DType.boolean) {
+        final dataList = src.data as List<bool>;
+        indices.sort((i, j) {
+          final bA = dataList[rowStart + i];
+          final bB = dataList[rowStart + j];
+          if (bA == bB) return 0;
+          return bA ? 1 : -1;
+        });
       } else {
         throw UnimplementedError('Unsupported dtype for argsort: ${src.dtype}');
       }
@@ -8058,6 +8150,627 @@ NDArray<int> argsort(NDArray a, {int axis = -1}) {
       src.dispose();
     }
   }
+}
+
+/// Rearranges the elements of the array along a specified [axis] such that
+/// the value of the element at [kth] position is in the position it would be
+/// in a sorted array.
+///
+/// This function corresponds to NumPy's `partition` function.
+///
+/// **Preconditions:**
+/// - [axis] must be within `[-rank, rank - 1]`.
+/// - [kth] must be an `int` or `List<int>` containing indices within `[0, axis_size - 1]`.
+///
+/// **Throws:**
+/// - [RangeError] if [axis] is out of bounds.
+/// - [ArgumentError] if [kth] is invalid.
+///
+/// **Example:**
+/// {@example /example/sorting_searching_example.dart lang=dart}
+NDArray partition(NDArray a, dynamic kth, {int axis = -1}) {
+  final rank = a.shape.length;
+  if (rank == 0) {
+    return NDArray.fromList(List.from(a.data), [], a.dtype);
+  }
+
+  final targetAxis = axis < 0 ? rank + axis : axis;
+  if (targetAxis < 0 || targetAxis >= rank) {
+    throw RangeError.range(targetAxis, 0, rank - 1, 'axis');
+  }
+
+  final n = a.shape[targetAxis];
+
+  // Parse and validate kth
+  final List<int> kList = [];
+  if (kth is int) {
+    final val = kth < 0 ? n + kth : kth;
+    if (val < 0 || val >= n) {
+      throw RangeError.value(kth, 'kth');
+    }
+    kList.add(val);
+  } else if (kth is Iterable<int>) {
+    for (final k in kth) {
+      final val = k < 0 ? n + k : k;
+      if (val < 0 || val >= n) {
+        throw RangeError.value(k, 'kth element');
+      }
+      kList.add(val);
+    }
+  } else {
+    throw ArgumentError('kth must be an int or an Iterable of ints.');
+  }
+
+  final uniqueK = kList.toSet().toList()..sort();
+
+  if (targetAxis != rank - 1) {
+    final swappedView = a.swapaxes(targetAxis, rank - 1);
+    final partitionedView = partition(swappedView, uniqueK, axis: rank - 1);
+    return partitionedView.swapaxes(targetAxis, rank - 1);
+  }
+
+  NDArray src = a;
+  if (!a.isContiguous) {
+    src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+  }
+
+  final result = NDArray.create(src.shape, src.dtype);
+
+  // Copy data to result
+  if (src.dtype == DType.float64) {
+    (result.data as Float64List).setRange(
+      0,
+      src.data.length,
+      src.data as Float64List,
+    );
+  } else if (src.dtype == DType.float32) {
+    (result.data as Float32List).setRange(
+      0,
+      src.data.length,
+      src.data as Float32List,
+    );
+  } else if (src.dtype == DType.int64) {
+    (result.data as Int64List).setRange(
+      0,
+      src.data.length,
+      src.data as Int64List,
+    );
+  } else if (src.dtype == DType.int32) {
+    (result.data as Int32List).setRange(
+      0,
+      src.data.length,
+      src.data as Int32List,
+    );
+  } else if (src.dtype == DType.complex128 || src.dtype == DType.complex64) {
+    final srcBacking = (src.data as ComplexList).backingList;
+    final resBacking = (result.data as ComplexList).backingList;
+    if (srcBacking is Float64List && resBacking is Float64List) {
+      resBacking.setRange(0, srcBacking.length, srcBacking);
+    } else if (srcBacking is Float32List && resBacking is Float32List) {
+      resBacking.setRange(0, srcBacking.length, srcBacking);
+    }
+  } else if (src.dtype == DType.boolean) {
+    final srcBacking = (src.data as BoolList).backingList;
+    final resBacking = (result.data as BoolList).backingList;
+    resBacking.setRange(0, srcBacking.length, srcBacking);
+  }
+
+  if (uniqueK.isEmpty) {
+    return result;
+  }
+
+  final totalSize = src.shape.isEmpty ? 1 : src.shape.reduce((x, y) => x * y);
+  final numRows = totalSize ~/ n;
+
+  if (src.dtype == DType.boolean) {
+    // A boolean partition is sorted
+    return sort(result, axis: rank - 1);
+  }
+
+  int elementSizeInBytes;
+  if (src.dtype == DType.float64 || src.dtype == DType.int64) {
+    elementSizeInBytes = 8;
+  } else if (src.dtype == DType.float32 || src.dtype == DType.int32) {
+    elementSizeInBytes = 4;
+  } else if (src.dtype == DType.complex64) {
+    elementSizeInBytes = 8;
+  } else if (src.dtype == DType.complex128) {
+    elementSizeInBytes = 16;
+  } else {
+    throw UnimplementedError('Unsupported dtype for partition: ${src.dtype}');
+  }
+
+  final baseCast = result.pointer.cast<ffi.Uint8>();
+  final rowSizeInBytes = n * elementSizeInBytes;
+
+  final cKList = malloc<ffi.Int>(uniqueK.length);
+  for (var i = 0; i < uniqueK.length; i++) {
+    cKList[i] = uniqueK[i];
+  }
+
+  try {
+    for (var r = 0; r < numRows; r++) {
+      final rowPtr = baseCast + (r * rowSizeInBytes);
+
+      switch (src.dtype) {
+        case DType.float64:
+          native_partition_double(
+            rowPtr.cast<ffi.Double>(),
+            n,
+            cKList,
+            uniqueK.length,
+          );
+        case DType.float32:
+          native_partition_float(
+            rowPtr.cast<ffi.Float>(),
+            n,
+            cKList,
+            uniqueK.length,
+          );
+        case DType.int64:
+          native_partition_int64(
+            rowPtr.cast<ffi.LongLong>(),
+            n,
+            cKList,
+            uniqueK.length,
+          );
+        case DType.int32:
+          native_partition_int32(
+            rowPtr.cast<ffi.Int>(),
+            n,
+            cKList,
+            uniqueK.length,
+          );
+        case DType.complex128:
+          native_partition_complex128(
+            rowPtr.cast<ffi.Double>(),
+            n,
+            cKList,
+            uniqueK.length,
+          );
+        case DType.complex64:
+          native_partition_complex64(
+            rowPtr.cast<ffi.Float>(),
+            n,
+            cKList,
+            uniqueK.length,
+          );
+        default:
+          break;
+      }
+    }
+  } finally {
+    malloc.free(cKList);
+  }
+
+  return result;
+}
+
+/// Returns the indices that would partition an array along a specified [axis].
+///
+/// This function corresponds to NumPy's `argpartition` function.
+///
+/// **Preconditions:**
+/// - [axis] must be within `[-rank, rank - 1]`.
+/// - [kth] must be an `int` or `List<int>` containing indices within `[0, axis_size - 1]`.
+///
+/// **Throws:**
+/// - [RangeError] if [axis] is out of bounds.
+/// - [ArgumentError] if [kth] is invalid.
+///
+/// **Example:**
+/// {@example /example/sorting_searching_example.dart lang=dart}
+NDArray<int> argpartition(NDArray a, dynamic kth, {int axis = -1}) {
+  final rank = a.shape.length;
+  if (rank == 0) {
+    return NDArray.fromList(<int>[0], [], DType.int32);
+  }
+
+  final targetAxis = axis < 0 ? rank + axis : axis;
+  if (targetAxis < 0 || targetAxis >= rank) {
+    throw RangeError.range(targetAxis, 0, rank - 1, 'axis');
+  }
+
+  final n = a.shape[targetAxis];
+
+  // Parse and validate kth
+  final List<int> kList = [];
+  if (kth is int) {
+    final val = kth < 0 ? n + kth : kth;
+    if (val < 0 || val >= n) {
+      throw RangeError.value(kth, 'kth');
+    }
+    kList.add(val);
+  } else if (kth is Iterable<int>) {
+    for (final k in kth) {
+      final val = k < 0 ? n + k : k;
+      if (val < 0 || val >= n) {
+        throw RangeError.value(k, 'kth element');
+      }
+      kList.add(val);
+    }
+  } else {
+    throw ArgumentError('kth must be an int or an Iterable of ints.');
+  }
+
+  final uniqueK = kList.toSet().toList()..sort();
+
+  if (targetAxis != rank - 1) {
+    final swappedView = a.swapaxes(targetAxis, rank - 1);
+    final partitionedIndicesView = argpartition(
+      swappedView,
+      uniqueK,
+      axis: rank - 1,
+    );
+    return partitionedIndicesView.swapaxes(targetAxis, rank - 1);
+  }
+
+  NDArray src = a;
+  bool needsDispose = false;
+  if (!a.isContiguous) {
+    src = NDArray.create(a.shape, a.dtype);
+    src.data.setRange(0, src.data.length, a.toList());
+    needsDispose = true;
+  }
+
+  try {
+    final totalSize = src.shape.isEmpty ? 1 : src.shape.reduce((x, y) => x * y);
+    final numRows = totalSize ~/ n;
+
+    final result = NDArray<int>.create(src.shape, DType.int32);
+
+    if (uniqueK.isEmpty) {
+      for (var i = 0; i < result.data.length; i++) {
+        result.data[i] = i % n;
+      }
+      return result;
+    }
+
+    final cKList = malloc<ffi.Int>(uniqueK.length);
+    for (var i = 0; i < uniqueK.length; i++) {
+      cKList[i] = uniqueK[i];
+    }
+
+    try {
+      if (src.dtype == DType.float64) {
+        final dataPtr = src.pointer.cast<ffi.Double>();
+        final resPtr = result.pointer.cast<ffi.Int>();
+        for (var r = 0; r < numRows; r++) {
+          native_argpartition_double(
+            dataPtr + r * n,
+            resPtr + r * n,
+            n,
+            cKList,
+            uniqueK.length,
+          );
+        }
+        return result;
+      } else if (src.dtype == DType.float32) {
+        final dataPtr = src.pointer.cast<ffi.Float>();
+        final resPtr = result.pointer.cast<ffi.Int>();
+        for (var r = 0; r < numRows; r++) {
+          native_argpartition_float(
+            dataPtr + r * n,
+            resPtr + r * n,
+            n,
+            cKList,
+            uniqueK.length,
+          );
+        }
+        return result;
+      } else if (src.dtype == DType.int64) {
+        final dataPtr = src.pointer.cast<ffi.LongLong>();
+        final resPtr = result.pointer.cast<ffi.Int>();
+        for (var r = 0; r < numRows; r++) {
+          native_argpartition_int64(
+            dataPtr + r * n,
+            resPtr + r * n,
+            n,
+            cKList,
+            uniqueK.length,
+          );
+        }
+        return result;
+      } else if (src.dtype == DType.int32) {
+        final dataPtr = src.pointer.cast<ffi.Int>();
+        final resPtr = result.pointer.cast<ffi.Int>();
+        for (var r = 0; r < numRows; r++) {
+          native_argpartition_int32(
+            dataPtr + r * n,
+            resPtr + r * n,
+            n,
+            cKList,
+            uniqueK.length,
+          );
+        }
+        return result;
+      } else if (src.dtype == DType.complex128) {
+        final dataPtr = src.pointer.cast<ffi.Double>();
+        final resPtr = result.pointer.cast<ffi.Int>();
+        for (var r = 0; r < numRows; r++) {
+          native_argpartition_complex128(
+            dataPtr + r * n * 2,
+            resPtr + r * n,
+            n,
+            cKList,
+            uniqueK.length,
+          );
+        }
+        return result;
+      } else if (src.dtype == DType.complex64) {
+        final dataPtr = src.pointer.cast<ffi.Float>();
+        final resPtr = result.pointer.cast<ffi.Int>();
+        for (var r = 0; r < numRows; r++) {
+          native_argpartition_complex64(
+            dataPtr + r * n * 2,
+            resPtr + r * n,
+            n,
+            cKList,
+            uniqueK.length,
+          );
+        }
+        return result;
+      } else if (src.dtype == DType.boolean) {
+        for (var r = 0; r < numRows; r++) {
+          final rowStart = r * n;
+          final indices = List<int>.generate(n, (i) => i);
+          final dataList = src.data as List<bool>;
+          indices.sort((i, j) {
+            final bA = dataList[rowStart + i];
+            final bB = dataList[rowStart + j];
+            if (bA == bB) return 0;
+            return bA ? 1 : -1;
+          });
+          for (var i = 0; i < n; i++) {
+            result.data[rowStart + i] = indices[i];
+          }
+        }
+        return result;
+      } else {
+        throw UnimplementedError(
+          'Unsupported dtype for argpartition: ${src.dtype}',
+        );
+      }
+    } finally {
+      malloc.free(cKList);
+    }
+  } finally {
+    if (needsDispose) {
+      src.dispose();
+    }
+  }
+}
+
+/// Find indices where elements of [v] should be inserted to maintain order in a sorted 1-D array [a].
+///
+/// This function corresponds to NumPy's `searchsorted` function.
+///
+/// Binary search is performed at C-speed using native pointers, fully supporting
+/// arbitrary multi-dimensional shapes for the query array [v]. The returned index
+/// array will have the exact same shape as [v].
+///
+/// ### Preconditions
+/// - [a] must be a 1-D array. If [sorter] is `null`, [a] must be sorted in ascending order.
+/// - [v] must have a matching data type to [a].
+/// - [sorter] (optional) must be a 1-D integer array of the same size as [a]
+///   containing indices that sort [a] into ascending order. If provided, binary search
+///   is performed indirectly using the sorter indices, completely copy-free.
+///
+/// ### Throws
+/// - [ArgumentError] if [a] is not 1-D, [sorter] shape/size is invalid, or if data types mismatch.
+/// - [StateError] if any input array is already disposed.
+///
+/// ### Performance Considerations
+/// - **Time Complexity**: $O(M \log N)$ where $N$ is the size of [a] and $M$ is the size of [v].
+/// - **Memory Complexity**: $O(M)$ to hold the returned N-dimensional shape. The C search runs in $O(1)$ auxiliary space.
+///
+/// ### Inline Example:
+/// ```dart
+/// import 'package:ndarray/ndarray.dart';
+///
+/// void main() {
+///   final a = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float64);
+///   final v = NDArray.fromList([15.0, 30.0, 5.0, 35.0], [2, 2], DType.float64);
+///
+///   // Finds insertion indices for the entire multi-dimensional grid v:
+///   final indices = searchsorted(a, v, side: SearchSide.left);
+///
+///   print(indices.shape); // [2, 2] (matches shape of v)
+///   print(indices.toList()); // [[1, 2], [0, 3]]
+/// }
+/// ```
+NDArray<int> searchsorted(
+  NDArray a,
+  NDArray v, {
+  SearchSide side = SearchSide.left,
+  NDArray<int>? sorter,
+}) {
+  if (a.shape.length != 1) {
+    throw ArgumentError('a must be a 1-D array.');
+  }
+
+  if (sorter != null &&
+      (sorter.shape.length != 1 || sorter.shape[0] != a.shape[0])) {
+    throw ArgumentError('sorter must be a 1-D array of the same size as a.');
+  }
+
+  final result = NDArray<int>.create(v.shape, DType.int32);
+
+  if (v.size == 0) {
+    return result;
+  }
+
+  NDArray srcA = a;
+  if (!a.isContiguous) {
+    srcA = NDArray.fromList(a.toList(), a.shape, a.dtype);
+  }
+
+  NDArray srcV = v;
+  if (!v.isContiguous) {
+    srcV = NDArray.fromList(v.toList(), v.shape, v.dtype);
+  }
+
+  NDArray<int>? srcSorter = sorter;
+  if (sorter != null && !sorter.isContiguous) {
+    srcSorter = NDArray<int>.fromList(
+      sorter.toList(),
+      sorter.shape,
+      DType.int32,
+    );
+  }
+
+  final size = srcA.shape[0];
+  final numValues = srcV.size;
+  final sideLeft = side == SearchSide.left ? 1 : 0;
+
+  final ffi.Pointer<ffi.Int> cSorter = (srcSorter != null)
+      ? srcSorter.pointer.cast<ffi.Int>()
+      : ffi.Pointer<ffi.Int>.fromAddress(0);
+
+  try {
+    switch (srcA.dtype) {
+      case DType.float64:
+        if (srcV.dtype != DType.float64) {
+          throw ArgumentError(
+            'v and a must have matching dtypes (expected float64, got ${v.dtype})',
+          );
+        }
+        native_searchsorted_double(
+          srcA.pointer.cast<ffi.Double>(),
+          size,
+          srcV.pointer.cast<ffi.Double>(),
+          result.pointer.cast<ffi.Int>(),
+          numValues,
+          sideLeft,
+          cSorter,
+        );
+      case DType.float32:
+        if (srcV.dtype != DType.float32) {
+          throw ArgumentError(
+            'v and a must have matching dtypes (expected float32, got ${v.dtype})',
+          );
+        }
+        native_searchsorted_float(
+          srcA.pointer.cast<ffi.Float>(),
+          size,
+          srcV.pointer.cast<ffi.Float>(),
+          result.pointer.cast<ffi.Int>(),
+          numValues,
+          sideLeft,
+          cSorter,
+        );
+      case DType.int64:
+        if (srcV.dtype != DType.int64) {
+          throw ArgumentError(
+            'v and a must have matching dtypes (expected int64, got ${v.dtype})',
+          );
+        }
+        native_searchsorted_int64(
+          srcA.pointer.cast<ffi.LongLong>(),
+          size,
+          srcV.pointer.cast<ffi.LongLong>(),
+          result.pointer.cast<ffi.Int>(),
+          numValues,
+          sideLeft,
+          cSorter,
+        );
+      case DType.int32:
+        if (srcV.dtype != DType.int32) {
+          throw ArgumentError(
+            'v and a must have matching dtypes (expected int32, got ${v.dtype})',
+          );
+        }
+        native_searchsorted_int32(
+          srcA.pointer.cast<ffi.Int>(),
+          size,
+          srcV.pointer.cast<ffi.Int>(),
+          result.pointer.cast<ffi.Int>(),
+          numValues,
+          sideLeft,
+          cSorter,
+        );
+      case DType.complex128:
+        if (srcV.dtype != DType.complex128) {
+          throw ArgumentError(
+            'v and a must have matching dtypes (expected complex128, got ${v.dtype})',
+          );
+        }
+        native_searchsorted_complex128(
+          srcA.pointer.cast<ffi.Double>(),
+          size,
+          srcV.pointer.cast<ffi.Double>(),
+          result.pointer.cast<ffi.Int>(),
+          numValues,
+          sideLeft,
+          cSorter,
+        );
+      case DType.complex64:
+        if (srcV.dtype != DType.complex64) {
+          throw ArgumentError(
+            'v and a must have matching dtypes (expected complex64, got ${v.dtype})',
+          );
+        }
+        native_searchsorted_complex64(
+          srcA.pointer.cast<ffi.Float>(),
+          size,
+          srcV.pointer.cast<ffi.Float>(),
+          result.pointer.cast<ffi.Int>(),
+          numValues,
+          sideLeft,
+          cSorter,
+        );
+      case DType.boolean:
+        final dataA = srcA.data as List<bool>;
+        final dataV = srcV.data as List<bool>;
+        final sortedIndices = srcSorter?.toList();
+
+        bool getElement(int idx) {
+          return sortedIndices != null ? dataA[sortedIndices[idx]] : dataA[idx];
+        }
+
+        for (var vIdx = 0; vIdx < numValues; vIdx++) {
+          final val = dataV[vIdx];
+          var low = 0;
+          var high = size;
+          while (low < high) {
+            final mid = low + ((high - low) >> 1);
+            final midVal = getElement(mid);
+
+            int comp;
+            if (midVal == val) {
+              comp = 0;
+            } else {
+              comp = midVal ? 1 : -1; // false < true
+            }
+
+            if (side == SearchSide.left) {
+              if (comp < 0) {
+                low = mid + 1;
+              } else {
+                high = mid;
+              }
+            } else {
+              if (comp <= 0) {
+                low = mid + 1;
+              } else {
+                high = mid;
+              }
+            }
+          }
+          result.data[vIdx] = low;
+        }
+      default:
+        throw UnimplementedError(
+          'Unsupported dtype for searchsorted: ${srcA.dtype}',
+        );
+    }
+  } finally {
+    if (srcA != a) srcA.dispose();
+    if (srcV != v) srcV.dispose();
+    if (srcSorter != sorter) srcSorter?.dispose();
+  }
+
+  return result;
 }
 
 void _whereOpRec<Tc, Tx, Ty, Tr>(

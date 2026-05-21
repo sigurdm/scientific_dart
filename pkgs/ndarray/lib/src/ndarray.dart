@@ -2682,7 +2682,7 @@ final class NDArray<T> implements ffi.Finalizable {
     if (identical(this, other)) return true;
     if (other is! NDArray) return false;
     if (dtype != other.dtype) return false;
-    if (!_listEquals(shape, other.shape)) return false;
+    if (!listEquals(shape, other.shape)) return false;
 
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
 
@@ -2792,7 +2792,10 @@ final class NDArray<T> implements ffi.Finalizable {
   }
 }
 
-bool _listEquals<E>(List<E> a, List<E> b) {
+/// Structural elements equality check between two lists.
+bool listEquals<E>(List<E>? a, List<E>? b) {
+  if (identical(a, b)) return true;
+  if (a == null || b == null) return false;
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
     if (a[i] != b[i]) return false;
