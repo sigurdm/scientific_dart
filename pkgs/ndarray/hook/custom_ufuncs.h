@@ -853,4 +853,6 @@ void s_clip_int32(const int32_t *a, const int *stridesA, const int32_t *min_val,
 void s_clip_uint8(const uint8_t *a, const int *stridesA, const uint8_t *min_val, const int *stridesMin, const uint8_t *max_val, const int *stridesMax, uint8_t *res, const int *stridesRes, const int *shape, int rank);
 void s_clip_int16(const int16_t *a, const int *stridesA, const int16_t *min_val, const int *stridesMin, const int16_t *max_val, const int *stridesMax, int16_t *res, const int *stridesRes, const int *shape, int rank);
 
+int get_and_reset_division_error(void);
+
 #endif /* CUSTOM_UFUNCS_H */

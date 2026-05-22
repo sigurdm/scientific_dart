@@ -5533,6 +5533,11 @@ NDArray negative(NDArray a) {
 ///
 /// Corresponds to Dart's `~/` operator.
 ///
+/// **Division by Zero:**
+/// - **Integer arrays**: Throws [UnsupportedError] if divisor contains any `0` elements.
+///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
+/// - **Floating-point arrays**: Returns `double.nan` silently without throwing exceptions.
+///
 /// **Example:**
 /// ```dart
 /// final c = floor_divide(a, b);
@@ -5546,12 +5551,6 @@ NDArray floor_divide(NDArray a, NDArray b) {
   final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
   if (targetDType.isComplex) {
     throw UnsupportedError('Complex numbers do not support floor division');
-  }
-
-  if (b.dtype.isInteger) {
-    if (b.data.any((x) => x == 0)) {
-      throw UnsupportedError('Integer division by zero');
-    }
   }
 
   final result = NDArray.create(commonShape, targetDType);
@@ -5590,6 +5589,10 @@ NDArray floor_divide(NDArray a, NDArray b) {
             result.pointer.cast(),
             a.data.length,
           );
+          final err = get_and_reset_division_error();
+          if (err == 1) {
+            throw UnsupportedError('Integer division by zero');
+          }
           return result;
         }
       case DType.int32:
@@ -5600,6 +5603,10 @@ NDArray floor_divide(NDArray a, NDArray b) {
             result.pointer.cast(),
             a.data.length,
           );
+          final err = get_and_reset_division_error();
+          if (err == 1) {
+            throw UnsupportedError('Integer division by zero');
+          }
           return result;
         }
       default:
@@ -5659,6 +5666,10 @@ NDArray floor_divide(NDArray a, NDArray b) {
             cShape,
             rank,
           );
+          final err = get_and_reset_division_error();
+          if (err == 1) {
+            throw UnsupportedError('Integer division by zero');
+          }
           return result;
         }
       case DType.int32:
@@ -5673,6 +5684,10 @@ NDArray floor_divide(NDArray a, NDArray b) {
             cShape,
             rank,
           );
+          final err = get_and_reset_division_error();
+          if (err == 1) {
+            throw UnsupportedError('Integer division by zero');
+          }
           return result;
         }
       default:
@@ -5686,7 +5701,9 @@ NDArray floor_divide(NDArray a, NDArray b) {
   }
 
   int intFloorDiv(int x, int y) {
-    if (y == 0) return 0;
+    if (y == 0) {
+      throw UnsupportedError('Integer division by zero');
+    }
     final res = x ~/ y;
     final rem = x % y;
     if (rem != 0 && ((x < 0) ^ (y < 0))) {
@@ -5733,6 +5750,11 @@ NDArray floor_divide(NDArray a, NDArray b) {
 ///
 /// Corresponds to Dart's `%` operator.
 ///
+/// **Division by Zero:**
+/// - **Integer divisor**: Throws [UnsupportedError] if divisor contains any `0` elements.
+///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
+/// - **Floating-point divisor**: Returns `double.nan` silently without throwing exceptions.
+///
 /// **Example:**
 /// ```dart
 /// final c = remainder(a, b);
@@ -5746,12 +5768,6 @@ NDArray remainder(NDArray a, NDArray b) {
   final DType<dynamic> targetDType = _resolveDType(a.dtype, b.dtype);
   if (targetDType.isComplex) {
     throw UnsupportedError('Complex numbers do not support remainder');
-  }
-
-  if (b.dtype.isInteger) {
-    if (b.data.any((x) => x == 0)) {
-      throw UnsupportedError('Integer division by zero');
-    }
   }
 
   final result = NDArray.create(commonShape, targetDType);
@@ -5790,6 +5806,10 @@ NDArray remainder(NDArray a, NDArray b) {
             result.pointer.cast(),
             a.data.length,
           );
+          final err = get_and_reset_division_error();
+          if (err == 1) {
+            throw UnsupportedError('Integer division by zero');
+          }
           return result;
         }
       case DType.int32:
@@ -5800,6 +5820,10 @@ NDArray remainder(NDArray a, NDArray b) {
             result.pointer.cast(),
             a.data.length,
           );
+          final err = get_and_reset_division_error();
+          if (err == 1) {
+            throw UnsupportedError('Integer division by zero');
+          }
           return result;
         }
       default:
@@ -5859,6 +5883,10 @@ NDArray remainder(NDArray a, NDArray b) {
             cShape,
             rank,
           );
+          final err = get_and_reset_division_error();
+          if (err == 1) {
+            throw UnsupportedError('Integer division by zero');
+          }
           return result;
         }
       case DType.int32:
@@ -5873,6 +5901,10 @@ NDArray remainder(NDArray a, NDArray b) {
             cShape,
             rank,
           );
+          final err = get_and_reset_division_error();
+          if (err == 1) {
+            throw UnsupportedError('Integer division by zero');
+          }
           return result;
         }
       default:
@@ -5890,7 +5922,9 @@ NDArray remainder(NDArray a, NDArray b) {
   }
 
   int intMod(int x, int y) {
-    if (y == 0) return 0;
+    if (y == 0) {
+      throw UnsupportedError('Integer division by zero');
+    }
     final rem = x % y;
     if (rem != 0 && ((rem < 0) != (y < 0))) {
       return rem + y;
@@ -15836,7 +15870,11 @@ NDArray<R> subtract<Ta, Tb, R>(
   throw UnsupportedError('Unsupported operand types');
 }
 
-/// Element-wise multiplication of two arrays.
+/// Element-wise multiplication of two arrays with full broadcasting support.
+///
+/// **Overflow behavior:**
+/// - **Integer arrays** (`int32`, `int64`, etc.) overflow silently wrapping around via standard two's complement.
+/// - **Floating-point arrays** (`float32`, `float64`) overflow silently to `double.infinity` or `double.negativeInfinity` per IEEE 754.
 NDArray<R> multiply<Ta, Tb, R>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
@@ -17205,7 +17243,15 @@ NDArray<R> multiply<Ta, Tb, R>(
   throw UnsupportedError('Unsupported operand types');
 }
 
-/// Element-wise division of two arrays.
+/// Element-wise division of two arrays with full broadcasting support.
+///
+/// Always upcasts integer operands to [DType.float64] and performs floating-point division.
+///
+/// **Division by Zero:**
+/// Division by zero is handled silently under IEEE 754 floating-point rules:
+/// - Dividing a non-zero value by zero results in `double.infinity` or `double.negativeInfinity`.
+/// - Dividing zero by zero results in `double.nan`.
+/// No exception is thrown.
 NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot divide disposed arrays.');

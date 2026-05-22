@@ -3097,6 +3097,14 @@ void copy_advanced_c(
  * ============================================================================
  */
 
+static int division_error_flag = 0;
+
+int get_and_reset_division_error(void) {
+    int err = division_error_flag;
+    division_error_flag = 0;
+    return err;
+}
+
 static inline double double_floordiv(double x, double y) {
     if (y == 0.0) return NAN;
     return floor(x / y);
@@ -3106,7 +3114,14 @@ static inline float float_floordiv(float x, float y) {
     return floorf(x / y);
 }
 static inline int64_t int64_floordiv(int64_t x, int64_t y) {
-    if (y == 0) return 0;
+    if (y == 0) {
+        division_error_flag = 1;
+        return 0;
+    }
+    if (x == INT64_MIN && y == -1) {
+        division_error_flag = 2;
+        return INT64_MIN;
+    }
     int64_t res = x / y;
     int64_t rem = x % y;
     if (rem != 0 && ((x < 0) ^ (y < 0))) {
@@ -3115,7 +3130,14 @@ static inline int64_t int64_floordiv(int64_t x, int64_t y) {
     return res;
 }
 static inline int32_t int32_floordiv(int32_t x, int32_t y) {
-    if (y == 0) return 0;
+    if (y == 0) {
+        division_error_flag = 1;
+        return 0;
+    }
+    if (x == INT32_MIN && y == -1) {
+        division_error_flag = 2;
+        return INT32_MIN;
+    }
     int32_t res = x / y;
     int32_t rem = x % y;
     if (rem != 0 && ((x < 0) ^ (y < 0))) {
@@ -3141,7 +3163,14 @@ static inline float float_remainder(float x, float y) {
     return rem;
 }
 static inline int64_t int64_remainder(int64_t x, int64_t y) {
-    if (y == 0) return 0;
+    if (y == 0) {
+        division_error_flag = 1;
+        return 0;
+    }
+    if (x == INT64_MIN && y == -1) {
+        division_error_flag = 2;
+        return 0;
+    }
     int64_t rem = x % y;
     if (rem != 0 && ((rem < 0) != (y < 0))) {
         rem += y;
@@ -3149,7 +3178,14 @@ static inline int64_t int64_remainder(int64_t x, int64_t y) {
     return rem;
 }
 static inline int32_t int32_remainder(int32_t x, int32_t y) {
-    if (y == 0) return 0;
+    if (y == 0) {
+        division_error_flag = 1;
+        return 0;
+    }
+    if (x == INT32_MIN && y == -1) {
+        division_error_flag = 2;
+        return 0;
+    }
     int32_t rem = x % y;
     if (rem != 0 && ((rem < 0) != (y < 0))) {
         rem += y;

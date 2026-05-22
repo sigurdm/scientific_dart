@@ -128,5 +128,76 @@ void main() {
         expect(c.toList(), [1.5, 3.5]);
       }),
     );
+
+    test(
+      'Arithmetic Error Handling (Division by Zero & Overflow)',
+      () => NDArray.scope(() {
+        // 1. True Division (operator /) by zero
+        final doubleArr = NDArray.fromList(
+          [5.0, -5.0, 0.0],
+          [3],
+          DType.float64,
+        );
+        final zeroDoubleArr = NDArray.zeros([3], DType.float64);
+        final divDouble = doubleArr / zeroDoubleArr;
+        expect(divDouble.data[0], double.infinity);
+        expect(divDouble.data[1], double.negativeInfinity);
+        expect(divDouble.data[2].isNaN, true);
+
+        // True Division on integer arrays upcasts to float64 and handles division by zero identically
+        final intArr = NDArray.fromList([5, -5, 0], [3], DType.int32);
+        final zeroIntArr = NDArray.zeros([3], DType.int32);
+        final divInt = intArr / zeroIntArr;
+        expect(divInt.dtype, DType.float64);
+        expect(divInt.data[0], double.infinity);
+        expect(divInt.data[1], double.negativeInfinity);
+        expect(divInt.data[2].isNaN, true);
+
+        // 2. Floor Division (operator ~/) and Remainder (operator %) by zero on integer throws UnsupportedError
+        expect(() => intArr ~/ zeroIntArr, throwsA(isA<UnsupportedError>()));
+        expect(() => intArr % zeroIntArr, throwsA(isA<UnsupportedError>()));
+
+        final minIntArr = NDArray.fromList([-2147483648], [1], DType.int32);
+        final minusOneArr = NDArray.fromList([-1], [1], DType.int32);
+        expect(
+          (minIntArr ~/ minusOneArr).data[0],
+          -2147483648,
+        ); // or wraps/throws? Let's see!
+
+        // Floor Division on floats with zero divisor returns NaN
+        final divFloorDouble = doubleArr ~/ zeroDoubleArr;
+        expect(divFloorDouble.data.every((x) => x.isNaN), true);
+
+        // 3. Integer Multiplication Overflow wraps around (two's complement)
+        // Max 32-bit signed int is 2147483647
+        final overflowArr32 = NDArray.fromList([2147483647], [1], DType.int32);
+        final scaleArr32 = NDArray.fromList([2], [1], DType.int32);
+        final prod32 = overflowArr32 * scaleArr32;
+        expect(prod32.dtype, DType.int32);
+        expect(
+          prod32.data[0],
+          -2,
+        ); // 2147483647 * 2 = 4294967294 -> wraps to -2
+
+        // Max 64-bit signed int is 9223372036854775807
+        final overflowArr64 = NDArray.fromList(
+          [9223372036854775807],
+          [1],
+          DType.int64,
+        );
+        final scaleArr64 = NDArray.fromList([2], [1], DType.int64);
+        final prod64 = overflowArr64 * scaleArr64;
+        expect(prod64.dtype, DType.int64);
+        expect(
+          prod64.data[0],
+          -2,
+        ); // 9223372036854775807 * 2 wraps to -2 in 64-bit two's complement
+
+        // 4. Float Multiplication Overflow yields infinity
+        final overflowArrFloat = NDArray.fromList([1e308], [1], DType.float64);
+        final prodFloat = overflowArrFloat * 10.0;
+        expect(prodFloat.data[0], double.infinity);
+      }),
+    );
   });
 }

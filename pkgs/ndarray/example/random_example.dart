@@ -50,7 +50,6 @@ void runAudioImageRandintExample() {
   });
 }
 
-
 void runNormalDistributionExample() {
   print('--- Normal (Gaussian) Distribution ---');
   // Draw a 2x3 normal array with mean=0.0 and stddev=1.0

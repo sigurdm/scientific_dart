@@ -57,6 +57,29 @@ enum DType<T> {
 ///   on a parent array immediately **invalidates all views** derived from it; accessing an
 ///   invalidated view causes crashes or undefined behavior.
 ///
+/// **Arithmetic Error & Overflow Handling:**
+/// Mathematical operations on [NDArray] are backed by highly-optimized native C ufuncs,
+/// and adhere to the following rules:
+/// - **Division by Zero**:
+///   - **True Division (`/`)**: Performs floating-point division under IEEE 754 standards.
+///     If one or both operands are integers, they are promoted to [DType.float64] (matching NumPy).
+///     Division of non-zero values by zero results in `double.infinity` or `double.negativeInfinity`.
+///     Division of zero by zero results in `double.nan`. No exceptions are thrown.
+///   - **Floor Division (`~/` or `floor_divide`) & Remainder (`%` or `remainder`)**:
+///     - **For Floating-Point Types**: Behaves identically to true division, returning `double.nan`
+///       on division by zero without throwing exceptions.
+///     - **For Integer Types**: Throws an [UnsupportedError] if any element of the divisor is `0`.
+///       This upfront safety check in Dart prevents native C integer division by zero, which is
+///       undefined behavior in C and would crash the entire Dart VM process with a `SIGFPE` signal.
+/// - **Overflow**:
+///   - **Integer Overflow**: Integer operations (such as addition, subtraction, and multiplication)
+///     performed on arrays of type `int32`, `int64`, `int16`, or `uint8` wrap around silently
+///     using two's complement representation matching NumPy's wrapping behavior (unless operands
+///     are upcasted, e.g., mixing `int32` and `int64` upcasts to `int64`).
+///   - **Floating-Point Overflow**: Floating-point operations that exceed the representable bounds
+///     of `float32` or `float64` overflow silently to `double.infinity` or `double.negativeInfinity`
+///     per IEEE 754 rules (matching NumPy).
+///
 /// **Example Usage:**
 /// ```dart
 /// // Create a 2x3 array filled with ones
@@ -1903,24 +1926,46 @@ final class NDArray<T> implements ffi.Finalizable {
   }
 
   /// Element-wise multiplication with full broadcasting support.
+  ///
+  /// **Overflow behavior:**
+  /// - **Integer arrays** (`int32`, `int64`, etc.) overflow silently wrapping around via standard two's complement.
+  /// - **Floating-point arrays** (`float32`, `float64`) overflow silently to `double.infinity` or `double.negativeInfinity` per IEEE 754.
   NDArray operator *(dynamic other) {
     final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
     return ops.multiply(this, otherArr);
   }
 
   /// Element-wise division with full broadcasting support.
+  ///
+  /// Always upcasts integer operands to [DType.float64] and performs floating-point division.
+  ///
+  /// **Division by Zero:**
+  /// Division by zero is handled silently under IEEE 754 floating-point rules:
+  /// - Dividing a non-zero value by zero results in `double.infinity` or `double.negativeInfinity`.
+  /// - Dividing zero by zero results in `double.nan`.
+  /// No exception is thrown.
   NDArray operator /(dynamic other) {
     final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
     return ops.divide(this, otherArr);
   }
 
   /// Element-wise floor division with full broadcasting support.
+  ///
+  /// **Division by Zero:**
+  /// - **Integer arrays**: Throws [UnsupportedError] if divisor contains any `0` elements.
+  ///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
+  /// - **Floating-point arrays**: Returns `double.nan` silently without throwing exceptions.
   NDArray operator ~/(dynamic other) {
     final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
     return ops.floor_divide(this, otherArr);
   }
 
   /// Element-wise remainder with full broadcasting support.
+  ///
+  /// **Division by Zero:**
+  /// - **Integer divisor**: Throws [UnsupportedError] if divisor contains any `0` elements.
+  ///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
+  /// - **Floating-point divisor**: Returns `double.nan` silently without throwing exceptions.
   NDArray operator %(dynamic other) {
     final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
     return ops.remainder(this, otherArr);
