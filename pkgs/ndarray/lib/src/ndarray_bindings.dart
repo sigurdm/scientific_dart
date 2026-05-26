@@ -14713,6 +14713,231 @@ external void s_clip_int16(
   int rank,
 );
 
+/// Calculus Solvers: Trapz and Gradient
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Double,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_trapz_double(
+  ffi.Pointer<ffi.Double> y,
+  ffi.Pointer<ffi.Int> stridesY,
+  ffi.Pointer<ffi.Double> x,
+  int strideX,
+  double dx,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Float,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_trapz_float(
+  ffi.Pointer<ffi.Float> y,
+  ffi.Pointer<ffi.Int> stridesY,
+  ffi.Pointer<ffi.Float> x,
+  int strideX,
+  double dx,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Double,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_trapz_complex128(
+  ffi.Pointer<cpx_t> y,
+  ffi.Pointer<ffi.Int> stridesY,
+  ffi.Pointer<ffi.Double> x,
+  int strideX,
+  double dx,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Float,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_trapz_complex64(
+  ffi.Pointer<cpx_f_t> y,
+  ffi.Pointer<ffi.Int> stridesY,
+  ffi.Pointer<ffi.Float> x,
+  int strideX,
+  double dx,
+  ffi.Pointer<cpx_f_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Double,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_gradient_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> x,
+  int strideX,
+  double dx,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int edge_order,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Float,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_gradient_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Float> x,
+  int strideX,
+  double dx,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int edge_order,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Double,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_gradient_complex128(
+  ffi.Pointer<cpx_t> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> x,
+  int strideX,
+  double dx,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int edge_order,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Float,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_gradient_complex64(
+  ffi.Pointer<cpx_f_t> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Float> x,
+  int strideX,
+  double dx,
+  ffi.Pointer<cpx_f_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int edge_order,
+);
+
 @ffi.Native<ffi.Int Function()>()
 external int get_and_reset_division_error();
 
@@ -15123,3 +15348,162 @@ const int WCHAR_MAX = 2147483647;
 const int WINT_MIN = 0;
 
 const int WINT_MAX = 4294967295;
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    cpx_t,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_trapz_complex128_all(
+  ffi.Pointer<cpx_t> y,
+  ffi.Pointer<ffi.Int> stridesY,
+  ffi.Pointer<cpx_t> x,
+  int strideX,
+  cpx_t dx,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    cpx_t,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_gradient_complex128_all(
+  ffi.Pointer<cpx_t> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<cpx_t> x,
+  int strideX,
+  cpx_t dx,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int edge_order,
+);
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    cpx_f_t,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_trapz_complex64_all(
+  ffi.Pointer<cpx_f_t> y,
+  ffi.Pointer<ffi.Int> stridesY,
+  ffi.Pointer<cpx_f_t> x,
+  int strideX,
+  cpx_f_t dx,
+  ffi.Pointer<cpx_f_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    cpx_f_t,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_gradient_complex64_all(
+  ffi.Pointer<cpx_f_t> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<cpx_f_t> x,
+  int strideX,
+  cpx_f_t dx,
+  ffi.Pointer<cpx_f_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int edge_order,
+);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Double, ffi.Double, ffi.Int)>()
+external void v_linspace_double(ffi.Pointer<ffi.Double> res, double start, double step, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Float, ffi.Float, ffi.Int)>()
+external void v_linspace_float(ffi.Pointer<ffi.Float> res, double start, double step, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<cpx_t>, ffi.Double, ffi.Double, ffi.Double, ffi.Double, ffi.Int)>()
+external void v_linspace_complex128(ffi.Pointer<cpx_t> res, double startR, double startI, double stepR, double stepI, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<cpx_f_t>, ffi.Float, ffi.Float, ffi.Float, ffi.Float, ffi.Int)>()
+external void v_linspace_complex64(ffi.Pointer<cpx_f_t> res, double startR, double startI, double stepR, double stepI, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int64>, ffi.Double, ffi.Double, ffi.Int)>()
+external void v_linspace_int64(ffi.Pointer<ffi.Int64> res, double start, double step, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int32>, ffi.Double, ffi.Double, ffi.Int)>()
+external void v_linspace_int32(ffi.Pointer<ffi.Int32> res, double start, double step, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int16>, ffi.Double, ffi.Double, ffi.Int)>()
+external void v_linspace_int16(ffi.Pointer<ffi.Int16> res, double start, double step, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Uint8>, ffi.Double, ffi.Double, ffi.Int)>()
+external void v_linspace_uint8(ffi.Pointer<ffi.Uint8> res, double start, double step, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Double, ffi.Double, ffi.Double, ffi.Int)>()
+external void v_logspace_double(ffi.Pointer<ffi.Double> res, double start, double step, double base, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Float, ffi.Float, ffi.Float, ffi.Int)>()
+external void v_logspace_float(ffi.Pointer<ffi.Float> res, double start, double step, double base, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<cpx_t>, ffi.Double, ffi.Double, ffi.Double, ffi.Double, ffi.Double, ffi.Double, ffi.Int)>()
+external void v_logspace_complex128(ffi.Pointer<cpx_t> res, double startR, double startI, double stepR, double stepI, double baseR, double baseI, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<cpx_f_t>, ffi.Float, ffi.Float, ffi.Float, ffi.Float, ffi.Float, ffi.Float, ffi.Int)>()
+external void v_logspace_complex64(ffi.Pointer<cpx_f_t> res, double startR, double startI, double stepR, double stepI, double baseR, double baseI, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Double, ffi.Double, ffi.Double, ffi.Int)>()
+external void v_geomspace_double(ffi.Pointer<ffi.Double> res, double logStart, double step, double sign, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Double, ffi.Double, ffi.Double, ffi.Int)>()
+external void v_geomspace_float(ffi.Pointer<ffi.Float> res, double logStart, double step, double sign, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<cpx_t>, ffi.Double, ffi.Double, ffi.Double, ffi.Double, ffi.Int)>()
+external void v_geomspace_complex128(ffi.Pointer<cpx_t> res, double logStartR, double logStartI, double stepR, double stepI, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<cpx_f_t>, ffi.Float, ffi.Float, ffi.Float, ffi.Float, ffi.Int)>()
+external void v_geomspace_complex64(ffi.Pointer<cpx_f_t> res, double logStartR, double logStartI, double stepR, double stepI, int size);

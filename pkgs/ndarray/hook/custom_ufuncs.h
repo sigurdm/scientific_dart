@@ -457,6 +457,23 @@ void v_fill_float(float *res, float value, int size);
 void v_fill_int64(int64_t *res, int64_t value, int size);
 void v_fill_int32(int32_t *res, int32_t value, int size);
 
+void v_linspace_double(double *res, double start, double step, int size);
+void v_linspace_float(float *res, float start, float step, int size);
+void v_linspace_complex128(cpx_t *res, double startR, double startI, double stepR, double stepI, int size);
+void v_linspace_complex64(cpx_f_t *res, float startR, float startI, float stepR, float stepI, int size);
+void v_linspace_int64(int64_t *res, double start, double step, int size);
+void v_linspace_int32(int32_t *res, double start, double step, int size);
+void v_linspace_int16(int16_t *res, double start, double step, int size);
+void v_linspace_uint8(uint8_t *res, double start, double step, int size);
+void v_logspace_double(double *res, double start, double step, double base, int size);
+void v_logspace_float(float *res, float start, float step, float base, int size);
+void v_logspace_complex128(cpx_t *res, double startR, double startI, double stepR, double stepI, double baseR, double baseI, int size);
+void v_logspace_complex64(cpx_f_t *res, float startR, float startI, float stepR, float stepI, float baseR, float baseI, int size);
+void v_geomspace_double(double *res, double logStart, double step, double sign, int size);
+void v_geomspace_float(float *res, float logStart, float step, float sign, int size);
+void v_geomspace_complex128(cpx_t *res, double logStartR, double logStartI, double stepR, double stepI, int size);
+void v_geomspace_complex64(cpx_f_t *res, float logStartR, float logStartI, float stepR, float stepI, int size);
+
 void v_secure_uniform_double(double *res, int size);
 void v_secure_uniform_float(float *res, int size);
 void v_secure_randint_int64(int64_t *res, int size, int64_t low, int64_t high);
@@ -853,6 +870,22 @@ void s_clip_int32(const int32_t *a, const int *stridesA, const int32_t *min_val,
 void s_clip_uint8(const uint8_t *a, const int *stridesA, const uint8_t *min_val, const int *stridesMin, const uint8_t *max_val, const int *stridesMax, uint8_t *res, const int *stridesRes, const int *shape, int rank);
 void s_clip_int16(const int16_t *a, const int *stridesA, const int16_t *min_val, const int *stridesMin, const int16_t *max_val, const int *stridesMax, int16_t *res, const int *stridesRes, const int *shape, int rank);
 
+/* Calculus Solvers: Trapz and Gradient */
+void s_trapz_double(const double *y, const int *stridesY, const double *x, int strideX, double dx, double *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_trapz_float(const float *y, const int *stridesY, const float *x, int strideX, float dx, float *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_trapz_complex128(const cpx_t *y, const int *stridesY, const double *x, int strideX, double dx, cpx_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_trapz_complex64(const cpx_f_t *y, const int *stridesY, const float *x, int strideX, float dx, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_trapz_complex128_all(const cpx_t *y, const int *stridesY, const cpx_t *x, int strideX, cpx_t dx, cpx_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_trapz_complex64_all(const cpx_f_t *y, const int *stridesY, const cpx_f_t *x, int strideX, cpx_f_t dx, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+
+void s_gradient_double(const double *src, const int *stridesSrc, const double *x, int strideX, double dx, double *res, const int *stridesRes, const int *shape, int rank, int axis, int edge_order);
+void s_gradient_float(const float *src, const int *stridesSrc, const float *x, int strideX, float dx, float *res, const int *stridesRes, const int *shape, int rank, int axis, int edge_order);
+void s_gradient_complex128(const cpx_t *src, const int *stridesSrc, const double *x, int strideX, double dx, cpx_t *res, const int *stridesRes, const int *shape, int rank, int axis, int edge_order);
+void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc, const float *x, int strideX, float dx, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, int axis, int edge_order);
+void s_gradient_complex128_all(const cpx_t *src, const int *stridesSrc, const cpx_t *x, int strideX, cpx_t dx, cpx_t *res, const int *stridesRes, const int *shape, int rank, int axis, int edge_order);
+void s_gradient_complex64_all(const cpx_f_t *src, const int *stridesSrc, const cpx_f_t *x, int strideX, cpx_f_t dx, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, int axis, int edge_order);
+
 int get_and_reset_division_error(void);
 
 #endif /* CUSTOM_UFUNCS_H */
+

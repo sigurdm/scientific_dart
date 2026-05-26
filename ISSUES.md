@@ -25,14 +25,13 @@ When a task is completed, describe it in DONE.md file and remove it from this fi
 (Completed sampling choice, shuffle, permutation, and media types expansion)
 
 ### 3.6 Calculus & Cumulative Accumulations
-- **Cumulative ufuncs**: (cumsum() and cumprod() ufuncs have been fully resolved!)
-- **Calculus Solvers**: N-Dimensional gradients `gradient(f)` and trapezoidal integrals solver `trapz(y, x)`.
+- all done
 
 ### 3.7 Vectorized Logical Reductions
-- **Axis-wise logical reductions**: `all(a, {int? axis})` (check if all elements along axis evaluate to true) and `any(a, {int? axis})` (check if any element along axis evaluate to true) over numeric or boolean tensor structures.
+- all done
 
 ### 3.9 Progressive Scientific Generators
-- **Geometric Progressive Spacers**: Exposing logarithmic spacer `logspace()` and geometric spacer `geomspace()` generators to match high-end scientific computing specifications.
+- all done
 
 ### 3.11 1D Set Operations
 - **Categorical Elements Matching**: Vectorized 1D set operations equivalent to standard Python sets: `intersect1d()`, `setdiff1d()`, `setxor1d()`, `union1d()`, and element check `isin()` to accelerate classification preprocessing filters.

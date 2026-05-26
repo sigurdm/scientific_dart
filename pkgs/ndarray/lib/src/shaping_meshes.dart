@@ -1,4 +1,5 @@
 import 'ndarray.dart';
+import 'operations.dart';
 
 /// Represents a range specification for meshgrid operations.
 ///
@@ -57,13 +58,14 @@ final class GridRange {
 /// Helper to generate a 1D coordinate array from a [GridRange].
 NDArray<double> _generate1DCoordinate(GridRange range, DType<double> dtype) {
   if (range.numPoints != null) {
-    return NDArray<double>.linspace(
+    return linspace<double>(
       range.start,
       range.stop,
       range.numPoints!,
       dtype: dtype,
     );
-  } else {
+  }
+ else {
     return NDArray<double>.arange(
       range.start,
       range.stop,

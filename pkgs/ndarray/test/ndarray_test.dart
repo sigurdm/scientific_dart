@@ -55,12 +55,12 @@ void main() {
     test(
       'Matrix Multiplication (OpenBLAS)',
       () => NDArray.scope(() {
-        final a = NDArray<Float64>.fromList(
+        final a = NDArray<double>.fromList(
           Float64List.fromList([1, 2, 3, 4]),
           [2, 2],
           DType.float64,
         );
-        final b = NDArray<Float64>.fromList(
+        final b = NDArray<double>.fromList(
           Float64List.fromList([5, 6, 7, 8]),
           [2, 2],
           DType.float64,
@@ -151,7 +151,7 @@ void main() {
     test(
       'Zeros Factory',
       () => NDArray.scope(() {
-        final a = NDArray<Float64>.zeros([2, 3], DType.float64);
+        final a = NDArray<double>.zeros([2, 3], DType.float64);
         expect(a.shape, [2, 3]);
         expect(a.data, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
       }),
@@ -160,7 +160,7 @@ void main() {
     test(
       'Ones Factory',
       () => NDArray.scope(() {
-        final a = NDArray<Float64>.ones([2, 3], DType.float64);
+        final a = NDArray<double>.ones([2, 3], DType.float64);
         expect(a.shape, [2, 3]);
         expect(a.data, [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
       }),
@@ -169,7 +169,7 @@ void main() {
     test(
       'Arange Factory',
       () => NDArray.scope(() {
-        final a = NDArray<Float64>.arange(
+        final a = NDArray<double>.arange(
           0.0,
           5.0,
           step: 1.0,
@@ -183,7 +183,7 @@ void main() {
     test(
       'Linspace Factory',
       () => NDArray.scope(() {
-        final a = NDArray<Float64>.linspace(0.0, 1.0, 5, dtype: DType.float64);
+        final a = linspace<double>(0.0, 1.0, 5, dtype: DType.float64);
         expect(a.shape, [5]);
         expect(a.data, [0.0, 0.25, 0.5, 0.75, 1.0]);
       }),
@@ -204,7 +204,7 @@ void main() {
     test(
       'Manual Dispose',
       () => NDArray.scope(() {
-        final a = NDArray<Float64>.create([2, 2], DType.float64);
+        final a = NDArray<double>.create([2, 2], DType.float64);
         // Should not throw
         a.dispose();
       }),
@@ -213,7 +213,7 @@ void main() {
     test(
       'Eye Factory',
       () => NDArray.scope(() {
-        final a = NDArray<Float64>.eye(3, DType.float64);
+        final a = NDArray<double>.eye(3, DType.float64);
         expect(a.shape, [3, 3]);
         expect(a.data, [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]);
       }),
@@ -1147,7 +1147,7 @@ void main() {
         a.data[0] = Complex(1.0, 2.0);
         a.data[1] = Complex(3.0, 4.0);
 
-        final b = NDArray<Float64>.fromList([10.0, 20.0], [2], DType.float64);
+        final b = NDArray<double>.fromList([10.0, 20.0], [2], DType.float64);
 
         final c = add(a, b);
         expect(c.shape, [2]);

@@ -8,3 +8,7 @@ workspace:
   - pkgs/guitar_tuner
 dependencies:
   http: ^1.6.0
+
+dev_dependencies:
+  ffigen: ^20.1.1
+

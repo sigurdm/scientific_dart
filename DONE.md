@@ -2686,3 +2686,26 @@
   * **Premium Executable Example**: Extended [random_example.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/example/random_example.dart) showing 4x4 uint8 image pixel grids, 10-element int16 audio waves, choices, and permutations.
   * **Pristine Quality**: All 611 workspace unit tests pass successfully!
 
+***
+
+## 76. Implemented Axis-Wise Logical Reductions `all()` and `any()`
+* **Issue**: Resolves **Section 3.7** in `ISSUES.md`. Axis-wise logical reductions over multi-dimensional tensors were missing, preventing users from checking truth conditions across specific dimensions.
+* **Resolution**:
+  * Implemented top-level functions `all()` and `any()` in [operations.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations.dart).
+  * Supported global reduction (returning a 0D scalar array) and axis-wise reduction (reducing the rank of the result array).
+  * Integrated truth evaluation via `_isTrue()` helper, allowing reductions over `bool`, `num`, and `Complex` types (consistent with NumPy's behavior where non-zero values are True).
+  * Optimized multi-dimensional traversal using the pre-allocated scratch list `destPos` within `_reduceRecursive()` to minimize heap churn.
+* **Verification**: Authored a new test suite [logical_reductions_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/logical_reductions_test.dart) covering 1D, 2D, and higher-rank tensors, diverse dtypes, and boundary cases (e.g., empty dimensions). All tests pass 100% green!
+
+***
+
+## 77. Implemented Generalized Scientific Generators `linspace()`, `logspace()`, and `geomspace()`
+* **Issue**: Resolves **Section 3.9** in `ISSUES.md`. Exposing logarithmic and geometric spacers is required to match high-end scientific computing specifications for non-linear coordinate generation.
+* **Resolution**:
+  * Implemented `NDArray.linspace()`, `NDArray.logspace()`, and `NDArray.geomspace()` factories with full NumPy parity.
+  * **Complex Support**: Added support for [Complex] bounds, enabling path generation in the complex plane (e.g., for contour integration or complex root analysis).
+  * **Multi-Dimensional Broadcasting**: Enabled broadcasting when bounds are [NDArray]s. This allows generating tensor grids (e.g., an array of shape `(num, M, N)` from bounds of shape `(M, N)`).
+  * **Axis & Endpoint Support**: Added `axis` parameter to control sample placement in higher-rank results and `endpoint` to toggle inclusion of the stop value.
+  * **Native Performance**: Outsourced the generation loops to high-performance C kernels (`v_linspace_double`, `v_linspace_complex128`, `v_logspace_double`, etc.) in [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.c). This bypasses Dart's JIT overhead for large coordinate arrays and leverages optimized math library calls.
+* **Verification**: Authored a comprehensive test suite [spacers_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/spacers_test.dart) verifying 14 scenarios including linear/log/geometric progressions, complex plane paths, multi-dimensional broadcasting, and axis-wise generation. All tests pass successfully!
+

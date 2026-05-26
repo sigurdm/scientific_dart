@@ -1,0 +1,352 @@
+import 'package:ndarray/ndarray.dart';
+import 'package:test/test.dart';
+
+void main() {
+  group('Calculus Solver: trapz() composite trapezoidal integrals', () {
+    test(
+      '1D Contiguous array constant spacing dx=1.0',
+      () => NDArray.scope(() {
+        final y = NDArray<double>.fromList([1.0, 2.0, 4.0], [3], DType.float64);
+        final res = trapz(y); // Default step(1.0)
+        expect(res.shape, []);
+        expect(
+          res.data[0],
+          closeTo(4.5, 1e-9),
+        ); // 0.5*(1+2)*1 + 0.5*(2+4)*1 = 1.5 + 3 = 4.5
+      }),
+    );
+
+    test(
+      '1D Contiguous array custom constant spacing dx=2.0',
+      () => NDArray.scope(() {
+        final y = NDArray<double>.fromList([1.0, 2.0, 4.0], [3], DType.float64);
+        final res = trapz(y, spacing: Spacing.step(2.0));
+        expect(res.shape, []);
+        expect(res.data[0], closeTo(9.0, 1e-9));
+      }),
+    );
+
+    test(
+      '1D Contiguous array non-uniform (variable) spacing using coordinates array',
+      () => NDArray.scope(() {
+        final y = NDArray<double>.fromList([1.0, 2.0, 4.0], [3], DType.float64);
+        final x = [0.0, 2.0, 3.0];
+        final res = trapz(y, spacing: Spacing.coordinates(x));
+        expect(res.shape, []);
+        expect(
+          res.data[0],
+          closeTo(6.0, 1e-9),
+        ); // 0.5*(1+2)*2 + 0.5*(2+4)*1 = 3.0 + 3.0 = 6.0
+      }),
+    );
+
+    test(
+      'Float32 precision consistency',
+      () => NDArray.scope(() {
+        final yFloat = NDArray<double>.fromList(
+          [1.0, 2.0, 4.0],
+          [3],
+          DType.float32,
+        );
+        final resFloat = trapz(yFloat);
+        expect(resFloat.dtype, DType.float32);
+        expect(resFloat.data[0], closeTo(4.5, 1e-7));
+      }),
+    );
+
+    test(
+      'Complex numbers composite integrations',
+      () => NDArray.scope(() {
+        final y = NDArray<Complex>.fromList(
+          [Complex(1.0, 2.0), Complex(2.0, 3.0), Complex(4.0, 5.0)],
+          [3],
+          DType.complex128,
+        );
+        final res = trapz(y);
+        expect(res.dtype, DType.complex128);
+        expect(res.data[0].real, closeTo(4.5, 1e-9));
+        expect(
+          res.data[0].imag,
+          closeTo(6.5, 1e-9),
+        ); // 0.5*(2+3)*1 + 0.5*(3+5)*1 = 2.5 + 4 = 6.5
+      }),
+    );
+
+    test(
+      '2D multi-dimensional integrations along specified axes',
+      () => NDArray.scope(() {
+        // 2 rows, 3 columns
+        final y = NDArray<double>.fromList(
+          [1.0, 2.0, 4.0, 2.0, 4.0, 8.0],
+          [2, 3],
+          DType.float64,
+        );
+
+        // Integrate along columns (axis = 1)
+        final resAxis1 = trapz(y, axis: 1);
+        expect(resAxis1.shape, [2]);
+        expect(resAxis1.data[0], closeTo(4.5, 1e-9));
+        expect(resAxis1.data[1], closeTo(9.0, 1e-9));
+
+        // Integrate along rows (axis = 0)
+        final resAxis0 = trapz(y, axis: 0);
+        expect(resAxis0.shape, [3]);
+        expect(resAxis0.data[0], closeTo(1.5, 1e-9)); // 0.5*(1+2)*1 = 1.5
+        expect(resAxis0.data[1], closeTo(3.0, 1e-9)); // 0.5*(2+4)*1 = 3.0
+        expect(resAxis0.data[2], closeTo(6.0, 1e-9)); // 0.5*(4+8)*1 = 6.0
+      }),
+    );
+
+    test(
+      'Preconditions & resource cleanup checking',
+      () => NDArray.scope(() {
+        final y = NDArray<double>.fromList([1.0, 2.0], [2], DType.float64);
+        final xBad = [0.0, 1.0, 2.0];
+
+        expect(
+          () => trapz(y, spacing: Spacing.coordinates(xBad)),
+          throwsArgumentError,
+        );
+
+        // Fail on integers
+        final yInt = NDArray<int>.fromList([1, 2], [2], DType.int64);
+        expect(() => trapz(yInt), throwsArgumentError);
+
+        y.dispose();
+        expect(() => trapz(y), throwsStateError);
+      }),
+    );
+  });
+
+  group('Calculus Solver: gradient() and gradientArray() N-D gradients', () {
+    test(
+      '1D Constant spacing edgeOrder=1',
+      () => NDArray.scope(() {
+        final f = NDArray<double>.fromList(
+          [1.0, 2.0, 4.0, 7.0],
+          [4],
+          DType.float64,
+        );
+        final res = gradient(f, spacing: Spacing.step(1.0), edgeOrder: 1);
+        expect(res.shape, [4]);
+        expect(
+          res.data[0],
+          closeTo(1.0, 1e-9),
+        ); // one-sided forward: (2.0 - 1.0) / 1
+        expect(res.data[1], closeTo(1.5, 1e-9)); // central: (4.0 - 1.0) / 2
+        expect(res.data[2], closeTo(2.5, 1e-9)); // central: (7.0 - 2.0) / 2
+        expect(
+          res.data[3],
+          closeTo(3.0, 1e-9),
+        ); // one-sided backward: (7.0 - 4.0) / 1
+      }),
+    );
+
+    test(
+      '1D Constant spacing edgeOrder=2 parabolic boundaries',
+      () => NDArray.scope(() {
+        final f = NDArray<double>.fromList(
+          [1.0, 2.0, 4.0, 7.0],
+          [4],
+          DType.float64,
+        );
+        final res = gradient(f, spacing: Spacing.step(1.0), edgeOrder: 2);
+        expect(res.shape, [4]);
+        expect(
+          res.data[0],
+          closeTo(0.5, 1e-9),
+        ); // parabolic forward: (-3*1 + 4*2 - 4) / 2 = 0.5
+        expect(res.data[1], closeTo(1.5, 1e-9)); // central: 1.5
+        expect(res.data[2], closeTo(2.5, 1e-9)); // central: 2.5
+        expect(
+          res.data[3],
+          closeTo(3.5, 1e-9),
+        ); // parabolic backward: (3*7 - 4*4 + 2) / 2 = 3.5
+      }),
+    );
+
+    test(
+      '1D Variable (non-uniform) spacing edgeOrder=1',
+      () => NDArray.scope(() {
+        final f = NDArray<double>.fromList(
+          [1.0, 2.0, 4.0, 7.0],
+          [4],
+          DType.float64,
+        );
+        final res = gradient(
+          f,
+          spacing: Spacing.coordinates([0.0, 1.0, 3.0, 4.0]),
+          edgeOrder: 1,
+        );
+        expect(res.shape, [4]);
+        expect(res.data[0], closeTo(1.0, 1e-9)); // one-sided: (2-1)/(1-0) = 1.0
+        expect(
+          res.data[1],
+          closeTo(1.0, 1e-9),
+        ); // central: (1^2*4 + 3*2 - 4*1)/6 = 1.0
+        expect(res.data[2], closeTo(2.333333333, 1e-7)); // central: 7/3
+        expect(res.data[3], closeTo(3.0, 1e-9)); // one-sided: (7-4)/(4-3) = 3.0
+      }),
+    );
+
+    test(
+      'Complex numbers gradient component walks',
+      () => NDArray.scope(() {
+        final f = NDArray<Complex>.fromList(
+          [Complex(1.0, 2.0), Complex(2.0, 3.0), Complex(4.0, 5.0)],
+          [3],
+          DType.complex128,
+        );
+        final res = gradient(f, spacing: Spacing.step(1.0));
+        expect(res.dtype, DType.complex128);
+        expect(res.data[0].real, closeTo(1.0, 1e-9));
+        expect(res.data[0].imag, closeTo(1.0, 1e-9));
+        expect(res.data[1].real, closeTo(1.5, 1e-9));
+        expect(res.data[1].imag, closeTo(1.5, 1e-9));
+      }),
+    );
+
+    test(
+      '2D Multi-Dimensional arrays single-axis gradients',
+      () => NDArray.scope(() {
+        final f = NDArray<double>.fromList(
+          [1.0, 2.0, 4.0, 2.0, 4.0, 8.0],
+          [2, 3],
+          DType.float64,
+        );
+
+        // Gradient along columns (axis = 1)
+        final resCol = gradient(f, spacing: Spacing.step(1.0), axis: 1);
+        expect(resCol.shape, [2, 3]);
+        expect(resCol.data[0], closeTo(1.0, 1e-9)); // (2-1)/1
+        expect(resCol.data[1], closeTo(1.5, 1e-9)); // (4-1)/2
+        expect(resCol.data[2], closeTo(2.0, 1e-9)); // (4-2)/1
+
+        // Gradient along rows (axis = 0)
+        final resRow = gradient(f, spacing: Spacing.step(1.0), axis: 0);
+        expect(resRow.shape, [2, 3]);
+        expect(resRow.data[0], closeTo(1.0, 1e-9)); // (2-1)/1
+        expect(resRow.data[3], closeTo(1.0, 1e-9)); // (2-1)/1 (backward)
+      }),
+    );
+
+    test(
+      'gradientArray() multiple axes calculations',
+      () => NDArray.scope(() {
+        final f = NDArray<double>.fromList(
+          [1.0, 2.0, 4.0, 2.0, 4.0, 8.0],
+          [2, 3],
+          DType.float64,
+        );
+        final grads = gradientArray(
+          f,
+          spacings: [Spacing.step(1.0), Spacing.step(2.0)],
+        );
+
+        expect(grads.length, 2);
+        // Gradient along row axis (axis = 0), spacing dx0 = 1.0
+        expect(grads[0].shape, [2, 3]);
+        expect(grads[0].data[0], closeTo(1.0, 1e-9));
+
+        // Gradient along column axis (axis = 1), spacing dx1 = 2.0
+        expect(grads[1].shape, [2, 3]);
+        expect(grads[1].data[0], closeTo(0.5, 1e-9)); // (2-1)/2
+        expect(grads[1].data[1], closeTo(0.75, 1e-9)); // (4-1)/4
+      }),
+    );
+
+    test(
+      'gradientArray() default spacing',
+      () => NDArray.scope(() {
+        final f = NDArray<double>.fromList(
+          [1.0, 2.0, 4.0, 2.0, 4.0, 8.0],
+          [2, 3],
+          DType.float64,
+        );
+        final grads = gradientArray(f); // spacing: null
+
+        expect(grads.length, 2);
+        expect(grads[0].shape, [2, 3]);
+        expect(grads[1].shape, [2, 3]);
+        expect(grads[0].data[0], closeTo(1.0, 1e-9));
+        expect(grads[1].data[0], closeTo(1.0, 1e-9));
+      }),
+    );
+
+    test(
+      'Invalid/out-of-bounds errors',
+      () => NDArray.scope(() {
+        final f = NDArray<double>.fromList([1.0, 2.0], [2], DType.float64);
+        expect(
+          () => gradient(f, spacing: Spacing.coordinates([1.0, 2.0, 3.0])),
+          throwsArgumentError,
+        );
+        expect(
+          () => gradient(f, spacing: Spacing.step(1.0), edgeOrder: 3),
+          throwsArgumentError,
+        );
+      }),
+    );
+  });
+
+  group('Calculus Solver: Complex Spacing support', () {
+    test(
+      'trapz() contour integration along imaginary axis',
+      () => NDArray.scope(() {
+        // Integrate f(z) = z from 0 to i
+        // Points: 0, 0.5i, i
+        final y = NDArray<Complex>.fromList(
+          [Complex(0, 0), Complex(0, 0.5), Complex(0, 1.0)],
+          [3],
+          DType.complex128,
+        );
+        // Constant spacing dx = 0.5i
+        final res = trapz(y, spacing: Spacing.step(Complex(0, 0.5)));
+        expect(res.dtype, DType.complex128);
+        expect(res.data[0].real, closeTo(-0.5, 1e-9));
+        expect(res.data[0].imag, closeTo(0.0, 1e-9));
+      }),
+    );
+
+    test(
+      'gradient() with complex coordinates',
+      () => NDArray.scope(() {
+        // f(z) = z^2. f'(z) = 2z.
+        // Points z: 0, i, 2i
+        // f(z): 0, -1, -4
+        final f = NDArray<Complex>.fromList(
+          [Complex(0, 0), Complex(-1, 0), Complex(-4, 0)],
+          [3],
+          DType.complex128,
+        );
+        // Coordinates z: [0, i, 2i]
+        final coords = [Complex(0, 0), Complex(0, 1), Complex(0, 2)];
+        final grads = gradient(f, spacing: Spacing.coordinates(coords));
+
+        // At z=i, f'(i) = 2i.
+        // Central diff: (f(2i) - f(0)) / (2i - 0) = (-4 - 0) / 2i = -2 / i = 2i.
+        expect(grads.data[1].real, closeTo(0.0, 1e-9));
+        expect(grads.data[1].imag, closeTo(2.0, 1e-9));
+      }),
+    );
+
+    test(
+      'gradientArray() with complexSpacing',
+      () => NDArray.scope(() {
+        final f = NDArray<Complex>.fromList(
+          [Complex(0, 0), Complex(-1, 0), Complex(-4, 0)],
+          [3],
+          DType.complex128,
+        );
+        final coords = [Complex(0, 0), Complex(0, 1), Complex(0, 2)];
+        final grads = gradientArray(
+          f,
+          spacings: [Spacing.coordinates(coords)],
+        );
+
+        expect(grads.length, 1);
+        expect(grads[0].data[1].imag, closeTo(2.0, 1e-9));
+      }),
+    );
+  });
+}

@@ -114,6 +114,628 @@ DType _resolveDType(DType a, DType b) {
   return DType.int32;
 }
 
+DType<T> _defaultDType<T>() {
+  if (T == Complex) return DType.complex128 as DType<T>;
+  if (T == int) return DType.int64 as DType<T>;
+  return DType.float64 as DType<T>;
+}
+
+Object _normalizeScalar(Object o, DType dtype) {
+  switch (dtype) {
+    case DType.complex64:
+    case DType.complex128:
+      if (o is Complex) return o;
+      if (o is num) return Complex(o.toDouble(), 0.0);
+      return Complex((o as num).toDouble(), 0.0);
+    case DType.float32:
+    case DType.float64:
+      if (o is num) return o.toDouble();
+      if (o is Complex) return o.real;
+      return (o as num).toDouble();
+    case DType.int32:
+    case DType.int64:
+    case DType.int16:
+    case DType.uint8:
+      if (o is num) return o.toInt();
+      if (o is Complex) return o.real.toInt();
+      return (o as num).toInt();
+    case DType.boolean:
+      if (o is bool) return o;
+      if (o is num) return o != 0;
+      return o as bool;
+  }
+}
+
+NDArray<T> _toNDArray<T>(Object o, DType<T> dtype) {
+  if (o is NDArray) {
+    if (o.dtype == dtype) return o as NDArray<T>;
+    return _castNDArray(o, dtype);
+  }
+  final normalized = _normalizeScalar(o, dtype);
+  return NDArray<T>.fromList([normalized], [], dtype);
+}
+
+/// Returns an array with evenly spaced values over a specified interval.
+///
+/// Returns [numSamples] evenly spaced samples, calculated over the interval `[start, stop]`.
+///
+/// The endpoint of the interval can optionally be excluded.
+///
+/// Supports [Complex] bounds for path generation in the complex plane.
+///
+/// **Parameters:**
+/// - [start]: The starting value of the sequence.
+/// - [stop]: The end value of the sequence.
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+///
+/// **Example:**
+/// ```dart
+/// linspace(0.0, 10.0, 5); // [0.0, 2.5, 5.0, 7.5, 10.0]
+/// ```
+NDArray<T> linspace<T>(
+  T start,
+  T stop,
+  int numSamples, {
+  bool endpoint = true,
+  DType<T>? dtype,
+}) {
+  return _linspaceInternal<T>(
+    start,
+    stop,
+    numSamples,
+    endpoint: endpoint,
+    dtype: dtype,
+  ).$1;
+}
+
+/// Similar to [linspace], but also returns the calculated step size.
+///
+/// Returns a Record `(samples, step)`.
+///
+/// **Parameters:**
+/// - [start]: The starting value of the sequence.
+/// - [stop]: The end value of the sequence.
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+(NDArray<T>, T) linspaceWithStep<T>(
+  T start,
+  T stop,
+  int numSamples, {
+  bool endpoint = true,
+  DType<T>? dtype,
+}) {
+  return _linspaceInternal<T>(
+    start,
+    stop,
+    numSamples,
+    endpoint: endpoint,
+    dtype: dtype,
+  );
+}
+
+(NDArray<T>, T) _linspaceInternal<T>(
+  T start,
+  T stop,
+  int numSamples, {
+  bool endpoint = true,
+  DType<T>? dtype,
+}) {
+  if (numSamples <= 0) throw ArgumentError('numSamples must be positive');
+
+  final resolvedDType = dtype ?? _defaultDType<T>();
+
+  final div = endpoint ? (numSamples - 1) : numSamples;
+  final arr = NDArray<T>.create([numSamples], resolvedDType);
+  T step;
+
+  switch (resolvedDType) {
+    case DType.float64:
+      final s = (start as num).toDouble();
+      final e = (stop as num).toDouble();
+      final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
+      v_linspace_double(arr.pointer.cast(), s, stp, numSamples);
+      step = _normalizeScalar(stp, resolvedDType) as T;
+    case DType.float32:
+      final s = (start as num).toDouble();
+      final e = (stop as num).toDouble();
+      final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
+      v_linspace_float(arr.pointer.cast(), s, stp, numSamples);
+      step = _normalizeScalar(stp, resolvedDType) as T;
+    case DType.complex128:
+      final s = _normalizeScalar(start as Object, DType.complex128) as Complex;
+      final e = _normalizeScalar(stop as Object, DType.complex128) as Complex;
+      final stp = numSamples <= 1 ? Complex(0, 0) : (e - s) / div;
+      v_linspace_complex128(
+        arr.pointer.cast(),
+        s.real,
+        s.imag,
+        stp.real,
+        stp.imag,
+        numSamples,
+      );
+      step = _normalizeScalar(stp, resolvedDType) as T;
+    case DType.complex64:
+      final s = _normalizeScalar(start as Object, DType.complex128) as Complex;
+      final e = _normalizeScalar(stop as Object, DType.complex128) as Complex;
+      final stp = numSamples <= 1 ? Complex(0, 0) : (e - s) / div;
+      v_linspace_complex64(
+        arr.pointer.cast(),
+        s.real,
+        s.imag,
+        stp.real,
+        stp.imag,
+        numSamples,
+      );
+      step = _normalizeScalar(stp, resolvedDType) as T;
+    case DType.int64:
+      final s = (start as num).toDouble();
+      final e = (stop as num).toDouble();
+      final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
+      v_linspace_int64(arr.pointer.cast(), s, stp, numSamples);
+      step = _normalizeScalar(stp, resolvedDType) as T;
+    case DType.int32:
+      final s = (start as num).toDouble();
+      final e = (stop as num).toDouble();
+      final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
+      v_linspace_int32(arr.pointer.cast(), s, stp, numSamples);
+      step = _normalizeScalar(stp, resolvedDType) as T;
+    case DType.int16:
+      final s = (start as num).toDouble();
+      final e = (stop as num).toDouble();
+      final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
+      v_linspace_int16(arr.pointer.cast(), s, stp, numSamples);
+      step = _normalizeScalar(stp, resolvedDType) as T;
+    case DType.uint8:
+      final s = (start as num).toDouble();
+      final e = (stop as num).toDouble();
+      final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
+      v_linspace_uint8(arr.pointer.cast(), s, stp, numSamples);
+      step = _normalizeScalar(stp, resolvedDType) as T;
+    case DType.boolean:
+      throw UnsupportedError('linspace not supported for boolean arrays');
+  }
+
+  return (arr, step);
+}
+
+/// Generalized [linspace] that supports broadcasting when [start] or [stop] are [NDArray]s.
+///
+/// Returns an array of shape `(..., numSamples, ...)` depending on the [axis].
+///
+/// **Example:**
+/// ```dart
+/// final start = NDArray.fromList([0.0, 10.0], [2], DType.float64);
+/// final stop  = NDArray.fromList([1.0, 11.0], [2], DType.float64);
+/// final grid  = linspaceGrid(start, stop, 3); // Shape [3, 2]
+/// // Row 0: [0.0, 10.0]
+/// // Row 1: [0.5, 10.5]
+/// // Row 2: [1.0, 11.0]
+/// print(grid.data); // [0.0, 10.0, 0.5, 10.5, 1.0, 11.0]
+/// ```
+///
+/// **Parameters:**
+/// - [start]: The starting value(s) as an [NDArray].
+/// - [stop]: The end value(s) as an [NDArray].
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [axis]: The axis in the result to store the samples. Defaults to 0.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+NDArray<T> linspaceGrid<T>(
+  NDArray start,
+  NDArray stop,
+  int numSamples, {
+  bool endpoint = true,
+  int axis = 0,
+  DType<T>? dtype,
+}) {
+  return _linspaceGridInternal<T>(
+    start,
+    stop,
+    numSamples,
+    endpoint: endpoint,
+    axis: axis,
+    dtype: dtype,
+  ).$1;
+}
+
+/// Similar to [linspaceGrid], but also returns the calculated step size as an [NDArray].
+///
+/// Returns a Record `(samples, step)`.
+///
+/// **Example:**
+/// ```dart
+/// final start = NDArray.fromList([0.0, 10.0], [2], DType.float64);
+/// final stop  = NDArray.fromList([1.0, 12.0], [2], DType.float64);
+/// final (grid, step) = linspaceGridWithStep(start, stop, 3);
+/// print(step.data); // [0.5, 1.0]
+/// ```
+///
+/// **Parameters:**
+/// - [start]: The starting value(s) as an [NDArray].
+/// - [stop]: The end value(s) as an [NDArray].
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [axis]: The axis in the result to store the samples. Defaults to 0.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+(NDArray<T>, NDArray<T>) linspaceGridWithStep<T>(
+  NDArray start,
+  NDArray stop,
+  int numSamples, {
+  bool endpoint = true,
+  int axis = 0,
+  DType<T>? dtype,
+}) {
+  return _linspaceGridInternal<T>(
+    start,
+    stop,
+    numSamples,
+    endpoint: endpoint,
+    axis: axis,
+    dtype: dtype,
+  );
+}
+
+(NDArray<T>, NDArray<T>) _linspaceGridInternal<T>(
+  NDArray start,
+  NDArray stop,
+  int numSamples, {
+  bool endpoint = true,
+  int axis = 0,
+  DType<T>? dtype,
+}) {
+  if (numSamples <= 0) throw ArgumentError('numSamples must be positive');
+
+  final resolvedDType = dtype ?? _defaultDType<T>();
+
+  return NDArray.scope(() {
+    final startArr = _toNDArray(start, resolvedDType);
+    final stopArr = _toNDArray(stop, resolvedDType);
+
+    final commonShape = broadcastShapes(startArr.shape, stopArr.shape);
+    final actualAxis = axis < 0 ? commonShape.length + 1 + axis : axis;
+    if (actualAxis < 0 || actualAxis > commonShape.length) {
+      throw ArgumentError(
+        'Axis $axis out of bounds for rank ${commonShape.length}',
+      );
+    }
+
+    final resultShape = List<int>.from(commonShape);
+    resultShape.insert(actualAxis, numSamples);
+
+    final boundsShape = List<int>.from(commonShape);
+    boundsShape.insert(actualAxis, 1);
+
+    final startReshaped = startArr.reshape(boundsShape);
+    final stopReshaped = stopArr.reshape(boundsShape);
+
+    final div = endpoint ? (numSamples - 1) : numSamples;
+    final diff = subtract(stopReshaped, startReshaped);
+    final step =
+        div <= 0
+            ? NDArray<T>.zeros(commonShape, resolvedDType)
+            : divide(diff, _toNDArray(div, resolvedDType)).reshape(commonShape);
+
+    final tArr = divide(
+      NDArray.arange(0, numSamples.toDouble(), step: 1.0, dtype: resolvedDType),
+      _toNDArray(div == 0 ? 1.0 : div, resolvedDType),
+    );
+    final tShape = List<int>.filled(resultShape.length, 1);
+    tShape[actualAxis] = numSamples;
+    final tReshaped = tArr.reshape(tShape);
+
+    final scaledDiff = multiply(tReshaped, diff);
+    final res = add(startReshaped, scaledDiff);
+
+    res.detachToParentScope();
+    step.detachToParentScope();
+    return (res as NDArray<T>, step as NDArray<T>);
+  });
+}
+
+/// Returns numbers spaced evenly on a log scale.
+///
+/// In linear space, the sequence starts at `base ** start` and ends with `base ** stop`.
+///
+/// **Parameters:**
+/// - [start]: The starting value of the sequence.
+/// - [stop]: The end value of the sequence.
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [base]: The base of the log space. Defaults to 10.0.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+NDArray<T> logspace<T>(
+  T start,
+  T stop,
+  int numSamples, {
+  T? base,
+  bool endpoint = true,
+  DType<T>? dtype,
+}) {
+  final actualBase = base ?? (T == Complex ? Complex(10.0, 0.0) : 10.0) as T;
+  final resolvedDType = dtype ?? _defaultDType<T>();
+
+  final arr = NDArray<T>.create([numSamples], resolvedDType);
+  final div = endpoint ? (numSamples - 1) : numSamples;
+
+  switch (resolvedDType) {
+    case DType.float64:
+      final s = (start as num).toDouble();
+      final e = (stop as num).toDouble();
+      final b = (actualBase as num).toDouble();
+      final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
+      v_logspace_double(arr.pointer.cast(), s, stp, b, numSamples);
+      return arr;
+    case DType.float32:
+      final s = (start as num).toDouble();
+      final e = (stop as num).toDouble();
+      final b = (actualBase as num).toDouble();
+      final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
+      v_logspace_float(arr.pointer.cast(), s, stp, b, numSamples);
+      return arr;
+    case DType.complex128:
+      final s = _normalizeScalar(start as Object, DType.complex128) as Complex;
+      final e = _normalizeScalar(stop as Object, DType.complex128) as Complex;
+      final b =
+          _normalizeScalar(actualBase as Object, DType.complex128) as Complex;
+      final stp = numSamples <= 1 ? Complex(0.0, 0.0) : (e - s) / div;
+      v_logspace_complex128(
+        arr.pointer.cast(),
+        s.real,
+        s.imag,
+        stp.real,
+        stp.imag,
+        b.real,
+        b.imag,
+        numSamples,
+      );
+      return arr;
+    case DType.complex64:
+      final s = _normalizeScalar(start as Object, DType.complex128) as Complex;
+      final e = _normalizeScalar(stop as Object, DType.complex128) as Complex;
+      final b =
+          _normalizeScalar(actualBase as Object, DType.complex128) as Complex;
+      final stp = numSamples <= 1 ? Complex(0.0, 0.0) : (e - s) / div;
+      v_logspace_complex64(
+        arr.pointer.cast(),
+        s.real,
+        s.imag,
+        stp.real,
+        stp.imag,
+        b.real,
+        b.imag,
+        numSamples,
+      );
+      return arr;
+    case DType.int64:
+    case DType.int32:
+    case DType.int16:
+    case DType.uint8:
+    case DType.boolean:
+      throw UnsupportedError('logspace not supported for type $resolvedDType');
+  }
+}
+
+/// Generalized [logspace] that supports broadcasting.
+///
+/// **Example:**
+/// ```dart
+/// final start = NDArray.fromList([0.0, 1.0], [2], DType.float64);
+/// final stop  = NDArray.fromList([2.0, 3.0], [2], DType.float64);
+/// final grid  = logspaceGrid(start, stop, 3); // 10^start to 10^stop
+/// // Row 0: [10^0, 10^1] = [1, 10]
+/// // Row 1: [10^1, 10^2] = [10, 100]
+/// // Row 2: [10^2, 10^3] = [100, 1000]
+/// print(grid.data); // [1.0, 10.0, 10.0, 100.0, 100.0, 1000.0]
+/// ```
+///
+/// **Parameters:**
+/// - [start]: The starting value(s) as an [NDArray].
+/// - [stop]: The end value(s) as an [NDArray].
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [base]: The base of the log space as an [NDArray]. Defaults to 10.0.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [axis]: The axis in the result to store the samples. Defaults to 0.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+NDArray<T> logspaceGrid<T>(
+  NDArray start,
+  NDArray stop,
+  int numSamples, {
+  NDArray? base,
+  bool endpoint = true,
+  int axis = 0,
+  DType<T>? dtype,
+}) {
+  final resolvedDType = dtype ?? _defaultDType<T>();
+  final actualBase = base ?? _toNDArray(10.0, resolvedDType);
+
+  return NDArray.scope(() {
+    final y = linspaceGrid(
+      start,
+      stop,
+      numSamples,
+      endpoint: endpoint,
+      axis: axis,
+      dtype: resolvedDType,
+    );
+    final res = power(actualBase, y);
+    res.detachToParentScope();
+    return res as NDArray<T>;
+  });
+}
+
+/// Returns numbers spaced evenly on a log scale (geometric progression).
+///
+/// This is similar to [logspace], but with the start and end points specified directly.
+///
+/// **Parameters:**
+/// - [start]: The starting value of the sequence.
+/// - [stop]: The end value of the sequence.
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+NDArray<T> geomspace<T>(
+  T start,
+  T stop,
+  int numSamples, {
+  bool endpoint = true,
+  DType<T>? dtype,
+}) {
+  final resolvedDType = dtype ?? _defaultDType<T>();
+
+  switch (resolvedDType) {
+    case DType.float64:
+    case DType.float32:
+      final s = (start as num).toDouble();
+      final e = (stop as num).toDouble();
+      if (s == 0.0 || e == 0.0) {
+        throw ArgumentError('Geometric sequence cannot include zero.');
+      }
+      if (s * e <= 0.0) {
+        throw ArgumentError(
+          'Geometric sequence start and stop must have same sign.',
+        );
+      }
+
+      final sign = s > 0.0 ? 1.0 : -1.0;
+      final logStart = math.log(s.abs()) / math.ln10;
+      final logStop = math.log(e.abs()) / math.ln10;
+      final div = endpoint ? (numSamples - 1) : numSamples;
+      final stp = numSamples <= 1 ? 0.0 : (logStop - logStart) / div;
+
+      final arr = NDArray<T>.create([numSamples], resolvedDType);
+      if (resolvedDType == DType.float64) {
+        v_geomspace_double(arr.pointer.cast(), logStart, stp, sign, numSamples);
+      } else {
+        v_geomspace_float(
+          arr.pointer.cast(),
+          logStart,
+          stp,
+          sign,
+          numSamples,
+        );
+      }
+      return arr;
+    case DType.complex128:
+    case DType.complex64:
+      final s = _normalizeScalar(start as Object, DType.complex128) as Complex;
+      final e = _normalizeScalar(stop as Object, DType.complex128) as Complex;
+      if (s.abs == 0.0 || e.abs == 0.0) {
+        throw ArgumentError('Geometric sequence cannot include zero.');
+      }
+
+      final logStart = s.log() / math.ln10;
+      final logStop = e.log() / math.ln10;
+      final div = endpoint ? (numSamples - 1) : numSamples;
+      final stp =
+          numSamples <= 1 ? Complex(0.0, 0.0) : (logStop - logStart) / div;
+
+      final arr = NDArray<T>.create([numSamples], resolvedDType);
+      if (resolvedDType == DType.complex128) {
+        v_geomspace_complex128(
+          arr.pointer.cast(),
+          logStart.real,
+          logStart.imag,
+          stp.real,
+          stp.imag,
+          numSamples,
+        );
+      } else {
+        v_geomspace_complex64(
+          arr.pointer.cast(),
+          logStart.real,
+          logStart.imag,
+          stp.real,
+          stp.imag,
+          numSamples,
+        );
+      }
+      return arr;
+    case DType.int64:
+    case DType.int32:
+    case DType.int16:
+    case DType.uint8:
+    case DType.boolean:
+      throw UnsupportedError(
+        'geomspace not supported for type $resolvedDType',
+      );
+  }
+}
+
+/// Generalized [geomspace] that supports broadcasting.
+///
+/// **Example:**
+/// ```dart
+/// final start = NDArray.fromList([1.0, 10.0], [2], DType.float64);
+/// final stop  = NDArray.fromList([100.0, 1000.0], [2], DType.float64);
+/// final grid  = geomspaceGrid(start, stop, 3);
+/// // Row 0: [1, 10]
+/// // Row 1: [10, 100]
+/// // Row 2: [100, 1000]
+/// print(grid.data); // [1.0, 10.0, 10.0, 100.0, 100.0, 1000.0]
+/// ```
+///
+/// **Parameters:**
+/// - [start]: The starting value(s) as an [NDArray].
+/// - [stop]: The end value(s) as an [NDArray].
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [axis]: The axis in the result to store the samples. Defaults to 0.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+NDArray<T> geomspaceGrid<T>(
+  NDArray start,
+  NDArray stop,
+  int numSamples, {
+  bool endpoint = true,
+  int axis = 0,
+  DType<T>? dtype,
+}) {
+  final resolvedDType = dtype ?? _defaultDType<T>();
+
+  return NDArray.scope(() {
+    final logStart = divide(log(start), _toNDArray(math.ln10, resolvedDType));
+    final logStop = divide(log(stop), _toNDArray(math.ln10, resolvedDType));
+
+    final y = linspaceGrid(
+      logStart,
+      logStop,
+      numSamples,
+      endpoint: endpoint,
+      axis: axis,
+      dtype: resolvedDType,
+    );
+    final res = power(_toNDArray(10.0, resolvedDType), y);
+    res.detachToParentScope();
+    return res as NDArray<T>;
+  });
+}
+
 void _elementWiseOp<Ta, Tb, Tr>(
   List<Tr> result,
   List<Ta> a,

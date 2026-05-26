@@ -1,4 +1,5 @@
 import 'package:meta/meta.dart';
+import 'dart:math' as math;
 import 'dart:ffi' as ffi;
 import 'dart:typed_data';
 import 'dart:async';
@@ -543,42 +544,6 @@ final class NDArray<T> implements ffi.Finalizable {
     final length = ((stop - start) / step).ceil();
     final arr = NDArray<T>.create([length], resolvedDType);
     for (var i = 0; i < length; i++) {
-      final val = start + i * step;
-      if (resolvedDType.isComplex) {
-        arr.data[i] = Complex(val, 0.0) as T;
-      } else {
-        arr.data[i] = val as T;
-      }
-    }
-    return arr;
-  }
-
-  /// Factory to create an array with evenly spaced values.
-  ///
-  /// **Example:**
-  /// ```dart
-  /// final a = `NDArray<double>`.linspace(0.0, 1.0, 5, dtype: DType.float64);
-  /// print(a.data); // [0.0, 0.25, 0.5, 0.75, 1.0]
-  /// ```
-  factory NDArray.linspace(
-    double start,
-    double stop,
-    int num, {
-    DType<T>? dtype,
-  }) {
-    final DType<T> resolvedDType = dtype ?? (DType.float64 as DType<T>);
-    if (num <= 0) throw ArgumentError('num must be positive');
-    final arr = NDArray<T>.create([num], resolvedDType);
-    if (num == 1) {
-      if (resolvedDType.isComplex) {
-        arr.data[0] = Complex(start, 0.0) as T;
-      } else {
-        arr.data[0] = start as T;
-      }
-      return arr;
-    }
-    final step = (stop - start) / (num - 1);
-    for (var i = 0; i < num; i++) {
       final val = start + i * step;
       if (resolvedDType.isComplex) {
         arr.data[i] = Complex(val, 0.0) as T;
@@ -3041,6 +3006,38 @@ final class Complex {
     } else {
       throw ArgumentError(
         'Unsupported operand type for /: ${other.runtimeType}',
+      );
+    }
+  }
+
+  /// Returns the absolute value (magnitude) of this complex number.
+  double get abs => math.sqrt(real * real + imag * imag);
+
+  /// Returns the argument (phase) of this complex number in radians.
+  double get arg => math.atan2(imag, real);
+
+  /// Returns the natural logarithm of this complex number.
+  Complex log() => Complex(math.log(abs), arg);
+
+  /// Returns this complex number raised to the power of [exponent].
+  ///
+  /// Supports [num] and [Complex] exponents.
+  Complex pow(dynamic exponent) {
+    if (exponent is num) {
+      final r = abs;
+      final theta = arg;
+      final newR = math.pow(r, exponent);
+      final newTheta = theta * exponent;
+      return Complex(newR * math.cos(newTheta), newR * math.sin(newTheta));
+    } else if (exponent is Complex) {
+      // z^w = exp(w * log(z))
+      final lz = log();
+      final prod = exponent * lz;
+      final r = math.exp(prod.real);
+      return Complex(r * math.cos(prod.imag), r * math.sin(prod.imag));
+    } else {
+      throw ArgumentError(
+        'Unsupported exponent type: ${exponent.runtimeType}',
       );
     }
   }

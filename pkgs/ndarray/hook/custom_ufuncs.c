@@ -15,6 +15,8 @@
 #include "custom_ufuncs.h"
 #include <math.h>
 #include <stdlib.h>
+#include <complex.h>
+#include <stdio.h>
 
 #if defined(_MSC_VER)
 #define RESTRICT __restrict
@@ -1164,6 +1166,134 @@ IMPLEMENT_V_FILL(double, double)
 IMPLEMENT_V_FILL(float, float)
 IMPLEMENT_V_FILL(int64, int64_t)
 IMPLEMENT_V_FILL(int32, int32_t)
+
+void v_linspace_double(double *res, double start, double step, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = start + i * step;
+    }
+}
+
+void v_linspace_float(float *res, float start, float step, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = start + i * step;
+    }
+}
+
+void v_linspace_complex128(cpx_t *res, double startR, double startI, double stepR, double stepI, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i].r = startR + i * stepR;
+        res[i].i = startI + i * stepI;
+    }
+}
+
+void v_linspace_complex64(cpx_f_t *res, float startR, float startI, float stepR, float stepI, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i].r = startR + i * stepR;
+        res[i].i = startI + i * stepI;
+    }
+}
+
+void v_linspace_int64(int64_t *res, double start, double step, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = (int64_t)(start + i * step);
+    }
+}
+
+void v_linspace_int32(int32_t *res, double start, double step, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = (int32_t)(start + i * step);
+    }
+}
+
+void v_linspace_int16(int16_t *res, double start, double step, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = (int16_t)(start + i * step);
+    }
+}
+
+void v_linspace_uint8(uint8_t *res, double start, double step, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = (uint8_t)(start + i * step);
+    }
+}
+
+void v_logspace_double(double *res, double start, double step, double base, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = pow(base, start + i * step);
+    }
+}
+
+void v_logspace_float(float *res, float start, float step, float base, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = powf(base, start + i * step);
+    }
+}
+
+void v_logspace_complex128(cpx_t *res, double startR, double startI, double stepR, double stepI, double baseR, double baseI, int size) {
+    if (res == NULL || size <= 0) return;
+    double complex cbase = baseR + baseI * I;
+    for (int i = 0; i < size; i++) {
+        double complex cexp = (startR + i * stepR) + (startI + i * stepI) * I;
+        double complex cres = cpow(cbase, cexp);
+        res[i].r = creal(cres);
+        res[i].i = cimag(cres);
+    }
+}
+
+void v_logspace_complex64(cpx_f_t *res, float startR, float startI, float stepR, float stepI, float baseR, float baseI, int size) {
+    if (res == NULL || size <= 0) return;
+    float complex cbase = baseR + baseI * I;
+    for (int i = 0; i < size; i++) {
+        float complex cexp = (startR + i * stepR) + (startI + i * stepI) * I;
+        float complex cres = cpowf(cbase, cexp);
+        res[i].r = crealf(cres);
+        res[i].i = cimagf(cres);
+    }
+}
+
+void v_geomspace_double(double *res, double logStart, double step, double sign, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = sign * pow(10.0, logStart + i * step);
+    }
+}
+
+void v_geomspace_float(float *res, float logStart, float step, float sign, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = sign * powf(10.0f, logStart + i * step);
+    }
+}
+
+void v_geomspace_complex128(cpx_t *res, double logStartR, double logStartI, double stepR, double stepI, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        double complex cexp = (logStartR + i * stepR) + (logStartI + i * stepI) * I;
+        double complex cres = cpow(10.0, cexp);
+        res[i].r = creal(cres);
+        res[i].i = cimag(cres);
+    }
+}
+
+void v_geomspace_complex64(cpx_f_t *res, float logStartR, float logStartI, float stepR, float stepI, int size) {
+    if (res == NULL || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        float complex cexp = (logStartR + i * stepR) + (logStartI + i * stepI) * I;
+        float complex cres = cpowf(10.0f, cexp);
+        res[i].r = crealf(cres);
+        res[i].i = cimagf(cres);
+    }
+}
 
 // Helper functions to perform rolling FNV-1a hash updates
 static inline void hash_double(uint32_t *hash, double val) {
@@ -3921,3 +4051,1165 @@ IMPLEMENT_S_CLIP(int32, int32_t)
 IMPLEMENT_S_CLIP(uint8, uint8_t)
 IMPLEMENT_S_CLIP(int16, int16_t)
 
+// ============================================================================
+// 15. CALCULUS SOLVERS: TRAPEZOIDAL INTEGRATION & N-DIMENSIONAL GRADIENT
+// ============================================================================
+
+void s_trapz_double(const double *y, const int *stridesY,
+                    const double *x, int strideX, double dx,
+                    double *res, const int *stridesRes,
+                    const int *shape, int rank, int axis) {
+    if (y == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    
+    for (int o = 0; o < outer_size; o++) {
+        int offsetRes = 0;
+        int offsetSrc = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesY[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesRes[targetD];
+                }
+            }
+        }
+        
+        double sum = 0.0;
+        for (int i = 0; i < shape[axis] - 1; i++) {
+            int idxSrc = offsetSrc + i * stridesY[axis];
+            int idxSrcNext = offsetSrc + (i + 1) * stridesY[axis];
+            double y_curr = y[idxSrc];
+            double y_next = y[idxSrcNext];
+            
+            double h = dx;
+            if (x != NULL) {
+                h = x[(i + 1) * strideX] - x[i * strideX];
+            }
+            sum += 0.5 * (y_curr + y_next) * h;
+        }
+        
+        res[offsetRes] = sum;
+        
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_trapz_float(const float *y, const int *stridesY,
+                   const float *x, int strideX, float dx,
+                   float *res, const int *stridesRes,
+                   const int *shape, int rank, int axis) {
+    if (y == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    
+    for (int o = 0; o < outer_size; o++) {
+        int offsetRes = 0;
+        int offsetSrc = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesY[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesRes[targetD];
+                }
+            }
+        }
+        
+        float sum = 0.0f;
+        for (int i = 0; i < shape[axis] - 1; i++) {
+            int idxSrc = offsetSrc + i * stridesY[axis];
+            int idxSrcNext = offsetSrc + (i + 1) * stridesY[axis];
+            float y_curr = y[idxSrc];
+            float y_next = y[idxSrcNext];
+            
+            float h = dx;
+            if (x != NULL) {
+                h = x[(i + 1) * strideX] - x[i * strideX];
+            }
+            sum += 0.5f * (y_curr + y_next) * h;
+        }
+        
+        res[offsetRes] = sum;
+        
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_trapz_complex128(const cpx_t *y, const int *stridesY,
+                        const double *x, int strideX, double dx,
+                        cpx_t *res, const int *stridesRes,
+                        const int *shape, int rank, int axis) {
+    if (y == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    
+    for (int o = 0; o < outer_size; o++) {
+        int offsetRes = 0;
+        int offsetSrc = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesY[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesRes[targetD];
+                }
+            }
+        }
+        
+        cpx_t sum = {0.0, 0.0};
+        for (int i = 0; i < shape[axis] - 1; i++) {
+            int idxSrc = offsetSrc + i * stridesY[axis];
+            int idxSrcNext = offsetSrc + (i + 1) * stridesY[axis];
+            cpx_t y_curr = y[idxSrc];
+            cpx_t y_next = y[idxSrcNext];
+            
+            double h = dx;
+            if (x != NULL) {
+                h = x[(i + 1) * strideX] - x[i * strideX];
+            }
+            sum.r += 0.5 * (y_curr.r + y_next.r) * h;
+            sum.i += 0.5 * (y_curr.i + y_next.i) * h;
+        }
+        
+        res[offsetRes] = sum;
+        
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_trapz_complex64(const cpx_f_t *y, const int *stridesY,
+                   const float *x, int strideX, float dx,
+                   cpx_f_t *res, const int *stridesRes,
+                   const int *shape, int rank, int axis) {
+    if (y == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+
+    for (int o = 0; o < outer_size; o++) {
+        int offsetRes = 0;
+        int offsetSrc = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesY[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesRes[targetD];
+                }
+            }
+        }
+
+        cpx_f_t sum = {0.0f, 0.0f};
+        for (int i = 0; i < shape[axis] - 1; i++) {
+            int idxSrc = offsetSrc + i * stridesY[axis];
+            int idxSrcNext = offsetSrc + (i + 1) * stridesY[axis];
+            cpx_f_t y_curr = y[idxSrc];
+            cpx_f_t y_next = y[idxSrcNext];
+
+            float h = dx;
+            if (x != NULL) {
+                h = x[(i + 1) * strideX] - x[i * strideX];
+            }
+            sum.r += 0.5f * (y_curr.r + y_next.r) * h;
+            sum.i += 0.5f * (y_curr.i + y_next.i) * h;
+        }
+
+        res[offsetRes] = sum;
+
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_trapz_complex128_all(const cpx_t *y, const int *stridesY,
+                            const cpx_t *x, int strideX, cpx_t dx,
+                            cpx_t *res, const int *stridesRes,
+                            const int *shape, int rank, int axis) {
+    if (y == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+
+    for (int o = 0; o < outer_size; o++) {
+        int offsetRes = 0;
+        int offsetSrc = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesY[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesRes[targetD];
+                }
+            }
+        }
+
+        cpx_t sum = {0.0, 0.0};
+        for (int i = 0; i < shape[axis] - 1; i++) {
+            int idxSrc = offsetSrc + i * stridesY[axis];
+            int idxSrcNext = offsetSrc + (i + 1) * stridesY[axis];
+            cpx_t y_curr = y[idxSrc];
+            cpx_t y_next = y[idxSrcNext];
+
+            cpx_t h = dx;
+            if (x != NULL) {
+                h.r = x[(i + 1) * strideX].r - x[i * strideX].r;
+                h.i = x[(i + 1) * strideX].i - x[i * strideX].i;
+            }
+
+            double yr = (y_curr.r + y_next.r) * 0.5;
+            double yi = (y_curr.i + y_next.i) * 0.5;
+
+            // Complex multiplication: (yr + i*yi) * (h.r + i*h.i)
+            sum.r += yr * h.r - yi * h.i;
+            sum.i += yr * h.i + yi * h.r;
+        }
+
+        res[offsetRes] = sum;
+
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+void s_gradient_double(const double *src, const int *stridesSrc,
+                       const double *x, int strideX, double dx,
+                       double *res, const int *stridesRes,
+                       const int *shape, int rank, int axis, int edge_order) {
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    
+    int N = shape[axis];
+    
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    
+    for (int o = 0; o < outer_size; o++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetSrc += coord[d] * stridesSrc[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        
+        if (N == 1) {
+            res[offsetRes] = 0.0;
+        } else if (N == 2) {
+            double h = dx;
+            if (x != NULL) {
+                h = x[strideX] - x[0];
+            }
+            double diff = (src[offsetSrc + stridesSrc[axis]] - src[offsetSrc]) / h;
+            res[offsetRes] = diff;
+            res[offsetRes + stridesRes[axis]] = diff;
+        } else {
+            // Left boundary (i = 0)
+            if (edge_order == 1) {
+                double h = dx;
+                if (x != NULL) {
+                    h = x[strideX] - x[0];
+                }
+                double diff = (src[offsetSrc + stridesSrc[axis]] - src[offsetSrc]) / h;
+                res[offsetRes] = diff;
+            } else {
+                double h0 = dx;
+                double h1 = dx;
+                if (x != NULL) {
+                    h0 = x[strideX] - x[0];
+                    h1 = x[2 * strideX] - x[strideX];
+                }
+                double f0 = src[offsetSrc];
+                double f1 = src[offsetSrc + stridesSrc[axis]];
+                double f2 = src[offsetSrc + 2 * stridesSrc[axis]];
+                
+                double a = -(2.0 * h0 + h1) / (h0 * (h0 + h1));
+                double b = (h0 + h1) / (h0 * h1);
+                double c = -h0 / (h1 * (h0 + h1));
+                
+                res[offsetRes] = a * f0 + b * f1 + c * f2;
+            }
+            
+            // Interior points
+            for (int i = 1; i < N - 1; i++) {
+                int idxSrcCurr = offsetSrc + i * stridesSrc[axis];
+                int idxSrcPrev = offsetSrc + (i - 1) * stridesSrc[axis];
+                int idxSrcNext = offsetSrc + (i + 1) * stridesSrc[axis];
+                int idxRes = offsetRes + i * stridesRes[axis];
+                
+                double f_curr = src[idxSrcCurr];
+                double f_prev = src[idxSrcPrev];
+                double f_next = src[idxSrcNext];
+                
+                double h_s = dx;
+                double h_d = dx;
+                if (x != NULL) {
+                    h_s = x[i * strideX] - x[(i - 1) * strideX];
+                    h_d = x[(i + 1) * strideX] - x[i * strideX];
+                }
+                
+                res[idxRes] = (h_s * h_s * f_next + (h_d * h_d - h_s * h_s) * f_curr - h_d * h_d * f_prev) / (h_s * h_d * (h_s + h_d));
+            }
+            
+            // Right boundary
+            int idxResEnd = offsetRes + (N - 1) * stridesRes[axis];
+            int idxSrcEnd = offsetSrc + (N - 1) * stridesSrc[axis];
+            if (edge_order == 1) {
+                double h = dx;
+                if (x != NULL) {
+                    h = x[(N - 1) * strideX] - x[(N - 2) * strideX];
+                }
+                res[idxResEnd] = (src[idxSrcEnd] - src[idxSrcEnd - stridesSrc[axis]]) / h;
+            } else {
+                double h0 = dx;
+                double h1 = dx;
+                if (x != NULL) {
+                    h0 = x[(N - 2) * strideX] - x[(N - 3) * strideX];
+                    h1 = x[(N - 1) * strideX] - x[(N - 2) * strideX];
+                }
+                double f0 = src[idxSrcEnd - 2 * stridesSrc[axis]];
+                double f1 = src[idxSrcEnd - stridesSrc[axis]];
+                double f2 = src[idxSrcEnd];
+                
+                double a = h1 / (h0 * (h0 + h1));
+                double b = -(h0 + h1) / (h0 * h1);
+                double c = (2.0 * h1 + h0) / (h1 * (h0 + h1));
+                
+                res[idxResEnd] = a * f0 + b * f1 + c * f2;
+            }
+        }
+        
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_gradient_float(const float *src, const int *stridesSrc,
+                     const float *x, int strideX, float dx,
+                     float *res, const int *stridesRes,
+                     const int *shape, int rank, int axis, int edge_order) {
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    
+    int N = shape[axis];
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    
+    for (int o = 0; o < outer_size; o++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetSrc += coord[d] * stridesSrc[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        
+        if (N == 1) {
+            res[offsetRes] = 0.0f;
+        } else if (N == 2) {
+            float h = dx;
+            if (x != NULL) {
+                h = x[strideX] - x[0];
+            }
+            float diff = (src[offsetSrc + stridesSrc[axis]] - src[offsetSrc]) / h;
+            res[offsetRes] = diff;
+            res[offsetRes + stridesRes[axis]] = diff;
+        } else {
+            // Left boundary (i = 0)
+            if (edge_order == 1) {
+                float h = dx;
+                if (x != NULL) {
+                    h = x[strideX] - x[0];
+                }
+                res[offsetRes] = (src[offsetSrc + stridesSrc[axis]] - src[offsetSrc]) / h;
+            } else {
+                float h0 = dx;
+                float h1 = dx;
+                if (x != NULL) {
+                    h0 = x[strideX] - x[0];
+                    h1 = x[2 * strideX] - x[strideX];
+                }
+                float f0 = src[offsetSrc];
+                float f1 = src[offsetSrc + stridesSrc[axis]];
+                float f2 = src[offsetSrc + 2 * stridesSrc[axis]];
+                
+                float a = -(2.0f * h0 + h1) / (h0 * (h0 + h1));
+                float b = (h0 + h1) / (h0 * h1);
+                float c = -h0 / (h1 * (h0 + h1));
+                
+                res[offsetRes] = a * f0 + b * f1 + c * f2;
+            }
+            
+            // Interior points
+            for (int i = 1; i < N - 1; i++) {
+                int idxSrcCurr = offsetSrc + i * stridesSrc[axis];
+                int idxSrcPrev = offsetSrc + (i - 1) * stridesSrc[axis];
+                int idxSrcNext = offsetSrc + (i + 1) * stridesSrc[axis];
+                int idxRes = offsetRes + i * stridesRes[axis];
+                
+                float f_curr = src[idxSrcCurr];
+                float f_prev = src[idxSrcPrev];
+                float f_next = src[idxSrcNext];
+                
+                float h_s = dx;
+                float h_d = dx;
+                if (x != NULL) {
+                    h_s = x[i * strideX] - x[(i - 1) * strideX];
+                    h_d = x[(i + 1) * strideX] - x[i * strideX];
+                }
+                
+                res[idxRes] = (h_s * h_s * f_next + (h_d * h_d - h_s * h_s) * f_curr - h_d * h_d * f_prev) / (h_s * h_d * (h_s + h_d));
+            }
+            
+            // Right boundary
+            int idxResEnd = offsetRes + (N - 1) * stridesRes[axis];
+            int idxSrcEnd = offsetSrc + (N - 1) * stridesSrc[axis];
+            if (edge_order == 1) {
+                float h = dx;
+                if (x != NULL) {
+                    h = x[(N - 1) * strideX] - x[(N - 2) * strideX];
+                }
+                res[idxResEnd] = (src[idxSrcEnd] - src[idxSrcEnd - stridesSrc[axis]]) / h;
+            } else {
+                float h0 = dx;
+                float h1 = dx;
+                if (x != NULL) {
+                    h0 = x[(N - 2) * strideX] - x[(N - 3) * strideX];
+                    h1 = x[(N - 1) * strideX] - x[(N - 2) * strideX];
+                }
+                float f0 = src[idxSrcEnd - 2 * stridesSrc[axis]];
+                float f1 = src[idxSrcEnd - stridesSrc[axis]];
+                float f2 = src[idxSrcEnd];
+                
+                float a = h1 / (h0 * (h0 + h1));
+                float b = -(h0 + h1) / (h0 * h1);
+                float c = (2.0f * h1 + h0) / (h1 * (h0 + h1));
+                
+                res[idxResEnd] = a * f0 + b * f1 + c * f2;
+            }
+        }
+        
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
+                           const double *x, int strideX, double dx,
+                           cpx_t *res, const int *stridesRes,
+                           const int *shape, int rank, int axis, int edge_order) {
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    
+    int N = shape[axis];
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    
+    for (int o = 0; o < outer_size; o++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetSrc += coord[d] * stridesSrc[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        
+        if (N == 1) {
+            res[offsetRes] = (cpx_t){0.0, 0.0};
+        } else if (N == 2) {
+            double h = dx;
+            if (x != NULL) {
+                h = x[strideX] - x[0];
+            }
+            cpx_t f0 = src[offsetSrc];
+            cpx_t f1 = src[offsetSrc + stridesSrc[axis]];
+            cpx_t diff = (cpx_t){(f1.r - f0.r) / h, (f1.i - f0.i) / h};
+            res[offsetRes] = diff;
+            res[offsetRes + stridesRes[axis]] = diff;
+        } else {
+            // Left boundary (i = 0)
+            if (edge_order == 1) {
+                double h = dx;
+                if (x != NULL) {
+                    h = x[strideX] - x[0];
+                }
+                cpx_t f0 = src[offsetSrc];
+                cpx_t f1 = src[offsetSrc + stridesSrc[axis]];
+                res[offsetRes] = (cpx_t){(f1.r - f0.r) / h, (f1.i - f0.i) / h};
+            } else {
+                double h0 = dx;
+                double h1 = dx;
+                if (x != NULL) {
+                    h0 = x[strideX] - x[0];
+                    h1 = x[2 * strideX] - x[strideX];
+                }
+                cpx_t f0 = src[offsetSrc];
+                cpx_t f1 = src[offsetSrc + stridesSrc[axis]];
+                cpx_t f2 = src[offsetSrc + 2 * stridesSrc[axis]];
+                
+                double a = -(2.0 * h0 + h1) / (h0 * (h0 + h1));
+                double b = (h0 + h1) / (h0 * h1);
+                double c = -h0 / (h1 * (h0 + h1));
+                
+                res[offsetRes] = (cpx_t){
+                    a * f0.r + b * f1.r + c * f2.r,
+                    a * f0.i + b * f1.i + c * f2.i
+                };
+            }
+            
+            // Interior points
+            for (int i = 1; i < N - 1; i++) {
+                int idxSrcCurr = offsetSrc + i * stridesSrc[axis];
+                int idxSrcPrev = offsetSrc + (i - 1) * stridesSrc[axis];
+                int idxSrcNext = offsetSrc + (i + 1) * stridesSrc[axis];
+                int idxRes = offsetRes + i * stridesRes[axis];
+                
+                cpx_t f_curr = src[idxSrcCurr];
+                cpx_t f_prev = src[idxSrcPrev];
+                cpx_t f_next = src[idxSrcNext];
+                
+                double h_s = dx;
+                double h_d = dx;
+                if (x != NULL) {
+                    h_s = x[i * strideX] - x[(i - 1) * strideX];
+                    h_d = x[(i + 1) * strideX] - x[i * strideX];
+                }
+                
+                double denom = h_s * h_d * (h_s + h_d);
+                res[idxRes] = (cpx_t){
+                    (h_s * h_s * f_next.r + (h_d * h_d - h_s * h_s) * f_curr.r - h_d * h_d * f_prev.r) / denom,
+                    (h_s * h_s * f_next.i + (h_d * h_d - h_s * h_s) * f_curr.i - h_d * h_d * f_prev.i) / denom
+                };
+            }
+            
+            // Right boundary
+            int idxResEnd = offsetRes + (N - 1) * stridesRes[axis];
+            int idxSrcEnd = offsetSrc + (N - 1) * stridesSrc[axis];
+            if (edge_order == 1) {
+                double h = dx;
+                if (x != NULL) {
+                    h = x[(N - 1) * strideX] - x[(N - 2) * strideX];
+                }
+                cpx_t f0 = src[idxSrcEnd - stridesSrc[axis]];
+                cpx_t f1 = src[idxSrcEnd];
+                res[idxResEnd] = (cpx_t){(f1.r - f0.r) / h, (f1.i - f0.i) / h};
+            } else {
+                double h0 = dx;
+                double h1 = dx;
+                if (x != NULL) {
+                    h0 = x[(N - 2) * strideX] - x[(N - 3) * strideX];
+                    h1 = x[(N - 1) * strideX] - x[(N - 2) * strideX];
+                }
+                cpx_t f0 = src[idxSrcEnd - 2 * stridesSrc[axis]];
+                cpx_t f1 = src[idxSrcEnd - stridesSrc[axis]];
+                cpx_t f2 = src[idxSrcEnd];
+                
+                double a = h1 / (h0 * (h0 + h1));
+                double b = -(h0 + h1) / (h0 * h1);
+                double c = (2.0 * h1 + h0) / (h1 * (h0 + h1));
+                
+                res[idxResEnd] = (cpx_t){
+                    a * f0.r + b * f1.r + c * f2.r,
+                    a * f0.i + b * f1.i + c * f2.i
+                };
+            }
+        }
+        
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
+                          const float *x, int strideX, float dx,
+                          cpx_f_t *res, const int *stridesRes,
+                          const int *shape, int rank, int axis, int edge_order) {
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    
+    int N = shape[axis];
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    
+    for (int o = 0; o < outer_size; o++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetSrc += coord[d] * stridesSrc[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        
+        if (N == 1) {
+            res[offsetRes] = (cpx_f_t){0.0f, 0.0f};
+        } else if (N == 2) {
+            float h = dx;
+            if (x != NULL) {
+                h = x[strideX] - x[0];
+            }
+            cpx_f_t f0 = src[offsetSrc];
+            cpx_f_t f1 = src[offsetSrc + stridesSrc[axis]];
+            cpx_f_t diff = (cpx_f_t){(f1.r - f0.r) / h, (f1.i - f0.i) / h};
+            res[offsetRes] = diff;
+            res[offsetRes + stridesRes[axis]] = diff;
+        } else {
+            // Left boundary (i = 0)
+            if (edge_order == 1) {
+                float h = dx;
+                if (x != NULL) {
+                    h = x[strideX] - x[0];
+                }
+                cpx_f_t f0 = src[offsetSrc];
+                cpx_f_t f1 = src[offsetSrc + stridesSrc[axis]];
+                res[offsetRes] = (cpx_f_t){(f1.r - f0.r) / h, (f1.i - f0.i) / h};
+            } else {
+                float h0 = dx;
+                float h1 = dx;
+                if (x != NULL) {
+                    h0 = x[strideX] - x[0];
+                    h1 = x[2 * strideX] - x[strideX];
+                }
+                cpx_f_t f0 = src[offsetSrc];
+                cpx_f_t f1 = src[offsetSrc + stridesSrc[axis]];
+                cpx_f_t f2 = src[offsetSrc + 2 * stridesSrc[axis]];
+                
+                float a = -(2.0f * h0 + h1) / (h0 * (h0 + h1));
+                float b = (h0 + h1) / (h0 * h1);
+                float c = -h0 / (h1 * (h0 + h1));
+                
+                res[offsetRes] = (cpx_f_t){
+                    a * f0.r + b * f1.r + c * f2.r,
+                    a * f0.i + b * f1.i + c * f2.i
+                };
+            }
+            
+            // Interior points
+            for (int i = 1; i < N - 1; i++) {
+                int idxSrcCurr = offsetSrc + i * stridesSrc[axis];
+                int idxSrcPrev = offsetSrc + (i - 1) * stridesSrc[axis];
+                int idxSrcNext = offsetSrc + (i + 1) * stridesSrc[axis];
+                int idxRes = offsetRes + i * stridesRes[axis];
+                
+                cpx_f_t f_curr = src[idxSrcCurr];
+                cpx_f_t f_prev = src[idxSrcPrev];
+                cpx_f_t f_next = src[idxSrcNext];
+                
+                float h_s = dx;
+                float h_d = dx;
+                if (x != NULL) {
+                    h_s = x[i * strideX] - x[(i - 1) * strideX];
+                    h_d = x[(i + 1) * strideX] - x[i * strideX];
+                }
+                
+                float denom = h_s * h_d * (h_s + h_d);
+                res[idxRes] = (cpx_f_t){
+                    (h_s * h_s * f_next.r + (h_d * h_d - h_s * h_s) * f_curr.r - h_d * h_d * f_prev.r) / denom,
+                    (h_s * h_s * f_next.i + (h_d * h_d - h_s * h_s) * f_curr.i - h_d * h_d * f_prev.i) / denom
+                };
+            }
+            
+            // Right boundary
+            int idxResEnd = offsetRes + (N - 1) * stridesRes[axis];
+            int idxSrcEnd = offsetSrc + (N - 1) * stridesSrc[axis];
+            if (edge_order == 1) {
+                float h = dx;
+                if (x != NULL) {
+                    h = x[(N - 1) * strideX] - x[(N - 2) * strideX];
+                }
+                cpx_f_t f0 = src[idxSrcEnd - stridesSrc[axis]];
+                cpx_f_t f1 = src[idxSrcEnd];
+                res[idxResEnd] = (cpx_f_t){(f1.r - f0.r) / h, (f1.i - f0.i) / h};
+            } else {
+                float h0 = dx;
+                float h1 = dx;
+                if (x != NULL) {
+                    h0 = x[(N - 2) * strideX] - x[(N - 3) * strideX];
+                    h1 = x[(N - 1) * strideX] - x[(N - 2) * strideX];
+                }
+                cpx_f_t f0 = src[idxSrcEnd - 2 * stridesSrc[axis]];
+                cpx_f_t f1 = src[idxSrcEnd - stridesSrc[axis]];
+                cpx_f_t f2 = src[idxSrcEnd];
+                
+                float a = h1 / (h0 * (h0 + h1));
+                float b = -(h0 + h1) / (h0 * h1);
+                float c = (2.0f * h1 + h0) / (h1 * (h0 + h1));
+                
+                res[idxResEnd] = (cpx_f_t){
+                    a * f0.r + b * f1.r + c * f2.r,
+                    a * f0.i + b * f1.i + c * f2.i
+                };
+            }
+        }
+        
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+
+
+static cpx_t c_mul(cpx_t a, cpx_t b) {
+    cpx_t res;
+    res.r = a.r * b.r - a.i * b.i;
+    res.i = a.r * b.i + a.i * b.r;
+    return res;
+}
+
+static cpx_t c_div(cpx_t n, cpx_t d) {
+    cpx_t res;
+    double denom = d.r * d.r + d.i * d.i;
+    res.r = (n.r * d.r + n.i * d.i) / denom;
+    res.i = (n.i * d.r - n.r * d.i) / denom;
+    return res;
+}
+
+void s_gradient_complex128_all(const cpx_t *src, const int *stridesSrc,
+                               const cpx_t *x, int strideX, cpx_t dx,
+                               cpx_t *res, const int *stridesRes,
+                               const int *shape, int rank, int axis, int edge_order) {
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    
+    int N = shape[axis];
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    
+    for (int o = 0; o < outer_size; o++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetSrc += coord[d] * stridesSrc[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        
+        if (N == 1) {
+            res[offsetRes].r = 0.0;
+            res[offsetRes].i = 0.0;
+        } else if (N == 2) {
+            cpx_t h = dx;
+            if (x != NULL) {
+                h.r = x[strideX].r - x[0].r;
+                h.i = x[strideX].i - x[0].i;
+            }
+            cpx_t diff;
+            diff.r = src[offsetSrc + stridesSrc[axis]].r - src[offsetSrc].r;
+            diff.i = src[offsetSrc + stridesSrc[axis]].i - src[offsetSrc].i;
+            res[offsetRes] = c_div(diff, h);
+            res[offsetRes + stridesRes[axis]] = res[offsetRes];
+        } else {
+            // Left boundary (i = 0)
+            if (edge_order == 1) {
+                cpx_t h = dx;
+                if (x != NULL) {
+                    h.r = x[strideX].r - x[0].r;
+                    h.i = x[strideX].i - x[0].i;
+                }
+                cpx_t num = {src[offsetSrc + stridesSrc[axis]].r - src[offsetSrc].r,
+                             src[offsetSrc + stridesSrc[axis]].i - src[offsetSrc].i};
+                res[offsetRes] = c_div(num, h);
+            } else {
+                cpx_t h0 = dx;
+                cpx_t h1 = dx;
+                if (x != NULL) {
+                    h0.r = x[strideX].r - x[0].r;
+                    h0.i = x[strideX].i - x[0].i;
+                    h1.r = x[2 * strideX].r - x[strideX].r;
+                    h1.i = x[2 * strideX].i - x[strideX].i;
+                }
+                cpx_t f0 = src[offsetSrc];
+                cpx_t f1 = src[offsetSrc + stridesSrc[axis]];
+                cpx_t f2 = src[offsetSrc + 2 * stridesSrc[axis]];
+                
+                cpx_t h0h1 = {h0.r + h1.r, h0.i + h1.i};
+                cpx_t denom_a = c_mul(h0, h0h1);
+                cpx_t num_a = {-(2.0 * h0.r + h1.r), -(2.0 * h0.i + h1.i)};
+                cpx_t a = c_div(num_a, denom_a);
+                
+                cpx_t denom_b = c_mul(h0, h1);
+                cpx_t b = c_div(h0h1, denom_b);
+                
+                cpx_t denom_c = c_mul(h1, h0h1);
+                cpx_t num_c = {-h0.r, -h0.i};
+                cpx_t c = c_div(num_c, denom_c);
+                
+                cpx_t term1 = c_mul(a, f0);
+                cpx_t term2 = c_mul(b, f1);
+                cpx_t term3 = c_mul(c, f2);
+                
+                res[offsetRes].r = term1.r + term2.r + term3.r;
+                res[offsetRes].i = term1.i + term2.i + term3.i;
+            }
+            
+            // Interior points
+            for (int i = 1; i < N - 1; i++) {
+                int idxSrcCurr = offsetSrc + i * stridesSrc[axis];
+                int idxSrcPrev = offsetSrc + (i - 1) * stridesSrc[axis];
+                int idxSrcNext = offsetSrc + (i + 1) * stridesSrc[axis];
+                int idxRes = offsetRes + i * stridesRes[axis];
+                
+                cpx_t f_curr = src[idxSrcCurr];
+                cpx_t f_prev = src[idxSrcPrev];
+                cpx_t f_next = src[idxSrcNext];
+                
+                cpx_t h_s = dx;
+                cpx_t h_d = dx;
+                if (x != NULL) {
+                    h_s.r = x[i * strideX].r - x[(i - 1) * strideX].r;
+                    h_s.i = x[i * strideX].i - x[(i - 1) * strideX].i;
+                    h_d.r = x[(i + 1) * strideX].r - x[i * strideX].r;
+                    h_d.i = x[(i + 1) * strideX].i - x[i * strideX].i;
+                }
+                
+                cpx_t hs2 = c_mul(h_s, h_s);
+                cpx_t hd2 = c_mul(h_d, h_d);
+                cpx_t hd2_hs2 = {hd2.r - hs2.r, hd2.i - hs2.i};
+                
+                cpx_t term1 = c_mul(hs2, f_next);
+                cpx_t term2 = c_mul(hd2_hs2, f_curr);
+                cpx_t term3 = c_mul(hd2, f_prev);
+                
+                cpx_t num = {term1.r + term2.r - term3.r, term1.i + term2.i - term3.i};
+                
+                cpx_t hshd = c_mul(h_s, h_d);
+                cpx_t hshdsum = {h_s.r + h_d.r, h_s.i + h_d.i};
+                cpx_t denom = c_mul(hshd, hshdsum);
+                
+                res[idxRes] = c_div(num, denom);
+            }
+            
+            // Right boundary
+            int idxResEnd = offsetRes + (N - 1) * stridesRes[axis];
+            int idxSrcEnd = offsetSrc + (N - 1) * stridesSrc[axis];
+            if (edge_order == 1) {
+                cpx_t h = dx;
+                if (x != NULL) {
+                    h.r = x[(N - 1) * strideX].r - x[(N - 2) * strideX].r;
+                    h.i = x[(N - 1) * strideX].i - x[(N - 2) * strideX].i;
+                }
+                cpx_t num = {src[idxSrcEnd].r - src[idxSrcEnd - stridesSrc[axis]].r,
+                             src[idxSrcEnd].i - src[idxSrcEnd - stridesSrc[axis]].i};
+                res[idxResEnd] = c_div(num, h);
+            } else {
+                cpx_t h0 = dx;
+                cpx_t h1 = dx;
+                if (x != NULL) {
+                    h0.r = x[(N - 2) * strideX].r - x[(N - 3) * strideX].r;
+                    h0.i = x[(N - 2) * strideX].i - x[(N - 3) * strideX].i;
+                    h1.r = x[(N - 1) * strideX].r - x[(N - 2) * strideX].r;
+                    h1.i = x[(N - 1) * strideX].i - x[(N - 2) * strideX].i;
+                }
+                cpx_t f0 = src[idxSrcEnd - 2 * stridesSrc[axis]];
+                cpx_t f1 = src[idxSrcEnd - stridesSrc[axis]];
+                cpx_t f2 = src[idxSrcEnd];
+                
+                cpx_t h0h1 = {h0.r + h1.r, h0.i + h1.i};
+                cpx_t denom_a = c_mul(h0, h0h1);
+                cpx_t a = c_div(h1, denom_a);
+                cpx_t denom_b = c_mul(h0, h1);
+                cpx_t num_b = {-h0h1.r, -h0h1.i};
+                cpx_t b = c_div(num_b, denom_b);
+                cpx_t denom_c = c_mul(h1, h0h1);
+                cpx_t num_c = {2.0 * h1.r + h0.r, 2.0 * h1.i + h0.i};
+                cpx_t c = c_div(num_c, denom_c);
+                
+                cpx_t term1 = c_mul(a, f0);
+                cpx_t term2 = c_mul(b, f1);
+                cpx_t term3 = c_mul(c, f2);
+                
+                res[idxResEnd].r = term1.r + term2.r + term3.r;
+                res[idxResEnd].i = term1.i + term2.i + term3.i;
+            }
+        }
+        
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_trapz_complex64_all(const cpx_f_t *y, const int *stridesY,
+                           const cpx_f_t *x, int strideX, cpx_f_t dx,
+                           cpx_f_t *res, const int *stridesRes,
+                           const int *shape, int rank, int axis) {
+    if (y == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    
+    for (int o = 0; o < outer_size; o++) {
+        int offsetRes = 0;
+        int offsetSrc = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesY[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesRes[targetD];
+                }
+            }
+        }
+        
+        cpx_f_t sum = {0.0f, 0.0f};
+        for (int i = 0; i < shape[axis] - 1; i++) {
+            int idxSrc = offsetSrc + i * stridesY[axis];
+            int idxSrcNext = offsetSrc + (i + 1) * stridesY[axis];
+            cpx_f_t y_curr = y[idxSrc];
+            cpx_f_t y_next = y[idxSrcNext];
+            
+            cpx_f_t h = dx;
+            if (x != NULL) {
+                h.r = x[(i + 1) * strideX].r - x[i * strideX].r;
+                h.i = x[(i + 1) * strideX].i - x[i * strideX].i;
+            }
+            
+            float yr = (y_curr.r + y_next.r) * 0.5f;
+            float yi = (y_curr.i + y_next.i) * 0.5f;
+            
+            sum.r += yr * h.r - yi * h.i;
+            sum.i += yr * h.i + yi * h.r;
+        }
+        
+        res[offsetRes] = sum;
+        
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+static cpx_f_t cf_mul(cpx_f_t a, cpx_f_t b) {
+    cpx_f_t res;
+    res.r = a.r * b.r - a.i * b.i;
+    res.i = a.r * b.i + a.i * b.r;
+    return res;
+}
+
+static cpx_f_t cf_div(cpx_f_t n, cpx_f_t d) {
+    cpx_f_t res;
+    float denom = d.r * d.r + d.i * d.i;
+    res.r = (n.r * d.r + n.i * d.i) / denom;
+    res.i = (n.i * d.r - n.r * d.i) / denom;
+    return res;
+}
+
+void s_gradient_complex64_all(const cpx_f_t *src, const int *stridesSrc,
+                              const cpx_f_t *x, int strideX, cpx_f_t dx,
+                              cpx_f_t *res, const int *stridesRes,
+                              const int *shape, int rank, int axis, int edge_order) {
+    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    
+    int N = shape[axis];
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    
+    for (int o = 0; o < outer_size; o++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetSrc += coord[d] * stridesSrc[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        
+        if (N == 1) {
+            res[offsetRes].r = 0.0f;
+            res[offsetRes].i = 0.0f;
+        } else if (N == 2) {
+            cpx_f_t h = dx;
+            if (x != NULL) {
+                h.r = x[strideX].r - x[0].r;
+                h.i = x[strideX].i - x[0].i;
+            }
+            cpx_f_t diff;
+            diff.r = src[offsetSrc + stridesSrc[axis]].r - src[offsetSrc].r;
+            diff.i = src[offsetSrc + stridesSrc[axis]].i - src[offsetSrc].i;
+            res[offsetRes] = cf_div(diff, h);
+            res[offsetRes + stridesRes[axis]] = res[offsetRes];
+        } else {
+            if (edge_order == 1) {
+                cpx_f_t h = dx;
+                if (x != NULL) {
+                    h.r = x[strideX].r - x[0].r;
+                    h.i = x[strideX].i - x[0].i;
+                }
+                cpx_f_t num = {src[offsetSrc + stridesSrc[axis]].r - src[offsetSrc].r,
+                             src[offsetSrc + stridesSrc[axis]].i - src[offsetSrc].i};
+                res[offsetRes] = cf_div(num, h);
+            } else {
+                cpx_f_t h0 = dx;
+                cpx_f_t h1 = dx;
+                if (x != NULL) {
+                    h0.r = x[strideX].r - x[0].r;
+                    h0.i = x[strideX].i - x[0].i;
+                    h1.r = x[2 * strideX].r - x[strideX].r;
+                    h1.i = x[2 * strideX].i - x[strideX].i;
+                }
+                cpx_f_t f0 = src[offsetSrc];
+                cpx_f_t f1 = src[offsetSrc + stridesSrc[axis]];
+                cpx_f_t f2 = src[offsetSrc + 2 * stridesSrc[axis]];
+                
+                cpx_f_t h0h1 = {h0.r + h1.r, h0.i + h1.i};
+                cpx_f_t denom_a = cf_mul(h0, h0h1);
+                cpx_f_t num_a = {-(2.0f * h0.r + h1.r), -(2.0f * h0.i + h1.i)};
+                cpx_f_t a = cf_div(num_a, denom_a);
+                cpx_f_t denom_b = cf_mul(h0, h1);
+                cpx_f_t b = cf_div(h0h1, denom_b);
+                cpx_f_t denom_c = cf_mul(h1, h0h1);
+                cpx_f_t num_c = {-h0.r, -h0.i};
+                cpx_f_t c = cf_div(num_c, denom_c);
+                
+                cpx_f_t term1 = cf_mul(a, f0);
+                cpx_f_t term2 = cf_mul(b, f1);
+                cpx_f_t term3 = cf_mul(c, f2);
+                res[offsetRes].r = term1.r + term2.r + term3.r;
+                res[offsetRes].i = term1.i + term2.i + term3.i;
+            }
+            
+            for (int i = 1; i < N - 1; i++) {
+                int idxSrcCurr = offsetSrc + i * stridesSrc[axis];
+                int idxSrcPrev = offsetSrc + (i - 1) * stridesSrc[axis];
+                int idxSrcNext = offsetSrc + (i + 1) * stridesSrc[axis];
+                int idxRes = offsetRes + i * stridesRes[axis];
+                
+                cpx_f_t f_curr = src[idxSrcCurr];
+                cpx_f_t f_prev = src[idxSrcPrev];
+                cpx_f_t f_next = src[idxSrcNext];
+                
+                cpx_f_t h_s = dx;
+                cpx_f_t h_d = dx;
+                if (x != NULL) {
+                    h_s.r = x[i * strideX].r - x[(i - 1) * strideX].r;
+                    h_s.i = x[i * strideX].i - x[(i - 1) * strideX].i;
+                    h_d.r = x[(i + 1) * strideX].r - x[i * strideX].r;
+                    h_d.i = x[(i + 1) * strideX].i - x[i * strideX].i;
+                }
+                
+                cpx_f_t hs2 = cf_mul(h_s, h_s);
+                cpx_f_t hd2 = cf_mul(h_d, h_d);
+                cpx_f_t hd2_hs2 = {hd2.r - hs2.r, hd2.i - hs2.i};
+                cpx_f_t term1 = cf_mul(hs2, f_next);
+                cpx_f_t term2 = cf_mul(hd2_hs2, f_curr);
+                cpx_f_t term3 = cf_mul(hd2, f_prev);
+                cpx_f_t num = {term1.r + term2.r - term3.r, term1.i + term2.i - term3.i};
+                cpx_f_t hshd = cf_mul(h_s, h_d);
+                cpx_f_t hshdsum = {h_s.r + h_d.r, h_s.i + h_d.i};
+                cpx_f_t denom = cf_mul(hshd, hshdsum);
+                res[idxRes] = cf_div(num, denom);
+            }
+            
+            int idxResEnd = offsetRes + (N - 1) * stridesRes[axis];
+            int idxSrcEnd = offsetSrc + (N - 1) * stridesSrc[axis];
+            if (edge_order == 1) {
+                cpx_f_t h = dx;
+                if (x != NULL) {
+                    h.r = x[(N - 1) * strideX].r - x[(N - 2) * strideX].r;
+                    h.i = x[(N - 1) * strideX].i - x[(N - 2) * strideX].i;
+                }
+                cpx_f_t num = {src[idxSrcEnd].r - src[idxSrcEnd - stridesSrc[axis]].r,
+                             src[idxSrcEnd].i - src[idxSrcEnd - stridesSrc[axis]].i};
+                res[idxResEnd] = cf_div(num, h);
+            } else {
+                cpx_f_t h0 = dx;
+                cpx_f_t h1 = dx;
+                if (x != NULL) {
+                    h0.r = x[(N - 2) * strideX].r - x[(N - 3) * strideX].r;
+                    h0.i = x[(N - 2) * strideX].i - x[(N - 3) * strideX].i;
+                    h1.r = x[(N - 1) * strideX].r - x[(N - 2) * strideX].r;
+                    h1.i = x[(N - 1) * strideX].i - x[(N - 2) * strideX].i;
+                }
+                cpx_f_t f0 = src[idxSrcEnd - 2 * stridesSrc[axis]];
+                cpx_f_t f1 = src[idxSrcEnd - stridesSrc[axis]];
+                cpx_f_t f2 = src[idxSrcEnd];
+                cpx_f_t h0h1 = {h0.r + h1.r, h0.i + h1.i};
+                cpx_f_t denom_a = cf_mul(h0, h0h1);
+                cpx_f_t a = cf_div(h1, denom_a);
+                cpx_f_t denom_b = cf_mul(h0, h1);
+                cpx_f_t num_b = {-h0h1.r, -h0h1.i};
+                cpx_f_t b = cf_div(num_b, denom_b);
+                cpx_f_t denom_c = cf_mul(h1, h0h1);
+                cpx_f_t num_c = {2.0f * h1.r + h0.r, 2.0f * h1.i + h0.i};
+                cpx_f_t c = cf_div(num_c, denom_c);
+                cpx_f_t term1 = cf_mul(a, f0);
+                cpx_f_t term2 = cf_mul(b, f1);
+                cpx_f_t term3 = cf_mul(c, f2);
+                res[idxResEnd].r = term1.r + term2.r + term3.r;
+                res[idxResEnd].i = term1.i + term2.i + term3.i;
+            }
+        }
+        
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}

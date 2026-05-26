@@ -323,7 +323,7 @@ void main() {
     test(
       'linspace() with num == 1 coverage',
       () => NDArray.scope(() {
-        final a = NDArray<double>.linspace(5.0, 10.0, 1, dtype: DType.float64);
+        final a = linspace<double>(5.0, 10.0, 1, dtype: DType.float64);
         expect(a.shape, [1]);
         expect(a.toList(), [5.0]);
       }),
@@ -1161,9 +1161,9 @@ void main() {
         expect(a64.toList(), [Complex(1.0, 0.0), Complex(2.0, 0.0)]);
 
         // 3. linspace with complex128
-        final l128 = NDArray<Complex>.linspace(
-          1.0,
-          2.0,
+        final l128 = linspace<Complex>(
+          Complex(1.0, 0.0),
+          Complex(2.0, 0.0),
           3,
           dtype: DType.complex128,
         );
@@ -1176,9 +1176,9 @@ void main() {
         ]);
 
         // 4. linspace with single-element num == 1 and complex64
-        final l64 = NDArray<Complex>.linspace(
-          5.0,
-          10.0,
+        final l64 = linspace<Complex>(
+          Complex(5.0, 0.0),
+          Complex(10.0, 0.0),
           1,
           dtype: DType.complex64,
         );
