@@ -125,7 +125,7 @@ NDArray<T> concatenate<T extends Object>(
 /// final b = NDArray.fromList([3, 4], [2], DType.int32);
 /// final s = stack([a, b], axis: 0); // shape [2, 2], values [[1, 2], [3, 4]]
 /// ```
-NDArray stack(List<NDArray> arrays, {int axis = 0}) {
+NDArray<T> stack<T extends Object>(List<NDArray<T>> arrays, {int axis = 0}) {
   if (arrays.isEmpty) {
     throw ArgumentError('List of arrays to stack must not be empty.');
   }
@@ -189,7 +189,7 @@ NDArray stack(List<NDArray> arrays, {int axis = 0}) {
 /// {@example /example/shape_view_example.dart lang=dart}
 ///
 /// Reference: [Expand Dimensions](https://numpy.org/doc/stable/reference/generated/numpy.expand_dims.html)
-NDArray expand_dims(NDArray a, int axis) {
+NDArray<T> expand_dims<T extends Object>(NDArray<T> a, int axis) {
   final rank = a.shape.length;
   var targetAxis = axis < 0 ? rank + 1 + axis : axis;
 
@@ -233,7 +233,7 @@ NDArray expand_dims(NDArray a, int axis) {
 /// {@example /example/shape_view_example.dart lang=dart}
 ///
 /// Reference: [Squeeze Dimensions](https://numpy.org/doc/stable/reference/generated/numpy.squeeze.html)
-NDArray squeeze(NDArray a, {List<int>? axis}) {
+NDArray<T> squeeze<T extends Object>(NDArray<T> a, {List<int>? axis}) {
   final rank = a.shape.length;
   final shape = a.shape;
   final strides = a.strides;
@@ -309,7 +309,11 @@ NDArray squeeze(NDArray a, {List<int>? axis}) {
 /// print(view.shape); // [3, 3]
 /// print(view.toList()); // [[1.0, 2.0, 3.0], [2.0, 3.0, 4.0], [3.0, 4.0, 5.0]]
 /// ```
-NDArray slidingWindowView(NDArray a, List<int> windowShape, {List<int>? axis}) {
+NDArray<T> slidingWindowView<T extends Object>(
+  NDArray<T> a,
+  List<int> windowShape, {
+  List<int>? axis,
+}) {
   final rank = a.shape.length;
 
   // 1. Resolve and validate target axes

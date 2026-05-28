@@ -59,10 +59,6 @@ NDArray<T> uniform<T extends num>(
   bool secure = false,
 }) {
   final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
-  if (!identical(resolvedDType, DType.float32) &&
-      !identical(resolvedDType, DType.float64)) {
-    throw ArgumentError('uniform only supports float types for now');
-  }
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
@@ -70,22 +66,23 @@ NDArray<T> uniform<T extends num>(
   }
   final arr = out ?? NDArray<T>.create(shape, resolvedDType);
   final len = arr.data.length;
+  final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
 
-  if (secure) {
-    if (identical(resolvedDType, DType.float64)) {
-      v_secure_uniform_double(arr.pointer.cast<ffi.Double>(), len);
-    } else {
-      v_secure_uniform_float(arr.pointer.cast<ffi.Float>(), len);
-    }
-    return arr;
-  }
-
-  final seedVal = seed ?? Random().nextInt(4294967296);
-
-  if (identical(resolvedDType, DType.float64)) {
-    v_uniform_double(arr.pointer.cast<ffi.Double>(), len, seedVal);
-  } else {
-    v_uniform_float(arr.pointer.cast<ffi.Float>(), len, seedVal);
+  switch (resolvedDType) {
+    case DType.float64:
+      if (secure) {
+        v_secure_uniform_double(arr.pointer.cast<ffi.Double>(), len);
+      } else {
+        v_uniform_double(arr.pointer.cast<ffi.Double>(), len, seedVal);
+      }
+    case DType.float32:
+      if (secure) {
+        v_secure_uniform_float(arr.pointer.cast<ffi.Float>(), len);
+      } else {
+        v_uniform_float(arr.pointer.cast<ffi.Float>(), len, seedVal);
+      }
+    default:
+      throw ArgumentError('uniform only supports float types for now');
   }
   return arr;
 }
@@ -99,18 +96,10 @@ NDArray<T> randint<T extends num>(
   NDArray<T>? out,
   bool secure = false,
 }) {
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
-  if (!identical(resolvedDType, DType.int32) &&
-      !identical(resolvedDType, DType.int64) &&
-      !identical(resolvedDType, DType.uint8) &&
-      !identical(resolvedDType, DType.int16)) {
-    throw ArgumentError(
-      'randint only supports integer types (int64, int32, int16, uint8)',
-    );
-  }
   if (low >= high) {
     throw ArgumentError('low must be less than high');
   }
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
@@ -118,30 +107,37 @@ NDArray<T> randint<T extends num>(
   }
   final arr = out ?? NDArray<T>.create(shape, resolvedDType);
   final len = arr.data.length;
+  final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
 
-  if (secure) {
-    if (identical(resolvedDType, DType.int64)) {
-      v_secure_randint_int64(arr.pointer.cast<ffi.Int64>(), len, low, high);
-    } else if (identical(resolvedDType, DType.int32)) {
-      v_secure_randint_int32(arr.pointer.cast<ffi.Int32>(), len, low, high);
-    } else if (identical(resolvedDType, DType.uint8)) {
-      v_secure_randint_uint8(arr.pointer.cast<ffi.Uint8>(), len, low, high);
-    } else if (identical(resolvedDType, DType.int16)) {
-      v_secure_randint_int16(arr.pointer.cast<ffi.Int16>(), len, low, high);
-    }
-    return arr;
-  }
-
-  final seedVal = seed ?? Random().nextInt(4294967296);
-
-  if (identical(resolvedDType, DType.int64)) {
-    v_randint_int64(arr.pointer.cast<ffi.Int64>(), len, low, high, seedVal);
-  } else if (identical(resolvedDType, DType.int32)) {
-    v_randint_int32(arr.pointer.cast<ffi.Int32>(), len, low, high, seedVal);
-  } else if (identical(resolvedDType, DType.uint8)) {
-    v_randint_uint8(arr.pointer.cast<ffi.Uint8>(), len, low, high, seedVal);
-  } else if (identical(resolvedDType, DType.int16)) {
-    v_randint_int16(arr.pointer.cast<ffi.Int16>(), len, low, high, seedVal);
+  switch (resolvedDType) {
+    case DType.int64:
+      if (secure) {
+        v_secure_randint_int64(arr.pointer.cast<ffi.Int64>(), len, low, high);
+      } else {
+        v_randint_int64(arr.pointer.cast<ffi.Int64>(), len, low, high, seedVal);
+      }
+    case DType.int32:
+      if (secure) {
+        v_secure_randint_int32(arr.pointer.cast<ffi.Int32>(), len, low, high);
+      } else {
+        v_randint_int32(arr.pointer.cast<ffi.Int32>(), len, low, high, seedVal);
+      }
+    case DType.uint8:
+      if (secure) {
+        v_secure_randint_uint8(arr.pointer.cast<ffi.Uint8>(), len, low, high);
+      } else {
+        v_randint_uint8(arr.pointer.cast<ffi.Uint8>(), len, low, high, seedVal);
+      }
+    case DType.int16:
+      if (secure) {
+        v_secure_randint_int16(arr.pointer.cast<ffi.Int16>(), len, low, high);
+      } else {
+        v_randint_int16(arr.pointer.cast<ffi.Int16>(), len, low, high, seedVal);
+      }
+    default:
+      throw ArgumentError(
+        'randint only supports integer types (int64, int32, int16, uint8)',
+      );
   }
   return arr;
 }
@@ -183,19 +179,12 @@ NDArray<T> normal<T extends num>(
   NDArray<T>? out,
   bool secure = false,
 }) {
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
-  if (!identical(resolvedDType, DType.float32) &&
-      !identical(resolvedDType, DType.float64)) {
-    throw ArgumentError(
-      'normal only supports floating point dtypes (float32/float64)',
-    );
-  }
   if (scale <= 0.0) {
     throw ArgumentError(
       'scale (standard deviation) must be strictly positive (was $scale)',
     );
   }
-
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
@@ -203,24 +192,32 @@ NDArray<T> normal<T extends num>(
   }
   final arr = out ?? NDArray<T>.create(shape, resolvedDType);
   final len = arr.data.length;
+  final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
 
-  if (secure) {
-    if (identical(resolvedDType, DType.float64)) {
-      v_secure_normal_double(arr.pointer.cast<ffi.Double>(), len, loc, scale);
-    } else {
-      v_secure_normal_float(arr.pointer.cast<ffi.Float>(), len, loc, scale);
-    }
-    return arr;
+  switch (resolvedDType) {
+    case DType.float64:
+      if (secure) {
+        v_secure_normal_double(arr.pointer.cast<ffi.Double>(), len, loc, scale);
+      } else {
+        v_normal_double(
+          arr.pointer.cast<ffi.Double>(),
+          len,
+          loc,
+          scale,
+          seedVal,
+        );
+      }
+    case DType.float32:
+      if (secure) {
+        v_secure_normal_float(arr.pointer.cast<ffi.Float>(), len, loc, scale);
+      } else {
+        v_normal_float(arr.pointer.cast<ffi.Float>(), len, loc, scale, seedVal);
+      }
+    default:
+      throw ArgumentError(
+        'normal only supports floating point dtypes (float32/float64)',
+      );
   }
-
-  final seedVal = seed ?? Random().nextInt(4294967296);
-
-  if (identical(resolvedDType, DType.float64)) {
-    v_normal_double(arr.pointer.cast<ffi.Double>(), len, loc, scale, seedVal);
-  } else {
-    v_normal_float(arr.pointer.cast<ffi.Float>(), len, loc, scale, seedVal);
-  }
-
   return arr;
 }
 
@@ -255,20 +252,13 @@ NDArray<T> exponential<T extends num>(
   NDArray<T>? out,
   bool secure = false,
 }) {
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
-  if (!identical(resolvedDType, DType.float32) &&
-      !identical(resolvedDType, DType.float64)) {
-    throw ArgumentError(
-      'exponential only supports floating point dtypes (float32/float64)',
-    );
-  }
   final targetScale = lam != null ? 1.0 / lam : scale;
   if (targetScale <= 0.0) {
     throw ArgumentError(
       'scale parameter (or 1 / lam) must be strictly positive (was $targetScale)',
     );
   }
-
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
@@ -276,48 +266,38 @@ NDArray<T> exponential<T extends num>(
   }
   final arr = out ?? NDArray<T>.create(shape, resolvedDType);
   final len = arr.data.length;
+  final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
 
-  if (secure) {
-    if (identical(resolvedDType, DType.float64)) {
-      v_secure_uniform_double(arr.pointer.cast<ffi.Double>(), len);
+  switch (resolvedDType) {
+    case DType.float64:
+      if (secure) {
+        v_secure_uniform_double(arr.pointer.cast<ffi.Double>(), len);
+      } else {
+        v_uniform_double(arr.pointer.cast<ffi.Double>(), len, seedVal);
+      }
       final data = arr.data as Float64List;
       for (var i = 0; i < len; i++) {
         var u = data[i];
         if (u >= 1.0) u = 0.9999999999999999;
         data[i] = -targetScale * math.log(1.0 - u);
       }
-    } else {
-      v_secure_uniform_float(arr.pointer.cast<ffi.Float>(), len);
+    case DType.float32:
+      if (secure) {
+        v_secure_uniform_float(arr.pointer.cast<ffi.Float>(), len);
+      } else {
+        v_uniform_float(arr.pointer.cast<ffi.Float>(), len, seedVal);
+      }
       final data = arr.data as Float32List;
       for (var i = 0; i < len; i++) {
         var u = data[i];
         if (u >= 1.0) u = 0.999999;
         data[i] = -targetScale * math.log(1.0 - u);
       }
-    }
-    return arr;
+    default:
+      throw ArgumentError(
+        'exponential only supports floating point dtypes (float32/float64)',
+      );
   }
-
-  final seedVal = seed ?? Random().nextInt(4294967296);
-
-  if (identical(resolvedDType, DType.float64)) {
-    v_uniform_double(arr.pointer.cast<ffi.Double>(), len, seedVal);
-    final data = arr.data as Float64List;
-    for (var i = 0; i < len; i++) {
-      var u = data[i];
-      if (u >= 1.0) u = 0.9999999999999999;
-      data[i] = -targetScale * math.log(1.0 - u);
-    }
-  } else {
-    v_uniform_float(arr.pointer.cast<ffi.Float>(), len, seedVal);
-    final data = arr.data as Float32List;
-    for (var i = 0; i < len; i++) {
-      var u = data[i];
-      if (u >= 1.0) u = 0.999999;
-      data[i] = -targetScale * math.log(1.0 - u);
-    }
-  }
-
   return arr;
 }
 
@@ -358,15 +338,10 @@ NDArray<T> poisson<T extends num>(
   NDArray<T>? out,
   bool secure = false,
 }) {
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
-  if (!identical(resolvedDType, DType.int32) &&
-      !identical(resolvedDType, DType.int64)) {
-    throw ArgumentError('poisson only supports integer dtypes (int32/int64)');
-  }
   if (lam <= 0.0) {
     throw ArgumentError('lambda must be strictly positive (was $lam)');
   }
-
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
@@ -374,17 +349,18 @@ NDArray<T> poisson<T extends num>(
   }
   final arr = out ?? NDArray<T>.create(shape, resolvedDType);
   final len = arr.data.length;
-
   final seedVal = secure
       ? Random.secure().nextInt(4294967296)
       : (seed ?? Random().nextInt(4294967296));
 
-  if (identical(resolvedDType, DType.int64)) {
-    v_poisson_int64(arr.pointer.cast<ffi.Int64>(), len, lam, seedVal);
-  } else {
-    v_poisson_int32(arr.pointer.cast<ffi.Int32>(), len, lam, seedVal);
+  switch (resolvedDType) {
+    case DType.int64:
+      v_poisson_int64(arr.pointer.cast<ffi.Int64>(), len, lam, seedVal);
+    case DType.int32:
+      v_poisson_int32(arr.pointer.cast<ffi.Int32>(), len, lam, seedVal);
+    default:
+      throw ArgumentError('poisson only supports integer dtypes (int32/int64)');
   }
-
   return arr;
 }
 
@@ -429,11 +405,6 @@ NDArray<T> binomial<T extends num>(
   NDArray<T>? out,
   bool secure = false,
 }) {
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
-  if (!identical(resolvedDType, DType.int32) &&
-      !identical(resolvedDType, DType.int64)) {
-    throw ArgumentError('binomial only supports integer dtypes (int32/int64)');
-  }
   if (n < 0) {
     throw ArgumentError('number of trials n must be non-negative (was $n)');
   }
@@ -442,7 +413,7 @@ NDArray<T> binomial<T extends num>(
       'success probability p must be between 0.0 and 1.0 (was $p)',
     );
   }
-
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
@@ -450,17 +421,20 @@ NDArray<T> binomial<T extends num>(
   }
   final arr = out ?? NDArray<T>.create(shape, resolvedDType);
   final len = arr.data.length;
-
   final seedVal = secure
       ? Random.secure().nextInt(4294967296)
       : (seed ?? Random().nextInt(4294967296));
 
-  if (identical(resolvedDType, DType.int64)) {
-    v_binomial_int64(arr.pointer.cast<ffi.Int64>(), len, n, p, seedVal);
-  } else {
-    v_binomial_int32(arr.pointer.cast<ffi.Int32>(), len, n, p, seedVal);
+  switch (resolvedDType) {
+    case DType.int64:
+      v_binomial_int64(arr.pointer.cast<ffi.Int64>(), len, n, p, seedVal);
+    case DType.int32:
+      v_binomial_int32(arr.pointer.cast<ffi.Int32>(), len, n, p, seedVal);
+    default:
+      throw ArgumentError(
+        'binomial only supports integer dtypes (int32/int64)',
+      );
   }
-
   return arr;
 }
 

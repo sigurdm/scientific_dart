@@ -206,58 +206,61 @@ NDArray<T> trapz<T extends Object>(
         } else if (value is num) {
           final dxVal = value.toDouble();
           final dtype = y.dtype;
-          if (dtype == DType.float64) {
-            s_trapz_double(
-              y.pointer.cast(),
-              cStridesY,
-              ffi.nullptr,
-              0,
-              dxVal,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-            );
-          } else if (dtype == DType.float32) {
-            s_trapz_float(
-              y.pointer.cast(),
-              cStridesY,
-              ffi.nullptr,
-              0,
-              dxVal.toDouble(),
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-            );
-          } else if (dtype == DType.complex128) {
-            s_trapz_complex128(
-              y.pointer.cast(),
-              cStridesY,
-              ffi.nullptr,
-              0,
-              dxVal,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-            );
-          } else if (dtype == DType.complex64) {
-            s_trapz_complex64(
-              y.pointer.cast(),
-              cStridesY,
-              ffi.nullptr,
-              0,
-              dxVal.toDouble(),
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-            );
+          switch (dtype) {
+            case DType.float64:
+              s_trapz_double(
+                y.pointer.cast(),
+                cStridesY,
+                ffi.nullptr,
+                0,
+                dxVal,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+              );
+            case DType.float32:
+              s_trapz_float(
+                y.pointer.cast(),
+                cStridesY,
+                ffi.nullptr,
+                0,
+                dxVal,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+              );
+            case DType.complex128:
+              s_trapz_complex128(
+                y.pointer.cast(),
+                cStridesY,
+                ffi.nullptr,
+                0,
+                dxVal,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+              );
+            case DType.complex64:
+              s_trapz_complex64(
+                y.pointer.cast(),
+                cStridesY,
+                ffi.nullptr,
+                0,
+                dxVal,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+              );
+            default:
+              throw ArgumentError('Unsupported DType for trapz');
           }
         }
 
@@ -328,58 +331,61 @@ NDArray<T> trapz<T extends Object>(
           );
 
           final dtype = y.dtype;
-          if (dtype == DType.float64) {
-            s_trapz_double(
-              y.pointer.cast(),
-              cStridesY,
-              spacingArray.pointer.cast(),
-              spacingArray.strides[0],
-              0.0,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-            );
-          } else if (dtype == DType.float32) {
-            s_trapz_float(
-              y.pointer.cast(),
-              cStridesY,
-              spacingArray.pointer.cast(),
-              spacingArray.strides[0],
-              0.0,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-            );
-          } else if (dtype == DType.complex128) {
-            s_trapz_complex128(
-              y.pointer.cast(),
-              cStridesY,
-              spacingArray.pointer.cast(),
-              spacingArray.strides[0],
-              0.0,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-            );
-          } else if (dtype == DType.complex64) {
-            s_trapz_complex64(
-              y.pointer.cast(),
-              cStridesY,
-              spacingArray.pointer.cast(),
-              spacingArray.strides[0],
-              0.0,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-            );
+          switch (dtype) {
+            case DType.float64:
+              s_trapz_double(
+                y.pointer.cast(),
+                cStridesY,
+                spacingArray.pointer.cast(),
+                spacingArray.strides[0],
+                0.0,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+              );
+            case DType.float32:
+              s_trapz_float(
+                y.pointer.cast(),
+                cStridesY,
+                spacingArray.pointer.cast(),
+                spacingArray.strides[0],
+                0.0,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+              );
+            case DType.complex128:
+              s_trapz_complex128(
+                y.pointer.cast(),
+                cStridesY,
+                spacingArray.pointer.cast(),
+                spacingArray.strides[0],
+                0.0,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+              );
+            case DType.complex64:
+              s_trapz_complex64(
+                y.pointer.cast(),
+                cStridesY,
+                spacingArray.pointer.cast(),
+                spacingArray.strides[0],
+                0.0,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+              );
+            default:
+              throw ArgumentError('Unsupported DType for trapz');
           }
           spacingArray.dispose();
         }
@@ -543,62 +549,65 @@ NDArray<T> gradient<T extends Object>(
         } else if (value is num) {
           final dxVal = value.toDouble();
           final dtype = f.dtype;
-          if (dtype == DType.float64) {
-            s_gradient_double(
-              f.pointer.cast(),
-              cStridesF,
-              ffi.nullptr,
-              0,
-              dxVal,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-              edgeOrder,
-            );
-          } else if (dtype == DType.float32) {
-            s_gradient_float(
-              f.pointer.cast(),
-              cStridesF,
-              ffi.nullptr,
-              0,
-              dxVal.toDouble(),
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-              edgeOrder,
-            );
-          } else if (dtype == DType.complex128) {
-            s_gradient_complex128(
-              f.pointer.cast(),
-              cStridesF,
-              ffi.nullptr,
-              0,
-              dxVal,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-              edgeOrder,
-            );
-          } else if (dtype == DType.complex64) {
-            s_gradient_complex64(
-              f.pointer.cast(),
-              cStridesF,
-              ffi.nullptr,
-              0,
-              dxVal.toDouble(),
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-              edgeOrder,
-            );
+          switch (dtype) {
+            case DType.float64:
+              s_gradient_double(
+                f.pointer.cast(),
+                cStridesF,
+                ffi.nullptr,
+                0,
+                dxVal,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+                edgeOrder,
+              );
+            case DType.float32:
+              s_gradient_float(
+                f.pointer.cast(),
+                cStridesF,
+                ffi.nullptr,
+                0,
+                dxVal,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+                edgeOrder,
+              );
+            case DType.complex128:
+              s_gradient_complex128(
+                f.pointer.cast(),
+                cStridesF,
+                ffi.nullptr,
+                0,
+                dxVal,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+                edgeOrder,
+              );
+            case DType.complex64:
+              s_gradient_complex64(
+                f.pointer.cast(),
+                cStridesF,
+                ffi.nullptr,
+                0,
+                dxVal,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+                edgeOrder,
+              );
+            default:
+              throw ArgumentError('Unsupported DType for gradient');
           }
         }
 
@@ -670,62 +679,65 @@ NDArray<T> gradient<T extends Object>(
             f.dtype.isFloating ? f.dtype as DType<double> : DType.float64,
           );
           final dtype = f.dtype;
-          if (dtype == DType.float64) {
-            s_gradient_double(
-              f.pointer.cast(),
-              cStridesF,
-              spacingArray.pointer.cast(),
-              spacingArray.strides[0],
-              0.0,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-              edgeOrder,
-            );
-          } else if (dtype == DType.float32) {
-            s_gradient_float(
-              f.pointer.cast(),
-              cStridesF,
-              spacingArray.pointer.cast(),
-              spacingArray.strides[0],
-              0.0,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-              edgeOrder,
-            );
-          } else if (dtype == DType.complex128) {
-            s_gradient_complex128(
-              f.pointer.cast(),
-              cStridesF,
-              spacingArray.pointer.cast(),
-              spacingArray.strides[0],
-              0.0,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-              edgeOrder,
-            );
-          } else if (dtype == DType.complex64) {
-            s_gradient_complex64(
-              f.pointer.cast(),
-              cStridesF,
-              spacingArray.pointer.cast(),
-              spacingArray.strides[0],
-              0.0,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              targetAxis,
-              edgeOrder,
-            );
+          switch (dtype) {
+            case DType.float64:
+              s_gradient_double(
+                f.pointer.cast(),
+                cStridesF,
+                spacingArray.pointer.cast(),
+                spacingArray.strides[0],
+                0.0,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+                edgeOrder,
+              );
+            case DType.float32:
+              s_gradient_float(
+                f.pointer.cast(),
+                cStridesF,
+                spacingArray.pointer.cast(),
+                spacingArray.strides[0],
+                0.0,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+                edgeOrder,
+              );
+            case DType.complex128:
+              s_gradient_complex128(
+                f.pointer.cast(),
+                cStridesF,
+                spacingArray.pointer.cast(),
+                spacingArray.strides[0],
+                0.0,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+                edgeOrder,
+              );
+            case DType.complex64:
+              s_gradient_complex64(
+                f.pointer.cast(),
+                cStridesF,
+                spacingArray.pointer.cast(),
+                spacingArray.strides[0],
+                0.0,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                targetAxis,
+                edgeOrder,
+              );
+            default:
+              throw ArgumentError('Unsupported DType for gradient');
           }
           spacingArray.dispose();
         }

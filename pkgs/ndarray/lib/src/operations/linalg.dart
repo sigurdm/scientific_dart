@@ -947,7 +947,7 @@ NDArray<double> det<T>(NDArray<T> a) {
 /// final x = solve(a, b);
 /// print(x.toList()); // [2.0, 3.0]
 /// ```
-NDArray solve(NDArray a, NDArray b) {
+NDArray<R> solve<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b) {
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError('Matrix a must be square and 2D (was ${a.shape})');
   }
@@ -1003,7 +1003,7 @@ NDArray solve(NDArray a, NDArray b) {
         throw ArgumentError('Matrix is singular and cannot be solved');
       }
       aCopy.dispose();
-      return bCopy;
+      return bCopy as NDArray<R>;
     } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
       final aCopy = NDArray<double>.create(a.shape, DType.float32);
       if (a.isContiguous) {
@@ -1044,7 +1044,7 @@ NDArray solve(NDArray a, NDArray b) {
         throw ArgumentError('Matrix is singular and cannot be solved');
       }
       aCopy.dispose();
-      return bCopy;
+      return bCopy as NDArray<R>;
     } else if (a.dtype == DType.complex128 && b.dtype == DType.complex128) {
       final aList = (a.data as ComplexList).backingList;
       final bList = (b.data as ComplexList).backingList;
@@ -1072,7 +1072,7 @@ NDArray solve(NDArray a, NDArray b) {
         throw ArgumentError('Matrix is singular and cannot be solved');
       }
       aCopy.dispose();
-      return bCopy;
+      return bCopy as NDArray<R>;
     } else if (a.dtype == DType.complex64 && b.dtype == DType.complex64) {
       final aList = (a.data as ComplexList).backingList;
       final bList = (b.data as ComplexList).backingList;
@@ -1100,7 +1100,7 @@ NDArray solve(NDArray a, NDArray b) {
         throw ArgumentError('Matrix is singular and cannot be solved');
       }
       aCopy.dispose();
-      return bCopy;
+      return bCopy as NDArray<R>;
     } else {
       // Fallback: convert to Float64
       final aDouble = NDArray<double>.create(a.shape, DType.float64);
@@ -1131,7 +1131,7 @@ NDArray solve(NDArray a, NDArray b) {
       }
 
       aDouble.dispose();
-      return bDouble;
+      return bDouble as NDArray<R>;
     }
   } finally {
     malloc.free(ipiv);
@@ -1150,7 +1150,7 @@ NDArray solve(NDArray a, NDArray b) {
 /// **Throws:**
 /// - [ArgumentError] if [a] is not square or less than 2D.
 /// - [UnimplementedError] if the DType of [a] is not supported.
-Map<String, NDArray<Complex>> eig(NDArray a) {
+Map<String, NDArray<Complex>> eig<T>(NDArray<T> a) {
   final rank = a.shape.length;
   if (rank < 2 || a.shape[rank - 1] != a.shape[rank - 2]) {
     throw ArgumentError(
@@ -1526,7 +1526,7 @@ Map<String, NDArray<Complex>> eig(NDArray a) {
 ///
 /// **Example:**
 /// {@example /example/linalg_premium_example.dart lang=dart}
-NDArray pinv(NDArray a, {double? rcond, NDArray? out}) {
+NDArray<R> pinv<T, R>(NDArray<T> a, {double? rcond, NDArray<R>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute pinv() on a disposed array.');
   }
@@ -1539,7 +1539,7 @@ NDArray pinv(NDArray a, {double? rcond, NDArray? out}) {
   final n = a.shape[1];
 
   final targetShape = [n, m];
-  final result = out ?? NDArray.create(targetShape, a.dtype);
+  final result = out ?? (NDArray.create(targetShape, a.dtype) as NDArray<R>);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -1604,7 +1604,7 @@ NDArray pinv(NDArray a, {double? rcond, NDArray? out}) {
 ///
 /// **Example:**
 /// {@example /example/linalg_premium_example.dart lang=dart}
-NDArray matrix_power(NDArray a, int n, {NDArray? out}) {
+NDArray<R> matrix_power<T, R>(NDArray<T> a, int n, {NDArray<R>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute matrix_power() on a disposed array.');
   }
@@ -1615,7 +1615,7 @@ NDArray matrix_power(NDArray a, int n, {NDArray? out}) {
   }
 
   final size = a.shape[0];
-  final result = out ?? NDArray.create(a.shape, a.dtype);
+  final result = out ?? (NDArray.create(a.shape, a.dtype) as NDArray<R>);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(

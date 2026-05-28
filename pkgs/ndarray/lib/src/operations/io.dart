@@ -30,7 +30,7 @@ import 'calculus.dart';
 import 'helpers.dart';
 
 /// Maps a NumPy descriptor string back to an [NDArray] [DType].
-DType _descrToDType(String descr) {
+DType<dynamic> _descrToDType(String descr) {
   if (descr.contains('>')) {
     throw UnsupportedError('Big-Endian .npy files are not supported yet.');
   }
@@ -84,7 +84,7 @@ DType _descrToDType(String descr) {
 ///
 /// Refer to the [NumPy NPY Format Specification](https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html)
 /// for details on the binary format.
-void save(String filepath, NDArray a) {
+void save<T>(String filepath, NDArray<T> a) {
   final file = File(filepath);
   if (!file.parent.existsSync()) {
     file.parent.createSync(recursive: true);
@@ -172,7 +172,7 @@ void save(String filepath, NDArray a) {
 ///
 /// Refer to the [NumPy NPY Format Specification](https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html)
 /// for details on the binary format.
-NDArray load(String filepath) {
+NDArray<dynamic> load(String filepath) {
   final file = File(filepath);
   if (!file.existsSync()) {
     throw FileSystemException('File not found for load', filepath);
@@ -438,7 +438,7 @@ NDArray _deserializeNpyBytes(Uint8List bytes) {
 /// for details on NumPy archive formats.
 void savez(
   String filepath,
-  Map<String, NDArray> arrays, {
+  Map<String, NDArray<dynamic>> arrays, {
   bool compressed = false,
 }) {
   final archive = Archive();
@@ -497,7 +497,7 @@ void savez(
 ///
 /// Refer to the [NumPy load reference](https://numpy.org/doc/stable/reference/generated/numpy.load.html)
 /// and [ZIP format details](https://en.wikipedia.org/wiki/ZIP_(file_format)) for additional information.
-Map<String, NDArray> loadz(String filepath) {
+Map<String, NDArray<dynamic>> loadz(String filepath) {
   final file = File(filepath);
   if (!file.existsSync()) {
     throw FileSystemException('File not found for loadz npz', filepath);
