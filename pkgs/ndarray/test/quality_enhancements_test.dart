@@ -1067,22 +1067,27 @@ void main() {
       'mean() along axis on sliced view calculation',
       () => NDArray.scope(() {
         final parent = NDArray.fromList(
-          Float64List.fromList([
-            1.0, 2.0, 3.0,
-            4.0, 5.0, 6.0,
-            7.0, 8.0, 9.0,
-          ]),
+          Float64List.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]),
           [3, 3],
           DType.float64,
         );
 
         // Slice rows 0:2 and cols 1:3 -> [[2, 3], [5, 6]]
-        final view = parent.slice([Slice(start: 0, stop: 2), Slice(start: 1, stop: 3)]);
-        
-        final m0 = mean(view, axis: 0); // mean of [2, 5] and [3, 6] -> [3.5, 4.5]
+        final view = parent.slice([
+          Slice(start: 0, stop: 2),
+          Slice(start: 1, stop: 3),
+        ]);
+
+        final m0 = mean(
+          view,
+          axis: 0,
+        ); // mean of [2, 5] and [3, 6] -> [3.5, 4.5]
         expect(m0.data, [3.5, 4.5]);
-        
-        final m1 = mean(view, axis: 1); // mean of [2, 3] and [5, 6] -> [2.5, 5.5]
+
+        final m1 = mean(
+          view,
+          axis: 1,
+        ); // mean of [2, 3] and [5, 6] -> [2.5, 5.5]
         expect(m1.data, [2.5, 5.5]);
       }),
     );

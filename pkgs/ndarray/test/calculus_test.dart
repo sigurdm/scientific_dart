@@ -339,10 +339,7 @@ void main() {
           DType.complex128,
         );
         final coords = [Complex(0, 0), Complex(0, 1), Complex(0, 2)];
-        final grads = gradientArray(
-          f,
-          spacings: [Spacing.coordinates(coords)],
-        );
+        final grads = gradientArray(f, spacings: [Spacing.coordinates(coords)]);
 
         expect(grads.length, 1);
         expect(grads[0].data[1].imag, closeTo(2.0, 1e-9));

@@ -618,11 +618,17 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   }
 
-  final aNum = a as NDArray<num>;
-  final rData = result.data as List<double>;
-  for (var i = 0; i < a.data.length; i++) {
-    rData[i] = math.exp(aNum.data[i].toDouble());
-  }
+  unaryOp<T, R>(
+    result.data,
+    a.data,
+    a.shape,
+    a.strides,
+    result.strides,
+    0,
+    a.offsetElements,
+    result.offsetElements,
+    (x) => math.exp((x as num).toDouble()) as R,
+  );
   return result;
 }
 
@@ -701,11 +707,17 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   }
 
-  final aNum = a as NDArray<num>;
-  final rData = result.data as List<double>;
-  for (var i = 0; i < a.data.length; i++) {
-    rData[i] = math.log(aNum.data[i].toDouble());
-  }
+  unaryOp<T, R>(
+    result.data,
+    a.data,
+    a.shape,
+    a.strides,
+    result.strides,
+    0,
+    a.offsetElements,
+    result.offsetElements,
+    (x) => math.log((x as num).toDouble()) as R,
+  );
   return result;
 }
 
@@ -1649,10 +1661,20 @@ NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     }
   }
 
-  for (var i = 0; i < a.data.length; i++) {
-    final x = (a.data[i] as num).toDouble();
-    result.data[i] = (math.exp(x) - math.exp(-x)) / 2.0;
-  }
+  unaryOp<T, double>(
+    result.data,
+    a.data,
+    a.shape,
+    a.strides,
+    result.strides,
+    0,
+    a.offsetElements,
+    result.offsetElements,
+    (x) {
+      final val = (x as num).toDouble();
+      return (math.exp(val) - math.exp(-val)) / 2.0;
+    },
+  );
   return result;
 }
 
@@ -1730,10 +1752,20 @@ NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     }
   }
 
-  for (var i = 0; i < a.data.length; i++) {
-    final x = (a.data[i] as num).toDouble();
-    result.data[i] = (math.exp(x) + math.exp(-x)) / 2.0;
-  }
+  unaryOp<T, double>(
+    result.data,
+    a.data,
+    a.shape,
+    a.strides,
+    result.strides,
+    0,
+    a.offsetElements,
+    result.offsetElements,
+    (x) {
+      final val = (x as num).toDouble();
+      return (math.exp(val) + math.exp(-val)) / 2.0;
+    },
+  );
   return result;
 }
 
@@ -1811,10 +1843,21 @@ NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     }
   }
 
-  for (var i = 0; i < a.data.length; i++) {
-    final x = (a.data[i] as num).toDouble();
-    result.data[i] = (math.exp(2 * x) - 1) / (math.exp(2 * x) + 1);
-  }
+  unaryOp<T, double>(
+    result.data,
+    a.data,
+    a.shape,
+    a.strides,
+    result.strides,
+    0,
+    a.offsetElements,
+    result.offsetElements,
+    (x) {
+      final val = (x as num).toDouble();
+      final exp2val = math.exp(2.0 * val);
+      return (exp2val - 1.0) / (exp2val + 1.0);
+    },
+  );
   return result;
 }
 
@@ -1892,10 +1935,20 @@ NDArray<double> asinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     }
   }
 
-  for (var i = 0; i < a.data.length; i++) {
-    final x = (a.data[i] as num).toDouble();
-    result.data[i] = math.log(x + math.sqrt(x * x + 1));
-  }
+  unaryOp<T, double>(
+    result.data,
+    a.data,
+    a.shape,
+    a.strides,
+    result.strides,
+    0,
+    a.offsetElements,
+    result.offsetElements,
+    (x) {
+      final val = (x as num).toDouble();
+      return math.log(val + math.sqrt(val * val + 1.0));
+    },
+  );
   return result;
 }
 
@@ -1973,10 +2026,20 @@ NDArray<double> acosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     }
   }
 
-  for (var i = 0; i < a.data.length; i++) {
-    final x = (a.data[i] as num).toDouble();
-    result.data[i] = math.log(x + math.sqrt(x * x - 1));
-  }
+  unaryOp<T, double>(
+    result.data,
+    a.data,
+    a.shape,
+    a.strides,
+    result.strides,
+    0,
+    a.offsetElements,
+    result.offsetElements,
+    (x) {
+      final val = (x as num).toDouble();
+      return math.log(val + math.sqrt(val * val - 1.0));
+    },
+  );
   return result;
 }
 
@@ -2086,12 +2149,20 @@ NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   }
 
-  final aNum = a as NDArray<num>;
-  final rData = result.data as List<double>;
-  for (var i = 0; i < a.data.length; i++) {
-    final x = aNum.data[i].toDouble();
-    rData[i] = 0.5 * math.log((1 + x) / (1 - x));
-  }
+  unaryOp<T, R>(
+    result.data,
+    a.data,
+    a.shape,
+    a.strides,
+    result.strides,
+    0,
+    a.offsetElements,
+    result.offsetElements,
+    (x) {
+      final val = (x as num).toDouble();
+      return 0.5 * math.log((1.0 + val) / (1.0 - val)) as R;
+    },
+  );
   return result;
 }
 
@@ -7036,9 +7107,17 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
       case DType.int16:
       case DType.boolean:
         final doubleA = NDArray<double>.create(a.shape, DType.float64);
-        for (var i = 0; i < a.data.length; i++) {
-          doubleA.data[i] = (a.data[i] as num).toDouble();
-        }
+        unaryOp<dynamic, double>(
+          doubleA.data,
+          a.data,
+          a.shape,
+          a.strides,
+          doubleA.strides,
+          0,
+          a.offsetElements,
+          doubleA.offsetElements,
+          (x) => (x as num).toDouble(),
+        );
         final doubleRes = NDArray<double>.create(targetShape, DType.float64);
         final cStridesDoubleA = malloc<ffi.Int>(rank);
         final cStridesDoubleRes = malloc<ffi.Int>(rank);
@@ -7240,9 +7319,17 @@ NDArray conj(NDArray a, {NDArray? out}) {
               );
             default:
               // Fallback recursive copy for other strided types
-              for (var i = 0; i < a.data.length; i++) {
-                result.data[i] = a.data[i];
-              }
+              unaryOp<dynamic, dynamic>(
+                result.data,
+                a.data,
+                a.shape,
+                a.strides,
+                result.strides,
+                0,
+                a.offsetElements,
+                result.offsetElements,
+                (x) => x,
+              );
           }
         } finally {
           malloc.free(cShape);

@@ -312,6 +312,32 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
           result.pointer.cast<ffi.Float>() + (offsetRes * 2),
           n,
         );
+      } else if (targetDType.isInteger) {
+        final resData = result.data;
+        final aData = aView.data;
+        final bData = bView.data;
+
+        final strideARow = aView.strides[rankA - 2];
+        final strideACol = aView.strides[rankA - 1];
+
+        final strideBRow = bView.strides[rankB - 2];
+        final strideBCol = bView.strides[rankB - 1];
+
+        final strideResRow = result.strides[resShape.length - 2];
+        final strideResCol = result.strides[resShape.length - 1];
+
+        for (var r = 0; r < m; r++) {
+          for (var c = 0; c < n; c++) {
+            var sum = 0;
+            for (var i = 0; i < kA; i++) {
+              final idxA = offsetA + r * strideARow + i * strideACol;
+              final idxB = offsetB + i * strideBRow + c * strideBCol;
+              sum += (aData[idxA] as int) * (bData[idxB] as int);
+            }
+            final idxRes = offsetRes + r * strideResRow + c * strideResCol;
+            resData[idxRes] = sum;
+          }
+        }
       }
       return;
     }
@@ -1157,7 +1183,15 @@ Map<String, NDArray<Complex>> eig(NDArray a) {
     throw UnimplementedError('Type ${a.dtype} not supported for eig');
   }
 
-  final sliceCopy = NDArray.create([n, n], a.dtype);
+  final DType<dynamic> sliceCopyDType = (a.dtype == DType.float32)
+      ? DType.float32
+      : ((a.dtype == DType.complex64)
+            ? DType.complex64
+            : ((a.dtype == DType.complex128)
+                  ? DType.complex128
+                  : DType.float64));
+
+  final sliceCopy = NDArray.create([n, n], sliceCopyDType);
 
   try {
     walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (

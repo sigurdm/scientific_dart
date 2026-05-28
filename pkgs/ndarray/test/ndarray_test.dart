@@ -55,16 +55,14 @@ void main() {
     test(
       'Matrix Multiplication (OpenBLAS)',
       () => NDArray.scope(() {
-        final a = NDArray<double>.fromList(
-          Float64List.fromList([1, 2, 3, 4]),
-          [2, 2],
-          DType.float64,
-        );
-        final b = NDArray<double>.fromList(
-          Float64List.fromList([5, 6, 7, 8]),
-          [2, 2],
-          DType.float64,
-        );
+        final a = NDArray<double>.fromList(Float64List.fromList([1, 2, 3, 4]), [
+          2,
+          2,
+        ], DType.float64);
+        final b = NDArray<double>.fromList(Float64List.fromList([5, 6, 7, 8]), [
+          2,
+          2,
+        ], DType.float64);
         final c = matmul(a, b);
         expect(c.shape, [2, 2]);
         expect(c.data, [19.0, 22.0, 43.0, 50.0]);

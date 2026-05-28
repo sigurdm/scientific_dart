@@ -204,8 +204,8 @@ NDArray<T> trapz<T extends Object>(
               malloc.free(dxStruct);
             }
           }
-        } else if (value is double) {
-          final dxVal = value;
+        } else if (value is num) {
+          final dxVal = value.toDouble();
           final dtype = y.dtype;
           if (dtype == DType.float64) {
             s_trapz_double(
@@ -544,8 +544,8 @@ NDArray<T> gradient<T extends Object>(
               malloc.free(dxStruct);
             }
           }
-        } else if (value is double) {
-          final dxVal = value;
+        } else if (value is num) {
+          final dxVal = value.toDouble();
           final dtype = f.dtype;
           if (dtype == DType.float64) {
             s_gradient_double(

@@ -954,8 +954,12 @@ void argMinMaxRecursive<T>(
     final currentBestPos = List<int>.from(srcPos);
     currentBestPos[targetAxis] = currentBestIndex;
 
-    final currentVal = src[srcPos] as num;
-    final bestVal = src[currentBestPos] as num;
+    final currentRaw = src[srcPos];
+    final currentVal = (currentRaw is bool)
+        ? (currentRaw ? 1 : 0)
+        : currentRaw as num;
+    final bestRaw = src[currentBestPos];
+    final bestVal = (bestRaw is bool) ? (bestRaw ? 1 : 0) : bestRaw as num;
 
     if (isMax) {
       if (srcPos[targetAxis] > currentBestIndex && currentVal > bestVal) {
@@ -1068,10 +1072,10 @@ dynamic castValue(dynamic val, DType dtype) {
 
 enum CumOpType { sum, prod, min, max }
 
-NDArray<T> cumOpFFI<T>(
+NDArray<R> cumOpFFI<T, R>(
   NDArray<T> a,
   int axis,
-  NDArray<T> result,
+  NDArray<R> result,
   CumOpType opType,
 ) {
   final rank = a.shape.length;
@@ -1155,7 +1159,10 @@ NDArray<T> cumOpFFI<T>(
           case DType.boolean:
             final doubleA = NDArray<double>.create(a.shape, DType.float64);
             for (var i = 0; i < a.data.length; i++) {
-              doubleA.data[i] = (a.data[i] as num).toDouble();
+              final val = a.data[i];
+              doubleA.data[i] = (val is bool)
+                  ? (val ? 1.0 : 0.0)
+                  : (val as num).toDouble();
             }
             final doubleRes = NDArray<double>.create(a.shape, DType.float64);
             final cStridesDoubleA = malloc<ffi.Int>(rank);
@@ -1179,7 +1186,7 @@ NDArray<T> cumOpFFI<T>(
               malloc.free(cStridesDoubleRes);
             }
             for (var i = 0; i < result.data.length; i++) {
-              result.data[i] = castValue(doubleRes.data[i], a.dtype) as T;
+              result.data[i] = castValue(doubleRes.data[i], result.dtype) as R;
             }
             doubleA.dispose();
             doubleRes.dispose();
@@ -1253,7 +1260,10 @@ NDArray<T> cumOpFFI<T>(
           case DType.boolean:
             final doubleA = NDArray<double>.create(a.shape, DType.float64);
             for (var i = 0; i < a.data.length; i++) {
-              doubleA.data[i] = (a.data[i] as num).toDouble();
+              final val = a.data[i];
+              doubleA.data[i] = (val is bool)
+                  ? (val ? 1.0 : 0.0)
+                  : (val as num).toDouble();
             }
             final doubleRes = NDArray<double>.create(a.shape, DType.float64);
             final cStridesDoubleA = malloc<ffi.Int>(rank);
@@ -1277,7 +1287,7 @@ NDArray<T> cumOpFFI<T>(
               malloc.free(cStridesDoubleRes);
             }
             for (var i = 0; i < result.data.length; i++) {
-              result.data[i] = castValue(doubleRes.data[i], a.dtype) as T;
+              result.data[i] = castValue(doubleRes.data[i], result.dtype) as R;
             }
             doubleA.dispose();
             doubleRes.dispose();
@@ -1331,7 +1341,10 @@ NDArray<T> cumOpFFI<T>(
           case DType.boolean:
             final doubleA = NDArray<double>.create(a.shape, DType.float64);
             for (var i = 0; i < a.data.length; i++) {
-              doubleA.data[i] = (a.data[i] as num).toDouble();
+              final val = a.data[i];
+              doubleA.data[i] = (val is bool)
+                  ? (val ? 1.0 : 0.0)
+                  : (val as num).toDouble();
             }
             final doubleRes = NDArray<double>.create(a.shape, DType.float64);
             final cStridesDoubleA = malloc<ffi.Int>(rank);
@@ -1355,7 +1368,7 @@ NDArray<T> cumOpFFI<T>(
               malloc.free(cStridesDoubleRes);
             }
             for (var i = 0; i < result.data.length; i++) {
-              result.data[i] = castValue(doubleRes.data[i], a.dtype) as T;
+              result.data[i] = castValue(doubleRes.data[i], result.dtype) as R;
             }
             doubleA.dispose();
             doubleRes.dispose();
@@ -1414,7 +1427,10 @@ NDArray<T> cumOpFFI<T>(
           case DType.boolean:
             final doubleA = NDArray<double>.create(a.shape, DType.float64);
             for (var i = 0; i < a.data.length; i++) {
-              doubleA.data[i] = (a.data[i] as num).toDouble();
+              final val = a.data[i];
+              doubleA.data[i] = (val is bool)
+                  ? (val ? 1.0 : 0.0)
+                  : (val as num).toDouble();
             }
             final doubleRes = NDArray<double>.create(a.shape, DType.float64);
             final cStridesDoubleA = malloc<ffi.Int>(rank);
@@ -1438,7 +1454,7 @@ NDArray<T> cumOpFFI<T>(
               malloc.free(cStridesDoubleRes);
             }
             for (var i = 0; i < result.data.length; i++) {
-              result.data[i] = castValue(doubleRes.data[i], a.dtype) as T;
+              result.data[i] = castValue(doubleRes.data[i], result.dtype) as R;
             }
             doubleA.dispose();
             doubleRes.dispose();

@@ -49,6 +49,9 @@ import 'helpers.dart';
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
 NDArray sort(NDArray a, {int axis = -1, SortKind kind = SortKind.quicksort}) {
+  if (a.size == 0) {
+    return NDArray.create(a.shape, a.dtype);
+  }
   final rank = a.shape.length;
   if (rank == 0) {
     return NDArray.fromList(List.from(a.data), [], a.dtype);
@@ -192,6 +195,9 @@ NDArray<int> argsort(
   int axis = -1,
   SortKind kind = SortKind.quicksort,
 }) {
+  if (a.size == 0) {
+    return NDArray<int>.create(a.shape, DType.int32);
+  }
   final rank = a.shape.length;
   if (rank == 0) {
     return NDArray.fromList(<int>[0], [], DType.int32);
@@ -1144,6 +1150,16 @@ dynamic argmax<T>(NDArray<T> a, {int? axis}) {
           maxIdx = i;
         }
       }
+    } else if (src.dtype == DType.boolean) {
+      final dataList = src.data as List<bool>;
+      var maxVal = dataList[0] ? 1 : 0;
+      for (var i = 1; i < dataList.length; i++) {
+        final val = dataList[i] ? 1 : 0;
+        if (val > maxVal) {
+          maxVal = val;
+          maxIdx = i;
+        }
+      }
     } else {
       final dataList = src.data as List<double>;
       var maxVal = dataList[0];
@@ -1203,6 +1219,16 @@ dynamic argmin<T>(NDArray<T> a, {int? axis}) {
       for (var i = 1; i < dataList.length; i++) {
         if (dataList[i] < minVal) {
           minVal = dataList[i];
+          minIdx = i;
+        }
+      }
+    } else if (src.dtype == DType.boolean) {
+      final dataList = src.data as List<bool>;
+      var minVal = dataList[0] ? 1 : 0;
+      for (var i = 1; i < dataList.length; i++) {
+        final val = dataList[i] ? 1 : 0;
+        if (val < minVal) {
+          minVal = val;
           minIdx = i;
         }
       }

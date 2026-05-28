@@ -992,17 +992,20 @@ NDArray<T> nanmax<T extends Object>(NDArray<T> a, {int? axis}) {
   return result;
 }
 
-NDArray<T> cumsum<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+NDArray<R> cumsum<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumsum() on a disposed array.');
   }
 
-  final NDArray<T> result;
+  final DType<dynamic> targetDType = a.dtype == DType.boolean
+      ? DType.int32
+      : a.dtype;
+  final NDArray<R> result;
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result = out ?? NDArray<T>.create([size], a.dtype);
+    result = out ?? NDArray<R>.create([size], targetDType as DType<R>);
     if (out != null) {
-      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
+      if (!listEquals(out.shape, [size]) || out.dtype != targetDType) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
         );
@@ -1012,10 +1015,10 @@ NDArray<T> cumsum<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     final List elements = size == a.data.length ? a.data : a.toList();
     dynamic acc;
     for (var i = 0; i < elements.length; i++) {
-      acc = (i == 0)
-          ? elements[i]
-          : ((acc as dynamic) + elements[i]) as dynamic;
-      result.data[i] = acc as T;
+      final val = elements[i];
+      final numVal = (val is bool) ? (val ? 1 : 0) : val;
+      acc = (i == 0) ? numVal : ((acc as dynamic) + numVal) as dynamic;
+      result.data[i] = acc as R;
     }
     return result;
   }
@@ -1028,9 +1031,9 @@ NDArray<T> cumsum<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  result = out ?? NDArray<T>.create(a.shape, a.dtype);
+  result = out ?? NDArray<R>.create(a.shape, targetDType as DType<R>);
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -1053,15 +1056,18 @@ NDArray<T> cumsum<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<T> cumprod<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+NDArray<R> cumprod<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumprod() on a disposed array.');
   }
 
-  final NDArray<T> result;
+  final DType<dynamic> targetDType = a.dtype == DType.boolean
+      ? DType.int32
+      : a.dtype;
+  final NDArray<R> result;
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result = out ?? NDArray<T>.create([size], a.dtype);
+    result = out ?? NDArray<R>.create([size], targetDType as DType<R>);
     if (out != null) {
       if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
         throw ArgumentError(
@@ -1073,10 +1079,10 @@ NDArray<T> cumprod<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     final List elements = size == a.data.length ? a.data : a.toList();
     dynamic acc;
     for (var i = 0; i < elements.length; i++) {
-      acc = (i == 0)
-          ? elements[i]
-          : ((acc as dynamic) * elements[i]) as dynamic;
-      result.data[i] = acc as T;
+      final val = elements[i];
+      final numVal = (val is bool) ? (val ? 1 : 0) : val;
+      acc = (i == 0) ? numVal : ((acc as dynamic) * numVal) as dynamic;
+      result.data[i] = acc as R;
     }
     return result;
   }
@@ -1089,7 +1095,7 @@ NDArray<T> cumprod<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  result = out ?? NDArray<T>.create(a.shape, a.dtype);
+  result = out ?? NDArray<R>.create(a.shape, targetDType as DType<R>);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
