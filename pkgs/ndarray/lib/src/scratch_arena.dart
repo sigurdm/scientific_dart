@@ -60,13 +60,14 @@ final class ScratchArena {
     return ptr;
   }
 
-  /// Gets the current stack marker (packed page index and offset) in the arena.
-  static int get marker => (_currentPageIndex << 32) | _offset;
+  /// Gets the current stack marker in the arena.
+  static ScratchMarker get marker =>
+      ScratchMarker._(_currentPageIndex, _offset);
 
   /// Resets the arena stack back to the given [marker].
-  static void reset(int marker) {
-    final pageIndex = marker >> 32;
-    final offset = marker & 0xFFFFFFFF;
+  static void reset(ScratchMarker marker) {
+    final pageIndex = marker.pageIndex;
+    final offset = marker.offset;
 
     assert(pageIndex <= _currentPageIndex);
     if (pageIndex == _currentPageIndex) {
@@ -91,4 +92,15 @@ final class ScratchArena {
     }
     return _stridedBuffer!;
   }
+}
+
+/// Represents a stable checkpoint marker for the [ScratchArena] memory stack.
+final class ScratchMarker {
+  /// The page index inside the ScratchArena page pool when the marker was recorded.
+  final int pageIndex;
+
+  /// The byte offset inside the page when the marker was recorded.
+  final int offset;
+
+  const ScratchMarker._(this.pageIndex, this.offset);
 }
