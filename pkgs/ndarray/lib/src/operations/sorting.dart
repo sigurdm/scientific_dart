@@ -1212,6 +1212,80 @@ List<NDArray<int>> nonzero(NDArray a) {
   return results;
 }
 
+void _dispatchCountNonzeroFFI(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int isContig,
+  DType dtype,
+) {
+  switch (dtype) {
+    case DType.float64:
+      native_count_nonzero_double(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isContig,
+      );
+    case DType.float32:
+      native_count_nonzero_float(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isContig,
+      );
+    case DType.int64:
+      native_count_nonzero_int64(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isContig,
+      );
+    case DType.int32:
+      native_count_nonzero_int32(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isContig,
+      );
+    case DType.boolean:
+    case DType.uint8:
+    case DType.int16:
+      native_count_nonzero_uint8(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isContig,
+      );
+    default:
+      throw UnsupportedError('Unsupported data type for count_nonzero: $dtype');
+  }
+}
+
 /// Count the number of non-zero elements in the array [a].
 ///
 /// If [axis] is provided, counts along that axis and returns a new array.
@@ -1220,40 +1294,95 @@ List<NDArray<int>> nonzero(NDArray a) {
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
 dynamic count_nonzero<T>(NDArray<T> a, {int? axis}) {
-  if (axis == null) {
-    var count = 0;
-    if (a.isContiguous) {
-      for (var i = 0; i < a.data.length; i++) {
-        if (isTrueHelper(a.data[i])) count++;
-      }
-      return count;
-    }
-    final rank = a.shape.length;
-    final pos = List<int>.filled(rank, 0);
-    int countWalk(int dim) {
-      if (dim == rank) return isTrueHelper(a[pos]) ? 1 : 0;
-      var subCount = 0;
-      for (var i = 0; i < a.shape[dim]; i++) {
-        pos[dim] = i;
-        subCount += countWalk(dim + 1);
-      }
-      return subCount;
-    }
-
-    return countWalk(0);
+  if (a.isDisposed) {
+    throw StateError('Cannot count non-zero elements on a disposed array.');
   }
 
   final rank = a.shape.length;
+
+  if (axis == null) {
+    // Global flat reduction
+    final isContig = a.isContiguous;
+    final NDArray<T> src;
+    if (!isContig) {
+      src = a.copy();
+    } else {
+      src = a;
+    }
+
+    final marker = ScratchArena.marker;
+    final dest = NDArray<int>.create([1], DType.int32);
+    try {
+      final cShape = ScratchArena.allocate<ffi.Int>(ffi.sizeOf<ffi.Int>());
+      cShape[0] = src.size;
+      final cStrides = ScratchArena.allocate<ffi.Int>(ffi.sizeOf<ffi.Int>());
+      cStrides[0] = 1;
+
+      _dispatchCountNonzeroFFI(
+        src.pointer,
+        cStrides,
+        dest.pointer.cast<ffi.Int>(),
+        cStrides,
+        cShape,
+        1,
+        -1,
+        1,
+        src.dtype,
+      );
+    } finally {
+      ScratchArena.reset(marker);
+      if (!isContig) src.dispose();
+    }
+
+    final finalCount = dest.data[0];
+    dest.dispose();
+    return finalCount;
+  }
+
+  // Axis reduction
   final targetAxis = axis < 0 ? rank + axis : axis;
   if (targetAxis < 0 || targetAxis >= rank) {
     throw RangeError.range(targetAxis, 0, rank - 1, 'axis');
   }
 
   final targetShape = List<int>.from(a.shape)..removeAt(targetAxis);
-  final result = NDArray<int>.zeros(targetShape, DType.int32);
+  final result = NDArray<int>.create(targetShape, DType.int32);
 
-  countNonzeroRecursive<T>(a, result, List<int>.filled(rank, 0), targetAxis, 0);
+  final marker = ScratchArena.marker;
+  try {
+    final cShape = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
+    final cStridesSrc = ScratchArena.allocate<ffi.Int>(
+      rank * ffi.sizeOf<ffi.Int>(),
+    );
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesSrc[i] = a.strides[i];
+    }
 
+    final rankDest = targetShape.length;
+    final cStridesDest = ScratchArena.allocate<ffi.Int>(
+      (rankDest > 0 ? rankDest : 1) * ffi.sizeOf<ffi.Int>(),
+    );
+    for (var i = 0; i < rankDest; i++) {
+      cStridesDest[i] = result.strides[i];
+    }
+
+    _dispatchCountNonzeroFFI(
+      a.pointer,
+      cStridesSrc,
+      result.pointer.cast<ffi.Int>(),
+      cStridesDest,
+      cShape,
+      rank,
+      targetAxis,
+      0,
+      a.dtype,
+    );
+  } finally {
+    ScratchArena.reset(marker);
+  }
+
+  result.detachToParentScope();
   return result;
 }
 

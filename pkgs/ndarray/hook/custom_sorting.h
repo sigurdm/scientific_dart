@@ -71,5 +71,10 @@ void native_argminmax_float(const void *src, const int *stridesSrc, int *dest, c
 void native_argminmax_int64(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_max, int is_contiguous);
 void native_argminmax_int32(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_max, int is_contiguous);
 void native_argminmax_uint8(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_max, int is_contiguous);
+void native_count_nonzero_double(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
+void native_count_nonzero_float(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
+void native_count_nonzero_int64(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
+void native_count_nonzero_int32(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
+void native_count_nonzero_uint8(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
 
 #endif // CUSTOM_SORTING_H

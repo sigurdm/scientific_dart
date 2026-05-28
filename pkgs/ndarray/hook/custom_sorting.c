@@ -972,3 +972,76 @@ DEFINE_ARGMINMAX(float, float, >)
 DEFINE_ARGMINMAX(int64, long long, >)
 DEFINE_ARGMINMAX(int32, int, >)
 DEFINE_ARGMINMAX(uint8, unsigned char, >)
+
+#define DEFINE_COUNT_NONZERO(NAME, TYPE, COND_EXPR) \
+void native_count_nonzero_##NAME( \
+    const void *src_void, \
+    const int *stridesSrc, \
+    int *dest, \
+    const int *stridesDest, \
+    const int *shape, \
+    int rank, \
+    int axis, \
+    int is_contiguous \
+) { \
+    if (src_void == NULL || dest == NULL || shape == NULL || stridesSrc == NULL || stridesDest == NULL || rank <= 0) return; \
+    const TYPE *src = (const TYPE *)src_void; \
+    if (is_contiguous && axis == -1) { \
+        int count = 0; \
+        for (int i = 0; i < shape[0]; i++) { \
+            TYPE val = src[i]; \
+            if (COND_EXPR) count++; \
+        } \
+        dest[0] = count; \
+        return; \
+    } \
+    int dest_size = 1; \
+    for (int d = 0; d < rank; d++) { \
+        if (d != axis) dest_size *= shape[d]; \
+    } \
+    int coord_dest[32] = {0}; \
+    int strides_dest_clean[32] = {0}; \
+    int shape_dest_clean[32] = {0}; \
+    int rank_dest = 0; \
+    for (int d = 0; d < rank; d++) { \
+        if (d != axis) { \
+            shape_dest_clean[rank_dest] = shape[d]; \
+            strides_dest_clean[rank_dest] = stridesDest[rank_dest]; \
+            rank_dest++; \
+        } \
+    } \
+    for (int el = 0; el < dest_size; el++) { \
+        int dest_offset = 0; \
+        for (int d = 0; d < rank_dest; d++) { \
+            dest_offset += coord_dest[d] * strides_dest_clean[d]; \
+        } \
+        int count = 0; \
+        int base_src_offset = 0; \
+        int rank_dest_idx = 0; \
+        for (int d = 0; d < rank; d++) { \
+            if (d != axis) { \
+                base_src_offset += coord_dest[rank_dest_idx] * stridesSrc[d]; \
+                rank_dest_idx++; \
+            } \
+        } \
+        for (int i = 0; i < shape[axis]; i++) { \
+            int src_offset = base_src_offset + i * stridesSrc[axis]; \
+            TYPE val = src[src_offset]; \
+            if (COND_EXPR) count++; \
+        } \
+        dest[dest_offset] = count; \
+        if (rank_dest > 0) { \
+            for (int d = rank_dest - 1; d >= 0; d--) { \
+                coord_dest[d]++; \
+                if (coord_dest[d] < shape_dest_clean[d]) break; \
+                coord_dest[d] = 0; \
+            } \
+        } \
+    } \
+}
+
+DEFINE_COUNT_NONZERO(double, double, val != 0.0)
+DEFINE_COUNT_NONZERO(float, float, val != 0.0f)
+DEFINE_COUNT_NONZERO(int64, long long, val != 0)
+DEFINE_COUNT_NONZERO(int32, int, val != 0)
+DEFINE_COUNT_NONZERO(uint8, unsigned char, val != 0)
