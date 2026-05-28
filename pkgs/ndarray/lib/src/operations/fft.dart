@@ -7,6 +7,20 @@ import '../scratch_arena.dart';
 // Standalone operational relative cross-imports
 import 'math.dart';
 
+/// Helper to allocate a KissFFT plan configuration on the ScratchArena stack.
+kiss_fft_cfg _allocateKissFFTPlan(int nfft, int inverse_fft) {
+  final lenmem = ScratchArena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
+  lenmem[0] = 0;
+  kiss_fft_alloc(nfft, inverse_fft, ffi.nullptr, lenmem);
+
+  final mem = ScratchArena.allocate<ffi.Void>(lenmem[0]);
+  final cfg = kiss_fft_alloc(nfft, inverse_fft, mem, lenmem);
+  if (cfg.address == 0) {
+    throw StateError('Failed to allocate native FFT plan for length $nfft');
+  }
+  return cfg;
+}
+
 /// Computes the 1D discrete Fourier Transform (FFT) along the specified [axis].
 ///
 /// Transforms discrete sequences from the time/space domain into frequency coefficients
@@ -110,17 +124,7 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
   if (isZeroCopyFastPath) {
     final marker = ScratchArena.marker;
     try {
-      final lenmem = ScratchArena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
-      lenmem[0] = 0;
-      kiss_fft_alloc(targetLen, 0, ffi.nullptr, lenmem);
-
-      final mem = ScratchArena.allocate<ffi.Void>(lenmem[0]);
-      cfg = kiss_fft_alloc(targetLen, 0, mem, lenmem);
-      if (cfg.address == 0) {
-        throw StateError(
-          'Failed to allocate native FFT plan for length $targetLen',
-        );
-      }
+      cfg = _allocateKissFFTPlan(targetLen, 0);
 
       for (var s = 0; s < signalsCount; s++) {
         final rowPin = inputA.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
@@ -141,12 +145,7 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
   ffi.Pointer<kiss_fft_cpx> pout = ffi.nullptr.cast();
 
   try {
-    cfg = kiss_fft_alloc(targetLen, 0, ffi.nullptr, ffi.nullptr);
-    if (cfg.address == 0) {
-      throw StateError(
-        'Failed to allocate native FFT plan for length $targetLen',
-      );
-    }
+    cfg = _allocateKissFFTPlan(targetLen, 0);
     pin = ScratchArena.allocate<kiss_fft_cpx>(
       targetLen * ffi.sizeOf<kiss_fft_cpx>(),
     );
@@ -194,11 +193,6 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
       }
     }
   } finally {
-    // 5. Release C heap allocations and planners to prevent memory leaks
-    if (cfg.address != 0) {
-      free(cfg.cast<ffi.Void>());
-    }
-
     ScratchArena.reset(marker);
     if (wasCopied) {
       inputA.dispose();
@@ -304,17 +298,7 @@ NDArray ifft(NDArray a, {int? n, int axis = -1}) {
   if (isZeroCopyFastPath) {
     final marker = ScratchArena.marker;
     try {
-      final lenmem = ScratchArena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
-      lenmem[0] = 0;
-      kiss_fft_alloc(targetLen, 1, ffi.nullptr, lenmem);
-
-      final mem = ScratchArena.allocate<ffi.Void>(lenmem[0]);
-      cfg = kiss_fft_alloc(targetLen, 1, mem, lenmem);
-      if (cfg.address == 0) {
-        throw StateError(
-          'Failed to allocate native IFFT plan for length $targetLen',
-        );
-      }
+      cfg = _allocateKissFFTPlan(targetLen, 1);
 
       final scaleFactor = 1.0 / targetLen;
       for (var s = 0; s < signalsCount; s++) {
@@ -341,12 +325,7 @@ NDArray ifft(NDArray a, {int? n, int axis = -1}) {
   ffi.Pointer<kiss_fft_cpx> pout = ffi.nullptr.cast();
 
   try {
-    cfg = kiss_fft_alloc(targetLen, 1, ffi.nullptr, ffi.nullptr);
-    if (cfg.address == 0) {
-      throw StateError(
-        'Failed to allocate native IFFT plan for length $targetLen',
-      );
-    }
+    cfg = _allocateKissFFTPlan(targetLen, 1);
     pin = ScratchArena.allocate<kiss_fft_cpx>(
       targetLen * ffi.sizeOf<kiss_fft_cpx>(),
     );
@@ -399,10 +378,6 @@ NDArray ifft(NDArray a, {int? n, int axis = -1}) {
       }
     }
   } finally {
-    if (cfg.address != 0) {
-      free(cfg.cast<ffi.Void>());
-    }
-
     ScratchArena.reset(marker);
     if (wasCopied) {
       inputA.dispose();
