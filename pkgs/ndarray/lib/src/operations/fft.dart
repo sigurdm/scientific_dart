@@ -2,7 +2,7 @@
 import 'package:pocketfft/pocketfft.dart';
 import '../ndarray.dart';
 import 'dart:ffi' as ffi;
-import 'package:ffi/ffi.dart';
+import '../scratch_arena.dart';
 
 // Standalone operational relative cross-imports
 import 'math.dart';
@@ -132,6 +132,7 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
     return result;
   }
 
+  final marker = ScratchArena.marker;
   ffi.Pointer<kiss_fft_cpx> pin = ffi.nullptr.cast();
   ffi.Pointer<kiss_fft_cpx> pout = ffi.nullptr.cast();
 
@@ -142,9 +143,12 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
         'Failed to allocate native FFT plan for length $targetLen',
       );
     }
-
-    pin = malloc<kiss_fft_cpx>(targetLen);
-    pout = malloc<kiss_fft_cpx>(targetLen);
+    pin = ScratchArena.allocate<kiss_fft_cpx>(
+      targetLen * ffi.sizeOf<kiss_fft_cpx>(),
+    );
+    pout = ScratchArena.allocate<kiss_fft_cpx>(
+      targetLen * ffi.sizeOf<kiss_fft_cpx>(),
+    );
 
     final copyLen = targetLen < lastAxisDim ? targetLen : lastAxisDim;
     for (var s = 0; s < signalsCount; s++) {
@@ -190,12 +194,8 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
     if (cfg.address != 0) {
       free(cfg.cast<ffi.Void>());
     }
-    if (pin.address != 0) {
-      malloc.free(pin);
-    }
-    if (pout.address != 0) {
-      malloc.free(pout);
-    }
+
+    ScratchArena.reset(marker);
     if (wasCopied) {
       inputA.dispose();
     }
@@ -328,6 +328,7 @@ NDArray ifft(NDArray a, {int? n, int axis = -1}) {
     return result;
   }
 
+  final marker = ScratchArena.marker;
   ffi.Pointer<kiss_fft_cpx> pin = ffi.nullptr.cast();
   ffi.Pointer<kiss_fft_cpx> pout = ffi.nullptr.cast();
 
@@ -338,9 +339,12 @@ NDArray ifft(NDArray a, {int? n, int axis = -1}) {
         'Failed to allocate native IFFT plan for length $targetLen',
       );
     }
-
-    pin = malloc<kiss_fft_cpx>(targetLen);
-    pout = malloc<kiss_fft_cpx>(targetLen);
+    pin = ScratchArena.allocate<kiss_fft_cpx>(
+      targetLen * ffi.sizeOf<kiss_fft_cpx>(),
+    );
+    pout = ScratchArena.allocate<kiss_fft_cpx>(
+      targetLen * ffi.sizeOf<kiss_fft_cpx>(),
+    );
 
     final copyLen = targetLen < lastAxisDim ? targetLen : lastAxisDim;
     for (var s = 0; s < signalsCount; s++) {
@@ -390,12 +394,8 @@ NDArray ifft(NDArray a, {int? n, int axis = -1}) {
     if (cfg.address != 0) {
       free(cfg.cast<ffi.Void>());
     }
-    if (pin.address != 0) {
-      malloc.free(pin);
-    }
-    if (pout.address != 0) {
-      malloc.free(pout);
-    }
+
+    ScratchArena.reset(marker);
     if (wasCopied) {
       inputA.dispose();
     }

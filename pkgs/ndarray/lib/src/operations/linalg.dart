@@ -202,23 +202,24 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     resStride *= broadcastStack[i];
   }
 
+  final marker = ScratchArena.marker;
   ffi.Pointer<ffi.Double> alphaZ = ffi.nullptr.cast();
   ffi.Pointer<ffi.Double> betaZ = ffi.nullptr.cast();
   ffi.Pointer<ffi.Float> alphaC = ffi.nullptr.cast();
   ffi.Pointer<ffi.Float> betaC = ffi.nullptr.cast();
 
   if (targetDType == DType.complex128) {
-    alphaZ = malloc<ffi.Double>(2);
+    alphaZ = ScratchArena.allocate<ffi.Double>(2 * ffi.sizeOf<ffi.Double>());
     alphaZ[0] = 1.0;
     alphaZ[1] = 0.0;
-    betaZ = malloc<ffi.Double>(2);
+    betaZ = ScratchArena.allocate<ffi.Double>(2 * ffi.sizeOf<ffi.Double>());
     betaZ[0] = 0.0;
     betaZ[1] = 0.0;
   } else if (targetDType == DType.complex64) {
-    alphaC = malloc<ffi.Float>(2);
+    alphaC = ScratchArena.allocate<ffi.Float>(2 * ffi.sizeOf<ffi.Float>());
     alphaC[0] = 1.0;
     alphaC[1] = 0.0;
-    betaC = malloc<ffi.Float>(2);
+    betaC = ScratchArena.allocate<ffi.Float>(2 * ffi.sizeOf<ffi.Float>());
     betaC[0] = 0.0;
     betaC[1] = 0.0;
   }
@@ -340,10 +341,7 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 
   walk(0, 0, 0, 0);
 
-  if (alphaZ.address != 0) malloc.free(alphaZ);
-  if (betaZ.address != 0) malloc.free(betaZ);
-  if (alphaC.address != 0) malloc.free(alphaC);
-  if (betaC.address != 0) malloc.free(betaC);
+  ScratchArena.reset(marker);
 
   if (out != null) {
     if (out.isContiguous && result.isContiguous) {
@@ -627,7 +625,8 @@ NDArray inv(NDArray a, {NDArray? out}) {
     wasCopied = false;
   }
 
-  final ipiv = malloc<ffi.Int>(n);
+  final marker = ScratchArena.marker;
+  final ipiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
 
   try {
     if (targetDType == DType.float32) {
@@ -752,7 +751,7 @@ NDArray inv(NDArray a, {NDArray? out}) {
       return result;
     }
   } finally {
-    malloc.free(ipiv);
+    ScratchArena.reset(marker);
     if (wasCopied && out != null) {
       src.dispose();
     }
@@ -941,7 +940,8 @@ NDArray<R> solve<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b) {
   }
 
   final nrhs = b.shape.length > 1 ? b.shape[1] : 1;
-  final ipiv = malloc<ffi.Int>(n);
+  final marker = ScratchArena.marker;
+  final ipiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
 
   try {
     if (a.dtype == DType.float64 && b.dtype == DType.float64) {
@@ -1115,7 +1115,7 @@ NDArray<R> solve<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b) {
       return bDouble as NDArray<R>;
     }
   } finally {
-    malloc.free(ipiv);
+    ScratchArena.reset(marker);
   }
 }
 
