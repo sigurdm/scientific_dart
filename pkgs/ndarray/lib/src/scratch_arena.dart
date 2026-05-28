@@ -9,7 +9,7 @@ final class ScratchArena {
 
   static final List<ffi.Pointer<ffi.Uint8>> _pages = [];
   static final List<int> _pageCapacities = [];
-  static const int _capacity = 2 * 1024 * 1024; // Standard 2MB per page
+  static const int _baseCapacity = 256 * 1024; // 256KB base capacity for page 0
   static int _currentPageIndex = 0;
   static int _offset = 0;
 
@@ -18,8 +18,8 @@ final class ScratchArena {
 
   static void _init() {
     if (_pages.isEmpty) {
-      _pages.add(malloc<ffi.Uint8>(_capacity));
-      _pageCapacities.add(_capacity);
+      _pages.add(malloc<ffi.Uint8>(_baseCapacity));
+      _pageCapacities.add(_baseCapacity);
     }
   }
 
@@ -41,7 +41,9 @@ final class ScratchArena {
       _offset = 0;
 
       if (_currentPageIndex >= _pages.length) {
-        final targetCap = alignedBytes > _capacity ? alignedBytes : _capacity;
+        // Geometrically scale capacities: Page 0 (256KB), Page 1 (512KB), Page 2 (1MB) etc.
+        final scaledCap = _baseCapacity << _currentPageIndex;
+        final targetCap = alignedBytes > scaledCap ? alignedBytes : scaledCap;
         _pages.add(malloc<ffi.Uint8>(targetCap));
         _pageCapacities.add(targetCap);
       } else {
