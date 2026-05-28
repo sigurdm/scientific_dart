@@ -83,6 +83,18 @@ final class ScratchArena {
       assert(offset <= _offset);
     }
 
+    // Selective Pruning: Deallocate any excess pages located beyond the
+    // target marker to prevent native memory leaks and bloating.
+    // We keep up to 2 standard pages (Page 0 and 1, totaling 768KB) persistently.
+    if (_pages.length > 2 && _pages.length > pageIndex + 1) {
+      final preserveCount = pageIndex + 1 > 2 ? pageIndex + 1 : 2;
+      while (_pages.length > preserveCount) {
+        final excessPage = _pages.removeLast();
+        _pageCapacities.removeLast();
+        malloc.free(excessPage);
+      }
+    }
+
     _currentPageIndex = pageIndex;
     _offset = offset;
   }
