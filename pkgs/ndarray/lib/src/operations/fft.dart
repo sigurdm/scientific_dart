@@ -31,7 +31,11 @@ import 'helpers.dart';
 
 /// Computes the 1D discrete Fourier Transform (FFT) along the specified [axis].
 ///
-/// Transforms discrete sequences from the time/space domain into frequency coefficients.
+/// Transforms discrete sequences from the time/space domain into frequency coefficients
+/// using the standard Discrete Fourier Transform (DFT) formula:
+///
+///   X_k = ∑_{n=0}^{N-1} x_n * e^(-i * 2 * π * k * n / N)
+///
 /// The resulting array is **always complex** (DType.complex128 or DType.complex64 depending on precision).
 ///
 /// Natively offloads computation to pocketfft's pocketfft/KissFFT mixed-radix prime factoring, supporting
@@ -225,7 +229,10 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
 /// Computes the 1D inverse discrete Fourier Transform (IFFT) along the specified [axis].
 ///
 /// Transforms frequency domain coefficients back into complex time/space domain signals, applying
-/// standard `1 / N` normalization scaling automatically.
+/// standard `1 / N` normalization scaling automatically:
+///
+///   x_n = (1 / N) * ∑_{k=0}^{N-1} X_k * e^(i * 2 * π * k * n / N)
+///
 /// The resulting array is **always complex** (DType.complex128 or DType.complex64 depending on precision).
 ///
 /// **Preconditions:**

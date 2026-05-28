@@ -72,9 +72,11 @@ bool _listEquals(List a, List b) {
 /// Integrate along the given axis using the composite trapezoidal rule.
 ///
 /// The composite trapezoidal rule approximates the integral of a function by
-/// dividing the area under the curve into trapezoids, which is much more accurate
-/// than simple rectangular integration.
+/// dividing the area under the curve into trapezoids:
 ///
+///   ∫_a^b f(x) dx ≈ ∑_{i=1}^{N-1} [ (f(x_{i-1}) + f(x_i)) / 2 ] * Δx_i
+///
+/// This approximation is significantly more accurate than simple rectangular integration.
 /// Spacing along the axis is specified by [spacing].
 ///
 /// **Preconditions:**
@@ -404,15 +406,17 @@ NDArray<T> trapz<T extends Object>(
 /// To calculate gradients along multiple axes at once, use [gradientArray].
 ///
 /// The gradient is calculated using second-order accurate central differences
-/// for interior points.
+/// for interior points:
+///
+///   f'(x_i) ≈ [ f(x_{i+1}) - f(x_{i-1}) ] / [ x_{i+1} - x_{i-1} ]
 ///
 /// **Boundary accuracy ([edgeOrder]):**
-/// At the edges of the array, central differences cannot be used.
-/// - `edgeOrder = 1`: Uses first-order accurate one-sided differences (forward
-///   difference at the start, backward difference at the end).
-/// - `edgeOrder = 2`: Uses second-order accurate one-sided differences,
-///   providing higher precision at the boundaries by using more neighboring
-///   points.
+/// At the edges of the array, central differences cannot be used:
+/// - **`edgeOrder = 1` (First-order one-sided differences):**
+///   - Start boundary: `f'(x_0) ≈ [ f(x_1) - f(x_0) ] / [ x_1 - x_0 ]`
+///   - End boundary: `f'(x_{N-1}) ≈ [ f(x_{N-1}) - f(x_{N-2}) ] / [ x_{N-1} - x_{N-2} ]`
+/// - **`edgeOrder = 2` (Second-order one-sided differences):**
+///   Provides higher precision at the boundaries by utilizing three neighboring points.
 ///
 /// Spacing along the axis is specified by [spacing].
 ///
