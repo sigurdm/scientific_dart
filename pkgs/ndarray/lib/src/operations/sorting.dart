@@ -428,7 +428,10 @@ NDArray partition(NDArray a, dynamic kth, {int axis = -1}) {
   final baseCast = result.pointer.cast<ffi.Uint8>();
   final rowSizeInBytes = n * elementSizeInBytes;
 
-  final cKList = malloc<ffi.Int>(uniqueK.length);
+  final marker = ScratchArena.marker;
+  final cKList = ScratchArena.allocate<ffi.Int>(
+    uniqueK.length * ffi.sizeOf<ffi.Int>(),
+  );
   for (var i = 0; i < uniqueK.length; i++) {
     cKList[i] = uniqueK[i];
   }
@@ -485,7 +488,7 @@ NDArray partition(NDArray a, dynamic kth, {int axis = -1}) {
       }
     }
   } finally {
-    malloc.free(cKList);
+    ScratchArena.reset(marker);
   }
 
   return result;
@@ -571,7 +574,10 @@ NDArray<int> argpartition(NDArray a, dynamic kth, {int axis = -1}) {
       return result;
     }
 
-    final cKList = malloc<ffi.Int>(uniqueK.length);
+    final marker = ScratchArena.marker;
+    final cKList = ScratchArena.allocate<ffi.Int>(
+      uniqueK.length * ffi.sizeOf<ffi.Int>(),
+    );
     for (var i = 0; i < uniqueK.length; i++) {
       cKList[i] = uniqueK[i];
     }
@@ -677,7 +683,7 @@ NDArray<int> argpartition(NDArray a, dynamic kth, {int axis = -1}) {
         );
       }
     } finally {
-      malloc.free(cKList);
+      ScratchArena.reset(marker);
     }
   } finally {
     if (needsDispose) {
@@ -955,11 +961,22 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
 
   // 0. Advanced ND Odometer Ternary Broadcasting Engine in C (Rank <= 8)
   if (commonShape.length <= 8 && condition.dtype == DType.boolean) {
-    final cShape = malloc<ffi.Int>(commonShape.length);
-    final cStridesCond = malloc<ffi.Int>(stridesCond.length);
-    final cStridesX = malloc<ffi.Int>(stridesX.length);
-    final cStridesY = malloc<ffi.Int>(stridesY.length);
-    final cStridesRes = malloc<ffi.Int>(resultStrides.length);
+    final marker = ScratchArena.marker;
+    final cShape = ScratchArena.allocate<ffi.Int>(
+      commonShape.length * ffi.sizeOf<ffi.Int>(),
+    );
+    final cStridesCond = ScratchArena.allocate<ffi.Int>(
+      stridesCond.length * ffi.sizeOf<ffi.Int>(),
+    );
+    final cStridesX = ScratchArena.allocate<ffi.Int>(
+      stridesX.length * ffi.sizeOf<ffi.Int>(),
+    );
+    final cStridesY = ScratchArena.allocate<ffi.Int>(
+      stridesY.length * ffi.sizeOf<ffi.Int>(),
+    );
+    final cStridesRes = ScratchArena.allocate<ffi.Int>(
+      resultStrides.length * ffi.sizeOf<ffi.Int>(),
+    );
 
     for (var i = 0; i < commonShape.length; i++) {
       cShape[i] = commonShape[i];
@@ -1004,11 +1021,7 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
         return result;
       }
     } finally {
-      malloc.free(cShape);
-      malloc.free(cStridesCond);
-      malloc.free(cStridesX);
-      malloc.free(cStridesY);
-      malloc.free(cStridesRes);
+      ScratchArena.reset(marker);
     }
   }
 

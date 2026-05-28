@@ -1079,9 +1079,14 @@ NDArray<R> cumOpFFI<T, R>(
   CumOpType opType,
 ) {
   final rank = a.shape.length;
-  final cShape = malloc<ffi.Int>(rank);
-  final cStridesA = malloc<ffi.Int>(rank);
-  final cStridesRes = malloc<ffi.Int>(rank);
+  final marker = ScratchArena.marker;
+  final cShape = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
+  final cStridesA = ScratchArena.allocate<ffi.Int>(
+    rank * ffi.sizeOf<ffi.Int>(),
+  );
+  final cStridesRes = ScratchArena.allocate<ffi.Int>(
+    rank * ffi.sizeOf<ffi.Int>(),
+  );
 
   for (var i = 0; i < rank; i++) {
     cShape[i] = a.shape[i];
@@ -1165,26 +1170,25 @@ NDArray<R> cumOpFFI<T, R>(
                   : (val as num).toDouble();
             }
             final doubleRes = NDArray<double>.create(a.shape, DType.float64);
-            final cStridesDoubleA = malloc<ffi.Int>(rank);
-            final cStridesDoubleRes = malloc<ffi.Int>(rank);
+            final cStridesDoubleA = ScratchArena.allocate<ffi.Int>(
+              rank * ffi.sizeOf<ffi.Int>(),
+            );
+            final cStridesDoubleRes = ScratchArena.allocate<ffi.Int>(
+              rank * ffi.sizeOf<ffi.Int>(),
+            );
             for (var i = 0; i < rank; i++) {
               cStridesDoubleA[i] = doubleA.strides[i];
               cStridesDoubleRes[i] = doubleRes.strides[i];
             }
-            try {
-              s_cumsum_double(
-                doubleA.pointer.cast(),
-                cStridesDoubleA,
-                doubleRes.pointer.cast(),
-                cStridesDoubleRes,
-                cShape,
-                rank,
-                axis,
-              );
-            } finally {
-              malloc.free(cStridesDoubleA);
-              malloc.free(cStridesDoubleRes);
-            }
+            s_cumsum_double(
+              doubleA.pointer.cast(),
+              cStridesDoubleA,
+              doubleRes.pointer.cast(),
+              cStridesDoubleRes,
+              cShape,
+              rank,
+              axis,
+            );
             for (var i = 0; i < result.data.length; i++) {
               result.data[i] = castValue(doubleRes.data[i], result.dtype) as R;
             }
@@ -1266,26 +1270,25 @@ NDArray<R> cumOpFFI<T, R>(
                   : (val as num).toDouble();
             }
             final doubleRes = NDArray<double>.create(a.shape, DType.float64);
-            final cStridesDoubleA = malloc<ffi.Int>(rank);
-            final cStridesDoubleRes = malloc<ffi.Int>(rank);
+            final cStridesDoubleA = ScratchArena.allocate<ffi.Int>(
+              rank * ffi.sizeOf<ffi.Int>(),
+            );
+            final cStridesDoubleRes = ScratchArena.allocate<ffi.Int>(
+              rank * ffi.sizeOf<ffi.Int>(),
+            );
             for (var i = 0; i < rank; i++) {
               cStridesDoubleA[i] = doubleA.strides[i];
               cStridesDoubleRes[i] = doubleRes.strides[i];
             }
-            try {
-              s_cumprod_double(
-                doubleA.pointer.cast(),
-                cStridesDoubleA,
-                doubleRes.pointer.cast(),
-                cStridesDoubleRes,
-                cShape,
-                rank,
-                axis,
-              );
-            } finally {
-              malloc.free(cStridesDoubleA);
-              malloc.free(cStridesDoubleRes);
-            }
+            s_cumprod_double(
+              doubleA.pointer.cast(),
+              cStridesDoubleA,
+              doubleRes.pointer.cast(),
+              cStridesDoubleRes,
+              cShape,
+              rank,
+              axis,
+            );
             for (var i = 0; i < result.data.length; i++) {
               result.data[i] = castValue(doubleRes.data[i], result.dtype) as R;
             }
@@ -1347,26 +1350,25 @@ NDArray<R> cumOpFFI<T, R>(
                   : (val as num).toDouble();
             }
             final doubleRes = NDArray<double>.create(a.shape, DType.float64);
-            final cStridesDoubleA = malloc<ffi.Int>(rank);
-            final cStridesDoubleRes = malloc<ffi.Int>(rank);
+            final cStridesDoubleA = ScratchArena.allocate<ffi.Int>(
+              rank * ffi.sizeOf<ffi.Int>(),
+            );
+            final cStridesDoubleRes = ScratchArena.allocate<ffi.Int>(
+              rank * ffi.sizeOf<ffi.Int>(),
+            );
             for (var i = 0; i < rank; i++) {
               cStridesDoubleA[i] = doubleA.strides[i];
               cStridesDoubleRes[i] = doubleRes.strides[i];
             }
-            try {
-              s_cummin_double(
-                doubleA.pointer.cast(),
-                cStridesDoubleA,
-                doubleRes.pointer.cast(),
-                cStridesDoubleRes,
-                cShape,
-                rank,
-                axis,
-              );
-            } finally {
-              malloc.free(cStridesDoubleA);
-              malloc.free(cStridesDoubleRes);
-            }
+            s_cummin_double(
+              doubleA.pointer.cast(),
+              cStridesDoubleA,
+              doubleRes.pointer.cast(),
+              cStridesDoubleRes,
+              cShape,
+              rank,
+              axis,
+            );
             for (var i = 0; i < result.data.length; i++) {
               result.data[i] = castValue(doubleRes.data[i], result.dtype) as R;
             }
@@ -1433,26 +1435,25 @@ NDArray<R> cumOpFFI<T, R>(
                   : (val as num).toDouble();
             }
             final doubleRes = NDArray<double>.create(a.shape, DType.float64);
-            final cStridesDoubleA = malloc<ffi.Int>(rank);
-            final cStridesDoubleRes = malloc<ffi.Int>(rank);
+            final cStridesDoubleA = ScratchArena.allocate<ffi.Int>(
+              rank * ffi.sizeOf<ffi.Int>(),
+            );
+            final cStridesDoubleRes = ScratchArena.allocate<ffi.Int>(
+              rank * ffi.sizeOf<ffi.Int>(),
+            );
             for (var i = 0; i < rank; i++) {
               cStridesDoubleA[i] = doubleA.strides[i];
               cStridesDoubleRes[i] = doubleRes.strides[i];
             }
-            try {
-              s_cummax_double(
-                doubleA.pointer.cast(),
-                cStridesDoubleA,
-                doubleRes.pointer.cast(),
-                cStridesDoubleRes,
-                cShape,
-                rank,
-                axis,
-              );
-            } finally {
-              malloc.free(cStridesDoubleA);
-              malloc.free(cStridesDoubleRes);
-            }
+            s_cummax_double(
+              doubleA.pointer.cast(),
+              cStridesDoubleA,
+              doubleRes.pointer.cast(),
+              cStridesDoubleRes,
+              cShape,
+              rank,
+              axis,
+            );
             for (var i = 0; i < result.data.length; i++) {
               result.data[i] = castValue(doubleRes.data[i], result.dtype) as R;
             }
@@ -1466,9 +1467,7 @@ NDArray<R> cumOpFFI<T, R>(
         }
     }
   } finally {
-    malloc.free(cShape);
-    malloc.free(cStridesA);
-    malloc.free(cStridesRes);
+    ScratchArena.reset(marker);
   }
   return result;
 }

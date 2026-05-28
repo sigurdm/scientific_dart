@@ -7,6 +7,7 @@ import 'package:ffi/ffi.dart';
 import 'dart:collection';
 import 'operations/broadcasting.dart';
 import 'ndarray_bindings.dart';
+import 'scratch_arena.dart';
 
 import 'operations.dart' as ops;
 
@@ -913,8 +914,13 @@ final class NDArray<T> implements ffi.Finalizable {
   }
 
   void _copyStridedToContiguous(NDArray<T> dest) {
-    final cShape = malloc<ffi.Int>(shape.length);
-    final cStridesSrc = malloc<ffi.Int>(strides.length);
+    final marker = ScratchArena.marker;
+    final cShape = ScratchArena.allocate<ffi.Int>(
+      shape.length * ffi.sizeOf<ffi.Int>(),
+    );
+    final cStridesSrc = ScratchArena.allocate<ffi.Int>(
+      strides.length * ffi.sizeOf<ffi.Int>(),
+    );
     for (var i = 0; i < shape.length; i++) {
       cShape[i] = shape[i];
       cStridesSrc[i] = strides[i];
@@ -989,8 +995,7 @@ final class NDArray<T> implements ffi.Finalizable {
           );
       }
     } finally {
-      malloc.free(cShape);
-      malloc.free(cStridesSrc);
+      ScratchArena.reset(marker);
     }
   }
 
@@ -2843,8 +2848,13 @@ final class NDArray<T> implements ffi.Finalizable {
     var baseHash = Object.hash(dtype, Object.hashAll(shape));
 
     final int elementsHash;
-    final cShape = malloc<ffi.Int>(shape.length);
-    final cStrides = malloc<ffi.Int>(strides.length);
+    final marker = ScratchArena.marker;
+    final cShape = ScratchArena.allocate<ffi.Int>(
+      shape.length * ffi.sizeOf<ffi.Int>(),
+    );
+    final cStrides = ScratchArena.allocate<ffi.Int>(
+      strides.length * ffi.sizeOf<ffi.Int>(),
+    );
     for (var i = 0; i < shape.length; i++) {
       cShape[i] = shape[i];
       cStrides[i] = strides[i];
@@ -2910,8 +2920,7 @@ final class NDArray<T> implements ffi.Finalizable {
         throw UnimplementedError('Type $dtype not supported yet');
       }
     } finally {
-      malloc.free(cShape);
-      malloc.free(cStrides);
+      ScratchArena.reset(marker);
     }
 
     return Object.hash(baseHash, elementsHash);

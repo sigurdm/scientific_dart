@@ -146,9 +146,14 @@ NDArray<T> trapz<T extends Object>(
   }
 
   final rank = y.shape.length;
-  final cShape = malloc<ffi.Int>(rank);
-  final cStridesY = malloc<ffi.Int>(rank);
-  final cStridesRes = malloc<ffi.Int>(rank.clamp(1, 8));
+  final marker = ScratchArena.marker;
+  final cShape = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
+  final cStridesY = ScratchArena.allocate<ffi.Int>(
+    rank * ffi.sizeOf<ffi.Int>(),
+  );
+  final cStridesRes = ScratchArena.allocate<ffi.Int>(
+    rank.clamp(1, 8) * ffi.sizeOf<ffi.Int>(),
+  );
 
   for (var i = 0; i < rank; i++) {
     cShape[i] = y.shape[i];
@@ -164,45 +169,39 @@ NDArray<T> trapz<T extends Object>(
         final value = spacing.value;
         if (value is Complex) {
           if (y.dtype == DType.complex128) {
-            final dxStruct = malloc<cpx_t>();
-            try {
-              dxStruct.ref.r = value.real;
-              dxStruct.ref.i = value.imag;
-              s_trapz_complex128_all(
-                y.pointer.cast(),
-                cStridesY,
-                ffi.nullptr,
-                0,
-                dxStruct.ref,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                rank,
-                targetAxis,
-              );
-            } finally {
-              malloc.free(dxStruct);
-            }
+            final dxStruct = ScratchArena.allocate<cpx_t>(ffi.sizeOf<cpx_t>());
+            dxStruct.ref.r = value.real;
+            dxStruct.ref.i = value.imag;
+            s_trapz_complex128_all(
+              y.pointer.cast(),
+              cStridesY,
+              ffi.nullptr,
+              0,
+              dxStruct.ref,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              targetAxis,
+            );
           } else if (y.dtype == DType.complex64) {
-            final dxStruct = malloc<cpx_f_t>();
-            try {
-              dxStruct.ref.r = value.real;
-              dxStruct.ref.i = value.imag;
-              s_trapz_complex64_all(
-                y.pointer.cast(),
-                cStridesY,
-                ffi.nullptr,
-                0,
-                dxStruct.ref,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                rank,
-                targetAxis,
-              );
-            } finally {
-              malloc.free(dxStruct);
-            }
+            final dxStruct = ScratchArena.allocate<cpx_f_t>(
+              ffi.sizeOf<cpx_f_t>(),
+            );
+            dxStruct.ref.r = value.real;
+            dxStruct.ref.i = value.imag;
+            s_trapz_complex64_all(
+              y.pointer.cast(),
+              cStridesY,
+              ffi.nullptr,
+              0,
+              dxStruct.ref,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              targetAxis,
+            );
           }
         } else if (value is num) {
           final dxVal = value.toDouble();
@@ -267,7 +266,7 @@ NDArray<T> trapz<T extends Object>(
         if (values.every((e) => e is Complex)) {
           final complexValues = values.cast<Complex>();
           if (y.dtype == DType.complex128) {
-            final dxStruct = malloc<cpx_t>();
+            final dxStruct = ScratchArena.allocate<cpx_t>(ffi.sizeOf<cpx_t>());
             dxStruct.ref.r = 1.0;
             dxStruct.ref.i = 0.0;
             NDArray<Complex>? spacingArray;
@@ -288,11 +287,12 @@ NDArray<T> trapz<T extends Object>(
                 targetAxis,
               );
             } finally {
-              malloc.free(dxStruct);
               spacingArray?.dispose();
             }
           } else if (y.dtype == DType.complex64) {
-            final dxStruct = malloc<cpx_f_t>();
+            final dxStruct = ScratchArena.allocate<cpx_f_t>(
+              ffi.sizeOf<cpx_f_t>(),
+            );
             dxStruct.ref.r = 1.0;
             dxStruct.ref.i = 0.0;
             NDArray<Complex>? spacingArray;
@@ -313,7 +313,6 @@ NDArray<T> trapz<T extends Object>(
                 targetAxis,
               );
             } finally {
-              malloc.free(dxStruct);
               spacingArray?.dispose();
             }
           }
@@ -386,9 +385,7 @@ NDArray<T> trapz<T extends Object>(
         }
     }
   } finally {
-    malloc.free(cShape);
-    malloc.free(cStridesY);
-    malloc.free(cStridesRes);
+    ScratchArena.reset(marker);
   }
 
   return result;
@@ -486,9 +483,14 @@ NDArray<T> gradient<T extends Object>(
   }
 
   final rank = f.shape.length;
-  final cShape = malloc<ffi.Int>(rank);
-  final cStridesF = malloc<ffi.Int>(rank);
-  final cStridesRes = malloc<ffi.Int>(rank);
+  final marker = ScratchArena.marker;
+  final cShape = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
+  final cStridesF = ScratchArena.allocate<ffi.Int>(
+    rank * ffi.sizeOf<ffi.Int>(),
+  );
+  final cStridesRes = ScratchArena.allocate<ffi.Int>(
+    rank * ffi.sizeOf<ffi.Int>(),
+  );
 
   for (var i = 0; i < rank; i++) {
     cShape[i] = f.shape[i];
@@ -502,47 +504,41 @@ NDArray<T> gradient<T extends Object>(
         final value = spacing.value;
         if (value is Complex) {
           if (f.dtype == DType.complex128) {
-            final dxStruct = malloc<cpx_t>();
-            try {
-              dxStruct.ref.r = value.real;
-              dxStruct.ref.i = value.imag;
-              s_gradient_complex128_all(
-                f.pointer.cast(),
-                cStridesF,
-                ffi.nullptr,
-                0,
-                dxStruct.ref,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                rank,
-                targetAxis,
-                edgeOrder,
-              );
-            } finally {
-              malloc.free(dxStruct);
-            }
+            final dxStruct = ScratchArena.allocate<cpx_t>(ffi.sizeOf<cpx_t>());
+            dxStruct.ref.r = value.real;
+            dxStruct.ref.i = value.imag;
+            s_gradient_complex128_all(
+              f.pointer.cast(),
+              cStridesF,
+              ffi.nullptr,
+              0,
+              dxStruct.ref,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              targetAxis,
+              edgeOrder,
+            );
           } else if (f.dtype == DType.complex64) {
-            final dxStruct = malloc<cpx_f_t>();
-            try {
-              dxStruct.ref.r = value.real;
-              dxStruct.ref.i = value.imag;
-              s_gradient_complex64_all(
-                f.pointer.cast(),
-                cStridesF,
-                ffi.nullptr,
-                0,
-                dxStruct.ref,
-                result.pointer.cast(),
-                cStridesRes,
-                cShape,
-                rank,
-                targetAxis,
-                edgeOrder,
-              );
-            } finally {
-              malloc.free(dxStruct);
-            }
+            final dxStruct = ScratchArena.allocate<cpx_f_t>(
+              ffi.sizeOf<cpx_f_t>(),
+            );
+            dxStruct.ref.r = value.real;
+            dxStruct.ref.i = value.imag;
+            s_gradient_complex64_all(
+              f.pointer.cast(),
+              cStridesF,
+              ffi.nullptr,
+              0,
+              dxStruct.ref,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              targetAxis,
+              edgeOrder,
+            );
           }
         } else if (value is num) {
           final dxVal = value.toDouble();
@@ -611,7 +607,7 @@ NDArray<T> gradient<T extends Object>(
         if (values.every((e) => e is Complex)) {
           final complexValues = values.cast<Complex>();
           if (f.dtype == DType.complex128) {
-            final dxStruct = malloc<cpx_t>();
+            final dxStruct = ScratchArena.allocate<cpx_t>(ffi.sizeOf<cpx_t>());
             dxStruct.ref.r = 1.0;
             dxStruct.ref.i = 0.0;
             NDArray<Complex>? spacingArray;
@@ -633,11 +629,12 @@ NDArray<T> gradient<T extends Object>(
                 edgeOrder,
               );
             } finally {
-              malloc.free(dxStruct);
               spacingArray?.dispose();
             }
           } else if (f.dtype == DType.complex64) {
-            final dxStruct = malloc<cpx_f_t>();
+            final dxStruct = ScratchArena.allocate<cpx_f_t>(
+              ffi.sizeOf<cpx_f_t>(),
+            );
             dxStruct.ref.r = 1.0;
             dxStruct.ref.i = 0.0;
             NDArray<Complex>? spacingArray;
@@ -659,7 +656,6 @@ NDArray<T> gradient<T extends Object>(
                 edgeOrder,
               );
             } finally {
-              malloc.free(dxStruct);
               spacingArray?.dispose();
             }
           }
@@ -735,9 +731,7 @@ NDArray<T> gradient<T extends Object>(
         }
     }
   } finally {
-    malloc.free(cShape);
-    malloc.free(cStridesF);
-    malloc.free(cStridesRes);
+    ScratchArena.reset(marker);
   }
 
   return result;
