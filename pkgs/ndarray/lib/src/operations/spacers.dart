@@ -1,0 +1,775 @@
+part of '../operations.dart';
+
+/// Supported sorting algorithms.
+///
+/// {@example /example/sorting_searching_example.dart lang=dart}
+enum SortKind {
+  /// Unstable, fast QuickSort.
+  quicksort,
+
+  /// Stable, mergesort-based TimSort.
+  mergesort,
+
+  /// Unstable, HeapSort.
+  heapsort,
+
+  /// Alias for mergesort (guaranteed stable).
+  stable,
+}
+
+/// Search boundary behavior selector for binary search insertion points in [searchsorted].
+///
+/// This determines the index returned when a query value matches existing elements
+/// in the sorted target array:
+/// - [SearchSide.left] returns the index of the **first** suitable location found (the leftmost match).
+/// - [SearchSide.right] returns the index of the **last** suitable location found (the rightmost match).
+///
+/// ### Inline Example:
+/// ```dart
+/// import 'package:ndarray/ndarray.dart';
+///
+/// void main() {
+///   // Given a sorted 1-D target array with duplicate elements:
+///   final a = NDArray.fromList([10.0, 20.0, 20.0, 20.0, 30.0], [5], DType.float64);
+///
+///   // Value to insert:
+///   final v = NDArray.fromList([20.0], [1], DType.float64);
+///
+///   // 1. Using SearchSide.left:
+///   // Finds the index of the first occurrence (index 1).
+///   final idxLeft = searchsorted(a, v, side: SearchSide.left);
+///   print(idxLeft.toList()); // [1]
+///
+///   // 2. Using SearchSide.right:
+///   // Finds the index after the last occurrence (index 4).
+///   final idxRight = searchsorted(a, v, side: SearchSide.right);
+///   print(idxRight.toList()); // [4]
+/// }
+/// ```
+enum SearchSide {
+  /// Finds the first suitable index to insert to maintain sorted order.
+  left,
+
+  /// Finds the last suitable index to insert to maintain sorted order.
+  right,
+}
+
+int _mapSortKind(SortKind kind) {
+  switch (kind) {
+    case SortKind.quicksort:
+      return 0;
+    case SortKind.mergesort:
+    case SortKind.stable:
+      return 1;
+    case SortKind.heapsort:
+      return 2;
+  }
+}
+
+DType _resolveDType(DType a, DType b) {
+  if (a == DType.boolean && b == DType.boolean) return DType.uint8;
+  if (a == DType.boolean) return b;
+  if (b == DType.boolean) return a;
+  if (a == b) return a;
+  if (a == DType.complex128 || b == DType.complex128) return DType.complex128;
+  if (a == DType.complex64 || b == DType.complex64) {
+    if (a == DType.float64 || b == DType.float64) return DType.complex128;
+    return DType.complex64;
+  }
+  if (a == DType.float64 || b == DType.float64) return DType.float64;
+  if (a == DType.float32 || b == DType.float32) return DType.float32;
+  if (a == DType.int64 || b == DType.int64) return DType.int64;
+  return DType.int32;
+}
+
+DType<T> _defaultDType<T>() {
+  if (T == Complex) return DType.complex128 as DType<T>;
+  if (T == int) return DType.int64 as DType<T>;
+  return DType.float64 as DType<T>;
+}
+
+Object _normalizeScalar(Object o, DType dtype) {
+  switch (dtype) {
+    case DType.complex64:
+    case DType.complex128:
+      if (o is Complex) return o;
+      if (o is num) return Complex(o.toDouble(), 0.0);
+      return Complex((o as num).toDouble(), 0.0);
+    case DType.float32:
+    case DType.float64:
+      if (o is num) return o.toDouble();
+      if (o is Complex) return o.real;
+      return (o as num).toDouble();
+    case DType.int32:
+    case DType.int64:
+    case DType.int16:
+    case DType.uint8:
+      if (o is num) return o.toInt();
+      if (o is Complex) return o.real.toInt();
+      return (o as num).toInt();
+    case DType.boolean:
+      if (o is bool) return o;
+      if (o is num) return o != 0;
+      return o as bool;
+  }
+}
+
+NDArray<T> _toNDArray<T>(Object o, DType<T> dtype) {
+  if (o is NDArray) {
+    if (o.dtype == dtype) return o as NDArray<T>;
+    return _castNDArray(o, dtype);
+  }
+  final normalized = _normalizeScalar(o, dtype);
+  return NDArray<T>.fromList([normalized], [], dtype);
+}
+
+/// Returns an array with evenly spaced values over a specified interval.
+///
+/// Returns [numSamples] evenly spaced samples, calculated over the interval `[start, stop]`.
+///
+/// The endpoint of the interval can optionally be excluded.
+///
+/// Supports [Complex] bounds for path generation in the complex plane.
+///
+/// **Parameters:**
+/// - [start]: The starting value of the sequence.
+/// - [stop]: The end value of the sequence.
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+///
+/// **Example:**
+/// ```dart
+/// linspace(0.0, 10.0, 5); // [0.0, 2.5, 5.0, 7.5, 10.0]
+/// ```
+NDArray<T> linspace<T>(
+  T start,
+  T stop,
+  int numSamples, {
+  bool endpoint = true,
+  DType<T>? dtype,
+}) {
+  return _linspaceInternal<T>(
+    start,
+    stop,
+    numSamples,
+    endpoint: endpoint,
+    dtype: dtype,
+  ).$1;
+}
+
+/// Similar to [linspace], but also returns the calculated step size.
+///
+/// Returns a Record `(samples, step)`.
+///
+/// **Parameters:**
+/// - [start]: The starting value of the sequence.
+/// - [stop]: The end value of the sequence.
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+(NDArray<T>, T) linspaceWithStep<T>(
+  T start,
+  T stop,
+  int numSamples, {
+  bool endpoint = true,
+  DType<T>? dtype,
+}) {
+  return _linspaceInternal<T>(
+    start,
+    stop,
+    numSamples,
+    endpoint: endpoint,
+    dtype: dtype,
+  );
+}
+
+/// Generalized [linspace] that supports broadcasting when [start] or [stop] are [NDArray]s.
+///
+/// Returns an array of shape `(..., numSamples, ...)` depending on the [axis].
+///
+/// **Example:**
+/// ```dart
+/// final start = NDArray.fromList([0.0, 10.0], [2], DType.float64);
+/// final stop  = NDArray.fromList([1.0, 11.0], [2], DType.float64);
+/// final grid  = linspaceGrid(start, stop, 3); // Shape [3, 2]
+/// // Row 0: [0.0, 10.0]
+/// // Row 1: [0.5, 10.5]
+/// // Row 2: [1.0, 11.0]
+/// print(grid.data); // [0.0, 10.0, 0.5, 10.5, 1.0, 11.0]
+/// ```
+///
+/// **Parameters:**
+/// - [start]: The starting value(s) as an [NDArray].
+/// - [stop]: The end value(s) as an [NDArray].
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [axis]: The axis in the result to store the samples. Defaults to 0.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+NDArray<T> linspaceGrid<T>(
+  NDArray<T> start,
+  NDArray<T> stop,
+  int numSamples, {
+  bool endpoint = true,
+  int axis = 0,
+  DType<T>? dtype,
+}) {
+  return _linspaceGridInternal<T>(
+    start,
+    stop,
+    numSamples,
+    endpoint: endpoint,
+    axis: axis,
+    dtype: dtype,
+  ).$1;
+}
+
+/// Similar to [linspaceGrid], but also returns the calculated step size as an [NDArray].
+///
+/// Returns a Record `(samples, step)`.
+///
+/// **Example:**
+/// ```dart
+/// final start = NDArray.fromList([0.0, 10.0], [2], DType.float64);
+/// final stop  = NDArray.fromList([1.0, 12.0], [2], DType.float64);
+/// final (grid, step) = linspaceGridWithStep(start, stop, 3);
+/// print(step.data); // [0.5, 1.0]
+/// ```
+///
+/// **Parameters:**
+/// - [start]: The starting value(s) as an [NDArray].
+/// - [stop]: The end value(s) as an [NDArray].
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [axis]: The axis in the result to store the samples. Defaults to 0.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+(NDArray<T>, NDArray<T>) linspaceGridWithStep<T>(
+  NDArray<T> start,
+  NDArray<T> stop,
+  int numSamples, {
+  bool endpoint = true,
+  int axis = 0,
+  DType<T>? dtype,
+}) {
+  return _linspaceGridInternal<T>(
+    start,
+    stop,
+    numSamples,
+    endpoint: endpoint,
+    axis: axis,
+    dtype: dtype,
+  );
+}
+
+(NDArray<T>, NDArray<T>) _linspaceGridInternal<T>(
+  NDArray<T> start,
+  NDArray<T> stop,
+  int numSamples, {
+  bool endpoint = true,
+  int axis = 0,
+  DType<T>? dtype,
+}) {
+  if (numSamples <= 0) throw ArgumentError('numSamples must be positive');
+
+  final resolvedDType = dtype ?? _defaultDType<T>();
+
+  return NDArray.scope(() {
+    final startArr = _toNDArray(start, resolvedDType);
+    final stopArr = _toNDArray(stop, resolvedDType);
+
+    final commonShape = broadcastShapes(startArr.shape, stopArr.shape);
+    final actualAxis = axis < 0 ? commonShape.length + 1 + axis : axis;
+    if (actualAxis < 0 || actualAxis > commonShape.length) {
+      throw ArgumentError(
+        'Axis $axis out of bounds for rank ${commonShape.length}',
+      );
+    }
+
+    final resultShape = List<int>.from(commonShape);
+    resultShape.insert(actualAxis, numSamples);
+
+    final startBroadcasted = broadcastTo(startArr, commonShape);
+    final stopBroadcasted = broadcastTo(stopArr, commonShape);
+
+    final stridesStart = List<int>.from(startBroadcasted.strides);
+    stridesStart.insert(actualAxis, 0);
+
+    final stridesStop = List<int>.from(stopBroadcasted.strides);
+    stridesStop.insert(actualAxis, 0);
+
+    final res = NDArray<T>.create(resultShape, resolvedDType);
+    final stridesRes = res.strides;
+
+    final step = NDArray<T>.create(commonShape, resolvedDType);
+    final stridesStepOdo = List<int>.from(step.strides);
+    stridesStepOdo.insert(actualAxis, 0);
+
+    final rank = resultShape.length;
+    final marker = ScratchArena.marker;
+    final intBytes = rank * ffi.sizeOf<ffi.Int>();
+
+    final cShape = ScratchArena.allocate<ffi.Int>(intBytes);
+    final cStridesStart = ScratchArena.allocate<ffi.Int>(intBytes);
+    final cStridesStop = ScratchArena.allocate<ffi.Int>(intBytes);
+    final cStridesRes = ScratchArena.allocate<ffi.Int>(intBytes);
+    final cStridesStep = ScratchArena.allocate<ffi.Int>(intBytes);
+
+    try {
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = resultShape[i];
+        cStridesStart[i] = stridesStart[i];
+        cStridesStop[i] = stridesStop[i];
+        cStridesRes[i] = stridesRes[i];
+        cStridesStep[i] = stridesStepOdo[i];
+      }
+
+      switch (resolvedDType) {
+        case DType.float64:
+          s_linspace_grid_double(
+            (startBroadcasted.pointer.cast<ffi.Double>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<ffi.Double>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<ffi.Double>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<ffi.Double>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.float32:
+          s_linspace_grid_float(
+            (startBroadcasted.pointer.cast<ffi.Float>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<ffi.Float>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<ffi.Float>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<ffi.Float>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.complex128:
+          s_linspace_grid_complex128(
+            (startBroadcasted.pointer.cast<cpx_t>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<cpx_t>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<cpx_t>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<cpx_t>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.complex64:
+          s_linspace_grid_complex64(
+            (startBroadcasted.pointer.cast<cpx_f_t>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<cpx_f_t>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<cpx_f_t>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<cpx_f_t>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.int64:
+          s_linspace_grid_int64(
+            (startBroadcasted.pointer.cast<ffi.Int64>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<ffi.Int64>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<ffi.Int64>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<ffi.Int64>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.int32:
+          s_linspace_grid_int32(
+            (startBroadcasted.pointer.cast<ffi.Int32>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<ffi.Int32>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<ffi.Int32>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<ffi.Int32>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.int16:
+          s_linspace_grid_int16(
+            (startBroadcasted.pointer.cast<ffi.Int16>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<ffi.Int16>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<ffi.Int16>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<ffi.Int16>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.uint8:
+          s_linspace_grid_uint8(
+            (startBroadcasted.pointer.cast<ffi.Uint8>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<ffi.Uint8>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<ffi.Uint8>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<ffi.Uint8>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.boolean:
+          throw UnsupportedError(
+            'linspaceGrid not supported for boolean arrays',
+          );
+      }
+    } finally {
+      ScratchArena.reset(marker);
+    }
+
+    res.detachToParentScope();
+    step.detachToParentScope();
+    return (res, step);
+  });
+}
+
+/// Returns numbers spaced evenly on a log scale.
+///
+/// In linear space, the sequence starts at `base ** start` and ends with `base ** stop`.
+///
+/// **Parameters:**
+/// - [start]: The starting value of the sequence.
+/// - [stop]: The end value of the sequence.
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [base]: The base of the log space. Defaults to 10.0.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+NDArray<T> logspace<T>(
+  T start,
+  T stop,
+  int numSamples, {
+  double base = 10.0,
+  bool endpoint = true,
+  DType<T>? dtype,
+}) {
+  final resolvedDType = dtype ?? _defaultDType<T>();
+
+  final arr = NDArray<T>.create([numSamples], resolvedDType);
+  final div = endpoint ? (numSamples - 1) : numSamples;
+
+  switch (resolvedDType) {
+    case DType.float64:
+      final s = (start as num).toDouble();
+      final e = (stop as num).toDouble();
+      final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
+      v_logspace_double(arr.pointer.cast(), s, stp, base, numSamples);
+      return arr;
+    case DType.float32:
+      final s = (start as num).toDouble();
+      final e = (stop as num).toDouble();
+      final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
+      v_logspace_float(arr.pointer.cast(), s, stp, base, numSamples);
+      return arr;
+    case DType.complex128:
+      final s = _normalizeScalar(start as Object, DType.complex128) as Complex;
+      final e = _normalizeScalar(stop as Object, DType.complex128) as Complex;
+      final stp = numSamples <= 1 ? Complex(0.0, 0.0) : (e - s) / div;
+      v_logspace_complex128(
+        arr.pointer.cast(),
+        s.real,
+        s.imag,
+        stp.real,
+        stp.imag,
+        base,
+        0.0,
+        numSamples,
+      );
+      return arr;
+    case DType.complex64:
+      final s = _normalizeScalar(start as Object, DType.complex128) as Complex;
+      final e = _normalizeScalar(stop as Object, DType.complex128) as Complex;
+      final stp = numSamples <= 1 ? Complex(0.0, 0.0) : (e - s) / div;
+      v_logspace_complex64(
+        arr.pointer.cast(),
+        s.real,
+        s.imag,
+        stp.real,
+        stp.imag,
+        base,
+        0.0,
+        numSamples,
+      );
+      return arr;
+    case DType.int64:
+    case DType.int32:
+    case DType.int16:
+    case DType.uint8:
+    case DType.boolean:
+      throw UnsupportedError('logspace not supported for type $resolvedDType');
+  }
+}
+
+/// Generalized [logspace] that supports broadcasting.
+///
+/// **Example:**
+/// ```dart
+/// final start = NDArray.fromList([0.0, 1.0], [2], DType.float64);
+/// final stop  = NDArray.fromList([2.0, 3.0], [2], DType.float64);
+/// final grid  = logspaceGrid(start, stop, 3); // 10^start to 10^stop
+/// // Row 0: [10^0, 10^1] = [1, 10]
+/// // Row 1: [10^1, 10^2] = [10, 100]
+/// // Row 2: [10^2, 10^3] = [100, 1000]
+/// print(grid.data); // [1.0, 10.0, 10.0, 100.0, 100.0, 1000.0]
+/// ```
+///
+/// **Parameters:**
+/// - [start]: The starting value(s) as an [NDArray].
+/// - [stop]: The end value(s) as an [NDArray].
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [base]: The base of the log space as an [NDArray]. Defaults to 10.0.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [axis]: The axis in the result to store the samples. Defaults to 0.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+NDArray<T> logspaceGrid<T>(
+  NDArray<T> start,
+  NDArray<T> stop,
+  int numSamples, {
+  NDArray<double>? base,
+  bool endpoint = true,
+  int axis = 0,
+  DType<T>? dtype,
+}) {
+  final resolvedDType = dtype ?? _defaultDType<T>();
+  final actualBase = base ?? _toNDArray<double>(10.0, DType.float64);
+
+  return NDArray.scope(() {
+    final y = linspaceGrid<T>(
+      start,
+      stop,
+      numSamples,
+      endpoint: endpoint,
+      axis: axis,
+      dtype: resolvedDType,
+    );
+    final res = power(actualBase, y);
+    res.detachToParentScope();
+    return res as NDArray<T>;
+  });
+}
+
+/// Returns numbers spaced evenly on a log scale (geometric progression).
+///
+/// This is similar to [logspace], but with the start and end points specified directly.
+///
+/// **Parameters:**
+/// - [start]: The starting value of the sequence.
+/// - [stop]: The end value of the sequence.
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+NDArray<T> geomspace<T>(
+  T start,
+  T stop,
+  int numSamples, {
+  bool endpoint = true,
+  DType<T>? dtype,
+}) {
+  final resolvedDType = dtype ?? _defaultDType<T>();
+
+  switch (resolvedDType) {
+    case DType.float64:
+    case DType.float32:
+      final s = (start as num).toDouble();
+      final e = (stop as num).toDouble();
+      if (s == 0.0 || e == 0.0) {
+        throw ArgumentError('Geometric sequence cannot include zero.');
+      }
+      if (s * e <= 0.0) {
+        throw ArgumentError(
+          'Geometric sequence start and stop must have same sign.',
+        );
+      }
+
+      final sign = s > 0.0 ? 1.0 : -1.0;
+      final logStart = math.log(s.abs()) / math.ln10;
+      final logStop = math.log(e.abs()) / math.ln10;
+      final div = endpoint ? (numSamples - 1) : numSamples;
+      final stp = numSamples <= 1 ? 0.0 : (logStop - logStart) / div;
+
+      final arr = NDArray<T>.create([numSamples], resolvedDType);
+      if (resolvedDType == DType.float64) {
+        v_geomspace_double(arr.pointer.cast(), logStart, stp, sign, numSamples);
+      } else {
+        v_geomspace_float(arr.pointer.cast(), logStart, stp, sign, numSamples);
+      }
+      return arr;
+    case DType.complex128:
+    case DType.complex64:
+      final s = _normalizeScalar(start as Object, DType.complex128) as Complex;
+      final e = _normalizeScalar(stop as Object, DType.complex128) as Complex;
+      if (s.abs == 0.0 || e.abs == 0.0) {
+        throw ArgumentError('Geometric sequence cannot include zero.');
+      }
+
+      final logStart = s.log() / math.ln10;
+      final logStop = e.log() / math.ln10;
+      final div = endpoint ? (numSamples - 1) : numSamples;
+      final stp = numSamples <= 1
+          ? Complex(0.0, 0.0)
+          : (logStop - logStart) / div;
+
+      final arr = NDArray<T>.create([numSamples], resolvedDType);
+      if (resolvedDType == DType.complex128) {
+        v_geomspace_complex128(
+          arr.pointer.cast(),
+          logStart.real,
+          logStart.imag,
+          stp.real,
+          stp.imag,
+          numSamples,
+        );
+      } else {
+        v_geomspace_complex64(
+          arr.pointer.cast(),
+          logStart.real,
+          logStart.imag,
+          stp.real,
+          stp.imag,
+          numSamples,
+        );
+      }
+      return arr;
+    case DType.int64:
+    case DType.int32:
+    case DType.int16:
+    case DType.uint8:
+    case DType.boolean:
+      throw UnsupportedError('geomspace not supported for type $resolvedDType');
+  }
+}
+
+/// Generalized [geomspace] that supports broadcasting.
+///
+/// **Example:**
+/// ```dart
+/// final start = NDArray.fromList([1.0, 10.0], [2], DType.float64);
+/// final stop  = NDArray.fromList([100.0, 1000.0], [2], DType.float64);
+/// final grid  = geomspaceGrid(start, stop, 3);
+/// // Row 0: [1, 10]
+/// // Row 1: [10, 100]
+/// // Row 2: [100, 1000]
+/// print(grid.data); // [1.0, 10.0, 10.0, 100.0, 100.0, 1000.0]
+/// ```
+///
+/// **Parameters:**
+/// - [start]: The starting value(s) as an [NDArray].
+/// - [stop]: The end value(s) as an [NDArray].
+/// - [numSamples]: Number of samples to generate. Must be non-negative.
+/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [axis]: The axis in the result to store the samples. Defaults to 0.
+/// - [dtype]: The type of the output array. If not provided, it defaults to:
+///   - [DType.complex128] if [T] is [Complex].
+///   - [DType.int64] if [T] is [int].
+///   - [DType.float64] otherwise.
+NDArray<T> geomspaceGrid<T>(
+  NDArray<T> start,
+  NDArray<T> stop,
+  int numSamples, {
+  bool endpoint = true,
+  int axis = 0,
+  DType<T>? dtype,
+}) {
+  final resolvedDType = dtype ?? _defaultDType<T>();
+
+  return NDArray.scope(() {
+    final logStart =
+        divide(log(start), _toNDArray<T>(math.ln10, resolvedDType))
+            as NDArray<T>;
+    final logStop =
+        divide(log(stop), _toNDArray<T>(math.ln10, resolvedDType))
+            as NDArray<T>;
+
+    final y = linspaceGrid<T>(
+      logStart,
+      logStop,
+      numSamples,
+      endpoint: endpoint,
+      axis: axis,
+      dtype: resolvedDType,
+    );
+    final res = power(_toNDArray<T>(10.0, resolvedDType), y);
+    res.detachToParentScope();
+    return res as NDArray<T>;
+  });
+}

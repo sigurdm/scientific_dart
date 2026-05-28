@@ -1,0 +1,1461 @@
+part of '../operations.dart';
+
+/// Compute the sum of elements in the array.
+///
+/// If [axis] is provided, sums along that axis and returns a new array.
+/// Otherwise, sums all elements and returns a scalar value of type [T].
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+/// final s0 = sum(a, axis: 0); // Sum along rows
+/// print(s0.data); // [4.0, 6.0]
+/// ```
+NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    T? acc;
+    if (a.isContiguous) {
+      if (a.dtype == DType.float64) {
+        acc = r_sum_double(a.pointer.cast(), size) as T;
+      } else if (a.dtype == DType.float32) {
+        acc = r_sum_float(a.pointer.cast(), size) as T;
+      }
+    }
+    if (acc == null) {
+      final List<T> elements = size == a.data.length ? a.data : a.toList();
+      var current = elements.first;
+      for (var i = 1; i < elements.length; i++) {
+        current = ((current as dynamic) + elements[i]) as T;
+      }
+      acc = current;
+    }
+    final result = out ?? NDArray<T>.create([], a.dtype);
+    result.data[0] = acc;
+    return result;
+  }
+
+  if (axis < 0 || axis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final result = out ?? NDArray<T>.zeros(newShape, a.dtype);
+  if (out != null) {
+    result.fill(_normalizeScalar(0, a.dtype) as T);
+  }
+
+  if (a.dtype == DType.float64) {
+    final rank = a.shape.length;
+    final cBuffer = ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+    }
+    for (var i = 0; i < result.shape.length; i++) {
+      cStridesRes[i] = result.strides[i];
+    }
+
+    s_sum_double(
+      a.pointer.cast(),
+      cStridesA,
+      result.pointer.cast(),
+      cStridesRes,
+      cShape,
+      rank,
+      axis,
+    );
+    return result;
+  } else if (a.dtype == DType.float32) {
+    final rank = a.shape.length;
+    final cBuffer = ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+    }
+    for (var i = 0; i < result.shape.length; i++) {
+      cStridesRes[i] = result.strides[i];
+    }
+
+    s_sum_float(
+      a.pointer.cast(),
+      cStridesA,
+      result.pointer.cast(),
+      cStridesRes,
+      cShape,
+      rank,
+      axis,
+    );
+    return result;
+  }
+
+  _reduceRecursive<T, T>(
+    a,
+    result,
+    List<int>.filled(a.shape.length, 0),
+    List<int>.filled(newShape.length, 0),
+    axis,
+    0,
+    (current, val) => ((current as dynamic) + val) as T,
+  );
+  return result;
+}
+
+/// Compute the product of elements in the array.
+///
+/// If [axis] is provided, multiplies along that axis and returns a new array.
+/// Otherwise, multiplies all elements and returns a scalar value of type [T].
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+/// final p0 = prod(a, axis: 0); // Product along rows
+/// print(p0.data); // [3.0, 8.0]
+/// ```
+NDArray<T> prod<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    T? acc;
+    if (a.isContiguous) {
+      if (a.dtype == DType.float64) {
+        acc = r_prod_double(a.pointer.cast(), size) as T;
+      } else if (a.dtype == DType.float32) {
+        acc = r_prod_float(a.pointer.cast(), size) as T;
+      }
+    }
+    if (acc == null) {
+      final List<T> elements = size == a.data.length ? a.data : a.toList();
+      var current = elements.first;
+      for (var i = 1; i < elements.length; i++) {
+        current = ((current as dynamic) * elements[i]) as T;
+      }
+      acc = current;
+    }
+    final result = out ?? NDArray<T>.create([], a.dtype);
+    result.data[0] = acc;
+    return result;
+  }
+
+  if (axis < 0 || axis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final result = out ?? NDArray<T>.ones(newShape, a.dtype);
+  if (out != null) {
+    result.fill(_normalizeScalar(1, a.dtype) as T);
+  }
+
+  _reduceRecursive<T, T>(
+    a,
+    result,
+    List<int>.filled(a.shape.length, 0),
+    List<int>.filled(newShape.length, 0),
+    axis,
+    0,
+    (current, val) => ((current as dynamic) * val) as T,
+  );
+  return result;
+}
+
+/// Returns true if all elements along a given [axis] evaluate to True.
+///
+/// If [axis] is omitted/null, performs a global reduction and returns a single Dart [bool].
+///
+/// **Preconditions:**
+/// - The array [a] must not be disposed.
+/// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [StateError] if the array has been disposed.
+/// - [ArgumentError] if [axis] is out of bounds.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([true, true, false], [3], DType.boolean);
+/// final res = all(a); // false
+/// ```
+NDArray<bool> all<T extends Object>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<bool>? out,
+}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute all() on a disposed array.');
+  }
+
+  var targetAxis = axis;
+  if (targetAxis != null && targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+
+  final targetShape = targetAxis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(targetAxis));
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != DType.boolean) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  if (targetAxis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    var allTrue = true;
+    for (var i = 0; i < elements.length; i++) {
+      if (!_isTrue(elements[i])) {
+        allTrue = false;
+        break;
+      }
+    }
+    final result = out ?? NDArray<bool>.create([], DType.boolean);
+    result.data[0] = allTrue;
+    return result;
+  }
+
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(targetAxis);
+  final result = out ?? NDArray<bool>.create(newShape, DType.boolean);
+  result.fill(true); // Initialize to true everywhere
+
+  _reduceRecursive<T, bool>(
+    a,
+    result,
+    List<int>.filled(a.shape.length, 0),
+    List<int>.filled(newShape.length, 0),
+    targetAxis,
+    0,
+    (current, val) => current && _isTrue(val),
+  );
+
+  return result;
+}
+
+/// Returns true if any element along a given [axis] evaluates to True.
+///
+/// If [axis] is omitted/null, performs a global reduction and returns a single Dart [bool].
+///
+/// **Preconditions:**
+/// - The array [a] must not be disposed.
+/// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [StateError] if the array has been disposed.
+/// - [ArgumentError] if [axis] is out of bounds.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([true, false, false], [3], DType.boolean);
+/// final res = any(a); // true
+/// ```
+NDArray<bool> any<T extends Object>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<bool>? out,
+}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute any() on a disposed array.');
+  }
+
+  var targetAxis = axis;
+  if (targetAxis != null && targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+
+  final targetShape = targetAxis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(targetAxis));
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != DType.boolean) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  if (targetAxis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    var anyTrue = false;
+    for (var i = 0; i < elements.length; i++) {
+      if (_isTrue(elements[i])) {
+        anyTrue = true;
+        break;
+      }
+    }
+    final result = out ?? NDArray<bool>.create([], DType.boolean);
+    result.data[0] = anyTrue;
+    return result;
+  }
+
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(targetAxis);
+  final result =
+      out ??
+      NDArray<bool>.zeros(newShape, DType.boolean); // Pre-initialized to false
+  if (out != null) {
+    result.fill(false);
+  }
+
+  _reduceRecursive<T, bool>(
+    a,
+    result,
+    List<int>.filled(a.shape.length, 0),
+    List<int>.filled(newShape.length, 0),
+    targetAxis,
+    0,
+    (current, val) => current || _isTrue(val),
+  );
+
+  return result;
+}
+
+/// Compute the arithmetic mean of array elements along a specified axis.
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num` or Complex).
+/// - If provided, [axis] must be within `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [RangeError] if [axis] is out of range.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+/// final m = mean(a); // returns 2.5 scalar
+/// final m0 = mean(a, axis: 0); // returns NDArray [2.0, 3.0]
+/// ```
+///
+/// Reference: [Arithmetic Mean](https://en.wikipedia.org/wiki/Arithmetic_mean)
+NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
+  final DType<R> targetDType =
+      (a.dtype.isComplex ? DType.complex128 : DType.float64) as DType<R>;
+
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != targetDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  if (axis == null) {
+    if (a.isContiguous) {
+      if (a.dtype == DType.float64) {
+        final res = out ?? NDArray<R>.create([], DType.float64 as DType<R>);
+        res.data[0] = r_mean_double(a.pointer.cast(), a.size) as R;
+        return res;
+      } else if (a.dtype == DType.float32) {
+        final res = out ?? NDArray<R>.create([], DType.float64 as DType<R>);
+        res.data[0] = r_mean_float(a.pointer.cast(), a.size) as R;
+        return res;
+      }
+    }
+
+    NDArray promotedA;
+    if (a.dtype.isComplex || a.dtype.isFloating) {
+      promotedA = a;
+    } else {
+      promotedA = _promoteToDouble(a);
+    }
+
+    final s = sum<Object>(promotedA as NDArray<Object>, axis: axis);
+    if (promotedA != a) {
+      promotedA.dispose();
+    }
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final meanVal = (s.data[0] as dynamic) / size;
+    final NDArray<R> result;
+    if (out != null) {
+      result = out;
+    } else {
+      if (targetDType.isComplex) {
+        result = NDArray<Complex>.create([], DType.complex128) as NDArray<R>;
+      } else {
+        result = NDArray<double>.create([], DType.float64) as NDArray<R>;
+      }
+    }
+    result.data[0] = meanVal as R;
+    s.dispose();
+    return result;
+  } else {
+    final NDArray<R> result;
+    if (out != null) {
+      result = out;
+    } else {
+      if (targetDType.isComplex) {
+        result =
+            NDArray<Complex>.create(targetShape, DType.complex128)
+                as NDArray<R>;
+      } else {
+        result =
+            NDArray<double>.create(targetShape, DType.float64) as NDArray<R>;
+      }
+    }
+
+    // Optimized axis-wise mean
+    if (a.dtype == DType.float64 && targetDType == DType.float64) {
+      final rank = a.shape.length;
+      final cBuffer = ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+      }
+      for (var i = 0; i < result.shape.length; i++) {
+        cStridesRes[i] = result.strides[i];
+      }
+
+      s_mean_double(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        axis,
+      );
+      return result;
+    } else if (a.dtype == DType.float32 && targetDType == DType.float64) {
+      final rank = a.shape.length;
+      final cBuffer = ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+      }
+      for (var i = 0; i < result.shape.length; i++) {
+        cStridesRes[i] = result.strides[i];
+      }
+
+      s_mean_float(
+        a.pointer.cast(),
+        cStridesA,
+        ((result as dynamic) as NDArray<double>).pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        axis,
+      );
+      return result;
+    }
+
+    if (targetDType.isComplex) {
+      final promotedA =
+          (a.dtype.isComplex ? a : _promoteToComplex(a)) as NDArray<Complex>;
+      sum<Complex>(
+        promotedA,
+        axis: axis,
+        out: (result as dynamic) as NDArray<Complex>,
+      );
+      if (promotedA != a) promotedA.dispose();
+    } else {
+      final promotedA =
+          (a.dtype.isFloating ? a : _promoteToDouble(a)) as NDArray<double>;
+      sum<double>(
+        promotedA,
+        axis: axis,
+        out: (result as dynamic) as NDArray<double>,
+      );
+      if (promotedA != a) promotedA.dispose();
+    }
+
+    final sizeAxis = a.shape[axis];
+    for (var i = 0; i < result.data.length; i++) {
+      result.data[i] = ((result.data[i] as dynamic) / sizeAxis) as R;
+    }
+    return result;
+  }
+}
+
+/// Compute the standard deviation of array elements along a specified axis.
+///
+/// Standard deviation is a measure of the spread of a distribution. The standard deviation
+/// is computed for the flattened array by default, otherwise over the specified axis.
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - If provided, [axis] must be within `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [RangeError] if [axis] is out of range.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+/// final s = std(a); // returns sqrt(1.25) scalar
+/// ```
+///
+/// Reference: [Standard Deviation](https://en.wikipedia.org/wiki/Standard_deviation)
+NDArray<double> std<T extends num>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<double>? out,
+}) {
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  final v = variance(a, axis: axis);
+  if (axis == null) {
+    final stdVal = math.sqrt(v.data[0]);
+    final result = out ?? NDArray<double>.create([], DType.float64);
+    result.data[0] = stdVal;
+    v.dispose();
+    return result;
+  } else {
+    final res = sqrt(v, out: out);
+    if (out != null) {
+      v.dispose();
+      return out;
+    }
+    final resultVal = NDArray<double>.view(
+      res,
+      shape: res.shape,
+      strides: res.strides,
+    );
+    v.dispose();
+    return resultVal;
+  }
+}
+
+/// Recursive helper to accumulate sum and count of non-NaN elements along an axis.
+void _nanReduceRecursive<T extends Object>(
+  NDArray<T> a,
+  NDArray<T> result,
+  NDArray<int> counts,
+  List<int> coordA,
+  List<int> coordRes,
+  int axis,
+  int dim,
+) {
+  if (dim == a.shape.length) {
+    final val = a.getCell(coordA);
+    if (val is double && val.isNaN) return;
+    if (val is Complex && (val.real.isNaN || val.imag.isNaN)) return;
+    final current = result.getCell(coordRes);
+    result.setCell(coordRes, ((current as dynamic) + val) as T);
+    counts.setCell(coordRes, counts.getCell(coordRes) + 1);
+    return;
+  }
+  if (dim == axis) {
+    for (var i = 0; i < a.shape[axis]; i++) {
+      coordA[dim] = i;
+      _nanReduceRecursive<T>(
+        a,
+        result,
+        counts,
+        coordA,
+        coordRes,
+        axis,
+        dim + 1,
+      );
+    }
+  } else {
+    final resDim = dim < axis ? dim : dim - 1;
+    for (var i = 0; i < a.shape[dim]; i++) {
+      coordA[dim] = i;
+      coordRes[resDim] = i;
+      _nanReduceRecursive<T>(
+        a,
+        result,
+        counts,
+        coordA,
+        coordRes,
+        axis,
+        dim + 1,
+      );
+    }
+  }
+}
+
+/// Compute the variance along the specified axis, ignoring NaNs.
+///
+/// **Preconditions:**
+/// - If provided, [axis] must be within `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [ArgumentError] if [axis] is out of bounds.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total elements count.
+///
+/// **Example:**
+/// ```dart
+/// final a = `NDArray<double>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
+/// final v = nanvar(a); // returns 0.6666666666666666
+/// ```
+NDArray<double> nanvar<T extends num>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<double>? out,
+}) {
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  final m = nanmean(a, axis: axis);
+
+  if (axis == null) {
+    var sumSqDiff = 0.0;
+    final meanVal = m.data[0] as num;
+    m.dispose();
+    if (meanVal.toDouble().isNaN) {
+      final result = out ?? NDArray<double>.create([], DType.float64);
+      result.data[0] = double.nan;
+      return result;
+    }
+
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final List<num> elements = size == a.data.length
+        ? a.data as List<num>
+        : a.toList() as List<num>;
+
+    var count = 0;
+    for (var i = 0; i < elements.length; i++) {
+      final val = elements[i].toDouble();
+      if (val.isNaN) continue;
+      final diff = val - meanVal.toDouble();
+      sumSqDiff += diff * diff;
+      count++;
+    }
+    final result = out ?? NDArray<double>.create([], DType.float64);
+    if (count == 0) {
+      result.data[0] = double.nan;
+    } else {
+      result.data[0] = sumSqDiff / count;
+    }
+    return result;
+  } else {
+    // Reshape m to keep dimensions for broadcasting
+    final targetShape = List<int>.from(a.shape);
+    targetShape[axis] = 1;
+    final reshapedM = m.reshape(targetShape);
+
+    final diff = subtract(a, reshapedM);
+    final sqDiff = multiply(diff, diff);
+
+    // Convert to `NDArray<double>` to avoid truncation in nanmean
+    final sqDiffDouble = NDArray<double>.create(sqDiff.shape, DType.float64);
+    for (var i = 0; i < sqDiff.data.length; i++) {
+      sqDiffDouble.data[i] = sqDiff.data[i].toDouble();
+    }
+
+    m.dispose();
+    reshapedM.dispose();
+    diff.dispose();
+    sqDiff.dispose();
+
+    final res = nanmean(sqDiffDouble, axis: axis, out: out);
+    if (out != null) {
+      sqDiffDouble.dispose();
+      return out;
+    }
+    final resultVal = NDArray<double>.view(
+      res,
+      shape: res.shape,
+      strides: res.strides,
+    );
+    sqDiffDouble.dispose();
+    return resultVal;
+  }
+}
+
+/// Compute the standard deviation along the specified axis, ignoring NaNs.
+///
+/// **Preconditions:**
+/// - If provided, [axis] must be within `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [ArgumentError] if [axis] is out of bounds.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total elements count.
+///
+/// **Example:**
+/// ```dart
+/// final a = `NDArray<double>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
+/// final s = nanstd(a); // returns sqrt(0.6666666666666666)
+/// ```
+NDArray<double> nanstd<T extends num>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<double>? out,
+}) {
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  final v = nanvar(a, axis: axis);
+  if (axis == null) {
+    final stdVal = math.sqrt(v.data[0]);
+    final result = out ?? NDArray<double>.create([], DType.float64);
+    result.data[0] = stdVal;
+    v.dispose();
+    return result;
+  } else {
+    final res = sqrt(v, out: out);
+    if (out != null) {
+      v.dispose();
+      return out;
+    }
+    final resultVal = NDArray<double>.view(
+      res,
+      shape: res.shape,
+      strides: res.strides,
+    );
+    v.dispose();
+    return resultVal;
+  }
+}
+
+/// Compute the minimum of elements in the array.
+///
+/// **Gotchas:**
+/// - Returns a 0-dimensional [NDArray] if [axis] is null, or a new [NDArray] if [axis] is provided.
+/// - Preserves the original data type (DType) of the input array along the reduction axis.
+NDArray<T> min<T extends num>(NDArray<T> a, {int? axis}) {
+  if (axis == null) {
+    final minVal = a.data.reduce((value, element) => math.min(value, element));
+    final result = NDArray<T>.create([], a.dtype);
+    result.data[0] = minVal;
+    return result;
+  }
+
+  if (axis < 0 || axis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final selectors = List<Selector>.generate(a.shape.length, (j) {
+    if (j == axis) return Index(0);
+    return Slice();
+  });
+  final firstSlice = a.slice(selectors);
+
+  final result = NDArray<T>.fromList(firstSlice.toList(), newShape, a.dtype);
+
+  for (var i = 1; i < a.shape[axis]; i++) {
+    final currentSelectors = List<Selector>.generate(a.shape.length, (j) {
+      if (j == axis) return Index(i);
+      return Slice();
+    });
+    final currentSlice = a.slice(currentSelectors);
+    _elementWiseMin(result, currentSlice);
+  }
+
+  return result;
+}
+
+/// Compute the minimum of elements along a specified axis, ignoring NaNs.
+///
+/// This corresponds to NumPy's `nanmin` function.
+///
+/// **Preconditions:**
+/// - [axis], if provided, must be a valid axis index within `[0, rank - 1]`.
+///
+/// **Throws:**
+/// - [ArgumentError] if [axis] is out of bounds.
+/// - [UnsupportedError] if the array contains Complex numbers.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
+/// print(nanmin(a)); // 1.0
+/// ```
+NDArray<T> nanmin<T extends Object>(NDArray<T> a, {int? axis}) {
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    throw UnsupportedError('Complex numbers are not supported for nanmin');
+  }
+
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
+
+    var minVal = double.infinity;
+    var hasValid = false;
+    var hasNan = false;
+
+    for (var i = 0; i < elements.length; i++) {
+      final val = elements[i];
+      if (val is double) {
+        if (val.isNaN) {
+          hasNan = true;
+          continue;
+        }
+        if (val < minVal) {
+          minVal = val;
+          hasValid = true;
+        }
+      } else if (val is num) {
+        final dVal = val.toDouble();
+        if (dVal < minVal) {
+          minVal = dVal;
+          hasValid = true;
+        }
+      }
+    }
+
+    final result = NDArray<T>.create([], a.dtype);
+    if (!hasValid) {
+      result.data[0] = (hasNan ? double.nan : double.infinity) as dynamic;
+    } else {
+      result.data[0] =
+          ((a.dtype == DType.float64 || a.dtype == DType.float32)
+                  ? minVal
+                  : minVal.toInt())
+              as dynamic;
+    }
+    return result;
+  }
+
+  if (axis < 0 || axis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final selectors = List<Selector>.generate(a.shape.length, (j) {
+    if (j == axis) return Index(0);
+    return Slice();
+  });
+  final firstSlice = a.slice(selectors);
+
+  final result = NDArray<T>.fromList(firstSlice.toList(), newShape, a.dtype);
+
+  for (var i = 1; i < a.shape[axis]; i++) {
+    final currentSelectors = List<Selector>.generate(a.shape.length, (j) {
+      if (j == axis) return Index(i);
+      return Slice();
+    });
+    final currentSlice = a.slice(currentSelectors);
+    _elementWiseNanMin(result, currentSlice);
+  }
+
+  return result;
+}
+
+/// Compute the maximum of elements in the array.
+///
+/// **Gotchas:**
+/// - Returns a 0-dimensional [NDArray] if [axis] is null, or a new [NDArray] if [axis] is provided.
+/// - Preserves the original data type (DType) of the input array along the reduction axis.
+NDArray<T> max<T extends num>(NDArray<T> a, {int? axis}) {
+  if (axis == null) {
+    final maxVal = a.data.reduce((value, element) => math.max(value, element));
+    final result = NDArray<T>.create([], a.dtype);
+    result.data[0] = maxVal;
+    return result;
+  }
+
+  if (axis < 0 || axis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final selectors = List<Selector>.generate(a.shape.length, (j) {
+    if (j == axis) return Index(0);
+    return Slice();
+  });
+  final firstSlice = a.slice(selectors);
+
+  final result = NDArray<T>.fromList(firstSlice.toList(), newShape, a.dtype);
+
+  for (var i = 1; i < a.shape[axis]; i++) {
+    final currentSelectors = List<Selector>.generate(a.shape.length, (j) {
+      if (j == axis) return Index(i);
+      return Slice();
+    });
+    final currentSlice = a.slice(currentSelectors);
+    _elementWiseMax(result, currentSlice);
+  }
+
+  return result;
+}
+
+/// Compute the maximum of elements along a specified axis, ignoring NaNs.
+///
+/// This corresponds to NumPy's `nanmax` function.
+///
+/// **Preconditions:**
+/// - [axis], if provided, must be a valid axis index within `[0, rank - 1]`.
+///
+/// **Throws:**
+/// - [ArgumentError] if [axis] is out of bounds.
+/// - [UnsupportedError] if the array contains Complex numbers.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
+/// print(nanmax(a)); // 3.0
+/// ```
+NDArray<T> nanmax<T extends Object>(NDArray<T> a, {int? axis}) {
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    throw UnsupportedError('Complex numbers are not supported for nanmax');
+  }
+
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
+
+    var maxVal = -double.infinity;
+    var hasValid = false;
+    var hasNan = false;
+
+    for (var i = 0; i < elements.length; i++) {
+      final val = elements[i];
+      if (val is double) {
+        if (val.isNaN) {
+          hasNan = true;
+          continue;
+        }
+        if (val > maxVal) {
+          maxVal = val;
+          hasValid = true;
+        }
+      } else if (val is num) {
+        final dVal = val.toDouble();
+        if (dVal > maxVal) {
+          maxVal = dVal;
+          hasValid = true;
+        }
+      }
+    }
+
+    final result = NDArray<T>.create([], a.dtype);
+    if (!hasValid) {
+      result.data[0] = (hasNan ? double.nan : -double.infinity) as dynamic;
+    } else {
+      result.data[0] =
+          ((a.dtype == DType.float64 || a.dtype == DType.float32)
+                  ? maxVal
+                  : maxVal.toInt())
+              as dynamic;
+    }
+    return result;
+  }
+
+  if (axis < 0 || axis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final selectors = List<Selector>.generate(a.shape.length, (j) {
+    if (j == axis) return Index(0);
+    return Slice();
+  });
+  final firstSlice = a.slice(selectors);
+
+  final result = NDArray<T>.fromList(firstSlice.toList(), newShape, a.dtype);
+
+  for (var i = 1; i < a.shape[axis]; i++) {
+    final currentSelectors = List<Selector>.generate(a.shape.length, (j) {
+      if (j == axis) return Index(i);
+      return Slice();
+    });
+    final currentSlice = a.slice(currentSelectors);
+    _elementWiseNanMax(result, currentSlice);
+  }
+
+  return result;
+}
+
+void _elementWiseMin(NDArray dest, NDArray src) {
+  _elementWiseMinRec(dest, src, dest.strides, src.strides, 0, 0, 0);
+}
+
+void _elementWiseMinRec(
+  NDArray dest,
+  NDArray src,
+  List<int> stridesDest,
+  List<int> stridesSrc,
+  int dim,
+  int offsetDest,
+  int offsetSrc,
+) {
+  final rank = dest.shape.length;
+  if (dim == rank) {
+    final dVal = dest.data[offsetDest];
+    final sVal = src.data[offsetSrc];
+    if (dVal is double && sVal is double) {
+      dest.data[offsetDest] = math.min(dVal, sVal);
+    } else if (dVal is int && sVal is int) {
+      dest.data[offsetDest] = math.min(dVal, sVal);
+    }
+    return;
+  }
+
+  final limit = dest.shape[dim];
+  for (var i = 0; i < limit; i++) {
+    _elementWiseMinRec(
+      dest,
+      src,
+      stridesDest,
+      stridesSrc,
+      dim + 1,
+      offsetDest + i * stridesDest[dim],
+      offsetSrc + i * stridesSrc[dim],
+    );
+  }
+}
+
+void _elementWiseMax(NDArray dest, NDArray src) {
+  _elementWiseMaxRec(dest, src, dest.strides, src.strides, 0, 0, 0);
+}
+
+void _elementWiseMaxRec(
+  NDArray dest,
+  NDArray src,
+  List<int> stridesDest,
+  List<int> stridesSrc,
+  int dim,
+  int offsetDest,
+  int offsetSrc,
+) {
+  final rank = dest.shape.length;
+  if (dim == rank) {
+    final dVal = dest.data[offsetDest];
+    final sVal = src.data[offsetSrc];
+    if (dVal is double && sVal is double) {
+      dest.data[offsetDest] = math.max(dVal, sVal);
+    } else if (dVal is int && sVal is int) {
+      dest.data[offsetDest] = math.max(dVal, sVal);
+    }
+    return;
+  }
+
+  final limit = dest.shape[dim];
+  for (var i = 0; i < limit; i++) {
+    _elementWiseMaxRec(
+      dest,
+      src,
+      stridesDest,
+      stridesSrc,
+      dim + 1,
+      offsetDest + i * stridesDest[dim],
+      offsetSrc + i * stridesSrc[dim],
+    );
+  }
+}
+
+void _elementWiseNanMin(NDArray dest, NDArray src) {
+  _elementWiseNanMinRec(dest, src, dest.strides, src.strides, 0, 0, 0);
+}
+
+void _elementWiseNanMinRec(
+  NDArray dest,
+  NDArray src,
+  List<int> stridesDest,
+  List<int> stridesSrc,
+  int dim,
+  int offsetDest,
+  int offsetSrc,
+) {
+  final rank = dest.shape.length;
+  if (dim == rank) {
+    final dVal = dest.data[offsetDest];
+    final sVal = src.data[offsetSrc];
+    if (dVal is double && sVal is double) {
+      if (sVal.isNaN) return;
+      if (dVal.isNaN || sVal < dVal) {
+        dest.data[offsetDest] = sVal;
+      }
+    } else if (dVal is int && sVal is int) {
+      if (sVal < dVal) {
+        dest.data[offsetDest] = sVal;
+      }
+    }
+    return;
+  }
+
+  final limit = dest.shape[dim];
+  for (var i = 0; i < limit; i++) {
+    _elementWiseNanMinRec(
+      dest,
+      src,
+      stridesDest,
+      stridesSrc,
+      dim + 1,
+      offsetDest + i * stridesDest[dim],
+      offsetSrc + i * stridesSrc[dim],
+    );
+  }
+}
+
+void _elementWiseNanMax(NDArray dest, NDArray src) {
+  _elementWiseNanMaxRec(dest, src, dest.strides, src.strides, 0, 0, 0);
+}
+
+void _elementWiseNanMaxRec(
+  NDArray dest,
+  NDArray src,
+  List<int> stridesDest,
+  List<int> stridesSrc,
+  int dim,
+  int offsetDest,
+  int offsetSrc,
+) {
+  final rank = dest.shape.length;
+  if (dim == rank) {
+    final dVal = dest.data[offsetDest];
+    final sVal = src.data[offsetSrc];
+    if (dVal is double && sVal is double) {
+      if (sVal.isNaN) return;
+      if (dVal.isNaN || sVal > dVal) {
+        dest.data[offsetDest] = sVal;
+      }
+    } else if (dVal is int && sVal is int) {
+      if (sVal > dVal) {
+        dest.data[offsetDest] = sVal;
+      }
+    }
+    return;
+  }
+
+  final limit = dest.shape[dim];
+  for (var i = 0; i < limit; i++) {
+    _elementWiseNanMaxRec(
+      dest,
+      src,
+      stridesDest,
+      stridesSrc,
+      dim + 1,
+      offsetDest + i * stridesDest[dim],
+      offsetSrc + i * stridesSrc[dim],
+    );
+  }
+}
+
+/// Recursive helper to traverse and reduce an array along an axis.
+void _reduceRecursive<S extends Object, D extends Object>(
+  NDArray<S> src,
+  NDArray<D> dest,
+  List<int> currentPos,
+  List<int> destPos,
+  int targetAxis,
+  int currentDim,
+  D Function(D acc, S val) op,
+) {
+  if (currentDim == src.shape.length) {
+    // Calculate flat index for src
+    var srcOffset = 0;
+    for (var i = 0; i < src.shape.length; i++) {
+      srcOffset += currentPos[i] * src.strides[i];
+    }
+
+    // Calculate flat index for dest
+    var destOffset = 0;
+    for (var i = 0; i < dest.shape.length; i++) {
+      destOffset += destPos[i] * dest.strides[i];
+    }
+
+    dest.data[destOffset] = op(dest.data[destOffset], src.data[srcOffset]);
+    return;
+  }
+
+  for (var i = 0; i < src.shape[currentDim]; i++) {
+    currentPos[currentDim] = i;
+    if (currentDim < targetAxis) {
+      destPos[currentDim] = i;
+    } else if (currentDim > targetAxis) {
+      destPos[currentDim - 1] = i;
+    }
+    _reduceRecursive<S, D>(
+      src,
+      dest,
+      currentPos,
+      destPos,
+      targetAxis,
+      currentDim + 1,
+      op,
+    );
+  }
+}
+
+NDArray<T> cumsum<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute cumsum() on a disposed array.');
+  }
+
+  final NDArray<T> result;
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    result = out ?? NDArray<T>.create([size], a.dtype);
+    if (out != null) {
+      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype.',
+        );
+      }
+    }
+
+    final List elements = size == a.data.length ? a.data : a.toList();
+    dynamic acc;
+    for (var i = 0; i < elements.length; i++) {
+      acc = (i == 0)
+          ? elements[i]
+          : ((acc as dynamic) + elements[i]) as dynamic;
+      result.data[i] = acc as T;
+    }
+    return result;
+  }
+
+  var targetAxis = axis;
+  if (targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  result = out ?? NDArray<T>.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  return _cumOpFFI(a, targetAxis, result, _CumOpType.sum);
+}
+
+/// Compute the cumulative product of array elements along a specified axis.
+///
+/// **Preconditions:**
+/// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
+/// - If provided, the [out] recycler must have compatible shape and dtype.
+///
+/// **Throws:**
+/// - [StateError] if the array is disposed.
+/// - [ArgumentError] if [axis] is out of bounds.
+/// - [ArgumentError] if [out] recycler shape or dtype is incompatible.
+///
+/// **Example:**
+/// {@example /example/cumulative_example.dart lang=dart}
+NDArray<T> cumprod<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute cumprod() on a disposed array.');
+  }
+
+  final NDArray<T> result;
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    result = out ?? NDArray<T>.create([size], a.dtype);
+    if (out != null) {
+      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype.',
+        );
+      }
+    }
+
+    final List elements = size == a.data.length ? a.data : a.toList();
+    dynamic acc;
+    for (var i = 0; i < elements.length; i++) {
+      acc = (i == 0)
+          ? elements[i]
+          : ((acc as dynamic) * elements[i]) as dynamic;
+      result.data[i] = acc as T;
+    }
+    return result;
+  }
+
+  var targetAxis = axis;
+  if (targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  result = out ?? NDArray<T>.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  return _cumOpFFI(a, targetAxis, result, _CumOpType.prod);
+}
+
+/// Compute the cumulative minimum of array elements along a specified axis.
+///
+/// **Preconditions:**
+/// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
+/// - If provided, the [out] recycler must have compatible shape and dtype.
+///
+/// **Throws:**
+/// - [StateError] if the array is disposed.
+/// - [ArgumentError] if [axis] is out of bounds.
+/// - [ArgumentError] if [out] recycler shape or dtype is incompatible.
+///
+/// **Example:**
+/// {@example /example/cumulative_example.dart lang=dart}
+NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute cummin() on a disposed array.');
+  }
+
+  final NDArray<T> result;
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    result = out ?? NDArray<T>.create([size], a.dtype);
+    if (out != null) {
+      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype.',
+        );
+      }
+    }
+
+    final List elements = size == a.data.length ? a.data : a.toList();
+    dynamic acc;
+    for (var i = 0; i < elements.length; i++) {
+      acc = (i == 0)
+          ? elements[i]
+          : (((acc as Comparable).compareTo(elements[i]) < 0)
+                ? acc
+                : elements[i]);
+      result.data[i] = acc as T;
+    }
+    return result;
+  }
+
+  var targetAxis = axis;
+  if (targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  result = out ?? NDArray<T>.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  return _cumOpFFI(a, targetAxis, result, _CumOpType.min);
+}
+
+/// Compute the cumulative maximum of array elements along a specified axis.
+///
+/// **Preconditions:**
+/// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
+/// - If provided, the [out] recycler must have compatible shape and dtype.
+///
+/// **Throws:**
+/// - [StateError] if the array is disposed.
+/// - [ArgumentError] if [axis] is out of bounds.
+/// - [ArgumentError] if [out] recycler shape or dtype is incompatible.
+///
+/// **Example:**
+/// {@example /example/cumulative_example.dart lang=dart}
+NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute cummax() on a disposed array.');
+  }
+
+  final NDArray<T> result;
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    result = out ?? NDArray<T>.create([size], a.dtype);
+    if (out != null) {
+      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype.',
+        );
+      }
+    }
+
+    final List elements = size == a.data.length ? a.data : a.toList();
+    dynamic acc;
+    for (var i = 0; i < elements.length; i++) {
+      acc = (i == 0)
+          ? elements[i]
+          : (((acc as Comparable).compareTo(elements[i]) > 0)
+                ? acc
+                : elements[i]);
+      result.data[i] = acc as T;
+    }
+    return result;
+  }
+
+  var targetAxis = axis;
+  if (targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  result = out ?? NDArray<T>.create(a.shape, a.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  return _cumOpFFI(a, targetAxis, result, _CumOpType.max);
+}
