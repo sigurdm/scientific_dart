@@ -1,32 +1,7 @@
 // ignore_for_file: non_constant_identifier_names
-import 'dart:typed_data';
-import 'dart:math' as math;
-import 'dart:math' show Random;
-import 'dart:io';
-import 'package:archive/archive.dart';
-import 'package:pocketfft/pocketfft.dart';
 import '../ndarray.dart';
-import 'package:openblas/openblas.dart';
-import 'dart:ffi' as ffi;
-import 'package:ffi/ffi.dart';
-import '../ndarray_bindings.dart';
-import '../scratch_arena.dart';
 
 // Standalone operational relative cross-imports
-import 'math.dart';
-import 'stats.dart';
-import 'sorting.dart';
-import 'linalg.dart';
-import 'spacers.dart';
-import 'manipulation.dart';
-import 'broadcasting.dart';
-import 'splitting.dart';
-import 'shaping_meshes.dart';
-import 'repeating_tiling.dart';
-import 'io.dart';
-import 'random.dart';
-import 'fft.dart';
-import 'calculus.dart';
 import 'helpers.dart';
 
 /// Concatenates a list of arrays along a specified axis.

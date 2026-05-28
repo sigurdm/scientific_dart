@@ -7,6 +7,6 @@ Remember when adding new operations:
 * always use a switch to dispatch to the correct implementation based on DType rather than a if-else if chain.
 * Documentation should be rich and detailed, in the same style as numpy.
 * openblas and lapack bindings belong in the openblas package.
-* Always use _ScratchArena for temporary allocations.
+* Always use ScratchArena for temporary allocations.
 
 When running dart commands use the sdk specified in .vscode/settings.json.
