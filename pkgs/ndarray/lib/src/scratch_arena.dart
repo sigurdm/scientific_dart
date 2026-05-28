@@ -7,16 +7,18 @@ import 'package:ffi/ffi.dart';
 final class ScratchArena {
   ScratchArena._();
 
-  static ffi.Pointer<ffi.Uint8>? _arena;
-  static const int _capacity =
-      2 * 1024 * 1024; // Generous 2MB persistent memory page
+  static final List<ffi.Pointer<ffi.Uint8>> _pages = [];
+  static const int _capacity = 2 * 1024 * 1024; // 2MB per page
+  static int _currentPageIndex = 0;
   static int _offset = 0;
 
   static ffi.Pointer<ffi.Int>? _stridedBuffer;
   static int _stridedCapacity = 0;
 
   static void _init() {
-    _arena ??= malloc<ffi.Uint8>(_capacity);
+    if (_pages.isEmpty) {
+      _pages.add(malloc<ffi.Uint8>(_capacity));
+    }
   }
 
   /// Allocates [bytes] of memory from the arena stack, aligned to 8 bytes.
@@ -29,26 +31,43 @@ final class ScratchArena {
     // Ensure 8-byte alignment for native FFI alignment requirements
     final alignedBytes = (bytes + 7) & ~7;
 
-    if (_offset + alignedBytes > _capacity) {
+    // If single allocation exceeds standard 2MB page capacity, throw
+    if (alignedBytes > _capacity) {
       throw StateError(
-        'ScratchArena capacity ($_capacity bytes) exceeded. '
-        'Requested allocation size: $bytes bytes (aligned: $alignedBytes bytes). '
-        'Current stack offset: $_offset bytes.',
+        'Single allocation size ($bytes bytes) exceeds ScratchArena page capacity ($_capacity bytes).',
       );
     }
 
-    final ptr = ffi.Pointer<T>.fromAddress(_arena!.address + _offset);
+    // If current page doesn't have enough space, switch to next page!
+    if (_offset + alignedBytes > _capacity) {
+      _currentPageIndex++;
+      _offset = 0;
+      if (_currentPageIndex >= _pages.length) {
+        _pages.add(malloc<ffi.Uint8>(_capacity));
+      }
+    }
+
+    final currentArena = _pages[_currentPageIndex];
+    final ptr = ffi.Pointer<T>.fromAddress(currentArena.address + _offset);
     _offset += alignedBytes;
     return ptr;
   }
 
-  /// Gets the current stack marker (offset) in the arena.
-  static int get marker => _offset;
+  /// Gets the current stack marker (packed page index and offset) in the arena.
+  static int get marker => (_currentPageIndex << 32) | _offset;
 
   /// Resets the arena stack back to the given [marker].
   static void reset(int marker) {
-    assert(marker <= _offset);
-    _offset = marker;
+    final pageIndex = marker >> 32;
+    final offset = marker & 0xFFFFFFFF;
+
+    assert(pageIndex <= _currentPageIndex);
+    if (pageIndex == _currentPageIndex) {
+      assert(offset <= _offset);
+    }
+
+    _currentPageIndex = pageIndex;
+    _offset = offset;
   }
 
   /// Gets or grows a persistent thread-local static buffer for leaf strided operations.
