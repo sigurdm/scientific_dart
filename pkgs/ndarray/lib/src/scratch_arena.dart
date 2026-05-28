@@ -8,7 +8,8 @@ final class ScratchArena {
   ScratchArena._();
 
   static final List<ffi.Pointer<ffi.Uint8>> _pages = [];
-  static const int _capacity = 2 * 1024 * 1024; // 2MB per page
+  static final List<int> _pageCapacities = [];
+  static const int _capacity = 2 * 1024 * 1024; // Standard 2MB per page
   static int _currentPageIndex = 0;
   static int _offset = 0;
 
@@ -18,6 +19,7 @@ final class ScratchArena {
   static void _init() {
     if (_pages.isEmpty) {
       _pages.add(malloc<ffi.Uint8>(_capacity));
+      _pageCapacities.add(_capacity);
     }
   }
 
@@ -31,19 +33,24 @@ final class ScratchArena {
     // Ensure 8-byte alignment for native FFI alignment requirements
     final alignedBytes = (bytes + 7) & ~7;
 
-    // If single allocation exceeds standard 2MB page capacity, throw
-    if (alignedBytes > _capacity) {
-      throw StateError(
-        'Single allocation size ($bytes bytes) exceeds ScratchArena page capacity ($_capacity bytes).',
-      );
-    }
+    final currentCapacity = _pageCapacities[_currentPageIndex];
 
     // If current page doesn't have enough space, switch to next page!
-    if (_offset + alignedBytes > _capacity) {
+    if (_offset + alignedBytes > currentCapacity) {
       _currentPageIndex++;
       _offset = 0;
+
       if (_currentPageIndex >= _pages.length) {
-        _pages.add(malloc<ffi.Uint8>(_capacity));
+        final targetCap = alignedBytes > _capacity ? alignedBytes : _capacity;
+        _pages.add(malloc<ffi.Uint8>(targetCap));
+        _pageCapacities.add(targetCap);
+      } else {
+        // If reusing a cached page but its capacity is too small for this allocation:
+        if (_pageCapacities[_currentPageIndex] < alignedBytes) {
+          malloc.free(_pages[_currentPageIndex]);
+          _pages[_currentPageIndex] = malloc<ffi.Uint8>(alignedBytes);
+          _pageCapacities[_currentPageIndex] = alignedBytes;
+        }
       }
     }
 
