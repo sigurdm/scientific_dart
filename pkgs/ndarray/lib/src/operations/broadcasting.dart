@@ -144,12 +144,19 @@ BroadcastResult broadcast(NDArray a, NDArray b) {
 /// - Algorithmic time complexity is $O(D)$ and space complexity is $O(D)$ where $D$ is the rank of
 ///   [targetShape], as it only allocates the shape and strides metadata without copying any data.
 ///
+/// **Memory Ownership & Lifetime View Warning:**
+/// > [!WARNING]
+/// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view.
+///
+/// **NumPy Counterpart:**
+/// - Maps directly to NumPy's `np.broadcast_to`.
+///
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
 /// final b = broadcastTo(a, [2, 2]);
 /// print(b.shape); // [2, 2]
-/// print(b.toList()); // [[1.0, 1.0], [2.0, 2.0]]
+/// print(b.toList()); // [[1.0, 2.0], [1.0, 2.0]]
 /// ```
 ///
 /// Refer to the [NumPy broadcast_to reference](https://numpy.org/doc/stable/reference/generated/numpy.broadcast_to.html)

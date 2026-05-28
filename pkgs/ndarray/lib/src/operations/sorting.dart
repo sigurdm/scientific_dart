@@ -924,6 +924,47 @@ NDArray<int> searchsorted(
   return result;
 }
 
+/// Return elements chosen from [x] or [y] depending on [condition], or the indices where [condition] is true.
+///
+/// This function implements a ternary conditional selector or coordinate selector depending on its arguments:
+/// 1. **Ternary Select (Three Arguments):**
+///    If both [x] and [y] are provided, returns a new array with elements from [x] where [condition] is true, and
+///    elements from [y] where it is false. Broadcasting rules apply across [condition], [x], and [y].
+/// 2. **Coordinate Selector (One Argument):**
+///    If both [x] and [y] are omitted, returns a list of 1-D index coordinate arrays representing the indices
+///    where [condition] evaluates to true.
+///
+/// **Preconditions:**
+/// - [condition] must be a boolean array (`condition.dtype == DType.boolean`).
+/// - Either both or neither of [x] and [y] must be provided.
+/// - If provided, [condition], [x], and [y] shapes must be mutually broadcast-compatible.
+///
+/// **Throws:**
+/// - [ArgumentError] if only one of [x] or [y] is provided.
+/// - [ArgumentError] if [out] is specified when [x] and [y] are omitted.
+/// - [ArgumentError] if the shapes are not broadcast-compatible.
+/// - [ArgumentError] if the [out] recycler has incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Algorithmic time complexity is $O(N)$ where $N$ is the broadcasted result size.
+/// - If all arrays are contiguous, of `float32`/`float64`/`int32`/`int64` types, and C-contiguous,
+///   leverages high-speed C FFI vector operations (`s_where_double`/`s_where_float`) for ultra-high performance.
+///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates a new array (or list of arrays) on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose()]** on all returned arrays to prevent native leaks, unless executing inside a managed [NDArray.scope()].
+///
+/// **NumPy Counterpart:**
+/// - Maps directly to NumPy's `np.where`.
+///
+/// **Example:**
+/// ```dart
+/// final cond = NDArray.fromList([true, false, true], [3], DType.boolean);
+/// final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+/// final y = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float64);
+/// final result = where(cond, x, y) as NDArray<double>;
+/// print(result.toList()); // [1.0, 20.0, 3.0]
+/// result.dispose();
+/// ```
 dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
   if (x == null && y == null) {
     if (out != null) {

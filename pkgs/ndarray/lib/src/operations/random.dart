@@ -87,6 +87,38 @@ NDArray<T> uniform<T extends num>(
   return arr;
 }
 
+/// Return random integers from the half-open interval `[low, high)`.
+///
+/// Generates uniformly distributed random integers of the specified integer [dtype]
+/// in the range `[low, high)`.
+///
+/// **Preconditions:**
+/// - [low] must be strictly less than [high].
+/// - [dtype] must be a supported integer type (`int64`, `int32`, `int16`, or `uint8`).
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype.
+///
+/// **Throws:**
+/// - [ArgumentError] if [low] is greater than or equal to [high].
+/// - [ArgumentError] if [dtype] is not a supported integer DType.
+/// - [ArgumentError] if [out] has mismatched shape or dtype.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ in both time and space, where $N$ is the total size of the generated array.
+/// - Leverages optimized native C FFI vector calls (`v_randint_int64`, `v_randint_int32` etc.) yielding excellent execution speeds.
+///
+/// **Memory Ownership & Recycle:**
+/// - If the optional [out] recycler buffer is provided, it is populated in-place, avoiding heap allocations.
+/// - Otherwise, allocates a new array on the unmanaged C heap. **The caller takes full ownership** of this memory page and **must explicitly call [dispose()]** to prevent native memory leaks, unless executing inside a managed [NDArray.scope()].
+///
+/// **NumPy Counterpart:**
+/// - Equates directly to NumPy's `np.random.randint`.
+///
+/// **Example:**
+/// ```dart
+/// final a = randint([3], low: 1, high: 10, dtype: DType.int32);
+/// print(a.toList()); // e.g., [3, 7, 1]
+/// a.dispose();
+/// ```
 NDArray<T> randint<T extends num>(
   List<int> shape, {
   required int low,
