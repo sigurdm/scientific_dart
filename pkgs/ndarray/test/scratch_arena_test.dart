@@ -1,6 +1,5 @@
 import 'dart:ffi' as ffi;
 import 'package:test/test.dart';
-import 'package:ndarray/ndarray.dart';
 import 'package:ndarray/src/scratch_arena.dart';
 
 void main() {
@@ -8,8 +7,12 @@ void main() {
     test('standard allocation and 8-byte alignment', () {
       final marker = ScratchArena.marker;
       try {
-        final ptr1 = ScratchArena.allocate<ffi.Int32>(5); // 5 bytes -> aligned to 8
-        final ptr2 = ScratchArena.allocate<ffi.Int32>(3); // 3 bytes -> aligned to 8
+        final ptr1 = ScratchArena.allocate<ffi.Int32>(
+          5,
+        ); // 5 bytes -> aligned to 8
+        final ptr2 = ScratchArena.allocate<ffi.Int32>(
+          3,
+        ); // 3 bytes -> aligned to 8
 
         // Verify alignment and non-overlapping addresses
         expect(ptr1.address % 8, equals(0));
@@ -47,12 +50,13 @@ void main() {
         // Allocate enough to spill beyond the 256KB base page capacity
         // Page 0 is 256KB (262,144 bytes). We allocate 200KB twice.
         final ptrSpill1 = ScratchArena.allocate<ffi.Uint8>(200 * 1024);
-        
+
         final markerSpill = ScratchArena.marker;
         final ptrSpill2 = ScratchArena.allocate<ffi.Uint8>(200 * 1024);
 
         // ptrSpill2 must have spilled over to Page 1!
         // We verify both ptr0 and ptrSpill1 remain 100% valid at stable addresses!
+        expect(ptr0.address, isNot(equals(ffi.nullptr.address)));
         expect(ptrSpill1.address, isNot(equals(ptrSpill2.address)));
         expect(ptrSpill2.address, isNot(equals(ffi.nullptr.address)));
 

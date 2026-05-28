@@ -58,5 +58,18 @@ void native_searchsorted_complex64(const float *array, int size, const float *va
 int custom_memcmp(const void *s1, const void *s2, size_t n);
 void native_zero_memory(void *ptr, size_t bytes);
 void custom_memcpy(void *dest, const void *src, size_t n);
+void native_collect_nonzero_coords(const unsigned char *cond, int total_size, const int *shape, const int *strides, int rank, int **out_coords);
+void native_to_bool_mask_double(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest);
+void native_to_bool_mask_float(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest);
+void native_to_bool_mask_int64(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest);
+void native_to_bool_mask_int32(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest);
+void native_to_bool_mask_complex128(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest);
+void native_to_bool_mask_complex64(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest);
+void native_to_bool_mask_uint8(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest);
+void native_argminmax_double(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_max, int is_contiguous);
+void native_argminmax_float(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_max, int is_contiguous);
+void native_argminmax_int64(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_max, int is_contiguous);
+void native_argminmax_int32(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_max, int is_contiguous);
+void native_argminmax_uint8(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_max, int is_contiguous);
 
 #endif // CUSTOM_SORTING_H

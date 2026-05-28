@@ -466,6 +466,297 @@ external void custom_memcpy(
   int n,
 );
 
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Pointer<ffi.Int>>,
+  )
+>()
+external void native_collect_nonzero_coords(
+  ffi.Pointer<ffi.Uint8> cond,
+  int total_size,
+  ffi.Pointer<ffi.Int> shape,
+  ffi.Pointer<ffi.Int> strides,
+  int rank,
+  ffi.Pointer<ffi.Pointer<ffi.Int>> out_coords,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void native_to_bool_mask_double(
+  ffi.Pointer<ffi.Double> src,
+  int size,
+  ffi.Pointer<ffi.Int> shape,
+  ffi.Pointer<ffi.Int> strides,
+  int rank,
+  int is_contiguous,
+  ffi.Pointer<ffi.Uint8> dest,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void native_to_bool_mask_float(
+  ffi.Pointer<ffi.Float> src,
+  int size,
+  ffi.Pointer<ffi.Int> shape,
+  ffi.Pointer<ffi.Int> strides,
+  int rank,
+  int is_contiguous,
+  ffi.Pointer<ffi.Uint8> dest,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.LongLong>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void native_to_bool_mask_int64(
+  ffi.Pointer<ffi.LongLong> src,
+  int size,
+  ffi.Pointer<ffi.Int> shape,
+  ffi.Pointer<ffi.Int> strides,
+  int rank,
+  int is_contiguous,
+  ffi.Pointer<ffi.Uint8> dest,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void native_to_bool_mask_int32(
+  ffi.Pointer<ffi.Int> src,
+  int size,
+  ffi.Pointer<ffi.Int> shape,
+  ffi.Pointer<ffi.Int> strides,
+  int rank,
+  int is_contiguous,
+  ffi.Pointer<ffi.Uint8> dest,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void native_to_bool_mask_complex128(
+  ffi.Pointer<ffi.Double> src,
+  int size,
+  ffi.Pointer<ffi.Int> shape,
+  ffi.Pointer<ffi.Int> strides,
+  int rank,
+  int is_contiguous,
+  ffi.Pointer<ffi.Uint8> dest,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void native_to_bool_mask_complex64(
+  ffi.Pointer<ffi.Float> src,
+  int size,
+  ffi.Pointer<ffi.Int> shape,
+  ffi.Pointer<ffi.Int> strides,
+  int rank,
+  int is_contiguous,
+  ffi.Pointer<ffi.Uint8> dest,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void native_to_bool_mask_uint8(
+  ffi.Pointer<ffi.Uint8> src,
+  int size,
+  ffi.Pointer<ffi.Int> shape,
+  ffi.Pointer<ffi.Int> strides,
+  int rank,
+  int is_contiguous,
+  ffi.Pointer<ffi.Uint8> dest,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void native_argminmax_double(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int is_max,
+  int is_contiguous,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void native_argminmax_float(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int is_max,
+  int is_contiguous,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void native_argminmax_int64(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int is_max,
+  int is_contiguous,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void native_argminmax_int32(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int is_max,
+  int is_contiguous,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void native_argminmax_uint8(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int is_max,
+  int is_contiguous,
+);
+
 /// ============================================================================
 /// SECTION 2: FLAT CONTIGUOUS VECTOR MATHEMATICS (ufuncs)
 /// ============================================================================

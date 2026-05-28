@@ -1076,37 +1076,137 @@ List<NDArray<int>> nonzero(NDArray a) {
     (_) => NDArray<int>.create([count], DType.int32, zeroInit: true),
   );
 
-  if (count == 0) {
+  if (count == 0 || rank == 0) {
     return results;
   }
 
-  final shape = a.shape;
-  final strides = a.strides;
-  final totalSize = shape.isEmpty ? 1 : shape.reduce((x, y) => x * y);
-
-  final coord = List<int>.filled(rank, 0);
-  int offset = 0;
-  int writeIdx = 0;
-
-  for (int el = 0; el < totalSize; el++) {
-    final val = a.data[offset];
-    if (isTrueHelper(val)) {
-      for (var d = 0; d < rank; d++) {
-        results[d].data[writeIdx] = coord[d];
+  // Convert input to a contiguous boolean mask using type-specialized native C intrinsics!
+  final cond = NDArray.scope(() {
+    final res = NDArray<bool>.create(a.shape, DType.boolean);
+    final marker = ScratchArena.marker;
+    try {
+      final cShape = ScratchArena.allocate<ffi.Int>(
+        rank * ffi.sizeOf<ffi.Int>(),
+      );
+      final cStrides = ScratchArena.allocate<ffi.Int>(
+        rank * ffi.sizeOf<ffi.Int>(),
+      );
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStrides[i] = a.strides[i];
       }
-      writeIdx++;
+
+      final isContiguousVal = a.isContiguous ? 1 : 0;
+
+      switch (a.dtype) {
+        case DType.float64:
+          native_to_bool_mask_double(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            res.pointer.cast(),
+          );
+        case DType.float32:
+          native_to_bool_mask_float(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            res.pointer.cast(),
+          );
+        case DType.int64:
+          native_to_bool_mask_int64(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            res.pointer.cast(),
+          );
+        case DType.int32:
+          native_to_bool_mask_int32(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            res.pointer.cast(),
+          );
+        case DType.complex128:
+          native_to_bool_mask_complex128(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            res.pointer.cast(),
+          );
+        case DType.complex64:
+          native_to_bool_mask_complex64(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            res.pointer.cast(),
+          );
+        case DType.boolean:
+        case DType.uint8:
+        case DType.int16:
+          native_to_bool_mask_uint8(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            res.pointer.cast(),
+          );
+      }
+    } finally {
+      ScratchArena.reset(marker);
+    }
+    return res.detachToParentScope();
+  });
+
+  final marker = ScratchArena.marker;
+  try {
+    final cShape = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
+    final cStrides = ScratchArena.allocate<ffi.Int>(
+      rank * ffi.sizeOf<ffi.Int>(),
+    );
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = cond.shape[i];
+      cStrides[i] = cond.strides[i];
     }
 
-    // Advance odometer multidimensional coordinate odometer walk!
-    for (int d = rank - 1; d >= 0; d--) {
-      coord[d]++;
-      if (coord[d] < shape[d]) {
-        offset += strides[d];
-        break;
-      }
-      coord[d] = 0;
-      offset -= (shape[d] - 1) * strides[d];
+    final outCoords = ScratchArena.allocate<ffi.Pointer<ffi.Int>>(
+      rank * ffi.sizeOf<ffi.Pointer<ffi.Int>>(),
+    );
+    for (var d = 0; d < rank; d++) {
+      outCoords[d] = results[d].pointer.cast<ffi.Int>();
     }
+
+    native_collect_nonzero_coords(
+      cond.pointer.cast(),
+      cond.size,
+      cShape,
+      cStrides,
+      rank,
+      outCoords,
+    );
+  } finally {
+    ScratchArena.reset(marker);
+    cond.dispose();
   }
 
   return results;
@@ -1157,58 +1257,141 @@ dynamic count_nonzero<T>(NDArray<T> a, {int? axis}) {
   return result;
 }
 
-/// Returns the indices of the maximum values along an [axis].
-///
-/// If [axis] is null, flattens the array and returns a flat scalar integer index.
-///
-/// **Example:**
-/// {@example /example/sorting_searching_example.dart lang=dart}
-dynamic argmax<T>(NDArray<T> a, {int? axis}) {
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    throw UnsupportedError('Complex numbers are not supported for argmax');
+void _dispatchArgMinMaxFFI(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int isMax,
+  int isContig,
+  DType dtype,
+) {
+  switch (dtype) {
+    case DType.float64:
+      native_argminmax_double(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isMax,
+        isContig,
+      );
+    case DType.float32:
+      native_argminmax_float(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isMax,
+        isContig,
+      );
+    case DType.int64:
+      native_argminmax_int64(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isMax,
+        isContig,
+      );
+    case DType.int32:
+      native_argminmax_int32(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isMax,
+        isContig,
+      );
+    case DType.boolean:
+    case DType.uint8:
+    case DType.int16:
+      native_argminmax_uint8(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isMax,
+        isContig,
+      );
+    default:
+      throw UnsupportedError('Unsupported data type for argmin/argmax: $dtype');
   }
+}
 
-  if (axis == null) {
-    NDArray<T> src = a;
-    if (!a.isContiguous) {
-      src = NDArray<T>.fromList(a.toList(), a.shape, a.dtype);
-    }
-
-    var maxIdx = 0;
-    if (src.dtype == DType.int32 || src.dtype == DType.int64) {
-      final dataList = src.data as List<int>;
-      var maxVal = dataList[0];
-      for (var i = 1; i < dataList.length; i++) {
-        if (dataList[i] > maxVal) {
-          maxVal = dataList[i];
-          maxIdx = i;
-        }
-      }
-    } else if (src.dtype == DType.boolean) {
-      final dataList = src.data as List<bool>;
-      var maxVal = dataList[0] ? 1 : 0;
-      for (var i = 1; i < dataList.length; i++) {
-        final val = dataList[i] ? 1 : 0;
-        if (val > maxVal) {
-          maxVal = val;
-          maxIdx = i;
-        }
-      }
-    } else {
-      final dataList = src.data as List<double>;
-      var maxVal = dataList[0];
-      for (var i = 1; i < dataList.length; i++) {
-        if (dataList[i] > maxVal) {
-          maxVal = dataList[i];
-          maxIdx = i;
-        }
-      }
-    }
-    if (src != a) src.dispose();
-    return maxIdx;
+dynamic _argminmaxFFI<T>(NDArray<T> a, int? axis, bool isMax) {
+  if (a.isDisposed) {
+    throw StateError('Cannot calculate reduction on a disposed array.');
+  }
+  if (a.size == 0) {
+    throw ArgumentError('Cannot compute reduction on an empty array.');
+  }
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    throw UnsupportedError('Complex numbers are not supported.');
   }
 
   final rank = a.shape.length;
+  final isMaxVal = isMax ? 1 : 0;
+
+  if (axis == null) {
+    // Global flat reduction
+    final isContig = a.isContiguous;
+    final NDArray<T> src;
+    if (!isContig) {
+      src = a.copy();
+    } else {
+      src = a;
+    }
+
+    final marker = ScratchArena.marker;
+    final dest = NDArray<int>.create([1], DType.int32);
+    try {
+      final cShape = ScratchArena.allocate<ffi.Int>(ffi.sizeOf<ffi.Int>());
+      cShape[0] = src.size;
+      final cStrides = ScratchArena.allocate<ffi.Int>(ffi.sizeOf<ffi.Int>());
+      cStrides[0] = 1;
+
+      _dispatchArgMinMaxFFI(
+        src.pointer,
+        cStrides,
+        dest.pointer.cast<ffi.Int>(),
+        cStrides, // dummy contiguous dest strides
+        cShape,
+        1, // dummy rank
+        -1, // global reduction flag
+        isMaxVal,
+        1, // isContig flat
+        src.dtype,
+      );
+    } finally {
+      ScratchArena.reset(marker);
+      if (!isContig) src.dispose();
+    }
+
+    final finalIndex = dest.data[0];
+    dest.dispose();
+    return finalIndex;
+  }
+
+  // Axis reduction
   final targetAxis = axis < 0 ? rank + axis : axis;
   if (targetAxis < 0 || targetAxis >= rank) {
     throw RangeError.range(targetAxis, 0, rank - 1, 'axis');
@@ -1216,17 +1399,54 @@ dynamic argmax<T>(NDArray<T> a, {int? axis}) {
 
   final targetShape = List<int>.from(a.shape)..removeAt(targetAxis);
   final result = NDArray<int>.create(targetShape, DType.int32);
-  result.data.fillRange(0, result.data.length, 0);
 
-  argMinMaxRecursive<T>(
-    a,
-    result,
-    List<int>.filled(rank, 0),
-    targetAxis,
-    0,
-    true,
-  );
+  final marker = ScratchArena.marker;
+  try {
+    final cShape = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
+    final cStridesSrc = ScratchArena.allocate<ffi.Int>(
+      rank * ffi.sizeOf<ffi.Int>(),
+    );
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesSrc[i] = a.strides[i];
+    }
+
+    final rankDest = targetShape.length;
+    final cStridesDest = ScratchArena.allocate<ffi.Int>(
+      (rankDest > 0 ? rankDest : 1) * ffi.sizeOf<ffi.Int>(),
+    );
+    for (var i = 0; i < rankDest; i++) {
+      cStridesDest[i] = result.strides[i];
+    }
+
+    _dispatchArgMinMaxFFI(
+      a.pointer,
+      cStridesSrc,
+      result.pointer.cast<ffi.Int>(),
+      cStridesDest,
+      cShape,
+      rank,
+      targetAxis,
+      isMaxVal,
+      0, // axis-based strided reduction
+      a.dtype,
+    );
+  } finally {
+    ScratchArena.reset(marker);
+  }
+
+  result.detachToParentScope();
   return result;
+}
+
+/// Returns the indices of the maximum values along an [axis].
+///
+/// If [axis] is null, flattens the array and returns a flat scalar integer index.
+///
+/// **Example:**
+/// {@example /example/sorting_searching_example.dart lang=dart}
+dynamic argmax<T>(NDArray<T> a, {int? axis}) {
+  return _argminmaxFFI<T>(a, axis, true);
 }
 
 /// Returns the indices of the minimum values along an [axis].
@@ -1236,67 +1456,5 @@ dynamic argmax<T>(NDArray<T> a, {int? axis}) {
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
 dynamic argmin<T>(NDArray<T> a, {int? axis}) {
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    throw UnsupportedError('Complex numbers are not supported for argmin');
-  }
-
-  if (axis == null) {
-    NDArray<T> src = a;
-    if (!a.isContiguous) {
-      src = NDArray<T>.fromList(a.toList(), a.shape, a.dtype);
-    }
-
-    var minIdx = 0;
-    if (src.dtype == DType.int32 || src.dtype == DType.int64) {
-      final dataList = src.data as List<int>;
-      var minVal = dataList[0];
-      for (var i = 1; i < dataList.length; i++) {
-        if (dataList[i] < minVal) {
-          minVal = dataList[i];
-          minIdx = i;
-        }
-      }
-    } else if (src.dtype == DType.boolean) {
-      final dataList = src.data as List<bool>;
-      var minVal = dataList[0] ? 1 : 0;
-      for (var i = 1; i < dataList.length; i++) {
-        final val = dataList[i] ? 1 : 0;
-        if (val < minVal) {
-          minVal = val;
-          minIdx = i;
-        }
-      }
-    } else {
-      final dataList = src.data as List<double>;
-      var minVal = dataList[0];
-      for (var i = 1; i < dataList.length; i++) {
-        if (dataList[i] < minVal) {
-          minVal = dataList[i];
-          minIdx = i;
-        }
-      }
-    }
-    if (src != a) src.dispose();
-    return minIdx;
-  }
-
-  final rank = a.shape.length;
-  final targetAxis = axis < 0 ? rank + axis : axis;
-  if (targetAxis < 0 || targetAxis >= rank) {
-    throw RangeError.range(targetAxis, 0, rank - 1, 'axis');
-  }
-
-  final targetShape = List<int>.from(a.shape)..removeAt(targetAxis);
-  final result = NDArray<int>.create(targetShape, DType.int32);
-  result.data.fillRange(0, result.data.length, 0);
-
-  argMinMaxRecursive<T>(
-    a,
-    result,
-    List<int>.filled(rank, 0),
-    targetAxis,
-    0,
-    false,
-  );
-  return result;
+  return _argminmaxFFI<T>(a, axis, false);
 }
