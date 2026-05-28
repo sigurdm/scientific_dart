@@ -8,8 +8,8 @@ final class ScratchArena {
   ScratchArena._();
 
   static ffi.Pointer<ffi.Uint8>? _arena;
-  static int _capacity =
-      4096; // 4KB page is plenty for rank pointers, temp arrays etc.
+  static const int _capacity =
+      2 * 1024 * 1024; // Generous 2MB persistent memory page
   static int _offset = 0;
 
   static ffi.Pointer<ffi.Int>? _stridedBuffer;
@@ -30,20 +30,11 @@ final class ScratchArena {
     final alignedBytes = (bytes + 7) & ~7;
 
     if (_offset + alignedBytes > _capacity) {
-      final newCapacity = _capacity * 2 + alignedBytes;
-      final newArena = malloc<ffi.Uint8>(newCapacity);
-      if (_offset > 0) {
-        newArena
-            .asTypedList(newCapacity)
-            .setRange(
-              0,
-              _offset,
-              _arena!.asTypedList(_capacity).sublist(0, _offset),
-            );
-      }
-      malloc.free(_arena!);
-      _arena = newArena;
-      _capacity = newCapacity;
+      throw StateError(
+        'ScratchArena capacity ($_capacity bytes) exceeded. '
+        'Requested allocation size: $bytes bytes (aligned: $alignedBytes bytes). '
+        'Current stack offset: $_offset bytes.',
+      );
     }
 
     final ptr = ffi.Pointer<T>.fromAddress(_arena!.address + _offset);
