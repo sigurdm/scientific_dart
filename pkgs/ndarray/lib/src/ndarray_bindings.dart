@@ -573,6 +573,51 @@ external double r_sum_double(ffi.Pointer<ffi.Double> src, int size);
 @ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
 external double r_prod_double(ffi.Pointer<ffi.Double> src, int size);
 
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
+external double r_mean_double(ffi.Pointer<ffi.Double> src, int size);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_sum_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_mean_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<cpx_t>,
@@ -734,6 +779,51 @@ external double r_sum_float(ffi.Pointer<ffi.Float> src, int size);
 
 @ffi.Native<ffi.Float Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
 external double r_prod_float(ffi.Pointer<ffi.Float> src, int size);
+
+@ffi.Native<ffi.Float Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
+external double r_mean_float(ffi.Pointer<ffi.Float> src, int size);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_sum_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Float> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_mean_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Float> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
 
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
@@ -15460,50 +15550,516 @@ external void s_gradient_complex64_all(
   int edge_order,
 );
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Double, ffi.Double, ffi.Int)>()
-external void v_linspace_double(ffi.Pointer<ffi.Double> res, double start, double step, int size);
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Double, ffi.Double, ffi.Int)
+>()
+external void v_linspace_double(
+  ffi.Pointer<ffi.Double> res,
+  double start,
+  double step,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Float, ffi.Float, ffi.Int)>()
-external void v_linspace_float(ffi.Pointer<ffi.Float> res, double start, double step, int size);
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Float, ffi.Float, ffi.Int)
+>()
+external void v_linspace_float(
+  ffi.Pointer<ffi.Float> res,
+  double start,
+  double step,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<cpx_t>, ffi.Double, ffi.Double, ffi.Double, ffi.Double, ffi.Int)>()
-external void v_linspace_complex128(ffi.Pointer<cpx_t> res, double startR, double startI, double stepR, double stepI, int size);
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+    ffi.Int,
+  )
+>()
+external void v_linspace_complex128(
+  ffi.Pointer<cpx_t> res,
+  double startR,
+  double startI,
+  double stepR,
+  double stepI,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<cpx_f_t>, ffi.Float, ffi.Float, ffi.Float, ffi.Float, ffi.Int)>()
-external void v_linspace_complex64(ffi.Pointer<cpx_f_t> res, double startR, double startI, double stepR, double stepI, int size);
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Float,
+    ffi.Float,
+    ffi.Float,
+    ffi.Float,
+    ffi.Int,
+  )
+>()
+external void v_linspace_complex64(
+  ffi.Pointer<cpx_f_t> res,
+  double startR,
+  double startI,
+  double stepR,
+  double stepI,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int64>, ffi.Double, ffi.Double, ffi.Int)>()
-external void v_linspace_int64(ffi.Pointer<ffi.Int64> res, double start, double step, int size);
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Int64>, ffi.Double, ffi.Double, ffi.Int)
+>()
+external void v_linspace_int64(
+  ffi.Pointer<ffi.Int64> res,
+  double start,
+  double step,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int32>, ffi.Double, ffi.Double, ffi.Int)>()
-external void v_linspace_int32(ffi.Pointer<ffi.Int32> res, double start, double step, int size);
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Int32>, ffi.Double, ffi.Double, ffi.Int)
+>()
+external void v_linspace_int32(
+  ffi.Pointer<ffi.Int32> res,
+  double start,
+  double step,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int16>, ffi.Double, ffi.Double, ffi.Int)>()
-external void v_linspace_int16(ffi.Pointer<ffi.Int16> res, double start, double step, int size);
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Int16>, ffi.Double, ffi.Double, ffi.Int)
+>()
+external void v_linspace_int16(
+  ffi.Pointer<ffi.Int16> res,
+  double start,
+  double step,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Uint8>, ffi.Double, ffi.Double, ffi.Int)>()
-external void v_linspace_uint8(ffi.Pointer<ffi.Uint8> res, double start, double step, int size);
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Uint8>, ffi.Double, ffi.Double, ffi.Int)
+>()
+external void v_linspace_uint8(
+  ffi.Pointer<ffi.Uint8> res,
+  double start,
+  double step,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Double, ffi.Double, ffi.Double, ffi.Int)>()
-external void v_logspace_double(ffi.Pointer<ffi.Double> res, double start, double step, double base, int size);
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+    ffi.Int,
+  )
+>()
+external void v_logspace_double(
+  ffi.Pointer<ffi.Double> res,
+  double start,
+  double step,
+  double base,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Float, ffi.Float, ffi.Float, ffi.Int)>()
-external void v_logspace_float(ffi.Pointer<ffi.Float> res, double start, double step, double base, int size);
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Float,
+    ffi.Float,
+    ffi.Float,
+    ffi.Int,
+  )
+>()
+external void v_logspace_float(
+  ffi.Pointer<ffi.Float> res,
+  double start,
+  double step,
+  double base,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<cpx_t>, ffi.Double, ffi.Double, ffi.Double, ffi.Double, ffi.Double, ffi.Double, ffi.Int)>()
-external void v_logspace_complex128(ffi.Pointer<cpx_t> res, double startR, double startI, double stepR, double stepI, double baseR, double baseI, int size);
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+    ffi.Int,
+  )
+>()
+external void v_logspace_complex128(
+  ffi.Pointer<cpx_t> res,
+  double startR,
+  double startI,
+  double stepR,
+  double stepI,
+  double baseR,
+  double baseI,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<cpx_f_t>, ffi.Float, ffi.Float, ffi.Float, ffi.Float, ffi.Float, ffi.Float, ffi.Int)>()
-external void v_logspace_complex64(ffi.Pointer<cpx_f_t> res, double startR, double startI, double stepR, double stepI, double baseR, double baseI, int size);
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Float,
+    ffi.Float,
+    ffi.Float,
+    ffi.Float,
+    ffi.Float,
+    ffi.Float,
+    ffi.Int,
+  )
+>()
+external void v_logspace_complex64(
+  ffi.Pointer<cpx_f_t> res,
+  double startR,
+  double startI,
+  double stepR,
+  double stepI,
+  double baseR,
+  double baseI,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Double, ffi.Double, ffi.Double, ffi.Int)>()
-external void v_geomspace_double(ffi.Pointer<ffi.Double> res, double logStart, double step, double sign, int size);
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+    ffi.Int,
+  )
+>()
+external void v_geomspace_double(
+  ffi.Pointer<ffi.Double> res,
+  double logStart,
+  double step,
+  double sign,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Double, ffi.Double, ffi.Double, ffi.Int)>()
-external void v_geomspace_float(ffi.Pointer<ffi.Float> res, double logStart, double step, double sign, int size);
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+    ffi.Int,
+  )
+>()
+external void v_geomspace_float(
+  ffi.Pointer<ffi.Float> res,
+  double logStart,
+  double step,
+  double sign,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<cpx_t>, ffi.Double, ffi.Double, ffi.Double, ffi.Double, ffi.Int)>()
-external void v_geomspace_complex128(ffi.Pointer<cpx_t> res, double logStartR, double logStartI, double stepR, double stepI, int size);
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+    ffi.Int,
+  )
+>()
+external void v_geomspace_complex128(
+  ffi.Pointer<cpx_t> res,
+  double logStartR,
+  double logStartI,
+  double stepR,
+  double stepI,
+  int size,
+);
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<cpx_f_t>, ffi.Float, ffi.Float, ffi.Float, ffi.Float, ffi.Int)>()
-external void v_geomspace_complex64(ffi.Pointer<cpx_f_t> res, double logStartR, double logStartI, double stepR, double stepI, int size);
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Float,
+    ffi.Float,
+    ffi.Float,
+    ffi.Float,
+    ffi.Int,
+  )
+>()
+external void v_geomspace_complex64(
+  ffi.Pointer<cpx_f_t> res,
+  double logStartR,
+  double logStartI,
+  double stepR,
+  double stepI,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_linspace_grid_double(
+  ffi.Pointer<ffi.Double> start,
+  ffi.Pointer<ffi.Int> stridesStart,
+  ffi.Pointer<ffi.Double> stop,
+  ffi.Pointer<ffi.Int> stridesStop,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Double> step,
+  ffi.Pointer<ffi.Int> stridesStep,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int numSamples,
+  int endpoint,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_linspace_grid_float(
+  ffi.Pointer<ffi.Float> start,
+  ffi.Pointer<ffi.Int> stridesStart,
+  ffi.Pointer<ffi.Float> stop,
+  ffi.Pointer<ffi.Int> stridesStop,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Float> step,
+  ffi.Pointer<ffi.Int> stridesStep,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int numSamples,
+  int endpoint,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_linspace_grid_complex128(
+  ffi.Pointer<cpx_t> start,
+  ffi.Pointer<ffi.Int> stridesStart,
+  ffi.Pointer<cpx_t> stop,
+  ffi.Pointer<ffi.Int> stridesStop,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<cpx_t> step,
+  ffi.Pointer<ffi.Int> stridesStep,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int numSamples,
+  int endpoint,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_linspace_grid_complex64(
+  ffi.Pointer<cpx_f_t> start,
+  ffi.Pointer<ffi.Int> stridesStart,
+  ffi.Pointer<cpx_f_t> stop,
+  ffi.Pointer<ffi.Int> stridesStop,
+  ffi.Pointer<cpx_f_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<cpx_f_t> step,
+  ffi.Pointer<ffi.Int> stridesStep,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int numSamples,
+  int endpoint,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_linspace_grid_int64(
+  ffi.Pointer<ffi.Int64> start,
+  ffi.Pointer<ffi.Int> stridesStart,
+  ffi.Pointer<ffi.Int64> stop,
+  ffi.Pointer<ffi.Int> stridesStop,
+  ffi.Pointer<ffi.Int64> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int64> step,
+  ffi.Pointer<ffi.Int> stridesStep,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int numSamples,
+  int endpoint,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_linspace_grid_int32(
+  ffi.Pointer<ffi.Int32> start,
+  ffi.Pointer<ffi.Int> stridesStart,
+  ffi.Pointer<ffi.Int32> stop,
+  ffi.Pointer<ffi.Int> stridesStop,
+  ffi.Pointer<ffi.Int32> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int32> step,
+  ffi.Pointer<ffi.Int> stridesStep,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int numSamples,
+  int endpoint,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_linspace_grid_int16(
+  ffi.Pointer<ffi.Int16> start,
+  ffi.Pointer<ffi.Int> stridesStart,
+  ffi.Pointer<ffi.Int16> stop,
+  ffi.Pointer<ffi.Int> stridesStop,
+  ffi.Pointer<ffi.Int16> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int16> step,
+  ffi.Pointer<ffi.Int> stridesStep,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int numSamples,
+  int endpoint,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_linspace_grid_uint8(
+  ffi.Pointer<ffi.Uint8> start,
+  ffi.Pointer<ffi.Int> stridesStart,
+  ffi.Pointer<ffi.Uint8> stop,
+  ffi.Pointer<ffi.Int> stridesStop,
+  ffi.Pointer<ffi.Uint8> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Uint8> step,
+  ffi.Pointer<ffi.Int> stridesStep,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int numSamples,
+  int endpoint,
+);

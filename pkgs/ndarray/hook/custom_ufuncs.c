@@ -206,6 +206,93 @@ double r_prod_double(const double *src, int size) {
     return acc;
 }
 
+double r_mean_double(const double *src, int size) {
+    if (src == NULL || size <= 0) return 0.0;
+    return r_sum_double(src, size) / (double)size;
+}
+
+void s_sum_double(const double *src, const int *stridesSrc,
+                  double *dest, const int *stridesDest,
+                  const int *shape, int rank, int axis) {
+    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int size_axis = shape[axis];
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    
+    for (int o = 0; o < outer_size; o++) {
+        int offsetRes = 0;
+        int offsetSrc = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesDest[targetD];
+                }
+            }
+        }
+        
+        double sum = 0.0;
+        int stride_axis = stridesSrc[axis];
+        for (int i = 0; i < size_axis; i++) {
+            sum += src[offsetSrc + i * stride_axis];
+        }
+        dest[offsetRes] = sum;
+        
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_mean_double(const double *src, const int *stridesSrc,
+                   double *dest, const int *stridesDest,
+                   const int *shape, int rank, int axis) {
+    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int size_axis = shape[axis];
+    if (size_axis <= 0) return;
+    
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    
+    for (int o = 0; o < outer_size; o++) {
+        int offsetRes = 0;
+        int offsetSrc = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesDest[targetD];
+                }
+            }
+        }
+        
+        double sum = 0.0;
+        int stride_axis = stridesSrc[axis];
+        for (int i = 0; i < size_axis; i++) {
+            sum += src[offsetSrc + i * stride_axis];
+        }
+        dest[offsetRes] = sum / (double)size_axis;
+        
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
 // ============================================================================
 // 2. DOUBLE PRECISION (FLOAT64) GENERIC ND STRIDED BROADCASTING KERNELS
 // ============================================================================
@@ -808,6 +895,93 @@ float r_prod_float(const float *src, int size) {
         acc *= src[i];
     }
     return acc;
+}
+
+float r_mean_float(const float *src, int size) {
+    if (src == NULL || size <= 0) return 0.0f;
+    return r_sum_float(src, size) / (float)size;
+}
+
+void s_sum_float(const float *src, const int *stridesSrc,
+                 float *dest, const int *stridesDest,
+                 const int *shape, int rank, int axis) {
+    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int size_axis = shape[axis];
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    
+    for (int o = 0; o < outer_size; o++) {
+        int offsetRes = 0;
+        int offsetSrc = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesDest[targetD];
+                }
+            }
+        }
+        
+        float sum = 0.0f;
+        int stride_axis = stridesSrc[axis];
+        for (int i = 0; i < size_axis; i++) {
+            sum += src[offsetSrc + i * stride_axis];
+        }
+        dest[offsetRes] = sum;
+        
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_mean_float(const float *src, const int *stridesSrc,
+                  float *dest, const int *stridesDest,
+                  const int *shape, int rank, int axis) {
+    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int size_axis = shape[axis];
+    if (size_axis <= 0) return;
+    
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    
+    for (int o = 0; o < outer_size; o++) {
+        int offsetRes = 0;
+        int offsetSrc = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesDest[targetD];
+                }
+            }
+        }
+        
+        float sum = 0.0f;
+        int stride_axis = stridesSrc[axis];
+        for (int i = 0; i < size_axis; i++) {
+            sum += src[offsetSrc + i * stride_axis];
+        }
+        dest[offsetRes] = sum / (float)size_axis;
+        
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
 }
 
 // ============================================================================
@@ -5213,3 +5387,105 @@ void s_gradient_complex64_all(const cpx_f_t *src, const int *stridesSrc,
         }
     }
 }
+
+/* ============================================================================
+ * SECTION 10: linspace GRID INTRINSIC KERNELS
+ * ============================================================================
+ */
+
+#define DEFINE_LINSPACE_GRID(name, type, val_expr, step_expr) \
+void name(const type *start, const int *stridesStart, \
+          const type *stop, const int *stridesStop, \
+          type *res, const int *stridesRes, \
+          type *step, const int *stridesStep, \
+          const int *shape, int rank, int axis, int numSamples, int endpoint) { \
+    if (start == NULL || stop == NULL || res == NULL || rank <= 0 || rank > 8) return; \
+    int total_elements = 1; \
+    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
+    double div = endpoint ? (double)(numSamples - 1) : (double)numSamples; \
+    int coord[8] = {0}; \
+    int offsetStart = 0, offsetStop = 0, offsetRes = 0, offsetStep = 0; \
+    for (int el = 0; el < total_elements; el++) { \
+        int i = coord[axis]; \
+        double t = (div <= 0.0) ? 0.0 : (double)i / div; \
+        val_expr; \
+        if (step != NULL && coord[axis] == 0) { \
+            step_expr; \
+        } \
+        for (int d = rank - 1; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shape[d]) { \
+                offsetStart += stridesStart[d]; \
+                offsetStop += stridesStop[d]; \
+                offsetRes += stridesRes[d]; \
+                if (step != NULL) offsetStep += stridesStep[d]; \
+                break; \
+            } \
+            coord[d] = 0; \
+            offsetStart -= (shape[d] - 1) * stridesStart[d]; \
+            offsetStop -= (shape[d] - 1) * stridesStop[d]; \
+            offsetRes -= (shape[d] - 1) * stridesRes[d]; \
+            if (step != NULL) offsetStep -= (shape[d] - 1) * stridesStep[d]; \
+        } \
+    } \
+}
+
+DEFINE_LINSPACE_GRID(
+    s_linspace_grid_double, double,
+    { res[offsetRes] = start[offsetStart] + (stop[offsetStop] - start[offsetStart]) * t; },
+    { step[offsetStep] = (div <= 0.0) ? 0.0 : (stop[offsetStop] - start[offsetStart]) / div; }
+)
+
+DEFINE_LINSPACE_GRID(
+    s_linspace_grid_float, float,
+    { res[offsetRes] = start[offsetStart] + (stop[offsetStop] - start[offsetStart]) * (float)t; },
+    { step[offsetStep] = (div <= 0.0) ? 0.0f : (stop[offsetStop] - start[offsetStart]) / (float)div; }
+)
+
+DEFINE_LINSPACE_GRID(
+    s_linspace_grid_complex128, cpx_t,
+    {
+        res[offsetRes].r = start[offsetStart].r + (stop[offsetStop].r - start[offsetStart].r) * t;
+        res[offsetRes].i = start[offsetStart].i + (stop[offsetStop].i - start[offsetStart].i) * t;
+    },
+    {
+        step[offsetStep].r = (div <= 0.0) ? 0.0 : (stop[offsetStop].r - start[offsetStart].r) / div;
+        step[offsetStep].i = (div <= 0.0) ? 0.0 : (stop[offsetStop].i - start[offsetStart].i) / div;
+    }
+)
+
+DEFINE_LINSPACE_GRID(
+    s_linspace_grid_complex64, cpx_f_t,
+    {
+        res[offsetRes].r = start[offsetStart].r + (stop[offsetStop].r - start[offsetStart].r) * (float)t;
+        res[offsetRes].i = start[offsetStart].i + (stop[offsetStop].i - start[offsetStart].i) * (float)t;
+    },
+    {
+        step[offsetStep].r = (div <= 0.0) ? 0.0f : (stop[offsetStop].r - start[offsetStart].r) / (float)div;
+        step[offsetStep].i = (div <= 0.0) ? 0.0f : (stop[offsetStop].i - start[offsetStart].i) / (float)div;
+    }
+)
+
+DEFINE_LINSPACE_GRID(
+    s_linspace_grid_int64, int64_t,
+    { res[offsetRes] = (int64_t)((double)start[offsetStart] + ((double)stop[offsetStop] - (double)start[offsetStart]) * t); },
+    { step[offsetStep] = (div <= 0.0) ? 0 : (int64_t)(((double)stop[offsetStop] - (double)start[offsetStart]) / div); }
+)
+
+DEFINE_LINSPACE_GRID(
+    s_linspace_grid_int32, int32_t,
+    { res[offsetRes] = (int32_t)((double)start[offsetStart] + ((double)stop[offsetStop] - (double)start[offsetStart]) * t); },
+    { step[offsetStep] = (div <= 0.0) ? 0 : (int32_t)(((double)stop[offsetStop] - (double)start[offsetStart]) / div); }
+)
+
+DEFINE_LINSPACE_GRID(
+    s_linspace_grid_int16, int16_t,
+    { res[offsetRes] = (int16_t)((double)start[offsetStart] + ((double)stop[offsetStop] - (double)start[offsetStart]) * t); },
+    { step[offsetStep] = (div <= 0.0) ? 0 : (int16_t)(((double)stop[offsetStop] - (double)start[offsetStart]) / div); }
+)
+
+DEFINE_LINSPACE_GRID(
+    s_linspace_grid_uint8, uint8_t,
+    { res[offsetRes] = (uint8_t)((double)start[offsetStart] + ((double)stop[offsetStop] - (double)start[offsetStart]) * t); },
+    { step[offsetStep] = (div <= 0.0) ? 0 : (uint8_t)(((double)stop[offsetStop] - (double)start[offsetStart]) / div); }
+)

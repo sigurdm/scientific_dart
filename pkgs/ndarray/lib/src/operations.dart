@@ -333,8 +333,8 @@ NDArray<T> linspace<T>(
 ///   - [DType.int64] if [T] is [int].
 ///   - [DType.float64] otherwise.
 NDArray<T> linspaceGrid<T>(
-  NDArray start,
-  NDArray stop,
+  NDArray<T> start,
+  NDArray<T> stop,
   int numSamples, {
   bool endpoint = true,
   int axis = 0,
@@ -373,8 +373,8 @@ NDArray<T> linspaceGrid<T>(
 ///   - [DType.int64] if [T] is [int].
 ///   - [DType.float64] otherwise.
 (NDArray<T>, NDArray<T>) linspaceGridWithStep<T>(
-  NDArray start,
-  NDArray stop,
+  NDArray<T> start,
+  NDArray<T> stop,
   int numSamples, {
   bool endpoint = true,
   int axis = 0,
@@ -391,8 +391,8 @@ NDArray<T> linspaceGrid<T>(
 }
 
 (NDArray<T>, NDArray<T>) _linspaceGridInternal<T>(
-  NDArray start,
-  NDArray stop,
+  NDArray<T> start,
+  NDArray<T> stop,
   int numSamples, {
   bool endpoint = true,
   int axis = 0,
@@ -417,33 +417,198 @@ NDArray<T> linspaceGrid<T>(
     final resultShape = List<int>.from(commonShape);
     resultShape.insert(actualAxis, numSamples);
 
-    final boundsShape = List<int>.from(commonShape);
-    boundsShape.insert(actualAxis, 1);
+    final startBroadcasted = broadcastTo(startArr, commonShape);
+    final stopBroadcasted = broadcastTo(stopArr, commonShape);
 
-    final startReshaped = startArr.reshape(boundsShape);
-    final stopReshaped = stopArr.reshape(boundsShape);
+    final stridesStart = List<int>.from(startBroadcasted.strides);
+    stridesStart.insert(actualAxis, 0);
 
-    final div = endpoint ? (numSamples - 1) : numSamples;
-    final diff = subtract(stopReshaped, startReshaped);
-    final step =
-        div <= 0
-            ? NDArray<T>.zeros(commonShape, resolvedDType)
-            : divide(diff, _toNDArray(div, resolvedDType)).reshape(commonShape);
+    final stridesStop = List<int>.from(stopBroadcasted.strides);
+    stridesStop.insert(actualAxis, 0);
 
-    final tArr = divide(
-      NDArray.arange(0, numSamples.toDouble(), step: 1.0, dtype: resolvedDType),
-      _toNDArray(div == 0 ? 1.0 : div, resolvedDType),
-    );
-    final tShape = List<int>.filled(resultShape.length, 1);
-    tShape[actualAxis] = numSamples;
-    final tReshaped = tArr.reshape(tShape);
+    final res = NDArray<T>.create(resultShape, resolvedDType);
+    final stridesRes = res.strides;
 
-    final scaledDiff = multiply(tReshaped, diff);
-    final res = add(startReshaped, scaledDiff);
+    final step = NDArray<T>.create(commonShape, resolvedDType);
+    final stridesStepOdo = List<int>.from(step.strides);
+    stridesStepOdo.insert(actualAxis, 0);
+
+    final rank = resultShape.length;
+    final marker = _ScratchArena.marker;
+    final intBytes = rank * ffi.sizeOf<ffi.Int>();
+
+    final cShape = _ScratchArena.allocate<ffi.Int>(intBytes);
+    final cStridesStart = _ScratchArena.allocate<ffi.Int>(intBytes);
+    final cStridesStop = _ScratchArena.allocate<ffi.Int>(intBytes);
+    final cStridesRes = _ScratchArena.allocate<ffi.Int>(intBytes);
+    final cStridesStep = _ScratchArena.allocate<ffi.Int>(intBytes);
+
+    try {
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = resultShape[i];
+        cStridesStart[i] = stridesStart[i];
+        cStridesStop[i] = stridesStop[i];
+        cStridesRes[i] = stridesRes[i];
+        cStridesStep[i] = stridesStepOdo[i];
+      }
+
+      switch (resolvedDType) {
+        case DType.float64:
+          s_linspace_grid_double(
+            (startBroadcasted.pointer.cast<ffi.Double>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<ffi.Double>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<ffi.Double>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<ffi.Double>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.float32:
+          s_linspace_grid_float(
+            (startBroadcasted.pointer.cast<ffi.Float>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<ffi.Float>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<ffi.Float>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<ffi.Float>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.complex128:
+          s_linspace_grid_complex128(
+            (startBroadcasted.pointer.cast<cpx_t>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<cpx_t>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<cpx_t>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<cpx_t>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.complex64:
+          s_linspace_grid_complex64(
+            (startBroadcasted.pointer.cast<cpx_f_t>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<cpx_f_t>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<cpx_f_t>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<cpx_f_t>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.int64:
+          s_linspace_grid_int64(
+            (startBroadcasted.pointer.cast<ffi.Int64>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<ffi.Int64>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<ffi.Int64>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<ffi.Int64>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.int32:
+          s_linspace_grid_int32(
+            (startBroadcasted.pointer.cast<ffi.Int32>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<ffi.Int32>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<ffi.Int32>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<ffi.Int32>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.int16:
+          s_linspace_grid_int16(
+            (startBroadcasted.pointer.cast<ffi.Int16>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<ffi.Int16>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<ffi.Int16>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<ffi.Int16>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.uint8:
+          s_linspace_grid_uint8(
+            (startBroadcasted.pointer.cast<ffi.Uint8>() +
+                startBroadcasted.offsetElements),
+            cStridesStart,
+            (stopBroadcasted.pointer.cast<ffi.Uint8>() +
+                stopBroadcasted.offsetElements),
+            cStridesStop,
+            (res.pointer.cast<ffi.Uint8>() + res.offsetElements),
+            cStridesRes,
+            (step.pointer.cast<ffi.Uint8>() + step.offsetElements),
+            cStridesStep,
+            cShape,
+            rank,
+            actualAxis,
+            numSamples,
+            endpoint ? 1 : 0,
+          );
+        case DType.boolean:
+          throw UnsupportedError(
+            'linspaceGrid not supported for boolean arrays',
+          );
+      }
+    } finally {
+      _ScratchArena.reset(marker);
+    }
 
     res.detachToParentScope();
     step.detachToParentScope();
-    return (res as NDArray<T>, step as NDArray<T>);
+    return (res, step);
   });
 }
 
@@ -465,11 +630,10 @@ NDArray<T> logspace<T>(
   T start,
   T stop,
   int numSamples, {
-  T? base,
+  double base = 10.0,
   bool endpoint = true,
   DType<T>? dtype,
 }) {
-  final actualBase = base ?? (T == Complex ? Complex(10.0, 0.0) : 10.0) as T;
   final resolvedDType = dtype ?? _defaultDType<T>();
 
   final arr = NDArray<T>.create([numSamples], resolvedDType);
@@ -479,22 +643,18 @@ NDArray<T> logspace<T>(
     case DType.float64:
       final s = (start as num).toDouble();
       final e = (stop as num).toDouble();
-      final b = (actualBase as num).toDouble();
       final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
-      v_logspace_double(arr.pointer.cast(), s, stp, b, numSamples);
+      v_logspace_double(arr.pointer.cast(), s, stp, base, numSamples);
       return arr;
     case DType.float32:
       final s = (start as num).toDouble();
       final e = (stop as num).toDouble();
-      final b = (actualBase as num).toDouble();
       final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
-      v_logspace_float(arr.pointer.cast(), s, stp, b, numSamples);
+      v_logspace_float(arr.pointer.cast(), s, stp, base, numSamples);
       return arr;
     case DType.complex128:
       final s = _normalizeScalar(start as Object, DType.complex128) as Complex;
       final e = _normalizeScalar(stop as Object, DType.complex128) as Complex;
-      final b =
-          _normalizeScalar(actualBase as Object, DType.complex128) as Complex;
       final stp = numSamples <= 1 ? Complex(0.0, 0.0) : (e - s) / div;
       v_logspace_complex128(
         arr.pointer.cast(),
@@ -502,16 +662,14 @@ NDArray<T> logspace<T>(
         s.imag,
         stp.real,
         stp.imag,
-        b.real,
-        b.imag,
+        base,
+        0.0,
         numSamples,
       );
       return arr;
     case DType.complex64:
       final s = _normalizeScalar(start as Object, DType.complex128) as Complex;
       final e = _normalizeScalar(stop as Object, DType.complex128) as Complex;
-      final b =
-          _normalizeScalar(actualBase as Object, DType.complex128) as Complex;
       final stp = numSamples <= 1 ? Complex(0.0, 0.0) : (e - s) / div;
       v_logspace_complex64(
         arr.pointer.cast(),
@@ -519,8 +677,8 @@ NDArray<T> logspace<T>(
         s.imag,
         stp.real,
         stp.imag,
-        b.real,
-        b.imag,
+        base,
+        0.0,
         numSamples,
       );
       return arr;
@@ -558,19 +716,19 @@ NDArray<T> logspace<T>(
 ///   - [DType.int64] if [T] is [int].
 ///   - [DType.float64] otherwise.
 NDArray<T> logspaceGrid<T>(
-  NDArray start,
-  NDArray stop,
+  NDArray<T> start,
+  NDArray<T> stop,
   int numSamples, {
-  NDArray? base,
+  NDArray<double>? base,
   bool endpoint = true,
   int axis = 0,
   DType<T>? dtype,
 }) {
   final resolvedDType = dtype ?? _defaultDType<T>();
-  final actualBase = base ?? _toNDArray(10.0, resolvedDType);
+  final actualBase = base ?? _toNDArray<double>(10.0, DType.float64);
 
   return NDArray.scope(() {
-    final y = linspaceGrid(
+    final y = linspaceGrid<T>(
       start,
       stop,
       numSamples,
@@ -630,13 +788,7 @@ NDArray<T> geomspace<T>(
       if (resolvedDType == DType.float64) {
         v_geomspace_double(arr.pointer.cast(), logStart, stp, sign, numSamples);
       } else {
-        v_geomspace_float(
-          arr.pointer.cast(),
-          logStart,
-          stp,
-          sign,
-          numSamples,
-        );
+        v_geomspace_float(arr.pointer.cast(), logStart, stp, sign, numSamples);
       }
       return arr;
     case DType.complex128:
@@ -650,8 +802,9 @@ NDArray<T> geomspace<T>(
       final logStart = s.log() / math.ln10;
       final logStop = e.log() / math.ln10;
       final div = endpoint ? (numSamples - 1) : numSamples;
-      final stp =
-          numSamples <= 1 ? Complex(0.0, 0.0) : (logStop - logStart) / div;
+      final stp = numSamples <= 1
+          ? Complex(0.0, 0.0)
+          : (logStop - logStart) / div;
 
       final arr = NDArray<T>.create([numSamples], resolvedDType);
       if (resolvedDType == DType.complex128) {
@@ -679,9 +832,7 @@ NDArray<T> geomspace<T>(
     case DType.int16:
     case DType.uint8:
     case DType.boolean:
-      throw UnsupportedError(
-        'geomspace not supported for type $resolvedDType',
-      );
+      throw UnsupportedError('geomspace not supported for type $resolvedDType');
   }
 }
 
@@ -709,8 +860,8 @@ NDArray<T> geomspace<T>(
 ///   - [DType.int64] if [T] is [int].
 ///   - [DType.float64] otherwise.
 NDArray<T> geomspaceGrid<T>(
-  NDArray start,
-  NDArray stop,
+  NDArray<T> start,
+  NDArray<T> stop,
   int numSamples, {
   bool endpoint = true,
   int axis = 0,
@@ -719,10 +870,14 @@ NDArray<T> geomspaceGrid<T>(
   final resolvedDType = dtype ?? _defaultDType<T>();
 
   return NDArray.scope(() {
-    final logStart = divide(log(start), _toNDArray(math.ln10, resolvedDType));
-    final logStop = divide(log(stop), _toNDArray(math.ln10, resolvedDType));
+    final logStart =
+        divide(log(start), _toNDArray<T>(math.ln10, resolvedDType))
+            as NDArray<T>;
+    final logStop =
+        divide(log(stop), _toNDArray<T>(math.ln10, resolvedDType))
+            as NDArray<T>;
 
-    final y = linspaceGrid(
+    final y = linspaceGrid<T>(
       logStart,
       logStop,
       numSamples,
@@ -730,7 +885,7 @@ NDArray<T> geomspaceGrid<T>(
       axis: axis,
       dtype: resolvedDType,
     );
-    final res = power(_toNDArray(10.0, resolvedDType), y);
+    final res = power(_toNDArray<T>(10.0, resolvedDType), y);
     res.detachToParentScope();
     return res as NDArray<T>;
   });
@@ -1364,8 +1519,7 @@ NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
 /// final s0 = sum(a, axis: 0); // Sum along rows
 /// print(s0.data); // [4.0, 6.0]
 /// ```
-// TODO: Strong types
-NDArray sum(NDArray a, {int? axis, NDArray? out}) {
+NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
@@ -1377,24 +1531,23 @@ NDArray sum(NDArray a, {int? axis, NDArray? out}) {
 
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    dynamic acc;
+    T? acc;
     if (a.isContiguous) {
       if (a.dtype == DType.float64) {
-        acc = r_sum_double(a.pointer.cast(), size);
+        acc = r_sum_double(a.pointer.cast(), size) as T;
       } else if (a.dtype == DType.float32) {
-        acc = r_sum_float(a.pointer.cast(), size);
+        acc = r_sum_float(a.pointer.cast(), size) as T;
       }
     }
     if (acc == null) {
-      final List<dynamic> elements = size == a.data.length
-          ? a.data
-          : a.toList();
-      acc = elements.first;
+      final List<T> elements = size == a.data.length ? a.data : a.toList();
+      var current = elements.first;
       for (var i = 1; i < elements.length; i++) {
-        acc += elements[i];
+        current = ((current as dynamic) + elements[i]) as T;
       }
+      acc = current;
     }
-    final result = out ?? NDArray.create([], a.dtype);
+    final result = out ?? NDArray<T>.create([], a.dtype);
     result.data[0] = acc;
     return result;
   }
@@ -1404,19 +1557,69 @@ NDArray sum(NDArray a, {int? axis, NDArray? out}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = out ?? NDArray.zeros(newShape, a.dtype as dynamic);
+  final result = out ?? NDArray<T>.zeros(newShape, a.dtype);
   if (out != null) {
-    result.fill(0);
+    result.fill(_normalizeScalar(0, a.dtype) as T);
   }
 
-  _reduceRecursive(
+  if (a.dtype == DType.float64) {
+    final rank = a.shape.length;
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+    }
+    for (var i = 0; i < result.shape.length; i++) {
+      cStridesRes[i] = result.strides[i];
+    }
+
+    s_sum_double(
+      a.pointer.cast(),
+      cStridesA,
+      result.pointer.cast(),
+      cStridesRes,
+      cShape,
+      rank,
+      axis,
+    );
+    return result;
+  } else if (a.dtype == DType.float32) {
+    final rank = a.shape.length;
+    final cBuffer = _ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+    }
+    for (var i = 0; i < result.shape.length; i++) {
+      cStridesRes[i] = result.strides[i];
+    }
+
+    s_sum_float(
+      a.pointer.cast(),
+      cStridesA,
+      result.pointer.cast(),
+      cStridesRes,
+      cShape,
+      rank,
+      axis,
+    );
+    return result;
+  }
+
+  _reduceRecursive<T, T>(
     a,
     result,
     List<int>.filled(a.shape.length, 0),
     List<int>.filled(newShape.length, 0),
     axis,
     0,
-    (current, val) => ((current as dynamic) + val) as dynamic,
+    (current, val) => ((current as dynamic) + val) as T,
   );
   return result;
 }
@@ -1432,7 +1635,7 @@ NDArray sum(NDArray a, {int? axis, NDArray? out}) {
 /// final p0 = prod(a, axis: 0); // Product along rows
 /// print(p0.data); // [3.0, 8.0]
 /// ```
-NDArray prod(NDArray a, {int? axis, NDArray? out}) {
+NDArray<T> prod<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
@@ -1444,24 +1647,23 @@ NDArray prod(NDArray a, {int? axis, NDArray? out}) {
 
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    dynamic acc;
+    T? acc;
     if (a.isContiguous) {
       if (a.dtype == DType.float64) {
-        acc = r_prod_double(a.pointer.cast(), size);
+        acc = r_prod_double(a.pointer.cast(), size) as T;
       } else if (a.dtype == DType.float32) {
-        acc = r_prod_float(a.pointer.cast(), size);
+        acc = r_prod_float(a.pointer.cast(), size) as T;
       }
     }
     if (acc == null) {
-      final List<dynamic> elements = size == a.data.length
-          ? a.data
-          : a.toList();
-      acc = elements.first;
+      final List<T> elements = size == a.data.length ? a.data : a.toList();
+      var current = elements.first;
       for (var i = 1; i < elements.length; i++) {
-        acc *= elements[i];
+        current = ((current as dynamic) * elements[i]) as T;
       }
+      acc = current;
     }
-    final result = out ?? NDArray.create([], a.dtype);
+    final result = out ?? NDArray<T>.create([], a.dtype);
     result.data[0] = acc;
     return result;
   }
@@ -1471,19 +1673,19 @@ NDArray prod(NDArray a, {int? axis, NDArray? out}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = out ?? NDArray.ones(newShape, a.dtype as dynamic);
+  final result = out ?? NDArray<T>.ones(newShape, a.dtype);
   if (out != null) {
-    result.fill(1);
+    result.fill(_normalizeScalar(1, a.dtype) as T);
   }
 
-  _reduceRecursive(
+  _reduceRecursive<T, T>(
     a,
     result,
     List<int>.filled(a.shape.length, 0),
     List<int>.filled(newShape.length, 0),
     axis,
     0,
-    (current, val) => ((current as dynamic) * val) as dynamic,
+    (current, val) => ((current as dynamic) * val) as T,
   );
   return result;
 }
@@ -1505,7 +1707,11 @@ NDArray prod(NDArray a, {int? axis, NDArray? out}) {
 /// final a = NDArray.fromList([true, true, false], [3], DType.boolean);
 /// final res = all(a); // false
 /// ```
-NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? out}) {
+NDArray<bool> all<T extends Object>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<bool>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute all() on a disposed array.');
   }
@@ -1526,7 +1732,7 @@ NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? out}) {
 
   if (targetAxis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final List elements = size == a.data.length ? a.data : a.toList();
+    final List<T> elements = size == a.data.length ? a.data : a.toList();
     var allTrue = true;
     for (var i = 0; i < elements.length; i++) {
       if (!_isTrue(elements[i])) {
@@ -1547,8 +1753,8 @@ NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? out}) {
   final result = out ?? NDArray<bool>.create(newShape, DType.boolean);
   result.fill(true); // Initialize to true everywhere
 
-  _reduceRecursive(
-    a as NDArray<Object>,
+  _reduceRecursive<T, bool>(
+    a,
     result,
     List<int>.filled(a.shape.length, 0),
     List<int>.filled(newShape.length, 0),
@@ -1577,7 +1783,11 @@ NDArray<bool> all(NDArray a, {int? axis, NDArray<bool>? out}) {
 /// final a = NDArray.fromList([true, false, false], [3], DType.boolean);
 /// final res = any(a); // true
 /// ```
-NDArray<bool> any(NDArray a, {int? axis, NDArray<bool>? out}) {
+NDArray<bool> any<T extends Object>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<bool>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute any() on a disposed array.');
   }
@@ -1598,7 +1808,7 @@ NDArray<bool> any(NDArray a, {int? axis, NDArray<bool>? out}) {
 
   if (targetAxis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final List elements = size == a.data.length ? a.data : a.toList();
+    final List<T> elements = size == a.data.length ? a.data : a.toList();
     var anyTrue = false;
     for (var i = 0; i < elements.length; i++) {
       if (_isTrue(elements[i])) {
@@ -1623,8 +1833,8 @@ NDArray<bool> any(NDArray a, {int? axis, NDArray<bool>? out}) {
     result.fill(false);
   }
 
-  _reduceRecursive(
-    a as NDArray<Object>,
+  _reduceRecursive<T, bool>(
+    a,
     result,
     List<int>.filled(a.shape.length, 0),
     List<int>.filled(newShape.length, 0),
@@ -2315,10 +2525,9 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// ```
 ///
 /// Reference: [Arithmetic Mean](https://en.wikipedia.org/wiki/Arithmetic_mean)
-NDArray mean(NDArray a, {int? axis, NDArray? out}) {
-  final DType targetDType = a.dtype.isComplex
-      ? DType.complex128
-      : DType.float64;
+NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
+  final DType<R> targetDType =
+      (a.dtype.isComplex ? DType.complex128 : DType.float64) as DType<R>;
 
   final targetShape = axis == null
       ? <int>[]
@@ -2329,44 +2538,162 @@ NDArray mean(NDArray a, {int? axis, NDArray? out}) {
     }
   }
 
-  NDArray promotedA;
-  if (a.dtype == DType.float64 ||
-      a.dtype == DType.float32 ||
-      a.dtype == DType.complex128 ||
-      a.dtype == DType.complex64) {
-    promotedA = a;
-  } else {
-    promotedA = NDArray<double>.create(a.shape, DType.float64);
-    final doubleList = promotedA.data as List<double>;
-    final aList = a.data;
-    for (var i = 0; i < aList.length; i++) {
-      doubleList[i] = (aList[i] as num).toDouble();
-    }
-  }
-
   if (axis == null) {
-    final s = sum(promotedA, axis: axis);
+    if (a.isContiguous) {
+      if (a.dtype == DType.float64) {
+        final res = out ?? NDArray<R>.create([], DType.float64 as DType<R>);
+        res.data[0] = r_mean_double(a.pointer.cast(), a.size) as R;
+        return res;
+      } else if (a.dtype == DType.float32) {
+        final res = out ?? NDArray<R>.create([], DType.float64 as DType<R>);
+        res.data[0] = r_mean_float(a.pointer.cast(), a.size) as R;
+        return res;
+      }
+    }
+
+    NDArray promotedA;
+    if (a.dtype.isComplex || a.dtype.isFloating) {
+      promotedA = a;
+    } else {
+      promotedA = _promoteToDouble(a);
+    }
+
+    final s = sum<Object>(promotedA as NDArray<Object>, axis: axis);
     if (promotedA != a) {
       promotedA.dispose();
     }
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final meanVal = s.data[0] / size;
-    final result = out ?? NDArray.create([], targetDType);
-    result.data[0] = meanVal;
+    final meanVal = (s.data[0] as dynamic) / size;
+    final NDArray<R> result;
+    if (out != null) {
+      result = out;
+    } else {
+      if (targetDType.isComplex) {
+        result = NDArray<Complex>.create([], DType.complex128) as NDArray<R>;
+      } else {
+        result = NDArray<double>.create([], DType.float64) as NDArray<R>;
+      }
+    }
+    result.data[0] = meanVal as R;
     s.dispose();
     return result;
   } else {
-    final result = out ?? NDArray.create(targetShape, targetDType);
-    sum(promotedA, axis: axis, out: result);
-    if (promotedA != a) {
-      promotedA.dispose();
+    final NDArray<R> result;
+    if (out != null) {
+      result = out;
+    } else {
+      if (targetDType.isComplex) {
+        result =
+            NDArray<Complex>.create(targetShape, DType.complex128)
+                as NDArray<R>;
+      } else {
+        result =
+            NDArray<double>.create(targetShape, DType.float64) as NDArray<R>;
+      }
     }
+
+    // Optimized axis-wise mean
+    if (a.dtype == DType.float64 && targetDType == DType.float64) {
+      final rank = a.shape.length;
+      final cBuffer = _ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+      }
+      for (var i = 0; i < result.shape.length; i++) {
+        cStridesRes[i] = result.strides[i];
+      }
+
+      s_mean_double(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        axis,
+      );
+      return result;
+    } else if (a.dtype == DType.float32 && targetDType == DType.float64) {
+      final rank = a.shape.length;
+      final cBuffer = _ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+      }
+      for (var i = 0; i < result.shape.length; i++) {
+        cStridesRes[i] = result.strides[i];
+      }
+
+      s_mean_float(
+        a.pointer.cast(),
+        cStridesA,
+        ((result as dynamic) as NDArray<double>).pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        axis,
+      );
+      return result;
+    }
+
+    if (targetDType.isComplex) {
+      final promotedA =
+          (a.dtype.isComplex ? a : _promoteToComplex(a)) as NDArray<Complex>;
+      sum<Complex>(
+        promotedA,
+        axis: axis,
+        out: (result as dynamic) as NDArray<Complex>,
+      );
+      if (promotedA != a) promotedA.dispose();
+    } else {
+      final promotedA =
+          (a.dtype.isFloating ? a : _promoteToDouble(a)) as NDArray<double>;
+      sum<double>(
+        promotedA,
+        axis: axis,
+        out: (result as dynamic) as NDArray<double>,
+      );
+      if (promotedA != a) promotedA.dispose();
+    }
+
     final sizeAxis = a.shape[axis];
     for (var i = 0; i < result.data.length; i++) {
-      result.data[i] = (result.data[i] / sizeAxis) as dynamic;
+      result.data[i] = ((result.data[i] as dynamic) / sizeAxis) as R;
     }
     return result;
   }
+}
+
+NDArray<double> _promoteToDouble(NDArray a) {
+  final res = NDArray<double>.create(a.shape, DType.float64);
+  final data = res.data;
+  final src = a.data;
+  for (var i = 0; i < src.length; i++) {
+    data[i] = (src[i] as num).toDouble();
+  }
+  return res;
+}
+
+NDArray<Complex> _promoteToComplex(NDArray a) {
+  final res = NDArray<Complex>.create(a.shape, DType.complex128);
+  final data = res.data;
+  final src = a.data;
+  for (var i = 0; i < src.length; i++) {
+    final val = src[i];
+    if (val is Complex) {
+      data[i] = val;
+    } else {
+      data[i] = Complex((val as num).toDouble(), 0.0);
+    }
+  }
+  return res;
 }
 
 /// Compute the variance of array elements along a specified axis.
@@ -2409,7 +2736,7 @@ NDArray<double> variance<T extends num>(
 
   if (axis == null) {
     var sumSqDiff = 0.0;
-    final meanVal = m.data[0] as double;
+    final meanVal = m.data[0] as num;
     m.dispose();
 
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
@@ -2418,7 +2745,9 @@ NDArray<double> variance<T extends num>(
         : a.toList() as List<num>;
 
     for (var i = 0; i < elements.length; i++) {
-      final diff = elements[i].toDouble() - meanVal;
+      final val = elements[i];
+      if (val is double && val.isNaN) continue;
+      final diff = val.toDouble() - meanVal.toDouble();
       sumSqDiff += diff * diff;
     }
     final result = out ?? NDArray<double>.create([], DType.float64);
@@ -2533,7 +2862,11 @@ NDArray<double> std<T extends num>(
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], DType.float64);
 /// final s = nansum(a); // returns 4.0
 /// ```
-NDArray nansum(NDArray a, {int? axis, NDArray? out}) {
+NDArray<T> nansum<T extends Object>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<T>? out,
+}) {
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
@@ -2545,14 +2878,14 @@ NDArray nansum(NDArray a, {int? axis, NDArray? out}) {
 
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
-    dynamic acc;
+    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    T acc;
     if (a.dtype == DType.int32 || a.dtype == DType.int64) {
       var sumVal = 0;
       for (var i = 0; i < elements.length; i++) {
         sumVal += elements[i] as int;
       }
-      acc = sumVal;
+      acc = sumVal as T;
     } else if (a.dtype == DType.complex64 || a.dtype == DType.complex128) {
       var sumVal = Complex(0.0, 0.0);
       for (var i = 0; i < elements.length; i++) {
@@ -2560,7 +2893,7 @@ NDArray nansum(NDArray a, {int? axis, NDArray? out}) {
         if (val.real.isNaN || val.imag.isNaN) continue;
         sumVal += val;
       }
-      acc = sumVal;
+      acc = sumVal as T;
     } else {
       var sumVal = 0.0;
       for (var i = 0; i < elements.length; i++) {
@@ -2568,9 +2901,9 @@ NDArray nansum(NDArray a, {int? axis, NDArray? out}) {
         if (val.isNaN) continue;
         sumVal += val;
       }
-      acc = sumVal;
+      acc = sumVal as T;
     }
-    final result = out ?? NDArray.create([], a.dtype);
+    final result = out ?? NDArray<T>.create([], a.dtype);
     result.data[0] = acc;
     return result;
   }
@@ -2580,12 +2913,12 @@ NDArray nansum(NDArray a, {int? axis, NDArray? out}) {
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = out ?? NDArray.zeros(newShape, a.dtype as dynamic);
+  final result = out ?? NDArray<T>.zeros(newShape, a.dtype);
   if (out != null) {
-    result.fill(0);
+    result.fill(_normalizeScalar(0, a.dtype) as T);
   }
 
-  _reduceRecursive(
+  _reduceRecursive<T, T>(
     a,
     result,
     List<int>.filled(a.shape.length, 0),
@@ -2594,7 +2927,8 @@ NDArray nansum(NDArray a, {int? axis, NDArray? out}) {
     0,
     (current, val) {
       if (val is double && val.isNaN) return current;
-      return ((current as dynamic) + val) as dynamic;
+      if (val is Complex && (val.real.isNaN || val.imag.isNaN)) return current;
+      return ((current as dynamic) + val) as T;
     },
   );
   return result;
@@ -2617,10 +2951,9 @@ NDArray nansum(NDArray a, {int? axis, NDArray? out}) {
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], DType.float64);
 /// final m = nanmean(a); // returns 2.6666666666666665
 /// ```
-NDArray nanmean(NDArray a, {int? axis, NDArray? out}) {
-  final DType targetDType = a.dtype.isComplex
-      ? DType.complex128
-      : DType.float64;
+NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
+  final DType<R> targetDType =
+      (a.dtype.isComplex ? DType.complex128 : DType.float64) as DType<R>;
 
   final targetShape = axis == null
       ? <int>[]
@@ -2631,91 +2964,113 @@ NDArray nanmean(NDArray a, {int? axis, NDArray? out}) {
     }
   }
 
-  NDArray promotedA;
-  if (a.dtype == DType.float64 ||
-      a.dtype == DType.float32 ||
-      a.dtype == DType.complex128 ||
-      a.dtype == DType.complex64) {
-    promotedA = a;
-  } else {
-    promotedA = NDArray<double>.create(a.shape, DType.float64);
-    final doubleList = promotedA.data as List<double>;
-    final aList = a.data;
-    for (var i = 0; i < aList.length; i++) {
-      doubleList[i] = (aList[i] as num).toDouble();
-    }
-  }
-
   if (axis == null) {
-    final size = promotedA.shape.isEmpty
-        ? 1
-        : promotedA.shape.reduce((x, y) => x * y);
-    final List<dynamic> elements = size == promotedA.data.length
-        ? promotedA.data
-        : promotedA.toList();
-    var sumVal = 0.0;
+    NDArray promotedA;
+    if (a.dtype.isComplex || a.dtype.isFloating) {
+      promotedA = a;
+    } else {
+      promotedA = _promoteToDouble(a);
+    }
+
+    final List elements = promotedA.data;
+    var sumVal = (targetDType.isComplex ? Complex(0, 0) : 0.0) as dynamic;
     var count = 0;
     for (var i = 0; i < elements.length; i++) {
       final val = elements[i];
       if (val is double && val.isNaN) continue;
-      sumVal += (val as num).toDouble();
+      if (val is Complex && (val.real.isNaN || val.imag.isNaN)) continue;
+      sumVal += val;
       count++;
     }
     if (promotedA != a) {
       promotedA.dispose();
     }
-    final result = out ?? NDArray<double>.create([], DType.float64);
-    if (count == 0) {
-      result.data[0] = double.nan;
+    final NDArray<R> result;
+    if (out != null) {
+      result = out;
     } else {
-      result.data[0] = sumVal / count;
+      if (targetDType.isComplex) {
+        result = NDArray<Complex>.create([], DType.complex128) as NDArray<R>;
+      } else {
+        result = NDArray<double>.create([], DType.float64) as NDArray<R>;
+      }
+    }
+
+    if (count == 0) {
+      result.data[0] =
+          (targetDType.isComplex ? Complex(double.nan, double.nan) : double.nan)
+              as R;
+    } else {
+      result.data[0] = (sumVal / count) as R;
     }
     return result;
   }
 
-  if (axis < 0 || axis >= promotedA.shape.length) {
-    if (promotedA != a) {
-      promotedA.dispose();
-    }
+  if (axis < 0 || axis >= a.shape.length) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  final newShape = List<int>.from(promotedA.shape)..removeAt(axis);
-  final result = out ?? NDArray.zeros(newShape, targetDType as dynamic);
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final NDArray<R> result;
   if (out != null) {
-    result.fill(0);
+    result = out;
+    result.fill(_normalizeScalar(0, targetDType) as R);
+  } else {
+    if (targetDType.isComplex) {
+      result =
+          NDArray<Complex>.create(newShape, DType.complex128) as NDArray<R>;
+    } else {
+      result = NDArray<double>.create(newShape, DType.float64) as NDArray<R>;
+    }
   }
   final counts = NDArray<int>.zeros(newShape, DType.int32);
 
-  _nanReduceRecursive(
-    promotedA,
-    result,
-    counts,
-    List<int>.filled(promotedA.shape.length, 0),
-    List<int>.filled(newShape.length, 0),
-    axis,
-    0,
-  );
+  if (targetDType.isComplex) {
+    final promotedA =
+        (a.dtype.isComplex ? a : _promoteToComplex(a)) as NDArray<Complex>;
+    _nanReduceRecursive<Complex>(
+      promotedA,
+      (result as dynamic) as NDArray<Complex>,
+      counts,
+      List<int>.filled(promotedA.shape.length, 0),
+      List<int>.filled(newShape.length, 0),
+      axis,
+      0,
+    );
+    if (promotedA != a) promotedA.dispose();
+  } else {
+    final promotedA =
+        (a.dtype.isFloating ? a : _promoteToDouble(a)) as NDArray<double>;
+    _nanReduceRecursive<double>(
+      promotedA,
+      (result as dynamic) as NDArray<double>,
+      counts,
+      List<int>.filled(promotedA.shape.length, 0),
+      List<int>.filled(newShape.length, 0),
+      axis,
+      0,
+    );
+    if (promotedA != a) promotedA.dispose();
+  }
 
   for (var i = 0; i < result.data.length; i++) {
     final c = counts.data[i];
     if (c == 0) {
-      result.data[i] = double.nan as dynamic;
+      result.data[i] =
+          (targetDType.isComplex ? Complex(double.nan, double.nan) : double.nan)
+              as R;
     } else {
-      result.data[i] = ((result.data[i] as dynamic) / c) as dynamic;
+      result.data[i] = ((result.data[i] as dynamic) / c) as R;
     }
   }
   counts.dispose();
-  if (promotedA != a) {
-    promotedA.dispose();
-  }
   return result;
 }
 
 /// Recursive helper to accumulate sum and count of non-NaN elements along an axis.
-void _nanReduceRecursive(
-  NDArray a,
-  NDArray result,
+void _nanReduceRecursive<T extends Object>(
+  NDArray<T> a,
+  NDArray<T> result,
   NDArray<int> counts,
   List<int> coordA,
   List<int> coordRes,
@@ -2725,22 +3080,39 @@ void _nanReduceRecursive(
   if (dim == a.shape.length) {
     final val = a.getCell(coordA);
     if (val is double && val.isNaN) return;
+    if (val is Complex && (val.real.isNaN || val.imag.isNaN)) return;
     final current = result.getCell(coordRes);
-    result.setCell(coordRes, ((current as dynamic) + val) as dynamic);
+    result.setCell(coordRes, ((current as dynamic) + val) as T);
     counts.setCell(coordRes, counts.getCell(coordRes) + 1);
     return;
   }
   if (dim == axis) {
     for (var i = 0; i < a.shape[axis]; i++) {
       coordA[dim] = i;
-      _nanReduceRecursive(a, result, counts, coordA, coordRes, axis, dim + 1);
+      _nanReduceRecursive<T>(
+        a,
+        result,
+        counts,
+        coordA,
+        coordRes,
+        axis,
+        dim + 1,
+      );
     }
   } else {
     final resDim = dim < axis ? dim : dim - 1;
     for (var i = 0; i < a.shape[dim]; i++) {
       coordA[dim] = i;
       coordRes[resDim] = i;
-      _nanReduceRecursive(a, result, counts, coordA, coordRes, axis, dim + 1);
+      _nanReduceRecursive<T>(
+        a,
+        result,
+        counts,
+        coordA,
+        coordRes,
+        axis,
+        dim + 1,
+      );
     }
   }
 }
@@ -2779,9 +3151,9 @@ NDArray<double> nanvar<T extends num>(
 
   if (axis == null) {
     var sumSqDiff = 0.0;
-    final meanVal = m.data[0];
+    final meanVal = m.data[0] as num;
     m.dispose();
-    if (meanVal.isNaN) {
+    if (meanVal.toDouble().isNaN) {
       final result = out ?? NDArray<double>.create([], DType.float64);
       result.data[0] = double.nan;
       return result;
@@ -2796,7 +3168,7 @@ NDArray<double> nanvar<T extends num>(
     for (var i = 0; i < elements.length; i++) {
       final val = elements[i].toDouble();
       if (val.isNaN) continue;
-      final diff = val - meanVal;
+      final diff = val - meanVal.toDouble();
       sumSqDiff += diff * diff;
       count++;
     }
@@ -4245,14 +4617,14 @@ void _walkStackCoords(
 }
 
 /// Recursive helper to traverse and reduce an array along an axis.
-void _reduceRecursive(
-  NDArray src,
-  NDArray dest,
+void _reduceRecursive<S extends Object, D extends Object>(
+  NDArray<S> src,
+  NDArray<D> dest,
   List<int> currentPos,
   List<int> destPos,
   int targetAxis,
   int currentDim,
-  Function op,
+  D Function(D acc, S val) op,
 ) {
   if (currentDim == src.shape.length) {
     // Calculate flat index for src
@@ -4278,7 +4650,7 @@ void _reduceRecursive(
     } else if (currentDim > targetAxis) {
       destPos[currentDim - 1] = i;
     }
-    _reduceRecursive(
+    _reduceRecursive<S, D>(
       src,
       dest,
       currentPos,
@@ -10111,8 +10483,7 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
 /// {@example /example/sorting_searching_example.dart lang=dart}
 List<NDArray<int>> nonzero(NDArray a) {
   final rank = a.shape.length;
-  final count = count_nonzero(a) as int;
-
+  final count = count_nonzero<Object>(a as NDArray<Object>) as int;
   final results = List.generate(
     rank,
     (_) => NDArray<int>.create([count], DType.int32, zeroInit: true),
@@ -10161,7 +10532,7 @@ List<NDArray<int>> nonzero(NDArray a) {
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-dynamic count_nonzero(NDArray a, {int? axis}) {
+dynamic count_nonzero<T extends Object>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
     var count = 0;
     if (a.isContiguous) {
@@ -10194,13 +10565,19 @@ dynamic count_nonzero(NDArray a, {int? axis}) {
   final targetShape = List<int>.from(a.shape)..removeAt(targetAxis);
   final result = NDArray<int>.zeros(targetShape, DType.int32);
 
-  _countNonzeroRecursive(a, result, List<int>.filled(rank, 0), targetAxis, 0);
+  _countNonzeroRecursive<T>(
+    a,
+    result,
+    List<int>.filled(rank, 0),
+    targetAxis,
+    0,
+  );
 
   return result;
 }
 
-void _countNonzeroRecursive(
-  NDArray src,
+void _countNonzeroRecursive<T extends Object>(
+  NDArray<T> src,
   NDArray<int> dest,
   List<int> srcPos,
   int targetAxis,
@@ -10220,7 +10597,7 @@ void _countNonzeroRecursive(
 
   for (var i = 0; i < src.shape[currentDim]; i++) {
     srcPos[currentDim] = i;
-    _countNonzeroRecursive(src, dest, srcPos, targetAxis, currentDim + 1);
+    _countNonzeroRecursive<T>(src, dest, srcPos, targetAxis, currentDim + 1);
   }
 }
 
@@ -10230,15 +10607,15 @@ void _countNonzeroRecursive(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-dynamic argmax(NDArray a, {int? axis}) {
+dynamic argmax<T extends Object>(NDArray<T> a, {int? axis}) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for argmax');
   }
 
   if (axis == null) {
-    NDArray src = a;
+    NDArray<T> src = a;
     if (!a.isContiguous) {
-      src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+      src = NDArray<T>.fromList(a.toList(), a.shape, a.dtype);
     }
 
     var maxIdx = 0;
@@ -10261,6 +10638,7 @@ dynamic argmax(NDArray a, {int? axis}) {
         }
       }
     }
+    if (src != a) src.dispose();
     return maxIdx;
   }
 
@@ -10274,7 +10652,7 @@ dynamic argmax(NDArray a, {int? axis}) {
   final result = NDArray<int>.create(targetShape, DType.int32);
   result.data.fillRange(0, result.data.length, 0);
 
-  _argMinMaxRecursive(
+  _argMinMaxRecursive<T>(
     a,
     result,
     List<int>.filled(rank, 0),
@@ -10291,15 +10669,15 @@ dynamic argmax(NDArray a, {int? axis}) {
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-dynamic argmin(NDArray a, {int? axis}) {
+dynamic argmin<T extends Object>(NDArray<T> a, {int? axis}) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for argmin');
   }
 
   if (axis == null) {
-    NDArray src = a;
+    NDArray<T> src = a;
     if (!a.isContiguous) {
-      src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+      src = NDArray<T>.fromList(a.toList(), a.shape, a.dtype);
     }
 
     var minIdx = 0;
@@ -10322,6 +10700,7 @@ dynamic argmin(NDArray a, {int? axis}) {
         }
       }
     }
+    if (src != a) src.dispose();
     return minIdx;
   }
 
@@ -10335,7 +10714,7 @@ dynamic argmin(NDArray a, {int? axis}) {
   final result = NDArray<int>.create(targetShape, DType.int32);
   result.data.fillRange(0, result.data.length, 0);
 
-  _argMinMaxRecursive(
+  _argMinMaxRecursive<T>(
     a,
     result,
     List<int>.filled(rank, 0),
@@ -10346,8 +10725,8 @@ dynamic argmin(NDArray a, {int? axis}) {
   return result;
 }
 
-void _argMinMaxRecursive(
-  NDArray src,
+void _argMinMaxRecursive<T extends Object>(
+  NDArray<T> src,
   NDArray<int> dest,
   List<int> srcPos,
   int targetAxis,
@@ -10382,7 +10761,14 @@ void _argMinMaxRecursive(
 
   for (var i = 0; i < src.shape[currentDim]; i++) {
     srcPos[currentDim] = i;
-    _argMinMaxRecursive(src, dest, srcPos, targetAxis, currentDim + 1, isMax);
+    _argMinMaxRecursive<T>(
+      src,
+      dest,
+      srcPos,
+      targetAxis,
+      currentDim + 1,
+      isMax,
+    );
   }
 }
 

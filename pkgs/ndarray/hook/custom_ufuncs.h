@@ -39,6 +39,9 @@ void v_log_double(const double *src, double *res, int size);
 
 double r_sum_double(const double *src, int size);
 double r_prod_double(const double *src, int size);
+double r_mean_double(const double *src, int size);
+void s_sum_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_mean_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
 
 void v_add_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size);
 void v_sub_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size);
@@ -57,6 +60,9 @@ void v_log_float(const float *src, float *res, int size);
 
 float r_sum_float(const float *src, int size);
 float r_prod_float(const float *src, int size);
+float r_mean_float(const float *src, int size);
+void s_sum_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_mean_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
 
 void v_sqrt_double(const double *src, double *res, int size);
 void v_tan_double(const double *src, double *res, int size);
@@ -884,6 +890,16 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc, const double
 void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc, const float *x, int strideX, float dx, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, int axis, int edge_order);
 void s_gradient_complex128_all(const cpx_t *src, const int *stridesSrc, const cpx_t *x, int strideX, cpx_t dx, cpx_t *res, const int *stridesRes, const int *shape, int rank, int axis, int edge_order);
 void s_gradient_complex64_all(const cpx_f_t *src, const int *stridesSrc, const cpx_f_t *x, int strideX, cpx_f_t dx, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, int axis, int edge_order);
+
+/* linspace Grid Intrinsic Kernels */
+void s_linspace_grid_double(const double *start, const int *stridesStart, const double *stop, const int *stridesStop, double *res, const int *stridesRes, double *step, const int *stridesStep, const int *shape, int rank, int axis, int numSamples, int endpoint);
+void s_linspace_grid_float(const float *start, const int *stridesStart, const float *stop, const int *stridesStop, float *res, const int *stridesRes, float *step, const int *stridesStep, const int *shape, int rank, int axis, int numSamples, int endpoint);
+void s_linspace_grid_complex128(const cpx_t *start, const int *stridesStart, const cpx_t *stop, const int *stridesStop, cpx_t *res, const int *stridesRes, cpx_t *step, const int *stridesStep, const int *shape, int rank, int axis, int numSamples, int endpoint);
+void s_linspace_grid_complex64(const cpx_f_t *start, const int *stridesStart, const cpx_f_t *stop, const int *stridesStop, cpx_f_t *res, const int *stridesRes, cpx_f_t *step, const int *stridesStep, const int *shape, int rank, int axis, int numSamples, int endpoint);
+void s_linspace_grid_int64(const int64_t *start, const int *stridesStart, const int64_t *stop, const int *stridesStop, int64_t *res, const int *stridesRes, int64_t *step, const int *stridesStep, const int *shape, int rank, int axis, int numSamples, int endpoint);
+void s_linspace_grid_int32(const int32_t *start, const int *stridesStart, const int32_t *stop, const int *stridesStop, int32_t *res, const int *stridesRes, int32_t *step, const int *stridesStep, const int *shape, int rank, int axis, int numSamples, int endpoint);
+void s_linspace_grid_int16(const int16_t *start, const int *stridesStart, const int16_t *stop, const int *stridesStop, int16_t *res, const int *stridesRes, int16_t *step, const int *stridesStep, const int *shape, int rank, int axis, int numSamples, int endpoint);
+void s_linspace_grid_uint8(const uint8_t *start, const int *stridesStart, const uint8_t *stop, const int *stridesStop, uint8_t *res, const int *stridesRes, uint8_t *step, const int *stridesStep, const int *shape, int rank, int axis, int numSamples, int endpoint);
 
 int get_and_reset_division_error(void);
 

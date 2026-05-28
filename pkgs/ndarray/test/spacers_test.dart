@@ -23,7 +23,13 @@ void main() {
     test('integer linspace', () {
       final a = linspace<int>(0, 10, 5, dtype: DType.int64);
       expect(a.dtype, DType.int64);
-      expect(a.data, [0, 2, 5, 7, 10]); // interpolated: 0, 2.5, 5, 7.5, 10 -> truncated to int
+      expect(a.data, [
+        0,
+        2,
+        5,
+        7,
+        10,
+      ]); // interpolated: 0, 2.5, 5, 7.5, 10 -> truncated to int
     });
   });
 
@@ -90,12 +96,7 @@ void main() {
     });
 
     test('logspace complex', () {
-      final a = logspace<Complex>(
-        Complex(0, 0),
-        Complex(0, 2),
-        3,
-        base: Complex(10.0, 0.0),
-      );
+      final a = logspace<Complex>(Complex(0, 0), Complex(0, 2), 3, base: 10.0);
       expect(a.data[0], Complex(1, 0));
       final expected1 = Complex(math.cos(math.log(10)), math.sin(math.log(10)));
       final val1 = a.data[1];
