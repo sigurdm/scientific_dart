@@ -108,8 +108,14 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
   kiss_fft_cfg cfg = ffi.nullptr.cast();
 
   if (isZeroCopyFastPath) {
+    final marker = ScratchArena.marker;
     try {
-      cfg = kiss_fft_alloc(targetLen, 0, ffi.nullptr, ffi.nullptr);
+      final lenmem = ScratchArena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
+      lenmem[0] = 0;
+      kiss_fft_alloc(targetLen, 0, ffi.nullptr, lenmem);
+
+      final mem = ScratchArena.allocate<ffi.Void>(lenmem[0]);
+      cfg = kiss_fft_alloc(targetLen, 0, mem, lenmem);
       if (cfg.address == 0) {
         throw StateError(
           'Failed to allocate native FFT plan for length $targetLen',
@@ -122,9 +128,7 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
         kiss_fft(cfg, rowPin, rowPout);
       }
     } finally {
-      if (cfg.address != 0) {
-        free(cfg.cast<ffi.Void>());
-      }
+      ScratchArena.reset(marker);
       if (wasCopied) {
         inputA.dispose();
       }
@@ -298,8 +302,14 @@ NDArray ifft(NDArray a, {int? n, int axis = -1}) {
   kiss_fft_cfg cfg = ffi.nullptr.cast();
 
   if (isZeroCopyFastPath) {
+    final marker = ScratchArena.marker;
     try {
-      cfg = kiss_fft_alloc(targetLen, 1, ffi.nullptr, ffi.nullptr);
+      final lenmem = ScratchArena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
+      lenmem[0] = 0;
+      kiss_fft_alloc(targetLen, 1, ffi.nullptr, lenmem);
+
+      final mem = ScratchArena.allocate<ffi.Void>(lenmem[0]);
+      cfg = kiss_fft_alloc(targetLen, 1, mem, lenmem);
       if (cfg.address == 0) {
         throw StateError(
           'Failed to allocate native IFFT plan for length $targetLen',
@@ -318,9 +328,7 @@ NDArray ifft(NDArray a, {int? n, int axis = -1}) {
         }
       }
     } finally {
-      if (cfg.address != 0) {
-        free(cfg.cast<ffi.Void>());
-      }
+      ScratchArena.reset(marker);
       if (wasCopied) {
         inputA.dispose();
       }
