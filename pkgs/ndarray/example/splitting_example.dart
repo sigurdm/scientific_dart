@@ -8,6 +8,7 @@ void main() {
   runVSplitExamples();
 }
 
+// #docregion split
 void runSplitExamples() {
   print('--- 1. Equal Splitting (split / split_at) ---');
   NDArray.scope(() {
@@ -27,7 +28,12 @@ void runSplitExamples() {
     print('Sub-array 1: ${splitsAt[1].toList()}\n');
   });
 }
+// #enddocregion vsplit
+// #enddocregion hsplit
+// #enddocregion array_split
+// #enddocregion split
 
+// #docregion array_split
 void runArraySplitExamples() {
   print('--- 2. Unequal Splitting (array_split / array_split_at) ---');
   NDArray.scope(() {
@@ -50,6 +56,7 @@ void runArraySplitExamples() {
   });
 }
 
+// #docregion hsplit
 void runHSplitExamples() {
   print('--- 3. Horizontal Splitting (hsplit / hsplit_at) ---');
   NDArray.scope(() {
@@ -68,6 +75,7 @@ void runHSplitExamples() {
   });
 }
 
+// #docregion vsplit
 void runVSplitExamples() {
   print('--- 4. Vertical Splitting (vsplit / vsplit_at) ---');
   NDArray.scope(() {

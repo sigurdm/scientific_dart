@@ -52,8 +52,12 @@ NDArray<T> _sliceAlongAxis<T>(NDArray<T> a, int axis, int start, int stop) {
 /// - [ArgumentError] if [sections] is less than or equal to 0.
 /// - [RangeError] if [axis] is out of bounds.
 ///
+/// **Memory Safety & zero-copy View Warning:**
+/// > [!WARNING]
+/// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
+///
 /// **Example:**
-/// {@example /example/splitting_example.dart lang=dart}
+/// {@example /example/splitting_example.dart region=array_split lang=dart}
 ///
 /// Refer to the [NumPy array_split reference](https://numpy.org/doc/stable/reference/generated/numpy.array_split.html)
 /// for details.
@@ -102,8 +106,12 @@ List<NDArray<T>> array_split<T>(NDArray<T> a, int sections, {int axis = 0}) {
 /// - [StateError] if [a] is disposed.
 /// - [RangeError] if [axis] is out of bounds.
 ///
+/// **Memory Safety & zero-copy View Warning:**
+/// > [!WARNING]
+/// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
+///
 /// **Example:**
-/// {@example /example/splitting_example.dart lang=dart}
+/// {@example /example/splitting_example.dart region=array_split lang=dart}
 ///
 /// Refer to the [NumPy array_split reference](https://numpy.org/doc/stable/reference/generated/numpy.array_split.html)
 /// for details.
@@ -159,8 +167,12 @@ List<NDArray<T>> array_split_at<T>(
 /// - [ArgumentError] if [sections] is less than or equal to 0.
 /// - [ArgumentError] if division is not equal.
 ///
+/// **Memory Safety & zero-copy View Warning:**
+/// > [!WARNING]
+/// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
+///
 /// **Example:**
-/// {@example /example/splitting_example.dart lang=dart}
+/// {@example /example/splitting_example.dart region=split lang=dart}
 ///
 /// Refer to the [NumPy split reference](https://numpy.org/doc/stable/reference/generated/numpy.split.html)
 /// for details.
@@ -199,8 +211,12 @@ List<NDArray<T>> split<T>(NDArray<T> a, int sections, {int axis = 0}) {
 /// - [StateError] if [a] is disposed.
 /// - [RangeError] if [axis] is out of bounds.
 ///
+/// **Memory Safety & zero-copy View Warning:**
+/// > [!WARNING]
+/// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
+///
 /// **Example:**
-/// {@example /example/splitting_example.dart lang=dart}
+/// {@example /example/splitting_example.dart region=split lang=dart}
 ///
 /// Refer to the [NumPy split reference](https://numpy.org/doc/stable/reference/generated/numpy.split.html)
 /// for details.
@@ -220,8 +236,12 @@ List<NDArray<T>> split_at<T>(NDArray<T> a, List<int> indices, {int axis = 0}) {
 /// - [StateError] if [a] is disposed.
 /// - [ArgumentError] if the split is invalid or rank is $< 1$.
 ///
+/// **Memory Safety & zero-copy View Warning:**
+/// > [!WARNING]
+/// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
+///
 /// **Example:**
-/// {@example /example/splitting_example.dart lang=dart}
+/// {@example /example/splitting_example.dart region=hsplit lang=dart}
 ///
 /// Refer to the [NumPy hsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.hsplit.html)
 /// for details.
@@ -248,8 +268,12 @@ List<NDArray<T>> hsplit<T>(NDArray<T> a, int sections) {
 /// - [StateError] if [a] is disposed.
 /// - [ArgumentError] if the split is invalid or rank is $< 1$.
 ///
+/// **Memory Safety & zero-copy View Warning:**
+/// > [!WARNING]
+/// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
+///
 /// **Example:**
-/// {@example /example/splitting_example.dart lang=dart}
+/// {@example /example/splitting_example.dart region=hsplit lang=dart}
 ///
 /// Refer to the [NumPy hsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.hsplit.html)
 /// for details.
@@ -276,8 +300,12 @@ List<NDArray<T>> hsplit_at<T>(NDArray<T> a, List<int> indices) {
 /// - [StateError] if [a] is disposed.
 /// - [ArgumentError] if [a] has rank $< 2$.
 ///
+/// **Memory Safety & zero-copy View Warning:**
+/// > [!WARNING]
+/// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
+///
 /// **Example:**
-/// {@example /example/splitting_example.dart lang=dart}
+/// {@example /example/splitting_example.dart region=vsplit lang=dart}
 ///
 /// Refer to the [NumPy vsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.vsplit.html)
 /// for details.
@@ -303,8 +331,12 @@ List<NDArray<T>> vsplit<T>(NDArray<T> a, int sections) {
 /// - [StateError] if [a] is disposed.
 /// - [ArgumentError] if [a] has rank $< 2$.
 ///
+/// **Memory Safety & zero-copy View Warning:**
+/// > [!WARNING]
+/// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
+///
 /// **Example:**
-/// {@example /example/splitting_example.dart lang=dart}
+/// {@example /example/splitting_example.dart region=vsplit lang=dart}
 ///
 /// Refer to the [NumPy vsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.vsplit.html)
 /// for details.
