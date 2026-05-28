@@ -63,9 +63,14 @@ final class GridRange {
   final int? numPoints;
 
   /// Creates a new grid range specification.
-  const GridRange(this.start, this.stop, {this.step = 1.0, this.numPoints})
-    : assert(step != 0.0, 'Step cannot be zero'),
-      assert(numPoints == null || numPoints > 0, 'numPoints must be positive');
+  GridRange(this.start, this.stop, {this.step = 1.0, this.numPoints}) {
+    if (step == 0.0) {
+      throw ArgumentError('Step cannot be zero');
+    }
+    if (numPoints != null && numPoints! <= 0) {
+      throw ArgumentError('numPoints must be positive');
+    }
+  }
 
   /// Creates a grid range specification using NumPy-style parameters.
   ///

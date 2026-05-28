@@ -57,6 +57,9 @@ import 'helpers.dart';
 ///
 /// Reference: [Cooley-Tukey FFT Algorithm](https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm)
 NDArray fft(NDArray a, {int? n, int axis = -1}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute fft() on a disposed array.');
+  }
   if (a.shape.isEmpty) {
     throw ArgumentError(
       'Cannot compute FFT on a 0-dimensional or empty scalar array',
@@ -243,6 +246,9 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
 /// **Example:**
 /// {@example /example/fft_example.dart lang=dart}
 NDArray ifft(NDArray a, {int? n, int axis = -1}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute ifft() on a disposed array.');
+  }
   if (a.shape.isEmpty) {
     throw ArgumentError(
       'Cannot compute IFFT on a 0-dimensional or empty scalar array',

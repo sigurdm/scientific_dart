@@ -477,6 +477,7 @@ NDArray<T> logspace<T>(
   bool endpoint = true,
   DType<T>? dtype,
 }) {
+  if (numSamples <= 0) throw ArgumentError('numSamples must be positive');
   final resolvedDType = dtype ?? defaultDType<T>();
 
   final arr = NDArray<T>.create([numSamples], resolvedDType);
@@ -605,6 +606,7 @@ NDArray<T> geomspace<T>(
   bool endpoint = true,
   DType<T>? dtype,
 }) {
+  if (numSamples <= 0) throw ArgumentError('numSamples must be positive');
   final resolvedDType = dtype ?? defaultDType<T>();
 
   switch (resolvedDType) {
