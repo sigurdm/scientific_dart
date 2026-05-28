@@ -1,4 +1,33 @@
-part of '../operations.dart';
+// ignore_for_file: non_constant_identifier_names
+import 'dart:typed_data';
+import 'dart:math' as math;
+import 'dart:math' show Random;
+import 'dart:io';
+import 'package:archive/archive.dart';
+import 'package:pocketfft/pocketfft.dart';
+import '../ndarray.dart';
+import 'package:openblas/openblas.dart';
+import 'dart:ffi' as ffi;
+import 'package:ffi/ffi.dart';
+import '../ndarray_bindings.dart';
+import '../scratch_arena.dart';
+
+// Standalone operational relative cross-imports
+import 'math.dart';
+import 'stats.dart';
+import 'sorting.dart';
+import 'linalg.dart';
+import 'spacers.dart';
+import 'manipulation.dart';
+import 'broadcasting.dart';
+import 'splitting.dart';
+import 'shaping_meshes.dart';
+import 'repeating_tiling.dart';
+import 'io.dart';
+import 'random.dart';
+import 'fft.dart';
+import 'calculus.dart';
+import 'helpers.dart';
 
 /// Concatenates a list of arrays along a specified axis.
 NDArray<T> concatenate<T extends Object>(
@@ -53,7 +82,7 @@ NDArray<T> concatenate<T extends Object>(
     var destOffset = 0;
     for (final arr in arrays) {
       final size = arr.shape.isEmpty ? 1 : arr.shape.reduce((a, b) => a * b);
-      _copyContiguousFlat(arr, result, destOffset, size);
+      copyContiguousFlat(arr, result, destOffset, size);
       destOffset += size;
     }
     return result;
@@ -61,7 +90,7 @@ NDArray<T> concatenate<T extends Object>(
 
   var axisOffset = 0;
   for (final arr in arrays) {
-    _copyConcatenateRecursive(
+    copyConcatenateRecursive(
       arr,
       result,
       axis,
@@ -73,41 +102,6 @@ NDArray<T> concatenate<T extends Object>(
   }
 
   return result;
-}
-
-void _copyContiguousFlat(NDArray src, NDArray dest, int destOffset, int size) {
-  final width = src.dtype.byteWidth;
-  final destPtr = dest.pointer.cast<ffi.Uint8>() + destOffset * width;
-  final srcPtr = src.pointer.cast<ffi.Uint8>();
-  custom_memcpy(destPtr.cast(), srcPtr.cast(), size * width);
-}
-
-void _copyConcatenateRecursive<T extends Object>(
-  NDArray<T> src,
-  NDArray<T> dest,
-  int axis,
-  int axisOffset,
-  List<int> currentIndices,
-  int currentDim,
-) {
-  if (currentDim == src.shape.length) {
-    final destIndices = List<int>.from(currentIndices);
-    destIndices[axis] += axisOffset;
-    dest[destIndices] = src[currentIndices];
-    return;
-  }
-
-  for (var i = 0; i < src.shape[currentDim]; i++) {
-    currentIndices[currentDim] = i;
-    _copyConcatenateRecursive(
-      src,
-      dest,
-      axis,
-      axisOffset,
-      currentIndices,
-      currentDim + 1,
-    );
-  }
 }
 
 /// Join a sequence of arrays along a new axis.
@@ -171,38 +165,10 @@ NDArray stack(List<NDArray> arrays, {int axis = 0}) {
 
   for (var i = 0; i < arrays.length; i++) {
     final currentIndices = List<int>.filled(first.shape.length, 0);
-    _copyStackRecursive(arrays[i], result, targetAxis, i, currentIndices, 0);
+    copyStackRecursive(arrays[i], result, targetAxis, i, currentIndices, 0);
   }
 
   return result;
-}
-
-void _copyStackRecursive(
-  NDArray src,
-  NDArray dest,
-  int targetAxis,
-  int axisOffset,
-  List<int> currentIndices,
-  int currentDim,
-) {
-  if (currentDim == src.shape.length) {
-    final destIndices = List<int>.from(currentIndices);
-    destIndices.insert(targetAxis, axisOffset);
-    dest[destIndices] = src[currentIndices];
-    return;
-  }
-
-  for (var i = 0; i < src.shape[currentDim]; i++) {
-    currentIndices[currentDim] = i;
-    _copyStackRecursive(
-      src,
-      dest,
-      targetAxis,
-      axisOffset,
-      currentIndices,
-      currentDim + 1,
-    );
-  }
 }
 
 /// Expand the shape of an array by inserting a new axis of size 1.

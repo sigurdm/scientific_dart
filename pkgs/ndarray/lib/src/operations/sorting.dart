@@ -1,4 +1,33 @@
-part of '../operations.dart';
+// ignore_for_file: non_constant_identifier_names
+import 'dart:typed_data';
+import 'dart:math' as math;
+import 'dart:math' show Random;
+import 'dart:io';
+import 'package:archive/archive.dart';
+import 'package:pocketfft/pocketfft.dart';
+import '../ndarray.dart';
+import 'package:openblas/openblas.dart';
+import 'dart:ffi' as ffi;
+import 'package:ffi/ffi.dart';
+import '../ndarray_bindings.dart';
+import '../scratch_arena.dart';
+
+// Standalone operational relative cross-imports
+import 'math.dart';
+import 'stats.dart';
+import 'sorting.dart';
+import 'linalg.dart';
+import 'spacers.dart';
+import 'manipulation.dart';
+import 'broadcasting.dart';
+import 'splitting.dart';
+import 'shaping_meshes.dart';
+import 'repeating_tiling.dart';
+import 'io.dart';
+import 'random.dart';
+import 'fft.dart';
+import 'calculus.dart';
+import 'helpers.dart';
 
 /// Returns a sorted copy of an array along a specified [axis].
 ///
@@ -119,7 +148,7 @@ NDArray sort(NDArray a, {int axis = -1, SortKind kind = SortKind.quicksort}) {
 
   final baseCast = result.pointer.cast<ffi.Uint8>();
   final rowSizeInBytes = n * elementSizeInBytes;
-  final nativeKind = _mapSortKind(kind);
+  final nativeKind = mapSortKind(kind);
 
   for (var r = 0; r < numRows; r++) {
     final rowPtr = baseCast + (r * rowSizeInBytes);
@@ -193,7 +222,7 @@ NDArray<int> argsort(
     final numRows = totalSize ~/ n;
 
     final result = NDArray<int>.create(src.shape, DType.int32);
-    final nativeKind = _mapSortKind(kind);
+    final nativeKind = mapSortKind(kind);
 
     if (src.dtype == DType.float64) {
       final dataPtr = src.pointer.cast<ffi.Double>();
@@ -883,137 +912,6 @@ NDArray<int> searchsorted(
   return result;
 }
 
-void _whereOpRec<Tc, Tx, Ty, Tr>(
-  List<Tr> result,
-  List<Tc> cond,
-  List<Tx> x,
-  List<Ty> y,
-  List<int> shape,
-  List<int> sCond,
-  List<int> sX,
-  List<int> sY,
-  List<int> sResult,
-  int dim,
-  int oCond,
-  int oX,
-  int oY,
-  int oResult,
-) {
-  if (dim == shape.length) {
-    final cVal = cond[oCond];
-    final isTrue = _isTrue(cVal);
-    if (isTrue) {
-      final xVal = x[oX];
-      result[oResult] = (Tr == Complex && xVal is num)
-          ? Complex(xVal.toDouble(), 0.0) as Tr
-          : xVal as Tr;
-    } else {
-      final yVal = y[oY];
-      result[oResult] = (Tr == Complex && yVal is num)
-          ? Complex(yVal.toDouble(), 0.0) as Tr
-          : yVal as Tr;
-    }
-    return;
-  }
-
-  for (var i = 0; i < shape[dim]; i++) {
-    _whereOpRec<Tc, Tx, Ty, Tr>(
-      result,
-      cond,
-      x,
-      y,
-      shape,
-      sCond,
-      sX,
-      sY,
-      sResult,
-      dim + 1,
-      oCond + i * sCond[dim],
-      oX + i * sX[dim],
-      oY + i * sY[dim],
-      oResult + i * sResult[dim],
-    );
-  }
-}
-
-void _dispatchWhere(
-  List rData,
-  NDArray condition,
-  NDArray x,
-  NDArray y,
-  List<int> shape,
-  List<int> sCond,
-  List<int> sX,
-  List<int> sY,
-  List<int> sResult,
-) {
-  final cData = condition.data;
-  final xData = x.data;
-  final yData = y.data;
-
-  if (x.dtype == DType.complex128 ||
-      x.dtype == DType.complex64 ||
-      y.dtype == DType.complex128 ||
-      y.dtype == DType.complex64) {
-    final resList = rData as List<Complex>;
-    _whereOpRec<dynamic, dynamic, dynamic, Complex>(
-      resList,
-      cData,
-      xData,
-      yData,
-      shape,
-      sCond,
-      sX,
-      sY,
-      sResult,
-      0,
-      0,
-      0,
-      0,
-      0,
-    );
-  } else if (x.dtype == DType.float64 ||
-      x.dtype == DType.float32 ||
-      y.dtype == DType.float64 ||
-      y.dtype == DType.float32) {
-    final resList = rData as List<double>;
-    _whereOpRec<dynamic, dynamic, dynamic, double>(
-      resList,
-      cData,
-      xData,
-      yData,
-      shape,
-      sCond,
-      sX,
-      sY,
-      sResult,
-      0,
-      0,
-      0,
-      0,
-      0,
-    );
-  } else {
-    final resList = rData as List<int>;
-    _whereOpRec<dynamic, dynamic, dynamic, int>(
-      resList,
-      cData,
-      xData,
-      yData,
-      shape,
-      sCond,
-      sX,
-      sY,
-      sResult,
-      0,
-      0,
-      0,
-      0,
-      0,
-    );
-  }
-}
-
 dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
   if (x == null && y == null) {
     if (out != null) {
@@ -1029,9 +927,9 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
   }
 
   // Calculate target common shape via high-speed 3-way broadcast matching
-  final commonShape = _broadcast3Shapes(condition.shape, x!.shape, y!.shape);
+  final commonShape = broadcast3Shapes(condition.shape, x!.shape, y!.shape);
 
-  final DType<dynamic> targetDType = _resolveDType(x.dtype, y.dtype);
+  final DType<dynamic> targetDType = resolveDType(x.dtype, y.dtype);
 
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
@@ -1042,9 +940,9 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
   }
 
   // Compute precise broadcasted strides for each operand independently to commonShape
-  final stridesCond = _broadcastStrides(condition, commonShape);
-  final stridesX = _broadcastStrides(x, commonShape);
-  final stridesY = _broadcastStrides(y, commonShape);
+  final stridesCond = broadcastStrides(condition, commonShape);
+  final stridesX = broadcastStrides(x, commonShape);
+  final stridesY = broadcastStrides(y, commonShape);
 
   final result = out ?? NDArray.create(commonShape, targetDType);
   final resultStrides = NDArray.computeCStrides(commonShape);
@@ -1108,7 +1006,7 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
     }
   }
 
-  _dispatchWhere(
+  dispatchWhere(
     result.data,
     condition,
     x,
@@ -1152,7 +1050,7 @@ List<NDArray<int>> nonzero(NDArray a) {
 
   for (int el = 0; el < totalSize; el++) {
     final val = a.data[offset];
-    if (_isTrue(val)) {
+    if (isTrueHelper(val)) {
       for (var d = 0; d < rank; d++) {
         results[d].data[writeIdx] = coord[d];
       }
@@ -1186,14 +1084,14 @@ dynamic count_nonzero<T>(NDArray<T> a, {int? axis}) {
     var count = 0;
     if (a.isContiguous) {
       for (var i = 0; i < a.data.length; i++) {
-        if (_isTrue(a.data[i])) count++;
+        if (isTrueHelper(a.data[i])) count++;
       }
       return count;
     }
     final rank = a.shape.length;
     final pos = List<int>.filled(rank, 0);
     int countWalk(int dim) {
-      if (dim == rank) return _isTrue(a[pos]) ? 1 : 0;
+      if (dim == rank) return isTrueHelper(a[pos]) ? 1 : 0;
       var subCount = 0;
       for (var i = 0; i < a.shape[dim]; i++) {
         pos[dim] = i;
@@ -1214,40 +1112,9 @@ dynamic count_nonzero<T>(NDArray<T> a, {int? axis}) {
   final targetShape = List<int>.from(a.shape)..removeAt(targetAxis);
   final result = NDArray<int>.zeros(targetShape, DType.int32);
 
-  _countNonzeroRecursive<T>(
-    a,
-    result,
-    List<int>.filled(rank, 0),
-    targetAxis,
-    0,
-  );
+  countNonzeroRecursive<T>(a, result, List<int>.filled(rank, 0), targetAxis, 0);
 
   return result;
-}
-
-void _countNonzeroRecursive<T>(
-  NDArray<T> src,
-  NDArray<int> dest,
-  List<int> srcPos,
-  int targetAxis,
-  int currentDim,
-) {
-  if (currentDim == src.shape.length) {
-    if (_isTrue(src[srcPos])) {
-      final destPos = List<int>.from(srcPos)..removeAt(targetAxis);
-      var destOffset = 0;
-      for (var i = 0; i < dest.shape.length; i++) {
-        destOffset += destPos[i] * dest.strides[i];
-      }
-      dest.data[destOffset] += 1;
-    }
-    return;
-  }
-
-  for (var i = 0; i < src.shape[currentDim]; i++) {
-    srcPos[currentDim] = i;
-    _countNonzeroRecursive<T>(src, dest, srcPos, targetAxis, currentDim + 1);
-  }
 }
 
 /// Returns the indices of the maximum values along an [axis].
@@ -1301,7 +1168,7 @@ dynamic argmax<T>(NDArray<T> a, {int? axis}) {
   final result = NDArray<int>.create(targetShape, DType.int32);
   result.data.fillRange(0, result.data.length, 0);
 
-  _argMinMaxRecursive<T>(
+  argMinMaxRecursive<T>(
     a,
     result,
     List<int>.filled(rank, 0),
@@ -1363,7 +1230,7 @@ dynamic argmin<T>(NDArray<T> a, {int? axis}) {
   final result = NDArray<int>.create(targetShape, DType.int32);
   result.data.fillRange(0, result.data.length, 0);
 
-  _argMinMaxRecursive<T>(
+  argMinMaxRecursive<T>(
     a,
     result,
     List<int>.filled(rank, 0),
@@ -1372,51 +1239,4 @@ dynamic argmin<T>(NDArray<T> a, {int? axis}) {
     false,
   );
   return result;
-}
-
-void _argMinMaxRecursive<T>(
-  NDArray<T> src,
-  NDArray<int> dest,
-  List<int> srcPos,
-  int targetAxis,
-  int currentDim,
-  bool isMax,
-) {
-  if (currentDim == src.shape.length) {
-    final destPos = List<int>.from(srcPos)..removeAt(targetAxis);
-    var destOffset = 0;
-    for (var i = 0; i < dest.shape.length; i++) {
-      destOffset += destPos[i] * dest.strides[i];
-    }
-
-    final currentBestIndex = dest.data[destOffset];
-    final currentBestPos = List<int>.from(srcPos);
-    currentBestPos[targetAxis] = currentBestIndex;
-
-    final currentVal = src[srcPos] as num;
-    final bestVal = src[currentBestPos] as num;
-
-    if (isMax) {
-      if (srcPos[targetAxis] > currentBestIndex && currentVal > bestVal) {
-        dest.data[destOffset] = srcPos[targetAxis];
-      }
-    } else {
-      if (srcPos[targetAxis] > currentBestIndex && currentVal < bestVal) {
-        dest.data[destOffset] = srcPos[targetAxis];
-      }
-    }
-    return;
-  }
-
-  for (var i = 0; i < src.shape[currentDim]; i++) {
-    srcPos[currentDim] = i;
-    _argMinMaxRecursive<T>(
-      src,
-      dest,
-      srcPos,
-      targetAxis,
-      currentDim + 1,
-      isMax,
-    );
-  }
 }

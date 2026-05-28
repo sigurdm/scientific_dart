@@ -1,10 +1,33 @@
+// ignore_for_file: non_constant_identifier_names
+import 'dart:typed_data';
 import 'dart:math' as math;
 import 'dart:math' show Random;
+import 'dart:io';
+import 'package:archive/archive.dart';
+import 'package:pocketfft/pocketfft.dart';
+import '../ndarray.dart';
+import 'package:openblas/openblas.dart';
 import 'dart:ffi' as ffi;
-import 'dart:typed_data';
-import 'ndarray_bindings.dart';
-import 'ndarray.dart';
-import 'operations.dart';
+import 'package:ffi/ffi.dart';
+import '../ndarray_bindings.dart';
+import '../scratch_arena.dart';
+
+// Standalone operational relative cross-imports
+import 'math.dart';
+import 'stats.dart';
+import 'sorting.dart';
+import 'linalg.dart';
+import 'spacers.dart';
+import 'manipulation.dart';
+import 'broadcasting.dart';
+import 'splitting.dart';
+import 'shaping_meshes.dart';
+import 'repeating_tiling.dart';
+import 'io.dart';
+import 'random.dart';
+import 'fft.dart';
+import 'calculus.dart';
+import 'helpers.dart';
 
 /// Generates an array with random values uniformly distributed in the half-open interval `[0.0, 1.0)`.
 ///
@@ -66,31 +89,6 @@ NDArray<T> uniform<T extends num>(
   }
   return arr;
 }
-
-/// Generates an array with random integer values uniformly distributed in the half-open interval `[low, high)`.
-///
-/// **Preconditions:**
-/// - [dtype] must be an integer type (DType.int32 or DType.int64).
-/// - [low] must be strictly less than [high].
-///
-/// **Throws:**
-/// - [ArgumentError] if [dtype] is not a supported integer type.
-/// - [ArgumentError] if [low] is greater than or equal to [high].
-///
-/// **Performance considerations:**
-/// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
-///   the generated array (product of [shape] dimensions).
-/// - Offloads element generation directly to high-speed C FFI vector functions (`v_randint_int64` / `v_randint_int32`),
-///   providing optimal random integers generation speed.
-///
-/// **Example:**
-/// {@example /example/random_example.dart lang=dart}
-///
-/// Refer to the [Discrete Uniform Distribution Reference](https://en.wikipedia.org/wiki/Discrete_uniform_distribution)
-/// for details on discrete uniform distributions.
-///
-/// By default, uses Dart's standard [Random] class, which is not cryptographically secure.
-/// You can pass a secure random object via the [random] parameter if needed.
 
 NDArray<T> randint<T extends num>(
   List<int> shape, {

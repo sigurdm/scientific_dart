@@ -1,4 +1,33 @@
-part of '../operations.dart';
+// ignore_for_file: non_constant_identifier_names
+import 'dart:typed_data';
+import 'dart:math' as math;
+import 'dart:math' show Random;
+import 'dart:io';
+import 'package:archive/archive.dart';
+import 'package:pocketfft/pocketfft.dart';
+import '../ndarray.dart';
+import 'package:openblas/openblas.dart';
+import 'dart:ffi' as ffi;
+import 'package:ffi/ffi.dart';
+import '../ndarray_bindings.dart';
+import '../scratch_arena.dart';
+
+// Standalone operational relative cross-imports
+import 'math.dart';
+import 'stats.dart';
+import 'sorting.dart';
+import 'linalg.dart';
+import 'spacers.dart';
+import 'manipulation.dart';
+import 'broadcasting.dart';
+import 'splitting.dart';
+import 'shaping_meshes.dart';
+import 'repeating_tiling.dart';
+import 'io.dart';
+import 'random.dart';
+import 'fft.dart';
+import 'calculus.dart';
+import 'helpers.dart';
 
 /// Compute the sum of elements in the array.
 ///
@@ -51,7 +80,7 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   final newShape = List<int>.from(a.shape)..removeAt(axis);
   final result = out ?? NDArray<T>.zeros(newShape, a.dtype);
   if (out != null) {
-    result.fill(_normalizeScalar(0, a.dtype) as T);
+    result.fill(normalizeScalar(0, a.dtype) as T);
   }
 
   if (a.dtype == DType.float64) {
@@ -104,7 +133,7 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     return result;
   }
 
-  _reduceRecursive<T, T>(
+  reduceRecursive<T, T>(
     a,
     result,
     List<int>.filled(a.shape.length, 0),
@@ -167,10 +196,10 @@ NDArray<T> prod<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   final newShape = List<int>.from(a.shape)..removeAt(axis);
   final result = out ?? NDArray<T>.ones(newShape, a.dtype);
   if (out != null) {
-    result.fill(_normalizeScalar(1, a.dtype) as T);
+    result.fill(normalizeScalar(1, a.dtype) as T);
   }
 
-  _reduceRecursive<T, T>(
+  reduceRecursive<T, T>(
     a,
     result,
     List<int>.filled(a.shape.length, 0),
@@ -227,7 +256,7 @@ NDArray<bool> all<T extends Object>(
     final List<T> elements = size == a.data.length ? a.data : a.toList();
     var allTrue = true;
     for (var i = 0; i < elements.length; i++) {
-      if (!_isTrue(elements[i])) {
+      if (!isTrueHelper(elements[i])) {
         allTrue = false;
         break;
       }
@@ -245,14 +274,14 @@ NDArray<bool> all<T extends Object>(
   final result = out ?? NDArray<bool>.create(newShape, DType.boolean);
   result.fill(true); // Initialize to true everywhere
 
-  _reduceRecursive<T, bool>(
+  reduceRecursive<T, bool>(
     a,
     result,
     List<int>.filled(a.shape.length, 0),
     List<int>.filled(newShape.length, 0),
     targetAxis,
     0,
-    (current, val) => current && _isTrue(val),
+    (current, val) => current && isTrueHelper(val),
   );
 
   return result;
@@ -303,7 +332,7 @@ NDArray<bool> any<T extends Object>(
     final List<T> elements = size == a.data.length ? a.data : a.toList();
     var anyTrue = false;
     for (var i = 0; i < elements.length; i++) {
-      if (_isTrue(elements[i])) {
+      if (isTrueHelper(elements[i])) {
         anyTrue = true;
         break;
       }
@@ -325,14 +354,14 @@ NDArray<bool> any<T extends Object>(
     result.fill(false);
   }
 
-  _reduceRecursive<T, bool>(
+  reduceRecursive<T, bool>(
     a,
     result,
     List<int>.filled(a.shape.length, 0),
     List<int>.filled(newShape.length, 0),
     targetAxis,
     0,
-    (current, val) => current || _isTrue(val),
+    (current, val) => current || isTrueHelper(val),
   );
 
   return result;
@@ -388,7 +417,7 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
     if (a.dtype.isComplex || a.dtype.isFloating) {
       promotedA = a;
     } else {
-      promotedA = _promoteToDouble(a);
+      promotedA = promoteToDouble(a);
     }
 
     final s = sum<Object>(promotedA as NDArray<Object>, axis: axis);
@@ -478,7 +507,7 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
 
     if (targetDType.isComplex) {
       final promotedA =
-          (a.dtype.isComplex ? a : _promoteToComplex(a)) as NDArray<Complex>;
+          (a.dtype.isComplex ? a : promoteToComplex(a)) as NDArray<Complex>;
       sum<Complex>(
         promotedA,
         axis: axis,
@@ -487,7 +516,7 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
       if (promotedA != a) promotedA.dispose();
     } else {
       final promotedA =
-          (a.dtype.isFloating ? a : _promoteToDouble(a)) as NDArray<double>;
+          (a.dtype.isFloating ? a : promoteToDouble(a)) as NDArray<double>;
       sum<double>(
         promotedA,
         axis: axis,
@@ -560,56 +589,6 @@ NDArray<double> std<T extends num>(
     );
     v.dispose();
     return resultVal;
-  }
-}
-
-/// Recursive helper to accumulate sum and count of non-NaN elements along an axis.
-void _nanReduceRecursive<T extends Object>(
-  NDArray<T> a,
-  NDArray<T> result,
-  NDArray<int> counts,
-  List<int> coordA,
-  List<int> coordRes,
-  int axis,
-  int dim,
-) {
-  if (dim == a.shape.length) {
-    final val = a.getCell(coordA);
-    if (val is double && val.isNaN) return;
-    if (val is Complex && (val.real.isNaN || val.imag.isNaN)) return;
-    final current = result.getCell(coordRes);
-    result.setCell(coordRes, ((current as dynamic) + val) as T);
-    counts.setCell(coordRes, counts.getCell(coordRes) + 1);
-    return;
-  }
-  if (dim == axis) {
-    for (var i = 0; i < a.shape[axis]; i++) {
-      coordA[dim] = i;
-      _nanReduceRecursive<T>(
-        a,
-        result,
-        counts,
-        coordA,
-        coordRes,
-        axis,
-        dim + 1,
-      );
-    }
-  } else {
-    final resDim = dim < axis ? dim : dim - 1;
-    for (var i = 0; i < a.shape[dim]; i++) {
-      coordA[dim] = i;
-      coordRes[resDim] = i;
-      _nanReduceRecursive<T>(
-        a,
-        result,
-        counts,
-        coordA,
-        coordRes,
-        axis,
-        dim + 1,
-      );
-    }
   }
 }
 
@@ -795,7 +774,7 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis}) {
       return Slice();
     });
     final currentSlice = a.slice(currentSelectors);
-    _elementWiseMin(result, currentSlice);
+    elementWiseMin(result, currentSlice);
   }
 
   return result;
@@ -882,7 +861,7 @@ NDArray<T> nanmin<T extends Object>(NDArray<T> a, {int? axis}) {
       return Slice();
     });
     final currentSlice = a.slice(currentSelectors);
-    _elementWiseNanMin(result, currentSlice);
+    elementWiseNanMin(result, currentSlice);
   }
 
   return result;
@@ -920,7 +899,7 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis}) {
       return Slice();
     });
     final currentSlice = a.slice(currentSelectors);
-    _elementWiseMax(result, currentSlice);
+    elementWiseMax(result, currentSlice);
   }
 
   return result;
@@ -1007,222 +986,10 @@ NDArray<T> nanmax<T extends Object>(NDArray<T> a, {int? axis}) {
       return Slice();
     });
     final currentSlice = a.slice(currentSelectors);
-    _elementWiseNanMax(result, currentSlice);
+    elementWiseNanMax(result, currentSlice);
   }
 
   return result;
-}
-
-void _elementWiseMin(NDArray dest, NDArray src) {
-  _elementWiseMinRec(dest, src, dest.strides, src.strides, 0, 0, 0);
-}
-
-void _elementWiseMinRec(
-  NDArray dest,
-  NDArray src,
-  List<int> stridesDest,
-  List<int> stridesSrc,
-  int dim,
-  int offsetDest,
-  int offsetSrc,
-) {
-  final rank = dest.shape.length;
-  if (dim == rank) {
-    final dVal = dest.data[offsetDest];
-    final sVal = src.data[offsetSrc];
-    if (dVal is double && sVal is double) {
-      dest.data[offsetDest] = math.min(dVal, sVal);
-    } else if (dVal is int && sVal is int) {
-      dest.data[offsetDest] = math.min(dVal, sVal);
-    }
-    return;
-  }
-
-  final limit = dest.shape[dim];
-  for (var i = 0; i < limit; i++) {
-    _elementWiseMinRec(
-      dest,
-      src,
-      stridesDest,
-      stridesSrc,
-      dim + 1,
-      offsetDest + i * stridesDest[dim],
-      offsetSrc + i * stridesSrc[dim],
-    );
-  }
-}
-
-void _elementWiseMax(NDArray dest, NDArray src) {
-  _elementWiseMaxRec(dest, src, dest.strides, src.strides, 0, 0, 0);
-}
-
-void _elementWiseMaxRec(
-  NDArray dest,
-  NDArray src,
-  List<int> stridesDest,
-  List<int> stridesSrc,
-  int dim,
-  int offsetDest,
-  int offsetSrc,
-) {
-  final rank = dest.shape.length;
-  if (dim == rank) {
-    final dVal = dest.data[offsetDest];
-    final sVal = src.data[offsetSrc];
-    if (dVal is double && sVal is double) {
-      dest.data[offsetDest] = math.max(dVal, sVal);
-    } else if (dVal is int && sVal is int) {
-      dest.data[offsetDest] = math.max(dVal, sVal);
-    }
-    return;
-  }
-
-  final limit = dest.shape[dim];
-  for (var i = 0; i < limit; i++) {
-    _elementWiseMaxRec(
-      dest,
-      src,
-      stridesDest,
-      stridesSrc,
-      dim + 1,
-      offsetDest + i * stridesDest[dim],
-      offsetSrc + i * stridesSrc[dim],
-    );
-  }
-}
-
-void _elementWiseNanMin(NDArray dest, NDArray src) {
-  _elementWiseNanMinRec(dest, src, dest.strides, src.strides, 0, 0, 0);
-}
-
-void _elementWiseNanMinRec(
-  NDArray dest,
-  NDArray src,
-  List<int> stridesDest,
-  List<int> stridesSrc,
-  int dim,
-  int offsetDest,
-  int offsetSrc,
-) {
-  final rank = dest.shape.length;
-  if (dim == rank) {
-    final dVal = dest.data[offsetDest];
-    final sVal = src.data[offsetSrc];
-    if (dVal is double && sVal is double) {
-      if (sVal.isNaN) return;
-      if (dVal.isNaN || sVal < dVal) {
-        dest.data[offsetDest] = sVal;
-      }
-    } else if (dVal is int && sVal is int) {
-      if (sVal < dVal) {
-        dest.data[offsetDest] = sVal;
-      }
-    }
-    return;
-  }
-
-  final limit = dest.shape[dim];
-  for (var i = 0; i < limit; i++) {
-    _elementWiseNanMinRec(
-      dest,
-      src,
-      stridesDest,
-      stridesSrc,
-      dim + 1,
-      offsetDest + i * stridesDest[dim],
-      offsetSrc + i * stridesSrc[dim],
-    );
-  }
-}
-
-void _elementWiseNanMax(NDArray dest, NDArray src) {
-  _elementWiseNanMaxRec(dest, src, dest.strides, src.strides, 0, 0, 0);
-}
-
-void _elementWiseNanMaxRec(
-  NDArray dest,
-  NDArray src,
-  List<int> stridesDest,
-  List<int> stridesSrc,
-  int dim,
-  int offsetDest,
-  int offsetSrc,
-) {
-  final rank = dest.shape.length;
-  if (dim == rank) {
-    final dVal = dest.data[offsetDest];
-    final sVal = src.data[offsetSrc];
-    if (dVal is double && sVal is double) {
-      if (sVal.isNaN) return;
-      if (dVal.isNaN || sVal > dVal) {
-        dest.data[offsetDest] = sVal;
-      }
-    } else if (dVal is int && sVal is int) {
-      if (sVal > dVal) {
-        dest.data[offsetDest] = sVal;
-      }
-    }
-    return;
-  }
-
-  final limit = dest.shape[dim];
-  for (var i = 0; i < limit; i++) {
-    _elementWiseNanMaxRec(
-      dest,
-      src,
-      stridesDest,
-      stridesSrc,
-      dim + 1,
-      offsetDest + i * stridesDest[dim],
-      offsetSrc + i * stridesSrc[dim],
-    );
-  }
-}
-
-/// Recursive helper to traverse and reduce an array along an axis.
-void _reduceRecursive<S extends Object, D extends Object>(
-  NDArray<S> src,
-  NDArray<D> dest,
-  List<int> currentPos,
-  List<int> destPos,
-  int targetAxis,
-  int currentDim,
-  D Function(D acc, S val) op,
-) {
-  if (currentDim == src.shape.length) {
-    // Calculate flat index for src
-    var srcOffset = 0;
-    for (var i = 0; i < src.shape.length; i++) {
-      srcOffset += currentPos[i] * src.strides[i];
-    }
-
-    // Calculate flat index for dest
-    var destOffset = 0;
-    for (var i = 0; i < dest.shape.length; i++) {
-      destOffset += destPos[i] * dest.strides[i];
-    }
-
-    dest.data[destOffset] = op(dest.data[destOffset], src.data[srcOffset]);
-    return;
-  }
-
-  for (var i = 0; i < src.shape[currentDim]; i++) {
-    currentPos[currentDim] = i;
-    if (currentDim < targetAxis) {
-      destPos[currentDim] = i;
-    } else if (currentDim > targetAxis) {
-      destPos[currentDim - 1] = i;
-    }
-    _reduceRecursive<S, D>(
-      src,
-      dest,
-      currentPos,
-      destPos,
-      targetAxis,
-      currentDim + 1,
-      op,
-    );
-  }
 }
 
 NDArray<T> cumsum<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
@@ -1270,7 +1037,7 @@ NDArray<T> cumsum<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     }
   }
 
-  return _cumOpFFI(a, targetAxis, result, _CumOpType.sum);
+  return cumOpFFI(a, targetAxis, result, CumOpType.sum);
 }
 
 /// Compute the cumulative product of array elements along a specified axis.
@@ -1331,7 +1098,7 @@ NDArray<T> cumprod<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     }
   }
 
-  return _cumOpFFI(a, targetAxis, result, _CumOpType.prod);
+  return cumOpFFI(a, targetAxis, result, CumOpType.prod);
 }
 
 /// Compute the cumulative minimum of array elements along a specified axis.
@@ -1394,7 +1161,7 @@ NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     }
   }
 
-  return _cumOpFFI(a, targetAxis, result, _CumOpType.min);
+  return cumOpFFI(a, targetAxis, result, CumOpType.min);
 }
 
 /// Compute the cumulative maximum of array elements along a specified axis.
@@ -1457,5 +1224,5 @@ NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     }
   }
 
-  return _cumOpFFI(a, targetAxis, result, _CumOpType.max);
+  return cumOpFFI(a, targetAxis, result, CumOpType.max);
 }

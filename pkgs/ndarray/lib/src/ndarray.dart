@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'dart:async';
 import 'package:ffi/ffi.dart';
 import 'dart:collection';
-import 'broadcasting.dart';
+import 'operations/broadcasting.dart';
 import 'ndarray_bindings.dart';
 
 import 'operations.dart' as ops;
@@ -3036,9 +3036,7 @@ final class Complex {
       final r = math.exp(prod.real);
       return Complex(r * math.cos(prod.imag), r * math.sin(prod.imag));
     } else {
-      throw ArgumentError(
-        'Unsupported exponent type: ${exponent.runtimeType}',
-      );
+      throw ArgumentError('Unsupported exponent type: ${exponent.runtimeType}');
     }
   }
 

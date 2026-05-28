@@ -1,34 +1,37 @@
-part of '../operations.dart';
+// ignore_for_file: non_constant_identifier_names
+import 'dart:typed_data';
+import 'dart:math' as math;
+import 'dart:math' show Random;
+import 'dart:io';
+import 'package:archive/archive.dart';
+import 'package:pocketfft/pocketfft.dart';
+import '../ndarray.dart';
+import 'package:openblas/openblas.dart';
+import 'dart:ffi' as ffi;
+import 'package:ffi/ffi.dart';
+import '../ndarray_bindings.dart';
+import '../scratch_arena.dart';
 
-/// Matrix multiplication for Float64 arrays using OpenBLAS.
-List<int> _broadcastStackShapes(List<int> sA, List<int> sB) {
-  final lenA = sA.length;
-  final lenB = sB.length;
-  final maxLen = math.max(lenA, lenB);
-  final result = List<int>.filled(maxLen, 0);
-
-  for (var i = 0; i < maxLen; i++) {
-    final dimA = (lenA - 1 - i >= 0) ? sA[lenA - 1 - i] : 1;
-    final dimB = (lenB - 1 - i >= 0) ? sB[lenB - 1 - i] : 1;
-
-    if (dimA == dimB) {
-      result[maxLen - 1 - i] = dimA;
-    } else if (dimA == 1) {
-      result[maxLen - 1 - i] = dimB;
-    } else if (dimB == 1) {
-      result[maxLen - 1 - i] = dimA;
-    } else {
-      throw ArgumentError(
-        'Incompatible stack shapes for broadcasting in matmul: $sA and $sB',
-      );
-    }
-  }
-  return result;
-}
+// Standalone operational relative cross-imports
+import 'math.dart';
+import 'stats.dart';
+import 'sorting.dart';
+import 'linalg.dart';
+import 'spacers.dart';
+import 'manipulation.dart';
+import 'broadcasting.dart';
+import 'splitting.dart';
+import 'shaping_meshes.dart';
+import 'repeating_tiling.dart';
+import 'io.dart';
+import 'random.dart';
+import 'fft.dart';
+import 'calculus.dart';
+import 'helpers.dart';
 
 /// Matrix multiplication using OpenBLAS, supporting high-dimensional stack broadcasting and 1D vector promotions.
 NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
-  final targetDType = _resolveDType(a.dtype, b.dtype);
+  final targetDType = resolveDType(a.dtype, b.dtype);
 
   if (a.shape.length == 1 && b.shape.length == 1) {
     final n = a.shape[0];
@@ -132,7 +135,7 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 
   final stackA = aView.shape.sublist(0, rankA - 2);
   final stackB = bView.shape.sublist(0, rankB - 2);
-  final broadcastStack = _broadcastStackShapes(stackA, stackB);
+  final broadcastStack = broadcastStackShapes(stackA, stackB);
 
   final expectedFinalShape = <int>[];
   if (aPromoted && bPromoted) {
@@ -466,7 +469,7 @@ NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
   // Resolve target DType and upcasted type
   DType<dynamic> targetDType = arrays[0].dtype;
   for (var i = 1; i < n; i++) {
-    targetDType = _resolveDType(targetDType, arrays[i].dtype);
+    targetDType = resolveDType(targetDType, arrays[i].dtype);
   }
   if (!targetDType.isFloating && !targetDType.isComplex) {
     targetDType = DType.float64;
@@ -793,7 +796,7 @@ NDArray<double> det<T>(NDArray<T> a) {
   final ipiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
 
   try {
-    _walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+    walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
       coords,
     ) {
       var offsetA = 0;
@@ -1157,7 +1160,7 @@ Map<String, NDArray<Complex>> eig(NDArray a) {
   final sliceCopy = NDArray.create([n, n], a.dtype);
 
   try {
-    _walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+    walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
       coords,
     ) {
       var offsetA = 0;
@@ -1473,26 +1476,6 @@ Map<String, NDArray<Complex>> eig(NDArray a) {
   return {'eigenvalues': w, 'eigenvectors': vr};
 }
 
-/// Recursive helper to traverse the leading stack dimensions of a multi-dimensional array.
-///
-/// Generates multidimensional coordinates of the stack/batch dimensions.
-void _walkStackCoords(
-  List<int> stackShape,
-  List<int> currentCoords,
-  int dim,
-  void Function(List<int> coords) leafCallback,
-) {
-  if (dim == stackShape.length) {
-    leafCallback(currentCoords);
-    return;
-  }
-  final limit = stackShape[dim];
-  for (var i = 0; i < limit; i++) {
-    currentCoords[dim] = i;
-    _walkStackCoords(stackShape, currentCoords, dim + 1, leafCallback);
-  }
-}
-
 /// Compute the Moore-Penrose pseudo-inverse of a 2D matrix.
 ///
 /// Uses Singular Value Decomposition (SVD) to resolve the pseudo-inverse.
@@ -1546,7 +1529,7 @@ NDArray pinv(NDArray a, {double? rcond, NDArray? out}) {
   for (var i = 0; i < s.data.length; i++) {
     final sVal = s.data[i] as double;
     if (sVal > threshold) {
-      sPlus.setCell([i, i], _castValue(1.0 / sVal, a.dtype));
+      sPlus.setCell([i, i], castValue(1.0 / sVal, a.dtype));
     }
   }
 

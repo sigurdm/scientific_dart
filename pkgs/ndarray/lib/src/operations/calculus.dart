@@ -1,7 +1,33 @@
+// ignore_for_file: non_constant_identifier_names
+import 'dart:typed_data';
+import 'dart:math' as math;
+import 'dart:math' show Random;
+import 'dart:io';
+import 'package:archive/archive.dart';
+import 'package:pocketfft/pocketfft.dart';
+import '../ndarray.dart';
+import 'package:openblas/openblas.dart';
 import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
-import 'ndarray.dart';
-import 'ndarray_bindings.dart';
+import '../ndarray_bindings.dart';
+import '../scratch_arena.dart';
+
+// Standalone operational relative cross-imports
+import 'math.dart';
+import 'stats.dart';
+import 'sorting.dart';
+import 'linalg.dart';
+import 'spacers.dart';
+import 'manipulation.dart';
+import 'broadcasting.dart';
+import 'splitting.dart';
+import 'shaping_meshes.dart';
+import 'repeating_tiling.dart';
+import 'io.dart';
+import 'random.dart';
+import 'fft.dart';
+import 'calculus.dart';
+import 'helpers.dart';
 
 /// Represents the spacing between points for calculus operations along a single axis.
 ///
@@ -246,11 +272,9 @@ NDArray<T> trapz<T extends Object>(
             dxStruct.ref.i = 0.0;
             NDArray<Complex>? spacingArray;
             try {
-              spacingArray = NDArray<Complex>.fromList(
-                complexValues,
-                [N],
-                DType.complex128,
-              );
+              spacingArray = NDArray<Complex>.fromList(complexValues, [
+                N,
+              ], DType.complex128);
               s_trapz_complex128_all(
                 y.pointer.cast(),
                 cStridesY,
@@ -273,11 +297,9 @@ NDArray<T> trapz<T extends Object>(
             dxStruct.ref.i = 0.0;
             NDArray<Complex>? spacingArray;
             try {
-              spacingArray = NDArray<Complex>.fromList(
-                complexValues,
-                [N],
-                DType.complex64,
-              );
+              spacingArray = NDArray<Complex>.fromList(complexValues, [
+                N,
+              ], DType.complex64);
               s_trapz_complex64_all(
                 y.pointer.cast(),
                 cStridesY,
@@ -296,7 +318,9 @@ NDArray<T> trapz<T extends Object>(
             }
           }
         } else {
-          final doubleValues = values.map((e) => (e as num).toDouble()).toList();
+          final doubleValues = values
+              .map((e) => (e as num).toDouble())
+              .toList();
           NDArray<double>? spacingArray;
           spacingArray = NDArray<double>.fromList(
             doubleValues,
@@ -592,11 +616,9 @@ NDArray<T> gradient<T extends Object>(
             dxStruct.ref.i = 0.0;
             NDArray<Complex>? spacingArray;
             try {
-              spacingArray = NDArray<Complex>.fromList(
-                complexValues,
-                [N],
-                DType.complex128,
-              );
+              spacingArray = NDArray<Complex>.fromList(complexValues, [
+                N,
+              ], DType.complex128);
               s_gradient_complex128_all(
                 f.pointer.cast(),
                 cStridesF,
@@ -620,11 +642,9 @@ NDArray<T> gradient<T extends Object>(
             dxStruct.ref.i = 0.0;
             NDArray<Complex>? spacingArray;
             try {
-              spacingArray = NDArray<Complex>.fromList(
-                complexValues,
-                [N],
-                DType.complex64,
-              );
+              spacingArray = NDArray<Complex>.fromList(complexValues, [
+                N,
+              ], DType.complex64);
               s_gradient_complex64_all(
                 f.pointer.cast(),
                 cStridesF,
@@ -644,7 +664,9 @@ NDArray<T> gradient<T extends Object>(
             }
           }
         } else {
-          final doubleValues = values.map((e) => (e as num).toDouble()).toList();
+          final doubleValues = values
+              .map((e) => (e as num).toDouble())
+              .toList();
           NDArray<double>? spacingArray;
           spacingArray = NDArray<double>.fromList(
             doubleValues,
@@ -797,7 +819,9 @@ List<NDArray<T>> gradientArray<T extends Object>(
         resolvedAx = f.shape.length + resolvedAx;
       }
       if (resolvedAx < 0 || resolvedAx >= f.shape.length) {
-        throw ArgumentError('axis index $ax out of bounds for shape ${f.shape}');
+        throw ArgumentError(
+          'axis index $ax out of bounds for shape ${f.shape}',
+        );
       }
       if (targetAxes.contains(resolvedAx)) {
         throw ArgumentError('axis index $ax specified multiple times.');

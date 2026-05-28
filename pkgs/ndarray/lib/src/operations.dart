@@ -1,20 +1,17 @@
 // ignore_for_file: non_constant_identifier_names
-@ffi.DefaultAsset('package:openblas/openblas')
-library operations;
+library;
 
-import 'dart:typed_data';
-import 'dart:math' as math;
-import 'ndarray.dart';
-import 'broadcasting.dart';
-import 'package:openblas/openblas.dart';
-import 'dart:ffi' as ffi;
-import 'package:ffi/ffi.dart';
-import 'ndarray_bindings.dart';
-import 'scratch_arena.dart';
-
-part 'operations/math.dart';
-part 'operations/stats.dart';
-part 'operations/sorting.dart';
-part 'operations/linalg.dart';
-part 'operations/spacers.dart';
-part 'operations/manipulation.dart';
+export 'operations/math.dart';
+export 'operations/stats.dart';
+export 'operations/sorting.dart';
+export 'operations/linalg.dart';
+export 'operations/spacers.dart';
+export 'operations/manipulation.dart';
+export 'operations/broadcasting.dart';
+export 'operations/splitting.dart';
+export 'operations/shaping_meshes.dart';
+export 'operations/repeating_tiling.dart';
+export 'operations/io.dart';
+export 'operations/random.dart';
+export 'operations/fft.dart';
+export 'operations/calculus.dart';

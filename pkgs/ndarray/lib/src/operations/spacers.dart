@@ -1,4 +1,33 @@
-part of '../operations.dart';
+// ignore_for_file: non_constant_identifier_names
+import 'dart:typed_data';
+import 'dart:math' as math;
+import 'dart:math' show Random;
+import 'dart:io';
+import 'package:archive/archive.dart';
+import 'package:pocketfft/pocketfft.dart';
+import '../ndarray.dart';
+import 'package:openblas/openblas.dart';
+import 'dart:ffi' as ffi;
+import 'package:ffi/ffi.dart';
+import '../ndarray_bindings.dart';
+import '../scratch_arena.dart';
+
+// Standalone operational relative cross-imports
+import 'math.dart';
+import 'stats.dart';
+import 'sorting.dart';
+import 'linalg.dart';
+import 'spacers.dart';
+import 'manipulation.dart';
+import 'broadcasting.dart';
+import 'splitting.dart';
+import 'shaping_meshes.dart';
+import 'repeating_tiling.dart';
+import 'io.dart';
+import 'random.dart';
+import 'fft.dart';
+import 'calculus.dart';
+import 'helpers.dart';
 
 /// Supported sorting algorithms.
 ///
@@ -54,75 +83,6 @@ enum SearchSide {
   right,
 }
 
-int _mapSortKind(SortKind kind) {
-  switch (kind) {
-    case SortKind.quicksort:
-      return 0;
-    case SortKind.mergesort:
-    case SortKind.stable:
-      return 1;
-    case SortKind.heapsort:
-      return 2;
-  }
-}
-
-DType _resolveDType(DType a, DType b) {
-  if (a == DType.boolean && b == DType.boolean) return DType.uint8;
-  if (a == DType.boolean) return b;
-  if (b == DType.boolean) return a;
-  if (a == b) return a;
-  if (a == DType.complex128 || b == DType.complex128) return DType.complex128;
-  if (a == DType.complex64 || b == DType.complex64) {
-    if (a == DType.float64 || b == DType.float64) return DType.complex128;
-    return DType.complex64;
-  }
-  if (a == DType.float64 || b == DType.float64) return DType.float64;
-  if (a == DType.float32 || b == DType.float32) return DType.float32;
-  if (a == DType.int64 || b == DType.int64) return DType.int64;
-  return DType.int32;
-}
-
-DType<T> _defaultDType<T>() {
-  if (T == Complex) return DType.complex128 as DType<T>;
-  if (T == int) return DType.int64 as DType<T>;
-  return DType.float64 as DType<T>;
-}
-
-Object _normalizeScalar(Object o, DType dtype) {
-  switch (dtype) {
-    case DType.complex64:
-    case DType.complex128:
-      if (o is Complex) return o;
-      if (o is num) return Complex(o.toDouble(), 0.0);
-      return Complex((o as num).toDouble(), 0.0);
-    case DType.float32:
-    case DType.float64:
-      if (o is num) return o.toDouble();
-      if (o is Complex) return o.real;
-      return (o as num).toDouble();
-    case DType.int32:
-    case DType.int64:
-    case DType.int16:
-    case DType.uint8:
-      if (o is num) return o.toInt();
-      if (o is Complex) return o.real.toInt();
-      return (o as num).toInt();
-    case DType.boolean:
-      if (o is bool) return o;
-      if (o is num) return o != 0;
-      return o as bool;
-  }
-}
-
-NDArray<T> _toNDArray<T>(Object o, DType<T> dtype) {
-  if (o is NDArray) {
-    if (o.dtype == dtype) return o as NDArray<T>;
-    return _castNDArray(o, dtype);
-  }
-  final normalized = _normalizeScalar(o, dtype);
-  return NDArray<T>.fromList([normalized], [], dtype);
-}
-
 /// Returns an array with evenly spaced values over a specified interval.
 ///
 /// Returns [numSamples] evenly spaced samples, calculated over the interval `[start, stop]`.
@@ -152,7 +112,7 @@ NDArray<T> linspace<T>(
   bool endpoint = true,
   DType<T>? dtype,
 }) {
-  return _linspaceInternal<T>(
+  return linspaceInternal<T>(
     start,
     stop,
     numSamples,
@@ -181,7 +141,7 @@ NDArray<T> linspace<T>(
   bool endpoint = true,
   DType<T>? dtype,
 }) {
-  return _linspaceInternal<T>(
+  return linspaceInternal<T>(
     start,
     stop,
     numSamples,
@@ -283,11 +243,11 @@ NDArray<T> linspaceGrid<T>(
 }) {
   if (numSamples <= 0) throw ArgumentError('numSamples must be positive');
 
-  final resolvedDType = dtype ?? _defaultDType<T>();
+  final resolvedDType = dtype ?? defaultDType<T>();
 
   return NDArray.scope(() {
-    final startArr = _toNDArray(start, resolvedDType);
-    final stopArr = _toNDArray(stop, resolvedDType);
+    final startArr = toNDArray(start, resolvedDType);
+    final stopArr = toNDArray(stop, resolvedDType);
 
     final commonShape = broadcastShapes(startArr.shape, stopArr.shape);
     final actualAxis = axis < 0 ? commonShape.length + 1 + axis : axis;
@@ -517,7 +477,7 @@ NDArray<T> logspace<T>(
   bool endpoint = true,
   DType<T>? dtype,
 }) {
-  final resolvedDType = dtype ?? _defaultDType<T>();
+  final resolvedDType = dtype ?? defaultDType<T>();
 
   final arr = NDArray<T>.create([numSamples], resolvedDType);
   final div = endpoint ? (numSamples - 1) : numSamples;
@@ -536,8 +496,8 @@ NDArray<T> logspace<T>(
       v_logspace_float(arr.pointer.cast(), s, stp, base, numSamples);
       return arr;
     case DType.complex128:
-      final s = _normalizeScalar(start as Object, DType.complex128) as Complex;
-      final e = _normalizeScalar(stop as Object, DType.complex128) as Complex;
+      final s = normalizeScalar(start as Object, DType.complex128) as Complex;
+      final e = normalizeScalar(stop as Object, DType.complex128) as Complex;
       final stp = numSamples <= 1 ? Complex(0.0, 0.0) : (e - s) / div;
       v_logspace_complex128(
         arr.pointer.cast(),
@@ -551,8 +511,8 @@ NDArray<T> logspace<T>(
       );
       return arr;
     case DType.complex64:
-      final s = _normalizeScalar(start as Object, DType.complex128) as Complex;
-      final e = _normalizeScalar(stop as Object, DType.complex128) as Complex;
+      final s = normalizeScalar(start as Object, DType.complex128) as Complex;
+      final e = normalizeScalar(stop as Object, DType.complex128) as Complex;
       final stp = numSamples <= 1 ? Complex(0.0, 0.0) : (e - s) / div;
       v_logspace_complex64(
         arr.pointer.cast(),
@@ -607,8 +567,8 @@ NDArray<T> logspaceGrid<T>(
   int axis = 0,
   DType<T>? dtype,
 }) {
-  final resolvedDType = dtype ?? _defaultDType<T>();
-  final actualBase = base ?? _toNDArray<double>(10.0, DType.float64);
+  final resolvedDType = dtype ?? defaultDType<T>();
+  final actualBase = base ?? toNDArray<double>(10.0, DType.float64);
 
   return NDArray.scope(() {
     final y = linspaceGrid<T>(
@@ -645,7 +605,7 @@ NDArray<T> geomspace<T>(
   bool endpoint = true,
   DType<T>? dtype,
 }) {
-  final resolvedDType = dtype ?? _defaultDType<T>();
+  final resolvedDType = dtype ?? defaultDType<T>();
 
   switch (resolvedDType) {
     case DType.float64:
@@ -676,8 +636,8 @@ NDArray<T> geomspace<T>(
       return arr;
     case DType.complex128:
     case DType.complex64:
-      final s = _normalizeScalar(start as Object, DType.complex128) as Complex;
-      final e = _normalizeScalar(stop as Object, DType.complex128) as Complex;
+      final s = normalizeScalar(start as Object, DType.complex128) as Complex;
+      final e = normalizeScalar(stop as Object, DType.complex128) as Complex;
       if (s.abs == 0.0 || e.abs == 0.0) {
         throw ArgumentError('Geometric sequence cannot include zero.');
       }
@@ -750,15 +710,14 @@ NDArray<T> geomspaceGrid<T>(
   int axis = 0,
   DType<T>? dtype,
 }) {
-  final resolvedDType = dtype ?? _defaultDType<T>();
+  final resolvedDType = dtype ?? defaultDType<T>();
 
   return NDArray.scope(() {
     final logStart =
-        divide(log(start), _toNDArray<T>(math.ln10, resolvedDType))
+        divide(log(start), toNDArray<T>(math.ln10, resolvedDType))
             as NDArray<T>;
     final logStop =
-        divide(log(stop), _toNDArray<T>(math.ln10, resolvedDType))
-            as NDArray<T>;
+        divide(log(stop), toNDArray<T>(math.ln10, resolvedDType)) as NDArray<T>;
 
     final y = linspaceGrid<T>(
       logStart,
@@ -768,7 +727,7 @@ NDArray<T> geomspaceGrid<T>(
       axis: axis,
       dtype: resolvedDType,
     );
-    final res = power(_toNDArray<T>(10.0, resolvedDType), y);
+    final res = power(toNDArray<T>(10.0, resolvedDType), y);
     res.detachToParentScope();
     return res as NDArray<T>;
   });

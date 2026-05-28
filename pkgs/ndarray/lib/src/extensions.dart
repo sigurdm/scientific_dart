@@ -1,6 +1,6 @@
 import 'ndarray.dart';
 import 'operations.dart' as ops;
-import 'fft.dart' as fft_ops;
+import 'operations/fft.dart' as fft_ops;
 
 // =============================================================================
 // RearrangingNDArrayOperations (NDArray<T extends Object>)
