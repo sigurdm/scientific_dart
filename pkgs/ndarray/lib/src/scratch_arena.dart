@@ -47,9 +47,16 @@ final class ScratchArena {
       } else {
         // If reusing a cached page but its capacity is too small for this allocation:
         if (_pageCapacities[_currentPageIndex] < alignedBytes) {
-          malloc.free(_pages[_currentPageIndex]);
-          _pages[_currentPageIndex] = malloc<ffi.Uint8>(alignedBytes);
-          _pageCapacities[_currentPageIndex] = alignedBytes;
+          // Instead of freeing the small page, move it to the end of the list
+          // so it can be reused later for standard page requests.
+          final smallPage = _pages.removeAt(_currentPageIndex);
+          final smallCap = _pageCapacities.removeAt(_currentPageIndex);
+          _pages.add(smallPage);
+          _pageCapacities.add(smallCap);
+
+          // Insert the new custom-sized page at the current index.
+          _pages.insert(_currentPageIndex, malloc<ffi.Uint8>(alignedBytes));
+          _pageCapacities.insert(_currentPageIndex, alignedBytes);
         }
       }
     }
