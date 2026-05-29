@@ -27,7 +27,8 @@ class Trapz1DBenchmark extends BenchmarkBase {
 
 class Gradient1DBenchmark extends BenchmarkBase {
   late NDArray<double> f;
-  Gradient1DBenchmark() : super('Calculus | gradient 1D (Float64) [size=1,000,000]');
+  Gradient1DBenchmark()
+    : super('Calculus | gradient 1D (Float64) [size=1,000,000]');
 
   @override
   void setup() {
@@ -51,7 +52,8 @@ class Gradient1DBenchmark extends BenchmarkBase {
 
 class Gradient2DBenchmark extends BenchmarkBase {
   late NDArray<double> f;
-  Gradient2DBenchmark() : super('Calculus | gradient 2D (Float64) [size=1,000x1,000]');
+  Gradient2DBenchmark()
+    : super('Calculus | gradient 2D (Float64) [size=1,000x1,000]');
 
   @override
   void setup() {

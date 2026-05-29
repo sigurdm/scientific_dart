@@ -230,11 +230,9 @@ void main() {
             3,
           ], DType.int32);
 
-          expect(count_nonzero(mat), 3);
+          expect(count_nonzero(mat).scalar, 3);
 
-          final c0 =
-              count_nonzero(mat, axis: 0)
-                  as NDArray<int>; // count along columns
+          final c0 = count_nonzero(mat, axis: 0); // count along columns
           expect(c0.shape, [3]);
           expect(c0.toList(), [1, 1, 1]); // col0 has 2, col1 has 5, col2 has 3
         }),
@@ -345,8 +343,8 @@ void main() {
 
           // In NumPy duplicate max extremes return the *first* occurrence!
           // max is 50.0 at index 1 and 3. NumPy returns 1!
-          expect(argmax(a), 1);
-          expect(argmin(a), 2); // min is 5.0 at index 2
+          expect(argmax(a).scalar, 1);
+          expect(argmin(a).scalar, 2); // min is 5.0 at index 2
         }),
       );
 
@@ -359,8 +357,7 @@ void main() {
             DType.float64,
           );
 
-          final am0 =
-              argmax(mat, axis: 0) as NDArray<int>; // cols max row indices
+          final am0 = argmax(mat, axis: 0); // cols max row indices
           expect(am0.shape, [3]);
           expect(am0.toList(), [
             1,

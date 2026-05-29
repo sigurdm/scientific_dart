@@ -876,6 +876,7 @@ DEFINE_TO_BOOL_MASK(int32, int, val != 0)
 DEFINE_TO_BOOL_MASK(complex128, complex128_t, val.real != 0.0 || val.imag != 0.0)
 DEFINE_TO_BOOL_MASK(complex64, complex64_t, val.real != 0.0f || val.imag != 0.0f)
 DEFINE_TO_BOOL_MASK(uint8, unsigned char, val != 0)
+DEFINE_TO_BOOL_MASK(int16, short, val != 0)
 
 #define DEFINE_ARGMINMAX(NAME, TYPE, CMP_OP) \
 void native_argminmax_##NAME( \
@@ -972,6 +973,7 @@ DEFINE_ARGMINMAX(float, float, >)
 DEFINE_ARGMINMAX(int64, long long, >)
 DEFINE_ARGMINMAX(int32, int, >)
 DEFINE_ARGMINMAX(uint8, unsigned char, >)
+DEFINE_ARGMINMAX(int16, short, >)
 
 #define DEFINE_COUNT_NONZERO(NAME, TYPE, COND_EXPR) \
 void native_count_nonzero_##NAME( \
@@ -1045,3 +1047,4 @@ DEFINE_COUNT_NONZERO(float, float, val != 0.0f)
 DEFINE_COUNT_NONZERO(int64, long long, val != 0)
 DEFINE_COUNT_NONZERO(int32, int, val != 0)
 DEFINE_COUNT_NONZERO(uint8, unsigned char, val != 0)
+DEFINE_COUNT_NONZERO(int16, short, val != 0)

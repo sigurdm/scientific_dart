@@ -6,9 +6,9 @@ void main() {
     NDArray.scope(() {
       final a = NDArray.fromList([false, true, false], [3], DType.boolean);
       final maxIdx = argmax(a);
-      expect(maxIdx, 1);
+      expect(maxIdx.scalar, 1);
       final minIdx = argmin(a);
-      expect(minIdx, 0);
+      expect(minIdx.scalar, 0);
       final a2D = NDArray.fromList(
         [false, true, false, false],
         [2, 2],

@@ -23,7 +23,7 @@ void main() {
     test('FFT functions input disposed array state check', () {
       final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
       a.dispose();
-      
+
       // fft and ifft must throw StateError if input is disposed
       expect(() => fft(a), throwsStateError);
       expect(() => ifft(a), throwsStateError);

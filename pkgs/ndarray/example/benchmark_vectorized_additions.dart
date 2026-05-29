@@ -11,18 +11,8 @@ void runAdditionsBenchmark() {
   const iterations = 200;
 
   print('Generating Float32 arrays of size $arraySize...');
-  final a = linspace<double>(
-    1.0,
-    100.0,
-    arraySize,
-    dtype: DType.float32,
-  );
-  final b = linspace<double>(
-    1.0,
-    100.0,
-    arraySize,
-    dtype: DType.float32,
-  );
+  final a = linspace<double>(1.0, 100.0, arraySize, dtype: DType.float32);
+  final b = linspace<double>(1.0, 100.0, arraySize, dtype: DType.float32);
 
   print('Warming up VM compiler...');
   for (var i = 0; i < 10; i++) {

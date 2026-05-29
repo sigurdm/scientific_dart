@@ -66,7 +66,7 @@ void main() {
         expect(view.toList(), [3.0, 6.0]);
 
         // In the old code, count_nonzero(view) would incorrectly return 0 due to discarded recursion yields!
-        expect(count_nonzero(view), 2);
+        expect(count_nonzero(view).scalar, 2);
       }),
     );
 

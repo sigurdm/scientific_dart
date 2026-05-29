@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import '../ndarray.dart';
 import 'package:openblas/openblas.dart';
 import 'dart:ffi' as ffi;
-import 'package:ffi/ffi.dart';
 import '../scratch_arena.dart';
 
 // Standalone operational relative cross-imports

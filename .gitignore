@@ -23,6 +23,7 @@ pkgs/openblas/third_party/
 
 # IDE & System files
 .idea/
+.vscode/settings.json
 .DS_Store
 *.log
 

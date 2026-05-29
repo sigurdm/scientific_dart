@@ -105,7 +105,7 @@ void runNonzeroAndCountingExample() {
   ], DType.int32);
   print('Matrix:\n[[0, 7, 0],\n [3, 0, 5]]');
 
-  final nzCount = count_nonzero(mat);
+  final nzCount = count_nonzero(mat).scalar;
   print('Total non-zero count: $nzCount'); // 3
 
   // nonzero returns coordinate arrays for each axis
@@ -127,8 +127,8 @@ void runArgMinMaxExample() {
   // Global flat extreme (axis = null)
   final globalMaxIdx = argmax(
     mat,
-  ); // flattens to 6 elements, max is 60.0 at index 5
-  final globalMinIdx = argmin(mat); // min is 5.0 at index 4
+  ).scalar; // flattens to 6 elements, max is 60.0 at index 5
+  final globalMinIdx = argmin(mat).scalar; // min is 5.0 at index 4
   print('Global flat argmax index: $globalMaxIdx'); // 5
   print('Global flat argmin index: $globalMinIdx'); // 4
 

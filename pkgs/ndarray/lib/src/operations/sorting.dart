@@ -1070,7 +1070,7 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
 /// {@example /example/sorting_searching_example.dart lang=dart}
 List<NDArray<int>> nonzero(NDArray a) {
   final rank = a.shape.length;
-  final count = count_nonzero<Object>(a as NDArray<Object>) as int;
+  final count = count_nonzero<Object>(a as NDArray<Object>).scalar;
   final results = List.generate(
     rank,
     (_) => NDArray<int>.create([count], DType.int32, zeroInit: true),
@@ -1161,8 +1161,17 @@ List<NDArray<int>> nonzero(NDArray a) {
           );
         case DType.boolean:
         case DType.uint8:
-        case DType.int16:
           native_to_bool_mask_uint8(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            res.pointer.cast(),
+          );
+        case DType.int16:
+          native_to_bool_mask_int16(
             a.pointer.cast(),
             a.size,
             cShape,
@@ -1270,8 +1279,18 @@ void _dispatchCountNonzeroFFI(
       );
     case DType.boolean:
     case DType.uint8:
-    case DType.int16:
       native_count_nonzero_uint8(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isContig,
+      );
+    case DType.int16:
+      native_count_nonzero_int16(
         src,
         stridesSrc,
         dest.cast(),
@@ -1289,16 +1308,27 @@ void _dispatchCountNonzeroFFI(
 /// Count the number of non-zero elements in the array [a].
 ///
 /// If [axis] is provided, counts along that axis and returns a new array.
-/// Otherwise, counts all elements globally and returns a single scalar integer.
+/// Otherwise, counts all elements globally and returns a 0-dimensional [NDArray]
+/// whose value can be accessed via [scalar].
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-dynamic count_nonzero<T>(NDArray<T> a, {int? axis}) {
+NDArray<int> count_nonzero<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot count non-zero elements on a disposed array.');
   }
 
   final rank = a.shape.length;
+
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != DType.int32) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
 
   if (axis == null) {
     // Global flat reduction
@@ -1310,8 +1340,8 @@ dynamic count_nonzero<T>(NDArray<T> a, {int? axis}) {
       src = a;
     }
 
+    final result = out ?? NDArray<int>.create([], DType.int32);
     final marker = ScratchArena.marker;
-    final dest = NDArray<int>.create([1], DType.int32);
     try {
       final cShape = ScratchArena.allocate<ffi.Int>(ffi.sizeOf<ffi.Int>());
       cShape[0] = src.size;
@@ -1321,7 +1351,7 @@ dynamic count_nonzero<T>(NDArray<T> a, {int? axis}) {
       _dispatchCountNonzeroFFI(
         src.pointer,
         cStrides,
-        dest.pointer.cast<ffi.Int>(),
+        result.pointer.cast<ffi.Int>(),
         cStrides,
         cShape,
         1,
@@ -1334,9 +1364,7 @@ dynamic count_nonzero<T>(NDArray<T> a, {int? axis}) {
       if (!isContig) src.dispose();
     }
 
-    final finalCount = dest.data[0];
-    dest.dispose();
-    return finalCount;
+    return result;
   }
 
   // Axis reduction
@@ -1345,8 +1373,7 @@ dynamic count_nonzero<T>(NDArray<T> a, {int? axis}) {
     throw RangeError.range(targetAxis, 0, rank - 1, 'axis');
   }
 
-  final targetShape = List<int>.from(a.shape)..removeAt(targetAxis);
-  final result = NDArray<int>.create(targetShape, DType.int32);
+  final result = out ?? NDArray<int>.create(targetShape, DType.int32);
 
   final marker = ScratchArena.marker;
   try {
@@ -1382,7 +1409,9 @@ dynamic count_nonzero<T>(NDArray<T> a, {int? axis}) {
     ScratchArena.reset(marker);
   }
 
-  result.detachToParentScope();
+  if (out == null) {
+    result.detachToParentScope();
+  }
   return result;
 }
 
@@ -1449,8 +1478,19 @@ void _dispatchArgMinMaxFFI(
       );
     case DType.boolean:
     case DType.uint8:
-    case DType.int16:
       native_argminmax_uint8(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isMax,
+        isContig,
+      );
+    case DType.int16:
+      native_argminmax_int16(
         src,
         stridesSrc,
         dest.cast(),
@@ -1466,7 +1506,12 @@ void _dispatchArgMinMaxFFI(
   }
 }
 
-dynamic _argminmaxFFI<T>(NDArray<T> a, int? axis, bool isMax) {
+NDArray<int> _argminmaxFFI<T>(
+  NDArray<T> a,
+  int? axis,
+  bool isMax, {
+  NDArray<int>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot calculate reduction on a disposed array.');
   }
@@ -1480,6 +1525,16 @@ dynamic _argminmaxFFI<T>(NDArray<T> a, int? axis, bool isMax) {
   final rank = a.shape.length;
   final isMaxVal = isMax ? 1 : 0;
 
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis < 0 ? rank + axis : axis));
+
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != DType.int32) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
   if (axis == null) {
     // Global flat reduction
     final isContig = a.isContiguous;
@@ -1490,8 +1545,8 @@ dynamic _argminmaxFFI<T>(NDArray<T> a, int? axis, bool isMax) {
       src = a;
     }
 
+    final result = out ?? NDArray<int>.create([], DType.int32);
     final marker = ScratchArena.marker;
-    final dest = NDArray<int>.create([1], DType.int32);
     try {
       final cShape = ScratchArena.allocate<ffi.Int>(ffi.sizeOf<ffi.Int>());
       cShape[0] = src.size;
@@ -1501,7 +1556,7 @@ dynamic _argminmaxFFI<T>(NDArray<T> a, int? axis, bool isMax) {
       _dispatchArgMinMaxFFI(
         src.pointer,
         cStrides,
-        dest.pointer.cast<ffi.Int>(),
+        result.pointer.cast<ffi.Int>(),
         cStrides, // dummy contiguous dest strides
         cShape,
         1, // dummy rank
@@ -1515,9 +1570,7 @@ dynamic _argminmaxFFI<T>(NDArray<T> a, int? axis, bool isMax) {
       if (!isContig) src.dispose();
     }
 
-    final finalIndex = dest.data[0];
-    dest.dispose();
-    return finalIndex;
+    return result;
   }
 
   // Axis reduction
@@ -1526,8 +1579,7 @@ dynamic _argminmaxFFI<T>(NDArray<T> a, int? axis, bool isMax) {
     throw RangeError.range(targetAxis, 0, rank - 1, 'axis');
   }
 
-  final targetShape = List<int>.from(a.shape)..removeAt(targetAxis);
-  final result = NDArray<int>.create(targetShape, DType.int32);
+  final result = out ?? NDArray<int>.create(targetShape, DType.int32);
 
   final marker = ScratchArena.marker;
   try {
@@ -1564,26 +1616,30 @@ dynamic _argminmaxFFI<T>(NDArray<T> a, int? axis, bool isMax) {
     ScratchArena.reset(marker);
   }
 
-  result.detachToParentScope();
+  if (out == null) {
+    result.detachToParentScope();
+  }
   return result;
 }
 
 /// Returns the indices of the maximum values along an [axis].
 ///
-/// If [axis] is null, flattens the array and returns a flat scalar integer index.
+/// If [axis] is null, flattens the array and returns a flat 0-dimensional [NDArray]
+/// whose value can be accessed via [scalar].
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-dynamic argmax<T>(NDArray<T> a, {int? axis}) {
-  return _argminmaxFFI<T>(a, axis, true);
+NDArray<int> argmax<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
+  return _argminmaxFFI<T>(a, axis, true, out: out);
 }
 
 /// Returns the indices of the minimum values along an [axis].
 ///
-/// If [axis] is null, flattens the array and returns a flat scalar integer index.
+/// If [axis] is null, flattens the array and returns a flat 0-dimensional [NDArray]
+/// whose value can be accessed via [scalar].
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-dynamic argmin<T>(NDArray<T> a, {int? axis}) {
-  return _argminmaxFFI<T>(a, axis, false);
+NDArray<int> argmin<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
+  return _argminmaxFFI<T>(a, axis, false, out: out);
 }

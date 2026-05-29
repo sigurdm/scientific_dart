@@ -11,7 +11,10 @@ void main() {
       final result = sinh(sliced);
       expect(result.shape, [2]);
       expect(result.toList()[0], 0.0);
-      expect(result.toList()[1], closeTo((math.exp(2.0) - math.exp(-2.0)) / 2.0, 1e-9));
+      expect(
+        result.toList()[1],
+        closeTo((math.exp(2.0) - math.exp(-2.0)) / 2.0, 1e-9),
+      );
     });
   });
 }

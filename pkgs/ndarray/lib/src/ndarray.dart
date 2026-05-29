@@ -24,12 +24,12 @@ extension type const Int16(int value) implements int {}
 enum DType<T> {
   float32<Float32>('float32', 4, '<f4'),
   float64<Float64>('float64', 8, '<f8'),
-  int32<Int32>('int32', 4, '<i4'),
-  int64<Int64>('int64', 8, '<i8'),
-  uint8<Uint8>('uint8', 1, '|u1'),
-  int16<Int16>('int16', 2, '<i2'),
   complex64<Complex>('complex64', 8, '<c8'),
   complex128<Complex>('complex128', 16, '<c16'),
+  uint8<Uint8>('uint8', 1, '|u1'),
+  int16<Int16>('int16', 2, '<i2'),
+  int32<Int32>('int32', 4, '<i4'),
+  int64<Int64>('int64', 8, '<i8'),
   boolean<bool>('boolean', 1, '|b1');
 
   final String name;

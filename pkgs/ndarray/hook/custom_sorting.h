@@ -66,15 +66,18 @@ void native_to_bool_mask_int32(const void *src, int size, const int *shape, cons
 void native_to_bool_mask_complex128(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest);
 void native_to_bool_mask_complex64(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest);
 void native_to_bool_mask_uint8(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest);
+void native_to_bool_mask_int16(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest);
 void native_argminmax_double(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_max, int is_contiguous);
 void native_argminmax_float(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_max, int is_contiguous);
 void native_argminmax_int64(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_max, int is_contiguous);
 void native_argminmax_int32(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_max, int is_contiguous);
 void native_argminmax_uint8(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_max, int is_contiguous);
+void native_argminmax_int16(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_max, int is_contiguous);
 void native_count_nonzero_double(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
 void native_count_nonzero_float(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
 void native_count_nonzero_int64(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
 void native_count_nonzero_int32(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
 void native_count_nonzero_uint8(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
+void native_count_nonzero_int16(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
 
 #endif // CUSTOM_SORTING_H

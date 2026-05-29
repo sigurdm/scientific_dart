@@ -634,6 +634,27 @@ external void native_to_bool_mask_uint8(
 
 @ffi.Native<
   ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void native_to_bool_mask_int16(
+  ffi.Pointer<ffi.Int16> src,
+  int size,
+  ffi.Pointer<ffi.Int> shape,
+  ffi.Pointer<ffi.Int> strides,
+  int rank,
+  int is_contiguous,
+  ffi.Pointer<ffi.Uint8> dest,
+);
+
+@ffi.Native<
+  ffi.Void Function(
     ffi.Pointer<ffi.Void>,
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<ffi.Int>,
@@ -767,6 +788,31 @@ external void native_argminmax_uint8(
     ffi.Int,
     ffi.Int,
     ffi.Int,
+    ffi.Int,
+  )
+>()
+external void native_argminmax_int16(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int is_max,
+  int is_contiguous,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
   )
 >()
 external void native_count_nonzero_double(
@@ -862,6 +908,29 @@ external void native_count_nonzero_int32(
   )
 >()
 external void native_count_nonzero_uint8(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  int is_contiguous,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void native_count_nonzero_int16(
   ffi.Pointer<ffi.Void> src,
   ffi.Pointer<ffi.Int> stridesSrc,
   ffi.Pointer<ffi.Int> dest,
