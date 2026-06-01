@@ -2155,7 +2155,7 @@ NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray atan2(NDArray y, NDArray x) {
+NDArray atan2(NDArray y, NDArray x, {NDArray? out}) {
   if (y.dtype == DType.complex128 ||
       y.dtype == DType.complex64 ||
       x.dtype == DType.complex128 ||
@@ -2169,7 +2169,17 @@ NDArray atan2(NDArray y, NDArray x) {
       ? DType.float32
       : DType.float64;
 
-  final result = NDArray.create(shape, targetDType);
+  final NDArray result;
+  if (out != null) {
+    if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for atan2.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray.create(shape, targetDType);
+  }
 
   // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
   if (y.isContiguous && x.isContiguous && listEquals(y.shape, x.shape)) {
@@ -2326,14 +2336,25 @@ NDArray atan2(NDArray y, NDArray x) {
 /// ```dart
 /// final h = hypot(a, b);
 /// ```
-NDArray<double> hypot(NDArray x1, NDArray x2) {
+NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
   final DType<double> targetDType =
       (x1.dtype == DType.complex64 || x2.dtype == DType.complex64)
       ? DType.float32 as DType<double>
       : DType.float64 as DType<double>;
-  final result = NDArray<double>.create(shape, targetDType);
+
+  final NDArray<double> result;
+  if (out != null) {
+    if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for hypot.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray<double>.create(shape, targetDType);
+  }
   final resultStrides = NDArray.computeCStrides(shape);
 
   if (x1.dtype == DType.complex128 ||
@@ -2461,7 +2482,7 @@ NDArray<double> hypot(NDArray x1, NDArray x2) {
 /// ```dart
 /// final p = power(a, b);
 /// ```
-NDArray power(NDArray x1, NDArray x2) {
+NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
   final DType<dynamic> targetDType;
@@ -2477,7 +2498,18 @@ NDArray power(NDArray x1, NDArray x2) {
         ? DType.float32
         : DType.float64;
   }
-  final result = NDArray.create(shape, targetDType);
+
+  final NDArray result;
+  if (out != null) {
+    if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for power.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray.create(shape, targetDType);
+  }
   final resultStrides = NDArray.computeCStrides(shape);
 
   if (targetDType == DType.complex128 || targetDType == DType.complex64) {
@@ -2656,8 +2688,18 @@ NDArray power(NDArray x1, NDArray x2) {
 /// ```dart
 /// final b = negative(a);
 /// ```
-NDArray negative(NDArray a) {
-  final result = NDArray.create(a.shape, a.dtype);
+NDArray negative(NDArray a, {NDArray? out}) {
+  final NDArray result;
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for negative.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray.create(a.shape, a.dtype);
+  }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
@@ -2715,7 +2757,7 @@ NDArray negative(NDArray a) {
 /// ```dart
 /// final c = floor_divide(a, b);
 /// ```
-NDArray floor_divide(NDArray a, NDArray b) {
+NDArray floor_divide(NDArray a, NDArray b, {NDArray? out}) {
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
   final stridesA = broadcastResult.stridesA;
@@ -2726,7 +2768,17 @@ NDArray floor_divide(NDArray a, NDArray b) {
     throw UnsupportedError('Complex numbers do not support floor division');
   }
 
-  final result = NDArray.create(commonShape, targetDType);
+  final NDArray result;
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for floor_divide.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray.create(commonShape, targetDType);
+  }
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   if (a.isContiguous &&
@@ -2932,7 +2984,7 @@ NDArray floor_divide(NDArray a, NDArray b) {
 /// ```dart
 /// final c = remainder(a, b);
 /// ```
-NDArray remainder(NDArray a, NDArray b) {
+NDArray remainder(NDArray a, NDArray b, {NDArray? out}) {
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
   final stridesA = broadcastResult.stridesA;
@@ -2943,7 +2995,17 @@ NDArray remainder(NDArray a, NDArray b) {
     throw UnsupportedError('Complex numbers do not support remainder');
   }
 
-  final result = NDArray.create(commonShape, targetDType);
+  final NDArray result;
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for remainder.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray.create(commonShape, targetDType);
+  }
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   if (a.isContiguous &&
@@ -3140,7 +3202,7 @@ NDArray remainder(NDArray a, NDArray b) {
 }
 
 /// Alias for [remainder].
-NDArray mod(NDArray a, NDArray b) => remainder(a, b);
+NDArray mod(NDArray a, NDArray b, {NDArray? out}) => remainder(a, b, out: out);
 
 /// Return element-wise quotient and remainder simultaneously.
 ///
@@ -3162,14 +3224,28 @@ NDArray mod(NDArray a, NDArray b) => remainder(a, b);
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray abs(NDArray a) {
+NDArray abs(NDArray a, {NDArray? out}) {
+  final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    final DType<dynamic> targetDType = a.dtype == DType.complex64
-        ? DType.float32
-        : DType.float64;
-    final result = NDArray.create(a.shape, targetDType);
-    final resultStrides = NDArray.computeCStrides(a.shape);
+    targetDType = a.dtype == DType.complex64 ? DType.float32 : DType.float64;
+  } else {
+    targetDType = a.dtype;
+  }
 
+  final NDArray result;
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for abs.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray.create(a.shape, targetDType);
+  }
+  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     unaryOp<Complex, double>(
       result.data as List<double>,
       a.data as List<Complex>,
@@ -3183,9 +3259,6 @@ NDArray abs(NDArray a) {
     );
     return result;
   }
-
-  final result = NDArray.create(a.shape, a.dtype);
-  final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
     unaryOp<int, int>(
@@ -3229,11 +3302,21 @@ NDArray abs(NDArray a) {
 /// ```dart
 /// final s = sign(a);
 /// ```
-NDArray sign(NDArray a) {
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    final result = NDArray.create(a.shape, a.dtype);
-    final resultStrides = NDArray.computeCStrides(a.shape);
+NDArray sign(NDArray a, {NDArray? out}) {
+  final NDArray result;
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for sign.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray.create(a.shape, a.dtype);
+  }
+  final resultStrides = NDArray.computeCStrides(a.shape);
 
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     unaryOp<Complex, Complex>(
       result.data as List<Complex>,
       a.data as List<Complex>,
@@ -3251,9 +3334,6 @@ NDArray sign(NDArray a) {
     );
     return result;
   }
-
-  final result = NDArray.create(a.shape, a.dtype);
-  final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
     unaryOp<int, int>(
@@ -3287,13 +3367,23 @@ NDArray sign(NDArray a) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray ceil(NDArray a) {
+NDArray ceil(NDArray a, {NDArray? out}) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for ceil');
   }
-  final result = NDArray.create(a.shape, a.dtype);
+  final NDArray result;
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for ceil.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray.create(a.shape, a.dtype);
+  }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     if (a.dtype == DType.float64) {
       v_ceil_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
@@ -3336,13 +3426,23 @@ NDArray ceil(NDArray a) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray floor(NDArray a) {
+NDArray floor(NDArray a, {NDArray? out}) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for floor');
   }
-  final result = NDArray.create(a.shape, a.dtype);
+  final NDArray result;
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for floor.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray.create(a.shape, a.dtype);
+  }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     if (a.dtype == DType.float64) {
       v_floor_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
@@ -3385,13 +3485,23 @@ NDArray floor(NDArray a) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray round(NDArray a) {
+NDArray round(NDArray a, {NDArray? out}) {
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for round');
   }
-  final result = NDArray.create(a.shape, a.dtype);
+  final NDArray result;
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for round.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray.create(a.shape, a.dtype);
+  }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     if (a.dtype == DType.float64) {
       v_round_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
       return result;
@@ -3714,11 +3824,21 @@ NDArray<R> rad2deg<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
 /// final mask = isnan(a); // [false, true, false]
 /// ```
-NDArray<bool> isnan(NDArray a) {
+NDArray<bool> isnan(NDArray a, {NDArray<bool>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute isnan on a disposed array.');
   }
-  final result = NDArray<bool>.create(a.shape, DType.boolean);
+  final NDArray<bool> result;
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != DType.boolean) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for isnan.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray<bool>.create(a.shape, DType.boolean);
+  }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.isContiguous && result.isContiguous) {
@@ -3854,11 +3974,21 @@ NDArray<bool> isnan(NDArray a) {
 /// final a = NDArray.fromList([1.0, double.infinity, 3.0], [3], DType.float64);
 /// final mask = isinf(a); // [false, true, false]
 /// ```
-NDArray<bool> isinf(NDArray a) {
+NDArray<bool> isinf(NDArray a, {NDArray<bool>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute isinf on a disposed array.');
   }
-  final result = NDArray<bool>.create(a.shape, DType.boolean);
+  final NDArray<bool> result;
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != DType.boolean) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for isinf.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray<bool>.create(a.shape, DType.boolean);
+  }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.isContiguous && result.isContiguous) {
@@ -3994,11 +4124,21 @@ NDArray<bool> isinf(NDArray a) {
 /// final a = NDArray.fromList([1.0, double.nan, double.infinity], [3], DType.float64);
 /// final mask = isfinite(a); // [true, false, false]
 /// ```
-NDArray<bool> isfinite(NDArray a) {
+NDArray<bool> isfinite(NDArray a, {NDArray<bool>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute isfinite on a disposed array.');
   }
-  final result = NDArray<bool>.create(a.shape, DType.boolean);
+  final NDArray<bool> result;
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != DType.boolean) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for isfinite.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray<bool>.create(a.shape, DType.boolean);
+  }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.isContiguous && result.isContiguous) {
@@ -4139,7 +4279,7 @@ NDArray<bool> isfinite(NDArray a) {
 /// ```dart
 /// final res = copysign(x1, x2);
 /// ```
-NDArray copysign(NDArray x1, NDArray x2) {
+NDArray copysign(NDArray x1, NDArray x2, {NDArray? out}) {
   if (x1.isDisposed || x2.isDisposed) {
     throw StateError('Cannot execute copysign on a disposed array.');
   }
@@ -4157,7 +4297,17 @@ NDArray copysign(NDArray x1, NDArray x2) {
       ? DType.float32
       : DType.float64;
 
-  final result = NDArray.create(shape, targetDType);
+  final NDArray result;
+  if (out != null) {
+    if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for copysign.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray.create(shape, targetDType);
+  }
   final resultStrides = NDArray.computeCStrides(shape);
 
   if (x1.isContiguous &&
