@@ -4,6 +4,7 @@ import '../ndarray.dart';
 import 'package:openblas/openblas.dart';
 import 'dart:ffi' as ffi;
 import '../scratch_arena.dart';
+import '../ndarray_extensions_bindings.dart';
 
 // Standalone operational relative cross-imports
 import 'math.dart';
@@ -639,9 +640,11 @@ NDArray inv(NDArray a, {NDArray? out}) {
             src.data as Float32List,
           );
         } else {
-          for (var i = 0; i < src.data.length; i++) {
-            result.data[i] = (src.data[i] as num).toDouble();
-          }
+          (result.data as Float32List).setRange(
+            0,
+            src.data.length,
+            src.data.map((e) => (e as num).toDouble()),
+          );
         }
       } else if (wasCopied) {
         result = src;
@@ -654,9 +657,11 @@ NDArray inv(NDArray a, {NDArray? out}) {
             src.data as Float32List,
           );
         } else {
-          for (var i = 0; i < src.data.length; i++) {
-            result.data[i] = (src.data[i] as num).toDouble();
-          }
+          (result.data as Float32List).setRange(
+            0,
+            src.data.length,
+            src.data.map((e) => (e as num).toDouble()),
+          );
         }
       }
 
@@ -699,9 +704,11 @@ NDArray inv(NDArray a, {NDArray? out}) {
             src.data as Float64List,
           );
         } else {
-          for (var i = 0; i < src.data.length; i++) {
-            result.data[i] = (src.data[i] as num).toDouble();
-          }
+          (result.data as Float64List).setRange(
+            0,
+            src.data.length,
+            src.data.map((e) => (e as num).toDouble()),
+          );
         }
       } else if (wasCopied) {
         result = src;
@@ -714,9 +721,11 @@ NDArray inv(NDArray a, {NDArray? out}) {
             src.data as Float64List,
           );
         } else {
-          for (var i = 0; i < src.data.length; i++) {
-            result.data[i] = (src.data[i] as num).toDouble();
-          }
+          (result.data as Float64List).setRange(
+            0,
+            src.data.length,
+            src.data.map((e) => (e as num).toDouble()),
+          );
         }
       }
 
@@ -782,9 +791,65 @@ NDArray inv(NDArray a, {NDArray? out}) {
 ///
 /// Refer to the [Determinant Reference](https://en.wikipedia.org/wiki/Determinant)
 /// and [LAPACK LU solver](https://en.wikipedia.org/wiki/LU_decomposition) for additional details.
-NDArray<double> det<T>(NDArray<T> a) {
-  if (a.dtype != DType.float64 && a.dtype != DType.float32) {
-    throw ArgumentError('det only supports Float64 and Float32 dtypes');
+/// Compute the determinant of a square matrix or a stack of square matrices using OpenBLAS/LAPACK.
+///
+/// Transforms the matrix and calculates its determinant natively via LAPACK LU decomposition.
+/// Supports both real (float32, float64) and complex (complex64, complex128) data types.
+/// Returns the determinant stack as an array of corresponding types (float64 for real inputs,
+/// and complex64/complex128 for complex inputs).
+///
+/// **Preconditions:**
+/// - Matrix [a] must be square in its last two dimensions (size $N \times N$) and at least 2-dimensional.
+/// - Data type [a.dtype] must be float32, float64, complex64, or complex128.
+///
+/// **Throws:**
+/// - [ArgumentError] if [a] is not square or less than 2D.
+/// - [ArgumentError] if [a.dtype] is not a supported data type.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N^3)$ leveraging optimized native LAPACK linear algebra solvers.
+/// - Fully vectorized and batched in native C for float64, complex64, and complex128, minimizing FFI transitions.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+/// final d = det(a);
+/// print(d); // -2.0
+/// ```
+/// Compute the determinant of a square matrix or a stack of square matrices using OpenBLAS/LAPACK.
+///
+/// Transforms the matrix and calculates its determinant natively via LAPACK LU decomposition.
+/// Supports both real (float32, float64) and complex (complex64, complex128) data types.
+/// Returns the determinant stack as an array of corresponding types (float64 for real inputs,
+/// and complex64/complex128 for complex inputs).
+///
+/// **Preconditions:**
+/// - Matrix [a] must be square in its last two dimensions (size $N \times N$) and at least 2-dimensional.
+/// - Data type [a.dtype] must be float32, float64, complex64, or complex128.
+///
+/// **Throws:**
+/// - [ArgumentError] if [a] is not square or less than 2D.
+/// - [ArgumentError] if [a.dtype] is not a supported data type.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N^3)$ leveraging optimized native LAPACK linear algebra solvers.
+/// - Fully vectorized and batched in native C for float64, complex64, and complex128, minimizing FFI transitions.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+/// final d = det(a);
+/// print(d); // -2.0
+/// ```
+///
+/// Refer to the [determinant](https://en.wikipedia.org/wiki/Determinant)
+/// and [LAPACK LU solver](https://en.wikipedia.org/wiki/LU_decomposition) for additional details.
+NDArray<T> det<T>(NDArray<T> a) {
+  if (a.dtype != DType.float64 &&
+      a.dtype != DType.float32 &&
+      a.dtype != DType.complex128 &&
+      a.dtype != DType.complex64) {
+    throw ArgumentError('det only supports float and complex dtypes');
   }
   final rank = a.shape.length;
   if (rank < 2 || a.shape[rank - 1] != a.shape[rank - 2]) {
@@ -792,113 +857,143 @@ NDArray<double> det<T>(NDArray<T> a) {
       'Matrix must be square and at least 2D (was ${a.shape})',
     );
   }
-  final n = a.shape[rank - 1];
   final stackShape = a.shape.sublist(0, rank - 2);
-  final result = NDArray.zeros(stackShape, DType.float64);
 
-  final aCopy = NDArray.create([n, n], a.dtype);
-  final marker = ScratchArena.marker;
-  final ipiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
+  if (a.dtype == DType.float64) {
+    final result = NDArray.zeros(stackShape, DType.float64) as NDArray<T>;
+    final marker = ScratchArena.marker;
+    final cStridesA = ScratchArena.copyInts(a.strides);
+    final cStridesRes = ScratchArena.copyInts(result.strides);
+    final cShape = ScratchArena.copyInts(a.shape);
 
-  try {
-    walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
-      coords,
-    ) {
-      var offsetA = 0;
-      for (var i = 0; i < coords.length; i++) {
-        offsetA += coords[i] * a.strides[i];
-      }
-      var offsetRes = 0;
-      for (var i = 0; i < coords.length; i++) {
-        offsetRes += coords[i] * result.strides[i];
-      }
+    final n = a.shape[rank - 1];
+    final cCopy = ScratchArena.allocate<ffi.Double>(
+      n * n * ffi.sizeOf<ffi.Double>(),
+    );
+    final cIpiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
 
-      if (a.dtype == DType.float64) {
-        final aCopyData = aCopy.data as Float64List;
-        if (a.isContiguous) {
-          final aData = a.data as Float64List;
-          aCopyData.setRange(0, n * n, aData, offsetA);
-        } else {
-          final sliceView = NDArray.view(
-            a,
-            shape: [n, n],
-            strides: a.strides.sublist(rank - 2),
-            offsetElements: offsetA,
-          );
-          aCopyData.setRange(0, n * n, sliceView.toList().cast<double>());
-        }
-
-        double detValue = 1.0;
-        final info = LAPACKE_dgetrf(
-          101, // ROW_MAJOR
-          n,
-          n,
-          aCopy.pointer.cast<ffi.Double>(),
-          n,
-          ipiv,
-        );
-        if (info < 0) throw ArgumentError('Illegal value in dgetrf: $info');
-        if (info > 0) {
-          detValue = 0.0;
-        } else {
-          final data = aCopy.data as Float64List;
-          for (var i = 0; i < n; i++) {
-            detValue *= data[i * n + i];
-          }
-          var swaps = 0;
-          for (var i = 0; i < n; i++) {
-            if (ipiv[i] != i + 1) swaps++;
-          }
-          if (swaps % 2 != 0) detValue = -detValue;
-        }
-        (result.data as Float64List)[offsetRes] = detValue;
-      } else {
-        final aCopyData = aCopy.data as Float32List;
-        if (a.isContiguous) {
-          final aData = a.data as Float32List;
-          aCopyData.setRange(0, n * n, aData, offsetA);
-        } else {
-          final sliceView = NDArray.view(
-            a,
-            shape: [n, n],
-            strides: a.strides.sublist(rank - 2),
-            offsetElements: offsetA,
-          );
-          aCopyData.setRange(0, n * n, sliceView.toList().cast<double>());
-        }
-
-        double detValue = 1.0;
-        final info = LAPACKE_sgetrf(
-          101, // ROW_MAJOR
-          n,
-          n,
-          aCopy.pointer.cast<ffi.Float>(),
-          n,
-          ipiv,
-        );
-        if (info < 0) throw ArgumentError('Illegal value in sgetrf: $info');
-        if (info > 0) {
-          detValue = 0.0;
-        } else {
-          final data = aCopy.data as Float32List;
-          for (var i = 0; i < n; i++) {
-            detValue *= data[i * n + i];
-          }
-          var swaps = 0;
-          for (var i = 0; i < n; i++) {
-            if (ipiv[i] != i + 1) swaps++;
-          }
-          if (swaps % 2 != 0) detValue = -detValue;
-        }
-        (result.data as Float64List)[offsetRes] = detValue;
-      }
-    });
-  } finally {
-    ScratchArena.reset(marker);
-    aCopy.dispose();
+    try {
+      s_det_double(
+        a.pointer.cast<ffi.Double>(),
+        cStridesA,
+        result.pointer.cast<ffi.Double>(),
+        cStridesRes,
+        cShape,
+        rank,
+        cCopy,
+        cIpiv,
+        get_dgetrf_ptr(),
+      );
+    } finally {
+      ScratchArena.reset(marker);
+    }
+    return result;
   }
 
-  return result;
+  if (a.dtype == DType.complex128) {
+    final result = NDArray.zeros(stackShape, DType.complex128) as NDArray<T>;
+    final marker = ScratchArena.marker;
+    final cStridesA = ScratchArena.copyInts(a.strides);
+    final cStridesRes = ScratchArena.copyInts(result.strides);
+    final cShape = ScratchArena.copyInts(a.shape);
+
+    final n = a.shape[rank - 1];
+    final cCopy = ScratchArena.allocate<ffi.Double>(
+      2 * n * n * ffi.sizeOf<ffi.Double>(),
+    );
+    final cIpiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
+
+    try {
+      s_det_complex_double(
+        a.pointer.cast<ffi.Double>(),
+        cStridesA,
+        result.pointer.cast<ffi.Double>(),
+        cStridesRes,
+        cShape,
+        rank,
+        cCopy,
+        cIpiv,
+        get_zgetrf_ptr(),
+      );
+    } finally {
+      ScratchArena.reset(marker);
+    }
+    return result;
+  }
+
+  if (a.dtype == DType.complex64) {
+    final result = NDArray.zeros(stackShape, DType.complex64) as NDArray<T>;
+    final marker = ScratchArena.marker;
+    final cStridesA = ScratchArena.copyInts(a.strides);
+    final cStridesRes = ScratchArena.copyInts(result.strides);
+    final cShape = ScratchArena.copyInts(a.shape);
+
+    final n = a.shape[rank - 1];
+    final cCopy = ScratchArena.allocate<ffi.Float>(
+      2 * n * n * ffi.sizeOf<ffi.Float>(),
+    );
+    final cIpiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
+
+    try {
+      s_det_complex_float(
+        a.pointer.cast<ffi.Float>(),
+        cStridesA,
+        result.pointer.cast<ffi.Float>(),
+        cStridesRes,
+        cShape,
+        rank,
+        cCopy,
+        cIpiv,
+        get_cgetrf_ptr(),
+      );
+    } finally {
+      ScratchArena.reset(marker);
+    }
+    return result;
+  }
+
+  if (a.dtype == DType.float32) {
+    final result = NDArray.zeros(stackShape, DType.float64) as NDArray<T>;
+    final tempResult = NDArray.zeros(stackShape, DType.float32);
+    final marker = ScratchArena.marker;
+    final cStridesA = ScratchArena.copyInts(a.strides);
+    final cStridesRes = ScratchArena.copyInts(tempResult.strides);
+    final cShape = ScratchArena.copyInts(a.shape);
+
+    final n = a.shape[rank - 1];
+    final cCopy = ScratchArena.allocate<ffi.Float>(
+      n * n * ffi.sizeOf<ffi.Float>(),
+    );
+    final cIpiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
+
+    try {
+      s_det_float(
+        a.pointer.cast<ffi.Float>(),
+        cStridesA,
+        tempResult.pointer.cast<ffi.Float>(),
+        cStridesRes,
+        cShape,
+        rank,
+        cCopy,
+        cIpiv,
+        get_sgetrf_ptr(),
+      );
+
+      // Copy values to Float64 result array to maintain backward compatible Float64 output precision
+      final totalSize = tempResult.data.length;
+      final srcData = tempResult.data as Float32List;
+      final destData = result.data as Float64List;
+      for (var i = 0; i < totalSize; i++) {
+        destData[i] = srcData[i];
+      }
+    } finally {
+      ScratchArena.reset(marker);
+      tempResult.dispose();
+    }
+    return result;
+  }
+
+  throw ArgumentError('Unsupported dtype for determinant');
 }
 
 /// Solve a linear matrix equation, or system of linear scalar equations.
@@ -1084,14 +1179,18 @@ NDArray<R> solve<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b) {
     } else {
       // Fallback: convert to Float64
       final aDouble = NDArray<double>.create(a.shape, DType.float64);
-      for (var i = 0; i < a.data.length; i++) {
-        aDouble.data[i] = (a.data[i] as num).toDouble();
-      }
+      (aDouble.data as Float64List).setRange(
+        0,
+        a.data.length,
+        a.data.map((e) => (e as num).toDouble()),
+      );
 
       final bDouble = NDArray<double>.create(b.shape, DType.float64);
-      for (var i = 0; i < b.data.length; i++) {
-        bDouble.data[i] = (b.data[i] as num).toDouble();
-      }
+      (bDouble.data as Float64List).setRange(
+        0,
+        b.data.length,
+        b.data.map((e) => (e as num).toDouble()),
+      );
 
       final info = LAPACKE_dgesv(
         101,
@@ -1552,9 +1651,7 @@ NDArray<R> pinv<T, R>(NDArray<T> a, {double? rcond, NDArray<R>? out}) {
 
   final temp = matmul(v, sPlus);
   final temp2 = matmul(temp, ut);
-  for (var i = 0; i < result.data.length; i++) {
-    result.data[i] = temp2.data[i];
-  }
+  (result.data as List).setRange(0, result.data.length, temp2.data);
 
   u.dispose();
   s.dispose();
@@ -1646,9 +1743,7 @@ NDArray<R> matrix_power<T, R>(NDArray<T> a, int n, {NDArray<R>? out}) {
     base.dispose();
   }
 
-  for (var i = 0; i < result.data.length; i++) {
-    result.data[i] = res.data[i];
-  }
+  (result.data as List).setRange(0, result.data.length, res.data);
   res.dispose();
 
   return result;

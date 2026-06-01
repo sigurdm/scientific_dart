@@ -260,23 +260,14 @@ NDArray<T> linspaceGrid<T>(
 
     final rank = resultShape.length;
     final marker = ScratchArena.marker;
-    final intBytes = rank * ffi.sizeOf<ffi.Int>();
 
-    final cShape = ScratchArena.allocate<ffi.Int>(intBytes);
-    final cStridesStart = ScratchArena.allocate<ffi.Int>(intBytes);
-    final cStridesStop = ScratchArena.allocate<ffi.Int>(intBytes);
-    final cStridesRes = ScratchArena.allocate<ffi.Int>(intBytes);
-    final cStridesStep = ScratchArena.allocate<ffi.Int>(intBytes);
+    final cShape = ScratchArena.copyInts(resultShape);
+    final cStridesStart = ScratchArena.copyInts(stridesStart);
+    final cStridesStop = ScratchArena.copyInts(stridesStop);
+    final cStridesRes = ScratchArena.copyInts(stridesRes);
+    final cStridesStep = ScratchArena.copyInts(stridesStepOdo);
 
     try {
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = resultShape[i];
-        cStridesStart[i] = stridesStart[i];
-        cStridesStop[i] = stridesStop[i];
-        cStridesRes[i] = stridesRes[i];
-        cStridesStep[i] = stridesStepOdo[i];
-      }
-
       switch (resolvedDType) {
         case DType.float64:
           s_linspace_grid_double(

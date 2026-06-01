@@ -5489,3 +5489,122 @@ DEFINE_LINSPACE_GRID(
     { res[offsetRes] = (uint8_t)((double)start[offsetStart] + ((double)stop[offsetStop] - (double)start[offsetStart]) * t); },
     { step[offsetStep] = (div <= 0.0) ? 0 : (uint8_t)(((double)stop[offsetStop] - (double)start[offsetStart]) / div); }
 )
+
+/* ============================================================================
+ * SECTION 12: DYNAMICALLY DISPATCHED MATRIX DETERMINANT INTRA-OPERATIONS
+ * ============================================================================
+ * Strided determinants offloading LU-factorization call dynamically to a
+ * LAPACK function pointer passed from Dart FFI space. This makes the routine
+ * 100% decoupled from compile-time OpenBLAS/LAPACK dependencies.
+ */
+
+#define DEFINE_DET_REAL(name, type) \
+void name(const type *a, const int *stridesA, \
+          type *res, const int *stridesRes, \
+          const int *shape, int rank, \
+          type *aCopy, int *ipiv, \
+          int (*lapack_getrf)(int, int, int, void *, int, int *)) { \
+    if (a == NULL || res == NULL || aCopy == NULL || ipiv == NULL || lapack_getrf == NULL || rank < 2 || rank > 8) return; \
+    int n = shape[rank - 1]; \
+    int stack_elements = 1; \
+    for (int i = 0; i < rank - 2; i++) stack_elements *= shape[i]; \
+    int coord[8] = {0}; \
+    int offsetA = 0, offsetRes = 0; \
+    for (int el = 0; el < stack_elements; el++) { \
+        for (int i = 0; i < n; i++) { \
+            for (int j = 0; j < n; j++) { \
+                aCopy[i * n + j] = a[offsetA + i * stridesA[rank - 2] + j * stridesA[rank - 1]]; \
+            } \
+        } \
+        int info = lapack_getrf(101, n, n, aCopy, n, ipiv); \
+        type detValue = 1.0; \
+        if (info > 0) { \
+            detValue = 0.0; \
+        } else if (info < 0) { \
+            detValue = NAN; \
+        } else { \
+            for (int i = 0; i < n; i++) { \
+                detValue *= aCopy[i * n + i]; \
+            } \
+            int swaps = 0; \
+            for (int i = 0; i < n; i++) { \
+                if (ipiv[i] != i + 1) swaps++; \
+            } \
+            if (swaps % 2 != 0) detValue = -detValue; \
+        } \
+        res[offsetRes] = detValue; \
+        for (int d = rank - 3; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shape[d]) { \
+                offsetA += stridesA[d]; \
+                offsetRes += stridesRes[d]; \
+                break; \
+            } \
+            coord[d] = 0; \
+            offsetA -= (shape[d] - 1) * stridesA[d]; \
+            offsetRes -= (shape[d] - 1) * stridesRes[d]; \
+        } \
+    } \
+}
+
+#define DEFINE_DET_COMPLEX(name, type) \
+void name(const type *a, const int *stridesA, \
+          type *res, const int *stridesRes, \
+          const int *shape, int rank, \
+          type *aCopy, int *ipiv, \
+          int (*lapack_getrf)(int, int, int, void *, int, int *)) { \
+    if (a == NULL || res == NULL || aCopy == NULL || ipiv == NULL || lapack_getrf == NULL || rank < 2 || rank > 8) return; \
+    int n = shape[rank - 1]; \
+    int stack_elements = 1; \
+    for (int i = 0; i < rank - 2; i++) stack_elements *= shape[i]; \
+    int coord[8] = {0}; \
+    int offsetA = 0, offsetRes = 0; \
+    for (int el = 0; el < stack_elements; el++) { \
+        for (int i = 0; i < n; i++) { \
+            for (int j = 0; j < n; j++) { \
+                aCopy[i * n + j] = a[offsetA + i * stridesA[rank - 2] + j * stridesA[rank - 1]]; \
+            } \
+        } \
+        int info = lapack_getrf(101, n, n, aCopy, n, ipiv); \
+        type detValue = {1.0, 0.0}; \
+        if (info > 0) { \
+            detValue.r = 0.0; \
+            detValue.i = 0.0; \
+        } else if (info < 0) { \
+            detValue.r = NAN; \
+            detValue.i = NAN; \
+        } else { \
+            for (int i = 0; i < n; i++) { \
+                double r1 = detValue.r, i1 = detValue.i; \
+                double r2 = aCopy[i * n + i].r, i2 = aCopy[i * n + i].i; \
+                detValue.r = r1 * r2 - i1 * i2; \
+                detValue.i = r1 * i2 + i1 * r2; \
+            } \
+            int swaps = 0; \
+            for (int i = 0; i < n; i++) { \
+                if (ipiv[i] != i + 1) swaps++; \
+            } \
+            if (swaps % 2 != 0) { \
+                detValue.r = -detValue.r; \
+                detValue.i = -detValue.i; \
+            } \
+        } \
+        res[offsetRes] = detValue; \
+        for (int d = rank - 3; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shape[d]) { \
+                offsetA += stridesA[d]; \
+                offsetRes += stridesRes[d]; \
+                break; \
+            } \
+            coord[d] = 0; \
+            offsetA -= (shape[d] - 1) * stridesA[d]; \
+            offsetRes -= (shape[d] - 1) * stridesRes[d]; \
+        } \
+    } \
+}
+
+DEFINE_DET_REAL(s_det_double, double)
+DEFINE_DET_REAL(s_det_float, float)
+DEFINE_DET_COMPLEX(s_det_complex_double, cpx_t)
+DEFINE_DET_COMPLEX(s_det_complex_float, cpx_f_t)

@@ -1,5 +1,6 @@
 import 'dart:ffi' as ffi;
 import 'package:test/test.dart';
+import 'package:ndarray/ndarray.dart';
 import 'package:ndarray/src/scratch_arena.dart';
 
 void main() {
@@ -121,6 +122,95 @@ void main() {
       expect(ptrCustom.address, isNot(equals(ffi.nullptr.address)));
 
       ScratchArena.reset(markerStart);
+    });
+
+    test('copy list helper methods for all dtypes', () {
+      final marker = ScratchArena.marker;
+      try {
+        // Test copyInts
+        final ints = [10, -20, 30, 40, -50];
+        final pInts = ScratchArena.copyInts(ints);
+        expect(pInts.address % 8, equals(0)); // Alignment check
+        for (var i = 0; i < ints.length; i++) {
+          expect(pInts[i], equals(ints[i]));
+        }
+
+        // Test copyInt32s
+        final pInt32s = ScratchArena.copyInt32s(ints);
+        expect(pInt32s.address % 8, equals(0)); // Alignment check
+        for (var i = 0; i < ints.length; i++) {
+          expect(pInt32s[i], equals(ints[i]));
+        }
+
+        // Test copyInt64s
+        final pInt64s = ScratchArena.copyInt64s(ints);
+        expect(pInt64s.address % 8, equals(0)); // Alignment check
+        for (var i = 0; i < ints.length; i++) {
+          expect(pInt64s[i], equals(ints[i]));
+        }
+
+        // Test copyDoubles
+        final doubles = [1.25, -2.5, 3.75, 4.0];
+        final pDoubles = ScratchArena.copyDoubles(doubles);
+        expect(pDoubles.address % 8, equals(0)); // Alignment check
+        for (var i = 0; i < doubles.length; i++) {
+          expect(pDoubles[i], equals(doubles[i]));
+        }
+
+        // Test copyFloats
+        final pFloats = ScratchArena.copyFloats(doubles);
+        expect(pFloats.address % 8, equals(0)); // Alignment check
+        for (var i = 0; i < doubles.length; i++) {
+          expect(pFloats[i], closeTo(doubles[i], 1e-5));
+        }
+
+        // Test copyComplexes (regular list)
+        final complexes = [Complex(1.0, 2.0), Complex(-3.0, 4.5)];
+        final pComplexes = ScratchArena.copyComplexes(complexes);
+        expect(pComplexes.address % 8, equals(0)); // Alignment check
+        for (var i = 0; i < complexes.length; i++) {
+          expect(pComplexes[i * 2], equals(complexes[i].real));
+          expect(pComplexes[i * 2 + 1], equals(complexes[i].imag));
+        }
+
+        // Test copyComplexes (ComplexList)
+        final complexList = ComplexList([1.0, 2.0, -3.0, 4.5]);
+        final pComplexList = ScratchArena.copyComplexes(complexList);
+        expect(pComplexList.address % 8, equals(0));
+        for (var i = 0; i < complexList.length; i++) {
+          expect(pComplexList[i * 2], equals(complexList[i].real));
+          expect(pComplexList[i * 2 + 1], equals(complexList[i].imag));
+        }
+
+        // Test copyFloatComplexes (regular list)
+        final pFloatComplexes = ScratchArena.copyFloatComplexes(complexes);
+        expect(pFloatComplexes.address % 8, equals(0)); // Alignment check
+        for (var i = 0; i < complexes.length; i++) {
+          expect(pFloatComplexes[i * 2], closeTo(complexes[i].real, 1e-5));
+          expect(pFloatComplexes[i * 2 + 1], closeTo(complexes[i].imag, 1e-5));
+        }
+
+        // Test copyFloatComplexes (ComplexList)
+        final pFloatComplexList = ScratchArena.copyFloatComplexes(complexList);
+        expect(pFloatComplexList.address % 8, equals(0));
+        for (var i = 0; i < complexList.length; i++) {
+          expect(pFloatComplexList[i * 2], closeTo(complexList[i].real, 1e-5));
+          expect(
+            pFloatComplexList[i * 2 + 1],
+            closeTo(complexList[i].imag, 1e-5),
+          );
+        }
+
+        // Test copyBools
+        final bools = [true, false, true, true, false];
+        final pBools = ScratchArena.copyBools(bools);
+        expect(pBools.address % 8, equals(0)); // Alignment check
+        for (var i = 0; i < bools.length; i++) {
+          expect(pBools[i] != 0, equals(bools[i]));
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
     });
   });
 }

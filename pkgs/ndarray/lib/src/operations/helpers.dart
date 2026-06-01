@@ -1060,19 +1060,9 @@ NDArray<R> cumOpFFI<T, R>(
 ) {
   final rank = a.shape.length;
   final marker = ScratchArena.marker;
-  final cShape = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
-  final cStridesA = ScratchArena.allocate<ffi.Int>(
-    rank * ffi.sizeOf<ffi.Int>(),
-  );
-  final cStridesRes = ScratchArena.allocate<ffi.Int>(
-    rank * ffi.sizeOf<ffi.Int>(),
-  );
-
-  for (var i = 0; i < rank; i++) {
-    cShape[i] = a.shape[i];
-    cStridesA[i] = a.strides[i];
-    cStridesRes[i] = result.strides[i];
-  }
+  final cShape = ScratchArena.copyInts(a.shape);
+  final cStridesA = ScratchArena.copyInts(a.strides);
+  final cStridesRes = ScratchArena.copyInts(result.strides);
 
   try {
     switch (opType) {
@@ -1150,16 +1140,8 @@ NDArray<R> cumOpFFI<T, R>(
                   : (val as num).toDouble();
             }
             final doubleRes = NDArray<double>.create(a.shape, DType.float64);
-            final cStridesDoubleA = ScratchArena.allocate<ffi.Int>(
-              rank * ffi.sizeOf<ffi.Int>(),
-            );
-            final cStridesDoubleRes = ScratchArena.allocate<ffi.Int>(
-              rank * ffi.sizeOf<ffi.Int>(),
-            );
-            for (var i = 0; i < rank; i++) {
-              cStridesDoubleA[i] = doubleA.strides[i];
-              cStridesDoubleRes[i] = doubleRes.strides[i];
-            }
+            final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
+            final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
             s_cumsum_double(
               doubleA.pointer.cast(),
               cStridesDoubleA,
@@ -1250,16 +1232,8 @@ NDArray<R> cumOpFFI<T, R>(
                   : (val as num).toDouble();
             }
             final doubleRes = NDArray<double>.create(a.shape, DType.float64);
-            final cStridesDoubleA = ScratchArena.allocate<ffi.Int>(
-              rank * ffi.sizeOf<ffi.Int>(),
-            );
-            final cStridesDoubleRes = ScratchArena.allocate<ffi.Int>(
-              rank * ffi.sizeOf<ffi.Int>(),
-            );
-            for (var i = 0; i < rank; i++) {
-              cStridesDoubleA[i] = doubleA.strides[i];
-              cStridesDoubleRes[i] = doubleRes.strides[i];
-            }
+            final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
+            final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
             s_cumprod_double(
               doubleA.pointer.cast(),
               cStridesDoubleA,
@@ -1330,16 +1304,8 @@ NDArray<R> cumOpFFI<T, R>(
                   : (val as num).toDouble();
             }
             final doubleRes = NDArray<double>.create(a.shape, DType.float64);
-            final cStridesDoubleA = ScratchArena.allocate<ffi.Int>(
-              rank * ffi.sizeOf<ffi.Int>(),
-            );
-            final cStridesDoubleRes = ScratchArena.allocate<ffi.Int>(
-              rank * ffi.sizeOf<ffi.Int>(),
-            );
-            for (var i = 0; i < rank; i++) {
-              cStridesDoubleA[i] = doubleA.strides[i];
-              cStridesDoubleRes[i] = doubleRes.strides[i];
-            }
+            final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
+            final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
             s_cummin_double(
               doubleA.pointer.cast(),
               cStridesDoubleA,
@@ -1415,16 +1381,8 @@ NDArray<R> cumOpFFI<T, R>(
                   : (val as num).toDouble();
             }
             final doubleRes = NDArray<double>.create(a.shape, DType.float64);
-            final cStridesDoubleA = ScratchArena.allocate<ffi.Int>(
-              rank * ffi.sizeOf<ffi.Int>(),
-            );
-            final cStridesDoubleRes = ScratchArena.allocate<ffi.Int>(
-              rank * ffi.sizeOf<ffi.Int>(),
-            );
-            for (var i = 0; i < rank; i++) {
-              cStridesDoubleA[i] = doubleA.strides[i];
-              cStridesDoubleRes[i] = doubleRes.strides[i];
-            }
+            final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
+            final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
             s_cummax_double(
               doubleA.pointer.cast(),
               cStridesDoubleA,

@@ -198,10 +198,10 @@ void main() {
         () => NDArray.scope(() {
           final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
 
-          expect(a.flip().toList(), [4, 3, 2, 1]);
-          expect(a.fliplr().toList(), [2, 1, 4, 3]);
-          expect(a.flipud().toList(), [3, 4, 1, 2]);
-          expect(a.roll(1, axis: 0).toList(), [3, 4, 1, 2]);
+          expect(flip(a).toList(), [4, 3, 2, 1]);
+          expect(fliplr(a).toList(), [2, 1, 4, 3]);
+          expect(flipud(a).toList(), [3, 4, 1, 2]);
+          expect(roll(a, 1, axis: 0).toList(), [3, 4, 1, 2]);
         }),
       );
     });

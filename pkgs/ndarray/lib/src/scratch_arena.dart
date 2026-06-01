@@ -1,5 +1,6 @@
 import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
+import 'ndarray.dart' show Complex, ComplexList;
 
 /// An Isolate-local scratch memory arena for high-performance transient FFI allocations.
 ///
@@ -97,6 +98,173 @@ final class ScratchArena {
 
     _currentPageIndex = pageIndex;
     _offset = offset;
+  }
+
+  /// Allocates transient memory from the arena and copies the elements of [list] into it as native [ffi.Int]s.
+  ///
+  /// **Preconditions:**
+  /// - [list] must be non-null.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity is $O(N)$ where $N$ is the number of elements in [list].
+  /// - Transient allocation in the pre-allocated C stack.
+  ///
+  /// **Example:**
+  /// {@example /example/scratch_arena_example.dart}
+  static ffi.Pointer<ffi.Int> copyInts(List<int> list) {
+    final ptr = allocate<ffi.Int>(list.length * ffi.sizeOf<ffi.Int>());
+    for (var i = 0; i < list.length; i++) {
+      ptr[i] = list[i];
+    }
+    return ptr;
+  }
+
+  /// Allocates transient memory from the arena and copies the elements of [list] into it as native [ffi.Double]s.
+  ///
+  /// **Preconditions:**
+  /// - [list] must be non-null.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity is $O(N)$ where $N$ is the number of elements in [list].
+  /// - Uses fast typed list views to copy contiguous memory blocks.
+  ///
+  /// **Example:**
+  /// {@example /example/scratch_arena_example.dart}
+  static ffi.Pointer<ffi.Double> copyDoubles(List<double> list) {
+    final ptr = allocate<ffi.Double>(list.length * ffi.sizeOf<ffi.Double>());
+    final typedList = ptr.asTypedList(list.length);
+    typedList.setRange(0, list.length, list);
+    return ptr;
+  }
+
+  /// Allocates transient memory from the arena and copies the elements of [list] into it as native [ffi.Float]s.
+  ///
+  /// **Preconditions:**
+  /// - [list] must be non-null.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity is $O(N)$ where $N$ is the number of elements in [list].
+  /// - Uses fast typed list views to copy contiguous memory blocks.
+  ///
+  /// **Example:**
+  /// {@example /example/scratch_arena_example.dart}
+  static ffi.Pointer<ffi.Float> copyFloats(List<double> list) {
+    final ptr = allocate<ffi.Float>(list.length * ffi.sizeOf<ffi.Float>());
+    final typedList = ptr.asTypedList(list.length);
+    typedList.setRange(0, list.length, list);
+    return ptr;
+  }
+
+  /// Allocates transient memory from the arena and copies the elements of [list] into it as native [ffi.Int32]s.
+  ///
+  /// **Preconditions:**
+  /// - [list] must be non-null.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity is $O(N)$ where $N$ is the number of elements in [list].
+  /// - Uses fast typed list views to copy contiguous memory blocks.
+  ///
+  /// **Example:**
+  /// {@example /example/scratch_arena_example.dart}
+  static ffi.Pointer<ffi.Int32> copyInt32s(List<int> list) {
+    final ptr = allocate<ffi.Int32>(list.length * ffi.sizeOf<ffi.Int32>());
+    final typedList = ptr.asTypedList(list.length);
+    typedList.setRange(0, list.length, list);
+    return ptr;
+  }
+
+  /// Allocates transient memory from the arena and copies the elements of [list] into it as native [ffi.Int64]s.
+  ///
+  /// **Preconditions:**
+  /// - [list] must be non-null.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity is $O(N)$ where $N$ is the number of elements in [list].
+  /// - Uses fast typed list views to copy contiguous memory blocks.
+  ///
+  /// **Example:**
+  /// {@example /example/scratch_arena_example.dart}
+  static ffi.Pointer<ffi.Int64> copyInt64s(List<int> list) {
+    final ptr = allocate<ffi.Int64>(list.length * ffi.sizeOf<ffi.Int64>());
+    final typedList = ptr.asTypedList(list.length);
+    typedList.setRange(0, list.length, list);
+    return ptr;
+  }
+
+  /// Allocates transient memory from the arena and copies the elements of [list] into it as native [ffi.Double]s.
+  ///
+  /// Each complex number is represented as 2 consecutive double values (real followed by imaginary).
+  ///
+  /// **Preconditions:**
+  /// - [list] must be non-null.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity is $O(N)$ where $N$ is the number of elements in [list].
+  /// - Specially optimized for [ComplexList] to perform a direct high-speed contiguous memory copy.
+  ///
+  /// **Example:**
+  /// {@example /example/scratch_arena_example.dart}
+  static ffi.Pointer<ffi.Double> copyComplexes(List<Complex> list) {
+    final ptr = allocate<ffi.Double>(
+      list.length * 2 * ffi.sizeOf<ffi.Double>(),
+    );
+    final typedList = ptr.asTypedList(list.length * 2);
+    if (list is ComplexList) {
+      typedList.setRange(0, list.length * 2, list.backingList);
+    } else {
+      for (var i = 0; i < list.length; i++) {
+        typedList[i * 2] = list[i].real;
+        typedList[i * 2 + 1] = list[i].imag;
+      }
+    }
+    return ptr;
+  }
+
+  /// Allocates transient memory from the arena and copies the elements of [list] into it as native [ffi.Float]s.
+  ///
+  /// Each complex number is represented as 2 consecutive float values (real followed by imaginary).
+  ///
+  /// **Preconditions:**
+  /// - [list] must be non-null.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity is $O(N)$ where $N$ is the number of elements in [list].
+  /// - Specially optimized for [ComplexList] to perform a direct high-speed contiguous memory copy.
+  ///
+  /// **Example:**
+  /// {@example /example/scratch_arena_example.dart}
+  static ffi.Pointer<ffi.Float> copyFloatComplexes(List<Complex> list) {
+    final ptr = allocate<ffi.Float>(list.length * 2 * ffi.sizeOf<ffi.Float>());
+    final typedList = ptr.asTypedList(list.length * 2);
+    if (list is ComplexList) {
+      typedList.setRange(0, list.length * 2, list.backingList);
+    } else {
+      for (var i = 0; i < list.length; i++) {
+        typedList[i * 2] = list[i].real;
+        typedList[i * 2 + 1] = list[i].imag;
+      }
+    }
+    return ptr;
+  }
+
+  /// Allocates transient memory from the arena and copies the elements of [list] into it as native [ffi.Uint8] bytes (1 for true, 0 for false).
+  ///
+  /// **Preconditions:**
+  /// - [list] must be non-null.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity is $O(N)$ where $N$ is the number of elements in [list].
+  /// - Fast element-wise iteration to map boolean states to native byte flags.
+  ///
+  /// **Example:**
+  /// {@example /example/scratch_arena_example.dart}
+  static ffi.Pointer<ffi.Uint8> copyBools(List<bool> list) {
+    final ptr = allocate<ffi.Uint8>(list.length * ffi.sizeOf<ffi.Uint8>());
+    final typedList = ptr.asTypedList(list.length);
+    for (var i = 0; i < list.length; i++) {
+      typedList[i] = list[i] ? 1 : 0;
+    }
+    return ptr;
   }
 
   /// Gets or grows a persistent thread-local static buffer for leaf strided operations.

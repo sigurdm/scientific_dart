@@ -24,12 +24,15 @@ extension type const Int16(int value) implements int {}
 enum DType<T> {
   float32<Float32>('float32', 4, '<f4'),
   float64<Float64>('float64', 8, '<f8'),
+  // 64 bits total: 32-bit float real + 32-bit float imaginary parts (8 bytes)
   complex64<Complex>('complex64', 8, '<c8'),
+  // 128 bits total: 64-bit double real + 64-bit double imaginary parts (16 bytes)
   complex128<Complex>('complex128', 16, '<c16'),
   uint8<Uint8>('uint8', 1, '|u1'),
   int16<Int16>('int16', 2, '<i2'),
   int32<Int32>('int32', 4, '<i4'),
   int64<Int64>('int64', 8, '<i8'),
+  // Uses 8 bits (1 byte) per boolean value (backed by ffi.Uint8)
   boolean<bool>('boolean', 1, '|b1');
 
   final String name;
@@ -50,8 +53,9 @@ enum DType<T> {
 /// An n-dimensional array with memory allocated on the C heap.
 ///
 /// **Memory Management Guidelines:**
-/// - **Explicit Disposal**: Always call [dispose] explicitly as soon as an array is no
-///   longer needed. While the garbage collector will eventually free C memory to prevent hard
+/// - **Explicit Disposal & Scopes**: Always call [dispose] explicitly as soon as an array is no
+///   longer needed, or wrap your computations in [NDArray.scope] for automated scope-level resource
+///   management. While the garbage collector will eventually free C memory to prevent hard
 ///   leaks, it is blind to large native allocations, and garbage collection might not be
 ///   triggered early enough.
 /// - **Views & Shared Memory**: Views (slices, reshapes, transposes, etc.) share the exact same

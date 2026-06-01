@@ -903,5 +903,11 @@ void s_linspace_grid_uint8(const uint8_t *start, const int *stridesStart, const 
 
 int get_and_reset_division_error(void);
 
+/* Decoupled LAPACK-Dispatched Determinants */
+void s_det_double(const double *a, const int *stridesA, double *res, const int *stridesRes, const int *shape, int rank, double *aCopy, int *ipiv, int (*lapack_getrf)(int, int, int, void *, int, int *));
+void s_det_float(const float *a, const int *stridesA, float *res, const int *stridesRes, const int *shape, int rank, float *aCopy, int *ipiv, int (*lapack_getrf)(int, int, int, void *, int, int *));
+void s_det_complex_double(const cpx_t *a, const int *stridesA, cpx_t *res, const int *stridesRes, const int *shape, int rank, cpx_t *aCopy, int *ipiv, int (*lapack_getrf)(int, int, int, void *, int, int *));
+void s_det_complex_float(const cpx_f_t *a, const int *stridesA, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, cpx_f_t *aCopy, int *ipiv, int (*lapack_getrf)(int, int, int, void *, int, int *));
+
 #endif /* CUSTOM_UFUNCS_H */
 

@@ -355,10 +355,10 @@ void main() {
             DType.float64,
           );
 
-          final shifted = a.fftshift();
+          final shifted = fftshift(a);
           expect(shifted.toList(), [3.0, 4.0, 0.0, 1.0, 2.0]);
 
-          final restored = shifted.ifftshift();
+          final restored = ifftshift(shifted);
           expect(restored.toList(), [0.0, 1.0, 2.0, 3.0, 4.0]);
         }),
       );

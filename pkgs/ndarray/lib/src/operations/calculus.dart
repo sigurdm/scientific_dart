@@ -126,21 +126,9 @@ NDArray<T> trapz<T extends Object>(
 
   final rank = y.shape.length;
   final marker = ScratchArena.marker;
-  final cShape = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
-  final cStridesY = ScratchArena.allocate<ffi.Int>(
-    rank * ffi.sizeOf<ffi.Int>(),
-  );
-  final cStridesRes = ScratchArena.allocate<ffi.Int>(
-    rank.clamp(1, 8) * ffi.sizeOf<ffi.Int>(),
-  );
-
-  for (var i = 0; i < rank; i++) {
-    cShape[i] = y.shape[i];
-    cStridesY[i] = y.strides[i];
-  }
-  for (var i = 0; i < result.strides.length; i++) {
-    cStridesRes[i] = result.strides[i];
-  }
+  final cShape = ScratchArena.copyInts(y.shape);
+  final cStridesY = ScratchArena.copyInts(y.strides);
+  final cStridesRes = ScratchArena.copyInts(result.strides);
 
   try {
     switch (spacing) {
@@ -471,19 +459,9 @@ NDArray<T> gradient<T extends Object>(
 
   final rank = f.shape.length;
   final marker = ScratchArena.marker;
-  final cShape = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
-  final cStridesF = ScratchArena.allocate<ffi.Int>(
-    rank * ffi.sizeOf<ffi.Int>(),
-  );
-  final cStridesRes = ScratchArena.allocate<ffi.Int>(
-    rank * ffi.sizeOf<ffi.Int>(),
-  );
-
-  for (var i = 0; i < rank; i++) {
-    cShape[i] = f.shape[i];
-    cStridesF[i] = f.strides[i];
-    cStridesRes[i] = result.strides[i];
-  }
+  final cShape = ScratchArena.copyInts(f.shape);
+  final cStridesF = ScratchArena.copyInts(f.strides);
+  final cStridesRes = ScratchArena.copyInts(result.strides);
 
   try {
     switch (spacing) {
