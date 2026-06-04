@@ -1,4 +1,3 @@
-// ignore_for_file: non_constant_identifier_names
 import '../ndarray.dart';
 
 // Standalone operational relative cross-imports
@@ -12,8 +11,8 @@ import '../ndarray.dart';
 ///
 /// **Preconditions:**
 /// - If [axis] is specified, it must be within the range `[-rank, rank - 1]`.
-/// - [repeats] must be an [int], [List<int>], or `NDArray<int>`.
-/// - If [repeats] is a list or array, its length must match the size of the
+/// - [repeats] must be an `NDArray<int>`.
+/// - Its length must match the size of the
 ///   dimension along [axis].
 /// - All values in [repeats] must be non-negative ($\ge 0$).
 /// - If [out] is provided, it must have the correct shape and [DType] to store
@@ -21,7 +20,7 @@ import '../ndarray.dart';
 ///
 /// **Throws:**
 /// - [RangeError] if [axis] is out of bounds.
-/// - [ArgumentError] if [repeats] type is invalid, or its length does not match
+/// - [ArgumentError] if [repeats] length does not match
 ///   the dimension along [axis], or it contains negative values.
 /// - [ArgumentError] if [out] shape or [DType] is incompatible.
 ///
@@ -33,12 +32,12 @@ import '../ndarray.dart';
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([1, 2], [2], DType.int32);
-/// final r = repeat(a, 3);
+/// final r = repeat(a, [3]);
 /// print(r.toList()); // [1, 1, 1, 2, 2, 2]
 /// ```
 NDArray<T> repeat<T>(
   NDArray<T> a,
-  dynamic repeats, {
+  List<int> repeats, {
   int? axis,
   NDArray<T>? out,
 }) {
@@ -48,7 +47,7 @@ NDArray<T> repeat<T>(
 
   NDArray<T> src = a;
   int normAxis;
-  final bool ownsSrc;
+  bool ownsSrc;
 
   if (axis == null) {
     src = a.flatten();
@@ -60,22 +59,18 @@ NDArray<T> repeat<T>(
       throw RangeError.range(axis, -rank, rank - 1, 'axis');
     }
     normAxis = axis < 0 ? rank + axis : axis;
-    ownsSrc = false;
+    if (!a.isContiguous) {
+      src = a.copy();
+      ownsSrc = true;
+    } else {
+      ownsSrc = false;
+    }
   }
 
   try {
-    List<int> repsList;
-    if (repeats is int) {
-      if (repeats < 0) {
-        throw ArgumentError('repeats must be non-negative');
-      }
-      repsList = List<int>.filled(src.shape[normAxis], repeats);
-    } else if (repeats is List<int>) {
-      repsList = repeats;
-    } else if (repeats is NDArray<int>) {
-      repsList = repeats.toList();
-    } else {
-      throw ArgumentError('repeats must be int, List<int>, or NDArray<int>');
+    List<int> repsList = repeats;
+    if (repsList.length == 1) {
+      repsList = List<int>.filled(src.shape[normAxis], repsList[0]);
     }
 
     if (repsList.length != src.shape[normAxis]) {
@@ -84,10 +79,9 @@ NDArray<T> repeat<T>(
       );
     }
 
-    for (var i = 0; i < repsList.length; i++) {
-      if (repsList[i] < 0) {
-        throw ArgumentError('repeats values must be non-negative');
-      }
+    final bool hasNegative = repsList.any((x) => x < 0);
+    if (hasNegative) {
+      throw ArgumentError('repeats values must be non-negative');
     }
 
     final outputShape = List<int>.from(src.shape);
@@ -119,7 +113,39 @@ NDArray<T> repeat<T>(
       return result;
     }
 
-    _copyRepeat(src, result, repsList, normAxis);
+    final outer = src.shape.sublist(0, normAxis).fold<int>(1, (a, b) => a * b);
+    final dim = src.shape[normAxis];
+    final inner = src.shape.sublist(normAxis + 1).fold<int>(1, (a, b) => a * b);
+
+    final destDim = result.shape[normAxis];
+
+    var destOffset = 0;
+    for (var i = 0; i < dim; i++) {
+      final rep = repsList[i];
+      if (rep == 0) continue;
+
+      for (var o = 0; o < outer; o++) {
+        final srcStart = (o * dim + i) * inner;
+        final destStart = (o * destDim + destOffset) * inner;
+
+        final srcView = NDArray<T>.view(
+          src,
+          shape: [rep, inner],
+          strides: [0, 1],
+          offsetElements: srcStart,
+        );
+
+        final destView = NDArray<T>.view(
+          result,
+          shape: [rep, inner],
+          strides: [inner, 1],
+          offsetElements: destStart,
+        );
+
+        srcView.copy(out: destView);
+      }
+      destOffset += rep;
+    }
 
     return result;
   } finally {
@@ -129,45 +155,6 @@ NDArray<T> repeat<T>(
   }
 }
 
-void _copyRepeat<T>(
-  NDArray<T> src,
-  NDArray<T> dest,
-  List<int> repeats,
-  int axis,
-) {
-  final rank = src.rank;
-  final srcCoords = List<int>.filled(rank, 0);
-  final destCoords = List<int>.filled(rank, 0);
-
-  void walk(int dim) {
-    if (dim == rank) {
-      dest.setCell(destCoords, src.getCell(srcCoords));
-      return;
-    }
-
-    if (dim == axis) {
-      var destIdx = 0;
-      for (var srcIdx = 0; srcIdx < src.shape[dim]; srcIdx++) {
-        final rep = repeats[srcIdx];
-        srcCoords[dim] = srcIdx;
-        for (var r = 0; r < rep; r++) {
-          destCoords[dim] = destIdx + r;
-          walk(dim + 1);
-        }
-        destIdx += rep;
-      }
-    } else {
-      for (var i = 0; i < src.shape[dim]; i++) {
-        srcCoords[dim] = i;
-        destCoords[dim] = i;
-        walk(dim + 1);
-      }
-    }
-  }
-
-  walk(0);
-}
-
 /// Constructs an array by repeating [a] the number of times given by [reps].
 ///
 /// If [reps] has length `d`, the result will have dimension of `max(d, a.ndim)`.
@@ -175,13 +162,13 @@ void _copyRepeat<T>(
 /// If `a.ndim > d`, [reps] is promoted to `a.ndim` by pre-pending 1's to it.
 ///
 /// **Preconditions:**
-/// - [reps] must be an [int], [List<int>], or `NDArray<int>`.
+/// - [reps] must be an `NDArray<int>`.
 /// - All values in [reps] must be non-negative ($\ge 0$).
 /// - If [out] is provided, it must have the correct shape and [DType] to store
 ///   the result.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [reps] type is invalid, or contains negative values.
+/// - [ArgumentError] if [reps] contains negative values.
 /// - [ArgumentError] if [out] shape or [DType] is incompatible.
 ///
 /// **Performance Considerations:**
@@ -192,37 +179,22 @@ void _copyRepeat<T>(
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([1, 2], [2], DType.int32);
-/// final t = tile(a, 2);
+/// final t = tile(a, [2]);
 /// print(t.toList()); // [1, 2, 1, 2]
 /// ```
-NDArray<T> tile<T>(NDArray<T> a, dynamic reps, {NDArray<T>? out}) {
+NDArray<T> tile<T>(NDArray<T> a, List<int> reps, {NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
 
-  List<int> repsList;
-  if (reps is int) {
-    if (reps < 0) {
-      throw ArgumentError('reps must be non-negative');
-    }
-    repsList = [reps];
-  } else if (reps is List<int>) {
-    repsList = reps;
-  } else if (reps is NDArray<int>) {
-    repsList = reps.toList();
-  } else {
-    throw ArgumentError('reps must be int, List<int>, or NDArray<int>');
-  }
-
-  for (var i = 0; i < repsList.length; i++) {
-    if (repsList[i] < 0) {
-      throw ArgumentError('reps values must be non-negative');
-    }
+  final bool hasNegative = reps.any((x) => x < 0);
+  if (hasNegative) {
+    throw ArgumentError('reps values must be non-negative');
   }
 
   NDArray<T> src = a;
   bool ownsSrc = false;
-  List<int> tileReps = List<int>.from(repsList);
+  List<int> tileReps = List<int>.from(reps);
 
   try {
     // Align dimensions
@@ -270,7 +242,32 @@ NDArray<T> tile<T>(NDArray<T> a, dynamic reps, {NDArray<T>? out}) {
       return result;
     }
 
-    _copyTile(src, result);
+    final rank = src.rank;
+    final viewShape = <int>[];
+    final srcStrides = <int>[];
+
+    for (var i = 0; i < rank; i++) {
+      viewShape.add(tileReps[i]);
+      viewShape.add(src.shape[i]);
+      srcStrides.add(0);
+      srcStrides.add(src.strides[i]);
+    }
+
+    final srcView = NDArray<T>.view(
+      src,
+      shape: viewShape,
+      strides: srcStrides,
+      offsetElements: 0,
+    );
+
+    final destView = NDArray<T>.view(
+      result,
+      shape: viewShape,
+      strides: NDArray.computeCStrides(viewShape),
+      offsetElements: 0,
+    );
+
+    srcView.copy(out: destView);
 
     return result;
   } finally {
@@ -278,26 +275,4 @@ NDArray<T> tile<T>(NDArray<T> a, dynamic reps, {NDArray<T>? out}) {
       src.dispose();
     }
   }
-}
-
-void _copyTile<T>(NDArray<T> src, NDArray<T> dest) {
-  final rank = src.rank;
-  final destCoords = List<int>.filled(rank, 0);
-  final srcCoords = List<int>.filled(rank, 0);
-
-  void walk(int dim) {
-    if (dim == rank) {
-      dest.setCell(destCoords, src.getCell(srcCoords));
-      return;
-    }
-
-    final srcDimSize = src.shape[dim];
-    for (var i = 0; i < dest.shape[dim]; i++) {
-      destCoords[dim] = i;
-      srcCoords[dim] = i % srcDimSize;
-      walk(dim + 1);
-    }
-  }
-
-  walk(0);
 }

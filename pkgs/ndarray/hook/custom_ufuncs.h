@@ -909,5 +909,110 @@ void s_det_float(const float *a, const int *stridesA, float *res, const int *str
 void s_det_complex_double(const cpx_t *a, const int *stridesA, cpx_t *res, const int *stridesRes, const int *shape, int rank, cpx_t *aCopy, int *ipiv, int (*lapack_getrf)(int, int, int, void *, int, int *));
 void s_det_complex_float(const cpx_f_t *a, const int *stridesA, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, cpx_f_t *aCopy, int *ipiv, int (*lapack_getrf)(int, int, int, void *, int, int *));
 
+/* Optimized FFI Eigenvector assembly intrinsics */
+void assemble_eigenvectors_double(
+    cpx_t *w,
+    int strideWLast,
+    cpx_t *vr,
+    int strideVR1,
+    int strideVR2,
+    const double *wr,
+    const double *wi,
+    const double *vrReal,
+    int n
+);
+
+void assemble_eigenvectors_float(
+    cpx_f_t *w,
+    int strideWLast,
+    cpx_f_t *vr,
+    int strideVR1,
+    int strideVR2,
+    const float *wr,
+    const float *wi,
+    const float *vrReal,
+    int n
+);
+
+/* Optimized integer matrix multiplication intrinsics */
+void matmul_int64(
+    int64_t *res,
+    int strideResRow,
+    int strideResCol,
+    const int64_t *a,
+    int strideARow,
+    int strideACol,
+    const int64_t *b,
+    int strideBRow,
+    int strideBCol,
+    int m,
+    int n,
+    int k
+);
+
+void matmul_int32(
+    int32_t *res,
+    int strideResRow,
+    int strideResCol,
+    const int32_t *a,
+    int strideARow,
+    int strideACol,
+    const int32_t *b,
+    int strideBRow,
+    int strideBCol,
+    int m,
+    int n,
+    int k
+);
+
+void matmul_int16(
+    int16_t *res,
+    int strideResRow,
+    int strideResCol,
+    const int16_t *a,
+    int strideARow,
+    int strideACol,
+    const int16_t *b,
+    int strideBRow,
+    int strideBCol,
+    int m,
+    int n,
+    int k
+);
+
+void matmul_uint8(
+    uint8_t *res,
+    int strideResRow,
+    int strideResCol,
+    const uint8_t *a,
+    int strideARow,
+    int strideACol,
+    const uint8_t *b,
+    int strideBRow,
+    int strideBCol,
+    int m,
+    int n,
+    int k
+);
+
+uint8_t v_any_less_than_zero_int32(const int32_t *arr, int size);
+uint8_t v_any_less_than_zero_int64(const int64_t *arr, int size);
+uint8_t v_any_equal_to_zero_int32(const int32_t *arr, int size);
+uint8_t v_any_equal_to_zero_int64(const int64_t *arr, int size);
+
+void s_cast_generic(
+    const void *src_ptr, const int *stridesSrc, int dtypeSrc,
+    void *dest_ptr, int dtypeDst,
+    const int *shape, int rank
+);
+
+void v_extract_upper_triangular(
+    const void *src_ptr,
+    void *dest_ptr,
+    int k,
+    int n,
+    int dtype
+);
+
 #endif /* CUSTOM_UFUNCS_H */
 

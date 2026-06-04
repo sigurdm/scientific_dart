@@ -4,6 +4,7 @@ import '../ndarray.dart';
 import 'dart:ffi' as ffi;
 import '../ndarray_bindings.dart';
 import '../scratch_arena.dart';
+import 'custom_checks.dart';
 
 // Standalone operational relative cross-imports
 import 'spacers.dart';
@@ -219,7 +220,7 @@ void elementWiseOp<Ta, Tb, Tr>(
   }
 }
 
-/// Matrix multiplication for Float64 arrays using OpenBLAS.
+/// Computes the broadcasted shape for the batch/stack dimensions of two arrays.
 List<int> broadcastStackShapes(List<int> sA, List<int> sB) {
   final lenA = sA.length;
   final lenB = sB.length;
@@ -245,27 +246,81 @@ List<int> broadcastStackShapes(List<int> sA, List<int> sB) {
   return result;
 }
 
+int encodeDType(DType type) {
+  if (type == DType.float64) return 0;
+  if (type == DType.float32) return 1;
+  if (type == DType.int32) return 2;
+  if (type == DType.int64) return 3;
+  if (type == DType.uint8) return 4;
+  if (type == DType.int16) return 5;
+  if (type == DType.complex128) return 6;
+  if (type == DType.complex64) return 7;
+  if (type == DType.boolean) return 8;
+  throw ArgumentError('Unsupported dtype for casting: $type');
+}
+
 NDArray<double> promoteToDouble(NDArray a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute promoteToDouble on a disposed array.');
+  }
   final res = NDArray<double>.create(a.shape, DType.float64);
-  final data = res.data;
-  final src = a.data;
-  for (var i = 0; i < src.length; i++) {
-    data[i] = (src[i] as num).toDouble();
+  final ndim = a.shape.length;
+  final marker = ScratchArena.marker;
+
+  try {
+    final cBuffer = ScratchArena.getStridedBuffer(ndim);
+    final cShape = cBuffer;
+    final cStridesSrc = cBuffer + ndim;
+
+    for (var i = 0; i < ndim; i++) {
+      cShape[i] = a.shape[i];
+      cStridesSrc[i] = a.strides[i];
+    }
+
+    s_cast_generic(
+      a.pointer.cast(),
+      cStridesSrc,
+      encodeDType(a.dtype),
+      res.pointer.cast(),
+      0, // dest is double
+      cShape,
+      ndim,
+    );
+  } finally {
+    ScratchArena.reset(marker);
   }
   return res;
 }
 
 NDArray<Complex> promoteToComplex(NDArray a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute promoteToComplex on a disposed array.');
+  }
   final res = NDArray<Complex>.create(a.shape, DType.complex128);
-  final data = res.data;
-  final src = a.data;
-  for (var i = 0; i < src.length; i++) {
-    final val = src[i];
-    if (val is Complex) {
-      data[i] = val;
-    } else {
-      data[i] = Complex((val as num).toDouble(), 0.0);
+  final ndim = a.shape.length;
+  final marker = ScratchArena.marker;
+
+  try {
+    final cBuffer = ScratchArena.getStridedBuffer(ndim);
+    final cShape = cBuffer;
+    final cStridesSrc = cBuffer + ndim;
+
+    for (var i = 0; i < ndim; i++) {
+      cShape[i] = a.shape[i];
+      cStridesSrc[i] = a.strides[i];
     }
+
+    s_cast_generic(
+      a.pointer.cast(),
+      cStridesSrc,
+      encodeDType(a.dtype),
+      res.pointer.cast(),
+      6, // dest is complex128
+      cShape,
+      ndim,
+    );
+  } finally {
+    ScratchArena.reset(marker);
   }
   return res;
 }

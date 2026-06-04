@@ -5,6 +5,8 @@ import 'package:openblas/openblas.dart';
 import 'dart:ffi' as ffi;
 import '../scratch_arena.dart';
 import '../ndarray_extensions_bindings.dart';
+import '../ndarray_bindings.dart'
+    hide s_det_double, s_det_float, s_det_complex_double, s_det_complex_float;
 
 // Standalone operational relative cross-imports
 import 'math.dart';
@@ -61,325 +63,401 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     }
   }
 
-  // Copy upfront ONLY if neither inner strides is 1 (very rare custom sliced strides)
-  if (a.shape.length >= 2) {
-    final r = a.shape.length;
-    if (a.strides[r - 1] != 1 && a.strides[r - 2] != 1) {
-      a = a.copy();
+  NDArray<Ta>? aCopy;
+  NDArray<Tb>? bCopy;
+  NDArray<R>? result;
+  var success = false;
+  try {
+    // Copy upfront ONLY if neither inner strides is 1 (very rare custom sliced strides)
+    if (a.shape.length >= 2) {
+      final r = a.shape.length;
+      if (a.strides[r - 1] != 1 && a.strides[r - 2] != 1) {
+        aCopy = a.copy();
+      }
     }
-  }
-  if (b.shape.length >= 2) {
-    final r = b.shape.length;
-    if (b.strides[r - 1] != 1 && b.strides[r - 2] != 1) {
-      b = b.copy();
+    if (b.shape.length >= 2) {
+      final r = b.shape.length;
+      if (b.strides[r - 1] != 1 && b.strides[r - 2] != 1) {
+        bCopy = b.copy();
+      }
     }
-  }
 
-  var aPromoted = false;
-  var bPromoted = false;
+    final aToUse = aCopy ?? a;
+    final bToUse = bCopy ?? b;
 
-  NDArray aView = a;
-  if (a.shape.length == 1) {
-    aView = NDArray.view(
-      a,
-      shape: [1, a.shape[0]],
-      strides: [0, a.strides[0]],
-      offsetElements: 0,
-    );
-    aPromoted = true;
-  }
+    var aPromoted = false;
+    var bPromoted = false;
 
-  NDArray bView = b;
-  if (b.shape.length == 1) {
-    bView = NDArray.view(
-      b,
-      shape: [b.shape[0], 1],
-      strides: [b.strides[0], 0],
-      offsetElements: 0,
-    );
-    bPromoted = true;
-  }
+    NDArray aView = aToUse;
+    if (aToUse.shape.length == 1) {
+      aView = NDArray.view(
+        aToUse,
+        shape: [1, aToUse.shape[0]],
+        strides: [0, aToUse.strides[0]],
+        offsetElements: 0,
+      );
+      aPromoted = true;
+    }
 
-  final rankA = aView.shape.length;
-  final rankB = bView.shape.length;
+    NDArray bView = bToUse;
+    if (bToUse.shape.length == 1) {
+      bView = NDArray.view(
+        bToUse,
+        shape: [bToUse.shape[0], 1],
+        strides: [bToUse.strides[0], 0],
+        offsetElements: 0,
+      );
+      bPromoted = true;
+    }
 
-  final m = aView.shape[rankA - 2];
-  final kA = aView.shape[rankA - 1];
-  final kB = bView.shape[rankB - 2];
-  final n = bView.shape[rankB - 1];
+    final rankA = aView.shape.length;
+    final rankB = bView.shape.length;
 
-  if (kA != kB) {
-    throw ArgumentError(
-      'Incompatible inner matrix dimensions for matmul: kA($kA) != kB($kB). Shapes: ${a.shape} and ${b.shape}',
-    );
-  }
+    final m = aView.shape[rankA - 2];
+    final kA = aView.shape[rankA - 1];
+    final kB = bView.shape[rankB - 2];
+    final n = bView.shape[rankB - 1];
 
-  final stackA = aView.shape.sublist(0, rankA - 2);
-  final stackB = bView.shape.sublist(0, rankB - 2);
-  final broadcastStack = broadcastStackShapes(stackA, stackB);
-
-  final expectedFinalShape = <int>[];
-  if (aPromoted && bPromoted) {
-    // empty []
-  } else if (aPromoted) {
-    expectedFinalShape.addAll([...broadcastStack, n]);
-  } else if (bPromoted) {
-    expectedFinalShape.addAll([...broadcastStack, m]);
-  } else {
-    expectedFinalShape.addAll([...broadcastStack, m, n]);
-  }
-
-  if (out != null) {
-    if (!listEquals(out.shape, expectedFinalShape) ||
-        out.dtype != targetDType) {
+    if (kA != kB) {
       throw ArgumentError(
-        'Provided out buffer has incompatible shape or dtype (expected shape $expectedFinalShape and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).',
+        'Incompatible inner matrix dimensions for matmul: kA($kA) != kB($kB). Shapes: ${a.shape} and ${b.shape}',
       );
     }
-  }
 
-  final resShape = [...broadcastStack, m, n];
-  final result = NDArray.zeros(resShape, targetDType as dynamic);
+    final stackA = aView.shape.sublist(0, rankA - 2);
+    final stackB = bView.shape.sublist(0, rankB - 2);
+    final broadcastStack = broadcastStackShapes(stackA, stackB);
 
-  // Stride resolution logic for 100% copy-free BLAS matrix multiplication
-  var transA = 111; // CblasNoTrans
-  var lda = kA;
-  if (!aPromoted) {
-    if (aView.strides[rankA - 1] == 1) {
-      transA = 111;
-      lda = aView.strides[rankA - 2];
-    } else if (aView.strides[rankA - 2] == 1) {
-      transA = 112; // CblasTrans
-      lda = aView.strides[rankA - 1];
-    }
-  }
-
-  var transB = 111; // CblasNoTrans
-  var ldb = n;
-  if (!bPromoted) {
-    if (bView.strides[rankB - 1] == 1) {
-      transB = 111;
-      ldb = bView.strides[rankB - 2];
-    } else if (bView.strides[rankB - 2] == 1) {
-      transB = 112; // CblasTrans
-      ldb = bView.strides[rankB - 1];
-    }
-  }
-
-  final lenA = stackA.length;
-  final lenB = stackB.length;
-  final lenResult = broadcastStack.length;
-
-  final walkStridesA = List<int>.filled(lenResult, 0);
-  final walkStridesB = List<int>.filled(lenResult, 0);
-
-  for (var i = 0; i < lenResult; i++) {
-    final resAxis = lenResult - 1 - i;
-    final axisA = lenA - 1 - i;
-    final axisB = lenB - 1 - i;
-
-    if (axisA >= 0) {
-      walkStridesA[resAxis] = (stackA[axisA] == broadcastStack[resAxis])
-          ? aView.strides[axisA]
-          : 0;
+    final expectedFinalShape = <int>[];
+    if (aPromoted && bPromoted) {
+      // empty []
+    } else if (aPromoted) {
+      expectedFinalShape.addAll([...broadcastStack, n]);
+    } else if (bPromoted) {
+      expectedFinalShape.addAll([...broadcastStack, m]);
     } else {
-      walkStridesA[resAxis] = 0;
+      expectedFinalShape.addAll([...broadcastStack, m, n]);
     }
 
-    if (axisB >= 0) {
-      walkStridesB[resAxis] = (stackB[axisB] == broadcastStack[resAxis])
-          ? bView.strides[axisB]
-          : 0;
-    } else {
-      walkStridesB[resAxis] = 0;
+    if (out != null) {
+      if (!listEquals(out.shape, expectedFinalShape) ||
+          out.dtype != targetDType) {
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype (expected shape $expectedFinalShape and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).',
+        );
+      }
     }
-  }
 
-  final walkStridesRes = List<int>.filled(lenResult, 0);
-  var resStride = m * n;
-  for (var i = lenResult - 1; i >= 0; i--) {
-    walkStridesRes[i] = resStride;
-    resStride *= broadcastStack[i];
-  }
+    final resShape = [...broadcastStack, m, n];
+    result = NDArray.zeros(resShape, targetDType as DType<R>);
 
-  final marker = ScratchArena.marker;
-  ffi.Pointer<ffi.Double> alphaZ = ffi.nullptr.cast();
-  ffi.Pointer<ffi.Double> betaZ = ffi.nullptr.cast();
-  ffi.Pointer<ffi.Float> alphaC = ffi.nullptr.cast();
-  ffi.Pointer<ffi.Float> betaC = ffi.nullptr.cast();
+    // Stride resolution logic for 100% copy-free BLAS matrix multiplication
+    var transA = 111; // CblasNoTrans
+    var lda = kA;
+    if (!aPromoted) {
+      if (aView.strides[rankA - 1] == 1) {
+        transA = 111;
+        lda = aView.strides[rankA - 2];
+      } else if (aView.strides[rankA - 2] == 1) {
+        transA = 112; // CblasTrans
+        lda = aView.strides[rankA - 1];
+      }
+    }
 
-  if (targetDType == DType.complex128) {
-    alphaZ = ScratchArena.allocate<ffi.Double>(2 * ffi.sizeOf<ffi.Double>());
-    alphaZ[0] = 1.0;
-    alphaZ[1] = 0.0;
-    betaZ = ScratchArena.allocate<ffi.Double>(2 * ffi.sizeOf<ffi.Double>());
-    betaZ[0] = 0.0;
-    betaZ[1] = 0.0;
-  } else if (targetDType == DType.complex64) {
-    alphaC = ScratchArena.allocate<ffi.Float>(2 * ffi.sizeOf<ffi.Float>());
-    alphaC[0] = 1.0;
-    alphaC[1] = 0.0;
-    betaC = ScratchArena.allocate<ffi.Float>(2 * ffi.sizeOf<ffi.Float>());
-    betaC[0] = 0.0;
-    betaC[1] = 0.0;
-  }
+    var transB = 111; // CblasNoTrans
+    var ldb = n;
+    if (!bPromoted) {
+      if (bView.strides[rankB - 1] == 1) {
+        transB = 111;
+        ldb = bView.strides[rankB - 2];
+      } else if (bView.strides[rankB - 2] == 1) {
+        transB = 112; // CblasTrans
+        ldb = bView.strides[rankB - 1];
+      }
+    }
 
-  void walk(int dim, int offsetA, int offsetB, int offsetRes) {
-    if (dim == lenResult) {
-      if (targetDType == DType.float64) {
-        cblas_dgemm(
-          101, // CblasRowMajor
-          transA,
-          transB,
-          m,
-          n,
-          kA,
-          1.0,
-          aView.pointer.cast<ffi.Double>() + offsetA,
-          lda,
-          bView.pointer.cast<ffi.Double>() + offsetB,
-          ldb,
-          0.0,
-          result.pointer.cast<ffi.Double>() + offsetRes,
-          n, // ldc (result is always contiguous row-major)
+    final lenA = stackA.length;
+    final lenB = stackB.length;
+    final lenResult = broadcastStack.length;
+
+    final walkStridesA = List<int>.filled(lenResult, 0);
+    final walkStridesB = List<int>.filled(lenResult, 0);
+
+    for (var i = 0; i < lenResult; i++) {
+      final resAxis = lenResult - 1 - i;
+      final axisA = lenA - 1 - i;
+      final axisB = lenB - 1 - i;
+
+      if (axisA >= 0) {
+        walkStridesA[resAxis] = (stackA[axisA] == broadcastStack[resAxis])
+            ? aView.strides[axisA]
+            : 0;
+      } else {
+        walkStridesA[resAxis] = 0;
+      }
+
+      if (axisB >= 0) {
+        walkStridesB[resAxis] = (stackB[axisB] == broadcastStack[resAxis])
+            ? bView.strides[axisB]
+            : 0;
+      } else {
+        walkStridesB[resAxis] = 0;
+      }
+    }
+
+    final walkStridesRes = List<int>.filled(lenResult, 0);
+    var resStride = m * n;
+    for (var i = lenResult - 1; i >= 0; i--) {
+      walkStridesRes[i] = resStride;
+      resStride *= broadcastStack[i];
+    }
+
+    final marker = ScratchArena.marker;
+    try {
+      ffi.Pointer<ffi.Double> alphaZ = ffi.nullptr.cast();
+      ffi.Pointer<ffi.Double> betaZ = ffi.nullptr.cast();
+      ffi.Pointer<ffi.Float> alphaC = ffi.nullptr.cast();
+      ffi.Pointer<ffi.Float> betaC = ffi.nullptr.cast();
+
+      if (targetDType == DType.complex128) {
+        alphaZ = ScratchArena.allocate<ffi.Double>(
+          2 * ffi.sizeOf<ffi.Double>(),
         );
-      } else if (targetDType == DType.float32) {
-        cblas_sgemm(
-          101, // CblasRowMajor
-          transA,
-          transB,
-          m,
-          n,
-          kA,
-          1.0,
-          aView.pointer.cast<ffi.Float>() + offsetA,
-          lda,
-          bView.pointer.cast<ffi.Float>() + offsetB,
-          ldb,
-          0.0,
-          result.pointer.cast<ffi.Float>() + offsetRes,
-          n, // ldc (result is always contiguous row-major)
-        );
-      } else if (targetDType == DType.complex128) {
-        cblas_zgemm(
-          101,
-          transA,
-          transB,
-          m,
-          n,
-          kA,
-          alphaZ,
-          aView.pointer.cast<ffi.Double>() + (offsetA * 2),
-          lda,
-          bView.pointer.cast<ffi.Double>() + (offsetB * 2),
-          ldb,
-          betaZ,
-          result.pointer.cast<ffi.Double>() + (offsetRes * 2),
-          n,
-        );
+        alphaZ[0] = 1.0;
+        alphaZ[1] = 0.0;
+        betaZ = ScratchArena.allocate<ffi.Double>(2 * ffi.sizeOf<ffi.Double>());
+        betaZ[0] = 0.0;
+        betaZ[1] = 0.0;
       } else if (targetDType == DType.complex64) {
-        cblas_cgemm(
-          101,
-          transA,
-          transB,
-          m,
-          n,
-          kA,
-          alphaC,
-          aView.pointer.cast<ffi.Float>() + (offsetA * 2),
-          lda,
-          bView.pointer.cast<ffi.Float>() + (offsetB * 2),
-          ldb,
-          betaC,
-          result.pointer.cast<ffi.Float>() + (offsetRes * 2),
-          n,
-        );
-      } else if (targetDType.isInteger) {
-        final resData = result.data;
-        final aData = aView.data;
-        final bData = bView.data;
+        alphaC = ScratchArena.allocate<ffi.Float>(2 * ffi.sizeOf<ffi.Float>());
+        alphaC[0] = 1.0;
+        alphaC[1] = 0.0;
+        betaC = ScratchArena.allocate<ffi.Float>(2 * ffi.sizeOf<ffi.Float>());
+        betaC[0] = 0.0;
+        betaC[1] = 0.0;
+      }
 
-        final strideARow = aView.strides[rankA - 2];
-        final strideACol = aView.strides[rankA - 1];
+      void walk(int dim, int offsetA, int offsetB, int offsetRes) {
+        if (dim == lenResult) {
+          if (targetDType == DType.float64) {
+            cblas_dgemm(
+              101, // CblasRowMajor
+              transA,
+              transB,
+              m,
+              n,
+              kA,
+              1.0,
+              aView.pointer.cast<ffi.Double>() + offsetA,
+              lda,
+              bView.pointer.cast<ffi.Double>() + offsetB,
+              ldb,
+              0.0,
+              result!.pointer.cast<ffi.Double>() + offsetRes,
+              n, // ldc (result is always contiguous row-major)
+            );
+          } else if (targetDType == DType.float32) {
+            cblas_sgemm(
+              101, // CblasRowMajor
+              transA,
+              transB,
+              m,
+              n,
+              kA,
+              1.0,
+              aView.pointer.cast<ffi.Float>() + offsetA,
+              lda,
+              bView.pointer.cast<ffi.Float>() + offsetB,
+              ldb,
+              0.0,
+              result!.pointer.cast<ffi.Float>() + offsetRes,
+              n, // ldc (result is always contiguous row-major)
+            );
+          } else if (targetDType == DType.complex128) {
+            cblas_zgemm(
+              101,
+              transA,
+              transB,
+              m,
+              n,
+              kA,
+              alphaZ,
+              aView.pointer.cast<ffi.Double>() + (offsetA * 2),
+              lda,
+              bView.pointer.cast<ffi.Double>() + (offsetB * 2),
+              ldb,
+              betaZ,
+              result!.pointer.cast<ffi.Double>() + (offsetRes * 2),
+              n,
+            );
+          } else if (targetDType == DType.complex64) {
+            cblas_cgemm(
+              101,
+              transA,
+              transB,
+              m,
+              n,
+              kA,
+              alphaC,
+              aView.pointer.cast<ffi.Float>() + (offsetA * 2),
+              lda,
+              bView.pointer.cast<ffi.Float>() + (offsetB * 2),
+              ldb,
+              betaC,
+              result!.pointer.cast<ffi.Float>() + (offsetRes * 2),
+              n,
+            );
+          } else if (targetDType.isInteger) {
+            final strideARow = aView.strides[rankA - 2];
+            final strideACol = aView.strides[rankA - 1];
 
-        final strideBRow = bView.strides[rankB - 2];
-        final strideBCol = bView.strides[rankB - 1];
+            final strideBRow = bView.strides[rankB - 2];
+            final strideBCol = bView.strides[rankB - 1];
 
-        final strideResRow = result.strides[resShape.length - 2];
-        final strideResCol = result.strides[resShape.length - 1];
+            final strideResRow = result!.strides[resShape.length - 2];
+            final strideResCol = result.strides[resShape.length - 1];
 
-        for (var r = 0; r < m; r++) {
-          for (var c = 0; c < n; c++) {
-            var sum = 0;
-            for (var i = 0; i < kA; i++) {
-              final idxA = offsetA + r * strideARow + i * strideACol;
-              final idxB = offsetB + i * strideBRow + c * strideBCol;
-              sum += (aData[idxA] as int) * (bData[idxB] as int);
+            switch (targetDType) {
+              case DType.int64:
+                matmul_int64(
+                  result.pointer.cast<ffi.Int64>() + offsetRes,
+                  strideResRow,
+                  strideResCol,
+                  aView.pointer.cast<ffi.Int64>() + offsetA,
+                  strideARow,
+                  strideACol,
+                  bView.pointer.cast<ffi.Int64>() + offsetB,
+                  strideBRow,
+                  strideBCol,
+                  m,
+                  n,
+                  kA,
+                );
+              case DType.int32:
+                matmul_int32(
+                  result.pointer.cast<ffi.Int32>() + offsetRes,
+                  strideResRow,
+                  strideResCol,
+                  aView.pointer.cast<ffi.Int32>() + offsetA,
+                  strideARow,
+                  strideACol,
+                  bView.pointer.cast<ffi.Int32>() + offsetB,
+                  strideBRow,
+                  strideBCol,
+                  m,
+                  n,
+                  kA,
+                );
+              case DType.int16:
+                matmul_int16(
+                  result.pointer.cast<ffi.Int16>() + offsetRes,
+                  strideResRow,
+                  strideResCol,
+                  aView.pointer.cast<ffi.Int16>() + offsetA,
+                  strideARow,
+                  strideACol,
+                  bView.pointer.cast<ffi.Int16>() + offsetB,
+                  strideBRow,
+                  strideBCol,
+                  m,
+                  n,
+                  kA,
+                );
+              case DType.uint8:
+                matmul_uint8(
+                  result.pointer.cast<ffi.Uint8>() + offsetRes,
+                  strideResRow,
+                  strideResCol,
+                  aView.pointer.cast<ffi.Uint8>() + offsetA,
+                  strideARow,
+                  strideACol,
+                  bView.pointer.cast<ffi.Uint8>() + offsetB,
+                  strideBRow,
+                  strideBCol,
+                  m,
+                  n,
+                  kA,
+                );
+              default:
+                throw UnsupportedError(
+                  'Unsupported integer type: $targetDType',
+                );
             }
-            final idxRes = offsetRes + r * strideResRow + c * strideResCol;
-            resData[idxRes] = sum;
           }
+          return;
+        }
+
+        final size = broadcastStack[dim];
+        final strideA = walkStridesA[dim];
+        final strideB = walkStridesB[dim];
+        final strideRes = walkStridesRes[dim];
+
+        for (var i = 0; i < size; i++) {
+          walk(
+            dim + 1,
+            offsetA + i * strideA,
+            offsetB + i * strideB,
+            offsetRes + i * strideRes,
+          );
         }
       }
-      return;
+
+      walk(0, 0, 0, 0);
+    } finally {
+      ScratchArena.reset(marker);
     }
 
-    final size = broadcastStack[dim];
-    final strideA = walkStridesA[dim];
-    final strideB = walkStridesB[dim];
-    final strideRes = walkStridesRes[dim];
-
-    for (var i = 0; i < size; i++) {
-      walk(
-        dim + 1,
-        offsetA + i * strideA,
-        offsetB + i * strideB,
-        offsetRes + i * strideRes,
-      );
-    }
-  }
-
-  walk(0, 0, 0, 0);
-
-  ScratchArena.reset(marker);
-
-  if (out != null) {
-    if (out.isContiguous && result.isContiguous) {
-      final byteCount = result.data.length * targetDType.byteWidth;
-      ffi.Pointer.fromAddress(out.pointer.address)
-          .cast<ffi.Uint8>()
-          .asTypedList(byteCount)
-          .setAll(
-            0,
-            ffi.Pointer.fromAddress(
-              result.pointer.address,
-            ).cast<ffi.Uint8>().asTypedList(byteCount),
-          );
-    } else {
-      final resFlat = result.toList();
-      for (var i = 0; i < resFlat.length; i++) {
-        out.data[i] = resFlat[i] as R;
+    if (out != null) {
+      if (out.isContiguous && result.isContiguous) {
+        final byteCount = result.data.length * targetDType.byteWidth;
+        ffi.Pointer.fromAddress(out.pointer.address)
+            .cast<ffi.Uint8>()
+            .asTypedList(byteCount)
+            .setAll(
+              0,
+              ffi.Pointer.fromAddress(
+                result.pointer.address,
+              ).cast<ffi.Uint8>().asTypedList(byteCount),
+            );
+      } else {
+        final resFlat = result.toList();
+        for (var i = 0; i < resFlat.length; i++) {
+          out.data[i] = resFlat[i];
+        }
       }
+      result.dispose();
+      success = true;
+      return out;
     }
-    result.dispose();
-    return out;
-  }
 
-  // Post-calculation 1D dummy dimensions demotions
-  if (aPromoted && bPromoted) {
-    return result.reshape([])
-        as NDArray<R>; // 0D scalar array for pure vector dot products
-  } else if (aPromoted) {
-    final newShape = List<int>.from(result.shape)
-      ..removeAt(result.shape.length - 2);
-    return result.reshape(newShape) as NDArray<R>;
-  } else if (bPromoted) {
-    final newShape = List<int>.from(result.shape)
-      ..removeAt(result.shape.length - 1);
-    return result.reshape(newShape) as NDArray<R>;
-  }
+    // Post-calculation 1D dummy dimensions demotions
+    if (aPromoted && bPromoted) {
+      final finalRes = result.reshape([]);
+      success = true;
+      return finalRes; // 0D scalar array for pure vector dot products
+    } else if (aPromoted) {
+      final newShape = List<int>.from(result.shape)
+        ..removeAt(result.shape.length - 2);
+      final finalRes = result.reshape(newShape);
+      success = true;
+      return finalRes;
+    } else if (bPromoted) {
+      final newShape = List<int>.from(result.shape)
+        ..removeAt(result.shape.length - 1);
+      final finalRes = result.reshape(newShape);
+      success = true;
+      return finalRes;
+    }
 
-  return result as NDArray<R>;
+    success = true;
+    return result;
+  } finally {
+    aCopy?.dispose();
+    bCopy?.dispose();
+    if (!success) {
+      result?.dispose();
+    }
+  }
 }
 
 /// Computes the product of two or more arrays in a single function call,
@@ -503,69 +581,70 @@ NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
     }
   }
 
-  // Dynamic programming to find the optimal parenthesization
-  final m = List.generate(n + 1, (_) => List<int>.filled(n + 1, 0));
-  final s = List.generate(n + 1, (_) => List<int>.filled(n + 1, 0));
+  return NDArray.scope(() {
+    // Dynamic programming to find the optimal parenthesization
+    final m = List.generate(n + 1, (_) => List<int>.filled(n + 1, 0));
+    final s = List.generate(n + 1, (_) => List<int>.filled(n + 1, 0));
 
-  for (var l = 2; l <= n; l++) {
-    for (var i = 1; i <= n - l + 1; i++) {
-      final j = i + l - 1;
-      m[i][j] = 99999999999999; // large number as infinity
-      for (var k = i; k < j; k++) {
-        final cost = m[i][k] + m[k + 1][j] + p[i - 1] * p[k] * p[j];
-        if (cost < m[i][j]) {
-          m[i][j] = cost;
-          s[i][j] = k;
+    for (var l = 2; l <= n; l++) {
+      for (var i = 1; i <= n - l + 1; i++) {
+        final j = i + l - 1;
+        m[i][j] = 99999999999999; // large number as infinity
+        for (var k = i; k < j; k++) {
+          final cost = m[i][k] + m[k + 1][j] + p[i - 1] * p[k] * p[j];
+          if (cost < m[i][j]) {
+            m[i][j] = cost;
+            s[i][j] = k;
+          }
         }
       }
     }
-  }
 
-  // Helper function to recursively evaluate matrix multiplication chain
-  NDArray eval(int i, int j) {
-    if (i == j) {
-      // Return a contiguous copy of arrays[i-1] casted to the correct targetDType
-      final src = arrays[i - 1];
-      final copy = NDArray.create(src.shape, targetDType);
-      if (src.isContiguous && src.dtype == targetDType) {
-        if (targetDType.isComplex) {
-          copy.data.setRange(0, src.data.length, src.data as List<Complex>);
+    // Helper function to recursively evaluate matrix multiplication chain
+    NDArray eval(int i, int j) {
+      if (i == j) {
+        // Return a contiguous copy of arrays[i-1] casted to the correct targetDType
+        final src = arrays[i - 1];
+        final copy = NDArray.create(src.shape, targetDType);
+        if (src.isContiguous && src.dtype == targetDType) {
+          if (targetDType.isComplex) {
+            copy.data.setRange(0, src.data.length, src.data as List<Complex>);
+          } else {
+            copy.data.setRange(0, src.data.length, src.data as List<num>);
+          }
         } else {
-          copy.data.setRange(0, src.data.length, src.data as List<num>);
+          final flat = src.toList();
+          if (targetDType.isComplex) {
+            copy.data.setRange(0, flat.length, flat.cast<Complex>());
+          } else {
+            copy.data.setRange(0, flat.length, flat.cast<num>());
+          }
         }
-      } else {
-        final flat = src.toList();
-        if (targetDType.isComplex) {
-          copy.data.setRange(0, flat.length, flat.cast<Complex>());
-        } else {
-          copy.data.setRange(0, flat.length, flat.cast<num>());
-        }
+        return copy;
       }
-      return copy;
+
+      final k = s[i][j];
+      final left = eval(i, k);
+      final right = eval(k + 1, j);
+
+      // Perform matrix multiplication
+      final res = matmul(left, right);
+      left.dispose();
+      right.dispose();
+      return res;
     }
 
-    final k = s[i][j];
-    final left = eval(i, k);
-    final right = eval(k + 1, j);
+    // Top-level split point evaluation
+    final k = s[1][n];
+    final left = eval(1, k);
+    final right = eval(k + 1, n);
 
-    // Perform matrix multiplication
-    final res = matmul(left, right);
+    final finalResult = matmul(left, right, out: out);
     left.dispose();
     right.dispose();
-    return res;
-  }
 
-  // Top-level split point evaluation
-  final k = s[1][n];
-  final left = eval(1, k);
-  final right = eval(k + 1, n);
-
-  final finalResult = matmul(left, right, out: out);
-  left.dispose();
-  right.dispose();
-
-  finalResult.detachToParentScope();
-  return finalResult;
+    return finalResult.detachToParentScope();
+  });
 }
 
 /// Compute the multiplicative inverse of a square 2D matrix.
@@ -598,14 +677,21 @@ NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
 /// ```
 ///
 /// Reference: [Matrix Inversion](https://en.wikipedia.org/wiki/Invertible_matrix)
-NDArray inv(NDArray a, {NDArray? out}) {
+NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
   }
+
+  if (a.dtype != DType.float32 &&
+      a.dtype != DType.float64 &&
+      a.dtype != DType.complex64 &&
+      a.dtype != DType.complex128) {
+    throw ArgumentError(
+      'Matrix inversion only supports float or complex dtypes (got ${a.dtype}).',
+    );
+  }
   final n = a.shape[0];
-  final DType<dynamic> targetDType = a.dtype == DType.float32
-      ? DType.float32
-      : DType.float64;
+  final DType<T> targetDType = a.dtype;
 
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
@@ -615,155 +701,150 @@ NDArray inv(NDArray a, {NDArray? out}) {
     }
   }
 
-  final NDArray src;
-  final bool wasCopied;
-  if (!a.isContiguous) {
-    src = NDArray.fromList(a.toList(), a.shape, a.dtype);
-    wasCopied = true;
-  } else {
-    src = a;
-    wasCopied = false;
-  }
-
-  final marker = ScratchArena.marker;
-  final ipiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
-
-  try {
-    if (targetDType == DType.float32) {
-      final NDArray result;
-      if (out != null) {
-        result = out;
-        if (src.dtype == DType.float32) {
-          (result.data as Float32List).setRange(
-            0,
-            src.data.length,
-            src.data as Float32List,
-          );
-        } else {
-          (result.data as Float32List).setRange(
-            0,
-            src.data.length,
-            src.data.map((e) => (e as num).toDouble()),
-          );
-        }
-      } else if (wasCopied) {
-        result = src;
-      } else {
-        result = NDArray.create(src.shape, DType.float32);
-        if (src.dtype == DType.float32) {
-          (result.data as Float32List).setRange(
-            0,
-            src.data.length,
-            src.data as Float32List,
-          );
-        } else {
-          (result.data as Float32List).setRange(
-            0,
-            src.data.length,
-            src.data.map((e) => (e as num).toDouble()),
-          );
-        }
-      }
-
-      final info = LAPACKE_sgetrf(
-        101,
-        n,
-        n,
-        result.pointer.cast<ffi.Float>(),
-        n,
-        ipiv,
-      );
-      if (info < 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_sgetrf: $info');
-      }
-      if (info > 0) {
-        throw ArgumentError('Matrix is singular and cannot be inverted');
-      }
-
-      final infoTri = LAPACKE_sgetri(
-        101,
-        n,
-        result.pointer.cast<ffi.Float>(),
-        n,
-        ipiv,
-      );
-      if (infoTri < 0) {
-        throw ArgumentError(
-          'Illegal value in call to LAPACKE_sgetri: $infoTri',
-        );
-      }
-      return result;
+  return NDArray.scope(() {
+    final NDArray<T> result;
+    if (out != null) {
+      result = out;
+      a.copy(out: result);
     } else {
-      final NDArray result;
-      if (out != null) {
-        result = out;
-        if (src.dtype == DType.float64) {
-          (result.data as Float64List).setRange(
-            0,
-            src.data.length,
-            src.data as Float64List,
+      result = a.copy();
+    }
+
+    final marker = ScratchArena.marker;
+    final ipiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
+
+    try {
+      switch (targetDType) {
+        case DType.float32:
+          final info = LAPACKE_sgetrf(
+            101,
+            n,
+            n,
+            result.pointer.cast<ffi.Float>(),
+            n,
+            ipiv,
           );
-        } else {
-          (result.data as Float64List).setRange(
-            0,
-            src.data.length,
-            src.data.map((e) => (e as num).toDouble()),
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_sgetrf: $info',
+            );
+          }
+          if (info > 0) {
+            throw ArgumentError('Matrix is singular and cannot be inverted');
+          }
+          final infoTri = LAPACKE_sgetri(
+            101,
+            n,
+            result.pointer.cast<ffi.Float>(),
+            n,
+            ipiv,
           );
-        }
-      } else if (wasCopied) {
-        result = src;
-      } else {
-        result = NDArray.create(src.shape, DType.float64);
-        if (src.dtype == DType.float64) {
-          (result.data as Float64List).setRange(
-            0,
-            src.data.length,
-            src.data as Float64List,
+          if (infoTri < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_sgetri: $infoTri',
+            );
+          }
+        case DType.float64:
+          final info = LAPACKE_dgetrf(
+            101,
+            n,
+            n,
+            result.pointer.cast<ffi.Double>(),
+            n,
+            ipiv,
           );
-        } else {
-          (result.data as Float64List).setRange(
-            0,
-            src.data.length,
-            src.data.map((e) => (e as num).toDouble()),
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_dgetrf: $info',
+            );
+          }
+          if (info > 0) {
+            throw ArgumentError('Matrix is singular and cannot be inverted');
+          }
+          final infoTri = LAPACKE_dgetri(
+            101,
+            n,
+            result.pointer.cast<ffi.Double>(),
+            n,
+            ipiv,
           );
-        }
+          if (infoTri < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_dgetri: $infoTri',
+            );
+          }
+        case DType.complex64:
+          final info = LAPACKE_cgetrf(
+            101,
+            n,
+            n,
+            result.pointer.cast<ffi.Float>(),
+            n,
+            ipiv,
+          );
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_cgetrf: $info',
+            );
+          }
+          if (info > 0) {
+            throw ArgumentError('Matrix is singular and cannot be inverted');
+          }
+          final infoTri = LAPACKE_cgetri(
+            101,
+            n,
+            result.pointer.cast<ffi.Float>(),
+            n,
+            ipiv,
+          );
+          if (infoTri < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_cgetri: $infoTri',
+            );
+          }
+        case DType.complex128:
+          final info = LAPACKE_zgetrf(
+            101,
+            n,
+            n,
+            result.pointer.cast<ffi.Double>(),
+            n,
+            ipiv,
+          );
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_zgetrf: $info',
+            );
+          }
+          if (info > 0) {
+            throw ArgumentError('Matrix is singular and cannot be inverted');
+          }
+          final infoTri = LAPACKE_zgetri(
+            101,
+            n,
+            result.pointer.cast<ffi.Double>(),
+            n,
+            ipiv,
+          );
+          if (infoTri < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_zgetri: $infoTri',
+            );
+          }
+        default:
+          throw UnsupportedError(
+            'Unsupported type for matrix inversion: $targetDType',
+          );
       }
 
-      final info = LAPACKE_dgetrf(
-        101,
-        n,
-        n,
-        result.pointer.cast<ffi.Double>(),
-        n,
-        ipiv,
-      );
-      if (info < 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_dgetrf: $info');
-      }
-      if (info > 0) {
-        throw ArgumentError('Matrix is singular and cannot be inverted');
-      }
-
-      final infoTri = LAPACKE_dgetri(
-        101,
-        n,
-        result.pointer.cast<ffi.Double>(),
-        n,
-        ipiv,
-      );
-      if (infoTri < 0) {
-        throw ArgumentError(
-          'Illegal value in call to LAPACKE_dgetri: $infoTri',
-        );
+      if (out == null) {
+        result.detachToParentScope();
       }
       return result;
+    } finally {
+      ScratchArena.reset(marker);
     }
-  } finally {
-    ScratchArena.reset(marker);
-    if (wasCopied && out != null) {
-      src.dispose();
-    }
-  }
+  });
 }
 
 /// Compute the determinant of a square matrix or a stack of square matrices using OpenBLAS.
@@ -859,141 +940,147 @@ NDArray<T> det<T>(NDArray<T> a) {
   }
   final stackShape = a.shape.sublist(0, rank - 2);
 
-  if (a.dtype == DType.float64) {
-    final result = NDArray.zeros(stackShape, DType.float64) as NDArray<T>;
-    final marker = ScratchArena.marker;
-    final cStridesA = ScratchArena.copyInts(a.strides);
-    final cStridesRes = ScratchArena.copyInts(result.strides);
-    final cShape = ScratchArena.copyInts(a.shape);
+  return NDArray.scope(() {
+    switch (a.dtype) {
+      case DType.float64:
+        final result = NDArray.zeros(stackShape, DType.float64) as NDArray<T>;
+        final marker = ScratchArena.marker;
+        try {
+          final cStridesA = ScratchArena.copyInts(a.strides);
+          final cStridesRes = ScratchArena.copyInts(result.strides);
+          final cShape = ScratchArena.copyInts(a.shape);
 
-    final n = a.shape[rank - 1];
-    final cCopy = ScratchArena.allocate<ffi.Double>(
-      n * n * ffi.sizeOf<ffi.Double>(),
-    );
-    final cIpiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
+          final n = a.shape[rank - 1];
+          final cCopy = ScratchArena.allocate<ffi.Double>(
+            n * n * ffi.sizeOf<ffi.Double>(),
+          );
+          final cIpiv = ScratchArena.allocate<ffi.Int>(
+            n * ffi.sizeOf<ffi.Int>(),
+          );
 
-    try {
-      s_det_double(
-        a.pointer.cast<ffi.Double>(),
-        cStridesA,
-        result.pointer.cast<ffi.Double>(),
-        cStridesRes,
-        cShape,
-        rank,
-        cCopy,
-        cIpiv,
-        get_dgetrf_ptr(),
-      );
-    } finally {
-      ScratchArena.reset(marker);
+          s_det_double(
+            a.pointer.cast<ffi.Double>(),
+            cStridesA,
+            result.pointer.cast<ffi.Double>(),
+            cStridesRes,
+            cShape,
+            rank,
+            cCopy,
+            cIpiv,
+            get_dgetrf_ptr(),
+          );
+        } finally {
+          ScratchArena.reset(marker);
+        }
+        return result.detachToParentScope();
+      case DType.complex128:
+        final result =
+            NDArray.zeros(stackShape, DType.complex128) as NDArray<T>;
+        final marker = ScratchArena.marker;
+        try {
+          final cStridesA = ScratchArena.copyInts(a.strides);
+          final cStridesRes = ScratchArena.copyInts(result.strides);
+          final cShape = ScratchArena.copyInts(a.shape);
+
+          final n = a.shape[rank - 1];
+          final cCopy = ScratchArena.allocate<ffi.Double>(
+            2 * n * n * ffi.sizeOf<ffi.Double>(),
+          );
+          final cIpiv = ScratchArena.allocate<ffi.Int>(
+            n * ffi.sizeOf<ffi.Int>(),
+          );
+
+          s_det_complex_double(
+            a.pointer.cast<ffi.Double>(),
+            cStridesA,
+            result.pointer.cast<ffi.Double>(),
+            cStridesRes,
+            cShape,
+            rank,
+            cCopy,
+            cIpiv,
+            get_zgetrf_ptr(),
+          );
+        } finally {
+          ScratchArena.reset(marker);
+        }
+        return result.detachToParentScope();
+      case DType.complex64:
+        final result = NDArray.zeros(stackShape, DType.complex64) as NDArray<T>;
+        final marker = ScratchArena.marker;
+        try {
+          final cStridesA = ScratchArena.copyInts(a.strides);
+          final cStridesRes = ScratchArena.copyInts(result.strides);
+          final cShape = ScratchArena.copyInts(a.shape);
+
+          final n = a.shape[rank - 1];
+          final cCopy = ScratchArena.allocate<ffi.Float>(
+            2 * n * n * ffi.sizeOf<ffi.Float>(),
+          );
+          final cIpiv = ScratchArena.allocate<ffi.Int>(
+            n * ffi.sizeOf<ffi.Int>(),
+          );
+
+          s_det_complex_float(
+            a.pointer.cast<ffi.Float>(),
+            cStridesA,
+            result.pointer.cast<ffi.Float>(),
+            cStridesRes,
+            cShape,
+            rank,
+            cCopy,
+            cIpiv,
+            get_cgetrf_ptr(),
+          );
+        } finally {
+          ScratchArena.reset(marker);
+        }
+        return result.detachToParentScope();
+      case DType.float32:
+        final result = NDArray.zeros(stackShape, DType.float64) as NDArray<T>;
+        final tempResult = NDArray.zeros(stackShape, DType.float32);
+        final marker = ScratchArena.marker;
+        try {
+          final cStridesA = ScratchArena.copyInts(a.strides);
+          final cStridesRes = ScratchArena.copyInts(tempResult.strides);
+          final cShape = ScratchArena.copyInts(a.shape);
+
+          final n = a.shape[rank - 1];
+          final cCopy = ScratchArena.allocate<ffi.Float>(
+            n * n * ffi.sizeOf<ffi.Float>(),
+          );
+          final cIpiv = ScratchArena.allocate<ffi.Int>(
+            n * ffi.sizeOf<ffi.Int>(),
+          );
+
+          s_det_float(
+            a.pointer.cast<ffi.Float>(),
+            cStridesA,
+            tempResult.pointer.cast<ffi.Float>(),
+            cStridesRes,
+            cShape,
+            rank,
+            cCopy,
+            cIpiv,
+            get_sgetrf_ptr(),
+          );
+
+          // Copy values to Float64 result array to maintain backward compatible Float64 output precision
+          final totalSize = tempResult.data.length;
+          final srcData = tempResult.data as Float32List;
+          final destData = result.data as Float64List;
+          for (var i = 0; i < totalSize; i++) {
+            destData[i] = srcData[i];
+          }
+        } finally {
+          ScratchArena.reset(marker);
+          tempResult.dispose();
+        }
+        return result.detachToParentScope();
+      default:
+        throw ArgumentError('Unsupported dtype for determinant');
     }
-    return result;
-  }
-
-  if (a.dtype == DType.complex128) {
-    final result = NDArray.zeros(stackShape, DType.complex128) as NDArray<T>;
-    final marker = ScratchArena.marker;
-    final cStridesA = ScratchArena.copyInts(a.strides);
-    final cStridesRes = ScratchArena.copyInts(result.strides);
-    final cShape = ScratchArena.copyInts(a.shape);
-
-    final n = a.shape[rank - 1];
-    final cCopy = ScratchArena.allocate<ffi.Double>(
-      2 * n * n * ffi.sizeOf<ffi.Double>(),
-    );
-    final cIpiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
-
-    try {
-      s_det_complex_double(
-        a.pointer.cast<ffi.Double>(),
-        cStridesA,
-        result.pointer.cast<ffi.Double>(),
-        cStridesRes,
-        cShape,
-        rank,
-        cCopy,
-        cIpiv,
-        get_zgetrf_ptr(),
-      );
-    } finally {
-      ScratchArena.reset(marker);
-    }
-    return result;
-  }
-
-  if (a.dtype == DType.complex64) {
-    final result = NDArray.zeros(stackShape, DType.complex64) as NDArray<T>;
-    final marker = ScratchArena.marker;
-    final cStridesA = ScratchArena.copyInts(a.strides);
-    final cStridesRes = ScratchArena.copyInts(result.strides);
-    final cShape = ScratchArena.copyInts(a.shape);
-
-    final n = a.shape[rank - 1];
-    final cCopy = ScratchArena.allocate<ffi.Float>(
-      2 * n * n * ffi.sizeOf<ffi.Float>(),
-    );
-    final cIpiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
-
-    try {
-      s_det_complex_float(
-        a.pointer.cast<ffi.Float>(),
-        cStridesA,
-        result.pointer.cast<ffi.Float>(),
-        cStridesRes,
-        cShape,
-        rank,
-        cCopy,
-        cIpiv,
-        get_cgetrf_ptr(),
-      );
-    } finally {
-      ScratchArena.reset(marker);
-    }
-    return result;
-  }
-
-  if (a.dtype == DType.float32) {
-    final result = NDArray.zeros(stackShape, DType.float64) as NDArray<T>;
-    final tempResult = NDArray.zeros(stackShape, DType.float32);
-    final marker = ScratchArena.marker;
-    final cStridesA = ScratchArena.copyInts(a.strides);
-    final cStridesRes = ScratchArena.copyInts(tempResult.strides);
-    final cShape = ScratchArena.copyInts(a.shape);
-
-    final n = a.shape[rank - 1];
-    final cCopy = ScratchArena.allocate<ffi.Float>(
-      n * n * ffi.sizeOf<ffi.Float>(),
-    );
-    final cIpiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
-
-    try {
-      s_det_float(
-        a.pointer.cast<ffi.Float>(),
-        cStridesA,
-        tempResult.pointer.cast<ffi.Float>(),
-        cStridesRes,
-        cShape,
-        rank,
-        cCopy,
-        cIpiv,
-        get_sgetrf_ptr(),
-      );
-
-      // Copy values to Float64 result array to maintain backward compatible Float64 output precision
-      final totalSize = tempResult.data.length;
-      final srcData = tempResult.data as Float32List;
-      final destData = result.data as Float64List;
-      for (var i = 0; i < totalSize; i++) {
-        destData[i] = srcData[i];
-      }
-    } finally {
-      ScratchArena.reset(marker);
-      tempResult.dispose();
-    }
-    return result;
-  }
-
-  throw ArgumentError('Unsupported dtype for determinant');
+  });
 }
 
 /// Solve a linear matrix equation, or system of linear scalar equations.
@@ -1010,7 +1097,6 @@ NDArray<T> det<T>(NDArray<T> a) {
 /// - [ArgumentError] if [a] is not square or not 2D.
 /// - [ArgumentError] if [b] dimensions do not match [a].
 /// - [ArgumentError] if [a] is singular and cannot be solved.
-///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N^3)$ executed in native C-compiled space.
 ///
@@ -1021,7 +1107,7 @@ NDArray<T> det<T>(NDArray<T> a) {
 /// final x = solve(a, b);
 /// print(x.toList()); // [2.0, 3.0]
 /// ```
-NDArray<R> solve<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b) {
+NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError('Matrix a must be square and 2D (was ${a.shape})');
   }
@@ -1033,203 +1119,162 @@ NDArray<R> solve<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b) {
     );
   }
 
-  final nrhs = b.shape.length > 1 ? b.shape[1] : 1;
-  final marker = ScratchArena.marker;
-  final ipiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
-
-  try {
-    if (a.dtype == DType.float64 && b.dtype == DType.float64) {
-      final aCopy = NDArray<double>.create(a.shape, DType.float64);
-      if (a.isContiguous) {
-        (aCopy.data as Float64List).setRange(
-          0,
-          a.data.length,
-          a.data as Float64List,
-        );
-      } else {
-        aCopy.data.setRange(0, a.data.length, a.toList() as List<double>);
-      }
-
-      final bCopy = NDArray<double>.create(b.shape, DType.float64);
-      if (b.isContiguous) {
-        (bCopy.data as Float64List).setRange(
-          0,
-          b.data.length,
-          b.data as Float64List,
-        );
-      } else {
-        bCopy.data.setRange(0, b.data.length, b.toList() as List<double>);
-      }
-
-      final info = LAPACKE_dgesv(
-        101,
-        n,
-        nrhs,
-        aCopy.pointer.cast<ffi.Double>(),
-        n,
-        ipiv,
-        bCopy.pointer.cast<ffi.Double>(),
-        nrhs,
-      );
-      if (info < 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_dgesv: $info');
-      }
-      if (info > 0) {
-        throw ArgumentError('Matrix is singular and cannot be solved');
-      }
-      aCopy.dispose();
-      return bCopy as NDArray<R>;
-    } else if (a.dtype == DType.float32 && b.dtype == DType.float32) {
-      final aCopy = NDArray<double>.create(a.shape, DType.float32);
-      if (a.isContiguous) {
-        (aCopy.data as Float32List).setRange(
-          0,
-          a.data.length,
-          a.data as Float32List,
-        );
-      } else {
-        aCopy.data.setRange(0, a.data.length, a.toList() as List<double>);
-      }
-
-      final bCopy = NDArray<double>.create(b.shape, DType.float32);
-      if (b.isContiguous) {
-        (bCopy.data as Float32List).setRange(
-          0,
-          b.data.length,
-          b.data as Float32List,
-        );
-      } else {
-        bCopy.data.setRange(0, b.data.length, b.toList() as List<double>);
-      }
-
-      final info = LAPACKE_sgesv(
-        101,
-        n,
-        nrhs,
-        aCopy.pointer.cast<ffi.Float>(),
-        n,
-        ipiv,
-        bCopy.pointer.cast<ffi.Float>(),
-        nrhs,
-      );
-      if (info < 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_sgesv: $info');
-      }
-      if (info > 0) {
-        throw ArgumentError('Matrix is singular and cannot be solved');
-      }
-      aCopy.dispose();
-      return bCopy as NDArray<R>;
-    } else if (a.dtype == DType.complex128 && b.dtype == DType.complex128) {
-      final aList = (a.data as ComplexList).backingList;
-      final bList = (b.data as ComplexList).backingList;
-
-      final aCopy = NDArray<Complex>.create(a.shape, DType.complex128);
-      (aCopy.data as ComplexList).backingList.setRange(0, aList.length, aList);
-
-      final bCopy = NDArray<Complex>.create(b.shape, DType.complex128);
-      (bCopy.data as ComplexList).backingList.setRange(0, bList.length, bList);
-
-      final info = LAPACKE_zgesv(
-        101,
-        n,
-        nrhs,
-        aCopy.pointer.cast<ffi.Double>(),
-        n,
-        ipiv,
-        bCopy.pointer.cast<ffi.Double>(),
-        nrhs,
-      );
-      if (info < 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_zgesv: $info');
-      }
-      if (info > 0) {
-        throw ArgumentError('Matrix is singular and cannot be solved');
-      }
-      aCopy.dispose();
-      return bCopy as NDArray<R>;
-    } else if (a.dtype == DType.complex64 && b.dtype == DType.complex64) {
-      final aList = (a.data as ComplexList).backingList;
-      final bList = (b.data as ComplexList).backingList;
-
-      final aCopy = NDArray<Complex>.create(a.shape, DType.complex64);
-      (aCopy.data as ComplexList).backingList.setRange(0, aList.length, aList);
-
-      final bCopy = NDArray<Complex>.create(b.shape, DType.complex64);
-      (bCopy.data as ComplexList).backingList.setRange(0, bList.length, bList);
-
-      final info = LAPACKE_cgesv(
-        101,
-        n,
-        nrhs,
-        aCopy.pointer.cast<ffi.Float>(),
-        n,
-        ipiv,
-        bCopy.pointer.cast<ffi.Float>(),
-        nrhs,
-      );
-      if (info < 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_cgesv: $info');
-      }
-      if (info > 0) {
-        throw ArgumentError('Matrix is singular and cannot be solved');
-      }
-      aCopy.dispose();
-      return bCopy as NDArray<R>;
-    } else {
-      // Fallback: convert to Float64
-      final aDouble = NDArray<double>.create(a.shape, DType.float64);
-      (aDouble.data as Float64List).setRange(
-        0,
-        a.data.length,
-        a.data.map((e) => (e as num).toDouble()),
-      );
-
-      final bDouble = NDArray<double>.create(b.shape, DType.float64);
-      (bDouble.data as Float64List).setRange(
-        0,
-        b.data.length,
-        b.data.map((e) => (e as num).toDouble()),
-      );
-
-      final info = LAPACKE_dgesv(
-        101,
-        n,
-        nrhs,
-        aDouble.pointer.cast<ffi.Double>(),
-        n,
-        ipiv,
-        bDouble.pointer.cast<ffi.Double>(),
-        nrhs,
-      );
-      if (info < 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_dgesv: $info');
-      }
-      if (info > 0) {
-        throw ArgumentError('Matrix is singular and cannot be solved');
-      }
-
-      aDouble.dispose();
-      return bDouble as NDArray<R>;
-    }
-  } finally {
-    ScratchArena.reset(marker);
+  if (a.dtype != b.dtype) {
+    throw ArgumentError(
+      'Mismatched dtypes for solve: a has dtype ${a.dtype}, b has dtype ${b.dtype}.',
+    );
   }
+
+  if (a.dtype != DType.float64 &&
+      a.dtype != DType.float32 &&
+      a.dtype != DType.complex128 &&
+      a.dtype != DType.complex64) {
+    throw ArgumentError(
+      'solve only supports float64, float32, complex128, or complex64 dtypes (got ${a.dtype}).',
+    );
+  }
+
+  if (out != null) {
+    if (!listEquals(out.shape, b.shape) || out.dtype != b.dtype) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype (expected shape ${b.shape} and dtype ${b.dtype}, got shape ${out.shape} and dtype ${out.dtype}).',
+      );
+    }
+    if (!out.isContiguous) {
+      throw ArgumentError('Provided out buffer must be contiguous.');
+    }
+  }
+
+  return NDArray.scope(() {
+    final nrhs = b.shape.length > 1 ? b.shape[1] : 1;
+    final marker = ScratchArena.marker;
+    final ipiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
+
+    try {
+      // Prepare a copy of a because LAPACKE_*gesv mutates a
+      final aCopy = a.copy();
+
+      // Prepare bCopy: if out is provided, copy b into it and use it as bCopy;
+      // otherwise create a new copy.
+      final NDArray<T> bCopy;
+      if (out != null) {
+        bCopy = out;
+        b.copy(out: bCopy);
+      } else {
+        bCopy = b.copy();
+      }
+
+      switch (a.dtype) {
+        case DType.float64:
+          final info = LAPACKE_dgesv(
+            101,
+            n,
+            nrhs,
+            aCopy.pointer.cast<ffi.Double>(),
+            n,
+            ipiv,
+            bCopy.pointer.cast<ffi.Double>(),
+            nrhs,
+          );
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_dgesv: $info',
+            );
+          }
+          if (info > 0) {
+            throw ArgumentError('Matrix is singular and cannot be solved');
+          }
+        case DType.float32:
+          final info = LAPACKE_sgesv(
+            101,
+            n,
+            nrhs,
+            aCopy.pointer.cast<ffi.Float>(),
+            n,
+            ipiv,
+            bCopy.pointer.cast<ffi.Float>(),
+            nrhs,
+          );
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_sgesv: $info',
+            );
+          }
+          if (info > 0) {
+            throw ArgumentError('Matrix is singular and cannot be solved');
+          }
+        case DType.complex128:
+          final info = LAPACKE_zgesv(
+            101,
+            n,
+            nrhs,
+            aCopy.pointer.cast<ffi.Double>(),
+            n,
+            ipiv,
+            bCopy.pointer.cast<ffi.Double>(),
+            nrhs,
+          );
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_zgesv: $info',
+            );
+          }
+          if (info > 0) {
+            throw ArgumentError('Matrix is singular and cannot be solved');
+          }
+        case DType.complex64:
+          final info = LAPACKE_cgesv(
+            101,
+            n,
+            nrhs,
+            aCopy.pointer.cast<ffi.Float>(),
+            n,
+            ipiv,
+            bCopy.pointer.cast<ffi.Float>(),
+            nrhs,
+          );
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_cgesv: $info',
+            );
+          }
+          if (info > 0) {
+            throw ArgumentError('Matrix is singular and cannot be solved');
+          }
+        default:
+          throw UnimplementedError('Type ${a.dtype} not supported for solve');
+      }
+
+      if (out == null) {
+        bCopy.detachToParentScope();
+      }
+      return bCopy;
+    } finally {
+      ScratchArena.reset(marker);
+    }
+  });
 }
 
 /// Compute the eigenvalues and right eigenvectors of a square array or stack of square arrays.
 ///
-/// Returns a Map with keys 'eigenvalues' and 'eigenvectors'.
-/// Both are returned as `NDArray<Complex>` because they can be complex
+/// Returns a record `(eigenvalues, eigenvectors)` containing:
+/// - **eigenvalues**: An `NDArray<Complex>` of shape `[..., N]` containing the eigenvalues.
+/// - **eigenvectors**: An `NDArray<Complex>` of shape `[..., N, N]` containing the corresponding right eigenvectors as columns.
+///
+/// Both are returned with `Complex` elements because eigenvalues and eigenvectors can be complex
 /// even for real matrices.
 ///
 /// **Preconditions:**
 /// - Matrix [a] must be square in its last two dimensions (size $N \times N$) and at least 2-dimensional.
+/// - If provided, [out] must contain two pre-allocated contiguous `NDArray<Complex>` buffers with shapes `[..., N]` and `[..., N, N]` respectively.
 ///
 /// **Throws:**
 /// - [ArgumentError] if [a] is not square or less than 2D.
 /// - [UnimplementedError] if the DType of [a] is not supported.
-Map<String, NDArray<Complex>> eig<T>(NDArray<T> a) {
+({NDArray<Complex> eigenvalues, NDArray<Complex> eigenvectors}) eig<T>(
+  NDArray<T> a, {
+  ({NDArray<Complex> eigenvalues, NDArray<Complex> eigenvectors})? out,
+}) {
   final rank = a.shape.length;
   if (rank < 2 || a.shape[rank - 1] != a.shape[rank - 2]) {
     throw ArgumentError(
@@ -1239,115 +1284,78 @@ Map<String, NDArray<Complex>> eig<T>(NDArray<T> a) {
   final n = a.shape[rank - 1];
   final stackShape = a.shape.sublist(0, rank - 2);
 
-  final DType<Complex> compDType =
-      (a.dtype == DType.float32 || a.dtype == DType.complex64)
+  final compDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
       ? DType.complex64
       : DType.complex128;
 
   final wShape = [...stackShape, n];
   final vrShape = [...stackShape, n, n];
 
-  final w = NDArray<Complex>.create(wShape, compDType);
-  final vr = NDArray<Complex>.create(vrShape, compDType);
+  return NDArray.scope(() {
+    final NDArray<Complex> w;
+    final NDArray<Complex> vr;
 
-  final jobvl = 'N'.codeUnitAt(0);
-  final jobvr = 'V'.codeUnitAt(0);
+    if (out != null) {
+      w = out.eigenvalues;
+      vr = out.eigenvectors;
+      if (!listEquals(w.shape, wShape) || w.dtype != compDType) {
+        throw ArgumentError(
+          'Provided out eigenvalues buffer has incompatible shape or dtype (expected shape $wShape and dtype $compDType, got shape ${w.shape} and dtype ${w.dtype}).',
+        );
+      }
+      if (!w.isContiguous) {
+        throw ArgumentError(
+          'Provided out eigenvalues buffer must be contiguous.',
+        );
+      }
+      if (!listEquals(vr.shape, vrShape) || vr.dtype != compDType) {
+        throw ArgumentError(
+          'Provided out eigenvectors buffer has incompatible shape or dtype (expected shape $vrShape and dtype $compDType, got shape ${vr.shape} and dtype ${vr.dtype}).',
+        );
+      }
+      if (!vr.isContiguous) {
+        throw ArgumentError(
+          'Provided out eigenvectors buffer must be contiguous.',
+        );
+      }
+    } else {
+      w = NDArray<Complex>.create(wShape, compDType);
+      vr = NDArray<Complex>.create(vrShape, compDType);
+    }
 
-  if (a.dtype != DType.complex128 &&
-      a.dtype != DType.complex64 &&
-      a.dtype != DType.float64 &&
-      a.dtype != DType.int32 &&
-      a.dtype != DType.int64 &&
-      a.dtype != DType.float32) {
-    throw UnimplementedError('Type ${a.dtype} not supported for eig');
-  }
+    final jobvl = 'N'.codeUnitAt(0);
+    final jobvr = 'V'.codeUnitAt(0);
 
-  final DType<dynamic> sliceCopyDType = (a.dtype == DType.float32)
-      ? DType.float32
-      : ((a.dtype == DType.complex64)
-            ? DType.complex64
-            : ((a.dtype == DType.complex128)
-                  ? DType.complex128
-                  : DType.float64));
+    if (a.dtype.isInteger) {
+      throw ArgumentError(
+        'Integer arrays are not supported directly for eigenvalue decomposition. '
+        'Please convert the array to float64 or float32 manually.',
+      );
+    }
 
-  final sliceCopy = NDArray.create([n, n], sliceCopyDType);
+    if (a.dtype != DType.complex128 &&
+        a.dtype != DType.complex64 &&
+        a.dtype != DType.float64 &&
+        a.dtype != DType.float32) {
+      throw UnimplementedError('Type ${a.dtype} not supported for eig');
+    }
 
-  try {
+    final NDArray src = a;
     walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
       coords,
     ) {
       var offsetA = 0;
       for (var i = 0; i < coords.length; i++) {
-        offsetA += coords[i] * a.strides[i];
+        offsetA += coords[i] * src.strides[i];
       }
 
-      if (a.dtype == DType.complex128) {
-        final sliceCopyData = (sliceCopy.data as ComplexList).backingList;
-        if (a.isContiguous) {
-          final aData = (a.data as ComplexList).backingList;
-          sliceCopyData.setRange(0, n * n * 2, aData, offsetA * 2);
-        } else {
-          final sliceView = NDArray.view(
-            a,
-            shape: [n, n],
-            strides: a.strides.sublist(rank - 2),
-            offsetElements: offsetA,
-          );
-          final backing = (sliceView.data as ComplexList).backingList;
-          sliceCopyData.setRange(0, n * n * 2, backing);
-        }
-      } else if (a.dtype == DType.complex64) {
-        final sliceCopyData = (sliceCopy.data as ComplexList).backingList;
-        if (a.isContiguous) {
-          final aData = (a.data as ComplexList).backingList;
-          sliceCopyData.setRange(0, n * n * 2, aData, offsetA * 2);
-        } else {
-          final sliceView = NDArray.view(
-            a,
-            shape: [n, n],
-            strides: a.strides.sublist(rank - 2),
-            offsetElements: offsetA,
-          );
-          final backing = (sliceView.data as ComplexList).backingList;
-          sliceCopyData.setRange(0, n * n * 2, backing);
-        }
-      } else if (a.dtype == DType.float64 ||
-          a.dtype == DType.int32 ||
-          a.dtype == DType.int64) {
-        final sliceCopyData = sliceCopy.data as Float64List;
-        if (a.isContiguous && a.dtype == DType.float64) {
-          final aData = a.data as Float64List;
-          sliceCopyData.setRange(0, n * n, aData, offsetA);
-        } else {
-          final sliceView = NDArray.view(
-            a,
-            shape: [n, n],
-            strides: a.strides.sublist(rank - 2),
-            offsetElements: offsetA,
-          );
-          final list = sliceView.toList();
-          for (var i = 0; i < n * n; i++) {
-            sliceCopyData[i] = (list[i] as num).toDouble();
-          }
-        }
-      } else if (a.dtype == DType.float32) {
-        final sliceCopyData = sliceCopy.data as Float32List;
-        if (a.isContiguous && a.dtype == DType.float32) {
-          final aData = a.data as Float32List;
-          sliceCopyData.setRange(0, n * n, aData, offsetA);
-        } else {
-          final sliceView = NDArray.view(
-            a,
-            shape: [n, n],
-            strides: a.strides.sublist(rank - 2),
-            offsetElements: offsetA,
-          );
-          final list = sliceView.toList();
-          for (var i = 0; i < n * n; i++) {
-            sliceCopyData[i] = (list[i] as num).toDouble();
-          }
-        }
-      }
+      final sliceView = NDArray.view(
+        src,
+        shape: [n, n],
+        strides: src.strides.sublist(rank - 2),
+        offsetElements: offsetA,
+      );
+      final sliceCopy = sliceView.copy();
 
       var offsetW = 0;
       for (var i = 0; i < coords.length; i++) {
@@ -1358,235 +1366,224 @@ Map<String, NDArray<Complex>> eig<T>(NDArray<T> a) {
         offsetVR += coords[i] * vr.strides[i];
       }
 
-      if (a.dtype == DType.complex128) {
-        final w2D = NDArray<Complex>.create([n], DType.complex128);
-        final vr2D = NDArray<Complex>.create([n, n], DType.complex128);
+      switch (src.dtype) {
+        case DType.complex128:
+          final w2D = NDArray<Complex>.create([n], DType.complex128);
+          final vr2D = NDArray<Complex>.create([n, n], DType.complex128);
 
-        final info = LAPACKE_zgeev(
-          101, // ROW_MAJOR
-          jobvl,
-          jobvr,
-          n,
-          sliceCopy.pointer.cast<ffi.Double>(),
-          n,
-          w2D.pointer.cast<ffi.Double>(),
-          ffi.nullptr.cast<ffi.Double>(),
-          n,
-          vr2D.pointer.cast<ffi.Double>(),
-          n,
-        );
-
-        if (info < 0) {
-          throw ArgumentError('Illegal value in call to LAPACKE_zgeev: $info');
-        }
-        if (info > 0) {
-          throw ArgumentError(
-            'The QR algorithm failed to compute all eigenvalues.',
+          final info = LAPACKE_zgeev(
+            101, // ROW_MAJOR
+            jobvl,
+            jobvr,
+            n,
+            sliceCopy.pointer.cast<ffi.Double>(),
+            n,
+            w2D.pointer.cast<ffi.Double>(),
+            ffi.nullptr.cast<ffi.Double>(),
+            n,
+            vr2D.pointer.cast<ffi.Double>(),
+            n,
           );
-        }
 
-        final w2DData = w2D.data;
-        final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
-        for (var j = 0; j < n; j++) {
-          w.data[offsetW + j * strideWLast] = w2DData[j];
-        }
-
-        final vr2DData = vr2D.data;
-        final strideVR1 = vr.strides[rank - 2];
-        final strideVR2 = vr.strides[rank - 1];
-        for (var r = 0; r < n; r++) {
-          for (var c = 0; c < n; c++) {
-            vr.data[offsetVR + r * strideVR1 + c * strideVR2] =
-                vr2DData[r * n + c];
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_zgeev: $info',
+            );
           }
-        }
-        w2D.dispose();
-        vr2D.dispose();
-      } else if (a.dtype == DType.complex64) {
-        final w2D = NDArray<Complex>.create([n], DType.complex64);
-        final vr2D = NDArray<Complex>.create([n, n], DType.complex64);
+          if (info > 0) {
+            throw ArgumentError(
+              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+            );
+          }
 
-        final info = LAPACKE_cgeev(
-          101, // ROW_MAJOR
-          jobvl,
-          jobvr,
-          n,
-          sliceCopy.pointer.cast<ffi.Float>(),
-          n,
-          w2D.pointer.cast<ffi.Float>(),
-          ffi.nullptr.cast<ffi.Float>(),
-          n,
-          vr2D.pointer.cast<ffi.Float>(),
-          n,
-        );
-
-        if (info < 0) {
-          throw ArgumentError('Illegal value in call to LAPACKE_cgeev: $info');
-        }
-        if (info > 0) {
-          throw ArgumentError(
-            'The QR algorithm failed to compute all eigenvalues.',
+          final wView = NDArray<Complex>.view(
+            w,
+            shape: [n],
+            strides: w.strides.isEmpty ? [1] : [w.strides.last],
+            offsetElements: offsetW,
           );
-        }
+          w2D.copy(out: wView);
 
-        final w2DData = w2D.data;
-        final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
-        for (var j = 0; j < n; j++) {
-          w.data[offsetW + j * strideWLast] = w2DData[j];
-        }
-
-        final vr2DData = vr2D.data;
-        final strideVR1 = vr.strides[rank - 2];
-        final strideVR2 = vr.strides[rank - 1];
-        for (var r = 0; r < n; r++) {
-          for (var c = 0; c < n; c++) {
-            vr.data[offsetVR + r * strideVR1 + c * strideVR2] =
-                vr2DData[r * n + c];
-          }
-        }
-        w2D.dispose();
-        vr2D.dispose();
-      } else if (a.dtype == DType.float64 ||
-          a.dtype == DType.int32 ||
-          a.dtype == DType.int64) {
-        final wr = NDArray<double>.zeros([n], DType.float64);
-        final wi = NDArray<double>.zeros([n], DType.float64);
-        final vrReal = NDArray<double>.create([n, n], DType.float64);
-
-        final info = LAPACKE_dgeev(
-          101,
-          jobvl,
-          jobvr,
-          n,
-          sliceCopy.pointer.cast<ffi.Double>(),
-          n,
-          wr.pointer.cast<ffi.Double>(),
-          wi.pointer.cast<ffi.Double>(),
-          ffi.nullptr.cast<ffi.Double>(),
-          n,
-          vrReal.pointer.cast<ffi.Double>(),
-          n,
-        );
-
-        if (info < 0) {
-          throw ArgumentError('Illegal value in call to LAPACKE_dgeev: $info');
-        }
-        if (info > 0) {
-          throw ArgumentError(
-            'The QR algorithm failed to compute all eigenvalues.',
+          final vrView = NDArray<Complex>.view(
+            vr,
+            shape: [n, n],
+            strides: vr.strides.sublist(rank - 2),
+            offsetElements: offsetVR,
           );
-        }
+          vr2D.copy(out: vrView);
 
-        final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
-        for (var j = 0; j < n; j++) {
-          w.data[offsetW + j * strideWLast] = Complex(wr.data[j], wi.data[j]);
-        }
+          w2D.dispose();
+          vr2D.dispose();
+        case DType.complex64:
+          final w2D = NDArray<Complex>.create([n], DType.complex64);
+          final vr2D = NDArray<Complex>.create([n, n], DType.complex64);
 
-        final strideVR1 = vr.strides[rank - 2];
-        final strideVR2 = vr.strides[rank - 1];
-        var j = 0;
-        while (j < n) {
-          if (wi.data[j] == 0.0) {
-            for (var r = 0; r < n; r++) {
-              vr.data[offsetVR + r * strideVR1 + j * strideVR2] = Complex(
-                vrReal.data[r * n + j],
-                0.0,
-              );
-            }
-            j++;
-          } else {
-            for (var r = 0; r < n; r++) {
-              final realPart = vrReal.data[r * n + j];
-              final imagPart = vrReal.data[r * n + j + 1];
-              vr.data[offsetVR + r * strideVR1 + j * strideVR2] = Complex(
-                realPart,
-                imagPart,
-              );
-              vr.data[offsetVR + r * strideVR1 + (j + 1) * strideVR2] = Complex(
-                realPart,
-                -imagPart,
-              );
-            }
-            j += 2;
-          }
-        }
-
-        wr.dispose();
-        wi.dispose();
-        vrReal.dispose();
-      } else if (a.dtype == DType.float32) {
-        final wr = NDArray<double>.zeros([n], DType.float32);
-        final wi = NDArray<double>.zeros([n], DType.float32);
-        final vrReal = NDArray<double>.create([n, n], DType.float32);
-
-        final info = LAPACKE_sgeev(
-          101,
-          jobvl,
-          jobvr,
-          n,
-          sliceCopy.pointer.cast<ffi.Float>(),
-          n,
-          wr.pointer.cast<ffi.Float>(),
-          wi.pointer.cast<ffi.Float>(),
-          ffi.nullptr.cast<ffi.Float>(),
-          n,
-          vrReal.pointer.cast<ffi.Float>(),
-          n,
-        );
-
-        if (info < 0) {
-          throw ArgumentError('Illegal value in call to LAPACKE_sgeev: $info');
-        }
-        if (info > 0) {
-          throw ArgumentError(
-            'The QR algorithm failed to compute all eigenvalues.',
+          final info = LAPACKE_cgeev(
+            101, // ROW_MAJOR
+            jobvl,
+            jobvr,
+            n,
+            sliceCopy.pointer.cast<ffi.Float>(),
+            n,
+            w2D.pointer.cast<ffi.Float>(),
+            ffi.nullptr.cast<ffi.Float>(),
+            n,
+            vr2D.pointer.cast<ffi.Float>(),
+            n,
           );
-        }
 
-        final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
-        for (var j = 0; j < n; j++) {
-          w.data[offsetW + j * strideWLast] = Complex(wr.data[j], wi.data[j]);
-        }
-
-        final strideVR1 = vr.strides[rank - 2];
-        final strideVR2 = vr.strides[rank - 1];
-        var j = 0;
-        while (j < n) {
-          if (wi.data[j] == 0.0) {
-            for (var r = 0; r < n; r++) {
-              vr.data[offsetVR + r * strideVR1 + j * strideVR2] = Complex(
-                vrReal.data[r * n + j],
-                0.0,
-              );
-            }
-            j++;
-          } else {
-            for (var r = 0; r < n; r++) {
-              final realPart = vrReal.data[r * n + j];
-              final imagPart = vrReal.data[r * n + j + 1];
-              vr.data[offsetVR + r * strideVR1 + j * strideVR2] = Complex(
-                realPart,
-                imagPart,
-              );
-              vr.data[offsetVR + r * strideVR1 + (j + 1) * strideVR2] = Complex(
-                realPart,
-                -imagPart,
-              );
-            }
-            j += 2;
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_cgeev: $info',
+            );
           }
-        }
+          if (info > 0) {
+            throw ArgumentError(
+              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+            );
+          }
 
-        wr.dispose();
-        wi.dispose();
-        vrReal.dispose();
+          final wView = NDArray<Complex>.view(
+            w,
+            shape: [n],
+            strides: w.strides.isEmpty ? [1] : [w.strides.last],
+            offsetElements: offsetW,
+          );
+          w2D.copy(out: wView);
+
+          final vrView = NDArray<Complex>.view(
+            vr,
+            shape: [n, n],
+            strides: vr.strides.sublist(rank - 2),
+            offsetElements: offsetVR,
+          );
+          vr2D.copy(out: vrView);
+
+          w2D.dispose();
+          vr2D.dispose();
+        case DType.float64:
+          final wr = NDArray<double>.zeros([n], DType.float64);
+          final wi = NDArray<double>.zeros([n], DType.float64);
+          final vrReal = NDArray<double>.create([n, n], DType.float64);
+
+          final info = LAPACKE_dgeev(
+            101,
+            jobvl,
+            jobvr,
+            n,
+            sliceCopy.pointer.cast<ffi.Double>(),
+            n,
+            wr.pointer.cast<ffi.Double>(),
+            wi.pointer.cast<ffi.Double>(),
+            ffi.nullptr.cast<ffi.Double>(),
+            n,
+            vrReal.pointer.cast<ffi.Double>(),
+            n,
+          );
+
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_dgeev: $info',
+            );
+          }
+          if (info > 0) {
+            throw ArgumentError(
+              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+            );
+          }
+
+          final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
+          final strideVR1 = vr.strides[rank - 2];
+          final strideVR2 = vr.strides[rank - 1];
+          assemble_eigenvectors_double(
+            w.pointer.cast<cpx_t>() + offsetW,
+            strideWLast,
+            vr.pointer.cast<cpx_t>() + offsetVR,
+            strideVR1,
+            strideVR2,
+            wr.pointer.cast<ffi.Double>(),
+            wi.pointer.cast<ffi.Double>(),
+            vrReal.pointer.cast<ffi.Double>(),
+            n,
+          );
+
+          wr.dispose();
+          wi.dispose();
+          vrReal.dispose();
+        case DType.float32:
+          final wr = NDArray<double>.zeros([n], DType.float32);
+          final wi = NDArray<double>.zeros([n], DType.float32);
+          final vrReal = NDArray<double>.create([n, n], DType.float32);
+
+          final info = LAPACKE_sgeev(
+            101,
+            jobvl,
+            jobvr,
+            n,
+            sliceCopy.pointer.cast<ffi.Float>(),
+            n,
+            wr.pointer.cast<ffi.Float>(),
+            wi.pointer.cast<ffi.Float>(),
+            ffi.nullptr.cast<ffi.Float>(),
+            n,
+            vrReal.pointer.cast<ffi.Float>(),
+            n,
+          );
+
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_sgeev: $info',
+            );
+          }
+          if (info > 0) {
+            throw ArgumentError(
+              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+            );
+          }
+
+          final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
+          final strideVR1 = vr.strides[rank - 2];
+          final strideVR2 = vr.strides[rank - 1];
+          assemble_eigenvectors_float(
+            w.pointer.cast<cpx_f_t>() + offsetW,
+            strideWLast,
+            vr.pointer.cast<cpx_f_t>() + offsetVR,
+            strideVR1,
+            strideVR2,
+            wr.pointer.cast<ffi.Float>(),
+            wi.pointer.cast<ffi.Float>(),
+            vrReal.pointer.cast<ffi.Float>(),
+            n,
+          );
+
+          wr.dispose();
+          wi.dispose();
+          vrReal.dispose();
+        default:
+          throw UnimplementedError('Type ${src.dtype} not supported for eig');
       }
+      sliceCopy.dispose();
     });
-  } finally {
-    sliceCopy.dispose();
-  }
 
-  return {'eigenvalues': w, 'eigenvectors': vr};
+    if (out == null) {
+      w.detachToParentScope();
+      vr.detachToParentScope();
+    }
+    return (eigenvalues: w, eigenvectors: vr);
+  });
+}
+
+/// Extension on eigenvalue decomposition result record type to support easy disposal of both arrays.
+extension EigRecordDispose
+    on ({NDArray<Complex> eigenvalues, NDArray<Complex> eigenvectors}) {
+  /// Disposes both [eigenvalues] and [eigenvectors] simultaneously,
+  /// freeing their underlying unmanaged C memory.
+  ///
+  /// Call this method when both matrices are no longer needed to avoid native memory leaks.
+  void dispose() {
+    eigenvalues.dispose();
+    eigenvectors.dispose();
+  }
 }
 
 /// Compute the Moore-Penrose pseudo-inverse of a 2D matrix.
@@ -1627,47 +1624,42 @@ NDArray<R> pinv<T, R>(NDArray<T> a, {double? rcond, NDArray<R>? out}) {
     }
   }
 
-  final svdResult = svd(a);
-  final u = svdResult['U']!;
-  final s = svdResult['S']!;
-  final vt = svdResult['Vh']!;
+  return NDArray.scope(() {
+    final svdResult = svd(a);
+    final u = svdResult.U;
+    final s = svdResult.S;
+    final vt = svdResult.Vh;
 
-  final maxSingularVal = s.data[0] as double;
-  final epsilon = 2.220446049250313e-16;
-  final maxDim = m > n ? m : n;
-  final resolvedRcond = rcond ?? (maxDim * epsilon);
-  final threshold = resolvedRcond * maxSingularVal;
+    final maxSingularVal = s.data[0] as double;
+    final epsilon = 2.220446049250313e-16;
+    final maxDim = m > n ? m : n;
+    final resolvedRcond = rcond ?? (maxDim * epsilon);
+    final threshold = resolvedRcond * maxSingularVal;
 
-  final sPlus = NDArray.zeros([n, m], a.dtype as dynamic);
-  for (var i = 0; i < s.data.length; i++) {
-    final sVal = s.data[i] as double;
-    if (sVal > threshold) {
-      sPlus.setCell([i, i], castValue(1.0 / sVal, a.dtype));
+    final sPlus = NDArray.zeros([n, m], a.dtype);
+    for (var i = 0; i < s.data.length; i++) {
+      final sVal = s.data[i] as double;
+      if (sVal > threshold) {
+        sPlus.setCell([i, i], castValue(1.0 / sVal, a.dtype));
+      }
     }
-  }
 
-  final v = vt.transpose();
-  final ut = u.transpose();
+    final v = conjugate(vt.transpose());
+    final ut = conjugate(u.transpose());
 
-  final temp = matmul(v, sPlus);
-  final temp2 = matmul(temp, ut);
-  (result.data as List).setRange(0, result.data.length, temp2.data);
+    final temp = matmul(v, sPlus);
+    matmul(temp, ut, out: result);
 
-  u.dispose();
-  s.dispose();
-  vt.dispose();
-  sPlus.dispose();
-  v.dispose();
-  ut.dispose();
-  temp.dispose();
-  temp2.dispose();
-
-  return result;
+    if (out == null) {
+      result.detachToParentScope();
+    }
+    return result;
+  });
 }
 
 /// Raise a square 2D matrix to the integer power [n].
 ///
-/// Computes $A^n$ using highly optimized binary exponentiation (square-and-multiply)
+/// Computes $A^n$ using binary exponentiation (square-and-multiply)
 /// in $O(\log n)$ matrix multiplications.
 ///
 /// **Preconditions:**
@@ -1681,7 +1673,7 @@ NDArray<R> pinv<T, R>(NDArray<T> a, {double? rcond, NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/linalg_premium_example.dart lang=dart}
-NDArray<R> matrix_power<T, R>(NDArray<T> a, int n, {NDArray<R>? out}) {
+NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute matrix_power() on a disposed array.');
   }
@@ -1690,9 +1682,15 @@ NDArray<R> matrix_power<T, R>(NDArray<T> a, int n, {NDArray<R>? out}) {
       'matrix_power is only defined for 2D square matrices (was shape ${a.shape}).',
     );
   }
+  if (n < 0 && a.dtype.isInteger) {
+    throw ArgumentError(
+      'Integer matrices cannot be raised to negative powers because matrix inversion '
+      'requires floating point types. Please convert the matrix to float64 or float32 first.',
+    );
+  }
 
   final size = a.shape[0];
-  final result = out ?? (NDArray.create(a.shape, a.dtype) as NDArray<R>);
+  final result = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -1701,50 +1699,63 @@ NDArray<R> matrix_power<T, R>(NDArray<T> a, int n, {NDArray<R>? out}) {
     }
   }
 
-  if (n == 0) {
-    final eye = NDArray.eye(size, a.dtype as dynamic);
-    result.fill(0);
-    for (var i = 0; i < size; i++) {
-      result.setCell([i, i], eye.getCell([i, i]));
+  return NDArray.scope(() {
+    if (n == 0) {
+      final eye = NDArray.eye(size, a.dtype);
+      result.fill(normalizeScalar(0, a.dtype) as T);
+      for (var i = 0; i < size; i++) {
+        result.setCell([i, i], eye.getCell([i, i]));
+      }
+      if (out == null) {
+        result.detachToParentScope();
+      }
+      return result;
     }
-    eye.dispose();
+
+    NDArray base;
+    if (n < 0) {
+      base = inv(a);
+      n = -n;
+    } else {
+      base = a;
+    }
+
+    if (n == 1) {
+      base.copy(out: result);
+      if (out == null) {
+        result.detachToParentScope();
+      }
+      return result;
+    }
+
+    var res = NDArray<T>.eye(size, a.dtype);
+    var tempRes = NDArray<T>.zeros(a.shape, a.dtype);
+
+    var current = base.copy() as NDArray<T>;
+    var tempCurrent = NDArray<T>.zeros(a.shape, a.dtype);
+
+    var exponent = n;
+    while (exponent > 0) {
+      if ((exponent & 1) == 1) {
+        matmul(res, current, out: tempRes);
+        final tmp = res;
+        res = tempRes;
+        tempRes = tmp;
+      }
+      if (exponent > 1) {
+        matmul(current, current, out: tempCurrent);
+        final tmp = current;
+        current = tempCurrent;
+        tempCurrent = tmp;
+      }
+      exponent >>= 1;
+    }
+
+    res.copy(out: result);
+
+    if (out == null) {
+      result.detachToParentScope();
+    }
     return result;
-  }
-
-  NDArray base;
-  bool wasBaseAllocated = false;
-
-  if (n < 0) {
-    base = inv(a);
-    wasBaseAllocated = true;
-    n = -n;
-  } else {
-    base = a;
-  }
-
-  var res = NDArray.eye(size, a.dtype as dynamic);
-  var current = base.copy();
-
-  var exponent = n;
-  while (exponent > 0) {
-    if ((exponent & 1) == 1) {
-      final nextRes = matmul(res, current);
-      res.dispose();
-      res = nextRes;
-    }
-    final nextCurrent = matmul(current, current);
-    current.dispose();
-    current = nextCurrent;
-    exponent >>= 1;
-  }
-
-  current.dispose();
-  if (wasBaseAllocated) {
-    base.dispose();
-  }
-
-  (result.data as List).setRange(0, result.data.length, res.data);
-  res.dispose();
-
-  return result;
+  });
 }

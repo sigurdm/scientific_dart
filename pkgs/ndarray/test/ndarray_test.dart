@@ -89,7 +89,7 @@ void main() {
         expect(view.data[1], 3.0);
 
         // Modify view
-        view.data[0] = 99.0;
+        view.data[0] = Float64(99.0);
         // Check original
         expect(a.data[1], 99.0);
       }),
@@ -645,15 +645,11 @@ void main() {
     );
 
     test(
-      'Solve Int32 (converts to Float64)',
+      'Solve mismatched dtypes throws ArgumentError',
       () => NDArray.scope(() {
-        final a = NDArray.fromList([3, 1, 1, 2], [2, 2], DType.int32);
-        final b = NDArray.fromList([9, 8], [2], DType.int32);
-        final x = solve(a, b);
-        expect(x.shape, [2]);
-        expect(x.dtype, DType.float64);
-        expect(x.data[0], closeTo(2.0, 1e-10));
-        expect(x.data[1], closeTo(3.0, 1e-10));
+        final a = NDArray.fromList([3.0, 1.0, 1.0, 2.0], [2, 2], DType.float64);
+        final b = NDArray.fromList([9.0, 8.0], [2], DType.float32);
+        expect(() => solve(a, b), throwsArgumentError);
       }),
     );
 
@@ -685,9 +681,7 @@ void main() {
           2,
           2,
         ], DType.float64);
-        final result = eig(a);
-        final w = result['eigenvalues']!;
-        final vr = result['eigenvectors']!;
+        final (eigenvalues: w, eigenvectors: vr) = eig(a);
 
         expect(w.shape, [2]);
         expect(vr.shape, [2, 2]);
@@ -717,8 +711,7 @@ void main() {
         a.data[2] = Complex(0.0, 0.0);
         a.data[3] = Complex(0.0, 1.0);
 
-        final result = eig(a);
-        final w = result['eigenvalues']!;
+        final (eigenvalues: w, eigenvectors: _) = eig(a);
 
         expect(w.shape, [2]);
         expect(w.data[0], Complex(0.0, 1.0));

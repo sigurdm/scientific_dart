@@ -8,6 +8,7 @@ import 'dart:collection';
 import 'operations/broadcasting.dart';
 import 'ndarray_bindings.dart';
 import 'scratch_arena.dart';
+import 'package:openblas/openblas.dart' show openblas_set_num_threads;
 
 import 'operations.dart' as ops;
 
@@ -258,6 +259,7 @@ final class NDArray<T> implements ffi.Finalizable {
        shape = List<int>.unmodifiable(shape),
        strides = List<int>.unmodifiable(strides),
        isContiguous = _checkContiguous(shape, strides) {
+    _initializeOpenBLASOnce();
     assert(
       identical(T, dynamic) ||
           identical(T, Object) ||
@@ -515,13 +517,13 @@ final class NDArray<T> implements ffi.Finalizable {
   factory NDArray.ones(List<int> shape, DType<T> dtype) {
     final arr = NDArray<T>.create(shape, dtype);
     if (dtype == DType.complex128 || dtype == DType.complex64) {
-      arr.fill(Complex(1.0, 0.0));
+      arr.fill(Complex(1.0, 0.0) as T);
     } else if (dtype == DType.boolean) {
-      arr.fill(true);
+      arr.fill(true as T);
     } else if (dtype == DType.float32 || dtype == DType.float64) {
-      arr.fill(1.0);
+      arr.fill(1.0 as T);
     } else {
-      arr.fill(1);
+      arr.fill(1 as T);
     }
     return arr;
   }
@@ -595,48 +597,11 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - **Shared Mutations**: Modifications to the view affect the parent and vice versa.
   /// - **No Ownership**: Calling `dispose()` on a view does nothing.
   factory NDArray.view(
-    NDArray parent, {
+    NDArray<T> parent, {
     required List<int> shape,
     required List<int> strides,
     int offsetElements = 0,
   }) {
-    if (identical(T, dynamic) || identical(T, Object)) {
-      return switch (parent.dtype) {
-        DType.float64 || DType.float32 =>
-          NDArray<double>.view(
-                parent,
-                shape: shape,
-                strides: strides,
-                offsetElements: offsetElements,
-              )
-              as NDArray<T>,
-        DType.int64 || DType.int32 || DType.uint8 || DType.int16 =>
-          NDArray<int>.view(
-                parent,
-                shape: shape,
-                strides: strides,
-                offsetElements: offsetElements,
-              )
-              as NDArray<T>,
-        DType.complex128 || DType.complex64 =>
-          NDArray<Complex>.view(
-                parent,
-                shape: shape,
-                strides: strides,
-                offsetElements: offsetElements,
-              )
-              as NDArray<T>,
-        DType.boolean =>
-          NDArray<bool>.view(
-                parent,
-                shape: shape,
-                strides: strides,
-                offsetElements: offsetElements,
-              )
-              as NDArray<T>,
-      };
-    }
-
     final hasNegativeStrides = strides.any((s) => s < 0);
 
     ffi.Pointer<ffi.Void> pointer;
@@ -645,7 +610,7 @@ final class NDArray<T> implements ffi.Finalizable {
 
     if (hasNegativeStrides) {
       pointer = parent.pointer;
-      data = parent.data as List<T>;
+      data = parent.data;
       viewOffsetElements = offsetElements;
     } else {
       viewOffsetElements = 0;
@@ -703,7 +668,7 @@ final class NDArray<T> implements ffi.Finalizable {
       parent,
       shape: shape,
       strides: strides,
-      dtype: parent.dtype as DType<T>,
+      dtype: parent.dtype,
       offsetElements: viewOffsetElements,
     );
   }
@@ -900,12 +865,28 @@ final class NDArray<T> implements ffi.Finalizable {
   /// b.data[0] = 99;
   /// print(a.data[0]); // 1 (decoupled memory!)
   /// ```
-  NDArray<T> copy() {
+  NDArray<T> copy({NDArray<T>? out}) {
     if (isDisposed) {
       throw StateError('Cannot copy a disposed array.');
     }
 
-    final result = NDArray<T>.create(shape, dtype);
+    final NDArray<T> result;
+    if (out != null) {
+      if (out.isDisposed) {
+        throw StateError('Cannot copy to a disposed array.');
+      }
+      if (!listEquals(shape, out.shape) || dtype != out.dtype) {
+        throw ArgumentError(
+          'Destination array must have matching shape and dtype (expected shape $shape, dtype $dtype; got shape ${out.shape}, dtype ${out.dtype}).',
+        );
+      }
+      if (!out.isContiguous) {
+        throw ArgumentError('Destination array must be contiguous.');
+      }
+      result = out;
+    } else {
+      result = NDArray<T>.create(shape, dtype);
+    }
 
     if (isContiguous) {
       final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
@@ -915,6 +896,25 @@ final class NDArray<T> implements ffi.Finalizable {
     }
 
     return result;
+  }
+
+  /// Internal helper to copy contiguous array elements to another contiguous array,
+  /// bypassing generic type constraints.
+  @internal
+  void copyToContiguous(NDArray dest) {
+    if (isDisposed || dest.isDisposed) {
+      throw StateError('Cannot copy to or from a disposed array.');
+    }
+    if (!listEquals(shape, dest.shape) || dtype != dest.dtype) {
+      throw ArgumentError('Mismatched shape or dtype in copyToContiguous.');
+    }
+    if (!isContiguous || !dest.isContiguous) {
+      throw ArgumentError(
+        'Both arrays must be contiguous in copyToContiguous.',
+      );
+    }
+    final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+    _copyContiguousNDArray(this, dest, totalSize);
   }
 
   void _copyStridedToContiguous(NDArray<T> dest) {
@@ -1059,7 +1059,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// final a = `NDArray<double>`.create([100], DType.float64);
   /// a.fill(42.0);
   /// ```
-  void fill(dynamic value) {
+  void fill(T value) {
     if (isDisposed) {
       throw StateError('Cannot fill an array whose memory has been freed.');
     }
@@ -1093,7 +1093,7 @@ final class NDArray<T> implements ffi.Finalizable {
     }
 
     // Fallback JIT loop for complex, boolean, or non-contiguous views
-    final targetValue = value as T;
+    final targetValue = value;
 
     void fillWalk(int dim, int currentOffset) {
       if (dim == shape.length) {
@@ -3357,5 +3357,17 @@ final class _NDArrayScope {
       }
       _list.clear();
     }
+  }
+}
+
+bool _openblasInitialized = false;
+
+void _initializeOpenBLASOnce() {
+  if (_openblasInitialized) return;
+  _openblasInitialized = true;
+  try {
+    openblas_set_num_threads(1);
+  } catch (_) {
+    // Silently ignore library load/init errors in non-OpenBLAS environments
   }
 }

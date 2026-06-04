@@ -49,7 +49,7 @@ void runCholeskyDecompositionExample() {
 
   // cholesky factorizes into A = L * L^T, returns Lower triangular L matrix
   final res = cholesky(a);
-  final l = res['L']!;
+  final l = res.L;
   print('Cholesky Lower Triangular Factor L:');
   print(
     '[${l.data.sublist(0, 3)}]\n[${l.data.sublist(3, 6)}]\n[${l.data.sublist(6, 9)}]',
@@ -79,8 +79,8 @@ void runQRDecompositionExample() {
 
   // Factorizes A = Q * R. Q is an orthogonal/unitary matrix, R is upper triangular.
   final res = qr(a);
-  final q = res['Q']!;
-  final r = res['R']!;
+  final q = res.Q;
+  final r = res.R;
 
   print('Orthogonal Matrix Q:');
   print(
@@ -105,9 +105,9 @@ void runSVDDecompositionExample() {
 
   // Computes A = U * S * Vh, where S is 1D vector of singular values
   final res = svd(a);
-  final u = res['U']!;
-  final s = res['S']!;
-  final vh = res['Vh']!;
+  final u = res.U;
+  final s = res.S;
+  final vh = res.Vh;
 
   print('Left Singular Vectors U (3x3 matrix):');
   print(
@@ -119,6 +119,9 @@ void runSVDDecompositionExample() {
 
   print('Right Singular Vectors V^T (Vh, 2x2 matrix):');
   print('[${vh.data.sublist(0, 2)}]\n[${vh.data.sublist(2, 4)}]');
+
+  res.dispose();
+  a.dispose();
 }
 
 void runBatchedMatmulStackExample() {

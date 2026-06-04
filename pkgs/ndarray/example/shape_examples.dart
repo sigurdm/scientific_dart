@@ -1,6 +1,12 @@
 import 'dart:typed_data';
 import 'package:ndarray/ndarray.dart';
 
+List<int> rep(dynamic v) {
+  if (v is int) return [v];
+  if (v is List<int>) return v;
+  throw ArgumentError();
+}
+
 void main() {
   print('=== NDArray Shape Manipulation Examples ===\n');
   runExpandDimsExample();
@@ -76,12 +82,12 @@ void runTileExample() {
   print('Original array: ${a.data} with shape ${a.shape}');
 
   // Tile 3 times along the single axis
-  final b = tile(a, 3);
+  final b = tile(a, rep(3));
   print('Tiled 3 times shape: ${b.shape}'); // [6]
   print('Tiled 3 times data: ${b.data}'); // [1.0, 2.0, 1.0, 2.0, 1.0, 2.0]
 
   // Tile a 2D block reps
-  final c = tile(a, [2, 2]);
+  final c = tile(a, rep([2, 2]));
   print('Tiled with [2, 2] shape: ${c.shape}'); // [2, 4]
 }
 
@@ -94,11 +100,11 @@ void runRepeatExample() {
   print('Original array:\n${a.data} shape ${a.shape}');
 
   // Repeat elements 2 times along axis 0
-  final b = repeat(a, 2, axis: 0);
+  final b = repeat(a, rep(2), axis: 0);
   print('Repeated 2x axis 0 shape: ${b.shape}'); // [4, 2]
   print('Repeated 2x axis 0 data: ${b.data}');
 
   // Repeat with a custom list per element along axis 1
-  final c = repeat(a, [1, 3], axis: 1);
+  final c = repeat(a, rep([1, 3]), axis: 1);
   print('Repeated with [1, 3] axis 1 shape: ${c.shape}'); // [2, 4]
 }

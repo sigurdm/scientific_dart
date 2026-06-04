@@ -727,7 +727,7 @@ void main() {
         expect(viewNonContig.toList(), [4.0, 12.0, 12.0, 37.0]);
 
         final res = cholesky(viewNonContig);
-        final l = res['L']!;
+        final l = res.L;
         expect(l.shape, [2, 2]);
         expect(l.toList(), [2.0, 0.0, 6.0, 1.0]);
       }),
@@ -1381,7 +1381,7 @@ void main() {
         expect(view.shape, [2]);
         expect(view.isContiguous, false);
 
-        view.fill(77.0);
+        view.fill(Float64(77.0));
         expect(parent.toList(), [77.0, 2.0, 77.0, 4.0]);
       },
     );

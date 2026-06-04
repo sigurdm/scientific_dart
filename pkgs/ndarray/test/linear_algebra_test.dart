@@ -94,7 +94,7 @@ void main() {
           );
 
           final res = cholesky(a);
-          final l = res['L']!;
+          final l = res.L;
 
           expect(l.shape, [3, 3]);
 
@@ -123,7 +123,7 @@ void main() {
             DType.float32,
           );
           final res = cholesky(a);
-          final l = res['L']!;
+          final l = res.L;
           expect(l.dtype, DType.float32);
           // L = [[2, 0], [1, 1]]
           expect(l.data[0], closeTo(2.0, 1e-5));
@@ -155,8 +155,8 @@ void main() {
           );
 
           final res = qr(a);
-          final q = res['Q']!;
-          final r = res['R']!;
+          final q = res.Q;
+          final r = res.R;
 
           expect(q.shape, [3, 3]);
           expect(r.shape, [3, 3]);
@@ -204,9 +204,9 @@ void main() {
             DType.float32,
           );
           final res = qr(a);
-          expect(res['Q']!.dtype, DType.float32);
-          expect(res['R']!.dtype, DType.float32);
-          expect(res['R']!.data[3], 0.0);
+          expect(res.Q.dtype, DType.float32);
+          expect(res.R.dtype, DType.float32);
+          expect(res.R.data[3], 0.0);
         }),
       );
 
@@ -231,9 +231,101 @@ void main() {
           final view = parent.transpose();
           expect(view.isContiguous, false);
           final res = qr(view);
-          expect(res['Q']!.shape, [3, 3]);
-          expect(res['R']!.shape, [3, 3]);
-          expect(res['R']!.data[3], 0.0);
+          expect(res.Q.shape, [3, 3]);
+          expect(res.R.shape, [3, 3]);
+          expect(res.R.data[3], 0.0);
+        }),
+      );
+
+      test(
+        'QR with out parameter recycling buffers',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Float64List.fromList([
+              12.0,
+              -51.0,
+              4.0,
+              6.0,
+              167.0,
+              -68.0,
+              -4.0,
+              24.0,
+              -41.0,
+            ]),
+            [3, 3],
+            DType.float64,
+          );
+
+          final qBuffer = NDArray<double>.zeros([3, 3], DType.float64);
+          final rBuffer = NDArray<double>.zeros([3, 3], DType.float64);
+
+          final res = qr(a, out: (Q: qBuffer, R: rBuffer));
+
+          expect(identical(res.Q, qBuffer), true);
+          expect(identical(res.R, rBuffer), true);
+
+          // Verify correctness of QR values in the recycled buffers
+          expect(res.R.data[3], 0.0);
+          expect(res.R.data[6], 0.0);
+          expect(res.R.data[7], 0.0);
+        }),
+      );
+
+      test(
+        'QRRecordDispose extension',
+        () => NDArray.scope(() {
+          // Check the extension method on records
+          final a2 = NDArray.fromList(
+            Float64List.fromList([
+              12.0,
+              -51.0,
+              4.0,
+              6.0,
+              167.0,
+              -68.0,
+              -4.0,
+              24.0,
+              -41.0,
+            ]),
+            [3, 3],
+            DType.float64,
+          );
+          final res2 = qr(a2);
+          expect(res2.Q.isDisposed, false);
+          expect(res2.R.isDisposed, false);
+
+          res2.dispose();
+          expect(res2.Q.isDisposed, true);
+          expect(res2.R.isDisposed, true);
+        }),
+      );
+
+      test(
+        'QR throws ArgumentError on incompatible shape of out parameter',
+        () => NDArray.scope(() {
+          final a = NDArray.zeros([3, 3], DType.float64);
+
+          // Wrong shape for Q
+          final qBufferWrongShape = NDArray<double>.zeros([
+            2,
+            3,
+          ], DType.float64);
+          final rBuffer = NDArray<double>.zeros([3, 3], DType.float64);
+          expect(
+            () => qr(a, out: (Q: qBufferWrongShape, R: rBuffer)),
+            throwsArgumentError,
+          );
+
+          // Wrong shape for R
+          final qBuffer = NDArray<double>.zeros([3, 3], DType.float64);
+          final rBufferWrongShape = NDArray<double>.zeros([
+            3,
+            2,
+          ], DType.float64);
+          expect(
+            () => qr(a, out: (Q: qBuffer, R: rBufferWrongShape)),
+            throwsArgumentError,
+          );
         }),
       );
     });
@@ -249,9 +341,9 @@ void main() {
           );
 
           final res = svd(a);
-          final u = res['U']!;
-          final s = res['S']!;
-          final vh = res['Vh']!;
+          final u = res.U;
+          final s = res.S;
+          final vh = res.Vh;
 
           expect(u.shape, [3, 3]); // full matrix
           expect(s.shape, [2]); // min(3, 2) vector
@@ -272,10 +364,10 @@ void main() {
             DType.float32,
           );
           final res = svd(a);
-          expect(res['U']!.dtype, DType.float32);
-          expect(res['S']!.dtype, DType.float32);
-          expect(res['Vh']!.dtype, DType.float32);
-          expect(res['U']!.shape, [3, 3]);
+          expect(res.U.dtype, DType.float32);
+          expect(res.S.dtype, DType.float32);
+          expect(res.Vh.dtype, DType.float32);
+          expect(res.U.shape, [3, 3]);
         }),
       );
 
@@ -290,8 +382,8 @@ void main() {
           final view = parent.transpose();
           expect(view.isContiguous, false);
           final res = svd(view);
-          expect(res['U']!.shape, [3, 3]);
-          expect(res['S']!.shape, [2]);
+          expect(res.U.shape, [3, 3]);
+          expect(res.S.shape, [2]);
         }),
       );
     });
@@ -406,7 +498,7 @@ void main() {
       );
 
       test(
-        'Solve integer matrices system (converts to Float64)',
+        'Solve integer matrices system throws ArgumentError',
         () => NDArray.scope(() {
           final a = NDArray.fromList(Int32List.fromList([3, 1, 1, 2]), [
             2,
@@ -416,8 +508,26 @@ void main() {
             2,
             1,
           ], DType.int32);
-          final x = solve(a, b);
-          expect(x.dtype, DType.float64);
+          expect(() => solve(a, b), throwsArgumentError);
+        }),
+      );
+
+      test(
+        'Solve Float64 system of equations with out parameter',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Float64List.fromList([3.0, 1.0, 1.0, 2.0]),
+            [2, 2],
+            DType.float64,
+          );
+          final b = NDArray.fromList(Float64List.fromList([9.0, 8.0]), [
+            2,
+            1,
+          ], DType.float64);
+          final outBuffer = NDArray<double>.zeros([2, 1], DType.float64);
+          final x = solve(a, b, out: outBuffer);
+          expect(identical(x, outBuffer), true);
+          expect(x.shape, [2, 1]);
           expect(x.data[0], closeTo(2.0, 1e-9));
           expect(x.data[1], closeTo(3.0, 1e-9));
         }),
@@ -453,9 +563,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final res = eig(a);
-          final w = res['eigenvalues']!;
-          final vr = res['eigenvectors']!;
+          final (eigenvalues: w, eigenvectors: vr) = eig(a);
 
           expect(w.shape, [2]);
           expect(vr.shape, [2, 2]);
@@ -475,8 +583,7 @@ void main() {
             [2, 2],
             DType.float32,
           );
-          final res = eig(a);
-          final w = res['eigenvalues']!;
+          final (eigenvalues: w, eigenvectors: _) = eig(a);
           expect(w.dtype, DType.complex64);
           expect(w.data[0].real, closeTo(-1.0, 1e-5));
           expect(w.data[1].real, closeTo(-2.0, 1e-5));
@@ -492,10 +599,10 @@ void main() {
           a.data[2] = Complex(-2.0, 0.0);
           a.data[3] = Complex(-3.0, 0.0);
 
-          final res = eig(a);
-          expect(res['eigenvalues']!.dtype, DType.complex128);
-          expect(res['eigenvalues']!.data[0].real, closeTo(-1.0, 1e-9));
-          expect(res['eigenvalues']!.data[1].real, closeTo(-2.0, 1e-9));
+          final (eigenvalues: w, eigenvectors: _) = eig(a);
+          expect(w.dtype, DType.complex128);
+          expect(w.data[0].real, closeTo(-1.0, 1e-9));
+          expect(w.data[1].real, closeTo(-2.0, 1e-9));
         }),
       );
 
@@ -508,10 +615,34 @@ void main() {
           a.data[2] = Complex(-2.0, 0.0);
           a.data[3] = Complex(-3.0, 0.0);
 
-          final res = eig(a);
-          expect(res['eigenvalues']!.dtype, DType.complex64);
-          expect(res['eigenvalues']!.data[0].real, closeTo(-1.0, 1e-5));
-          expect(res['eigenvalues']!.data[1].real, closeTo(-2.0, 1e-5));
+          final (eigenvalues: w, eigenvectors: _) = eig(a);
+          expect(w.dtype, DType.complex64);
+          expect(w.data[0].real, closeTo(-1.0, 1e-5));
+          expect(w.data[1].real, closeTo(-2.0, 1e-5));
+        }),
+      );
+
+      test(
+        'Eigenvalues/eigenvectors with out parameter recycler',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Float64List.fromList([0.0, 1.0, -2.0, -3.0]),
+            [2, 2],
+            DType.float64,
+          );
+          final outW = NDArray<Complex>.zeros([2], DType.complex128);
+          final outVR = NDArray<Complex>.zeros([2, 2], DType.complex128);
+
+          final (eigenvalues: w, eigenvectors: vr) = eig(
+            a,
+            out: (eigenvalues: outW, eigenvectors: outVR),
+          );
+
+          expect(identical(w, outW), true);
+          expect(identical(vr, outVR), true);
+
+          expect(w.data[0].real, closeTo(-1.0, 1e-9));
+          expect(w.data[1].real, closeTo(-2.0, 1e-9));
         }),
       );
     });
@@ -890,9 +1021,7 @@ void main() {
             DType.float64,
           );
 
-          final res = eig(a);
-          final w = res['eigenvalues']!;
-          final vr = res['eigenvectors']!;
+          final (eigenvalues: w, eigenvectors: vr) = eig(a);
 
           expect(w.shape, [2, 2]);
           expect(vr.shape, [2, 2, 2]);
@@ -937,8 +1066,8 @@ void main() {
           );
 
           final res = qr(a);
-          final q = res['Q']!;
-          final r = res['R']!;
+          final q = res.Q;
+          final r = res.R;
 
           expect(q.shape, [2, 3, 3]);
           expect(r.shape, [2, 3, 3]);
@@ -981,9 +1110,9 @@ void main() {
           );
 
           final resTall = svd(aTall);
-          final uT = resTall['U']!;
-          final sT = resTall['S']!;
-          final vhT = resTall['Vh']!;
+          final uT = resTall.U;
+          final sT = resTall.S;
+          final vhT = resTall.Vh;
 
           expect(uT.shape, [2, 3, 3]);
           expect(sT.shape, [2, 2]);
@@ -999,9 +1128,9 @@ void main() {
           );
 
           final resWide = svd(aWide);
-          final uW = resWide['U']!;
-          final sW = resWide['S']!;
-          final vhW = resWide['Vh']!;
+          final uW = resWide.U;
+          final sW = resWide.S;
+          final vhW = resWide.Vh;
 
           expect(uW.shape, [2, 2, 2]);
           expect(sW.shape, [2, 2]);

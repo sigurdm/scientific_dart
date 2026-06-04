@@ -13,6 +13,12 @@ NDArray<T> concatenate<T extends Object>(
     throw ArgumentError('List of arrays must not be empty');
   }
 
+  for (final arr in arrays) {
+    if (arr.isDisposed) {
+      throw StateError('Cannot concatenate a disposed array.');
+    }
+  }
+
   final first = arrays.first;
   final rank = first.shape.length;
   final dtype = first.dtype;

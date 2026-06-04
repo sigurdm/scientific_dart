@@ -2,6 +2,12 @@ import 'package:ndarray/ndarray.dart';
 import 'package:test/test.dart';
 import 'dart:typed_data';
 
+List<int> rep(dynamic v) {
+  if (v is int) return [v];
+  if (v is List<int>) return v;
+  throw ArgumentError();
+}
+
 void main() {
   group('NDArray Shape Manipulation Tests', () {
     group('expandDims Tests', () {
@@ -304,7 +310,7 @@ void main() {
           final a = NDArray.fromList(Float64List.fromList([1.0, 2.0]), [
             2,
           ], DType.float64);
-          final b = tile(a, 3);
+          final b = tile(a, rep(3));
           expect(b.shape, [6]);
           expect(b.toList(), [1.0, 2.0, 1.0, 2.0, 1.0, 2.0]);
 
@@ -320,7 +326,7 @@ void main() {
           final a = NDArray.fromList(Float64List.fromList([1.0, 2.0]), [
             2,
           ], DType.float64);
-          final b = tile(a, [2]);
+          final b = tile(a, rep([2]));
           expect(b.shape, [4]);
           expect(b.toList(), [1.0, 2.0, 1.0, 2.0]);
         }),
@@ -332,10 +338,10 @@ void main() {
           final a = NDArray.fromList(Float64List.fromList([1.0, 2.0]), [
             2,
           ], DType.float64);
-          final b = tile(a, [
-            2,
-            3,
-          ]); // shape promoted from [2] to [1, 2], target [2*1, 3*2] = [2, 6]
+          final b = tile(
+            a,
+            rep([2, 3]),
+          ); // shape promoted from [2] to [1, 2], target [2*1, 3*2] = [2, 6]
           expect(b.shape, [2, 6]);
           expect(b.toList(), [
             1.0, 2.0, 1.0, 2.0, 1.0, 2.0, // row 0
@@ -352,7 +358,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final b = tile(a, [2, 1]); // repeat rows 2 times, columns 1 time
+          final b = tile(a, rep([2, 1])); // repeat rows 2 times, columns 1 time
           expect(b.shape, [4, 2]);
           expect(b.toList(), [1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0]);
         }),
@@ -362,10 +368,13 @@ void main() {
         'Tile with negative or invalid reps throws',
         () => NDArray.scope(() {
           final a = NDArray.create([2], DType.float64);
-          expect(() => tile(a, -1), throwsArgumentError);
-          expect(() => tile(a, [2, -3]), throwsArgumentError);
-          expect(() => tile(a, 'invalid'), throwsArgumentError);
-          expect(() => tile(a, 3.5), throwsArgumentError);
+          expect(() => tile(a, rep(-1)), throwsArgumentError);
+          expect(() => tile(a, rep([2, -3])), throwsArgumentError);
+          expect(
+            () => tile(a, 'invalid' as dynamic),
+            throwsA(isA<TypeError>()),
+          );
+          expect(() => tile(a, 3.5 as dynamic), throwsA(isA<TypeError>()));
         }),
       );
     });
@@ -377,7 +386,7 @@ void main() {
           final a = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0]), [
             3,
           ], DType.float64);
-          final b = repeat(a, 2);
+          final b = repeat(a, rep(2));
           expect(b.shape, [6]);
           expect(b.toList(), [1.0, 1.0, 2.0, 2.0, 3.0, 3.0]);
 
@@ -395,7 +404,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final b = repeat(a, 2); // axis = null
+          final b = repeat(a, rep(2)); // axis = null
           expect(b.shape, [8]);
           expect(b.toList(), [1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0]);
         }),
@@ -409,7 +418,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final b = repeat(a, 2, axis: 0);
+          final b = repeat(a, rep(2), axis: 0);
           expect(b.shape, [4, 2]);
           expect(b.toList(), [1.0, 2.0, 1.0, 2.0, 3.0, 4.0, 3.0, 4.0]);
         }),
@@ -424,7 +433,7 @@ void main() {
             DType.float64,
           );
           // Repeat column 0 -> 2 times, column 1 -> 1 time. total cols = 3
-          final b = repeat(a, [2, 1], axis: 1);
+          final b = repeat(a, rep([2, 1]), axis: 1);
           expect(b.shape, [2, 3]);
           expect(b.toList(), [
             1.0, 1.0, 2.0, // row 0
@@ -442,7 +451,7 @@ void main() {
             DType.float64,
           );
           // Repeat column 0 -> 0 times, column 1 -> 2 times.
-          final b = repeat(a, [0, 2], axis: 1);
+          final b = repeat(a, rep([0, 2]), axis: 1);
           expect(b.shape, [2, 2]);
           expect(b.toList(), [2.0, 2.0, 4.0, 4.0]);
         }),
@@ -452,7 +461,7 @@ void main() {
         'Repeat mismatched list counts throws',
         () => NDArray.scope(() {
           final a = NDArray.create([2, 2], DType.float64);
-          expect(() => repeat(a, [1, 2, 3], axis: 1), throwsArgumentError);
+          expect(() => repeat(a, rep([1, 2, 3]), axis: 1), throwsArgumentError);
         }),
       );
 
@@ -460,8 +469,8 @@ void main() {
         'Repeat negative counts throws',
         () => NDArray.scope(() {
           final a = NDArray.create([3], DType.float64);
-          expect(() => repeat(a, -2), throwsArgumentError);
-          expect(() => repeat(a, [1, -1, 0]), throwsArgumentError);
+          expect(() => repeat(a, rep(-2)), throwsArgumentError);
+          expect(() => repeat(a, rep([1, -1, 0])), throwsArgumentError);
         }),
       );
 
@@ -469,7 +478,7 @@ void main() {
         'Repeat invalid axis throws',
         () => NDArray.scope(() {
           final a = NDArray.create([2, 2], DType.float64);
-          expect(() => repeat(a, 2, axis: 2), throwsRangeError);
+          expect(() => repeat(a, rep(2), axis: 2), throwsRangeError);
         }),
       );
     });

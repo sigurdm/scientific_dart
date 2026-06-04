@@ -5608,3 +5608,288 @@ DEFINE_DET_REAL(s_det_double, double)
 DEFINE_DET_REAL(s_det_float, float)
 DEFINE_DET_COMPLEX(s_det_complex_double, cpx_t)
 DEFINE_DET_COMPLEX(s_det_complex_float, cpx_f_t)
+
+void assemble_eigenvectors_double(
+    cpx_t *w,
+    int strideWLast,
+    cpx_t *vr,
+    int strideVR1,
+    int strideVR2,
+    const double *wr,
+    const double *wi,
+    const double *vrReal,
+    int n
+) {
+    if (w == NULL || vr == NULL || wr == NULL || wi == NULL || vrReal == NULL || n <= 0) {
+        return;
+    }
+
+    for (int j = 0; j < n; j++) {
+        w[j * strideWLast].r = wr[j];
+        w[j * strideWLast].i = wi[j];
+    }
+
+    int j = 0;
+    while (j < n) {
+        if (wi[j] == 0.0) {
+            for (int r = 0; r < n; r++) {
+                vr[r * strideVR1 + j * strideVR2].r = vrReal[r * n + j];
+                vr[r * strideVR1 + j * strideVR2].i = 0.0;
+            }
+            j++;
+        } else {
+            for (int r = 0; r < n; r++) {
+                double realPart = vrReal[r * n + j];
+                double imagPart = vrReal[r * n + j + 1];
+                vr[r * strideVR1 + j * strideVR2].r = realPart;
+                vr[r * strideVR1 + j * strideVR2].i = imagPart;
+                vr[r * strideVR1 + (j + 1) * strideVR2].r = realPart;
+                vr[r * strideVR1 + (j + 1) * strideVR2].i = -imagPart;
+            }
+            j += 2;
+        }
+    }
+}
+
+void assemble_eigenvectors_float(
+    cpx_f_t *w,
+    int strideWLast,
+    cpx_f_t *vr,
+    int strideVR1,
+    int strideVR2,
+    const float *wr,
+    const float *wi,
+    const float *vrReal,
+    int n
+) {
+    if (w == NULL || vr == NULL || wr == NULL || wi == NULL || vrReal == NULL || n <= 0) {
+        return;
+    }
+
+    for (int j = 0; j < n; j++) {
+        w[j * strideWLast].r = wr[j];
+        w[j * strideWLast].i = wi[j];
+    }
+
+    int j = 0;
+    while (j < n) {
+        if (wi[j] == 0.0f) {
+            for (int r = 0; r < n; r++) {
+                vr[r * strideVR1 + j * strideVR2].r = vrReal[r * n + j];
+                vr[r * strideVR1 + j * strideVR2].i = 0.0f;
+            }
+            j++;
+        } else {
+            for (int r = 0; r < n; r++) {
+                float realPart = vrReal[r * n + j];
+                float imagPart = vrReal[r * n + j + 1];
+                vr[r * strideVR1 + j * strideVR2].r = realPart;
+                vr[r * strideVR1 + j * strideVR2].i = imagPart;
+                vr[r * strideVR1 + (j + 1) * strideVR2].r = realPart;
+                vr[r * strideVR1 + (j + 1) * strideVR2].i = -imagPart;
+            }
+            j += 2;
+        }
+    }
+}
+
+#define DEFINE_MATMUL_INT(name, type) \
+void name( \
+    type *res, \
+    int strideResRow, \
+    int strideResCol, \
+    const type *a, \
+    int strideARow, \
+    int strideACol, \
+    const type *b, \
+    int strideBRow, \
+    int strideBCol, \
+    int m, \
+    int n, \
+    int k \
+) { \
+    if (res == NULL || a == NULL || b == NULL || m <= 0 || n <= 0 || k <= 0) { \
+        return; \
+    } \
+    for (int r = 0; r < m; r++) { \
+        for (int c = 0; c < n; c++) { \
+            type sum = 0; \
+            for (int i = 0; i < k; i++) { \
+                sum += a[r * strideARow + i * strideACol] * b[i * strideBRow + c * strideBCol]; \
+            } \
+            res[r * strideResRow + c * strideResCol] = sum; \
+        } \
+    } \
+}
+
+DEFINE_MATMUL_INT(matmul_int64, int64_t)
+DEFINE_MATMUL_INT(matmul_int32, int32_t)
+DEFINE_MATMUL_INT(matmul_int16, int16_t)
+DEFINE_MATMUL_INT(matmul_uint8, uint8_t)
+
+uint8_t v_any_less_than_zero_int32(const int32_t *arr, int size) {
+    if (arr == NULL || size <= 0) return 0;
+    for (int i = 0; i < size; i++) {
+        if (arr[i] < 0) return 1;
+    }
+    return 0;
+}
+
+uint8_t v_any_less_than_zero_int64(const int64_t *arr, int size) {
+    if (arr == NULL || size <= 0) return 0;
+    for (int i = 0; i < size; i++) {
+        if (arr[i] < 0) return 1;
+    }
+    return 0;
+}
+
+uint8_t v_any_equal_to_zero_int32(const int32_t *arr, int size) {
+    if (arr == NULL || size <= 0) return 0;
+    for (int i = 0; i < size; i++) {
+        if (arr[i] == 0) return 1;
+    }
+    return 0;
+}
+
+uint8_t v_any_equal_to_zero_int64(const int64_t *arr, int size) {
+    if (arr == NULL || size <= 0) return 0;
+    for (int i = 0; i < size; i++) {
+        if (arr[i] == 0) return 1;
+    }
+    return 0;
+}
+
+#define DTYPE_FLOAT64 0
+#define DTYPE_FLOAT32 1
+#define DTYPE_INT32 2
+#define DTYPE_INT64 3
+#define DTYPE_UINT8 4
+#define DTYPE_INT16 5
+#define DTYPE_COMPLEX128 6
+#define DTYPE_COMPLEX64 7
+#define DTYPE_BOOLEAN 8
+
+#define TO_DOUBLE(x) ((double)(x))
+#define TO_COMPLEX(x) ((cpx_t){(double)(x), 0.0})
+#define COMPLEX_TO_DOUBLE(x) ((x).r)
+#define COMPLEXF_TO_DOUBLE(x) ((double)(x).r)
+#define COMPLEXF_TO_COMPLEX(x) ((cpx_t){(double)(x).r, (double)(x).i})
+#define BOOL_TO_DOUBLE(x) ((double)(x))
+#define BOOL_TO_COMPLEX(x) ((cpx_t){(double)(x), 0.0})
+
+#define DEFINE_CAST_LOOP(src_type, dest_type, expr) \
+    { \
+        const src_type *src = (const src_type *)src_ptr; \
+        dest_type *dest = (dest_type *)dest_ptr; \
+        if (rank == 0) { \
+            dest[0] = expr(src[0]); \
+            return; \
+        } \
+        int coord[8] = {0}; \
+        int offsetSrc = 0; \
+        for (int el = 0; el < total_elements; el++) { \
+            dest[el] = expr(src[offsetSrc]); \
+            for (int d = rank - 1; d >= 0; d--) { \
+                coord[d]++; \
+                if (coord[d] < shape[d]) { \
+                    offsetSrc += stridesSrc[d]; \
+                    break; \
+                } \
+                coord[d] = 0; \
+                offsetSrc -= (shape[d] - 1) * stridesSrc[d]; \
+            } \
+        } \
+    }
+
+void s_cast_generic(
+    const void *src_ptr, const int *stridesSrc, int dtypeSrc,
+    void *dest_ptr, int dtypeDst,
+    const int *shape, int rank
+) {
+    if (src_ptr == NULL || dest_ptr == NULL || rank < 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+
+    if (dtypeDst == DTYPE_FLOAT64) { // dest is double
+        switch (dtypeSrc) {
+            case DTYPE_FLOAT64: DEFINE_CAST_LOOP(double, double, TO_DOUBLE) break;
+            case DTYPE_FLOAT32: DEFINE_CAST_LOOP(float, double, TO_DOUBLE) break;
+            case DTYPE_INT32: DEFINE_CAST_LOOP(int32_t, double, TO_DOUBLE) break;
+            case DTYPE_INT64: DEFINE_CAST_LOOP(int64_t, double, TO_DOUBLE) break;
+            case DTYPE_UINT8: DEFINE_CAST_LOOP(uint8_t, double, TO_DOUBLE) break;
+            case DTYPE_INT16: DEFINE_CAST_LOOP(int16_t, double, TO_DOUBLE) break;
+            case DTYPE_COMPLEX128: DEFINE_CAST_LOOP(cpx_t, double, COMPLEX_TO_DOUBLE) break;
+            case DTYPE_COMPLEX64: DEFINE_CAST_LOOP(cpx_f_t, double, COMPLEXF_TO_DOUBLE) break;
+            case DTYPE_BOOLEAN: DEFINE_CAST_LOOP(uint8_t, double, BOOL_TO_DOUBLE) break;
+        }
+    } else if (dtypeDst == DTYPE_COMPLEX128) { // dest is complex128 (cpx_t)
+        switch (dtypeSrc) {
+            case DTYPE_FLOAT64: DEFINE_CAST_LOOP(double, cpx_t, TO_COMPLEX) break;
+            case DTYPE_FLOAT32: DEFINE_CAST_LOOP(float, cpx_t, TO_COMPLEX) break;
+            case DTYPE_INT32: DEFINE_CAST_LOOP(int32_t, cpx_t, TO_COMPLEX) break;
+            case DTYPE_INT64: DEFINE_CAST_LOOP(int64_t, cpx_t, TO_COMPLEX) break;
+            case DTYPE_UINT8: DEFINE_CAST_LOOP(uint8_t, cpx_t, TO_COMPLEX) break;
+            case DTYPE_INT16: DEFINE_CAST_LOOP(int16_t, cpx_t, TO_COMPLEX) break;
+            case DTYPE_COMPLEX128: DEFINE_CAST_LOOP(cpx_t, cpx_t, (cpx_t)) break;
+            case DTYPE_COMPLEX64: DEFINE_CAST_LOOP(cpx_f_t, cpx_t, COMPLEXF_TO_COMPLEX) break;
+            case DTYPE_BOOLEAN: DEFINE_CAST_LOOP(uint8_t, cpx_t, BOOL_TO_COMPLEX) break;
+        }
+    }
+}
+
+void v_extract_upper_triangular(
+    const void *src_ptr,
+    void *dest_ptr,
+    int k,
+    int n,
+    int dtype
+) {
+    if (src_ptr == NULL || dest_ptr == NULL || k <= 0 || n <= 0) return;
+    
+    switch (dtype) {
+        case DTYPE_FLOAT64: {
+            const double *src = (const double *)src_ptr;
+            double *dest = (double *)dest_ptr;
+            for (int i = 0; i < k; i++) {
+                for (int j = i; j < n; j++) {
+                    dest[i * n + j] = src[i * n + j];
+                }
+            }
+            break;
+        }
+        case DTYPE_FLOAT32: {
+            const float *src = (const float *)src_ptr;
+            float *dest = (float *)dest_ptr;
+            for (int i = 0; i < k; i++) {
+                for (int j = i; j < n; j++) {
+                    dest[i * n + j] = src[i * n + j];
+                }
+            }
+            break;
+        }
+        case DTYPE_COMPLEX128: {
+            const cpx_t *src = (const cpx_t *)src_ptr;
+            cpx_t *dest = (cpx_t *)dest_ptr;
+            for (int i = 0; i < k; i++) {
+                for (int j = i; j < n; j++) {
+                    dest[i * n + j] = src[i * n + j];
+                }
+            }
+            break;
+        }
+        case DTYPE_COMPLEX64: {
+            const cpx_f_t *src = (const cpx_f_t *)src_ptr;
+            cpx_f_t *dest = (cpx_f_t *)dest_ptr;
+            for (int i = 0; i < k; i++) {
+                for (int j = i; j < n; j++) {
+                    dest[i * n + j] = src[i * n + j];
+                }
+            }
+            break;
+        }
+    }
+}
+
+
+
+

@@ -409,6 +409,9 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// Reference: [Trigonometric Cosine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
 NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute cos() on a disposed array.');
+  }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     targetDType = a.dtype;
@@ -429,18 +432,25 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   }
 
   if (a.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_cos_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_cos_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      v_cos_complex128(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      v_cos_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_cos_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_cos_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.complex128:
+        v_cos_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.complex64:
+        v_cos_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      default:
+        break;
     }
   } else {
     final rank = a.shape.length;
@@ -546,6 +556,9 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// Reference: [Exponential Function](https://en.wikipedia.org/wiki/Exponential_function)
 NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute exp() on a disposed array.');
+  }
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
 
   final NDArray<R> result;
@@ -561,12 +574,15 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   }
 
   if (a.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_exp_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_exp_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_exp_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_exp_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      default:
+        break;
     }
   } else {
     final rank = a.shape.length;
@@ -636,6 +652,9 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// Reference: [Natural Logarithm](https://en.wikipedia.org/wiki/Natural_logarithm)
 NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute log() on a disposed array.');
+  }
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
 
   final NDArray<R> result;
@@ -651,12 +670,15 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   }
 
   if (a.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_log_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_log_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_log_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_log_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      default:
+        break;
     }
   } else {
     final rank = a.shape.length;
@@ -1052,6 +1074,9 @@ NDArray<T> copy<T extends Object>(NDArray<T> a) {
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
 NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute tan() on a disposed array.');
+  }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     targetDType = a.dtype;
@@ -1072,18 +1097,25 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   }
 
   if (a.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_tan_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_tan_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      v_tan_complex128(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      v_tan_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_tan_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_tan_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.complex128:
+        v_tan_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.complex64:
+        v_tan_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      default:
+        break;
     }
   } else {
     final rank = a.shape.length;
@@ -1207,18 +1239,29 @@ NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   }
 
   if (a.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_asin_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_asin_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      v_asin_complex128(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      v_asin_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_asin_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_asin_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.complex128:
+        v_asin_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.complex64:
+        v_asin_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      default:
+        break;
     }
   } else {
     final rank = a.shape.length;
@@ -1341,18 +1384,29 @@ NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   }
 
   if (a.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_acos_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_acos_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      v_acos_complex128(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      v_acos_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_acos_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_acos_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.complex128:
+        v_acos_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.complex64:
+        v_acos_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      default:
+        break;
     }
   } else {
     final rank = a.shape.length;
@@ -1475,18 +1529,29 @@ NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   }
 
   if (a.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_atan_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_atan_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      v_atan_complex128(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      v_atan_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_atan_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_atan_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.complex128:
+        v_atan_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.complex64:
+        v_atan_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      default:
+        break;
     }
   } else {
     final rank = a.shape.length;
@@ -1600,12 +1665,15 @@ NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   }
 
   if (a.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_sinh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_sinh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_sinh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_sinh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      default:
+        break;
     }
   } else {
     final rank = a.shape.length;
@@ -1618,26 +1686,29 @@ NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
       cStridesRes[i] = result.strides[i];
     }
     try {
-      if (a.dtype == DType.float64) {
-        s_sinh_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-        );
-        return result;
-      } else if (a.dtype == DType.float32) {
-        s_sinh_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-        );
-        return result;
+      switch (a.dtype) {
+        case DType.float64:
+          s_sinh_double(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        case DType.float32:
+          s_sinh_float(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        default:
+          break;
       }
     } finally {
       malloc.free(cShape);
@@ -1691,12 +1762,15 @@ NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   }
 
   if (a.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_cosh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_cosh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_cosh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_cosh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      default:
+        break;
     }
   } else {
     final rank = a.shape.length;
@@ -1709,26 +1783,29 @@ NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
       cStridesRes[i] = result.strides[i];
     }
     try {
-      if (a.dtype == DType.float64) {
-        s_cosh_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-        );
-        return result;
-      } else if (a.dtype == DType.float32) {
-        s_cosh_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-        );
-        return result;
+      switch (a.dtype) {
+        case DType.float64:
+          s_cosh_double(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        case DType.float32:
+          s_cosh_float(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        default:
+          break;
       }
     } finally {
       malloc.free(cShape);
@@ -1782,12 +1859,15 @@ NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   }
 
   if (a.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_tanh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_tanh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_tanh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_tanh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      default:
+        break;
     }
   } else {
     final rank = a.shape.length;
@@ -1800,26 +1880,29 @@ NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
       cStridesRes[i] = result.strides[i];
     }
     try {
-      if (a.dtype == DType.float64) {
-        s_tanh_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-        );
-        return result;
-      } else if (a.dtype == DType.float32) {
-        s_tanh_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-        );
-        return result;
+      switch (a.dtype) {
+        case DType.float64:
+          s_tanh_double(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        case DType.float32:
+          s_tanh_float(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        default:
+          break;
       }
     } finally {
       malloc.free(cShape);
@@ -1874,12 +1957,15 @@ NDArray<double> asinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   }
 
   if (a.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_asinh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_asinh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_asinh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_asinh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      default:
+        break;
     }
   } else {
     final rank = a.shape.length;
@@ -1892,26 +1978,29 @@ NDArray<double> asinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
       cStridesRes[i] = result.strides[i];
     }
     try {
-      if (a.dtype == DType.float64) {
-        s_asinh_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-        );
-        return result;
-      } else if (a.dtype == DType.float32) {
-        s_asinh_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-        );
-        return result;
+      switch (a.dtype) {
+        case DType.float64:
+          s_asinh_double(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        case DType.float32:
+          s_asinh_float(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        default:
+          break;
       }
     } finally {
       malloc.free(cShape);
@@ -1965,12 +2054,15 @@ NDArray<double> acosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   }
 
   if (a.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_acosh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_acosh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_acosh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_acosh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      default:
+        break;
     }
   } else {
     final rank = a.shape.length;
@@ -1983,26 +2075,29 @@ NDArray<double> acosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
       cStridesRes[i] = result.strides[i];
     }
     try {
-      if (a.dtype == DType.float64) {
-        s_acosh_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-        );
-        return result;
-      } else if (a.dtype == DType.float32) {
-        s_acosh_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-        );
-        return result;
+      switch (a.dtype) {
+        case DType.float64:
+          s_acosh_double(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        case DType.float32:
+          s_acosh_float(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        default:
+          break;
       }
     } finally {
       malloc.free(cShape);
@@ -2063,22 +2158,29 @@ NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   }
 
   if (a.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_atanh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_atanh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      v_atanh_complex128(
-        a.pointer.cast(),
-        result.pointer.cast(),
-        a.data.length,
-      );
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      v_atanh_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_atanh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.float32:
+        v_atanh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        return result;
+      case DType.complex128:
+        v_atanh_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      case DType.complex64:
+        v_atanh_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.data.length,
+        );
+        return result;
+      default:
+        break;
     }
   } else {
     final rank = a.shape.length;
@@ -2156,6 +2258,9 @@ NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
 NDArray atan2(NDArray y, NDArray x, {NDArray? out}) {
+  if (y.isDisposed) {
+    throw StateError('Cannot execute atan2() on a disposed array.');
+  }
   if (y.dtype == DType.complex128 ||
       y.dtype == DType.complex64 ||
       x.dtype == DType.complex128 ||
@@ -2337,6 +2442,9 @@ NDArray atan2(NDArray y, NDArray x, {NDArray? out}) {
 /// final h = hypot(a, b);
 /// ```
 NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
+  if (x1.isDisposed) {
+    throw StateError('Cannot execute hypot() on a disposed array.');
+  }
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
   final DType<double> targetDType =
@@ -2483,6 +2591,9 @@ NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
 /// final p = power(a, b);
 /// ```
 NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
+  if (x1.isDisposed) {
+    throw StateError('Cannot execute power() on a disposed array.');
+  }
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
   final DType<dynamic> targetDType;
@@ -3641,11 +3752,8 @@ NDArray<R> real<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     result = out;
   } else {
     if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
-      return NDArray.view(
-        a,
-        shape: a.shape,
-        strides: a.strides,
-      ); // Zero-copy view for already real arrays!
+      return NDArray.view(a, shape: a.shape, strides: a.strides)
+          as NDArray<R>; // Zero-copy view for already real arrays!
     }
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
@@ -5556,11 +5664,14 @@ NDArray<bool> _runBinaryLogical(
 /// Factorizes a symmetric, positive-definite matrix [a] out `A = L * L^T`, where `L`
 /// is a lower triangular matrix factor.
 ///
-/// Returns a Map `{'L': lMatrix}` containing the lower factor.
+/// Returns a record `(L: lMatrix)` containing the lower factor.
 ///
 /// **Example:**
 /// {@example /example/linalg_example.dart lang=dart}
-Map<String, NDArray> cholesky(NDArray a) {
+({NDArray L}) cholesky(NDArray a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute cholesky() on a disposed array.');
+  }
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
   }
@@ -5571,29 +5682,21 @@ Map<String, NDArray> cholesky(NDArray a) {
 
   final NDArray src;
   final bool wasCopied;
-  if (!a.isContiguous) {
-    src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+  if (a.dtype != targetDType) {
+    src = castNDArray(a, targetDType);
+    wasCopied = true;
+  } else if (!a.isContiguous) {
+    src = a.copy();
     wasCopied = true;
   } else {
     src = a;
     wasCopied = false;
   }
 
-  // Create result matrix L and copy elements from src
-  final lMat = targetDType == DType.float32
-      ? NDArray<Float32>.zeros([n, n], DType.float32)
-      : NDArray<Float64>.zeros([n, n], DType.float64);
+  // Create result matrix L and copy elements from src natively
+  final lMat = src.copy();
 
   try {
-    if (src.dtype == DType.float64) {
-      (lMat.data as Float64List).setRange(0, n * n, src.data as Float64List);
-    } else if (src.dtype == DType.float32) {
-      (lMat.data as Float32List).setRange(0, n * n, src.data as Float32List);
-    } else {
-      for (var i = 0; i < n * n; i++) {
-        lMat.data[i] = (src.data[i] as num).toDouble();
-      }
-    }
 
     // Char 'L' in ASCII is 76
     const uploL = 76;
@@ -5653,7 +5756,7 @@ Map<String, NDArray> cholesky(NDArray a) {
     }
   }
 
-  return {'L': lMat};
+  return (L: lMat);
 }
 
 /// Computes the QR decomposition of a matrix or a stack of matrices $A = Q R$.
@@ -5676,10 +5779,16 @@ Map<String, NDArray> cholesky(NDArray a) {
 /// ```dart
 /// final a = `NDArray<double>`.fromList([12.0, -51.0, 4.0, 6.0, 167.0, -68.0, -4.0, 24.0, -41.0], [3, 3], DType.float64);
 /// final res = qr(a);
-/// final q = res['Q']!;
-/// final r = res['R']!;
+/// final q = res.Q;
+/// final r = res.R;
 /// ```
-Map<String, NDArray> qr(NDArray a) {
+({NDArray<R> Q, NDArray<R> R}) qr<T, R>(
+  NDArray<T> a, {
+  ({NDArray<R> Q, NDArray<R> R})? out,
+}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute qr() on a disposed array.');
+  }
   final rank = a.shape.length;
   if (rank < 2) {
     throw ArgumentError('Matrix must be at least 2D (was ${a.shape})');
@@ -5696,8 +5805,34 @@ Map<String, NDArray> qr(NDArray a) {
   final qShape = [...stackShape, m, k];
   final rShape = [...stackShape, k, n];
 
-  final qMat = NDArray.zeros(qShape, targetDType);
-  final rMat = NDArray.zeros(rShape, targetDType);
+  final NDArray<R> qMat;
+  final NDArray<R> rMat;
+  if (out != null) {
+    qMat = out.Q;
+    rMat = out.R;
+    if (!listEquals(qMat.shape, qShape) || qMat.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out Q buffer has incompatible shape or dtype.',
+      );
+    }
+    if (!qMat.isContiguous) {
+      throw ArgumentError('Provided out Q buffer must be contiguous.');
+    }
+    if (!listEquals(rMat.shape, rShape) || rMat.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out R buffer has incompatible shape or dtype.',
+      );
+    }
+    if (!rMat.isContiguous) {
+      throw ArgumentError('Provided out R buffer must be contiguous.');
+    }
+  } else {
+    qMat = NDArray.zeros(qShape, targetDType) as NDArray<R>;
+    rMat = NDArray.zeros(rShape, targetDType) as NDArray<R>;
+  }
+
+  final aCast = a.dtype == targetDType ? a : castNDArray(a, targetDType);
+  final bool wasCast = a.dtype != targetDType;
 
   final aCopy = NDArray.create([m, n], targetDType);
   final marker = ScratchArena.marker;
@@ -5719,44 +5854,17 @@ Map<String, NDArray> qr(NDArray a) {
     ) {
       var offsetA = 0;
       for (var i = 0; i < coords.length; i++) {
-        offsetA += coords[i] * a.strides[i];
+        offsetA += coords[i] * aCast.strides[i];
       }
 
-      if (targetDType == DType.float64) {
-        final aCopyData = aCopy.data as Float64List;
-        if (a.isContiguous && a.dtype == DType.float64) {
-          final aData = a.data as Float64List;
-          aCopyData.setRange(0, m * n, aData, offsetA);
-        } else {
-          final sliceView = NDArray.view(
-            a,
-            shape: [m, n],
-            strides: a.strides.sublist(rank - 2),
-            offsetElements: offsetA,
-          );
-          final list = sliceView.toList();
-          for (var i = 0; i < m * n; i++) {
-            aCopyData[i] = (list[i] as num).toDouble();
-          }
-        }
-      } else {
-        final aCopyData = aCopy.data as Float32List;
-        if (a.isContiguous && a.dtype == DType.float32) {
-          final aData = a.data as Float32List;
-          aCopyData.setRange(0, m * n, aData, offsetA);
-        } else {
-          final sliceView = NDArray.view(
-            a,
-            shape: [m, n],
-            strides: a.strides.sublist(rank - 2),
-            offsetElements: offsetA,
-          );
-          final list = sliceView.toList();
-          for (var i = 0; i < m * n; i++) {
-            aCopyData[i] = (list[i] as num).toDouble();
-          }
-        }
-      }
+      final sliceView = NDArray.view(
+        aCast,
+        shape: [m, n],
+        strides: aCast.strides.sublist(rank - 2),
+        offsetElements: offsetA,
+      );
+      sliceView.copy(out: aCopy);
+      sliceView.dispose();
 
       final r2D = targetDType == DType.float32
           ? NDArray<Float32>.zeros([k, n], DType.float32)
@@ -5851,32 +5959,23 @@ Map<String, NDArray> qr(NDArray a) {
         }
       }
 
-      var offsetQ = 0;
-      for (var i = 0; i < coords.length; i++) {
-        offsetQ += coords[i] * qMat.strides[i];
-      }
-      var offsetR = 0;
-      for (var i = 0; i < coords.length; i++) {
-        offsetR += coords[i] * rMat.strides[i];
-      }
+      final qSlice = NDArray.view(
+        qMat,
+        shape: [m, k],
+        strides: qMat.strides.sublist(rank - 2),
+        offsetElements: offsetQ,
+      );
+      q2D.copy(out: qSlice);
+      qSlice.dispose();
 
-      final strideQ1 = qMat.strides[rank - 2];
-      final strideQ2 = qMat.strides[rank - 1];
-      final q2DData = q2D.data;
-      for (var r = 0; r < m; r++) {
-        for (var c = 0; c < k; c++) {
-          qMat.data[offsetQ + r * strideQ1 + c * strideQ2] = q2DData[r * k + c];
-        }
-      }
-
-      final strideR1 = rMat.strides[rank - 2];
-      final strideR2 = rMat.strides[rank - 1];
-      final r2DData = r2D.data;
-      for (var r = 0; r < k; r++) {
-        for (var c = 0; c < n; c++) {
-          rMat.data[offsetR + r * strideR1 + c * strideR2] = r2DData[r * n + c];
-        }
-      }
+      final rSlice = NDArray.view(
+        rMat,
+        shape: [k, n],
+        strides: rMat.strides.sublist(rank - 2),
+        offsetElements: offsetR,
+      );
+      r2D.copy(out: rSlice);
+      rSlice.dispose();
 
       q2D.dispose();
       r2D.dispose();
@@ -5886,7 +5985,7 @@ Map<String, NDArray> qr(NDArray a) {
     aCopy.dispose();
   }
 
-  return {'Q': qMat, 'R': rMat};
+  return (Q: qMat, R: rMat);
 }
 
 /// Computes the Singular Value Decomposition (SVD) of a matrix or a stack of matrices $A = U S V^h$.
@@ -5909,11 +6008,14 @@ Map<String, NDArray> qr(NDArray a) {
 /// ```dart
 /// final a = `NDArray<double>`.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], DType.float64);
 /// final res = svd(a);
-/// final u = res['U']!;
-/// final s = res['S']!;
-/// final vh = res['Vh']!;
+/// final u = res.U;
+/// final s = res.S;
+/// final vh = res.Vh;
 /// ```
-Map<String, NDArray> svd(NDArray a) {
+({NDArray U, NDArray S, NDArray Vh}) svd(NDArray a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute svd() on a disposed array.');
+  }
   final rank = a.shape.length;
   if (rank < 2) {
     throw ArgumentError('Matrix must be at least 2D (was ${a.shape})');
@@ -5929,14 +6031,14 @@ Map<String, NDArray> svd(NDArray a) {
 
     final aT = a.transpose(axes);
     final resT = svd(aT);
-    final uNew = resT['U']!;
-    final sNew = resT['S']!;
-    final vhNew = resT['Vh']!;
+    final uNew = resT.U;
+    final sNew = resT.S;
+    final vhNew = resT.Vh;
 
     final uResult = vhNew.transpose(axes);
     final vhResult = uNew.transpose(axes);
 
-    return {'U': uResult, 'S': sNew, 'Vh': vhResult};
+    return (U: uResult, S: sNew, Vh: vhResult);
   }
 
   final DType<dynamic> targetDType = a.dtype == DType.float32
@@ -6108,7 +6210,7 @@ Map<String, NDArray> svd(NDArray a) {
     aCopy.dispose();
   }
 
-  return {'U': uMat, 'S': sMat, 'Vh': vtMat};
+  return (U: uMat, S: sMat, Vh: vtMat);
 }
 
 /// Extract a diagonal or construct a diagonal array.
@@ -15098,11 +15200,9 @@ double _matrixNorm(NDArray a, dynamic ord, DType targetDType) {
         : castNDArray(a, DType.float64);
     try {
       final svdRes = svd(castedA);
-      final s = svdRes['S']!;
+      final s = svdRes.S;
       final val = ord == 2 ? s.data[0] : s.data[s.data.length - 1];
-      for (final arr in svdRes.values) {
-        arr.dispose();
-      }
+      svdRes.dispose();
       return val.toDouble();
     } finally {
       if (castedA != a) castedA.dispose();
@@ -15145,5 +15245,20 @@ num _getMaxLimit(DType dtype) {
       return 255;
     default:
       return double.infinity;
+  }
+}
+
+extension QRRecordDispose on ({NDArray Q, NDArray R}) {
+  void dispose() {
+    Q.dispose();
+    R.dispose();
+  }
+}
+
+extension SVDRecordDispose on ({NDArray U, NDArray S, NDArray Vh}) {
+  void dispose() {
+    U.dispose();
+    S.dispose();
+    Vh.dispose();
   }
 }

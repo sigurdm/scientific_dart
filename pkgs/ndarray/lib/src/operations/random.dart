@@ -533,8 +533,8 @@ NDArray<T> multivariateNormal<T extends num>(
   }
 
   return NDArray.scope(() {
-    final choleskyFactors = cholesky(cov);
-    final l = choleskyFactors['L']!;
+    final choleskyFactors = cholesky(cov as NDArray<T>);
+    final l = choleskyFactors.L;
 
     final sampleShape = <int>[];
     if (size != null) {
@@ -657,7 +657,7 @@ NDArray<T> multinomial<T extends num>(
   final result =
       out ?? NDArray<T>.create(finalShape, resolvedDType, zeroInit: true);
   if (out != null) {
-    result.fill(0);
+    result.fill(0 as T);
   }
 
   for (var s = 0; s < sampleCount; s++) {

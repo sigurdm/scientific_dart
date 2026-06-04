@@ -158,7 +158,7 @@ void main() {
           () => NDArray.scope(() {
             final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
             a.dispose();
-            expect(() => a.fill(1.0), throwsStateError);
+            expect(() => a.fill(Float64(1.0)), throwsStateError);
             expect(() => a.transpose(), throwsStateError);
             expect(() => a[0], throwsStateError);
             expect(() => a[0] = 1.0, throwsStateError);

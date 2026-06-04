@@ -196,8 +196,8 @@ class QrDecompositionBenchmark extends BenchmarkBase {
   @override
   void run() {
     final res = qr(a);
-    res['Q']!.dispose();
-    res['R']!.dispose();
+    res.Q.dispose();
+    res.R.dispose();
   }
 
   @override
@@ -228,9 +228,7 @@ class SvdDecompositionBenchmark extends BenchmarkBase {
   @override
   void run() {
     final res = svd(a);
-    res['U']!.dispose();
-    res['S']!.dispose();
-    res['Vh']!.dispose();
+    res.dispose();
   }
 
   @override
