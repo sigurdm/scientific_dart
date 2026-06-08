@@ -26,8 +26,17 @@ final class ScratchArena {
 
   /// Allocates [bytes] of memory from the arena stack, aligned to 8 bytes.
   ///
-  /// To free allocations, record [marker] before calling this and reset the stack
-  /// back to the marker using [reset] when done.
+  /// **Preconditions:**
+  /// - [bytes] must be greater than 0.
+  ///
+  /// **Performance considerations:**
+  /// - Amortized $O(1)$ complexity. If the current page has enough space,
+  ///   allocation is a simple pointer offset increment.
+  /// - If a new page needs to be allocated, it invokes native `malloc`, which
+  ///   has $O(1)$ to $O(N)$ complexity depending on the system allocator.
+  ///
+  /// **Example:**
+  /// {@example /example/scratch_arena_example.dart}
   static ffi.Pointer<T> allocate<T extends ffi.NativeType>(int bytes) {
     _init();
 
@@ -75,6 +84,22 @@ final class ScratchArena {
       ScratchMarker._(_currentPageIndex, _offset);
 
   /// Resets the arena stack back to the given [marker].
+  ///
+  /// This rolls back the allocation offset and deallocates any excess pages.
+  /// Empty custom-allocated pages are pruned even if they are below the
+  /// standard preservation limit (page 0 or 1).
+  ///
+  /// **Preconditions:**
+  /// - [marker] must be a valid marker obtained from [ScratchArena.marker]
+  ///   in the current allocation session.
+  /// - Cannot reset to a marker that is ahead of the current stack pointer.
+  ///
+  /// **Performance considerations:**
+  /// - $O(P)$ where $P$ is the number of pages pruned. Usually $O(1)$ unless
+  ///   many pages were allocated.
+  ///
+  /// **Example:**
+  /// {@example /example/scratch_arena_example.dart}
   static void reset(ScratchMarker marker) {
     final pageIndex = marker.pageIndex;
     final offset = marker.offset;
@@ -84,20 +109,37 @@ final class ScratchArena {
       assert(offset <= _offset);
     }
 
-    // Selective Pruning: Deallocate any excess pages located beyond the
-    // target marker to prevent native memory leaks and bloating.
-    // We keep up to 2 standard pages (Page 0 and 1, totaling 768KB) persistently.
-    if (_pages.length > 2 && _pages.length > pageIndex + 1) {
-      final preserveCount = pageIndex + 1 > 2 ? pageIndex + 1 : 2;
-      while (_pages.length > preserveCount) {
-        final excessPage = _pages.removeLast();
-        _pageCapacities.removeLast();
-        malloc.free(excessPage);
+    int? pruneFromIndex;
+    for (var i = 0; i < _pages.length; i++) {
+      final isEmpty = i > pageIndex || (i == pageIndex && offset == 0);
+      if (isEmpty) {
+        final isCustom = _pageCapacities[i] > (_baseCapacity << i);
+        final isExcess = i >= 2;
+        if (isCustom || isExcess) {
+          pruneFromIndex = i;
+          break;
+        }
       }
     }
 
-    _currentPageIndex = pageIndex;
-    _offset = offset;
+    if (pruneFromIndex != null) {
+      while (_pages.length > pruneFromIndex) {
+        final page = _pages.removeLast();
+        _pageCapacities.removeLast();
+        malloc.free(page);
+      }
+    }
+
+    if (_pages.isEmpty) {
+      _currentPageIndex = 0;
+      _offset = 0;
+    } else if (pageIndex >= _pages.length) {
+      _currentPageIndex = _pages.length - 1;
+      _offset = _pageCapacities[_currentPageIndex];
+    } else {
+      _currentPageIndex = pageIndex;
+      _offset = offset;
+    }
   }
 
   /// Allocates transient memory from the arena and copies the elements of [list] into it as native [ffi.Int]s.
@@ -270,8 +312,12 @@ final class ScratchArena {
   /// Gets or grows a persistent thread-local static buffer for leaf strided operations.
   ///
   /// Designed for synchronous leaf operations that do not make nested calls.
-  static ffi.Pointer<ffi.Int> getStridedBuffer(int ndim) {
-    final requiredSize = ndim * 4;
+  ///
+  /// [ndim] is the number of dimensions.
+  /// [segments] is the number of segments of size [ndim] needed in the buffer.
+  /// Defaults to 4.
+  static ffi.Pointer<ffi.Int> getStridedBuffer(int ndim, [int segments = 4]) {
+    final requiredSize = ndim * segments;
     if (_stridedBuffer == null || _stridedCapacity < requiredSize) {
       if (_stridedBuffer != null) {
         malloc.free(_stridedBuffer!);
@@ -281,9 +327,36 @@ final class ScratchArena {
     }
     return _stridedBuffer!;
   }
+
+  /// Releases all persistent resources held by the [ScratchArena].
+  ///
+  /// This frees all pre-allocated pages and the static strided buffer.
+  /// Clients should call this when they are done using the arena to free
+  /// native memory.
+  static void cleanup() {
+    for (final page in _pages) {
+      malloc.free(page);
+    }
+    _pages.clear();
+    _pageCapacities.clear();
+    _currentPageIndex = 0;
+    _offset = 0;
+
+    if (_stridedBuffer != null) {
+      malloc.free(_stridedBuffer!);
+      _stridedBuffer = null;
+      _stridedCapacity = 0;
+    }
+  }
 }
 
 /// Represents a stable checkpoint marker for the [ScratchArena] memory stack.
+///
+/// Markers are used to reset the arena stack back to a previous state,
+/// effectively freeing all allocations made after the marker was recorded.
+///
+/// **Example:**
+/// {@example /example/scratch_arena_example.dart}
 final class ScratchMarker {
   /// The page index inside the ScratchArena page pool when the marker was recorded.
   final int pageIndex;

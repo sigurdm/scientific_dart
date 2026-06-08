@@ -4726,7 +4726,7 @@ NDArray<T> clipArray<T>(
     final marker = ScratchArena.marker;
     try {
       final ndim = commonShape.length;
-      final cBuffer = ScratchArena.getStridedBuffer(ndim);
+      final cBuffer = ScratchArena.getStridedBuffer(ndim, 5);
       final cShape = cBuffer;
       final cStridesA = cBuffer + ndim;
       final cStridesMin = cBuffer + (ndim * 2);

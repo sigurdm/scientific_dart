@@ -65,14 +65,22 @@ final class NDIter {
     }
   }
 
-  /// Creates a zero-allocation iterator over a single [array].
+  /// Creates an iterator over a single [array].
+  ///
+  /// **Performance considerations:**
+  /// - Iteration (calling [moveNext]) is zero-allocation.
+  /// - Construction allocates internal helper lists to track state.
   ///
   /// **Throws:**
   /// - [StateError] if the array is disposed.
   NDIter(NDArray array) : this._internal([array], array.shape);
 
-  /// Creates a zero-allocation iterator that iterates over two arrays
-  /// simultaneously, broadcasting their shapes to a common compatible shape.
+  /// Creates an iterator that iterates over two arrays simultaneously,
+  /// broadcasting their shapes to a common compatible shape.
+  ///
+  /// **Performance considerations:**
+  /// - Iteration (calling [moveNext]) is zero-allocation.
+  /// - Construction allocates internal helper lists to track state.
   ///
   /// **Throws:**
   /// - [StateError] if either array is disposed.
@@ -80,8 +88,12 @@ final class NDIter {
   NDIter.broadcast2(NDArray a, NDArray b)
     : this._internal([a, b], NDIter._broadcastShapes(a.shape, b.shape));
 
-  /// Creates a zero-allocation iterator that iterates over a list of [arrays]
-  /// simultaneously, broadcasting their shapes to a common compatible shape.
+  /// Creates an iterator that iterates over a list of [arrays] simultaneously,
+  /// broadcasting their shapes to a common compatible shape.
+  ///
+  /// **Performance considerations:**
+  /// - Iteration (calling [moveNext]) is zero-allocation.
+  /// - Construction allocates internal helper lists to track state.
   ///
   /// **Throws:**
   /// - [StateError] if any array is disposed.

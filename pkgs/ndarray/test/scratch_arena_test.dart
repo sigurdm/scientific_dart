@@ -1,6 +1,6 @@
 import 'dart:ffi' as ffi;
 import 'package:test/test.dart';
-import 'package:ndarray/ndarray.dart';
+import 'package:ndarray/src/ndarray.dart';
 import 'package:ndarray/src/scratch_arena.dart';
 
 void main() {

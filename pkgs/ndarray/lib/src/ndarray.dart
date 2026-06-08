@@ -362,13 +362,8 @@ final class NDArray<T> implements ffi.Finalizable {
   /// print(a.toList()); // [0.0, 0.0, 0.0, 0.0]
   /// ```
   ///
-  /// Refer to the [NumPy Array Creation Guidelines](https://numpy.org/doc/stable/reference/routines.array-creation.html)
-  /// and [Dart FFI Memory Management](https://dart.dev/guides/libraries/c-interop) for additional details.  /// Factory to create a new multi-dimensional array with backing unmanaged C heap memory.
-  ///
-  /// This allocates raw, stable memory directly on the unmanaged C heap using `malloc` or `calloc`.
-  ///
   /// **Gotchas:**
-  /// - backing heap pages are not managed by isolate garbage collection. Call `dispose()` explicitly to prevent leaks.
+  /// - Backing heap pages are not managed by isolate garbage collection. Call `dispose()` explicitly to prevent leaks.
   ///
   /// Refer to the [NumPy Array Creation Guidelines](https://numpy.org/doc/stable/reference/routines.array-creation.html)
   /// and [Dart FFI Memory Management](https://dart.dev/guides/libraries/c-interop) for additional details.
@@ -805,7 +800,9 @@ final class NDArray<T> implements ffi.Finalizable {
     }
 
     if (!isContiguous) {
-      return NDArray<T>.fromList(toList(), newShape, dtype);
+      final result = NDArray<T>.create(newShape, dtype);
+      _copyStridedToContiguous(result);
+      return result;
     }
 
     final newStrides = computeCStrides(newShape);
@@ -919,17 +916,9 @@ final class NDArray<T> implements ffi.Finalizable {
 
   void _copyStridedToContiguous(NDArray<T> dest) {
     final marker = ScratchArena.marker;
-    final cShape = ScratchArena.allocate<ffi.Int>(
-      shape.length * ffi.sizeOf<ffi.Int>(),
-    );
-    final cStridesSrc = ScratchArena.allocate<ffi.Int>(
-      strides.length * ffi.sizeOf<ffi.Int>(),
-    );
-    for (var i = 0; i < shape.length; i++) {
-      cShape[i] = shape[i];
-      cStridesSrc[i] = strides[i];
-    }
     try {
+      final cShape = ScratchArena.copyInts(shape);
+      final cStridesSrc = ScratchArena.copyInts(strides);
       switch (dtype) {
         case DType.float64:
           s_flatten_double(
@@ -2204,16 +2193,20 @@ final class NDArray<T> implements ffi.Finalizable {
           );
         }
         final size = shape[i];
-        final indices = using((arena) {
-          final pIndices = arena.allocate<ffi.Int>(size);
+        final maskMarker = ScratchArena.marker;
+        final List<int> indices;
+        try {
+          final pIndices = ScratchArena.allocate<ffi.Int>(size * ffi.sizeOf<ffi.Int>());
           final count = unpack_mask_c(
             mask.mask.pointer.cast(),
             size,
             mask.mask.strides[0],
             pIndices,
           );
-          return pIndices.cast<ffi.Int32>().asTypedList(count).toList();
-        });
+          indices = pIndices.cast<ffi.Int32>().asTypedList(count).toList();
+        } finally {
+          ScratchArena.reset(maskMarker);
+        }
         processedSelectors[i] = Indices(indices);
       }
     }
@@ -2278,14 +2271,15 @@ final class NDArray<T> implements ffi.Finalizable {
       final result = NDArray<T>.create(newShape, dtype);
       final rank = shape.length;
 
-      using((arena) {
-        final pTypes = arena.allocate<ffi.Int>(rank);
-        final pIndexVals = arena.allocate<ffi.Int>(rank);
-        final pSliceStarts = arena.allocate<ffi.Int>(rank);
-        final pSliceStops = arena.allocate<ffi.Int>(rank);
-        final pSliceSteps = arena.allocate<ffi.Int>(rank);
-        final pIndicesPtrs = arena.allocate<ffi.Pointer<ffi.Int>>(rank);
-        final pIndicesLens = arena.allocate<ffi.Int>(rank);
+      final sliceMarker = ScratchArena.marker;
+      try {
+        final pTypes = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
+        final pIndexVals = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
+        final pSliceStarts = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
+        final pSliceStops = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
+        final pSliceSteps = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
+        final pIndicesPtrs = ScratchArena.allocate<ffi.Pointer<ffi.Int>>(rank * ffi.sizeOf<ffi.Pointer<ffi.Int>>());
+        final pIndicesLens = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
 
         for (var i = 0; i < rank; i++) {
           final selector = i < processedSelectors.length
@@ -2337,7 +2331,7 @@ final class NDArray<T> implements ffi.Finalizable {
             pSliceSteps[i] = 0;
 
             final values = selector.values;
-            final pIndices = arena.allocate<ffi.Int>(values.length);
+            final pIndices = ScratchArena.allocate<ffi.Int>(values.length * ffi.sizeOf<ffi.Int>());
             for (var j = 0; j < values.length; j++) {
               final idx = values[j];
               final realIdx = idx < 0 ? shape[i] + idx : idx;
@@ -2355,12 +2349,8 @@ final class NDArray<T> implements ffi.Finalizable {
           }
         }
 
-        final pSrcStrides = arena.allocate<ffi.Int>(rank);
-        final pSrcShape = arena.allocate<ffi.Int>(rank);
-        for (var i = 0; i < rank; i++) {
-          pSrcStrides[i] = strides[i];
-          pSrcShape[i] = shape[i];
-        }
+        final pSrcStrides = ScratchArena.copyInts(strides);
+        final pSrcShape = ScratchArena.copyInts(shape);
 
         copy_advanced_c(
           pointer.cast(),
@@ -2377,7 +2367,9 @@ final class NDArray<T> implements ffi.Finalizable {
           pIndicesPtrs,
           pIndicesLens,
         );
-      });
+      } finally {
+        ScratchArena.reset(sliceMarker);
+      }
 
       return result;
     }
@@ -2853,17 +2845,9 @@ final class NDArray<T> implements ffi.Finalizable {
 
     final int elementsHash;
     final marker = ScratchArena.marker;
-    final cShape = ScratchArena.allocate<ffi.Int>(
-      shape.length * ffi.sizeOf<ffi.Int>(),
-    );
-    final cStrides = ScratchArena.allocate<ffi.Int>(
-      strides.length * ffi.sizeOf<ffi.Int>(),
-    );
-    for (var i = 0; i < shape.length; i++) {
-      cShape[i] = shape[i];
-      cStrides[i] = strides[i];
-    }
     try {
+      final cShape = ScratchArena.copyInts(shape);
+      final cStrides = ScratchArena.copyInts(strides);
       if (dtype == DType.float64) {
         elementsHash = s_hash_double(
           pointer.cast(),
@@ -3248,46 +3232,7 @@ final class Mask extends Selector {
 }
 
 void _copyContiguousNDArray(NDArray src, NDArray dest, int size) {
-  final dtype = src.dtype;
-  if (dtype == DType.float64) {
-    final srcList = src._pointer.cast<ffi.Double>().asTypedList(size);
-    final destList = dest._pointer.cast<ffi.Double>().asTypedList(size);
-    destList.setRange(0, size, srcList);
-  } else if (dtype == DType.float32) {
-    final srcList = src._pointer.cast<ffi.Float>().asTypedList(size);
-    final destList = dest._pointer.cast<ffi.Float>().asTypedList(size);
-    destList.setRange(0, size, srcList);
-  } else if (dtype == DType.int32) {
-    final srcList = src._pointer.cast<ffi.Int32>().asTypedList(size);
-    final destList = dest._pointer.cast<ffi.Int32>().asTypedList(size);
-    destList.setRange(0, size, srcList);
-  } else if (dtype == DType.int64) {
-    final srcList = src._pointer.cast<ffi.Int64>().asTypedList(size);
-    final destList = dest._pointer.cast<ffi.Int64>().asTypedList(size);
-    destList.setRange(0, size, srcList);
-  } else if (dtype == DType.complex128) {
-    final srcList = src._pointer.cast<ffi.Double>().asTypedList(size * 2);
-    final destList = dest._pointer.cast<ffi.Double>().asTypedList(size * 2);
-    destList.setRange(0, size * 2, srcList);
-  } else if (dtype == DType.complex64) {
-    final srcList = src._pointer.cast<ffi.Float>().asTypedList(size * 2);
-    final destList = dest._pointer.cast<ffi.Float>().asTypedList(size * 2);
-    destList.setRange(0, size * 2, srcList);
-  } else if (dtype == DType.boolean) {
-    final srcList = src._pointer.cast<ffi.Uint8>().asTypedList(size);
-    final destList = dest._pointer.cast<ffi.Uint8>().asTypedList(size);
-    destList.setRange(0, size, srcList);
-  } else if (dtype == DType.uint8) {
-    final srcList = src._pointer.cast<ffi.Uint8>().asTypedList(size);
-    final destList = dest._pointer.cast<ffi.Uint8>().asTypedList(size);
-    destList.setRange(0, size, srcList);
-  } else if (dtype == DType.int16) {
-    final srcList = src._pointer.cast<ffi.Int16>().asTypedList(size);
-    final destList = dest._pointer.cast<ffi.Int16>().asTypedList(size);
-    destList.setRange(0, size, srcList);
-  } else {
-    throw UnimplementedError('Type $dtype not supported for fast flatten');
-  }
+  custom_memcpy(dest._pointer, src._pointer, size * src.dtype.byteWidth);
 }
 
 /// Private class to manage a collection of [NDArray]s within a [Zone]
