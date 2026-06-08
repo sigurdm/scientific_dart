@@ -1,12 +1,33 @@
 import 'dart:typed_data';
+import 'dart:math' as math;
 import 'package:benchmark_harness/benchmark_harness.dart';
 import 'package:ndarray/ndarray.dart';
+
+/// Emitter that divides the raw benchmark_harness score by 10.
+/// By default, benchmark_harness's default exercise() method runs the benchmark's
+/// run() method 10 times, meaning the raw output represents the duration of 10 runs.
+/// Dividing by 10 gives the average duration of a single execution of run().
+class DividedScoreEmitter implements ScoreEmitter {
+  const DividedScoreEmitter();
+
+  @override
+  void emit(String testName, double value) {
+    final singleRunScore = value / 10.0;
+    print('$testName(RunTime): $singleRunScore us.');
+  }
+}
+
+/// Custom benchmark base that enforces the DividedScoreEmitter.
+abstract class NdarrayBenchmarkBase extends BenchmarkBase {
+  const NdarrayBenchmarkBase(super.name)
+    : super(emitter: const DividedScoreEmitter());
+}
 
 // ============================================================================
 // 1. PROBABILITY DISTRIBUTIONS & RNG TRACK (Section 2)
 // ============================================================================
 
-class NormalDistributionBenchmark extends BenchmarkBase {
+class NormalDistributionBenchmark extends NdarrayBenchmarkBase {
   const NormalDistributionBenchmark()
     : super(
         'RNG Track  | Seeded normal() (Gaussian samples)       [size=50,000]',
@@ -19,7 +40,7 @@ class NormalDistributionBenchmark extends BenchmarkBase {
   }
 }
 
-class PoissonDistributionBenchmark extends BenchmarkBase {
+class PoissonDistributionBenchmark extends NdarrayBenchmarkBase {
   const PoissonDistributionBenchmark()
     : super(
         'RNG Track  | Seeded poisson() (Knuth vs Gaussian)      [size=20,000]',
@@ -32,7 +53,7 @@ class PoissonDistributionBenchmark extends BenchmarkBase {
   }
 }
 
-class BinomialDistributionBenchmark extends BenchmarkBase {
+class BinomialDistributionBenchmark extends NdarrayBenchmarkBase {
   const BinomialDistributionBenchmark()
     : super(
         'RNG Track  | Seeded binomial() (Bernoulli vs Normal)   [size=20,000]',
@@ -50,7 +71,7 @@ class BinomialDistributionBenchmark extends BenchmarkBase {
 // 2. SORTING & SEARCHING TRACK (Section 7)
 // ============================================================================
 
-class NativeQSortContiguousBenchmark extends BenchmarkBase {
+class NativeQSortContiguousBenchmark extends NdarrayBenchmarkBase {
   late Float64List templateData;
   late NDArray<double> target;
 
@@ -83,7 +104,38 @@ class NativeQSortContiguousBenchmark extends BenchmarkBase {
   }
 }
 
-class ArgsortBenchmark extends BenchmarkBase {
+class NativeQSortRandomBenchmark extends NdarrayBenchmarkBase {
+  late Float64List templateData;
+  late NDArray<double> target;
+
+  NativeQSortRandomBenchmark()
+    : super(
+        'SORT Track | Native C Heap sort() (Random vector)       [size=30,000]',
+      );
+
+  @override
+  void setup() {
+    final rand = math.Random(42);
+    templateData = Float64List.fromList(
+      List.generate(30000, (_) => rand.nextDouble()),
+    );
+    target = NDArray.zeros([30000], DType.float64);
+  }
+
+  @override
+  void run() {
+    target.data.setRange(0, 30000, templateData);
+    final res = sort(target);
+    res.dispose();
+  }
+
+  @override
+  void teardown() {
+    target.dispose();
+  }
+}
+
+class ArgsortBenchmark extends NdarrayBenchmarkBase {
   late Float64List templateData;
   late NDArray<double> target;
 
@@ -112,7 +164,7 @@ class ArgsortBenchmark extends BenchmarkBase {
   }
 }
 
-class TernaryWhereBroadcastingBenchmark extends BenchmarkBase {
+class TernaryWhereBroadcastingBenchmark extends NdarrayBenchmarkBase {
   late NDArray<bool> cond;
   late NDArray<double> x;
   late NDArray<double> y;
@@ -149,7 +201,7 @@ class TernaryWhereBroadcastingBenchmark extends BenchmarkBase {
 // 3. ADVANCED LINEAR ALGEBRA & SIGNALS TRACK (Section 6)
 // ============================================================================
 
-class LapackMatrixInversionBenchmark extends BenchmarkBase {
+class LapackMatrixInversionBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> a;
 
   LapackMatrixInversionBenchmark()
@@ -174,7 +226,7 @@ class LapackMatrixInversionBenchmark extends BenchmarkBase {
   }
 }
 
-class QrDecompositionBenchmark extends BenchmarkBase {
+class QrDecompositionBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> a;
 
   QrDecompositionBenchmark()
@@ -206,7 +258,7 @@ class QrDecompositionBenchmark extends BenchmarkBase {
   }
 }
 
-class SvdDecompositionBenchmark extends BenchmarkBase {
+class SvdDecompositionBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> a;
 
   SvdDecompositionBenchmark()
@@ -237,7 +289,7 @@ class SvdDecompositionBenchmark extends BenchmarkBase {
   }
 }
 
-class NativeFftTransformBenchmark extends BenchmarkBase {
+class NativeFftTransformBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> signal;
 
   NativeFftTransformBenchmark()
@@ -262,11 +314,72 @@ class NativeFftTransformBenchmark extends BenchmarkBase {
   }
 }
 
+class CholeskyDecompositionBenchmark extends NdarrayBenchmarkBase {
+  late NDArray<double> a;
+
+  CholeskyDecompositionBenchmark()
+    : super(
+        'LINALG Track| Cholesky Decomposition (cholesky)       [shape=30x30]',
+      );
+
+  @override
+  void setup() {
+    a = NDArray.zeros([30, 30], DType.float64);
+    for (var i = 0; i < 30; i++) {
+      for (var j = 0; j < 30; j++) {
+        a.data[i * 30 + j] = (i + j + 1.0) / 10.0;
+        if (i == j) {
+          a.data[i * 30 + j] += 30.0; // Make it diagonally dominant
+        }
+      }
+    }
+  }
+
+  @override
+  void run() {
+    final res = cholesky(a);
+    res.dispose();
+  }
+
+  @override
+  void teardown() {
+    a.dispose();
+  }
+}
+
+class MatmulBenchmark extends NdarrayBenchmarkBase {
+  late NDArray<double> a;
+  late NDArray<double> b;
+
+  MatmulBenchmark()
+    : super(
+        'LINALG Track| Matrix Multiplication (matmul)          [shape=100x100]',
+      );
+
+  @override
+  void setup() {
+    a = NDArray.ones([100, 100], DType.float64);
+    b = NDArray.ones([100, 100], DType.float64);
+  }
+
+  @override
+  void run() {
+    final res = matmul(a, b);
+    res.dispose();
+  }
+
+  @override
+  void teardown() {
+    a.dispose();
+    b.dispose();
+  }
+}
+
 // ============================================================================
 // 4. UNIVERSAL UFUNCS, REDUCTIONS & MEMORY TRACK (Section 9 Target)
 // ============================================================================
 
-class ElementwiseAddBenchmark extends BenchmarkBase {
+class ElementwiseAddBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> x;
   late NDArray<double> y;
   late NDArray<double> outBuffer;
@@ -296,7 +409,7 @@ class ElementwiseAddBenchmark extends BenchmarkBase {
   }
 }
 
-class ScalarAdditionBroadcastBenchmark extends BenchmarkBase {
+class ScalarAdditionBroadcastBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> x;
   late NDArray<double> scalarArr;
   late NDArray<double> outBuffer;
@@ -328,7 +441,7 @@ class ScalarAdditionBroadcastBenchmark extends BenchmarkBase {
   }
 }
 
-class SinUfuncBenchmark extends BenchmarkBase {
+class SinUfuncBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> x;
   late NDArray<double> outBuffer;
 
@@ -355,7 +468,7 @@ class SinUfuncBenchmark extends BenchmarkBase {
   }
 }
 
-class CosUfuncBenchmark extends BenchmarkBase {
+class CosUfuncBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> x;
   late NDArray<double> outBuffer;
 
@@ -382,7 +495,7 @@ class CosUfuncBenchmark extends BenchmarkBase {
   }
 }
 
-class ExpUfuncBenchmark extends BenchmarkBase {
+class ExpUfuncBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> x;
   late NDArray<double> outBuffer;
 
@@ -409,7 +522,7 @@ class ExpUfuncBenchmark extends BenchmarkBase {
   }
 }
 
-class ClipUfuncBenchmark extends BenchmarkBase {
+class ClipUfuncBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> x;
   late NDArray<double> outBuffer;
 
@@ -436,7 +549,7 @@ class ClipUfuncBenchmark extends BenchmarkBase {
   }
 }
 
-class SumReductionBenchmark extends BenchmarkBase {
+class SumReductionBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> x;
 
   SumReductionBenchmark()
@@ -460,7 +573,7 @@ class SumReductionBenchmark extends BenchmarkBase {
   }
 }
 
-class ZerosBenchmark extends BenchmarkBase {
+class ZerosBenchmark extends NdarrayBenchmarkBase {
   late List<int> shape;
 
   ZerosBenchmark()
@@ -480,7 +593,7 @@ class ZerosBenchmark extends BenchmarkBase {
   }
 }
 
-class ConcatenateBenchmark extends BenchmarkBase {
+class ConcatenateBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> a;
   late NDArray<double> b;
 
@@ -508,7 +621,7 @@ class ConcatenateBenchmark extends BenchmarkBase {
   }
 }
 
-class ContiguousViewFlattenBenchmark extends BenchmarkBase {
+class ContiguousViewFlattenBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> parent;
   late NDArray<double> view;
 
@@ -537,7 +650,7 @@ class ContiguousViewFlattenBenchmark extends BenchmarkBase {
   }
 }
 
-class ContiguousViewSumBenchmark extends BenchmarkBase {
+class ContiguousViewSumBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> parent;
   late NDArray<double> view;
 
@@ -564,7 +677,7 @@ class ContiguousViewSumBenchmark extends BenchmarkBase {
   }
 }
 
-class StridedElementwiseAddBenchmark extends BenchmarkBase {
+class StridedElementwiseAddBenchmark extends NdarrayBenchmarkBase {
   late NDArray<double> parentX;
   late NDArray<double> parentY;
   late NDArray<double> xView;
@@ -627,6 +740,7 @@ void main() {
 
   print('\n--- TRACK B: NATIVE C HEAP SORTING & SEARCHING BROADCASTS ---');
   NativeQSortContiguousBenchmark().report();
+  NativeQSortRandomBenchmark().report();
   ArgsortBenchmark().report();
   TernaryWhereBroadcastingBenchmark().report();
 
@@ -637,6 +751,8 @@ void main() {
   QrDecompositionBenchmark().report();
   SvdDecompositionBenchmark().report();
   NativeFftTransformBenchmark().report();
+  CholeskyDecompositionBenchmark().report();
+  MatmulBenchmark().report();
 
   print(
     '\n--- TRACK D: UNIVERSAL UFUNCS, REDUCTIONS & MEMORY STRIDES (SECTION 9 TARGET) ---',

@@ -3,6 +3,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include "hwy/contrib/sort/vqsort.h"
 
 // ----------------------------------------------------------------------------
 // Struct definitions for Complex number representations
@@ -43,6 +44,18 @@ static inline int compare_double_inline(double a, double b) {
     if (nan_a && nan_b) return 0;
     if (nan_a) return 1;
     if (nan_b) return -1;
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
+static inline int compare_double_fast(double a, double b) {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
+static inline int compare_float_fast(float a, float b) {
     if (a < b) return -1;
     if (a > b) return 1;
     return 0;
@@ -99,9 +112,25 @@ static inline int compare_complex64_inline(complex64_t ca, complex64_t cb) {
 #undef SORT_TYPE
 #undef SORT_CMP
 
+#define SORT_NAME tim_fast_double
+#define SORT_TYPE double
+#define SORT_CMP(x, y) compare_double_fast(x, y)
+#include "third_party/timsort/timsort.h"
+#undef SORT_NAME
+#undef SORT_TYPE
+#undef SORT_CMP
+
 #define SORT_NAME tim_float
 #define SORT_TYPE float
 #define SORT_CMP(x, y) compare_float_inline(x, y)
+#include "third_party/timsort/timsort.h"
+#undef SORT_NAME
+#undef SORT_TYPE
+#undef SORT_CMP
+
+#define SORT_NAME tim_fast_float
+#define SORT_TYPE float
+#define SORT_CMP(x, y) compare_float_fast(x, y)
 #include "third_party/timsort/timsort.h"
 #undef SORT_NAME
 #undef SORT_TYPE
@@ -509,6 +538,74 @@ DEFINE_IND_QUICKSORT(f64, double, compare_double_inline)
 DEFINE_IND_HEAPSORT(f64, double, compare_double_inline)
 DEFINE_SEARCHSORTED(f64, double, compare_double_inline)
 
+static void f64_fast_insertion_sort(double *arr, int left, int right) {
+    for (int i = left + 1; i <= right; i++) {
+        double key = arr[i];
+        int j = i - 1;
+        while (j >= left && key < arr[j]) {
+            arr[j + 1] = arr[j];
+            j--;
+        }
+        arr[j + 1] = key;
+    }
+}
+
+static void f64_fast_quicksort_rec(double *arr, int left, int right) {
+    if (right - left <= 10) {
+        f64_fast_insertion_sort(arr, left, right);
+        return;
+    }
+    int mid = left + (right - left) / 2;
+    if (arr[mid] < arr[left]) { double t = arr[left]; arr[left] = arr[mid]; arr[mid] = t; }
+    if (arr[right] < arr[left]) { double t = arr[left]; arr[left] = arr[right]; arr[right] = t; }
+    if (arr[right] < arr[mid]) { double t = arr[mid]; arr[mid] = arr[right]; arr[right] = t; }
+    double pivot = arr[mid];
+    double t1 = arr[mid]; arr[mid] = arr[right - 1]; arr[right - 1] = t1;
+    int i = left;
+    int j = right - 1;
+    while (1) {
+        while (arr[++i] < pivot);
+        while (pivot < arr[--j]);
+        if (i >= j) break;
+        double t2 = arr[i]; arr[i] = arr[j]; arr[j] = t2;
+    }
+    double t3 = arr[i]; arr[i] = arr[right - 1]; arr[right - 1] = t3;
+    f64_fast_quicksort_rec(arr, left, i - 1);
+    f64_fast_quicksort_rec(arr, i + 1, right);
+}
+
+void f64_fast_quicksort(double *arr, int size) {
+    if (arr == NULL || size <= 1) return;
+    f64_fast_quicksort_rec(arr, 0, size - 1);
+}
+
+static void f64_fast_heapify(double *arr, int n, int i) {
+    int largest = i;
+    int l = 2 * i + 1;
+    int r = 2 * i + 2;
+    if (l < n && arr[l] > arr[largest]) largest = l;
+    if (r < n && arr[r] > arr[largest]) largest = r;
+    if (largest != i) {
+        double tmp = arr[i];
+        arr[i] = arr[largest];
+        arr[largest] = tmp;
+        f64_fast_heapify(arr, n, largest);
+    }
+}
+
+void f64_fast_heapsort(double *arr, int size) {
+    if (arr == NULL || size <= 1) return;
+    for (int i = size / 2 - 1; i >= 0; i--)
+        f64_fast_heapify(arr, size, i);
+    for (int i = size - 1; i > 0; i--) {
+        double tmp = arr[0];
+        arr[0] = arr[i];
+        arr[i] = tmp;
+        f64_fast_heapify(arr, i, 0);
+    }
+}
+
+
 // float (f32)
 DEFINE_INSERTION_SORT(f32, float, compare_float_inline)
 DEFINE_QUICKSORT(f32, float, compare_float_inline)
@@ -518,6 +615,74 @@ DEFINE_ARGQUICKSELECT(f32, float, compare_float_inline)
 DEFINE_IND_QUICKSORT(f32, float, compare_float_inline)
 DEFINE_IND_HEAPSORT(f32, float, compare_float_inline)
 DEFINE_SEARCHSORTED(f32, float, compare_float_inline)
+
+static void f32_fast_insertion_sort(float *arr, int left, int right) {
+    for (int i = left + 1; i <= right; i++) {
+        float key = arr[i];
+        int j = i - 1;
+        while (j >= left && key < arr[j]) {
+            arr[j + 1] = arr[j];
+            j--;
+        }
+        arr[j + 1] = key;
+    }
+}
+
+static void f32_fast_quicksort_rec(float *arr, int left, int right) {
+    if (right - left <= 10) {
+        f32_fast_insertion_sort(arr, left, right);
+        return;
+    }
+    int mid = left + (right - left) / 2;
+    if (arr[mid] < arr[left]) { float t = arr[left]; arr[left] = arr[mid]; arr[mid] = t; }
+    if (arr[right] < arr[left]) { float t = arr[left]; arr[left] = arr[right]; arr[right] = t; }
+    if (arr[right] < arr[mid]) { float t = arr[mid]; arr[mid] = arr[right]; arr[right] = t; }
+    float pivot = arr[mid];
+    float t1 = arr[mid]; arr[mid] = arr[right - 1]; arr[right - 1] = t1;
+    int i = left;
+    int j = right - 1;
+    while (1) {
+        while (arr[++i] < pivot);
+        while (pivot < arr[--j]);
+        if (i >= j) break;
+        float t2 = arr[i]; arr[i] = arr[j]; arr[j] = t2;
+    }
+    float t3 = arr[i]; arr[i] = arr[right - 1]; arr[right - 1] = t3;
+    f32_fast_quicksort_rec(arr, left, i - 1);
+    f32_fast_quicksort_rec(arr, i + 1, right);
+}
+
+void f32_fast_quicksort(float *arr, int size) {
+    if (arr == NULL || size <= 1) return;
+    f32_fast_quicksort_rec(arr, 0, size - 1);
+}
+
+static void f32_fast_heapify(float *arr, int n, int i) {
+    int largest = i;
+    int l = 2 * i + 1;
+    int r = 2 * i + 2;
+    if (l < n && arr[l] > arr[largest]) largest = l;
+    if (r < n && arr[r] > arr[largest]) largest = r;
+    if (largest != i) {
+        float tmp = arr[i];
+        arr[i] = arr[largest];
+        arr[largest] = tmp;
+        f32_fast_heapify(arr, n, largest);
+    }
+}
+
+void f32_fast_heapsort(float *arr, int size) {
+    if (arr == NULL || size <= 1) return;
+    for (int i = size / 2 - 1; i >= 0; i--)
+        f32_fast_heapify(arr, size, i);
+    for (int i = size - 1; i > 0; i--) {
+        float tmp = arr[0];
+        arr[0] = arr[i];
+        arr[i] = tmp;
+        f32_fast_heapify(arr, i, 0);
+    }
+}
+
 
 // int64 (i64)
 DEFINE_INSERTION_SORT(i64, long long, compare_int64_inline)
@@ -562,23 +727,55 @@ DEFINE_SEARCHSORTED(c64, complex64_t, compare_complex64_inline)
 
 void native_sort_double(double *array, int size, int kind) {
     if (array == NULL || size <= 1) return;
-    if (kind == 0) {
-        f64_quicksort(array, size);
-    } else if (kind == 2) {
-        f64_heapsort(array, size);
+
+    // Segregate NaNs to the end of the array (in-place partitioning)
+    int left = 0;
+    int right = size - 1;
+    while (left <= right) {
+        if (isnan(array[left])) {
+            double temp = array[left];
+            array[left] = array[right];
+            array[right] = temp;
+            right--;
+        } else {
+            left++;
+        }
+    }
+    int non_nan_size = right + 1;
+
+    if (non_nan_size <= 1) return;
+
+    if (kind == 0 || kind == 2) {
+        hwy::VQSort(array, non_nan_size, hwy::SortAscending());
     } else {
-        tim_double_tim_sort(array, size);
+        tim_fast_double_tim_sort(array, non_nan_size);
     }
 }
 
 void native_sort_float(float *array, int size, int kind) {
     if (array == NULL || size <= 1) return;
-    if (kind == 0) {
-        f32_quicksort(array, size);
-    } else if (kind == 2) {
-        f32_heapsort(array, size);
+
+    // Segregate NaNs to the end of the array (in-place partitioning)
+    int left = 0;
+    int right = size - 1;
+    while (left <= right) {
+        if (isnan(array[left])) {
+            float temp = array[left];
+            array[left] = array[right];
+            array[right] = temp;
+            right--;
+        } else {
+            left++;
+        }
+    }
+    int non_nan_size = right + 1;
+
+    if (non_nan_size <= 1) return;
+
+    if (kind == 0 || kind == 2) {
+        hwy::VQSort(array, non_nan_size, hwy::SortAscending());
     } else {
-        tim_float_tim_sort(array, size);
+        tim_fast_float_tim_sort(array, non_nan_size);
     }
 }
 

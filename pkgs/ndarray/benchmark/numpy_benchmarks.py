@@ -51,6 +51,15 @@ def run_sort():
 t_sort = run_benchmark("Sort", lambda: np.copyto(sort_arr, template_sort), run_sort, 100)
 print(f"SORT Track | NumPy sort() (Contiguous vector)         [size=30,000]: {t_sort:.2f} us")
 
+# 1b. Sort Random
+rng = np.random.default_rng(42)
+template_sort_random = rng.random(30000)
+sort_arr_random = np.zeros(30000, dtype=np.float64)
+def run_sort_random():
+    np.sort(sort_arr_random)
+t_sort_random = run_benchmark("SortRandom", lambda: np.copyto(sort_arr_random, template_sort_random), run_sort_random, 100)
+print(f"SORT Track | NumPy sort() (Random vector)             [size=30,000]: {t_sort_random:.2f} us")
+
 # 2. Argsort
 def run_argsort():
     np.argsort(sort_arr)
@@ -99,6 +108,27 @@ def run_fft():
     np.fft.fft(fft_arr)
 t_fft = run_benchmark("FFT", lambda: None, run_fft, 500)
 print(f"LINALG Track| FFT pocketfft (fft)                       [length=2048]: {t_fft:.2f} us")
+
+# 5. Cholesky
+cholesky_arr = np.zeros((30, 30), dtype=np.float64)
+for i in range(30):
+    for j in range(30):
+        cholesky_arr[i, j] = (i + j + 1.0) / 10.0
+        if i == j:
+            cholesky_arr[i, j] += 30.0
+def run_cholesky():
+    np.linalg.cholesky(cholesky_arr)
+t_cholesky = run_benchmark("Cholesky", lambda: None, run_cholesky, 500)
+print(f"LINALG Track| Cholesky Decomposition (cholesky)       [shape=30x30]: {t_cholesky:.2f} us")
+
+# 6. Matmul
+matmul_a = np.ones((100, 100), dtype=np.float64)
+matmul_b = np.ones((100, 100), dtype=np.float64)
+def run_matmul():
+    np.matmul(matmul_a, matmul_b)
+t_matmul = run_benchmark("Matmul", lambda: None, run_matmul, 500)
+print(f"LINALG Track| Matrix Multiplication (matmul)          [shape=100x100]: {t_matmul:.2f} us")
+
 
 print("\n--- TRACK D: UNIVERSAL UFUNCS, REDUCTIONS & MEMORY STRIDES ---")
 

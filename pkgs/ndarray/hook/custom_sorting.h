@@ -3,6 +3,10 @@
 
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ----------------------------------------------------------------------------
 // Public Sorters with Kind Parameter
 // kind: 0 = quicksort, 1 = mergesort/stable, 2 = heapsort
@@ -79,5 +83,9 @@ void native_count_nonzero_int64(const void *src, const int *stridesSrc, int *des
 void native_count_nonzero_int32(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
 void native_count_nonzero_uint8(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
 void native_count_nonzero_int16(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // CUSTOM_SORTING_H

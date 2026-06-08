@@ -5684,7 +5684,7 @@ NDArray<bool> _runBinaryLogical(
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(n^3)$ flops for an $n \times n$ matrix.
-/// - Executes at high speed natively on the unmanaged C heap using LAPACK solvers, bypassing the Dart VM.
+/// - Uses LAPACK solvers.
 /// - Performs zero memory allocations if a pre-allocated [out] buffer is provided and the input [a] is contiguous.
 ///
 /// **Example:**
@@ -5824,9 +5824,9 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// final q = res.Q;
 /// final r = res.R;
 /// ```
-({NDArray<R> Q, NDArray<R> R}) qr<T, R>(
+({NDArray<T> Q, NDArray<T> R}) qr<T>(
   NDArray<T> a, {
-  ({NDArray<R> Q, NDArray<R> R})? out,
+  ({NDArray<T> Q, NDArray<T> R})? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute qr() on a disposed array.');
@@ -5847,11 +5847,11 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
   final qShape = [...stackShape, m, k];
   final rShape = [...stackShape, k, n];
 
-  final NDArray<R> qMat;
-  final NDArray<R> rMat;
+  final NDArray<double> qMat;
+  final NDArray<double> rMat;
   if (out != null) {
-    qMat = out.Q;
-    rMat = out.R;
+    qMat = out.Q as NDArray<double>;
+    rMat = out.R as NDArray<double>;
     if (!listEquals(qMat.shape, qShape) || qMat.dtype != targetDType) {
       throw ArgumentError(
         'Provided out Q buffer has incompatible shape or dtype.',
@@ -5869,13 +5869,12 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
       throw ArgumentError('Provided out R buffer must be contiguous.');
     }
   } else {
-    qMat = NDArray.zeros(qShape, targetDType) as NDArray<R>;
-    rMat = NDArray.zeros(rShape, targetDType) as NDArray<R>;
+    qMat = NDArray<double>.zeros(qShape, targetDType);
+    rMat = NDArray<double>.zeros(rShape, targetDType);
   }
 
-  final NDArray<double> aCast =
-      (a.dtype == targetDType ? a : castNDArray(a, targetDType))
-          as NDArray<double>;
+  final NDArray<T> aCast =
+      (a.dtype == targetDType ? a : castNDArray(a, targetDType)) as NDArray<T>;
   final bool wasCast = a.dtype != targetDType;
 
   final aCopy = NDArray.create([m, n], targetDType);
@@ -5907,7 +5906,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
         strides: aCast.strides.sublist(rank - 2),
         offsetElements: offsetA,
       );
-      sliceView.copy(out: aCopy);
+      sliceView.copy(out: aCopy as NDArray<T>);
       sliceView.dispose();
 
       final r2D = targetDType == DType.float32
@@ -6018,7 +6017,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
         strides: qMat.strides.sublist(rank - 2),
         offsetElements: offsetQ,
       );
-      (q2D as NDArray).copy(out: qSlice);
+      q2D.copy(out: qSlice);
       qSlice.dispose();
 
       final rSlice = NDArray.view(
@@ -6027,7 +6026,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
         strides: rMat.strides.sublist(rank - 2),
         offsetElements: offsetR,
       );
-      (r2D as NDArray).copy(out: rSlice);
+      r2D.copy(out: rSlice);
       rSlice.dispose();
 
       q2D.dispose();
@@ -6041,7 +6040,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
     }
   }
 
-  return (Q: qMat, R: rMat);
+  return (Q: qMat as NDArray<T>, R: rMat as NDArray<T>);
 }
 
 /// Computes the Singular Value Decomposition (SVD) of a matrix or a stack of matrices $A = U S V^h$.
@@ -6068,7 +6067,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// final s = res.S;
 /// final vh = res.Vh;
 /// ```
-({NDArray U, NDArray S, NDArray Vh}) svd(NDArray a) {
+({NDArray<T> U, NDArray<T> S, NDArray<T> Vh}) svd<T>(NDArray<T> a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute svd() on a disposed array.');
   }
@@ -6105,13 +6104,12 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
   final sShape = [...stackShape, n];
   final vtShape = [...stackShape, n, n];
 
-  final uMat = NDArray.zeros(uShape, targetDType);
-  final sMat = NDArray.zeros(sShape, targetDType);
-  final vtMat = NDArray.zeros(vtShape, targetDType);
+  final NDArray<double> uMat = NDArray<double>.zeros(uShape, targetDType);
+  final NDArray<double> sMat = NDArray<double>.zeros(sShape, targetDType);
+  final NDArray<double> vtMat = NDArray<double>.zeros(vtShape, targetDType);
 
-  final NDArray<double> aCast =
-      (a.dtype == targetDType ? a : castNDArray(a, targetDType))
-          as NDArray<double>;
+  final NDArray<T> aCast =
+      (a.dtype == targetDType ? a : castNDArray(a, targetDType)) as NDArray<T>;
   final bool wasCast = a.dtype != targetDType;
 
   final aCopy = NDArray.create([m, n], targetDType);
@@ -6144,7 +6142,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
         strides: aCast.strides.sublist(rank - 2),
         offsetElements: offsetA,
       );
-      sliceView.copy(out: aCopy);
+      sliceView.copy(out: aCopy as NDArray<T>);
       sliceView.dispose();
 
       final s2D = targetDType == DType.float32
@@ -6216,7 +6214,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
         strides: uMat.strides.sublist(rank - 2),
         offsetElements: offsetU,
       );
-      (u2D as NDArray).copy(out: uSlice);
+      u2D.copy(out: uSlice);
       uSlice.dispose();
 
       final sSlice = NDArray.view(
@@ -6225,7 +6223,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
         strides: sMat.strides.isEmpty ? [1] : [sMat.strides.last],
         offsetElements: offsetS,
       );
-      (s2D as NDArray).copy(out: sSlice);
+      s2D.copy(out: sSlice);
       sSlice.dispose();
 
       final vtSlice = NDArray.view(
@@ -6234,7 +6232,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
         strides: vtMat.strides.sublist(rank - 2),
         offsetElements: offsetVt,
       );
-      (vt2D as NDArray).copy(out: vtSlice);
+      vt2D.copy(out: vtSlice);
       vtSlice.dispose();
 
       s2D.dispose();
@@ -6249,7 +6247,11 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
     }
   }
 
-  return (U: uMat, S: sMat, Vh: vtMat);
+  return (
+    U: uMat as NDArray<T>,
+    S: sMat as NDArray<T>,
+    Vh: vtMat as NDArray<T>,
+  );
 }
 
 /// Extract a diagonal or construct a diagonal array.
