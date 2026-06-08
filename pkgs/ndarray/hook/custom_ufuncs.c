@@ -3791,22 +3791,7 @@ DEFINE_STRIDED_UNARY_IMPL(s_invert_int64, int64_t, int64_t, ~x)
 DEFINE_STRIDED_UNARY_IMPL(s_invert_uint8, uint8_t, uint8_t, (uint8_t)(~x))
 DEFINE_STRIDED_UNARY_IMPL(s_invert_int16, int16_t, int16_t, (int16_t)(~x))
 
-/* Optimized native boolean mask unpacking kernel */
-int unpack_mask_c(
-    const uint8_t *mask_ptr,
-    int size,
-    int stride,
-    int *out_indices
-) {
-    if (mask_ptr == NULL || out_indices == NULL || size <= 0) return 0;
-    int count = 0;
-    for (int j = 0; j < size; j++) {
-        if (mask_ptr[j * stride] != 0) {
-            out_indices[count++] = j;
-        }
-    }
-    return count;
-}
+
 
 /* ============================================================================
  * SECTION: Kronecker Product, Vector Outer Product, Cross Product & Norms

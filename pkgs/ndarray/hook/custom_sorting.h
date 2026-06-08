@@ -2,10 +2,15 @@
 #define CUSTOM_SORTING_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+int unpack_mask_c(const uint8_t *mask_ptr, int size, int stride, int *out_indices);
+int native_count_mask(const uint8_t *mask, int size);
+void native_apply_mask(int dtype, const void *src, const uint8_t *mask, void *dest, int size);
 
 // ----------------------------------------------------------------------------
 // Public Sorters with Kind Parameter

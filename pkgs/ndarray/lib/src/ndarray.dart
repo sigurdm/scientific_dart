@@ -2205,7 +2205,7 @@ final class NDArray<T> implements ffi.Finalizable {
         }
         final size = shape[i];
         final indices = using((arena) {
-          final pIndices = arena.allocate<ffi.Int>(size);
+          final pIndices = arena<ffi.Int>(size);
           final count = unpack_mask_c(
             mask.mask.pointer.cast(),
             size,
@@ -2279,13 +2279,13 @@ final class NDArray<T> implements ffi.Finalizable {
       final rank = shape.length;
 
       using((arena) {
-        final pTypes = arena.allocate<ffi.Int>(rank);
-        final pIndexVals = arena.allocate<ffi.Int>(rank);
-        final pSliceStarts = arena.allocate<ffi.Int>(rank);
-        final pSliceStops = arena.allocate<ffi.Int>(rank);
-        final pSliceSteps = arena.allocate<ffi.Int>(rank);
-        final pIndicesPtrs = arena.allocate<ffi.Pointer<ffi.Int>>(rank);
-        final pIndicesLens = arena.allocate<ffi.Int>(rank);
+        final pTypes = arena<ffi.Int>(rank);
+        final pIndexVals = arena<ffi.Int>(rank);
+        final pSliceStarts = arena<ffi.Int>(rank);
+        final pSliceStops = arena<ffi.Int>(rank);
+        final pSliceSteps = arena<ffi.Int>(rank);
+        final pIndicesPtrs = arena<ffi.Pointer<ffi.Int>>(rank);
+        final pIndicesLens = arena<ffi.Int>(rank);
 
         for (var i = 0; i < rank; i++) {
           final selector = i < processedSelectors.length
@@ -2337,7 +2337,7 @@ final class NDArray<T> implements ffi.Finalizable {
             pSliceSteps[i] = 0;
 
             final values = selector.values;
-            final pIndices = arena.allocate<ffi.Int>(values.length);
+            final pIndices = arena<ffi.Int>(values.length);
             for (var j = 0; j < values.length; j++) {
               final idx = values[j];
               final realIdx = idx < 0 ? shape[i] + idx : idx;
@@ -2355,8 +2355,8 @@ final class NDArray<T> implements ffi.Finalizable {
           }
         }
 
-        final pSrcStrides = arena.allocate<ffi.Int>(rank);
-        final pSrcShape = arena.allocate<ffi.Int>(rank);
+        final pSrcStrides = arena<ffi.Int>(rank);
+        final pSrcShape = arena<ffi.Int>(rank);
         for (var i = 0; i < rank; i++) {
           pSrcStrides[i] = strides[i];
           pSrcShape[i] = shape[i];
@@ -2413,6 +2413,27 @@ final class NDArray<T> implements ffi.Finalizable {
   /// The [mask] array must have elements with value 0 or 1.
   /// Returns a 1D array containing the elements where the mask is 1.
   NDArray<T> applyMask(NDArray<bool> mask) {
+    if (shape.length == 1 &&
+        mask.shape.length == 1 &&
+        isContiguous &&
+        mask.isContiguous) {
+      if (mask.shape[0] != shape[0]) {
+        throw ArgumentError(
+          'Boolean mask shape ${mask.shape} must match target shape $shape',
+        );
+      }
+      final size = shape[0];
+      final count = native_count_mask(mask.pointer.cast(), size);
+      final result = NDArray<T>.create([count], dtype);
+      native_apply_mask(
+        dtype.index,
+        pointer.cast(),
+        mask.pointer.cast(),
+        result.pointer.cast(),
+        size,
+      );
+      return result;
+    }
     return slice([Mask(BooleanMask(mask))]);
   }
 

@@ -60,6 +60,15 @@ def run_sort_random():
 t_sort_random = run_benchmark("SortRandom", lambda: np.copyto(sort_arr_random, template_sort_random), run_sort_random, 100)
 print(f"SORT Track | NumPy sort() (Random vector)             [size=30,000]: {t_sort_random:.2f} us")
 
+# 1c. Boolean Mask Indexing
+target_mask_arr = np.zeros(100000, dtype=np.float64)
+rng_mask = np.random.default_rng(42)
+mask_arr = rng_mask.random(100000) > 0.5
+def run_mask():
+    target_mask_arr[mask_arr]
+t_mask = run_benchmark("BooleanMask", lambda: None, run_mask, 100)
+print(f"INDEX Track | NumPy Boolean Mask Indexing              [size=100,000]: {t_mask:.2f} us")
+
 # 2. Argsort
 def run_argsort():
     np.argsort(sort_arr)

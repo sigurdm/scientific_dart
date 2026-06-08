@@ -16966,3 +16966,23 @@ const int WCHAR_MAX = 2147483647;
 const int WINT_MIN = 0;
 
 const int WINT_MAX = 4294967295;
+
+@ffi.Native<ffi.Int Function(ffi.Pointer<ffi.Uint8>, ffi.Int)>()
+external int native_count_mask(ffi.Pointer<ffi.Uint8> mask, int size);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+  )
+>()
+external void native_apply_mask(
+  int dtype,
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Uint8> mask,
+  ffi.Pointer<ffi.Void> dest,
+  int size,
+);

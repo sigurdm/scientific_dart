@@ -135,6 +135,36 @@ class NativeQSortRandomBenchmark extends NdarrayBenchmarkBase {
   }
 }
 
+class BooleanMaskUnpackingBenchmark extends NdarrayBenchmarkBase {
+  late NDArray<double> target;
+  late NDArray<bool> mask;
+
+  BooleanMaskUnpackingBenchmark()
+    : super(
+        'INDEX Track | Boolean Mask Advanced Indexing           [size=100,000]',
+      );
+
+  @override
+  void setup() {
+    final rand = math.Random(42);
+    target = NDArray.zeros([100000], DType.float64);
+    final maskData = List.generate(100000, (_) => rand.nextBool());
+    mask = NDArray.fromList(maskData, [100000], DType.boolean);
+  }
+
+  @override
+  void run() {
+    final res = target[mask];
+    res.dispose();
+  }
+
+  @override
+  void teardown() {
+    target.dispose();
+    mask.dispose();
+  }
+}
+
 class ArgsortBenchmark extends NdarrayBenchmarkBase {
   late Float64List templateData;
   late NDArray<double> target;
@@ -741,6 +771,7 @@ void main() {
   print('\n--- TRACK B: NATIVE C HEAP SORTING & SEARCHING BROADCASTS ---');
   NativeQSortContiguousBenchmark().report();
   NativeQSortRandomBenchmark().report();
+  BooleanMaskUnpackingBenchmark().report();
   ArgsortBenchmark().report();
   TernaryWhereBroadcastingBenchmark().report();
 
