@@ -48,8 +48,7 @@ void runCholeskyDecompositionExample() {
   print('[4.0, 12.0, -16.0]\n[12.0, 37.0, -43.0]\n[-16.0, -43.0, 98.0]');
 
   // cholesky factorizes into A = L * L^T, returns Lower triangular L matrix
-  final res = cholesky(a);
-  final l = res.L;
+  final l = cholesky(a);
   print('Cholesky Lower Triangular Factor L:');
   print(
     '[${l.data.sublist(0, 3)}]\n[${l.data.sublist(3, 6)}]\n[${l.data.sublist(6, 9)}]',

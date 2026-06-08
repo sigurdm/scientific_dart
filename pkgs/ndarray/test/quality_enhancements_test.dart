@@ -726,8 +726,7 @@ void main() {
         expect(viewNonContig.isContiguous, false);
         expect(viewNonContig.toList(), [4.0, 12.0, 12.0, 37.0]);
 
-        final res = cholesky(viewNonContig);
-        final l = res.L;
+        final l = cholesky(viewNonContig);
         expect(l.shape, [2, 2]);
         expect(l.toList(), [2.0, 0.0, 6.0, 1.0]);
       }),

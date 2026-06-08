@@ -53,3 +53,16 @@ external void v_extract_upper_triangular(
   int n,
   int dtype,
 );
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Int32,
+  )
+>()
+external void v_zero_upper_triangular(
+  ffi.Pointer<ffi.Void> ptr,
+  int n,
+  int dtype,
+);

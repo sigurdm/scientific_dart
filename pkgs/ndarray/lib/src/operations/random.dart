@@ -533,8 +533,7 @@ NDArray<T> multivariateNormal<T extends num>(
   }
 
   return NDArray.scope(() {
-    final choleskyFactors = cholesky(cov as NDArray<T>);
-    final l = choleskyFactors.L;
+    final l = cholesky(cov as NDArray<T>);
 
     final sampleShape = <int>[];
     if (size != null) {

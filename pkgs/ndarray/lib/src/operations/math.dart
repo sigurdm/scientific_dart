@@ -5659,33 +5659,56 @@ NDArray<bool> _runBinaryLogical(
   return result;
 }
 
-/// Compute the Cholesky decomposition of a square 2D matrix.
+/// Compute the Cholesky decomposition of a square, positive-definite 2D matrix.
 ///
-/// Factorizes a symmetric, positive-definite matrix [a] out `A = L * L^T`, where `L`
-/// is a lower triangular matrix factor.
+/// Factorizes a symmetric (or Hermitian for complex), positive-definite matrix [a] into
+/// $A = L L^*$ (or $A = L L^T$ for real matrices), where $L$ is a lower triangular matrix
+/// factor and $L^*$ is the conjugate transpose of $L$.
 ///
-/// Returns a record `(L: lMatrix)` containing the lower factor.
+/// Natively offloads to LAPACK solvers (`dpotrf`, `spotrf`, `cpotrf`, `zpotrf`) depending on precision and complexity.
+///
+/// **Preconditions:**
+/// - The input matrix [a] must not be disposed.
+/// - The input matrix [a] must be 2D (shape length exactly 2).
+/// - The input matrix [a] must be square (`shape[0] == shape[1]`).
+/// - The input matrix [a] must have a floating-point or complex data type (`float32`, `float64`, `complex64`, or `complex128`).
+/// - The input matrix [a] must be symmetric/Hermitian positive-definite.
+/// - If provided, the [out] destination matrix must have the same shape and dtype as [a], and must be contiguous.
+///
+/// **Throws:**
+/// - [StateError] if the input matrix [a] is disposed.
+/// - [ArgumentError] if [a] is not square or not 2D.
+/// - [ArgumentError] if [a] has an unsupported dtype (e.g. integer or boolean).
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape, dtype, or is not contiguous.
+/// - [ArgumentError] if the matrix is not positive-definite, or if LAPACK returns an error code.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(n^3)$ flops for an $n \times n$ matrix.
+/// - Executes at high speed natively on the unmanaged C heap using LAPACK solvers, bypassing the Dart VM.
+/// - Performs zero memory allocations if a pre-allocated [out] buffer is provided and the input [a] is contiguous.
 ///
 /// **Example:**
 /// {@example /example/linalg_example.dart lang=dart}
-({NDArray L}) cholesky(NDArray a) {
+///
+/// Reference: [NumPy linalg.cholesky](https://numpy.org/doc/stable/reference/generated/numpy.linalg.cholesky.html)
+NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cholesky() on a disposed array.');
   }
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
   }
+  if (!a.dtype.isFloating && !a.dtype.isComplex) {
+    throw ArgumentError(
+      'Cholesky decomposition is only supported for float and complex dtypes (was ${a.dtype})',
+    );
+  }
   final n = a.shape[0];
-  final DType<dynamic> targetDType = a.dtype == DType.float32
-      ? DType.float32
-      : DType.float64;
+  final targetDType = a.dtype;
 
-  final NDArray src;
+  final NDArray<T> src;
   final bool wasCopied;
-  if (a.dtype != targetDType) {
-    src = castNDArray(a, targetDType);
-    wasCopied = true;
-  } else if (!a.isContiguous) {
+  if (!a.isContiguous) {
     src = a.copy();
     wasCopied = true;
   } else {
@@ -5693,70 +5716,89 @@ NDArray<bool> _runBinaryLogical(
     wasCopied = false;
   }
 
-  // Create result matrix L and copy elements from src natively
-  final lMat = src.copy();
+  final NDArray<T> lMat;
+  if (out != null) {
+    lMat = out;
+    if (!listEquals(lMat.shape, a.shape) || lMat.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided out L buffer has incompatible shape or dtype.',
+      );
+    }
+    if (!lMat.isContiguous) {
+      throw ArgumentError('Provided out L buffer must be contiguous.');
+    }
+    src.copy(out: lMat);
+  } else {
+    lMat = src.copy();
+  }
 
   try {
-
     // Char 'L' in ASCII is 76
     const uploL = 76;
 
-    if (targetDType == DType.float64) {
-      final info = LAPACKE_dpotrf(
-        101, // ROW_MAJOR
-        uploL,
-        n,
-        lMat.pointer.cast<ffi.Double>(),
-        n,
-      );
-      if (info < 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_dpotrf: $info');
-      }
-      if (info > 0) {
-        throw ArgumentError(
-          'Matrix must be symmetric positive-definite for Cholesky decomposition',
+    final int info;
+    switch (targetDType) {
+      case DType.float64:
+        info = LAPACKE_dpotrf(
+          101, // ROW_MAJOR
+          uploL,
+          n,
+          lMat.pointer.cast<ffi.Double>(),
+          n,
         );
-      }
-
-      // Zero-out strictly upper triangular part
-      final lData = lMat.data as Float64List;
-      for (var i = 0; i < n; i++) {
-        for (var j = i + 1; j < n; j++) {
-          lData[i * n + j] = 0.0;
-        }
-      }
-    } else {
-      final info = LAPACKE_spotrf(
-        101, // ROW_MAJOR
-        uploL,
-        n,
-        lMat.pointer.cast<ffi.Float>(),
-        n,
-      );
-      if (info < 0) {
-        throw ArgumentError('Illegal value in call to LAPACKE_spotrf: $info');
-      }
-      if (info > 0) {
-        throw ArgumentError(
-          'Matrix must be symmetric positive-definite for Cholesky decomposition',
+      case DType.float32:
+        info = LAPACKE_spotrf(
+          101, // ROW_MAJOR
+          uploL,
+          n,
+          lMat.pointer.cast<ffi.Float>(),
+          n,
         );
-      }
-
-      // Zero-out strictly upper triangular part
-      final lData = lMat.data as Float32List;
-      for (var i = 0; i < n; i++) {
-        for (var j = i + 1; j < n; j++) {
-          lData[i * n + j] = 0.0;
-        }
-      }
+      case DType.complex128:
+        info = LAPACKE_zpotrf(
+          101, // ROW_MAJOR
+          uploL,
+          n,
+          lMat.pointer.cast<ffi.Double>(),
+          n,
+        );
+      case DType.complex64:
+        info = LAPACKE_cpotrf(
+          101, // ROW_MAJOR
+          uploL,
+          n,
+          lMat.pointer.cast<ffi.Float>(),
+          n,
+        );
+      default:
+        throw UnimplementedError(
+          'Unsupported dtype for Cholesky: $targetDType',
+        );
     }
+
+    if (info < 0) {
+      throw ArgumentError(
+        'Illegal value in call to LAPACKE Cholesky solver: $info',
+      );
+    }
+    if (info > 0) {
+      throw ArgumentError(
+        'Matrix must be positive-definite for Cholesky decomposition',
+      );
+    }
+
+    v_zero_upper_triangular(
+      lMat.pointer.cast<ffi.Void>(),
+      n,
+      encodeDType(targetDType),
+    );
   } finally {
     if (wasCopied) {
       src.dispose();
     }
   }
 
-  return (L: lMat);
+  return lMat;
 }
 
 /// Computes the QR decomposition of a matrix or a stack of matrices $A = Q R$.
@@ -5798,9 +5840,9 @@ NDArray<bool> _runBinaryLogical(
   final k = m < n ? m : n;
   final stackShape = a.shape.sublist(0, rank - 2);
 
-  final DType<dynamic> targetDType = a.dtype == DType.float32
-      ? DType.float32
-      : DType.float64;
+  final DType<double> targetDType = a.dtype == DType.float32
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
 
   final qShape = [...stackShape, m, k];
   final rShape = [...stackShape, k, n];
@@ -5831,7 +5873,9 @@ NDArray<bool> _runBinaryLogical(
     rMat = NDArray.zeros(rShape, targetDType) as NDArray<R>;
   }
 
-  final aCast = a.dtype == targetDType ? a : castNDArray(a, targetDType);
+  final NDArray<double> aCast =
+      (a.dtype == targetDType ? a : castNDArray(a, targetDType))
+          as NDArray<double>;
   final bool wasCast = a.dtype != targetDType;
 
   final aCopy = NDArray.create([m, n], targetDType);
@@ -5959,13 +6003,22 @@ NDArray<bool> _runBinaryLogical(
         }
       }
 
+      var offsetQ = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetQ += coords[i] * qMat.strides[i];
+      }
+      var offsetR = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetR += coords[i] * rMat.strides[i];
+      }
+
       final qSlice = NDArray.view(
         qMat,
         shape: [m, k],
         strides: qMat.strides.sublist(rank - 2),
         offsetElements: offsetQ,
       );
-      q2D.copy(out: qSlice);
+      (q2D as NDArray).copy(out: qSlice);
       qSlice.dispose();
 
       final rSlice = NDArray.view(
@@ -5974,7 +6027,7 @@ NDArray<bool> _runBinaryLogical(
         strides: rMat.strides.sublist(rank - 2),
         offsetElements: offsetR,
       );
-      r2D.copy(out: rSlice);
+      (r2D as NDArray).copy(out: rSlice);
       rSlice.dispose();
 
       q2D.dispose();
@@ -5983,6 +6036,9 @@ NDArray<bool> _runBinaryLogical(
   } finally {
     ScratchArena.reset(marker);
     aCopy.dispose();
+    if (wasCast) {
+      aCast.dispose();
+    }
   }
 
   return (Q: qMat, R: rMat);
@@ -6041,9 +6097,9 @@ NDArray<bool> _runBinaryLogical(
     return (U: uResult, S: sNew, Vh: vhResult);
   }
 
-  final DType<dynamic> targetDType = a.dtype == DType.float32
-      ? DType.float32
-      : DType.float64;
+  final DType<double> targetDType = a.dtype == DType.float32
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
 
   final uShape = [...stackShape, m, m];
   final sShape = [...stackShape, n];
@@ -6052,6 +6108,11 @@ NDArray<bool> _runBinaryLogical(
   final uMat = NDArray.zeros(uShape, targetDType);
   final sMat = NDArray.zeros(sShape, targetDType);
   final vtMat = NDArray.zeros(vtShape, targetDType);
+
+  final NDArray<double> aCast =
+      (a.dtype == targetDType ? a : castNDArray(a, targetDType))
+          as NDArray<double>;
+  final bool wasCast = a.dtype != targetDType;
 
   final aCopy = NDArray.create([m, n], targetDType);
   final marker = ScratchArena.marker;
@@ -6074,44 +6135,17 @@ NDArray<bool> _runBinaryLogical(
     ) {
       var offsetA = 0;
       for (var i = 0; i < coords.length; i++) {
-        offsetA += coords[i] * a.strides[i];
+        offsetA += coords[i] * aCast.strides[i];
       }
 
-      if (targetDType == DType.float64) {
-        final aCopyData = aCopy.data as Float64List;
-        if (a.isContiguous && a.dtype == DType.float64) {
-          final aData = a.data as Float64List;
-          aCopyData.setRange(0, m * n, aData, offsetA);
-        } else {
-          final sliceView = NDArray.view(
-            a,
-            shape: [m, n],
-            strides: a.strides.sublist(rank - 2),
-            offsetElements: offsetA,
-          );
-          final list = sliceView.toList();
-          for (var i = 0; i < m * n; i++) {
-            aCopyData[i] = (list[i] as num).toDouble();
-          }
-        }
-      } else {
-        final aCopyData = aCopy.data as Float32List;
-        if (a.isContiguous && a.dtype == DType.float32) {
-          final aData = a.data as Float32List;
-          aCopyData.setRange(0, m * n, aData, offsetA);
-        } else {
-          final sliceView = NDArray.view(
-            a,
-            shape: [m, n],
-            strides: a.strides.sublist(rank - 2),
-            offsetElements: offsetA,
-          );
-          final list = sliceView.toList();
-          for (var i = 0; i < m * n; i++) {
-            aCopyData[i] = (list[i] as num).toDouble();
-          }
-        }
-      }
+      final sliceView = NDArray.view(
+        aCast,
+        shape: [m, n],
+        strides: aCast.strides.sublist(rank - 2),
+        offsetElements: offsetA,
+      );
+      sliceView.copy(out: aCopy);
+      sliceView.dispose();
 
       final s2D = targetDType == DType.float32
           ? NDArray<Float32>.zeros([n], DType.float32)
@@ -6176,30 +6210,32 @@ NDArray<bool> _runBinaryLogical(
         offsetVt += coords[i] * vtMat.strides[i];
       }
 
-      final strideU1 = uMat.strides[rank - 2];
-      final strideU2 = uMat.strides[rank - 1];
-      final u2DData = u2D.data;
-      for (var r = 0; r < m; r++) {
-        for (var c = 0; c < m; c++) {
-          uMat.data[offsetU + r * strideU1 + c * strideU2] = u2DData[r * m + c];
-        }
-      }
+      final uSlice = NDArray.view(
+        uMat,
+        shape: [m, m],
+        strides: uMat.strides.sublist(rank - 2),
+        offsetElements: offsetU,
+      );
+      (u2D as NDArray).copy(out: uSlice);
+      uSlice.dispose();
 
-      final strideSLast = sMat.strides.isEmpty ? 1 : sMat.strides.last;
-      final s2DData = s2D.data;
-      for (var j = 0; j < n; j++) {
-        sMat.data[offsetS + j * strideSLast] = s2DData[j];
-      }
+      final sSlice = NDArray.view(
+        sMat,
+        shape: [n],
+        strides: sMat.strides.isEmpty ? [1] : [sMat.strides.last],
+        offsetElements: offsetS,
+      );
+      (s2D as NDArray).copy(out: sSlice);
+      sSlice.dispose();
 
-      final strideVt1 = vtMat.strides[rank - 2];
-      final strideVt2 = vtMat.strides[rank - 1];
-      final vt2DData = vt2D.data;
-      for (var r = 0; r < n; r++) {
-        for (var c = 0; c < n; c++) {
-          vtMat.data[offsetVt + r * strideVt1 + c * strideVt2] =
-              vt2DData[r * n + c];
-        }
-      }
+      final vtSlice = NDArray.view(
+        vtMat,
+        shape: [n, n],
+        strides: vtMat.strides.sublist(rank - 2),
+        offsetElements: offsetVt,
+      );
+      (vt2D as NDArray).copy(out: vtSlice);
+      vtSlice.dispose();
 
       s2D.dispose();
       u2D.dispose();
@@ -6208,6 +6244,9 @@ NDArray<bool> _runBinaryLogical(
   } finally {
     ScratchArena.reset(marker);
     aCopy.dispose();
+    if (wasCast) {
+      aCast.dispose();
+    }
   }
 
   return (U: uMat, S: sMat, Vh: vtMat);

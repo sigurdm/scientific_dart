@@ -93,8 +93,7 @@ void main() {
             DType.float64,
           );
 
-          final res = cholesky(a);
-          final l = res.L;
+          final l = cholesky(a);
 
           expect(l.shape, [3, 3]);
 
@@ -122,14 +121,113 @@ void main() {
             [2, 2],
             DType.float32,
           );
-          final res = cholesky(a);
-          final l = res.L;
+          final l = cholesky(a);
           expect(l.dtype, DType.float32);
           // L = [[2, 0], [1, 1]]
           expect(l.data[0], closeTo(2.0, 1e-5));
           expect(l.data[1], 0.0);
           expect(l.data[2], closeTo(1.0, 1e-5));
           expect(l.data[3], closeTo(1.0, 1e-5));
+        }),
+      );
+
+      test(
+        'Cholesky Complex128 matrix and check exact factor values',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [
+              Complex(4.0, 0.0),
+              Complex(2.0, 1.0),
+              Complex(2.0, -1.0),
+              Complex(3.0, 0.0),
+            ],
+            [2, 2],
+            DType.complex128,
+          );
+          final l = cholesky(a);
+          expect(l.dtype, DType.complex128);
+
+          // Expected: L = [[2.0, 0.0], [1.0 - 0.5i, sqrt(1.75)]]
+          expect(l.data[0].real, closeTo(2.0, 1e-9));
+          expect(l.data[0].imag, closeTo(0.0, 1e-9));
+
+          expect(l.data[1].real, closeTo(0.0, 1e-9));
+          expect(l.data[1].imag, closeTo(0.0, 1e-9));
+
+          expect(l.data[2].real, closeTo(1.0, 1e-9));
+          expect(l.data[2].imag, closeTo(-0.5, 1e-9));
+
+          expect(l.data[3].real, closeTo(math.sqrt(1.75), 1e-9));
+          expect(l.data[3].imag, closeTo(0.0, 1e-9));
+        }),
+      );
+
+      test(
+        'Cholesky Complex64 matrix and check exact factor values',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [
+              Complex(4.0, 0.0),
+              Complex(2.0, 1.0),
+              Complex(2.0, -1.0),
+              Complex(3.0, 0.0),
+            ],
+            [2, 2],
+            DType.complex64,
+          );
+          final l = cholesky(a);
+          expect(l.dtype, DType.complex64);
+
+          // Expected: L = [[2.0, 0.0], [1.0 - 0.5i, sqrt(1.75)]]
+          expect(l.data[0].real, closeTo(2.0, 1e-5));
+          expect(l.data[0].imag, closeTo(0.0, 1e-5));
+
+          expect(l.data[1].real, closeTo(0.0, 1e-5));
+          expect(l.data[1].imag, closeTo(0.0, 1e-5));
+
+          expect(l.data[2].real, closeTo(1.0, 1e-5));
+          expect(l.data[2].imag, closeTo(-0.5, 1e-5));
+
+          expect(l.data[3].real, closeTo(math.sqrt(1.75), 1e-5));
+          expect(l.data[3].imag, closeTo(0.0, 1e-5));
+        }),
+      );
+
+      test(
+        'Cholesky with pre-allocated contiguous out parameter',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Float64List.fromList([
+              4.0,
+              12.0,
+              -16.0,
+              12.0,
+              37.0,
+              -43.0,
+              -16.0,
+              -43.0,
+              98.0,
+            ]),
+            [3, 3],
+            DType.float64,
+          );
+
+          final outL = NDArray<double>.zeros([3, 3], DType.float64);
+          final res = cholesky(a, out: outL);
+          expect(identical(res, outL), true);
+
+          // Check that the strictly upper triangular elements are zeroed out!
+          expect(outL.data[1], 0.0);
+          expect(outL.data[2], 0.0);
+          expect(outL.data[5], 0.0);
+
+          // Check exact expected lower triangular values
+          expect(outL.data[0], closeTo(2.0, 1e-6));
+          expect(outL.data[3], closeTo(6.0, 1e-6));
+          expect(outL.data[4], closeTo(1.0, 1e-6));
+          expect(outL.data[6], closeTo(-8.0, 1e-6));
+          expect(outL.data[7], closeTo(5.0, 1e-6));
+          expect(outL.data[8], closeTo(3.0, 1e-6));
         }),
       );
     });
@@ -664,6 +762,17 @@ void main() {
             [2, 2],
             DType.float64,
           );
+          expect(() => cholesky(a), throwsArgumentError);
+        }),
+      );
+
+      test(
+        'cholesky() throws ArgumentError on unsupported dtype (int32)',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(Int32List.fromList([4, 2, 2, 2]), [
+            2,
+            2,
+          ], DType.int32);
           expect(() => cholesky(a), throwsArgumentError);
         }),
       );

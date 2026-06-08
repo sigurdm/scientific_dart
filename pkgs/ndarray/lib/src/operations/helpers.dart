@@ -4,7 +4,6 @@ import '../ndarray.dart';
 import 'dart:ffi' as ffi;
 import '../ndarray_bindings.dart';
 import '../scratch_arena.dart';
-import 'custom_checks.dart';
 
 // Standalone operational relative cross-imports
 import 'spacers.dart';

@@ -5890,6 +5890,55 @@ void v_extract_upper_triangular(
     }
 }
 
+void v_zero_upper_triangular(
+    void *ptr,
+    int n,
+    int dtype
+) {
+    if (ptr == NULL || n <= 0) return;
+    
+    switch (dtype) {
+        case DTYPE_FLOAT64: {
+            double *data = (double *)ptr;
+            for (int i = 0; i < n; i++) {
+                for (int j = i + 1; j < n; j++) {
+                    data[i * n + j] = 0.0;
+                }
+            }
+            break;
+        }
+        case DTYPE_FLOAT32: {
+            float *data = (float *)ptr;
+            for (int i = 0; i < n; i++) {
+                for (int j = i + 1; j < n; j++) {
+                    data[i * n + j] = 0.0f;
+                }
+            }
+            break;
+        }
+        case DTYPE_COMPLEX128: {
+            cpx_t *data = (cpx_t *)ptr;
+            for (int i = 0; i < n; i++) {
+                for (int j = i + 1; j < n; j++) {
+                    data[i * n + j].r = 0.0;
+                    data[i * n + j].i = 0.0;
+                }
+            }
+            break;
+        }
+        case DTYPE_COMPLEX64: {
+            cpx_f_t *data = (cpx_f_t *)ptr;
+            for (int i = 0; i < n; i++) {
+                for (int j = i + 1; j < n; j++) {
+                    data[i * n + j].r = 0.0f;
+                    data[i * n + j].i = 0.0f;
+                }
+            }
+            break;
+        }
+    }
+}
+
 
 
 

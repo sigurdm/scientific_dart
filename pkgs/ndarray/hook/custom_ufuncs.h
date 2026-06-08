@@ -1014,5 +1014,11 @@ void v_extract_upper_triangular(
     int dtype
 );
 
+void v_zero_upper_triangular(
+    void *ptr,
+    int n,
+    int dtype
+);
+
 #endif /* CUSTOM_UFUNCS_H */
 
