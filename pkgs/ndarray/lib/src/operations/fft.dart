@@ -52,7 +52,12 @@ kiss_fft_cfg _allocateKissFFTPlan(int nfft, int inverse_fft) {
 /// {@example /example/fft_example.dart lang=dart}
 ///
 /// Reference: [Cooley-Tukey FFT Algorithm](https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm)
-NDArray fft(NDArray a, {int? n, int axis = -1}) {
+NDArray<Complex> fft<T>(
+  NDArray<T> a, {
+  int? n,
+  int axis = -1,
+  NDArray<Complex>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute fft() on a disposed array.');
   }
@@ -68,17 +73,56 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
     throw RangeError.range(axis, -rank, rank - 1, 'axis');
   }
 
+  final lastAxisDim = a.shape[normAxis];
+  final targetLen = n ?? lastAxisDim;
+  if (targetLen <= 0) {
+    throw ArgumentError(
+      'Target transform length [n] must be greater than 0 (was $n)',
+    );
+  }
+
+  // Formulate output shape by replacing the transform axis with targetLen
+  final outShape = List<int>.from(a.shape);
+  outShape[normAxis] = targetLen;
+
+  final targetDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+      ? DType.complex64
+      : DType.complex128;
+
+  if (out != null) {
+    if (!listEquals(out.shape, outShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+    if (!out.isContiguous) {
+      throw ArgumentError('Provided out buffer must be contiguous.');
+    }
+  }
+
   if (normAxis != rank - 1) {
     final axes = List.generate(rank, (i) => i);
     axes[normAxis] = rank - 1;
     axes[rank - 1] = normAxis;
 
     final transposedInput = a.transpose(axes);
-    final transposedResult = fft(transposedInput, n: n);
-    return transposedResult.transpose(axes);
+    if (out != null) {
+      final transposedResult = fft<T>(transposedInput, n: n);
+      final finalResult = transposedResult.transpose(axes);
+      finalResult.copy(out: out);
+      transposedResult.dispose();
+      finalResult.dispose();
+      transposedInput.dispose();
+      return out;
+    } else {
+      final transposedResult = fft<T>(transposedInput, n: n);
+      final finalResult = transposedResult.transpose(axes);
+      transposedInput.dispose();
+      return finalResult;
+    }
   }
 
-  final NDArray inputA;
+  final NDArray<T> inputA;
   final bool wasCopied;
   if (!a.isContiguous) {
     inputA = a.copy();
@@ -88,27 +132,7 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
     wasCopied = false;
   }
 
-  final lastAxisDim = inputA.shape.last;
-  final targetLen = n ?? lastAxisDim;
-  if (targetLen <= 0) {
-    if (wasCopied) {
-      inputA.dispose();
-    }
-    throw ArgumentError(
-      'Target transform length [n] must be greater than 0 (was $n)',
-    );
-  }
-
-  // Formulate output shape by replacing the last axis with targetLen
-  final outShape = List<int>.from(inputA.shape);
-  outShape[outShape.length - 1] = targetLen;
-
-  final targetDType =
-      (inputA.dtype == DType.float32 || inputA.dtype == DType.complex64)
-      ? DType.complex64
-      : DType.complex128;
-
-  final result = NDArray.zeros(outShape, targetDType);
+  final result = out ?? NDArray<Complex>.zeros(outShape, targetDType);
 
   // Count how many 1D row sub-signals exist to execute strided walks
   final totalElements = inputA.shape.reduce((x, y) => x * y);
@@ -228,7 +252,12 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
 ///
 /// **Example:**
 /// {@example /example/fft_example.dart lang=dart}
-NDArray ifft(NDArray a, {int? n, int axis = -1}) {
+NDArray<Complex> ifft<T>(
+  NDArray<T> a, {
+  int? n,
+  int axis = -1,
+  NDArray<Complex>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute ifft() on a disposed array.');
   }
@@ -244,17 +273,56 @@ NDArray ifft(NDArray a, {int? n, int axis = -1}) {
     throw RangeError.range(axis, -rank, rank - 1, 'axis');
   }
 
+  final lastAxisDim = a.shape[normAxis];
+  final targetLen = n ?? lastAxisDim;
+  if (targetLen <= 0) {
+    throw ArgumentError(
+      'Target transform length [n] must be greater than 0 (was $n)',
+    );
+  }
+
+  // Formulate output shape by replacing the transform axis with targetLen
+  final outShape = List<int>.from(a.shape);
+  outShape[normAxis] = targetLen;
+
+  final targetDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+      ? DType.complex64
+      : DType.complex128;
+
+  if (out != null) {
+    if (!listEquals(out.shape, outShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+    if (!out.isContiguous) {
+      throw ArgumentError('Provided out buffer must be contiguous.');
+    }
+  }
+
   if (normAxis != rank - 1) {
     final axes = List.generate(rank, (i) => i);
     axes[normAxis] = rank - 1;
     axes[rank - 1] = normAxis;
 
     final transposedInput = a.transpose(axes);
-    final transposedResult = ifft(transposedInput, n: n);
-    return transposedResult.transpose(axes);
+    if (out != null) {
+      final transposedResult = ifft<T>(transposedInput, n: n);
+      final finalResult = transposedResult.transpose(axes);
+      finalResult.copy(out: out);
+      transposedResult.dispose();
+      finalResult.dispose();
+      transposedInput.dispose();
+      return out;
+    } else {
+      final transposedResult = ifft<T>(transposedInput, n: n);
+      final finalResult = transposedResult.transpose(axes);
+      transposedInput.dispose();
+      return finalResult;
+    }
   }
 
-  final NDArray inputA;
+  final NDArray<T> inputA;
   final bool wasCopied;
   if (!a.isContiguous) {
     inputA = a.copy();
@@ -264,26 +332,7 @@ NDArray ifft(NDArray a, {int? n, int axis = -1}) {
     wasCopied = false;
   }
 
-  final lastAxisDim = inputA.shape.last;
-  final targetLen = n ?? lastAxisDim;
-  if (targetLen <= 0) {
-    if (wasCopied) {
-      inputA.dispose();
-    }
-    throw ArgumentError(
-      'Target transform length [n] must be greater than 0 (was $n)',
-    );
-  }
-
-  final outShape = List<int>.from(inputA.shape);
-  outShape[outShape.length - 1] = targetLen;
-
-  final targetDType =
-      (inputA.dtype == DType.float32 || inputA.dtype == DType.complex64)
-      ? DType.complex64
-      : DType.complex128;
-
-  final result = NDArray.zeros(outShape, targetDType);
+  final result = out ?? NDArray<Complex>.zeros(outShape, targetDType);
 
   final totalElements = inputA.shape.reduce((x, y) => x * y);
   final signalsCount = totalElements ~/ lastAxisDim;

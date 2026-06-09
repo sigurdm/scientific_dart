@@ -25,13 +25,21 @@ DType resolveDType(DType a, DType b) {
   if (a == DType.boolean) return b;
   if (b == DType.boolean) return a;
   if (a == b) return a;
+
+  final isAIntLarge = a == DType.int64 || a == DType.int32;
+  final isBIntLarge = b == DType.int64 || b == DType.int32;
+
   if (a == DType.complex128 || b == DType.complex128) return DType.complex128;
   if (a == DType.complex64 || b == DType.complex64) {
     if (a == DType.float64 || b == DType.float64) return DType.complex128;
+    if (isAIntLarge || isBIntLarge) return DType.complex128;
     return DType.complex64;
   }
   if (a == DType.float64 || b == DType.float64) return DType.float64;
-  if (a == DType.float32 || b == DType.float32) return DType.float32;
+  if (a == DType.float32 || b == DType.float32) {
+    if (isAIntLarge || isBIntLarge) return DType.float64;
+    return DType.float32;
+  }
   if (a == DType.int64 || b == DType.int64) return DType.int64;
   return DType.int32;
 }
@@ -359,7 +367,15 @@ void nanReduceRecursive<T>(
 }
 
 void elementWiseMin(NDArray dest, NDArray src) {
-  elementWiseMinRec(dest, src, dest.strides, src.strides, 0, 0, 0);
+  elementWiseMinRec(
+    dest,
+    src,
+    dest.strides,
+    src.strides,
+    0,
+    dest.offsetElements,
+    src.offsetElements,
+  );
 }
 
 void elementWiseMinRec(
@@ -398,7 +414,15 @@ void elementWiseMinRec(
 }
 
 void elementWiseMax(NDArray dest, NDArray src) {
-  elementWiseMaxRec(dest, src, dest.strides, src.strides, 0, 0, 0);
+  elementWiseMaxRec(
+    dest,
+    src,
+    dest.strides,
+    src.strides,
+    0,
+    dest.offsetElements,
+    src.offsetElements,
+  );
 }
 
 void elementWiseMaxRec(
@@ -437,7 +461,15 @@ void elementWiseMaxRec(
 }
 
 void elementWiseNanMin(NDArray dest, NDArray src) {
-  elementWiseNanMinRec(dest, src, dest.strides, src.strides, 0, 0, 0);
+  elementWiseNanMinRec(
+    dest,
+    src,
+    dest.strides,
+    src.strides,
+    0,
+    dest.offsetElements,
+    src.offsetElements,
+  );
 }
 
 void elementWiseNanMinRec(
@@ -481,7 +513,15 @@ void elementWiseNanMinRec(
 }
 
 void elementWiseNanMax(NDArray dest, NDArray src) {
-  elementWiseNanMaxRec(dest, src, dest.strides, src.strides, 0, 0, 0);
+  elementWiseNanMaxRec(
+    dest,
+    src,
+    dest.strides,
+    src.strides,
+    0,
+    dest.offsetElements,
+    src.offsetElements,
+  );
 }
 
 void elementWiseNanMaxRec(
@@ -556,13 +596,13 @@ void reduceRecursive<S extends Object, D extends Object>(
 ) {
   if (currentDim == src.shape.length) {
     // Calculate flat index for src
-    var srcOffset = 0;
+    var srcOffset = src.offsetElements;
     for (var i = 0; i < src.shape.length; i++) {
       srcOffset += currentPos[i] * src.strides[i];
     }
 
     // Calculate flat index for dest
-    var destOffset = 0;
+    var destOffset = dest.offsetElements;
     for (var i = 0; i < dest.shape.length; i++) {
       destOffset += destPos[i] * dest.strides[i];
     }
@@ -1186,30 +1226,7 @@ NDArray<R> cumOpFFI<T, R>(
           case DType.uint8:
           case DType.int16:
           case DType.boolean:
-            final doubleA = NDArray<double>.create(a.shape, DType.float64);
-            for (var i = 0; i < a.data.length; i++) {
-              final val = a.data[i];
-              doubleA.data[i] = (val is bool)
-                  ? (val ? 1.0 : 0.0)
-                  : (val as num).toDouble();
-            }
-            final doubleRes = NDArray<double>.create(a.shape, DType.float64);
-            final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
-            final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
-            s_cumsum_double(
-              doubleA.pointer.cast(),
-              cStridesDoubleA,
-              doubleRes.pointer.cast(),
-              cStridesDoubleRes,
-              cShape,
-              rank,
-              axis,
-            );
-            for (var i = 0; i < result.data.length; i++) {
-              result.data[i] = castValue(doubleRes.data[i], result.dtype) as R;
-            }
-            doubleA.dispose();
-            doubleRes.dispose();
+            _cumOpFallbackHelper(a, result, axis, s_cumsum_double);
         }
 
       case CumOpType.prod:
@@ -1278,30 +1295,7 @@ NDArray<R> cumOpFFI<T, R>(
           case DType.uint8:
           case DType.int16:
           case DType.boolean:
-            final doubleA = NDArray<double>.create(a.shape, DType.float64);
-            for (var i = 0; i < a.data.length; i++) {
-              final val = a.data[i];
-              doubleA.data[i] = (val is bool)
-                  ? (val ? 1.0 : 0.0)
-                  : (val as num).toDouble();
-            }
-            final doubleRes = NDArray<double>.create(a.shape, DType.float64);
-            final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
-            final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
-            s_cumprod_double(
-              doubleA.pointer.cast(),
-              cStridesDoubleA,
-              doubleRes.pointer.cast(),
-              cStridesDoubleRes,
-              cShape,
-              rank,
-              axis,
-            );
-            for (var i = 0; i < result.data.length; i++) {
-              result.data[i] = castValue(doubleRes.data[i], result.dtype) as R;
-            }
-            doubleA.dispose();
-            doubleRes.dispose();
+            _cumOpFallbackHelper(a, result, axis, s_cumprod_double);
         }
 
       case CumOpType.min:
@@ -1350,30 +1344,7 @@ NDArray<R> cumOpFFI<T, R>(
           case DType.uint8:
           case DType.int16:
           case DType.boolean:
-            final doubleA = NDArray<double>.create(a.shape, DType.float64);
-            for (var i = 0; i < a.data.length; i++) {
-              final val = a.data[i];
-              doubleA.data[i] = (val is bool)
-                  ? (val ? 1.0 : 0.0)
-                  : (val as num).toDouble();
-            }
-            final doubleRes = NDArray<double>.create(a.shape, DType.float64);
-            final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
-            final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
-            s_cummin_double(
-              doubleA.pointer.cast(),
-              cStridesDoubleA,
-              doubleRes.pointer.cast(),
-              cStridesDoubleRes,
-              cShape,
-              rank,
-              axis,
-            );
-            for (var i = 0; i < result.data.length; i++) {
-              result.data[i] = castValue(doubleRes.data[i], result.dtype) as R;
-            }
-            doubleA.dispose();
-            doubleRes.dispose();
+            _cumOpFallbackHelper(a, result, axis, s_cummin_double);
           case DType.complex128:
           case DType.complex64:
             throw ArgumentError(
@@ -1427,30 +1398,7 @@ NDArray<R> cumOpFFI<T, R>(
           case DType.uint8:
           case DType.int16:
           case DType.boolean:
-            final doubleA = NDArray<double>.create(a.shape, DType.float64);
-            for (var i = 0; i < a.data.length; i++) {
-              final val = a.data[i];
-              doubleA.data[i] = (val is bool)
-                  ? (val ? 1.0 : 0.0)
-                  : (val as num).toDouble();
-            }
-            final doubleRes = NDArray<double>.create(a.shape, DType.float64);
-            final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
-            final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
-            s_cummax_double(
-              doubleA.pointer.cast(),
-              cStridesDoubleA,
-              doubleRes.pointer.cast(),
-              cStridesDoubleRes,
-              cShape,
-              rank,
-              axis,
-            );
-            for (var i = 0; i < result.data.length; i++) {
-              result.data[i] = castValue(doubleRes.data[i], result.dtype) as R;
-            }
-            doubleA.dispose();
-            doubleRes.dispose();
+            _cumOpFallbackHelper(a, result, axis, s_cummax_double);
           case DType.complex128:
           case DType.complex64:
             throw ArgumentError(
@@ -1472,4 +1420,55 @@ NDArray<R> castNDArray<R>(NDArray a, DType<R> targetDType) {
     result.data[i] = castValue(aFlat[i], targetDType) as R;
   }
   return result;
+}
+
+void _cumOpFallbackHelper<T, R>(
+  NDArray<T> a,
+  NDArray<R> result,
+  int axis,
+  void Function(
+    ffi.Pointer<ffi.Double> src,
+    ffi.Pointer<ffi.Int> srcStrides,
+    ffi.Pointer<ffi.Double> dest,
+    ffi.Pointer<ffi.Int> destStrides,
+    ffi.Pointer<ffi.Int> shape,
+    int rank,
+    int axis,
+  )
+  ffiFunc,
+) {
+  final temp = a.isContiguous ? a : a.copy();
+  final doubleA = NDArray<double>.create(temp.shape, DType.float64);
+  final offset = temp.offsetElements;
+  for (var i = 0; i < temp.size; i++) {
+    final val = temp.data[offset + i];
+    doubleA.data[i] = (val is bool)
+        ? (val ? 1.0 : 0.0)
+        : (val as num).toDouble();
+  }
+  final doubleRes = NDArray<double>.create(temp.shape, DType.float64);
+  final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
+  final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
+  final cShape = ScratchArena.copyInts(temp.shape);
+
+  ffiFunc(
+    doubleA.pointer.cast(),
+    cStridesDoubleA,
+    doubleRes.pointer.cast(),
+    cStridesDoubleRes,
+    cShape,
+    temp.shape.length,
+    axis,
+  );
+
+  final resOffset = result.offsetElements;
+  for (var i = 0; i < result.size; i++) {
+    result.data[resOffset + i] =
+        castValue(doubleRes.data[i], result.dtype) as R;
+  }
+  doubleA.dispose();
+  doubleRes.dispose();
+  if (!identical(temp, a)) {
+    temp.dispose();
+  }
 }

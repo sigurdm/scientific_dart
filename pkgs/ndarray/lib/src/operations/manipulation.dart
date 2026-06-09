@@ -386,12 +386,7 @@ NDArray<T> flip<T extends Object>(NDArray<T> a, {dynamic axis}) {
 
   final rank = a.rank;
   if (rank == 0) {
-    return NDArray.view(
-      a,
-      shape: [],
-      strides: [],
-      offsetElements: a.offsetElements,
-    );
+    return NDArray.view(a, shape: [], strides: [], offsetElements: 0);
   }
 
   final List<int> axesToFlip;
@@ -420,7 +415,7 @@ NDArray<T> flip<T extends Object>(NDArray<T> a, {dynamic axis}) {
   }
 
   final newStrides = List<int>.from(a.strides);
-  var offset = a.offsetElements;
+  var offset = 0;
 
   for (final ax in axesToFlip) {
     newStrides[ax] = a.strides[ax] * -1;

@@ -148,7 +148,7 @@ NDArray<T> broadcastTo<T>(NDArray<T> a, List<int> targetShape) {
       a,
       shape: targetShape,
       strides: stridesA,
-      offsetElements: a.offsetElements,
+      offsetElements: 0,
     );
   }
 
@@ -188,6 +188,6 @@ NDArray<T> broadcastTo<T>(NDArray<T> a, List<int> targetShape) {
     a,
     shape: targetShape,
     strides: newStrides,
-    offsetElements: a.offsetElements,
+    offsetElements: 0,
   );
 }

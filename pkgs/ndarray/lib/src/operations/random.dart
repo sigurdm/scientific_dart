@@ -41,6 +41,9 @@ NDArray<T> uniform<T extends num>(
 }) {
   final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
   if (out != null) {
+    if (!out.isContiguous) {
+      throw ArgumentError('out buffer must be contiguous.');
+    }
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
@@ -114,6 +117,9 @@ NDArray<T> randint<T extends num>(
   }
   final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
   if (out != null) {
+    if (!out.isContiguous) {
+      throw ArgumentError('out buffer must be contiguous.');
+    }
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
@@ -199,6 +205,9 @@ NDArray<T> normal<T extends num>(
   }
   final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
   if (out != null) {
+    if (!out.isContiguous) {
+      throw ArgumentError('out buffer must be contiguous.');
+    }
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
@@ -356,6 +365,9 @@ NDArray<T> poisson<T extends num>(
   }
   final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
   if (out != null) {
+    if (!out.isContiguous) {
+      throw ArgumentError('out buffer must be contiguous.');
+    }
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
@@ -428,6 +440,9 @@ NDArray<T> binomial<T extends num>(
   }
   final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
   if (out != null) {
+    if (!out.isContiguous) {
+      throw ArgumentError('out buffer must be contiguous.');
+    }
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
