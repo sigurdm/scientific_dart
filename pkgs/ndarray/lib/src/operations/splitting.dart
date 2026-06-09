@@ -323,3 +323,69 @@ List<NDArray<T>> vsplit_at<T>(NDArray<T> a, List<int> indices) {
   }
   return split_at(a, indices, axis: 0);
 }
+
+/// Splits an array into multiple sub-arrays of strictly equal size along the 3rd axis (axis 2).
+///
+/// Equivalent to [split] with `axis = 2`. Requires rank $\ge 3$.
+///
+/// **Preconditions:**
+/// - [a] must not be disposed.
+/// - [a] must have rank $\ge 3$.
+/// - [sections] must be strictly positive ($\ge 1$).
+/// - The dimension size along axis 2 must be divisible by [sections].
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if [a] has rank $< 3$.
+/// - [ArgumentError] if [sections] is less than or equal to 0.
+/// - [ArgumentError] if division is not equal.
+///
+/// **Memory Safety & zero-copy View Warning:**
+/// > [!WARNING]
+/// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
+///
+/// **Example:**
+/// {@example /example/splitting_example.dart region=dsplit lang=dart}
+///
+/// Refer to the [NumPy dsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.dsplit.html)
+/// for details.
+List<NDArray<T>> dsplit<T>(NDArray<T> a, int sections) {
+  if (a.isDisposed) {
+    throw StateError('Cannot access a disposed NDArray.');
+  }
+  if (a.rank < 3) {
+    throw ArgumentError('dsplit only supports arrays of rank >= 3.');
+  }
+  return split(a, sections, axis: 2);
+}
+
+/// Splits an array along the 3rd axis (axis 2) at the coordinate points specified in [indices].
+///
+/// Equivalent to [split_at] with `axis = 2`. Requires rank $\ge 3$.
+///
+/// **Preconditions:**
+/// - [a] must not be disposed.
+/// - [a] must have rank $\ge 3$.
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if [a] has rank $< 3$.
+///
+/// **Memory Safety & zero-copy View Warning:**
+/// > [!WARNING]
+/// > This operation returns a list of **zero-copy metadata views** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned sub-arrays will **silently mutate the original array [a]**.
+///
+/// **Example:**
+/// {@example /example/splitting_example.dart region=dsplit lang=dart}
+///
+/// Refer to the [NumPy dsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.dsplit.html)
+/// for details.
+List<NDArray<T>> dsplit_at<T>(NDArray<T> a, List<int> indices) {
+  if (a.isDisposed) {
+    throw StateError('Cannot access a disposed NDArray.');
+  }
+  if (a.rank < 3) {
+    throw ArgumentError('dsplit_at only supports arrays of rank >= 3.');
+  }
+  return split_at(a, indices, axis: 2);
+}

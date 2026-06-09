@@ -6,6 +6,7 @@ void main() {
   runArraySplitExamples();
   runHSplitExamples();
   runVSplitExamples();
+  runDSplitExamples();
 }
 
 // #docregion split
@@ -28,9 +29,6 @@ void runSplitExamples() {
     print('Sub-array 1: ${splitsAt[1].toList()}\n');
   });
 }
-// #enddocregion vsplit
-// #enddocregion hsplit
-// #enddocregion array_split
 // #enddocregion split
 
 // #docregion array_split
@@ -55,6 +53,7 @@ void runArraySplitExamples() {
     print('');
   });
 }
+// #enddocregion array_split
 
 // #docregion hsplit
 void runHSplitExamples() {
@@ -74,6 +73,7 @@ void runHSplitExamples() {
     print('Sub-array 1:\n${splitsAt[1]}\n');
   });
 }
+// #enddocregion hsplit
 
 // #docregion vsplit
 void runVSplitExamples() {
@@ -93,3 +93,34 @@ void runVSplitExamples() {
     print('Sub-array 1:\n${splitsAt[1]}\n');
   });
 }
+// #enddocregion vsplit
+
+// #docregion dsplit
+void runDSplitExamples() {
+  print('--- 5. Depth-wise Splitting (dsplit / dsplit_at) ---');
+  NDArray.scope(() {
+    final a = NDArray.fromList(List.generate(16, (i) => i + 1), [
+      2,
+      2,
+      4,
+    ], DType.int32);
+    print('Original 3D array shape: ${a.shape}');
+    print('Original 3D array:\n$a');
+
+    final splits = dsplit(a, 2);
+    print('dsplit along axis 2 into 2 sections:');
+    print('Sub-array 0 shape: ${splits[0].shape}');
+    print('Sub-array 0:\n${splits[0]}');
+    print('Sub-array 1 shape: ${splits[1].shape}');
+    print('Sub-array 1:\n${splits[1]}');
+
+    final splitsAt = dsplit_at(a, [1, 3]);
+    print('dsplit_at axis 2 at indices [1, 3]:');
+    for (var i = 0; i < splitsAt.length; i++) {
+      print('Sub-array $i shape: ${splitsAt[i].shape}');
+      print('Sub-array $i:\n${splitsAt[i]}');
+    }
+  });
+}
+
+// #enddocregion dsplit

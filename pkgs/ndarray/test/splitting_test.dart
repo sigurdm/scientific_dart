@@ -135,5 +135,85 @@ void main() {
         });
       });
     });
+
+    group('dsplit & dsplit_at Tests', () {
+      test('dsplit 3D array equal split', () {
+        NDArray.scope(() {
+          final a = NDArray.fromList(List.generate(16, (i) => i + 1), [
+            2,
+            2,
+            4,
+          ], DType.int32);
+          final splits = dsplit(a, 2);
+
+          expect(splits.length, 2);
+          expect(splits[0].shape, [2, 2, 2]);
+          expect(splits[0].toList(), [1, 2, 5, 6, 9, 10, 13, 14]);
+          expect(splits[1].shape, [2, 2, 2]);
+          expect(splits[1].toList(), [3, 4, 7, 8, 11, 12, 15, 16]);
+
+          // Zero-copy check: mutating sub-array affects original
+          splits[0].setCell([0, 0, 0], Int32(99));
+          expect(a.getCell([0, 0, 0]).value, 99);
+        });
+      });
+
+      test('dsplit_at 3D array at indices', () {
+        NDArray.scope(() {
+          final a = NDArray.fromList(List.generate(16, (i) => i + 1), [
+            2,
+            2,
+            4,
+          ], DType.int32);
+          final splits = dsplit_at(a, [1, 3]);
+
+          expect(splits.length, 3);
+          expect(splits[0].shape, [2, 2, 1]);
+          expect(splits[0].toList(), [1, 5, 9, 13]);
+          expect(splits[1].shape, [2, 2, 2]);
+          expect(splits[1].toList(), [2, 3, 6, 7, 10, 11, 14, 15]);
+          expect(splits[2].shape, [2, 2, 1]);
+          expect(splits[2].toList(), [4, 8, 12, 16]);
+        });
+      });
+
+      test('dsplit rank < 3 throws', () {
+        NDArray.scope(() {
+          final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+          expect(() => dsplit(a, 2), throwsArgumentError);
+        });
+      });
+
+      test('dsplit_at rank < 3 throws', () {
+        NDArray.scope(() {
+          final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+          expect(() => dsplit_at(a, [1]), throwsArgumentError);
+        });
+      });
+
+      test('dsplit unequal division throws', () {
+        NDArray.scope(() {
+          final a = NDArray.fromList(List.generate(12, (i) => i + 1), [
+            2,
+            2,
+            3,
+          ], DType.int32);
+          expect(() => dsplit(a, 2), throwsArgumentError);
+        });
+      });
+
+      test('dsplit disposed array throws', () {
+        NDArray.scope(() {
+          final a = NDArray.fromList(List.generate(16, (i) => i + 1), [
+            2,
+            2,
+            4,
+          ], DType.int32);
+          a.dispose();
+          expect(() => dsplit(a, 2), throwsStateError);
+          expect(() => dsplit_at(a, [1]), throwsStateError);
+        });
+      });
+    });
   });
 }
