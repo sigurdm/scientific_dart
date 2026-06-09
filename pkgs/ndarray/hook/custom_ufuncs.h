@@ -1097,6 +1097,39 @@ void pad_axis_complex64(
     int statLengthBefore, int statLengthAfter
 );
 
+
+/* ============================================================================
+ * SECTION 10: INTERPOLATION KERNELS
+ * ============================================================================
+ */
+
+int is_strictly_increasing_double(const double *arr, int size, int stride);
+
+void v_interp_double(const double *x, int x_size,
+                     const double *xp, int xp_size,
+                     const double *fp, double *res,
+                     const double *left, const double *right);
+
+void s_interp_double(const double *x, const int *stridesX,
+                     const double *xp, int strideXP, int xp_size,
+                     const double *fp, int strideFP,
+                     double *res, const int *stridesRes,
+                     const int *shape, int rank,
+                     const double *left, const double *right);
+
+void v_interp_float(const float *x, int x_size,
+                    const float *xp, int xp_size,
+                    const float *fp, float *res,
+                    const float *left, const float *right);
+
+void s_interp_float(const float *x, const int *stridesX,
+                    const float *xp, int strideXP, int xp_size,
+                    const float *fp, int strideFP,
+                    float *res, const int *stridesRes,
+                    const int *shape, int rank,
+                    const float *left, const float *right);
+
 #endif /* CUSTOM_UFUNCS_H */
+
 
 
