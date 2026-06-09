@@ -101,6 +101,10 @@ NDArray<double> _generate1DCoordinate(GridRange range, DType<double> dtype) {
 /// - [StateError] if [x] has been disposed.
 /// - [ArgumentError] if [shape] and [strides] lengths do not match.
 ///
+/// **Memory Ownership & Lifetime View Warning:**
+/// > [!WARNING]
+/// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [x] will invalidate the returned view. Calling [dispose()] on the returned view does nothing.
+///
 /// **Example:**
 /// {@example /example/shaping_example.dart lang=dart}
 ///

@@ -47,6 +47,9 @@ final class BroadcastResult {
 /// print(result.shape); // [2, 3]
 /// ```
 BroadcastResult broadcast(NDArray a, NDArray b) {
+  if (a.isDisposed || b.isDisposed) {
+    throw StateError('Cannot execute broadcast() on a disposed array.');
+  }
   final shapeA = a.shape;
   final shapeB = b.shape;
   final stridesA = a.strides;
@@ -130,7 +133,7 @@ BroadcastResult broadcast(NDArray a, NDArray b) {
 /// final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
 /// final b = broadcastTo(a, [2, 2]);
 /// print(b.shape); // [2, 2]
-/// print(b.toList()); // [[1.0, 2.0], [1.0, 2.0]]
+/// print(b.toList()); // [1.0, 2.0, 1.0, 2.0]
 /// ```
 ///
 /// Refer to the [NumPy broadcast_to reference](https://numpy.org/doc/stable/reference/generated/numpy.broadcast_to.html)

@@ -16,6 +16,12 @@ import 'helpers.dart';
 
 /// Matrix multiplication using OpenBLAS, supporting high-dimensional stack broadcasting and 1D vector promotions.
 NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
+  if (a.isDisposed || b.isDisposed) {
+    throw StateError('Cannot execute matmul() on a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write matmul result to a disposed output array.');
+  }
   final targetDType = resolveDType(a.dtype, b.dtype);
 
   NDArray? aCast;
@@ -520,6 +526,18 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 ///
 /// Reference: [NumPy linalg.multi_dot](https://numpy.org/doc/stable/reference/generated/numpy.linalg.multi_dot.html)
 NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
+  for (final a in arrays) {
+    if (a.isDisposed) {
+      throw StateError(
+        'Cannot execute multi_dot() with a disposed array in the list.',
+      );
+    }
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError(
+      'Cannot write multi_dot result to a disposed output array.',
+    );
+  }
   if (arrays.length < 2) {
     throw ArgumentError(
       'multi_dot requires at least 2 arrays (got ${arrays.length}).',
@@ -709,6 +727,12 @@ NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
 ///
 /// Reference: [Matrix Inversion](https://en.wikipedia.org/wiki/Invertible_matrix)
 NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute inverse of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write inverse to a disposed output array.');
+  }
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
   }
@@ -962,12 +986,20 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// ```dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 /// final d = det(a);
-/// print(d); // -2.0
+/// print(d.data); // [-2.0] (0-D array)
 /// ```
 ///
 /// Refer to the [determinant](https://en.wikipedia.org/wiki/Determinant)
 /// and [LAPACK LU solver](https://en.wikipedia.org/wiki/LU_decomposition) for additional details.
+///
+/// Returns a 0-dimensional [NDArray] if [a] is a 2D matrix, or a new [NDArray] with stack dimensions if [a] is a stack of matrices.
 NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute determinant of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write determinant to a disposed output array.');
+  }
   if (a.dtype != DType.float64 &&
       a.dtype != DType.float32 &&
       a.dtype != DType.complex128 &&
@@ -1167,6 +1199,12 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// print(x.toList()); // [2.0, 3.0]
 /// ```
 NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
+  if (a.isDisposed || b.isDisposed) {
+    throw StateError('Cannot execute solve() on a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write solve result to a disposed output array.');
+  }
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError('Matrix a must be square and 2D (was ${a.shape})');
   }
@@ -1673,6 +1711,9 @@ NDArray<R> pinv<T, R>(NDArray<T> a, {double? rcond, NDArray<R>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute pinv() on a disposed array.');
   }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write pinv result to a disposed output array.');
+  }
   if (a.shape.length != 2) {
     throw ArgumentError(
       'Moore-Penrose pseudo-inverse is only defined for 2D matrices (was shape ${a.shape}).',
@@ -1743,6 +1784,11 @@ NDArray<R> pinv<T, R>(NDArray<T> a, {double? rcond, NDArray<R>? out}) {
 NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute matrix_power() on a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError(
+      'Cannot write matrix_power result to a disposed output array.',
+    );
   }
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError(
@@ -1862,6 +1908,11 @@ NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
 NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cholesky() on a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError(
+      'Cannot write cholesky result to a disposed output array.',
+    );
   }
   if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
     throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
@@ -2246,6 +2297,11 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute svd() on a disposed array.');
+  }
+  if (out != null) {
+    if (out.U.isDisposed || out.S.isDisposed || out.Vh.isDisposed) {
+      throw StateError('Cannot write SVD result to a disposed output array.');
+    }
   }
   if (!a.dtype.isFloating && !a.dtype.isComplex) {
     throw ArgumentError(

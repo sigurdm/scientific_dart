@@ -165,6 +165,9 @@ NDArray<T> linspaceGrid<T>(
   int axis = 0,
   DType<T>? dtype,
 }) {
+  if (start.isDisposed || stop.isDisposed) {
+    throw StateError('Cannot execute linspaceGrid() on a disposed array.');
+  }
   return _linspaceGridInternal<T>(
     start,
     stop,
@@ -205,6 +208,11 @@ NDArray<T> linspaceGrid<T>(
   int axis = 0,
   DType<T>? dtype,
 }) {
+  if (start.isDisposed || stop.isDisposed) {
+    throw StateError(
+      'Cannot execute linspaceGridWithStep() on a disposed array.',
+    );
+  }
   return _linspaceGridInternal<T>(
     start,
     stop,
@@ -541,6 +549,14 @@ NDArray<T> logspaceGrid<T>(
   int axis = 0,
   DType<T>? dtype,
 }) {
+  if (start.isDisposed || stop.isDisposed) {
+    throw StateError('Cannot execute logspaceGrid() on a disposed array.');
+  }
+  if (base != null && base.isDisposed) {
+    throw StateError(
+      'Cannot execute logspaceGrid() with a disposed base array.',
+    );
+  }
   final resolvedDType = dtype ?? defaultDType<T>();
   final actualBase = base ?? toNDArray<double>(10.0, DType.float64);
 
@@ -685,6 +701,9 @@ NDArray<T> geomspaceGrid<T>(
   int axis = 0,
   DType<T>? dtype,
 }) {
+  if (start.isDisposed || stop.isDisposed) {
+    throw StateError('Cannot execute geomspaceGrid() on a disposed array.');
+  }
   final resolvedDType = dtype ?? defaultDType<T>();
 
   return NDArray.scope(() {

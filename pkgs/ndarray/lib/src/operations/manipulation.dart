@@ -170,7 +170,14 @@ NDArray<T> stack<T extends Object>(List<NDArray<T>> arrays, {int axis = 0}) {
 /// {@example /example/shape_view_example.dart lang=dart}
 ///
 /// Reference: [Expand Dimensions](https://numpy.org/doc/stable/reference/generated/numpy.expand_dims.html)
+///
+/// **Memory Ownership & Lifetime View Warning:**
+/// > [!WARNING]
+/// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view. Calling [dispose()] on the returned view does nothing.
 NDArray<T> expand_dims<T extends Object>(NDArray<T> a, int axis) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute expand_dims() on a disposed array.');
+  }
   final rank = a.shape.length;
   var targetAxis = axis < 0 ? rank + 1 + axis : axis;
 
@@ -214,7 +221,14 @@ NDArray<T> expand_dims<T extends Object>(NDArray<T> a, int axis) {
 /// {@example /example/shape_view_example.dart lang=dart}
 ///
 /// Reference: [Squeeze Dimensions](https://numpy.org/doc/stable/reference/generated/numpy.squeeze.html)
+///
+/// **Memory Ownership & Lifetime View Warning:**
+/// > [!WARNING]
+/// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view. Calling [dispose()] on the returned view does nothing.
 NDArray<T> squeeze<T extends Object>(NDArray<T> a, {List<int>? axis}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute squeeze() on a disposed array.');
+  }
   final rank = a.shape.length;
   final shape = a.shape;
   final strides = a.strides;
@@ -290,11 +304,18 @@ NDArray<T> squeeze<T extends Object>(NDArray<T> a, {List<int>? axis}) {
 /// print(view.shape); // [3, 3]
 /// print(view.toList()); // [[1.0, 2.0, 3.0], [2.0, 3.0, 4.0], [3.0, 4.0, 5.0]]
 /// ```
+///
+/// **Memory Ownership & Lifetime View Warning:**
+/// > [!WARNING]
+/// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view. Calling [dispose()] on the returned view does nothing.
 NDArray<T> slidingWindowView<T extends Object>(
   NDArray<T> a,
   List<int> windowShape, {
   List<int>? axis,
 }) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute slidingWindowView() on a disposed array.');
+  }
   final rank = a.shape.length;
 
   // 1. Resolve and validate target axes
@@ -379,6 +400,10 @@ NDArray<T> slidingWindowView<T extends Object>(
 /// Refer to [NumPy flip documentation](https://numpy.org/doc/stable/reference/generated/numpy.flip.html).
 ///
 /// {@example /example/rearranging_example.dart lang=dart}
+///
+/// **Memory Ownership & Lifetime View Warning:**
+/// > [!WARNING]
+/// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view. Calling [dispose()] on the returned view does nothing.
 NDArray<T> flip<T extends Object>(NDArray<T> a, {dynamic axis}) {
   if (a.isDisposed) {
     throw StateError('Cannot flip a disposed array.');

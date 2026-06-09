@@ -77,9 +77,7 @@ void runArgsortExample() {
 
 void runWhereTernaryExample() {
   print('\n--- Ternary where Select (Fast SIMD Pipeline) ---');
-  final cond = NDArray.fromList(Int32List.fromList([1, 0, 0, 1]), [
-    4,
-  ], DType.int32); // 1=true, 0=false
+  final cond = NDArray.fromList([true, false, false, true], [4], DType.boolean);
   final x = NDArray.fromList(Float32List.fromList([10.0, 20.0, 30.0, 40.0]), [
     4,
   ], DType.float32);
@@ -87,7 +85,7 @@ void runWhereTernaryExample() {
     4,
   ], DType.float32);
 
-  // Because inputs are contiguous float32/int32, this triggers hardware SIMD blending (Float32x4.select)!
+  // Trigger hardware SIMD blending if supported by native implementation
   final result = where(cond, x, y);
   print('Condition: ${cond.data}');
   print('x: ${x.data}');

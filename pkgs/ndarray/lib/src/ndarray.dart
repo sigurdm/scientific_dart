@@ -1002,7 +1002,7 @@ final class NDArray<T> implements ffi.Finalizable {
             shape.length,
           );
         case DType.uint8:
-          s_flatten_boolean(
+          s_flatten_uint8(
             pointer.cast(),
             cStridesSrc,
             dest.pointer.cast(),
@@ -1010,7 +1010,13 @@ final class NDArray<T> implements ffi.Finalizable {
             shape.length,
           );
         case DType.int16:
-          throw UnimplementedError('Type $dtype not supported yet');
+          s_flatten_int16(
+            pointer.cast(),
+            cStridesSrc,
+            dest.pointer.cast(),
+            cShape,
+            shape.length,
+          );
         case DType.complex128:
           s_flatten_complex128(
             pointer.cast(),
@@ -1028,7 +1034,7 @@ final class NDArray<T> implements ffi.Finalizable {
             shape.length,
           );
         case DType.boolean:
-          s_flatten_boolean(
+          s_flatten_uint8(
             pointer.cast(),
             cStridesSrc,
             dest.pointer.cast(),

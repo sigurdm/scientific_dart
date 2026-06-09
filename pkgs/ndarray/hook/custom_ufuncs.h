@@ -426,7 +426,9 @@ void s_flatten_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, c
 void s_flatten_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *shape, int rank);
 void s_flatten_complex128(const double *src, const int *stridesSrc, double *dest, const int *shape, int rank);
 void s_flatten_complex64(const float *src, const int *stridesSrc, float *dest, const int *shape, int rank);
-void s_flatten_boolean(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *shape, int rank);
+void s_flatten_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *shape, int rank);
+void s_flatten_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *shape, int rank);
+
 
 /* ============================================================================
  * SECTION 5: HASHING KERNELS

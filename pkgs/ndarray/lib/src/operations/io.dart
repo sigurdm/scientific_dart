@@ -63,6 +63,9 @@ DType<dynamic> _descrToDType(String descr) {
 /// Refer to the [NumPy NPY Format Specification](https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html)
 /// for details on the binary format.
 void save<T>(String filepath, NDArray<T> a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot save a disposed NDArray.');
+  }
   final file = File(filepath);
   if (!file.parent.existsSync()) {
     file.parent.createSync(recursive: true);
@@ -144,6 +147,9 @@ void save<T>(String filepath, NDArray<T> a) {
 /// - Supports native **zero-copy Column-Major Fortran strides mapping** in $O(1)$ time: if a file is flagged
 ///   as `fortran_order: True` (column-major from Python), it loads sequential columns straight into the C heap
 ///   and configures column-major strides directly, completely eliminating slow sorting data loops!
+///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates a new array on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose()]** to prevent native leaks, unless executing inside a managed [NDArray.scope()].
 ///
 /// **Example:**
 /// {@example /example/numpy_interop_example.dart lang=dart}
@@ -419,6 +425,11 @@ void savez(
   Map<String, NDArray<dynamic>> arrays, {
   bool compressed = false,
 }) {
+  for (final entry in arrays.entries) {
+    if (entry.value.isDisposed) {
+      throw StateError('Cannot save a disposed NDArray (key: ${entry.key}).');
+    }
+  }
   final archive = Archive();
 
   for (final entry in arrays.entries) {
@@ -469,6 +480,9 @@ void savez(
 ///   inflated ArchiveFile list + unmanaged FFI pointer heap arrays). For gigabyte-scale scientific datasets
 ///   (e.g. large machine learning checkpoints or dense matrix grids logs), ensure the host system has sufficient
 ///   free memory pages to prevent Out-Of-Memory (OOM) isolate VM kills.
+///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates new arrays on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose()]** on all returned arrays in the map to prevent native leaks, unless executing inside a managed [NDArray.scope()].
 ///
 /// **Example:**
 /// {@example /example/numpy_interop_example.dart lang=dart}

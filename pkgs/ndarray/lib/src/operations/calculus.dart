@@ -90,6 +90,9 @@ NDArray<T> trapz<T extends Object>(
   if (y.isDisposed) {
     throw StateError('Cannot execute trapz() on a disposed array.');
   }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write trapz result to a disposed output array.');
+  }
 
   if (y.dtype.isInteger || y.dtype == DType.boolean) {
     throw ArgumentError(
@@ -421,6 +424,9 @@ NDArray<T> trapz<T extends Object>(
 /// - [ArgumentError] if [axis] is out of bounds or spacing is invalid.
 /// - [ArgumentError] if [edgeOrder] is not 1 or 2.
 ///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates a new array on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose()]** to prevent native leaks, unless executing inside a managed [NDArray.scope()].
+///
 /// **Example:**
 /// ```dart
 /// final f = NDArray.fromList([1.0, 2.0, 4.0, 7.0], [4], DType.float64);
@@ -435,6 +441,11 @@ NDArray<T> gradient<T extends Object>(
 }) {
   if (f.isDisposed) {
     throw StateError('Cannot execute gradient() on a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError(
+      'Cannot write gradient result to a disposed output array.',
+    );
   }
   if (edgeOrder != 1 && edgeOrder != 2) {
     throw ArgumentError('edgeOrder must be 1 or 2 (was $edgeOrder).');
@@ -778,6 +789,9 @@ NDArray<T> gradient<T extends Object>(
 /// - [ArgumentError] if [spacings] length does not match the number of axes.
 /// - [ArgumentError] if [edgeOrder] is not 1 or 2.
 ///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates a list of new arrays on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose()]** on all returned arrays in the list to prevent native leaks, unless executing inside a managed [NDArray.scope()].
+///
 /// **Example:**
 /// ```dart
 /// final f = NDArray.fromList([1.0, 2.0, 4.0, 8.0], [2, 2], DType.float64);
@@ -845,6 +859,11 @@ List<NDArray<T>> gradientArray<T extends Object>(
       );
     }
     for (var i = 0; i < out.length; i++) {
+      if (out[i].isDisposed) {
+        throw StateError(
+          'Cannot write gradient result to a disposed output array at index $i.',
+        );
+      }
       if (!listEquals(out[i].shape, f.shape) || out[i].dtype != f.dtype) {
         throw ArgumentError(
           'Provided out buffer at index $i has incompatible shape or dtype.',

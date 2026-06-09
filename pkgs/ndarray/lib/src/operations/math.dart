@@ -48,6 +48,9 @@ void setNumThreads(int numThreads) {
 /// **Gotchas:**
 /// - Negative values will result in [double.nan].
 NDArray<R> sqrt<T, R>(NDArray<T> a, {NDArray<R>? out}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute sqrt() on a disposed array.');
+  }
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
 
   final NDArray<R> result;
@@ -101,7 +104,7 @@ NDArray<R> sqrt<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// final b = square(a); // [4.0, 9.0]
 /// ```
 NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute square() on a disposed array.');
   }
   final result = out ?? NDArray<T>.create(a.shape, a.dtype);
@@ -280,6 +283,9 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// Reference: [Trigonometric Sine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
 NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute sin() on a disposed array.');
+  }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     targetDType = a.dtype;
@@ -424,7 +430,7 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// Reference: [Trigonometric Cosine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
 NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute cos() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -574,7 +580,7 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// Reference: [Exponential Function](https://en.wikipedia.org/wiki/Exponential_function)
 NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute exp() on a disposed array.');
   }
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
@@ -673,7 +679,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// Reference: [Natural Logarithm](https://en.wikipedia.org/wiki/Natural_logarithm)
 NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute log() on a disposed array.');
   }
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
@@ -773,6 +779,9 @@ NDArray<T> nansum<T extends Object>(
   int? axis,
   NDArray<T>? out,
 }) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute nansum() on a disposed array.');
+  }
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
@@ -870,6 +879,9 @@ NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
 /// print(a.data[0]); // 1 (decoupled memory!)
 /// ```
 NDArray<T> copy<T extends Object>(NDArray<T> a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute copy() on a disposed array.');
+  }
   return a.copy();
 }
 
@@ -878,7 +890,7 @@ NDArray<T> copy<T extends Object>(NDArray<T> a) {
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
 NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute tan() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -1020,7 +1032,7 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// final b = asin(a); // [0.0, 1.570796...]
 /// ```
 NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute asin() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -1165,7 +1177,7 @@ NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// final b = acos(a); // [0.0, 1.570796...]
 /// ```
 NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute acos() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -1310,7 +1322,7 @@ NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// final b = atan(a); // [0.0, 0.785398...]
 /// ```
 NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute atan() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -1453,7 +1465,7 @@ NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
 NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute sinh() on a disposed array.');
   }
   final DType<double> targetDType = a.dtype == DType.float32
@@ -1544,7 +1556,7 @@ NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
 NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute cosh() on a disposed array.');
   }
   final DType<double> targetDType = a.dtype == DType.float32
@@ -1635,7 +1647,7 @@ NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
 NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute tanh() on a disposed array.');
   }
   final DType<double> targetDType = a.dtype == DType.float32
@@ -1727,7 +1739,7 @@ NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
 NDArray<double> asinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute asinh() on a disposed array.');
   }
   final DType<double> targetDType = a.dtype == DType.float32
@@ -1818,7 +1830,7 @@ NDArray<double> asinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
 NDArray<double> acosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute acosh() on a disposed array.');
   }
   final DType<double> targetDType = a.dtype == DType.float32
@@ -1909,7 +1921,7 @@ NDArray<double> acosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
 NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute atanh() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -2036,7 +2048,7 @@ NDArray<double> atan2<Ty, Tx>(
   NDArray<Tx> x, {
   NDArray<double>? out,
 }) {
-  if (y.isDisposed) {
+  if (y.isDisposed || x.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute atan2() on a disposed array.');
   }
   if (y.dtype == DType.complex128 ||
@@ -2212,7 +2224,7 @@ NDArray<double> atan2<Ty, Tx>(
 /// final h = hypot(a, b);
 /// ```
 NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
-  if (x1.isDisposed) {
+  if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute hypot() on a disposed array.');
   }
   final broadcastResult = broadcast(x1, x2);
@@ -2353,7 +2365,7 @@ NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
 /// final p = power(a, b);
 /// ```
 NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
-  if (x1.isDisposed) {
+  if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute power() on a disposed array.');
   }
   final broadcastResult = broadcast(x1, x2);
@@ -2554,6 +2566,9 @@ NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
 /// final b = negative(a);
 /// ```
 NDArray<T> negative<T>(NDArray<T> a, {NDArray<T>? out}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute negative() on a disposed array.');
+  }
   final NDArray<T> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
@@ -2629,6 +2644,9 @@ NDArray<T> negative<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// final c = floor_divide(a, b);
 /// ```
 NDArray floor_divide(NDArray a, NDArray b, {NDArray? out}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute floor_divide() on a disposed array.');
+  }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
   final stridesA = broadcastResult.stridesA;
@@ -2856,6 +2874,9 @@ NDArray floor_divide(NDArray a, NDArray b, {NDArray? out}) {
 /// final c = remainder(a, b);
 /// ```
 NDArray remainder(NDArray a, NDArray b, {NDArray? out}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute remainder() on a disposed array.');
+  }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
   final stridesA = broadcastResult.stridesA;
@@ -3096,6 +3117,9 @@ NDArray mod(NDArray a, NDArray b, {NDArray? out}) => remainder(a, b, out: out);
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
 NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute abs() on a disposed array.');
+  }
   final DType<dynamic> targetDType = switch (a.dtype) {
     DType.complex64 => DType.float32,
     DType.complex128 => DType.float64,
@@ -3178,6 +3202,9 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// final s = sign(a);
 /// ```
 NDArray sign(NDArray a, {NDArray? out}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute sign() on a disposed array.');
+  }
   final NDArray result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
@@ -3243,6 +3270,9 @@ NDArray sign(NDArray a, {NDArray? out}) {
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
 NDArray ceil(NDArray a, {NDArray? out}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute ceil() on a disposed array.');
+  }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for ceil');
   }
@@ -3302,6 +3332,9 @@ NDArray ceil(NDArray a, {NDArray? out}) {
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
 NDArray floor(NDArray a, {NDArray? out}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute floor() on a disposed array.');
+  }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for floor');
   }
@@ -3361,6 +3394,9 @@ NDArray floor(NDArray a, {NDArray? out}) {
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
 NDArray round(NDArray a, {NDArray? out}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute round() on a disposed array.');
+  }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for round');
   }
@@ -3493,7 +3529,7 @@ Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
 /// final r = real(a); // [3.0, -1.0] (`DType.float64)`
 /// ```
 NDArray<R> real<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute real() on a disposed array.');
   }
 
@@ -3565,7 +3601,7 @@ NDArray<R> real<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// final im = imag(a); // [4.0, 0.0] (`DType.float64)`
 /// ```
 NDArray<R> imag<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute imag() on a disposed array.');
   }
 
@@ -3625,8 +3661,8 @@ NDArray<R> imag<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// final r = deg2rad(a); // [pi, pi / 2.0, pi / 4.0]
 /// ```
 NDArray<R> deg2rad<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed) {
-    throw StateError('Cannot execute deg2rad on a disposed array.');
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute deg2rad() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for deg2rad');
@@ -3662,8 +3698,8 @@ NDArray<R> deg2rad<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// final d = rad2deg(a); // [180.0, 90.0]
 /// ```
 NDArray<R> rad2deg<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed) {
-    throw StateError('Cannot execute rad2deg on a disposed array.');
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute rad2deg() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for rad2deg');
@@ -3697,8 +3733,8 @@ NDArray<R> rad2deg<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// final mask = isnan(a); // [false, true, false]
 /// ```
 NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
-  if (a.isDisposed) {
-    throw StateError('Cannot execute isnan on a disposed array.');
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute isnan() on a disposed array.');
   }
   final NDArray<bool> result;
   if (out != null) {
@@ -3851,8 +3887,8 @@ NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
 /// final mask = isinf(a); // [false, true, false]
 /// ```
 NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
-  if (a.isDisposed) {
-    throw StateError('Cannot execute isinf on a disposed array.');
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute isinf() on a disposed array.');
   }
   final NDArray<bool> result;
   if (out != null) {
@@ -4005,8 +4041,8 @@ NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
 /// final mask = isfinite(a); // [true, false, false]
 /// ```
 NDArray<bool> isfinite(NDArray a, {NDArray<bool>? out}) {
-  if (a.isDisposed) {
-    throw StateError('Cannot execute isfinite on a disposed array.');
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute isfinite() on a disposed array.');
   }
   final NDArray<bool> result;
   if (out != null) {
@@ -4160,8 +4196,8 @@ NDArray<bool> isfinite(NDArray a, {NDArray<bool>? out}) {
 /// final res = copysign(x1, x2);
 /// ```
 NDArray copysign(NDArray x1, NDArray x2, {NDArray? out}) {
-  if (x1.isDisposed || x2.isDisposed) {
-    throw StateError('Cannot execute copysign on a disposed array.');
+  if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute copysign() on a disposed array.');
   }
   if (x1.dtype.isComplex || x2.dtype.isComplex) {
     throw UnsupportedError('Complex numbers are not supported for copysign');
@@ -4309,8 +4345,8 @@ NDArray copysign(NDArray x1, NDArray x2, {NDArray? out}) {
 ///
 /// Reference: [NumPy clip](https://numpy.org/doc/stable/reference/generated/numpy.clip.html)
 NDArray<T> clip<T>(NDArray<T> a, {num? min, num? max, NDArray<T>? out}) {
-  if (a.isDisposed) {
-    throw StateError('Cannot execute clip on a disposed array.');
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute clip() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for clip');
@@ -4427,18 +4463,11 @@ NDArray<T> clipArray<T>(
   NDArray<T>? max,
   NDArray<T>? out,
 }) {
-  if (a.isDisposed) {
-    throw StateError('Cannot execute clipArray on a disposed array.');
-  }
-  if (min != null && min.isDisposed) {
-    throw StateError(
-      'Cannot execute clipArray with a disposed min bounds array.',
-    );
-  }
-  if (max != null && max.isDisposed) {
-    throw StateError(
-      'Cannot execute clipArray with a disposed max bounds array.',
-    );
+  if (a.isDisposed ||
+      (min != null && min.isDisposed) ||
+      (max != null && max.isDisposed) ||
+      (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute clipArray() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for clipArray');
@@ -4702,8 +4731,8 @@ NDArray<T> clipArray<T>(
 ///
 /// Reference: [NumPy logical_not](https://numpy.org/doc/stable/reference/generated/numpy.logical_not.html)
 NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
-  if (a.isDisposed) {
-    throw StateError('Cannot execute logical_not on a disposed array.');
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute logical_not() on a disposed array.');
   }
   final NDArray<bool> result;
   if (out != null) {
@@ -4870,6 +4899,9 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
 
 /// Element-wise comparison of [a] == [b] with broadcasting and recycling support.
 NDArray<bool> equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute equal() on a disposed array.');
+  }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
 
@@ -4899,6 +4931,9 @@ NDArray<bool> equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
 
 /// Element-wise comparison of [a] != [b] with broadcasting and recycling support.
 NDArray<bool> not_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute not_equal() on a disposed array.');
+  }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
 
@@ -4928,6 +4963,9 @@ NDArray<bool> not_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
 
 /// Element-wise comparison of [a] > [b] with broadcasting and recycling support.
 NDArray<bool> greater(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute greater() on a disposed array.');
+  }
   if (a.dtype.isComplex || b.dtype.isComplex) {
     throw UnsupportedError(
       'Complex numbers do not support inequality comparisons',
@@ -4962,6 +5000,9 @@ NDArray<bool> greater(NDArray a, NDArray b, {NDArray<bool>? out}) {
 
 /// Element-wise comparison of [a] >= [b] with broadcasting and recycling support.
 NDArray<bool> greater_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute greater_equal() on a disposed array.');
+  }
   if (a.dtype.isComplex || b.dtype.isComplex) {
     throw UnsupportedError(
       'Complex numbers do not support inequality comparisons',
@@ -4996,6 +5037,9 @@ NDArray<bool> greater_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
 
 /// Element-wise comparison of [a] < [b] with broadcasting and recycling support.
 NDArray<bool> less(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute less() on a disposed array.');
+  }
   if (a.dtype.isComplex || b.dtype.isComplex) {
     throw UnsupportedError(
       'Complex numbers do not support inequality comparisons',
@@ -5030,6 +5074,9 @@ NDArray<bool> less(NDArray a, NDArray b, {NDArray<bool>? out}) {
 
 /// Element-wise comparison of [a] <= [b] with broadcasting and recycling support.
 NDArray<bool> less_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute less_equal() on a disposed array.');
+  }
   if (a.dtype.isComplex || b.dtype.isComplex) {
     throw UnsupportedError(
       'Complex numbers do not support inequality comparisons',
@@ -5089,6 +5136,9 @@ NDArray<bool> logical_and<Ta, Tb>(
   NDArray<Tb> b, {
   NDArray<bool>? out,
 }) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute logical_and() on a disposed array.');
+  }
   return _runBinaryLogical(
     a,
     b,
@@ -5126,6 +5176,9 @@ NDArray<bool> logical_or<Ta, Tb>(
   NDArray<Tb> b, {
   NDArray<bool>? out,
 }) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute logical_or() on a disposed array.');
+  }
   return _runBinaryLogical(a, b, out, v_logical_or, s_logical_or, 'logical_or');
 }
 
@@ -5156,6 +5209,9 @@ NDArray<bool> logical_xor<Ta, Tb>(
   NDArray<Tb> b, {
   NDArray<bool>? out,
 }) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute logical_xor() on a disposed array.');
+  }
   return _runBinaryLogical(
     a,
     b,
@@ -5454,11 +5510,18 @@ NDArray<bool> _runBinaryLogical<Ta, Tb>(
 /// **Throws:**
 /// - [ArgumentError] if [v] rank is not 1 or 2.
 ///
+/// **Memory Ownership & Lifetime Warning:**
+/// - **If [v] is 2D (extracting diagonal):** Returns a **zero-copy metadata view** sharing the underlying C memory page. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [v] will invalidate the returned view. Calling [dispose()] on the view does nothing.
+/// - **If [v] is 1D (constructing diagonal):** Allocates a new 2D array on the unmanaged C heap (unless [out] is provided). **The caller takes full ownership** of this memory and **must explicitly call [dispose()]** to prevent native leaks.
+///
 /// **Example:**
 /// {@example /example/diag_example.dart lang=dart}
 ///
 /// Reference: [Diagonal Matrix](https://en.wikipedia.org/wiki/Diagonal_matrix)
 NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
+  if (v.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute diag() on a disposed array.');
+  }
   if (v.shape.length == 2) {
     final m = v.shape[0];
     final n = v.shape[1];
@@ -5560,6 +5623,9 @@ NDArray<bool> isclose<Ta, Tb>(
   double atol = 1e-08,
   bool equalNan = false,
 }) {
+  if (a.isDisposed || b.isDisposed) {
+    throw StateError('Cannot execute isclose() on a disposed array.');
+  }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
 
@@ -5695,6 +5761,9 @@ NDArray nan_to_num(
   double? neginf,
   NDArray? out,
 }) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute nan_to_num() on a disposed array.');
+  }
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -5994,7 +6063,7 @@ NDArray<T> hamming<T>(int M, {DType<T>? dtype}) {
 /// **Example:**
 /// {@example /example/triangular_example.dart lang=dart}
 NDArray<T> tril<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute tril() on a disposed array.');
   }
   if (a.shape.length < 2) {
@@ -6073,7 +6142,7 @@ NDArray<T> tril<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
 /// **Example:**
 /// {@example /example/triangular_example.dart lang=dart}
 NDArray<T> triu<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute triu() on a disposed array.');
   }
   if (a.shape.length < 2) {
@@ -6476,7 +6545,7 @@ LstsqResult<T> lstsq<T>(
 /// final res = diff(a); // [1, 2, 3, -7]
 /// ```
 NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute diff() on a disposed array.');
   }
   if (n < 0) {
@@ -6649,7 +6718,7 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
 /// final c = conj(a); // [Complex(1.0, -2.0)]
 /// ```
 NDArray conj(NDArray a, {NDArray? out}) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute conj() on a disposed array.');
   }
   final targetDType = a.dtype;
@@ -6770,8 +6839,24 @@ NDArray conj(NDArray a, {NDArray? out}) {
                 cShape,
                 rank,
               );
+            case DType.uint8:
+              s_flatten_uint8(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cShape,
+                rank,
+              );
+            case DType.int16:
+              s_flatten_int16(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cShape,
+                rank,
+              );
             case DType.boolean:
-              s_flatten_boolean(
+              s_flatten_uint8(
                 a.pointer.cast(),
                 cStridesA,
                 result.pointer.cast(),
@@ -6829,7 +6914,7 @@ NDArray conjugate(NDArray a, {NDArray? out}) => conj(a, out: out);
 /// {@example /example/rearranging_example.dart lang=dart}
 NDArray<T> roll<T extends Object>(NDArray<T> a, dynamic shift, {dynamic axis}) {
   if (a.isDisposed) {
-    throw StateError('Cannot roll a disposed array.');
+    throw StateError('Cannot execute roll() on a disposed array.');
   }
 
   // Parse shifts and axes
@@ -6906,6 +6991,9 @@ NDArray<T> roll<T extends Object>(NDArray<T> a, dynamic shift, {dynamic axis}) {
 }
 
 NDArray<T> _rollSingle1D<T extends Object>(NDArray<T> a, int shift) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute _rollSingle1D() on a disposed array.');
+  }
   final size = a.size;
   if (size == 0) return a.copy();
   final s = shift % size;
@@ -6919,6 +7007,9 @@ NDArray<T> _rollSingle1D<T extends Object>(NDArray<T> a, int shift) {
 }
 
 NDArray<T> _rollSingle<T extends Object>(NDArray<T> a, int shift, int axis) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute _rollSingle() on a disposed array.');
+  }
   final rank = a.rank;
   final normAx = axis < 0 ? rank + axis : axis;
   if (normAx < 0 || normAx >= rank) {
@@ -6969,8 +7060,8 @@ typedef StridedBinaryOp =
 ///
 /// Returns a new array with the promoted data type.
 NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
-  if (a.isDisposed || b.isDisposed) {
-    throw StateError('Cannot add disposed arrays.');
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute add() on a disposed array.');
   }
   final targetDType = resolveDType(a.dtype, b.dtype);
   final broadcastResult = broadcast(a, b);
@@ -8338,8 +8429,8 @@ NDArray<R> subtract<Ta, Tb, R>(
   NDArray<Tb> b, {
   NDArray<R>? out,
 }) {
-  if (a.isDisposed || b.isDisposed) {
-    throw StateError('Cannot subtract disposed arrays.');
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute subtract() on a disposed array.');
   }
   final targetDType = resolveDType(a.dtype, b.dtype);
   final broadcastResult = broadcast(a, b);
@@ -9710,8 +9801,8 @@ NDArray<R> multiply<Ta, Tb, R>(
   NDArray<Tb> b, {
   NDArray<R>? out,
 }) {
-  if (a.isDisposed || b.isDisposed) {
-    throw StateError('Cannot multiply disposed arrays.');
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute multiply() on a disposed array.');
   }
   final targetDType = resolveDType(a.dtype, b.dtype);
   final broadcastResult = broadcast(a, b);
@@ -11083,8 +11174,8 @@ NDArray<R> multiply<Ta, Tb, R>(
 /// - Dividing zero by zero results in `double.nan`.
 /// No exception is thrown.
 NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
-  if (a.isDisposed || b.isDisposed) {
-    throw StateError('Cannot divide disposed arrays.');
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute divide() on a disposed array.');
   }
   var targetDType = resolveDType(a.dtype, b.dtype);
   if (targetDType.isInteger) {
@@ -12478,6 +12569,9 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
   NDArray<Tb> b, {
   NDArray<Tr>? out,
 }) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute bitwise_and() on a disposed array.');
+  }
   final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'bitwise_and');
   final aCast = prep.aCast;
   final bCast = prep.bCast;
@@ -12623,6 +12717,9 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
   NDArray<Tb> b, {
   NDArray<Tr>? out,
 }) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute bitwise_or() on a disposed array.');
+  }
   final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'bitwise_or');
   final aCast = prep.aCast;
   final bCast = prep.bCast;
@@ -12768,6 +12865,9 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
   NDArray<Tb> b, {
   NDArray<Tr>? out,
 }) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute bitwise_xor() on a disposed array.');
+  }
   final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'bitwise_xor');
   final aCast = prep.aCast;
   final bCast = prep.bCast;
@@ -12913,6 +13013,9 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
   NDArray<Tb> b, {
   NDArray<Tr>? out,
 }) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute left_shift() on a disposed array.');
+  }
   final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'left_shift');
   final aCast = prep.aCast;
   final bCast = prep.bCast;
@@ -13058,6 +13161,9 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
   NDArray<Tb> b, {
   NDArray<Tr>? out,
 }) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute right_shift() on a disposed array.');
+  }
   final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'right_shift');
   final aCast = prep.aCast;
   final bCast = prep.bCast;
@@ -13197,8 +13303,8 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
 ///
 /// Reference: [NumPy invert](https://numpy.org/doc/stable/reference/generated/numpy.invert.html)
 NDArray<Tr> invert<Ta, Tr>(NDArray<Ta> a, {NDArray<Tr>? out}) {
-  if (a.isDisposed) {
-    throw StateError('Cannot perform invert on a disposed array.');
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute invert() on a disposed array.');
   }
 
   if (!a.dtype.isInteger) {
@@ -13390,8 +13496,8 @@ _prepareBinaryBitwise<Ta, Tb, Tr>(
 ///
 /// Reference: [NumPy kron](https://numpy.org/doc/stable/reference/generated/numpy.kron.html)
 NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
-  if (a.isDisposed || b.isDisposed) {
-    throw StateError('Cannot execute kron() on disposed arrays.');
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute kron() on a disposed array.');
   }
 
   final rankA = a.rank;
@@ -13615,8 +13721,8 @@ NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 ///
 /// Reference: [NumPy outer](https://numpy.org/doc/stable/reference/generated/numpy.outer.html)
 NDArray<R> outer<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
-  if (a.isDisposed || b.isDisposed) {
-    throw StateError('Cannot execute outer() on disposed arrays.');
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute outer() on a disposed array.');
   }
 
   final sizeA = a.size;
@@ -13796,8 +13902,8 @@ NDArray<R> cross<Ta, Tb, R>(
   int? axis,
   NDArray<R>? out,
 }) {
-  if (a.isDisposed || b.isDisposed) {
-    throw StateError('Cannot execute cross() on disposed arrays.');
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute cross() on a disposed array.');
   }
 
   var axisA = axis ?? axisa ?? -1;
@@ -14126,7 +14232,7 @@ NDArray<double> norm<T>(
   bool keepdims = false,
   NDArray<double>? out,
 }) {
-  if (a.isDisposed) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute norm() on a disposed array.');
   }
 

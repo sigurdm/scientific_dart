@@ -10,6 +10,41 @@ library;
 
 import 'dart:ffi' as ffi;
 
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+  )
+>()
+external int unpack_mask_c(
+  ffi.Pointer<ffi.Uint8> mask_ptr,
+  int size,
+  int stride,
+  ffi.Pointer<ffi.Int> out_indices,
+);
+
+@ffi.Native<ffi.Int Function(ffi.Pointer<ffi.Uint8>, ffi.Int)>()
+external int native_count_mask(ffi.Pointer<ffi.Uint8> mask, int size);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+  )
+>()
+external void native_apply_mask(
+  int dtype,
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Uint8> mask,
+  ffi.Pointer<ffi.Void> dest,
+  int size,
+);
+
 /// ----------------------------------------------------------------------------
 /// Public Sorters with Kind Parameter
 /// kind: 0 = quicksort, 1 = mergesort/stable, 2 = heapsort
@@ -5550,10 +5585,27 @@ external void s_flatten_complex64(
     ffi.Int,
   )
 >()
-external void s_flatten_boolean(
+external void s_flatten_uint8(
   ffi.Pointer<ffi.Uint8> src,
   ffi.Pointer<ffi.Int> stridesSrc,
   ffi.Pointer<ffi.Uint8> dest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_flatten_int16(
+  ffi.Pointer<ffi.Int16> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int16> dest,
   ffi.Pointer<ffi.Int> shape,
   int rank,
 );
@@ -14388,22 +14440,6 @@ external void copy_advanced_c(
   ffi.Pointer<ffi.Int> indices_lens,
 );
 
-/// Optimized native boolean mask unpacking kernel
-@ffi.Native<
-  ffi.Int Function(
-    ffi.Pointer<ffi.Uint8>,
-    ffi.Int,
-    ffi.Int,
-    ffi.Pointer<ffi.Int>,
-  )
->()
-external int unpack_mask_c(
-  ffi.Pointer<ffi.Uint8> mask_ptr,
-  int size,
-  int stride,
-  ffi.Pointer<ffi.Int> out_indices,
-);
-
 /// Kronecker Product
 @ffi.Native<
   ffi.Void Function(
@@ -16966,23 +17002,3 @@ const int WCHAR_MAX = 2147483647;
 const int WINT_MIN = 0;
 
 const int WINT_MAX = 4294967295;
-
-@ffi.Native<ffi.Int Function(ffi.Pointer<ffi.Uint8>, ffi.Int)>()
-external int native_count_mask(ffi.Pointer<ffi.Uint8> mask, int size);
-
-@ffi.Native<
-  ffi.Void Function(
-    ffi.Int,
-    ffi.Pointer<ffi.Void>,
-    ffi.Pointer<ffi.Uint8>,
-    ffi.Pointer<ffi.Void>,
-    ffi.Int,
-  )
->()
-external void native_apply_mask(
-  int dtype,
-  ffi.Pointer<ffi.Void> src,
-  ffi.Pointer<ffi.Uint8> mask,
-  ffi.Pointer<ffi.Void> dest,
-  int size,
-);

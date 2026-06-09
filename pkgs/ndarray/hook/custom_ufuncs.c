@@ -1686,7 +1686,7 @@ void s_flatten_complex64(const float *src, const int *stridesSrc, float *dest, c
     }
 }
 
-void s_flatten_boolean(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *shape, int rank) {
+void s_flatten_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *shape, int rank) {
     if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -1709,6 +1709,31 @@ void s_flatten_boolean(const uint8_t *src, const int *stridesSrc, uint8_t *dest,
         }
     }
 }
+
+void s_flatten_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *shape, int rank) {
+    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (rank == 0) {
+        dest[0] = src[0];
+        return;
+    }
+    int coord[8] = {0};
+    int offsetSrc = 0;
+    for (int el = 0; el < total_elements; el++) {
+        dest[el] = src[offsetSrc];
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetSrc += stridesSrc[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+        }
+    }
+}
+
 
 // ============================================================================
 // 8. NATIVE C HIGH-SPEED ELEMENTS HASHING KERNELS

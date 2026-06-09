@@ -12,7 +12,7 @@ import 'helpers.dart';
 /// Compute the sum of elements in the array.
 ///
 /// If [axis] is provided, sums along that axis and returns a new array.
-/// Otherwise, sums all elements and returns a scalar value of type [T].
+/// Otherwise, sums all elements and returns a 0-D array containing the sum.
 ///
 /// **Example:**
 /// ```dart
@@ -21,6 +21,12 @@ import 'helpers.dart';
 /// print(s0.data); // [4.0, 6.0]
 /// ```
 NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute sum of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write sum to a disposed output array.');
+  }
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
@@ -134,7 +140,7 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 /// Compute the product of elements in the array.
 ///
 /// If [axis] is provided, multiplies along that axis and returns a new array.
-/// Otherwise, multiplies all elements and returns a scalar value of type [T].
+/// Otherwise, multiplies all elements and returns a 0-D array containing the product.
 ///
 /// **Example:**
 /// ```dart
@@ -143,6 +149,12 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 /// print(p0.data); // [3.0, 8.0]
 /// ```
 NDArray<T> prod<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute product of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write product to a disposed output array.');
+  }
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
@@ -225,6 +237,9 @@ NDArray<bool> all<T extends Object>(
   if (a.isDisposed) {
     throw StateError('Cannot execute all() on a disposed array.');
   }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write all() result to a disposed output array.');
+  }
 
   var targetAxis = axis;
   if (targetAxis != null && targetAxis < 0) {
@@ -301,6 +316,9 @@ NDArray<bool> any<T extends Object>(
   if (a.isDisposed) {
     throw StateError('Cannot execute any() on a disposed array.');
   }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write any() result to a disposed output array.');
+  }
 
   var targetAxis = axis;
   if (targetAxis != null && targetAxis < 0) {
@@ -371,12 +389,18 @@ NDArray<bool> any<T extends Object>(
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
-/// final m = mean(a); // returns 2.5 scalar
+/// final m = mean(a); // returns 0-D array containing 2.5
 /// final m0 = mean(a, axis: 0); // returns NDArray [2.0, 3.0]
 /// ```
 ///
 /// Reference: [Arithmetic Mean](https://en.wikipedia.org/wiki/Arithmetic_mean)
 NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute mean of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write mean to a disposed output array.');
+  }
   final DType<R> targetDType =
       (a.dtype.isComplex ? DType.complex128 : DType.float64) as DType<R>;
 
@@ -546,7 +570,7 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
-/// final s = std(a); // returns sqrt(1.25) scalar
+/// final s = std(a); // returns 0-D array containing sqrt(1.25)
 /// ```
 ///
 /// Reference: [Standard Deviation](https://en.wikipedia.org/wiki/Standard_deviation)
@@ -555,6 +579,12 @@ NDArray<double> std<T extends num>(
   int? axis,
   NDArray<double>? out,
 }) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute std of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write std to a disposed output array.');
+  }
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
@@ -601,13 +631,19 @@ NDArray<double> std<T extends num>(
 /// **Example:**
 /// ```dart
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
-/// final v = nanvar(a); // returns 0.6666666666666666
+/// final v = nanvar(a); // returns 0-D array containing 0.6666666666666666
 /// ```
 NDArray<double> nanvar<T extends num>(
   NDArray<T> a, {
   int? axis,
   NDArray<double>? out,
 }) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute nanvar of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write nanvar to a disposed output array.');
+  }
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
@@ -698,13 +734,19 @@ NDArray<double> nanvar<T extends num>(
 /// **Example:**
 /// ```dart
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
-/// final s = nanstd(a); // returns sqrt(0.6666666666666666)
+/// final s = nanstd(a); // returns 0-D array containing sqrt(0.6666666666666666)
 /// ```
 NDArray<double> nanstd<T extends num>(
   NDArray<T> a, {
   int? axis,
   NDArray<double>? out,
 }) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute nanstd of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write nanstd to a disposed output array.');
+  }
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
@@ -743,6 +785,12 @@ NDArray<double> nanstd<T extends num>(
 /// - Returns a 0-dimensional [NDArray] if [axis] is null, or a new [NDArray] if [axis] is provided.
 /// - Preserves the original data type (DType) of the input array along the reduction axis.
 NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute min of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write min to a disposed output array.');
+  }
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
@@ -802,6 +850,8 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 ///
 /// This corresponds to NumPy's `nanmin` function.
 ///
+/// Returns a 0-dimensional [NDArray] if [axis] is null, or a new [NDArray] if [axis] is provided.
+///
 /// **Preconditions:**
 /// - [axis], if provided, must be a valid axis index within `[0, rank - 1]`.
 ///
@@ -812,13 +862,19 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
-/// print(nanmin(a)); // 1.0
+/// print(nanmin(a).data); // [1.0] (0-D array)
 /// ```
 NDArray<T> nanmin<T extends Object>(
   NDArray<T> a, {
   int? axis,
   NDArray<T>? out,
 }) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute nanmin of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write nanmin to a disposed output array.');
+  }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for nanmin');
   }
@@ -910,6 +966,12 @@ NDArray<T> nanmin<T extends Object>(
 /// - Returns a 0-dimensional [NDArray] if [axis] is null, or a new [NDArray] if [axis] is provided.
 /// - Preserves the original data type (DType) of the input array along the reduction axis.
 NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute max of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write max to a disposed output array.');
+  }
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
@@ -969,6 +1031,8 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 ///
 /// This corresponds to NumPy's `nanmax` function.
 ///
+/// Returns a 0-dimensional [NDArray] if [axis] is null, or a new [NDArray] if [axis] is provided.
+///
 /// **Preconditions:**
 /// - [axis], if provided, must be a valid axis index within `[0, rank - 1]`.
 ///
@@ -979,13 +1043,19 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
-/// print(nanmax(a)); // 3.0
+/// print(nanmax(a).data); // [3.0] (0-D array)
 /// ```
 NDArray<T> nanmax<T extends Object>(
   NDArray<T> a, {
   int? axis,
   NDArray<T>? out,
 }) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute nanmax of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write nanmax to a disposed output array.');
+  }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for nanmax');
   }
@@ -1075,6 +1145,9 @@ NDArray<R> cumsum<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumsum() on a disposed array.');
   }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write cumsum result to a disposed output array.');
+  }
 
   final DType<dynamic> targetDType = a.dtype == DType.boolean
       ? DType.int32
@@ -1138,6 +1211,9 @@ NDArray<R> cumsum<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
 NDArray<R> cumprod<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumprod() on a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write cumprod result to a disposed output array.');
   }
 
   final DType<dynamic> targetDType = a.dtype == DType.boolean
@@ -1203,6 +1279,9 @@ NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cummin() on a disposed array.');
   }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write cummin result to a disposed output array.');
+  }
 
   final NDArray<T> result;
   if (axis == null) {
@@ -1265,6 +1344,9 @@ NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cummax() on a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write cummax result to a disposed output array.');
   }
 
   final NDArray<T> result;
@@ -1330,7 +1412,7 @@ NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
-/// final v = variance(a); // returns 1.25 scalar
+/// final v = variance(a); // returns 0-D array containing 1.25
 /// ```
 ///
 /// Reference: [Variance](https://en.wikipedia.org/wiki/Variance)
@@ -1339,6 +1421,12 @@ NDArray<double> variance<T extends num>(
   int? axis,
   NDArray<double>? out,
 }) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute variance of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write variance to a disposed output array.');
+  }
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
@@ -1418,9 +1506,15 @@ NDArray<double> variance<T extends num>(
 /// **Example:**
 /// ```dart
 /// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], DType.float64);
-/// final m = nanmean(a); // returns 2.6666666666666665
+/// final m = nanmean(a); // returns 0-D array containing 2.6666666666666665
 /// ```
 NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute nanmean of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write nanmean to a disposed output array.');
+  }
   final DType<R> targetDType =
       (a.dtype.isComplex ? DType.complex128 : DType.float64) as DType<R>;
 

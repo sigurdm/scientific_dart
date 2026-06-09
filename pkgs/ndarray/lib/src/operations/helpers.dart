@@ -78,6 +78,9 @@ Object normalizeScalar(Object o, DType dtype) {
 
 NDArray<T> toNDArray<T>(Object o, DType<T> dtype) {
   if (o is NDArray) {
+    if (o.isDisposed) {
+      throw StateError('Cannot convert a disposed NDArray to NDArray.');
+    }
     if (o.dtype == dtype) return o as NDArray<T>;
     return castNDArray(o, dtype);
   }

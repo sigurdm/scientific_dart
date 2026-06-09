@@ -29,6 +29,9 @@ import 'helpers.dart';
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
 NDArray sort(NDArray a, {int axis = -1, SortKind kind = SortKind.quicksort}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot sort a disposed array.');
+  }
   if (a.size == 0) {
     return NDArray.create(a.shape, a.dtype);
   }
@@ -175,6 +178,9 @@ NDArray<int> argsort(
   int axis = -1,
   SortKind kind = SortKind.quicksort,
 }) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute argsort() on a disposed array.');
+  }
   if (a.size == 0) {
     return NDArray<int>.create(a.shape, DType.int32);
   }
@@ -294,6 +300,9 @@ NDArray<int> argsort(
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
 NDArray partition(NDArray a, dynamic kth, {int axis = -1}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot partition a disposed array.');
+  }
   final rank = a.shape.length;
   if (rank == 0) {
     return NDArray.fromList(List.from(a.data), [], a.dtype);
@@ -489,6 +498,9 @@ NDArray partition(NDArray a, dynamic kth, {int axis = -1}) {
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
 NDArray<int> argpartition(NDArray a, dynamic kth, {int axis = -1}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute argpartition() on a disposed array.');
+  }
   final rank = a.shape.length;
   if (rank == 0) {
     return NDArray.fromList(<int>[0], [], DType.int32);
@@ -716,6 +728,12 @@ NDArray<int> searchsorted(
   SearchSide side = SearchSide.left,
   NDArray<int>? sorter,
 }) {
+  if (a.isDisposed || v.isDisposed) {
+    throw StateError('Cannot execute searchsorted() on a disposed array.');
+  }
+  if (sorter != null && sorter.isDisposed) {
+    throw StateError('Cannot use a disposed sorter array.');
+  }
   if (a.shape.length != 1) {
     throw ArgumentError('a must be a 1-D array.');
   }
@@ -945,7 +963,28 @@ NDArray<int> searchsorted(
 /// print(result.toList()); // [1.0, 20.0, 3.0]
 /// result.dispose();
 /// ```
-dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
+///
+/// **Return Value Type Behavior:**
+/// - If [x] and [y] are provided, returns a single `NDArray<T>` of the resolved common type.
+/// - If [x] and [y] are omitted, returns a `List<NDArray<int>>` containing coordinates where the condition is true.
+dynamic where<T extends Object>(
+  NDArray<bool> condition, [
+  NDArray<T>? x,
+  NDArray<T>? y,
+  NDArray<T>? out,
+]) {
+  if (condition.isDisposed) {
+    throw StateError('Cannot execute where() on a disposed condition array.');
+  }
+  if (x != null && x.isDisposed) {
+    throw StateError('Cannot execute where() with a disposed x array.');
+  }
+  if (y != null && y.isDisposed) {
+    throw StateError('Cannot execute where() with a disposed y array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write where() result to a disposed output array.');
+  }
   if (x == null && y == null) {
     if (out != null) {
       throw ArgumentError(
@@ -977,7 +1016,7 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
   final stridesX = broadcastStrides(x, commonShape);
   final stridesY = broadcastStrides(y, commonShape);
 
-  final result = out ?? NDArray.create(commonShape, targetDType);
+  final result = out ?? NDArray.create(commonShape, targetDType as DType<T>);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   // 0. Advanced ND Odometer Ternary Broadcasting Engine in C (Rank <= 8)
@@ -1069,6 +1108,9 @@ dynamic where(NDArray condition, [NDArray? x, NDArray? y, NDArray? out]) {
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
 List<NDArray<int>> nonzero(NDArray a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute nonzero() on a disposed array.');
+  }
   final rank = a.shape.length;
   final count = count_nonzero<Object>(a as NDArray<Object>).scalar;
   final results = List.generate(
@@ -1317,6 +1359,11 @@ NDArray<int> count_nonzero<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot count non-zero elements on a disposed array.');
   }
+  if (out != null && out.isDisposed) {
+    throw StateError(
+      'Cannot write count_nonzero result to a disposed output array.',
+    );
+  }
 
   final rank = a.shape.length;
 
@@ -1514,6 +1561,11 @@ NDArray<int> _argminmaxFFI<T>(
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot calculate reduction on a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError(
+      'Cannot write argmin/argmax result to a disposed output array.',
+    );
   }
   if (a.size == 0) {
     throw ArgumentError('Cannot compute reduction on an empty array.');

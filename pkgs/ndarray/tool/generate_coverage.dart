@@ -18,7 +18,7 @@ void main() async {
   print(
     '\nStep 1: Executing full unit test suite and collecting raw JSON V8 traces...',
   );
-  final testProcess = await Process.run('dart', [
+  final testProcess = await Process.run(Platform.executable, [
     'test',
     '--coverage=coverage/raw',
   ]);
@@ -34,7 +34,7 @@ void main() async {
   print(
     '\nStep 2: Formatting raw JSON coverage maps into standardized LCOV format...',
   );
-  final formatProcess = await Process.run('dart', [
+  final formatProcess = await Process.run(Platform.executable, [
     'run',
     'coverage:format_coverage',
     '--in=coverage/raw',

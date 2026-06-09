@@ -39,6 +39,9 @@ NDArray<T> uniform<T extends num>(
   NDArray<T>? out,
   bool secure = false,
 }) {
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write uniform result to a disposed output array.');
+  }
   final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
   if (out != null) {
     if (!out.isContiguous) {
@@ -112,6 +115,9 @@ NDArray<T> randint<T extends num>(
   NDArray<T>? out,
   bool secure = false,
 }) {
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write randint result to a disposed output array.');
+  }
   if (low >= high) {
     throw ArgumentError('low must be less than high');
   }
@@ -198,6 +204,9 @@ NDArray<T> normal<T extends num>(
   NDArray<T>? out,
   bool secure = false,
 }) {
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write normal result to a disposed output array.');
+  }
   if (scale <= 0.0) {
     throw ArgumentError(
       'scale (standard deviation) must be strictly positive (was $scale)',
@@ -274,6 +283,11 @@ NDArray<T> exponential<T extends num>(
   NDArray<T>? out,
   bool secure = false,
 }) {
+  if (out != null && out.isDisposed) {
+    throw StateError(
+      'Cannot write exponential result to a disposed output array.',
+    );
+  }
   final targetScale = lam != null ? 1.0 / lam : scale;
   if (targetScale <= 0.0) {
     throw ArgumentError(
@@ -360,6 +374,9 @@ NDArray<T> poisson<T extends num>(
   NDArray<T>? out,
   bool secure = false,
 }) {
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write poisson result to a disposed output array.');
+  }
   if (lam <= 0.0) {
     throw ArgumentError('lambda must be strictly positive (was $lam)');
   }
@@ -430,6 +447,11 @@ NDArray<T> binomial<T extends num>(
   NDArray<T>? out,
   bool secure = false,
 }) {
+  if (out != null && out.isDisposed) {
+    throw StateError(
+      'Cannot write binomial result to a disposed output array.',
+    );
+  }
   if (n < 0) {
     throw ArgumentError('number of trials n must be non-negative (was $n)');
   }
@@ -511,6 +533,16 @@ NDArray<T> multivariateNormal<T extends num>(
   NDArray<T>? out,
   bool secure = false,
 }) {
+  if (mean.isDisposed || cov.isDisposed) {
+    throw StateError(
+      'Cannot execute multivariateNormal() on a disposed array.',
+    );
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError(
+      'Cannot write multivariateNormal result to a disposed output array.',
+    );
+  }
   if (mean.shape.length != 1) {
     throw ArgumentError(
       'mean must be a 1-dimensional vector (was ${mean.shape})',
@@ -615,6 +647,14 @@ NDArray<T> multinomial<T extends num>(
   NDArray<T>? out,
   bool secure = false,
 }) {
+  if (pvals.isDisposed) {
+    throw StateError('Cannot execute multinomial() on a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError(
+      'Cannot write multinomial result to a disposed output array.',
+    );
+  }
   if (n < 0) {
     throw ArgumentError('n trials must be non-negative (was $n)');
   }

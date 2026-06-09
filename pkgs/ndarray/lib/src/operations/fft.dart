@@ -61,6 +61,9 @@ NDArray<Complex> fft<T>(
   if (a.isDisposed) {
     throw StateError('Cannot execute fft() on a disposed array.');
   }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write FFT result to a disposed output array.');
+  }
   if (a.shape.isEmpty) {
     throw ArgumentError(
       'Cannot compute FFT on a 0-dimensional or empty scalar array',
@@ -260,6 +263,9 @@ NDArray<Complex> ifft<T>(
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute ifft() on a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write IFFT result to a disposed output array.');
   }
   if (a.shape.isEmpty) {
     throw ArgumentError(
