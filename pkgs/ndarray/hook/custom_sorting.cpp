@@ -1451,3 +1451,175 @@ void native_apply_mask(
 }
 }
 
+
+#include <algorithm>
+#include <vector>
+#include <cmath>
+
+// Lexicographical comparison for complex numbers
+template<typename T>
+static inline bool comp_complex_impl(T a, T b) {
+    bool nan_ar = std::isnan(a.real);
+    bool nan_br = std::isnan(b.real);
+    if (nan_ar && nan_br) {
+        bool nan_ai = std::isnan(a.imag);
+        bool nan_bi = std::isnan(b.imag);
+        if (nan_ai && nan_bi) return false;
+        if (nan_ai) return false;
+        if (nan_bi) return true;
+        return a.imag < b.imag;
+    } else if (nan_ar) {
+        return false;
+    } else if (nan_br) {
+        return true;
+    } else if (a.real != b.real) {
+        return a.real < b.real;
+    }
+    
+    bool nan_ai = std::isnan(a.imag);
+    bool nan_bi = std::isnan(b.imag);
+    if (nan_ai && nan_bi) return false;
+    if (nan_ai) return false;
+    if (nan_bi) return true;
+    return a.imag < b.imag;
+}
+
+// Equivalence for complex
+template<typename T>
+static inline bool eq_complex_impl(T a, T b) {
+    bool eq_r = (a.real == b.real) || (std::isnan(a.real) && std::isnan(b.real));
+    bool eq_i = (a.imag == b.imag) || (std::isnan(a.imag) && std::isnan(b.imag));
+    return eq_r && eq_i;
+}
+
+static inline bool comp_double_impl(double a, double b) {
+    bool nan_a = std::isnan(a);
+    bool nan_b = std::isnan(b);
+    if (nan_a && nan_b) return false;
+    if (nan_a) return false;
+    if (nan_b) return true;
+    return a < b;
+}
+
+static inline bool eq_double_impl(double a, double b) {
+    return (a == b) || (std::isnan(a) && std::isnan(b));
+}
+
+template<typename T, typename Comp, typename Eq>
+int unique_template(const T *src, T *dest, int size,
+                    int64_t *out_index, int64_t *out_inverse, int64_t *out_counts,
+                    Comp comp, Eq eq) {
+    if (size <= 0) return 0;
+    
+    // If no optional returns, we can optimize by sorting in-place on a copy
+    if (out_index == nullptr && out_inverse == nullptr && out_counts == nullptr) {
+        memcpy(dest, src, size * sizeof(T));
+        std::sort(dest, dest + size, comp);
+        // Compact in-place
+        int write_idx = 0;
+        for (int read_idx = 1; read_idx < size; read_idx++) {
+            if (!eq(dest[read_idx], dest[write_idx])) {
+                write_idx++;
+                dest[write_idx] = dest[read_idx];
+            }
+        }
+        return write_idx + 1;
+    }
+    
+    // We need at least one optional return.
+    std::vector<int64_t> idx(size);
+    for (int i = 0; i < size; i++) idx[i] = i;
+    
+    std::stable_sort(idx.begin(), idx.end(), [&](int64_t a, int64_t b) {
+        return comp(src[a], src[b]);
+    });
+    
+    int write_idx = 0;
+    dest[0] = src[idx[0]];
+    if (out_index) out_index[0] = idx[0];
+    if (out_inverse) out_inverse[idx[0]] = 0;
+    
+    int64_t current_count = 1;
+    
+    for (int read_idx = 1; read_idx < size; read_idx++) {
+        if (!eq(src[idx[read_idx]], src[idx[read_idx - 1]])) {
+            if (out_counts) out_counts[write_idx] = current_count;
+            write_idx++;
+            dest[write_idx] = src[idx[read_idx]];
+            if (out_index) out_index[write_idx] = idx[read_idx];
+            if (out_inverse) out_inverse[idx[read_idx]] = write_idx;
+            current_count = 1;
+        } else {
+            if (out_inverse) out_inverse[idx[read_idx]] = write_idx;
+            current_count++;
+        }
+    }
+    if (out_counts) out_counts[write_idx] = current_count;
+    
+    return write_idx + 1;
+}
+
+extern "C" {
+int ndarray_unique(const void *src, void *dest, int size, int dtype,
+                   int64_t *out_index, int64_t *out_inverse, int64_t *out_counts) {
+    if (src == NULL || dest == NULL || size <= 0) return 0;
+    
+    switch (dtype) {
+        case DTYPE_FLOAT64:
+            return unique_template<double>(
+                (const double *)src, (double *)dest, size,
+                out_index, out_inverse, out_counts,
+                comp_double_impl, eq_double_impl
+            );
+        case DTYPE_FLOAT32:
+            return unique_template<float>(
+                (const float *)src, (float *)dest, size,
+                out_index, out_inverse, out_counts,
+                [](float a, float b) {
+                    bool nan_a = std::isnan(a);
+                    bool nan_b = std::isnan(b);
+                    if (nan_a && nan_b) return false;
+                    if (nan_a) return false;
+                    if (nan_b) return true;
+                    return a < b;
+                },
+                [](float a, float b) {
+                    return (a == b) || (std::isnan(a) && std::isnan(b));
+                }
+            );
+        case DTYPE_INT32:
+            return unique_template<int32_t>(
+                (const int32_t *)src, (int32_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                std::less<int32_t>(), std::equal_to<int32_t>()
+            );
+        case DTYPE_INT64:
+            return unique_template<int64_t>(
+                (const int64_t *)src, (int64_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                std::less<int64_t>(), std::equal_to<int64_t>()
+            );
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN:
+            return unique_template<uint8_t>(
+                (const uint8_t *)src, (uint8_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                std::less<uint8_t>(), std::equal_to<uint8_t>()
+            );
+        case DTYPE_COMPLEX128:
+            return unique_template<complex128_t>(
+                (const complex128_t *)src, (complex128_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                comp_complex_impl<complex128_t>, eq_complex_impl<complex128_t>
+            );
+        case DTYPE_COMPLEX64:
+            return unique_template<complex64_t>(
+                (const complex64_t *)src, (complex64_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                comp_complex_impl<complex64_t>, eq_complex_impl<complex64_t>
+            );
+        default:
+            return 0;
+    }
+}
+}

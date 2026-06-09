@@ -5770,15 +5770,7 @@ uint8_t v_any_equal_to_zero_int64(const int64_t *arr, int size) {
     return 0;
 }
 
-#define DTYPE_FLOAT64 0
-#define DTYPE_FLOAT32 1
-#define DTYPE_INT32 2
-#define DTYPE_INT64 3
-#define DTYPE_UINT8 4
-#define DTYPE_INT16 5
-#define DTYPE_COMPLEX128 6
-#define DTYPE_COMPLEX64 7
-#define DTYPE_BOOLEAN 8
+
 
 #define TO_DOUBLE(x) ((double)(x))
 #define TO_COMPLEX(x) ((cpx_t){(double)(x), 0.0})
@@ -6628,20 +6620,7 @@ DEFINE_UNIQUE_OP(uint8, uint8_t, sort_uint8, compact_sorted_uint8)
 DEFINE_UNIQUE_OP(complex128, cpx_t, sort_complex128, compact_sorted_complex128)
 DEFINE_UNIQUE_OP(complex64, cpx_f_t, sort_complex64, compact_sorted_complex64)
 
-int ndarray_unique(const void *src, void *dest, int size, int dtype) {
-    if (src == NULL || dest == NULL || size <= 0) return 0;
-    switch (dtype) {
-        case DTYPE_FLOAT64: return unique_float64((const double *)src, (double *)dest, size);
-        case DTYPE_FLOAT32: return unique_float32((const float *)src, (float *)dest, size);
-        case DTYPE_INT32: return unique_int32((const int32_t *)src, (int32_t *)dest, size);
-        case DTYPE_INT64: return unique_int64((const int64_t *)src, (int64_t *)dest, size);
-        case DTYPE_UINT8:
-        case DTYPE_BOOLEAN: return unique_uint8((const uint8_t *)src, (uint8_t *)dest, size);
-        case DTYPE_COMPLEX128: return unique_complex128((const cpx_t *)src, (cpx_t *)dest, size);
-        case DTYPE_COMPLEX64: return unique_complex64((const cpx_f_t *)src, (cpx_f_t *)dest, size);
-        default: return 0;
-    }
-}
+/* ndarray_unique moved to custom_sorting.cpp */
 
 static inline int set_cmp_double(double a, double b) {
     int nan_a = isnan(a);
@@ -6881,11 +6860,6 @@ void ndarray_isin(const void *ar1, int size1, const void *ar2, int size2, uint8_
         case DTYPE_COMPLEX64: isin_complex64((const cpx_f_t *)ar1, size1, (const cpx_f_t *)ar2, size2, dest, invert); break; \
     } \
 }
-
-
-
-
-
 // --- MEDIAN & QUANTILE IMPLEMENTATIONS ---
 
 // Helper macro for median reduction to avoid code duplication.

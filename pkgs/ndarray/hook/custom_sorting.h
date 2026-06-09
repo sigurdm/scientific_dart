@@ -4,6 +4,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define DTYPE_FLOAT64 0
+#define DTYPE_FLOAT32 1
+#define DTYPE_INT32 2
+#define DTYPE_INT64 3
+#define DTYPE_UINT8 4
+#define DTYPE_INT16 5
+#define DTYPE_COMPLEX128 6
+#define DTYPE_COMPLEX64 7
+#define DTYPE_BOOLEAN 8
+
 #ifdef __cplusplus
 extern "C" {
 #endif

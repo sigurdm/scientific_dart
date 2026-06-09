@@ -16908,6 +16908,9 @@ external void pad_axis_complex64(
     ffi.Pointer<ffi.Void>,
     ffi.Int,
     ffi.Int,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
   )
 >()
 external int ndarray_unique(
@@ -16915,6 +16918,9 @@ external int ndarray_unique(
   ffi.Pointer<ffi.Void> dest,
   int size,
   int dtype,
+  ffi.Pointer<ffi.Int64> out_index,
+  ffi.Pointer<ffi.Int64> out_inverse,
+  ffi.Pointer<ffi.Int64> out_counts,
 );
 
 @ffi.Native<
@@ -17337,7 +17343,7 @@ external void s_quantile_uint8(
 );
 
 /// ============================================================================
-/// SECTION 10: INTERPOLATION KERNELS
+/// SECTION 11: INTERPOLATION KERNELS
 /// ============================================================================
 @ffi.Native<ffi.Int Function(ffi.Pointer<ffi.Double>, ffi.Int, ffi.Int)>()
 external int is_strictly_increasing_double(
@@ -17865,3 +17871,21 @@ const int WCHAR_MAX = 2147483647;
 const int WINT_MIN = 0;
 
 const int WINT_MAX = 4294967295;
+
+const int DTYPE_FLOAT64 = 0;
+
+const int DTYPE_FLOAT32 = 1;
+
+const int DTYPE_INT32 = 2;
+
+const int DTYPE_INT64 = 3;
+
+const int DTYPE_UINT8 = 4;
+
+const int DTYPE_INT16 = 5;
+
+const int DTYPE_COMPLEX128 = 6;
+
+const int DTYPE_COMPLEX64 = 7;
+
+const int DTYPE_BOOLEAN = 8;

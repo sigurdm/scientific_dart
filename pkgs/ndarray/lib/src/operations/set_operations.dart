@@ -1,6 +1,7 @@
+import 'dart:ffi' as ffi;
 import '../ndarray.dart';
 import '../ndarray_bindings.dart';
-import 'helpers.dart';
+import 'helpers.dart'; // for encodeDType
 import 'sorting.dart';
 
 /// Find the unique elements of an array.
@@ -8,16 +9,7 @@ import 'sorting.dart';
 /// Returns the sorted unique elements of an array.
 ///
 /// If [ar] is not 1D, it is flattened first.
-///
-/// **Preconditions:**
-/// - [ar] must not be disposed.
-///
-/// **Example:**
-/// ```dart
-/// final a = NDArray.fromList([1, 2, 2, 3, 1], [5], DType.int32);
-/// final u = unique(a); // [1, 2, 3]
-/// ```
-NDArray<T> unique<T extends Object>(
+dynamic unique<T extends Object>(
   NDArray<T> ar, {
   bool returnIndex = false,
   bool returnInverse = false,
@@ -27,38 +19,99 @@ NDArray<T> unique<T extends Object>(
     throw StateError('Cannot execute unique on a disposed array.');
   }
 
-  if (returnIndex || returnInverse || returnCounts) {
-    throw UnimplementedError(
-      'Optional returns for unique are not yet implemented.',
-    );
-  }
-
   final flat = (ar.rank == 1 && ar.isContiguous) ? ar : ar.flatten();
   final dest = NDArray<T>.create(flat.shape, flat.dtype);
+
+  NDArray<int>? outIndex;
+  NDArray<int>? outInverse;
+  NDArray<int>? outCounts;
+
+  if (returnIndex) {
+    outIndex = NDArray<int>.create([flat.size], DType.int64);
+  }
+  if (returnInverse) {
+    outInverse = NDArray<int>.create([flat.size], DType.int64);
+  }
+  if (returnCounts) {
+    outCounts = NDArray<int>.create([flat.size], DType.int64);
+  }
+
+  final pIndex = outIndex != null
+      ? outIndex.pointer.cast<ffi.Int64>()
+      : ffi.Pointer<ffi.Int64>.fromAddress(0);
+  final pInverse = outInverse != null
+      ? outInverse.pointer.cast<ffi.Int64>()
+      : ffi.Pointer<ffi.Int64>.fromAddress(0);
+  final pCounts = outCounts != null
+      ? outCounts.pointer.cast<ffi.Int64>()
+      : ffi.Pointer<ffi.Int64>.fromAddress(0);
 
   final uniqueCount = ndarray_unique(
     flat.pointer.cast(),
     dest.pointer.cast(),
     flat.size,
     encodeDType(flat.dtype),
+    pIndex,
+    pInverse,
+    pCounts,
   );
 
   if (uniqueCount == 0) {
     dest.dispose();
-    if (flat != ar) {
-      flat.dispose();
+    outIndex?.dispose();
+    outInverse?.dispose();
+    outCounts?.dispose();
+    final empty = NDArray<T>.create([0], flat.dtype);
+    if (flat != ar) flat.dispose();
+
+    if (returnIndex || returnInverse || returnCounts) {
+      return (
+        empty,
+        index: returnIndex ? NDArray<int>.create([0], DType.int64) : null,
+        inverse: returnInverse ? NDArray<int>.create([0], DType.int64) : null,
+        counts: returnCounts ? NDArray<int>.create([0], DType.int64) : null,
+      );
     }
-    return NDArray<T>.create([0], flat.dtype);
+    return empty;
   }
 
   final view = dest.slice([Slice(start: 0, stop: uniqueCount)]);
   final result = view.copy();
-
   view.dispose();
   dest.dispose();
 
+  NDArray<int>? indexResult;
+  if (outIndex != null) {
+    final v = outIndex.slice([Slice(start: 0, stop: uniqueCount)]);
+    indexResult = v.copy();
+    v.dispose();
+    outIndex.dispose();
+  }
+
+  NDArray<int>? inverseResult;
+  if (outInverse != null) {
+    inverseResult = outInverse;
+  }
+
+  NDArray<int>? countsResult;
+  if (outCounts != null) {
+    final v = outCounts.slice([Slice(start: 0, stop: uniqueCount)]);
+    countsResult = v.copy();
+    v.dispose();
+    outCounts.dispose();
+  }
+
   if (flat != ar) {
     flat.dispose();
+  }
+
+  if (returnIndex || returnInverse || returnCounts) {
+    return (
+      result,
+      index: indexResult,
+      inverse: inverseResult,
+      counts: countsResult,
+    );
   }
 
   return result;
@@ -67,17 +120,6 @@ NDArray<T> unique<T extends Object>(
 /// Find the intersection of two arrays.
 ///
 /// Returns the sorted, unique values that are in both of the input arrays.
-///
-/// **Preconditions:**
-/// - Both arrays must not be disposed.
-/// - Both arrays must have the same dtype.
-///
-/// **Example:**
-/// ```dart
-/// final a = NDArray.fromList([1, 2, 3], [3], DType.int32);
-/// final b = NDArray.fromList([2, 3, 4], [3], DType.int32);
-/// final res = intersect1d(a, b); // [2, 3]
-/// ```
 NDArray<T> intersect1d<T extends Object>(
   NDArray<T> ar1,
   NDArray<T> ar2, {
@@ -85,10 +127,6 @@ NDArray<T> intersect1d<T extends Object>(
 }) {
   if (ar1.isDisposed || ar2.isDisposed) {
     throw StateError('Cannot execute intersect1d on disposed array(s).');
-  }
-
-  if (ar1.dtype != ar2.dtype) {
-    throw ArgumentError('Input arrays must have the same dtype.');
   }
 
   final flat1 = (ar1.rank == 1 && ar1.isContiguous) ? ar1 : ar1.flatten();
@@ -108,10 +146,12 @@ NDArray<T> intersect1d<T extends Object>(
   final maxDstSize = u1.size < u2.size ? u1.size : u2.size;
 
   if (maxDstSize == 0) {
-    u1.dispose();
-    u2.dispose();
-    if (flat1 != ar1) flat1.dispose();
-    if (flat2 != ar2) flat2.dispose();
+    if (!assumeUnique) {
+      if (u1 != flat1) u1.dispose();
+      if (u2 != flat2) u2.dispose();
+    }
+    if (ar1.rank != 1) flat1.dispose();
+    if (ar2.rank != 1) flat2.dispose();
     return NDArray<T>.create([0], ar1.dtype);
   }
 
@@ -150,10 +190,6 @@ NDArray<T> intersect1d<T extends Object>(
 /// Find the set difference of two arrays.
 ///
 /// Returns the unique values in [ar1] that are not in [ar2].
-///
-/// **Preconditions:**
-/// - Both arrays must not be disposed.
-/// - Both arrays must have the same dtype.
 NDArray<T> setdiff1d<T extends Object>(
   NDArray<T> ar1,
   NDArray<T> ar2, {
@@ -161,10 +197,6 @@ NDArray<T> setdiff1d<T extends Object>(
 }) {
   if (ar1.isDisposed || ar2.isDisposed) {
     throw StateError('Cannot execute setdiff1d on disposed array(s).');
-  }
-
-  if (ar1.dtype != ar2.dtype) {
-    throw ArgumentError('Input arrays must have the same dtype.');
   }
 
   final flat1 = (ar1.rank == 1 && ar1.isContiguous) ? ar1 : ar1.flatten();
@@ -184,10 +216,12 @@ NDArray<T> setdiff1d<T extends Object>(
   final maxDstSize = u1.size;
 
   if (maxDstSize == 0) {
-    u1.dispose();
-    u2.dispose();
-    if (flat1 != ar1) flat1.dispose();
-    if (flat2 != ar2) flat2.dispose();
+    if (!assumeUnique) {
+      if (u1 != flat1) u1.dispose();
+      if (u2 != flat2) u2.dispose();
+    }
+    if (ar1.rank != 1) flat1.dispose();
+    if (ar2.rank != 1) flat2.dispose();
     return NDArray<T>.create([0], ar1.dtype);
   }
 
@@ -226,10 +260,6 @@ NDArray<T> setdiff1d<T extends Object>(
 /// Find the set exclusive-or of two arrays.
 ///
 /// Returns the sorted, unique values that are in only one (not both) of the input arrays.
-///
-/// **Preconditions:**
-/// - Both arrays must not be disposed.
-/// - Both arrays must have the same dtype.
 NDArray<T> setxor1d<T extends Object>(
   NDArray<T> ar1,
   NDArray<T> ar2, {
@@ -237,10 +267,6 @@ NDArray<T> setxor1d<T extends Object>(
 }) {
   if (ar1.isDisposed || ar2.isDisposed) {
     throw StateError('Cannot execute setxor1d on disposed array(s).');
-  }
-
-  if (ar1.dtype != ar2.dtype) {
-    throw ArgumentError('Input arrays must have the same dtype.');
   }
 
   final flat1 = (ar1.rank == 1 && ar1.isContiguous) ? ar1 : ar1.flatten();
@@ -260,10 +286,12 @@ NDArray<T> setxor1d<T extends Object>(
   final maxDstSize = u1.size + u2.size;
 
   if (maxDstSize == 0) {
-    u1.dispose();
-    u2.dispose();
-    if (flat1 != ar1) flat1.dispose();
-    if (flat2 != ar2) flat2.dispose();
+    if (!assumeUnique) {
+      if (u1 != flat1) u1.dispose();
+      if (u2 != flat2) u2.dispose();
+    }
+    if (ar1.rank != 1) flat1.dispose();
+    if (ar2.rank != 1) flat2.dispose();
     return NDArray<T>.create([0], ar1.dtype);
   }
 
@@ -302,17 +330,9 @@ NDArray<T> setxor1d<T extends Object>(
 /// Find the union of two arrays.
 ///
 /// Returns the unique, sorted array of values that are in either of the two input arrays.
-///
-/// **Preconditions:**
-/// - Both arrays must not be disposed.
-/// - Both arrays must have the same dtype.
 NDArray<T> union1d<T extends Object>(NDArray<T> ar1, NDArray<T> ar2) {
   if (ar1.isDisposed || ar2.isDisposed) {
     throw StateError('Cannot execute union1d on disposed array(s).');
-  }
-
-  if (ar1.dtype != ar2.dtype) {
-    throw ArgumentError('Input arrays must have the same dtype.');
   }
 
   final flat1 = (ar1.rank == 1 && ar1.isContiguous) ? ar1 : ar1.flatten();
@@ -326,8 +346,8 @@ NDArray<T> union1d<T extends Object>(NDArray<T> ar1, NDArray<T> ar2) {
   if (maxDstSize == 0) {
     u1.dispose();
     u2.dispose();
-    if (flat1 != ar1) flat1.dispose();
-    if (flat2 != ar2) flat2.dispose();
+    if (ar1.rank != 1) flat1.dispose();
+    if (ar2.rank != 1) flat2.dispose();
     return NDArray<T>.create([0], ar1.dtype);
   }
 
@@ -366,10 +386,6 @@ NDArray<T> union1d<T extends Object>(NDArray<T> ar1, NDArray<T> ar2) {
 /// Test whether each element of a 1D array is also present in a second array.
 ///
 /// Returns a boolean array the same shape as [element] that is True where an element of [element] is in [testElements] and False otherwise.
-///
-/// **Preconditions:**
-/// - Both arrays must not be disposed.
-/// - Both arrays must have the same dtype.
 NDArray<bool> isin<T extends Object>(
   NDArray<T> element,
   NDArray<T> testElements, {
@@ -378,10 +394,6 @@ NDArray<bool> isin<T extends Object>(
 }) {
   if (element.isDisposed || testElements.isDisposed) {
     throw StateError('Cannot execute isin on disposed array(s).');
-  }
-
-  if (element.dtype != testElements.dtype) {
-    throw ArgumentError('Input arrays must have the same dtype.');
   }
 
   final flatTest = (testElements.rank == 1 && testElements.isContiguous)

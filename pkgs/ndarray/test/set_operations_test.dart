@@ -67,6 +67,33 @@ void main() {
       res.dispose();
     });
 
+    test('complex128 with duplicates and NaNs', () {
+      final a = NDArray<Complex>.fromList(
+        [
+          Complex(3.0, 4.0),
+          Complex(1.0, 2.0),
+          Complex(double.nan, 2.0),
+          Complex(1.0, double.nan),
+          Complex(double.nan, double.nan),
+          Complex(1.0, 2.0),
+          Complex(double.nan, 2.0),
+        ],
+        [7],
+        DType.complex128,
+      );
+      final res = unique(a);
+      expect(res.shape, [5]);
+      expectListEqualsWithNaNs(res.toList(), [
+        Complex(1.0, 2.0),
+        Complex(1.0, double.nan),
+        Complex(3.0, 4.0),
+        Complex(double.nan, 2.0),
+        Complex(double.nan, double.nan),
+      ]);
+      a.dispose();
+      res.dispose();
+    });
+
     test('int32 non-contiguous 1D', () {
       final a = NDArray<int>.fromList([1, 2, 3, 4, 5, 6], [6], DType.int32);
       // Slice with step 2: [1, 3, 5]
@@ -80,6 +107,54 @@ void main() {
 
       a.dispose();
       res.dispose();
+    });
+
+    test('optional returns int32', () {
+      final a = NDArray<int>.fromList([1, 2, 2, 3, 1, 4], [6], DType.int32);
+
+      final (u, index: idx, inverse: inv, counts: cnt) = unique(
+        a,
+        returnIndex: true,
+        returnInverse: true,
+        returnCounts: true,
+      );
+
+      expect(u.toList(), [1, 2, 3, 4]);
+      expect(idx!.toList(), [0, 1, 3, 5]);
+      expect(inv!.toList(), [0, 1, 1, 2, 0, 3]);
+      expect(cnt!.toList(), [2, 2, 1, 1]);
+
+      a.dispose();
+      u.dispose();
+      idx.dispose();
+      inv.dispose();
+      cnt.dispose();
+    });
+
+    test('optional returns double with NaNs', () {
+      final a = NDArray<double>.fromList(
+        [3.0, 1.0, 2.0, 1.0, double.nan, 2.0, double.nan],
+        [7],
+        DType.float64,
+      );
+
+      final (u, index: idx, inverse: inv, counts: cnt) = unique(
+        a,
+        returnIndex: true,
+        returnInverse: true,
+        returnCounts: true,
+      );
+
+      expectListEqualsWithNaNs(u.toList(), [1.0, 2.0, 3.0, double.nan]);
+      expect(idx!.toList(), [1, 2, 0, 4]);
+      expect(inv!.toList(), [2, 0, 1, 0, 3, 1, 3]);
+      expect(cnt!.toList(), [2, 2, 1, 2]);
+
+      a.dispose();
+      u.dispose();
+      idx.dispose();
+      inv.dispose();
+      cnt.dispose();
     });
   });
 

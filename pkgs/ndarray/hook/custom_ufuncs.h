@@ -1102,7 +1102,7 @@ void pad_axis_complex64(
  * ============================================================================
  */
 
-int ndarray_unique(const void *src, void *dest, int size, int dtype);
+int ndarray_unique(const void *src, void *dest, int size, int dtype, int64_t *out_index, int64_t *out_inverse, int64_t *out_counts);
 int ndarray_intersect1d(const void *ar1, int size1, const void *ar2, int size2, void *dest, int dtype);
 int ndarray_setdiff1d(const void *ar1, int size1, const void *ar2, int size2, void *dest, int dtype);
 int ndarray_setxor1d(const void *ar1, int size1, const void *ar2, int size2, void *dest, int dtype);
