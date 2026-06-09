@@ -15,3 +15,4 @@ export 'operations/io.dart';
 export 'operations/random.dart';
 export 'operations/fft.dart';
 export 'operations/calculus.dart';
+export 'operations/padding.dart';

@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <complex.h>
 #include <stdio.h>
+#include "custom_sorting.h"
 
 #if defined(_MSC_VER)
 #define RESTRICT __restrict
@@ -5948,6 +5949,627 @@ void v_zero_upper_triangular(
         }
     }
 }
+
+/* ============================================================================
+ * SECTION 9: PADDING KERNELS IMPLEMENTATION
+ * ============================================================================
+ */
+
+static inline int reflect_map(int i, int N) {
+    if (N <= 1) return 0;
+    int P = 2 * N - 2;
+    int i_mod = abs(i) % P;
+    return i_mod < N ? i_mod : P - i_mod;
+}
+
+static inline int symmetric_map(int i, int N) {
+    if (N <= 0) return 0;
+    int P = 2 * N;
+    int i_mod;
+    if (i < 0) {
+        i_mod = (-i - 1) % P;
+    } else {
+        i_mod = i % P;
+    }
+    return i_mod < N ? i_mod : P - 1 - i_mod;
+}
+
+static inline void insertion_sort_uint8(uint8_t *arr, int n, int kind) {
+    (void)kind;
+    for (int i = 1; i < n; i++) {
+        uint8_t key = arr[i];
+        int j = i - 1;
+        while (j >= 0 && arr[j] > key) {
+            arr[j + 1] = arr[j];
+            j = j - 1;
+        }
+        arr[j + 1] = key;
+    }
+}
+
+static inline int cmp_double(const void *a, const void *b) {
+    double da = *(const double*)a;
+    double db = *(const double*)b;
+    return (da > db) - (da < db);
+}
+static inline int cmp_float(const void *a, const void *b) {
+    float fa = *(const float*)a;
+    float fb = *(const float*)b;
+    return (fa > fb) - (fa < fb);
+}
+static inline int cmp_int64(const void *a, const void *b) {
+    int64_t ia = *(const int64_t*)a;
+    int64_t ib = *(const int64_t*)b;
+    return (ia > ib) - (ia < ib);
+}
+static inline int cmp_int32(const void *a, const void *b) {
+    int32_t ia = *(const int32_t*)a;
+    int32_t ib = *(const int32_t*)b;
+    return (ia > ib) - (ia < ib);
+}
+static inline int cmp_uint8(const void *a, const void *b) {
+    uint8_t ia = *(const uint8_t*)a;
+    uint8_t ib = *(const uint8_t*)b;
+    return (ia > ib) - (ia < ib);
+}
+
+static inline int cmp_cpx_lex_d(cpx_t a, cpx_t b) {
+    if (a.r < b.r) return -1;
+    if (a.r > b.r) return 1;
+    if (a.i < b.i) return -1;
+    if (a.i > b.i) return 1;
+    return 0;
+}
+
+static inline int cmp_cpx_lex_f(cpx_f_t a, cpx_f_t b) {
+    if (a.r < b.r) return -1;
+    if (a.r > b.r) return 1;
+    if (a.i < b.i) return -1;
+    if (a.i > b.i) return 1;
+    return 0;
+}
+
+static inline double interpolate_double(double start, double end, int step, int total_steps) {
+    if (total_steps <= 0) return end;
+    return start + (end - start) * (double)step / total_steps;
+}
+static inline float interpolate_float(float start, float end, int step, int total_steps) {
+    if (total_steps <= 0) return end;
+    return start + (end - start) * (float)step / total_steps;
+}
+static inline int64_t interpolate_int64(int64_t start, int64_t end, int step, int total_steps) {
+    if (total_steps <= 0) return end;
+    double val = (double)start + ((double)end - (double)start) * (double)step / total_steps;
+    return (int64_t)round(val);
+}
+static inline int32_t interpolate_int32(int32_t start, int32_t end, int step, int total_steps) {
+    if (total_steps <= 0) return end;
+    double val = (double)start + ((double)end - (double)start) * (double)step / total_steps;
+    return (int32_t)round(val);
+}
+static inline uint8_t interpolate_uint8(uint8_t start, uint8_t end, int step, int total_steps) {
+    if (total_steps <= 0) return end;
+    double val = (double)start + ((double)end - (double)start) * (double)step / total_steps;
+    return (uint8_t)round(val);
+}
+static inline cpx_t interpolate_complex128(cpx_t start, cpx_t end, int step, int total_steps) {
+    if (total_steps <= 0) return end;
+    double r = start.r + (end.r - start.r) * (double)step / total_steps;
+    double i = start.i + (end.i - start.i) * (double)step / total_steps;
+    return (cpx_t){r, i};
+}
+static inline cpx_f_t interpolate_complex64(cpx_f_t start, cpx_f_t end, int step, int total_steps) {
+    if (total_steps <= 0) return end;
+    float r = start.r + (end.r - start.r) * (float)step / total_steps;
+    float i = start.i + (end.i - start.i) * (float)step / total_steps;
+    return (cpx_f_t){r, i};
+}
+
+// Helper macros for defining numeric statistics (double, float, int64, int32, uint8)
+#define DEFINE_NUMERIC_STATS(TYPE, NAME_SUFFIX, SORTER, CAST_TYPE) \
+static inline TYPE stats_min_##NAME_SUFFIX(const TYPE *base, int stride, int len) { \
+    TYPE m = *base; \
+    for (int i = 1; i < len; i++) { \
+        TYPE v = *(base + i * stride); \
+        if (v < m) m = v; \
+    } \
+    return m; \
+} \
+static inline TYPE stats_max_##NAME_SUFFIX(const TYPE *base, int stride, int len) { \
+    TYPE m = *base; \
+    for (int i = 1; i < len; i++) { \
+        TYPE v = *(base + i * stride); \
+        if (v > m) m = v; \
+    } \
+    return m; \
+} \
+static inline TYPE stats_mean_##NAME_SUFFIX(const TYPE *base, int stride, int len) { \
+    double sum = 0; \
+    for (int i = 0; i < len; i++) { \
+        sum += (double)*(base + i * stride); \
+    } \
+    return (TYPE)(sum / len); \
+} \
+static inline TYPE stats_median_##NAME_SUFFIX(const TYPE *base, int _stride, int len) { \
+    /* Median calculation requires temporary buffer. We use malloc here. */ \
+    /* In actual usage, len is capped by dimension size. */ \
+    TYPE *buf = (TYPE*)malloc(len * sizeof(TYPE)); \
+    if (buf == NULL) return (TYPE)0; \
+    for (int i = 0; i < len; i++) { \
+        buf[i] = *(base + i * _stride); \
+    } \
+    SORTER((CAST_TYPE)buf, len, 0); /* 0 = quicksort */ \
+    TYPE res; \
+    if (len % 2 == 1) { \
+        res = buf[len / 2]; \
+    } else { \
+        res = (TYPE)(((double)buf[len / 2 - 1] + (double)buf[len / 2]) / 2.0); \
+    } \
+    free(buf); \
+    return res; \
+}
+
+DEFINE_NUMERIC_STATS(double, double, native_sort_double, double*)
+DEFINE_NUMERIC_STATS(float, float, native_sort_float, float*)
+DEFINE_NUMERIC_STATS(int64_t, int64, native_sort_int64, long long*)
+DEFINE_NUMERIC_STATS(int32_t, int32, native_sort_int32, int*)
+DEFINE_NUMERIC_STATS(uint8_t, uint8, insertion_sort_uint8, uint8_t*)
+
+
+// Complex statistics helpers
+static inline cpx_t stats_min_complex128(const cpx_t *base, int stride, int len) {
+    cpx_t m = *base;
+    for (int i = 1; i < len; i++) {
+        cpx_t v = *(base + i * stride);
+        if (cmp_cpx_lex_d(v, m) < 0) m = v;
+    }
+    return m;
+}
+static inline cpx_t stats_max_complex128(const cpx_t *base, int stride, int len) {
+    cpx_t m = *base;
+    for (int i = 1; i < len; i++) {
+        cpx_t v = *(base + i * stride);
+        if (cmp_cpx_lex_d(v, m) > 0) m = v;
+    }
+    return m;
+}
+static inline cpx_t stats_mean_complex128(const cpx_t *base, int stride, int len) {
+    double sum_r = 0;
+    double sum_i = 0;
+    for (int i = 0; i < len; i++) {
+        cpx_t v = *(base + i * stride);
+        sum_r += v.r;
+        sum_i += v.i;
+    }
+    return (cpx_t){sum_r / len, sum_i / len};
+}
+static inline cpx_t stats_median_complex128(const cpx_t *base, int stride, int len) {
+    double *buf_r = (double*)malloc(len * sizeof(double));
+    double *buf_i = (double*)malloc(len * sizeof(double));
+    if (buf_r == NULL || buf_i == NULL) {
+        if (buf_r) free(buf_r);
+        if (buf_i) free(buf_i);
+        return (cpx_t){0, 0};
+    }
+    for (int i = 0; i < len; i++) {
+        cpx_t v = *(base + i * stride);
+        buf_r[i] = v.r;
+        buf_i[i] = v.i;
+    }
+    native_sort_double(buf_r, len, 0);
+    native_sort_double(buf_i, len, 0);
+    double res_r, res_i;
+    if (len % 2 == 1) {
+        res_r = buf_r[len / 2];
+        res_i = buf_i[len / 2];
+    } else {
+        res_r = (buf_r[len / 2 - 1] + buf_r[len / 2]) / 2.0;
+        res_i = (buf_i[len / 2 - 1] + buf_i[len / 2]) / 2.0;
+    }
+    free(buf_r);
+    free(buf_i);
+    return (cpx_t){res_r, res_i};
+}
+
+static inline cpx_f_t stats_min_complex64(const cpx_f_t *base, int stride, int len) {
+    cpx_f_t m = *base;
+    for (int i = 1; i < len; i++) {
+        cpx_f_t v = *(base + i * stride);
+        if (cmp_cpx_lex_f(v, m) < 0) m = v;
+    }
+    return m;
+}
+static inline cpx_f_t stats_max_complex64(const cpx_f_t *base, int stride, int len) {
+    cpx_f_t m = *base;
+    for (int i = 1; i < len; i++) {
+        cpx_f_t v = *(base + i * stride);
+        if (cmp_cpx_lex_f(v, m) > 0) m = v;
+    }
+    return m;
+}
+static inline cpx_f_t stats_mean_complex64(const cpx_f_t *base, int stride, int len) {
+    float sum_r = 0;
+    float sum_i = 0;
+    for (int i = 0; i < len; i++) {
+        cpx_f_t v = *(base + i * stride);
+        sum_r += v.r;
+        sum_i += v.i;
+    }
+    return (cpx_f_t){sum_r / len, sum_i / len};
+}
+static inline cpx_f_t stats_median_complex64(const cpx_f_t *base, int stride, int len) {
+    float *buf_r = (float*)malloc(len * sizeof(float));
+    float *buf_i = (float*)malloc(len * sizeof(float));
+    if (buf_r == NULL || buf_i == NULL) {
+        if (buf_r) free(buf_r);
+        if (buf_i) free(buf_i);
+        return (cpx_f_t){0, 0};
+    }
+    for (int i = 0; i < len; i++) {
+        cpx_f_t v = *(base + i * stride);
+        buf_r[i] = v.r;
+        buf_i[i] = v.i;
+    }
+    native_sort_float(buf_r, len, 0);
+    native_sort_float(buf_i, len, 0);
+    float res_r, res_i;
+    if (len % 2 == 1) {
+        res_r = buf_r[len / 2];
+        res_i = buf_i[len / 2];
+    } else {
+        res_r = (buf_r[len / 2 - 1] + buf_r[len / 2]) / 2.0f;
+        res_i = (buf_i[len / 2 - 1] + buf_i[len / 2]) / 2.0f;
+    }
+    free(buf_r);
+    free(buf_i);
+    return (cpx_f_t){res_r, res_i};
+}
+
+#define DEFINE_PAD_AXIS(TYPE_NAME, T, STATS_MIN, STATS_MAX, STATS_MEAN, STATS_MEDIAN, INTERPOLATE) \
+void pad_axis_##TYPE_NAME( \
+    const T *src, const int *shapeSrc, const int *stridesSrc, \
+    T *dest, const int *shapeDest, \
+    int rank, int axis, \
+    int padBefore, int padAfter, \
+    int mode, \
+    T constantBefore, T constantAfter, \
+    T endBefore, T endAfter, \
+    int statLengthBefore, int statLengthAfter \
+) { \
+    if (src == NULL || dest == NULL || shapeSrc == NULL || shapeDest == NULL || stridesSrc == NULL || rank <= 0 || rank > 8) return; \
+    int total_elements_dest = 1; \
+    for (int i = 0; i < rank; i++) total_elements_dest *= shapeDest[i]; \
+    int coordDest[8] = {0}; \
+    int offsetSrcSlice = 0; \
+    T cached_stat_before = (T)0; \
+    T cached_stat_after = (T)0; \
+    int stats_cached = 0; \
+    int new_slice = 1; \
+    for (int el = 0; el < total_elements_dest; el++) { \
+        if (new_slice) { \
+            stats_cached = 0; \
+            new_slice = 0; \
+        } \
+        const T *src_vector_base = src + offsetSrcSlice; \
+        int src_stride = stridesSrc[axis]; \
+        int N = shapeSrc[axis]; \
+        int c = coordDest[axis]; \
+        T val; \
+        if (c < padBefore) { \
+            switch(mode) { \
+                case 0: /* constant */ \
+                    val = constantBefore; \
+                    break; \
+                case 1: /* edge */ \
+                    val = *src_vector_base; \
+                    break; \
+                case 2: /* reflect */ { \
+                    int src_idx = reflect_map(c - padBefore, N); \
+                    val = *(src_vector_base + src_idx * src_stride); \
+                    break; \
+                } \
+                case 3: /* symmetric */ { \
+                    int src_idx = symmetric_map(c - padBefore, N); \
+                    val = *(src_vector_base + src_idx * src_stride); \
+                    break; \
+                } \
+                case 4: /* wrap */ { \
+                    int src_idx = ((c - padBefore) % N + N) % N; \
+                    val = *(src_vector_base + src_idx * src_stride); \
+                    break; \
+                } \
+                case 5: /* linear_ramp */ \
+                    val = INTERPOLATE(endBefore, *src_vector_base, c, padBefore); \
+                    break; \
+                case 6: /* maximum */ \
+                case 7: /* mean */ \
+                case 8: /* median */ \
+                case 9: /* minimum */ \
+                    if (!stats_cached) { \
+                        switch(mode) { \
+                            case 6: \
+                                cached_stat_before = STATS_MAX(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MAX(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                            case 7: \
+                                cached_stat_before = STATS_MEAN(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MEAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                            case 8: \
+                                cached_stat_before = STATS_MEDIAN(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MEDIAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                            case 9: \
+                                cached_stat_before = STATS_MIN(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MIN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                        } \
+                        stats_cached = 1; \
+                    } \
+                    val = cached_stat_before; \
+                    break; \
+                default: \
+                    val = constantBefore; \
+            } \
+        } else if (c >= padBefore + N) { \
+            switch(mode) { \
+                case 0: /* constant */ \
+                    val = constantAfter; \
+                    break; \
+                case 1: /* edge */ \
+                    val = *(src_vector_base + (N - 1) * src_stride); \
+                    break; \
+                case 2: /* reflect */ { \
+                    int src_idx = reflect_map(c - padBefore, N); \
+                    val = *(src_vector_base + src_idx * src_stride); \
+                    break; \
+                } \
+                case 3: /* symmetric */ { \
+                    int src_idx = symmetric_map(c - padBefore, N); \
+                    val = *(src_vector_base + src_idx * src_stride); \
+                    break; \
+                } \
+                case 4: /* wrap */ { \
+                    int src_idx = (c - padBefore) % N; \
+                    val = *(src_vector_base + src_idx * src_stride); \
+                    break; \
+                } \
+                case 5: /* linear_ramp */ { \
+                    T edge_val = *(src_vector_base + (N - 1) * src_stride); \
+                    int diff = c - (padBefore + N - 1); \
+                    val = INTERPOLATE(edge_val, endAfter, diff, padAfter); \
+                    break; \
+                } \
+                case 6: /* maximum */ \
+                case 7: /* mean */ \
+                case 8: /* median */ \
+                case 9: /* minimum */ \
+                    if (!stats_cached) { \
+                        switch(mode) { \
+                            case 6: \
+                                cached_stat_before = STATS_MAX(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MAX(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                            case 7: \
+                                cached_stat_before = STATS_MEAN(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MEAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                            case 8: \
+                                cached_stat_before = STATS_MEDIAN(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MEDIAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                            case 9: \
+                                cached_stat_before = STATS_MIN(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MIN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                        } \
+                        stats_cached = 1; \
+                    } \
+                    val = cached_stat_after; \
+                    break; \
+                default: \
+                    val = constantAfter; \
+            } \
+        } else { \
+            val = *(src_vector_base + (c - padBefore) * src_stride); \
+        } \
+        dest[el] = val; \
+        for (int d = rank - 1; d >= 0; d--) { \
+            coordDest[d]++; \
+            if (coordDest[d] < shapeDest[d]) { \
+                if (d != axis) { \
+                    offsetSrcSlice += stridesSrc[d]; \
+                    new_slice = 1; \
+                } \
+                break; \
+            } \
+            coordDest[d] = 0; \
+            if (d != axis) { \
+                offsetSrcSlice -= (shapeDest[d] - 1) * stridesSrc[d]; \
+                new_slice = 1; \
+            } \
+        } \
+    } \
+}
+
+// Instantiate DEFINE_PAD_AXIS for double, float, int64, int32, uint8
+DEFINE_PAD_AXIS(double, double, stats_min_double, stats_max_double, stats_mean_double, stats_median_double, interpolate_double)
+DEFINE_PAD_AXIS(float, float, stats_min_float, stats_max_float, stats_mean_float, stats_median_float, interpolate_float)
+DEFINE_PAD_AXIS(int64, int64_t, stats_min_int64, stats_max_int64, stats_mean_int64, stats_median_int64, interpolate_int64)
+DEFINE_PAD_AXIS(int32, int32_t, stats_min_int32, stats_max_int32, stats_mean_int32, stats_median_int32, interpolate_int32)
+DEFINE_PAD_AXIS(uint8, uint8_t, stats_min_uint8, stats_max_uint8, stats_mean_uint8, stats_median_uint8, interpolate_uint8)
+
+// Complex pad axis implementation (needs separate macro because cpx_t has zeroInit {0,0} and different stats/interpolation signatures)
+#define DEFINE_PAD_AXIS_COMPLEX(TYPE_NAME, T, STATS_MIN, STATS_MAX, STATS_MEAN, STATS_MEDIAN, INTERPOLATE) \
+void pad_axis_##TYPE_NAME( \
+    const T *src, const int *shapeSrc, const int *stridesSrc, \
+    T *dest, const int *shapeDest, \
+    int rank, int axis, \
+    int padBefore, int padAfter, \
+    int mode, \
+    T constantBefore, T constantAfter, \
+    T endBefore, T endAfter, \
+    int statLengthBefore, int statLengthAfter \
+) { \
+    if (src == NULL || dest == NULL || shapeSrc == NULL || shapeDest == NULL || stridesSrc == NULL || rank <= 0 || rank > 8) return; \
+    int total_elements_dest = 1; \
+    for (int i = 0; i < rank; i++) total_elements_dest *= shapeDest[i]; \
+    int coordDest[8] = {0}; \
+    int offsetSrcSlice = 0; \
+    T cached_stat_before = {0, 0}; \
+    T cached_stat_after = {0, 0}; \
+    int stats_cached = 0; \
+    int new_slice = 1; \
+    for (int el = 0; el < total_elements_dest; el++) { \
+        if (new_slice) { \
+            stats_cached = 0; \
+            new_slice = 0; \
+        } \
+        const T *src_vector_base = src + offsetSrcSlice; \
+        int src_stride = stridesSrc[axis]; \
+        int N = shapeSrc[axis]; \
+        int c = coordDest[axis]; \
+        T val; \
+        if (c < padBefore) { \
+            switch(mode) { \
+                case 0: /* constant */ \
+                    val = constantBefore; \
+                    break; \
+                case 1: /* edge */ \
+                    val = *src_vector_base; \
+                    break; \
+                case 2: /* reflect */ { \
+                    int src_idx = reflect_map(c - padBefore, N); \
+                    val = *(src_vector_base + src_idx * src_stride); \
+                    break; \
+                } \
+                case 3: /* symmetric */ { \
+                    int src_idx = symmetric_map(c - padBefore, N); \
+                    val = *(src_vector_base + src_idx * src_stride); \
+                    break; \
+                } \
+                case 4: /* wrap */ { \
+                    int src_idx = ((c - padBefore) % N + N) % N; \
+                    val = *(src_vector_base + src_idx * src_stride); \
+                    break; \
+                } \
+                case 5: /* linear_ramp */ \
+                    val = INTERPOLATE(endBefore, *src_vector_base, c, padBefore); \
+                    break; \
+                case 6: /* maximum */ \
+                case 7: /* mean */ \
+                case 8: /* median */ \
+                case 9: /* minimum */ \
+                    if (!stats_cached) { \
+                        switch(mode) { \
+                            case 6: \
+                                cached_stat_before = STATS_MAX(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MAX(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                            case 7: \
+                                cached_stat_before = STATS_MEAN(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MEAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                            case 8: \
+                                cached_stat_before = STATS_MEDIAN(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MEDIAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                            case 9: \
+                                cached_stat_before = STATS_MIN(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MIN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                        } \
+                        stats_cached = 1; \
+                    } \
+                    val = cached_stat_before; \
+                    break; \
+                default: \
+                    val = constantBefore; \
+            } \
+        } else if (c >= padBefore + N) { \
+            switch(mode) { \
+                case 0: /* constant */ \
+                    val = constantAfter; \
+                    break; \
+                case 1: /* edge */ \
+                    val = *(src_vector_base + (N - 1) * src_stride); \
+                    break; \
+                case 2: /* reflect */ { \
+                    int src_idx = reflect_map(c - padBefore, N); \
+                    val = *(src_vector_base + src_idx * src_stride); \
+                    break; \
+                } \
+                case 3: /* symmetric */ { \
+                    int src_idx = symmetric_map(c - padBefore, N); \
+                    val = *(src_vector_base + src_idx * src_stride); \
+                    break; \
+                } \
+                case 4: /* wrap */ { \
+                    int src_idx = (c - padBefore) % N; \
+                    val = *(src_vector_base + src_idx * src_stride); \
+                    break; \
+                } \
+                case 5: /* linear_ramp */ { \
+                    T edge_val = *(src_vector_base + (N - 1) * src_stride); \
+                    int diff = c - (padBefore + N - 1); \
+                    val = INTERPOLATE(edge_val, endAfter, diff, padAfter); \
+                    break; \
+                } \
+                case 6: /* maximum */ \
+                case 7: /* mean */ \
+                case 8: /* median */ \
+                case 9: /* minimum */ \
+                    if (!stats_cached) { \
+                        switch(mode) { \
+                            case 6: \
+                                cached_stat_before = STATS_MAX(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MAX(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                            case 7: \
+                                cached_stat_before = STATS_MEAN(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MEAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                            case 8: \
+                                cached_stat_before = STATS_MEDIAN(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MEDIAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                            case 9: \
+                                cached_stat_before = STATS_MIN(src_vector_base, src_stride, statLengthBefore); \
+                                cached_stat_after = STATS_MIN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                break; \
+                        } \
+                        stats_cached = 1; \
+                    } \
+                    val = cached_stat_after; \
+                    break; \
+                default: \
+                    val = constantAfter; \
+            } \
+        } else { \
+            val = *(src_vector_base + (c - padBefore) * src_stride); \
+        } \
+        dest[el] = val; \
+        for (int d = rank - 1; d >= 0; d--) { \
+            coordDest[d]++; \
+            if (coordDest[d] < shapeDest[d]) { \
+                if (d != axis) { \
+                    offsetSrcSlice += stridesSrc[d]; \
+                    new_slice = 1; \
+                } \
+                break; \
+            } \
+            coordDest[d] = 0; \
+            if (d != axis) { \
+                offsetSrcSlice -= (shapeDest[d] - 1) * stridesSrc[d]; \
+                new_slice = 1; \
+            } \
+        } \
+    } \
+}
+
+DEFINE_PAD_AXIS_COMPLEX(complex128, cpx_t, stats_min_complex128, stats_max_complex128, stats_mean_complex128, stats_median_complex128, interpolate_complex128)
+DEFINE_PAD_AXIS_COMPLEX(complex64, cpx_f_t, stats_min_complex64, stats_max_complex64, stats_mean_complex64, stats_median_complex64, interpolate_complex64)
+
 
 
 

@@ -16595,6 +16595,282 @@ external void v_zero_upper_triangular(
   int dtype,
 );
 
+/// ============================================================================
+/// SECTION 9: PADDING KERNELS
+/// ============================================================================
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void pad_axis_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Int> shapeSrc,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> dest,
+  ffi.Pointer<ffi.Int> shapeDest,
+  int rank,
+  int axis,
+  int padBefore,
+  int padAfter,
+  int mode,
+  double constantBefore,
+  double constantAfter,
+  double endBefore,
+  double endAfter,
+  int statLengthBefore,
+  int statLengthAfter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Float,
+    ffi.Float,
+    ffi.Float,
+    ffi.Float,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void pad_axis_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Int> shapeSrc,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Float> dest,
+  ffi.Pointer<ffi.Int> shapeDest,
+  int rank,
+  int axis,
+  int padBefore,
+  int padAfter,
+  int mode,
+  double constantBefore,
+  double constantAfter,
+  double endBefore,
+  double endAfter,
+  int statLengthBefore,
+  int statLengthAfter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void pad_axis_int64(
+  ffi.Pointer<ffi.Int64> src,
+  ffi.Pointer<ffi.Int> shapeSrc,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int64> dest,
+  ffi.Pointer<ffi.Int> shapeDest,
+  int rank,
+  int axis,
+  int padBefore,
+  int padAfter,
+  int mode,
+  int constantBefore,
+  int constantAfter,
+  int endBefore,
+  int endAfter,
+  int statLengthBefore,
+  int statLengthAfter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void pad_axis_int32(
+  ffi.Pointer<ffi.Int32> src,
+  ffi.Pointer<ffi.Int> shapeSrc,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int32> dest,
+  ffi.Pointer<ffi.Int> shapeDest,
+  int rank,
+  int axis,
+  int padBefore,
+  int padAfter,
+  int mode,
+  int constantBefore,
+  int constantAfter,
+  int endBefore,
+  int endAfter,
+  int statLengthBefore,
+  int statLengthAfter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Uint8,
+    ffi.Uint8,
+    ffi.Uint8,
+    ffi.Uint8,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void pad_axis_uint8(
+  ffi.Pointer<ffi.Uint8> src,
+  ffi.Pointer<ffi.Int> shapeSrc,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Uint8> dest,
+  ffi.Pointer<ffi.Int> shapeDest,
+  int rank,
+  int axis,
+  int padBefore,
+  int padAfter,
+  int mode,
+  int constantBefore,
+  int constantAfter,
+  int endBefore,
+  int endAfter,
+  int statLengthBefore,
+  int statLengthAfter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    cpx_t,
+    cpx_t,
+    cpx_t,
+    cpx_t,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void pad_axis_complex128(
+  ffi.Pointer<cpx_t> src,
+  ffi.Pointer<ffi.Int> shapeSrc,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<cpx_t> dest,
+  ffi.Pointer<ffi.Int> shapeDest,
+  int rank,
+  int axis,
+  int padBefore,
+  int padAfter,
+  int mode,
+  cpx_t constantBefore,
+  cpx_t constantAfter,
+  cpx_t endBefore,
+  cpx_t endAfter,
+  int statLengthBefore,
+  int statLengthAfter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    cpx_f_t,
+    cpx_f_t,
+    cpx_f_t,
+    cpx_f_t,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void pad_axis_complex64(
+  ffi.Pointer<cpx_f_t> src,
+  ffi.Pointer<ffi.Int> shapeSrc,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<cpx_f_t> dest,
+  ffi.Pointer<ffi.Int> shapeDest,
+  int rank,
+  int axis,
+  int padBefore,
+  int padAfter,
+  int mode,
+  cpx_f_t constantBefore,
+  cpx_f_t constantAfter,
+  cpx_f_t endBefore,
+  cpx_f_t endAfter,
+  int statLengthBefore,
+  int statLengthAfter,
+);
+
 typedef ptrdiff_t = ffi.Long;
 typedef Dartptrdiff_t = int;
 

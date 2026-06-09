@@ -1015,5 +1015,88 @@ void v_zero_upper_triangular(
     int dtype
 );
 
+/* ============================================================================
+ * SECTION 9: PADDING KERNELS
+ * ============================================================================
+ */
+
+void pad_axis_double(
+    const double *src, const int *shapeSrc, const int *stridesSrc,
+    double *dest, const int *shapeDest,
+    int rank, int axis,
+    int padBefore, int padAfter,
+    int mode,
+    double constantBefore, double constantAfter,
+    double endBefore, double endAfter,
+    int statLengthBefore, int statLengthAfter
+);
+
+void pad_axis_float(
+    const float *src, const int *shapeSrc, const int *stridesSrc,
+    float *dest, const int *shapeDest,
+    int rank, int axis,
+    int padBefore, int padAfter,
+    int mode,
+    float constantBefore, float constantAfter,
+    float endBefore, float endAfter,
+    int statLengthBefore, int statLengthAfter
+);
+
+void pad_axis_int64(
+    const int64_t *src, const int *shapeSrc, const int *stridesSrc,
+    int64_t *dest, const int *shapeDest,
+    int rank, int axis,
+    int padBefore, int padAfter,
+    int mode,
+    int64_t constantBefore, int64_t constantAfter,
+    int64_t endBefore, int64_t endAfter,
+    int statLengthBefore, int statLengthAfter
+);
+
+void pad_axis_int32(
+    const int32_t *src, const int *shapeSrc, const int *stridesSrc,
+    int32_t *dest, const int *shapeDest,
+    int rank, int axis,
+    int padBefore, int padAfter,
+    int mode,
+    int32_t constantBefore, int32_t constantAfter,
+    int32_t endBefore, int32_t endAfter,
+    int statLengthBefore, int statLengthAfter
+);
+
+void pad_axis_uint8(
+    const uint8_t *src, const int *shapeSrc, const int *stridesSrc,
+    uint8_t *dest, const int *shapeDest,
+    int rank, int axis,
+    int padBefore, int padAfter,
+    int mode,
+    uint8_t constantBefore, uint8_t constantAfter,
+    uint8_t endBefore, uint8_t endAfter,
+    int statLengthBefore, int statLengthAfter
+);
+
+void pad_axis_complex128(
+    const cpx_t *src, const int *shapeSrc, const int *stridesSrc,
+    cpx_t *dest, const int *shapeDest,
+    int rank, int axis,
+    int padBefore, int padAfter,
+    int mode,
+    cpx_t constantBefore, cpx_t constantAfter,
+    cpx_t endBefore, cpx_t endAfter,
+    int statLengthBefore, int statLengthAfter
+);
+
+void pad_axis_complex64(
+    const cpx_f_t *src, const int *shapeSrc, const int *stridesSrc,
+    cpx_f_t *dest, const int *shapeDest,
+    int rank, int axis,
+    int padBefore, int padAfter,
+    int mode,
+    cpx_f_t constantBefore, cpx_f_t constantAfter,
+    cpx_f_t endBefore, cpx_f_t endAfter,
+    int statLengthBefore, int statLengthAfter
+);
+
 #endif /* CUSTOM_UFUNCS_H */
+
 
