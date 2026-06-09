@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import '../ndarray.dart';
 import 'package:openblas/openblas.dart';
 import 'dart:ffi' as ffi;
-import 'package:ffi/ffi.dart';
+
 import '../ndarray_bindings.dart';
 import '../scratch_arena.dart';
 
