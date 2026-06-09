@@ -622,7 +622,7 @@ void main() {
         final b = NDArray.fromList(Float64List.fromList([5.0, 10.0]), [
           2,
         ], DType.float64);
-        expect(() => solve(a, b), throwsArgumentError);
+        expect(() => solve(a, b), throwsA(isA<SingularMatrixException>()));
       }),
     );
 

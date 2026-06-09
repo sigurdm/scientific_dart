@@ -47,7 +47,7 @@ void main() {
       );
 
       test(
-        'Singular matrix throws ArgumentError',
+        'Singular matrix throws SingularMatrixException',
         () => NDArray.scope(() {
           final a = NDArray.fromList(
             Float64List.fromList([1.0, 2.0, 2.0, 4.0]),
@@ -55,12 +55,12 @@ void main() {
             DType.float64,
           ); // dependent rows, det = 0
 
-          expect(() => inv(a), throwsArgumentError);
+          expect(() => inv(a), throwsA(isA<SingularMatrixException>()));
         }),
       );
 
       test(
-        'Singular Float32 matrix throws ArgumentError',
+        'Singular Float32 matrix throws SingularMatrixException',
         () => NDArray.scope(() {
           final a = NDArray.fromList(
             Float32List.fromList([1.0, 2.0, 2.0, 4.0]),
@@ -68,7 +68,7 @@ void main() {
             DType.float32,
           ); // dependent rows, det = 0
 
-          expect(() => inv(a), throwsArgumentError);
+          expect(() => inv(a), throwsA(isA<SingularMatrixException>()));
         }),
       );
     });
@@ -580,7 +580,7 @@ void main() {
       );
 
       test(
-        'Singular matrix solve throws ArgumentError',
+        'Singular matrix solve throws SingularMatrixException',
         () => NDArray.scope(() {
           final a = NDArray.fromList(
             Float64List.fromList([1.0, 2.0, 2.0, 4.0]),
@@ -591,7 +591,7 @@ void main() {
             2,
             1,
           ], DType.float64);
-          expect(() => solve(a, b), throwsArgumentError);
+          expect(() => solve(a, b), throwsA(isA<SingularMatrixException>()));
         }),
       );
 

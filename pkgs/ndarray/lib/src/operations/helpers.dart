@@ -25,13 +25,21 @@ DType resolveDType(DType a, DType b) {
   if (a == DType.boolean) return b;
   if (b == DType.boolean) return a;
   if (a == b) return a;
+
+  final isAIntLarge = a == DType.int64 || a == DType.int32;
+  final isBIntLarge = b == DType.int64 || b == DType.int32;
+
   if (a == DType.complex128 || b == DType.complex128) return DType.complex128;
   if (a == DType.complex64 || b == DType.complex64) {
     if (a == DType.float64 || b == DType.float64) return DType.complex128;
+    if (isAIntLarge || isBIntLarge) return DType.complex128;
     return DType.complex64;
   }
   if (a == DType.float64 || b == DType.float64) return DType.float64;
-  if (a == DType.float32 || b == DType.float32) return DType.float32;
+  if (a == DType.float32 || b == DType.float32) {
+    if (isAIntLarge || isBIntLarge) return DType.float64;
+    return DType.float32;
+  }
   if (a == DType.int64 || b == DType.int64) return DType.int64;
   return DType.int32;
 }
