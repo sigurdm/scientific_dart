@@ -7265,7 +7265,8 @@ IMPLEMENT_QUANTILE_REDUCTION(s_quantile_float, float, native_sort_float, float *
 IMPLEMENT_QUANTILE_REDUCTION(s_quantile_int64, int64_t, native_sort_int64, long long *)
 IMPLEMENT_QUANTILE_REDUCTION(s_quantile_int32, int32_t, native_sort_int32, int *)
 IMPLEMENT_QUANTILE_REDUCTION(s_quantile_uint8, uint8_t, insertion_sort_uint8, uint8_t *)
- * SECTION 10: INTERPOLATION KERNELS
+/* ============================================================================
+ * SECTION 11: INTERPOLATION KERNELS
  * ============================================================================
  */
 

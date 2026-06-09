@@ -1141,7 +1141,7 @@ void s_quantile_int32(const int32_t *src, const int *stridesSrc, double *dest, c
 void s_quantile_uint8(const uint8_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q);
 
 /* ============================================================================
- * SECTION 10: INTERPOLATION KERNELS
+ * SECTION 11: INTERPOLATION KERNELS
  * ============================================================================
  */
 
