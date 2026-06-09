@@ -28,16 +28,20 @@ import 'helpers.dart';
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray sort(NDArray a, {int axis = -1, SortKind kind = SortKind.quicksort}) {
+NDArray<T> sort<T extends Object>(
+  NDArray<T> a, {
+  int axis = -1,
+  SortKind kind = SortKind.quicksort,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot sort a disposed array.');
   }
   if (a.size == 0) {
-    return NDArray.create(a.shape, a.dtype);
+    return NDArray<T>.create(a.shape, a.dtype);
   }
   final rank = a.shape.length;
   if (rank == 0) {
-    return NDArray.fromList(List.from(a.data), [], a.dtype);
+    return NDArray<T>.fromList(List<T>.from(a.data), [], a.dtype);
   }
 
   final targetAxis = axis < 0 ? rank + axis : axis;
@@ -51,12 +55,12 @@ NDArray sort(NDArray a, {int axis = -1, SortKind kind = SortKind.quicksort}) {
     return sortedView.swapaxes(targetAxis, rank - 1);
   }
 
-  NDArray src = a;
+  NDArray<T> src = a;
   if (!a.isContiguous) {
-    src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+    src = NDArray<T>.fromList(a.toList(), a.shape, a.dtype);
   }
 
-  final result = NDArray.create(src.shape, src.dtype);
+  final result = NDArray<T>.create(src.shape, src.dtype);
   if (src.dtype == DType.float64) {
     (result.data as Float64List).setRange(
       0,
@@ -93,6 +97,12 @@ NDArray sort(NDArray a, {int axis = -1, SortKind kind = SortKind.quicksort}) {
     final srcBacking = (src.data as BoolList).backingList;
     final resBacking = (result.data as BoolList).backingList;
     resBacking.setRange(0, srcBacking.length, srcBacking);
+  } else if (src.dtype == DType.uint8) {
+    (result.data as Uint8List).setRange(
+      0,
+      src.data.length,
+      src.data as Uint8List,
+    );
   }
 
   final n = src.shape.last;
@@ -128,6 +138,8 @@ NDArray sort(NDArray a, {int axis = -1, SortKind kind = SortKind.quicksort}) {
     elementSizeInBytes = 8;
   } else if (src.dtype == DType.complex128) {
     elementSizeInBytes = 16;
+  } else if (src.dtype == DType.uint8) {
+    elementSizeInBytes = 1;
   } else {
     throw UnimplementedError('Unsupported dtype for sort: ${src.dtype}');
   }
@@ -152,6 +164,8 @@ NDArray sort(NDArray a, {int axis = -1, SortKind kind = SortKind.quicksort}) {
       native_sort_complex128(rowPtr.cast<ffi.Double>(), n, nativeKind);
     } else if (src.dtype == DType.complex64) {
       native_sort_complex64(rowPtr.cast<ffi.Float>(), n, nativeKind);
+    } else if (src.dtype == DType.uint8) {
+      native_sort_uint8(rowPtr.cast<ffi.Uint8>(), n, nativeKind);
     }
   }
 
@@ -299,13 +313,17 @@ NDArray<int> argsort(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray partition(NDArray a, dynamic kth, {int axis = -1}) {
+NDArray<T> partition<T extends Object>(
+  NDArray<T> a,
+  dynamic kth, {
+  int axis = -1,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot partition a disposed array.');
   }
   final rank = a.shape.length;
   if (rank == 0) {
-    return NDArray.fromList(List.from(a.data), [], a.dtype);
+    return NDArray<T>.fromList(List<T>.from(a.data), [], a.dtype);
   }
 
   final targetAxis = axis < 0 ? rank + axis : axis;
@@ -343,12 +361,12 @@ NDArray partition(NDArray a, dynamic kth, {int axis = -1}) {
     return partitionedView.swapaxes(targetAxis, rank - 1);
   }
 
-  NDArray src = a;
+  NDArray<T> src = a;
   if (!a.isContiguous) {
-    src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+    src = NDArray<T>.fromList(a.toList(), a.shape, a.dtype);
   }
 
-  final result = NDArray.create(src.shape, src.dtype);
+  final result = NDArray<T>.create(src.shape, src.dtype);
 
   // Copy data to result
   if (src.dtype == DType.float64) {
@@ -863,6 +881,21 @@ NDArray<int> searchsorted(
           srcA.pointer.cast<ffi.Float>(),
           size,
           srcV.pointer.cast<ffi.Float>(),
+          result.pointer.cast<ffi.Int>(),
+          numValues,
+          sideLeft,
+          cSorter,
+        );
+      case DType.uint8:
+        if (srcV.dtype != DType.uint8) {
+          throw ArgumentError(
+            'v and a must have matching dtypes (expected uint8, got ${v.dtype})',
+          );
+        }
+        native_searchsorted_uint8(
+          srcA.pointer.cast<ffi.Uint8>(),
+          size,
+          srcV.pointer.cast<ffi.Uint8>(),
           result.pointer.cast<ffi.Int>(),
           numValues,
           sideLeft,

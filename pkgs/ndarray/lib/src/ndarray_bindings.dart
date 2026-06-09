@@ -73,6 +73,13 @@ external void native_sort_int64(
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int>, ffi.Int, ffi.Int)>()
 external void native_sort_int32(ffi.Pointer<ffi.Int> array, int size, int kind);
 
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Uint8>, ffi.Int, ffi.Int)>()
+external void native_sort_uint8(
+  ffi.Pointer<ffi.Uint8> array,
+  int size,
+  int kind,
+);
+
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Int, ffi.Int)>()
 external void native_sort_complex128(
   ffi.Pointer<ffi.Double> array,
@@ -429,6 +436,27 @@ external void native_searchsorted_int32(
   ffi.Pointer<ffi.Int> array,
   int size,
   ffi.Pointer<ffi.Int> values,
+  ffi.Pointer<ffi.Int> out_indices,
+  int num_values,
+  int side_left,
+  ffi.Pointer<ffi.Int> sorter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+  )
+>()
+external void native_searchsorted_uint8(
+  ffi.Pointer<ffi.Uint8> array,
+  int size,
+  ffi.Pointer<ffi.Uint8> values,
   ffi.Pointer<ffi.Int> out_indices,
   int num_values,
   int side_left,
@@ -16871,6 +16899,127 @@ external void pad_axis_complex64(
   int statLengthAfter,
 );
 
+/// ============================================================================
+/// SECTION 10: SET OPERATIONS KERNELS
+/// ============================================================================
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
+  )
+>()
+external int ndarray_unique(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Void> dest,
+  int size,
+  int dtype,
+  ffi.Pointer<ffi.Int64> out_index,
+  ffi.Pointer<ffi.Int64> out_inverse,
+  ffi.Pointer<ffi.Int64> out_counts,
+);
+
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+  )
+>()
+external int ndarray_intersect1d(
+  ffi.Pointer<ffi.Void> ar1,
+  int size1,
+  ffi.Pointer<ffi.Void> ar2,
+  int size2,
+  ffi.Pointer<ffi.Void> dest,
+  int dtype,
+);
+
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+  )
+>()
+external int ndarray_setdiff1d(
+  ffi.Pointer<ffi.Void> ar1,
+  int size1,
+  ffi.Pointer<ffi.Void> ar2,
+  int size2,
+  ffi.Pointer<ffi.Void> dest,
+  int dtype,
+);
+
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+  )
+>()
+external int ndarray_setxor1d(
+  ffi.Pointer<ffi.Void> ar1,
+  int size1,
+  ffi.Pointer<ffi.Void> ar2,
+  int size2,
+  ffi.Pointer<ffi.Void> dest,
+  int dtype,
+);
+
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+  )
+>()
+external int ndarray_union1d(
+  ffi.Pointer<ffi.Void> ar1,
+  int size1,
+  ffi.Pointer<ffi.Void> ar2,
+  int size2,
+  ffi.Pointer<ffi.Void> dest,
+  int dtype,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void ndarray_isin(
+  ffi.Pointer<ffi.Void> ar1,
+  int size1,
+  ffi.Pointer<ffi.Void> ar2,
+  int size2,
+  ffi.Pointer<ffi.Uint8> dest,
+  int dtype,
+  int invert,
+);
+
 typedef ptrdiff_t = ffi.Long;
 typedef Dartptrdiff_t = int;
 
@@ -17278,3 +17427,21 @@ const int WCHAR_MAX = 2147483647;
 const int WINT_MIN = 0;
 
 const int WINT_MAX = 4294967295;
+
+const int DTYPE_FLOAT64 = 0;
+
+const int DTYPE_FLOAT32 = 1;
+
+const int DTYPE_INT32 = 2;
+
+const int DTYPE_INT64 = 3;
+
+const int DTYPE_UINT8 = 4;
+
+const int DTYPE_INT16 = 5;
+
+const int DTYPE_COMPLEX128 = 6;
+
+const int DTYPE_COMPLEX64 = 7;
+
+const int DTYPE_BOOLEAN = 8;

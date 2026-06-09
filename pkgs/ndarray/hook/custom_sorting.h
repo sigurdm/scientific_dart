@@ -4,6 +4,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define DTYPE_FLOAT64 0
+#define DTYPE_FLOAT32 1
+#define DTYPE_INT32 2
+#define DTYPE_INT64 3
+#define DTYPE_UINT8 4
+#define DTYPE_INT16 5
+#define DTYPE_COMPLEX128 6
+#define DTYPE_COMPLEX64 7
+#define DTYPE_BOOLEAN 8
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -20,6 +30,7 @@ void native_sort_double(double *array, int size, int kind);
 void native_sort_float(float *array, int size, int kind);
 void native_sort_int64(long long *array, int size, int kind);
 void native_sort_int32(int *array, int size, int kind);
+void native_sort_uint8(uint8_t *array, int size, int kind);
 void native_sort_complex128(double *array, int size, int kind);
 void native_sort_complex64(float *array, int size, int kind);
 
@@ -58,6 +69,7 @@ void native_searchsorted_double(const double *array, int size, const double *val
 void native_searchsorted_float(const float *array, int size, const float *values, int *out_indices, int num_values, int side_left, const int *sorter);
 void native_searchsorted_int64(const long long *array, int size, const long long *values, int *out_indices, int num_values, int side_left, const int *sorter);
 void native_searchsorted_int32(const int *array, int size, const int *values, int *out_indices, int num_values, int side_left, const int *sorter);
+void native_searchsorted_uint8(const uint8_t *array, int size, const uint8_t *values, int *out_indices, int num_values, int side_left, const int *sorter);
 void native_searchsorted_complex128(const double *array, int size, const double *values, int *out_indices, int num_values, int side_left, const int *sorter);
 void native_searchsorted_complex64(const float *array, int size, const float *values, int *out_indices, int num_values, int side_left, const int *sorter);
 

@@ -85,6 +85,12 @@ static inline int compare_int32_inline(int a, int b) {
     return 0;
 }
 
+static inline int compare_uint8_inline(uint8_t a, uint8_t b) {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
 static inline int compare_complex128_inline(complex128_t ca, complex128_t cb) {
     if (ca.real < cb.real) return -1;
     if (ca.real > cb.real) return 1;
@@ -148,6 +154,14 @@ static inline int compare_complex64_inline(complex64_t ca, complex64_t cb) {
 #define SORT_NAME tim_int32
 #define SORT_TYPE int
 #define SORT_CMP(x, y) compare_int32_inline(x, y)
+#include "third_party/timsort/timsort.h"
+#undef SORT_NAME
+#undef SORT_TYPE
+#undef SORT_CMP
+
+#define SORT_NAME tim_uint8
+#define SORT_TYPE uint8_t
+#define SORT_CMP(x, y) compare_uint8_inline(x, y)
 #include "third_party/timsort/timsort.h"
 #undef SORT_NAME
 #undef SORT_TYPE
@@ -705,6 +719,16 @@ DEFINE_IND_QUICKSORT(i32, int, compare_int32_inline)
 DEFINE_IND_HEAPSORT(i32, int, compare_int32_inline)
 DEFINE_SEARCHSORTED(i32, int, compare_int32_inline)
 
+// uint8 (u8)
+DEFINE_INSERTION_SORT(u8, uint8_t, compare_uint8_inline)
+DEFINE_QUICKSORT(u8, uint8_t, compare_uint8_inline)
+DEFINE_HEAPSORT(u8, uint8_t, compare_uint8_inline)
+DEFINE_QUICKSELECT(u8, uint8_t, compare_uint8_inline)
+DEFINE_ARGQUICKSELECT(u8, uint8_t, compare_uint8_inline)
+DEFINE_IND_QUICKSORT(u8, uint8_t, compare_uint8_inline)
+DEFINE_IND_HEAPSORT(u8, uint8_t, compare_uint8_inline)
+DEFINE_SEARCHSORTED(u8, uint8_t, compare_uint8_inline)
+
 // complex128 (c128)
 DEFINE_INSERTION_SORT(c128, complex128_t, compare_complex128_inline)
 DEFINE_QUICKSORT(c128, complex128_t, compare_complex128_inline)
@@ -799,6 +823,17 @@ void native_sort_int32(int *array, int size, int kind) {
         i32_heapsort(array, size);
     } else {
         tim_int32_tim_sort(array, size);
+    }
+}
+
+void native_sort_uint8(uint8_t *array, int size, int kind) {
+    if (array == NULL || size <= 1) return;
+    if (kind == 0) {
+        u8_quicksort(array, size);
+    } else if (kind == 2) {
+        u8_heapsort(array, size);
+    } else {
+        tim_uint8_tim_sort(array, size);
     }
 }
 
@@ -967,6 +1002,10 @@ void native_searchsorted_int64(const long long *array, int size, const long long
 
 void native_searchsorted_int32(const int *array, int size, const int *values, int *out_indices, int num_values, int side_left, const int *sorter) {
     i32_searchsorted(array, size, values, out_indices, num_values, side_left, sorter);
+}
+
+void native_searchsorted_uint8(const uint8_t *array, int size, const uint8_t *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    u8_searchsorted(array, size, values, out_indices, num_values, side_left, sorter);
 }
 
 void native_searchsorted_complex128(const double *array, int size, const double *values, int *out_indices, int num_values, int side_left, const int *sorter) {
@@ -1412,3 +1451,175 @@ void native_apply_mask(
 }
 }
 
+
+#include <algorithm>
+#include <vector>
+#include <cmath>
+
+// Lexicographical comparison for complex numbers
+template<typename T>
+static inline bool comp_complex_impl(T a, T b) {
+    bool nan_ar = std::isnan(a.real);
+    bool nan_br = std::isnan(b.real);
+    if (nan_ar && nan_br) {
+        bool nan_ai = std::isnan(a.imag);
+        bool nan_bi = std::isnan(b.imag);
+        if (nan_ai && nan_bi) return false;
+        if (nan_ai) return false;
+        if (nan_bi) return true;
+        return a.imag < b.imag;
+    } else if (nan_ar) {
+        return false;
+    } else if (nan_br) {
+        return true;
+    } else if (a.real != b.real) {
+        return a.real < b.real;
+    }
+    
+    bool nan_ai = std::isnan(a.imag);
+    bool nan_bi = std::isnan(b.imag);
+    if (nan_ai && nan_bi) return false;
+    if (nan_ai) return false;
+    if (nan_bi) return true;
+    return a.imag < b.imag;
+}
+
+// Equivalence for complex
+template<typename T>
+static inline bool eq_complex_impl(T a, T b) {
+    bool eq_r = (a.real == b.real) || (std::isnan(a.real) && std::isnan(b.real));
+    bool eq_i = (a.imag == b.imag) || (std::isnan(a.imag) && std::isnan(b.imag));
+    return eq_r && eq_i;
+}
+
+static inline bool comp_double_impl(double a, double b) {
+    bool nan_a = std::isnan(a);
+    bool nan_b = std::isnan(b);
+    if (nan_a && nan_b) return false;
+    if (nan_a) return false;
+    if (nan_b) return true;
+    return a < b;
+}
+
+static inline bool eq_double_impl(double a, double b) {
+    return (a == b) || (std::isnan(a) && std::isnan(b));
+}
+
+template<typename T, typename Comp, typename Eq>
+int unique_template(const T *src, T *dest, int size,
+                    int64_t *out_index, int64_t *out_inverse, int64_t *out_counts,
+                    Comp comp, Eq eq) {
+    if (size <= 0) return 0;
+    
+    // If no optional returns, we can optimize by sorting in-place on a copy
+    if (out_index == nullptr && out_inverse == nullptr && out_counts == nullptr) {
+        memcpy(dest, src, size * sizeof(T));
+        std::sort(dest, dest + size, comp);
+        // Compact in-place
+        int write_idx = 0;
+        for (int read_idx = 1; read_idx < size; read_idx++) {
+            if (!eq(dest[read_idx], dest[write_idx])) {
+                write_idx++;
+                dest[write_idx] = dest[read_idx];
+            }
+        }
+        return write_idx + 1;
+    }
+    
+    // We need at least one optional return.
+    std::vector<int64_t> idx(size);
+    for (int i = 0; i < size; i++) idx[i] = i;
+    
+    std::stable_sort(idx.begin(), idx.end(), [&](int64_t a, int64_t b) {
+        return comp(src[a], src[b]);
+    });
+    
+    int write_idx = 0;
+    dest[0] = src[idx[0]];
+    if (out_index) out_index[0] = idx[0];
+    if (out_inverse) out_inverse[idx[0]] = 0;
+    
+    int64_t current_count = 1;
+    
+    for (int read_idx = 1; read_idx < size; read_idx++) {
+        if (!eq(src[idx[read_idx]], src[idx[read_idx - 1]])) {
+            if (out_counts) out_counts[write_idx] = current_count;
+            write_idx++;
+            dest[write_idx] = src[idx[read_idx]];
+            if (out_index) out_index[write_idx] = idx[read_idx];
+            if (out_inverse) out_inverse[idx[read_idx]] = write_idx;
+            current_count = 1;
+        } else {
+            if (out_inverse) out_inverse[idx[read_idx]] = write_idx;
+            current_count++;
+        }
+    }
+    if (out_counts) out_counts[write_idx] = current_count;
+    
+    return write_idx + 1;
+}
+
+extern "C" {
+int ndarray_unique(const void *src, void *dest, int size, int dtype,
+                   int64_t *out_index, int64_t *out_inverse, int64_t *out_counts) {
+    if (src == NULL || dest == NULL || size <= 0) return 0;
+    
+    switch (dtype) {
+        case DTYPE_FLOAT64:
+            return unique_template<double>(
+                (const double *)src, (double *)dest, size,
+                out_index, out_inverse, out_counts,
+                comp_double_impl, eq_double_impl
+            );
+        case DTYPE_FLOAT32:
+            return unique_template<float>(
+                (const float *)src, (float *)dest, size,
+                out_index, out_inverse, out_counts,
+                [](float a, float b) {
+                    bool nan_a = std::isnan(a);
+                    bool nan_b = std::isnan(b);
+                    if (nan_a && nan_b) return false;
+                    if (nan_a) return false;
+                    if (nan_b) return true;
+                    return a < b;
+                },
+                [](float a, float b) {
+                    return (a == b) || (std::isnan(a) && std::isnan(b));
+                }
+            );
+        case DTYPE_INT32:
+            return unique_template<int32_t>(
+                (const int32_t *)src, (int32_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                std::less<int32_t>(), std::equal_to<int32_t>()
+            );
+        case DTYPE_INT64:
+            return unique_template<int64_t>(
+                (const int64_t *)src, (int64_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                std::less<int64_t>(), std::equal_to<int64_t>()
+            );
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN:
+            return unique_template<uint8_t>(
+                (const uint8_t *)src, (uint8_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                std::less<uint8_t>(), std::equal_to<uint8_t>()
+            );
+        case DTYPE_COMPLEX128:
+            return unique_template<complex128_t>(
+                (const complex128_t *)src, (complex128_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                comp_complex_impl<complex128_t>, eq_complex_impl<complex128_t>
+            );
+        case DTYPE_COMPLEX64:
+            return unique_template<complex64_t>(
+                (const complex64_t *)src, (complex64_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                comp_complex_impl<complex64_t>, eq_complex_impl<complex64_t>
+            );
+        default:
+            return 0;
+    }
+}
+}
