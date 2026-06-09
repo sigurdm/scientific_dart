@@ -776,6 +776,7 @@ List<NDArray<T>> gradientArray<T extends Object>(
   List<Spacing>? spacings,
   List<int>? axis,
   int edgeOrder = 1,
+  List<NDArray<T>>? out,
 }) {
   if (f.isDisposed) {
     throw StateError('Cannot execute gradientArray() on a disposed array.');
@@ -821,6 +822,24 @@ List<NDArray<T>> gradientArray<T extends Object>(
     );
   }
 
+  if (out != null) {
+    if (out.length != targetAxes.length) {
+      throw ArgumentError(
+        'out list length (${out.length}) must match the number of axes (${targetAxes.length}).',
+      );
+    }
+    for (var i = 0; i < out.length; i++) {
+      if (!listEquals(out[i].shape, f.shape) || out[i].dtype != f.dtype) {
+        throw ArgumentError(
+          'Provided out buffer at index $i has incompatible shape or dtype.',
+        );
+      }
+      if (!out[i].isContiguous) {
+        throw ArgumentError('Provided out buffers must be contiguous.');
+      }
+    }
+  }
+
   final List<NDArray<T>> results = [];
   try {
     for (var i = 0; i < targetAxes.length; i++) {
@@ -829,16 +848,19 @@ List<NDArray<T>> gradientArray<T extends Object>(
         spacing: spacings?[i] ?? spacing ?? const Spacing.step(1.0),
         axis: targetAxes[i],
         edgeOrder: edgeOrder,
+        out: out?[i],
       );
       results.add(singleGrad);
     }
   } catch (e) {
     // Clean up any successful allocations if one fails
-    for (var res in results) {
-      res.dispose();
+    if (out == null) {
+      for (var res in results) {
+        res.dispose();
+      }
     }
     rethrow;
   }
 
-  return results;
+  return out ?? results;
 }

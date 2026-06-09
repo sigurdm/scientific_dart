@@ -946,9 +946,13 @@ void main() {
         final r1 = add(f64, f32);
         expect(r1.dtype, DType.float64);
 
-        // 2. float32 + int64 -> float32
+        // 2. float32 + int64 -> float64
         final r2 = add(f32, i64);
-        expect(r2.dtype, DType.float32);
+        expect(r2.dtype, DType.float64);
+
+        // 2b. float32 + int32 -> float64
+        final r2b = add(f32, i32);
+        expect(r2b.dtype, DType.float64);
 
         // 3. int64 + int32 -> int64
         final r3 = add(i64, i32);
@@ -1587,16 +1591,16 @@ void main() {
         );
         expect(() => solve(squareA, incompatibleB), throwsArgumentError);
 
-        // 4. solve() singular Float64 matrix throws singular ArgumentError
+        // 4. solve() singular Float64 matrix throws singular SingularMatrixException
         final singularFloat64A = NDArray.fromList(
           [1.0, 2.0, 2.0, 4.0],
           [2, 2],
           DType.float64,
         );
         final validB = NDArray.fromList([5.0, 6.0], [2], DType.float64);
-        expect(() => solve(singularFloat64A, validB), throwsArgumentError);
+        expect(() => solve(singularFloat64A, validB), throwsA(isA<SingularMatrixException>()));
 
-        // 5. solve() singular Float32 matrix throws singular ArgumentError
+        // 5. solve() singular Float32 matrix throws singular SingularMatrixException
         final singularFloat32A = NDArray.fromList(
           [1.0, 2.0, 2.0, 4.0],
           [2, 2],
@@ -1605,7 +1609,7 @@ void main() {
         final validFloat32B = NDArray.fromList([5.0, 6.0], [2], DType.float32);
         expect(
           () => solve(singularFloat32A, validFloat32B),
-          throwsArgumentError,
+          throwsA(isA<SingularMatrixException>()),
         );
       },
     );
