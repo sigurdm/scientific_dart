@@ -751,13 +751,6 @@ void copy_advanced_c(
     const int *indices_lens
 );
 
-/* Optimized native boolean mask unpacking kernel */
-int unpack_mask_c(
-    const uint8_t *mask_ptr,
-    int size,
-    int stride,
-    int *out_indices
-);
 
 /* Kronecker Product */
 void s_kron_double(const double *a, const int *stridesA, const int *shapeA,

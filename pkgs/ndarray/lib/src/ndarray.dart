@@ -2449,6 +2449,27 @@ final class NDArray<T> implements ffi.Finalizable {
   /// The [mask] array must have elements with value 0 or 1.
   /// Returns a 1D array containing the elements where the mask is 1.
   NDArray<T> applyMask(NDArray<bool> mask) {
+    if (shape.length == 1 &&
+        mask.shape.length == 1 &&
+        isContiguous &&
+        mask.isContiguous) {
+      if (mask.shape[0] != shape[0]) {
+        throw ArgumentError(
+          'Boolean mask shape ${mask.shape} must match target shape $shape',
+        );
+      }
+      final size = shape[0];
+      final count = native_count_mask(mask.pointer.cast(), size);
+      final result = NDArray<T>.create([count], dtype);
+      native_apply_mask(
+        dtype.index,
+        pointer.cast(),
+        mask.pointer.cast(),
+        result.pointer.cast(),
+        size,
+      );
+      return result;
+    }
     return slice([Mask(BooleanMask(mask))]);
   }
 

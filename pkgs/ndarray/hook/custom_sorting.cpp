@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "hwy/contrib/sort/vqsort.h"
+#include "hwy/highway.h"
 
 // ----------------------------------------------------------------------------
 // Struct definitions for Complex number representations
@@ -1245,3 +1246,169 @@ DEFINE_COUNT_NONZERO(int64, long long, val != 0)
 DEFINE_COUNT_NONZERO(int32, int, val != 0)
 DEFINE_COUNT_NONZERO(uint8, unsigned char, val != 0)
 DEFINE_COUNT_NONZERO(int16, short, val != 0)
+
+HWY_BEFORE_NAMESPACE();
+namespace hwy {
+namespace HWY_NAMESPACE {
+namespace hn = hwy::HWY_NAMESPACE;
+
+int UnpackMaskImpl(const uint8_t *mask_ptr, int size, int *out_indices) {
+    const hn::ScalableTag<int32_t> d;
+    using Rebind8 = hn::Rebind<uint8_t, decltype(d)>;
+    const Rebind8 d8;
+    const int L = hn::Lanes(d);
+
+    int count = 0;
+    int j = 0;
+    int limit = size - L;
+    auto v_base = hn::Iota(d, 0);
+
+    for (; j <= limit; j += L) {
+        auto mask_bytes = hn::LoadU(d8, mask_ptr + j);
+        auto mask_i32 = hn::PromoteTo(d, mask_bytes);
+        auto mask = (mask_i32 != hn::Zero(d));
+        auto v_index = hn::Add(v_base, hn::Set(d, j));
+        count += hn::CompressStore(v_index, mask, d, out_indices + count);
+    }
+    for (; j < size; j++) {
+        if (mask_ptr[j] != 0) {
+            out_indices[count++] = j;
+        }
+    }
+    return count;
+}
+
+} // namespace HWY_NAMESPACE
+} // namespace hwy
+HWY_AFTER_NAMESPACE();
+
+extern "C" {
+int unpack_mask_c(
+    const uint8_t *mask_ptr,
+    int size,
+    int stride,
+    int *out_indices
+) {
+    if (mask_ptr == NULL || out_indices == NULL || size <= 0) return 0;
+
+    if (stride == 1) {
+        return hwy::HWY_NAMESPACE::UnpackMaskImpl(mask_ptr, size, out_indices);
+    } else {
+        int count = 0;
+        for (int j = 0; j < size; j++) {
+            if (mask_ptr[j * stride] != 0) {
+                out_indices[count++] = j;
+            }
+        }
+        return count;
+    }
+}
+}
+
+extern "C" {
+int native_count_mask(const uint8_t *mask, int size) {
+    if (mask == NULL || size <= 0) return 0;
+    int count = 0;
+    for (int i = 0; i < size; i++) {
+        if (mask[i] != 0) count++;
+    }
+    return count;
+}
+
+void native_apply_mask(
+    int dtype,
+    const void *src,
+    const uint8_t *mask,
+    void *dest,
+    int size
+) {
+    if (src == NULL || mask == NULL || dest == NULL || size <= 0) return;
+    
+    switch (dtype) {
+        case 0: { // float32
+            const float *s = (const float *)src;
+            float *d = (float *)dest;
+            int count = 0;
+            for (int i = 0; i < size; i++) {
+                if (mask[i]) d[count++] = s[i];
+            }
+            break;
+        }
+        case 1: { // float64
+            const double *s = (const double *)src;
+            double *d = (double *)dest;
+            int count = 0;
+            for (int i = 0; i < size; i++) {
+                if (mask[i]) d[count++] = s[i];
+            }
+            break;
+        }
+        case 2: { // complex64
+            struct C64 { float real, imag; };
+            const C64 *s = (const C64 *)src;
+            C64 *d = (C64 *)dest;
+            int count = 0;
+            for (int i = 0; i < size; i++) {
+                if (mask[i]) d[count++] = s[i];
+            }
+            break;
+        }
+        case 3: { // complex128
+            struct C128 { double real, imag; };
+            const C128 *s = (const C128 *)src;
+            C128 *d = (C128 *)dest;
+            int count = 0;
+            for (int i = 0; i < size; i++) {
+                if (mask[i]) d[count++] = s[i];
+            }
+            break;
+        }
+        case 4: { // int32
+            const int32_t *s = (const int32_t *)src;
+            int32_t *d = (int32_t *)dest;
+            int count = 0;
+            for (int i = 0; i < size; i++) {
+                if (mask[i]) d[count++] = s[i];
+            }
+            break;
+        }
+        case 5: { // int64
+            const int64_t *s = (const int64_t *)src;
+            int64_t *d = (int64_t *)dest;
+            int count = 0;
+            for (int i = 0; i < size; i++) {
+                if (mask[i]) d[count++] = s[i];
+            }
+            break;
+        }
+        case 6: { // uint8
+            const uint8_t *s = (const uint8_t *)src;
+            uint8_t *d = (uint8_t *)dest;
+            int count = 0;
+            for (int i = 0; i < size; i++) {
+                if (mask[i]) d[count++] = s[i];
+            }
+            break;
+        }
+        case 7: { // int16
+            const int16_t *s = (const int16_t *)src;
+            int16_t *d = (int16_t *)dest;
+            int count = 0;
+            for (int i = 0; i < size; i++) {
+                if (mask[i]) d[count++] = s[i];
+            }
+            break;
+        }
+        case 8: { // boolean
+            const uint8_t *s = (const uint8_t *)src;
+            uint8_t *d = (uint8_t *)dest;
+            int count = 0;
+            for (int i = 0; i < size; i++) {
+                if (mask[i]) d[count++] = s[i];
+            }
+            break;
+        }
+    }
+}
+}
+
