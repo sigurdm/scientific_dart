@@ -752,8 +752,6 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
-
-
 /// Compute the sum of array elements along a specified axis, treating NaNs as zeros.
 ///
 /// **Preconditions:**
@@ -841,8 +839,6 @@ NDArray<T> nansum<T extends Object>(
   );
   return result;
 }
-
-
 
 /// Stacks arrays in sequence vertically (row wise).
 NDArray<T> vstack<T extends Object>(List<NDArray<T>> arrays) {
@@ -1510,7 +1506,6 @@ NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
         default:
           break;
       }
-
     } finally {
       ScratchArena.reset(marker);
     }
@@ -1602,7 +1597,6 @@ NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
         default:
           break;
       }
-
     } finally {
       ScratchArena.reset(marker);
     }
@@ -1694,7 +1688,6 @@ NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
         default:
           break;
       }
-
     } finally {
       ScratchArena.reset(marker);
     }
@@ -1787,7 +1780,6 @@ NDArray<double> asinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
         default:
           break;
       }
-
     } finally {
       ScratchArena.reset(marker);
     }
@@ -1879,7 +1871,6 @@ NDArray<double> acosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
         default:
           break;
       }
-
     } finally {
       ScratchArena.reset(marker);
     }
@@ -2133,7 +2124,6 @@ NDArray<double> atan2<Ty, Tx>(
         default:
           break;
       }
-
     } finally {
       ScratchArena.reset(marker);
     }
@@ -2313,7 +2303,6 @@ NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
           );
           return result;
         }
-
       } finally {
         ScratchArena.reset(marker);
       }
@@ -2461,7 +2450,6 @@ NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
           );
           return result;
         }
-
       } finally {
         ScratchArena.reset(marker);
       }
@@ -5451,12 +5439,6 @@ NDArray<bool> _runBinaryLogical<Ta, Tb>(
   return result;
 }
 
-
-
-
-
-
-
 /// Extract a diagonal or construct a diagonal array.
 ///
 /// If [v] is a 2D matrix, extracts the k-th diagonal elements vector as a zero-copy 1D view.
@@ -5685,7 +5667,6 @@ bool allclose<Ta, Tb>(
   }
   return true;
 }
-
 
 /// Replace NaN with zero and infinity with large finite numbers.
 ///
@@ -6643,7 +6624,6 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
         doubleA.dispose();
         doubleRes.dispose();
     }
-
   } finally {
     ScratchArena.reset(marker);
   }
@@ -6703,7 +6683,6 @@ NDArray conj(NDArray a, {NDArray? out}) {
             rank,
           );
           return result;
-
         } finally {
           ScratchArena.reset(marker);
         }
@@ -6732,7 +6711,6 @@ NDArray conj(NDArray a, {NDArray? out}) {
             rank,
           );
           return result;
-
         } finally {
           ScratchArena.reset(marker);
         }
@@ -6810,7 +6788,6 @@ NDArray conj(NDArray a, {NDArray? out}) {
                 (x) => x,
               );
           }
-
         } finally {
           ScratchArena.reset(marker);
         }
@@ -14465,7 +14442,6 @@ double _matrixNorm<T>(NDArray<T> a, dynamic ord, DType targetDType) {
     throw ArgumentError('Invalid matrix norm order: $ord');
   }
 }
-
 
 num _getMinLimit(DType dtype) {
   switch (dtype) {

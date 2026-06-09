@@ -85,8 +85,7 @@ NDArray<Complex> fft<T>(
   final outShape = List<int>.from(a.shape);
   outShape[normAxis] = targetLen;
 
-  final targetDType =
-      (a.dtype == DType.float32 || a.dtype == DType.complex64)
+  final targetDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
       ? DType.complex64
       : DType.complex128;
 
@@ -286,8 +285,7 @@ NDArray<Complex> ifft<T>(
   final outShape = List<int>.from(a.shape);
   outShape[normAxis] = targetLen;
 
-  final targetDType =
-      (a.dtype == DType.float32 || a.dtype == DType.complex64)
+  final targetDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
       ? DType.complex64
       : DType.complex128;
 

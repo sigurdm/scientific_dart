@@ -2240,7 +2240,9 @@ final class NDArray<T> implements ffi.Finalizable {
         final maskMarker = ScratchArena.marker;
         final List<int> indices;
         try {
-          final pIndices = ScratchArena.allocate<ffi.Int>(size * ffi.sizeOf<ffi.Int>());
+          final pIndices = ScratchArena.allocate<ffi.Int>(
+            size * ffi.sizeOf<ffi.Int>(),
+          );
           final count = unpack_mask_c(
             mask.mask.pointer.cast(),
             size,
@@ -2317,13 +2319,27 @@ final class NDArray<T> implements ffi.Finalizable {
 
       final sliceMarker = ScratchArena.marker;
       try {
-        final pTypes = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
-        final pIndexVals = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
-        final pSliceStarts = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
-        final pSliceStops = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
-        final pSliceSteps = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
-        final pIndicesPtrs = ScratchArena.allocate<ffi.Pointer<ffi.Int>>(rank * ffi.sizeOf<ffi.Pointer<ffi.Int>>());
-        final pIndicesLens = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
+        final pTypes = ScratchArena.allocate<ffi.Int>(
+          rank * ffi.sizeOf<ffi.Int>(),
+        );
+        final pIndexVals = ScratchArena.allocate<ffi.Int>(
+          rank * ffi.sizeOf<ffi.Int>(),
+        );
+        final pSliceStarts = ScratchArena.allocate<ffi.Int>(
+          rank * ffi.sizeOf<ffi.Int>(),
+        );
+        final pSliceStops = ScratchArena.allocate<ffi.Int>(
+          rank * ffi.sizeOf<ffi.Int>(),
+        );
+        final pSliceSteps = ScratchArena.allocate<ffi.Int>(
+          rank * ffi.sizeOf<ffi.Int>(),
+        );
+        final pIndicesPtrs = ScratchArena.allocate<ffi.Pointer<ffi.Int>>(
+          rank * ffi.sizeOf<ffi.Pointer<ffi.Int>>(),
+        );
+        final pIndicesLens = ScratchArena.allocate<ffi.Int>(
+          rank * ffi.sizeOf<ffi.Int>(),
+        );
 
         for (var i = 0; i < rank; i++) {
           final selector = i < processedSelectors.length
@@ -2375,7 +2391,9 @@ final class NDArray<T> implements ffi.Finalizable {
             pSliceSteps[i] = 0;
 
             final values = selector.values;
-            final pIndices = ScratchArena.allocate<ffi.Int>(values.length * ffi.sizeOf<ffi.Int>());
+            final pIndices = ScratchArena.allocate<ffi.Int>(
+              values.length * ffi.sizeOf<ffi.Int>(),
+            );
             for (var j = 0; j < values.length; j++) {
               final idx = values[j];
               final realIdx = idx < 0 ? shape[i] + idx : idx;

@@ -764,7 +764,9 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
             );
           }
           if (info > 0) {
-            throw SingularMatrixException('Matrix is singular and cannot be inverted');
+            throw SingularMatrixException(
+              'Matrix is singular and cannot be inverted',
+            );
           }
           final infoTri = LAPACKE_sgetri(
             101,
@@ -793,7 +795,9 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
             );
           }
           if (info > 0) {
-            throw SingularMatrixException('Matrix is singular and cannot be inverted');
+            throw SingularMatrixException(
+              'Matrix is singular and cannot be inverted',
+            );
           }
           final infoTri = LAPACKE_dgetri(
             101,
@@ -822,7 +826,9 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
             );
           }
           if (info > 0) {
-            throw SingularMatrixException('Matrix is singular and cannot be inverted');
+            throw SingularMatrixException(
+              'Matrix is singular and cannot be inverted',
+            );
           }
           final infoTri = LAPACKE_cgetri(
             101,
@@ -851,7 +857,9 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
             );
           }
           if (info > 0) {
-            throw SingularMatrixException('Matrix is singular and cannot be inverted');
+            throw SingularMatrixException(
+              'Matrix is singular and cannot be inverted',
+            );
           }
           final infoTri = LAPACKE_zgetri(
             101,
@@ -989,8 +997,8 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
   return NDArray.scope(() {
     switch (a.dtype) {
       case DType.float64:
-        final result = out ??
-            (NDArray.zeros(stackShape, DType.float64) as NDArray<T>);
+        final result =
+            out ?? (NDArray.zeros(stackShape, DType.float64) as NDArray<T>);
         final marker = ScratchArena.marker;
         try {
           final cStridesA = ScratchArena.copyInts(a.strides);
@@ -1024,8 +1032,8 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
         }
         return result;
       case DType.complex128:
-        final result = out ??
-            (NDArray.zeros(stackShape, DType.complex128) as NDArray<T>);
+        final result =
+            out ?? (NDArray.zeros(stackShape, DType.complex128) as NDArray<T>);
         final marker = ScratchArena.marker;
         try {
           final cStridesA = ScratchArena.copyInts(a.strides);
@@ -1059,8 +1067,8 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
         }
         return result;
       case DType.complex64:
-        final result = out ??
-            (NDArray.zeros(stackShape, DType.complex64) as NDArray<T>);
+        final result =
+            out ?? (NDArray.zeros(stackShape, DType.complex64) as NDArray<T>);
         final marker = ScratchArena.marker;
         try {
           final cStridesA = ScratchArena.copyInts(a.strides);
@@ -1094,8 +1102,8 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
         }
         return result;
       case DType.float32:
-        final result = out ??
-            (NDArray.zeros(stackShape, DType.float32) as NDArray<T>);
+        final result =
+            out ?? (NDArray.zeros(stackShape, DType.float32) as NDArray<T>);
         final marker = ScratchArena.marker;
         try {
           final cStridesA = ScratchArena.copyInts(a.strides);
@@ -1233,7 +1241,9 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
             );
           }
           if (info > 0) {
-            throw SingularMatrixException('Matrix is singular and cannot be solved');
+            throw SingularMatrixException(
+              'Matrix is singular and cannot be solved',
+            );
           }
         case DType.float32:
           final info = LAPACKE_sgesv(
@@ -1252,7 +1262,9 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
             );
           }
           if (info > 0) {
-            throw SingularMatrixException('Matrix is singular and cannot be solved');
+            throw SingularMatrixException(
+              'Matrix is singular and cannot be solved',
+            );
           }
         case DType.complex128:
           final info = LAPACKE_zgesv(
@@ -1271,7 +1283,9 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
             );
           }
           if (info > 0) {
-            throw SingularMatrixException('Matrix is singular and cannot be solved');
+            throw SingularMatrixException(
+              'Matrix is singular and cannot be solved',
+            );
           }
         case DType.complex64:
           final info = LAPACKE_cgesv(
@@ -1290,7 +1304,9 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
             );
           }
           if (info > 0) {
-            throw SingularMatrixException('Matrix is singular and cannot be solved');
+            throw SingularMatrixException(
+              'Matrix is singular and cannot be solved',
+            );
           }
         default:
           throw UnimplementedError('Type ${a.dtype} not supported for solve');
@@ -2291,7 +2307,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
     axes[rank - 1] = rank - 2;
 
     final aT = a.transpose(axes);
-    
+
     // Do NOT pass out to recursive call, let it allocate contiguous buffers.
     final resT = _svd(aT);
     final uNew = resT.U;
@@ -2327,10 +2343,8 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
   final vtShape = [...stackShape, n, n];
 
   final NDArray<T> uMat = out?.U ?? NDArray<T>.zeros(uShape, a.dtype);
-  final NDArray<double> sMat = out?.S ?? NDArray<double>.zeros(
-    sShape,
-    dtypeS as DType<double>,
-  );
+  final NDArray<double> sMat =
+      out?.S ?? NDArray<double>.zeros(sShape, dtypeS as DType<double>);
   final NDArray<T> vtMat = out?.Vh ?? NDArray<T>.zeros(vtShape, a.dtype);
 
   final aCopy = NDArray<T>.create([m, n], a.dtype);
@@ -2499,13 +2513,5 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
     aCopy.dispose();
   }
 
-  return (
-    U: uMat,
-    S: sMat,
-    Vh: vtMat,
-  );
+  return (U: uMat, S: sMat, Vh: vtMat);
 }
-
-
-
-

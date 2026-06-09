@@ -1598,7 +1598,10 @@ void main() {
           DType.float64,
         );
         final validB = NDArray.fromList([5.0, 6.0], [2], DType.float64);
-        expect(() => solve(singularFloat64A, validB), throwsA(isA<SingularMatrixException>()));
+        expect(
+          () => solve(singularFloat64A, validB),
+          throwsA(isA<SingularMatrixException>()),
+        );
 
         // 5. solve() singular Float32 matrix throws singular SingularMatrixException
         final singularFloat32A = NDArray.fromList(
