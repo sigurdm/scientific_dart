@@ -73,6 +73,13 @@ external void native_sort_int64(
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int>, ffi.Int, ffi.Int)>()
 external void native_sort_int32(ffi.Pointer<ffi.Int> array, int size, int kind);
 
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Uint8>, ffi.Int, ffi.Int)>()
+external void native_sort_uint8(
+  ffi.Pointer<ffi.Uint8> array,
+  int size,
+  int kind,
+);
+
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Int, ffi.Int)>()
 external void native_sort_complex128(
   ffi.Pointer<ffi.Double> array,
@@ -429,6 +436,27 @@ external void native_searchsorted_int32(
   ffi.Pointer<ffi.Int> array,
   int size,
   ffi.Pointer<ffi.Int> values,
+  ffi.Pointer<ffi.Int> out_indices,
+  int num_values,
+  int side_left,
+  ffi.Pointer<ffi.Int> sorter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+  )
+>()
+external void native_searchsorted_uint8(
+  ffi.Pointer<ffi.Uint8> array,
+  int size,
+  ffi.Pointer<ffi.Uint8> values,
   ffi.Pointer<ffi.Int> out_indices,
   int num_values,
   int side_left,
@@ -16869,6 +16897,443 @@ external void pad_axis_complex64(
   cpx_f_t endAfter,
   int statLengthBefore,
   int statLengthAfter,
+);
+
+/// ============================================================================
+/// SECTION 10: SET OPERATIONS KERNELS
+/// ============================================================================
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external int ndarray_unique(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Void> dest,
+  int size,
+  int dtype,
+);
+
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+  )
+>()
+external int ndarray_intersect1d(
+  ffi.Pointer<ffi.Void> ar1,
+  int size1,
+  ffi.Pointer<ffi.Void> ar2,
+  int size2,
+  ffi.Pointer<ffi.Void> dest,
+  int dtype,
+);
+
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+  )
+>()
+external int ndarray_setdiff1d(
+  ffi.Pointer<ffi.Void> ar1,
+  int size1,
+  ffi.Pointer<ffi.Void> ar2,
+  int size2,
+  ffi.Pointer<ffi.Void> dest,
+  int dtype,
+);
+
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+  )
+>()
+external int ndarray_setxor1d(
+  ffi.Pointer<ffi.Void> ar1,
+  int size1,
+  ffi.Pointer<ffi.Void> ar2,
+  int size2,
+  ffi.Pointer<ffi.Void> dest,
+  int dtype,
+);
+
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+  )
+>()
+external int ndarray_union1d(
+  ffi.Pointer<ffi.Void> ar1,
+  int size1,
+  ffi.Pointer<ffi.Void> ar2,
+  int size2,
+  ffi.Pointer<ffi.Void> dest,
+  int dtype,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void ndarray_isin(
+  ffi.Pointer<ffi.Void> ar1,
+  int size1,
+  ffi.Pointer<ffi.Void> ar2,
+  int size2,
+  ffi.Pointer<ffi.Uint8> dest,
+  int dtype,
+  int invert,
+);
+
+/// Median global reductions (contiguous)
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
+external double r_median_double(ffi.Pointer<ffi.Double> src, int size);
+
+@ffi.Native<ffi.Float Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
+external double r_median_float(ffi.Pointer<ffi.Float> src, int size);
+
+@ffi.Native<ffi.Int64 Function(ffi.Pointer<ffi.Int64>, ffi.Int)>()
+external int r_median_int64(ffi.Pointer<ffi.Int64> src, int size);
+
+@ffi.Native<ffi.Int32 Function(ffi.Pointer<ffi.Int32>, ffi.Int)>()
+external int r_median_int32(ffi.Pointer<ffi.Int32> src, int size);
+
+@ffi.Native<ffi.Uint8 Function(ffi.Pointer<ffi.Uint8>, ffi.Int)>()
+external int r_median_uint8(ffi.Pointer<ffi.Uint8> src, int size);
+
+@ffi.Native<cpx_t Function(ffi.Pointer<cpx_t>, ffi.Int)>()
+external cpx_t r_median_complex128(ffi.Pointer<cpx_t> src, int size);
+
+@ffi.Native<cpx_f_t Function(ffi.Pointer<cpx_f_t>, ffi.Int)>()
+external cpx_f_t r_median_complex64(ffi.Pointer<cpx_f_t> src, int size);
+
+/// Median axis reductions (strided)
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_median_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_median_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Float> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_median_int64(
+  ffi.Pointer<ffi.Int64> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int64> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_median_int32(
+  ffi.Pointer<ffi.Int32> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int32> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_median_uint8(
+  ffi.Pointer<ffi.Uint8> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Uint8> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_median_complex128(
+  ffi.Pointer<cpx_t> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<cpx_t> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_median_complex64(
+  ffi.Pointer<cpx_f_t> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<cpx_f_t> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+/// Quantile global reductions (contiguous)
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int, ffi.Double)>()
+external double r_quantile_double(
+  ffi.Pointer<ffi.Double> src,
+  int size,
+  double q,
+);
+
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Float>, ffi.Int, ffi.Double)>()
+external double r_quantile_float(
+  ffi.Pointer<ffi.Float> src,
+  int size,
+  double q,
+);
+
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Int64>, ffi.Int, ffi.Double)>()
+external double r_quantile_int64(
+  ffi.Pointer<ffi.Int64> src,
+  int size,
+  double q,
+);
+
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Int32>, ffi.Int, ffi.Double)>()
+external double r_quantile_int32(
+  ffi.Pointer<ffi.Int32> src,
+  int size,
+  double q,
+);
+
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Uint8>, ffi.Int, ffi.Double)>()
+external double r_quantile_uint8(
+  ffi.Pointer<ffi.Uint8> src,
+  int size,
+  double q,
+);
+
+/// Quantile axis reductions (strided)
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Double,
+  )
+>()
+external void s_quantile_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  double q,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Double,
+  )
+>()
+external void s_quantile_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  double q,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Double,
+  )
+>()
+external void s_quantile_int64(
+  ffi.Pointer<ffi.Int64> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  double q,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Double,
+  )
+>()
+external void s_quantile_int32(
+  ffi.Pointer<ffi.Int32> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  double q,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Double,
+  )
+>()
+external void s_quantile_uint8(
+  ffi.Pointer<ffi.Uint8> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  double q,
 );
 
 typedef ptrdiff_t = ffi.Long;

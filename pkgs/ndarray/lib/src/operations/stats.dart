@@ -1629,3 +1629,403 @@ NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
   counts.dispose();
   return result;
 }
+
+/// Compute the q-th quantile along the specified axis.
+///
+/// The quantile is a value between 0 and 1.
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - [q] must be within `[0.0, 1.0]`.
+/// - If provided, [axis] must be within `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [StateError] if the array is disposed.
+/// - [ArgumentError] if [q] is out of bounds or [axis] is out of bounds.
+NDArray<double> quantile<T extends Object>(
+  NDArray<T> a,
+  double q, {
+  int? axis,
+  NDArray<double>? out,
+}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute quantile of a disposed array.');
+  }
+  if (a.size == 0) {
+    throw ArgumentError('Cannot compute quantile of an empty array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write quantile to a disposed output array.');
+  }
+  if (q < 0.0 || q > 1.0) {
+    throw ArgumentError('Quantile q must be between 0.0 and 1.0. Got $q');
+  }
+
+  var targetAxis = axis;
+  if (targetAxis != null && targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+
+  final targetShape = targetAxis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(targetAxis));
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  if (targetAxis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final result = out ?? NDArray<double>.create([], DType.float64);
+    if (a.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          result.data[0] = r_quantile_double(a.pointer.cast(), size, q);
+          return result;
+        case DType.float32:
+          result.data[0] = r_quantile_float(a.pointer.cast(), size, q);
+          return result;
+        case DType.int64:
+          result.data[0] = r_quantile_int64(a.pointer.cast(), size, q);
+          return result;
+        case DType.int32:
+          result.data[0] = r_quantile_int32(a.pointer.cast(), size, q);
+          return result;
+        case DType.uint8:
+          result.data[0] = r_quantile_uint8(a.pointer.cast(), size, q);
+          return result;
+        default:
+          throw ArgumentError('Unsupported dtype for quantile: ${a.dtype}');
+      }
+    } else {
+      final flat = a.flatten();
+      final resVal = r_quantile_helper(flat, flat.size, q);
+      flat.dispose();
+      result.data[0] = resVal;
+      return result;
+    }
+  }
+
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final result = out ?? NDArray<double>.zeros(targetShape, DType.float64);
+
+  final rank = a.shape.length;
+  final cBuffer = ScratchArena.getStridedBuffer(rank);
+  final cShape = cBuffer;
+  final cStridesA = cBuffer + rank;
+  final cStridesRes = cBuffer + (rank * 2);
+  for (var i = 0; i < rank; i++) {
+    cShape[i] = a.shape[i];
+    cStridesA[i] = a.strides[i];
+  }
+  for (var i = 0; i < result.shape.length; i++) {
+    cStridesRes[i] = result.strides[i];
+  }
+
+  switch (a.dtype) {
+    case DType.float64:
+      s_quantile_double(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+        q,
+      );
+    case DType.float32:
+      s_quantile_float(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+        q,
+      );
+    case DType.int64:
+      s_quantile_int64(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+        q,
+      );
+    case DType.int32:
+      s_quantile_int32(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+        q,
+      );
+    case DType.uint8:
+      s_quantile_uint8(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+        q,
+      );
+    default:
+      result.dispose();
+      throw ArgumentError('Unsupported dtype for quantile: ${a.dtype}');
+  }
+
+  return result;
+}
+
+double r_quantile_helper(NDArray a, int size, double q) {
+  switch (a.dtype) {
+    case DType.float64:
+      return r_quantile_double(a.pointer.cast(), size, q);
+    case DType.float32:
+      return r_quantile_float(a.pointer.cast(), size, q);
+    case DType.int64:
+      return r_quantile_int64(a.pointer.cast(), size, q);
+    case DType.int32:
+      return r_quantile_int32(a.pointer.cast(), size, q);
+    case DType.uint8:
+      return r_quantile_uint8(a.pointer.cast(), size, q);
+    default:
+      throw ArgumentError('Unsupported dtype for quantile: ${a.dtype}');
+  }
+}
+
+/// Compute the q-th percentile of the data along the specified axis.
+///
+/// The percentile is a value between 0 and 100.
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`).
+/// - [q] must be within `[0.0, 100.0]`.
+/// - If provided, [axis] must be within `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [StateError] if the array is disposed.
+/// - [ArgumentError] if [q] is out of bounds or [axis] is out of bounds.
+NDArray<double> percentile<T extends Object>(
+  NDArray<T> a,
+  double q, {
+  int? axis,
+  NDArray<double>? out,
+}) {
+  if (q < 0.0 || q > 100.0) {
+    throw ArgumentError('Percentile q must be between 0.0 and 100.0. Got $q');
+  }
+  return quantile(a, q / 100.0, axis: axis, out: out);
+}
+
+/// Compute the median along the specified axis.
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num` or Complex).
+/// - If provided, [axis] must be within `[-rank, rank - 1]`.
+///
+/// **Throws:**
+/// - [StateError] if the array is disposed.
+/// - [ArgumentError] if [axis] is out of bounds.
+NDArray<T> median<T extends Object>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<T>? out,
+}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute median of a disposed array.');
+  }
+  if (a.size == 0) {
+    throw ArgumentError('Cannot compute median of an empty array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write median to a disposed output array.');
+  }
+
+  var targetAxis = axis;
+  if (targetAxis != null && targetAxis < 0) {
+    targetAxis = a.shape.length + targetAxis;
+  }
+
+  final targetShape = targetAxis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(targetAxis));
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  if (targetAxis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final result = out ?? NDArray<T>.create([], a.dtype);
+    if (a.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          result.data[0] = r_median_double(a.pointer.cast(), size) as T;
+          return result;
+        case DType.float32:
+          result.data[0] = r_median_float(a.pointer.cast(), size) as T;
+          return result;
+        case DType.int64:
+          result.data[0] = r_median_int64(a.pointer.cast(), size) as T;
+          return result;
+        case DType.int32:
+          result.data[0] = r_median_int32(a.pointer.cast(), size) as T;
+          return result;
+        case DType.uint8:
+          result.data[0] = r_median_uint8(a.pointer.cast(), size) as T;
+          return result;
+        case DType.complex128:
+          final res = r_median_complex128(a.pointer.cast(), size);
+          result.data[0] = Complex(res.r, res.i) as T;
+          return result;
+        case DType.complex64:
+          final res = r_median_complex64(a.pointer.cast(), size);
+          result.data[0] = Complex(res.r, res.i) as T;
+          return result;
+        default:
+          throw ArgumentError('Unsupported dtype for median: ${a.dtype}');
+      }
+    } else {
+      final flat = a.flatten();
+      final resVal = r_median_helper(flat, flat.size);
+      flat.dispose();
+      result.data[0] = resVal as T;
+      return result;
+    }
+  }
+
+  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final result = out ?? NDArray<T>.zeros(targetShape, a.dtype);
+
+  final rank = a.shape.length;
+  final cBuffer = ScratchArena.getStridedBuffer(rank);
+  final cShape = cBuffer;
+  final cStridesA = cBuffer + rank;
+  final cStridesRes = cBuffer + (rank * 2);
+  for (var i = 0; i < rank; i++) {
+    cShape[i] = a.shape[i];
+    cStridesA[i] = a.strides[i];
+  }
+  for (var i = 0; i < result.shape.length; i++) {
+    cStridesRes[i] = result.strides[i];
+  }
+
+  switch (a.dtype) {
+    case DType.float64:
+      s_median_double(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    case DType.float32:
+      s_median_float(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    case DType.int64:
+      s_median_int64(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    case DType.int32:
+      s_median_int32(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    case DType.uint8:
+      s_median_uint8(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    case DType.complex128:
+      s_median_complex128(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    case DType.complex64:
+      s_median_complex64(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        targetAxis,
+      );
+    default:
+      result.dispose();
+      throw ArgumentError('Unsupported dtype for median: ${a.dtype}');
+  }
+
+  return result;
+}
+
+Object r_median_helper(NDArray a, int size) {
+  switch (a.dtype) {
+    case DType.float64:
+      return r_median_double(a.pointer.cast(), size);
+    case DType.float32:
+      return r_median_float(a.pointer.cast(), size);
+    case DType.int64:
+      return r_median_int64(a.pointer.cast(), size);
+    case DType.int32:
+      return r_median_int32(a.pointer.cast(), size);
+    case DType.uint8:
+      return r_median_uint8(a.pointer.cast(), size);
+    case DType.complex128:
+      final res = r_median_complex128(a.pointer.cast(), size);
+      return Complex(res.r, res.i);
+    case DType.complex64:
+      final res = r_median_complex64(a.pointer.cast(), size);
+      return Complex(res.r, res.i);
+    default:
+      throw ArgumentError('Unsupported dtype for median: ${a.dtype}');
+  }
+}

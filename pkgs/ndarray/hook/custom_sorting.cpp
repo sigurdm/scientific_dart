@@ -85,6 +85,12 @@ static inline int compare_int32_inline(int a, int b) {
     return 0;
 }
 
+static inline int compare_uint8_inline(uint8_t a, uint8_t b) {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
 static inline int compare_complex128_inline(complex128_t ca, complex128_t cb) {
     if (ca.real < cb.real) return -1;
     if (ca.real > cb.real) return 1;
@@ -148,6 +154,14 @@ static inline int compare_complex64_inline(complex64_t ca, complex64_t cb) {
 #define SORT_NAME tim_int32
 #define SORT_TYPE int
 #define SORT_CMP(x, y) compare_int32_inline(x, y)
+#include "third_party/timsort/timsort.h"
+#undef SORT_NAME
+#undef SORT_TYPE
+#undef SORT_CMP
+
+#define SORT_NAME tim_uint8
+#define SORT_TYPE uint8_t
+#define SORT_CMP(x, y) compare_uint8_inline(x, y)
 #include "third_party/timsort/timsort.h"
 #undef SORT_NAME
 #undef SORT_TYPE
@@ -705,6 +719,16 @@ DEFINE_IND_QUICKSORT(i32, int, compare_int32_inline)
 DEFINE_IND_HEAPSORT(i32, int, compare_int32_inline)
 DEFINE_SEARCHSORTED(i32, int, compare_int32_inline)
 
+// uint8 (u8)
+DEFINE_INSERTION_SORT(u8, uint8_t, compare_uint8_inline)
+DEFINE_QUICKSORT(u8, uint8_t, compare_uint8_inline)
+DEFINE_HEAPSORT(u8, uint8_t, compare_uint8_inline)
+DEFINE_QUICKSELECT(u8, uint8_t, compare_uint8_inline)
+DEFINE_ARGQUICKSELECT(u8, uint8_t, compare_uint8_inline)
+DEFINE_IND_QUICKSORT(u8, uint8_t, compare_uint8_inline)
+DEFINE_IND_HEAPSORT(u8, uint8_t, compare_uint8_inline)
+DEFINE_SEARCHSORTED(u8, uint8_t, compare_uint8_inline)
+
 // complex128 (c128)
 DEFINE_INSERTION_SORT(c128, complex128_t, compare_complex128_inline)
 DEFINE_QUICKSORT(c128, complex128_t, compare_complex128_inline)
@@ -799,6 +823,17 @@ void native_sort_int32(int *array, int size, int kind) {
         i32_heapsort(array, size);
     } else {
         tim_int32_tim_sort(array, size);
+    }
+}
+
+void native_sort_uint8(uint8_t *array, int size, int kind) {
+    if (array == NULL || size <= 1) return;
+    if (kind == 0) {
+        u8_quicksort(array, size);
+    } else if (kind == 2) {
+        u8_heapsort(array, size);
+    } else {
+        tim_uint8_tim_sort(array, size);
     }
 }
 
@@ -967,6 +1002,10 @@ void native_searchsorted_int64(const long long *array, int size, const long long
 
 void native_searchsorted_int32(const int *array, int size, const int *values, int *out_indices, int num_values, int side_left, const int *sorter) {
     i32_searchsorted(array, size, values, out_indices, num_values, side_left, sorter);
+}
+
+void native_searchsorted_uint8(const uint8_t *array, int size, const uint8_t *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    u8_searchsorted(array, size, values, out_indices, num_values, side_left, sorter);
 }
 
 void native_searchsorted_complex128(const double *array, int size, const double *values, int *out_indices, int num_values, int side_left, const int *sorter) {

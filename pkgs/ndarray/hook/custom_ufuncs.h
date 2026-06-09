@@ -1097,6 +1097,47 @@ void pad_axis_complex64(
     int statLengthBefore, int statLengthAfter
 );
 
+/* ============================================================================
+ * SECTION 10: SET OPERATIONS KERNELS
+ * ============================================================================
+ */
+
+int ndarray_unique(const void *src, void *dest, int size, int dtype);
+int ndarray_intersect1d(const void *ar1, int size1, const void *ar2, int size2, void *dest, int dtype);
+int ndarray_setdiff1d(const void *ar1, int size1, const void *ar2, int size2, void *dest, int dtype);
+int ndarray_setxor1d(const void *ar1, int size1, const void *ar2, int size2, void *dest, int dtype);
+int ndarray_union1d(const void *ar1, int size1, const void *ar2, int size2, void *dest, int dtype);
+void ndarray_isin(const void *ar1, int size1, const void *ar2, int size2, uint8_t *dest, int dtype, int invert);
+/* Median global reductions (contiguous) */
+double r_median_double(const double *src, int size);
+float r_median_float(const float *src, int size);
+int64_t r_median_int64(const int64_t *src, int size);
+int32_t r_median_int32(const int32_t *src, int size);
+uint8_t r_median_uint8(const uint8_t *src, int size);
+cpx_t r_median_complex128(const cpx_t *src, int size);
+cpx_f_t r_median_complex64(const cpx_f_t *src, int size);
+
+/* Median axis reductions (strided) */
+void s_median_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_median_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_median_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_median_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_median_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_median_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_median_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+
+/* Quantile global reductions (contiguous) */
+double r_quantile_double(const double *src, int size, double q);
+double r_quantile_float(const float *src, int size, double q);
+double r_quantile_int64(const int64_t *src, int size, double q);
+double r_quantile_int32(const int32_t *src, int size, double q);
+double r_quantile_uint8(const uint8_t *src, int size, double q);
+
+/* Quantile axis reductions (strided) */
+void s_quantile_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q);
+void s_quantile_float(const float *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q);
+void s_quantile_int64(const int64_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q);
+void s_quantile_int32(const int32_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q);
+void s_quantile_uint8(const uint8_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q);
+
 #endif /* CUSTOM_UFUNCS_H */
-
-

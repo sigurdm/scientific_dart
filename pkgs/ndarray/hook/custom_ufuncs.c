@@ -6570,6 +6570,702 @@ void pad_axis_##TYPE_NAME( \
 DEFINE_PAD_AXIS_COMPLEX(complex128, cpx_t, stats_min_complex128, stats_max_complex128, stats_mean_complex128, stats_median_complex128, interpolate_complex128)
 DEFINE_PAD_AXIS_COMPLEX(complex64, cpx_f_t, stats_min_complex64, stats_max_complex64, stats_mean_complex64, stats_median_complex64, interpolate_complex64)
 
+/* ============================================================================
+ * SECTION 10: SET OPERATIONS KERNELS
+ * ============================================================================
+ */
+
+#define DEFINE_COMPACT_SORTED(TYPE_NAME, T, EQ_OP) \
+int compact_sorted_##TYPE_NAME(T *arr, int size) { \
+    if (size <= 1) return size; \
+    int write_idx = 1; \
+    for (int read_idx = 1; read_idx < size; read_idx++) { \
+        if (!(EQ_OP(arr[read_idx], arr[write_idx - 1]))) { \
+            arr[write_idx] = arr[read_idx]; \
+            write_idx++; \
+        } \
+    } \
+    return write_idx; \
+}
+
+#define EQ_FLOAT64(a, b) ((a) == (b) || (isnan(a) && isnan(b)))
+#define EQ_FLOAT32(a, b) ((a) == (b) || (isnan(a) && isnan(b)))
+#define EQ_INT32(a, b) ((a) == (b))
+#define EQ_INT64(a, b) ((a) == (b))
+#define EQ_UINT8(a, b) ((a) == (b))
+#define EQ_COMPLEX128(a, b) (((a).r == (b).r || (isnan((a).r) && isnan((b).r))) && ((a).i == (b).i || (isnan((a).i) && isnan((b).i))))
+#define EQ_COMPLEX64(a, b) (((a).r == (b).r || (isnan((a).r) && isnan((b).r))) && ((a).i == (b).i || (isnan((a).i) && isnan((b).i))))
+
+DEFINE_COMPACT_SORTED(float64, double, EQ_FLOAT64)
+DEFINE_COMPACT_SORTED(float32, float, EQ_FLOAT32)
+DEFINE_COMPACT_SORTED(int32, int32_t, EQ_INT32)
+DEFINE_COMPACT_SORTED(int64, int64_t, EQ_INT64)
+DEFINE_COMPACT_SORTED(uint8, uint8_t, EQ_UINT8)
+DEFINE_COMPACT_SORTED(complex128, cpx_t, EQ_COMPLEX128)
+DEFINE_COMPACT_SORTED(complex64, cpx_f_t, EQ_COMPLEX64)
+
+#define DEFINE_UNIQUE_OP(TYPE_NAME, T, SORT_FN, COMPACT_FN) \
+int unique_##TYPE_NAME(const T *src, T *dest, int size) { \
+    if (size <= 0) return 0; \
+    custom_memcpy(dest, src, size * sizeof(T)); \
+    SORT_FN(dest, size, 0); \
+    return COMPACT_FN(dest, size); \
+}
+
+static void sort_float64(double *arr, int size, int kind) { native_sort_double(arr, size, kind); }
+static void sort_float32(float *arr, int size, int kind) { native_sort_float(arr, size, kind); }
+static void sort_int32(int32_t *arr, int size, int kind) { native_sort_int32((int *)arr, size, kind); }
+static void sort_int64(int64_t *arr, int size, int kind) { native_sort_int64((long long *)arr, size, kind); }
+static void sort_uint8(uint8_t *arr, int size, int kind) { native_sort_uint8(arr, size, kind); }
+static void sort_complex128(cpx_t *arr, int size, int kind) { native_sort_complex128((double *)arr, size, kind); }
+static void sort_complex64(cpx_f_t *arr, int size, int kind) { native_sort_complex64((float *)arr, size, kind); }
+
+DEFINE_UNIQUE_OP(float64, double, sort_float64, compact_sorted_float64)
+DEFINE_UNIQUE_OP(float32, float, sort_float32, compact_sorted_float32)
+DEFINE_UNIQUE_OP(int32, int32_t, sort_int32, compact_sorted_int32)
+DEFINE_UNIQUE_OP(int64, int64_t, sort_int64, compact_sorted_int64)
+DEFINE_UNIQUE_OP(uint8, uint8_t, sort_uint8, compact_sorted_uint8)
+DEFINE_UNIQUE_OP(complex128, cpx_t, sort_complex128, compact_sorted_complex128)
+DEFINE_UNIQUE_OP(complex64, cpx_f_t, sort_complex64, compact_sorted_complex64)
+
+int ndarray_unique(const void *src, void *dest, int size, int dtype) {
+    if (src == NULL || dest == NULL || size <= 0) return 0;
+    switch (dtype) {
+        case DTYPE_FLOAT64: return unique_float64((const double *)src, (double *)dest, size);
+        case DTYPE_FLOAT32: return unique_float32((const float *)src, (float *)dest, size);
+        case DTYPE_INT32: return unique_int32((const int32_t *)src, (int32_t *)dest, size);
+        case DTYPE_INT64: return unique_int64((const int64_t *)src, (int64_t *)dest, size);
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN: return unique_uint8((const uint8_t *)src, (uint8_t *)dest, size);
+        case DTYPE_COMPLEX128: return unique_complex128((const cpx_t *)src, (cpx_t *)dest, size);
+        case DTYPE_COMPLEX64: return unique_complex64((const cpx_f_t *)src, (cpx_f_t *)dest, size);
+        default: return 0;
+    }
+}
+
+static inline int set_cmp_double(double a, double b) {
+    int nan_a = isnan(a);
+    int nan_b = isnan(b);
+    if (nan_a && nan_b) return 0;
+    if (nan_a) return 1;
+    if (nan_b) return -1;
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
+static inline int set_cmp_float(float a, float b) {
+    int nan_a = isnan(a);
+    int nan_b = isnan(b);
+    if (nan_a && nan_b) return 0;
+    if (nan_a) return 1;
+    if (nan_b) return -1;
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
+static inline int set_cmp_int32(int32_t a, int32_t b) {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
+static inline int set_cmp_int64(int64_t a, int64_t b) {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
+static inline int set_cmp_uint8(uint8_t a, uint8_t b) {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
+static inline int set_cmp_complex128(cpx_t a, cpx_t b) {
+    int cmp_r = set_cmp_double(a.r, b.r);
+    if (cmp_r != 0) return cmp_r;
+    return set_cmp_double(a.i, b.i);
+}
+
+static inline int set_cmp_complex64(cpx_f_t a, cpx_f_t b) {
+    int cmp_r = set_cmp_float(a.r, b.r);
+    if (cmp_r != 0) return cmp_r;
+    return set_cmp_float(a.i, b.i);
+}
+
+#define DEFINE_INTERSECT1D_OP(TYPE_NAME, T, CMP_FN) \
+int intersect1d_##TYPE_NAME(const T *ar1, int size1, const T *ar2, int size2, T *dest) { \
+    int i = 0, j = 0, k = 0; \
+    while (i < size1 && j < size2) { \
+        int cmp = CMP_FN(ar1[i], ar2[j]); \
+        if (cmp < 0) { \
+            i++; \
+        } else if (cmp > 0) { \
+            j++; \
+        } else { \
+            dest[k++] = ar1[i]; \
+            i++; \
+            j++; \
+        } \
+    } \
+    return k; \
+}
+
+DEFINE_INTERSECT1D_OP(float64, double, set_cmp_double)
+DEFINE_INTERSECT1D_OP(float32, float, set_cmp_float)
+DEFINE_INTERSECT1D_OP(int32, int32_t, set_cmp_int32)
+DEFINE_INTERSECT1D_OP(int64, int64_t, set_cmp_int64)
+DEFINE_INTERSECT1D_OP(uint8, uint8_t, set_cmp_uint8)
+DEFINE_INTERSECT1D_OP(complex128, cpx_t, set_cmp_complex128)
+DEFINE_INTERSECT1D_OP(complex64, cpx_f_t, set_cmp_complex64)
+
+#define DEFINE_SETDIFF1D_OP(TYPE_NAME, T, CMP_FN) \
+int setdiff1d_##TYPE_NAME(const T *ar1, int size1, const T *ar2, int size2, T *dest) { \
+    int i = 0, j = 0, k = 0; \
+    while (i < size1) { \
+        if (j >= size2) { \
+            dest[k++] = ar1[i++]; \
+            continue; \
+        } \
+        int cmp = CMP_FN(ar1[i], ar2[j]); \
+        if (cmp < 0) { \
+            dest[k++] = ar1[i++]; \
+        } else if (cmp > 0) { \
+            j++; \
+        } else { \
+            i++; \
+        } \
+    } \
+    return k; \
+}
+
+DEFINE_SETDIFF1D_OP(float64, double, set_cmp_double)
+DEFINE_SETDIFF1D_OP(float32, float, set_cmp_float)
+DEFINE_SETDIFF1D_OP(int32, int32_t, set_cmp_int32)
+DEFINE_SETDIFF1D_OP(int64, int64_t, set_cmp_int64)
+DEFINE_SETDIFF1D_OP(uint8, uint8_t, set_cmp_uint8)
+DEFINE_SETDIFF1D_OP(complex128, cpx_t, set_cmp_complex128)
+DEFINE_SETDIFF1D_OP(complex64, cpx_f_t, set_cmp_complex64)
+
+#define DEFINE_SETXOR1D_OP(TYPE_NAME, T, CMP_FN) \
+int setxor1d_##TYPE_NAME(const T *ar1, int size1, const T *ar2, int size2, T *dest) { \
+    int i = 0, j = 0, k = 0; \
+    while (i < size1 || j < size2) { \
+        if (i >= size1) { \
+            dest[k++] = ar2[j++]; \
+            continue; \
+        } \
+        if (j >= size2) { \
+            dest[k++] = ar1[i++]; \
+            continue; \
+        } \
+        int cmp = CMP_FN(ar1[i], ar2[j]); \
+        if (cmp < 0) { \
+            dest[k++] = ar1[i++]; \
+        } else if (cmp > 0) { \
+            dest[k++] = ar2[j++]; \
+        } else { \
+            i++; \
+            j++; \
+        } \
+    } \
+    return k; \
+}
+
+DEFINE_SETXOR1D_OP(float64, double, set_cmp_double)
+DEFINE_SETXOR1D_OP(float32, float, set_cmp_float)
+DEFINE_SETXOR1D_OP(int32, int32_t, set_cmp_int32)
+DEFINE_SETXOR1D_OP(int64, int64_t, set_cmp_int64)
+DEFINE_SETXOR1D_OP(uint8, uint8_t, set_cmp_uint8)
+DEFINE_SETXOR1D_OP(complex128, cpx_t, set_cmp_complex128)
+DEFINE_SETXOR1D_OP(complex64, cpx_f_t, set_cmp_complex64)
+
+#define DEFINE_UNION1D_OP(TYPE_NAME, T, CMP_FN) \
+int union1d_##TYPE_NAME(const T *ar1, int size1, const T *ar2, int size2, T *dest) { \
+    int i = 0, j = 0, k = 0; \
+    while (i < size1 || j < size2) { \
+        if (i >= size1) { \
+            dest[k++] = ar2[j++]; \
+            continue; \
+        } \
+        if (j >= size2) { \
+            dest[k++] = ar1[i++]; \
+            continue; \
+        } \
+        int cmp = CMP_FN(ar1[i], ar2[j]); \
+        if (cmp < 0) { \
+            dest[k++] = ar1[i++]; \
+        } else if (cmp > 0) { \
+            dest[k++] = ar2[j++]; \
+        } else { \
+            dest[k++] = ar1[i]; \
+            i++; \
+            j++; \
+        } \
+    } \
+    return k; \
+}
+
+DEFINE_UNION1D_OP(float64, double, set_cmp_double)
+DEFINE_UNION1D_OP(float32, float, set_cmp_float)
+DEFINE_UNION1D_OP(int32, int32_t, set_cmp_int32)
+DEFINE_UNION1D_OP(int64, int64_t, set_cmp_int64)
+DEFINE_UNION1D_OP(uint8, uint8_t, set_cmp_uint8)
+DEFINE_UNION1D_OP(complex128, cpx_t, set_cmp_complex128)
+DEFINE_UNION1D_OP(complex64, cpx_f_t, set_cmp_complex64)
+
+#define DISPATCH_SET_OP(OP_NAME) \
+int ndarray_##OP_NAME(const void *ar1, int size1, const void *ar2, int size2, void *dest, int dtype) { \
+    if (ar1 == NULL || ar2 == NULL || dest == NULL) return 0; \
+    switch (dtype) { \
+        case DTYPE_FLOAT64: return OP_NAME##_float64((const double *)ar1, size1, (const double *)ar2, size2, (double *)dest); \
+        case DTYPE_FLOAT32: return OP_NAME##_float32((const float *)ar1, size1, (const float *)ar2, size2, (float *)dest); \
+        case DTYPE_INT32: return OP_NAME##_int32((const int32_t *)ar1, size1, (const int32_t *)ar2, size2, (int32_t *)dest); \
+        case DTYPE_INT64: return OP_NAME##_int64((const int64_t *)ar1, size1, (const int64_t *)ar2, size2, (int64_t *)dest); \
+        case DTYPE_UINT8: \
+        case DTYPE_BOOLEAN: return OP_NAME##_uint8((const uint8_t *)ar1, size1, (const uint8_t *)ar2, size2, (uint8_t *)dest); \
+        case DTYPE_COMPLEX128: return OP_NAME##_complex128((const cpx_t *)ar1, size1, (const cpx_t *)ar2, size2, (cpx_t *)dest); \
+        case DTYPE_COMPLEX64: return OP_NAME##_complex64((const cpx_f_t *)ar1, size1, (const cpx_f_t *)ar2, size2, (cpx_f_t *)dest); \
+        default: return 0; \
+    } \
+}
+
+DISPATCH_SET_OP(intersect1d)
+DISPATCH_SET_OP(setdiff1d)
+DISPATCH_SET_OP(setxor1d)
+DISPATCH_SET_OP(union1d)
+
+#define DEFINE_ISIN_OP(TYPE_NAME, T, CMP_FN) \
+void isin_##TYPE_NAME(const T *ar1, int size1, const T *ar2, int size2, uint8_t *dest, int invert) { \
+    for (int i = 0; i < size1; i++) { \
+        T val = ar1[i]; \
+        int found = 0; \
+        int low = 0; \
+        int high = size2 - 1; \
+        while (low <= high) { \
+            int mid = low + (high - low) / 2; \
+            int cmp = CMP_FN(ar2[mid], val); \
+            if (cmp < 0) { \
+                low = mid + 1; \
+            } else if (cmp > 0) { \
+                high = mid - 1; \
+            } else { \
+                found = 1; \
+                break; \
+            } \
+        } \
+        dest[i] = invert ? !found : found; \
+    } \
+}
+
+DEFINE_ISIN_OP(float64, double, set_cmp_double)
+DEFINE_ISIN_OP(float32, float, set_cmp_float)
+DEFINE_ISIN_OP(int32, int32_t, set_cmp_int32)
+DEFINE_ISIN_OP(int64, int64_t, set_cmp_int64)
+DEFINE_ISIN_OP(uint8, uint8_t, set_cmp_uint8)
+DEFINE_ISIN_OP(complex128, cpx_t, set_cmp_complex128)
+DEFINE_ISIN_OP(complex64, cpx_f_t, set_cmp_complex64)
+
+void ndarray_isin(const void *ar1, int size1, const void *ar2, int size2, uint8_t *dest, int dtype, int invert) { \
+    if (ar1 == NULL || ar2 == NULL || dest == NULL) return; \
+    switch (dtype) { \
+        case DTYPE_FLOAT64: isin_float64((const double *)ar1, size1, (const double *)ar2, size2, dest, invert); break; \
+        case DTYPE_FLOAT32: isin_float32((const float *)ar1, size1, (const float *)ar2, size2, dest, invert); break; \
+        case DTYPE_INT32: isin_int32((const int32_t *)ar1, size1, (const int32_t *)ar2, size2, dest, invert); break; \
+        case DTYPE_INT64: isin_int64((const int64_t *)ar1, size1, (const int64_t *)ar2, size2, dest, invert); break; \
+        case DTYPE_UINT8: \
+        case DTYPE_BOOLEAN: isin_uint8((const uint8_t *)ar1, size1, (const uint8_t *)ar2, size2, dest, invert); break; \
+        case DTYPE_COMPLEX128: isin_complex128((const cpx_t *)ar1, size1, (const cpx_t *)ar2, size2, dest, invert); break; \
+        case DTYPE_COMPLEX64: isin_complex64((const cpx_f_t *)ar1, size1, (const cpx_f_t *)ar2, size2, dest, invert); break; \
+    } \
+}
+
+
+
+
+
+// --- MEDIAN & QUANTILE IMPLEMENTATIONS ---
+
+// Helper macro for median reduction to avoid code duplication.
+// Allocates tmp_buf once per reduction call.
+#define IMPLEMENT_MEDIAN_REDUCTION(NAME, TYPE, SORT_FUNC, CAST_TYPE) \
+void NAME(const TYPE *src, const int *stridesSrc, \
+          TYPE *dest, const int *stridesDest, \
+          const int *shape, int rank, int axis) { \
+    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return; \
+    int size_axis = shape[axis]; \
+    if (size_axis <= 0) return; \
+    TYPE *tmp_buf = (TYPE *)malloc(size_axis * sizeof(TYPE)); \
+    if (tmp_buf == NULL) return; \
+    int coord[8] = {0}; \
+    int outer_size = 1; \
+    for (int d = 0; d < rank; d++) { \
+        if (d != axis) outer_size *= shape[d]; \
+    } \
+    for (int o = 0; o < outer_size; o++) { \
+        int offsetRes = 0; \
+        int offsetSrc = 0; \
+        for (int d = 0; d < rank; d++) { \
+            if (d != axis) { \
+                offsetSrc += coord[d] * stridesSrc[d]; \
+                if (rank > 1) { \
+                    int targetD = (d < axis) ? d : (d - 1); \
+                    offsetRes += coord[d] * stridesDest[targetD]; \
+                } \
+            } \
+        } \
+        int stride_axis = stridesSrc[axis]; \
+        for (int i = 0; i < size_axis; i++) { \
+            tmp_buf[i] = src[offsetSrc + i * stride_axis]; \
+        } \
+        SORT_FUNC((CAST_TYPE)tmp_buf, size_axis, 0); \
+        TYPE median_val; \
+        if (size_axis % 2 == 1) { \
+            median_val = tmp_buf[size_axis / 2]; \
+        } else { \
+            median_val = (TYPE)(((double)tmp_buf[size_axis / 2 - 1] + (double)tmp_buf[size_axis / 2]) / 2.0); \
+        } \
+        dest[offsetRes] = median_val; \
+        for (int d = rank - 1; d >= 0; d--) { \
+            if (d == axis) continue; \
+            coord[d]++; \
+            if (coord[d] < shape[d]) break; \
+            coord[d] = 0; \
+        } \
+    } \
+    free(tmp_buf); \
+}
+
+// Special case for double and float where division by 2 should be floating point division
+void s_median_double(const double *src, const int *stridesSrc,
+                     double *dest, const int *stridesDest,
+                     const int *shape, int rank, int axis) {
+    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int size_axis = shape[axis];
+    if (size_axis <= 0) return;
+    double *tmp_buf = (double *)malloc(size_axis * sizeof(double));
+    if (tmp_buf == NULL) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    for (int o = 0; o < outer_size; o++) {
+        int offsetRes = 0;
+        int offsetSrc = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesDest[targetD];
+                }
+            }
+        }
+        int stride_axis = stridesSrc[axis];
+        for (int i = 0; i < size_axis; i++) {
+            tmp_buf[i] = src[offsetSrc + i * stride_axis];
+        }
+        native_sort_double(tmp_buf, size_axis, 0);
+        double median_val;
+        if (size_axis % 2 == 1) {
+            median_val = tmp_buf[size_axis / 2];
+        } else {
+            median_val = (tmp_buf[size_axis / 2 - 1] + tmp_buf[size_axis / 2]) / 2.0;
+        }
+        dest[offsetRes] = median_val;
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+    free(tmp_buf);
+}
+
+void s_median_float(const float *src, const int *stridesSrc,
+                    float *dest, const int *stridesDest,
+                    const int *shape, int rank, int axis) {
+    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int size_axis = shape[axis];
+    if (size_axis <= 0) return;
+    float *tmp_buf = (float *)malloc(size_axis * sizeof(float));
+    if (tmp_buf == NULL) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    for (int o = 0; o < outer_size; o++) {
+        int offsetRes = 0;
+        int offsetSrc = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesDest[targetD];
+                }
+            }
+        }
+        int stride_axis = stridesSrc[axis];
+        for (int i = 0; i < size_axis; i++) {
+            tmp_buf[i] = src[offsetSrc + i * stride_axis];
+        }
+        native_sort_float(tmp_buf, size_axis, 0);
+        float median_val;
+        if (size_axis % 2 == 1) {
+            median_val = tmp_buf[size_axis / 2];
+        } else {
+            median_val = (tmp_buf[size_axis / 2 - 1] + tmp_buf[size_axis / 2]) / 2.0f;
+        }
+        dest[offsetRes] = median_val;
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+    free(tmp_buf);
+}
+
+IMPLEMENT_MEDIAN_REDUCTION(s_median_int64, int64_t, native_sort_int64, long long *)
+IMPLEMENT_MEDIAN_REDUCTION(s_median_int32, int32_t, native_sort_int32, int *)
+IMPLEMENT_MEDIAN_REDUCTION(s_median_uint8, uint8_t, insertion_sort_uint8, uint8_t *)
+
+void s_median_complex128(const cpx_t *src, const int *stridesSrc,
+                         cpx_t *dest, const int *stridesDest,
+                         const int *shape, int rank, int axis) {
+    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int size_axis = shape[axis];
+    if (size_axis <= 0) return;
+    double *tmp_buf = (double *)malloc(size_axis * sizeof(double));
+    if (tmp_buf == NULL) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    for (int o = 0; o < outer_size; o++) {
+        int offsetRes = 0;
+        int offsetSrc = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesDest[targetD];
+                }
+            }
+        }
+        int stride_axis = stridesSrc[axis];
+        
+        // Real part
+        for (int i = 0; i < size_axis; i++) {
+            tmp_buf[i] = src[offsetSrc + i * stride_axis].r;
+        }
+        native_sort_double(tmp_buf, size_axis, 0);
+        double median_r;
+        if (size_axis % 2 == 1) {
+            median_r = tmp_buf[size_axis / 2];
+        } else {
+            median_r = (tmp_buf[size_axis / 2 - 1] + tmp_buf[size_axis / 2]) / 2.0;
+        }
+
+        // Imaginary part
+        for (int i = 0; i < size_axis; i++) {
+            tmp_buf[i] = src[offsetSrc + i * stride_axis].i;
+        }
+        native_sort_double(tmp_buf, size_axis, 0);
+        double median_i;
+        if (size_axis % 2 == 1) {
+            median_i = tmp_buf[size_axis / 2];
+        } else {
+            median_i = (tmp_buf[size_axis / 2 - 1] + tmp_buf[size_axis / 2]) / 2.0;
+        }
+
+        dest[offsetRes].r = median_r;
+        dest[offsetRes].i = median_i;
+
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+    free(tmp_buf);
+}
+
+void s_median_complex64(const cpx_f_t *src, const int *stridesSrc,
+                        cpx_f_t *dest, const int *stridesDest,
+                        const int *shape, int rank, int axis) {
+    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    int size_axis = shape[axis];
+    if (size_axis <= 0) return;
+    float *tmp_buf = (float *)malloc(size_axis * sizeof(float));
+    if (tmp_buf == NULL) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    for (int o = 0; o < outer_size; o++) {
+        int offsetRes = 0;
+        int offsetSrc = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesDest[targetD];
+                }
+            }
+        }
+        int stride_axis = stridesSrc[axis];
+        
+        // Real part
+        for (int i = 0; i < size_axis; i++) {
+            tmp_buf[i] = src[offsetSrc + i * stride_axis].r;
+        }
+        native_sort_float(tmp_buf, size_axis, 0);
+        float median_r;
+        if (size_axis % 2 == 1) {
+            median_r = tmp_buf[size_axis / 2];
+        } else {
+            median_r = (tmp_buf[size_axis / 2 - 1] + tmp_buf[size_axis / 2]) / 2.0f;
+        }
+
+        // Imaginary part
+        for (int i = 0; i < size_axis; i++) {
+            tmp_buf[i] = src[offsetSrc + i * stride_axis].i;
+        }
+        native_sort_float(tmp_buf, size_axis, 0);
+        float median_i;
+        if (size_axis % 2 == 1) {
+            median_i = tmp_buf[size_axis / 2];
+        } else {
+            median_i = (tmp_buf[size_axis / 2 - 1] + tmp_buf[size_axis / 2]) / 2.0f;
+        }
+
+        dest[offsetRes].r = median_r;
+        dest[offsetRes].i = median_i;
+
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+    free(tmp_buf);
+}
+
+// Global reductions for median (contiguous)
+double r_median_double(const double *src, int size) { return stats_median_double(src, 1, size); }
+float r_median_float(const float *src, int size) { return stats_median_float(src, 1, size); }
+int64_t r_median_int64(const int64_t *src, int size) { return stats_median_int64(src, 1, size); }
+int32_t r_median_int32(const int32_t *src, int size) { return stats_median_int32(src, 1, size); }
+uint8_t r_median_uint8(const uint8_t *src, int size) { return stats_median_uint8(src, 1, size); }
+cpx_t r_median_complex128(const cpx_t *src, int size) { return stats_median_complex128(src, 1, size); }
+cpx_f_t r_median_complex64(const cpx_f_t *src, int size) { return stats_median_complex64(src, 1, size); }
+
+// Quantile helper definitions
+#define DEFINE_NUMERIC_QUANTILE(TYPE, NAME_SUFFIX, SORTER, CAST_TYPE) \
+double stats_quantile_##NAME_SUFFIX(const TYPE *base, int _stride, int len, double q) { \
+    if (len <= 0) return 0.0; \
+    if (q < 0.0) q = 0.0; \
+    if (q > 1.0) q = 1.0; \
+    TYPE *buf = (TYPE*)malloc(len * sizeof(TYPE)); \
+    if (buf == NULL) return 0.0; \
+    for (int i = 0; i < len; i++) { \
+        buf[i] = *(base + i * _stride); \
+    } \
+    SORTER((CAST_TYPE)buf, len, 0); \
+    double idx_d = (double)(len - 1) * q; \
+    int idx_low = (int)idx_d; \
+    int idx_high = idx_low + 1; \
+    if (idx_high >= len) idx_high = len - 1; \
+    double weight = idx_d - idx_low; \
+    double res = (double)buf[idx_low] + weight * ((double)buf[idx_high] - (double)buf[idx_low]); \
+    free(buf); \
+    return res; \
+}
+
+DEFINE_NUMERIC_QUANTILE(double, double, native_sort_double, double*)
+DEFINE_NUMERIC_QUANTILE(float, float, native_sort_float, float*)
+DEFINE_NUMERIC_QUANTILE(int64_t, int64, native_sort_int64, long long*)
+DEFINE_NUMERIC_QUANTILE(int32_t, int32, native_sort_int32, int*)
+DEFINE_NUMERIC_QUANTILE(uint8_t, uint8, insertion_sort_uint8, uint8_t*)
+
+// Global reductions for quantile (contiguous)
+double r_quantile_double(const double *src, int size, double q) { return stats_quantile_double(src, 1, size, q); }
+double r_quantile_float(const float *src, int size, double q) { return stats_quantile_float(src, 1, size, q); }
+double r_quantile_int64(const int64_t *src, int size, double q) { return stats_quantile_int64(src, 1, size, q); }
+double r_quantile_int32(const int32_t *src, int size, double q) { return stats_quantile_int32(src, 1, size, q); }
+double r_quantile_uint8(const uint8_t *src, int size, double q) { return stats_quantile_uint8(src, 1, size, q); }
+
+// Helper macro for quantile reduction.
+// Allocates tmp_buf once per reduction call.
+#define IMPLEMENT_QUANTILE_REDUCTION(NAME, TYPE, SORT_FUNC, CAST_TYPE) \
+void NAME(const TYPE *src, const int *stridesSrc, \
+          double *dest, const int *stridesDest, \
+          const int *shape, int rank, int axis, double q) { \
+    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return; \
+    int size_axis = shape[axis]; \
+    if (size_axis <= 0) return; \
+    if (q < 0.0 || q > 1.0) return; \
+    TYPE *tmp_buf = (TYPE *)malloc(size_axis * sizeof(TYPE)); \
+    if (tmp_buf == NULL) return; \
+    int coord[8] = {0}; \
+    int outer_size = 1; \
+    for (int d = 0; d < rank; d++) { \
+        if (d != axis) outer_size *= shape[d]; \
+    } \
+    double idx_d = (size_axis - 1) * q; \
+    int idx_low = (int)idx_d; \
+    int idx_high = idx_low + 1; \
+    if (idx_high >= size_axis) idx_high = size_axis - 1; \
+    double weight = idx_d - idx_low; \
+    for (int o = 0; o < outer_size; o++) { \
+        int offsetRes = 0; \
+        int offsetSrc = 0; \
+        for (int d = 0; d < rank; d++) { \
+            if (d != axis) { \
+                offsetSrc += coord[d] * stridesSrc[d]; \
+                if (rank > 1) { \
+                    int targetD = (d < axis) ? d : (d - 1); \
+                    offsetRes += coord[d] * stridesDest[targetD]; \
+                } \
+            } \
+        } \
+        int stride_axis = stridesSrc[axis]; \
+        for (int i = 0; i < size_axis; i++) { \
+            tmp_buf[i] = src[offsetSrc + i * stride_axis]; \
+        } \
+        SORT_FUNC((CAST_TYPE)tmp_buf, size_axis, 0); \
+        double val = (double)tmp_buf[idx_low] + weight * ((double)tmp_buf[idx_high] - (double)tmp_buf[idx_low]); \
+        dest[offsetRes] = val; \
+        for (int d = rank - 1; d >= 0; d--) { \
+            if (d == axis) continue; \
+            coord[d]++; \
+            if (coord[d] < shape[d]) break; \
+            coord[d] = 0; \
+        } \
+    } \
+    free(tmp_buf); \
+}
+
+IMPLEMENT_QUANTILE_REDUCTION(s_quantile_double, double, native_sort_double, double *)
+IMPLEMENT_QUANTILE_REDUCTION(s_quantile_float, float, native_sort_float, float *)
+IMPLEMENT_QUANTILE_REDUCTION(s_quantile_int64, int64_t, native_sort_int64, long long *)
+IMPLEMENT_QUANTILE_REDUCTION(s_quantile_int32, int32_t, native_sort_int32, int *)
+IMPLEMENT_QUANTILE_REDUCTION(s_quantile_uint8, uint8_t, insertion_sort_uint8, uint8_t *)
+
 
 
 
