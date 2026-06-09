@@ -65,18 +65,24 @@ NDArray<R> sqrt<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 
   if (a.isContiguous) {
     if (a.dtype == DType.float64) {
-      v_sqrt_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_sqrt_double(a.pointer.cast(), result.pointer.cast(), a.size);
       return result;
     } else if (a.dtype == DType.float32) {
-      v_sqrt_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_sqrt_float(a.pointer.cast(), result.pointer.cast(), a.size);
       return result;
     }
   }
 
-  final aNum = a as NDArray<num>;
+  final temp = a.isContiguous ? a : a.copy();
+  final tempNum = temp as NDArray<num>;
   final rData = result.data as List<double>;
-  for (var i = 0; i < a.data.length; i++) {
-    rData[i] = math.sqrt(aNum.data[i].toDouble());
+  final offset = temp.offsetElements;
+  final resOffset = result.offsetElements;
+  for (var i = 0; i < temp.size; i++) {
+    rData[resOffset + i] = math.sqrt(tempNum.data[offset + i].toDouble());
+  }
+  if (!identical(temp, a)) {
+    temp.dispose();
   }
   return result;
 }
@@ -938,25 +944,30 @@ NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
   }
 
   if (axis == null) {
+    final temp = a.isContiguous ? a : a.copy();
     NDArray promotedA;
-    if (a.dtype.isComplex || a.dtype.isFloating) {
-      promotedA = a;
+    if (temp.dtype.isComplex || temp.dtype.isFloating) {
+      promotedA = temp;
     } else {
-      promotedA = promoteToDouble(a);
+      promotedA = promoteToDouble(temp);
     }
 
     final List elements = promotedA.data;
+    final offset = promotedA.offsetElements;
     var sumVal = (targetDType.isComplex ? Complex(0, 0) : 0.0) as dynamic;
     var count = 0;
-    for (var i = 0; i < elements.length; i++) {
-      final val = elements[i];
+    for (var i = 0; i < promotedA.size; i++) {
+      final val = elements[offset + i];
       if (val is double && val.isNaN) continue;
       if (val is Complex && (val.real.isNaN || val.imag.isNaN)) continue;
       sumVal += val;
       count++;
     }
-    if (promotedA != a) {
+    if (promotedA != temp && promotedA != a) {
       promotedA.dispose();
+    }
+    if (temp != a) {
+      temp.dispose();
     }
     final NDArray<R> result;
     if (out != null) {

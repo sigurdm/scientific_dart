@@ -140,6 +140,9 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     }
 
     if (out != null) {
+      if (!out.isContiguous) {
+        throw ArgumentError('out buffer must be contiguous.');
+      }
       if (!listEquals(out.shape, expectedFinalShape) ||
           out.dtype != targetDType) {
         throw ArgumentError(
@@ -694,6 +697,9 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
   final DType<T> targetDType = a.dtype;
 
   if (out != null) {
+    if (!out.isContiguous) {
+      throw ArgumentError('out buffer must be contiguous.');
+    }
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for matrix inversion.',

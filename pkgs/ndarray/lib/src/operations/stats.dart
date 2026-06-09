@@ -729,7 +729,15 @@ NDArray<double> nanstd<T extends num>(
 /// - Preserves the original data type (DType) of the input array along the reduction axis.
 NDArray<T> min<T extends num>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
-    final minVal = a.data.reduce((value, element) => math.min(value, element));
+    final temp = a.isContiguous ? a : a.copy();
+    final offset = temp.offsetElements;
+    var minVal = temp.data[offset];
+    for (var i = 1; i < temp.size; i++) {
+      minVal = math.min(minVal, temp.data[offset + i]);
+    }
+    if (!identical(temp, a)) {
+      temp.dispose();
+    }
     final result = NDArray<T>.create([], a.dtype);
     result.data[0] = minVal;
     return result;
@@ -854,7 +862,15 @@ NDArray<T> nanmin<T extends Object>(NDArray<T> a, {int? axis}) {
 /// - Preserves the original data type (DType) of the input array along the reduction axis.
 NDArray<T> max<T extends num>(NDArray<T> a, {int? axis}) {
   if (axis == null) {
-    final maxVal = a.data.reduce((value, element) => math.max(value, element));
+    final temp = a.isContiguous ? a : a.copy();
+    final offset = temp.offsetElements;
+    var maxVal = temp.data[offset];
+    for (var i = 1; i < temp.size; i++) {
+      maxVal = math.max(maxVal, temp.data[offset + i]);
+    }
+    if (!identical(temp, a)) {
+      temp.dispose();
+    }
     final result = NDArray<T>.create([], a.dtype);
     result.data[0] = maxVal;
     return result;

@@ -597,68 +597,85 @@ final class NDArray<T> implements ffi.Finalizable {
     required List<int> strides,
     int offsetElements = 0,
   }) {
-    final hasNegativeStrides = strides.any((s) => s < 0);
+    final root = parent._rootParent;
+    final childLogicalPointer = _offsetPointer(
+      parent.pointer,
+      offsetElements,
+      parent.dtype,
+    );
+    final cumulativeOffset =
+        (childLogicalPointer.address - root._pointer.address) ~/
+        parent.dtype.byteWidth;
 
-    ffi.Pointer<ffi.Void> pointer;
-    List<T> data;
-    final int viewOffsetElements;
-
-    if (hasNegativeStrides) {
-      pointer = parent.pointer;
-      data = parent.data;
-      viewOffsetElements = offsetElements;
-    } else {
-      viewOffsetElements = 0;
-      // Calculate the offset pointer
-      switch (parent.dtype) {
-        case DType.float64:
-          final p = parent._pointer.cast<ffi.Double>() + offsetElements;
-          pointer = p.cast();
-          data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-        case DType.float32:
-          final p = parent._pointer.cast<ffi.Float>() + offsetElements;
-          pointer = p.cast();
-          data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-        case DType.int32:
-          final p = parent._pointer.cast<ffi.Int32>() + offsetElements;
-          pointer = p.cast();
-          data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-        case DType.int64:
-          final p = parent._pointer.cast<ffi.Int64>() + offsetElements;
-          pointer = p.cast();
-          data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-        case DType.uint8:
-          final p = parent._pointer.cast<ffi.Uint8>() + offsetElements;
-          pointer = p.cast();
-          data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-        case DType.int16:
-          final p = parent._pointer.cast<ffi.Int16>() + offsetElements;
-          pointer = p.cast();
-          data = p.asTypedList(parent.data.length - offsetElements) as List<T>;
-        case DType.complex128:
-          final p = parent._pointer.cast<ffi.Double>() + (offsetElements * 2);
-          pointer = p.cast();
-          final doubleList = p.asTypedList(
-            parent.data.length * 2 - offsetElements * 2,
-          );
-          data = ComplexList(doubleList) as List<T>;
-        case DType.complex64:
-          final p = parent._pointer.cast<ffi.Float>() + (offsetElements * 2);
-          pointer = p.cast();
-          final floatList = p.asTypedList(
-            parent.data.length * 2 - offsetElements * 2,
-          );
-          data = ComplexList(floatList) as List<T>;
-        case DType.boolean:
-          final p = parent._pointer.cast<ffi.Uint8>() + offsetElements;
-          pointer = p.cast();
-          final uint8List = p.asTypedList(parent.data.length - offsetElements);
-          data = BoolList(uint8List) as List<T>;
+    // Calculate min and max relative offsets
+    var minRelativeOffset = 0;
+    var maxRelativeOffset = 0;
+    for (var d = 0; d < shape.length; d++) {
+      final stride = strides[d];
+      final size = shape[d];
+      if (stride > 0) {
+        maxRelativeOffset += (size - 1) * stride;
+      } else {
+        minRelativeOffset += (size - 1) * stride;
       }
     }
 
+    final minPhysicalOffset = cumulativeOffset + minRelativeOffset;
+    final maxPhysicalOffset = cumulativeOffset + maxRelativeOffset;
+
+    final physicalPointer = _offsetPointer(
+      root._pointer,
+      minPhysicalOffset,
+      parent.dtype,
+    );
+    final int viewSize = maxPhysicalOffset - minPhysicalOffset + 1;
+    final List<T> data;
+
+    switch (parent.dtype) {
+      case DType.float64:
+        data =
+            physicalPointer.cast<ffi.Double>().asTypedList(viewSize) as List<T>;
+      case DType.float32:
+        data =
+            physicalPointer.cast<ffi.Float>().asTypedList(viewSize) as List<T>;
+      case DType.int32:
+        data =
+            physicalPointer.cast<ffi.Int32>().asTypedList(viewSize) as List<T>;
+      case DType.int64:
+        data =
+            physicalPointer.cast<ffi.Int64>().asTypedList(viewSize) as List<T>;
+      case DType.uint8:
+        data =
+            physicalPointer.cast<ffi.Uint8>().asTypedList(viewSize) as List<T>;
+      case DType.int16:
+        data =
+            physicalPointer.cast<ffi.Int16>().asTypedList(viewSize) as List<T>;
+      case DType.complex128:
+        final p = _offsetPointer(
+          root._pointer,
+          minPhysicalOffset * 2,
+          DType.float64,
+        );
+        final doubleList = p.cast<ffi.Double>().asTypedList(viewSize * 2);
+        data = ComplexList(doubleList) as List<T>;
+      case DType.complex64:
+        final p = _offsetPointer(
+          root._pointer,
+          minPhysicalOffset * 2,
+          DType.float32,
+        );
+        final floatList = p.cast<ffi.Float>().asTypedList(viewSize * 2);
+        data = ComplexList(floatList) as List<T>;
+      case DType.boolean:
+        data =
+            BoolList(physicalPointer.cast<ffi.Uint8>().asTypedList(viewSize))
+                as List<T>;
+    }
+
+    final viewOffsetElements = -minRelativeOffset;
+
     return NDArray._(
-      pointer,
+      childLogicalPointer,
       data,
       parent,
       shape: shape,
@@ -754,6 +771,33 @@ final class NDArray<T> implements ffi.Finalizable {
       strides[i] = strides[i + 1] * shape[i + 1];
     }
     return strides;
+  }
+
+  static ffi.Pointer<ffi.Void> _offsetPointer(
+    ffi.Pointer<ffi.Void> ptr,
+    int offsetElements,
+    DType dtype,
+  ) {
+    switch (dtype) {
+      case DType.float64:
+        return (ptr.cast<ffi.Double>() + offsetElements).cast();
+      case DType.float32:
+        return (ptr.cast<ffi.Float>() + offsetElements).cast();
+      case DType.int32:
+        return (ptr.cast<ffi.Int32>() + offsetElements).cast();
+      case DType.int64:
+        return (ptr.cast<ffi.Int64>() + offsetElements).cast();
+      case DType.uint8:
+        return (ptr.cast<ffi.Uint8>() + offsetElements).cast();
+      case DType.int16:
+        return (ptr.cast<ffi.Int16>() + offsetElements).cast();
+      case DType.complex128:
+        return (ptr.cast<ffi.Double>() + (offsetElements * 2)).cast();
+      case DType.complex64:
+        return (ptr.cast<ffi.Float>() + (offsetElements * 2)).cast();
+      case DType.boolean:
+        return (ptr.cast<ffi.Uint8>() + offsetElements).cast();
+    }
   }
 
   /// Expose the raw pointer for FFI use.
