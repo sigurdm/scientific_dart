@@ -1,5 +1,5 @@
 // ignore_for_file: non_constant_identifier_names
-import 'dart:typed_data';
+// import 'dart:typed_data';
 import '../ndarray.dart';
 import 'package:openblas/openblas.dart';
 import 'dart:ffi' as ffi;
@@ -16,74 +16,85 @@ import 'helpers.dart';
 NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   final targetDType = resolveDType(a.dtype, b.dtype);
 
-  if (a.shape.length == 1 && b.shape.length == 1) {
-    final n = a.shape[0];
-    if (n != b.shape[0]) {
-      throw ArgumentError(
-        'Incompatible vector dimensions for 1D dot product in matmul: ${a.shape} and ${b.shape}',
-      );
-    }
-    if (out != null) {
-      if (!listEquals(out.shape, []) || out.dtype != targetDType) {
-        throw ArgumentError(
-          'Provided out buffer has incompatible shape or dtype (expected shape [] and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).',
-        );
-      }
-    }
-    if (targetDType == DType.float64) {
-      final scalarRes = cblas_ddot(
-        n,
-        a.pointer.cast<ffi.Double>(),
-        1,
-        b.pointer.cast<ffi.Double>(),
-        1,
-      );
-      final result =
-          out ??
-          (NDArray.fromList([scalarRes], [], DType.float64) as NDArray<R>);
-      if (out != null) {
-        out.data[0] = scalarRes as R;
-      }
-      return result;
-    } else if (targetDType == DType.float32) {
-      final scalarRes = cblas_sdot(
-        n,
-        a.pointer.cast<ffi.Float>(),
-        1,
-        b.pointer.cast<ffi.Float>(),
-        1,
-      );
-      final result =
-          out ??
-          (NDArray.fromList([scalarRes], [], DType.float32) as NDArray<R>);
-      if (out != null) {
-        out.data[0] = scalarRes as R;
-      }
-      return result;
-    }
-  }
-
-  NDArray<Ta>? aCopy;
-  NDArray<Tb>? bCopy;
+  NDArray? aCast;
+  NDArray? bCast;
+  NDArray? aCopy;
+  NDArray? bCopy;
   NDArray<R>? result;
   var success = false;
+
   try {
-    // Copy upfront ONLY if neither inner strides is 1 (very rare custom sliced strides)
-    if (a.shape.length >= 2) {
-      final r = a.shape.length;
-      if (a.strides[r - 1] != 1 && a.strides[r - 2] != 1) {
-        aCopy = a.copy();
+    aCast = a.dtype == targetDType ? a : castNDArray(a, targetDType);
+    bCast = b.dtype == targetDType ? b : castNDArray(b, targetDType);
+
+    if (aCast.shape.length == 1 && bCast.shape.length == 1) {
+      final n = aCast.shape[0];
+      if (n != bCast.shape[0]) {
+        throw ArgumentError(
+          'Incompatible vector dimensions for 1D dot product in matmul: ${aCast.shape} and ${bCast.shape}',
+        );
       }
-    }
-    if (b.shape.length >= 2) {
-      final r = b.shape.length;
-      if (b.strides[r - 1] != 1 && b.strides[r - 2] != 1) {
-        bCopy = b.copy();
+      if (out != null) {
+        if (!listEquals(out.shape, []) || out.dtype != targetDType) {
+          throw ArgumentError(
+            'Provided out buffer has incompatible shape or dtype (expected shape [] and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).',
+          );
+        }
+      }
+      switch (targetDType) {
+        case DType.float64:
+          final scalarRes = cblas_ddot(
+            n,
+            aCast.pointer.cast<ffi.Double>(),
+            1,
+            bCast.pointer.cast<ffi.Double>(),
+            1,
+          );
+          result =
+              out ??
+              (NDArray.fromList([scalarRes], [], DType.float64) as NDArray<R>);
+          if (out != null) {
+            out.data[0] = scalarRes as R;
+          }
+          success = true;
+          return result;
+        case DType.float32:
+          final scalarRes = cblas_sdot(
+            n,
+            aCast.pointer.cast<ffi.Float>(),
+            1,
+            bCast.pointer.cast<ffi.Float>(),
+            1,
+          );
+          result =
+              out ??
+              (NDArray.fromList([scalarRes], [], DType.float32) as NDArray<R>);
+          if (out != null) {
+            out.data[0] = scalarRes as R;
+          }
+          success = true;
+          return result;
+        default:
+          break;
       }
     }
 
-    final aToUse = aCopy ?? a;
-    final bToUse = bCopy ?? b;
+    // Copy upfront ONLY if neither inner strides is 1 (very rare custom sliced strides)
+    if (aCast.shape.length >= 2) {
+      final r = aCast.shape.length;
+      if (aCast.strides[r - 1] != 1 && aCast.strides[r - 2] != 1) {
+        aCopy = aCast.copy();
+      }
+    }
+    if (bCast.shape.length >= 2) {
+      final r = bCast.shape.length;
+      if (bCast.strides[r - 1] != 1 && bCast.strides[r - 2] != 1) {
+        bCopy = bCast.copy();
+      }
+    }
+
+    final aToUse = aCopy ?? aCast;
+    final bToUse = bCopy ?? bCast;
 
     var aPromoted = false;
     var bPromoted = false;
@@ -120,7 +131,7 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 
     if (kA != kB) {
       throw ArgumentError(
-        'Incompatible inner matrix dimensions for matmul: kA($kA) != kB($kB). Shapes: ${a.shape} and ${b.shape}',
+        'Incompatible inner matrix dimensions for matmul: kA($kA) != kB($kB). Shapes: ${aCast.shape} and ${bCast.shape}',
       );
     }
 
@@ -219,170 +230,183 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
       ffi.Pointer<ffi.Float> alphaC = ffi.nullptr.cast();
       ffi.Pointer<ffi.Float> betaC = ffi.nullptr.cast();
 
-      if (targetDType == DType.complex128) {
-        alphaZ = ScratchArena.allocate<ffi.Double>(
-          2 * ffi.sizeOf<ffi.Double>(),
-        );
-        alphaZ[0] = 1.0;
-        alphaZ[1] = 0.0;
-        betaZ = ScratchArena.allocate<ffi.Double>(2 * ffi.sizeOf<ffi.Double>());
-        betaZ[0] = 0.0;
-        betaZ[1] = 0.0;
-      } else if (targetDType == DType.complex64) {
-        alphaC = ScratchArena.allocate<ffi.Float>(2 * ffi.sizeOf<ffi.Float>());
-        alphaC[0] = 1.0;
-        alphaC[1] = 0.0;
-        betaC = ScratchArena.allocate<ffi.Float>(2 * ffi.sizeOf<ffi.Float>());
-        betaC[0] = 0.0;
-        betaC[1] = 0.0;
+      switch (targetDType) {
+        case DType.complex128:
+          alphaZ = ScratchArena.allocate<ffi.Double>(
+            2 * ffi.sizeOf<ffi.Double>(),
+          );
+          alphaZ[0] = 1.0;
+          alphaZ[1] = 0.0;
+          betaZ = ScratchArena.allocate<ffi.Double>(
+            2 * ffi.sizeOf<ffi.Double>(),
+          );
+          betaZ[0] = 0.0;
+          betaZ[1] = 0.0;
+        case DType.complex64:
+          alphaC = ScratchArena.allocate<ffi.Float>(
+            2 * ffi.sizeOf<ffi.Float>(),
+          );
+          alphaC[0] = 1.0;
+          alphaC[1] = 0.0;
+          betaC = ScratchArena.allocate<ffi.Float>(2 * ffi.sizeOf<ffi.Float>());
+          betaC[0] = 0.0;
+          betaC[1] = 0.0;
+        default:
+          break;
       }
 
       void walk(int dim, int offsetA, int offsetB, int offsetRes) {
         if (dim == lenResult) {
-          if (targetDType == DType.float64) {
-            cblas_dgemm(
-              101, // CblasRowMajor
-              transA,
-              transB,
-              m,
-              n,
-              kA,
-              1.0,
-              aView.pointer.cast<ffi.Double>() + offsetA,
-              lda,
-              bView.pointer.cast<ffi.Double>() + offsetB,
-              ldb,
-              0.0,
-              result!.pointer.cast<ffi.Double>() + offsetRes,
-              n, // ldc (result is always contiguous row-major)
-            );
-          } else if (targetDType == DType.float32) {
-            cblas_sgemm(
-              101, // CblasRowMajor
-              transA,
-              transB,
-              m,
-              n,
-              kA,
-              1.0,
-              aView.pointer.cast<ffi.Float>() + offsetA,
-              lda,
-              bView.pointer.cast<ffi.Float>() + offsetB,
-              ldb,
-              0.0,
-              result!.pointer.cast<ffi.Float>() + offsetRes,
-              n, // ldc (result is always contiguous row-major)
-            );
-          } else if (targetDType == DType.complex128) {
-            cblas_zgemm(
-              101,
-              transA,
-              transB,
-              m,
-              n,
-              kA,
-              alphaZ,
-              aView.pointer.cast<ffi.Double>() + (offsetA * 2),
-              lda,
-              bView.pointer.cast<ffi.Double>() + (offsetB * 2),
-              ldb,
-              betaZ,
-              result!.pointer.cast<ffi.Double>() + (offsetRes * 2),
-              n,
-            );
-          } else if (targetDType == DType.complex64) {
-            cblas_cgemm(
-              101,
-              transA,
-              transB,
-              m,
-              n,
-              kA,
-              alphaC,
-              aView.pointer.cast<ffi.Float>() + (offsetA * 2),
-              lda,
-              bView.pointer.cast<ffi.Float>() + (offsetB * 2),
-              ldb,
-              betaC,
-              result!.pointer.cast<ffi.Float>() + (offsetRes * 2),
-              n,
-            );
-          } else if (targetDType.isInteger) {
-            final strideARow = aView.strides[rankA - 2];
-            final strideACol = aView.strides[rankA - 1];
+          switch (targetDType) {
+            case DType.float64:
+              cblas_dgemm(
+                101, // CblasRowMajor
+                transA,
+                transB,
+                m,
+                n,
+                kA,
+                1.0,
+                aView.pointer.cast<ffi.Double>() + offsetA,
+                lda,
+                bView.pointer.cast<ffi.Double>() + offsetB,
+                ldb,
+                0.0,
+                result!.pointer.cast<ffi.Double>() + offsetRes,
+                n, // ldc (result is always contiguous row-major)
+              );
+            case DType.float32:
+              cblas_sgemm(
+                101, // CblasRowMajor
+                transA,
+                transB,
+                m,
+                n,
+                kA,
+                1.0,
+                aView.pointer.cast<ffi.Float>() + offsetA,
+                lda,
+                bView.pointer.cast<ffi.Float>() + offsetB,
+                ldb,
+                0.0,
+                result!.pointer.cast<ffi.Float>() + offsetRes,
+                n, // ldc (result is always contiguous row-major)
+              );
+            case DType.complex128:
+              cblas_zgemm(
+                101,
+                transA,
+                transB,
+                m,
+                n,
+                kA,
+                alphaZ,
+                aView.pointer.cast<ffi.Double>() + (offsetA * 2),
+                lda,
+                bView.pointer.cast<ffi.Double>() + (offsetB * 2),
+                ldb,
+                betaZ,
+                result!.pointer.cast<ffi.Double>() + (offsetRes * 2),
+                n,
+              );
+            case DType.complex64:
+              cblas_cgemm(
+                101,
+                transA,
+                transB,
+                m,
+                n,
+                kA,
+                alphaC,
+                aView.pointer.cast<ffi.Float>() + (offsetA * 2),
+                lda,
+                bView.pointer.cast<ffi.Float>() + (offsetB * 2),
+                ldb,
+                betaC,
+                result!.pointer.cast<ffi.Float>() + (offsetRes * 2),
+                n,
+              );
+            case DType.int64:
+            case DType.int32:
+            case DType.int16:
+            case DType.uint8:
+              final strideARow = aView.strides[rankA - 2];
+              final strideACol = aView.strides[rankA - 1];
 
-            final strideBRow = bView.strides[rankB - 2];
-            final strideBCol = bView.strides[rankB - 1];
+              final strideBRow = bView.strides[rankB - 2];
+              final strideBCol = bView.strides[rankB - 1];
 
-            final strideResRow = result!.strides[resShape.length - 2];
-            final strideResCol = result.strides[resShape.length - 1];
+              final strideResRow = result!.strides[resShape.length - 2];
+              final strideResCol = result.strides[resShape.length - 1];
 
-            switch (targetDType) {
-              case DType.int64:
-                matmul_int64(
-                  result.pointer.cast<ffi.Int64>() + offsetRes,
-                  strideResRow,
-                  strideResCol,
-                  aView.pointer.cast<ffi.Int64>() + offsetA,
-                  strideARow,
-                  strideACol,
-                  bView.pointer.cast<ffi.Int64>() + offsetB,
-                  strideBRow,
-                  strideBCol,
-                  m,
-                  n,
-                  kA,
-                );
-              case DType.int32:
-                matmul_int32(
-                  result.pointer.cast<ffi.Int32>() + offsetRes,
-                  strideResRow,
-                  strideResCol,
-                  aView.pointer.cast<ffi.Int32>() + offsetA,
-                  strideARow,
-                  strideACol,
-                  bView.pointer.cast<ffi.Int32>() + offsetB,
-                  strideBRow,
-                  strideBCol,
-                  m,
-                  n,
-                  kA,
-                );
-              case DType.int16:
-                matmul_int16(
-                  result.pointer.cast<ffi.Int16>() + offsetRes,
-                  strideResRow,
-                  strideResCol,
-                  aView.pointer.cast<ffi.Int16>() + offsetA,
-                  strideARow,
-                  strideACol,
-                  bView.pointer.cast<ffi.Int16>() + offsetB,
-                  strideBRow,
-                  strideBCol,
-                  m,
-                  n,
-                  kA,
-                );
-              case DType.uint8:
-                matmul_uint8(
-                  result.pointer.cast<ffi.Uint8>() + offsetRes,
-                  strideResRow,
-                  strideResCol,
-                  aView.pointer.cast<ffi.Uint8>() + offsetA,
-                  strideARow,
-                  strideACol,
-                  bView.pointer.cast<ffi.Uint8>() + offsetB,
-                  strideBRow,
-                  strideBCol,
-                  m,
-                  n,
-                  kA,
-                );
-              default:
-                throw UnsupportedError(
-                  'Unsupported integer type: $targetDType',
-                );
-            }
+              switch (targetDType) {
+                case DType.int64:
+                  matmul_int64(
+                    result.pointer.cast<ffi.Int64>() + offsetRes,
+                    strideResRow,
+                    strideResCol,
+                    aView.pointer.cast<ffi.Int64>() + offsetA,
+                    strideARow,
+                    strideACol,
+                    bView.pointer.cast<ffi.Int64>() + offsetB,
+                    strideBRow,
+                    strideBCol,
+                    m,
+                    n,
+                    kA,
+                  );
+                case DType.int32:
+                  matmul_int32(
+                    result.pointer.cast<ffi.Int32>() + offsetRes,
+                    strideResRow,
+                    strideResCol,
+                    aView.pointer.cast<ffi.Int32>() + offsetA,
+                    strideARow,
+                    strideACol,
+                    bView.pointer.cast<ffi.Int32>() + offsetB,
+                    strideBRow,
+                    strideBCol,
+                    m,
+                    n,
+                    kA,
+                  );
+                case DType.int16:
+                  matmul_int16(
+                    result.pointer.cast<ffi.Int16>() + offsetRes,
+                    strideResRow,
+                    strideResCol,
+                    aView.pointer.cast<ffi.Int16>() + offsetA,
+                    strideARow,
+                    strideACol,
+                    bView.pointer.cast<ffi.Int16>() + offsetB,
+                    strideBRow,
+                    strideBCol,
+                    m,
+                    n,
+                    kA,
+                  );
+                case DType.uint8:
+                  matmul_uint8(
+                    result.pointer.cast<ffi.Uint8>() + offsetRes,
+                    strideResRow,
+                    strideResCol,
+                    aView.pointer.cast<ffi.Uint8>() + offsetA,
+                    strideARow,
+                    strideACol,
+                    bView.pointer.cast<ffi.Uint8>() + offsetB,
+                    strideBRow,
+                    strideBCol,
+                    m,
+                    n,
+                    kA,
+                  );
+                default:
+                  throw UnsupportedError(
+                    'Unsupported integer type: $targetDType',
+                  );
+              }
+            default:
+              throw UnsupportedError('Unsupported type: $targetDType');
           }
           return;
         }
@@ -452,6 +476,8 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     success = true;
     return result;
   } finally {
+    if (aCast != null && aCast != a) aCast.dispose();
+    if (bCast != null && bCast != b) bCast.dispose();
     aCopy?.dispose();
     bCopy?.dispose();
     if (!success) {
@@ -1037,12 +1063,11 @@ NDArray<T> det<T>(NDArray<T> a) {
         }
         return result.detachToParentScope();
       case DType.float32:
-        final result = NDArray.zeros(stackShape, DType.float64) as NDArray<T>;
-        final tempResult = NDArray.zeros(stackShape, DType.float32);
+        final result = NDArray.zeros(stackShape, DType.float32) as NDArray<T>;
         final marker = ScratchArena.marker;
         try {
           final cStridesA = ScratchArena.copyInts(a.strides);
-          final cStridesRes = ScratchArena.copyInts(tempResult.strides);
+          final cStridesRes = ScratchArena.copyInts(result.strides);
           final cShape = ScratchArena.copyInts(a.shape);
 
           final n = a.shape[rank - 1];
@@ -1056,7 +1081,7 @@ NDArray<T> det<T>(NDArray<T> a) {
           s_det_float(
             a.pointer.cast<ffi.Float>(),
             cStridesA,
-            tempResult.pointer.cast<ffi.Float>(),
+            result.pointer.cast<ffi.Float>(),
             cStridesRes,
             cShape,
             rank,
@@ -1064,17 +1089,8 @@ NDArray<T> det<T>(NDArray<T> a) {
             cIpiv,
             get_sgetrf_ptr(),
           );
-
-          // Copy values to Float64 result array to maintain backward compatible Float64 output precision
-          final totalSize = tempResult.data.length;
-          final srcData = tempResult.data as Float32List;
-          final destData = result.data as Float64List;
-          for (var i = 0; i < totalSize; i++) {
-            destData[i] = srcData[i];
-          }
         } finally {
           ScratchArena.reset(marker);
-          tempResult.dispose();
         }
         return result.detachToParentScope();
       default:
@@ -1630,7 +1646,7 @@ NDArray<R> pinv<T, R>(NDArray<T> a, {double? rcond, NDArray<R>? out}) {
     final s = svdResult.S;
     final vt = svdResult.Vh;
 
-    final maxSingularVal = s.data[0] as double;
+    final maxSingularVal = s.data[0];
     final epsilon = 2.220446049250313e-16;
     final maxDim = m > n ? m : n;
     final resolvedRcond = rcond ?? (maxDim * epsilon);
@@ -1638,7 +1654,7 @@ NDArray<R> pinv<T, R>(NDArray<T> a, {double? rcond, NDArray<R>? out}) {
 
     final sPlus = NDArray.zeros([n, m], a.dtype);
     for (var i = 0; i < s.data.length; i++) {
-      final sVal = s.data[i] as double;
+      final sVal = s.data[i];
       if (sVal > threshold) {
         sPlus.setCell([i, i], castValue(1.0 / sVal, a.dtype));
       }
