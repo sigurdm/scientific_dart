@@ -17,3 +17,4 @@ export 'operations/fft.dart';
 export 'operations/calculus.dart';
 export 'operations/padding.dart';
 export 'operations/set_operations.dart';
+export 'operations/interpolation.dart';

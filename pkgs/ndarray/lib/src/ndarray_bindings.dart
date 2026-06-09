@@ -17336,6 +17336,128 @@ external void s_quantile_uint8(
   double q,
 );
 
+/// ============================================================================
+/// SECTION 10: INTERPOLATION KERNELS
+/// ============================================================================
+@ffi.Native<ffi.Int Function(ffi.Pointer<ffi.Double>, ffi.Int, ffi.Int)>()
+external int is_strictly_increasing_double(
+  ffi.Pointer<ffi.Double> arr,
+  int size,
+  int stride,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+  )
+>()
+external void v_interp_double(
+  ffi.Pointer<ffi.Double> x,
+  int x_size,
+  ffi.Pointer<ffi.Double> xp,
+  int xp_size,
+  ffi.Pointer<ffi.Double> fp,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Double> left,
+  ffi.Pointer<ffi.Double> right,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+  )
+>()
+external void s_interp_double(
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Double> xp,
+  int strideXP,
+  int xp_size,
+  ffi.Pointer<ffi.Double> fp,
+  int strideFP,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  ffi.Pointer<ffi.Double> left,
+  ffi.Pointer<ffi.Double> right,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+  )
+>()
+external void v_interp_float(
+  ffi.Pointer<ffi.Float> x,
+  int x_size,
+  ffi.Pointer<ffi.Float> xp,
+  int xp_size,
+  ffi.Pointer<ffi.Float> fp,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Float> left,
+  ffi.Pointer<ffi.Float> right,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+  )
+>()
+external void s_interp_float(
+  ffi.Pointer<ffi.Float> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Float> xp,
+  int strideXP,
+  int xp_size,
+  ffi.Pointer<ffi.Float> fp,
+  int strideFP,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  ffi.Pointer<ffi.Float> left,
+  ffi.Pointer<ffi.Float> right,
+);
+
 typedef ptrdiff_t = ffi.Long;
 typedef Dartptrdiff_t = int;
 

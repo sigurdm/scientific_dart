@@ -7265,6 +7265,308 @@ IMPLEMENT_QUANTILE_REDUCTION(s_quantile_float, float, native_sort_float, float *
 IMPLEMENT_QUANTILE_REDUCTION(s_quantile_int64, int64_t, native_sort_int64, long long *)
 IMPLEMENT_QUANTILE_REDUCTION(s_quantile_int32, int32_t, native_sort_int32, int *)
 IMPLEMENT_QUANTILE_REDUCTION(s_quantile_uint8, uint8_t, insertion_sort_uint8, uint8_t *)
+ * SECTION 10: INTERPOLATION KERNELS
+ * ============================================================================
+ */
+
+int is_strictly_increasing_double(const double *arr, int size, int stride) {
+    if (size <= 1) return 1;
+    for (int i = 1; i < size; i++) {
+        if (arr[i * stride] <= arr[(i - 1) * stride]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static inline int find_interval_double(const double *xp, int xp_size, int stride, double x_val) {
+    if (x_val == xp[(xp_size - 1) * stride]) {
+        return xp_size - 2;
+    }
+    int low = 0;
+    int high = xp_size - 1;
+    while (low < high - 1) {
+        int mid = low + (high - low) / 2;
+        if (xp[mid * stride] <= x_val) {
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+    return low;
+}
+
+void v_interp_double(const double *x, int x_size,
+                     const double *xp, int xp_size,
+                     const double *fp, double *res,
+                     const double *left, const double *right) {
+    if (x == NULL || xp == NULL || fp == NULL || res == NULL || x_size <= 0 || xp_size <= 0) {
+        return;
+    }
+    if (xp_size == 1) {
+        double val = fp[0];
+        for (int i = 0; i < x_size; i++) {
+            if (x[i] < xp[0]) {
+                res[i] = (left != NULL) ? *left : val;
+            } else if (x[i] > xp[0]) {
+                res[i] = (right != NULL) ? *right : val;
+            } else {
+                res[i] = val;
+            }
+        }
+        return;
+    }
+
+    double xp_min = xp[0];
+    double xp_max = xp[xp_size - 1];
+
+    for (int i = 0; i < x_size; i++) {
+        double xv = x[i];
+        if (xv < xp_min) {
+            res[i] = (left != NULL) ? *left : fp[0];
+        } else if (xv > xp_max) {
+            res[i] = (right != NULL) ? *right : fp[xp_size - 1];
+        } else {
+            int j = find_interval_double(xp, xp_size, 1, xv);
+            double x0 = xp[j];
+            double x1 = xp[j + 1];
+            double y0 = fp[j];
+            double y1 = fp[j + 1];
+            if (x0 == x1) {
+                res[i] = y0;
+            } else {
+                res[i] = y0 + (y1 - y0) * (xv - x0) / (x1 - x0);
+            }
+        }
+    }
+}
+
+void s_interp_double(const double *x, const int *stridesX,
+                     const double *xp, int strideXP, int xp_size,
+                     const double *fp, int strideFP,
+                     double *res, const int *stridesRes,
+                     const int *shape, int rank,
+                     const double *left, const double *right) {
+    if (x == NULL || xp == NULL || fp == NULL || res == NULL || rank <= 0 || rank > 8 || xp_size <= 0) {
+        return;
+    }
+
+    if (xp_size == 1) {
+        double val = fp[0];
+        double xp0 = xp[0];
+        int total_elements = 1;
+        for (int i = 0; i < rank; i++) total_elements *= shape[i];
+        int coord[8] = {0};
+        int offsetX = 0, offsetRes = 0;
+        for (int el = 0; el < total_elements; el++) {
+            double xv = x[offsetX];
+            if (xv < xp0) {
+                res[offsetRes] = (left != NULL) ? *left : val;
+            } else if (xv > xp0) {
+                res[offsetRes] = (right != NULL) ? *right : val;
+            } else {
+                res[offsetRes] = val;
+            }
+            for (int d = rank - 1; d >= 0; d--) {
+                coord[d]++;
+                if (coord[d] < shape[d]) {
+                    offsetX += stridesX[d];
+                    offsetRes += stridesRes[d];
+                    break;
+                }
+                coord[d] = 0;
+                offsetX -= (shape[d] - 1) * stridesX[d];
+                offsetRes -= (shape[d] - 1) * stridesRes[d];
+            }
+        }
+        return;
+    }
+
+    double xp_min = xp[0];
+    double xp_max = xp[(xp_size - 1) * strideXP];
+
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    int coord[8] = {0};
+    int offsetX = 0, offsetRes = 0;
+
+    for (int el = 0; el < total_elements; el++) {
+        double xv = x[offsetX];
+        if (xv < xp_min) {
+            res[offsetRes] = (left != NULL) ? *left : fp[0];
+        } else if (xv > xp_max) {
+            res[offsetRes] = (right != NULL) ? *right : fp[(xp_size - 1) * strideFP];
+        } else {
+            int j = find_interval_double(xp, xp_size, strideXP, xv);
+            double x0 = xp[j * strideXP];
+            double x1 = xp[(j + 1) * strideXP];
+            double y0 = fp[j * strideFP];
+            double y1 = fp[(j + 1) * strideFP];
+            if (x0 == x1) {
+                res[offsetRes] = y0;
+            } else {
+                res[offsetRes] = y0 + (y1 - y0) * (xv - x0) / (x1 - x0);
+            }
+        }
+
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetX += stridesX[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetX -= (shape[d] - 1) * stridesX[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
+    }
+}
+
+static inline int find_interval_float(const float *xp, int xp_size, int stride, float x_val) {
+    if (x_val == xp[(xp_size - 1) * stride]) {
+        return xp_size - 2;
+    }
+    int low = 0;
+    int high = xp_size - 1;
+    while (low < high - 1) {
+        int mid = low + (high - low) / 2;
+        if (xp[mid * stride] <= x_val) {
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+    return low;
+}
+
+void v_interp_float(const float *x, int x_size,
+                    const float *xp, int xp_size,
+                    const float *fp, float *res,
+                    const float *left, const float *right) {
+    if (x == NULL || xp == NULL || fp == NULL || res == NULL || x_size <= 0 || xp_size <= 0) {
+        return;
+    }
+    if (xp_size == 1) {
+        float val = fp[0];
+        for (int i = 0; i < x_size; i++) {
+            if (x[i] < xp[0]) {
+                res[i] = (left != NULL) ? *left : val;
+            } else if (x[i] > xp[0]) {
+                res[i] = (right != NULL) ? *right : val;
+            } else {
+                res[i] = val;
+            }
+        }
+        return;
+    }
+
+    float xp_min = xp[0];
+    float xp_max = xp[xp_size - 1];
+
+    for (int i = 0; i < x_size; i++) {
+        float xv = x[i];
+        if (xv < xp_min) {
+            res[i] = (left != NULL) ? *left : fp[0];
+        } else if (xv > xp_max) {
+            res[i] = (right != NULL) ? *right : fp[xp_size - 1];
+        } else {
+            int j = find_interval_float(xp, xp_size, 1, xv);
+            float x0 = xp[j];
+            float x1 = xp[j + 1];
+            float y0 = fp[j];
+            float y1 = fp[j + 1];
+            if (x0 == x1) {
+                res[i] = y0;
+            } else {
+                res[i] = y0 + (y1 - y0) * (xv - x0) / (x1 - x0);
+            }
+        }
+    }
+}
+
+void s_interp_float(const float *x, const int *stridesX,
+                    const float *xp, int strideXP, int xp_size,
+                    const float *fp, int strideFP,
+                    float *res, const int *stridesRes,
+                    const int *shape, int rank,
+                    const float *left, const float *right) {
+    if (x == NULL || xp == NULL || fp == NULL || res == NULL || rank <= 0 || rank > 8 || xp_size <= 0) {
+        return;
+    }
+
+    if (xp_size == 1) {
+        float val = fp[0];
+        float xp0 = xp[0];
+        int total_elements = 1;
+        for (int i = 0; i < rank; i++) total_elements *= shape[i];
+        int coord[8] = {0};
+        int offsetX = 0, offsetRes = 0;
+        for (int el = 0; el < total_elements; el++) {
+            float xv = x[offsetX];
+            if (xv < xp0) {
+                res[offsetRes] = (left != NULL) ? *left : val;
+            } else if (xv > xp0) {
+                res[offsetRes] = (right != NULL) ? *right : val;
+            } else {
+                res[offsetRes] = val;
+            }
+            for (int d = rank - 1; d >= 0; d--) {
+                coord[d]++;
+                if (coord[d] < shape[d]) {
+                    offsetX += stridesX[d];
+                    offsetRes += stridesRes[d];
+                    break;
+                }
+                coord[d] = 0;
+                offsetX -= (shape[d] - 1) * stridesX[d];
+                offsetRes -= (shape[d] - 1) * stridesRes[d];
+            }
+        }
+        return;
+    }
+
+    float xp_min = xp[0];
+    float xp_max = xp[(xp_size - 1) * strideXP];
+
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    int coord[8] = {0};
+    int offsetX = 0, offsetRes = 0;
+
+    for (int el = 0; el < total_elements; el++) {
+        float xv = x[offsetX];
+        if (xv < xp_min) {
+            res[offsetRes] = (left != NULL) ? *left : fp[0];
+        } else if (xv > xp_max) {
+            res[offsetRes] = (right != NULL) ? *right : fp[(xp_size - 1) * strideFP];
+        } else {
+            int j = find_interval_float(xp, xp_size, strideXP, xv);
+            float x0 = xp[j * strideXP];
+            float x1 = xp[(j + 1) * strideXP];
+            float y0 = fp[j * strideFP];
+            float y1 = fp[(j + 1) * strideFP];
+            if (x0 == x1) {
+                res[offsetRes] = y0;
+            } else {
+                res[offsetRes] = y0 + (y1 - y0) * (xv - x0) / (x1 - x0);
+            }
+        }
+
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetX += stridesX[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetX -= (shape[d] - 1) * stridesX[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
+    }
+}
+
 
 
 
