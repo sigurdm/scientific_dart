@@ -1050,10 +1050,14 @@ NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
   return concatenate(arrays, axis: 1);
 }
 
-/// Return an array copy of the given object.
+/// Return a deep, C-contiguous copy of the given array.
 ///
-/// This function corresponds to NumPy's `copy` function. It returns a deep copy
-/// of [a] that respects shape, strides, and `DType.`
+/// The copy preserves the logical order and values of the elements defined by
+/// [a]'s shape and strides. However, the physical memory layout of the returned
+/// array is always contiguous (and its strides are reset to standard C-contiguous
+/// strides).
+///
+/// This function corresponds to NumPy's `copy` function.
 ///
 /// **Throws:**
 /// - [StateError] if the array [a] is already disposed.

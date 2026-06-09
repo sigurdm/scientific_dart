@@ -63,6 +63,11 @@ bool _listEquals(List a, List b) {
 /// dividing the area under the curve into trapezoids, which is much more accurate
 /// than simple rectangular integration.
 ///
+/// The [axis] parameter specifies the dimension of the array along which to
+/// integrate. A negative value is resolved relative to the end of the dimensions,
+/// where `-1` represents the last dimension, `-2` represents the second-to-last,
+/// and so on.
+///
 /// Spacing along the axis is specified by [spacing].
 ///
 /// **Preconditions:**
@@ -314,6 +319,11 @@ NDArray<T> trapz<T>(
 /// Returns a single [NDArray] representing the derivative along [axis].
 /// For a 1D array, this is equivalent to `gradientArray(f)[0]`.
 /// To calculate gradients along multiple axes at once, use [gradientArray].
+///
+/// The [axis] parameter specifies the dimension of the array along which the
+/// derivative is computed. A negative value is resolved relative to the end of
+/// the dimensions, where `-1` represents the last dimension, `-2` represents
+/// the second-to-last, and so on.
 ///
 /// The gradient is calculated using second-order accurate central differences
 /// for interior points.
@@ -589,7 +599,10 @@ NDArray<T> gradient<T extends Object>(
 /// To calculate the gradient along a single specific axis, use [gradient].
 ///
 /// Differentiates along the axes specified by [axis] (defaulting to all axes).
-/// Returns a list of single-axis gradients.
+/// Each index in [axis] specifies the dimension along which the derivative
+/// is computed. Negative indices are resolved relative to the end of the
+/// dimensions, where `-1` represents the last dimension, `-2` represents the
+/// second-to-last, and so on.
 ///
 /// Spacing along the axes can be specified in two ways:
 /// - [spacing]: A single [Spacing] object applied to all axes (shortcut).

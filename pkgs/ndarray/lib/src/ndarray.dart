@@ -846,14 +846,19 @@ final class NDArray<T> implements ffi.Finalizable {
     return result;
   }
 
-  /// Returns a deep copy of this array, respecting shape, strides, and `DType.`
+  /// Returns a deep, C-contiguous copy of this array.
+  ///
+  /// The copy preserves the logical order and values of the elements defined by
+  /// this array's shape and strides. However, the physical memory layout of the
+  /// returned array is always contiguous (and its strides are reset to standard
+  /// C-contiguous strides).
   ///
   /// **Performance considerations:**
   /// - For C-contiguous layouts, offloads elements copy directly to raw unmanaged FFI
   ///   memmove/memcpy sweeps, achieving optimal performance.
-  /// - For strided non-contiguous views, allocates a single contiguous NDArray of
-  ///   identical shape and walks coordinates recursively to duplicate elements in-place
-  ///   without allocating intermediate JIT Lists.
+  /// - For strided non-contiguous views, delegates the copy/flatten operation to optimized
+  ///   native FFI/C functions (intrinsics) to write into the contiguous destination array
+  ///   without allocating intermediate structures in Dart.
   ///
   /// **Throws:**
   /// - [StateError] if the array is already disposed.
@@ -1110,8 +1115,22 @@ final class NDArray<T> implements ffi.Finalizable {
 
   /// Transposes the dimensions of this array.
   ///
-  /// By default, reverses the order of dimensions. If [axes] is provided, permutes the
-  /// dimensions according to the specified permutation list.
+  /// By default, reverses the order of dimensions (equivalent to calling `transposed`).
+  /// If [axes] is provided, permutes the dimensions according to the specified
+  /// permutation list.
+  ///
+  /// **Axes Interpretation:**
+  /// - The length of [axes] must equal the rank of the array.
+  /// - The value `axes[i]` specifies the index of the dimension in the original array
+  ///   that will map to the `i`-th dimension of the transposed array.
+  /// - Negative indices in [axes] are resolved relative to the end of the dimensions,
+  ///   where `-1` represents the last dimension, `-2` represents the second-to-last,
+  ///   and so on.
+  /// - For example, on a 3-dimensional array with shape `[A, B, C]`:
+  ///   - `transpose()` (or `transpose(null)`) results in a shape of `[C, B, A]`.
+  ///   - `transpose([1, 0, 2])` results in a shape of `[B, A, C]`.
+  ///   - `transpose([-1, -2, -3])` is equivalent to `transpose([2, 1, 0])`, which
+  ///     results in a shape of `[C, B, A]`.
   ///
   /// **Preconditions:**
   /// - If provided, the length of [axes] must exactly match the array rank.
@@ -1182,6 +1201,12 @@ final class NDArray<T> implements ffi.Finalizable {
   }
 
   /// Returns a view of the array with dimensions reversed.
+  ///
+  /// Equivalent to calling `transpose()` with no arguments. Reverses the order
+  /// of dimensions (e.g., a 3-dimensional array of shape `[A, B, C]` becomes a
+  /// view with shape `[C, B, A]`).
+  ///
+  /// To permute the dimensions in a custom order, use [transpose].
   ///
   /// **Preconditions:**
   /// - The array must not be disposed.
@@ -2534,7 +2559,8 @@ final class NDArray<T> implements ffi.Finalizable {
     }
   }
 
-  /// Returns a flat list copy of the elements in this array, respecting shape and strides.
+  /// Returns a flat Dart list containing a copy of the elements in this array,
+  /// traversed in the logical order defined by its shape and strides.
   List<T> toList() {
     if (isDisposed) {
       throw StateError(
