@@ -34,10 +34,13 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     T? acc;
     if (a.isContiguous) {
-      if (a.dtype == DType.float64) {
-        acc = r_sum_double(a.pointer.cast(), size) as T;
-      } else if (a.dtype == DType.float32) {
-        acc = r_sum_float(a.pointer.cast(), size) as T;
+      switch (a.dtype) {
+        case DType.float64:
+          acc = r_sum_double(a.pointer.cast(), size) as T;
+        case DType.float32:
+          acc = r_sum_float(a.pointer.cast(), size) as T;
+        default:
+          break;
       }
     }
     if (acc == null) {
@@ -63,54 +66,57 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     result.fill(normalizeScalar(0, a.dtype) as T);
   }
 
-  if (a.dtype == DType.float64) {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-    }
-    for (var i = 0; i < result.shape.length; i++) {
-      cStridesRes[i] = result.strides[i];
-    }
+  switch (a.dtype) {
+    case DType.float64:
+      final rank = a.shape.length;
+      final cBuffer = ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+      }
+      for (var i = 0; i < result.shape.length; i++) {
+        cStridesRes[i] = result.strides[i];
+      }
 
-    s_sum_double(
-      a.pointer.cast(),
-      cStridesA,
-      result.pointer.cast(),
-      cStridesRes,
-      cShape,
-      rank,
-      axis,
-    );
-    return result;
-  } else if (a.dtype == DType.float32) {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-    }
-    for (var i = 0; i < result.shape.length; i++) {
-      cStridesRes[i] = result.strides[i];
-    }
+      s_sum_double(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        axis,
+      );
+      return result;
+    case DType.float32:
+      final rank = a.shape.length;
+      final cBuffer = ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+      }
+      for (var i = 0; i < result.shape.length; i++) {
+        cStridesRes[i] = result.strides[i];
+      }
 
-    s_sum_float(
-      a.pointer.cast(),
-      cStridesA,
-      result.pointer.cast(),
-      cStridesRes,
-      cShape,
-      rank,
-      axis,
-    );
-    return result;
+      s_sum_float(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+        axis,
+      );
+      return result;
+    default:
+      break;
   }
 
   reduceRecursive<T, T>(
@@ -150,10 +156,13 @@ NDArray<T> prod<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     T? acc;
     if (a.isContiguous) {
-      if (a.dtype == DType.float64) {
-        acc = r_prod_double(a.pointer.cast(), size) as T;
-      } else if (a.dtype == DType.float32) {
-        acc = r_prod_float(a.pointer.cast(), size) as T;
+      switch (a.dtype) {
+        case DType.float64:
+          acc = r_prod_double(a.pointer.cast(), size) as T;
+        case DType.float32:
+          acc = r_prod_float(a.pointer.cast(), size) as T;
+        default:
+          break;
       }
     }
     if (acc == null) {
@@ -382,14 +391,17 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
 
   if (axis == null) {
     if (a.isContiguous) {
-      if (a.dtype == DType.float64) {
-        final res = out ?? NDArray<R>.create([], DType.float64 as DType<R>);
-        res.data[0] = r_mean_double(a.pointer.cast(), a.size) as R;
-        return res;
-      } else if (a.dtype == DType.float32) {
-        final res = out ?? NDArray<R>.create([], DType.float64 as DType<R>);
-        res.data[0] = r_mean_float(a.pointer.cast(), a.size) as R;
-        return res;
+      switch (a.dtype) {
+        case DType.float64:
+          final res = out ?? NDArray<R>.create([], DType.float64 as DType<R>);
+          res.data[0] = r_mean_double(a.pointer.cast(), a.size) as R;
+          return res;
+        case DType.float32:
+          final res = out ?? NDArray<R>.create([], DType.float64 as DType<R>);
+          res.data[0] = r_mean_float(a.pointer.cast(), a.size) as R;
+          return res;
+        default:
+          break;
       }
     }
 
@@ -435,54 +447,57 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
     }
 
     // Optimized axis-wise mean
-    if (a.dtype == DType.float64 && targetDType == DType.float64) {
-      final rank = a.shape.length;
-      final cBuffer = ScratchArena.getStridedBuffer(rank);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + rank;
-      final cStridesRes = cBuffer + (rank * 2);
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = a.shape[i];
-        cStridesA[i] = a.strides[i];
-      }
-      for (var i = 0; i < result.shape.length; i++) {
-        cStridesRes[i] = result.strides[i];
-      }
+    switch ((a.dtype, targetDType)) {
+      case (DType.float64, DType.float64):
+        final rank = a.shape.length;
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+        }
+        for (var i = 0; i < result.shape.length; i++) {
+          cStridesRes[i] = result.strides[i];
+        }
 
-      s_mean_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        axis,
-      );
-      return result;
-    } else if (a.dtype == DType.float32 && targetDType == DType.float64) {
-      final rank = a.shape.length;
-      final cBuffer = ScratchArena.getStridedBuffer(rank);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + rank;
-      final cStridesRes = cBuffer + (rank * 2);
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = a.shape[i];
-        cStridesA[i] = a.strides[i];
-      }
-      for (var i = 0; i < result.shape.length; i++) {
-        cStridesRes[i] = result.strides[i];
-      }
+        s_mean_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+        return result;
+      case (DType.float32, DType.float64):
+        final rank = a.shape.length;
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+        }
+        for (var i = 0; i < result.shape.length; i++) {
+          cStridesRes[i] = result.strides[i];
+        }
 
-      s_mean_float(
-        a.pointer.cast(),
-        cStridesA,
-        ((result as dynamic) as NDArray<double>).pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        axis,
-      );
-      return result;
+        s_mean_float(
+          a.pointer.cast(),
+          cStridesA,
+          ((result as dynamic) as NDArray<double>).pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+        return result;
+      default:
+        break;
     }
 
     if (targetDType.isComplex) {

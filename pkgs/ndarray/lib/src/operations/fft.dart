@@ -52,7 +52,7 @@ kiss_fft_cfg _allocateKissFFTPlan(int nfft, int inverse_fft) {
 /// {@example /example/fft_example.dart lang=dart}
 ///
 /// Reference: [Cooley-Tukey FFT Algorithm](https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm)
-NDArray fft(NDArray a, {int? n, int axis = -1}) {
+NDArray<Complex> fft<T>(NDArray<T> a, {int? n, int axis = -1}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute fft() on a disposed array.');
   }
@@ -74,11 +74,11 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
     axes[rank - 1] = normAxis;
 
     final transposedInput = a.transpose(axes);
-    final transposedResult = fft(transposedInput, n: n);
+    final transposedResult = fft<T>(transposedInput, n: n);
     return transposedResult.transpose(axes);
   }
 
-  final NDArray inputA;
+  final NDArray<T> inputA;
   final bool wasCopied;
   if (!a.isContiguous) {
     inputA = a.copy();
@@ -103,12 +103,12 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
   final outShape = List<int>.from(inputA.shape);
   outShape[outShape.length - 1] = targetLen;
 
-  final targetDType =
+  final DType<Complex> targetDType =
       (inputA.dtype == DType.float32 || inputA.dtype == DType.complex64)
       ? DType.complex64
       : DType.complex128;
 
-  final result = NDArray.zeros(outShape, targetDType);
+  final result = NDArray<Complex>.zeros(outShape, targetDType);
 
   // Count how many 1D row sub-signals exist to execute strided walks
   final totalElements = inputA.shape.reduce((x, y) => x * y);
@@ -228,7 +228,7 @@ NDArray fft(NDArray a, {int? n, int axis = -1}) {
 ///
 /// **Example:**
 /// {@example /example/fft_example.dart lang=dart}
-NDArray ifft(NDArray a, {int? n, int axis = -1}) {
+NDArray<Complex> ifft<T>(NDArray<T> a, {int? n, int axis = -1}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute ifft() on a disposed array.');
   }
@@ -250,11 +250,11 @@ NDArray ifft(NDArray a, {int? n, int axis = -1}) {
     axes[rank - 1] = normAxis;
 
     final transposedInput = a.transpose(axes);
-    final transposedResult = ifft(transposedInput, n: n);
+    final transposedResult = ifft<T>(transposedInput, n: n);
     return transposedResult.transpose(axes);
   }
 
-  final NDArray inputA;
+  final NDArray<T> inputA;
   final bool wasCopied;
   if (!a.isContiguous) {
     inputA = a.copy();
@@ -278,12 +278,12 @@ NDArray ifft(NDArray a, {int? n, int axis = -1}) {
   final outShape = List<int>.from(inputA.shape);
   outShape[outShape.length - 1] = targetLen;
 
-  final targetDType =
+  final DType<Complex> targetDType =
       (inputA.dtype == DType.float32 || inputA.dtype == DType.complex64)
       ? DType.complex64
       : DType.complex128;
 
-  final result = NDArray.zeros(outShape, targetDType);
+  final result = NDArray<Complex>.zeros(outShape, targetDType);
 
   final totalElements = inputA.shape.reduce((x, y) => x * y);
   final signalsCount = totalElements ~/ lastAxisDim;

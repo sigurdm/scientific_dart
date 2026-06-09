@@ -72,7 +72,7 @@ void main() {
   // Extract real component of the reconstructed signal
   final reconstructed = NDArray.create([numPoints], DType.float64);
   addTearDown(() => reconstructed.dispose());
-  final reconstructedData = reconstructed.data;
+  final List<double> reconstructedData = reconstructed.data;
   for (var i = 0; i < numPoints; i++) {
     reconstructedData[i] = restoredComplex.data[i].real;
   }
