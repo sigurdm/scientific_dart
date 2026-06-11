@@ -9,6 +9,100 @@ import '../scratch_arena.dart';
 import 'math.dart';
 import 'helpers.dart';
 
+/// Methods for estimating quantiles/percentiles.
+///
+/// The descriptions below refer to the taxonomy established by
+/// Hyndman and Fan (1996), "Sample Quantiles in Statistical Packages".
+///
+/// Most methods interpolate between two adjacent order statistics
+/// \(x_{(j)}\) and \(x_{(j+1)}\) using:
+/// \[Q(p) = (1 - g) \cdot x_{(j)} + g \cdot x_{(j+1)}\]
+/// where \(j\) is the floor of the virtual index, and \(g\) is the fractional part.
+enum QuantileMethod {
+  /// **Type 1**: Inverse of empirical cumulative distribution function.
+  /// Discontinuous.
+  ///
+  /// \(g = 0\) if the virtual index is integer, otherwise \(1\).
+  invertedCdf,
+
+  /// **Type 2**: Similar to [invertedCdf] but with averaging at discontinuities.
+  /// Discontinuous.
+  ///
+  /// \(g = 0.5\) if the virtual index is integer, otherwise \(1\).
+  averagedInvertedCdf,
+
+  /// **Type 3**: Nearest observation.
+  /// Discontinuous.
+  ///
+  /// Rounds the virtual index to the nearest integer. If the fractional part
+  /// is exactly 0.5, rounds to the nearest even index (1-based).
+  closestObservation,
+
+  /// **Type 4**: Linear interpolation of the empirical CDF.
+  /// Continuous.
+  ///
+  /// \(p_k = k / N\). Virtual index is \(p \cdot N - 1\) (0-based).
+  interpolatedInvertedCdf,
+
+  /// **Type 5**: Hazen's piecewise linear function.
+  /// Continuous.
+  ///
+  /// \(p_k = (k - 0.5) / N\). Virtual index is \(p \cdot N - 0.5\) (0-based).
+  hazen,
+
+  /// **Type 6**: Weibull-style interpolation.
+  /// Continuous.
+  ///
+  /// \(p_k = k / (N + 1)\). Used by Minitab and SPSS.
+  /// Virtual index is \(p \cdot (N + 1) - 1\) (0-based).
+  weibull,
+
+  /// **Type 7**: Linear interpolation (default).
+  /// Continuous.
+  ///
+  /// \(p_k = (k - 1) / (N - 1)\). Used by S and Excel.
+  /// Virtual index is \(p \cdot (N - 1)\) (0-based).
+  linear,
+
+  /// **Type 8**: Median-unbiased.
+  /// Continuous.
+  ///
+  /// \(p_k = (k - 1/3) / (N + 1/3)\). Approximately median-unbiased
+  /// regardless of the distribution. Recommended by Hyndman and Fan.
+  medianUnbiased,
+
+  /// **Type 9**: Normal-unbiased.
+  /// Continuous.
+  ///
+  /// \(p_k = (k - 3/8) / (N + 1/4)\). Approximately unbiased if the
+  /// underlying distribution is normal.
+  normalUnbiased,
+
+  /// **NumPy Compatibility**: Lower.
+  /// Discontinuous.
+  ///
+  /// Always uses the lower of the two nearest observations (\(g = 0\)).
+  lower,
+
+  /// **NumPy Compatibility**: Higher.
+  /// Discontinuous.
+  ///
+  /// Always uses the higher of the two nearest observations (\(g = 1\)).
+  higher,
+
+  /// **NumPy Compatibility**: Midpoint.
+  /// Discontinuous.
+  ///
+  /// Always uses the average of the two nearest observations (\(g = 0.5\)).
+  midpoint,
+
+  /// **NumPy Compatibility**: Nearest.
+  /// Discontinuous.
+  ///
+  /// Uses the nearest observation. Rounds half-integers to the nearest even integer.
+  nearest,
+}
+
 /// Compute the sum of elements in the array.
 ///
 /// If [axis] is provided, sums along that axis and returns a new array.
@@ -1646,6 +1740,7 @@ NDArray<double> quantile<T extends Object>(
   NDArray<T> a,
   double q, {
   int? axis,
+  QuantileMethod method = QuantileMethod.linear,
   NDArray<double>? out,
 }) {
   if (a.isDisposed) {
@@ -1681,26 +1776,51 @@ NDArray<double> quantile<T extends Object>(
     if (a.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
-          result.data[0] = r_quantile_double(a.pointer.cast(), size, q);
+          result.data[0] = r_quantile_double(
+            a.pointer.cast(),
+            size,
+            q,
+            method.index,
+          );
           return result;
         case DType.float32:
-          result.data[0] = r_quantile_float(a.pointer.cast(), size, q);
+          result.data[0] = r_quantile_float(
+            a.pointer.cast(),
+            size,
+            q,
+            method.index,
+          );
           return result;
         case DType.int64:
-          result.data[0] = r_quantile_int64(a.pointer.cast(), size, q);
+          result.data[0] = r_quantile_int64(
+            a.pointer.cast(),
+            size,
+            q,
+            method.index,
+          );
           return result;
         case DType.int32:
-          result.data[0] = r_quantile_int32(a.pointer.cast(), size, q);
+          result.data[0] = r_quantile_int32(
+            a.pointer.cast(),
+            size,
+            q,
+            method.index,
+          );
           return result;
         case DType.uint8:
-          result.data[0] = r_quantile_uint8(a.pointer.cast(), size, q);
+          result.data[0] = r_quantile_uint8(
+            a.pointer.cast(),
+            size,
+            q,
+            method.index,
+          );
           return result;
         default:
           throw ArgumentError('Unsupported dtype for quantile: ${a.dtype}');
       }
     } else {
       final flat = a.flatten();
-      final resVal = r_quantile_helper(flat, flat.size, q);
+      final resVal = r_quantile_helper(flat, flat.size, q, method.index);
       flat.dispose();
       result.data[0] = resVal;
       return result;
@@ -1737,6 +1857,7 @@ NDArray<double> quantile<T extends Object>(
         rank,
         targetAxis,
         q,
+        method.index,
       );
     case DType.float32:
       s_quantile_float(
@@ -1748,6 +1869,7 @@ NDArray<double> quantile<T extends Object>(
         rank,
         targetAxis,
         q,
+        method.index,
       );
     case DType.int64:
       s_quantile_int64(
@@ -1759,6 +1881,7 @@ NDArray<double> quantile<T extends Object>(
         rank,
         targetAxis,
         q,
+        method.index,
       );
     case DType.int32:
       s_quantile_int32(
@@ -1770,6 +1893,7 @@ NDArray<double> quantile<T extends Object>(
         rank,
         targetAxis,
         q,
+        method.index,
       );
     case DType.uint8:
       s_quantile_uint8(
@@ -1781,6 +1905,7 @@ NDArray<double> quantile<T extends Object>(
         rank,
         targetAxis,
         q,
+        method.index,
       );
     default:
       result.dispose();
@@ -1790,18 +1915,18 @@ NDArray<double> quantile<T extends Object>(
   return result;
 }
 
-double r_quantile_helper(NDArray a, int size, double q) {
+double r_quantile_helper(NDArray a, int size, double q, int method) {
   switch (a.dtype) {
     case DType.float64:
-      return r_quantile_double(a.pointer.cast(), size, q);
+      return r_quantile_double(a.pointer.cast(), size, q, method);
     case DType.float32:
-      return r_quantile_float(a.pointer.cast(), size, q);
+      return r_quantile_float(a.pointer.cast(), size, q, method);
     case DType.int64:
-      return r_quantile_int64(a.pointer.cast(), size, q);
+      return r_quantile_int64(a.pointer.cast(), size, q, method);
     case DType.int32:
-      return r_quantile_int32(a.pointer.cast(), size, q);
+      return r_quantile_int32(a.pointer.cast(), size, q, method);
     case DType.uint8:
-      return r_quantile_uint8(a.pointer.cast(), size, q);
+      return r_quantile_uint8(a.pointer.cast(), size, q, method);
     default:
       throw ArgumentError('Unsupported dtype for quantile: ${a.dtype}');
   }
@@ -1823,12 +1948,13 @@ NDArray<double> percentile<T extends Object>(
   NDArray<T> a,
   double q, {
   int? axis,
+  QuantileMethod method = QuantileMethod.linear,
   NDArray<double>? out,
 }) {
   if (q < 0.0 || q > 100.0) {
     throw ArgumentError('Percentile q must be between 0.0 and 100.0. Got $q');
   }
-  return quantile(a, q / 100.0, axis: axis, out: out);
+  return quantile(a, q / 100.0, axis: axis, method: method, out: out);
 }
 
 /// Compute the median along the specified axis.

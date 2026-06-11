@@ -11,6 +11,9 @@ Remember when adding new operations, fixing old ones:
 * Avoid using setRange and toList handling ndarrays in dart space. Rather make views and use NDArray.copy.
 * When returning multiple values use records with named fields instead of HashMaps.
 * It is usally ok for the result of an operation to have same dtype as the input. We like the conversions to be explicit.
+* Avoid accessing or indexing `NDArray.data` directly in Dart code (as it is `@internal`).
+* Use the `.scalar` getter to access the value of 0-dimensional arrays.
+
  
 
 When running dart commands use the sdk specified in .vscode/settings.json.

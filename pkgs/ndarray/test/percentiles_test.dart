@@ -242,5 +242,202 @@ void main() {
         });
       });
     });
+
+    group('Percentile Methods Tests (NumPy compatibility)', () {
+      final a = NDArray.fromList([10.0, 20.0, 30.0, 40.0], [4], DType.float64);
+
+      test('invertedCdf', () {
+        NDArray.scope(() {
+          expect(
+            percentile(a, 35.0, method: QuantileMethod.invertedCdf).scalar,
+            closeTo(20.0, 1e-9),
+          );
+          expect(
+            percentile(a, 50.0, method: QuantileMethod.invertedCdf).scalar,
+            closeTo(20.0, 1e-9),
+          );
+        });
+      });
+
+      test('averagedInvertedCdf', () {
+        NDArray.scope(() {
+          expect(
+            percentile(
+              a,
+              35.0,
+              method: QuantileMethod.averagedInvertedCdf,
+            ).scalar,
+            closeTo(20.0, 1e-9),
+          );
+          expect(
+            percentile(
+              a,
+              50.0,
+              method: QuantileMethod.averagedInvertedCdf,
+            ).scalar,
+            closeTo(25.0, 1e-9),
+          );
+        });
+      });
+
+      test('closestObservation', () {
+        NDArray.scope(() {
+          expect(
+            percentile(
+              a,
+              35.0,
+              method: QuantileMethod.closestObservation,
+            ).scalar,
+            closeTo(10.0, 1e-9),
+          );
+          expect(
+            percentile(
+              a,
+              50.0,
+              method: QuantileMethod.closestObservation,
+            ).scalar,
+            closeTo(20.0, 1e-9),
+          );
+        });
+      });
+
+      test('interpolatedInvertedCdf', () {
+        NDArray.scope(() {
+          expect(
+            percentile(
+              a,
+              35.0,
+              method: QuantileMethod.interpolatedInvertedCdf,
+            ).scalar,
+            closeTo(14.0, 1e-9),
+          );
+          expect(
+            percentile(
+              a,
+              50.0,
+              method: QuantileMethod.interpolatedInvertedCdf,
+            ).scalar,
+            closeTo(20.0, 1e-9),
+          );
+        });
+      });
+
+      test('hazen', () {
+        NDArray.scope(() {
+          expect(
+            percentile(a, 35.0, method: QuantileMethod.hazen).scalar,
+            closeTo(19.0, 1e-9),
+          );
+          expect(
+            percentile(a, 50.0, method: QuantileMethod.hazen).scalar,
+            closeTo(25.0, 1e-9),
+          );
+        });
+      });
+
+      test('weibull', () {
+        NDArray.scope(() {
+          expect(
+            percentile(a, 35.0, method: QuantileMethod.weibull).scalar,
+            closeTo(17.5, 1e-9),
+          );
+          expect(
+            percentile(a, 50.0, method: QuantileMethod.weibull).scalar,
+            closeTo(25.0, 1e-9),
+          );
+        });
+      });
+
+      test('linear', () {
+        NDArray.scope(() {
+          expect(
+            percentile(a, 35.0, method: QuantileMethod.linear).scalar,
+            closeTo(20.5, 1e-9),
+          );
+          expect(
+            percentile(a, 50.0, method: QuantileMethod.linear).scalar,
+            closeTo(25.0, 1e-9),
+          );
+        });
+      });
+
+      test('medianUnbiased', () {
+        NDArray.scope(() {
+          expect(
+            percentile(a, 35.0, method: QuantileMethod.medianUnbiased).scalar,
+            closeTo(18.5, 1e-9),
+          );
+          expect(
+            percentile(a, 50.0, method: QuantileMethod.medianUnbiased).scalar,
+            closeTo(25.0, 1e-9),
+          );
+        });
+      });
+
+      test('normalUnbiased', () {
+        NDArray.scope(() {
+          expect(
+            percentile(a, 35.0, method: QuantileMethod.normalUnbiased).scalar,
+            closeTo(18.625, 1e-9),
+          );
+          expect(
+            percentile(a, 50.0, method: QuantileMethod.normalUnbiased).scalar,
+            closeTo(25.0, 1e-9),
+          );
+        });
+      });
+
+      test('lower', () {
+        NDArray.scope(() {
+          expect(
+            percentile(a, 35.0, method: QuantileMethod.lower).scalar,
+            closeTo(20.0, 1e-9),
+          );
+          expect(
+            percentile(a, 50.0, method: QuantileMethod.lower).scalar,
+            closeTo(20.0, 1e-9),
+          );
+        });
+      });
+
+      test('higher', () {
+        NDArray.scope(() {
+          expect(
+            percentile(a, 35.0, method: QuantileMethod.higher).scalar,
+            closeTo(30.0, 1e-9),
+          );
+          expect(
+            percentile(a, 50.0, method: QuantileMethod.higher).scalar,
+            closeTo(30.0, 1e-9),
+          );
+        });
+      });
+
+      test('midpoint', () {
+        NDArray.scope(() {
+          expect(
+            percentile(a, 35.0, method: QuantileMethod.midpoint).scalar,
+            closeTo(25.0, 1e-9),
+          );
+          expect(
+            percentile(a, 50.0, method: QuantileMethod.midpoint).scalar,
+            closeTo(25.0, 1e-9),
+          );
+        });
+      });
+
+      test('nearest', () {
+        NDArray.scope(() {
+          expect(
+            percentile(a, 35.0, method: QuantileMethod.nearest).scalar,
+            closeTo(20.0, 1e-9),
+          );
+          expect(
+            percentile(a, 50.0, method: QuantileMethod.nearest).scalar,
+            closeTo(30.0, 1e-9),
+          );
+        });
+      });
+    });
   });
 }

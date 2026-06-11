@@ -17191,39 +17191,54 @@ external void s_median_complex64(
 );
 
 /// Quantile global reductions (contiguous)
-@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int, ffi.Double)>()
+@ffi.Native<
+  ffi.Double Function(ffi.Pointer<ffi.Double>, ffi.Int, ffi.Double, ffi.Int)
+>()
 external double r_quantile_double(
   ffi.Pointer<ffi.Double> src,
   int size,
   double q,
+  int method,
 );
 
-@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Float>, ffi.Int, ffi.Double)>()
+@ffi.Native<
+  ffi.Double Function(ffi.Pointer<ffi.Float>, ffi.Int, ffi.Double, ffi.Int)
+>()
 external double r_quantile_float(
   ffi.Pointer<ffi.Float> src,
   int size,
   double q,
+  int method,
 );
 
-@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Int64>, ffi.Int, ffi.Double)>()
+@ffi.Native<
+  ffi.Double Function(ffi.Pointer<ffi.Int64>, ffi.Int, ffi.Double, ffi.Int)
+>()
 external double r_quantile_int64(
   ffi.Pointer<ffi.Int64> src,
   int size,
   double q,
+  int method,
 );
 
-@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Int32>, ffi.Int, ffi.Double)>()
+@ffi.Native<
+  ffi.Double Function(ffi.Pointer<ffi.Int32>, ffi.Int, ffi.Double, ffi.Int)
+>()
 external double r_quantile_int32(
   ffi.Pointer<ffi.Int32> src,
   int size,
   double q,
+  int method,
 );
 
-@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Uint8>, ffi.Int, ffi.Double)>()
+@ffi.Native<
+  ffi.Double Function(ffi.Pointer<ffi.Uint8>, ffi.Int, ffi.Double, ffi.Int)
+>()
 external double r_quantile_uint8(
   ffi.Pointer<ffi.Uint8> src,
   int size,
   double q,
+  int method,
 );
 
 /// Quantile axis reductions (strided)
@@ -17237,6 +17252,7 @@ external double r_quantile_uint8(
     ffi.Int,
     ffi.Int,
     ffi.Double,
+    ffi.Int,
   )
 >()
 external void s_quantile_double(
@@ -17248,6 +17264,7 @@ external void s_quantile_double(
   int rank,
   int axis,
   double q,
+  int method,
 );
 
 @ffi.Native<
@@ -17260,6 +17277,7 @@ external void s_quantile_double(
     ffi.Int,
     ffi.Int,
     ffi.Double,
+    ffi.Int,
   )
 >()
 external void s_quantile_float(
@@ -17271,6 +17289,7 @@ external void s_quantile_float(
   int rank,
   int axis,
   double q,
+  int method,
 );
 
 @ffi.Native<
@@ -17283,6 +17302,7 @@ external void s_quantile_float(
     ffi.Int,
     ffi.Int,
     ffi.Double,
+    ffi.Int,
   )
 >()
 external void s_quantile_int64(
@@ -17294,6 +17314,7 @@ external void s_quantile_int64(
   int rank,
   int axis,
   double q,
+  int method,
 );
 
 @ffi.Native<
@@ -17306,6 +17327,7 @@ external void s_quantile_int64(
     ffi.Int,
     ffi.Int,
     ffi.Double,
+    ffi.Int,
   )
 >()
 external void s_quantile_int32(
@@ -17317,6 +17339,7 @@ external void s_quantile_int32(
   int rank,
   int axis,
   double q,
+  int method,
 );
 
 @ffi.Native<
@@ -17329,6 +17352,7 @@ external void s_quantile_int32(
     ffi.Int,
     ffi.Int,
     ffi.Double,
+    ffi.Int,
   )
 >()
 external void s_quantile_uint8(
@@ -17340,6 +17364,7 @@ external void s_quantile_uint8(
   int rank,
   int axis,
   double q,
+  int method,
 );
 
 /// ============================================================================
@@ -17614,6 +17639,42 @@ typedef uint_fast64_t = ffi.UnsignedLong;
 typedef Dartuint_fast64_t = int;
 typedef intmax_t = __intmax_t;
 typedef uintmax_t = __uintmax_t;
+
+enum QuantileMethod {
+  QUANTILE_INVERTED_CDF(0),
+  QUANTILE_AVERAGED_INVERTED_CDF(1),
+  QUANTILE_CLOSEST_OBSERVATION(2),
+  QUANTILE_INTERPOLATED_INVERTED_CDF(3),
+  QUANTILE_HAZEN(4),
+  QUANTILE_WEIBULL(5),
+  QUANTILE_LINEAR(6),
+  QUANTILE_MEDIAN_UNBIASED(7),
+  QUANTILE_NORMAL_UNBIASED(8),
+  QUANTILE_LOWER(9),
+  QUANTILE_HIGHER(10),
+  QUANTILE_MIDPOINT(11),
+  QUANTILE_NEAREST(12);
+
+  final int value;
+  const QuantileMethod(this.value);
+
+  static QuantileMethod fromValue(int value) => switch (value) {
+    0 => QUANTILE_INVERTED_CDF,
+    1 => QUANTILE_AVERAGED_INVERTED_CDF,
+    2 => QUANTILE_CLOSEST_OBSERVATION,
+    3 => QUANTILE_INTERPOLATED_INVERTED_CDF,
+    4 => QUANTILE_HAZEN,
+    5 => QUANTILE_WEIBULL,
+    6 => QUANTILE_LINEAR,
+    7 => QUANTILE_MEDIAN_UNBIASED,
+    8 => QUANTILE_NORMAL_UNBIASED,
+    9 => QUANTILE_LOWER,
+    10 => QUANTILE_HIGHER,
+    11 => QUANTILE_MIDPOINT,
+    12 => QUANTILE_NEAREST,
+    _ => throw ArgumentError('Unknown value for QuantileMethod: $value'),
+  };
+}
 
 /// ============================================================================
 /// SECTION 1: CORE COMPLEX TYPE DEFINITIONS

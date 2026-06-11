@@ -3,6 +3,23 @@
 
 #include <stdint.h>
 
+typedef enum {
+    QUANTILE_INVERTED_CDF = 0,
+    QUANTILE_AVERAGED_INVERTED_CDF,
+    QUANTILE_CLOSEST_OBSERVATION,
+    QUANTILE_INTERPOLATED_INVERTED_CDF,
+    QUANTILE_HAZEN,
+    QUANTILE_WEIBULL,
+    QUANTILE_LINEAR,
+    QUANTILE_MEDIAN_UNBIASED,
+    QUANTILE_NORMAL_UNBIASED,
+    QUANTILE_LOWER,
+    QUANTILE_HIGHER,
+    QUANTILE_MIDPOINT,
+    QUANTILE_NEAREST
+} QuantileMethod;
+
+
 /* ============================================================================
  * SECTION 1: CORE COMPLEX TYPE DEFINITIONS
  * ============================================================================
@@ -1127,18 +1144,18 @@ void s_median_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *dest, c
 void s_median_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
 
 /* Quantile global reductions (contiguous) */
-double r_quantile_double(const double *src, int size, double q);
-double r_quantile_float(const float *src, int size, double q);
-double r_quantile_int64(const int64_t *src, int size, double q);
-double r_quantile_int32(const int32_t *src, int size, double q);
-double r_quantile_uint8(const uint8_t *src, int size, double q);
+double r_quantile_double(const double *src, int size, double q, int method);
+double r_quantile_float(const float *src, int size, double q, int method);
+double r_quantile_int64(const int64_t *src, int size, double q, int method);
+double r_quantile_int32(const int32_t *src, int size, double q, int method);
+double r_quantile_uint8(const uint8_t *src, int size, double q, int method);
 
 /* Quantile axis reductions (strided) */
-void s_quantile_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q);
-void s_quantile_float(const float *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q);
-void s_quantile_int64(const int64_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q);
-void s_quantile_int32(const int32_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q);
-void s_quantile_uint8(const uint8_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q);
+void s_quantile_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q, int method);
+void s_quantile_float(const float *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q, int method);
+void s_quantile_int64(const int64_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q, int method);
+void s_quantile_int32(const int32_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q, int method);
+void s_quantile_uint8(const uint8_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q, int method);
 
 /* ============================================================================
  * SECTION 11: INTERPOLATION KERNELS

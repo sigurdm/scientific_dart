@@ -7149,8 +7149,117 @@ cpx_t r_median_complex128(const cpx_t *src, int size) { return stats_median_comp
 cpx_f_t r_median_complex64(const cpx_f_t *src, int size) { return stats_median_complex64(src, 1, size); }
 
 // Quantile helper definitions
+
+typedef struct {
+    int idx_low;
+    int idx_high;
+    double weight;
+} QuantileInterpolationSpecs;
+
+static QuantileInterpolationSpecs get_quantile_specs(int N, double p, int method) {
+    QuantileInterpolationSpecs specs;
+    specs.idx_low = 0;
+    specs.idx_high = 0;
+    specs.weight = 0.0;
+
+    if (N <= 0) return specs;
+
+    if (method < 0 || method > 12) {
+        method = QUANTILE_LINEAR;
+    }
+
+    // Continuous methods (4-9)
+    if (method >= QUANTILE_INTERPOLATED_INVERTED_CDF && method <= QUANTILE_NORMAL_UNBIASED) {
+        double alpha = 0.0, beta = 0.0;
+        double idx;
+        if (method == QUANTILE_LINEAR) {
+            idx = (double)(N - 1) * p;
+        } else {
+            switch (method) {
+                case QUANTILE_INTERPOLATED_INVERTED_CDF: alpha = 0.0; beta = 1.0; break;
+                case QUANTILE_HAZEN:                     alpha = 0.5; beta = 0.5; break;
+                case QUANTILE_WEIBULL:                   alpha = 0.0; beta = 0.0; break;
+                case QUANTILE_MEDIAN_UNBIASED:           alpha = 1.0/3.0; beta = 1.0/3.0; break;
+                case QUANTILE_NORMAL_UNBIASED:           alpha = 3.0/8.0; beta = 3.0/8.0; break;
+                default: break;
+            }
+            idx = (double)N * p + (alpha + p * (1.0 - alpha - beta)) - 1.0;
+        }
+        int j = (int)floor(idx);
+        specs.idx_low = j;
+        specs.idx_high = j + 1;
+        specs.weight = idx - (double)j;
+    }
+    // Discontinuous methods (1-3)
+    else if (method == QUANTILE_INVERTED_CDF) {
+        double idx = p * N - 1.0;
+        double prev = floor(idx);
+        double gamma = idx - prev;
+        int res_idx = (gamma == 0.0) ? (int)prev : (int)prev + 1;
+        specs.idx_low = res_idx;
+        specs.idx_high = res_idx;
+        specs.weight = 0.0;
+    }
+    else if (method == QUANTILE_AVERAGED_INVERTED_CDF) {
+        double idx = p * N - 1.0;
+        int j = (int)floor(idx);
+        double gamma = idx - (double)j;
+        specs.idx_low = j;
+        specs.idx_high = j + 1;
+        specs.weight = (gamma == 0.0) ? 0.5 : 1.0;
+    }
+    else if (method == QUANTILE_CLOSEST_OBSERVATION) {
+        double idx = p * N - 1.5;
+        double prev = floor(idx);
+        double gamma = idx - prev;
+        int prev_int = (int)prev;
+        int is_odd = (prev_int % 2 != 0);
+        int cond = (gamma == 0.0) && is_odd;
+        int res_idx = cond ? prev_int : prev_int + 1;
+        specs.idx_low = res_idx;
+        specs.idx_high = res_idx;
+        specs.weight = 0.0;
+    }
+    // Backward compatibility methods (10-13)
+    else if (method == QUANTILE_LOWER) {
+        double idx = p * (N - 1);
+        int res_idx = (int)floor(idx);
+        specs.idx_low = res_idx;
+        specs.idx_high = res_idx;
+        specs.weight = 0.0;
+    }
+    else if (method == QUANTILE_HIGHER) {
+        double idx = p * (N - 1);
+        int res_idx = (int)ceil(idx);
+        specs.idx_low = res_idx;
+        specs.idx_high = res_idx;
+        specs.weight = 0.0;
+    }
+    else if (method == QUANTILE_MIDPOINT) {
+        double idx = p * (N - 1);
+        specs.idx_low = (int)floor(idx);
+        specs.idx_high = (int)ceil(idx);
+        specs.weight = 0.5;
+    }
+    else if (method == QUANTILE_NEAREST) {
+        double idx = p * (N - 1);
+        int res_idx = (int)rint(idx);
+        specs.idx_low = res_idx;
+        specs.idx_high = res_idx;
+        specs.weight = 0.0;
+    }
+
+    // Clip indices
+    if (specs.idx_low < 0) specs.idx_low = 0;
+    if (specs.idx_low >= N) specs.idx_low = N - 1;
+    if (specs.idx_high < 0) specs.idx_high = 0;
+    if (specs.idx_high >= N) specs.idx_high = N - 1;
+
+    return specs;
+}
+
 #define DEFINE_NUMERIC_QUANTILE(TYPE, NAME_SUFFIX, SORTER, CAST_TYPE) \
-double stats_quantile_##NAME_SUFFIX(const TYPE *base, int _stride, int len, double q) { \
+double stats_quantile_##NAME_SUFFIX(const TYPE *base, int _stride, int len, double q, int method) { \
     if (len <= 0) return 0.0; \
     if (q < 0.0) q = 0.0; \
     if (q > 1.0) q = 1.0; \
@@ -7160,12 +7269,8 @@ double stats_quantile_##NAME_SUFFIX(const TYPE *base, int _stride, int len, doub
         buf[i] = *(base + i * _stride); \
     } \
     SORTER((CAST_TYPE)buf, len, 0); \
-    double idx_d = (double)(len - 1) * q; \
-    int idx_low = (int)idx_d; \
-    int idx_high = idx_low + 1; \
-    if (idx_high >= len) idx_high = len - 1; \
-    double weight = idx_d - idx_low; \
-    double res = (double)buf[idx_low] + weight * ((double)buf[idx_high] - (double)buf[idx_low]); \
+    QuantileInterpolationSpecs specs = get_quantile_specs(len, q, method); \
+    double res = (1.0 - specs.weight) * (double)buf[specs.idx_low] + specs.weight * (double)buf[specs.idx_high]; \
     free(buf); \
     return res; \
 }
@@ -7177,18 +7282,18 @@ DEFINE_NUMERIC_QUANTILE(int32_t, int32, native_sort_int32, int*)
 DEFINE_NUMERIC_QUANTILE(uint8_t, uint8, insertion_sort_uint8, uint8_t*)
 
 // Global reductions for quantile (contiguous)
-double r_quantile_double(const double *src, int size, double q) { return stats_quantile_double(src, 1, size, q); }
-double r_quantile_float(const float *src, int size, double q) { return stats_quantile_float(src, 1, size, q); }
-double r_quantile_int64(const int64_t *src, int size, double q) { return stats_quantile_int64(src, 1, size, q); }
-double r_quantile_int32(const int32_t *src, int size, double q) { return stats_quantile_int32(src, 1, size, q); }
-double r_quantile_uint8(const uint8_t *src, int size, double q) { return stats_quantile_uint8(src, 1, size, q); }
+double r_quantile_double(const double *src, int size, double q, int method) { return stats_quantile_double(src, 1, size, q, method); }
+double r_quantile_float(const float *src, int size, double q, int method) { return stats_quantile_float(src, 1, size, q, method); }
+double r_quantile_int64(const int64_t *src, int size, double q, int method) { return stats_quantile_int64(src, 1, size, q, method); }
+double r_quantile_int32(const int32_t *src, int size, double q, int method) { return stats_quantile_int32(src, 1, size, q, method); }
+double r_quantile_uint8(const uint8_t *src, int size, double q, int method) { return stats_quantile_uint8(src, 1, size, q, method); }
 
 // Helper macro for quantile reduction.
 // Allocates tmp_buf once per reduction call.
 #define IMPLEMENT_QUANTILE_REDUCTION(NAME, TYPE, SORT_FUNC, CAST_TYPE) \
 void NAME(const TYPE *src, const int *stridesSrc, \
           double *dest, const int *stridesDest, \
-          const int *shape, int rank, int axis, double q) { \
+          const int *shape, int rank, int axis, double q, int method) { \
     if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return; \
     int size_axis = shape[axis]; \
     if (size_axis <= 0) return; \
@@ -7200,11 +7305,7 @@ void NAME(const TYPE *src, const int *stridesSrc, \
     for (int d = 0; d < rank; d++) { \
         if (d != axis) outer_size *= shape[d]; \
     } \
-    double idx_d = (size_axis - 1) * q; \
-    int idx_low = (int)idx_d; \
-    int idx_high = idx_low + 1; \
-    if (idx_high >= size_axis) idx_high = size_axis - 1; \
-    double weight = idx_d - idx_low; \
+    QuantileInterpolationSpecs specs = get_quantile_specs(size_axis, q, method); \
     for (int o = 0; o < outer_size; o++) { \
         int offsetRes = 0; \
         int offsetSrc = 0; \
@@ -7222,7 +7323,7 @@ void NAME(const TYPE *src, const int *stridesSrc, \
             tmp_buf[i] = src[offsetSrc + i * stride_axis]; \
         } \
         SORT_FUNC((CAST_TYPE)tmp_buf, size_axis, 0); \
-        double val = (double)tmp_buf[idx_low] + weight * ((double)tmp_buf[idx_high] - (double)tmp_buf[idx_low]); \
+        double val = (1.0 - specs.weight) * (double)tmp_buf[specs.idx_low] + specs.weight * (double)tmp_buf[specs.idx_high]; \
         dest[offsetRes] = val; \
         for (int d = rank - 1; d >= 0; d--) { \
             if (d == axis) continue; \
