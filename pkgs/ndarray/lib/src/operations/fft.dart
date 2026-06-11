@@ -52,11 +52,11 @@ kiss_fft_cfg _allocateKissFFTPlan(int nfft, int inverse_fft) {
 /// {@example /example/fft_example.dart lang=dart}
 ///
 /// Reference: [Cooley-Tukey FFT Algorithm](https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm)
-NDArray<Complex> fft<T>(
+NDArray<R> fft<T, R extends Complex>(
   NDArray<T> a, {
   int? n,
   int axis = -1,
-  NDArray<Complex>? out,
+  NDArray<R>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute fft() on a disposed array.');
@@ -110,7 +110,7 @@ NDArray<Complex> fft<T>(
 
     final transposedInput = a.transpose(axes);
     if (out != null) {
-      final transposedResult = fft<T>(transposedInput, n: n);
+      final transposedResult = fft<T, R>(transposedInput, n: n);
       final finalResult = transposedResult.transpose(axes);
       finalResult.copy(out: out);
       transposedResult.dispose();
@@ -118,7 +118,7 @@ NDArray<Complex> fft<T>(
       transposedInput.dispose();
       return out;
     } else {
-      final transposedResult = fft<T>(transposedInput, n: n);
+      final transposedResult = fft<T, R>(transposedInput, n: n);
       final finalResult = transposedResult.transpose(axes);
       transposedInput.dispose();
       return finalResult;
@@ -135,7 +135,7 @@ NDArray<Complex> fft<T>(
     wasCopied = false;
   }
 
-  final result = out ?? NDArray<Complex>.zeros(outShape, targetDType);
+  final result = out ?? NDArray<R>.zeros(outShape, targetDType as DType<R>);
 
   // Count how many 1D row sub-signals exist to execute strided walks
   final totalElements = inputA.shape.reduce((x, y) => x * y);
@@ -255,11 +255,11 @@ NDArray<Complex> fft<T>(
 ///
 /// **Example:**
 /// {@example /example/fft_example.dart lang=dart}
-NDArray<Complex> ifft<T>(
+NDArray<R> ifft<T, R extends Complex>(
   NDArray<T> a, {
   int? n,
   int axis = -1,
-  NDArray<Complex>? out,
+  NDArray<R>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute ifft() on a disposed array.');
@@ -313,7 +313,7 @@ NDArray<Complex> ifft<T>(
 
     final transposedInput = a.transpose(axes);
     if (out != null) {
-      final transposedResult = ifft<T>(transposedInput, n: n);
+      final transposedResult = ifft<T, R>(transposedInput, n: n);
       final finalResult = transposedResult.transpose(axes);
       finalResult.copy(out: out);
       transposedResult.dispose();
@@ -321,7 +321,7 @@ NDArray<Complex> ifft<T>(
       transposedInput.dispose();
       return out;
     } else {
-      final transposedResult = ifft<T>(transposedInput, n: n);
+      final transposedResult = ifft<T, R>(transposedInput, n: n);
       final finalResult = transposedResult.transpose(axes);
       transposedInput.dispose();
       return finalResult;
@@ -338,7 +338,7 @@ NDArray<Complex> ifft<T>(
     wasCopied = false;
   }
 
-  final result = out ?? NDArray<Complex>.zeros(outShape, targetDType);
+  final result = out ?? NDArray<R>.zeros(outShape, targetDType as DType<R>);
 
   final totalElements = inputA.shape.reduce((x, y) => x * y);
   final signalsCount = totalElements ~/ lastAxisDim;

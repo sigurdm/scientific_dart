@@ -21,14 +21,22 @@ extension type const Int32(int value) implements int {}
 extension type const Uint8(int value) implements int {}
 extension type const Int16(int value) implements int {}
 
+extension type const Complex64._(Complex value) implements Complex {
+  Complex64(double real, double imag) : this._(Complex(real, imag));
+}
+
+extension type const Complex128._(Complex value) implements Complex {
+  Complex128(double real, double imag) : this._(Complex(real, imag));
+}
+
 /// Supported data types for the elements of an [NDArray].
 enum DType<T> {
   float32<Float32>('float32', 4, '<f4'),
   float64<Float64>('float64', 8, '<f8'),
   // 64 bits total: 32-bit float real + 32-bit float imaginary parts (8 bytes)
-  complex64<Complex>('complex64', 8, '<c8'),
+  complex64<Complex64>('complex64', 8, '<c8'),
   // 128 bits total: 64-bit double real + 64-bit double imaginary parts (16 bytes)
-  complex128<Complex>('complex128', 16, '<c16'),
+  complex128<Complex128>('complex128', 16, '<c16'),
   uint8<Uint8>('uint8', 1, '|u1'),
   int16<Int16>('int16', 2, '<i2'),
   int32<Int32>('int32', 4, '<i4'),
@@ -409,12 +417,12 @@ final class NDArray<T> implements ffi.Finalizable {
         final p = allocator<ffi.Double>(totalSize * 2);
         pointer = p.cast();
         final doubleList = p.asTypedList(totalSize * 2);
-        data = ComplexList(doubleList) as List<T>;
+        data = ComplexList<Complex128>(doubleList) as List<T>;
       case DType.complex64:
         final p = allocator<ffi.Float>(totalSize * 2);
         pointer = p.cast();
         final floatList = p.asTypedList(totalSize * 2);
-        data = ComplexList(floatList) as List<T>;
+        data = ComplexList<Complex64>(floatList) as List<T>;
       case DType.boolean:
         final p = allocator<ffi.Uint8>(totalSize);
         pointer = p.cast();
@@ -657,7 +665,7 @@ final class NDArray<T> implements ffi.Finalizable {
           DType.float64,
         );
         final doubleList = p.cast<ffi.Double>().asTypedList(viewSize * 2);
-        data = ComplexList(doubleList) as List<T>;
+        data = ComplexList<Complex128>(doubleList) as List<T>;
       case DType.complex64:
         final p = _offsetPointer(
           root._pointer,
@@ -665,7 +673,7 @@ final class NDArray<T> implements ffi.Finalizable {
           DType.float32,
         );
         final floatList = p.cast<ffi.Float>().asTypedList(viewSize * 2);
-        data = ComplexList(floatList) as List<T>;
+        data = ComplexList<Complex64>(floatList) as List<T>;
       case DType.boolean:
         data =
             BoolList(physicalPointer.cast<ffi.Uint8>().asTypedList(viewSize))
@@ -738,11 +746,15 @@ final class NDArray<T> implements ffi.Finalizable {
         data = pointer.cast<ffi.Int16>().asTypedList(totalSize) as List<T>;
       case DType.complex128:
         data =
-            ComplexList(pointer.cast<ffi.Double>().asTypedList(totalSize * 2))
+            ComplexList<Complex128>(
+                  pointer.cast<ffi.Double>().asTypedList(totalSize * 2),
+                )
                 as List<T>;
       case DType.complex64:
         data =
-            ComplexList(pointer.cast<ffi.Float>().asTypedList(totalSize * 2))
+            ComplexList<Complex64>(
+                  pointer.cast<ffi.Float>().asTypedList(totalSize * 2),
+                )
                 as List<T>;
       case DType.boolean:
         data =
@@ -3164,7 +3176,7 @@ final class Complex {
 }
 
 /// A list view of complex numbers backed by a flat list of doubles.
-final class ComplexList extends ListBase<Complex> {
+final class ComplexList<T extends Complex> extends ListBase<T> {
   final List<double> _list;
   ComplexList(this._list);
 
@@ -3180,12 +3192,12 @@ final class ComplexList extends ListBase<Complex> {
   }
 
   @override
-  Complex operator [](int index) {
-    return Complex(_list[index * 2], _list[index * 2 + 1]);
+  T operator [](int index) {
+    return Complex(_list[index * 2], _list[index * 2 + 1]) as T;
   }
 
   @override
-  void operator []=(int index, Complex value) {
+  void operator []=(int index, T value) {
     _list[index * 2] = value.real;
     _list[index * 2 + 1] = value.imag;
   }

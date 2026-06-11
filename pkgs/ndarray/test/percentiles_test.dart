@@ -98,30 +98,30 @@ void main() {
 
       test('Median complex128 (independent real/imag)', () {
         NDArray.scope(() {
-          final a = NDArray<Complex>.create([3], DType.complex128);
-          a.data[0] = Complex(3.0, 1.0);
-          a.data[1] = Complex(1.0, 9.0);
-          a.data[2] = Complex(2.0, 5.0);
+          final a = NDArray.create([3], DType.complex128);
+          a.data[0] = Complex128(3.0, 1.0);
+          a.data[1] = Complex128(1.0, 9.0);
+          a.data[2] = Complex128(2.0, 5.0);
           // Reals: 3, 1, 2 -> median is 2
           // Imags: 1, 9, 5 -> median is 5
           final m = median(a);
           expect(m.dtype, DType.complex128);
-          expect(m.data[0], Complex(2.0, 5.0));
+          expect(m.scalar, Complex128(2.0, 5.0));
         });
       });
 
       test('Median complex64 (independent real/imag)', () {
         NDArray.scope(() {
-          final a = NDArray<Complex>.create([4], DType.complex64);
-          a.data[0] = Complex(1.0, 4.0);
-          a.data[1] = Complex(3.0, 1.0);
-          a.data[2] = Complex(2.0, 2.0);
-          a.data[3] = Complex(4.0, 3.0);
+          final a = NDArray.create([4], DType.complex64);
+          a.data[0] = Complex64(1.0, 4.0);
+          a.data[1] = Complex64(3.0, 1.0);
+          a.data[2] = Complex64(2.0, 2.0);
+          a.data[3] = Complex64(4.0, 3.0);
           // Reals: 1, 2, 3, 4 -> median: (2+3)/2 = 2.5
           // Imags: 1, 2, 3, 4 -> median: (2+3)/2 = 2.5
           final m = median(a);
           expect(m.dtype, DType.complex64);
-          expect(m.data[0], Complex(2.5, 2.5));
+          expect(m.scalar, Complex64(2.5, 2.5));
         });
       });
 
