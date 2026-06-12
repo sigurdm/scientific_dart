@@ -239,10 +239,10 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
           a.data as List<bool>,
           a.shape,
           a.strides,
-          NDArray.computeCStrides(a.shape),
+          result.strides,
           0,
-          0,
-          0,
+          a.offsetElements,
+          result.offsetElements,
           (x) => x,
         );
         return result;
@@ -253,10 +253,10 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
           a.data as List<num>,
           a.shape,
           a.strides,
-          NDArray.computeCStrides(a.shape),
+          result.strides,
           0,
-          0,
-          0,
+          a.offsetElements,
+          result.offsetElements,
           (x) => x * x,
         );
         return result;
@@ -381,18 +381,16 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   }
 
-  final resultStrides = NDArray.computeCStrides(a.shape);
-
   if (a.dtype.isInteger) {
     unaryOp<num, double>(
       result.data as List<double>,
       a.data as List<num>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => math.sin(x),
     );
   } else {
@@ -401,10 +399,10 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
       a.data as List<double>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => math.sin(x.toDouble()),
     );
   }
@@ -531,18 +529,16 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   }
 
-  final resultStrides = NDArray.computeCStrides(a.shape);
-
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
     unaryOp<int, double>(
       result.data as List<double>,
       a.data as List<int>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => math.cos(x.toDouble()),
     );
   } else {
@@ -551,10 +547,10 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
       a.data as List<double>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => math.cos(x.toDouble()),
     );
   }
@@ -988,18 +984,16 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   }
 
-  final resultStrides = NDArray.computeCStrides(a.shape);
-
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
     unaryOp<int, double>(
       result.data as List<double>,
       a.data as List<int>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => math.tan(x.toDouble()),
     );
   } else {
@@ -1008,10 +1002,10 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
       a.data as List<double>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => math.tan(x.toDouble()),
     );
   }
@@ -1133,18 +1127,16 @@ NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   }
 
-  final resultStrides = NDArray.computeCStrides(a.shape);
-
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
     unaryOp<int, double>(
       result.data as List<double>,
       a.data as List<int>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => math.asin(x.toDouble()),
     );
   } else {
@@ -1153,10 +1145,10 @@ NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
       a.data as List<double>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => math.asin(x),
     );
   }
@@ -1278,18 +1270,16 @@ NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   }
 
-  final resultStrides = NDArray.computeCStrides(a.shape);
-
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
     unaryOp<int, double>(
       result.data as List<double>,
       a.data as List<int>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => math.acos(x.toDouble()),
     );
   } else {
@@ -1298,10 +1288,10 @@ NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
       a.data as List<double>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => math.acos(x),
     );
   }
@@ -1423,18 +1413,16 @@ NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
   }
 
-  final resultStrides = NDArray.computeCStrides(a.shape);
-
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
     unaryOp<int, double>(
       result.data as List<double>,
       a.data as List<int>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => math.atan(x.toDouble()),
     );
   } else {
@@ -1443,10 +1431,10 @@ NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
       a.data as List<double>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => math.atan(x),
     );
   }
@@ -2099,8 +2087,6 @@ NDArray<double> atan2<Ty, Tx>(
         break;
     }
   }
-
-  final resultStrides = NDArray.computeCStrides(shape);
   final stridesY = broadcastResult.stridesA;
   final stridesX = broadcastResult.stridesB;
 
@@ -2110,7 +2096,7 @@ NDArray<double> atan2<Ty, Tx>(
     final cShape = ScratchArena.copyInts(shape);
     final cStridesY = ScratchArena.copyInts(stridesY);
     final cStridesX = ScratchArena.copyInts(stridesX);
-    final cStridesRes = ScratchArena.copyInts(resultStrides);
+    final cStridesRes = ScratchArena.copyInts(result.strides);
     try {
       switch ((targetDType, y.dtype, x.dtype)) {
         case (DType.float64, DType.float64, DType.float64):
@@ -2157,11 +2143,11 @@ NDArray<double> atan2<Ty, Tx>(
         shape,
         broadcastResult.stridesA,
         broadcastResult.stridesB,
-        resultStrides,
+        result.strides,
         0,
-        0,
-        0,
-        0,
+        y.offsetElements,
+        x.offsetElements,
+        result.offsetElements,
         (a, b) => math.atan2(a, b),
       );
     } else {
@@ -2172,11 +2158,11 @@ NDArray<double> atan2<Ty, Tx>(
         shape,
         broadcastResult.stridesA,
         broadcastResult.stridesB,
-        resultStrides,
+        result.strides,
         0,
-        0,
-        0,
-        0,
+        y.offsetElements,
+        x.offsetElements,
+        result.offsetElements,
         (a, b) => math.atan2(a, b.toDouble()),
       );
     }
@@ -2190,11 +2176,11 @@ NDArray<double> atan2<Ty, Tx>(
         shape,
         broadcastResult.stridesA,
         broadcastResult.stridesB,
-        resultStrides,
+        result.strides,
         0,
-        0,
-        0,
-        0,
+        y.offsetElements,
+        x.offsetElements,
+        result.offsetElements,
         (a, b) => math.atan2(a.toDouble(), b),
       );
     } else {
@@ -2205,11 +2191,11 @@ NDArray<double> atan2<Ty, Tx>(
         shape,
         broadcastResult.stridesA,
         broadcastResult.stridesB,
-        resultStrides,
+        result.strides,
         0,
-        0,
-        0,
-        0,
+        y.offsetElements,
+        x.offsetElements,
+        result.offsetElements,
         (a, b) => math.atan2(a.toDouble(), b.toDouble()),
       );
     }
@@ -2223,22 +2209,18 @@ NDArray<double> atan2<Ty, Tx>(
 /// ```dart
 /// final h = hypot(a, b);
 /// ```
-NDArray<R> hypot<T extends Object, R extends num>(
-  NDArray<T> x1,
-  NDArray<T> x2, {
-  NDArray<R>? out,
-}) {
+NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
   if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute hypot() on a disposed array.');
   }
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
-  final DType<R> targetDType =
+  final DType<double> targetDType =
       (x1.dtype == DType.complex64 || x2.dtype == DType.complex64)
-      ? DType.float32 as DType<R>
-      : DType.float64 as DType<R>;
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
 
-  final NDArray<R> result;
+  final NDArray<double> result;
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -2247,9 +2229,8 @@ NDArray<R> hypot<T extends Object, R extends num>(
     }
     result = out;
   } else {
-    result = NDArray<R>.create(shape, targetDType);
+    result = NDArray<double>.create(shape, targetDType);
   }
-  final resultStrides = NDArray.computeCStrides(shape);
 
   if (x1.dtype == DType.complex128 ||
       x2.dtype == DType.complex128 ||
@@ -2296,7 +2277,7 @@ NDArray<R> hypot<T extends Object, R extends num>(
       final cShape = ScratchArena.copyInts(shape);
       final cStridesA = ScratchArena.copyInts(broadcastResult.stridesA);
       final cStridesB = ScratchArena.copyInts(broadcastResult.stridesB);
-      final cStridesRes = ScratchArena.copyInts(resultStrides);
+      final cStridesRes = ScratchArena.copyInts(result.strides);
       try {
         if (aCpx.dtype == DType.complex128) {
           s_hypot_complex128(
@@ -2344,19 +2325,19 @@ NDArray<R> hypot<T extends Object, R extends num>(
     return x * math.sqrt(1.0 + t * t);
   }
 
-  elementWiseOp<num, num, R>(
+  elementWiseOp<num, num, double>(
     rData,
     x1.data as List<num>,
     x2.data as List<num>,
     shape,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    resultStrides,
+    result.strides,
     0,
-    0,
-    0,
-    0,
-    (valA, valB) => hypotOp(valA.toDouble(), valB.toDouble()) as R,
+    x1.offsetElements,
+    x2.offsetElements,
+    result.offsetElements,
+    (valA, valB) => hypotOp(valA.toDouble(), valB.toDouble()),
   );
 
   return result;
@@ -2368,19 +2349,27 @@ NDArray<R> hypot<T extends Object, R extends num>(
 /// ```dart
 /// final p = power(a, b);
 /// ```
-NDArray<T> power<T extends Object>(
-  NDArray<T> x1,
-  NDArray<T> x2, {
-  NDArray<T>? out,
-}) {
+NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
   if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute power() on a disposed array.');
   }
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
-  final DType<T> targetDType = x1.dtype; // Enforce same type T
+  final DType<dynamic> targetDType;
+  if (x1.dtype == DType.complex128 ||
+      x2.dtype == DType.complex128 ||
+      x1.dtype == DType.complex64 ||
+      x2.dtype == DType.complex64) {
+    targetDType = (x1.dtype == DType.complex64 || x2.dtype == DType.complex64)
+        ? DType.complex64
+        : DType.complex128;
+  } else {
+    targetDType = (x1.dtype == DType.float32 || x2.dtype == DType.float32)
+        ? DType.float32
+        : DType.float64;
+  }
 
-  final NDArray<T> result;
+  final NDArray result;
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -2389,9 +2378,8 @@ NDArray<T> power<T extends Object>(
     }
     result = out;
   } else {
-    result = NDArray<T>.create(shape, targetDType);
+    result = NDArray.create(shape, targetDType);
   }
-  final resultStrides = NDArray.computeCStrides(shape);
 
   if (targetDType == DType.complex128 || targetDType == DType.complex64) {
     final aCpx = (x1.dtype == DType.complex128 || x1.dtype == DType.complex64)
@@ -2435,7 +2423,7 @@ NDArray<T> power<T extends Object>(
       final cShape = ScratchArena.copyInts(shape);
       final cStridesA = ScratchArena.copyInts(broadcastResult.stridesA);
       final cStridesB = ScratchArena.copyInts(broadcastResult.stridesB);
-      final cStridesRes = ScratchArena.copyInts(resultStrides);
+      final cStridesRes = ScratchArena.copyInts(result.strides);
       try {
         if (aCpx.dtype == DType.complex128) {
           s_pow_complex128(
@@ -2504,7 +2492,7 @@ NDArray<T> power<T extends Object>(
       cShape[i] = shape[i];
       cStridesA[i] = broadcastResult.stridesA[i];
       cStridesB[i] = broadcastResult.stridesB[i];
-      cStridesRes[i] = resultStrides[i];
+      cStridesRes[i] = result.strides[i];
     }
     if (targetDType == DType.float64 &&
         x1.dtype == DType.float64 &&
@@ -2537,22 +2525,19 @@ NDArray<T> power<T extends Object>(
     }
   }
 
-  elementWiseOp<num, num, T>(
-    result.data,
+  elementWiseOp<num, num, double>(
+    result.data as List<double>,
     x1.data as List<num>,
     x2.data as List<num>,
     shape,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    resultStrides,
+    result.strides,
     0,
-    0,
-    0,
-    0,
-    (valA, valB) {
-      final res = math.pow(valA.toDouble(), valB.toDouble());
-      return (T == int ? res.toInt() : res.toDouble()) as T;
-    },
+    x1.offsetElements,
+    x2.offsetElements,
+    result.offsetElements,
+    (valA, valB) => math.pow(valA.toDouble(), valB.toDouble()).toDouble(),
   );
 
   return result;
@@ -2579,7 +2564,6 @@ NDArray<T> negative<T>(NDArray<T> a, {NDArray<T>? out}) {
   } else {
     result = NDArray<T>.create(a.shape, a.dtype);
   }
-  final resultStrides = NDArray.computeCStrides(a.shape);
 
   switch (a.dtype) {
     case DType.complex128:
@@ -2589,10 +2573,10 @@ NDArray<T> negative<T>(NDArray<T> a, {NDArray<T>? out}) {
         a.data as List<Complex>,
         a.shape,
         a.strides,
-        resultStrides,
+        result.strides,
         0,
-        0,
-        0,
+        a.offsetElements,
+        result.offsetElements,
         (x) => -x,
       );
     case DType.float64:
@@ -2602,10 +2586,10 @@ NDArray<T> negative<T>(NDArray<T> a, {NDArray<T>? out}) {
         a.data as List<double>,
         a.shape,
         a.strides,
-        resultStrides,
+        result.strides,
         0,
-        0,
-        0,
+        a.offsetElements,
+        result.offsetElements,
         (x) => -x,
       );
     case DType.int64:
@@ -2617,10 +2601,10 @@ NDArray<T> negative<T>(NDArray<T> a, {NDArray<T>? out}) {
         a.data as List<num>,
         a.shape,
         a.strides,
-        resultStrides,
+        result.strides,
         0,
-        0,
-        0,
+        a.offsetElements,
+        result.offsetElements,
         (x) => (-x).toInt(),
       );
     case DType.boolean:
@@ -2642,11 +2626,7 @@ NDArray<T> negative<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// ```dart
 /// final c = floor_divide(a, b);
 /// ```
-NDArray<T> floor_divide<T extends num>(
-  NDArray<T> a,
-  NDArray<T> b, {
-  NDArray<T>? out,
-}) {
+NDArray floor_divide(NDArray a, NDArray b, {NDArray? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute floor_divide() on a disposed array.');
   }
@@ -2655,12 +2635,12 @@ NDArray<T> floor_divide<T extends num>(
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final DType<T> targetDType = resolveDType(a.dtype, b.dtype) as DType<T>;
+  final DType<dynamic> targetDType = resolveDType(a.dtype, b.dtype);
   if (targetDType.isComplex) {
     throw UnsupportedError('Complex numbers do not support floor division');
   }
 
-  final NDArray<T> result;
+  final NDArray result;
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -2669,9 +2649,8 @@ NDArray<T> floor_divide<T extends num>(
     }
     result = out;
   } else {
-    result = NDArray<T>.create(commonShape, targetDType);
+    result = NDArray.create(commonShape, targetDType);
   }
-  final resultStrides = NDArray.computeCStrides(commonShape);
 
   if (a.isContiguous &&
       b.isContiguous &&
@@ -2740,7 +2719,7 @@ NDArray<T> floor_divide<T extends num>(
       cShape[i] = commonShape[i];
       cStridesA[i] = stridesA[i];
       cStridesB[i] = stridesB[i];
-      cStridesRes[i] = resultStrides[i];
+      cStridesRes[i] = result.strides[i];
     }
     switch (targetDType) {
       case DType.float64:
@@ -2830,34 +2809,34 @@ NDArray<T> floor_divide<T extends num>(
   }
 
   if (targetDType == DType.float64 || targetDType == DType.float32) {
-    elementWiseOp<num, num, T>(
-      result.data,
+    elementWiseOp<num, num, double>(
+      result.data as List<double>,
       a.data as List<num>,
       b.data as List<num>,
       commonShape,
       stridesA,
       stridesB,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
-      0,
-      (x, y) => doubleFloorDiv(x.toDouble(), y.toDouble()) as T,
+      a.offsetElements,
+      b.offsetElements,
+      result.offsetElements,
+      (x, y) => doubleFloorDiv(x.toDouble(), y.toDouble()),
     );
   } else {
-    elementWiseOp<int, int, T>(
-      result.data,
+    elementWiseOp<int, int, int>(
+      result.data as List<int>,
       a.data as List<int>,
       b.data as List<int>,
       commonShape,
       stridesA,
       stridesB,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
-      0,
-      (x, y) => intFloorDiv(x, y) as T,
+      a.offsetElements,
+      b.offsetElements,
+      result.offsetElements,
+      (x, y) => intFloorDiv(x, y),
     );
   }
   return result;
@@ -2876,11 +2855,7 @@ NDArray<T> floor_divide<T extends num>(
 /// ```dart
 /// final c = remainder(a, b);
 /// ```
-NDArray<T> remainder<T extends num>(
-  NDArray<T> a,
-  NDArray<T> b, {
-  NDArray<T>? out,
-}) {
+NDArray remainder(NDArray a, NDArray b, {NDArray? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute remainder() on a disposed array.');
   }
@@ -2889,12 +2864,12 @@ NDArray<T> remainder<T extends num>(
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final DType<T> targetDType = resolveDType(a.dtype, b.dtype) as DType<T>;
+  final DType<dynamic> targetDType = resolveDType(a.dtype, b.dtype);
   if (targetDType.isComplex) {
     throw UnsupportedError('Complex numbers do not support remainder');
   }
 
-  final NDArray<T> result;
+  final NDArray result;
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -2903,9 +2878,8 @@ NDArray<T> remainder<T extends num>(
     }
     result = out;
   } else {
-    result = NDArray<T>.create(commonShape, targetDType);
+    result = NDArray.create(commonShape, targetDType);
   }
-  final resultStrides = NDArray.computeCStrides(commonShape);
 
   if (a.isContiguous &&
       b.isContiguous &&
@@ -2974,7 +2948,7 @@ NDArray<T> remainder<T extends num>(
       cShape[i] = commonShape[i];
       cStridesA[i] = stridesA[i];
       cStridesB[i] = stridesB[i];
-      cStridesRes[i] = resultStrides[i];
+      cStridesRes[i] = result.strides[i];
     }
     switch (targetDType) {
       case DType.float64:
@@ -3067,42 +3041,41 @@ NDArray<T> remainder<T extends num>(
   }
 
   if (targetDType == DType.float64 || targetDType == DType.float32) {
-    elementWiseOp<num, num, T>(
-      result.data,
+    elementWiseOp<num, num, double>(
+      result.data as List<double>,
       a.data as List<num>,
       b.data as List<num>,
       commonShape,
       stridesA,
       stridesB,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
-      0,
-      (x, y) => doubleMod(x.toDouble(), y.toDouble()) as T,
+      a.offsetElements,
+      b.offsetElements,
+      result.offsetElements,
+      (x, y) => doubleMod(x.toDouble(), y.toDouble()),
     );
   } else {
-    elementWiseOp<int, int, T>(
-      result.data,
+    elementWiseOp<int, int, int>(
+      result.data as List<int>,
       a.data as List<int>,
       b.data as List<int>,
       commonShape,
       stridesA,
       stridesB,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
-      0,
-      (x, y) => intMod(x, y) as T,
+      a.offsetElements,
+      b.offsetElements,
+      result.offsetElements,
+      (x, y) => intMod(x, y),
     );
   }
   return result;
 }
 
 /// Alias for [remainder].
-NDArray<T> mod<T extends num>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) =>
-    remainder(a, b, out: out);
+NDArray mod(NDArray a, NDArray b, {NDArray? out}) => remainder(a, b, out: out);
 
 /// Return element-wise quotient and remainder simultaneously.
 ///
@@ -3114,7 +3087,7 @@ NDArray<T> mod<T extends num>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) =>
 /// final q = res.$1;
 /// final r = res.$2;
 /// ```
-(NDArray<T>, NDArray<T>) divmod<T extends num>(NDArray<T> a, NDArray<T> b) {
+(NDArray, NDArray) divmod(NDArray a, NDArray b) {
   return (floor_divide(a, b), remainder(a, b));
 }
 
@@ -3145,7 +3118,16 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray<R>.create(a.shape, targetDType as DType<R>);
   }
-  final resultStrides = NDArray.computeCStrides(a.shape);
+
+  if (a.isContiguous && result.isContiguous) {
+    if (a.dtype == DType.float64) {
+      v_abs_double(a.pointer.cast(), result.pointer.cast(), a.size);
+      return result;
+    } else if (a.dtype == DType.float32) {
+      v_abs_float(a.pointer.cast(), result.pointer.cast(), a.size);
+      return result;
+    }
+  }
 
   switch (a.dtype) {
     case DType.complex128:
@@ -3155,10 +3137,10 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         a.data as List<Complex>,
         a.shape,
         a.strides,
-        resultStrides,
+        result.strides,
         0,
-        0,
-        0,
+        a.offsetElements,
+        result.offsetElements,
         (c) => math.sqrt(c.real * c.real + c.imag * c.imag),
       );
     case DType.int64:
@@ -3170,10 +3152,10 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         a.data as List<num>,
         a.shape,
         a.strides,
-        resultStrides,
+        result.strides,
         0,
-        0,
-        0,
+        a.offsetElements,
+        result.offsetElements,
         (x) => x.abs().toInt(),
       );
     case DType.float64:
@@ -3183,10 +3165,10 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         a.data as List<double>,
         a.shape,
         a.strides,
-        resultStrides,
+        result.strides,
         0,
-        0,
-        0,
+        a.offsetElements,
+        result.offsetElements,
         (x) => x.abs(),
       );
     default:
@@ -3209,11 +3191,11 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// ```dart
 /// final s = sign(a);
 /// ```
-NDArray<T> sign<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray sign(NDArray a, {NDArray? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute sign() on a disposed array.');
   }
-  final NDArray<T> result;
+  final NDArray result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -3222,9 +3204,8 @@ NDArray<T> sign<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
     }
     result = out;
   } else {
-    result = NDArray<T>.create(a.shape, a.dtype);
+    result = NDArray.create(a.shape, a.dtype);
   }
-  final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     unaryOp<Complex, Complex>(
@@ -3232,10 +3213,10 @@ NDArray<T> sign<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
       a.data as List<Complex>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (c) {
         if (c.real == 0 && c.imag == 0) return Complex(0, 0);
         final mag = math.sqrt(c.real * c.real + c.imag * c.imag);
@@ -3251,10 +3232,10 @@ NDArray<T> sign<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
       a.data as List<int>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x.sign,
     );
   } else {
@@ -3263,10 +3244,10 @@ NDArray<T> sign<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
       a.data as List<double>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x.sign,
     );
   }
@@ -3277,14 +3258,14 @@ NDArray<T> sign<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray<T> ceil<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray ceil(NDArray a, {NDArray? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute ceil() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for ceil');
   }
-  final NDArray<T> result;
+  final NDArray result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -3293,7 +3274,7 @@ NDArray<T> ceil<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
     }
     result = out;
   } else {
-    result = NDArray<T>.create(a.shape, a.dtype);
+    result = NDArray.create(a.shape, a.dtype);
   }
 
   if (a.isContiguous && result.isContiguous) {
@@ -3305,7 +3286,6 @@ NDArray<T> ceil<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
       return result;
     }
   }
-  final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
     unaryOp<int, int>(
@@ -3313,10 +3293,10 @@ NDArray<T> ceil<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
       a.data as List<int>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x,
     );
   } else {
@@ -3325,10 +3305,10 @@ NDArray<T> ceil<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
       a.data as List<double>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x.ceilToDouble(),
     );
   }
@@ -3339,14 +3319,14 @@ NDArray<T> ceil<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray<T> floor<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray floor(NDArray a, {NDArray? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute floor() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for floor');
   }
-  final NDArray<T> result;
+  final NDArray result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -3355,7 +3335,7 @@ NDArray<T> floor<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
     }
     result = out;
   } else {
-    result = NDArray<T>.create(a.shape, a.dtype);
+    result = NDArray.create(a.shape, a.dtype);
   }
 
   if (a.isContiguous && result.isContiguous) {
@@ -3367,7 +3347,6 @@ NDArray<T> floor<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
       return result;
     }
   }
-  final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
     unaryOp<int, int>(
@@ -3375,10 +3354,10 @@ NDArray<T> floor<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
       a.data as List<int>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x,
     );
   } else {
@@ -3387,10 +3366,10 @@ NDArray<T> floor<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
       a.data as List<double>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x.floorToDouble(),
     );
   }
@@ -3401,14 +3380,14 @@ NDArray<T> floor<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray<T> round<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray round(NDArray a, {NDArray? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute round() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for round');
   }
-  final NDArray<T> result;
+  final NDArray result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -3417,7 +3396,7 @@ NDArray<T> round<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
     }
     result = out;
   } else {
-    result = NDArray<T>.create(a.shape, a.dtype);
+    result = NDArray.create(a.shape, a.dtype);
   }
 
   if (a.isContiguous && result.isContiguous) {
@@ -3429,7 +3408,6 @@ NDArray<T> round<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
       return result;
     }
   }
-  final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
     unaryOp<int, int>(
@@ -3437,10 +3415,10 @@ NDArray<T> round<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
       a.data as List<int>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x,
     );
   } else {
@@ -3449,10 +3427,10 @@ NDArray<T> round<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
       a.data as List<double>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x.roundToDouble(),
     );
   }
@@ -3567,16 +3545,15 @@ NDArray<R> real<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   }
 
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    final resultStrides = NDArray.computeCStrides(a.shape);
     unaryOp<Complex, R>(
       result.data,
       a.data as List<Complex>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x.real as R,
     );
     return result;
@@ -3636,17 +3613,15 @@ NDArray<R> imag<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
     return NDArray.zeros(a.shape, targetDType) as NDArray<R>;
   }
-
-  final resultStrides = NDArray.computeCStrides(a.shape);
   unaryOp<Complex, R>(
     result.data,
     a.data as List<Complex>,
     a.shape,
     a.strides,
-    resultStrides,
+    result.strides,
     0,
-    0,
-    0,
+    a.offsetElements,
+    result.offsetElements,
     (x) => x.imag as R,
   );
 
@@ -3755,7 +3730,6 @@ NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
   } else {
     result = NDArray<bool>.create(a.shape, DType.boolean);
   }
-  final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
@@ -3797,7 +3771,7 @@ NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
     for (var i = 0; i < rank; i++) {
       cShape[i] = a.shape[i];
       cStridesA[i] = a.strides[i];
-      cStridesRes[i] = resultStrides[i];
+      cStridesRes[i] = result.strides[i];
     }
     switch (a.dtype) {
       case DType.float64:
@@ -3857,10 +3831,10 @@ NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
       a.data as List<Complex>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x.real.isNaN || x.imag.isNaN,
     );
   } else if (a.dtype.isInteger) {
@@ -3871,10 +3845,10 @@ NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
       a.data as List<double>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x.isNaN,
     );
   }
@@ -3909,7 +3883,6 @@ NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
   } else {
     result = NDArray<bool>.create(a.shape, DType.boolean);
   }
-  final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
@@ -3951,7 +3924,7 @@ NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
     for (var i = 0; i < rank; i++) {
       cShape[i] = a.shape[i];
       cStridesA[i] = a.strides[i];
-      cStridesRes[i] = resultStrides[i];
+      cStridesRes[i] = result.strides[i];
     }
     switch (a.dtype) {
       case DType.float64:
@@ -4011,10 +3984,10 @@ NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
       a.data as List<Complex>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x.real.isInfinite || x.imag.isInfinite,
     );
   } else if (a.dtype.isInteger) {
@@ -4025,10 +3998,10 @@ NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
       a.data as List<double>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x.isInfinite,
     );
   }
@@ -4048,7 +4021,7 @@ NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
 /// final a = NDArray.fromList([1.0, double.nan, double.infinity], [3], DType.float64);
 /// final mask = isfinite(a); // [true, false, false]
 /// ```
-NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
+NDArray<bool> isfinite(NDArray a, {NDArray<bool>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute isfinite() on a disposed array.');
   }
@@ -4063,7 +4036,6 @@ NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
   } else {
     result = NDArray<bool>.create(a.shape, DType.boolean);
   }
-  final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
@@ -4111,7 +4083,7 @@ NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
     for (var i = 0; i < rank; i++) {
       cShape[i] = a.shape[i];
       cStridesA[i] = a.strides[i];
-      cStridesRes[i] = resultStrides[i];
+      cStridesRes[i] = result.strides[i];
     }
     switch (a.dtype) {
       case DType.float64:
@@ -4169,10 +4141,10 @@ NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
       a.data as List<Complex>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x.real.isFinite && x.imag.isFinite,
     );
   } else if (a.dtype.isInteger) {
@@ -4183,10 +4155,10 @@ NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
       a.data as List<double>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
-      0,
-      0,
+      a.offsetElements,
+      result.offsetElements,
       (x) => x.isFinite,
     );
   }
@@ -4203,11 +4175,7 @@ NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
 /// ```dart
 /// final res = copysign(x1, x2);
 /// ```
-NDArray<T> copysign<T extends num>(
-  NDArray<T> x1,
-  NDArray<T> x2, {
-  NDArray<T>? out,
-}) {
+NDArray copysign(NDArray x1, NDArray x2, {NDArray? out}) {
   if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute copysign() on a disposed array.');
   }
@@ -4220,9 +4188,12 @@ NDArray<T> copysign<T extends num>(
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final DType<T> targetDType = x1.dtype; // Enforce same type T
+  final DType<dynamic> targetDType =
+      (x1.dtype == DType.float32 && x2.dtype == DType.float32)
+      ? DType.float32
+      : DType.float64;
 
-  final NDArray<T> result;
+  final NDArray result;
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -4231,9 +4202,8 @@ NDArray<T> copysign<T extends num>(
     }
     result = out;
   } else {
-    result = NDArray<T>.create(shape, targetDType);
+    result = NDArray.create(shape, targetDType);
   }
-  final resultStrides = NDArray.computeCStrides(shape);
 
   if (x1.isContiguous &&
       x2.isContiguous &&
@@ -4271,7 +4241,7 @@ NDArray<T> copysign<T extends num>(
       cShape[i] = shape[i];
       cStridesA[i] = stridesA[i];
       cStridesB[i] = stridesB[i];
-      cStridesRes[i] = resultStrides[i];
+      cStridesRes[i] = result.strides[i];
     }
     if (targetDType == DType.float64 &&
         x1.dtype == DType.float64 &&
@@ -4311,19 +4281,19 @@ NDArray<T> copysign<T extends num>(
     return b < 0.0 ? -a.abs() : a.abs();
   }
 
-  elementWiseOp<num, num, T>(
-    result.data,
+  elementWiseOp<num, num, double>(
+    result.data as List<double>,
     x1.data as List<num>,
     x2.data as List<num>,
     shape,
     stridesA,
     stridesB,
-    resultStrides,
+    result.strides,
     0,
-    0,
-    0,
-    0,
-    (x, y) => copysignOp(x.toDouble(), y.toDouble()) as T,
+    x1.offsetElements,
+    x2.offsetElements,
+    result.offsetElements,
+    (x, y) => copysignOp(x.toDouble(), y.toDouble()),
   );
 
   return result;
@@ -4401,8 +4371,6 @@ NDArray<T> clip<T>(NDArray<T> a, {num? min, num? max, NDArray<T>? out}) {
     }
   }
 
-  final resultStrides = NDArray.computeCStrides(a.shape);
-
   if (a.dtype.isInteger) {
     final mn = resolvedMin.toInt();
     final mx = resolvedMax.toInt();
@@ -4411,7 +4379,7 @@ NDArray<T> clip<T>(NDArray<T> a, {num? min, num? max, NDArray<T>? out}) {
       a.data as List<int>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
@@ -4425,7 +4393,7 @@ NDArray<T> clip<T>(NDArray<T> a, {num? min, num? max, NDArray<T>? out}) {
       a.data as List<double>,
       a.shape,
       a.strides,
-      resultStrides,
+      result.strides,
       0,
       a.offsetElements,
       result.offsetElements,
@@ -4531,7 +4499,6 @@ NDArray<T> clipArray<T>(
     final broadcastA = broadcastTo(a, commonShape);
     final broadcastMin = broadcastTo(minArr, commonShape);
     final broadcastMax = broadcastTo(maxArr, commonShape);
-    final resultStrides = NDArray.computeCStrides(commonShape);
 
     final marker = ScratchArena.marker;
     try {
@@ -4548,7 +4515,7 @@ NDArray<T> clipArray<T>(
         cStridesA[i] = broadcastA.strides[i];
         cStridesMin[i] = broadcastMin.strides[i];
         cStridesMax[i] = broadcastMax.strides[i];
-        cStridesRes[i] = resultStrides[i];
+        cStridesRes[i] = result.strides[i];
       }
 
       switch (a.dtype) {
@@ -4683,7 +4650,7 @@ NDArray<T> clipArray<T>(
         broadcastA.strides,
         broadcastMin.strides,
         broadcastMax.strides,
-        resultStrides,
+        result.strides,
         0,
         broadcastA.offsetElements,
         broadcastMin.offsetElements,
@@ -4701,7 +4668,7 @@ NDArray<T> clipArray<T>(
         broadcastA.strides,
         broadcastMin.strides,
         broadcastMax.strides,
-        resultStrides,
+        result.strides,
         0,
         broadcastA.offsetElements,
         broadcastMin.offsetElements,
@@ -4754,8 +4721,6 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
   } else {
     result = NDArray<bool>.create(a.shape, DType.boolean);
   }
-
-  final resultStrides = NDArray.computeCStrides(a.shape);
   final marker = ScratchArena.marker;
 
   final ffi.Pointer<ffi.Uint8> aBoolPtr;
@@ -4889,7 +4854,7 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
     for (var i = 0; i < ndim; i++) {
       cShape[i] = a.shape[i];
       cStridesA[i] = aBoolStrides[i];
-      cStridesRes[i] = resultStrides[i];
+      cStridesRes[i] = result.strides[i];
     }
 
     s_logical_not(
@@ -4906,7 +4871,7 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
   return result;
 }
 
-/// Element-wise equality comparison (`a == b`) with full broadcasting support.
+/// Element-wise comparison of [a] == [b] with broadcasting and recycling support.
 NDArray<bool> equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute equal() on a disposed array.');
@@ -4923,21 +4888,24 @@ NDArray<bool> equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-  _compareHelper(
+
+  a.dispatchCompare(
+    result.data,
     a,
     b,
-    result,
+    commonShape,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    CMP_OP_EQ,
+    result.strides,
+    (x, y) => x == y,
   );
   return result;
 }
 
-/// Element-wise inequality comparison (`a != b`) with full broadcasting support.
-NDArray<bool> notEqual(NDArray a, NDArray b, {NDArray<bool>? out}) {
+/// Element-wise comparison of [a] != [b] with broadcasting and recycling support.
+NDArray<bool> not_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
-    throw StateError('Cannot execute notEqual() on a disposed array.');
+    throw StateError('Cannot execute not_equal() on a disposed array.');
   }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -4951,13 +4919,16 @@ NDArray<bool> notEqual(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-  _compareHelper(
+
+  a.dispatchCompare(
+    result.data,
     a,
     b,
-    result,
+    commonShape,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    CMP_OP_NE,
+    result.strides,
+    (x, y) => x != y,
   );
   return result;
 }
@@ -4984,21 +4955,24 @@ NDArray<bool> greater(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-  _compareHelper(
+
+  a.dispatchCompare(
+    result.data,
     a,
     b,
-    result,
+    commonShape,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    CMP_OP_GT,
+    result.strides,
+    (x, y) => (x as num) > (y as num),
   );
   return result;
 }
 
-/// Element-wise greater-or-equal comparison (`a >= b`) with full broadcasting support.
-NDArray<bool> greaterEqual(NDArray a, NDArray b, {NDArray<bool>? out}) {
+/// Element-wise comparison of [a] >= [b] with broadcasting and recycling support.
+NDArray<bool> greater_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
-    throw StateError('Cannot execute greaterEqual() on a disposed array.');
+    throw StateError('Cannot execute greater_equal() on a disposed array.');
   }
   if (a.dtype.isComplex || b.dtype.isComplex) {
     throw UnsupportedError(
@@ -5017,18 +4991,21 @@ NDArray<bool> greaterEqual(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-  _compareHelper(
+
+  a.dispatchCompare(
+    result.data,
     a,
     b,
-    result,
+    commonShape,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    CMP_OP_GE,
+    result.strides,
+    (x, y) => (x as num) >= (y as num),
   );
   return result;
 }
 
-/// Element-wise less-than comparison (`a < b`) with full broadcasting support.
+/// Element-wise comparison of [a] < [b] with broadcasting and recycling support.
 NDArray<bool> less(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute less() on a disposed array.');
@@ -5050,21 +5027,24 @@ NDArray<bool> less(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-  _compareHelper(
+
+  a.dispatchCompare(
+    result.data,
     a,
     b,
-    result,
+    commonShape,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    CMP_OP_LT,
+    result.strides,
+    (x, y) => (x as num) < (y as num),
   );
   return result;
 }
 
-/// Element-wise less-or-equal comparison (`a <= b`) with full broadcasting support.
-NDArray<bool> lessEqual(NDArray a, NDArray b, {NDArray<bool>? out}) {
+/// Element-wise comparison of [a] <= [b] with broadcasting and recycling support.
+NDArray<bool> less_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
-    throw StateError('Cannot execute lessEqual() on a disposed array.');
+    throw StateError('Cannot execute less_equal() on a disposed array.');
   }
   if (a.dtype.isComplex || b.dtype.isComplex) {
     throw UnsupportedError(
@@ -5083,56 +5063,18 @@ NDArray<bool> lessEqual(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-  _compareHelper(
+
+  a.dispatchCompare(
+    result.data,
     a,
     b,
-    result,
+    commonShape,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    CMP_OP_LE,
+    result.strides,
+    (x, y) => (x as num) <= (y as num),
   );
   return result;
-}
-
-void _compareHelper(
-  NDArray a,
-  NDArray b,
-  NDArray<bool> result,
-  List<int> stridesA,
-  List<int> stridesB,
-  int op,
-) {
-  final rank = a.shape.length;
-  final marker = ScratchArena.marker;
-  final cShape = a.shape.isEmpty ? ffi.nullptr : ScratchArena.copyInts(a.shape);
-  final cStridesA = stridesA.isEmpty
-      ? ffi.nullptr
-      : ScratchArena.copyInts(stridesA);
-  final cStridesB = stridesB.isEmpty
-      ? ffi.nullptr
-      : ScratchArena.copyInts(stridesB);
-  final resultStrides = NDArray.computeCStrides(result.shape);
-  final cStridesRes = resultStrides.isEmpty
-      ? ffi.nullptr
-      : ScratchArena.copyInts(resultStrides);
-
-  try {
-    ndarray_compare(
-      op,
-      a.dtype.index,
-      b.dtype.index,
-      a.pointer.cast(),
-      cStridesA,
-      b.pointer.cast(),
-      cStridesB,
-      result.pointer.cast(),
-      cStridesRes,
-      cShape,
-      rank,
-    );
-  } finally {
-    ScratchArena.reset(marker);
-  }
 }
 
 /// Compute the element-wise truth value of [a] AND [b] with broadcasting support.
@@ -5484,8 +5426,6 @@ NDArray<bool> _runBinaryLogical<Ta, Tb>(
     result = NDArray<bool>.create(commonShape, DType.boolean);
   }
 
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
   final isContig =
       a.isContiguous &&
       b.isContiguous &&
@@ -5506,7 +5446,7 @@ NDArray<bool> _runBinaryLogical<Ta, Tb>(
       cShape[i] = commonShape[i];
       cStridesA[i] = stridesA[i];
       cStridesB[i] = stridesB[i];
-      cStridesRes[i] = resultStrides[i];
+      cStridesRes[i] = result.strides[i];
     }
 
     stridedFn(
@@ -5642,7 +5582,7 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
 /// {@example /example/isclose_example.dart lang=dart}
 ///
 /// Reference: [Approximate Equality](https://numpy.org/doc/stable/reference/generated/numpy.isclose.html)
-NDArray<bool> isClose<Ta, Tb>(
+NDArray<bool> isclose<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   double rtol = 1e-05,
@@ -5650,7 +5590,7 @@ NDArray<bool> isClose<Ta, Tb>(
   bool equalNan = false,
 }) {
   if (a.isDisposed || b.isDisposed) {
-    throw StateError('Cannot execute isClose() on a disposed array.');
+    throw StateError('Cannot execute isclose() on a disposed array.');
   }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -5665,7 +5605,6 @@ NDArray<bool> isClose<Ta, Tb>(
   final broadcastResultRes = broadcast(a, b);
   final stridesA = broadcastResultRes.stridesA;
   final stridesB = broadcastResultRes.stridesB;
-  final stridesRes = NDArray.computeCStrides(commonShape);
 
   final coord = List<int>.filled(commonShape.length, 0);
 
@@ -5705,7 +5644,7 @@ NDArray<bool> isClose<Ta, Tb>(
     for (var d = 0; d < commonShape.length; d++) {
       offsetA += coord[d] * stridesA[d];
       offsetB += coord[d] * stridesB[d];
-      offsetRes += coord[d] * stridesRes[d];
+      offsetRes += coord[d] * result.strides[d];
     }
 
     final valA = aList[offsetA];
@@ -5748,14 +5687,14 @@ NDArray<bool> isClose<Ta, Tb>(
 /// {@example /example/isclose_example.dart lang=dart}
 ///
 /// Reference: [Approximate Equality](https://numpy.org/doc/stable/reference/generated/numpy.allclose.html)
-bool allClose<Ta, Tb>(
+bool allclose<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   double rtol = 1e-05,
   double atol = 1e-08,
   bool equalNan = false,
 }) {
-  final closeMask = isClose(a, b, rtol: rtol, atol: atol, equalNan: equalNan);
+  final closeMask = isclose(a, b, rtol: rtol, atol: atol, equalNan: equalNan);
   final maskList = closeMask.toList();
   closeMask.dispose();
   for (final val in maskList) {
@@ -5963,7 +5902,6 @@ NDArray select(
   final stridesChoice = choicelist
       .map((c) => broadcastStrides(c, commonShape))
       .toList();
-  final resultStrides = NDArray.computeCStrides(commonShape);
 
   // 4. Execute recursive multi-operand strided walk
   final currentPos = List<int>.filled(commonShape.length, 0);
@@ -5976,7 +5914,7 @@ NDArray select(
     choicelist,
     stridesCond,
     stridesChoice,
-    resultStrides,
+    result.strides,
     currentPos,
     0,
     initialOffsetsCond,
@@ -6825,8 +6763,7 @@ NDArray conj(NDArray a, {NDArray? out}) {
       if (a.isContiguous && result.isContiguous) {
         final totalSize = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
         result.data.setRange(0, totalSize, a.data);
-      } else {
-        result.fill(0); // initialize
+      } else if (result.isContiguous) {
         final rank = a.shape.length;
         final marker = ScratchArena.marker;
         final cShape = ScratchArena.copyInts(a.shape);
@@ -6906,6 +6843,19 @@ NDArray conj(NDArray a, {NDArray? out}) {
         } finally {
           ScratchArena.reset(marker);
         }
+      } else {
+        // Fallback recursive copy if result is strided
+        unaryOp<dynamic, dynamic>(
+          result.data,
+          a.data,
+          a.shape,
+          a.strides,
+          result.strides,
+          0,
+          a.offsetElements,
+          result.offsetElements,
+          (x) => x,
+        );
       }
       return result;
   }
@@ -8474,8 +8424,6 @@ NDArray<R> subtract<Ta, Tb, R>(
     result = NDArray<R>.create(commonShape, targetDType as DType<R>);
   }
 
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
   final isContig =
       a.isContiguous &&
       b.isContiguous &&
@@ -8493,7 +8441,7 @@ NDArray<R> subtract<Ta, Tb, R>(
     cShape[i] = commonShape[i];
     cStridesA[i] = stridesA[i];
     cStridesB[i] = stridesB[i];
-    cStridesRes[i] = resultStrides[i];
+    cStridesRes[i] = result.strides[i];
   }
   switch ((a.dtype, b.dtype)) {
     case (DType.float64, DType.float64) when isContig:
@@ -9846,8 +9794,6 @@ NDArray<R> multiply<Ta, Tb, R>(
     result = NDArray<R>.create(commonShape, targetDType as DType<R>);
   }
 
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
   final isContig =
       a.isContiguous &&
       b.isContiguous &&
@@ -9865,7 +9811,7 @@ NDArray<R> multiply<Ta, Tb, R>(
     cShape[i] = commonShape[i];
     cStridesA[i] = stridesA[i];
     cStridesB[i] = stridesB[i];
-    cStridesRes[i] = resultStrides[i];
+    cStridesRes[i] = result.strides[i];
   }
 
   switch ((a.dtype, b.dtype)) {
@@ -11222,8 +11168,6 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     result = NDArray<R>.create(commonShape, targetDType as DType<R>);
   }
 
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
   final isContig =
       a.isContiguous &&
       b.isContiguous &&
@@ -11241,7 +11185,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     cShape[i] = commonShape[i];
     cStridesA[i] = stridesA[i];
     cStridesB[i] = stridesB[i];
-    cStridesRes[i] = resultStrides[i];
+    cStridesRes[i] = result.strides[i];
   }
   switch ((a.dtype, b.dtype)) {
     // DIV cases
@@ -12648,7 +12592,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
         cShape[i] = prep.commonShape[i];
         cStridesA[i] = prep.stridesA[i];
         cStridesB[i] = prep.stridesB[i];
-        cStridesRes[i] = prep.resultStrides[i];
+        cStridesRes[i] = prep.result.strides[i];
       }
 
       switch (result.dtype) {
@@ -12796,7 +12740,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
         cShape[i] = prep.commonShape[i];
         cStridesA[i] = prep.stridesA[i];
         cStridesB[i] = prep.stridesB[i];
-        cStridesRes[i] = prep.resultStrides[i];
+        cStridesRes[i] = prep.result.strides[i];
       }
 
       switch (result.dtype) {
@@ -12944,7 +12888,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
         cShape[i] = prep.commonShape[i];
         cStridesA[i] = prep.stridesA[i];
         cStridesB[i] = prep.stridesB[i];
-        cStridesRes[i] = prep.resultStrides[i];
+        cStridesRes[i] = prep.result.strides[i];
       }
 
       switch (result.dtype) {
@@ -13092,7 +13036,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
         cShape[i] = prep.commonShape[i];
         cStridesA[i] = prep.stridesA[i];
         cStridesB[i] = prep.stridesB[i];
-        cStridesRes[i] = prep.resultStrides[i];
+        cStridesRes[i] = prep.result.strides[i];
       }
 
       switch (result.dtype) {
@@ -13240,7 +13184,7 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
         cShape[i] = prep.commonShape[i];
         cStridesA[i] = prep.stridesA[i];
         cStridesB[i] = prep.stridesB[i];
-        cStridesRes[i] = prep.resultStrides[i];
+        cStridesRes[i] = prep.result.strides[i];
       }
 
       switch (result.dtype) {
@@ -13349,8 +13293,6 @@ NDArray<Tr> invert<Ta, Tr>(NDArray<Ta> a, {NDArray<Tr>? out}) {
     result = NDArray<Tr>.create(a.shape, a.dtype as DType<Tr>);
   }
 
-  final resultStrides = NDArray.computeCStrides(a.shape);
-
   if (a.isContiguous && result.isContiguous) {
     final size = a.size;
     switch (a.dtype) {
@@ -13375,7 +13317,7 @@ NDArray<Tr> invert<Ta, Tr>(NDArray<Ta> a, {NDArray<Tr>? out}) {
     for (var i = 0; i < rank; i++) {
       cShape[i] = a.shape[i];
       cStridesSrc[i] = a.strides[i];
-      cStridesRes[i] = resultStrides[i];
+      cStridesRes[i] = result.strides[i];
     }
 
     switch (a.dtype) {
@@ -13430,7 +13372,6 @@ NDArray<Tr> invert<Ta, Tr>(NDArray<Ta> a, {NDArray<Tr>? out}) {
   List<int> commonShape,
   List<int> stridesA,
   List<int> stridesB,
-  List<int> resultStrides,
   bool isContig,
 })
 _prepareBinaryBitwise<Ta, Tb, Tr>(
@@ -13479,8 +13420,6 @@ _prepareBinaryBitwise<Ta, Tb, Tr>(
     result = NDArray<Tr>.create(commonShape, targetDType as DType<Tr>);
   }
 
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
   final isContig =
       aCast.isContiguous &&
       bCast.isContiguous &&
@@ -13494,7 +13433,6 @@ _prepareBinaryBitwise<Ta, Tb, Tr>(
     commonShape: commonShape,
     stridesA: stridesA,
     stridesB: stridesB,
-    resultStrides: resultStrides,
     isContig: isContig,
   );
 }
