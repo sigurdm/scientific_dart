@@ -65,7 +65,7 @@ NDArray<R> sqrt<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
         v_sqrt_double(a.pointer.cast(), result.pointer.cast(), a.size);
@@ -119,30 +119,22 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_square_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_square_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_square_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_square_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.int64:
-        v_square_int64(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_square_int64(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.int32:
-        v_square_int32(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_square_int32(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex128:
-        v_square_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_square_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex64:
-        v_square_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_square_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.boolean:
         final aBool = a as NDArray<bool>;
@@ -305,23 +297,19 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_sin_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_sin_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_sin_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_sin_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex128:
-        v_sin_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_sin_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex64:
-        v_sin_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_sin_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       default:
         break;
@@ -450,23 +438,19 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_cos_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_cos_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_cos_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_cos_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex128:
-        v_cos_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_cos_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex64:
-        v_cos_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_cos_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       default:
         break;
@@ -593,13 +577,13 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_exp_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_exp_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_exp_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_exp_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       default:
         break;
@@ -692,13 +676,13 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_log_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_log_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_log_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_log_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       default:
         break;
@@ -908,23 +892,19 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_tan_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_tan_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_tan_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_tan_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex128:
-        v_tan_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_tan_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex64:
-        v_tan_complex64(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_tan_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       default:
         break;
@@ -1048,27 +1028,19 @@ NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_asin_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_asin_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_asin_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_asin_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex128:
-        v_asin_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_asin_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex64:
-        v_asin_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_asin_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       default:
         break;
@@ -1191,27 +1163,19 @@ NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_acos_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_acos_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_acos_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_acos_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex128:
-        v_acos_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_acos_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex64:
-        v_acos_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_acos_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       default:
         break;
@@ -1334,27 +1298,19 @@ NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_atan_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_atan_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_atan_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_atan_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex128:
-        v_atan_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_atan_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex64:
-        v_atan_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_atan_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       default:
         break;
@@ -1468,13 +1424,13 @@ NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     }
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_sinh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_sinh_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_sinh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_sinh_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       default:
         break;
@@ -1559,13 +1515,13 @@ NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     }
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_cosh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_cosh_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_cosh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_cosh_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       default:
         break;
@@ -1650,13 +1606,13 @@ NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     }
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_tanh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_tanh_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_tanh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_tanh_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       default:
         break;
@@ -1742,13 +1698,13 @@ NDArray<double> asinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     }
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_asinh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_asinh_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_asinh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_asinh_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       default:
         break;
@@ -1833,13 +1789,13 @@ NDArray<double> acosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     }
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_acosh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_acosh_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_acosh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_acosh_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       default:
         break;
@@ -1931,27 +1887,19 @@ NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
-  if (a.isContiguous) {
+  if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_atanh_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_atanh_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_atanh_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_atanh_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex128:
-        v_atanh_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_atanh_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex64:
-        v_atanh_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_atanh_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       default:
         break;
@@ -2065,14 +2013,17 @@ NDArray<double> atan2<Ty, Tx>(
   }
 
   // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
-  if (y.isContiguous && x.isContiguous && listEquals(y.shape, x.shape)) {
+  if (y.isContiguous &&
+      x.isContiguous &&
+      result.isContiguous &&
+      listEquals(y.shape, x.shape)) {
     switch ((y.dtype, x.dtype)) {
       case (DType.float64, DType.float64):
         v_atan2_double(
           y.pointer.cast(),
           x.pointer.cast(),
           result.pointer.cast(),
-          y.data.length,
+          y.size,
         );
         return result;
       case (DType.float32, DType.float32):
@@ -2080,7 +2031,7 @@ NDArray<double> atan2<Ty, Tx>(
           y.pointer.cast(),
           x.pointer.cast(),
           result.pointer.cast(),
-          y.data.length,
+          y.size,
         );
         return result;
       default:
@@ -2260,7 +2211,7 @@ NDArray<R> hypot<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
           aCpx.pointer.cast(),
           bCpx.pointer.cast(),
           result.pointer.cast(),
-          aCpx.data.length,
+          aCpx.size,
         );
         return result;
       } else {
@@ -2268,7 +2219,7 @@ NDArray<R> hypot<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
           aCpx.pointer.cast(),
           bCpx.pointer.cast(),
           result.pointer.cast(),
-          aCpx.data.length,
+          aCpx.size,
         );
         return result;
       }
@@ -2344,11 +2295,7 @@ NDArray<R> hypot<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   return result;
 }
 
-NDArray<R> power<Ta, Tb, R>(
-  NDArray<Ta> x1,
-  NDArray<Tb> x2, {
-  NDArray<R>? out,
-}) {
+NDArray<R> power<Ta, Tb, R>(NDArray<Ta> x1, NDArray<Tb> x2, {NDArray<R>? out}) {
   if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute power() on a disposed array.');
   }
@@ -2392,7 +2339,7 @@ NDArray<R> power<Ta, Tb, R>(
           aCpx.pointer.cast(),
           bCpx.pointer.cast(),
           result.pointer.cast(),
-          aCpx.data.length,
+          aCpx.size,
         );
         return result;
       } else {
@@ -2400,7 +2347,7 @@ NDArray<R> power<Ta, Tb, R>(
           aCpx.pointer.cast(),
           bCpx.pointer.cast(),
           result.pointer.cast(),
-          aCpx.data.length,
+          aCpx.size,
         );
         return result;
       }
@@ -2452,7 +2399,7 @@ NDArray<R> power<Ta, Tb, R>(
         x1.pointer.cast(),
         x2.pointer.cast(),
         result.pointer.cast(),
-        x1.data.length,
+        x1.size,
       );
       return result;
     } else if (targetDType == DType.float32) {
@@ -2460,7 +2407,7 @@ NDArray<R> power<Ta, Tb, R>(
         x1.pointer.cast(),
         x2.pointer.cast(),
         result.pointer.cast(),
-        x1.data.length,
+        x1.size,
       );
       return result;
     }
@@ -2651,7 +2598,7 @@ NDArray<T> floor_divide<T extends Object>(
             x1.pointer.cast(),
             x2.pointer.cast(),
             result.pointer.cast(),
-            x1.data.length,
+            x1.size,
           );
           return result;
         }
@@ -2661,7 +2608,7 @@ NDArray<T> floor_divide<T extends Object>(
             x1.pointer.cast(),
             x2.pointer.cast(),
             result.pointer.cast(),
-            x1.data.length,
+            x1.size,
           );
           return result;
         }
@@ -2671,7 +2618,7 @@ NDArray<T> floor_divide<T extends Object>(
             x1.pointer.cast(),
             x2.pointer.cast(),
             result.pointer.cast(),
-            x1.data.length,
+            x1.size,
           );
           final err = get_and_reset_division_error();
           if (err == 1) {
@@ -2685,7 +2632,7 @@ NDArray<T> floor_divide<T extends Object>(
             x1.pointer.cast(),
             x2.pointer.cast(),
             result.pointer.cast(),
-            x1.data.length,
+            x1.size,
           );
           final err = get_and_reset_division_error();
           if (err == 1) {
@@ -2871,7 +2818,7 @@ NDArray<T> remainder<T extends Object>(
             x1.pointer.cast(),
             x2.pointer.cast(),
             result.pointer.cast(),
-            x1.data.length,
+            x1.size,
           );
           return result;
         }
@@ -2881,7 +2828,7 @@ NDArray<T> remainder<T extends Object>(
             x1.pointer.cast(),
             x2.pointer.cast(),
             result.pointer.cast(),
-            x1.data.length,
+            x1.size,
           );
           return result;
         }
@@ -2891,7 +2838,7 @@ NDArray<T> remainder<T extends Object>(
             x1.pointer.cast(),
             x2.pointer.cast(),
             result.pointer.cast(),
-            x1.data.length,
+            x1.size,
           );
           final err = get_and_reset_division_error();
           if (err == 1) {
@@ -2905,7 +2852,7 @@ NDArray<T> remainder<T extends Object>(
             x1.pointer.cast(),
             x2.pointer.cast(),
             result.pointer.cast(),
-            x1.data.length,
+            x1.size,
           );
           final err = get_and_reset_division_error();
           if (err == 1) {
@@ -3259,10 +3206,10 @@ NDArray<T> ceil<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 
   if (a.isContiguous && result.isContiguous) {
     if (a.dtype == DType.float64) {
-      v_ceil_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_ceil_double(a.pointer.cast(), result.pointer.cast(), a.size);
       return result;
     } else if (a.dtype == DType.float32) {
-      v_ceil_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_ceil_float(a.pointer.cast(), result.pointer.cast(), a.size);
       return result;
     }
   }
@@ -3336,10 +3283,10 @@ NDArray<T> floor<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 
   if (a.isContiguous && result.isContiguous) {
     if (a.dtype == DType.float64) {
-      v_floor_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_floor_double(a.pointer.cast(), result.pointer.cast(), a.size);
       return result;
     } else if (a.dtype == DType.float32) {
-      v_floor_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_floor_float(a.pointer.cast(), result.pointer.cast(), a.size);
       return result;
     }
   }
@@ -3413,10 +3360,10 @@ NDArray<T> round<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 
   if (a.isContiguous && result.isContiguous) {
     if (a.dtype == DType.float64) {
-      v_round_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_round_double(a.pointer.cast(), result.pointer.cast(), a.size);
       return result;
     } else if (a.dtype == DType.float32) {
-      v_round_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+      v_round_float(a.pointer.cast(), result.pointer.cast(), a.size);
       return result;
     }
   }
@@ -3766,24 +3713,16 @@ NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_isnan_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_isnan_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_isnan_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_isnan_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex128:
-        v_isnan_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_isnan_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex64:
-        v_isnan_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_isnan_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.int32:
       case DType.int64:
@@ -3919,24 +3858,16 @@ NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_isinf_double(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_isinf_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_isinf_float(a.pointer.cast(), result.pointer.cast(), a.data.length);
+        v_isinf_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex128:
-        v_isinf_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_isinf_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex64:
-        v_isinf_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_isinf_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.int32:
       case DType.int64:
@@ -4072,32 +4003,16 @@ NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_isfinite_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_isfinite_double(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.float32:
-        v_isfinite_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_isfinite_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex128:
-        v_isfinite_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_isfinite_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.complex64:
-        v_isfinite_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_isfinite_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       case DType.int32:
       case DType.int64:
@@ -5083,9 +4998,9 @@ void _compareHelper(
   List<int> stridesB,
   int op,
 ) {
-  final rank = a.shape.length;
+  final rank = result.shape.length;
   final marker = ScratchArena.marker;
-  final cShape = a.shape.isEmpty ? ffi.nullptr : ScratchArena.copyInts(a.shape);
+  final cShape = result.shape.isEmpty ? ffi.nullptr : ScratchArena.copyInts(result.shape);
   final cStridesA = stridesA.isEmpty
       ? ffi.nullptr
       : ScratchArena.copyInts(stridesA);
@@ -6736,11 +6651,7 @@ NDArray conj(NDArray a, {NDArray? out}) {
   switch (targetDType) {
     case DType.complex128:
       if (a.isContiguous && result.isContiguous) {
-        v_conj_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_conj_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       } else {
         final rank = a.shape.length;
@@ -6764,11 +6675,7 @@ NDArray conj(NDArray a, {NDArray? out}) {
       }
     case DType.complex64:
       if (a.isContiguous && result.isContiguous) {
-        v_conj_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.data.length,
-        );
+        v_conj_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
       } else {
         final rank = a.shape.length;

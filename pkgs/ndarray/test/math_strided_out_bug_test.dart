@@ -238,5 +238,49 @@ void main() {
         expect(outBase.data[3], 0.0);
       },
     );
+
+    test("sin with contiguous input and strided out", () {
+      final a = NDArray.fromList(
+        Float64List.fromList([0.0, 1.5707963267948966]),
+        [2],
+        DType.float64,
+      ); // contiguous
+
+      final baseOut = NDArray.fromList(
+        Float64List.fromList([99.0, 99.0, 99.0, 99.0, 99.0]),
+        [5],
+        DType.float64,
+      );
+      final out = baseOut.slice([
+        Slice(start: 1, stop: 5, step: 2),
+      ]); // strided, shape [2]
+
+      sin(a, out: out);
+
+      expect(baseOut.data[0], 99.0);
+      expect(baseOut.data[1], closeTo(0.0, 1e-7)); // sin(0)
+      expect(baseOut.data[2], 99.0);
+      expect(baseOut.data[3], closeTo(1.0, 1e-7)); // sin(pi/2)
+      expect(baseOut.data[4], 99.0);
+    });
+
+    test("comparison (greater) with broadcasting", () {
+      final a = NDArray.fromList([1.0, 2.0], [2], DType.float64); // shape [2]
+      final b = NDArray.fromList([0.0, 3.0, 4.0, 1.0], [2, 2], DType.float64); // shape [2, 2]
+      // a broadcasted to [[1.0, 2.0], [1.0, 2.0]]
+      // b is [[0.0, 3.0], [4.0, 1.0]]
+      // a > b:
+      // [[1.0 > 0.0, 2.0 > 3.0], [1.0 > 4.0, 2.0 > 1.0]]
+      // -> [[true, false], [false, true]]
+      
+      final res = greater(a, b);
+      print("TEST res.data: ${res.data}");
+      print("TEST res.data[1]: ${res.data[1]}");
+      expect(res.shape, [2, 2]);
+      expect(res.data[0], true);
+      expect(res.data[1], false);
+      expect(res.data[2], false);
+      expect(res.data[3], true);
+    });
   });
 }
