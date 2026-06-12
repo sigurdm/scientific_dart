@@ -83,7 +83,7 @@ void main() {
     test(
       'isnan, isinf, isfinite complex arrays (Complex128 and Complex64)',
       () => NDArray.scope(() {
-        final a = NDArray<Complex>.create([3], DType.complex128);
+        final a = NDArray.create([3], DType.complex128);
         a.data[0] = Complex(1.0, 0.0);
         a.data[1] = Complex(double.nan, 1.0);
         a.data[2] = Complex(1.0, double.infinity);
@@ -97,7 +97,7 @@ void main() {
         final finiteA = isfinite(a);
         expect(finiteA.toList(), [true, false, false]);
 
-        final b = NDArray<Complex>.create([3], DType.complex64);
+        final b = NDArray.create([3], DType.complex64);
         b.data[0] = Complex(1.0, 0.0);
         b.data[1] = Complex(double.nan, 1.0);
         b.data[2] = Complex(1.0, double.infinity);

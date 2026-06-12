@@ -28,7 +28,7 @@ void main() {
       () => NDArray.scope(() {
         final a = NDArray.fromList([10.0, 20.0], [2], DType.float64);
         final b = NDArray.fromList([10.0, 99.0], [2], DType.float64);
-        final out = NDArray<bool>.create([2], DType.boolean);
+        final out = NDArray.create([2], DType.boolean);
 
         final res = equal(a, b, out: out);
         expect(identical(res, out), true);
@@ -63,8 +63,8 @@ void main() {
     test(
       'complex numbers inequality throws UnsupportedError',
       () => NDArray.scope(() {
-        final a = NDArray<Complex>.create([2], DType.complex128);
-        final b = NDArray<Complex>.create([2], DType.complex128);
+        final a = NDArray.create([2], DType.complex128);
+        final b = NDArray.create([2], DType.complex128);
 
         expect(() => greater(a, b), throwsUnsupportedError);
         expect(() => greater_equal(a, b), throwsUnsupportedError);
@@ -78,7 +78,7 @@ void main() {
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
         final b = NDArray.fromList([3.0, 4.0], [2], DType.float64);
-        final wrongShape = NDArray<bool>.create([3], DType.boolean);
+        final wrongShape = NDArray.create([3], DType.boolean);
 
         expect(() => equal(a, b, out: wrongShape), throwsArgumentError);
       }),

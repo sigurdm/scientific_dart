@@ -8,7 +8,7 @@ import 'helpers.dart';
 /// Validates that [xp] is strictly increasing.
 ///
 /// Throws [ArgumentError] if [xp] is not strictly increasing.
-void _validateSorted(NDArray<double> xp) {
+void _validateSorted(NDArray<double, Float64Marker> xp) {
   final size = xp.shape[0];
   if (size <= 1) return;
 
@@ -47,10 +47,10 @@ void _validateSorted(NDArray<double> xp) {
 /// - [ArgumentError] if [xp] is not strictly increasing.
 ///
 /// {@example /example/interpolation_example.dart}
-NDArray<double> interp(
-  NDArray<num> x,
-  NDArray<num> xp,
-  NDArray<num> fp, {
+NDArray<double, Float64Marker> interp(
+  NDArray<num, Marker> x,
+  NDArray<num, Marker> xp,
+  NDArray<num, Marker> fp, {
   double? left,
   double? right,
 }) {
@@ -71,13 +71,13 @@ NDArray<double> interp(
   }
 
   final xDouble = x.dtype == DType.float64
-      ? x as NDArray<double>
+      ? x as NDArray<double, Float64Marker>
       : promoteToDouble(x);
   final xpDouble = xp.dtype == DType.float64
-      ? xp as NDArray<double>
+      ? xp as NDArray<double, Float64Marker>
       : promoteToDouble(xp);
   final fpDouble = fp.dtype == DType.float64
-      ? fp as NDArray<double>
+      ? fp as NDArray<double, Float64Marker>
       : promoteToDouble(fp);
 
   try {
@@ -89,7 +89,7 @@ NDArray<double> interp(
     rethrow;
   }
 
-  final res = NDArray<double>.create(x.shape, DType.float64);
+  final res = NDArray.create(x.shape, DType.float64);
 
   final marker = ScratchArena.marker;
   try {

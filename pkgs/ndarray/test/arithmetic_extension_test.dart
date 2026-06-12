@@ -68,7 +68,7 @@ void main() {
         final b = NDArray.fromList([10.0, 20.0], [2], DType.float64);
 
         // Explicit generic call to allow promotion
-        final res = add<Complex, double, Complex>(a, b);
+        final res = add(a, b);
         expect(res.dtype, DType.complex128);
         expect(res.data[0].real, 11.0);
         expect(res.data[0].imag, 2.0);
@@ -81,23 +81,17 @@ void main() {
       NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
         final b = NDArray.fromList([2.0, 2.0], [2], DType.float64);
-        final outValid = NDArray<Float64>.create([2], DType.float64);
+        final outValid = NDArray.create([2], DType.float64);
 
-        final res = add<double, double, double>(a, b, out: outValid);
+        final res = add(a, b, out: outValid);
         expect(identical(res, outValid), true);
         expect(outValid.toList(), [3.0, 4.0]);
 
-        final outInvalidShape = NDArray<Float64>.create([3], DType.float64);
-        expect(
-          () => add<double, double, double>(a, b, out: outInvalidShape),
-          throwsArgumentError,
-        );
+        final outInvalidShape = NDArray.create([3], DType.float64);
+        expect(() => add(a, b, out: outInvalidShape), throwsArgumentError);
 
-        final outInvalidDType = NDArray<Int32>.create([2], DType.int32);
-        expect(
-          () => add<double, double, int>(a, b, out: outInvalidDType),
-          throwsArgumentError,
-        );
+        final outInvalidDType = NDArray.create([2], DType.int32);
+        expect(() => add(a, b, out: outInvalidDType), throwsArgumentError);
       });
     });
   });

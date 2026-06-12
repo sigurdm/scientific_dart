@@ -98,7 +98,7 @@ void main() {
         expect(svdRes.Vh.dtype, DType.complex128);
 
         final sDiag = diag(svdRes.S);
-        final NDArray<Complex> uS = matmul(svdRes.U, sDiag);
+        final uS = matmul(svdRes.U, sDiag);
         final reconstructed = matmul(uS, svdRes.Vh);
 
         expect(allclose(reconstructed, a, rtol: 1e-5, atol: 1e-5), isTrue);
@@ -116,7 +116,7 @@ void main() {
         expect(svdRes64.Vh.dtype, DType.complex64);
 
         final sDiag64 = diag(svdRes64.S);
-        final NDArray<Complex> uS64 = matmul(svdRes64.U, sDiag64);
+        final uS64 = matmul(svdRes64.U, sDiag64);
         final reconstructed64 = matmul(uS64, svdRes64.Vh);
         expect(
           allclose(reconstructed64, a64, rtol: 1e-3, atol: 1e-3),

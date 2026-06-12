@@ -16,8 +16,8 @@ void main() {
           expect(splits[1].toList(), [3, 4]);
 
           // Modifying sub-array view affects original
-          splits[0].setCell([0], Int32(99));
-          expect(a.getCell([0]).value, 99);
+          splits[0].setCell([0], 99);
+          expect(a.getCell([0]), 99);
         });
       });
 
@@ -153,8 +153,8 @@ void main() {
           expect(splits[1].toList(), [3, 4, 7, 8, 11, 12, 15, 16]);
 
           // Zero-copy check: mutating sub-array affects original
-          splits[0].setCell([0, 0, 0], Int32(99));
-          expect(a.getCell([0, 0, 0]).value, 99);
+          splits[0].setCell([0, 0, 0], 99);
+          expect(a.getCell([0, 0, 0]), 99);
         });
       });
 

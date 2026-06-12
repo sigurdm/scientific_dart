@@ -152,16 +152,12 @@ void main() {
         test(
           'matmul() throws ArgumentError on incompatible 1D vector dot dimensions',
           () => NDArray.scope(() {
-            final v1 = NDArray<double>.fromList(
-              Float64List.fromList([1.0, 2.0]),
-              [2],
-              DType.float64,
-            );
-            final v2 = NDArray<double>.fromList(
-              Float64List.fromList([1.0, 2.0, 3.0]),
-              [3],
-              DType.float64,
-            );
+            final v1 = NDArray.fromList(Float64List.fromList([1.0, 2.0]), [
+              2,
+            ], DType.float64);
+            final v2 = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0]), [
+              3,
+            ], DType.float64);
             expect(() => matmul(v1, v2), throwsArgumentError);
           }),
         );
@@ -169,8 +165,8 @@ void main() {
         test(
           'matmul() throws ArgumentError on incompatible inner dimensions',
           () => NDArray.scope(() {
-            final a = NDArray<double>.zeros([2, 3], DType.float64);
-            final b = NDArray<double>.zeros([2, 2], DType.float64);
+            final a = NDArray.zeros([2, 3], DType.float64);
+            final b = NDArray.zeros([2, 2], DType.float64);
             expect(() => matmul(a, b), throwsArgumentError);
           }),
         );
@@ -180,16 +176,12 @@ void main() {
         test(
           'Verify Float32 1D Vector Dot Product sdot',
           () => NDArray.scope(() {
-            final v1 = NDArray<double>.fromList(
-              Float32List.fromList([1.0, 2.0]),
-              [2],
-              DType.float32,
-            );
-            final v2 = NDArray<double>.fromList(
-              Float32List.fromList([3.0, 4.0]),
-              [2],
-              DType.float32,
-            );
+            final v1 = NDArray.fromList(Float32List.fromList([1.0, 2.0]), [
+              2,
+            ], DType.float32);
+            final v2 = NDArray.fromList(Float32List.fromList([3.0, 4.0]), [
+              2,
+            ], DType.float32);
 
             final res = matmul(v1, v2);
             expect(res.shape, []);
@@ -201,12 +193,12 @@ void main() {
         test(
           'Verify Float32 2D Matrix Multiply sgemm',
           () => NDArray.scope(() {
-            final a = NDArray<double>.fromList(
+            final a = NDArray.fromList(
               Float32List.fromList([1.0, 2.0, 3.0, 4.0]),
               [2, 2],
               DType.float32,
             );
-            final b = NDArray<double>.fromList(
+            final b = NDArray.fromList(
               Float32List.fromList([5.0, 6.0, 7.0, 8.0]),
               [2, 2],
               DType.float32,

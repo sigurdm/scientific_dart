@@ -41,8 +41,8 @@ final class BroadcastResult {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<Float64>`.fromList([1.0, 2.0], [2, 1], DType.float64);
-/// final b = `NDArray<Float64>`.fromList([10.0, 20.0, 30.0], [1, 3], DType.float64);
+/// final a = `NDArray<double, Float64Marker>`.fromList([1.0, 2.0], [2, 1], DType.float64);
+/// final b = `NDArray<double, Float64Marker>`.fromList([10.0, 20.0, 30.0], [1, 3], DType.float64);
 /// final result = broadcast(a, b);
 /// print(result.shape); // [2, 3]
 /// ```
@@ -138,7 +138,10 @@ BroadcastResult broadcast(NDArray a, NDArray b) {
 ///
 /// Refer to the [NumPy broadcast_to reference](https://numpy.org/doc/stable/reference/generated/numpy.broadcast_to.html)
 /// for additional details.
-NDArray<T> broadcastTo<T>(NDArray<T> a, List<int> targetShape) {
+NDArray<T, MT> broadcastTo<T, MT extends Marker>(
+  NDArray<T, MT> a,
+  List<int> targetShape,
+) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -147,7 +150,7 @@ NDArray<T> broadcastTo<T>(NDArray<T> a, List<int> targetShape) {
   final stridesA = a.strides;
 
   if (listEquals(shapeA, targetShape)) {
-    return NDArray<T>.view(
+    return NDArray.view(
       a,
       shape: targetShape,
       strides: stridesA,
@@ -187,7 +190,7 @@ NDArray<T> broadcastTo<T>(NDArray<T> a, List<int> targetShape) {
     }
   }
 
-  return NDArray<T>.view(
+  return NDArray.view(
     a,
     shape: targetShape,
     strides: newStrides,

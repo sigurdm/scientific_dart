@@ -4,7 +4,12 @@ import '../ndarray.dart';
 // Standalone operational relative cross-imports
 
 /// Helper to slice an array along a specific axis between [start] and [stop].
-NDArray<T> _sliceAlongAxis<T>(NDArray<T> a, int axis, int start, int stop) {
+NDArray<T, MT> _sliceAlongAxis<T, MT extends Marker>(
+  NDArray<T, MT> a,
+  int axis,
+  int start,
+  int stop,
+) {
   final selectors = List<Selector>.filled(a.shape.length, Slice.all());
   selectors[axis] = Slice(start: start, stop: stop);
   return a.slice(selectors);
@@ -35,7 +40,11 @@ NDArray<T> _sliceAlongAxis<T>(NDArray<T> a, int axis, int start, int stop) {
 ///
 /// Refer to the [NumPy array_split reference](https://numpy.org/doc/stable/reference/generated/numpy.array_split.html)
 /// for details.
-List<NDArray<T>> array_split<T>(NDArray<T> a, int sections, {int axis = 0}) {
+List<NDArray<T, MT>> array_split<T, MT extends Marker>(
+  NDArray<T, MT> a,
+  int sections, {
+  int axis = 0,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -50,7 +59,7 @@ List<NDArray<T>> array_split<T>(NDArray<T> a, int sections, {int axis = 0}) {
   final normAxis = axis < 0 ? rank + axis : axis;
   final L = a.shape[normAxis];
 
-  final List<NDArray<T>> results = [];
+  final List<NDArray<T, MT>> results = [];
 
   final S_0 = L ~/ sections;
   final rem = L % sections;
@@ -89,8 +98,8 @@ List<NDArray<T>> array_split<T>(NDArray<T> a, int sections, {int axis = 0}) {
 ///
 /// Refer to the [NumPy array_split reference](https://numpy.org/doc/stable/reference/generated/numpy.array_split.html)
 /// for details.
-List<NDArray<T>> array_split_at<T>(
-  NDArray<T> a,
+List<NDArray<T, MT>> array_split_at<T, MT extends Marker>(
+  NDArray<T, MT> a,
   List<int> indices, {
   int axis = 0,
 }) {
@@ -105,7 +114,7 @@ List<NDArray<T>> array_split_at<T>(
   final normAxis = axis < 0 ? rank + axis : axis;
   final L = a.shape[normAxis];
 
-  final List<NDArray<T>> results = [];
+  final List<NDArray<T, MT>> results = [];
 
   final boundaries = <int>[0];
   for (var p in indices) {
@@ -150,7 +159,11 @@ List<NDArray<T>> array_split_at<T>(
 ///
 /// Refer to the [NumPy split reference](https://numpy.org/doc/stable/reference/generated/numpy.split.html)
 /// for details.
-List<NDArray<T>> split<T>(NDArray<T> a, int sections, {int axis = 0}) {
+List<NDArray<T, MT>> split<T, MT extends Marker>(
+  NDArray<T, MT> a,
+  int sections, {
+  int axis = 0,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -194,7 +207,11 @@ List<NDArray<T>> split<T>(NDArray<T> a, int sections, {int axis = 0}) {
 ///
 /// Refer to the [NumPy split reference](https://numpy.org/doc/stable/reference/generated/numpy.split.html)
 /// for details.
-List<NDArray<T>> split_at<T>(NDArray<T> a, List<int> indices, {int axis = 0}) {
+List<NDArray<T, MT>> split_at<T, MT extends Marker>(
+  NDArray<T, MT> a,
+  List<int> indices, {
+  int axis = 0,
+}) {
   return array_split_at(a, indices, axis: axis);
 }
 
@@ -219,7 +236,10 @@ List<NDArray<T>> split_at<T>(NDArray<T> a, List<int> indices, {int axis = 0}) {
 ///
 /// Refer to the [NumPy hsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.hsplit.html)
 /// for details.
-List<NDArray<T>> hsplit<T>(NDArray<T> a, int sections) {
+List<NDArray<T, MT>> hsplit<T, MT extends Marker>(
+  NDArray<T, MT> a,
+  int sections,
+) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -251,7 +271,10 @@ List<NDArray<T>> hsplit<T>(NDArray<T> a, int sections) {
 ///
 /// Refer to the [NumPy hsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.hsplit.html)
 /// for details.
-List<NDArray<T>> hsplit_at<T>(NDArray<T> a, List<int> indices) {
+List<NDArray<T, MT>> hsplit_at<T, MT extends Marker>(
+  NDArray<T, MT> a,
+  List<int> indices,
+) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -283,7 +306,10 @@ List<NDArray<T>> hsplit_at<T>(NDArray<T> a, List<int> indices) {
 ///
 /// Refer to the [NumPy vsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.vsplit.html)
 /// for details.
-List<NDArray<T>> vsplit<T>(NDArray<T> a, int sections) {
+List<NDArray<T, MT>> vsplit<T, MT extends Marker>(
+  NDArray<T, MT> a,
+  int sections,
+) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -314,7 +340,10 @@ List<NDArray<T>> vsplit<T>(NDArray<T> a, int sections) {
 ///
 /// Refer to the [NumPy vsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.vsplit.html)
 /// for details.
-List<NDArray<T>> vsplit_at<T>(NDArray<T> a, List<int> indices) {
+List<NDArray<T, MT>> vsplit_at<T, MT extends Marker>(
+  NDArray<T, MT> a,
+  List<int> indices,
+) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -349,7 +378,10 @@ List<NDArray<T>> vsplit_at<T>(NDArray<T> a, List<int> indices) {
 ///
 /// Refer to the [NumPy dsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.dsplit.html)
 /// for details.
-List<NDArray<T>> dsplit<T>(NDArray<T> a, int sections) {
+List<NDArray<T, MT>> dsplit<T, MT extends Marker>(
+  NDArray<T, MT> a,
+  int sections,
+) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -380,7 +412,10 @@ List<NDArray<T>> dsplit<T>(NDArray<T> a, int sections) {
 ///
 /// Refer to the [NumPy dsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.dsplit.html)
 /// for details.
-List<NDArray<T>> dsplit_at<T>(NDArray<T> a, List<int> indices) {
+List<NDArray<T, MT>> dsplit_at<T, MT extends Marker>(
+  NDArray<T, MT> a,
+  List<int> indices,
+) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }

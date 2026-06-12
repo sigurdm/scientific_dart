@@ -111,7 +111,7 @@ void main() {
       NDArray.scope(() {
         final a = NDArray.fromList([5, 12], [2], DType.int32);
         final b = NDArray.fromList([3, 4], [2], DType.int32);
-        final out = NDArray<int>.create([2], DType.int32);
+        final out = NDArray.create([2], DType.int32);
 
         final res = bitwise_and(a, b, out: out);
         expect(identical(res, out), true);
@@ -133,7 +133,7 @@ void main() {
       NDArray.scope(() {
         final a = NDArray.fromList([5, 12], [2], DType.int32);
         final b = NDArray.fromList([3, 4], [2], DType.int32);
-        final wrongOut = NDArray<int>.create([3], DType.int32);
+        final wrongOut = NDArray.create([3], DType.int32);
 
         expect(() => bitwise_and(a, b, out: wrongOut), throwsArgumentError);
       });

@@ -6,7 +6,7 @@ void main() {
     test(
       'real() and imag() basic complex128 contiguous checks',
       () => NDArray.scope(() {
-        final a = NDArray<Complex>.create([3], DType.complex128);
+        final a = NDArray.create([3], DType.complex128);
         a.data[0] = Complex(3.5, 4.5);
         a.data[1] = Complex(-1.0, 0.0);
         a.data[2] = Complex(0.0, -2.5);
@@ -26,7 +26,7 @@ void main() {
     test(
       'real() and imag() support complex64',
       () => NDArray.scope(() {
-        final a = NDArray<Complex>.create([2], DType.complex64);
+        final a = NDArray.create([2], DType.complex64);
         a.data[0] = Complex(1.5, -2.5);
         a.data[1] = Complex(0.0, 3.0);
 
@@ -69,7 +69,7 @@ void main() {
     test(
       'recycler out parameter checks',
       () => NDArray.scope(() {
-        final a = NDArray<Complex>.create([2], DType.complex128);
+        final a = NDArray.create([2], DType.complex128);
         a.data[0] = Complex(1.0, 2.0);
         a.data[1] = Complex(3.0, 4.0);
 
@@ -108,7 +108,7 @@ void main() {
     test(
       'recycler out shape and dtype mismatch throws ArgumentError',
       () => NDArray.scope(() {
-        final a = NDArray<Complex>.create([2], DType.complex128);
+        final a = NDArray.create([2], DType.complex128);
         final wrongShape = NDArray.create([3], DType.float64);
         final wrongDType = NDArray.create([2], DType.int32);
 
@@ -128,13 +128,13 @@ void main() {
     test(
       'strided non-contiguous complex128 addition walks native C kernels',
       () => NDArray.scope(() {
-        final a = NDArray<Complex>.create([2, 2], DType.complex128);
+        final a = NDArray.create([2, 2], DType.complex128);
         a.data[0] = Complex(1.0, 2.0);
         a.data[1] = Complex(3.0, 4.0);
         a.data[2] = Complex(5.0, 6.0);
         a.data[3] = Complex(7.0, 8.0);
 
-        final b = NDArray<Complex>.create([2, 2], DType.complex128);
+        final b = NDArray.create([2, 2], DType.complex128);
         b.data[0] = Complex(10.0, 10.0);
         b.data[1] = Complex(20.0, 20.0);
         b.data[2] = Complex(30.0, 30.0);
@@ -161,13 +161,13 @@ void main() {
     test(
       'strided non-contiguous complex128 subtraction fallback elementswise sweeps',
       () => NDArray.scope(() {
-        final a = NDArray<Complex>.create([2, 2], DType.complex128);
+        final a = NDArray.create([2, 2], DType.complex128);
         a.data[0] = Complex(10.0, 10.0);
         a.data[1] = Complex(20.0, 20.0);
         a.data[2] = Complex(30.0, 30.0);
         a.data[3] = Complex(40.0, 40.0);
 
-        final b = NDArray<Complex>.create([2, 2], DType.complex128);
+        final b = NDArray.create([2, 2], DType.complex128);
         b.data[0] = Complex(1.0, 2.0);
         b.data[1] = Complex(3.0, 4.0);
         b.data[2] = Complex(5.0, 6.0);
@@ -203,7 +203,7 @@ void main() {
     test(
       'disposed arrays throw StateError',
       () => NDArray.scope(() {
-        final a = NDArray<Complex>.create([2], DType.complex128);
+        final a = NDArray.create([2], DType.complex128);
         a.dispose();
         expect(() => real(a), throwsStateError);
         expect(() => imag(a), throwsStateError);

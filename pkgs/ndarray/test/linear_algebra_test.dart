@@ -212,7 +212,7 @@ void main() {
             DType.float64,
           );
 
-          final outL = NDArray<double>.zeros([3, 3], DType.float64);
+          final outL = NDArray.zeros([3, 3], DType.float64);
           final res = cholesky(a, out: outL);
           expect(identical(res, outL), true);
 
@@ -354,8 +354,8 @@ void main() {
             DType.float64,
           );
 
-          final qBuffer = NDArray<double>.zeros([3, 3], DType.float64);
-          final rBuffer = NDArray<double>.zeros([3, 3], DType.float64);
+          final qBuffer = NDArray.zeros([3, 3], DType.float64);
+          final rBuffer = NDArray.zeros([3, 3], DType.float64);
 
           final res = qr(a, out: (Q: qBuffer, R: rBuffer));
 
@@ -404,22 +404,16 @@ void main() {
           final a = NDArray.zeros([3, 3], DType.float64);
 
           // Wrong shape for Q
-          final qBufferWrongShape = NDArray<double>.zeros([
-            2,
-            3,
-          ], DType.float64);
-          final rBuffer = NDArray<double>.zeros([3, 3], DType.float64);
+          final qBufferWrongShape = NDArray.zeros([2, 3], DType.float64);
+          final rBuffer = NDArray.zeros([3, 3], DType.float64);
           expect(
             () => qr(a, out: (Q: qBufferWrongShape, R: rBuffer)),
             throwsArgumentError,
           );
 
           // Wrong shape for R
-          final qBuffer = NDArray<double>.zeros([3, 3], DType.float64);
-          final rBufferWrongShape = NDArray<double>.zeros([
-            3,
-            2,
-          ], DType.float64);
+          final qBuffer = NDArray.zeros([3, 3], DType.float64);
+          final rBufferWrongShape = NDArray.zeros([3, 2], DType.float64);
           expect(
             () => qr(a, out: (Q: qBuffer, R: rBufferWrongShape)),
             throwsArgumentError,
@@ -514,7 +508,7 @@ void main() {
       test(
         'det() throws ArgumentError on non-square matrix',
         () => NDArray.scope(() {
-          final a = NDArray<double>.zeros([2, 3], DType.float64);
+          final a = NDArray.zeros([2, 3], DType.float64);
           expect(() => det(a), throwsArgumentError);
         }),
       );
@@ -562,13 +556,13 @@ void main() {
       test(
         'Solve Complex128 system of equations',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.create([2, 2], DType.complex128);
+          final a = NDArray.create([2, 2], DType.complex128);
           a.data[0] = Complex(3.0, 0.0);
           a.data[1] = Complex(1.0, 0.0);
           a.data[2] = Complex(1.0, 0.0);
           a.data[3] = Complex(2.0, 0.0);
 
-          final b = NDArray<Complex>.create([2, 1], DType.complex128);
+          final b = NDArray.create([2, 1], DType.complex128);
           b.data[0] = Complex(9.0, 0.0);
           b.data[1] = Complex(8.0, 0.0);
 
@@ -622,7 +616,7 @@ void main() {
             2,
             1,
           ], DType.float64);
-          final outBuffer = NDArray<double>.zeros([2, 1], DType.float64);
+          final outBuffer = NDArray.zeros([2, 1], DType.float64);
           final x = solve(a, b, out: outBuffer);
           expect(identical(x, outBuffer), true);
           expect(x.shape, [2, 1]);
@@ -634,13 +628,13 @@ void main() {
       test(
         'Solve Complex64 system of equations',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.create([2, 2], DType.complex64);
+          final a = NDArray.create([2, 2], DType.complex64);
           a.data[0] = Complex(3.0, 0.0);
           a.data[1] = Complex(1.0, 0.0);
           a.data[2] = Complex(1.0, 0.0);
           a.data[3] = Complex(2.0, 0.0);
 
-          final b = NDArray<Complex>.create([2, 1], DType.complex64);
+          final b = NDArray.create([2, 1], DType.complex64);
           b.data[0] = Complex(9.0, 0.0);
           b.data[1] = Complex(8.0, 0.0);
 
@@ -691,7 +685,7 @@ void main() {
       test(
         'Eigenvalues/eigenvectors of Complex128 matrix',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.create([2, 2], DType.complex128);
+          final a = NDArray.create([2, 2], DType.complex128);
           a.data[0] = Complex(0.0, 0.0);
           a.data[1] = Complex(1.0, 0.0);
           a.data[2] = Complex(-2.0, 0.0);
@@ -707,7 +701,7 @@ void main() {
       test(
         'Eigenvalues/eigenvectors of Complex64 matrix',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.create([2, 2], DType.complex64);
+          final a = NDArray.create([2, 2], DType.complex64);
           a.data[0] = Complex(0.0, 0.0);
           a.data[1] = Complex(1.0, 0.0);
           a.data[2] = Complex(-2.0, 0.0);
@@ -728,8 +722,8 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final outW = NDArray<Complex>.zeros([2], DType.complex128);
-          final outVR = NDArray<Complex>.zeros([2, 2], DType.complex128);
+          final outW = NDArray.zeros([2], DType.complex128);
+          final outVR = NDArray.zeros([2, 2], DType.complex128);
 
           final (eigenvalues: w, eigenvectors: vr) = eig(
             a,
@@ -929,13 +923,13 @@ void main() {
       test(
         'Complex128 least-squares solver',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.create([2, 2], DType.complex128);
+          final a = NDArray.create([2, 2], DType.complex128);
           a.data[0] = Complex(3.0, 0.0);
           a.data[1] = Complex(1.0, 0.0);
           a.data[2] = Complex(1.0, 0.0);
           a.data[3] = Complex(2.0, 0.0);
 
-          final b = NDArray<Complex>.create([2, 1], DType.complex128);
+          final b = NDArray.create([2, 1], DType.complex128);
           b.data[0] = Complex(9.0, 0.0);
           b.data[1] = Complex(8.0, 0.0);
 
@@ -958,7 +952,7 @@ void main() {
             DType.float64,
           );
           final b = NDArray.fromList([2.0, 3.9, 6.1], [3], DType.float64);
-          final outBuffer = NDArray<double>.zeros([2], DType.float64);
+          final outBuffer = NDArray.zeros([2], DType.float64);
 
           final res = lstsq(a, b, out: outBuffer);
 
@@ -1052,7 +1046,7 @@ void main() {
           final b = NDArray.ones([10, 5], DType.float64);
           final c = NDArray.ones([5, 3], DType.float64);
 
-          final out = NDArray<double>.zeros([2, 3], DType.float64);
+          final out = NDArray.zeros([2, 3], DType.float64);
           final res = multi_dot([a, b, c], out: out);
 
           expect(res == out, true);

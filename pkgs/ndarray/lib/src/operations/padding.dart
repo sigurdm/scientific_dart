@@ -218,14 +218,14 @@ Object _getDefaultValue(DType dtype) {
 ///
 /// ### Example
 /// {@example /example/padding_example.dart}
-NDArray<T> pad<T extends Object>(
-  NDArray<T> array,
+NDArray<T, MT> pad<T extends Object, MT extends Marker>(
+  NDArray<T, MT> array,
   PadWidth padWidth, {
   PaddingMode mode = PaddingMode.constant,
   PadValues<T>? constantValues,
   PadValues<T>? endValues,
   StatLength? statLength,
-  NDArray<T>? out,
+  NDArray<T, MT>? out,
 }) {
   if (array.isDisposed) {
     throw StateError('Source array is disposed.');
@@ -316,15 +316,11 @@ NDArray<T> pad<T extends Object>(
       final nextShape = List<int>.from(currentSrc.shape);
       nextShape[axis] += padBefore + padAfter;
 
-      final NDArray<T> currentDest;
+      final NDArray<T, MT> currentDest;
       if (isLastAxis && out != null) {
         currentDest = out;
       } else {
-        currentDest = NDArray<T>.create(
-          nextShape,
-          array.dtype,
-          zeroInit: false,
-        );
+        currentDest = NDArray.create(nextShape, array.dtype, zeroInit: false);
       }
 
       _padAxis(
@@ -355,9 +351,9 @@ NDArray<T> pad<T extends Object>(
   });
 }
 
-void _padAxis<T extends Object>(
-  NDArray<T> src,
-  NDArray<T> dest,
+void _padAxis<T extends Object, MT extends Marker>(
+  NDArray<T, MT> src,
+  NDArray<T, MT> dest,
   int axis,
   int padBefore,
   int padAfter,

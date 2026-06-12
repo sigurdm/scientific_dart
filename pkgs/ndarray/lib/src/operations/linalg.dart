@@ -15,7 +15,14 @@ import 'math.dart';
 import 'helpers.dart';
 
 /// Matrix multiplication using OpenBLAS, supporting high-dimensional stack broadcasting and 1D vector promotions.
-NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
+NDArray<R, MR> matmul<
+  Ta,
+  MTa extends Marker,
+  Tb,
+  MTb extends Marker,
+  R,
+  MR extends Marker
+>(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<R, MR>? out}) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot execute matmul() on a disposed array.');
   }
@@ -28,7 +35,7 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   NDArray? bCast;
   NDArray? aCopy;
   NDArray? bCopy;
-  NDArray<R>? result;
+  NDArray<R, MR>? result;
   var success = false;
 
   try {
@@ -60,7 +67,8 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
           );
           result =
               out ??
-              (NDArray.fromList([scalarRes], [], DType.float64) as NDArray<R>);
+              (NDArray.fromList([scalarRes], [], DType.float64)
+                  as NDArray<R, MR>);
           if (out != null) {
             out.data[0] = scalarRes as R;
           }
@@ -76,7 +84,8 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
           );
           result =
               out ??
-              (NDArray.fromList([scalarRes], [], DType.float32) as NDArray<R>);
+              (NDArray.fromList([scalarRes], [], DType.float32)
+                  as NDArray<R, MR>);
           if (out != null) {
             out.data[0] = scalarRes as R;
           }
@@ -171,7 +180,7 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     }
 
     final resShape = [...broadcastStack, m, n];
-    result = NDArray.zeros(resShape, targetDType as DType<R>);
+    result = NDArray.zeros(resShape, targetDType as DType<R, MR>);
 
     // Stride resolution logic for 100% copy-free BLAS matrix multiplication
     var transA = 111; // CblasNoTrans
@@ -525,7 +534,10 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 /// {@example /example/linalg_multi_dot_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.multi_dot](https://numpy.org/doc/stable/reference/generated/numpy.linalg.multi_dot.html)
-NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
+NDArray<T, MT> multi_dot<T, MT extends Marker>(
+  List<NDArray<Object, Marker>> arrays, {
+  NDArray<T, MT>? out,
+}) {
   for (final a in arrays) {
     if (a.isDisposed) {
       throw StateError(
@@ -599,7 +611,7 @@ NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
   }
 
   // Resolve target DType and upcasted type
-  DType<dynamic> targetDType = arrays[0].dtype;
+  DType<dynamic, Marker> targetDType = arrays[0].dtype;
   for (var i = 1; i < n; i++) {
     targetDType = resolveDType(targetDType, arrays[i].dtype);
   }
@@ -726,7 +738,10 @@ NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
 /// ```
 ///
 /// Reference: [Matrix Inversion](https://en.wikipedia.org/wiki/Invertible_matrix)
-NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T, MT> inv<T, MT extends Marker>(
+  NDArray<T, MT> a, {
+  NDArray<T, MT>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute inverse of a disposed array.');
   }
@@ -746,7 +761,7 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
     );
   }
   final n = a.shape[0];
-  final DType<T> targetDType = a.dtype;
+  final DType<T, MT> targetDType = a.dtype;
 
   if (out != null) {
     if (!out.isContiguous) {
@@ -760,7 +775,7 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
   }
 
   return NDArray.scope(() {
-    final NDArray<T> result;
+    final NDArray<T, MT> result;
     if (out != null) {
       result = out;
       a.copy(out: result);
@@ -993,7 +1008,10 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// and [LAPACK LU solver](https://en.wikipedia.org/wiki/LU_decomposition) for additional details.
 ///
 /// Returns a 0-dimensional [NDArray] if [a] is a 2D matrix, or a new [NDArray] with stack dimensions if [a] is a stack of matrices.
-NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T, MT> det<T, MT extends Marker>(
+  NDArray<T, MT> a, {
+  NDArray<T, MT>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute determinant of a disposed array.');
   }
@@ -1030,7 +1048,7 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
     switch (a.dtype) {
       case DType.float64:
         final result =
-            out ?? (NDArray.zeros(stackShape, DType.float64) as NDArray<T>);
+            out ?? (NDArray.zeros(stackShape, DType.float64) as NDArray<T, MT>);
         final marker = ScratchArena.marker;
         try {
           final cStridesA = ScratchArena.copyInts(a.strides);
@@ -1065,7 +1083,8 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
         return result;
       case DType.complex128:
         final result =
-            out ?? (NDArray.zeros(stackShape, DType.complex128) as NDArray<T>);
+            out ??
+            (NDArray.zeros(stackShape, DType.complex128) as NDArray<T, MT>);
         final marker = ScratchArena.marker;
         try {
           final cStridesA = ScratchArena.copyInts(a.strides);
@@ -1100,7 +1119,8 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
         return result;
       case DType.complex64:
         final result =
-            out ?? (NDArray.zeros(stackShape, DType.complex64) as NDArray<T>);
+            out ??
+            (NDArray.zeros(stackShape, DType.complex64) as NDArray<T, MT>);
         final marker = ScratchArena.marker;
         try {
           final cStridesA = ScratchArena.copyInts(a.strides);
@@ -1135,7 +1155,7 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
         return result;
       case DType.float32:
         final result =
-            out ?? (NDArray.zeros(stackShape, DType.float32) as NDArray<T>);
+            out ?? (NDArray.zeros(stackShape, DType.float32) as NDArray<T, MT>);
         final marker = ScratchArena.marker;
         try {
           final cStridesA = ScratchArena.copyInts(a.strides);
@@ -1193,12 +1213,16 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([3.0, 1.0, 1.0, 2.0], [2, 2], DType.float64);
-/// final b = `NDArray<double>`.fromList([9.0, 8.0], [2], DType.float64);
+/// final a = `NDArray<double, Float64Marker>`.fromList([3.0, 1.0, 1.0, 2.0], [2, 2], DType.float64);
+/// final b = `NDArray<double, Float64Marker>`.fromList([9.0, 8.0], [2], DType.float64);
 /// final x = solve(a, b);
 /// print(x.toList()); // [2.0, 3.0]
 /// ```
-NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
+NDArray<T, MT> solve<T, MT extends Marker>(
+  NDArray<T, MT> a,
+  NDArray<T, MT> b, {
+  NDArray<T, MT>? out,
+}) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot execute solve() on a disposed array.');
   }
@@ -1253,7 +1277,7 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
 
       // Prepare bCopy: if out is provided, copy b into it and use it as bCopy;
       // otherwise create a new copy.
-      final NDArray<T> bCopy;
+      final NDArray<T, MT> bCopy;
       if (out != null) {
         bCopy = out;
         b.copy(out: bCopy);
@@ -1363,22 +1387,23 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
 /// Compute the eigenvalues and right eigenvectors of a square array or stack of square arrays.
 ///
 /// Returns a record `(eigenvalues, eigenvectors)` containing:
-/// - **eigenvalues**: An `NDArray<Complex>` of shape `[..., N]` containing the eigenvalues.
-/// - **eigenvectors**: An `NDArray<Complex>` of shape `[..., N, N]` containing the corresponding right eigenvectors as columns.
+/// - **eigenvalues**: An `NDArray<Complex, Complex128Marker>` of shape `[..., N]` containing the eigenvalues.
+/// - **eigenvectors**: An `NDArray<Complex, Complex128Marker>` of shape `[..., N, N]` containing the corresponding right eigenvectors as columns.
 ///
 /// Both are returned with `Complex` elements because eigenvalues and eigenvectors can be complex
 /// even for real matrices.
 ///
 /// **Preconditions:**
 /// - Matrix [a] must be square in its last two dimensions (size $N \times N$) and at least 2-dimensional.
-/// - If provided, [out] must contain two pre-allocated contiguous `NDArray<Complex>` buffers with shapes `[..., N]` and `[..., N, N]` respectively.
+/// - If provided, [out] must contain two pre-allocated contiguous `NDArray<Complex, Complex128Marker>` buffers with shapes `[..., N]` and `[..., N, N]` respectively.
 ///
 /// **Throws:**
 /// - [ArgumentError] if [a] is not square or less than 2D.
 /// - [UnimplementedError] if the DType of [a] is not supported.
-({NDArray<Complex> eigenvalues, NDArray<Complex> eigenvectors}) eig<T>(
-  NDArray<T> a, {
-  ({NDArray<Complex> eigenvalues, NDArray<Complex> eigenvectors})? out,
+({NDArray<Complex, MC> eigenvalues, NDArray<Complex, MC> eigenvectors})
+eig<T, MT extends Marker, MC extends Marker>(
+  NDArray<T, MT> a, {
+  ({NDArray<Complex, MC> eigenvalues, NDArray<Complex, MC> eigenvectors})? out,
 }) {
   final rank = a.shape.length;
   if (rank < 2 || a.shape[rank - 1] != a.shape[rank - 2]) {
@@ -1389,16 +1414,18 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
   final n = a.shape[rank - 1];
   final stackShape = a.shape.sublist(0, rank - 2);
 
-  final compDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
-      ? DType.complex64
-      : DType.complex128;
+  final compDType =
+      ((a.dtype == DType.float32 || a.dtype == DType.complex64)
+              ? DType.complex64
+              : DType.complex128)
+          as DType<Complex, MC>;
 
   final wShape = [...stackShape, n];
   final vrShape = [...stackShape, n, n];
 
   return NDArray.scope(() {
-    final NDArray<Complex> w;
-    final NDArray<Complex> vr;
+    final NDArray<Complex, MC> w;
+    final NDArray<Complex, MC> vr;
 
     if (out != null) {
       w = out.eigenvalues;
@@ -1424,8 +1451,8 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
         );
       }
     } else {
-      w = NDArray<Complex>.create(wShape, compDType);
-      vr = NDArray<Complex>.create(vrShape, compDType);
+      w = NDArray.create(wShape, compDType);
+      vr = NDArray.create(vrShape, compDType);
     }
 
     final jobvl = 'N'.codeUnitAt(0);
@@ -1473,8 +1500,8 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
 
       switch (src.dtype) {
         case DType.complex128:
-          final w2D = NDArray<Complex>.create([n], DType.complex128);
-          final vr2D = NDArray<Complex>.create([n, n], DType.complex128);
+          final w2D = NDArray.create([n], compDType);
+          final vr2D = NDArray.create([n, n], compDType);
 
           final info = LAPACKE_zgeev(
             101, // ROW_MAJOR
@@ -1501,7 +1528,7 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
             );
           }
 
-          final wView = NDArray<Complex>.view(
+          final wView = NDArray.view(
             w,
             shape: [n],
             strides: w.strides.isEmpty ? [1] : [w.strides.last],
@@ -1509,7 +1536,7 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
           );
           w2D.copy(out: wView);
 
-          final vrView = NDArray<Complex>.view(
+          final vrView = NDArray.view(
             vr,
             shape: [n, n],
             strides: vr.strides.sublist(rank - 2),
@@ -1520,8 +1547,8 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
           w2D.dispose();
           vr2D.dispose();
         case DType.complex64:
-          final w2D = NDArray<Complex>.create([n], DType.complex64);
-          final vr2D = NDArray<Complex>.create([n, n], DType.complex64);
+          final w2D = NDArray.create([n], compDType);
+          final vr2D = NDArray.create([n, n], compDType);
 
           final info = LAPACKE_cgeev(
             101, // ROW_MAJOR
@@ -1548,7 +1575,7 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
             );
           }
 
-          final wView = NDArray<Complex>.view(
+          final wView = NDArray.view(
             w,
             shape: [n],
             strides: w.strides.isEmpty ? [1] : [w.strides.last],
@@ -1556,7 +1583,7 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
           );
           w2D.copy(out: wView);
 
-          final vrView = NDArray<Complex>.view(
+          final vrView = NDArray.view(
             vr,
             shape: [n, n],
             strides: vr.strides.sublist(rank - 2),
@@ -1567,9 +1594,9 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
           w2D.dispose();
           vr2D.dispose();
         case DType.float64:
-          final wr = NDArray<double>.zeros([n], DType.float64);
-          final wi = NDArray<double>.zeros([n], DType.float64);
-          final vrReal = NDArray<double>.create([n, n], DType.float64);
+          final wr = NDArray.zeros([n], DType.float64);
+          final wi = NDArray.zeros([n], DType.float64);
+          final vrReal = NDArray.create([n, n], DType.float64);
 
           final info = LAPACKE_dgeev(
             101,
@@ -1616,9 +1643,9 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
           wi.dispose();
           vrReal.dispose();
         case DType.float32:
-          final wr = NDArray<double>.zeros([n], DType.float32);
-          final wi = NDArray<double>.zeros([n], DType.float32);
-          final vrReal = NDArray<double>.create([n, n], DType.float32);
+          final wr = NDArray.zeros([n], DType.float32);
+          final wi = NDArray.zeros([n], DType.float32);
+          final vrReal = NDArray.create([n, n], DType.float32);
 
           final info = LAPACKE_sgeev(
             101,
@@ -1680,7 +1707,11 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
 
 /// Extension on eigenvalue decomposition result record type to support easy disposal of both arrays.
 extension EigRecordDispose
-    on ({NDArray<Complex> eigenvalues, NDArray<Complex> eigenvectors}) {
+    on
+        ({
+          NDArray<Complex, Complex128Marker> eigenvalues,
+          NDArray<Complex, Complex128Marker> eigenvectors,
+        }) {
   /// Disposes both [eigenvalues] and [eigenvectors] simultaneously,
   /// freeing their underlying unmanaged C memory.
   ///
@@ -1707,7 +1738,11 @@ extension EigRecordDispose
 ///
 /// **Example:**
 /// {@example /example/linalg_premium_example.dart lang=dart}
-NDArray<R> pinv<T, R>(NDArray<T> a, {double? rcond, NDArray<R>? out}) {
+NDArray<R, MR> pinv<T, MT extends Marker, R, MR extends Marker>(
+  NDArray<T, MT> a, {
+  double? rcond,
+  NDArray<R, MR>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute pinv() on a disposed array.');
   }
@@ -1723,7 +1758,8 @@ NDArray<R> pinv<T, R>(NDArray<T> a, {double? rcond, NDArray<R>? out}) {
   final n = a.shape[1];
 
   final targetShape = [n, m];
-  final result = out ?? (NDArray.create(targetShape, a.dtype) as NDArray<R>);
+  final result =
+      out ?? (NDArray.create(targetShape, a.dtype) as NDArray<R, MR>);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -1781,7 +1817,11 @@ NDArray<R> pinv<T, R>(NDArray<T> a, {double? rcond, NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/linalg_premium_example.dart lang=dart}
-NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
+NDArray<T, MT> matrix_power<T, MT extends Marker>(
+  NDArray<T, MT> a,
+  int n, {
+  NDArray<T, MT>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute matrix_power() on a disposed array.');
   }
@@ -1803,7 +1843,7 @@ NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
   }
 
   final size = a.shape[0];
-  final result = out ?? NDArray<T>.create(a.shape, a.dtype);
+  final result = out ?? NDArray.create(a.shape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -1841,11 +1881,11 @@ NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
       return result;
     }
 
-    var res = NDArray<T>.eye(size, a.dtype);
-    var tempRes = NDArray<T>.zeros(a.shape, a.dtype);
+    var res = NDArray.eye(size, a.dtype);
+    var tempRes = NDArray.zeros(a.shape, a.dtype);
 
-    var current = base.copy() as NDArray<T>;
-    var tempCurrent = NDArray<T>.zeros(a.shape, a.dtype);
+    var current = base.copy() as NDArray<T, MT>;
+    var tempCurrent = NDArray.zeros(a.shape, a.dtype);
 
     var exponent = n;
     while (exponent > 0) {
@@ -1905,7 +1945,10 @@ NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
 /// {@example /example/linalg_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.cholesky](https://numpy.org/doc/stable/reference/generated/numpy.linalg.cholesky.html)
-NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T, MT> cholesky<T, MT extends Marker>(
+  NDArray<T, MT> a, {
+  NDArray<T, MT>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cholesky() on a disposed array.');
   }
@@ -1925,7 +1968,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
   final n = a.shape[0];
   final targetDType = a.dtype;
 
-  final NDArray<T> src;
+  final NDArray<T, MT> src;
   final bool wasCopied;
   if (!a.isContiguous) {
     src = a.copy();
@@ -1935,7 +1978,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
     wasCopied = false;
   }
 
-  final NDArray<T> lMat;
+  final NDArray<T, MT> lMat;
   if (out != null) {
     lMat = out;
     if (!listEquals(lMat.shape, a.shape) || lMat.dtype != a.dtype) {
@@ -2038,14 +2081,14 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([12.0, -51.0, 4.0, 6.0, 167.0, -68.0, -4.0, 24.0, -41.0], [3, 3], DType.float64);
+/// final a = `NDArray<double, Float64Marker>`.fromList([12.0, -51.0, 4.0, 6.0, 167.0, -68.0, -4.0, 24.0, -41.0], [3, 3], DType.float64);
 /// final res = qr(a);
 /// final q = res.Q;
 /// final r = res.R;
 /// ```
-({NDArray<T> Q, NDArray<T> R}) qr<T>(
-  NDArray<T> a, {
-  ({NDArray<T> Q, NDArray<T> R})? out,
+({NDArray<T, MT> Q, NDArray<T, MT> R}) qr<T, MT extends Marker>(
+  NDArray<T, MT> a, {
+  ({NDArray<T, MT> Q, NDArray<T, MT> R})? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute qr() on a disposed array.');
@@ -2064,18 +2107,18 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
   final k = m < n ? m : n;
   final stackShape = a.shape.sublist(0, rank - 2);
 
-  final DType<double> targetDType = a.dtype == DType.float32
-      ? DType.float32 as DType<double>
-      : DType.float64 as DType<double>;
+  final targetDType =
+      (a.dtype == DType.float32 ? DType.float32 : DType.float64)
+          as DType<T, MT>;
 
   final qShape = [...stackShape, m, k];
   final rShape = [...stackShape, k, n];
 
-  final NDArray<double> qMat;
-  final NDArray<double> rMat;
+  final NDArray<T, MT> qMat;
+  final NDArray<T, MT> rMat;
   if (out != null) {
-    qMat = out.Q as NDArray<double>;
-    rMat = out.R as NDArray<double>;
+    qMat = out.Q;
+    rMat = out.R;
     if (!listEquals(qMat.shape, qShape) || qMat.dtype != targetDType) {
       throw ArgumentError(
         'Provided out Q buffer has incompatible shape or dtype.',
@@ -2093,12 +2136,13 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
       throw ArgumentError('Provided out R buffer must be contiguous.');
     }
   } else {
-    qMat = NDArray<double>.zeros(qShape, targetDType);
-    rMat = NDArray<double>.zeros(rShape, targetDType);
+    qMat = NDArray.zeros(qShape, targetDType);
+    rMat = NDArray.zeros(rShape, targetDType);
   }
 
-  final NDArray<T> aCast =
-      (a.dtype == targetDType ? a : castNDArray(a, targetDType)) as NDArray<T>;
+  final NDArray<T, MT> aCast =
+      (a.dtype == targetDType ? a : castNDArray(a, targetDType))
+          as NDArray<T, MT>;
   final bool wasCast = a.dtype != targetDType;
 
   final aCopy = NDArray.create([m, n], targetDType);
@@ -2130,15 +2174,11 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
         strides: aCast.strides.sublist(rank - 2),
         offsetElements: offsetA,
       );
-      sliceView.copy(out: aCopy as NDArray<T>);
+      sliceView.copy(out: aCopy as NDArray<T, MT>);
       sliceView.dispose();
 
-      final r2D = targetDType == DType.float32
-          ? NDArray<Float32>.zeros([k, n], DType.float32)
-          : NDArray<Float64>.zeros([k, n], DType.float64);
-      final q2D = targetDType == DType.float32
-          ? NDArray<Float32>.zeros([m, k], DType.float32)
-          : NDArray<Float64>.zeros([m, k], DType.float64);
+      final r2D = NDArray.zeros([k, n], targetDType);
+      final q2D = NDArray.zeros([m, k], targetDType);
 
       if (targetDType == DType.float64) {
         final info = LAPACKE_dgeqrf(
@@ -2264,7 +2304,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
     }
   }
 
-  return (Q: qMat as NDArray<T>, R: rMat as NDArray<T>);
+  return (Q: qMat as NDArray<T, MT>, R: rMat as NDArray<T, MT>);
 }
 
 /// Computes the Singular Value Decomposition (SVD) of a matrix or a stack of matrices $A = U S V^h$.
@@ -2285,15 +2325,16 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], DType.float64);
+/// final a = `NDArray<double, Float64Marker>`.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], DType.float64);
 /// final res = svd(a);
 /// final u = res.U;
 /// final s = res.S;
 /// final vh = res.Vh;
 /// ```
-({NDArray<T> U, NDArray<double> S, NDArray<T> Vh}) svd<T>(
-  NDArray<T> a, {
-  ({NDArray<T> U, NDArray<double> S, NDArray<T> Vh})? out,
+({NDArray<T, MT> U, NDArray<double, MS> S, NDArray<T, MT> Vh})
+svd<T, MT extends Marker, MS extends Marker>(
+  NDArray<T, MT> a, {
+  ({NDArray<T, MT> U, NDArray<double, MS> S, NDArray<T, MT> Vh})? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute svd() on a disposed array.');
@@ -2316,9 +2357,11 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
   final n = a.shape[rank - 1];
   final stackShape = a.shape.sublist(0, rank - 2);
 
-  final dtypeS = a.dtype.isComplex
-      ? (a.dtype == DType.complex128 ? DType.float64 : DType.float32)
-      : a.dtype;
+  final dtypeS =
+      (a.dtype.isComplex
+              ? (a.dtype == DType.complex128 ? DType.float64 : DType.float32)
+              : a.dtype)
+          as DType<double, MS>;
 
   final uShape = [...stackShape, m, m];
   final sShape = m < n ? [...stackShape, m] : [...stackShape, n];
@@ -2348,9 +2391,10 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
   return _svd(a, out: out);
 }
 
-({NDArray<T> U, NDArray<double> S, NDArray<T> Vh}) _svd<T>(
-  NDArray<T> a, {
-  ({NDArray<T> U, NDArray<double> S, NDArray<T> Vh})? out,
+({NDArray<T, MT> U, NDArray<double, MS> S, NDArray<T, MT> Vh})
+_svd<T, MT extends Marker, MS extends Marker>(
+  NDArray<T, MT> a, {
+  ({NDArray<T, MT> U, NDArray<double, MS> S, NDArray<T, MT> Vh})? out,
 }) {
   final rank = a.shape.length;
   final m = a.shape[rank - 2];
@@ -2365,7 +2409,8 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
     final aT = a.transpose(axes);
 
     // Do NOT pass out to recursive call, let it allocate contiguous buffers.
-    final resT = _svd(aT);
+    final ({NDArray<T, MT> U, NDArray<double, MS> S, NDArray<T, MT> Vh}) resT =
+        _svd(aT);
     final uNew = resT.U;
     final sNew = resT.S;
     final vhNew = resT.Vh;
@@ -2390,20 +2435,21 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
     }
   }
 
-  final dtypeS = a.dtype.isComplex
-      ? (a.dtype == DType.complex128 ? DType.float64 : DType.float32)
-      : a.dtype;
+  final dtypeS =
+      (a.dtype.isComplex
+              ? (a.dtype == DType.complex128 ? DType.float64 : DType.float32)
+              : a.dtype)
+          as DType<double, MS>;
 
   final uShape = [...stackShape, m, m];
   final sShape = [...stackShape, n];
   final vtShape = [...stackShape, n, n];
 
-  final NDArray<T> uMat = out?.U ?? NDArray<T>.zeros(uShape, a.dtype);
-  final NDArray<double> sMat =
-      out?.S ?? NDArray<double>.zeros(sShape, dtypeS as DType<double>);
-  final NDArray<T> vtMat = out?.Vh ?? NDArray<T>.zeros(vtShape, a.dtype);
+  final NDArray<T, MT> uMat = out?.U ?? NDArray.zeros(uShape, a.dtype);
+  final sMat = out?.S ?? NDArray.zeros(sShape, dtypeS);
+  final NDArray<T, MT> vtMat = out?.Vh ?? NDArray.zeros(vtShape, a.dtype);
 
-  final aCopy = NDArray<T>.create([m, n], a.dtype);
+  final aCopy = NDArray.create([m, n], a.dtype);
   final marker = ScratchArena.marker;
 
   try {
@@ -2436,13 +2482,10 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
       sliceView.copy(out: aCopy);
       sliceView.dispose();
 
-      final NDArray<double> s2D =
-          (a.dtype == DType.float32 || a.dtype == DType.complex64)
-          ? NDArray<Float32>.zeros([n], DType.float32)
-          : NDArray<Float64>.zeros([n], DType.float64);
+      final s2D = NDArray.zeros([n], dtypeS);
 
-      final NDArray<T> u2D = NDArray<T>.zeros([m, m], a.dtype);
-      final NDArray<T> vt2D = NDArray<T>.zeros([n, n], a.dtype);
+      final NDArray<T, MT> u2D = NDArray.zeros([m, m], a.dtype);
+      final NDArray<T, MT> vt2D = NDArray.zeros([n, n], a.dtype);
 
       switch (a.dtype) {
         case DType.float64:
@@ -2533,7 +2576,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
         offsetVt += coords[i] * vtMat.strides[i];
       }
 
-      final uSlice = NDArray<T>.view(
+      final uSlice = NDArray.view(
         uMat,
         shape: [m, m],
         strides: uMat.strides.sublist(rank - 2),
@@ -2542,7 +2585,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
       u2D.copy(out: uSlice);
       uSlice.dispose();
 
-      final sSlice = NDArray<double>.view(
+      final sSlice = NDArray.view(
         sMat,
         shape: [n],
         strides: sMat.strides.isEmpty ? [1] : [sMat.strides.last],
@@ -2551,7 +2594,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
       s2D.copy(out: sSlice);
       sSlice.dispose();
 
-      final vtSlice = NDArray<T>.view(
+      final vtSlice = NDArray.view(
         vtMat,
         shape: [n, n],
         strides: vtMat.strides.sublist(rank - 2),

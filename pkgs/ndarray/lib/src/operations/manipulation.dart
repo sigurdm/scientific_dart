@@ -5,8 +5,8 @@ import '../ndarray.dart';
 import 'helpers.dart';
 
 /// Concatenates a list of arrays along a specified axis.
-NDArray<T> concatenate<T extends Object>(
-  List<NDArray<T>> arrays, {
+NDArray<T, MT> concatenate<T extends Object, MT extends Marker>(
+  List<NDArray<T, MT>> arrays, {
   int axis = 0,
 }) {
   if (arrays.isEmpty) {
@@ -49,7 +49,7 @@ NDArray<T> concatenate<T extends Object>(
   }
   targetShape[axis] = totalAxisSize;
 
-  final result = NDArray<T>.create(targetShape, dtype);
+  final result = NDArray.create(targetShape, dtype);
 
   var allContiguous = true;
   for (final arr in arrays) {
@@ -106,7 +106,10 @@ NDArray<T> concatenate<T extends Object>(
 /// final b = NDArray.fromList([3, 4], [2], DType.int32);
 /// final s = stack([a, b], axis: 0); // shape [2, 2], values [[1, 2], [3, 4]]
 /// ```
-NDArray<T> stack<T extends Object>(List<NDArray<T>> arrays, {int axis = 0}) {
+NDArray<T, MT> stack<T extends Object, MT extends Marker>(
+  List<NDArray<T, MT>> arrays, {
+  int axis = 0,
+}) {
   if (arrays.isEmpty) {
     throw ArgumentError('List of arrays to stack must not be empty.');
   }
@@ -174,7 +177,10 @@ NDArray<T> stack<T extends Object>(List<NDArray<T>> arrays, {int axis = 0}) {
 /// **Memory Ownership & Lifetime View Warning:**
 /// > [!WARNING]
 /// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view. Calling [dispose()] on the returned view does nothing.
-NDArray<T> expand_dims<T extends Object>(NDArray<T> a, int axis) {
+NDArray<T, MT> expand_dims<T extends Object, MT extends Marker>(
+  NDArray<T, MT> a,
+  int axis,
+) {
   if (a.isDisposed) {
     throw StateError('Cannot execute expand_dims() on a disposed array.');
   }
@@ -225,7 +231,10 @@ NDArray<T> expand_dims<T extends Object>(NDArray<T> a, int axis) {
 /// **Memory Ownership & Lifetime View Warning:**
 /// > [!WARNING]
 /// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view. Calling [dispose()] on the returned view does nothing.
-NDArray<T> squeeze<T extends Object>(NDArray<T> a, {List<int>? axis}) {
+NDArray<T, MT> squeeze<T extends Object, MT extends Marker>(
+  NDArray<T, MT> a, {
+  List<int>? axis,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute squeeze() on a disposed array.');
   }
@@ -308,8 +317,8 @@ NDArray<T> squeeze<T extends Object>(NDArray<T> a, {List<int>? axis}) {
 /// **Memory Ownership & Lifetime View Warning:**
 /// > [!WARNING]
 /// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view. Calling [dispose()] on the returned view does nothing.
-NDArray<T> slidingWindowView<T extends Object>(
-  NDArray<T> a,
+NDArray<T, MT> slidingWindowView<T extends Object, MT extends Marker>(
+  NDArray<T, MT> a,
   List<int> windowShape, {
   List<int>? axis,
 }) {
@@ -404,7 +413,10 @@ NDArray<T> slidingWindowView<T extends Object>(
 /// **Memory Ownership & Lifetime View Warning:**
 /// > [!WARNING]
 /// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view. Calling [dispose()] on the returned view does nothing.
-NDArray<T> flip<T extends Object>(NDArray<T> a, {dynamic axis}) {
+NDArray<T, MT> flip<T extends Object, MT extends Marker>(
+  NDArray<T, MT> a, {
+  dynamic axis,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot flip a disposed array.');
   }
@@ -475,7 +487,7 @@ NDArray<T> flip<T extends Object>(NDArray<T> a, {dynamic axis}) {
 /// Refer to [NumPy fliplr documentation](https://numpy.org/doc/stable/reference/generated/numpy.fliplr.html).
 ///
 /// {@example /example/rearranging_example.dart lang=dart}
-NDArray<T> fliplr<T extends Object>(NDArray<T> a) {
+NDArray<T, MT> fliplr<T extends Object, MT extends Marker>(NDArray<T, MT> a) {
   if (a.isDisposed) {
     throw StateError('Cannot fliplr a disposed array.');
   }
@@ -505,7 +517,7 @@ NDArray<T> fliplr<T extends Object>(NDArray<T> a) {
 /// Refer to [NumPy flipud documentation](https://numpy.org/doc/stable/reference/generated/numpy.flipud.html).
 ///
 /// {@example /example/rearranging_example.dart lang=dart}
-NDArray<T> flipud<T extends Object>(NDArray<T> a) {
+NDArray<T, MT> flipud<T extends Object, MT extends Marker>(NDArray<T, MT> a) {
   if (a.isDisposed) {
     throw StateError('Cannot flipud a disposed array.');
   }

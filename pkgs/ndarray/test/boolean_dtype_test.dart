@@ -6,7 +6,7 @@ void main() {
     test(
       'Create empty boolean array via zeros factory',
       () => NDArray.scope(() {
-        final arr = NDArray<bool>.zeros([2, 3], DType.boolean);
+        final arr = NDArray.zeros([2, 3], DType.boolean);
 
         expect(arr.shape, [2, 3]);
         expect(arr.dtype, DType.boolean);
@@ -20,7 +20,7 @@ void main() {
     test(
       'Mutating boolean values via BoolList indexing operators',
       () => NDArray.scope(() {
-        final arr = NDArray<bool>.zeros([4], DType.boolean);
+        final arr = NDArray.zeros([4], DType.boolean);
 
         arr.data[0] = true;
         arr.data[2] = true;
@@ -37,7 +37,7 @@ void main() {
     test(
       'Create boolean array filled with true via ones factory',
       () => NDArray.scope(() {
-        final arr = NDArray<bool>.ones([5], DType.boolean);
+        final arr = NDArray.ones([5], DType.boolean);
 
         expect(arr.shape, [5]);
         expect(arr.dtype, DType.boolean);

@@ -81,11 +81,11 @@ bool _listEquals(List a, List b) {
 /// final y = NDArray.fromList([1.0, 2.0, 4.0], [3], DType.float64);
 /// final res = trapz(y, spacing: Spacing.step(1.0)); // 4.5
 /// ```
-NDArray<T> trapz<T extends Object>(
-  NDArray<T> y, {
+NDArray<T, MT> trapz<T extends Object, MT extends Marker>(
+  NDArray<T, MT> y, {
   Spacing spacing = const Spacing.step(1.0),
   int axis = -1,
-  NDArray<T>? out,
+  NDArray<T, MT>? out,
 }) {
   if (y.isDisposed) {
     throw StateError('Cannot execute trapz() on a disposed array.');
@@ -126,7 +126,7 @@ NDArray<T> trapz<T extends Object>(
   }
 
   final targetShape = List<int>.from(y.shape)..removeAt(targetAxis);
-  final result = out ?? NDArray<T>.zeros(targetShape, y.dtype);
+  final result = out ?? NDArray.zeros(targetShape, y.dtype);
   if (out != null) {
     if (!_listEquals(out.shape, targetShape) || out.dtype != y.dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
@@ -256,9 +256,9 @@ NDArray<T> trapz<T extends Object>(
               );
               dxStruct.ref.r = 1.0;
               dxStruct.ref.i = 0.0;
-              NDArray<Complex>? spacingArray;
+              NDArray<Complex, Complex128Marker>? spacingArray;
               try {
-                spacingArray = NDArray<Complex>.fromList(complexValues, [
+                spacingArray = NDArray.fromList(complexValues, [
                   N,
                 ], DType.complex128);
                 s_trapz_complex128_all(
@@ -282,9 +282,9 @@ NDArray<T> trapz<T extends Object>(
               );
               dxStruct.ref.r = 1.0;
               dxStruct.ref.i = 0.0;
-              NDArray<Complex>? spacingArray;
+              NDArray<Complex, Complex64Marker>? spacingArray;
               try {
-                spacingArray = NDArray<Complex>.fromList(complexValues, [
+                spacingArray = NDArray.fromList(complexValues, [
                   N,
                 ], DType.complex64);
                 s_trapz_complex64_all(
@@ -309,11 +309,13 @@ NDArray<T> trapz<T extends Object>(
           final doubleValues = values
               .map((e) => (e as num).toDouble())
               .toList();
-          NDArray<double>? spacingArray;
-          spacingArray = NDArray<double>.fromList(
+          NDArray<double, Marker>? spacingArray;
+          spacingArray = NDArray.fromList(
             doubleValues,
             [N],
-            y.dtype.isFloating ? y.dtype as DType<double> : DType.float64,
+            y.dtype.isFloating
+                ? y.dtype as DType<double, Marker>
+                : DType.float64,
           );
 
           final dtype = y.dtype;
@@ -432,12 +434,12 @@ NDArray<T> trapz<T extends Object>(
 /// final f = NDArray.fromList([1.0, 2.0, 4.0, 7.0], [4], DType.float64);
 /// final res = gradient(f, spacing: Spacing.step(1.0)); // [1.0, 1.5, 2.5, 3.0]
 /// ```
-NDArray<T> gradient<T extends Object>(
-  NDArray<T> f, {
+NDArray<T, MT> gradient<T extends Object, MT extends Marker>(
+  NDArray<T, MT> f, {
   Spacing spacing = const Spacing.step(1.0),
   int axis = 0,
   int edgeOrder = 1,
-  NDArray<T>? out,
+  NDArray<T, MT>? out,
 }) {
   if (f.isDisposed) {
     throw StateError('Cannot execute gradient() on a disposed array.');
@@ -482,7 +484,7 @@ NDArray<T> gradient<T extends Object>(
     }
   }
 
-  final result = out ?? NDArray<T>.zeros(f.shape, f.dtype);
+  final result = out ?? NDArray.zeros(f.shape, f.dtype);
   if (out != null) {
     if (!_listEquals(out.shape, f.shape) || out.dtype != f.dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
@@ -618,9 +620,9 @@ NDArray<T> gradient<T extends Object>(
               );
               dxStruct.ref.r = 1.0;
               dxStruct.ref.i = 0.0;
-              NDArray<Complex>? spacingArray;
+              NDArray<Complex, Complex128Marker>? spacingArray;
               try {
-                spacingArray = NDArray<Complex>.fromList(complexValues, [
+                spacingArray = NDArray.fromList(complexValues, [
                   N,
                 ], DType.complex128);
                 s_gradient_complex128_all(
@@ -645,9 +647,9 @@ NDArray<T> gradient<T extends Object>(
               );
               dxStruct.ref.r = 1.0;
               dxStruct.ref.i = 0.0;
-              NDArray<Complex>? spacingArray;
+              NDArray<Complex, Complex64Marker>? spacingArray;
               try {
-                spacingArray = NDArray<Complex>.fromList(complexValues, [
+                spacingArray = NDArray.fromList(complexValues, [
                   N,
                 ], DType.complex64);
                 s_gradient_complex64_all(
@@ -673,11 +675,13 @@ NDArray<T> gradient<T extends Object>(
           final doubleValues = values
               .map((e) => (e as num).toDouble())
               .toList();
-          NDArray<double>? spacingArray;
-          spacingArray = NDArray<double>.fromList(
+          NDArray<double, Marker>? spacingArray;
+          spacingArray = NDArray.fromList(
             doubleValues,
             [N],
-            f.dtype.isFloating ? f.dtype as DType<double> : DType.float64,
+            f.dtype.isFloating
+                ? f.dtype as DType<double, Marker>
+                : DType.float64,
           );
           final dtype = f.dtype;
           switch (dtype) {
@@ -800,13 +804,13 @@ NDArray<T> gradient<T extends Object>(
 /// // Specific per axis:
 /// final grads2 = gradientArray(f, spacings: [Spacing.step(1.0), Spacing.step(2.0)]);
 /// ```
-List<NDArray<T>> gradientArray<T extends Object>(
-  NDArray<T> f, {
+List<NDArray<T, MT>> gradientArray<T extends Object, MT extends Marker>(
+  NDArray<T, MT> f, {
   Spacing? spacing,
   List<Spacing>? spacings,
   List<int>? axis,
   int edgeOrder = 1,
-  List<NDArray<T>>? out,
+  List<NDArray<T, MT>>? out,
 }) {
   if (f.isDisposed) {
     throw StateError('Cannot execute gradientArray() on a disposed array.');
@@ -875,10 +879,10 @@ List<NDArray<T>> gradientArray<T extends Object>(
     }
   }
 
-  final List<NDArray<T>> results = [];
+  final List<NDArray<T, MT>> results = [];
   try {
     for (var i = 0; i < targetAxes.length; i++) {
-      final singleGrad = gradient<T>(
+      final singleGrad = gradient(
         f,
         spacing: spacings?[i] ?? spacing ?? const Spacing.step(1.0),
         axis: targetAxes[i],

@@ -9,7 +9,7 @@ void main() {
       test(
         'Add Complex and Float64 arrays',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.create([2], DType.complex128);
+          final a = NDArray.create([2], DType.complex128);
           a.data[0] = Complex(1.0, 2.0);
           a.data[1] = Complex(3.0, 4.0);
 
@@ -33,7 +33,7 @@ void main() {
             2,
           ], DType.float64);
 
-          final b = NDArray<Complex>.create([2], DType.complex128);
+          final b = NDArray.create([2], DType.complex128);
           b.data[0] = Complex(1.0, 2.0);
           b.data[1] = Complex(3.0, 4.0);
 
@@ -51,7 +51,7 @@ void main() {
             2,
           ], DType.int32);
 
-          final b = NDArray<Complex>.create([2], DType.complex128);
+          final b = NDArray.create([2], DType.complex128);
           b.data[0] = Complex(4.0, 5.0);
           b.data[1] = Complex(1.0, -2.0);
 
@@ -93,7 +93,7 @@ void main() {
           expect(b.data[0], closeTo(0.0, 1e-10));
           expect(b.data[1], closeTo(1.0, 1e-10));
 
-          final c = NDArray<Complex>.create([1], DType.complex128);
+          final c = NDArray.create([1], DType.complex128);
           c.data[0] = Complex(0.0, 0.0);
           final resC = tan(c);
           expect(resC.dtype, DType.complex128);
@@ -143,7 +143,7 @@ void main() {
       test(
         'abs (Complex magnitude)',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.create([2], DType.complex128);
+          final a = NDArray.create([2], DType.complex128);
           a.data[0] = Complex(3.0, 4.0); // mag = 5.0
           a.data[1] = Complex(-5.0, 12.0); // mag = 13.0
 
@@ -186,7 +186,7 @@ void main() {
           expect(b.data, [-1.0, 1.5, 5.0]);
 
           // Verify Complex clip throws UnsupportedError
-          final c = NDArray<Complex>.create([2], DType.complex128);
+          final c = NDArray.create([2], DType.complex128);
           expect(() => clip(c, min: -1.0, max: 5.0), throwsUnsupportedError);
         }),
       );
@@ -387,10 +387,10 @@ void main() {
       test(
         'Complex equality and inequality exceptions',
         () => NDArray.scope(() {
-          final c1 = NDArray<Complex>.create([1], DType.complex128);
+          final c1 = NDArray.create([1], DType.complex128);
           c1.data[0] = Complex(1, 2);
 
-          final c2 = NDArray<Complex>.create([1], DType.complex128);
+          final c2 = NDArray.create([1], DType.complex128);
           c2.data[0] = Complex(1, 2);
 
           // Equality is supported for complex!

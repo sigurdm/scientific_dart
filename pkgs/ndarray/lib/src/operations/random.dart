@@ -32,17 +32,17 @@ import 'linalg.dart';
 ///
 /// By default, uses Dart's standard [Random] class, which is not cryptographically secure.
 /// You can pass a secure random object via the [random] parameter if needed.
-NDArray<T> uniform<T extends num>(
+NDArray<T, MT> uniform<T extends num, MT extends Marker>(
   List<int> shape, {
-  DType<T>? dtype,
+  DType<T, MT>? dtype,
   int? seed,
-  NDArray<T>? out,
+  NDArray<T, MT>? out,
   bool secure = false,
 }) {
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write uniform result to a disposed output array.');
   }
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T, MT>);
   if (out != null) {
     if (!out.isContiguous) {
       throw ArgumentError('out buffer must be contiguous.');
@@ -51,7 +51,7 @@ NDArray<T> uniform<T extends num>(
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
-  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
+  final arr = out ?? NDArray.create(shape, resolvedDType);
   final len = arr.data.length;
   final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
 
@@ -106,13 +106,13 @@ NDArray<T> uniform<T extends num>(
 /// print(a.toList()); // e.g., [3, 7, 1]
 /// a.dispose();
 /// ```
-NDArray<T> randint<T extends num>(
+NDArray<T, MT> randint<T extends num, MT extends Marker>(
   List<int> shape, {
   required int low,
   required int high,
-  DType<T>? dtype,
+  DType<T, MT>? dtype,
   int? seed,
-  NDArray<T>? out,
+  NDArray<T, MT>? out,
   bool secure = false,
 }) {
   if (out != null && out.isDisposed) {
@@ -121,7 +121,7 @@ NDArray<T> randint<T extends num>(
   if (low >= high) {
     throw ArgumentError('low must be less than high');
   }
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T, MT>);
   if (out != null) {
     if (!out.isContiguous) {
       throw ArgumentError('out buffer must be contiguous.');
@@ -130,7 +130,7 @@ NDArray<T> randint<T extends num>(
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
-  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
+  final arr = out ?? NDArray.create(shape, resolvedDType);
   final len = arr.data.length;
   final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
 
@@ -195,13 +195,13 @@ NDArray<T> randint<T extends num>(
 ///
 /// Refer to the [Normal Distribution Reference](https://en.wikipedia.org/wiki/Normal_distribution)
 /// for details on standard Gaussian distributions.
-NDArray<T> normal<T extends num>(
+NDArray<T, MT> normal<T extends num, MT extends Marker>(
   List<int> shape, {
   double loc = 0.0,
   double scale = 1.0,
-  DType<T>? dtype,
+  DType<T, MT>? dtype,
   int? seed,
-  NDArray<T>? out,
+  NDArray<T, MT>? out,
   bool secure = false,
 }) {
   if (out != null && out.isDisposed) {
@@ -212,7 +212,7 @@ NDArray<T> normal<T extends num>(
       'scale (standard deviation) must be strictly positive (was $scale)',
     );
   }
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T, MT>);
   if (out != null) {
     if (!out.isContiguous) {
       throw ArgumentError('out buffer must be contiguous.');
@@ -221,7 +221,7 @@ NDArray<T> normal<T extends num>(
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
-  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
+  final arr = out ?? NDArray.create(shape, resolvedDType);
   final len = arr.data.length;
   final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
 
@@ -274,13 +274,13 @@ NDArray<T> normal<T extends num>(
 ///
 /// Refer to the [Exponential Distribution Reference](https://en.wikipedia.org/wiki/Exponential_distribution)
 /// for details on exponential variables.
-NDArray<T> exponential<T extends num>(
+NDArray<T, MT> exponential<T extends num, MT extends Marker>(
   List<int> shape, {
   double scale = 1.0,
   double? lam,
-  DType<T>? dtype,
+  DType<T, MT>? dtype,
   int? seed,
-  NDArray<T>? out,
+  NDArray<T, MT>? out,
   bool secure = false,
 }) {
   if (out != null && out.isDisposed) {
@@ -294,13 +294,13 @@ NDArray<T> exponential<T extends num>(
       'scale parameter (or 1 / lam) must be strictly positive (was $targetScale)',
     );
   }
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T, MT>);
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
-  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
+  final arr = out ?? NDArray.create(shape, resolvedDType);
   final len = arr.data.length;
   final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
 
@@ -366,12 +366,12 @@ NDArray<T> exponential<T extends num>(
 ///
 /// Refer to the [Poisson Distribution Reference](https://en.wikipedia.org/wiki/Poisson_distribution)
 /// for details on Poisson processes.
-NDArray<T> poisson<T extends num>(
+NDArray<T, MT> poisson<T extends num, MT extends Marker>(
   List<int> shape, {
   double lam = 1.0,
-  DType<T>? dtype,
+  DType<T, MT>? dtype,
   int? seed,
-  NDArray<T>? out,
+  NDArray<T, MT>? out,
   bool secure = false,
 }) {
   if (out != null && out.isDisposed) {
@@ -380,7 +380,7 @@ NDArray<T> poisson<T extends num>(
   if (lam <= 0.0) {
     throw ArgumentError('lambda must be strictly positive (was $lam)');
   }
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T, MT>);
   if (out != null) {
     if (!out.isContiguous) {
       throw ArgumentError('out buffer must be contiguous.');
@@ -389,7 +389,7 @@ NDArray<T> poisson<T extends num>(
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
-  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
+  final arr = out ?? NDArray.create(shape, resolvedDType);
   final len = arr.data.length;
   final seedVal = secure
       ? Random.secure().nextInt(4294967296)
@@ -438,13 +438,13 @@ NDArray<T> poisson<T extends num>(
 ///
 /// Refer to the [Binomial Distribution Reference](https://en.wikipedia.org/wiki/Binomial_distribution)
 /// for details on independent Bernoulli trials.
-NDArray<T> binomial<T extends num>(
+NDArray<T, MT> binomial<T extends num, MT extends Marker>(
   List<int> shape, {
   required int n,
   required double p,
-  DType<T>? dtype,
+  DType<T, MT>? dtype,
   int? seed,
-  NDArray<T>? out,
+  NDArray<T, MT>? out,
   bool secure = false,
 }) {
   if (out != null && out.isDisposed) {
@@ -460,7 +460,7 @@ NDArray<T> binomial<T extends num>(
       'success probability p must be between 0.0 and 1.0 (was $p)',
     );
   }
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.int64 as DType<T, MT>);
   if (out != null) {
     if (!out.isContiguous) {
       throw ArgumentError('out buffer must be contiguous.');
@@ -469,7 +469,7 @@ NDArray<T> binomial<T extends num>(
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
-  final arr = out ?? NDArray<T>.create(shape, resolvedDType);
+  final arr = out ?? NDArray.create(shape, resolvedDType);
   final len = arr.data.length;
   final seedVal = secure
       ? Random.secure().nextInt(4294967296)
@@ -524,13 +524,13 @@ NDArray<T> binomial<T extends num>(
 /// final samples = multivariateNormal(mean, cov, size: [1000]);
 /// print(samples.shape); // [1000, 2]
 /// ```
-NDArray<T> multivariateNormal<T extends num>(
+NDArray<T, MT> multivariateNormal<T extends num, MT extends Marker>(
   NDArray mean,
   NDArray cov, {
   List<int>? size,
-  DType<T>? dtype,
+  DType<T, MT>? dtype,
   int? seed,
-  NDArray<T>? out,
+  NDArray<T, MT>? out,
   bool secure = false,
 }) {
   if (mean.isDisposed || cov.isDisposed) {
@@ -560,7 +560,7 @@ NDArray<T> multivariateNormal<T extends num>(
     );
   }
 
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T, MT>);
   if (!identical(resolvedDType, DType.float32) &&
       !identical(resolvedDType, DType.float64)) {
     throw ArgumentError(
@@ -580,7 +580,7 @@ NDArray<T> multivariateNormal<T extends num>(
   }
 
   return NDArray.scope(() {
-    final l = cholesky(cov as NDArray<T>);
+    final l = cholesky(cov as NDArray<T, MT>);
 
     final sampleShape = <int>[];
     if (size != null) {
@@ -597,7 +597,7 @@ NDArray<T> multivariateNormal<T extends num>(
     final z2D = z.reshape([sampleCount, d]);
     final x2D =
         out?.reshape([sampleCount, d]) ??
-        NDArray<T>.create([sampleCount, d], resolvedDType);
+        NDArray.create([sampleCount, d], resolvedDType);
     add(matmul(z2D, lT), mean, out: x2D);
 
     if (out != null) {
@@ -638,13 +638,13 @@ NDArray<T> multivariateNormal<T extends num>(
 /// final samples = multinomial(10, pvals, size: [1000]);
 /// print(samples.shape); // [1000, 3]
 /// ```
-NDArray<T> multinomial<T extends num>(
+NDArray<T, MT> multinomial<T extends num, MT extends Marker>(
   int n,
   NDArray pvals, {
   List<int>? size,
-  DType<T>? dtype,
+  DType<T, MT>? dtype,
   int? seed,
-  NDArray<T>? out,
+  NDArray<T, MT>? out,
   bool secure = false,
 }) {
   if (pvals.isDisposed) {
@@ -664,7 +664,7 @@ NDArray<T> multinomial<T extends num>(
     );
   }
 
-  final resolvedDType = dtype ?? (out?.dtype ?? DType.int32 as DType<T>);
+  final resolvedDType = dtype ?? (out?.dtype ?? DType.int32 as DType<T, MT>);
   if (!identical(resolvedDType, DType.int32) &&
       !identical(resolvedDType, DType.int64)) {
     throw ArgumentError(
@@ -709,7 +709,7 @@ NDArray<T> multinomial<T extends num>(
     }
   }
   final result =
-      out ?? NDArray<T>.create(finalShape, resolvedDType, zeroInit: true);
+      out ?? NDArray.create(finalShape, resolvedDType, zeroInit: true);
   if (out != null) {
     result.fill(0 as T);
   }
@@ -756,11 +756,11 @@ NDArray<T> multinomial<T extends num>(
 /// ```
 ///
 /// Reference: [NumPy choice](https://numpy.org/doc/stable/reference/generated/numpy.random.choice.html)
-NDArray<T> choice<T>(
-  NDArray<T> a, {
+NDArray<T, MT> choice<T, MT extends Marker>(
+  NDArray<T, MT> a, {
   List<int>? size,
   bool replace = true,
-  NDArray<double>? p,
+  NDArray<double, Float64Marker>? p,
   int? seed,
   bool secure = false,
 }) {
@@ -795,7 +795,7 @@ NDArray<T> choice<T>(
   final rand = secure
       ? Random.secure()
       : Random(seed ?? Random().nextInt(4294967296));
-  final result = NDArray<T>.create(sampleShape, a.dtype);
+  final result = NDArray.create(sampleShape, a.dtype);
 
   // Pre-calculate CDF if probability array p is specified
   List<double>? cdf;
@@ -1009,7 +1009,11 @@ void shuffle(NDArray a, {int? seed, bool secure = false}) {
 /// final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
 /// final perm = permutation(a); // perm is a permuted copy, a remains unchanged
 /// ```
-NDArray<T> permutation<T>(NDArray<T> a, {int? seed, bool secure = false}) {
+NDArray<T, MT> permutation<T, MT extends Marker>(
+  NDArray<T, MT> a, {
+  int? seed,
+  bool secure = false,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot permute a disposed array.');
   }

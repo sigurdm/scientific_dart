@@ -11,7 +11,7 @@ void main() {
       final b = NDArray.fromList(Float64List.fromList([4.0, 12.0]), [
         2,
       ], DType.float64);
-      final out = NDArray<double>.create([2], DType.float64);
+      final out = NDArray.create([2], DType.float64);
 
       final res = hypot(a, b, out: out);
       expect(identical(res, out), isTrue);
@@ -19,7 +19,7 @@ void main() {
       expect(out.data[1], closeTo(13.0, 1e-10));
 
       // Incompatible shape/dtype validation
-      final badOut = NDArray<double>.create([3], DType.float64);
+      final badOut = NDArray.create([3], DType.float64);
       expect(() => hypot(a, b, out: badOut), throwsArgumentError);
     });
 
@@ -154,7 +154,7 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, double.nan]), [
         2,
       ], DType.float64);
-      final out = NDArray<bool>.create([2], DType.boolean);
+      final out = NDArray.create([2], DType.boolean);
 
       final res = isnan(a, out: out);
       expect(identical(res, out), isTrue);
@@ -166,7 +166,7 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, double.infinity]), [
         2,
       ], DType.float64);
-      final out = NDArray<bool>.create([2], DType.boolean);
+      final out = NDArray.create([2], DType.boolean);
 
       final res = isinf(a, out: out);
       expect(identical(res, out), isTrue);
@@ -178,7 +178,7 @@ void main() {
       final a = NDArray.fromList(Float64List.fromList([1.0, double.infinity]), [
         2,
       ], DType.float64);
-      final out = NDArray<bool>.create([2], DType.boolean);
+      final out = NDArray.create([2], DType.boolean);
 
       final res = isfinite(a, out: out);
       expect(identical(res, out), isTrue);

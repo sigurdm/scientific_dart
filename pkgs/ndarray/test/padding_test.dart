@@ -61,7 +61,7 @@ void main() {
     test(
       'Constant Mode - 2D Int with different before/after',
       () => NDArray.scope(() {
-        final arr = NDArray<int>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+        final arr = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
         final padded = pad(
           arr,
           PadWidth.axes([(1, 2), (2, 1)]),
@@ -162,11 +162,7 @@ void main() {
     test(
       'Symmetric Mode - 1D Large Pad',
       () => NDArray.scope(() {
-        final arr = NDArray<double>.fromList(
-          [1.0, 2.0, 3.0],
-          [3],
-          DType.float64,
-        );
+        final arr = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
         final padded = pad(arr, PadWidth.all(5), mode: PaddingMode.symmetric);
         expect(padded.toList(), [
           2.0,
@@ -373,7 +369,7 @@ void main() {
       'Out Parameter Reuse',
       () => NDArray.scope(() {
         final a = NDArray.fromList([1, 2, 3], [3], DType.int32);
-        final out = NDArray<int>.zeros([5], DType.int32);
+        final out = NDArray.zeros([5], DType.int32);
         final r = pad(
           a,
           PadWidth.all(1),
@@ -398,7 +394,7 @@ void main() {
     test(
       'Preconditions - 0-D Array',
       () => NDArray.scope(() {
-        final a = NDArray<int>.fromList([1], [], DType.int32);
+        final a = NDArray.fromList([1], [], DType.int32);
         expect(() => pad(a, PadWidth.all(1)), throwsArgumentError);
       }),
     );

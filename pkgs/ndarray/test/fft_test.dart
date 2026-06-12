@@ -209,7 +209,7 @@ void main() {
     test(
       'Verify fft() and ifft() throws StateError on native plan allocation failure',
       () => NDArray.scope(() {
-        final a = NDArray<double>.fromList(Float64List.fromList([1.0, 2.0]), [
+        final a = NDArray.fromList(Float64List.fromList([1.0, 2.0]), [
           2,
         ], DType.float64);
 
