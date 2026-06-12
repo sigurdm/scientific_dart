@@ -2349,27 +2349,37 @@ NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
 /// ```dart
 /// final p = power(a, b);
 /// ```
-NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
+NDArray<R> power<Ta, Tb, R>(
+  NDArray<Ta> x1,
+  NDArray<Tb> x2, {
+  NDArray<R>? out,
+}) {
   if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute power() on a disposed array.');
   }
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
-  final DType<dynamic> targetDType;
-  if (x1.dtype == DType.complex128 ||
-      x2.dtype == DType.complex128 ||
-      x1.dtype == DType.complex64 ||
-      x2.dtype == DType.complex64) {
-    targetDType = (x1.dtype == DType.complex64 || x2.dtype == DType.complex64)
-        ? DType.complex64
-        : DType.complex128;
+  final DType<R> targetDType;
+  if (out != null) {
+    targetDType = out.dtype;
   } else {
-    targetDType = (x1.dtype == DType.float32 || x2.dtype == DType.float32)
-        ? DType.float32
-        : DType.float64;
+    final DType<dynamic> promoted;
+    if (x1.dtype == DType.complex128 ||
+        x2.dtype == DType.complex128 ||
+        x1.dtype == DType.complex64 ||
+        x2.dtype == DType.complex64) {
+      promoted = (x1.dtype == DType.complex64 || x2.dtype == DType.complex64)
+          ? DType.complex64
+          : DType.complex128;
+    } else {
+      promoted = (x1.dtype == DType.float32 || x2.dtype == DType.float32)
+          ? DType.float32
+          : DType.float64;
+    }
+    targetDType = promoted as DType<R>;
   }
 
-  final NDArray result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -2378,7 +2388,7 @@ NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
     }
     result = out;
   } else {
-    result = NDArray.create(shape, targetDType);
+    result = NDArray<R>.create(shape, targetDType);
   }
 
   if (targetDType == DType.complex128 || targetDType == DType.complex64) {
