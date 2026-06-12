@@ -5609,7 +5609,7 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
 /// {@example /example/isclose_example.dart lang=dart}
 ///
 /// Reference: [Approximate Equality](https://numpy.org/doc/stable/reference/generated/numpy.isclose.html)
-NDArray<bool> isclose<Ta, Tb>(
+NDArray<bool> isClose<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   double rtol = 1e-05,
@@ -5617,7 +5617,7 @@ NDArray<bool> isclose<Ta, Tb>(
   bool equalNan = false,
 }) {
   if (a.isDisposed || b.isDisposed) {
-    throw StateError('Cannot execute isclose() on a disposed array.');
+    throw StateError('Cannot execute isClose() on a disposed array.');
   }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -5714,14 +5714,14 @@ NDArray<bool> isclose<Ta, Tb>(
 /// {@example /example/isclose_example.dart lang=dart}
 ///
 /// Reference: [Approximate Equality](https://numpy.org/doc/stable/reference/generated/numpy.allclose.html)
-bool allclose<Ta, Tb>(
+bool allClose<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   double rtol = 1e-05,
   double atol = 1e-08,
   bool equalNan = false,
 }) {
-  final closeMask = isclose(a, b, rtol: rtol, atol: atol, equalNan: equalNan);
+  final closeMask = isClose(a, b, rtol: rtol, atol: atol, equalNan: equalNan);
   final maskList = closeMask.toList();
   closeMask.dispose();
   for (final val in maskList) {
