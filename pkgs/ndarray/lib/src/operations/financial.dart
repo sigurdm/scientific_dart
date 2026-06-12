@@ -1,3 +1,19 @@
+/// Quantitative Financial Operations.
+///
+/// This library provides vectorized, high-performance financial functions
+/// (`fv`, `pv`, `npv`, `irr`) designed for quantitative simulation and modeling.
+///
+/// **Intended Use Cases:**
+/// - **Quantitative Modeling**: Large-scale parameter sweeps, grid searches, and portfolio valuation.
+/// - **Monte Carlo Simulations**: Simulating thousands of randomized cash flow scenarios where speed is critical.
+/// - **High-Performance Backtesting**: Backtesting quantitative strategies that involve periodic cash flows.
+///
+/// **Limitations & Non-Goals:**
+/// - **Not for Ledger Accounting**: These functions use double-precision floats (`Float64`) for speed and vectorization. They are not intended for commercial banking or exact ledger accounting where arbitrary-precision decimals are mandatory to prevent rounding errors.
+/// - **Not for Arbitrary Date Cash Flows**: These functions assume flat, periodic intervals. They do not support date-aware discounting (e.g., `XNPV`/`XIRR`).
+/// - **Constant Rates**: `npv` assumes a constant discount rate across all periods, rather than a yield curve.
+library;
+
 import '../ndarray.dart';
 import '../exceptions.dart';
 import 'math.dart';

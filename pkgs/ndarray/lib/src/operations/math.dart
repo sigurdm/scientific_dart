@@ -7107,8 +7107,6 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     result = NDArray<R>.create(commonShape, targetDType as DType<R>);
   }
 
-
-
   // Specialized paths for Float64 (as in original extensions.dart)
   final isContig =
       a.isContiguous &&
