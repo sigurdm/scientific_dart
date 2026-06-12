@@ -540,7 +540,7 @@ NDArray<T> logspace<T>(
 ///   - [DType.complex128] if [T] is [Complex].
 ///   - [DType.int64] if [T] is [int].
 ///   - [DType.float64] otherwise.
-NDArray<T> logspaceGrid<T>(
+NDArray<T> logspaceGrid<T extends Object>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -558,7 +558,9 @@ NDArray<T> logspaceGrid<T>(
     );
   }
   final resolvedDType = dtype ?? defaultDType<T>();
-  final actualBase = base ?? toNDArray<double>(10.0, DType.float64);
+  final NDArray<T> actualBase = base != null
+      ? toNDArray<T>(base, resolvedDType)
+      : toNDArray<T>(10.0, resolvedDType);
 
   return NDArray.scope(() {
     final y = linspaceGrid<T>(
@@ -571,7 +573,7 @@ NDArray<T> logspaceGrid<T>(
     );
     final res = power(actualBase, y);
     res.detachToParentScope();
-    return res as NDArray<T>;
+    return res;
   });
 }
 
@@ -693,7 +695,7 @@ NDArray<T> geomspace<T>(
 ///   - [DType.complex128] if [T] is [Complex].
 ///   - [DType.int64] if [T] is [int].
 ///   - [DType.float64] otherwise.
-NDArray<T> geomspaceGrid<T>(
+NDArray<T> geomspaceGrid<T extends Object>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -723,6 +725,6 @@ NDArray<T> geomspaceGrid<T>(
     );
     final res = power(toNDArray<T>(10.0, resolvedDType), y);
     res.detachToParentScope();
-    return res as NDArray<T>;
+    return res;
   });
 }

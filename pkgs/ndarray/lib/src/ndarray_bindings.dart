@@ -17489,6 +17489,56 @@ external void s_interp_float(
   ffi.Pointer<ffi.Float> right,
 );
 
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external int ndarray_equals(
+  int dtype,
+  ffi.Pointer<ffi.Void> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Void> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void ndarray_compare(
+  int op,
+  int dtypeA,
+  int dtypeB,
+  ffi.Pointer<ffi.Void> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Void> b,
+  ffi.Pointer<ffi.Int> stridesB,
+  ffi.Pointer<ffi.Uint8> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
 typedef ptrdiff_t = ffi.Long;
 typedef Dartptrdiff_t = int;
 
@@ -17950,3 +18000,15 @@ const int DTYPE_COMPLEX128 = 6;
 const int DTYPE_COMPLEX64 = 7;
 
 const int DTYPE_BOOLEAN = 8;
+
+const int CMP_OP_EQ = 0;
+
+const int CMP_OP_NE = 1;
+
+const int CMP_OP_LT = 2;
+
+const int CMP_OP_LE = 3;
+
+const int CMP_OP_GT = 4;
+
+const int CMP_OP_GE = 5;

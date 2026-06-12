@@ -1102,7 +1102,12 @@ void s_where_double(const unsigned char *cond, const int *stridesCond,
                     const double *y, const int *stridesY,
                     double *res, const int *stridesRes,
                     const int *shape, int rank) {
-    if (cond == NULL || x == NULL || y == NULL || res == NULL || rank <= 0 || rank > 8) return;
+    if (cond == NULL || x == NULL || y == NULL || res == NULL || rank < 0 || rank > 8) return;
+
+    if (rank == 0) {
+        res[0] = cond[0] ? x[0] : y[0];
+        return;
+    }
 
     int is_contiguous = 1;
     int expected_stride = 1;
@@ -1156,7 +1161,12 @@ void s_where_float(const unsigned char *cond, const int *stridesCond,
                    const float *y, const int *stridesY,
                    float *res, const int *stridesRes,
                    const int *shape, int rank) {
-    if (cond == NULL || x == NULL || y == NULL || res == NULL || rank <= 0 || rank > 8) return;
+    if (cond == NULL || x == NULL || y == NULL || res == NULL || rank < 0 || rank > 8) return;
+
+    if (rank == 0) {
+        res[0] = cond[0] ? x[0] : y[0];
+        return;
+    }
 
     int is_contiguous = 1;
     int expected_stride = 1;
@@ -7640,6 +7650,326 @@ void s_interp_float(const float *x, const int *stridesX,
             offsetX -= (shape[d] - 1) * stridesX[d];
             offsetRes -= (shape[d] - 1) * stridesRes[d];
         }
+    }
+}
+
+// ============================================================================
+// SECTION 12: COMPARISON & EQUALITY KERNELS
+// ============================================================================
+
+#define EXPR_EQ(x, y) ((x) == (y))
+#define EXPR_NE(x, y) ((x) != (y))
+#define EXPR_LT(x, y) ((x) < (y))
+#define EXPR_LE(x, y) ((x) <= (y))
+#define EXPR_GT(x, y) ((x) > (y))
+#define EXPR_GE(x, y) ((x) >= (y))
+
+#define EXPR_EQ_C128_C128(x, y) ((x).r == (y).r && (x).i == (y).i)
+#define EXPR_NE_C128_C128(x, y) ((x).r != (y).r || (x).i != (y).i)
+#define EXPR_EQ_C64_C64(x, y) ((x).r == (y).r && (x).i == (y).i)
+#define EXPR_NE_C64_C64(x, y) ((x).r != (y).r || (x).i != (y).i)
+
+#define EXPR_EQ_C128_REAL(x, y) ((x).r == (y) && (x).i == 0)
+#define EXPR_NE_C128_REAL(x, y) ((x).r != (y) || (x).i != 0)
+#define EXPR_EQ_REAL_C128(x, y) ((x) == (y).r && (y).i == 0)
+#define EXPR_NE_REAL_C128(x, y) ((x) != (y).r || (y).i != 0)
+
+#define EXPR_EQ_C64_REAL(x, y) ((x).r == (y) && (x).i == 0)
+#define EXPR_NE_C64_REAL(x, y) ((x).r != (y) || (x).i != 0)
+#define EXPR_EQ_REAL_C64(x, y) ((x) == (y).r && (y).i == 0)
+#define EXPR_NE_REAL_C64(x, y) ((x) != (y).r || (y).i != 0)
+
+#define EXPR_EQ_C128_C64(x, y) ((x).r == (y).r && (x).i == (y).i)
+#define EXPR_NE_C128_C64(x, y) ((x).r != (y).r || (x).i != (y).i)
+#define EXPR_EQ_C64_C128(x, y) ((x).r == (y).r && (x).i == (y).i)
+#define EXPR_NE_C64_C128(x, y) ((x).r != (y).r || (x).i != (y).i)
+
+#define DEFINE_COMPARE_FUNC(NAME, T1, T2, EXPR) \
+void NAME(const T1 *a, const int *stridesA, \
+          const T2 *b, const int *stridesB, \
+          uint8_t *res, const int *stridesRes, \
+          const int *shape, int rank) { \
+    if (a == NULL || b == NULL || res == NULL || rank < 0 || rank > 8) return; \
+    int total_elements = 1; \
+    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
+    int is_a_contig = 1, is_b_contig = 1, is_res_contig = 1; \
+    int expected_stride = 1; \
+    for (int i = rank - 1; i >= 0; i--) { \
+        if (stridesA[i] != expected_stride) is_a_contig = 0; \
+        if (stridesB[i] != expected_stride) is_b_contig = 0; \
+        if (stridesRes[i] != expected_stride) is_res_contig = 0; \
+        expected_stride *= shape[i]; \
+    } \
+    int is_a_scal = 1, is_b_scal = 1; \
+    for (int i = 0; i < rank; i++) { \
+        if (stridesA[i] != 0) is_a_scal = 0; \
+        if (stridesB[i] != 0) is_b_scal = 0; \
+    } \
+    if (is_res_contig) { \
+        if (is_a_contig && is_b_contig) { \
+            for (int i = 0; i < total_elements; i++) { \
+                res[i] = (EXPR(a[i], b[i])) ? 1 : 0; \
+            } \
+            return; \
+        } \
+        if (is_a_contig && is_b_scal) { \
+            T2 val = b[0]; \
+            for (int i = 0; i < total_elements; i++) { \
+                res[i] = (EXPR(a[i], val)) ? 1 : 0; \
+            } \
+            return; \
+        } \
+        if (is_a_scal && is_b_contig) { \
+            T1 val = a[0]; \
+            for (int i = 0; i < total_elements; i++) { \
+                res[i] = (EXPR(val, b[i])) ? 1 : 0; \
+            } \
+            return; \
+        } \
+    } \
+    int coord[8] = {0}; \
+    int offsetA = 0, offsetB = 0, offsetRes = 0; \
+    for (int el = 0; el < total_elements; el++) { \
+        res[offsetRes] = (EXPR(a[offsetA], b[offsetB])) ? 1 : 0; \
+        for (int d = rank - 1; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shape[d]) { \
+                offsetA += stridesA[d]; \
+                offsetB += stridesB[d]; \
+                offsetRes += stridesRes[d]; \
+                break; \
+            } \
+            coord[d] = 0; \
+            offsetA -= (shape[d] - 1) * stridesA[d]; \
+            offsetB -= (shape[d] - 1) * stridesB[d]; \
+            offsetRes -= (shape[d] - 1) * stridesRes[d]; \
+        } \
+    } \
+}
+
+// Instantiate real-real comparisons
+#define DEFINE_REAL_COMPARE_T2(OP_NAME, T1, T1_NAME, T2, T2_NAME, EXPR) \
+    DEFINE_COMPARE_FUNC(s_compare_##OP_NAME##_##T1_NAME##_##T2_NAME, T1, T2, EXPR)
+
+#define DEFINE_REAL_COMPARE_T1(OP_NAME, T1, T1_NAME, EXPR) \
+    DEFINE_REAL_COMPARE_T2(OP_NAME, T1, T1_NAME, double, double, EXPR) \
+    DEFINE_REAL_COMPARE_T2(OP_NAME, T1, T1_NAME, float, float, EXPR) \
+    DEFINE_REAL_COMPARE_T2(OP_NAME, T1, T1_NAME, int32_t, int32, EXPR) \
+    DEFINE_REAL_COMPARE_T2(OP_NAME, T1, T1_NAME, int64_t, int64, EXPR) \
+    DEFINE_REAL_COMPARE_T2(OP_NAME, T1, T1_NAME, uint8_t, uint8, EXPR) \
+    DEFINE_REAL_COMPARE_T2(OP_NAME, T1, T1_NAME, int16_t, int16, EXPR)
+
+#define DEFINE_REAL_COMPARE_ALL(OP_NAME, EXPR) \
+    DEFINE_REAL_COMPARE_T1(OP_NAME, double, double, EXPR) \
+    DEFINE_REAL_COMPARE_T1(OP_NAME, float, float, EXPR) \
+    DEFINE_REAL_COMPARE_T1(OP_NAME, int32_t, int32, EXPR) \
+    DEFINE_REAL_COMPARE_T1(OP_NAME, int64_t, int64, EXPR) \
+    DEFINE_REAL_COMPARE_T1(OP_NAME, uint8_t, uint8, EXPR) \
+    DEFINE_REAL_COMPARE_T1(OP_NAME, int16_t, int16, EXPR)
+
+DEFINE_REAL_COMPARE_ALL(eq, EXPR_EQ)
+DEFINE_REAL_COMPARE_ALL(ne, EXPR_NE)
+DEFINE_REAL_COMPARE_ALL(lt, EXPR_LT)
+DEFINE_REAL_COMPARE_ALL(le, EXPR_LE)
+DEFINE_REAL_COMPARE_ALL(gt, EXPR_GT)
+DEFINE_REAL_COMPARE_ALL(ge, EXPR_GE)
+
+#undef DEFINE_REAL_COMPARE_ALL
+#undef DEFINE_REAL_COMPARE_T1
+#undef DEFINE_REAL_COMPARE_T2
+
+// Complex vs Complex
+#define DEFINE_COMPLEX_COMP_CC(OP_NAME, T1, T1_NAME, T2, T2_NAME, EXPR) \
+    DEFINE_COMPARE_FUNC(s_compare_##OP_NAME##_##T1_NAME##_##T2_NAME, T1, T2, EXPR)
+
+// Complex vs Real
+#define DEFINE_COMPLEX_COMP_CR(OP_NAME, CPX_T, CPX_NAME, R_T, R_NAME, EXPR) \
+    DEFINE_COMPARE_FUNC(s_compare_##OP_NAME##_##CPX_NAME##_##R_NAME, CPX_T, R_T, EXPR)
+
+// Real vs Complex
+#define DEFINE_COMPLEX_COMP_RC(OP_NAME, R_T, R_NAME, CPX_T, CPX_NAME, EXPR) \
+    DEFINE_COMPARE_FUNC(s_compare_##OP_NAME##_##R_NAME##_##CPX_NAME, R_T, CPX_T, EXPR)
+
+#define INSTANTIATE_CR_RC_C128(OP_NAME, R_T, R_NAME, EXPR_CR, EXPR_RC) \
+    DEFINE_COMPLEX_COMP_CR(OP_NAME, cpx_t, complex128, R_T, R_NAME, EXPR_CR) \
+    DEFINE_COMPLEX_COMP_RC(OP_NAME, R_T, R_NAME, cpx_t, complex128, EXPR_RC)
+
+#define INSTANTIATE_CR_RC_C64(OP_NAME, R_T, R_NAME, EXPR_CR, EXPR_RC) \
+    DEFINE_COMPLEX_COMP_CR(OP_NAME, cpx_f_t, complex64, R_T, R_NAME, EXPR_CR) \
+    DEFINE_COMPLEX_COMP_RC(OP_NAME, R_T, R_NAME, cpx_f_t, complex64, EXPR_RC)
+
+// EQ
+DEFINE_COMPLEX_COMP_CC(eq, cpx_t, complex128, cpx_t, complex128, EXPR_EQ_C128_C128)
+DEFINE_COMPLEX_COMP_CC(eq, cpx_f_t, complex64, cpx_f_t, complex64, EXPR_EQ_C64_C64)
+DEFINE_COMPLEX_COMP_CC(eq, cpx_t, complex128, cpx_f_t, complex64, EXPR_EQ_C128_C64)
+DEFINE_COMPLEX_COMP_CC(eq, cpx_f_t, complex64, cpx_t, complex128, EXPR_EQ_C64_C128)
+
+INSTANTIATE_CR_RC_C128(eq, double, double, EXPR_EQ_C128_REAL, EXPR_EQ_REAL_C128)
+INSTANTIATE_CR_RC_C128(eq, float, float, EXPR_EQ_C128_REAL, EXPR_EQ_REAL_C128)
+INSTANTIATE_CR_RC_C128(eq, int32_t, int32, EXPR_EQ_C128_REAL, EXPR_EQ_REAL_C128)
+INSTANTIATE_CR_RC_C128(eq, int64_t, int64, EXPR_EQ_C128_REAL, EXPR_EQ_REAL_C128)
+INSTANTIATE_CR_RC_C128(eq, uint8_t, uint8, EXPR_EQ_C128_REAL, EXPR_EQ_REAL_C128)
+INSTANTIATE_CR_RC_C128(eq, int16_t, int16, EXPR_EQ_C128_REAL, EXPR_EQ_REAL_C128)
+
+INSTANTIATE_CR_RC_C64(eq, double, double, EXPR_EQ_C64_REAL, EXPR_EQ_REAL_C64)
+INSTANTIATE_CR_RC_C64(eq, float, float, EXPR_EQ_C64_REAL, EXPR_EQ_REAL_C64)
+INSTANTIATE_CR_RC_C64(eq, int32_t, int32, EXPR_EQ_C64_REAL, EXPR_EQ_REAL_C64)
+INSTANTIATE_CR_RC_C64(eq, int64_t, int64, EXPR_EQ_C64_REAL, EXPR_EQ_REAL_C64)
+INSTANTIATE_CR_RC_C64(eq, uint8_t, uint8, EXPR_EQ_C64_REAL, EXPR_EQ_REAL_C64)
+INSTANTIATE_CR_RC_C64(eq, int16_t, int16, EXPR_EQ_C64_REAL, EXPR_EQ_REAL_C64)
+
+// NE
+DEFINE_COMPLEX_COMP_CC(ne, cpx_t, complex128, cpx_t, complex128, EXPR_NE_C128_C128)
+DEFINE_COMPLEX_COMP_CC(ne, cpx_f_t, complex64, cpx_f_t, complex64, EXPR_NE_C64_C64)
+DEFINE_COMPLEX_COMP_CC(ne, cpx_t, complex128, cpx_f_t, complex64, EXPR_NE_C128_C64)
+DEFINE_COMPLEX_COMP_CC(ne, cpx_f_t, complex64, cpx_t, complex128, EXPR_NE_C64_C128)
+
+INSTANTIATE_CR_RC_C128(ne, double, double, EXPR_NE_C128_REAL, EXPR_NE_REAL_C128)
+INSTANTIATE_CR_RC_C128(ne, float, float, EXPR_NE_C128_REAL, EXPR_NE_REAL_C128)
+INSTANTIATE_CR_RC_C128(ne, int32_t, int32, EXPR_NE_C128_REAL, EXPR_NE_REAL_C128)
+INSTANTIATE_CR_RC_C128(ne, int64_t, int64, EXPR_NE_C128_REAL, EXPR_NE_REAL_C128)
+INSTANTIATE_CR_RC_C128(ne, uint8_t, uint8, EXPR_NE_C128_REAL, EXPR_NE_REAL_C128)
+INSTANTIATE_CR_RC_C128(ne, int16_t, int16, EXPR_NE_C128_REAL, EXPR_NE_REAL_C128)
+
+INSTANTIATE_CR_RC_C64(ne, double, double, EXPR_NE_C64_REAL, EXPR_NE_REAL_C64)
+INSTANTIATE_CR_RC_C64(ne, float, float, EXPR_NE_C64_REAL, EXPR_NE_REAL_C64)
+INSTANTIATE_CR_RC_C64(ne, int32_t, int32, EXPR_NE_C64_REAL, EXPR_NE_REAL_C64)
+INSTANTIATE_CR_RC_C64(ne, int64_t, int64, EXPR_NE_C64_REAL, EXPR_NE_REAL_C64)
+INSTANTIATE_CR_RC_C64(ne, uint8_t, uint8, EXPR_NE_C64_REAL, EXPR_NE_REAL_C64)
+INSTANTIATE_CR_RC_C64(ne, int16_t, int16, EXPR_NE_C64_REAL, EXPR_NE_REAL_C64)
+
+#undef INSTANTIATE_CR_RC_C64
+#undef INSTANTIATE_CR_RC_C128
+#undef DEFINE_COMPLEX_COMP_RC
+#undef DEFINE_COMPLEX_COMP_CR
+#undef DEFINE_COMPLEX_COMP_CC
+
+#define DISPATCH_COMPARE_B_REAL(OP_NAME, T1_NAME) \
+    switch (dtypeB) { \
+        case DTYPE_FLOAT64: s_compare_##OP_NAME##_##T1_NAME##_double(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+        case DTYPE_FLOAT32: s_compare_##OP_NAME##_##T1_NAME##_float(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+        case DTYPE_INT32: s_compare_##OP_NAME##_##T1_NAME##_int32(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+        case DTYPE_INT64: s_compare_##OP_NAME##_##T1_NAME##_int64(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+        case DTYPE_UINT8: s_compare_##OP_NAME##_##T1_NAME##_uint8(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+        case DTYPE_INT16: s_compare_##OP_NAME##_##T1_NAME##_int16(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+        case DTYPE_BOOLEAN: s_compare_##OP_NAME##_##T1_NAME##_uint8(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+    }
+
+#define DISPATCH_COMPARE_B_ALL(OP_NAME, T1_NAME) \
+    switch (dtypeB) { \
+        case DTYPE_FLOAT64: s_compare_##OP_NAME##_##T1_NAME##_double(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+        case DTYPE_FLOAT32: s_compare_##OP_NAME##_##T1_NAME##_float(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+        case DTYPE_INT32: s_compare_##OP_NAME##_##T1_NAME##_int32(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+        case DTYPE_INT64: s_compare_##OP_NAME##_##T1_NAME##_int64(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+        case DTYPE_UINT8: s_compare_##OP_NAME##_##T1_NAME##_uint8(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+        case DTYPE_INT16: s_compare_##OP_NAME##_##T1_NAME##_int16(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+        case DTYPE_BOOLEAN: s_compare_##OP_NAME##_##T1_NAME##_uint8(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+        case DTYPE_COMPLEX128: s_compare_##OP_NAME##_##T1_NAME##_complex128(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+        case DTYPE_COMPLEX64: s_compare_##OP_NAME##_##T1_NAME##_complex64(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+    }
+
+#define DISPATCH_COMPARE_A_REAL(OP_NAME) \
+    switch (dtypeA) { \
+        case DTYPE_FLOAT64: DISPATCH_COMPARE_B_REAL(OP_NAME, double); break; \
+        case DTYPE_FLOAT32: DISPATCH_COMPARE_B_REAL(OP_NAME, float); break; \
+        case DTYPE_INT32: DISPATCH_COMPARE_B_REAL(OP_NAME, int32); break; \
+        case DTYPE_INT64: DISPATCH_COMPARE_B_REAL(OP_NAME, int64); break; \
+        case DTYPE_UINT8: DISPATCH_COMPARE_B_REAL(OP_NAME, uint8); break; \
+        case DTYPE_INT16: DISPATCH_COMPARE_B_REAL(OP_NAME, int16); break; \
+        case DTYPE_BOOLEAN: DISPATCH_COMPARE_B_REAL(OP_NAME, uint8); break; \
+    }
+
+#define DISPATCH_COMPARE_A_ALL(OP_NAME) \
+    switch (dtypeA) { \
+        case DTYPE_FLOAT64: DISPATCH_COMPARE_B_ALL(OP_NAME, double); break; \
+        case DTYPE_FLOAT32: DISPATCH_COMPARE_B_ALL(OP_NAME, float); break; \
+        case DTYPE_INT32: DISPATCH_COMPARE_B_ALL(OP_NAME, int32); break; \
+        case DTYPE_INT64: DISPATCH_COMPARE_B_ALL(OP_NAME, int64); break; \
+        case DTYPE_UINT8: DISPATCH_COMPARE_B_ALL(OP_NAME, uint8); break; \
+        case DTYPE_INT16: DISPATCH_COMPARE_B_ALL(OP_NAME, int16); break; \
+        case DTYPE_BOOLEAN: DISPATCH_COMPARE_B_ALL(OP_NAME, uint8); break; \
+        case DTYPE_COMPLEX128: DISPATCH_COMPARE_B_ALL(OP_NAME, complex128); break; \
+        case DTYPE_COMPLEX64: DISPATCH_COMPARE_B_ALL(OP_NAME, complex64); break; \
+    }
+
+void ndarray_compare(
+    int op, int dtypeA, int dtypeB,
+    const void *a, const int *stridesA,
+    const void *b, const int *stridesB,
+    uint8_t *res, const int *stridesRes,
+    const int *shape, int rank
+) {
+    switch (op) {
+        case CMP_OP_EQ: DISPATCH_COMPARE_A_ALL(eq); break;
+        case CMP_OP_NE: DISPATCH_COMPARE_A_ALL(ne); break;
+        case CMP_OP_LT: DISPATCH_COMPARE_A_REAL(lt); break;
+        case CMP_OP_LE: DISPATCH_COMPARE_A_REAL(le); break;
+        case CMP_OP_GT: DISPATCH_COMPARE_A_REAL(gt); break;
+        case CMP_OP_GE: DISPATCH_COMPARE_A_REAL(ge); break;
+    }
+}
+
+#undef DISPATCH_COMPARE_A_ALL
+#undef DISPATCH_COMPARE_A_REAL
+#undef DISPATCH_COMPARE_B_ALL
+#undef DISPATCH_COMPARE_B_REAL
+
+// Structural Equality
+#define DEFINE_EQUALS_FUNC(NAME, TYPE, EXPR) \
+int NAME(const TYPE *a, const int *stridesA, \
+         const TYPE *b, const int *stridesB, \
+         const int *shape, int rank) { \
+    if (a == NULL || b == NULL || rank < 0 || rank > 8) return 0; \
+    if (rank == 0) return EXPR(a[0], b[0]) ? 1 : 0; \
+    int total_elements = 1; \
+    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
+    int coord[8] = {0}; \
+    int offsetA = 0, offsetB = 0; \
+    for (int el = 0; el < total_elements; el++) { \
+        if (!(EXPR(a[offsetA], b[offsetB]))) return 0; \
+        for (int d = rank - 1; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shape[d]) { \
+                offsetA += stridesA[d]; \
+                offsetB += stridesB[d]; \
+                break; \
+            } \
+            coord[d] = 0; \
+            offsetA -= (shape[d] - 1) * stridesA[d]; \
+            offsetB -= (shape[d] - 1) * stridesB[d]; \
+        } \
+    } \
+    return 1; \
+}
+
+DEFINE_EQUALS_FUNC(s_equals_double, double, EXPR_EQ)
+DEFINE_EQUALS_FUNC(s_equals_float, float, EXPR_EQ)
+DEFINE_EQUALS_FUNC(s_equals_int32, int32_t, EXPR_EQ)
+DEFINE_EQUALS_FUNC(s_equals_int64, int64_t, EXPR_EQ)
+DEFINE_EQUALS_FUNC(s_equals_uint8, uint8_t, EXPR_EQ)
+DEFINE_EQUALS_FUNC(s_equals_int16, int16_t, EXPR_EQ)
+DEFINE_EQUALS_FUNC(s_equals_complex128, cpx_t, EXPR_EQ_C128_C128)
+DEFINE_EQUALS_FUNC(s_equals_complex64, cpx_f_t, EXPR_EQ_C64_C64)
+
+#undef DEFINE_EQUALS_FUNC
+
+int ndarray_equals(
+    int dtype,
+    const void *a, const int *stridesA,
+    const void *b, const int *stridesB,
+    const int *shape, int rank
+) {
+    switch (dtype) {
+        case DTYPE_FLOAT64: return s_equals_double((const double*)a, stridesA, (const double*)b, stridesB, shape, rank);
+        case DTYPE_FLOAT32: return s_equals_float((const float*)a, stridesA, (const float*)b, stridesB, shape, rank);
+        case DTYPE_INT32: return s_equals_int32((const int32_t*)a, stridesA, (const int32_t*)b, stridesB, shape, rank);
+        case DTYPE_INT64: return s_equals_int64((const int64_t*)a, stridesA, (const int64_t*)b, stridesB, shape, rank);
+        case DTYPE_UINT8: return s_equals_uint8((const uint8_t*)a, stridesA, (const uint8_t*)b, stridesB, shape, rank);
+        case DTYPE_INT16: return s_equals_int16((const int16_t*)a, stridesA, (const int16_t*)b, stridesB, shape, rank);
+        case DTYPE_COMPLEX128: return s_equals_complex128((const cpx_t*)a, stridesA, (const cpx_t*)b, stridesB, shape, rank);
+        case DTYPE_COMPLEX64: return s_equals_complex64((const cpx_f_t*)a, stridesA, (const cpx_f_t*)b, stridesB, shape, rank);
+        case DTYPE_BOOLEAN: return s_equals_uint8((const uint8_t*)a, stridesA, (const uint8_t*)b, stridesB, shape, rank);
+        default: return 0;
     }
 }
 

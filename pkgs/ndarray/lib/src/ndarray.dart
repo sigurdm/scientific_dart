@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'dart:async';
 import 'package:ffi/ffi.dart';
 import 'dart:collection';
-import 'operations/broadcasting.dart';
 import 'ndarray_bindings.dart';
 import 'scratch_arena.dart';
 import 'package:openblas/openblas.dart' show openblas_set_num_threads;
@@ -31,17 +30,14 @@ extension type const Complex128._(Complex value) implements Complex {
 
 /// Supported data types for the elements of an [NDArray].
 enum DType<T> {
-  float32<Float32>('float32', 4, '<f4'),
   float64<Float64>('float64', 8, '<f8'),
-  // 64 bits total: 32-bit float real + 32-bit float imaginary parts (8 bytes)
-  complex64<Complex64>('complex64', 8, '<c8'),
-  // 128 bits total: 64-bit double real + 64-bit double imaginary parts (16 bytes)
-  complex128<Complex128>('complex128', 16, '<c16'),
-  uint8<Uint8>('uint8', 1, '|u1'),
-  int16<Int16>('int16', 2, '<i2'),
+  float32<Float32>('float32', 4, '<f4'),
   int32<Int32>('int32', 4, '<i4'),
   int64<Int64>('int64', 8, '<i8'),
-  // Uses 8 bits (1 byte) per boolean value (backed by ffi.Uint8)
+  uint8<Uint8>('uint8', 1, '|u1'),
+  int16<Int16>('int16', 2, '<i2'),
+  complex128<Complex128>('complex128', 16, '<c16'),
+  complex64<Complex64>('complex64', 8, '<c8'),
   boolean<bool>('boolean', 1, '|b1');
 
   final String name;
@@ -176,6 +172,37 @@ final class NDArray<T> implements ffi.Finalizable {
 
   /// The number of dimensions of the n-dimensional array.
   int get rank => shape.length;
+
+  /// Whether this array is a 2D square matrix.
+  ///
+  /// An array is square if it has rank 2 (exactly 2 dimensions) and the
+  /// size of both dimensions is equal (i.e. number of rows equals number of columns).
+  ///
+  /// Example:
+  /// ```dart
+  /// final a = NDArray.zeros([3, 3], DType.float64);
+  /// print(a.isSquare); // true
+  ///
+  /// final b = NDArray.zeros([3, 4], DType.float64);
+  /// print(b.isSquare); // false
+  /// ```
+  bool get isSquare => rank == 2 && shape[0] == shape[1];
+
+  /// Whether this array has the same shape as [other].
+  ///
+  /// Comparing shapes is a $O(D)$ operation where $D$ is the rank (number of dimensions)
+  /// of the array.
+  ///
+  /// Example:
+  /// ```dart
+  /// final a = NDArray.zeros([2, 3], DType.float64);
+  /// final b = NDArray.ones([2, 3], DType.float64);
+  /// final c = NDArray.zeros([3, 2], DType.float64);
+  ///
+  /// print(a.hasSameShape(b)); // true
+  /// print(a.hasSameShape(c)); // false
+  /// ```
+  bool hasSameShape(NDArray<dynamic> other) => listEquals(shape, other.shape);
 
   static final _finalizer = ffi.NativeFinalizer(malloc.nativeFree);
 
@@ -1725,235 +1752,27 @@ final class NDArray<T> implements ffi.Finalizable {
     }
   }
 
-  void _compareOpRec<Ta, Tb>(
-    List<bool> result,
-    List<Ta> a,
-    List<Tb> b,
-    List<int> shape,
-    List<int> stridesA,
-    List<int> stridesB,
-    List<int> stridesResult,
-    int dim,
-    int offsetA,
-    int offsetB,
-    int offsetResult,
-    bool Function(dynamic, dynamic) predicate,
-  ) {
-    if (dim == shape.length) {
-      result[offsetResult] = predicate(a[offsetA], b[offsetB]);
-      return;
-    }
-
-    for (var i = 0; i < shape[dim]; i++) {
-      _compareOpRec<Ta, Tb>(
-        result,
-        a,
-        b,
-        shape,
-        stridesA,
-        stridesB,
-        stridesResult,
-        dim + 1,
-        offsetA + i * stridesA[dim],
-        offsetB + i * stridesB[dim],
-        offsetResult + i * stridesResult[dim],
-        predicate,
-      );
-    }
-  }
-
-  /// Internal package helper for broadcasting comparison walks.
-  void dispatchCompare(
-    List<bool> rData,
-    NDArray a,
-    NDArray b,
-    List<int> shape,
-    List<int> sA,
-    List<int> sB,
-    List<int> sR,
-    bool Function(dynamic, dynamic) predicate,
-  ) {
-    _dispatchCompare(rData, a, b, shape, sA, sB, sR, predicate);
-  }
-
-  void _dispatchCompare(
-    List<bool> rData,
-    NDArray a,
-    NDArray b,
-    List<int> shape,
-    List<int> sA,
-    List<int> sB,
-    List<int> sR,
-    bool Function(dynamic, dynamic) predicate,
-  ) {
-    if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-      final aData = a.data as List<Complex>;
-      if (b.dtype == DType.complex128 || b.dtype == DType.complex64) {
-        _compareOpRec<Complex, Complex>(
-          rData,
-          aData,
-          b.data as List<Complex>,
-          shape,
-          sA,
-          sB,
-          sR,
-          0,
-          0,
-          0,
-          0,
-          predicate,
-        );
-      } else if (b.dtype == DType.float64 || b.dtype == DType.float32) {
-        _compareOpRec<Complex, double>(
-          rData,
-          aData,
-          b.data as List<double>,
-          shape,
-          sA,
-          sB,
-          sR,
-          0,
-          0,
-          0,
-          0,
-          predicate,
-        );
-      } else {
-        _compareOpRec<Complex, int>(
-          rData,
-          aData,
-          b.data as List<int>,
-          shape,
-          sA,
-          sB,
-          sR,
-          0,
-          0,
-          0,
-          0,
-          predicate,
-        );
-      }
-    } else if (a.dtype == DType.float64 || a.dtype == DType.float32) {
-      final aData = a.data as List<double>;
-      if (b.dtype == DType.complex128 || b.dtype == DType.complex64) {
-        _compareOpRec<double, Complex>(
-          rData,
-          aData,
-          b.data as List<Complex>,
-          shape,
-          sA,
-          sB,
-          sR,
-          0,
-          0,
-          0,
-          0,
-          predicate,
-        );
-      } else if (b.dtype == DType.float64 || b.dtype == DType.float32) {
-        _compareOpRec<double, double>(
-          rData,
-          aData,
-          b.data as List<double>,
-          shape,
-          sA,
-          sB,
-          sR,
-          0,
-          0,
-          0,
-          0,
-          predicate,
-        );
-      } else {
-        _compareOpRec<double, int>(
-          rData,
-          aData,
-          b.data as List<int>,
-          shape,
-          sA,
-          sB,
-          sR,
-          0,
-          0,
-          0,
-          0,
-          predicate,
-        );
-      }
-    } else {
-      final aData = a.data as List<int>;
-      if (b.dtype == DType.complex128 || b.dtype == DType.complex64) {
-        _compareOpRec<int, Complex>(
-          rData,
-          aData,
-          b.data as List<Complex>,
-          shape,
-          sA,
-          sB,
-          sR,
-          0,
-          0,
-          0,
-          0,
-          predicate,
-        );
-      } else if (b.dtype == DType.float64 || b.dtype == DType.float32) {
-        _compareOpRec<int, double>(
-          rData,
-          aData,
-          b.data as List<double>,
-          shape,
-          sA,
-          sB,
-          sR,
-          0,
-          0,
-          0,
-          0,
-          predicate,
-        );
-      } else {
-        _compareOpRec<int, int>(
-          rData,
-          aData,
-          b.data as List<int>,
-          shape,
-          sA,
-          sB,
-          sR,
-          0,
-          0,
-          0,
-          0,
-          predicate,
-        );
-      }
-    }
-  }
-
   NDArray _wrapScalar(dynamic value, List<int> targetShape) {
     if (value is Complex) {
-      return NDArray.fromList(
+      return NDArray<Complex128>.fromList(
         <Complex>[value],
         List.filled(targetShape.length, 1),
         DType.complex128,
       );
     } else if (value is int) {
-      return NDArray.fromList(
+      return NDArray<Int64>.fromList(
         <int>[value],
         List.filled(targetShape.length, 1),
         DType.int64,
       );
     } else if (value is double) {
-      return NDArray.fromList(
+      return NDArray<Float64>.fromList(
         <double>[value],
         List.filled(targetShape.length, 1),
         DType.float64,
       );
     } else if (value is bool) {
-      return NDArray.fromList(
+      return NDArray<bool>.fromList(
         <bool>[value],
         List.filled(targetShape.length, 1),
         DType.boolean,
@@ -2007,7 +1826,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - **Floating-point arrays**: Returns `double.nan` silently without throwing exceptions.
   NDArray operator ~/(dynamic other) {
     final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
-    return ops.floor_divide(this, otherArr);
+    return ops.floor_divide(this as NDArray<num>, otherArr as NDArray<num>);
   }
 
   /// Element-wise remainder with full broadcasting support.
@@ -2018,7 +1837,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - **Floating-point divisor**: Returns `double.nan` silently without throwing exceptions.
   NDArray operator %(dynamic other) {
     final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
-    return ops.remainder(this, otherArr);
+    return ops.remainder(this as NDArray<num>, otherArr as NDArray<num>);
   }
 
   /// Numerical negative, element-wise.
@@ -2061,190 +1880,137 @@ final class NDArray<T> implements ffi.Finalizable {
     return ops.right_shift(this, otherArr);
   }
 
-  /// Element-wise greater than comparison with full broadcasting support.
+  /// Element-wise greater than comparison (`this > other`) with full broadcasting support.
+  ///
+  /// Returns a boolean [NDArray] where each element is `true` if the corresponding
+  /// element in this array is greater than the element in [other], and `false` otherwise.
+  ///
+  /// **Preconditions:**
+  /// - The shape of [other] (or this array) must be broadcast-compatible with the other.
+  /// - Both arrays must be numeric (non-complex).
+  ///
+  /// **Exceptions:**
+  /// - Throws [UnsupportedError] if either array has a complex data type ([DType.complex64] or [DType.complex128]).
+  /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
+  ///
+  /// **Performance:**
+  /// - Execution is offloaded to native C++ SIMD-optimized comparison loops.
+  /// - Time Complexity: `O(N)` where `N` is the broadcasted size of the arrays.
+  /// - Space Complexity: `O(N)` to allocate the resulting boolean array (unless an `out` parameter is used in the underlying ufunc).
   ///
   /// **Example:**
-  /// {@example /example/ufuncs_example.dart lang=dart}
+  /// {@example /example/comparison_operations_example.dart lang=dart}
+  ///
+  /// Reference: See NumPy's [greater](https://numpy.org/doc/stable/reference/generated/numpy.greater.html).
   NDArray<bool> operator >(dynamic other) {
-    NDArray otherArr;
-    if (other is NDArray) {
-      otherArr = other;
-    } else {
-      otherArr = _wrapScalar(other, shape);
-    }
-
-    if (dtype == DType.complex128 ||
-        dtype == DType.complex64 ||
-        otherArr.dtype == DType.complex128 ||
-        otherArr.dtype == DType.complex64) {
-      throw UnsupportedError(
-        'Complex numbers do not support inequality comparisons',
-      );
-    }
-
-    final broadcastResult = broadcast(this, otherArr);
-    final commonShape = broadcastResult.shape;
-    final result = NDArray<bool>.create(commonShape, DType.boolean);
-    final resultStrides = computeCStrides(commonShape);
-
-    _dispatchCompare(
-      result.data,
-      this,
-      otherArr,
-      commonShape,
-      broadcastResult.stridesA,
-      broadcastResult.stridesB,
-      resultStrides,
-      (x, y) => (x as num) > (y as num),
-    );
-    return result;
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.greater(this, otherArr);
   }
 
-  /// Element-wise less than comparison with full broadcasting support.
+  /// Element-wise less than comparison (`this < other`) with full broadcasting support.
+  ///
+  /// Returns a boolean [NDArray] where each element is `true` if the corresponding
+  /// element in this array is less than the element in [other], and `false` otherwise.
+  ///
+  /// **Preconditions:**
+  /// - The shape of [other] (or this array) must be broadcast-compatible with the other.
+  /// - Both arrays must be numeric (non-complex).
+  ///
+  /// **Exceptions:**
+  /// - Throws [UnsupportedError] if either array has a complex data type ([DType.complex64] or [DType.complex128]).
+  /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
+  ///
+  /// **Performance:**
+  /// - Offloaded to native C++ SIMD-optimized comparison loops.
+  /// - Time Complexity: `O(N)` where `N` is the broadcasted size.
   ///
   /// **Example:**
-  /// {@example /example/ufuncs_example.dart lang=dart}
+  /// {@example /example/comparison_operations_example.dart lang=dart}
+  ///
+  /// Reference: See NumPy's [less](https://numpy.org/doc/stable/reference/generated/numpy.less.html).
   NDArray<bool> operator <(dynamic other) {
-    NDArray otherArr;
-    if (other is NDArray) {
-      otherArr = other;
-    } else {
-      otherArr = _wrapScalar(other, shape);
-    }
-
-    if (dtype == DType.complex128 ||
-        dtype == DType.complex64 ||
-        otherArr.dtype == DType.complex128 ||
-        otherArr.dtype == DType.complex64) {
-      throw UnsupportedError(
-        'Complex numbers do not support inequality comparisons',
-      );
-    }
-
-    final broadcastResult = broadcast(this, otherArr);
-    final commonShape = broadcastResult.shape;
-    final result = NDArray<bool>.create(commonShape, DType.boolean);
-    final resultStrides = computeCStrides(commonShape);
-
-    _dispatchCompare(
-      result.data,
-      this,
-      otherArr,
-      commonShape,
-      broadcastResult.stridesA,
-      broadcastResult.stridesB,
-      resultStrides,
-      (x, y) => (x as num) < (y as num),
-    );
-    return result;
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.less(this, otherArr);
   }
 
-  /// Element-wise greater-or-equal comparison with full broadcasting support.
+  /// Element-wise greater-or-equal comparison (`this >= other`) with full broadcasting support.
+  ///
+  /// Returns a boolean [NDArray] where each element is `true` if the corresponding
+  /// element in this array is greater than or equal to the element in [other], and `false` otherwise.
+  ///
+  /// **Preconditions:**
+  /// - The shape of [other] (or this array) must be broadcast-compatible with the other.
+  /// - Both arrays must be numeric (non-complex).
+  ///
+  /// **Exceptions:**
+  /// - Throws [UnsupportedError] if either array has a complex data type ([DType.complex64] or [DType.complex128]).
+  /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
+  ///
+  /// **Performance:**
+  /// - Offloaded to native C++ SIMD-optimized comparison loops.
+  /// - Time Complexity: `O(N)` where `N` is the broadcasted size.
   ///
   /// **Example:**
-  /// {@example /example/ufuncs_example.dart lang=dart}
+  /// {@example /example/comparison_operations_example.dart lang=dart}
+  ///
+  /// Reference: See NumPy's [greater_equal](https://numpy.org/doc/stable/reference/generated/numpy.greater_equal.html).
   NDArray<bool> operator >=(dynamic other) {
-    NDArray otherArr;
-    if (other is NDArray) {
-      otherArr = other;
-    } else {
-      otherArr = _wrapScalar(other, shape);
-    }
-
-    if (dtype == DType.complex128 ||
-        dtype == DType.complex64 ||
-        otherArr.dtype == DType.complex128 ||
-        otherArr.dtype == DType.complex64) {
-      throw UnsupportedError(
-        'Complex numbers do not support inequality comparisons',
-      );
-    }
-
-    final broadcastResult = broadcast(this, otherArr);
-    final commonShape = broadcastResult.shape;
-    final result = NDArray<bool>.create(commonShape, DType.boolean);
-    final resultStrides = computeCStrides(commonShape);
-
-    _dispatchCompare(
-      result.data,
-      this,
-      otherArr,
-      commonShape,
-      broadcastResult.stridesA,
-      broadcastResult.stridesB,
-      resultStrides,
-      (x, y) => (x as num) >= (y as num),
-    );
-    return result;
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.greaterEqual(this, otherArr);
   }
 
-  /// Element-wise less-or-equal comparison with full broadcasting support.
+  /// Element-wise less-or-equal comparison (`this <= other`) with full broadcasting support.
+  ///
+  /// Returns a boolean [NDArray] where each element is `true` if the corresponding
+  /// element in this array is less than or equal to the element in [other], and `false` otherwise.
+  ///
+  /// **Preconditions:**
+  /// - The shape of [other] (or this array) must be broadcast-compatible with the other.
+  /// - Both arrays must be numeric (non-complex).
+  ///
+  /// **Exceptions:**
+  /// - Throws [UnsupportedError] if either array has a complex data type ([DType.complex64] or [DType.complex128]).
+  /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
+  ///
+  /// **Performance:**
+  /// - Offloaded to native C++ SIMD-optimized comparison loops.
+  /// - Time Complexity: `O(N)` where `N` is the broadcasted size.
   ///
   /// **Example:**
-  /// {@example /example/ufuncs_example.dart lang=dart}
+  /// {@example /example/comparison_operations_example.dart lang=dart}
+  ///
+  /// Reference: See NumPy's [less_equal](https://numpy.org/doc/stable/reference/generated/numpy.less_equal.html).
   NDArray<bool> operator <=(dynamic other) {
-    NDArray otherArr;
-    if (other is NDArray) {
-      otherArr = other;
-    } else {
-      otherArr = _wrapScalar(other, shape);
-    }
-
-    if (dtype == DType.complex128 ||
-        dtype == DType.complex64 ||
-        otherArr.dtype == DType.complex128 ||
-        otherArr.dtype == DType.complex64) {
-      throw UnsupportedError(
-        'Complex numbers do not support inequality comparisons',
-      );
-    }
-
-    final broadcastResult = broadcast(this, otherArr);
-    final commonShape = broadcastResult.shape;
-    final result = NDArray<bool>.create(commonShape, DType.boolean);
-    final resultStrides = computeCStrides(commonShape);
-
-    _dispatchCompare(
-      result.data,
-      this,
-      otherArr,
-      commonShape,
-      broadcastResult.stridesA,
-      broadcastResult.stridesB,
-      resultStrides,
-      (x, y) => (x as num) <= (y as num),
-    );
-    return result;
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.lessEqual(this, otherArr);
   }
 
-  /// Element-wise equality comparison with full broadcasting support.
+  /// Element-wise equality comparison (`eq(other)`) with full broadcasting support.
+  ///
+  /// Returns a boolean [NDArray] where each element is `true` if the corresponding
+  /// element in this array equals the element in [other], and `false` otherwise.
+  ///
+  /// Unlike standard Dart operator `==` which checks for structural equality of the
+  /// NDArray objects themselves, [eq] performs element-wise value comparison.
+  ///
+  /// **Preconditions:**
+  /// - The shape of [other] (or this array) must be broadcast-compatible with the other.
+  /// - Supports complex types (checks real and imaginary parts).
+  ///
+  /// **Exceptions:**
+  /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
+  ///
+  /// **Performance:**
+  /// - Offloaded to native C++ SIMD-optimized comparison loops.
+  /// - Time Complexity: `O(N)` where `N` is the broadcasted size.
   ///
   /// **Example:**
-  /// {@example /example/ufuncs_example.dart lang=dart}
+  /// {@example /example/comparison_operations_example.dart lang=dart}
+  ///
+  /// Reference: See NumPy's [equal](https://numpy.org/doc/stable/reference/generated/numpy.equal.html).
   NDArray<bool> eq(dynamic other) {
-    NDArray otherArr;
-    if (other is NDArray) {
-      otherArr = other;
-    } else {
-      otherArr = _wrapScalar(other, shape);
-    }
-
-    final broadcastResult = broadcast(this, otherArr);
-    final commonShape = broadcastResult.shape;
-    final result = NDArray<bool>.create(commonShape, DType.boolean);
-    final resultStrides = computeCStrides(commonShape);
-
-    _dispatchCompare(
-      result.data,
-      this,
-      otherArr,
-      commonShape,
-      broadcastResult.stridesA,
-      broadcastResult.stridesB,
-      resultStrides,
-      (x, y) => x == y,
-    );
-    return result;
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.equal(this, otherArr);
   }
 
   /// Returns a view of this array with elements sliced based on [selectors].
@@ -2946,24 +2712,29 @@ final class NDArray<T> implements ffi.Finalizable {
       return custom_memcmp(pointer, other.pointer, byteSize) == 0;
     }
 
-    // 2. Zero-allocation recursive in-place coordinate walking comparison
-    return _equalsRecursive(this, other, List<int>.filled(shape.length, 0), 0);
-  }
-
-  static bool _equalsRecursive(
-    NDArray a,
-    NDArray b,
-    List<int> indices,
-    int dim,
-  ) {
-    if (dim == a.shape.length) {
-      return a.getCell(indices) == b.getCell(indices);
+    // 2. Zero-allocation strided C comparison
+    final marker = ScratchArena.marker;
+    try {
+      final cShape = shape.isEmpty ? ffi.nullptr : ScratchArena.copyInts(shape);
+      final cStridesA = strides.isEmpty
+          ? ffi.nullptr
+          : ScratchArena.copyInts(strides);
+      final cStridesB = other.strides.isEmpty
+          ? ffi.nullptr
+          : ScratchArena.copyInts(other.strides);
+      return ndarray_equals(
+            dtype.index,
+            pointer,
+            cStridesA,
+            other.pointer,
+            cStridesB,
+            cShape,
+            shape.length,
+          ) ==
+          1;
+    } finally {
+      ScratchArena.reset(marker);
     }
-    for (var i = 0; i < a.shape[dim]; i++) {
-      indices[dim] = i;
-      if (!_equalsRecursive(a, b, indices, dim + 1)) return false;
-    }
-    return true;
   }
 
   @override

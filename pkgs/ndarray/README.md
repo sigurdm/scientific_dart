@@ -21,7 +21,7 @@
 - 🧮 **OpenBLAS Linear Algebra**: Accelerated determinant (`det`), matrix inversion (`inv`), QR, SVD, and solvers (`solve`) powered by raw LAPACK.
 - 📶 **Mixed-Radix pocketfft**: Fast Fourier Transform (`fft`) and Inverse FFT (`ifft`) mapped to PocketFFT unmanaged kernels.
 - 🎲 **RNG Distributions**: High-performance Normal (Gaussian), Poisson, and Binomial sample generation.
-- 🔍 **Data Sanitation & Tolerance Comparisons**: Approximate floating-point equality comparisons (`isclose`/`allclose`) and NaN/Infinities cleaning (`nan_to_num`).
+- 🔍 **Data Sanitation & Tolerance Comparisons**: Approximate floating-point equality comparisons (`isClose`/`allClose`) and NaN/Infinities cleaning (`nan_to_num`).
 - 🧹 **Automatic Resource Management Scope**: Zone-based scoped lifetimes (`NDArray.scope()`) that automatically release raw unmanaged heap allocations of transient arrays. [Read the Tutorial](doc/memory_management.md).
 
 ---
@@ -97,7 +97,7 @@ void main() {
     print('5. Executed FFI IFFT to restore signal back to time-domain.');
 
     // 6. Compare reconstructed signal against original pure signal!
-    final isApproximatelyClose = allclose(pureSignal, reconstructed, rtol: 0.3, atol: 0.5);
+    final isApproximatelyClose = allClose(pureSignal, reconstructed, rtol: 0.3, atol: 0.5);
     print('\n=== Verification Results ===');
     print('Is restored signal approximately close to pure signal? $isApproximatelyClose');
   });

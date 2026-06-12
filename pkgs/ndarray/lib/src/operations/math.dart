@@ -2223,18 +2223,22 @@ NDArray<double> atan2<Ty, Tx>(
 /// ```dart
 /// final h = hypot(a, b);
 /// ```
-NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
+NDArray<R> hypot<T extends Object, R extends num>(
+  NDArray<T> x1,
+  NDArray<T> x2, {
+  NDArray<R>? out,
+}) {
   if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute hypot() on a disposed array.');
   }
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
-  final DType<double> targetDType =
+  final DType<R> targetDType =
       (x1.dtype == DType.complex64 || x2.dtype == DType.complex64)
-      ? DType.float32 as DType<double>
-      : DType.float64 as DType<double>;
+      ? DType.float32 as DType<R>
+      : DType.float64 as DType<R>;
 
-  final NDArray<double> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -2243,7 +2247,7 @@ NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
     }
     result = out;
   } else {
-    result = NDArray<double>.create(shape, targetDType);
+    result = NDArray<R>.create(shape, targetDType);
   }
   final resultStrides = NDArray.computeCStrides(shape);
 
@@ -2340,7 +2344,7 @@ NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
     return x * math.sqrt(1.0 + t * t);
   }
 
-  elementWiseOp<num, num, double>(
+  elementWiseOp<num, num, R>(
     rData,
     x1.data as List<num>,
     x2.data as List<num>,
@@ -2352,7 +2356,7 @@ NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
     0,
     0,
     0,
-    (valA, valB) => hypotOp(valA.toDouble(), valB.toDouble()),
+    (valA, valB) => hypotOp(valA.toDouble(), valB.toDouble()) as R,
   );
 
   return result;
@@ -2364,27 +2368,19 @@ NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
 /// ```dart
 /// final p = power(a, b);
 /// ```
-NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
+NDArray<T> power<T extends Object>(
+  NDArray<T> x1,
+  NDArray<T> x2, {
+  NDArray<T>? out,
+}) {
   if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute power() on a disposed array.');
   }
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
-  final DType<dynamic> targetDType;
-  if (x1.dtype == DType.complex128 ||
-      x2.dtype == DType.complex128 ||
-      x1.dtype == DType.complex64 ||
-      x2.dtype == DType.complex64) {
-    targetDType = (x1.dtype == DType.complex64 || x2.dtype == DType.complex64)
-        ? DType.complex64
-        : DType.complex128;
-  } else {
-    targetDType = (x1.dtype == DType.float32 || x2.dtype == DType.float32)
-        ? DType.float32
-        : DType.float64;
-  }
+  final DType<T> targetDType = x1.dtype; // Enforce same type T
 
-  final NDArray result;
+  final NDArray<T> result;
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -2393,7 +2389,7 @@ NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
     }
     result = out;
   } else {
-    result = NDArray.create(shape, targetDType);
+    result = NDArray<T>.create(shape, targetDType);
   }
   final resultStrides = NDArray.computeCStrides(shape);
 
@@ -2541,8 +2537,8 @@ NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
     }
   }
 
-  elementWiseOp<num, num, double>(
-    result.data as List<double>,
+  elementWiseOp<num, num, T>(
+    result.data,
     x1.data as List<num>,
     x2.data as List<num>,
     shape,
@@ -2553,7 +2549,10 @@ NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
     0,
     0,
     0,
-    (valA, valB) => math.pow(valA.toDouble(), valB.toDouble()).toDouble(),
+    (valA, valB) {
+      final res = math.pow(valA.toDouble(), valB.toDouble());
+      return (T == int ? res.toInt() : res.toDouble()) as T;
+    },
   );
 
   return result;
@@ -2643,7 +2642,11 @@ NDArray<T> negative<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// ```dart
 /// final c = floor_divide(a, b);
 /// ```
-NDArray floor_divide(NDArray a, NDArray b, {NDArray? out}) {
+NDArray<T> floor_divide<T extends num>(
+  NDArray<T> a,
+  NDArray<T> b, {
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute floor_divide() on a disposed array.');
   }
@@ -2652,12 +2655,12 @@ NDArray floor_divide(NDArray a, NDArray b, {NDArray? out}) {
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final DType<dynamic> targetDType = resolveDType(a.dtype, b.dtype);
+  final DType<T> targetDType = resolveDType(a.dtype, b.dtype) as DType<T>;
   if (targetDType.isComplex) {
     throw UnsupportedError('Complex numbers do not support floor division');
   }
 
-  final NDArray result;
+  final NDArray<T> result;
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -2666,7 +2669,7 @@ NDArray floor_divide(NDArray a, NDArray b, {NDArray? out}) {
     }
     result = out;
   } else {
-    result = NDArray.create(commonShape, targetDType);
+    result = NDArray<T>.create(commonShape, targetDType);
   }
   final resultStrides = NDArray.computeCStrides(commonShape);
 
@@ -2827,8 +2830,8 @@ NDArray floor_divide(NDArray a, NDArray b, {NDArray? out}) {
   }
 
   if (targetDType == DType.float64 || targetDType == DType.float32) {
-    elementWiseOp<num, num, double>(
-      result.data as List<double>,
+    elementWiseOp<num, num, T>(
+      result.data,
       a.data as List<num>,
       b.data as List<num>,
       commonShape,
@@ -2839,11 +2842,11 @@ NDArray floor_divide(NDArray a, NDArray b, {NDArray? out}) {
       0,
       0,
       0,
-      (x, y) => doubleFloorDiv(x.toDouble(), y.toDouble()),
+      (x, y) => doubleFloorDiv(x.toDouble(), y.toDouble()) as T,
     );
   } else {
-    elementWiseOp<int, int, int>(
-      result.data as List<int>,
+    elementWiseOp<int, int, T>(
+      result.data,
       a.data as List<int>,
       b.data as List<int>,
       commonShape,
@@ -2854,7 +2857,7 @@ NDArray floor_divide(NDArray a, NDArray b, {NDArray? out}) {
       0,
       0,
       0,
-      (x, y) => intFloorDiv(x, y),
+      (x, y) => intFloorDiv(x, y) as T,
     );
   }
   return result;
@@ -2873,7 +2876,11 @@ NDArray floor_divide(NDArray a, NDArray b, {NDArray? out}) {
 /// ```dart
 /// final c = remainder(a, b);
 /// ```
-NDArray remainder(NDArray a, NDArray b, {NDArray? out}) {
+NDArray<T> remainder<T extends num>(
+  NDArray<T> a,
+  NDArray<T> b, {
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute remainder() on a disposed array.');
   }
@@ -2882,12 +2889,12 @@ NDArray remainder(NDArray a, NDArray b, {NDArray? out}) {
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final DType<dynamic> targetDType = resolveDType(a.dtype, b.dtype);
+  final DType<T> targetDType = resolveDType(a.dtype, b.dtype) as DType<T>;
   if (targetDType.isComplex) {
     throw UnsupportedError('Complex numbers do not support remainder');
   }
 
-  final NDArray result;
+  final NDArray<T> result;
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -2896,7 +2903,7 @@ NDArray remainder(NDArray a, NDArray b, {NDArray? out}) {
     }
     result = out;
   } else {
-    result = NDArray.create(commonShape, targetDType);
+    result = NDArray<T>.create(commonShape, targetDType);
   }
   final resultStrides = NDArray.computeCStrides(commonShape);
 
@@ -3060,8 +3067,8 @@ NDArray remainder(NDArray a, NDArray b, {NDArray? out}) {
   }
 
   if (targetDType == DType.float64 || targetDType == DType.float32) {
-    elementWiseOp<num, num, double>(
-      result.data as List<double>,
+    elementWiseOp<num, num, T>(
+      result.data,
       a.data as List<num>,
       b.data as List<num>,
       commonShape,
@@ -3072,11 +3079,11 @@ NDArray remainder(NDArray a, NDArray b, {NDArray? out}) {
       0,
       0,
       0,
-      (x, y) => doubleMod(x.toDouble(), y.toDouble()),
+      (x, y) => doubleMod(x.toDouble(), y.toDouble()) as T,
     );
   } else {
-    elementWiseOp<int, int, int>(
-      result.data as List<int>,
+    elementWiseOp<int, int, T>(
+      result.data,
       a.data as List<int>,
       b.data as List<int>,
       commonShape,
@@ -3087,14 +3094,15 @@ NDArray remainder(NDArray a, NDArray b, {NDArray? out}) {
       0,
       0,
       0,
-      (x, y) => intMod(x, y),
+      (x, y) => intMod(x, y) as T,
     );
   }
   return result;
 }
 
 /// Alias for [remainder].
-NDArray mod(NDArray a, NDArray b, {NDArray? out}) => remainder(a, b, out: out);
+NDArray<T> mod<T extends num>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) =>
+    remainder(a, b, out: out);
 
 /// Return element-wise quotient and remainder simultaneously.
 ///
@@ -3106,7 +3114,7 @@ NDArray mod(NDArray a, NDArray b, {NDArray? out}) => remainder(a, b, out: out);
 /// final q = res.$1;
 /// final r = res.$2;
 /// ```
-(NDArray, NDArray) divmod(NDArray a, NDArray b) {
+(NDArray<T>, NDArray<T>) divmod<T extends num>(NDArray<T> a, NDArray<T> b) {
   return (floor_divide(a, b), remainder(a, b));
 }
 
@@ -3201,11 +3209,11 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// ```dart
 /// final s = sign(a);
 /// ```
-NDArray sign(NDArray a, {NDArray? out}) {
+NDArray<T> sign<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute sign() on a disposed array.');
   }
-  final NDArray result;
+  final NDArray<T> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -3214,7 +3222,7 @@ NDArray sign(NDArray a, {NDArray? out}) {
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, a.dtype);
+    result = NDArray<T>.create(a.shape, a.dtype);
   }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
@@ -3269,14 +3277,14 @@ NDArray sign(NDArray a, {NDArray? out}) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray ceil(NDArray a, {NDArray? out}) {
+NDArray<T> ceil<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute ceil() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for ceil');
   }
-  final NDArray result;
+  final NDArray<T> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -3285,7 +3293,7 @@ NDArray ceil(NDArray a, {NDArray? out}) {
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, a.dtype);
+    result = NDArray<T>.create(a.shape, a.dtype);
   }
 
   if (a.isContiguous && result.isContiguous) {
@@ -3331,14 +3339,14 @@ NDArray ceil(NDArray a, {NDArray? out}) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray floor(NDArray a, {NDArray? out}) {
+NDArray<T> floor<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute floor() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for floor');
   }
-  final NDArray result;
+  final NDArray<T> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -3347,7 +3355,7 @@ NDArray floor(NDArray a, {NDArray? out}) {
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, a.dtype);
+    result = NDArray<T>.create(a.shape, a.dtype);
   }
 
   if (a.isContiguous && result.isContiguous) {
@@ -3393,14 +3401,14 @@ NDArray floor(NDArray a, {NDArray? out}) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray round(NDArray a, {NDArray? out}) {
+NDArray<T> round<T extends num>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute round() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for round');
   }
-  final NDArray result;
+  final NDArray<T> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -3409,7 +3417,7 @@ NDArray round(NDArray a, {NDArray? out}) {
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, a.dtype);
+    result = NDArray<T>.create(a.shape, a.dtype);
   }
 
   if (a.isContiguous && result.isContiguous) {
@@ -4040,7 +4048,7 @@ NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
 /// final a = NDArray.fromList([1.0, double.nan, double.infinity], [3], DType.float64);
 /// final mask = isfinite(a); // [true, false, false]
 /// ```
-NDArray<bool> isfinite(NDArray a, {NDArray<bool>? out}) {
+NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute isfinite() on a disposed array.');
   }
@@ -4195,7 +4203,11 @@ NDArray<bool> isfinite(NDArray a, {NDArray<bool>? out}) {
 /// ```dart
 /// final res = copysign(x1, x2);
 /// ```
-NDArray copysign(NDArray x1, NDArray x2, {NDArray? out}) {
+NDArray<T> copysign<T extends num>(
+  NDArray<T> x1,
+  NDArray<T> x2, {
+  NDArray<T>? out,
+}) {
   if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute copysign() on a disposed array.');
   }
@@ -4208,12 +4220,9 @@ NDArray copysign(NDArray x1, NDArray x2, {NDArray? out}) {
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final DType<dynamic> targetDType =
-      (x1.dtype == DType.float32 && x2.dtype == DType.float32)
-      ? DType.float32
-      : DType.float64;
+  final DType<T> targetDType = x1.dtype; // Enforce same type T
 
-  final NDArray result;
+  final NDArray<T> result;
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -4222,7 +4231,7 @@ NDArray copysign(NDArray x1, NDArray x2, {NDArray? out}) {
     }
     result = out;
   } else {
-    result = NDArray.create(shape, targetDType);
+    result = NDArray<T>.create(shape, targetDType);
   }
   final resultStrides = NDArray.computeCStrides(shape);
 
@@ -4302,8 +4311,8 @@ NDArray copysign(NDArray x1, NDArray x2, {NDArray? out}) {
     return b < 0.0 ? -a.abs() : a.abs();
   }
 
-  elementWiseOp<num, num, double>(
-    result.data as List<double>,
+  elementWiseOp<num, num, T>(
+    result.data,
     x1.data as List<num>,
     x2.data as List<num>,
     shape,
@@ -4314,7 +4323,7 @@ NDArray copysign(NDArray x1, NDArray x2, {NDArray? out}) {
     0,
     0,
     0,
-    (x, y) => copysignOp(x.toDouble(), y.toDouble()),
+    (x, y) => copysignOp(x.toDouble(), y.toDouble()) as T,
   );
 
   return result;
@@ -4897,7 +4906,7 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
   return result;
 }
 
-/// Element-wise comparison of [a] == [b] with broadcasting and recycling support.
+/// Element-wise equality comparison (`a == b`) with full broadcasting support.
 NDArray<bool> equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute equal() on a disposed array.');
@@ -4914,25 +4923,21 @@ NDArray<bool> equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
-  a.dispatchCompare(
-    result.data,
+  _compareHelper(
     a,
     b,
-    commonShape,
+    result,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    resultStrides,
-    (x, y) => x == y,
+    CMP_OP_EQ,
   );
   return result;
 }
 
-/// Element-wise comparison of [a] != [b] with broadcasting and recycling support.
-NDArray<bool> not_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
+/// Element-wise inequality comparison (`a != b`) with full broadcasting support.
+NDArray<bool> notEqual(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
-    throw StateError('Cannot execute not_equal() on a disposed array.');
+    throw StateError('Cannot execute notEqual() on a disposed array.');
   }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -4946,17 +4951,13 @@ NDArray<bool> not_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
-  a.dispatchCompare(
-    result.data,
+  _compareHelper(
     a,
     b,
-    commonShape,
+    result,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    resultStrides,
-    (x, y) => x != y,
+    CMP_OP_NE,
   );
   return result;
 }
@@ -4983,25 +4984,21 @@ NDArray<bool> greater(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
-  a.dispatchCompare(
-    result.data,
+  _compareHelper(
     a,
     b,
-    commonShape,
+    result,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    resultStrides,
-    (x, y) => (x as num) > (y as num),
+    CMP_OP_GT,
   );
   return result;
 }
 
-/// Element-wise comparison of [a] >= [b] with broadcasting and recycling support.
-NDArray<bool> greater_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
+/// Element-wise greater-or-equal comparison (`a >= b`) with full broadcasting support.
+NDArray<bool> greaterEqual(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
-    throw StateError('Cannot execute greater_equal() on a disposed array.');
+    throw StateError('Cannot execute greaterEqual() on a disposed array.');
   }
   if (a.dtype.isComplex || b.dtype.isComplex) {
     throw UnsupportedError(
@@ -5020,22 +5017,18 @@ NDArray<bool> greater_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
-  a.dispatchCompare(
-    result.data,
+  _compareHelper(
     a,
     b,
-    commonShape,
+    result,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    resultStrides,
-    (x, y) => (x as num) >= (y as num),
+    CMP_OP_GE,
   );
   return result;
 }
 
-/// Element-wise comparison of [a] < [b] with broadcasting and recycling support.
+/// Element-wise less-than comparison (`a < b`) with full broadcasting support.
 NDArray<bool> less(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute less() on a disposed array.');
@@ -5057,25 +5050,21 @@ NDArray<bool> less(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
-  a.dispatchCompare(
-    result.data,
+  _compareHelper(
     a,
     b,
-    commonShape,
+    result,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    resultStrides,
-    (x, y) => (x as num) < (y as num),
+    CMP_OP_LT,
   );
   return result;
 }
 
-/// Element-wise comparison of [a] <= [b] with broadcasting and recycling support.
-NDArray<bool> less_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
+/// Element-wise less-or-equal comparison (`a <= b`) with full broadcasting support.
+NDArray<bool> lessEqual(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
-    throw StateError('Cannot execute less_equal() on a disposed array.');
+    throw StateError('Cannot execute lessEqual() on a disposed array.');
   }
   if (a.dtype.isComplex || b.dtype.isComplex) {
     throw UnsupportedError(
@@ -5094,19 +5083,56 @@ NDArray<bool> less_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-  final resultStrides = NDArray.computeCStrides(commonShape);
-
-  a.dispatchCompare(
-    result.data,
+  _compareHelper(
     a,
     b,
-    commonShape,
+    result,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    resultStrides,
-    (x, y) => (x as num) <= (y as num),
+    CMP_OP_LE,
   );
   return result;
+}
+
+void _compareHelper(
+  NDArray a,
+  NDArray b,
+  NDArray<bool> result,
+  List<int> stridesA,
+  List<int> stridesB,
+  int op,
+) {
+  final rank = a.shape.length;
+  final marker = ScratchArena.marker;
+  final cShape = a.shape.isEmpty ? ffi.nullptr : ScratchArena.copyInts(a.shape);
+  final cStridesA = stridesA.isEmpty
+      ? ffi.nullptr
+      : ScratchArena.copyInts(stridesA);
+  final cStridesB = stridesB.isEmpty
+      ? ffi.nullptr
+      : ScratchArena.copyInts(stridesB);
+  final resultStrides = NDArray.computeCStrides(result.shape);
+  final cStridesRes = resultStrides.isEmpty
+      ? ffi.nullptr
+      : ScratchArena.copyInts(resultStrides);
+
+  try {
+    ndarray_compare(
+      op,
+      a.dtype.index,
+      b.dtype.index,
+      a.pointer.cast(),
+      cStridesA,
+      b.pointer.cast(),
+      cStridesB,
+      result.pointer.cast(),
+      cStridesRes,
+      cShape,
+      rank,
+    );
+  } finally {
+    ScratchArena.reset(marker);
+  }
 }
 
 /// Compute the element-wise truth value of [a] AND [b] with broadcasting support.
@@ -5616,7 +5642,7 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
 /// {@example /example/isclose_example.dart lang=dart}
 ///
 /// Reference: [Approximate Equality](https://numpy.org/doc/stable/reference/generated/numpy.isclose.html)
-NDArray<bool> isclose<Ta, Tb>(
+NDArray<bool> isClose<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   double rtol = 1e-05,
@@ -5624,7 +5650,7 @@ NDArray<bool> isclose<Ta, Tb>(
   bool equalNan = false,
 }) {
   if (a.isDisposed || b.isDisposed) {
-    throw StateError('Cannot execute isclose() on a disposed array.');
+    throw StateError('Cannot execute isClose() on a disposed array.');
   }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -5722,14 +5748,14 @@ NDArray<bool> isclose<Ta, Tb>(
 /// {@example /example/isclose_example.dart lang=dart}
 ///
 /// Reference: [Approximate Equality](https://numpy.org/doc/stable/reference/generated/numpy.allclose.html)
-bool allclose<Ta, Tb>(
+bool allClose<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
   double rtol = 1e-05,
   double atol = 1e-08,
   bool equalNan = false,
 }) {
-  final closeMask = isclose(a, b, rtol: rtol, atol: atol, equalNan: equalNan);
+  final closeMask = isClose(a, b, rtol: rtol, atol: atol, equalNan: equalNan);
   final maskList = closeMask.toList();
   closeMask.dispose();
   for (final val in maskList) {
@@ -7081,7 +7107,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     result = NDArray<R>.create(commonShape, targetDType as DType<R>);
   }
 
-  final resultStrides = NDArray.computeCStrides(commonShape);
+
 
   // Specialized paths for Float64 (as in original extensions.dart)
   final isContig =
@@ -7101,7 +7127,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     cShape[i] = commonShape[i];
     cStridesA[i] = stridesA[i];
     cStridesB[i] = stridesB[i];
-    cStridesRes[i] = resultStrides[i];
+    cStridesRes[i] = result.strides[i];
   }
   switch ((a.dtype, b.dtype)) {
     case (DType.float64, DType.float64) when isContig:

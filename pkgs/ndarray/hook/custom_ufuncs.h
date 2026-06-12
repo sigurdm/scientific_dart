@@ -1188,6 +1188,28 @@ void s_interp_float(const float *x, const int *stridesX,
                     const int *shape, int rank,
                     const float *left, const float *right);
 
+#define CMP_OP_EQ 0
+#define CMP_OP_NE 1
+#define CMP_OP_LT 2
+#define CMP_OP_LE 3
+#define CMP_OP_GT 4
+#define CMP_OP_GE 5
+
+int ndarray_equals(
+    int dtype,
+    const void *a, const int *stridesA,
+    const void *b, const int *stridesB,
+    const int *shape, int rank
+);
+
+void ndarray_compare(
+    int op, int dtypeA, int dtypeB,
+    const void *a, const int *stridesA,
+    const void *b, const int *stridesB,
+    uint8_t *res, const int *stridesRes,
+    const int *shape, int rank
+);
+
 #endif /* CUSTOM_UFUNCS_H */
 
 

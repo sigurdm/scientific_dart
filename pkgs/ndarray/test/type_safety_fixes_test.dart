@@ -101,7 +101,7 @@ void main() {
         final NDArray<Complex> uS = matmul(svdRes.U, sDiag);
         final reconstructed = matmul(uS, svdRes.Vh);
 
-        expect(allclose(reconstructed, a, rtol: 1e-5, atol: 1e-5), isTrue);
+        expect(allClose(reconstructed, a, rtol: 1e-5, atol: 1e-5), isTrue);
 
         // complex64
         final a64 = NDArray.fromList(
@@ -119,7 +119,7 @@ void main() {
         final NDArray<Complex> uS64 = matmul(svdRes64.U, sDiag64);
         final reconstructed64 = matmul(uS64, svdRes64.Vh);
         expect(
-          allclose(reconstructed64, a64, rtol: 1e-3, atol: 1e-3),
+          allClose(reconstructed64, a64, rtol: 1e-3, atol: 1e-3),
           isTrue,
         ); // Lower tolerance for float32
 
@@ -129,7 +129,7 @@ void main() {
 
         final aPinvA = matmul(a, aPinv);
         final aPinvAA = matmul(aPinvA, a);
-        expect(allclose(aPinvAA, a, rtol: 1e-5, atol: 1e-5), isTrue);
+        expect(allClose(aPinvAA, a, rtol: 1e-5, atol: 1e-5), isTrue);
 
         final aPinv64 = pinv(a64);
         expect(aPinv64.dtype, DType.complex64);

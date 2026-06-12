@@ -1237,6 +1237,29 @@ void main() {
           expect(() => a[badMask], throwsArgumentError);
         }),
       );
+
+      test(
+        'isSquare and hasSameShape checks',
+        () => NDArray.scope(() {
+          final squareMat = NDArray.zeros([3, 3], DType.float64);
+          final nonSquareMat = NDArray.zeros([3, 4], DType.float64);
+          final vector = NDArray.zeros([3], DType.float64);
+          final scalar = NDArray.zeros([], DType.float64);
+
+          expect(squareMat.isSquare, isTrue);
+          expect(nonSquareMat.isSquare, isFalse);
+          expect(vector.isSquare, isFalse);
+          expect(scalar.isSquare, isFalse);
+
+          final otherSquareMat = NDArray.ones([3, 3], DType.float64);
+          final differentSquareMat = NDArray.zeros([4, 4], DType.float64);
+
+          expect(squareMat.hasSameShape(otherSquareMat), isTrue);
+          expect(squareMat.hasSameShape(differentSquareMat), isFalse);
+          expect(squareMat.hasSameShape(nonSquareMat), isFalse);
+          expect(squareMat.hasSameShape(vector), isFalse);
+        }),
+      );
     });
   });
 }

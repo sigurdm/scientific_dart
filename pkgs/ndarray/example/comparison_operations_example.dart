@@ -23,9 +23,9 @@ void runBasicComparisonsExample() {
   final gt = greater(b, a);
   print('greater(B, A): ${gt.toList()}');
 
-  // less_equal
-  final lte = less_equal(a, b);
-  print('less_equal(A, B): ${lte.toList()}\n');
+  // lessEqual
+  final lte = lessEqual(a, b);
+  print('lessEqual(A, B): ${lte.toList()}\n');
 }
 
 void runMaskRecyclingExample() {

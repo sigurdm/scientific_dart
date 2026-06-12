@@ -80,7 +80,7 @@ void main() {
 
   // 6. Compare reconstructed signal against original pure signal!
   // Check if they are approximately equal within rtol = 0.3 tolerance (since filtering keeps primary wave)
-  final isApproximatelyClose = allclose(
+  final isApproximatelyClose = allClose(
     pureSignal,
     reconstructed,
     rtol: 0.3,

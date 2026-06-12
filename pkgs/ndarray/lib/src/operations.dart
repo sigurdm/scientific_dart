@@ -18,3 +18,4 @@ export 'operations/calculus.dart';
 export 'operations/padding.dart';
 export 'operations/set_operations.dart';
 export 'operations/interpolation.dart';
+export 'operations/financial.dart';

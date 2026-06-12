@@ -22,6 +22,57 @@ void main(List<String> args) async {
     }
     final libFile = File.fromUri(outputDir.uri.resolve(libName));
 
+    // Compile highway if needed
+    final highwayDir = input.packageRoot.resolve('third_party/highway/');
+    final highwayBuildDir = Directory.fromUri(highwayDir.resolve('build'));
+    final libhwy = File.fromUri(highwayBuildDir.uri.resolve('libhwy.a'));
+    final libhwyContrib = File.fromUri(
+      highwayBuildDir.uri.resolve('libhwy_contrib.a'),
+    );
+
+    if (!libhwy.existsSync() || !libhwyContrib.existsSync()) {
+      print('Highway static libraries not found. Compiling highway...');
+      if (!highwayBuildDir.existsSync()) {
+        highwayBuildDir.createSync(recursive: true);
+      }
+
+      // Run cmake configuration
+      final cmakeRes = await Process.run('cmake', [
+        '-DCMAKE_BUILD_TYPE=Release',
+        '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
+        '-DHWY_ENABLE_TESTS=OFF',
+        '-DHWY_ENABLE_EXAMPLES=OFF',
+        '..',
+      ], workingDirectory: highwayBuildDir.path);
+
+      if (cmakeRes.exitCode != 0) {
+        throw StateError(
+          'CMake failed for highway (exit ${cmakeRes.exitCode}):\n'
+          'stdout: ${cmakeRes.stdout}\n'
+          'stderr: ${cmakeRes.stderr}',
+        );
+      }
+
+      // Run cmake build
+      final buildRes = await Process.run('cmake', [
+        '--build',
+        '.',
+        '--target',
+        'hwy',
+        'hwy_contrib',
+        '--parallel',
+      ], workingDirectory: highwayBuildDir.path);
+
+      if (buildRes.exitCode != 0) {
+        throw StateError(
+          'Build failed for highway (exit ${buildRes.exitCode}):\n'
+          'stdout: ${buildRes.stdout}\n'
+          'stderr: ${buildRes.stderr}',
+        );
+      }
+      print('Highway compiled successfully.');
+    }
+
     final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
     var cppCompilerPath = compilerPath;
     if (compilerPath.endsWith('gcc')) {
@@ -66,7 +117,7 @@ void main(List<String> args) async {
         '/O2',
         '/EHsc',
         '/I${input.packageRoot.toFilePath()}',
-        '/I${input.packageRoot.resolve('third_party/highway').toFilePath()}',
+        '/I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',
         input.packageRoot.resolve('hook/custom_sorting.cpp').toFilePath(),
         '/Fo:$sortingObj',
       ]);
@@ -111,7 +162,7 @@ void main(List<String> args) async {
         '-fPIC',
         '-O3',
         '-I${input.packageRoot.toFilePath()}',
-        '-I${input.packageRoot.resolve('third_party/highway').toFilePath()}',
+        '-I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',
         input.packageRoot.resolve('hook/custom_sorting.cpp').toFilePath(),
         '-o',
         sortingObj,

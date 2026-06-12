@@ -1458,22 +1458,22 @@ void main() {
     );
 
     test(
-      'isclose() and allclose() approximate equality ufunc correctness',
+      'isClose() and allClose() approximate equality ufunc correctness',
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 1.00001, 2.0], [3], DType.float64);
         final b = NDArray.fromList([1.0, 1.00003, 2.0], [3], DType.float64);
 
         // 1. Default tolerances: rtol = 1e-05, atol = 1e-08
-        final closeDefault = isclose(a, b);
+        final closeDefault = isClose(a, b);
         expect(closeDefault.toList(), [true, false, true]);
 
         // 2. Stretched tolerances: rtol = 1e-04
-        final closeStretched = isclose(a, b, rtol: 1e-04);
+        final closeStretched = isClose(a, b, rtol: 1e-04);
         expect(closeStretched.toList(), [true, true, true]);
 
-        // 3. allclose logic
-        expect(allclose(a, b), false);
-        expect(allclose(a, b, rtol: 1e-04), true);
+        // 3. allClose logic
+        expect(allClose(a, b), false);
+        expect(allClose(a, b, rtol: 1e-04), true);
 
         // 4. Infinite matching values
         final infA = NDArray.fromList(
@@ -1492,8 +1492,8 @@ void main() {
           DType.float64,
         );
 
-        final closeInf = isclose(infA, infB);
-        final closeInfMismatch = isclose(infA, infC);
+        final closeInf = isClose(infA, infB);
+        final closeInfMismatch = isClose(infA, infC);
 
         expect(closeInf.toList(), [true, true]);
         expect(closeInfMismatch.toList(), [false, false]);
@@ -1502,8 +1502,8 @@ void main() {
         final nanA = NDArray.fromList([double.nan], [1], DType.float64);
         final nanB = NDArray.fromList([double.nan], [1], DType.float64);
 
-        final closeNanDefault = isclose(nanA, nanB);
-        final closeNanEqual = isclose(nanA, nanB, equalNan: true);
+        final closeNanDefault = isClose(nanA, nanB);
+        final closeNanEqual = isClose(nanA, nanB, equalNan: true);
 
         expect(closeNanDefault.toList(), [false]);
         expect(closeNanEqual.toList(), [true]);
@@ -2625,7 +2625,7 @@ void main() {
         // Verify A * A+ * A = A (approximately)
         final temp = matmul(a, aPlus);
         final rec = matmul(temp, a);
-        expect(allclose(rec, a, atol: 1e-7), true);
+        expect(allClose(rec, a, atol: 1e-7), true);
 
         temp.dispose();
         rec.dispose();
@@ -2636,14 +2636,14 @@ void main() {
 
         final t2 = matrix_power(t, 2);
         final tTimesT = matmul(t, t);
-        expect(allclose(t2, tTimesT, atol: 1e-9), true);
+        expect(allClose(t2, tTimesT, atol: 1e-9), true);
 
         final t0 = matrix_power(t, 0);
         expect(t0.toList(), [1.0, 0.0, 0.0, 1.0]);
 
         final tInv = matrix_power(t, -1);
         final check = matmul(t, tInv);
-        expect(allclose(check, t0, atol: 1e-9), true);
+        expect(allClose(check, t0, atol: 1e-9), true);
 
         t2.dispose();
         tTimesT.dispose();
@@ -2801,7 +2801,7 @@ void main() {
 
         // 4. inverse hyperbolic loops
         final ash = asinh(sh);
-        expect(allclose(ash, a, atol: 1e-9), true);
+        expect(allClose(ash, a, atol: 1e-9), true);
 
         // 5. in-place recycler out reuse
         final recycler = NDArray<double>.zeros([3], DType.float64);

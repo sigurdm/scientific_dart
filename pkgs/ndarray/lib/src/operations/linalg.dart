@@ -179,10 +179,10 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     if (!aPromoted) {
       if (aView.strides[rankA - 1] == 1) {
         transA = 111;
-        lda = aView.strides[rankA - 2];
+        lda = math.max(aView.strides[rankA - 2], kA);
       } else if (aView.strides[rankA - 2] == 1) {
         transA = 112; // CblasTrans
-        lda = aView.strides[rankA - 1];
+        lda = math.max(aView.strides[rankA - 1], m);
       }
     }
 
@@ -191,10 +191,10 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     if (!bPromoted) {
       if (bView.strides[rankB - 1] == 1) {
         transB = 111;
-        ldb = bView.strides[rankB - 2];
+        ldb = math.max(bView.strides[rankB - 2], n);
       } else if (bView.strides[rankB - 2] == 1) {
         transB = 112; // CblasTrans
-        ldb = bView.strides[rankB - 1];
+        ldb = math.max(bView.strides[rankB - 1], kB);
       }
     }
 

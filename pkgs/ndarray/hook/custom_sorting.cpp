@@ -1364,7 +1364,7 @@ void native_apply_mask(
     if (src == NULL || mask == NULL || dest == NULL || size <= 0) return;
     
     switch (dtype) {
-        case 0: { // float32
+        case DTYPE_FLOAT32: { // float32
             const float *s = (const float *)src;
             float *d = (float *)dest;
             int count = 0;
@@ -1373,7 +1373,7 @@ void native_apply_mask(
             }
             break;
         }
-        case 1: { // float64
+        case DTYPE_FLOAT64: { // float64
             const double *s = (const double *)src;
             double *d = (double *)dest;
             int count = 0;
@@ -1382,7 +1382,7 @@ void native_apply_mask(
             }
             break;
         }
-        case 2: { // complex64
+        case DTYPE_COMPLEX64: { // complex64
             struct C64 { float real, imag; };
             const C64 *s = (const C64 *)src;
             C64 *d = (C64 *)dest;
@@ -1392,7 +1392,7 @@ void native_apply_mask(
             }
             break;
         }
-        case 3: { // complex128
+        case DTYPE_COMPLEX128: { // complex128
             struct C128 { double real, imag; };
             const C128 *s = (const C128 *)src;
             C128 *d = (C128 *)dest;
@@ -1402,7 +1402,7 @@ void native_apply_mask(
             }
             break;
         }
-        case 4: { // int32
+        case DTYPE_INT32: { // int32
             const int32_t *s = (const int32_t *)src;
             int32_t *d = (int32_t *)dest;
             int count = 0;
@@ -1411,7 +1411,7 @@ void native_apply_mask(
             }
             break;
         }
-        case 5: { // int64
+        case DTYPE_INT64: { // int64
             const int64_t *s = (const int64_t *)src;
             int64_t *d = (int64_t *)dest;
             int count = 0;
@@ -1420,7 +1420,7 @@ void native_apply_mask(
             }
             break;
         }
-        case 6: { // uint8
+        case DTYPE_UINT8: { // uint8
             const uint8_t *s = (const uint8_t *)src;
             uint8_t *d = (uint8_t *)dest;
             int count = 0;
@@ -1429,7 +1429,7 @@ void native_apply_mask(
             }
             break;
         }
-        case 7: { // int16
+        case DTYPE_INT16: { // int16
             const int16_t *s = (const int16_t *)src;
             int16_t *d = (int16_t *)dest;
             int count = 0;
@@ -1438,7 +1438,7 @@ void native_apply_mask(
             }
             break;
         }
-        case 8: { // boolean
+        case DTYPE_BOOLEAN: { // boolean
             const uint8_t *s = (const uint8_t *)src;
             uint8_t *d = (uint8_t *)dest;
             int count = 0;

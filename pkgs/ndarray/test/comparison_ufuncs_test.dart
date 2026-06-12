@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 void main() {
   group('Top-Level Comparison ufuncs with Recycling Tests', () {
     test(
-      'equal() and not_equal() broadcasted comparison',
+      'equal() and notEqual() broadcasted comparison',
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
         final b = NDArray.fromList([1.0, 9.9, 3.0], [3], DType.float64);
@@ -15,8 +15,8 @@ void main() {
         expect(eq.dtype, DType.boolean);
         expect(eq.toList(), [true, false, true]);
 
-        // not_equal
-        final neq = not_equal(a, b);
+        // notEqual
+        final neq = notEqual(a, b);
         expect(neq.shape, [3]);
         expect(neq.dtype, DType.boolean);
         expect(neq.toList(), [false, true, false]);
@@ -37,7 +37,7 @@ void main() {
     );
 
     test(
-      'inequalities (greater, greater_equal, less, less_equal) contiguous & strided',
+      'inequalities (greater, greaterEqual, less, lessEqual) contiguous & strided',
       () => NDArray.scope(() {
         final a = NDArray.fromList([3.0, 1.0, 5.0], [3], DType.float64);
         final b = NDArray.fromList([2.0, 1.0, 9.0], [3], DType.float64);
@@ -46,16 +46,16 @@ void main() {
         final gt = greater(a, b);
         expect(gt.toList(), [true, false, false]);
 
-        // greater_equal
-        final gte = greater_equal(a, b);
+        // greaterEqual
+        final gte = greaterEqual(a, b);
         expect(gte.toList(), [true, true, false]);
 
         // less
         final lt = less(a, b);
         expect(lt.toList(), [false, false, true]);
 
-        // less_equal
-        final lte = less_equal(a, b);
+        // lessEqual
+        final lte = lessEqual(a, b);
         expect(lte.toList(), [false, true, true]);
       }),
     );
@@ -67,9 +67,9 @@ void main() {
         final b = NDArray<Complex>.create([2], DType.complex128);
 
         expect(() => greater(a, b), throwsUnsupportedError);
-        expect(() => greater_equal(a, b), throwsUnsupportedError);
+        expect(() => greaterEqual(a, b), throwsUnsupportedError);
         expect(() => less(a, b), throwsUnsupportedError);
-        expect(() => less_equal(a, b), throwsUnsupportedError);
+        expect(() => lessEqual(a, b), throwsUnsupportedError);
       }),
     );
 

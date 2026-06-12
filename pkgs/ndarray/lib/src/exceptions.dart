@@ -27,3 +27,21 @@ final class SingularMatrixException extends LinAlgException {
   @override
   String toString() => 'SingularMatrixException: $message';
 }
+
+/// Exception thrown when a numerical method cannot find a real solution.
+final class NoRealSolutionException extends NdArrayException {
+  /// Creates a new [NoRealSolutionException] with the given [message].
+  const NoRealSolutionException(super.message);
+
+  @override
+  String toString() => 'NoRealSolutionException: $message';
+}
+
+/// Exception thrown when a numerical solver exceeds its maximum iteration count.
+final class IterationsExceededException extends NdArrayException {
+  /// Creates a new [IterationsExceededException] with the given [message].
+  const IterationsExceededException(super.message);
+
+  @override
+  String toString() => 'IterationsExceededException: $message';
+}

@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:ndarray/ndarray.dart';
 
 void main() {
-  print('=== NDArray isclose() and allclose() Tolerance Comparisons ===\n');
+  print('=== NDArray isClose() and allClose() Tolerance Comparisons ===\n');
 
   // 1. Main floating-point tolerance verification
   final a = NDArray.fromList(Float64List.fromList([1.0, 1.00001, 2.0]), [
@@ -16,21 +16,21 @@ void main() {
   print('b: ${b.toList()}');
 
   // Default tolerances: rtol = 1e-05, atol = 1e-08
-  final closeDefault = isclose(a, b);
-  print('\nisclose (default): ${closeDefault.toList()}'); // [true, false, true]
+  final closeDefault = isClose(a, b);
+  print('\nisClose (default): ${closeDefault.toList()}'); // [true, false, true]
 
   // Stretch tolerances: rtol = 1e-04
-  final closeStretched = isclose(a, b, rtol: 1e-04);
+  final closeStretched = isClose(a, b, rtol: 1e-04);
   print(
-    'isclose (rtol = 1e-04): ${closeStretched.toList()}',
+    'isClose (rtol = 1e-04): ${closeStretched.toList()}',
   ); // [true, true, true]
 
-  // 2. allclose check
-  final allCloseDefault = allclose(a, b);
-  print('\nallclose (default): $allCloseDefault'); // false
+  // 2. allClose check
+  final allCloseDefault = allClose(a, b);
+  print('\nallClose (default): $allCloseDefault'); // false
 
-  final allCloseStretched = allclose(a, b, rtol: 1e-04);
-  print('allclose (rtol = 1e-04): $allCloseStretched'); // true
+  final allCloseStretched = allClose(a, b, rtol: 1e-04);
+  print('allClose (rtol = 1e-04): $allCloseStretched'); // true
 
   // Cleanup unmanaged heap memory
   a.dispose();

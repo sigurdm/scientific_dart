@@ -46,9 +46,9 @@ void main() {
       final a = NDArray.fromList(Int32List.fromList([2, 3]), [2], DType.int32);
       final b = NDArray.fromList(Int32List.fromList([2]), [1], DType.int32);
       final p = power(a, b);
-      expect(p.data[0], 4.0);
-      expect(p.data[1], 9.0);
-      expect(p.dtype, DType.float64);
+      expect(p.data[0], 4);
+      expect(p.data[1], 9);
+      expect(p.dtype, DType.int32);
     });
   });
 }

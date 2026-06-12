@@ -257,16 +257,7 @@ List<int> broadcastStackShapes(List<int> sA, List<int> sB) {
 }
 
 int encodeDType(DType type) {
-  if (type == DType.float64) return 0;
-  if (type == DType.float32) return 1;
-  if (type == DType.int32) return 2;
-  if (type == DType.int64) return 3;
-  if (type == DType.uint8) return 4;
-  if (type == DType.int16) return 5;
-  if (type == DType.complex128) return 6;
-  if (type == DType.complex64) return 7;
-  if (type == DType.boolean) return 8;
-  throw ArgumentError('Unsupported dtype for casting: $type');
+  return type.index;
 }
 
 NDArray<double> promoteToDouble(NDArray a) {
