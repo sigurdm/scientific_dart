@@ -1097,122 +1097,69 @@ void v_clip_float(const float *src, float *res, float min_val, float max_val, in
 // 6. GENERIC ND STRIDED BROADCASTING TERNARY "where" KERNELS (RANK <= 8)
 // ============================================================================
 
-void s_where_double(const unsigned char *cond, const int *stridesCond,
-                    const double *x, const int *stridesX,
-                    const double *y, const int *stridesY,
-                    double *res, const int *stridesRes,
-                    const int *shape, int rank) {
-    if (cond == NULL || x == NULL || y == NULL || res == NULL || rank < 0 || rank > 8) return;
-
-    if (rank == 0) {
-        res[0] = cond[0] ? x[0] : y[0];
-        return;
-    }
-
-    int is_contiguous = 1;
-    int expected_stride = 1;
-    for (int i = rank - 1; i >= 0; i--) {
-        if (stridesCond[i] != expected_stride || 
-            stridesX[i] != expected_stride || 
-            stridesY[i] != expected_stride || 
-            stridesRes[i] != expected_stride) {
-            is_contiguous = 0;
-            break;
-        }
-        expected_stride *= shape[i];
-    }
-
-    int total_elements = 1;
-    for (int i = 0; i < rank; i++) total_elements *= shape[i];
-
-    if (is_contiguous) {
-        for (int i = 0; i < total_elements; i++) {
-            res[i] = cond[i] ? x[i] : y[i];
-        }
-        return;
-    }
-
-    int coord[8] = {0};
-    int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0;
-
-    for (int el = 0; el < total_elements; el++) {
-        res[offsetRes] = cond[offsetCond] ? x[offsetX] : y[offsetY];
-
-        for (int d = rank - 1; d >= 0; d--) {
-            coord[d]++;
-            if (coord[d] < shape[d]) {
-                offsetCond += stridesCond[d];
-                offsetX    += stridesX[d];
-                offsetY    += stridesY[d];
-                offsetRes  += stridesRes[d];
-                break;
-            }
-            coord[d] = 0;
-            offsetCond -= (shape[d] - 1) * stridesCond[d];
-            offsetX    -= (shape[d] - 1) * stridesX[d];
-            offsetY    -= (shape[d] - 1) * stridesY[d];
-            offsetRes  -= (shape[d] - 1) * stridesRes[d];
-        }
-    }
+#define DEFINE_S_WHERE(NAME, TYPE) \
+void s_where_##NAME(const unsigned char *cond, const int *stridesCond, \
+                    const TYPE *x, const int *stridesX, \
+                    const TYPE *y, const int *stridesY, \
+                    TYPE *res, const int *stridesRes, \
+                    const int *shape, int rank) { \
+    if (cond == NULL || x == NULL || y == NULL || res == NULL || rank < 0 || rank > 8) return; \
+    if (rank == 0) { \
+        res[0] = cond[0] ? x[0] : y[0]; \
+        return; \
+    } \
+    int is_contiguous = 1; \
+    int expected_stride = 1; \
+    for (int i = rank - 1; i >= 0; i--) { \
+        if (stridesCond[i] != expected_stride || \
+            stridesX[i] != expected_stride || \
+            stridesY[i] != expected_stride || \
+            stridesRes[i] != expected_stride) { \
+            is_contiguous = 0; \
+            break; \
+        } \
+        expected_stride *= shape[i]; \
+    } \
+    int total_elements = 1; \
+    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
+    if (is_contiguous) { \
+        for (int i = 0; i < total_elements; i++) { \
+            res[i] = cond[i] ? x[i] : y[i]; \
+        } \
+        return; \
+    } \
+    int coord[8] = {0}; \
+    int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0; \
+    for (int el = 0; el < total_elements; el++) { \
+        res[offsetRes] = cond[offsetCond] ? x[offsetX] : y[offsetY]; \
+        for (int d = rank - 1; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shape[d]) { \
+                offsetCond += stridesCond[d]; \
+                offsetX    += stridesX[d]; \
+                offsetY    += stridesY[d]; \
+                offsetRes  += stridesRes[d]; \
+                break; \
+            } \
+            coord[d] = 0; \
+            offsetCond -= (shape[d] - 1) * stridesCond[d]; \
+            offsetX    -= (shape[d] - 1) * stridesX[d]; \
+            offsetY    -= (shape[d] - 1) * stridesY[d]; \
+            offsetRes  -= (shape[d] - 1) * stridesRes[d]; \
+        } \
+    } \
 }
 
-void s_where_float(const unsigned char *cond, const int *stridesCond,
-                   const float *x, const int *stridesX,
-                   const float *y, const int *stridesY,
-                   float *res, const int *stridesRes,
-                   const int *shape, int rank) {
-    if (cond == NULL || x == NULL || y == NULL || res == NULL || rank < 0 || rank > 8) return;
+DEFINE_S_WHERE(double, double)
+DEFINE_S_WHERE(float, float)
+DEFINE_S_WHERE(int64, int64_t)
+DEFINE_S_WHERE(int32, int32_t)
+DEFINE_S_WHERE(uint8, uint8_t)
+DEFINE_S_WHERE(int16, int16_t)
+DEFINE_S_WHERE(complex128, cpx_t)
+DEFINE_S_WHERE(complex64, cpx_f_t)
 
-    if (rank == 0) {
-        res[0] = cond[0] ? x[0] : y[0];
-        return;
-    }
-
-    int is_contiguous = 1;
-    int expected_stride = 1;
-    for (int i = rank - 1; i >= 0; i--) {
-        if (stridesCond[i] != expected_stride || 
-            stridesX[i] != expected_stride || 
-            stridesY[i] != expected_stride || 
-            stridesRes[i] != expected_stride) {
-            is_contiguous = 0;
-            break;
-        }
-        expected_stride *= shape[i];
-    }
-
-    int total_elements = 1;
-    for (int i = 0; i < rank; i++) total_elements *= shape[i];
-
-    if (is_contiguous) {
-        for (int i = 0; i < total_elements; i++) {
-            res[i] = cond[i] ? x[i] : y[i];
-        }
-        return;
-    }
-
-    int coord[8] = {0};
-    int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0;
-
-    for (int el = 0; el < total_elements; el++) {
-        res[offsetRes] = cond[offsetCond] ? x[offsetX] : y[offsetY];
-
-        for (int d = rank - 1; d >= 0; d--) {
-            coord[d]++;
-            if (coord[d] < shape[d]) {
-                offsetCond += stridesCond[d];
-                offsetX    += stridesX[d];
-                offsetY    += stridesY[d];
-                offsetRes  += stridesRes[d];
-                break;
-            }
-            coord[d] = 0;
-            offsetCond -= (shape[d] - 1) * stridesCond[d];
-            offsetX    -= (shape[d] - 1) * stridesX[d];
-            offsetY    -= (shape[d] - 1) * stridesY[d];
-        }
-    }
-}
+#undef DEFINE_S_WHERE
 
 static inline uint64_t splitmix64(uint64_t *x) {
     uint64_t z = (*x += 0x9e3779b97f4a7c15ULL);
@@ -7973,8 +7920,348 @@ int ndarray_equals(
     }
 }
 
+// Reduction Min/Max
 
+#define DEFINE_R_MINMAX(NAME, TYPE, OP) \
+TYPE r_##NAME##_##TYPE(const TYPE *src, int size) { \
+    if (src == NULL || size <= 0) return (TYPE)0; \
+    TYPE acc = src[0]; \
+    for (int i = 1; i < size; i++) { \
+        if (src[i] OP acc) acc = src[i]; \
+    } \
+    return acc; \
+}
 
+DEFINE_R_MINMAX(min, double, <)
+DEFINE_R_MINMAX(min, float, <)
+DEFINE_R_MINMAX(min, int64_t, <)
+DEFINE_R_MINMAX(min, int32_t, <)
+DEFINE_R_MINMAX(min, uint8_t, <)
+DEFINE_R_MINMAX(min, int16_t, <)
 
+DEFINE_R_MINMAX(max, double, >)
+DEFINE_R_MINMAX(max, float, >)
+DEFINE_R_MINMAX(max, int64_t, >)
+DEFINE_R_MINMAX(max, int32_t, >)
+DEFINE_R_MINMAX(max, uint8_t, >)
+DEFINE_R_MINMAX(max, int16_t, >)
 
+#undef DEFINE_R_MINMAX
 
+// Strided Reduction Min/Max
+
+#define DEFINE_S_MINMAX(NAME, TYPE, OP) \
+void s_##NAME##_##TYPE(const TYPE *src, const int *stridesSrc, \
+                       TYPE *dest, const int *stridesDest, \
+                       const int *shape, int rank, int axis) { \
+    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return; \
+    int size_axis = shape[axis]; \
+    if (size_axis <= 0) return; \
+    int coord[8] = {0}; \
+    int outer_size = 1; \
+    for (int d = 0; d < rank; d++) { \
+        if (d != axis) outer_size *= shape[d]; \
+    } \
+    for (int o = 0; o < outer_size; o++) { \
+        int offsetRes = 0; \
+        int offsetSrc = 0; \
+        for (int d = 0; d < rank; d++) { \
+            if (d != axis) { \
+                offsetSrc += coord[d] * stridesSrc[d]; \
+                if (rank > 1) { \
+                    int targetD = (d < axis) ? d : (d - 1); \
+                    offsetRes += coord[d] * stridesDest[targetD]; \
+                } \
+            } \
+        } \
+        TYPE val_acc = src[offsetSrc]; \
+        int stride_axis = stridesSrc[axis]; \
+        for (int i = 1; i < size_axis; i++) { \
+            TYPE val = src[offsetSrc + i * stride_axis]; \
+            if (val OP val_acc) val_acc = val; \
+        } \
+        dest[offsetRes] = val_acc; \
+        for (int d = rank - 1; d >= 0; d--) { \
+            if (d == axis) continue; \
+            coord[d]++; \
+            if (coord[d] < shape[d]) break; \
+            coord[d] = 0; \
+        } \
+    } \
+}
+
+DEFINE_S_MINMAX(min, double, <)
+DEFINE_S_MINMAX(min, float, <)
+DEFINE_S_MINMAX(min, int64_t, <)
+DEFINE_S_MINMAX(min, int32_t, <)
+DEFINE_S_MINMAX(min, uint8_t, <)
+DEFINE_S_MINMAX(min, int16_t, <)
+
+DEFINE_S_MINMAX(max, double, >)
+DEFINE_S_MINMAX(max, float, >)
+DEFINE_S_MINMAX(max, int64_t, >)
+DEFINE_S_MINMAX(max, int32_t, >)
+DEFINE_S_MINMAX(max, uint8_t, >)
+DEFINE_S_MINMAX(max, int16_t, >)
+
+#undef DEFINE_S_MINMAX
+
+// Nanmin/Nanmax Reduction (float/double only)
+
+#define DEFINE_R_NANMINMAX(NAME, TYPE, OP) \
+TYPE r_##NAME##_##TYPE(const TYPE *src, int size) { \
+    if (src == NULL || size <= 0) return (TYPE)NAN; \
+    TYPE acc = (TYPE)NAN; \
+    int i = 0; \
+    for (; i < size; i++) { \
+        if (!isnan(src[i])) { \
+            acc = src[i]; \
+            break; \
+        } \
+    } \
+    if (isnan(acc)) return (TYPE)NAN; \
+    for (; i < size; i++) { \
+        if (!isnan(src[i]) && src[i] OP acc) { \
+            acc = src[i]; \
+        } \
+    } \
+    return acc; \
+}
+
+DEFINE_R_NANMINMAX(nanmin, double, <)
+DEFINE_R_NANMINMAX(nanmin, float, <)
+DEFINE_R_NANMINMAX(nanmax, double, >)
+DEFINE_R_NANMINMAX(nanmax, float, >)
+
+#undef DEFINE_R_NANMINMAX
+
+// Strided Nanmin/Nanmax Reduction (float/double only)
+
+#define DEFINE_S_NANMINMAX(NAME, TYPE, OP) \
+void s_##NAME##_##TYPE(const TYPE *src, const int *stridesSrc, \
+                       TYPE *dest, const int *stridesDest, \
+                       const int *shape, int rank, int axis) { \
+    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return; \
+    int size_axis = shape[axis]; \
+    if (size_axis <= 0) return; \
+    int coord[8] = {0}; \
+    int outer_size = 1; \
+    for (int d = 0; d < rank; d++) { \
+        if (d != axis) outer_size *= shape[d]; \
+    } \
+    for (int o = 0; o < outer_size; o++) { \
+        int offsetRes = 0; \
+        int offsetSrc = 0; \
+        for (int d = 0; d < rank; d++) { \
+            if (d != axis) { \
+                offsetSrc += coord[d] * stridesSrc[d]; \
+                if (rank > 1) { \
+                    int targetD = (d < axis) ? d : (d - 1); \
+                    offsetRes += coord[d] * stridesDest[targetD]; \
+                } \
+            } \
+        } \
+        TYPE val_acc = (TYPE)NAN; \
+        int stride_axis = stridesSrc[axis]; \
+        int i = 0; \
+        for (; i < size_axis; i++) { \
+            TYPE val = src[offsetSrc + i * stride_axis]; \
+            if (!isnan(val)) { \
+                val_acc = val; \
+                break; \
+            } \
+        } \
+        if (!isnan(val_acc)) { \
+            for (; i < size_axis; i++) { \
+                TYPE val = src[offsetSrc + i * stride_axis]; \
+                if (!isnan(val) && val OP val_acc) { \
+                    val_acc = val; \
+                } \
+            } \
+        } \
+        dest[offsetRes] = val_acc; \
+        for (int d = rank - 1; d >= 0; d--) { \
+            if (d == axis) continue; \
+            coord[d]++; \
+            if (coord[d] < shape[d]) break; \
+            coord[d] = 0; \
+        } \
+    } \
+}
+
+DEFINE_S_NANMINMAX(nanmin, double, <)
+DEFINE_S_NANMINMAX(nanmin, float, <)
+DEFINE_S_NANMINMAX(nanmax, double, >)
+DEFINE_S_NANMINMAX(nanmax, float, >)
+
+#undef DEFINE_S_NANMINMAX
+
+// Find Index
+#define DEFINE_FIND_INDEX_FUNC(NAME, TYPE) \
+int64_t s_find_index_##NAME(const TYPE *a, const int *stridesA, \
+                            const int *shape, int rank, \
+                            int op, TYPE target) { \
+    if (a == NULL || rank < 0 || rank > 8) return -1; \
+    int total_elements = 1; \
+    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
+    if (total_elements <= 0) return -1; \
+    if (rank == 0) { \
+        TYPE val = a[0]; \
+        int match = 0; \
+        switch(op) { \
+            case CMP_OP_EQ: match = (val == target); break; \
+            case CMP_OP_NE: match = (val != target); break; \
+            case CMP_OP_LT: match = (val < target); break; \
+            case CMP_OP_LE: match = (val <= target); break; \
+            case CMP_OP_GT: match = (val > target); break; \
+            case CMP_OP_GE: match = (val >= target); break; \
+        } \
+        return match ? 0 : -1; \
+    } \
+    int coord[8] = {0}; \
+    int offsetA = 0; \
+    for (int el = 0; el < total_elements; el++) { \
+        TYPE val = a[offsetA]; \
+        int match = 0; \
+        switch(op) { \
+            case CMP_OP_EQ: match = (val == target); break; \
+            case CMP_OP_NE: match = (val != target); break; \
+            case CMP_OP_LT: match = (val < target); break; \
+            case CMP_OP_LE: match = (val <= target); break; \
+            case CMP_OP_GT: match = (val > target); break; \
+            case CMP_OP_GE: match = (val >= target); break; \
+        } \
+        if (match) return el; \
+        for (int d = rank - 1; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shape[d]) { \
+                offsetA += stridesA[d]; \
+                break; \
+            } \
+            coord[d] = 0; \
+            offsetA -= (shape[d] - 1) * stridesA[d]; \
+        } \
+    } \
+    return -1; \
+}
+
+DEFINE_FIND_INDEX_FUNC(double, double)
+DEFINE_FIND_INDEX_FUNC(float, float)
+DEFINE_FIND_INDEX_FUNC(int32, int32_t)
+DEFINE_FIND_INDEX_FUNC(int64, int64_t)
+DEFINE_FIND_INDEX_FUNC(uint8, uint8_t)
+DEFINE_FIND_INDEX_FUNC(int16, int16_t)
+
+#undef DEFINE_FIND_INDEX_FUNC
+
+int64_t s_find_index_complex128(const cpx_t *a, const int *stridesA,
+                               const int *shape, int rank,
+                               int op, cpx_t target) {
+    if (a == NULL || rank < 0 || rank > 8) return -1;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (total_elements <= 0) return -1;
+    if (rank == 0) {
+        cpx_t val = a[0];
+        int match = 0;
+        if (op == CMP_OP_EQ) {
+            match = (val.r == target.r && val.i == target.i);
+        } else if (op == CMP_OP_NE) {
+            match = (val.r != target.r || val.i != target.i);
+        }
+        return match ? 0 : -1;
+    }
+    int coord[8] = {0};
+    int offsetA = 0;
+    for (int el = 0; el < total_elements; el++) {
+        cpx_t val = a[offsetA];
+        int match = 0;
+        if (op == CMP_OP_EQ) {
+            match = (val.r == target.r && val.i == target.i);
+        } else if (op == CMP_OP_NE) {
+            match = (val.r != target.r || val.i != target.i);
+        }
+        if (match) return el;
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetA += stridesA[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetA -= (shape[d] - 1) * stridesA[d];
+        }
+    }
+    return -1;
+}
+
+int64_t s_find_index_complex64(const cpx_f_t *a, const int *stridesA,
+                              const int *shape, int rank,
+                              int op, cpx_f_t target) {
+    if (a == NULL || rank < 0 || rank > 8) return -1;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (total_elements <= 0) return -1;
+    if (rank == 0) {
+        cpx_f_t val = a[0];
+        int match = 0;
+        if (op == CMP_OP_EQ) {
+            match = (val.r == target.r && val.i == target.i);
+        } else if (op == CMP_OP_NE) {
+            match = (val.r != target.r || val.i != target.i);
+        }
+        return match ? 0 : -1;
+    }
+    int coord[8] = {0};
+    int offsetA = 0;
+    for (int el = 0; el < total_elements; el++) {
+        cpx_f_t val = a[offsetA];
+        int match = 0;
+        if (op == CMP_OP_EQ) {
+            match = (val.r == target.r && val.i == target.i);
+        } else if (op == CMP_OP_NE) {
+            match = (val.r != target.r || val.i != target.i);
+        }
+        if (match) return el;
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetA += stridesA[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetA -= (shape[d] - 1) * stridesA[d];
+        }
+    }
+    return -1;
+}
+
+int64_t ndarray_find_index(
+    int op, int dtype,
+    const void *a, const int *stridesA,
+    const int *shape, int rank,
+    const void *target
+) {
+    if (a == NULL || target == NULL) return -1;
+    switch (dtype) {
+        case DTYPE_FLOAT64:
+            return s_find_index_double((const double*)a, stridesA, shape, rank, op, *(const double*)target);
+        case DTYPE_FLOAT32:
+            return s_find_index_float((const float*)a, stridesA, shape, rank, op, *(const float*)target);
+        case DTYPE_INT32:
+            return s_find_index_int32((const int32_t*)a, stridesA, shape, rank, op, *(const int32_t*)target);
+        case DTYPE_INT64:
+            return s_find_index_int64((const int64_t*)a, stridesA, shape, rank, op, *(const int64_t*)target);
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN:
+            return s_find_index_uint8((const uint8_t*)a, stridesA, shape, rank, op, *(const uint8_t*)target);
+        case DTYPE_INT16:
+            return s_find_index_int16((const int16_t*)a, stridesA, shape, rank, op, *(const int16_t*)target);
+        case DTYPE_COMPLEX128:
+            return s_find_index_complex128((const cpx_t*)a, stridesA, shape, rank, op, *(const cpx_t*)target);
+        case DTYPE_COMPLEX64:
+            return s_find_index_complex64((const cpx_f_t*)a, stridesA, shape, rank, op, *(const cpx_f_t*)target);
+        default:
+            return -1;
+    }
+}

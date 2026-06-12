@@ -1044,91 +1044,162 @@ dynamic where<T extends Object>(
     }
   }
 
+  final xCast = castNDArray(x, targetDType);
+  final yCast = castNDArray(y, targetDType);
+
   // Compute precise broadcasted strides for each operand independently to commonShape
   final stridesCond = broadcastStrides(condition, commonShape);
-  final stridesX = broadcastStrides(x, commonShape);
-  final stridesY = broadcastStrides(y, commonShape);
+  final stridesX = broadcastStrides(xCast, commonShape);
+  final stridesY = broadcastStrides(yCast, commonShape);
 
   final result = out ?? NDArray.create(commonShape, targetDType as DType<T>);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
-  // 0. Advanced ND Odometer Ternary Broadcasting Engine in C (Rank <= 8)
-  if (commonShape.length <= 8 && condition.dtype == DType.boolean) {
-    final marker = ScratchArena.marker;
-    final cShape = ScratchArena.allocate<ffi.Int>(
-      commonShape.length * ffi.sizeOf<ffi.Int>(),
-    );
-    final cStridesCond = ScratchArena.allocate<ffi.Int>(
-      stridesCond.length * ffi.sizeOf<ffi.Int>(),
-    );
-    final cStridesX = ScratchArena.allocate<ffi.Int>(
-      stridesX.length * ffi.sizeOf<ffi.Int>(),
-    );
-    final cStridesY = ScratchArena.allocate<ffi.Int>(
-      stridesY.length * ffi.sizeOf<ffi.Int>(),
-    );
-    final cStridesRes = ScratchArena.allocate<ffi.Int>(
-      resultStrides.length * ffi.sizeOf<ffi.Int>(),
-    );
+  if (commonShape.length > 8) {
+    throw UnsupportedError('where() only supports arrays up to rank 8');
+  }
+  if (condition.dtype != DType.boolean) {
+    throw ArgumentError('condition must be a boolean array');
+  }
 
-    for (var i = 0; i < commonShape.length; i++) {
-      cShape[i] = commonShape[i];
-      cStridesCond[i] = stridesCond[i];
-      cStridesX[i] = stridesX[i];
-      cStridesY[i] = stridesY[i];
-      cStridesRes[i] = resultStrides[i];
-    }
+  final marker = ScratchArena.marker;
+  final cShape = ScratchArena.allocate<ffi.Int>(
+    commonShape.length * ffi.sizeOf<ffi.Int>(),
+  );
+  final cStridesCond = ScratchArena.allocate<ffi.Int>(
+    stridesCond.length * ffi.sizeOf<ffi.Int>(),
+  );
+  final cStridesX = ScratchArena.allocate<ffi.Int>(
+    stridesX.length * ffi.sizeOf<ffi.Int>(),
+  );
+  final cStridesY = ScratchArena.allocate<ffi.Int>(
+    stridesY.length * ffi.sizeOf<ffi.Int>(),
+  );
+  final cStridesRes = ScratchArena.allocate<ffi.Int>(
+    resultStrides.length * ffi.sizeOf<ffi.Int>(),
+  );
 
-    try {
-      if (targetDType == DType.float64 &&
-          x.dtype == DType.float64 &&
-          y.dtype == DType.float64) {
+  for (var i = 0; i < commonShape.length; i++) {
+    cShape[i] = commonShape[i];
+    cStridesCond[i] = stridesCond[i];
+    cStridesX[i] = stridesX[i];
+    cStridesY[i] = stridesY[i];
+    cStridesRes[i] = resultStrides[i];
+  }
+
+  try {
+    switch (targetDType) {
+      case DType.float64:
         s_where_double(
           condition.pointer.cast(),
           cStridesCond,
-          x.pointer.cast(),
+          xCast.pointer.cast(),
           cStridesX,
-          y.pointer.cast(),
+          yCast.pointer.cast(),
           cStridesY,
           result.pointer.cast(),
           cStridesRes,
           cShape,
           commonShape.length,
         );
-        return result;
-      } else if (targetDType == DType.float32 &&
-          x.dtype == DType.float32 &&
-          y.dtype == DType.float32) {
+      case DType.float32:
         s_where_float(
           condition.pointer.cast(),
           cStridesCond,
-          x.pointer.cast(),
+          xCast.pointer.cast(),
           cStridesX,
-          y.pointer.cast(),
+          yCast.pointer.cast(),
           cStridesY,
           result.pointer.cast(),
           cStridesRes,
           cShape,
           commonShape.length,
         );
-        return result;
-      }
-    } finally {
-      ScratchArena.reset(marker);
+      case DType.int64:
+        s_where_int64(
+          condition.pointer.cast(),
+          cStridesCond,
+          xCast.pointer.cast(),
+          cStridesX,
+          yCast.pointer.cast(),
+          cStridesY,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          commonShape.length,
+        );
+      case DType.int32:
+        s_where_int32(
+          condition.pointer.cast(),
+          cStridesCond,
+          xCast.pointer.cast(),
+          cStridesX,
+          yCast.pointer.cast(),
+          cStridesY,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          commonShape.length,
+        );
+      case DType.uint8:
+      case DType.boolean:
+        s_where_uint8(
+          condition.pointer.cast(),
+          cStridesCond,
+          xCast.pointer.cast(),
+          cStridesX,
+          yCast.pointer.cast(),
+          cStridesY,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          commonShape.length,
+        );
+      case DType.int16:
+        s_where_int16(
+          condition.pointer.cast(),
+          cStridesCond,
+          xCast.pointer.cast(),
+          cStridesX,
+          yCast.pointer.cast(),
+          cStridesY,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          commonShape.length,
+        );
+      case DType.complex128:
+        s_where_complex128(
+          condition.pointer.cast(),
+          cStridesCond,
+          xCast.pointer.cast(),
+          cStridesX,
+          yCast.pointer.cast(),
+          cStridesY,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          commonShape.length,
+        );
+      case DType.complex64:
+        s_where_complex64(
+          condition.pointer.cast(),
+          cStridesCond,
+          xCast.pointer.cast(),
+          cStridesX,
+          yCast.pointer.cast(),
+          cStridesY,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          commonShape.length,
+        );
     }
+  } finally {
+    ScratchArena.reset(marker);
+    if (!identical(xCast, x)) xCast.dispose();
+    if (!identical(yCast, y)) yCast.dispose();
   }
-
-  dispatchWhere(
-    result.data,
-    condition,
-    x,
-    y,
-    commonShape,
-    stridesCond,
-    stridesX,
-    stridesY,
-    resultStrides,
-  );
 
   return result;
 }
@@ -1727,4 +1798,140 @@ NDArray<int> argmax<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
 /// {@example /example/sorting_searching_example.dart lang=dart}
 NDArray<int> argmin<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
   return _argminmaxFFI<T>(a, axis, false, out: out);
+}
+
+/// Comparison operators for search operations.
+enum CompareOp {
+  /// Equal to (`==`)
+  equal,
+
+  /// Not equal to (`!=`)
+  notEqual,
+
+  /// Less than (`<`)
+  less,
+
+  /// Less than or equal to (`<=`)
+  lessEqual,
+
+  /// Greater than (`>`)
+  greater,
+
+  /// Greater than or equal to (`>=`)
+  greaterEqual,
+}
+
+/// Finds the flat index of the first element in [a] that satisfies the condition [op] with [target].
+///
+/// Returns -1 if no such element is found.
+///
+/// **Preconditions:**
+/// - The array [a] must not be disposed.
+/// - [target] must match the DType of [a] (e.g. [double] for [DType.float64], [Complex] for complex types).
+/// - Complex types only support [CompareOp.equal] and [CompareOp.notEqual].
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+/// final index = findIndex(a, CompareOp.greater, 1.5); // returns 1
+/// ```
+int findIndex<T extends Object>(NDArray<T> a, CompareOp op, T target) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute findIndex() on a disposed array.');
+  }
+
+  final rank = a.shape.length;
+  final marker = ScratchArena.marker;
+
+  final cShape = a.shape.isEmpty ? ffi.nullptr : ScratchArena.copyInts(a.shape);
+  final cStridesA = a.strides.isEmpty
+      ? ffi.nullptr
+      : ScratchArena.copyInts(a.strides);
+
+  try {
+    final cTarget = _allocateTarget(target, a.dtype);
+    final opVal = _mapCompareOp(op);
+
+    if (a.dtype.isComplex && opVal != CMP_OP_EQ && opVal != CMP_OP_NE) {
+      throw UnsupportedError(
+        'Complex types only support CompareOp.equal and CompareOp.notEqual',
+      );
+    }
+
+    return ndarray_find_index(
+      opVal,
+      a.dtype.index,
+      a.pointer.cast(),
+      cStridesA,
+      cShape,
+      rank,
+      cTarget,
+    );
+  } finally {
+    ScratchArena.reset(marker);
+  }
+}
+
+int _mapCompareOp(CompareOp op) {
+  switch (op) {
+    case CompareOp.equal:
+      return CMP_OP_EQ;
+    case CompareOp.notEqual:
+      return CMP_OP_NE;
+    case CompareOp.less:
+      return CMP_OP_LT;
+    case CompareOp.lessEqual:
+      return CMP_OP_LE;
+    case CompareOp.greater:
+      return CMP_OP_GT;
+    case CompareOp.greaterEqual:
+      return CMP_OP_GE;
+  }
+}
+
+ffi.Pointer<ffi.Void> _allocateTarget(dynamic value, DType dtype) {
+  switch (dtype) {
+    case DType.float64:
+      final ptr = ScratchArena.allocate<ffi.Double>(ffi.sizeOf<ffi.Double>());
+      ptr.value = value as double;
+      return ptr.cast();
+    case DType.float32:
+      final ptr = ScratchArena.allocate<ffi.Float>(ffi.sizeOf<ffi.Float>());
+      ptr.value = value as double;
+      return ptr.cast();
+    case DType.int32:
+      final ptr = ScratchArena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
+      ptr.value = value as int;
+      return ptr.cast();
+    case DType.int64:
+      final ptr = ScratchArena.allocate<ffi.Int64>(ffi.sizeOf<ffi.Int64>());
+      ptr.value = value as int;
+      return ptr.cast();
+    case DType.uint8:
+      final ptr = ScratchArena.allocate<ffi.Uint8>(ffi.sizeOf<ffi.Uint8>());
+      ptr.value = value as int;
+      return ptr.cast();
+    case DType.boolean:
+      final ptr = ScratchArena.allocate<ffi.Uint8>(ffi.sizeOf<ffi.Uint8>());
+      ptr.value = (value as bool) ? 1 : 0;
+      return ptr.cast();
+    case DType.int16:
+      final ptr = ScratchArena.allocate<ffi.Int16>(ffi.sizeOf<ffi.Int16>());
+      ptr.value = value as int;
+      return ptr.cast();
+    case DType.complex128:
+      final cVal = value as Complex;
+      final ptr = ScratchArena.allocate<ffi.Double>(
+        ffi.sizeOf<ffi.Double>() * 2,
+      );
+      ptr[0] = cVal.real;
+      ptr[1] = cVal.imag;
+      return ptr.cast();
+    case DType.complex64:
+      final cVal = value as Complex;
+      final ptr = ScratchArena.allocate<ffi.Float>(ffi.sizeOf<ffi.Float>() * 2);
+      ptr[0] = cVal.real;
+      ptr[1] = cVal.imag;
+      return ptr.cast();
+  }
 }

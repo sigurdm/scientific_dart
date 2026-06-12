@@ -269,6 +269,42 @@ void s_where_float(const unsigned char *cond, const int *stridesCond,
                    float *res, const int *stridesRes,
                    const int *shape, int rank);
 
+void s_where_int64(const unsigned char *cond, const int *stridesCond,
+                   const int64_t *x, const int *stridesX,
+                   const int64_t *y, const int *stridesY,
+                   int64_t *res, const int *stridesRes,
+                   const int *shape, int rank);
+
+void s_where_int32(const unsigned char *cond, const int *stridesCond,
+                   const int32_t *x, const int *stridesX,
+                   const int32_t *y, const int *stridesY,
+                   int32_t *res, const int *stridesRes,
+                   const int *shape, int rank);
+
+void s_where_uint8(const unsigned char *cond, const int *stridesCond,
+                   const uint8_t *x, const int *stridesX,
+                   const uint8_t *y, const int *stridesY,
+                   uint8_t *res, const int *stridesRes,
+                   const int *shape, int rank);
+
+void s_where_int16(const unsigned char *cond, const int *stridesCond,
+                   const int16_t *x, const int *stridesX,
+                   const int16_t *y, const int *stridesY,
+                   int16_t *res, const int *stridesRes,
+                   const int *shape, int rank);
+
+void s_where_complex128(const unsigned char *cond, const int *stridesCond,
+                        const cpx_t *x, const int *stridesX,
+                        const cpx_t *y, const int *stridesY,
+                        cpx_t *res, const int *stridesRes,
+                        const int *shape, int rank);
+
+void s_where_complex64(const unsigned char *cond, const int *stridesCond,
+                       const cpx_f_t *x, const int *stridesX,
+                       const cpx_f_t *y, const int *stridesY,
+                       cpx_f_t *res, const int *stridesRes,
+                       const int *shape, int rank);
+
 void s_sin_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
 void s_sin_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
 void s_cos_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
@@ -1208,6 +1244,53 @@ void ndarray_compare(
     const void *b, const int *stridesB,
     uint8_t *res, const int *stridesRes,
     const int *shape, int rank
+);
+
+// Reduction Min/Max
+double r_min_double(const double *src, int size);
+float r_min_float(const float *src, int size);
+int64_t r_min_int64_t(const int64_t *src, int size);
+int32_t r_min_int32_t(const int32_t *src, int size);
+uint8_t r_min_uint8_t(const uint8_t *src, int size);
+int16_t r_min_int16_t(const int16_t *src, int size);
+
+double r_max_double(const double *src, int size);
+float r_max_float(const float *src, int size);
+int64_t r_max_int64_t(const int64_t *src, int size);
+int32_t r_max_int32_t(const int32_t *src, int size);
+uint8_t r_max_uint8_t(const uint8_t *src, int size);
+int16_t r_max_int16_t(const int16_t *src, int size);
+
+// Strided Reduction Min/Max
+void s_min_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_min_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_min_int64_t(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_min_int32_t(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_min_uint8_t(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_min_int16_t(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+
+void s_max_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_max_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_max_int64_t(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_max_int32_t(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_max_uint8_t(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_max_int16_t(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+
+// Nanmin/Nanmax Reduction (float/double only)
+double r_nanmin_double(const double *src, int size);
+double r_nanmax_double(const double *src, int size);
+float r_nanmin_float(const float *src, int size);
+float r_nanmax_float(const float *src, int size);
+
+void s_nanmin_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_nanmax_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_nanmin_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_nanmax_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
+int64_t ndarray_find_index(
+    int op, int dtype,
+    const void *a, const int *stridesA,
+    const int *shape, int rank,
+    const void *target
 );
 
 #endif /* CUSTOM_UFUNCS_H */

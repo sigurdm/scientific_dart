@@ -327,22 +327,13 @@ NDArray<Float64>? _getStrippedCoeffs(NDArray<Float64> values) {
 /// 30x to 150x faster than bulk FFI pipelines.
 bool _hasSameSign(NDArray<Float64> coeffs) {
   final length = coeffs.shape[0];
-  if (length == 0) return true;
+  if (length <= 1) return true;
 
-  // Read the first element to determine the reference sign.
   final first = coeffs.getCell([0]);
   if (first > 0) {
-    for (var i = 1; i < length; i++) {
-      // If we find any non-positive element, they don't all have the same sign.
-      if (coeffs.getCell([i]) <= 0) return false;
-    }
-    return true;
+    return findIndex(coeffs, CompareOp.lessEqual, 0.0) == -1;
   } else if (first < 0) {
-    for (var i = 1; i < length; i++) {
-      // If we find any non-negative element, they don't all have the same sign.
-      if (coeffs.getCell([i]) >= 0) return false;
-    }
-    return true;
+    return findIndex(coeffs, CompareOp.greaterEqual, 0.0) == -1;
   }
   return false;
 }

@@ -4871,7 +4871,7 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
   return result;
 }
 
-/// Element-wise comparison of [a] == [b] with broadcasting and recycling support.
+/// Element-wise equality comparison (`a == b`) with full broadcasting support.
 NDArray<bool> equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute equal() on a disposed array.');
@@ -4888,24 +4888,21 @@ NDArray<bool> equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-
-  a.dispatchCompare(
-    result.data,
+  _compareHelper(
     a,
     b,
-    commonShape,
+    result,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    result.strides,
-    (x, y) => x == y,
+    CMP_OP_EQ,
   );
   return result;
 }
 
-/// Element-wise comparison of [a] != [b] with broadcasting and recycling support.
-NDArray<bool> not_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
+/// Element-wise inequality comparison (`a != b`) with full broadcasting support.
+NDArray<bool> notEqual(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
-    throw StateError('Cannot execute not_equal() on a disposed array.');
+    throw StateError('Cannot execute notEqual() on a disposed array.');
   }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
@@ -4919,21 +4916,18 @@ NDArray<bool> not_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-
-  a.dispatchCompare(
-    result.data,
+  _compareHelper(
     a,
     b,
-    commonShape,
+    result,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    result.strides,
-    (x, y) => x != y,
+    CMP_OP_NE,
   );
   return result;
 }
 
-/// Element-wise comparison of [a] > [b] with broadcasting and recycling support.
+/// Element-wise greater-than comparison (`a > b`) with full broadcasting support.
 NDArray<bool> greater(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute greater() on a disposed array.');
@@ -4955,24 +4949,21 @@ NDArray<bool> greater(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-
-  a.dispatchCompare(
-    result.data,
+  _compareHelper(
     a,
     b,
-    commonShape,
+    result,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    result.strides,
-    (x, y) => (x as num) > (y as num),
+    CMP_OP_GT,
   );
   return result;
 }
 
-/// Element-wise comparison of [a] >= [b] with broadcasting and recycling support.
-NDArray<bool> greater_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
+/// Element-wise greater-equal comparison (`a >= b`) with full broadcasting support.
+NDArray<bool> greaterEqual(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
-    throw StateError('Cannot execute greater_equal() on a disposed array.');
+    throw StateError('Cannot execute greaterEqual() on a disposed array.');
   }
   if (a.dtype.isComplex || b.dtype.isComplex) {
     throw UnsupportedError(
@@ -4991,21 +4982,18 @@ NDArray<bool> greater_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-
-  a.dispatchCompare(
-    result.data,
+  _compareHelper(
     a,
     b,
-    commonShape,
+    result,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    result.strides,
-    (x, y) => (x as num) >= (y as num),
+    CMP_OP_GE,
   );
   return result;
 }
 
-/// Element-wise comparison of [a] < [b] with broadcasting and recycling support.
+/// Element-wise less-than comparison (`a < b`) with full broadcasting support.
 NDArray<bool> less(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute less() on a disposed array.');
@@ -5027,24 +5015,21 @@ NDArray<bool> less(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-
-  a.dispatchCompare(
-    result.data,
+  _compareHelper(
     a,
     b,
-    commonShape,
+    result,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    result.strides,
-    (x, y) => (x as num) < (y as num),
+    CMP_OP_LT,
   );
   return result;
 }
 
-/// Element-wise comparison of [a] <= [b] with broadcasting and recycling support.
-NDArray<bool> less_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
+/// Element-wise less-equal comparison (`a <= b`) with full broadcasting support.
+NDArray<bool> lessEqual(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
-    throw StateError('Cannot execute less_equal() on a disposed array.');
+    throw StateError('Cannot execute lessEqual() on a disposed array.');
   }
   if (a.dtype.isComplex || b.dtype.isComplex) {
     throw UnsupportedError(
@@ -5063,18 +5048,50 @@ NDArray<bool> less_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   }
 
   final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
-
-  a.dispatchCompare(
-    result.data,
+  _compareHelper(
     a,
     b,
-    commonShape,
+    result,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
-    result.strides,
-    (x, y) => (x as num) <= (y as num),
+    CMP_OP_LE,
   );
   return result;
+}
+
+void _compareHelper(
+  NDArray a,
+  NDArray b,
+  NDArray<bool> result,
+  List<int> stridesA,
+  List<int> stridesB,
+  int op,
+) {
+  final rank = result.shape.length;
+  final marker = ScratchArena.marker;
+
+  final cShape = ScratchArena.copyInts(result.shape);
+  final cStridesA = ScratchArena.copyInts(stridesA);
+  final cStridesB = ScratchArena.copyInts(stridesB);
+  final cStridesRes = ScratchArena.copyInts(result.strides);
+
+  try {
+    ndarray_compare(
+      op,
+      a.dtype.index,
+      b.dtype.index,
+      a.pointer.cast(),
+      cStridesA,
+      b.pointer.cast(),
+      cStridesB,
+      result.pointer.cast(),
+      cStridesRes,
+      cShape,
+      rank,
+    );
+  } finally {
+    ScratchArena.reset(marker);
+  }
 }
 
 /// Compute the element-wise truth value of [a] AND [b] with broadcasting support.
