@@ -2517,10 +2517,17 @@ NDArray<R> power<Ta, Tb, R>(
     }
   }
 
-  elementWiseOp<num, num, double>(
-    result.data as List<double>,
-    x1.data as List<num>,
-    x2.data as List<num>,
+  final R Function(num) conv;
+  if (targetDType.isInteger) {
+    conv = (val) => val.toInt() as R;
+  } else {
+    conv = (val) => val.toDouble() as R;
+  }
+
+  elementWiseOp<Ta, Tb, R>(
+    result.data,
+    x1.data,
+    x2.data,
     shape,
     broadcastResult.stridesA,
     broadcastResult.stridesB,
@@ -2529,7 +2536,7 @@ NDArray<R> power<Ta, Tb, R>(
     x1.offsetElements,
     x2.offsetElements,
     result.offsetElements,
-    (valA, valB) => math.pow(valA.toDouble(), valB.toDouble()).toDouble(),
+    (valA, valB) => conv(math.pow(valA as num, valB as num)),
   );
 
   return result;
