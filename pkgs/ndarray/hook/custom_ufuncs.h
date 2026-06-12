@@ -1290,7 +1290,9 @@ int64_t ndarray_find_index(
     int op, int dtype,
     const void *a, const int *stridesA,
     const int *shape, int rank,
-    const void *target
+    const void *target,
+    const int *startCoords,
+    const int *directions
 );
 
 #endif /* CUSTOM_UFUNCS_H */

@@ -1835,18 +1835,80 @@ enum CompareOp {
 /// final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
 /// final index = findIndex(a, CompareOp.greater, 1.5); // returns 1
 /// ```
-int findIndex<T extends Object>(NDArray<T> a, CompareOp op, T target) {
+int findIndex<T extends Object>(
+  NDArray<T> a,
+  CompareOp op,
+  T target, {
+  List<int>? startCoords,
+  List<int>? directions,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute findIndex() on a disposed array.');
   }
 
+  if (a.size == 0) {
+    return -1;
+  }
+
   final rank = a.shape.length;
+
+  if (startCoords != null && startCoords.length != rank) {
+    throw ArgumentError.value(
+      startCoords,
+      'startCoords',
+      'Length must match NDArray rank ($rank)',
+    );
+  }
+  if (directions != null && directions.length != rank) {
+    throw ArgumentError.value(
+      directions,
+      'directions',
+      'Length must match NDArray rank ($rank)',
+    );
+  }
+
+  final resolvedDirections = directions ?? List<int>.filled(rank, 1);
+  for (var i = 0; i < rank; i++) {
+    if (resolvedDirections[i] != 1 && resolvedDirections[i] != -1) {
+      throw ArgumentError.value(
+        directions,
+        'directions',
+        'Direction values must be 1 or -1',
+      );
+    }
+  }
+
+  final resolvedStart =
+      startCoords ??
+      List<int>.generate(
+        rank,
+        (i) => resolvedDirections[i] >= 0 ? 0 : a.shape[i] - 1,
+      );
+
+  for (var i = 0; i < rank; i++) {
+    if (resolvedStart[i] < 0 || resolvedStart[i] >= a.shape[i]) {
+      throw RangeError.range(
+        resolvedStart[i],
+        0,
+        a.shape[i] - 1,
+        'startCoords[$i]',
+      );
+    }
+  }
+
   final marker = ScratchArena.marker;
 
   final cShape = a.shape.isEmpty ? ffi.nullptr : ScratchArena.copyInts(a.shape);
   final cStridesA = a.strides.isEmpty
       ? ffi.nullptr
       : ScratchArena.copyInts(a.strides);
+
+  final cStartCoords = rank == 0
+      ? ffi.nullptr
+      : ScratchArena.copyInts(resolvedStart);
+  final cDirections = rank == 0
+      ? ffi.nullptr
+      : ScratchArena.copyInts(resolvedDirections);
 
   try {
     final cTarget = _allocateTarget(target, a.dtype);
@@ -1866,6 +1928,8 @@ int findIndex<T extends Object>(NDArray<T> a, CompareOp op, T target) {
       cShape,
       rank,
       cTarget,
+      cStartCoords,
+      cDirections,
     );
   } finally {
     ScratchArena.reset(marker);

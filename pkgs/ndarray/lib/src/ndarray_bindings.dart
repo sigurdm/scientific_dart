@@ -18097,6 +18097,8 @@ external void s_nanmax_float(
     ffi.Pointer<ffi.Int>,
     ffi.Int,
     ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
   )
 >()
 external int ndarray_find_index(
@@ -18107,6 +18109,8 @@ external int ndarray_find_index(
   ffi.Pointer<ffi.Int> shape,
   int rank,
   ffi.Pointer<ffi.Void> target,
+  ffi.Pointer<ffi.Int> startCoords,
+  ffi.Pointer<ffi.Int> directions,
 );
 
 typedef ptrdiff_t = ffi.Long;

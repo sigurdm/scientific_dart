@@ -591,5 +591,174 @@ void main() {
         }),
       );
     });
+
+    group('findIndex tests', () {
+      test(
+        'Basic forward findIndex',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 2.0, 1.0],
+            [5],
+            DType.float64,
+          );
+          expect(findIndex(a, CompareOp.equal, 2.0), 1);
+          expect(findIndex(a, CompareOp.greater, 2.0), 2);
+          expect(findIndex(a, CompareOp.equal, 4.0), -1);
+        }),
+      );
+
+      test(
+        'Backward findIndex',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 2.0, 1.0],
+            [5],
+            DType.float64,
+          );
+          expect(findIndex(a, CompareOp.equal, 2.0, directions: [-1]), 3);
+          expect(findIndex(a, CompareOp.equal, 1.0, directions: [-1]), 4);
+        }),
+      );
+
+      test(
+        'Forward findIndex with startCoords',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 2.0, 1.0],
+            [5],
+            DType.float64,
+          );
+          expect(findIndex(a, CompareOp.equal, 2.0, startCoords: [2]), 3);
+          expect(findIndex(a, CompareOp.equal, 1.0, startCoords: [1]), 4);
+        }),
+      );
+
+      test(
+        'Backward findIndex with startCoords',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 2.0, 1.0],
+            [5],
+            DType.float64,
+          );
+          expect(
+            findIndex(
+              a,
+              CompareOp.equal,
+              2.0,
+              startCoords: [2],
+              directions: [-1],
+            ),
+            1,
+          );
+          expect(
+            findIndex(
+              a,
+              CompareOp.equal,
+              1.0,
+              startCoords: [3],
+              directions: [-1],
+            ),
+            0,
+          );
+        }),
+      );
+
+      test(
+        'findIndex on strided/sliced view',
+        () => NDArray.scope(() {
+          // [1.0, 2.0, 3.0, 4.0, 5.0, 6.0] -> slice ::2 -> [1.0, 3.0, 5.0]
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            [6],
+            DType.float64,
+          );
+          final sliced = a.slice([Slice(start: 0, stop: 6, step: 2)]);
+          expect(sliced.shape, [3]);
+          expect(sliced.isContiguous, isFalse);
+
+          expect(
+            findIndex(sliced, CompareOp.equal, 3.0),
+            1,
+          ); // flat index in sliced is 1
+          expect(findIndex(sliced, CompareOp.equal, 5.0), 2);
+          expect(findIndex(sliced, CompareOp.equal, 2.0), -1); // 2.0 is skipped
+
+          // Backward on strided
+          expect(
+            findIndex(sliced, CompareOp.greater, 2.0, directions: [-1]),
+            2,
+          ); // 5.0 is at index 2
+        }),
+      );
+
+      test(
+        'findIndex 2D with custom directions',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            [2, 3],
+            DType.float64,
+          );
+          // Traversal starting at [0, 2] with directions [1, -1] (forward rows, backward cols):
+          // [0, 2] (3.0), [0, 1] (2.0), [0, 0] (1.0), [1, 2] (6.0), [1, 1] (5.0), [1, 0] (4.0)
+
+          expect(
+            findIndex(
+              a,
+              CompareOp.greater,
+              2.0,
+              startCoords: [0, 2],
+              directions: [1, -1],
+            ),
+            2,
+          ); // 3.0 matches immediately, flat index 2
+
+          expect(
+            findIndex(
+              a,
+              CompareOp.greater,
+              4.0,
+              startCoords: [0, 2],
+              directions: [1, -1],
+            ),
+            5,
+          ); // 6.0 is at [1, 2], flat index 5
+
+          expect(
+            findIndex(
+              a,
+              CompareOp.equal,
+              2.0,
+              startCoords: [1, 2],
+              directions: [1, -1],
+            ),
+            -1,
+          ); // starts at [1, 2], doesn't visit row 0
+        }),
+      );
+
+      test(
+        'findIndex bounds and empty validation',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          expect(
+            () => findIndex(a, CompareOp.equal, 1.0, startCoords: [-1]),
+            throwsRangeError,
+          );
+          expect(
+            () => findIndex(a, CompareOp.equal, 1.0, startCoords: [2]),
+            throwsRangeError,
+          );
+          expect(
+            () => findIndex(a, CompareOp.equal, 1.0, startCoords: [0, 0]),
+            throwsArgumentError,
+          ); // wrong rank
+
+          final empty = NDArray<double>.create([0], DType.float64);
+          expect(findIndex(empty, CompareOp.equal, 1.0), -1);
+        }),
+      );
+    });
   });
 }
