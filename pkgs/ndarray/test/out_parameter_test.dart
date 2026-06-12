@@ -11,7 +11,7 @@ void main() {
           2,
           2,
         ], DType.float64);
-        final outBuffer = NDArray.zeros([], DType.float64);
+        final outBuffer = NDArray<Float64>.zeros([], DType.float64);
         final d = det(a, out: outBuffer);
         expect(identical(d, outBuffer), true);
         expect(outBuffer.data[0], closeTo(-2.0, 1e-9));
@@ -22,7 +22,7 @@ void main() {
       'min with out parameter',
       () => NDArray.scope(() {
         final a = NDArray.fromList([4.0, 2.0, 5.0, 1.0], [2, 2], DType.float64);
-        final outBuffer = NDArray.zeros([2], DType.float64);
+        final outBuffer = NDArray<Float64>.zeros([2], DType.float64);
         final res = min(a, axis: 1, out: outBuffer);
         expect(identical(res, outBuffer), true);
         expect(outBuffer.toList(), [2.0, 1.0]);
@@ -33,7 +33,7 @@ void main() {
       'max with out parameter',
       () => NDArray.scope(() {
         final a = NDArray.fromList([4.0, 2.0, 5.0, 1.0], [2, 2], DType.float64);
-        final outBuffer = NDArray.zeros([2], DType.float64);
+        final outBuffer = NDArray<Float64>.zeros([2], DType.float64);
         final res = max(a, axis: 1, out: outBuffer);
         expect(identical(res, outBuffer), true);
         expect(outBuffer.toList(), [4.0, 5.0]);
@@ -48,7 +48,7 @@ void main() {
           [2, 2],
           DType.float64,
         );
-        final outBuffer = NDArray.zeros([2], DType.float64);
+        final outBuffer = NDArray<Float64>.zeros([2], DType.float64);
         final res = nanmin(a, axis: 1, out: outBuffer);
         expect(identical(res, outBuffer), true);
         expect(outBuffer.toList(), [4.0, 1.0]);
@@ -63,7 +63,7 @@ void main() {
           [2, 2],
           DType.float64,
         );
-        final outBuffer = NDArray.zeros([2], DType.float64);
+        final outBuffer = NDArray<Float64>.zeros([2], DType.float64);
         final res = nanmax(a, axis: 1, out: outBuffer);
         expect(identical(res, outBuffer), true);
         expect(outBuffer.toList(), [4.0, 5.0]);
@@ -74,7 +74,7 @@ void main() {
       'fft with out parameter (no transpose)',
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
-        final outBuffer = NDArray.zeros([4], DType.complex128);
+        final outBuffer = NDArray<Complex>.zeros([4], DType.complex128);
         final res = fft(a, out: outBuffer);
         expect(identical(res, outBuffer), true);
         // Expected FFT result: [10, -2+2i, -2, -2-2i]
@@ -89,7 +89,7 @@ void main() {
       'fft with out parameter (with transpose)',
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
-        final outBuffer = NDArray.zeros([2, 2], DType.complex128);
+        final outBuffer = NDArray<Complex>.zeros([2, 2], DType.complex128);
         // FFT along axis 0
         final res = fft(a, axis: 0, out: outBuffer);
         expect(identical(res, outBuffer), true);
@@ -122,7 +122,7 @@ void main() {
           [4],
           DType.complex128,
         );
-        final outBuffer = NDArray.zeros([4], DType.complex128);
+        final outBuffer = NDArray<Complex>.zeros([4], DType.complex128);
         final res = ifft(a, out: outBuffer);
         expect(identical(res, outBuffer), true);
         expect(outBuffer.data[0].real, closeTo(1.0, 1e-9));
@@ -136,8 +136,8 @@ void main() {
       'gradientArray with out parameter',
       () => NDArray.scope(() {
         final f = NDArray.fromList([1.0, 2.0, 4.0, 8.0], [2, 2], DType.float64);
-        final out1 = NDArray.zeros([2, 2], DType.float64);
-        final out2 = NDArray.zeros([2, 2], DType.float64);
+        final out1 = NDArray<Float64>.zeros([2, 2], DType.float64);
+        final out2 = NDArray<Float64>.zeros([2, 2], DType.float64);
         final res = gradientArray(f, out: [out1, out2]);
         expect(identical(res[0], out1), true);
         expect(identical(res[1], out2), true);
@@ -169,9 +169,9 @@ void main() {
           [3, 2],
           DType.float64,
         );
-        final outU = NDArray.zeros([3, 3], DType.float64);
-        final outS = NDArray.zeros([2], DType.float64);
-        final outVh = NDArray.zeros([2, 2], DType.float64);
+        final outU = NDArray<Float64>.zeros([3, 3], DType.float64);
+        final outS = NDArray<Float64>.zeros([2], DType.float64);
+        final outVh = NDArray<Float64>.zeros([2, 2], DType.float64);
 
         final res = svd(a, out: (U: outU, S: outS, Vh: outVh));
         expect(identical(res.U, outU), true);
@@ -192,9 +192,9 @@ void main() {
           [2, 3],
           DType.float64,
         );
-        final outU = NDArray.zeros([2, 2], DType.float64);
-        final outS = NDArray.zeros([2], DType.float64);
-        final outVh = NDArray.zeros([3, 3], DType.float64);
+        final outU = NDArray<Float64>.zeros([2, 2], DType.float64);
+        final outS = NDArray<Float64>.zeros([2], DType.float64);
+        final outVh = NDArray<Float64>.zeros([3, 3], DType.float64);
 
         final res = svd(a, out: (U: outU, S: outS, Vh: outVh));
         expect(identical(res.U, outU), true);

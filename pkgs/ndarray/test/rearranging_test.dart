@@ -13,8 +13,8 @@ void main() {
           expect(flipped.toList(), [4.0, 3.0, 2.0, 1.0]);
 
           // Verify it is a zero-copy view
-          flipped.setCell([0], 99.0);
-          expect(a.getCell([3]), 99.0);
+          flipped.setCell([0], Float64(99.0));
+          expect(a.getCell([3]).value, 99.0);
         }),
       );
 
@@ -129,8 +129,8 @@ void main() {
           expect(rolledLarge.toList(), [40, 50, 10, 20, 30]);
 
           // Verify it is a copy (independent memory)
-          rolledPos.setCell([0], 99);
-          expect(a.getCell([0]), 10);
+          rolledPos.setCell([0], Int32(99));
+          expect(a.getCell([0]).value, 10);
         }),
       );
 

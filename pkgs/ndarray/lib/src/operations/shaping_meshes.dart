@@ -64,14 +64,16 @@ final class GridRange {
 }
 
 /// Helper to generate a 1D coordinate array from a [GridRange].
-NDArray<double, Float64Marker> _generate1DCoordinate(
-  GridRange range,
-  DType<double, Float64Marker> dtype,
-) {
+NDArray<double> _generate1DCoordinate(GridRange range, DType<double> dtype) {
   if (range.numPoints != null) {
-    return linspace(range.start, range.stop, range.numPoints!, dtype: dtype);
+    return linspace<double>(
+      range.start,
+      range.stop,
+      range.numPoints!,
+      dtype: dtype,
+    );
   } else {
-    return NDArray.arange(
+    return NDArray<double>.arange(
       range.start,
       range.stop,
       step: range.step,
@@ -108,11 +110,7 @@ NDArray<double, Float64Marker> _generate1DCoordinate(
 ///
 /// Refer to the [NumPy as_strided reference](https://numpy.org/doc/stable/reference/generated/numpy.lib.stride_tricks.as_strided.html)
 /// for details.
-NDArray<T, MT> asStrided<T, MT extends Marker>(
-  NDArray<T, MT> x, {
-  List<int>? shape,
-  List<int>? strides,
-}) {
+NDArray<T> asStrided<T>(NDArray<T> x, {List<int>? shape, List<int>? strides}) {
   if (x.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -125,7 +123,7 @@ NDArray<T, MT> asStrided<T, MT extends Marker>(
     );
   }
 
-  return NDArray.view(
+  return NDArray<T>.view(
     x,
     shape: targetShape,
     strides: targetStrides,
@@ -149,16 +147,16 @@ NDArray<T, MT> asStrided<T, MT extends Marker>(
 ///
 /// Refer to the [NumPy ogrid reference](https://numpy.org/doc/stable/reference/generated/numpy.ogrid.html)
 /// for details.
-List<NDArray<double, Float64Marker>> ogrid(
+List<NDArray<double>> ogrid(
   List<GridRange> ranges, {
-  DType<double, Float64Marker> dtype = DType.float64,
+  DType<double> dtype = DType.float64,
 }) {
   if (ranges.isEmpty) {
     throw ArgumentError('ranges must not be empty.');
   }
 
   final k = ranges.length;
-  final results = <NDArray<double, Float64Marker>>[];
+  final results = <NDArray<double>>[];
 
   for (var i = 0; i < k; i++) {
     final arr1D = _generate1DCoordinate(ranges[i], dtype);
@@ -188,9 +186,9 @@ List<NDArray<double, Float64Marker>> ogrid(
 ///
 /// Refer to the [NumPy mgrid reference](https://numpy.org/doc/stable/reference/generated/numpy.mgrid.html)
 /// for details.
-NDArray<double, Float64Marker> mgrid(
+NDArray<double> mgrid(
   List<GridRange> ranges, {
-  DType<double, Float64Marker> dtype = DType.float64,
+  DType<double> dtype = DType.float64,
 }) {
   if (ranges.isEmpty) {
     throw ArgumentError('ranges must not be empty.');
@@ -211,7 +209,7 @@ NDArray<double, Float64Marker> mgrid(
 
   // 2. Allocate the dense result array of shape [k, d1, d2, ..., dk]
   final outputShape = [k, ...gridShape];
-  final result = NDArray.create(outputShape, dtype);
+  final result = NDArray<double>.create(outputShape, dtype);
   final gridStrides = NDArray.computeCStrides(gridShape);
   final gridSize = gridShape.isEmpty ? 1 : gridShape.reduce((a, b) => a * b);
 

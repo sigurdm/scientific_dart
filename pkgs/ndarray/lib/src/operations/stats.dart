@@ -114,11 +114,7 @@ enum QuantileMethod {
 /// final s0 = sum(a, axis: 0); // Sum along rows
 /// print(s0.data); // [4.0, 6.0]
 /// ```
-NDArray<T, MT> sum<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a, {
-  int? axis,
-  NDArray<T, MT>? out,
-}) {
+NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute sum of a disposed array.');
   }
@@ -155,7 +151,7 @@ NDArray<T, MT> sum<T extends Object, MT extends Marker>(
       }
       acc = current;
     }
-    final result = out ?? NDArray.create([], a.dtype);
+    final result = out ?? NDArray<T>.create([], a.dtype);
     result.data[0] = acc;
     return result;
   }
@@ -165,7 +161,7 @@ NDArray<T, MT> sum<T extends Object, MT extends Marker>(
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = out ?? NDArray.zeros(newShape, a.dtype);
+  final result = out ?? NDArray<T>.zeros(newShape, a.dtype);
   if (out != null) {
     result.fill(normalizeScalar(0, a.dtype) as T);
   }
@@ -223,7 +219,7 @@ NDArray<T, MT> sum<T extends Object, MT extends Marker>(
       break;
   }
 
-  reduceRecursive(
+  reduceRecursive<T, T>(
     a,
     result,
     List<int>.filled(a.shape.length, 0),
@@ -246,11 +242,7 @@ NDArray<T, MT> sum<T extends Object, MT extends Marker>(
 /// final p0 = prod(a, axis: 0); // Product along rows
 /// print(p0.data); // [3.0, 8.0]
 /// ```
-NDArray<T, MT> prod<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a, {
-  int? axis,
-  NDArray<T, MT>? out,
-}) {
+NDArray<T> prod<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute product of a disposed array.');
   }
@@ -287,7 +279,7 @@ NDArray<T, MT> prod<T extends Object, MT extends Marker>(
       }
       acc = current;
     }
-    final result = out ?? NDArray.create([], a.dtype);
+    final result = out ?? NDArray<T>.create([], a.dtype);
     result.data[0] = acc;
     return result;
   }
@@ -297,12 +289,12 @@ NDArray<T, MT> prod<T extends Object, MT extends Marker>(
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = out ?? NDArray.ones(newShape, a.dtype);
+  final result = out ?? NDArray<T>.ones(newShape, a.dtype);
   if (out != null) {
     result.fill(normalizeScalar(1, a.dtype) as T);
   }
 
-  reduceRecursive(
+  reduceRecursive<T, T>(
     a,
     result,
     List<int>.filled(a.shape.length, 0),
@@ -331,10 +323,10 @@ NDArray<T, MT> prod<T extends Object, MT extends Marker>(
 /// final a = NDArray.fromList([true, true, false], [3], DType.boolean);
 /// final res = all(a); // false
 /// ```
-NDArray<bool, BooleanMarker> all<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a, {
+NDArray<bool> all<T extends Object>(
+  NDArray<T> a, {
   int? axis,
-  NDArray<bool, BooleanMarker>? out,
+  NDArray<bool>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute all() on a disposed array.');
@@ -367,7 +359,7 @@ NDArray<bool, BooleanMarker> all<T extends Object, MT extends Marker>(
         break;
       }
     }
-    final result = out ?? NDArray.create([], DType.boolean);
+    final result = out ?? NDArray<bool>.create([], DType.boolean);
     result.data[0] = allTrue;
     return result;
   }
@@ -377,10 +369,10 @@ NDArray<bool, BooleanMarker> all<T extends Object, MT extends Marker>(
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(targetAxis);
-  final result = out ?? NDArray.create(newShape, DType.boolean);
+  final result = out ?? NDArray<bool>.create(newShape, DType.boolean);
   result.fill(true); // Initialize to true everywhere
 
-  reduceRecursive(
+  reduceRecursive<T, bool>(
     a,
     result,
     List<int>.filled(a.shape.length, 0),
@@ -410,10 +402,10 @@ NDArray<bool, BooleanMarker> all<T extends Object, MT extends Marker>(
 /// final a = NDArray.fromList([true, false, false], [3], DType.boolean);
 /// final res = any(a); // true
 /// ```
-NDArray<bool, BooleanMarker> any<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a, {
+NDArray<bool> any<T extends Object>(
+  NDArray<T> a, {
   int? axis,
-  NDArray<bool, BooleanMarker>? out,
+  NDArray<bool>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute any() on a disposed array.');
@@ -446,7 +438,7 @@ NDArray<bool, BooleanMarker> any<T extends Object, MT extends Marker>(
         break;
       }
     }
-    final result = out ?? NDArray.create([], DType.boolean);
+    final result = out ?? NDArray<bool>.create([], DType.boolean);
     result.data[0] = anyTrue;
     return result;
   }
@@ -457,12 +449,13 @@ NDArray<bool, BooleanMarker> any<T extends Object, MT extends Marker>(
 
   final newShape = List<int>.from(a.shape)..removeAt(targetAxis);
   final result =
-      out ?? NDArray.zeros(newShape, DType.boolean); // Pre-initialized to false
+      out ??
+      NDArray<bool>.zeros(newShape, DType.boolean); // Pre-initialized to false
   if (out != null) {
     result.fill(false);
   }
 
-  reduceRecursive(
+  reduceRecursive<T, bool>(
     a,
     result,
     List<int>.filled(a.shape.length, 0),
@@ -495,19 +488,15 @@ NDArray<bool, BooleanMarker> any<T extends Object, MT extends Marker>(
 /// ```
 ///
 /// Reference: [Arithmetic Mean](https://en.wikipedia.org/wiki/Arithmetic_mean)
-NDArray<R, MR> mean<R, MR extends Marker, T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  int? axis,
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute mean of a disposed array.');
   }
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write mean to a disposed output array.');
   }
-  final DType<R, MR> targetDType =
-      (a.dtype.isComplex ? DType.complex128 : DType.float64) as DType<R, MR>;
+  final DType<R> targetDType =
+      (a.dtype.isComplex ? DType.complex128 : DType.float64) as DType<R>;
 
   final targetShape = axis == null
       ? <int>[]
@@ -522,11 +511,11 @@ NDArray<R, MR> mean<R, MR extends Marker, T, MT extends Marker>(
     if (a.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
-          final res = out ?? NDArray.create([], DType.float64 as DType<R, MR>);
+          final res = out ?? NDArray<R>.create([], DType.float64 as DType<R>);
           res.data[0] = r_mean_double(a.pointer.cast(), a.size) as R;
           return res;
         case DType.float32:
-          final res = out ?? NDArray.create([], DType.float64 as DType<R, MR>);
+          final res = out ?? NDArray<R>.create([], DType.float64 as DType<R>);
           res.data[0] = r_mean_float(a.pointer.cast(), a.size) as R;
           return res;
         default:
@@ -541,35 +530,37 @@ NDArray<R, MR> mean<R, MR extends Marker, T, MT extends Marker>(
       promotedA = promoteToDouble(a);
     }
 
-    final s = sum(promotedA as NDArray<Object, Marker>, axis: axis);
+    final s = sum<Object>(promotedA as NDArray<Object>, axis: axis);
     if (promotedA != a) {
       promotedA.dispose();
     }
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     final meanVal = (s.data[0] as dynamic) / size;
-    final NDArray<R, MR> result;
+    final NDArray<R> result;
     if (out != null) {
       result = out;
     } else {
       if (targetDType.isComplex) {
-        result = NDArray.create([], DType.complex128) as NDArray<R, MR>;
+        result = NDArray<Complex>.create([], DType.complex128) as NDArray<R>;
       } else {
-        result = NDArray.create([], DType.float64) as NDArray<R, MR>;
+        result = NDArray<double>.create([], DType.float64) as NDArray<R>;
       }
     }
     result.data[0] = meanVal as R;
     s.dispose();
     return result;
   } else {
-    final NDArray<R, MR> result;
+    final NDArray<R> result;
     if (out != null) {
       result = out;
     } else {
       if (targetDType.isComplex) {
         result =
-            NDArray.create(targetShape, DType.complex128) as NDArray<R, MR>;
+            NDArray<Complex>.create(targetShape, DType.complex128)
+                as NDArray<R>;
       } else {
-        result = NDArray.create(targetShape, DType.float64) as NDArray<R, MR>;
+        result =
+            NDArray<double>.create(targetShape, DType.float64) as NDArray<R>;
       }
     }
 
@@ -616,8 +607,7 @@ NDArray<R, MR> mean<R, MR extends Marker, T, MT extends Marker>(
         s_mean_float(
           a.pointer.cast(),
           cStridesA,
-          ((result as dynamic) as NDArray<double, Float64Marker>).pointer
-              .cast(),
+          ((result as dynamic) as NDArray<double>).pointer.cast(),
           cStridesRes,
           cShape,
           rank,
@@ -630,22 +620,20 @@ NDArray<R, MR> mean<R, MR extends Marker, T, MT extends Marker>(
 
     if (targetDType.isComplex) {
       final promotedA =
-          (a.dtype.isComplex ? a : promoteToComplex(a))
-              as NDArray<Complex, Complex128Marker>;
-      sum(
+          (a.dtype.isComplex ? a : promoteToComplex(a)) as NDArray<Complex>;
+      sum<Complex>(
         promotedA,
         axis: axis,
-        out: (result as dynamic) as NDArray<Complex, Complex128Marker>,
+        out: (result as dynamic) as NDArray<Complex>,
       );
       if (promotedA != a) promotedA.dispose();
     } else {
       final promotedA =
-          (a.dtype.isFloating ? a : promoteToDouble(a))
-              as NDArray<double, Float64Marker>;
-      sum(
+          (a.dtype.isFloating ? a : promoteToDouble(a)) as NDArray<double>;
+      sum<double>(
         promotedA,
         axis: axis,
-        out: (result as dynamic) as NDArray<double, Float64Marker>,
+        out: (result as dynamic) as NDArray<double>,
       );
       if (promotedA != a) promotedA.dispose();
     }
@@ -680,10 +668,10 @@ NDArray<R, MR> mean<R, MR extends Marker, T, MT extends Marker>(
 /// ```
 ///
 /// Reference: [Standard Deviation](https://en.wikipedia.org/wiki/Standard_deviation)
-NDArray<double, Float64Marker> std<T extends num, MT extends Marker>(
-  NDArray<T, MT> a, {
+NDArray<double> std<T extends num>(
+  NDArray<T> a, {
   int? axis,
-  NDArray<double, Float64Marker>? out,
+  NDArray<double>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute std of a disposed array.');
@@ -703,7 +691,7 @@ NDArray<double, Float64Marker> std<T extends num, MT extends Marker>(
   final v = variance(a, axis: axis);
   if (axis == null) {
     final stdVal = math.sqrt(v.data[0]);
-    final result = out ?? NDArray.create([], DType.float64);
+    final result = out ?? NDArray<double>.create([], DType.float64);
     result.data[0] = stdVal;
     v.dispose();
     return result;
@@ -713,7 +701,11 @@ NDArray<double, Float64Marker> std<T extends num, MT extends Marker>(
       v.dispose();
       return out;
     }
-    final resultVal = NDArray.view(res, shape: res.shape, strides: res.strides);
+    final resultVal = NDArray<double>.view(
+      res,
+      shape: res.shape,
+      strides: res.strides,
+    );
     v.dispose();
     return resultVal;
   }
@@ -732,13 +724,13 @@ NDArray<double, Float64Marker> std<T extends num, MT extends Marker>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double, Float64Marker>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
+/// final a = `NDArray<double>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
 /// final v = nanvar(a); // returns 0-D array containing 0.6666666666666666
 /// ```
-NDArray<double, Float64Marker> nanvar<T extends num, MT extends Marker>(
-  NDArray<T, MT> a, {
+NDArray<double> nanvar<T extends num>(
+  NDArray<T> a, {
   int? axis,
-  NDArray<double, Float64Marker>? out,
+  NDArray<double>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute nanvar of a disposed array.');
@@ -762,7 +754,7 @@ NDArray<double, Float64Marker> nanvar<T extends num, MT extends Marker>(
     final meanVal = m.data[0] as num;
     m.dispose();
     if (meanVal.toDouble().isNaN) {
-      final result = out ?? NDArray.create([], DType.float64);
+      final result = out ?? NDArray<double>.create([], DType.float64);
       result.data[0] = double.nan;
       return result;
     }
@@ -780,7 +772,7 @@ NDArray<double, Float64Marker> nanvar<T extends num, MT extends Marker>(
       sumSqDiff += diff * diff;
       count++;
     }
-    final result = out ?? NDArray.create([], DType.float64);
+    final result = out ?? NDArray<double>.create([], DType.float64);
     if (count == 0) {
       result.data[0] = double.nan;
     } else {
@@ -796,8 +788,8 @@ NDArray<double, Float64Marker> nanvar<T extends num, MT extends Marker>(
     final diff = subtract(a, reshapedM);
     final sqDiff = multiply(diff, diff);
 
-    // Convert to `NDArray<double, Float64Marker>` to avoid truncation in nanmean
-    final sqDiffDouble = NDArray.create(sqDiff.shape, DType.float64);
+    // Convert to `NDArray<double>` to avoid truncation in nanmean
+    final sqDiffDouble = NDArray<double>.create(sqDiff.shape, DType.float64);
     for (var i = 0; i < sqDiff.data.length; i++) {
       sqDiffDouble.data[i] = sqDiff.data[i].toDouble();
     }
@@ -812,7 +804,11 @@ NDArray<double, Float64Marker> nanvar<T extends num, MT extends Marker>(
       sqDiffDouble.dispose();
       return out;
     }
-    final resultVal = NDArray.view(res, shape: res.shape, strides: res.strides);
+    final resultVal = NDArray<double>.view(
+      res,
+      shape: res.shape,
+      strides: res.strides,
+    );
     sqDiffDouble.dispose();
     return resultVal;
   }
@@ -831,13 +827,13 @@ NDArray<double, Float64Marker> nanvar<T extends num, MT extends Marker>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double, Float64Marker>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
+/// final a = `NDArray<double>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
 /// final s = nanstd(a); // returns 0-D array containing sqrt(0.6666666666666666)
 /// ```
-NDArray<double, Float64Marker> nanstd<T extends num, MT extends Marker>(
-  NDArray<T, MT> a, {
+NDArray<double> nanstd<T extends num>(
+  NDArray<T> a, {
   int? axis,
-  NDArray<double, Float64Marker>? out,
+  NDArray<double>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute nanstd of a disposed array.');
@@ -857,7 +853,7 @@ NDArray<double, Float64Marker> nanstd<T extends num, MT extends Marker>(
   final v = nanvar(a, axis: axis);
   if (axis == null) {
     final stdVal = math.sqrt(v.data[0]);
-    final result = out ?? NDArray.create([], DType.float64);
+    final result = out ?? NDArray<double>.create([], DType.float64);
     result.data[0] = stdVal;
     v.dispose();
     return result;
@@ -867,7 +863,11 @@ NDArray<double, Float64Marker> nanstd<T extends num, MT extends Marker>(
       v.dispose();
       return out;
     }
-    final resultVal = NDArray.view(res, shape: res.shape, strides: res.strides);
+    final resultVal = NDArray<double>.view(
+      res,
+      shape: res.shape,
+      strides: res.strides,
+    );
     v.dispose();
     return resultVal;
   }
@@ -878,11 +878,7 @@ NDArray<double, Float64Marker> nanstd<T extends num, MT extends Marker>(
 /// **Gotchas:**
 /// - Returns a 0-dimensional [NDArray] if [axis] is null, or a new [NDArray] if [axis] is provided.
 /// - Preserves the original data type (DType) of the input array along the reduction axis.
-NDArray<T, MT> min<T extends num, MT extends Marker>(
-  NDArray<T, MT> a, {
-  int? axis,
-  NDArray<T, MT>? out,
-}) {
+NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute min of a disposed array.');
   }
@@ -913,7 +909,7 @@ NDArray<T, MT> min<T extends num, MT extends Marker>(
     if (!identical(temp, a)) {
       temp.dispose();
     }
-    final result = out ?? NDArray.create([], a.dtype);
+    final result = out ?? NDArray<T>.create([], a.dtype);
     result.data[0] = minVal;
     return result;
   }
@@ -929,7 +925,7 @@ NDArray<T, MT> min<T extends num, MT extends Marker>(
   });
   final firstSlice = a.slice(selectors);
 
-  final result = out ?? NDArray.create(newShape, a.dtype);
+  final result = out ?? NDArray<T>.create(newShape, a.dtype);
   firstSlice.copy(out: result);
 
   for (var i = 1; i < a.shape[axis]; i++) {
@@ -962,10 +958,10 @@ NDArray<T, MT> min<T extends num, MT extends Marker>(
 /// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
 /// print(nanmin(a).data); // [1.0] (0-D array)
 /// ```
-NDArray<T, MT> nanmin<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a, {
+NDArray<T> nanmin<T extends Object>(
+  NDArray<T> a, {
   int? axis,
-  NDArray<T, MT>? out,
+  NDArray<T>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute nanmin of a disposed array.');
@@ -1019,7 +1015,7 @@ NDArray<T, MT> nanmin<T extends Object, MT extends Marker>(
       }
     }
 
-    final result = out ?? NDArray.create([], a.dtype);
+    final result = out ?? NDArray<T>.create([], a.dtype);
     if (!hasValid) {
       result.data[0] = (hasNan ? double.nan : double.infinity) as dynamic;
     } else {
@@ -1043,7 +1039,7 @@ NDArray<T, MT> nanmin<T extends Object, MT extends Marker>(
   });
   final firstSlice = a.slice(selectors);
 
-  final result = out ?? NDArray.create(newShape, a.dtype);
+  final result = out ?? NDArray<T>.create(newShape, a.dtype);
   firstSlice.copy(out: result);
 
   for (var i = 1; i < a.shape[axis]; i++) {
@@ -1063,11 +1059,7 @@ NDArray<T, MT> nanmin<T extends Object, MT extends Marker>(
 /// **Gotchas:**
 /// - Returns a 0-dimensional [NDArray] if [axis] is null, or a new [NDArray] if [axis] is provided.
 /// - Preserves the original data type (DType) of the input array along the reduction axis.
-NDArray<T, MT> max<T extends num, MT extends Marker>(
-  NDArray<T, MT> a, {
-  int? axis,
-  NDArray<T, MT>? out,
-}) {
+NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute max of a disposed array.');
   }
@@ -1098,7 +1090,7 @@ NDArray<T, MT> max<T extends num, MT extends Marker>(
     if (!identical(temp, a)) {
       temp.dispose();
     }
-    final result = out ?? NDArray.create([], a.dtype);
+    final result = out ?? NDArray<T>.create([], a.dtype);
     result.data[0] = maxVal;
     return result;
   }
@@ -1114,7 +1106,7 @@ NDArray<T, MT> max<T extends num, MT extends Marker>(
   });
   final firstSlice = a.slice(selectors);
 
-  final result = out ?? NDArray.create(newShape, a.dtype);
+  final result = out ?? NDArray<T>.create(newShape, a.dtype);
   firstSlice.copy(out: result);
 
   for (var i = 1; i < a.shape[axis]; i++) {
@@ -1147,10 +1139,10 @@ NDArray<T, MT> max<T extends num, MT extends Marker>(
 /// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
 /// print(nanmax(a).data); // [3.0] (0-D array)
 /// ```
-NDArray<T, MT> nanmax<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a, {
+NDArray<T> nanmax<T extends Object>(
+  NDArray<T> a, {
   int? axis,
-  NDArray<T, MT>? out,
+  NDArray<T>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute nanmax of a disposed array.');
@@ -1204,7 +1196,7 @@ NDArray<T, MT> nanmax<T extends Object, MT extends Marker>(
       }
     }
 
-    final result = out ?? NDArray.create([], a.dtype);
+    final result = out ?? NDArray<T>.create([], a.dtype);
     if (!hasValid) {
       result.data[0] = (hasNan ? double.nan : -double.infinity) as dynamic;
     } else {
@@ -1228,7 +1220,7 @@ NDArray<T, MT> nanmax<T extends Object, MT extends Marker>(
   });
   final firstSlice = a.slice(selectors);
 
-  final result = out ?? NDArray.create(newShape, a.dtype);
+  final result = out ?? NDArray<T>.create(newShape, a.dtype);
   firstSlice.copy(out: result);
 
   for (var i = 1; i < a.shape[axis]; i++) {
@@ -1243,11 +1235,7 @@ NDArray<T, MT> nanmax<T extends Object, MT extends Marker>(
   return result;
 }
 
-NDArray<R, MR> cumsum<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  int? axis,
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> cumsum<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumsum() on a disposed array.');
   }
@@ -1255,13 +1243,13 @@ NDArray<R, MR> cumsum<T, MT extends Marker, R, MR extends Marker>(
     throw StateError('Cannot write cumsum result to a disposed output array.');
   }
 
-  final DType<dynamic, Marker> targetDType = a.dtype == DType.boolean
+  final DType<dynamic> targetDType = a.dtype == DType.boolean
       ? DType.int32
       : a.dtype;
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result = out ?? NDArray.create([size], targetDType as DType<R, MR>);
+    result = out ?? NDArray<R>.create([size], targetDType as DType<R>);
     if (out != null) {
       if (!listEquals(out.shape, [size]) || out.dtype != targetDType) {
         throw ArgumentError(
@@ -1289,7 +1277,7 @@ NDArray<R, MR> cumsum<T, MT extends Marker, R, MR extends Marker>(
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  result = out ?? NDArray.create(a.shape, targetDType as DType<R, MR>);
+  result = out ?? NDArray<R>.create(a.shape, targetDType as DType<R>);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -1314,11 +1302,7 @@ NDArray<R, MR> cumsum<T, MT extends Marker, R, MR extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<R, MR> cumprod<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  int? axis,
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> cumprod<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumprod() on a disposed array.');
   }
@@ -1326,13 +1310,13 @@ NDArray<R, MR> cumprod<T, MT extends Marker, R, MR extends Marker>(
     throw StateError('Cannot write cumprod result to a disposed output array.');
   }
 
-  final DType<dynamic, Marker> targetDType = a.dtype == DType.boolean
+  final DType<dynamic> targetDType = a.dtype == DType.boolean
       ? DType.int32
       : a.dtype;
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result = out ?? NDArray.create([size], targetDType as DType<R, MR>);
+    result = out ?? NDArray<R>.create([size], targetDType as DType<R>);
     if (out != null) {
       if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
         throw ArgumentError(
@@ -1360,7 +1344,7 @@ NDArray<R, MR> cumprod<T, MT extends Marker, R, MR extends Marker>(
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  result = out ?? NDArray.create(a.shape, targetDType as DType<R, MR>);
+  result = out ?? NDArray<R>.create(a.shape, targetDType as DType<R>);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -1385,11 +1369,7 @@ NDArray<R, MR> cumprod<T, MT extends Marker, R, MR extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<T, MT> cummin<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  int? axis,
-  NDArray<T, MT>? out,
-}) {
+NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cummin() on a disposed array.');
   }
@@ -1397,10 +1377,10 @@ NDArray<T, MT> cummin<T, MT extends Marker>(
     throw StateError('Cannot write cummin result to a disposed output array.');
   }
 
-  final NDArray<T, MT> result;
+  final NDArray<T> result;
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result = out ?? NDArray.create([size], a.dtype);
+    result = out ?? NDArray<T>.create([size], a.dtype);
     if (out != null) {
       if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
         throw ArgumentError(
@@ -1430,7 +1410,7 @@ NDArray<T, MT> cummin<T, MT extends Marker>(
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  result = out ?? NDArray.create(a.shape, a.dtype);
+  result = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -1455,11 +1435,7 @@ NDArray<T, MT> cummin<T, MT extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-NDArray<T, MT> cummax<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  int? axis,
-  NDArray<T, MT>? out,
-}) {
+NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cummax() on a disposed array.');
   }
@@ -1467,10 +1443,10 @@ NDArray<T, MT> cummax<T, MT extends Marker>(
     throw StateError('Cannot write cummax result to a disposed output array.');
   }
 
-  final NDArray<T, MT> result;
+  final NDArray<T> result;
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result = out ?? NDArray.create([size], a.dtype);
+    result = out ?? NDArray<T>.create([size], a.dtype);
     if (out != null) {
       if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
         throw ArgumentError(
@@ -1500,7 +1476,7 @@ NDArray<T, MT> cummax<T, MT extends Marker>(
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  result = out ?? NDArray.create(a.shape, a.dtype);
+  result = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -1534,10 +1510,10 @@ NDArray<T, MT> cummax<T, MT extends Marker>(
 /// ```
 ///
 /// Reference: [Variance](https://en.wikipedia.org/wiki/Variance)
-NDArray<double, Float64Marker> variance<T extends num, MT extends Marker>(
-  NDArray<T, MT> a, {
+NDArray<double> variance<T extends num>(
+  NDArray<T> a, {
   int? axis,
-  NDArray<double, Float64Marker>? out,
+  NDArray<double>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute variance of a disposed array.');
@@ -1572,7 +1548,7 @@ NDArray<double, Float64Marker> variance<T extends num, MT extends Marker>(
       final diff = val.toDouble() - meanVal.toDouble();
       sumSqDiff += diff * diff;
     }
-    final result = out ?? NDArray.create([], DType.float64);
+    final result = out ?? NDArray<double>.create([], DType.float64);
     result.data[0] = sumSqDiff / elements.length;
     return result;
   } else {
@@ -1584,7 +1560,7 @@ NDArray<double, Float64Marker> variance<T extends num, MT extends Marker>(
     final diff = subtract(a, reshapedM);
     final sqDiff = multiply(diff, diff);
 
-    final sqDiffDouble = NDArray.create(sqDiff.shape, DType.float64);
+    final sqDiffDouble = NDArray<double>.create(sqDiff.shape, DType.float64);
     for (var i = 0; i < sqDiff.data.length; i++) {
       sqDiffDouble.data[i] = sqDiff.data[i].toDouble();
     }
@@ -1599,7 +1575,11 @@ NDArray<double, Float64Marker> variance<T extends num, MT extends Marker>(
       sqDiffDouble.dispose();
       return out;
     }
-    final resultVal = NDArray.view(res, shape: res.shape, strides: res.strides);
+    final resultVal = NDArray<double>.view(
+      res,
+      shape: res.shape,
+      strides: res.strides,
+    );
     sqDiffDouble.dispose();
     return resultVal;
   }
@@ -1619,22 +1599,18 @@ NDArray<double, Float64Marker> variance<T extends num, MT extends Marker>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double, Float64Marker>`.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], DType.float64);
+/// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], DType.float64);
 /// final m = nanmean(a); // returns 0-D array containing 2.6666666666666665
 /// ```
-NDArray<R, MR> nanmean<R extends Object, MR extends Marker>(
-  NDArray a, {
-  int? axis,
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute nanmean of a disposed array.');
   }
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write nanmean to a disposed output array.');
   }
-  final DType<R, MR> targetDType =
-      (a.dtype.isComplex ? DType.complex128 : DType.float64) as DType<R, MR>;
+  final DType<R> targetDType =
+      (a.dtype.isComplex ? DType.complex128 : DType.float64) as DType<R>;
 
   final targetShape = axis == null
       ? <int>[]
@@ -1666,14 +1642,14 @@ NDArray<R, MR> nanmean<R extends Object, MR extends Marker>(
     if (promotedA != a) {
       promotedA.dispose();
     }
-    final NDArray<R, MR> result;
+    final NDArray<R> result;
     if (out != null) {
       result = out;
     } else {
       if (targetDType.isComplex) {
-        result = NDArray.create([], DType.complex128) as NDArray<R, MR>;
+        result = NDArray<Complex>.create([], DType.complex128) as NDArray<R>;
       } else {
-        result = NDArray.create([], DType.float64) as NDArray<R, MR>;
+        result = NDArray<double>.create([], DType.float64) as NDArray<R>;
       }
     }
 
@@ -1692,26 +1668,26 @@ NDArray<R, MR> nanmean<R extends Object, MR extends Marker>(
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     result = out;
     result.fill(normalizeScalar(0, targetDType) as R);
   } else {
     if (targetDType.isComplex) {
-      result = NDArray.create(newShape, DType.complex128) as NDArray<R, MR>;
+      result =
+          NDArray<Complex>.create(newShape, DType.complex128) as NDArray<R>;
     } else {
-      result = NDArray.create(newShape, DType.float64) as NDArray<R, MR>;
+      result = NDArray<double>.create(newShape, DType.float64) as NDArray<R>;
     }
   }
-  final counts = NDArray.zeros(newShape, DType.int32);
+  final counts = NDArray<int>.zeros(newShape, DType.int32);
 
   if (targetDType.isComplex) {
     final promotedA =
-        (a.dtype.isComplex ? a : promoteToComplex(a))
-            as NDArray<Complex, Complex128Marker>;
-    nanReduceRecursive(
+        (a.dtype.isComplex ? a : promoteToComplex(a)) as NDArray<Complex>;
+    nanReduceRecursive<Complex>(
       promotedA,
-      (result as dynamic) as NDArray<Complex, Complex128Marker>,
+      (result as dynamic) as NDArray<Complex>,
       counts,
       List<int>.filled(promotedA.shape.length, 0),
       List<int>.filled(newShape.length, 0),
@@ -1721,11 +1697,10 @@ NDArray<R, MR> nanmean<R extends Object, MR extends Marker>(
     if (promotedA != a) promotedA.dispose();
   } else {
     final promotedA =
-        (a.dtype.isFloating ? a : promoteToDouble(a))
-            as NDArray<double, Float64Marker>;
-    nanReduceRecursive(
+        (a.dtype.isFloating ? a : promoteToDouble(a)) as NDArray<double>;
+    nanReduceRecursive<double>(
       promotedA,
-      (result as dynamic) as NDArray<double, Float64Marker>,
+      (result as dynamic) as NDArray<double>,
       counts,
       List<int>.filled(promotedA.shape.length, 0),
       List<int>.filled(newShape.length, 0),
@@ -1761,12 +1736,12 @@ NDArray<R, MR> nanmean<R extends Object, MR extends Marker>(
 /// **Throws:**
 /// - [StateError] if the array is disposed.
 /// - [ArgumentError] if [q] is out of bounds or [axis] is out of bounds.
-NDArray<double, Float64Marker> quantile<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a,
+NDArray<double> quantile<T extends Object>(
+  NDArray<T> a,
   double q, {
   int? axis,
   QuantileMethod method = QuantileMethod.linear,
-  NDArray<double, Float64Marker>? out,
+  NDArray<double>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute quantile of a disposed array.');
@@ -1797,7 +1772,7 @@ NDArray<double, Float64Marker> quantile<T extends Object, MT extends Marker>(
 
   if (targetAxis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final result = out ?? NDArray.create([], DType.float64);
+    final result = out ?? NDArray<double>.create([], DType.float64);
     if (a.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -1856,7 +1831,7 @@ NDArray<double, Float64Marker> quantile<T extends Object, MT extends Marker>(
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  final result = out ?? NDArray.zeros(targetShape, DType.float64);
+  final result = out ?? NDArray<double>.zeros(targetShape, DType.float64);
 
   final rank = a.shape.length;
   final cBuffer = ScratchArena.getStridedBuffer(rank);
@@ -1969,12 +1944,12 @@ double r_quantile_helper(NDArray a, int size, double q, int method) {
 /// **Throws:**
 /// - [StateError] if the array is disposed.
 /// - [ArgumentError] if [q] is out of bounds or [axis] is out of bounds.
-NDArray<double, Float64Marker> percentile<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a,
+NDArray<double> percentile<T extends Object>(
+  NDArray<T> a,
   double q, {
   int? axis,
   QuantileMethod method = QuantileMethod.linear,
-  NDArray<double, Float64Marker>? out,
+  NDArray<double>? out,
 }) {
   if (q < 0.0 || q > 100.0) {
     throw ArgumentError('Percentile q must be between 0.0 and 100.0. Got $q');
@@ -1991,10 +1966,10 @@ NDArray<double, Float64Marker> percentile<T extends Object, MT extends Marker>(
 /// **Throws:**
 /// - [StateError] if the array is disposed.
 /// - [ArgumentError] if [axis] is out of bounds.
-NDArray<T, MT> median<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a, {
+NDArray<T> median<T extends Object>(
+  NDArray<T> a, {
   int? axis,
-  NDArray<T, MT>? out,
+  NDArray<T>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute median of a disposed array.');
@@ -2022,7 +1997,7 @@ NDArray<T, MT> median<T extends Object, MT extends Marker>(
 
   if (targetAxis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final result = out ?? NDArray.create([], a.dtype);
+    final result = out ?? NDArray<T>.create([], a.dtype);
     if (a.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
@@ -2064,7 +2039,7 @@ NDArray<T, MT> median<T extends Object, MT extends Marker>(
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  final result = out ?? NDArray.zeros(targetShape, a.dtype);
+  final result = out ?? NDArray<T>.zeros(targetShape, a.dtype);
 
   final rank = a.shape.length;
   final cBuffer = ScratchArena.getStridedBuffer(rank);

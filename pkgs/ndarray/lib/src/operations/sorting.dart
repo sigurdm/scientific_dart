@@ -28,8 +28,8 @@ import 'helpers.dart';
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<T, MT> sort<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a, {
+NDArray<T> sort<T extends Object>(
+  NDArray<T> a, {
   int axis = -1,
   SortKind kind = SortKind.quicksort,
 }) {
@@ -37,11 +37,11 @@ NDArray<T, MT> sort<T extends Object, MT extends Marker>(
     throw StateError('Cannot sort a disposed array.');
   }
   if (a.size == 0) {
-    return NDArray.create(a.shape, a.dtype);
+    return NDArray<T>.create(a.shape, a.dtype);
   }
   final rank = a.shape.length;
   if (rank == 0) {
-    return NDArray.fromList(List<T>.from(a.data), [], a.dtype);
+    return NDArray<T>.fromList(List<T>.from(a.data), [], a.dtype);
   }
 
   final targetAxis = axis < 0 ? rank + axis : axis;
@@ -55,12 +55,12 @@ NDArray<T, MT> sort<T extends Object, MT extends Marker>(
     return sortedView.swapaxes(targetAxis, rank - 1);
   }
 
-  NDArray<T, MT> src = a;
+  NDArray<T> src = a;
   if (!a.isContiguous) {
-    src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+    src = NDArray<T>.fromList(a.toList(), a.shape, a.dtype);
   }
 
-  final result = NDArray.create(src.shape, src.dtype);
+  final result = NDArray<T>.create(src.shape, src.dtype);
   if (src.dtype == DType.float64) {
     (result.data as Float64List).setRange(
       0,
@@ -187,7 +187,7 @@ NDArray<T, MT> sort<T extends Object, MT extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<int, Int32Marker> argsort(
+NDArray<int> argsort(
   NDArray a, {
   int axis = -1,
   SortKind kind = SortKind.quicksort,
@@ -196,7 +196,7 @@ NDArray<int, Int32Marker> argsort(
     throw StateError('Cannot execute argsort() on a disposed array.');
   }
   if (a.size == 0) {
-    return NDArray.create(a.shape, DType.int32);
+    return NDArray<int>.create(a.shape, DType.int32);
   }
   final rank = a.shape.length;
   if (rank == 0) {
@@ -227,7 +227,7 @@ NDArray<int, Int32Marker> argsort(
     final totalSize = src.shape.isEmpty ? 1 : src.shape.reduce((x, y) => x * y);
     final numRows = totalSize ~/ n;
 
-    final result = NDArray.create(src.shape, DType.int32);
+    final result = NDArray<int>.create(src.shape, DType.int32);
     final nativeKind = mapSortKind(kind);
 
     if (src.dtype == DType.float64) {
@@ -313,8 +313,8 @@ NDArray<int, Int32Marker> argsort(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<T, MT> partition<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a,
+NDArray<T> partition<T extends Object>(
+  NDArray<T> a,
   dynamic kth, {
   int axis = -1,
 }) {
@@ -323,7 +323,7 @@ NDArray<T, MT> partition<T extends Object, MT extends Marker>(
   }
   final rank = a.shape.length;
   if (rank == 0) {
-    return NDArray.fromList(List<T>.from(a.data), [], a.dtype);
+    return NDArray<T>.fromList(List<T>.from(a.data), [], a.dtype);
   }
 
   final targetAxis = axis < 0 ? rank + axis : axis;
@@ -361,12 +361,12 @@ NDArray<T, MT> partition<T extends Object, MT extends Marker>(
     return partitionedView.swapaxes(targetAxis, rank - 1);
   }
 
-  NDArray<T, MT> src = a;
+  NDArray<T> src = a;
   if (!a.isContiguous) {
-    src = NDArray.fromList(a.toList(), a.shape, a.dtype);
+    src = NDArray<T>.fromList(a.toList(), a.shape, a.dtype);
   }
 
-  final result = NDArray.create(src.shape, src.dtype);
+  final result = NDArray<T>.create(src.shape, src.dtype);
 
   // Copy data to result
   if (src.dtype == DType.float64) {
@@ -515,11 +515,7 @@ NDArray<T, MT> partition<T extends Object, MT extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<int, Int32Marker> argpartition(
-  NDArray a,
-  dynamic kth, {
-  int axis = -1,
-}) {
+NDArray<int> argpartition(NDArray a, dynamic kth, {int axis = -1}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute argpartition() on a disposed array.');
   }
@@ -579,7 +575,7 @@ NDArray<int, Int32Marker> argpartition(
     final totalSize = src.shape.isEmpty ? 1 : src.shape.reduce((x, y) => x * y);
     final numRows = totalSize ~/ n;
 
-    final result = NDArray.create(src.shape, DType.int32);
+    final result = NDArray<int>.create(src.shape, DType.int32);
 
     if (uniqueK.isEmpty) {
       for (var i = 0; i < result.data.length; i++) {
@@ -744,11 +740,11 @@ NDArray<int, Int32Marker> argpartition(
 ///   print(indices.toList()); // [[1, 2], [0, 3]]
 /// }
 /// ```
-NDArray<int, Int32Marker> searchsorted(
+NDArray<int> searchsorted(
   NDArray a,
   NDArray v, {
   SearchSide side = SearchSide.left,
-  NDArray<int, Int32Marker>? sorter,
+  NDArray<int>? sorter,
 }) {
   if (a.isDisposed || v.isDisposed) {
     throw StateError('Cannot execute searchsorted() on a disposed array.');
@@ -765,7 +761,7 @@ NDArray<int, Int32Marker> searchsorted(
     throw ArgumentError('sorter must be a 1-D array of the same size as a.');
   }
 
-  final result = NDArray.create(v.shape, DType.int32);
+  final result = NDArray<int>.create(v.shape, DType.int32);
 
   if (v.size == 0) {
     return result;
@@ -781,9 +777,13 @@ NDArray<int, Int32Marker> searchsorted(
     srcV = NDArray.fromList(v.toList(), v.shape, v.dtype);
   }
 
-  NDArray<int, Int32Marker>? srcSorter = sorter;
+  NDArray<int>? srcSorter = sorter;
   if (sorter != null && !sorter.isContiguous) {
-    srcSorter = NDArray.fromList(sorter.toList(), sorter.shape, DType.int32);
+    srcSorter = NDArray<int>.fromList(
+      sorter.toList(),
+      sorter.shape,
+      DType.int32,
+    );
   }
 
   final size = srcA.shape[0];
@@ -992,19 +992,19 @@ NDArray<int, Int32Marker> searchsorted(
 /// final cond = NDArray.fromList([true, false, true], [3], DType.boolean);
 /// final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
 /// final y = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float64);
-/// final result = where(cond, x, y) as NDArray<double, Float64Marker>;
+/// final result = where(cond, x, y) as NDArray<double>;
 /// print(result.toList()); // [1.0, 20.0, 3.0]
 /// result.dispose();
 /// ```
 ///
 /// **Return Value Type Behavior:**
-/// - If [x] and [y] are provided, returns a single `NDArray<T, MT>` of the resolved common type.
-/// - If [x] and [y] are omitted, returns a `List<NDArray<int, Int32Marker>>` containing coordinates where the condition is true.
-dynamic where<T extends Object, MT extends Marker>(
-  NDArray<bool, BooleanMarker> condition, [
-  NDArray<T, MT>? x,
-  NDArray<T, MT>? y,
-  NDArray<T, MT>? out,
+/// - If [x] and [y] are provided, returns a single `NDArray<T>` of the resolved common type.
+/// - If [x] and [y] are omitted, returns a `List<NDArray<int>>` containing coordinates where the condition is true.
+dynamic where<T extends Object>(
+  NDArray<bool> condition, [
+  NDArray<T>? x,
+  NDArray<T>? y,
+  NDArray<T>? out,
 ]) {
   if (condition.isDisposed) {
     throw StateError('Cannot execute where() on a disposed condition array.');
@@ -1034,7 +1034,7 @@ dynamic where<T extends Object, MT extends Marker>(
   // Calculate target common shape via high-speed 3-way broadcast matching
   final commonShape = broadcast3Shapes(condition.shape, x!.shape, y!.shape);
 
-  final DType<dynamic, Marker> targetDType = resolveDType(x.dtype, y.dtype);
+  final DType<dynamic> targetDType = resolveDType(x.dtype, y.dtype);
 
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
@@ -1049,8 +1049,7 @@ dynamic where<T extends Object, MT extends Marker>(
   final stridesX = broadcastStrides(x, commonShape);
   final stridesY = broadcastStrides(y, commonShape);
 
-  final result =
-      out ?? NDArray.create(commonShape, targetDType as DType<T, MT>);
+  final result = out ?? NDArray.create(commonShape, targetDType as DType<T>);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   // 0. Advanced ND Odometer Ternary Broadcasting Engine in C (Rank <= 8)
@@ -1136,20 +1135,20 @@ dynamic where<T extends Object, MT extends Marker>(
 
 /// Returns the indices of the elements that are non-zero.
 ///
-/// Returns a `List<NDArray<int, Int32Marker>>` containing 1D integer arrays, one for each dimension
+/// Returns a `List<NDArray<int>>` containing 1D integer arrays, one for each dimension
 /// of [a], which give the coordinates of the non-zero elements along that dimension.
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-List<NDArray<int, Int32Marker>> nonzero(NDArray a) {
+List<NDArray<int>> nonzero(NDArray a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute nonzero() on a disposed array.');
   }
   final rank = a.shape.length;
-  final count = count_nonzero(a as NDArray<Object, Marker>).scalar;
+  final count = count_nonzero<Object>(a as NDArray<Object>).scalar;
   final results = List.generate(
     rank,
-    (_) => NDArray.create([count], DType.int32, zeroInit: true),
+    (_) => NDArray<int>.create([count], DType.int32, zeroInit: true),
   );
 
   if (count == 0 || rank == 0) {
@@ -1158,7 +1157,7 @@ List<NDArray<int, Int32Marker>> nonzero(NDArray a) {
 
   // Convert input to a contiguous boolean mask using type-specialized native C intrinsics!
   final cond = NDArray.scope(() {
-    final res = NDArray.create(a.shape, DType.boolean);
+    final res = NDArray<bool>.create(a.shape, DType.boolean);
     final marker = ScratchArena.marker;
     try {
       final cShape = ScratchArena.allocate<ffi.Int>(
@@ -1389,11 +1388,7 @@ void _dispatchCountNonzeroFFI(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<int, Int32Marker> count_nonzero<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  int? axis,
-  NDArray<int, Int32Marker>? out,
-}) {
+NDArray<int> count_nonzero<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot count non-zero elements on a disposed array.');
   }
@@ -1418,14 +1413,14 @@ NDArray<int, Int32Marker> count_nonzero<T, MT extends Marker>(
   if (axis == null) {
     // Global flat reduction
     final isContig = a.isContiguous;
-    final NDArray<T, MT> src;
+    final NDArray<T> src;
     if (!isContig) {
       src = a.copy();
     } else {
       src = a;
     }
 
-    final result = out ?? NDArray.create([], DType.int32);
+    final result = out ?? NDArray<int>.create([], DType.int32);
     final marker = ScratchArena.marker;
     try {
       final cShape = ScratchArena.allocate<ffi.Int>(ffi.sizeOf<ffi.Int>());
@@ -1458,7 +1453,7 @@ NDArray<int, Int32Marker> count_nonzero<T, MT extends Marker>(
     throw RangeError.range(targetAxis, 0, rank - 1, 'axis');
   }
 
-  final result = out ?? NDArray.create(targetShape, DType.int32);
+  final result = out ?? NDArray<int>.create(targetShape, DType.int32);
 
   final marker = ScratchArena.marker;
   try {
@@ -1591,11 +1586,11 @@ void _dispatchArgMinMaxFFI(
   }
 }
 
-NDArray<int, Int32Marker> _argminmaxFFI<T, MT extends Marker>(
-  NDArray<T, MT> a,
+NDArray<int> _argminmaxFFI<T>(
+  NDArray<T> a,
   int? axis,
   bool isMax, {
-  NDArray<int, Int32Marker>? out,
+  NDArray<int>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot calculate reduction on a disposed array.');
@@ -1628,14 +1623,14 @@ NDArray<int, Int32Marker> _argminmaxFFI<T, MT extends Marker>(
   if (axis == null) {
     // Global flat reduction
     final isContig = a.isContiguous;
-    final NDArray<T, MT> src;
+    final NDArray<T> src;
     if (!isContig) {
       src = a.copy();
     } else {
       src = a;
     }
 
-    final result = out ?? NDArray.create([], DType.int32);
+    final result = out ?? NDArray<int>.create([], DType.int32);
     final marker = ScratchArena.marker;
     try {
       final cShape = ScratchArena.allocate<ffi.Int>(ffi.sizeOf<ffi.Int>());
@@ -1669,7 +1664,7 @@ NDArray<int, Int32Marker> _argminmaxFFI<T, MT extends Marker>(
     throw RangeError.range(targetAxis, 0, rank - 1, 'axis');
   }
 
-  final result = out ?? NDArray.create(targetShape, DType.int32);
+  final result = out ?? NDArray<int>.create(targetShape, DType.int32);
 
   final marker = ScratchArena.marker;
   try {
@@ -1719,12 +1714,8 @@ NDArray<int, Int32Marker> _argminmaxFFI<T, MT extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<int, Int32Marker> argmax<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  int? axis,
-  NDArray<int, Int32Marker>? out,
-}) {
-  return _argminmaxFFI(a, axis, true, out: out);
+NDArray<int> argmax<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
+  return _argminmaxFFI<T>(a, axis, true, out: out);
 }
 
 /// Returns the indices of the minimum values along an [axis].
@@ -1734,10 +1725,6 @@ NDArray<int, Int32Marker> argmax<T, MT extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<int, Int32Marker> argmin<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  int? axis,
-  NDArray<int, Int32Marker>? out,
-}) {
-  return _argminmaxFFI(a, axis, false, out: out);
+NDArray<int> argmin<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
+  return _argminmaxFFI<T>(a, axis, false, out: out);
 }

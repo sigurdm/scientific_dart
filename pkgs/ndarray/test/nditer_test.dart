@@ -186,7 +186,7 @@ void main() {
       'NDEnumerate coordinates and value enumeration',
       () => NDArray.scope(() {
         final a = NDArray.fromList([10, 20, 30, 40], [2, 2], DType.int32);
-        final en = NDEnumerate(a);
+        final en = NDEnumerate<int>(a);
 
         final coordsList = <List<int>>[];
         final valuesList = <int>[];

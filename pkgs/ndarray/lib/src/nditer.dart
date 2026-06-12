@@ -228,20 +228,20 @@ final class NDIter {
 /// **Example:**
 /// ```dart
 /// final arr = NDArray.fromList([10, 20, 30, 40], [2, 2], DType.int32);
-/// final en = NDEnumerate(arr);
+/// final en = NDEnumerate<int>(arr);
 /// while (en.moveNext()) {
 ///   print('coords: ${en.coords}, value: ${en.value}');
 /// }
 /// ```
-final class NDEnumerate<T, MT extends Marker> {
-  final NDArray<T, MT> _array;
+final class NDEnumerate<T> {
+  final NDArray<T> _array;
   final NDIter _iter;
 
   /// Creates an enumeration over the specified [array].
   ///
   /// **Throws:**
   /// - [StateError] if the array is disposed.
-  NDEnumerate(NDArray<T, MT> array) : _array = array, _iter = NDIter(array);
+  NDEnumerate(NDArray<T> array) : _array = array, _iter = NDIter(array);
 
   /// Advances to the next element.
   ///

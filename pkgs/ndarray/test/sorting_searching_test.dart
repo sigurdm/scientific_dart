@@ -49,7 +49,7 @@ void main() {
       test(
         'Sort Complex128 array lexicographically',
         () => NDArray.scope(() {
-          final a = NDArray.create([4], DType.complex128);
+          final a = NDArray<Complex>.create([4], DType.complex128);
           // Real part compared first, then Imaginary part if reals are equal!
           a.data[0] = Complex(2.0, 5.0);
           a.data[1] = Complex(1.0, 10.0);
@@ -160,7 +160,7 @@ void main() {
       test(
         'Argsort complex array indirect ranking',
         () => NDArray.scope(() {
-          final a = NDArray.create([3], DType.complex128);
+          final a = NDArray<Complex>.create([3], DType.complex128);
           a.data[0] = Complex(5.0, 0.0);
           a.data[1] = Complex(2.0, 3.0);
           a.data[2] = Complex(2.0, 1.0);
@@ -292,7 +292,7 @@ void main() {
             [4],
             DType.boolean,
           );
-          final res = where(cond) as List<NDArray<int, Int32Marker>>;
+          final res = where(cond) as List<NDArray<int>>;
           expect(res.length, 1);
           expect(res[0].data, [1, 3]);
         }),
@@ -315,11 +315,11 @@ void main() {
         'where with Complex inputs',
         () => NDArray.scope(() {
           final cond = NDArray.fromList([true, false], [2], DType.boolean);
-          final x = NDArray.create([2], DType.complex128);
+          final x = NDArray<Complex>.create([2], DType.complex128);
           x.data[0] = Complex(1.0, 1.0);
           x.data[1] = Complex(2.0, 2.0);
 
-          final y = NDArray.create([2], DType.complex128);
+          final y = NDArray<Complex>.create([2], DType.complex128);
           y.data[0] = Complex(10.0, 10.0);
           y.data[1] = Complex(20.0, 20.0);
 
@@ -568,12 +568,12 @@ void main() {
       test(
         'searchsorted complex and boolean support',
         () => NDArray.scope(() {
-          final aComp = NDArray.create([3], DType.complex128);
+          final aComp = NDArray<Complex>.create([3], DType.complex128);
           aComp.data[0] = Complex(1.0, 1.0);
           aComp.data[1] = Complex(2.0, 2.0);
           aComp.data[2] = Complex(3.0, 3.0);
 
-          final vComp = NDArray.create([2], DType.complex128);
+          final vComp = NDArray<Complex>.create([2], DType.complex128);
           vComp.data[0] = Complex(1.5, 1.5);
           vComp.data[1] = Complex(2.0, 2.0);
 

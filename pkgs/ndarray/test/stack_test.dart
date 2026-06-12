@@ -68,7 +68,7 @@ void main() {
       'stack() validation errors throws exceptions',
       () => NDArray.scope(() {
         // Empty list throws ArgumentError
-        expect(() => stack(<NDArray<Object, Marker>>[]), throwsArgumentError);
+        expect(() => stack(<NDArray<Object>>[]), throwsArgumentError);
 
         final a = NDArray.fromList([1, 2], [2], DType.int32);
         final wrongShape = NDArray.fromList([1, 2, 3], [3], DType.int32);

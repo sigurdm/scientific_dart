@@ -62,7 +62,7 @@ void main() {
     test(
       'Complex arrays throw UnsupportedError',
       () => NDArray.scope(() {
-        final a = NDArray.create([2], DType.complex128);
+        final a = NDArray<Complex>.create([2], DType.complex128);
         expect(() => deg2rad(a), throwsUnsupportedError);
         expect(() => rad2deg(a), throwsUnsupportedError);
       }),

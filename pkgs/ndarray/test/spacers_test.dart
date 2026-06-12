@@ -21,7 +21,7 @@ void main() {
     });
 
     test('integer linspace', () {
-      final a = linspace(0, 10, 5, dtype: DType.int64);
+      final a = linspace<int>(0, 10, 5, dtype: DType.int64);
       expect(a.dtype, DType.int64);
       expect(a.data, [
         0,
@@ -88,7 +88,7 @@ void main() {
 
   group('Complex spacers', () {
     test('linspace complex', () {
-      final a = linspace(Complex(0, 0), Complex(1, 1), 3);
+      final a = linspace<Complex>(Complex(0, 0), Complex(1, 1), 3);
       expect(a.dtype, DType.complex128);
       expect(a.data[0], Complex(0, 0));
       expect(a.data[1], Complex(0.5, 0.5));
@@ -96,7 +96,7 @@ void main() {
     });
 
     test('logspace complex', () {
-      final a = logspace(Complex(0, 0), Complex(0, 2), 3, base: 10.0);
+      final a = logspace<Complex>(Complex(0, 0), Complex(0, 2), 3, base: 10.0);
       expect(a.data[0], Complex(1, 0));
       final expected1 = Complex(math.cos(math.log(10)), math.sin(math.log(10)));
       final val1 = a.data[1];
@@ -105,7 +105,7 @@ void main() {
     });
 
     test('geomspace complex', () {
-      final a = geomspace(Complex(1, 0), Complex(-1, 0), 3);
+      final a = geomspace<Complex>(Complex(1, 0), Complex(-1, 0), 3);
       expect(a.data[0], Complex(1, 0));
       final val1 = a.data[1];
       expect(val1.real, closeTo(0, 1e-10));

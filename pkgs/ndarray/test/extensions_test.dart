@@ -38,14 +38,18 @@ void main() {
           expect(resAddView.toList(), [11.0, 33.0, 22.0, 44.0]);
 
           // out Recycler parameter
-          final intoBuf = NDArray.create([2, 2], DType.float64);
-          final resInto = add(a, b, out: intoBuf);
+          final intoBuf = NDArray<Float64>.create([2, 2], DType.float64);
+          final resInto = add<double, double, double>(a, b, out: intoBuf);
           expect(resInto, intoBuf);
           expect(resInto.toList(), [11.0, 22.0, 33.0, 44.0]);
 
           // out incompatible shape/dtype throws ArgumentError
           expect(
-            () => add(a, b, out: NDArray.create([3], DType.float64)),
+            () => add<double, double, double>(
+              a,
+              b,
+              out: NDArray<Float64>.create([3], DType.float64),
+            ),
             throwsArgumentError,
           );
 
@@ -125,12 +129,16 @@ void main() {
           expect(add(aView, bView).toList(), [11.0, 33.0, 22.0, 44.0]);
 
           // Recycler
-          final intoBuf = NDArray.create([2, 2], DType.float32);
-          expect(add(a, b, out: intoBuf), intoBuf);
+          final intoBuf = NDArray<Float32>.create([2, 2], DType.float32);
+          expect(add<double, double, double>(a, b, out: intoBuf), intoBuf);
 
           // Incompatible recycler
           expect(
-            () => add(a, b, out: NDArray.create([3], DType.float32)),
+            () => add<double, double, double>(
+              a,
+              b,
+              out: NDArray<Float32>.create([3], DType.float32),
+            ),
             throwsArgumentError,
           );
 
@@ -191,19 +199,30 @@ void main() {
           expect(add(aView, bView).toList(), [11, 33, 22, 44]);
 
           // Recycler
-          final intoBuf = NDArray.create([2, 2], DType.int64);
-          expect(add(a, b, out: intoBuf), intoBuf);
+          final intoBuf = NDArray<Int64>.create([2, 2], DType.int64);
+          expect(add<int, int, int>(a, b, out: intoBuf), intoBuf);
 
-          final intoDoubleBuf = NDArray.create([2, 2], DType.float64);
-          expect(divide(b, a, out: intoDoubleBuf), intoDoubleBuf);
+          final intoDoubleBuf = NDArray<Float64>.create([2, 2], DType.float64);
+          expect(
+            divide<int, int, double>(b, a, out: intoDoubleBuf),
+            intoDoubleBuf,
+          );
 
           // Incompatible recycler
           expect(
-            () => add(a, b, out: NDArray.create([3], DType.int64)),
+            () => add<int, int, int>(
+              a,
+              b,
+              out: NDArray<Int64>.create([3], DType.int64),
+            ),
             throwsArgumentError,
           );
           expect(
-            () => divide(b, a, out: NDArray.create([3], DType.float64)),
+            () => divide<int, int, double>(
+              b,
+              a,
+              out: NDArray<Float64>.create([3], DType.float64),
+            ),
             throwsArgumentError,
           );
 
@@ -261,19 +280,30 @@ void main() {
           expect(add(aView, bView).toList(), [11, 33, 22, 44]);
 
           // Recycler
-          final intoBuf = NDArray.create([2, 2], DType.int32);
-          expect(add(a, b, out: intoBuf), intoBuf);
+          final intoBuf = NDArray<Int32>.create([2, 2], DType.int32);
+          expect(add<int, int, int>(a, b, out: intoBuf), intoBuf);
 
-          final intoDoubleBuf = NDArray.create([2, 2], DType.float64);
-          expect(divide(b, a, out: intoDoubleBuf), intoDoubleBuf);
+          final intoDoubleBuf = NDArray<Float64>.create([2, 2], DType.float64);
+          expect(
+            divide<int, int, double>(b, a, out: intoDoubleBuf),
+            intoDoubleBuf,
+          );
 
           // Incompatible recycler
           expect(
-            () => add(a, b, out: NDArray.create([3], DType.int32)),
+            () => add<int, int, int>(
+              a,
+              b,
+              out: NDArray<Int32>.create([3], DType.int32),
+            ),
             throwsArgumentError,
           );
           expect(
-            () => divide(b, a, out: NDArray.create([3], DType.float64)),
+            () => divide<int, int, double>(
+              b,
+              a,
+              out: NDArray<Float64>.create([3], DType.float64),
+            ),
             throwsArgumentError,
           );
 
@@ -340,12 +370,19 @@ void main() {
           // Strided view and recycler
           final aView = a.slice([const Slice(start: 0, stop: 2, step: 1)]);
           final bView = b.slice([const Slice(start: 0, stop: 2, step: 1)]);
-          final intoBuf = NDArray.create([2], DType.complex128);
-          expect(add(aView, bView, out: intoBuf), intoBuf);
+          final intoBuf = NDArray<Complex>.create([2], DType.complex128);
+          expect(
+            add<Complex, Complex, Complex>(aView, bView, out: intoBuf),
+            intoBuf,
+          );
 
           // Incompatible recycler
           expect(
-            () => add(a, b, out: NDArray.create([3], DType.complex128)),
+            () => add<Complex, Complex, Complex>(
+              a,
+              b,
+              out: NDArray<Complex>.create([3], DType.complex128),
+            ),
             throwsArgumentError,
           );
 

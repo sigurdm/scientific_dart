@@ -11,7 +11,10 @@ void main() {
         pointer[i] = (i + 1) * 10.0;
       }
 
-      final arr = NDArray.fromPointer(pointer.cast(), [2, 2], DType.float64);
+      final arr = NDArray<double>.fromPointer(pointer.cast(), [
+        2,
+        2,
+      ], DType.float64);
 
       expect(arr.shape, [2, 2]);
       expect(arr.data, [10.0, 20.0, 30.0, 40.0]);
@@ -42,7 +45,7 @@ void main() {
         pointer[i] = (i + 1) * 2.0;
       }
 
-      final arr = NDArray.fromPointer(
+      final arr = NDArray<double>.fromPointer(
         pointer.cast(),
         [4],
         DType.float64,
@@ -64,10 +67,12 @@ void main() {
       pointer[0] = 1.0;
       pointer[1] = 2.0;
 
-      NDArray<double, Float64Marker>? arrRef;
+      NDArray<double>? arrRef;
 
       NDArray.scope(() {
-        final arr = NDArray.fromPointer(pointer.cast(), [2], DType.float64);
+        final arr = NDArray<double>.fromPointer(pointer.cast(), [
+          2,
+        ], DType.float64);
         arrRef = arr;
         expect(arr.isDisposed, false);
       });

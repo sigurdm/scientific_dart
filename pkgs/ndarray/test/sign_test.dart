@@ -28,7 +28,7 @@ void main() {
     });
 
     test('complex128 sign', () {
-      final a = NDArray.create([2], DType.complex128);
+      final a = NDArray<Complex>.create([2], DType.complex128);
       a.data[0] = Complex(3.0, 4.0); // mag = 5.0
       a.data[1] = Complex(0.0, 0.0);
 

@@ -11,7 +11,7 @@ import '../ndarray.dart';
 ///
 /// **Preconditions:**
 /// - If [axis] is specified, it must be within the range `[-rank, rank - 1]`.
-/// - [repeats] must be an `NDArray<int, Int64Marker>`.
+/// - [repeats] must be an `NDArray<int>`.
 /// - Its length must match the size of the
 ///   dimension along [axis].
 /// - All values in [repeats] must be non-negative ($\ge 0$).
@@ -35,17 +35,17 @@ import '../ndarray.dart';
 /// final r = repeat(a, [3]);
 /// print(r.toList()); // [1, 1, 1, 2, 2, 2]
 /// ```
-NDArray<T, MT> repeat<T, MT extends Marker>(
-  NDArray<T, MT> a,
+NDArray<T> repeat<T>(
+  NDArray<T> a,
   List<int> repeats, {
   int? axis,
-  NDArray<T, MT>? out,
+  NDArray<T>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
 
-  NDArray<T, MT> src = a;
+  NDArray<T> src = a;
   int normAxis;
   bool ownsSrc;
 
@@ -88,7 +88,7 @@ NDArray<T, MT> repeat<T, MT extends Marker>(
     final newDimSize = repsList.isEmpty ? 0 : repsList.reduce((x, y) => x + y);
     outputShape[normAxis] = newDimSize;
 
-    final NDArray<T, MT> result;
+    final NDArray<T> result;
     if (out != null) {
       if (out.isDisposed) {
         throw StateError('Cannot access a disposed out NDArray.');
@@ -106,7 +106,7 @@ NDArray<T, MT> repeat<T, MT extends Marker>(
       }
       result = out;
     } else {
-      result = NDArray.create(outputShape, src.dtype);
+      result = NDArray<T>.create(outputShape, src.dtype);
     }
 
     if (result.size == 0) {
@@ -128,14 +128,14 @@ NDArray<T, MT> repeat<T, MT extends Marker>(
         final srcStart = (o * dim + i) * inner;
         final destStart = (o * destDim + destOffset) * inner;
 
-        final srcView = NDArray.view(
+        final srcView = NDArray<T>.view(
           src,
           shape: [rep, inner],
           strides: [0, 1],
           offsetElements: srcStart,
         );
 
-        final destView = NDArray.view(
+        final destView = NDArray<T>.view(
           result,
           shape: [rep, inner],
           strides: [inner, 1],
@@ -162,7 +162,7 @@ NDArray<T, MT> repeat<T, MT extends Marker>(
 /// If `a.ndim > d`, [reps] is promoted to `a.ndim` by pre-pending 1's to it.
 ///
 /// **Preconditions:**
-/// - [reps] must be an `NDArray<int, Int64Marker>`.
+/// - [reps] must be an `NDArray<int>`.
 /// - All values in [reps] must be non-negative ($\ge 0$).
 /// - If [out] is provided, it must have the correct shape and [DType] to store
 ///   the result.
@@ -182,11 +182,7 @@ NDArray<T, MT> repeat<T, MT extends Marker>(
 /// final t = tile(a, [2]);
 /// print(t.toList()); // [1, 2, 1, 2]
 /// ```
-NDArray<T, MT> tile<T, MT extends Marker>(
-  NDArray<T, MT> a,
-  List<int> reps, {
-  NDArray<T, MT>? out,
-}) {
+NDArray<T> tile<T>(NDArray<T> a, List<int> reps, {NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -196,7 +192,7 @@ NDArray<T, MT> tile<T, MT extends Marker>(
     throw ArgumentError('reps values must be non-negative');
   }
 
-  NDArray<T, MT> src = a;
+  NDArray<T> src = a;
   bool ownsSrc = false;
   List<int> tileReps = List<int>.from(reps);
 
@@ -221,7 +217,7 @@ NDArray<T, MT> tile<T, MT extends Marker>(
       outputShape[i] = src.shape[i] * tileReps[i];
     }
 
-    final NDArray<T, MT> result;
+    final NDArray<T> result;
     if (out != null) {
       if (out.isDisposed) {
         throw StateError('Cannot access a disposed out NDArray.');
@@ -239,7 +235,7 @@ NDArray<T, MT> tile<T, MT extends Marker>(
       }
       result = out;
     } else {
-      result = NDArray.create(outputShape, src.dtype);
+      result = NDArray<T>.create(outputShape, src.dtype);
     }
 
     if (result.size == 0) {
@@ -257,14 +253,14 @@ NDArray<T, MT> tile<T, MT extends Marker>(
       srcStrides.add(src.strides[i]);
     }
 
-    final srcView = NDArray.view(
+    final srcView = NDArray<T>.view(
       src,
       shape: viewShape,
       strides: srcStrides,
       offsetElements: 0,
     );
 
-    final destView = NDArray.view(
+    final destView = NDArray<T>.view(
       result,
       shape: viewShape,
       strides: NDArray.computeCStrides(viewShape),

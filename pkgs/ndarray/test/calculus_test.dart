@@ -6,7 +6,7 @@ void main() {
     test(
       '1D Contiguous array constant spacing dx=1.0',
       () => NDArray.scope(() {
-        final y = NDArray.fromList([1.0, 2.0, 4.0], [3], DType.float64);
+        final y = NDArray<double>.fromList([1.0, 2.0, 4.0], [3], DType.float64);
         final res = trapz(y); // Default step(1.0)
         expect(res.shape, []);
         expect(
@@ -19,7 +19,7 @@ void main() {
     test(
       '1D Contiguous array custom constant spacing dx=2.0',
       () => NDArray.scope(() {
-        final y = NDArray.fromList([1.0, 2.0, 4.0], [3], DType.float64);
+        final y = NDArray<double>.fromList([1.0, 2.0, 4.0], [3], DType.float64);
         final res = trapz(y, spacing: Spacing.step(2.0));
         expect(res.shape, []);
         expect(res.data[0], closeTo(9.0, 1e-9));
@@ -29,7 +29,7 @@ void main() {
     test(
       '1D Contiguous array non-uniform (variable) spacing using coordinates array',
       () => NDArray.scope(() {
-        final y = NDArray.fromList([1.0, 2.0, 4.0], [3], DType.float64);
+        final y = NDArray<double>.fromList([1.0, 2.0, 4.0], [3], DType.float64);
         final x = [0.0, 2.0, 3.0];
         final res = trapz(y, spacing: Spacing.coordinates(x));
         expect(res.shape, []);
@@ -43,7 +43,11 @@ void main() {
     test(
       'Float32 precision consistency',
       () => NDArray.scope(() {
-        final yFloat = NDArray.fromList([1.0, 2.0, 4.0], [3], DType.float32);
+        final yFloat = NDArray<double>.fromList(
+          [1.0, 2.0, 4.0],
+          [3],
+          DType.float32,
+        );
         final resFloat = trapz(yFloat);
         expect(resFloat.dtype, DType.float32);
         expect(resFloat.data[0], closeTo(4.5, 1e-7));
@@ -53,7 +57,7 @@ void main() {
     test(
       'Complex numbers composite integrations',
       () => NDArray.scope(() {
-        final y = NDArray.fromList(
+        final y = NDArray<Complex>.fromList(
           [Complex(1.0, 2.0), Complex(2.0, 3.0), Complex(4.0, 5.0)],
           [3],
           DType.complex128,
@@ -72,7 +76,7 @@ void main() {
       '2D multi-dimensional integrations along specified axes',
       () => NDArray.scope(() {
         // 2 rows, 3 columns
-        final y = NDArray.fromList(
+        final y = NDArray<double>.fromList(
           [1.0, 2.0, 4.0, 2.0, 4.0, 8.0],
           [2, 3],
           DType.float64,
@@ -96,7 +100,7 @@ void main() {
     test(
       'Preconditions & resource cleanup checking',
       () => NDArray.scope(() {
-        final y = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final y = NDArray<double>.fromList([1.0, 2.0], [2], DType.float64);
         final xBad = [0.0, 1.0, 2.0];
 
         expect(
@@ -105,7 +109,7 @@ void main() {
         );
 
         // Fail on integers
-        final yInt = NDArray.fromList([1, 2], [2], DType.int64);
+        final yInt = NDArray<int>.fromList([1, 2], [2], DType.int64);
         expect(() => trapz(yInt), throwsArgumentError);
 
         y.dispose();
@@ -118,7 +122,11 @@ void main() {
     test(
       '1D Constant spacing edgeOrder=1',
       () => NDArray.scope(() {
-        final f = NDArray.fromList([1.0, 2.0, 4.0, 7.0], [4], DType.float64);
+        final f = NDArray<double>.fromList(
+          [1.0, 2.0, 4.0, 7.0],
+          [4],
+          DType.float64,
+        );
         final res = gradient(f, spacing: Spacing.step(1.0), edgeOrder: 1);
         expect(res.shape, [4]);
         expect(
@@ -137,7 +145,11 @@ void main() {
     test(
       '1D Constant spacing edgeOrder=2 parabolic boundaries',
       () => NDArray.scope(() {
-        final f = NDArray.fromList([1.0, 2.0, 4.0, 7.0], [4], DType.float64);
+        final f = NDArray<double>.fromList(
+          [1.0, 2.0, 4.0, 7.0],
+          [4],
+          DType.float64,
+        );
         final res = gradient(f, spacing: Spacing.step(1.0), edgeOrder: 2);
         expect(res.shape, [4]);
         expect(
@@ -156,7 +168,11 @@ void main() {
     test(
       '1D Variable (non-uniform) spacing edgeOrder=1',
       () => NDArray.scope(() {
-        final f = NDArray.fromList([1.0, 2.0, 4.0, 7.0], [4], DType.float64);
+        final f = NDArray<double>.fromList(
+          [1.0, 2.0, 4.0, 7.0],
+          [4],
+          DType.float64,
+        );
         final res = gradient(
           f,
           spacing: Spacing.coordinates([0.0, 1.0, 3.0, 4.0]),
@@ -176,7 +192,7 @@ void main() {
     test(
       'Complex numbers gradient component walks',
       () => NDArray.scope(() {
-        final f = NDArray.fromList(
+        final f = NDArray<Complex>.fromList(
           [Complex(1.0, 2.0), Complex(2.0, 3.0), Complex(4.0, 5.0)],
           [3],
           DType.complex128,
@@ -193,7 +209,7 @@ void main() {
     test(
       '2D Multi-Dimensional arrays single-axis gradients',
       () => NDArray.scope(() {
-        final f = NDArray.fromList(
+        final f = NDArray<double>.fromList(
           [1.0, 2.0, 4.0, 2.0, 4.0, 8.0],
           [2, 3],
           DType.float64,
@@ -217,7 +233,7 @@ void main() {
     test(
       'gradientArray() multiple axes calculations',
       () => NDArray.scope(() {
-        final f = NDArray.fromList(
+        final f = NDArray<double>.fromList(
           [1.0, 2.0, 4.0, 2.0, 4.0, 8.0],
           [2, 3],
           DType.float64,
@@ -242,7 +258,7 @@ void main() {
     test(
       'gradientArray() default spacing',
       () => NDArray.scope(() {
-        final f = NDArray.fromList(
+        final f = NDArray<double>.fromList(
           [1.0, 2.0, 4.0, 2.0, 4.0, 8.0],
           [2, 3],
           DType.float64,
@@ -260,7 +276,7 @@ void main() {
     test(
       'Invalid/out-of-bounds errors',
       () => NDArray.scope(() {
-        final f = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final f = NDArray<double>.fromList([1.0, 2.0], [2], DType.float64);
         expect(
           () => gradient(f, spacing: Spacing.coordinates([1.0, 2.0, 3.0])),
           throwsArgumentError,
@@ -279,7 +295,7 @@ void main() {
       () => NDArray.scope(() {
         // Integrate f(z) = z from 0 to i
         // Points: 0, 0.5i, i
-        final y = NDArray.fromList(
+        final y = NDArray<Complex>.fromList(
           [Complex(0, 0), Complex(0, 0.5), Complex(0, 1.0)],
           [3],
           DType.complex128,
@@ -298,7 +314,7 @@ void main() {
         // f(z) = z^2. f'(z) = 2z.
         // Points z: 0, i, 2i
         // f(z): 0, -1, -4
-        final f = NDArray.fromList(
+        final f = NDArray<Complex>.fromList(
           [Complex(0, 0), Complex(-1, 0), Complex(-4, 0)],
           [3],
           DType.complex128,
@@ -317,7 +333,7 @@ void main() {
     test(
       'gradientArray() with complexSpacing',
       () => NDArray.scope(() {
-        final f = NDArray.fromList(
+        final f = NDArray<Complex>.fromList(
           [Complex(0, 0), Complex(-1, 0), Complex(-4, 0)],
           [3],
           DType.complex128,

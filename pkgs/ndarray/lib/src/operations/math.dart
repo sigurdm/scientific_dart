@@ -47,16 +47,13 @@ void setNumThreads(int numThreads) {
 ///
 /// **Gotchas:**
 /// - Negative values will result in [double.nan].
-NDArray<R, MR> sqrt<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> sqrt<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute sqrt() on a disposed array.');
   }
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -65,7 +62,7 @@ NDArray<R, MR> sqrt<T, MT extends Marker, R, MR extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType as DType<R, MR>);
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.isContiguous) {
@@ -82,7 +79,7 @@ NDArray<R, MR> sqrt<T, MT extends Marker, R, MR extends Marker>(
   }
 
   final temp = a.isContiguous ? a : a.copy();
-  final tempNum = temp as NDArray<num, Marker>;
+  final tempNum = temp as NDArray<num>;
   final rData = result.data as List<double>;
   final offset = temp.offsetElements;
   final resOffset = result.offsetElements;
@@ -106,14 +103,11 @@ NDArray<R, MR> sqrt<T, MT extends Marker, R, MR extends Marker>(
 /// final a = NDArray.fromList([2.0, 3.0], [2], DType.float64);
 /// final b = square(a); // [4.0, 9.0]
 /// ```
-NDArray<T, MT> square<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<T, MT>? out,
-}) {
+NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute square() on a disposed array.');
   }
-  final result = out ?? NDArray.create(a.shape, a.dtype);
+  final result = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -151,16 +145,16 @@ NDArray<T, MT> square<T, MT extends Marker>(
         );
         return result;
       case DType.boolean:
-        final aBool = a as NDArray<bool, BooleanMarker>;
-        final rBool = result as NDArray<bool, BooleanMarker>;
+        final aBool = a as NDArray<bool>;
+        final rBool = result as NDArray<bool>;
         for (var i = 0; i < a.data.length; i++) {
           rBool.data[i] = aBool.data[i];
         }
         return result;
       case DType.uint8:
       case DType.int16:
-        final aNum = a as NDArray<num, Marker>;
-        final rNum = result as NDArray<num, Marker>;
+        final aNum = a as NDArray<num>;
+        final rNum = result as NDArray<num>;
         for (var i = 0; i < a.data.length; i++) {
           final val = aNum.data[i];
           rNum.data[i] = val * val;
@@ -240,7 +234,7 @@ NDArray<T, MT> square<T, MT extends Marker>(
         );
         return result;
       case DType.boolean:
-        unaryOp(
+        unaryOp<bool, bool>(
           result.data as List<bool>,
           a.data as List<bool>,
           a.shape,
@@ -254,7 +248,7 @@ NDArray<T, MT> square<T, MT extends Marker>(
         return result;
       case DType.uint8:
       case DType.int16:
-        unaryOp(
+        unaryOp<num, num>(
           result.data as List<num>,
           a.data as List<num>,
           a.shape,
@@ -288,21 +282,18 @@ NDArray<T, MT> square<T, MT extends Marker>(
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Trigonometric Sine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
-NDArray<R, MR> sin<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute sin() on a disposed array.');
   }
-  final DType<dynamic, Marker> targetDType;
+  final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     targetDType = a.dtype;
   } else {
     targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   }
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -311,7 +302,7 @@ NDArray<R, MR> sin<T, MT extends Marker, R, MR extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType as DType<R, MR>);
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.isContiguous) {
@@ -393,7 +384,7 @@ NDArray<R, MR> sin<T, MT extends Marker, R, MR extends Marker>(
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype.isInteger) {
-    unaryOp(
+    unaryOp<num, double>(
       result.data as List<double>,
       a.data as List<num>,
       a.shape,
@@ -405,7 +396,7 @@ NDArray<R, MR> sin<T, MT extends Marker, R, MR extends Marker>(
       (x) => math.sin(x),
     );
   } else {
-    unaryOp(
+    unaryOp<double, double>(
       result.data as List<double>,
       a.data as List<double>,
       a.shape,
@@ -438,21 +429,18 @@ NDArray<R, MR> sin<T, MT extends Marker, R, MR extends Marker>(
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Trigonometric Cosine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
-NDArray<R, MR> cos<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute cos() on a disposed array.');
   }
-  final DType<dynamic, Marker> targetDType;
+  final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     targetDType = a.dtype;
   } else {
     targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   }
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -461,7 +449,7 @@ NDArray<R, MR> cos<T, MT extends Marker, R, MR extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType as DType<R, MR>);
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.isContiguous) {
@@ -546,7 +534,7 @@ NDArray<R, MR> cos<T, MT extends Marker, R, MR extends Marker>(
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    unaryOp(
+    unaryOp<int, double>(
       result.data as List<double>,
       a.data as List<int>,
       a.shape,
@@ -558,7 +546,7 @@ NDArray<R, MR> cos<T, MT extends Marker, R, MR extends Marker>(
       (x) => math.cos(x.toDouble()),
     );
   } else {
-    unaryOp(
+    unaryOp<double, double>(
       result.data as List<double>,
       a.data as List<double>,
       a.shape,
@@ -591,16 +579,13 @@ NDArray<R, MR> cos<T, MT extends Marker, R, MR extends Marker>(
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Exponential Function](https://en.wikipedia.org/wiki/Exponential_function)
-NDArray<R, MR> exp<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute exp() on a disposed array.');
   }
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -609,7 +594,7 @@ NDArray<R, MR> exp<T, MT extends Marker, R, MR extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType as DType<R, MR>);
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.isContiguous) {
@@ -661,7 +646,7 @@ NDArray<R, MR> exp<T, MT extends Marker, R, MR extends Marker>(
     }
   }
 
-  unaryOp(
+  unaryOp<T, R>(
     result.data,
     a.data,
     a.shape,
@@ -693,16 +678,13 @@ NDArray<R, MR> exp<T, MT extends Marker, R, MR extends Marker>(
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Natural Logarithm](https://en.wikipedia.org/wiki/Natural_logarithm)
-NDArray<R, MR> log<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute log() on a disposed array.');
   }
   final targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -711,7 +693,7 @@ NDArray<R, MR> log<T, MT extends Marker, R, MR extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType as DType<R, MR>);
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.isContiguous) {
@@ -762,7 +744,7 @@ NDArray<R, MR> log<T, MT extends Marker, R, MR extends Marker>(
     }
   }
 
-  unaryOp(
+  unaryOp<T, R>(
     result.data,
     a.data,
     a.shape,
@@ -789,13 +771,13 @@ NDArray<R, MR> log<T, MT extends Marker, R, MR extends Marker>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double, Float64Marker>`.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], DType.float64);
+/// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], DType.float64);
 /// final s = nansum(a); // returns 4.0
 /// ```
-NDArray<T, MT> nansum<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a, {
+NDArray<T> nansum<T extends Object>(
+  NDArray<T> a, {
   int? axis,
-  NDArray<T, MT>? out,
+  NDArray<T>? out,
 }) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute nansum() on a disposed array.');
@@ -836,7 +818,7 @@ NDArray<T, MT> nansum<T extends Object, MT extends Marker>(
       }
       acc = sumVal as T;
     }
-    final result = out ?? NDArray.create([], a.dtype);
+    final result = out ?? NDArray<T>.create([], a.dtype);
     result.data[0] = acc;
     return result;
   }
@@ -846,12 +828,12 @@ NDArray<T, MT> nansum<T extends Object, MT extends Marker>(
   }
 
   final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = out ?? NDArray.zeros(newShape, a.dtype);
+  final result = out ?? NDArray<T>.zeros(newShape, a.dtype);
   if (out != null) {
     result.fill(normalizeScalar(0, a.dtype) as T);
   }
 
-  reduceRecursive(
+  reduceRecursive<T, T>(
     a,
     result,
     List<int>.filled(a.shape.length, 0),
@@ -868,16 +850,12 @@ NDArray<T, MT> nansum<T extends Object, MT extends Marker>(
 }
 
 /// Stacks arrays in sequence vertically (row wise).
-NDArray<T, MT> vstack<T extends Object, MT extends Marker>(
-  List<NDArray<T, MT>> arrays,
-) {
+NDArray<T> vstack<T extends Object>(List<NDArray<T>> arrays) {
   return concatenate(arrays, axis: 0);
 }
 
 /// Stacks arrays in sequence horizontally (column wise).
-NDArray<T, MT> hstack<T extends Object, MT extends Marker>(
-  List<NDArray<T, MT>> arrays,
-) {
+NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
   return concatenate(arrays, axis: 1);
 }
 
@@ -900,7 +878,7 @@ NDArray<T, MT> hstack<T extends Object, MT extends Marker>(
 /// b.data[0] = 99;
 /// print(a.data[0]); // 1 (decoupled memory!)
 /// ```
-NDArray<T, MT> copy<T extends Object, MT extends Marker>(NDArray<T, MT> a) {
+NDArray<T> copy<T extends Object>(NDArray<T> a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute copy() on a disposed array.');
   }
@@ -911,21 +889,18 @@ NDArray<T, MT> copy<T extends Object, MT extends Marker>(NDArray<T, MT> a) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray<R, MR> tan<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute tan() on a disposed array.');
   }
-  final DType<dynamic, Marker> targetDType;
+  final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     targetDType = a.dtype;
   } else {
     targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   }
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -934,7 +909,7 @@ NDArray<R, MR> tan<T, MT extends Marker, R, MR extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType as DType<R, MR>);
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.isContiguous) {
@@ -1016,7 +991,7 @@ NDArray<R, MR> tan<T, MT extends Marker, R, MR extends Marker>(
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    unaryOp(
+    unaryOp<int, double>(
       result.data as List<double>,
       a.data as List<int>,
       a.shape,
@@ -1028,7 +1003,7 @@ NDArray<R, MR> tan<T, MT extends Marker, R, MR extends Marker>(
       (x) => math.tan(x.toDouble()),
     );
   } else {
-    unaryOp(
+    unaryOp<double, double>(
       result.data as List<double>,
       a.data as List<double>,
       a.shape,
@@ -1056,21 +1031,18 @@ NDArray<R, MR> tan<T, MT extends Marker, R, MR extends Marker>(
 /// final a = NDArray.fromList([0.0, 1.0], [2], DType.float64);
 /// final b = asin(a); // [0.0, 1.570796...]
 /// ```
-NDArray<R, MR> asin<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute asin() on a disposed array.');
   }
-  final DType<dynamic, Marker> targetDType;
+  final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     targetDType = a.dtype;
   } else {
     targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   }
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -1079,7 +1051,7 @@ NDArray<R, MR> asin<T, MT extends Marker, R, MR extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType as DType<R, MR>);
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.isContiguous) {
@@ -1164,7 +1136,7 @@ NDArray<R, MR> asin<T, MT extends Marker, R, MR extends Marker>(
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    unaryOp(
+    unaryOp<int, double>(
       result.data as List<double>,
       a.data as List<int>,
       a.shape,
@@ -1176,7 +1148,7 @@ NDArray<R, MR> asin<T, MT extends Marker, R, MR extends Marker>(
       (x) => math.asin(x.toDouble()),
     );
   } else {
-    unaryOp(
+    unaryOp<double, double>(
       result.data as List<double>,
       a.data as List<double>,
       a.shape,
@@ -1204,21 +1176,18 @@ NDArray<R, MR> asin<T, MT extends Marker, R, MR extends Marker>(
 /// final a = NDArray.fromList([1.0, 0.0], [2], DType.float64);
 /// final b = acos(a); // [0.0, 1.570796...]
 /// ```
-NDArray<R, MR> acos<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute acos() on a disposed array.');
   }
-  final DType<dynamic, Marker> targetDType;
+  final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     targetDType = a.dtype;
   } else {
     targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   }
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -1227,7 +1196,7 @@ NDArray<R, MR> acos<T, MT extends Marker, R, MR extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType as DType<R, MR>);
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.isContiguous) {
@@ -1312,7 +1281,7 @@ NDArray<R, MR> acos<T, MT extends Marker, R, MR extends Marker>(
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    unaryOp(
+    unaryOp<int, double>(
       result.data as List<double>,
       a.data as List<int>,
       a.shape,
@@ -1324,7 +1293,7 @@ NDArray<R, MR> acos<T, MT extends Marker, R, MR extends Marker>(
       (x) => math.acos(x.toDouble()),
     );
   } else {
-    unaryOp(
+    unaryOp<double, double>(
       result.data as List<double>,
       a.data as List<double>,
       a.shape,
@@ -1352,21 +1321,18 @@ NDArray<R, MR> acos<T, MT extends Marker, R, MR extends Marker>(
 /// final a = NDArray.fromList([0.0, 1.0], [2], DType.float64);
 /// final b = atan(a); // [0.0, 0.785398...]
 /// ```
-NDArray<R, MR> atan<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute atan() on a disposed array.');
   }
-  final DType<dynamic, Marker> targetDType;
+  final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     targetDType = a.dtype;
   } else {
     targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   }
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -1375,7 +1341,7 @@ NDArray<R, MR> atan<T, MT extends Marker, R, MR extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType as DType<R, MR>);
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.isContiguous) {
@@ -1460,7 +1426,7 @@ NDArray<R, MR> atan<T, MT extends Marker, R, MR extends Marker>(
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    unaryOp(
+    unaryOp<int, double>(
       result.data as List<double>,
       a.data as List<int>,
       a.shape,
@@ -1472,7 +1438,7 @@ NDArray<R, MR> atan<T, MT extends Marker, R, MR extends Marker>(
       (x) => math.atan(x.toDouble()),
     );
   } else {
-    unaryOp(
+    unaryOp<double, double>(
       result.data as List<double>,
       a.data as List<double>,
       a.shape,
@@ -1498,17 +1464,14 @@ NDArray<R, MR> atan<T, MT extends Marker, R, MR extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<double, Float64Marker> sinh<T extends num, MT extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<double, Float64Marker>? out,
-}) {
+NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute sinh() on a disposed array.');
   }
-  final DType<double, Float64Marker> targetDType = a.dtype == DType.float32
-      ? DType.float32 as DType<double, Float64Marker>
-      : DType.float64 as DType<double, Float64Marker>;
-  final result = out ?? NDArray.create(a.shape, targetDType);
+  final DType<double> targetDType = a.dtype == DType.float32
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
+  final result = out ?? NDArray<double>.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
       throw ArgumentError(
@@ -1564,7 +1527,7 @@ NDArray<double, Float64Marker> sinh<T extends num, MT extends Marker>(
     }
   }
 
-  unaryOp(
+  unaryOp<T, double>(
     result.data,
     a.data,
     a.shape,
@@ -1592,17 +1555,14 @@ NDArray<double, Float64Marker> sinh<T extends num, MT extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<double, Float64Marker> cosh<T extends num, MT extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<double, Float64Marker>? out,
-}) {
+NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute cosh() on a disposed array.');
   }
-  final DType<double, Float64Marker> targetDType = a.dtype == DType.float32
-      ? DType.float32 as DType<double, Float64Marker>
-      : DType.float64 as DType<double, Float64Marker>;
-  final result = out ?? NDArray.create(a.shape, targetDType);
+  final DType<double> targetDType = a.dtype == DType.float32
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
+  final result = out ?? NDArray<double>.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
       throw ArgumentError(
@@ -1658,7 +1618,7 @@ NDArray<double, Float64Marker> cosh<T extends num, MT extends Marker>(
     }
   }
 
-  unaryOp(
+  unaryOp<T, double>(
     result.data,
     a.data,
     a.shape,
@@ -1686,17 +1646,14 @@ NDArray<double, Float64Marker> cosh<T extends num, MT extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<double, Float64Marker> tanh<T extends num, MT extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<double, Float64Marker>? out,
-}) {
+NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute tanh() on a disposed array.');
   }
-  final DType<double, Float64Marker> targetDType = a.dtype == DType.float32
-      ? DType.float32 as DType<double, Float64Marker>
-      : DType.float64 as DType<double, Float64Marker>;
-  final result = out ?? NDArray.create(a.shape, targetDType);
+  final DType<double> targetDType = a.dtype == DType.float32
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
+  final result = out ?? NDArray<double>.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
       throw ArgumentError(
@@ -1752,7 +1709,7 @@ NDArray<double, Float64Marker> tanh<T extends num, MT extends Marker>(
     }
   }
 
-  unaryOp(
+  unaryOp<T, double>(
     result.data,
     a.data,
     a.shape,
@@ -1781,17 +1738,14 @@ NDArray<double, Float64Marker> tanh<T extends num, MT extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<double, Float64Marker> asinh<T extends num, MT extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<double, Float64Marker>? out,
-}) {
+NDArray<double> asinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute asinh() on a disposed array.');
   }
-  final DType<double, Float64Marker> targetDType = a.dtype == DType.float32
-      ? DType.float32 as DType<double, Float64Marker>
-      : DType.float64 as DType<double, Float64Marker>;
-  final result = out ?? NDArray.create(a.shape, targetDType);
+  final DType<double> targetDType = a.dtype == DType.float32
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
+  final result = out ?? NDArray<double>.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
       throw ArgumentError(
@@ -1847,7 +1801,7 @@ NDArray<double, Float64Marker> asinh<T extends num, MT extends Marker>(
     }
   }
 
-  unaryOp(
+  unaryOp<T, double>(
     result.data,
     a.data,
     a.shape,
@@ -1875,17 +1829,14 @@ NDArray<double, Float64Marker> asinh<T extends num, MT extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<double, Float64Marker> acosh<T extends num, MT extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<double, Float64Marker>? out,
-}) {
+NDArray<double> acosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute acosh() on a disposed array.');
   }
-  final DType<double, Float64Marker> targetDType = a.dtype == DType.float32
-      ? DType.float32 as DType<double, Float64Marker>
-      : DType.float64 as DType<double, Float64Marker>;
-  final result = out ?? NDArray.create(a.shape, targetDType);
+  final DType<double> targetDType = a.dtype == DType.float32
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
+  final result = out ?? NDArray<double>.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
       throw ArgumentError(
@@ -1941,7 +1892,7 @@ NDArray<double, Float64Marker> acosh<T extends num, MT extends Marker>(
     }
   }
 
-  unaryOp(
+  unaryOp<T, double>(
     result.data,
     a.data,
     a.shape,
@@ -1969,21 +1920,18 @@ NDArray<double, Float64Marker> acosh<T extends num, MT extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R, MR> atanh<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute atanh() on a disposed array.');
   }
-  final DType<dynamic, Marker> targetDType;
+  final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     targetDType = a.dtype;
   } else {
     targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   }
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -1992,7 +1940,7 @@ NDArray<R, MR> atanh<T, MT extends Marker, R, MR extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType as DType<R, MR>);
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.isContiguous) {
@@ -2074,7 +2022,7 @@ NDArray<R, MR> atanh<T, MT extends Marker, R, MR extends Marker>(
     }
   }
 
-  unaryOp(
+  unaryOp<T, R>(
     result.data,
     a.data,
     a.shape,
@@ -2095,13 +2043,11 @@ NDArray<R, MR> atanh<T, MT extends Marker, R, MR extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray<double, MR> atan2<
-  Ty,
-  MTy extends Marker,
-  Tx,
-  MTx extends Marker,
-  MR extends FloatingMarker
->(NDArray<Ty, MTy> y, NDArray<Tx, MTx> x, {NDArray<double, MR>? out}) {
+NDArray<double> atan2<Ty, Tx>(
+  NDArray<Ty> y,
+  NDArray<Tx> x, {
+  NDArray<double>? out,
+}) {
   if (y.isDisposed || x.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute atan2() on a disposed array.');
   }
@@ -2113,13 +2059,12 @@ NDArray<double, MR> atan2<
   }
   final broadcastResult = broadcast(y, x);
   final shape = broadcastResult.shape;
-  final targetDType =
-      ((y.dtype == DType.float32 && x.dtype == DType.float32)
-              ? DType.float32
-              : DType.float64)
-          as DType<double, MR>;
+  final DType<double> targetDType =
+      (y.dtype == DType.float32 && x.dtype == DType.float32)
+      ? DType.float32
+      : DType.float64;
 
-  final NDArray<double, MR> result;
+  final NDArray<double> result;
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -2128,7 +2073,7 @@ NDArray<double, MR> atan2<
     }
     result = out;
   } else {
-    result = NDArray.create(shape, targetDType);
+    result = NDArray<double>.create(shape, targetDType);
   }
 
   // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
@@ -2205,7 +2150,7 @@ NDArray<double, MR> atan2<
   if (y.dtype == DType.float64 || y.dtype == DType.float32) {
     final yData = y.data as List<double>;
     if (x.dtype == DType.float64 || x.dtype == DType.float32) {
-      elementWiseOp(
+      elementWiseOp<double, double, double>(
         rData,
         yData,
         x.data as List<double>,
@@ -2220,7 +2165,7 @@ NDArray<double, MR> atan2<
         (a, b) => math.atan2(a, b),
       );
     } else {
-      elementWiseOp(
+      elementWiseOp<double, int, double>(
         rData,
         yData,
         x.data as List<int>,
@@ -2238,7 +2183,7 @@ NDArray<double, MR> atan2<
   } else {
     final yData = y.data as List<int>;
     if (x.dtype == DType.float64 || x.dtype == DType.float32) {
-      elementWiseOp(
+      elementWiseOp<int, double, double>(
         rData,
         yData,
         x.data as List<double>,
@@ -2253,7 +2198,7 @@ NDArray<double, MR> atan2<
         (a, b) => math.atan2(a.toDouble(), b),
       );
     } else {
-      elementWiseOp(
+      elementWiseOp<int, int, double>(
         rData,
         yData,
         x.data as List<int>,
@@ -2278,23 +2223,18 @@ NDArray<double, MR> atan2<
 /// ```dart
 /// final h = hypot(a, b);
 /// ```
-NDArray<double, MR> hypot<MR extends FloatingMarker>(
-  NDArray x1,
-  NDArray x2, {
-  NDArray<double, MR>? out,
-}) {
+NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
   if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute hypot() on a disposed array.');
   }
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
-  final targetDType =
-      ((x1.dtype == DType.complex64 || x2.dtype == DType.complex64)
-              ? DType.float32
-              : DType.float64)
-          as DType<double, MR>;
+  final DType<double> targetDType =
+      (x1.dtype == DType.complex64 || x2.dtype == DType.complex64)
+      ? DType.float32 as DType<double>
+      : DType.float64 as DType<double>;
 
-  final NDArray<double, MR> result;
+  final NDArray<double> result;
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -2303,7 +2243,7 @@ NDArray<double, MR> hypot<MR extends FloatingMarker>(
     }
     result = out;
   } else {
-    result = NDArray.create(shape, targetDType);
+    result = NDArray<double>.create(shape, targetDType);
   }
   final resultStrides = NDArray.computeCStrides(shape);
 
@@ -2313,14 +2253,14 @@ NDArray<double, MR> hypot<MR extends FloatingMarker>(
       x2.dtype == DType.complex64) {
     final aCpx = (x1.dtype == DType.complex128 || x1.dtype == DType.complex64)
         ? x1
-        : NDArray.fromList(
+        : NDArray<Complex>.fromList(
             x1.data.map((e) => Complex((e as num).toDouble(), 0.0)).toList(),
             x1.shape,
             DType.complex128,
           );
     final bCpx = (x2.dtype == DType.complex128 || x2.dtype == DType.complex64)
         ? x2
-        : NDArray.fromList(
+        : NDArray<Complex>.fromList(
             x2.data.map((e) => Complex((e as num).toDouble(), 0.0)).toList(),
             x2.shape,
             DType.complex128,
@@ -2400,7 +2340,7 @@ NDArray<double, MR> hypot<MR extends FloatingMarker>(
     return x * math.sqrt(1.0 + t * t);
   }
 
-  elementWiseOp(
+  elementWiseOp<num, num, double>(
     rData,
     x1.data as List<num>,
     x2.data as List<num>,
@@ -2430,7 +2370,7 @@ NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
   }
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
-  final DType<dynamic, Marker> targetDType;
+  final DType<dynamic> targetDType;
   if (x1.dtype == DType.complex128 ||
       x2.dtype == DType.complex128 ||
       x1.dtype == DType.complex64 ||
@@ -2460,14 +2400,14 @@ NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
   if (targetDType == DType.complex128 || targetDType == DType.complex64) {
     final aCpx = (x1.dtype == DType.complex128 || x1.dtype == DType.complex64)
         ? x1
-        : NDArray.fromList(
+        : NDArray<Complex>.fromList(
             x1.data.map((e) => Complex((e as num).toDouble(), 0.0)).toList(),
             x1.shape,
             DType.complex128,
           );
     final bCpx = (x2.dtype == DType.complex128 || x2.dtype == DType.complex64)
         ? x2
-        : NDArray.fromList(
+        : NDArray<Complex>.fromList(
             x2.data.map((e) => Complex((e as num).toDouble(), 0.0)).toList(),
             x2.shape,
             DType.complex128,
@@ -2601,7 +2541,7 @@ NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
     }
   }
 
-  elementWiseOp(
+  elementWiseOp<num, num, double>(
     result.data as List<double>,
     x1.data as List<num>,
     x2.data as List<num>,
@@ -2625,14 +2565,11 @@ NDArray power(NDArray x1, NDArray x2, {NDArray? out}) {
 /// ```dart
 /// final b = negative(a);
 /// ```
-NDArray<T, MT> negative<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<T, MT>? out,
-}) {
+NDArray<T> negative<T>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute negative() on a disposed array.');
   }
-  final NDArray<T, MT> result;
+  final NDArray<T> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -2641,14 +2578,14 @@ NDArray<T, MT> negative<T, MT extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, a.dtype);
+    result = NDArray<T>.create(a.shape, a.dtype);
   }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   switch (a.dtype) {
     case DType.complex128:
     case DType.complex64:
-      unaryOp(
+      unaryOp<Complex, Complex>(
         result.data as List<Complex>,
         a.data as List<Complex>,
         a.shape,
@@ -2661,7 +2598,7 @@ NDArray<T, MT> negative<T, MT extends Marker>(
       );
     case DType.float64:
     case DType.float32:
-      unaryOp(
+      unaryOp<double, double>(
         result.data as List<double>,
         a.data as List<double>,
         a.shape,
@@ -2676,7 +2613,7 @@ NDArray<T, MT> negative<T, MT extends Marker>(
     case DType.int32:
     case DType.int16:
     case DType.uint8:
-      unaryOp(
+      unaryOp<num, int>(
         result.data as List<int>,
         a.data as List<num>,
         a.shape,
@@ -2715,7 +2652,7 @@ NDArray floor_divide(NDArray a, NDArray b, {NDArray? out}) {
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final DType<dynamic, Marker> targetDType = resolveDType(a.dtype, b.dtype);
+  final DType<dynamic> targetDType = resolveDType(a.dtype, b.dtype);
   if (targetDType.isComplex) {
     throw UnsupportedError('Complex numbers do not support floor division');
   }
@@ -2890,7 +2827,7 @@ NDArray floor_divide(NDArray a, NDArray b, {NDArray? out}) {
   }
 
   if (targetDType == DType.float64 || targetDType == DType.float32) {
-    elementWiseOp(
+    elementWiseOp<num, num, double>(
       result.data as List<double>,
       a.data as List<num>,
       b.data as List<num>,
@@ -2905,7 +2842,7 @@ NDArray floor_divide(NDArray a, NDArray b, {NDArray? out}) {
       (x, y) => doubleFloorDiv(x.toDouble(), y.toDouble()),
     );
   } else {
-    elementWiseOp(
+    elementWiseOp<int, int, int>(
       result.data as List<int>,
       a.data as List<int>,
       b.data as List<int>,
@@ -2945,7 +2882,7 @@ NDArray remainder(NDArray a, NDArray b, {NDArray? out}) {
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final DType<dynamic, Marker> targetDType = resolveDType(a.dtype, b.dtype);
+  final DType<dynamic> targetDType = resolveDType(a.dtype, b.dtype);
   if (targetDType.isComplex) {
     throw UnsupportedError('Complex numbers do not support remainder');
   }
@@ -3123,7 +3060,7 @@ NDArray remainder(NDArray a, NDArray b, {NDArray? out}) {
   }
 
   if (targetDType == DType.float64 || targetDType == DType.float32) {
-    elementWiseOp(
+    elementWiseOp<num, num, double>(
       result.data as List<double>,
       a.data as List<num>,
       b.data as List<num>,
@@ -3138,7 +3075,7 @@ NDArray remainder(NDArray a, NDArray b, {NDArray? out}) {
       (x, y) => doubleMod(x.toDouble(), y.toDouble()),
     );
   } else {
-    elementWiseOp(
+    elementWiseOp<int, int, int>(
       result.data as List<int>,
       a.data as List<int>,
       b.data as List<int>,
@@ -3179,20 +3116,17 @@ NDArray mod(NDArray a, NDArray b, {NDArray? out}) => remainder(a, b, out: out);
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray<R, MR> abs<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute abs() on a disposed array.');
   }
-  final DType<dynamic, Marker> targetDType = switch (a.dtype) {
+  final DType<dynamic> targetDType = switch (a.dtype) {
     DType.complex64 => DType.float32,
     DType.complex128 => DType.float64,
     _ => a.dtype,
   };
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -3201,14 +3135,14 @@ NDArray<R, MR> abs<T, MT extends Marker, R, MR extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType as DType<R, MR>);
+    result = NDArray<R>.create(a.shape, targetDType as DType<R>);
   }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   switch (a.dtype) {
     case DType.complex128:
     case DType.complex64:
-      unaryOp(
+      unaryOp<Complex, double>(
         result.data as List<double>,
         a.data as List<Complex>,
         a.shape,
@@ -3223,7 +3157,7 @@ NDArray<R, MR> abs<T, MT extends Marker, R, MR extends Marker>(
     case DType.int32:
     case DType.int16:
     case DType.uint8:
-      unaryOp(
+      unaryOp<num, int>(
         result.data as List<int>,
         a.data as List<num>,
         a.shape,
@@ -3236,7 +3170,7 @@ NDArray<R, MR> abs<T, MT extends Marker, R, MR extends Marker>(
       );
     case DType.float64:
     case DType.float32:
-      unaryOp(
+      unaryOp<double, double>(
         result.data as List<double>,
         a.data as List<double>,
         a.shape,
@@ -3285,7 +3219,7 @@ NDArray sign(NDArray a, {NDArray? out}) {
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    unaryOp(
+    unaryOp<Complex, Complex>(
       result.data as List<Complex>,
       a.data as List<Complex>,
       a.shape,
@@ -3304,7 +3238,7 @@ NDArray sign(NDArray a, {NDArray? out}) {
   }
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    unaryOp(
+    unaryOp<int, int>(
       result.data as List<int>,
       a.data as List<int>,
       a.shape,
@@ -3316,7 +3250,7 @@ NDArray sign(NDArray a, {NDArray? out}) {
       (x) => x.sign,
     );
   } else {
-    unaryOp(
+    unaryOp<double, double>(
       result.data as List<double>,
       a.data as List<double>,
       a.shape,
@@ -3366,7 +3300,7 @@ NDArray ceil(NDArray a, {NDArray? out}) {
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    unaryOp(
+    unaryOp<int, int>(
       result.data as List<int>,
       a.data as List<int>,
       a.shape,
@@ -3378,7 +3312,7 @@ NDArray ceil(NDArray a, {NDArray? out}) {
       (x) => x,
     );
   } else {
-    unaryOp(
+    unaryOp<double, double>(
       result.data as List<double>,
       a.data as List<double>,
       a.shape,
@@ -3428,7 +3362,7 @@ NDArray floor(NDArray a, {NDArray? out}) {
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    unaryOp(
+    unaryOp<int, int>(
       result.data as List<int>,
       a.data as List<int>,
       a.shape,
@@ -3440,7 +3374,7 @@ NDArray floor(NDArray a, {NDArray? out}) {
       (x) => x,
     );
   } else {
-    unaryOp(
+    unaryOp<double, double>(
       result.data as List<double>,
       a.data as List<double>,
       a.shape,
@@ -3490,7 +3424,7 @@ NDArray round(NDArray a, {NDArray? out}) {
   final resultStrides = NDArray.computeCStrides(a.shape);
 
   if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    unaryOp(
+    unaryOp<int, int>(
       result.data as List<int>,
       a.data as List<int>,
       a.shape,
@@ -3502,7 +3436,7 @@ NDArray round(NDArray a, {NDArray? out}) {
       (x) => x,
     );
   } else {
-    unaryOp(
+    unaryOp<double, double>(
       result.data as List<double>,
       a.data as List<double>,
       a.shape,
@@ -3540,9 +3474,7 @@ NDArray round(NDArray a, {NDArray? out}) {
 /// // ([1, 0], 30)
 /// // ([1, 1], 40)
 /// ```
-Iterable<(List<int> coordinate, T value)> ndenumerate<T, MT extends Marker>(
-  NDArray<T, MT> a,
-) sync* {
+Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
   if (a.isDisposed) {
     throw StateError('Cannot execute ndenumerate() on a disposed array.');
   }
@@ -3591,20 +3523,17 @@ Iterable<(List<int> coordinate, T value)> ndenumerate<T, MT extends Marker>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<Complex, Complex128Marker>`.create([2], `DType.complex128);`
+/// final a = `NDArray<Complex>`.create([2], `DType.complex128);`
 /// a.data[0] = Complex(3.0, 4.0);
 /// a.data[1] = Complex(-1.0, 0.0);
 /// final r = real(a); // [3.0, -1.0] (`DType.float64)`
 /// ```
-NDArray<R, MR> real<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> real<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute real() on a disposed array.');
   }
 
-  final DType<dynamic, Marker> targetDType;
+  final DType<dynamic> targetDType;
   if (a.dtype == DType.complex64) {
     targetDType = DType.float32;
   } else if (a.dtype == DType.complex128) {
@@ -3613,7 +3542,7 @@ NDArray<R, MR> real<T, MT extends Marker, R, MR extends Marker>(
     targetDType = a.dtype;
   }
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -3624,14 +3553,14 @@ NDArray<R, MR> real<T, MT extends Marker, R, MR extends Marker>(
   } else {
     if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
       return NDArray.view(a, shape: a.shape, strides: a.strides)
-          as NDArray<R, MR>; // Zero-copy view for already real arrays!
+          as NDArray<R>; // Zero-copy view for already real arrays!
     }
-    result = NDArray.create(a.shape, targetDType as DType<R, MR>);
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     final resultStrides = NDArray.computeCStrides(a.shape);
-    unaryOp(
+    unaryOp<Complex, R>(
       result.data,
       a.data as List<Complex>,
       a.shape,
@@ -3666,24 +3595,21 @@ NDArray<R, MR> real<T, MT extends Marker, R, MR extends Marker>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<Complex, Complex128Marker>`.create([2], `DType.complex128);`
+/// final a = `NDArray<Complex>`.create([2], `DType.complex128);`
 /// a.data[0] = Complex(3.0, 4.0);
 /// a.data[1] = Complex(-1.0, 0.0);
 /// final im = imag(a); // [4.0, 0.0] (`DType.float64)`
 /// ```
-NDArray<R, MR> imag<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> imag<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute imag() on a disposed array.');
   }
 
-  final DType<dynamic, Marker> targetDType = a.dtype == DType.complex64
+  final DType<dynamic> targetDType = a.dtype == DType.complex64
       ? DType.float32
       : DType.float64;
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -3692,7 +3618,7 @@ NDArray<R, MR> imag<T, MT extends Marker, R, MR extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType as DType<R, MR>);
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
@@ -3700,11 +3626,11 @@ NDArray<R, MR> imag<T, MT extends Marker, R, MR extends Marker>(
       result.data.fillRange(0, result.data.length, 0.0 as R);
       return result;
     }
-    return NDArray.zeros(a.shape, targetDType as DType<R, MR>);
+    return NDArray.zeros(a.shape, targetDType) as NDArray<R>;
   }
 
   final resultStrides = NDArray.computeCStrides(a.shape);
-  unaryOp(
+  unaryOp<Complex, R>(
     result.data,
     a.data as List<Complex>,
     a.shape,
@@ -3734,10 +3660,7 @@ NDArray<R, MR> imag<T, MT extends Marker, R, MR extends Marker>(
 /// final a = NDArray.fromList([180.0, 90.0, 45.0], [3], DType.float64);
 /// final r = deg2rad(a); // [pi, pi / 2.0, pi / 4.0]
 /// ```
-NDArray<R, MR> deg2rad<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> deg2rad<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute deg2rad() on a disposed array.');
   }
@@ -3756,7 +3679,7 @@ NDArray<R, MR> deg2rad<T, MT extends Marker, R, MR extends Marker>(
   }
 
   final factor = NDArray.fromList([0.017453292519943295], [1], targetDType);
-  return multiply(a, factor, out: out);
+  return multiply<T, dynamic, R>(a, factor, out: out);
 }
 
 /// Converts angles from radians to degrees element-wise.
@@ -3774,10 +3697,7 @@ NDArray<R, MR> deg2rad<T, MT extends Marker, R, MR extends Marker>(
 /// final a = NDArray.fromList([math.pi, math.pi / 2.0], [2], DType.float64);
 /// final d = rad2deg(a); // [180.0, 90.0]
 /// ```
-NDArray<R, MR> rad2deg<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<R, MR>? out,
-}) {
+NDArray<R> rad2deg<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute rad2deg() on a disposed array.');
   }
@@ -3796,7 +3716,7 @@ NDArray<R, MR> rad2deg<T, MT extends Marker, R, MR extends Marker>(
   }
 
   final factor = NDArray.fromList([57.29577951308232], [1], targetDType);
-  return multiply(a, factor, out: out);
+  return multiply<T, dynamic, R>(a, factor, out: out);
 }
 
 /// Returns an element-wise boolean mask indicating which elements of the array are NaN (Not-a-Number).
@@ -3812,14 +3732,11 @@ NDArray<R, MR> rad2deg<T, MT extends Marker, R, MR extends Marker>(
 /// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
 /// final mask = isnan(a); // [false, true, false]
 /// ```
-NDArray<bool, BooleanMarker> isnan<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<bool, BooleanMarker>? out,
-}) {
+NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute isnan() on a disposed array.');
   }
-  final NDArray<bool, BooleanMarker> result;
+  final NDArray<bool> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != DType.boolean) {
       throw ArgumentError(
@@ -3828,7 +3745,7 @@ NDArray<bool, BooleanMarker> isnan<T, MT extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, DType.boolean);
+    result = NDArray<bool>.create(a.shape, DType.boolean);
   }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
@@ -3927,7 +3844,7 @@ NDArray<bool, BooleanMarker> isnan<T, MT extends Marker>(
   }
 
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    unaryOp(
+    unaryOp<Complex, bool>(
       result.data,
       a.data as List<Complex>,
       a.shape,
@@ -3941,7 +3858,7 @@ NDArray<bool, BooleanMarker> isnan<T, MT extends Marker>(
   } else if (a.dtype.isInteger) {
     result.fill(false);
   } else {
-    unaryOp(
+    unaryOp<double, bool>(
       result.data,
       a.data as List<double>,
       a.shape,
@@ -3969,14 +3886,11 @@ NDArray<bool, BooleanMarker> isnan<T, MT extends Marker>(
 /// final a = NDArray.fromList([1.0, double.infinity, 3.0], [3], DType.float64);
 /// final mask = isinf(a); // [false, true, false]
 /// ```
-NDArray<bool, BooleanMarker> isinf<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<bool, BooleanMarker>? out,
-}) {
+NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute isinf() on a disposed array.');
   }
-  final NDArray<bool, BooleanMarker> result;
+  final NDArray<bool> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != DType.boolean) {
       throw ArgumentError(
@@ -3985,7 +3899,7 @@ NDArray<bool, BooleanMarker> isinf<T, MT extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, DType.boolean);
+    result = NDArray<bool>.create(a.shape, DType.boolean);
   }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
@@ -4084,7 +3998,7 @@ NDArray<bool, BooleanMarker> isinf<T, MT extends Marker>(
   }
 
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    unaryOp(
+    unaryOp<Complex, bool>(
       result.data,
       a.data as List<Complex>,
       a.shape,
@@ -4098,7 +4012,7 @@ NDArray<bool, BooleanMarker> isinf<T, MT extends Marker>(
   } else if (a.dtype.isInteger) {
     result.fill(false);
   } else {
-    unaryOp(
+    unaryOp<double, bool>(
       result.data,
       a.data as List<double>,
       a.shape,
@@ -4126,14 +4040,11 @@ NDArray<bool, BooleanMarker> isinf<T, MT extends Marker>(
 /// final a = NDArray.fromList([1.0, double.nan, double.infinity], [3], DType.float64);
 /// final mask = isfinite(a); // [true, false, false]
 /// ```
-NDArray<bool, BooleanMarker> isfinite(
-  NDArray a, {
-  NDArray<bool, BooleanMarker>? out,
-}) {
+NDArray<bool> isfinite(NDArray a, {NDArray<bool>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute isfinite() on a disposed array.');
   }
-  final NDArray<bool, BooleanMarker> result;
+  final NDArray<bool> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != DType.boolean) {
       throw ArgumentError(
@@ -4142,7 +4053,7 @@ NDArray<bool, BooleanMarker> isfinite(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, DType.boolean);
+    result = NDArray<bool>.create(a.shape, DType.boolean);
   }
   final resultStrides = NDArray.computeCStrides(a.shape);
 
@@ -4245,7 +4156,7 @@ NDArray<bool, BooleanMarker> isfinite(
   }
 
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    unaryOp(
+    unaryOp<Complex, bool>(
       result.data,
       a.data as List<Complex>,
       a.shape,
@@ -4259,7 +4170,7 @@ NDArray<bool, BooleanMarker> isfinite(
   } else if (a.dtype.isInteger) {
     result.fill(true);
   } else {
-    unaryOp(
+    unaryOp<double, bool>(
       result.data,
       a.data as List<double>,
       a.shape,
@@ -4297,7 +4208,7 @@ NDArray copysign(NDArray x1, NDArray x2, {NDArray? out}) {
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final DType<dynamic, Marker> targetDType =
+  final DType<dynamic> targetDType =
       (x1.dtype == DType.float32 && x2.dtype == DType.float32)
       ? DType.float32
       : DType.float64;
@@ -4391,7 +4302,7 @@ NDArray copysign(NDArray x1, NDArray x2, {NDArray? out}) {
     return b < 0.0 ? -a.abs() : a.abs();
   }
 
-  elementWiseOp(
+  elementWiseOp<num, num, double>(
     result.data as List<double>,
     x1.data as List<num>,
     x2.data as List<num>,
@@ -4433,19 +4344,14 @@ NDArray copysign(NDArray x1, NDArray x2, {NDArray? out}) {
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy clip](https://numpy.org/doc/stable/reference/generated/numpy.clip.html)
-NDArray<T, MT> clip<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  num? min,
-  num? max,
-  NDArray<T, MT>? out,
-}) {
+NDArray<T> clip<T>(NDArray<T> a, {num? min, num? max, NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute clip() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for clip');
   }
-  final result = out ?? NDArray.create(a.shape, a.dtype);
+  final result = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
       throw ArgumentError(
@@ -4491,7 +4397,7 @@ NDArray<T, MT> clip<T, MT extends Marker>(
   if (a.dtype.isInteger) {
     final mn = resolvedMin.toInt();
     final mx = resolvedMax.toInt();
-    unaryOp(
+    unaryOp<int, int>(
       result.data as List<int>,
       a.data as List<int>,
       a.shape,
@@ -4505,7 +4411,7 @@ NDArray<T, MT> clip<T, MT extends Marker>(
   } else {
     final mn = resolvedMin.toDouble();
     final mx = resolvedMax.toDouble();
-    unaryOp(
+    unaryOp<double, double>(
       result.data as List<double>,
       a.data as List<double>,
       a.shape,
@@ -4551,11 +4457,11 @@ NDArray<T, MT> clip<T, MT extends Marker>(
 /// ```
 ///
 /// Reference: [NumPy clip](https://numpy.org/doc/stable/reference/generated/numpy.clip.html)
-NDArray<T, MT> clipArray<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<T, MT>? min,
-  NDArray<T, MT>? max,
-  NDArray<T, MT>? out,
+NDArray<T> clipArray<T>(
+  NDArray<T> a, {
+  NDArray<T>? min,
+  NDArray<T>? max,
+  NDArray<T>? out,
 }) {
   if (a.isDisposed ||
       (min != null && min.isDisposed) ||
@@ -4580,12 +4486,12 @@ NDArray<T, MT> clipArray<T, MT extends Marker>(
   final bool ownsMin = min == null;
   final minArr =
       min ??
-      (NDArray.create([], a.dtype)..data[0] = _getMinLimit(a.dtype) as T);
+      (NDArray<T>.create([], a.dtype)..data[0] = _getMinLimit(a.dtype) as T);
 
   final bool ownsMax = max == null;
   final maxArr =
       max ??
-      (NDArray.create([], a.dtype)..data[0] = _getMaxLimit(a.dtype) as T);
+      (NDArray<T>.create([], a.dtype)..data[0] = _getMaxLimit(a.dtype) as T);
 
   try {
     NDArray? dummy;
@@ -4599,7 +4505,7 @@ NDArray<T, MT> clipArray<T, MT extends Marker>(
       dummy?.dispose();
     }
 
-    final result = out ?? NDArray.create(commonShape, a.dtype);
+    final result = out ?? NDArray<T>.create(commonShape, a.dtype);
     if (out != null) {
       if (!listEquals(out.shape, commonShape)) {
         throw ArgumentError(
@@ -4759,7 +4665,7 @@ NDArray<T, MT> clipArray<T, MT extends Marker>(
     }
 
     if (a.dtype.isInteger) {
-      ternaryOp(
+      ternaryOp<int, int, int, int>(
         result.data as List<int>,
         broadcastA.data as List<int>,
         broadcastMin.data as List<int>,
@@ -4777,7 +4683,7 @@ NDArray<T, MT> clipArray<T, MT extends Marker>(
         (x, mn, mx) => x.clamp(mn, mx),
       );
     } else {
-      ternaryOp(
+      ternaryOp<double, double, double, double>(
         result.data as List<double>,
         broadcastA.data as List<double>,
         broadcastMin.data as List<double>,
@@ -4824,14 +4730,11 @@ NDArray<T, MT> clipArray<T, MT extends Marker>(
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy logical_not](https://numpy.org/doc/stable/reference/generated/numpy.logical_not.html)
-NDArray<bool, BooleanMarker> logical_not<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  NDArray<bool, BooleanMarker>? out,
-}) {
+NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute logical_not() on a disposed array.');
   }
-  final NDArray<bool, BooleanMarker> result;
+  final NDArray<bool> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != DType.boolean) {
       throw ArgumentError(
@@ -4840,7 +4743,7 @@ NDArray<bool, BooleanMarker> logical_not<T, MT extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, DType.boolean);
+    result = NDArray<bool>.create(a.shape, DType.boolean);
   }
 
   final resultStrides = NDArray.computeCStrides(a.shape);
@@ -4995,11 +4898,7 @@ NDArray<bool, BooleanMarker> logical_not<T, MT extends Marker>(
 }
 
 /// Element-wise comparison of [a] == [b] with broadcasting and recycling support.
-NDArray<bool, BooleanMarker> equal(
-  NDArray a,
-  NDArray b, {
-  NDArray<bool, BooleanMarker>? out,
-}) {
+NDArray<bool> equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute equal() on a disposed array.');
   }
@@ -5014,7 +4913,7 @@ NDArray<bool, BooleanMarker> equal(
     }
   }
 
-  final result = out ?? NDArray.create(commonShape, DType.boolean);
+  final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   a.dispatchCompare(
@@ -5031,11 +4930,7 @@ NDArray<bool, BooleanMarker> equal(
 }
 
 /// Element-wise comparison of [a] != [b] with broadcasting and recycling support.
-NDArray<bool, BooleanMarker> not_equal(
-  NDArray a,
-  NDArray b, {
-  NDArray<bool, BooleanMarker>? out,
-}) {
+NDArray<bool> not_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute not_equal() on a disposed array.');
   }
@@ -5050,7 +4945,7 @@ NDArray<bool, BooleanMarker> not_equal(
     }
   }
 
-  final result = out ?? NDArray.create(commonShape, DType.boolean);
+  final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   a.dispatchCompare(
@@ -5067,11 +4962,7 @@ NDArray<bool, BooleanMarker> not_equal(
 }
 
 /// Element-wise comparison of [a] > [b] with broadcasting and recycling support.
-NDArray<bool, BooleanMarker> greater(
-  NDArray a,
-  NDArray b, {
-  NDArray<bool, BooleanMarker>? out,
-}) {
+NDArray<bool> greater(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute greater() on a disposed array.');
   }
@@ -5091,7 +4982,7 @@ NDArray<bool, BooleanMarker> greater(
     }
   }
 
-  final result = out ?? NDArray.create(commonShape, DType.boolean);
+  final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   a.dispatchCompare(
@@ -5108,11 +4999,7 @@ NDArray<bool, BooleanMarker> greater(
 }
 
 /// Element-wise comparison of [a] >= [b] with broadcasting and recycling support.
-NDArray<bool, BooleanMarker> greater_equal(
-  NDArray a,
-  NDArray b, {
-  NDArray<bool, BooleanMarker>? out,
-}) {
+NDArray<bool> greater_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute greater_equal() on a disposed array.');
   }
@@ -5132,7 +5019,7 @@ NDArray<bool, BooleanMarker> greater_equal(
     }
   }
 
-  final result = out ?? NDArray.create(commonShape, DType.boolean);
+  final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   a.dispatchCompare(
@@ -5149,11 +5036,7 @@ NDArray<bool, BooleanMarker> greater_equal(
 }
 
 /// Element-wise comparison of [a] < [b] with broadcasting and recycling support.
-NDArray<bool, BooleanMarker> less(
-  NDArray a,
-  NDArray b, {
-  NDArray<bool, BooleanMarker>? out,
-}) {
+NDArray<bool> less(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute less() on a disposed array.');
   }
@@ -5173,7 +5056,7 @@ NDArray<bool, BooleanMarker> less(
     }
   }
 
-  final result = out ?? NDArray.create(commonShape, DType.boolean);
+  final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   a.dispatchCompare(
@@ -5190,11 +5073,7 @@ NDArray<bool, BooleanMarker> less(
 }
 
 /// Element-wise comparison of [a] <= [b] with broadcasting and recycling support.
-NDArray<bool, BooleanMarker> less_equal(
-  NDArray a,
-  NDArray b, {
-  NDArray<bool, BooleanMarker>? out,
-}) {
+NDArray<bool> less_equal(NDArray a, NDArray b, {NDArray<bool>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute less_equal() on a disposed array.');
   }
@@ -5214,7 +5093,7 @@ NDArray<bool, BooleanMarker> less_equal(
     }
   }
 
-  final result = out ?? NDArray.create(commonShape, DType.boolean);
+  final result = out ?? NDArray<bool>.create(commonShape, DType.boolean);
   final resultStrides = NDArray.computeCStrides(commonShape);
 
   a.dispatchCompare(
@@ -5252,12 +5131,11 @@ NDArray<bool, BooleanMarker> less_equal(
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy logical_and](https://numpy.org/doc/stable/reference/generated/numpy.logical_and.html)
-NDArray<bool, BooleanMarker> logical_and<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker
->(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<bool, BooleanMarker>? out}) {
+NDArray<bool> logical_and<Ta, Tb>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<bool>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute logical_and() on a disposed array.');
   }
@@ -5293,12 +5171,11 @@ NDArray<bool, BooleanMarker> logical_and<
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy logical_or](https://numpy.org/doc/stable/reference/generated/numpy.logical_or.html)
-NDArray<bool, BooleanMarker> logical_or<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker
->(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<bool, BooleanMarker>? out}) {
+NDArray<bool> logical_or<Ta, Tb>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<bool>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute logical_or() on a disposed array.');
   }
@@ -5327,12 +5204,11 @@ NDArray<bool, BooleanMarker> logical_or<
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy logical_xor](https://numpy.org/doc/stable/reference/generated/numpy.logical_xor.html)
-NDArray<bool, BooleanMarker> logical_xor<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker
->(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<bool, BooleanMarker>? out}) {
+NDArray<bool> logical_xor<Ta, Tb>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<bool>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute logical_xor() on a disposed array.');
   }
@@ -5508,11 +5384,10 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
   return destPtr;
 }
 
-NDArray<bool, BooleanMarker>
-_runBinaryLogical<Ta, MTa extends Marker, Tb, MTb extends Marker>(
-  NDArray<Ta, MTa> a,
-  NDArray<Tb, MTb> b,
-  NDArray<bool, BooleanMarker>? out,
+NDArray<bool> _runBinaryLogical<Ta, Tb>(
+  NDArray<Ta> a,
+  NDArray<Tb> b,
+  NDArray<bool>? out,
   void Function(
     ffi.Pointer<ffi.Uint8>,
     ffi.Pointer<ffi.Uint8>,
@@ -5571,7 +5446,7 @@ _runBinaryLogical<Ta, MTa extends Marker, Tb, MTb extends Marker>(
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final NDArray<bool, BooleanMarker> result;
+  final NDArray<bool> result;
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
       throw ArgumentError(
@@ -5580,7 +5455,7 @@ _runBinaryLogical<Ta, MTa extends Marker, Tb, MTb extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(commonShape, DType.boolean);
+    result = NDArray<bool>.create(commonShape, DType.boolean);
   }
 
   final resultStrides = NDArray.computeCStrides(commonShape);
@@ -5643,11 +5518,7 @@ _runBinaryLogical<Ta, MTa extends Marker, Tb, MTb extends Marker>(
 /// {@example /example/diag_example.dart lang=dart}
 ///
 /// Reference: [Diagonal Matrix](https://en.wikipedia.org/wiki/Diagonal_matrix)
-NDArray<T, MT> diag<T, MT extends Marker>(
-  NDArray<T, MT> v, {
-  int k = 0,
-  NDArray<T, MT>? out,
-}) {
+NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
   if (v.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute diag() on a disposed array.');
   }
@@ -5663,26 +5534,26 @@ NDArray<T, MT> diag<T, MT extends Marker>(
       startRow = 0;
       startCol = k;
       if (startCol >= n) {
-        return NDArray.create([0], v.dtype);
+        return NDArray<T>.create([0], v.dtype);
       }
       len = math.min(m, n - k);
     } else {
       startRow = -k;
       startCol = 0;
       if (startRow >= m) {
-        return NDArray.create([0], v.dtype);
+        return NDArray<T>.create([0], v.dtype);
       }
       len = math.min(m + k, n);
     }
 
     if (len <= 0) {
-      return NDArray.create([0], v.dtype);
+      return NDArray<T>.create([0], v.dtype);
     }
 
     final offsetElements = startRow * v.strides[0] + startCol * v.strides[1];
     final diagStride = v.strides[0] + v.strides[1];
 
-    return NDArray.view(
+    return NDArray<T>.view(
       v,
       shape: [len],
       strides: [diagStride],
@@ -5693,7 +5564,7 @@ NDArray<T, MT> diag<T, MT extends Marker>(
     final size = n + k.abs();
     final targetShape = [size, size];
 
-    final result = out ?? NDArray.zeros(targetShape, v.dtype);
+    final result = out ?? NDArray<T>.zeros(targetShape, v.dtype);
     if (out != null) {
       if (!listEquals(out.shape, targetShape) || out.dtype != v.dtype) {
         throw ArgumentError(
@@ -5745,10 +5616,9 @@ NDArray<T, MT> diag<T, MT extends Marker>(
 /// {@example /example/isclose_example.dart lang=dart}
 ///
 /// Reference: [Approximate Equality](https://numpy.org/doc/stable/reference/generated/numpy.isclose.html)
-NDArray<bool, BooleanMarker>
-isclose<Ta, MTa extends Marker, Tb, MTb extends Marker>(
-  NDArray<Ta, MTa> a,
-  NDArray<Tb, MTb> b, {
+NDArray<bool> isclose<Ta, Tb>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
   double rtol = 1e-05,
   double atol = 1e-08,
   bool equalNan = false,
@@ -5760,7 +5630,7 @@ isclose<Ta, MTa extends Marker, Tb, MTb extends Marker>(
   final commonShape = broadcastResult.shape;
 
   final size = commonShape.isEmpty ? 1 : commonShape.reduce((x, y) => x * y);
-  final result = NDArray.zeros(commonShape, DType.boolean);
+  final result = NDArray<bool>.zeros(commonShape, DType.boolean);
 
   final aList = a.toList();
   final bList = b.toList();
@@ -5852,9 +5722,9 @@ isclose<Ta, MTa extends Marker, Tb, MTb extends Marker>(
 /// {@example /example/isclose_example.dart lang=dart}
 ///
 /// Reference: [Approximate Equality](https://numpy.org/doc/stable/reference/generated/numpy.allclose.html)
-bool allclose<Ta, MTa extends Marker, Tb, MTb extends Marker>(
-  NDArray<Ta, MTa> a,
-  NDArray<Tb, MTb> b, {
+bool allclose<Ta, Tb>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
   double rtol = 1e-05,
   double atol = 1e-08,
   bool equalNan = false,
@@ -6020,7 +5890,7 @@ List<int> broadcastShapes(List<int> s1, List<int> s2) {
 /// print(res.toList()); // [10, 200]
 /// ```
 NDArray select(
-  List<NDArray<bool, BooleanMarker>> condlist,
+  List<NDArray<bool>> condlist,
   List<NDArray> choicelist, {
   dynamic defaultValue = 0,
 }) {
@@ -6107,8 +5977,8 @@ NDArray select(
 /// ```dart
 /// final window = hanning(512);
 /// ```
-NDArray<T, MT> hanning<T, MT extends Marker>(int M, {DType<T, MT>? dtype}) {
-  final resolvedDType = dtype ?? (DType.float64 as DType<T, MT>);
+NDArray<T> hanning<T>(int M, {DType<T>? dtype}) {
+  final resolvedDType = dtype ?? (DType.float64 as DType<T>);
   if (M < 1) return NDArray.create([0], resolvedDType);
   if (M == 1) {
     return NDArray.fromList(
@@ -6119,15 +5989,15 @@ NDArray<T, MT> hanning<T, MT extends Marker>(int M, {DType<T, MT>? dtype}) {
   }
 
   if (resolvedDType == DType.float32) {
-    final res = NDArray.create([M], resolvedDType);
+    final res = NDArray<T>.create([M], resolvedDType);
     v_hanning_float(res.pointer.cast(), M);
     return res;
   } else if (resolvedDType == DType.float64) {
-    final res = NDArray.create([M], resolvedDType);
+    final res = NDArray<T>.create([M], resolvedDType);
     v_hanning_double(res.pointer.cast(), M);
     return res;
   } else {
-    final temp = NDArray.create([M], DType.float64);
+    final temp = NDArray<double>.create([M], DType.float64);
     v_hanning_double(temp.pointer.cast(), M);
     final res = castNDArray(temp, resolvedDType);
     temp.dispose();
@@ -6151,8 +6021,8 @@ NDArray<T, MT> hanning<T, MT extends Marker>(int M, {DType<T, MT>? dtype}) {
 /// ```dart
 /// final window = hamming(512);
 /// ```
-NDArray<T, MT> hamming<T, MT extends Marker>(int M, {DType<T, MT>? dtype}) {
-  final resolvedDType = dtype ?? (DType.float64 as DType<T, MT>);
+NDArray<T> hamming<T>(int M, {DType<T>? dtype}) {
+  final resolvedDType = dtype ?? (DType.float64 as DType<T>);
   if (M < 1) return NDArray.create([0], resolvedDType);
   if (M == 1) {
     return NDArray.fromList(
@@ -6163,15 +6033,15 @@ NDArray<T, MT> hamming<T, MT extends Marker>(int M, {DType<T, MT>? dtype}) {
   }
 
   if (resolvedDType == DType.float32) {
-    final res = NDArray.create([M], resolvedDType);
+    final res = NDArray<T>.create([M], resolvedDType);
     v_hamming_float(res.pointer.cast(), M);
     return res;
   } else if (resolvedDType == DType.float64) {
-    final res = NDArray.create([M], resolvedDType);
+    final res = NDArray<T>.create([M], resolvedDType);
     v_hamming_double(res.pointer.cast(), M);
     return res;
   } else {
-    final temp = NDArray.create([M], DType.float64);
+    final temp = NDArray<double>.create([M], DType.float64);
     v_hamming_double(temp.pointer.cast(), M);
     final res = castNDArray(temp, resolvedDType);
     temp.dispose();
@@ -6192,18 +6062,14 @@ NDArray<T, MT> hamming<T, MT extends Marker>(int M, {DType<T, MT>? dtype}) {
 ///
 /// **Example:**
 /// {@example /example/triangular_example.dart lang=dart}
-NDArray<T, MT> tril<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  int k = 0,
-  NDArray<T, MT>? out,
-}) {
+NDArray<T> tril<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute tril() on a disposed array.');
   }
   if (a.shape.length < 2) {
     throw ArgumentError('Input array must have rank >= 2.');
   }
-  final result = out ?? NDArray.create(a.shape, a.dtype);
+  final result = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -6275,18 +6141,14 @@ NDArray<T, MT> tril<T, MT extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/triangular_example.dart lang=dart}
-NDArray<T, MT> triu<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  int k = 0,
-  NDArray<T, MT>? out,
-}) {
+NDArray<T> triu<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute triu() on a disposed array.');
   }
   if (a.shape.length < 2) {
     throw ArgumentError('Input array must have rank >= 2.');
   }
-  final result = out ?? NDArray.create(a.shape, a.dtype);
+  final result = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -6348,12 +6210,12 @@ NDArray<T, MT> triu<T, MT extends Marker>(
 /// Result of a least-squares solver [lstsq].
 ///
 /// Reference: [NumPy linalg.lstsq](https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html)
-final class LstsqResult<T, MT extends Marker> {
+final class LstsqResult<T> {
   /// Least-squares solution.
   ///
   /// If the input [b] is 1-dimensional, [x] has shape `[N]`.
   /// If [b] is 2-dimensional, [x] has shape `[N, K]`.
-  final NDArray<T, MT> x;
+  final NDArray<T> x;
 
   /// Sums of squared residuals.
   ///
@@ -6364,7 +6226,7 @@ final class LstsqResult<T, MT extends Marker> {
   /// **Note:** Residuals are only computed if the first dimension of the input matrix $a$
   /// is strictly greater than its second dimension ($M > N$) and the effective rank is $N$.
   /// Otherwise, it is returned as an empty array of shape `[0]`.
-  final NDArray<double, Float64Marker> residuals;
+  final NDArray<double> residuals;
 
   /// Effective rank of the input matrix $a$.
   final int rank;
@@ -6373,7 +6235,7 @@ final class LstsqResult<T, MT extends Marker> {
   ///
   /// Stored in descending order of magnitude.
   /// Shape is `[min(M, N)]`.
-  final NDArray<double, Float64Marker> s;
+  final NDArray<double> s;
 
   /// Creates a new [LstsqResult] instance.
   LstsqResult({
@@ -6426,11 +6288,11 @@ final class LstsqResult<T, MT extends Marker> {
 /// {@example /example/linalg_lstsq_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.lstsq](https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html)
-LstsqResult<T, MT> lstsq<T, MT extends Marker>(
-  NDArray<T, MT> a,
-  NDArray<T, MT> b, {
+LstsqResult<T> lstsq<T>(
+  NDArray<T> a,
+  NDArray<T> b, {
   double? rcond,
-  NDArray<T, MT>? out,
+  NDArray<T>? out,
 }) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot execute lstsq() on a disposed array.');
@@ -6481,7 +6343,7 @@ LstsqResult<T, MT> lstsq<T, MT extends Marker>(
   // Row-major LAPACKE_gelsd requires b array size to be max(m, n) * nrhs
   final maxMN = m > n ? m : n;
   final bCopyShape = b.shape.length > 1 ? [maxMN, nrhs] : [maxMN];
-  final bCopy = NDArray.zeros(bCopyShape, a.dtype);
+  final bCopy = NDArray<T>.zeros(bCopyShape, a.dtype);
 
   // Copy b into bCopy
   final byteCount = b.data.length * a.dtype.byteWidth;
@@ -6511,12 +6373,10 @@ LstsqResult<T, MT> lstsq<T, MT extends Marker>(
 
   final minMN = m < n ? m : n;
   // Singular values s is always real
-  final NDArray<double, Marker> s;
-  if (a.dtype == DType.complex64 || a.dtype == DType.float32) {
-    s = NDArray<double, Float32Marker>.zeros([minMN], DType.float32);
-  } else {
-    s = NDArray<double, Float64Marker>.zeros([minMN], DType.float64);
-  }
+  final sDType = (a.dtype == DType.complex64 || a.dtype == DType.float32)
+      ? DType.float32
+      : DType.float64;
+  final s = NDArray<double>.zeros([minMN], sDType as dynamic);
 
   final marker = ScratchArena.marker;
   final rankPtr = ScratchArena.allocate<ffi.Int>(4);
@@ -6600,25 +6460,15 @@ LstsqResult<T, MT> lstsq<T, MT extends Marker>(
 
     // Extract solution x: first n rows of bCopy
     final xShape = b.shape.length > 1 ? [n, nrhs] : [n];
-    final x = out ?? NDArray.zeros(xShape, a.dtype);
+    final x = out ?? NDArray<T>.zeros(xShape, a.dtype);
     final elementsToCopy = n * nrhs;
     x.data.setRange(0, elementsToCopy, bCopy.data.sublist(0, elementsToCopy));
 
     // Extract residuals: sum of squares of elements from row n to m-1 for each column
-    final NDArray<double, Marker> residuals;
+    final NDArray<double> residuals;
     if (m > n && rank == n) {
       final resShape = b.shape.length > 1 ? [nrhs] : [1];
-      if (a.dtype == DType.complex64 || a.dtype == DType.float32) {
-        residuals = NDArray<double, Float32Marker>.zeros(
-          resShape,
-          DType.float32,
-        );
-      } else {
-        residuals = NDArray<double, Float64Marker>.zeros(
-          resShape,
-          DType.float64,
-        );
-      }
+      residuals = NDArray<double>.zeros(resShape, sDType as dynamic);
       if (a.dtype.isComplex) {
         for (var j = 0; j < nrhs; j++) {
           var sum = 0.0;
@@ -6641,11 +6491,7 @@ LstsqResult<T, MT> lstsq<T, MT extends Marker>(
         }
       }
     } else {
-      if (a.dtype == DType.complex64 || a.dtype == DType.float32) {
-        residuals = NDArray<double, Float32Marker>.zeros([0], DType.float32);
-      } else {
-        residuals = NDArray<double, Float64Marker>.zeros([0], DType.float64);
-      }
+      residuals = NDArray<double>.zeros([0], sDType as dynamic);
     }
 
     // Attach to scope or return
@@ -6655,29 +6501,7 @@ LstsqResult<T, MT> lstsq<T, MT extends Marker>(
     residuals.detachToParentScope();
     s.detachToParentScope();
 
-    final NDArray<double, Float64Marker> sPromoted;
-    if (s.dtype == DType.float32) {
-      sPromoted = castNDArray(
-        s as NDArray<double, Float32Marker>,
-        DType.float64,
-      );
-      s.dispose();
-    } else {
-      sPromoted = s as NDArray<double, Float64Marker>;
-    }
-
-    final NDArray<double, Float64Marker> resPromoted;
-    if (residuals.dtype == DType.float32) {
-      resPromoted = castNDArray(
-        residuals as NDArray<double, Float32Marker>,
-        DType.float64,
-      );
-      residuals.dispose();
-    } else {
-      resPromoted = residuals as NDArray<double, Float64Marker>;
-    }
-
-    return LstsqResult(x: x, residuals: resPromoted, rank: rank, s: sPromoted);
+    return LstsqResult<T>(x: x, residuals: residuals, rank: rank, s: s);
   } finally {
     ScratchArena.reset(marker);
     aCopy.dispose();
@@ -6720,12 +6544,7 @@ LstsqResult<T, MT> lstsq<T, MT extends Marker>(
 /// final a = NDArray.fromList([1, 2, 4, 7, 0], [5], DType.int64);
 /// final res = diff(a); // [1, 2, 3, -7]
 /// ```
-NDArray<T, MT> diff<T, MT extends Marker>(
-  NDArray<T, MT> a, {
-  int n = 1,
-  int axis = -1,
-  NDArray<T, MT>? out,
-}) {
+NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute diff() on a disposed array.');
   }
@@ -6753,7 +6572,7 @@ NDArray<T, MT> diff<T, MT extends Marker>(
   if (n >= a.shape[targetAxis]) {
     final emptyShape = List<int>.from(a.shape);
     emptyShape[targetAxis] = 0;
-    return out ?? NDArray.create(emptyShape, a.dtype);
+    return out ?? NDArray<T>.create(emptyShape, a.dtype);
   }
 
   if (n > 1) {
@@ -6766,7 +6585,7 @@ NDArray<T, MT> diff<T, MT extends Marker>(
   final targetShape = List<int>.from(a.shape);
   targetShape[targetAxis] = a.shape[targetAxis] - 1;
 
-  final result = out ?? NDArray.create(targetShape, a.dtype);
+  final result = out ?? NDArray<T>.create(targetShape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -6846,8 +6665,8 @@ NDArray<T, MT> diff<T, MT extends Marker>(
       case DType.uint8:
       case DType.int16:
       case DType.boolean:
-        final doubleA = NDArray.create(a.shape, DType.float64);
-        unaryOp(
+        final doubleA = NDArray<double>.create(a.shape, DType.float64);
+        unaryOp<dynamic, double>(
           doubleA.data,
           a.data,
           a.shape,
@@ -6858,7 +6677,7 @@ NDArray<T, MT> diff<T, MT extends Marker>(
           doubleA.offsetElements,
           (x) => (x as num).toDouble(),
         );
-        final doubleRes = NDArray.create(targetShape, DType.float64);
+        final doubleRes = NDArray<double>.create(targetShape, DType.float64);
         final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
         final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
 
@@ -7046,7 +6865,7 @@ NDArray conj(NDArray a, {NDArray? out}) {
               );
             default:
               // Fallback recursive copy for other strided types
-              unaryOp(
+              unaryOp<dynamic, dynamic>(
                 result.data,
                 a.data,
                 a.shape,
@@ -7093,11 +6912,7 @@ NDArray conjugate(NDArray a, {NDArray? out}) => conj(a, out: out);
 /// Refer to [NumPy roll documentation](https://numpy.org/doc/stable/reference/generated/numpy.roll.html).
 ///
 /// {@example /example/rearranging_example.dart lang=dart}
-NDArray<T, MT> roll<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a,
-  dynamic shift, {
-  dynamic axis,
-}) {
+NDArray<T> roll<T extends Object>(NDArray<T> a, dynamic shift, {dynamic axis}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute roll() on a disposed array.');
   }
@@ -7158,7 +6973,7 @@ NDArray<T, MT> roll<T extends Object, MT extends Marker>(
   }
 
   return NDArray.scope(() {
-    NDArray<T, MT> current = a;
+    NDArray<T> current = a;
 
     if (axes == null) {
       final flat = current.ravel();
@@ -7175,10 +6990,7 @@ NDArray<T, MT> roll<T extends Object, MT extends Marker>(
   });
 }
 
-NDArray<T, MT> _rollSingle1D<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a,
-  int shift,
-) {
+NDArray<T> _rollSingle1D<T extends Object>(NDArray<T> a, int shift) {
   if (a.isDisposed) {
     throw StateError('Cannot execute _rollSingle1D() on a disposed array.');
   }
@@ -7194,11 +7006,7 @@ NDArray<T, MT> _rollSingle1D<T extends Object, MT extends Marker>(
   return concatenate([part1, part2], axis: 0);
 }
 
-NDArray<T, MT> _rollSingle<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a,
-  int shift,
-  int axis,
-) {
+NDArray<T> _rollSingle<T extends Object>(NDArray<T> a, int shift, int axis) {
   if (a.isDisposed) {
     throw StateError('Cannot execute _rollSingle() on a disposed array.');
   }
@@ -7251,14 +7059,7 @@ typedef StridedBinaryOp =
 /// Element-wise addition of two arrays.
 ///
 /// Returns a new array with the promoted data type.
-NDArray<R, MR> add<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker,
-  R,
-  MR extends Marker
->(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<R, MR>? out}) {
+NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute add() on a disposed array.');
   }
@@ -7268,7 +7069,7 @@ NDArray<R, MR> add<
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -7277,7 +7078,7 @@ NDArray<R, MR> add<
     }
     result = out;
   } else {
-    result = NDArray.create(commonShape, targetDType as DType<R, MR>);
+    result = NDArray<R>.create(commonShape, targetDType as DType<R>);
   }
 
   final resultStrides = NDArray.computeCStrides(commonShape);
@@ -8623,14 +8424,11 @@ NDArray<R, MR> add<
 }
 
 /// Element-wise subtraction of two arrays.
-NDArray<R, MR> subtract<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker,
-  R,
-  MR extends Marker
->(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<R, MR>? out}) {
+NDArray<R> subtract<Ta, Tb, R>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<R>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute subtract() on a disposed array.');
   }
@@ -8640,7 +8438,7 @@ NDArray<R, MR> subtract<
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -8649,7 +8447,7 @@ NDArray<R, MR> subtract<
     }
     result = out;
   } else {
-    result = NDArray.create(commonShape, targetDType as DType<R, MR>);
+    result = NDArray<R>.create(commonShape, targetDType as DType<R>);
   }
 
   final resultStrides = NDArray.computeCStrides(commonShape);
@@ -9998,14 +9796,11 @@ NDArray<R, MR> subtract<
 /// **Overflow behavior:**
 /// - **Integer arrays** (`int32`, `int64`, etc.) overflow silently wrapping around via standard two's complement.
 /// - **Floating-point arrays** (`float32`, `float64`) overflow silently to `double.infinity` or `double.negativeInfinity` per IEEE 754.
-NDArray<R, MR> multiply<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker,
-  R,
-  MR extends Marker
->(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<R, MR>? out}) {
+NDArray<R> multiply<Ta, Tb, R>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<R>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute multiply() on a disposed array.');
   }
@@ -10015,7 +9810,7 @@ NDArray<R, MR> multiply<
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -10024,7 +9819,7 @@ NDArray<R, MR> multiply<
     }
     result = out;
   } else {
-    result = NDArray.create(commonShape, targetDType as DType<R, MR>);
+    result = NDArray<R>.create(commonShape, targetDType as DType<R>);
   }
 
   final resultStrides = NDArray.computeCStrides(commonShape);
@@ -11378,14 +11173,7 @@ NDArray<R, MR> multiply<
 /// - Dividing a non-zero value by zero results in `double.infinity` or `double.negativeInfinity`.
 /// - Dividing zero by zero results in `double.nan`.
 /// No exception is thrown.
-NDArray<R, MR> divide<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker,
-  R,
-  MR extends Marker
->(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<R, MR>? out}) {
+NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute divide() on a disposed array.');
   }
@@ -11398,7 +11186,7 @@ NDArray<R, MR> divide<
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final NDArray<R, MR> result;
+  final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -11407,7 +11195,7 @@ NDArray<R, MR> divide<
     }
     result = out;
   } else {
-    result = NDArray.create(commonShape, targetDType as DType<R, MR>);
+    result = NDArray<R>.create(commonShape, targetDType as DType<R>);
   }
 
   final resultStrides = NDArray.computeCStrides(commonShape);
@@ -12776,18 +12564,15 @@ NDArray<R, MR> divide<
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy bitwise_and](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_and.html)
-NDArray<Tr, MTr> bitwise_and<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker,
-  Tr,
-  MTr extends Marker
->(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<Tr, MTr>? out}) {
+NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<Tr>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute bitwise_and() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise(a, b, out, 'bitwise_and');
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'bitwise_and');
   final aCast = prep.aCast;
   final bCast = prep.bCast;
   final result = prep.result;
@@ -12927,18 +12712,15 @@ NDArray<Tr, MTr> bitwise_and<
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy bitwise_or](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_or.html)
-NDArray<Tr, MTr> bitwise_or<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker,
-  Tr,
-  MTr extends Marker
->(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<Tr, MTr>? out}) {
+NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<Tr>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute bitwise_or() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise(a, b, out, 'bitwise_or');
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'bitwise_or');
   final aCast = prep.aCast;
   final bCast = prep.bCast;
   final result = prep.result;
@@ -13078,18 +12860,15 @@ NDArray<Tr, MTr> bitwise_or<
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy bitwise_xor](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_xor.html)
-NDArray<Tr, MTr> bitwise_xor<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker,
-  Tr,
-  MTr extends Marker
->(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<Tr, MTr>? out}) {
+NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<Tr>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute bitwise_xor() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise(a, b, out, 'bitwise_xor');
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'bitwise_xor');
   final aCast = prep.aCast;
   final bCast = prep.bCast;
   final result = prep.result;
@@ -13229,18 +13008,15 @@ NDArray<Tr, MTr> bitwise_xor<
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy left_shift](https://numpy.org/doc/stable/reference/generated/numpy.left_shift.html)
-NDArray<Tr, MTr> left_shift<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker,
-  Tr,
-  MTr extends Marker
->(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<Tr, MTr>? out}) {
+NDArray<Tr> left_shift<Ta, Tb, Tr>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<Tr>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute left_shift() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise(a, b, out, 'left_shift');
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'left_shift');
   final aCast = prep.aCast;
   final bCast = prep.bCast;
   final result = prep.result;
@@ -13380,18 +13156,15 @@ NDArray<Tr, MTr> left_shift<
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy right_shift](https://numpy.org/doc/stable/reference/generated/numpy.right_shift.html)
-NDArray<Tr, MTr> right_shift<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker,
-  Tr,
-  MTr extends Marker
->(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<Tr, MTr>? out}) {
+NDArray<Tr> right_shift<Ta, Tb, Tr>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<Tr>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute right_shift() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise(a, b, out, 'right_shift');
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'right_shift');
   final aCast = prep.aCast;
   final bCast = prep.bCast;
   final result = prep.result;
@@ -13529,10 +13302,7 @@ NDArray<Tr, MTr> right_shift<
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy invert](https://numpy.org/doc/stable/reference/generated/numpy.invert.html)
-NDArray<Tr, MTr> invert<Ta, MTa extends Marker, Tr, MTr extends Marker>(
-  NDArray<Ta, MTa> a, {
-  NDArray<Tr, MTr>? out,
-}) {
+NDArray<Tr> invert<Ta, Tr>(NDArray<Ta> a, {NDArray<Tr>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute invert() on a disposed array.');
   }
@@ -13543,7 +13313,7 @@ NDArray<Tr, MTr> invert<Ta, MTa extends Marker, Tr, MTr extends Marker>(
     );
   }
 
-  final NDArray<Tr, MTr> result;
+  final NDArray<Tr> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -13552,7 +13322,7 @@ NDArray<Tr, MTr> invert<Ta, MTa extends Marker, Tr, MTr extends Marker>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, a.dtype as DType<Tr, MTr>);
+    result = NDArray<Tr>.create(a.shape, a.dtype as DType<Tr>);
   }
 
   final resultStrides = NDArray.computeCStrides(a.shape);
@@ -13632,24 +13402,17 @@ NDArray<Tr, MTr> invert<Ta, MTa extends Marker, Tr, MTr extends Marker>(
 ({
   NDArray aCast,
   NDArray bCast,
-  NDArray<Tr, MTr> result,
+  NDArray<Tr> result,
   List<int> commonShape,
   List<int> stridesA,
   List<int> stridesB,
   List<int> resultStrides,
   bool isContig,
 })
-_prepareBinaryBitwise<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker,
-  Tr,
-  MTr extends Marker
->(
-  NDArray<Ta, MTa> a,
-  NDArray<Tb, MTb> b,
-  NDArray<Tr, MTr>? out,
+_prepareBinaryBitwise<Ta, Tb, Tr>(
+  NDArray<Ta> a,
+  NDArray<Tb> b,
+  NDArray<Tr>? out,
   String opName,
 ) {
   if (a.isDisposed || b.isDisposed) {
@@ -13680,7 +13443,7 @@ _prepareBinaryBitwise<
   final stridesA = broadcastResult.stridesA;
   final stridesB = broadcastResult.stridesB;
 
-  final NDArray<Tr, MTr> result;
+  final NDArray<Tr> result;
   if (out != null) {
     if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -13689,7 +13452,7 @@ _prepareBinaryBitwise<
     }
     result = out;
   } else {
-    result = NDArray.create(commonShape, targetDType as DType<Tr, MTr>);
+    result = NDArray<Tr>.create(commonShape, targetDType as DType<Tr>);
   }
 
   final resultStrides = NDArray.computeCStrides(commonShape);
@@ -13732,14 +13495,7 @@ _prepareBinaryBitwise<
 /// {@example /example/linalg_advanced_example.dart lang=dart}
 ///
 /// Reference: [NumPy kron](https://numpy.org/doc/stable/reference/generated/numpy.kron.html)
-NDArray<R, MR> kron<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker,
-  R,
-  MR extends Marker
->(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<R, MR>? out}) {
+NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute kron() on a disposed array.');
   }
@@ -13777,7 +13533,7 @@ NDArray<R, MR> kron<
   }
 
   final result =
-      out ?? NDArray.create(expectedShape, targetDType as DType<R, MR>);
+      out ?? NDArray<R>.create(expectedShape, targetDType as DType<R>);
 
   final aCast = castNDArray(a, targetDType);
   final bCast = castNDArray(b, targetDType);
@@ -13964,14 +13720,7 @@ NDArray<R, MR> kron<
 /// {@example /example/linalg_advanced_example.dart lang=dart}
 ///
 /// Reference: [NumPy outer](https://numpy.org/doc/stable/reference/generated/numpy.outer.html)
-NDArray<R, MR> outer<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker,
-  R,
-  MR extends Marker
->(NDArray<Ta, MTa> a, NDArray<Tb, MTb> b, {NDArray<R, MR>? out}) {
+NDArray<R> outer<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute outer() on a disposed array.');
   }
@@ -13990,7 +13739,7 @@ NDArray<R, MR> outer<
   }
 
   final result =
-      out ?? NDArray.create(expectedShape, targetDType as DType<R, MR>);
+      out ?? NDArray<R>.create(expectedShape, targetDType as DType<R>);
 
   final flatA = a.rank == 1 ? a : a.ravel();
   final flatB = b.rank == 1 ? b : b.ravel();
@@ -14144,15 +13893,14 @@ NDArray<R, MR> outer<
 /// {@example /example/linalg_advanced_example.dart lang=dart}
 ///
 /// Reference: [NumPy cross](https://numpy.org/doc/stable/reference/generated/numpy.cross.html)
-NDArray<R, MR>
-cross<Ta, MTa extends Marker, Tb, MTb extends Marker, R, MR extends Marker>(
-  NDArray<Ta, MTa> a,
-  NDArray<Tb, MTb> b, {
+NDArray<R> cross<Ta, Tb, R>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
   int? axisa,
   int? axisb,
   int? axisc,
   int? axis,
-  NDArray<R, MR>? out,
+  NDArray<R>? out,
 }) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute cross() on a disposed array.');
@@ -14213,7 +13961,7 @@ cross<Ta, MTa extends Marker, Tb, MTb extends Marker, R, MR extends Marker>(
   }
 
   final result =
-      out ?? NDArray.create(expectedShape, targetDType as DType<R, MR>);
+      out ?? NDArray<R>.create(expectedShape, targetDType as DType<R>);
 
   final aCast = castNDArray(a, targetDType);
   final bCast = castNDArray(b, targetDType);
@@ -14477,22 +14225,20 @@ cross<Ta, MTa extends Marker, Tb, MTb extends Marker, R, MR extends Marker>(
 /// {@example /example/linalg_advanced_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.norm](https://numpy.org/doc/stable/reference/generated/numpy.linalg.norm.html)
-NDArray<double, MR> norm<T, MT extends Marker, MR extends FloatingMarker>(
-  NDArray<T, MT> a, {
+NDArray<double> norm<T>(
+  NDArray<T> a, {
   dynamic ord,
   dynamic axis,
   bool keepdims = false,
-  NDArray<double, MR>? out,
+  NDArray<double>? out,
 }) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute norm() on a disposed array.');
   }
 
-  final targetDType =
-      ((a.dtype == DType.float32 || a.dtype == DType.complex64)
-              ? DType.float32
-              : DType.float64)
-          as DType<double, MR>;
+  final targetDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+      ? DType.float32
+      : DType.float64;
 
   List<int> normAxes;
   if (axis == null) {
@@ -14544,7 +14290,7 @@ NDArray<double, MR> norm<T, MT extends Marker, MR extends FloatingMarker>(
 
   if (a.rank == 1 && axis == null) {
     final result = out ?? NDArray.zeros(expectedShape, targetDType);
-    final val = _vectorNorm(a, ord, targetDType);
+    final val = _vectorNorm<T>(a, ord, targetDType);
     result.data[0] = castValue(val, targetDType);
     if (out == null) {
       result.detachToParentScope();
@@ -14589,7 +14335,7 @@ NDArray<double, MR> norm<T, MT extends Marker, MR extends FloatingMarker>(
         strides: [a.strides[axisIdx]],
         offsetElements: offsetA,
       );
-      final normVal = _vectorNorm(slice, ord, targetDType);
+      final normVal = _vectorNorm<T>(slice, ord, targetDType);
       result.data[offsetRes] = castValue(normVal, targetDType);
       slice.dispose();
     } else {
@@ -14601,7 +14347,7 @@ NDArray<double, MR> norm<T, MT extends Marker, MR extends FloatingMarker>(
         strides: [a.strides[ax0], a.strides[ax1]],
         offsetElements: offsetA,
       );
-      final normVal = _matrixNorm(slice, ord, targetDType);
+      final normVal = _matrixNorm<T>(slice, ord, targetDType);
       result.data[offsetRes] = castValue(normVal, targetDType);
       slice.dispose();
     }
@@ -14613,11 +14359,7 @@ NDArray<double, MR> norm<T, MT extends Marker, MR extends FloatingMarker>(
   return result;
 }
 
-double _vectorNorm<T, MT extends Marker>(
-  NDArray<T, MT> a,
-  dynamic ord,
-  DType targetDType,
-) {
+double _vectorNorm<T>(NDArray<T> a, dynamic ord, DType targetDType) {
   final needsCast = a.dtype != targetDType;
   final castedA = needsCast ? castNDArray(a, targetDType) : a;
 
@@ -14712,11 +14454,7 @@ double _vectorNorm<T, MT extends Marker>(
   }
 }
 
-double _matrixNorm<T, MT extends Marker>(
-  NDArray<T, MT> a,
-  dynamic ord,
-  DType targetDType,
-) {
+double _matrixNorm<T>(NDArray<T> a, dynamic ord, DType targetDType) {
   final rows = a.shape[0];
   final cols = a.shape[1];
 
@@ -14792,14 +14530,14 @@ double _matrixNorm<T, MT extends Marker>(
       switch (castedA.dtype) {
         case DType.complex128:
         case DType.complex64:
-          final svdRes = svd(castedA as NDArray<Complex, Complex128Marker>);
+          final svdRes = svd(castedA as NDArray<Complex>);
           final s = svdRes.S;
           final val = ord == 2 ? s.data[0] : s.data[s.data.length - 1];
           svdRes.dispose();
           return val;
         case DType.float64:
         case DType.float32:
-          final svdRes = svd(castedA as NDArray<double, Float64Marker>);
+          final svdRes = svd(castedA as NDArray<double>);
           final s = svdRes.S;
           final val = ord == 2 ? s.data[0] : s.data[s.data.length - 1];
           svdRes.dispose();

@@ -103,7 +103,7 @@ void main() {
       test('out parameter: correct shape/dtype', () {
         NDArray.scope(() {
           final a = NDArray.fromList([1, 2, 3], [3], DType.int32);
-          final out = NDArray.create([6], DType.int32);
+          final out = NDArray<int>.create([6], DType.int32);
           final r = repeat(a, rep(2), out: out);
           expect(identical(r, out), true);
           expect(r.toList(), [1, 1, 2, 2, 3, 3]);
@@ -113,8 +113,8 @@ void main() {
       test('out parameter: incorrect shape/dtype', () {
         NDArray.scope(() {
           final a = NDArray.fromList([1, 2, 3], [3], DType.int32);
-          final outWrongShape = NDArray.create([5], DType.int32);
-          final outWrongDType = NDArray.create([6], DType.float64);
+          final outWrongShape = NDArray<int>.create([5], DType.int32);
+          final outWrongDType = NDArray<double>.create([6], DType.float64);
 
           expect(
             () => repeat(a, rep(2), out: outWrongShape),
@@ -134,7 +134,7 @@ void main() {
           expect(rF.dtype, DType.float64);
           expect(rF.toList(), [1.0, 1.0, 2.0, 2.0]);
 
-          final c = NDArray.fromList(
+          final c = NDArray<Complex>.fromList(
             [Complex(1, 2), Complex(3, 4)],
             [2],
             DType.complex128,
@@ -259,7 +259,7 @@ void main() {
       test('out parameter: correct shape/dtype', () {
         NDArray.scope(() {
           final a = NDArray.fromList([1, 2], [2], DType.int32);
-          final out = NDArray.create([4], DType.int32);
+          final out = NDArray<int>.create([4], DType.int32);
           final t = tile(a, rep(2), out: out);
           expect(identical(t, out), true);
           expect(t.toList(), [1, 2, 1, 2]);
@@ -269,8 +269,8 @@ void main() {
       test('out parameter: incorrect shape/dtype', () {
         NDArray.scope(() {
           final a = NDArray.fromList([1, 2], [2], DType.int32);
-          final outWrongShape = NDArray.create([5], DType.int32);
-          final outWrongDType = NDArray.create([4], DType.float64);
+          final outWrongShape = NDArray<int>.create([5], DType.int32);
+          final outWrongDType = NDArray<double>.create([4], DType.float64);
 
           expect(
             () => tile(a, rep(2), out: outWrongShape),
@@ -290,7 +290,7 @@ void main() {
           expect(tF.dtype, DType.float64);
           expect(tF.toList(), [1.0, 2.0, 1.0, 2.0]);
 
-          final c = NDArray.fromList(
+          final c = NDArray<Complex>.fromList(
             [Complex(1, 2), Complex(3, 4)],
             [2],
             DType.complex128,

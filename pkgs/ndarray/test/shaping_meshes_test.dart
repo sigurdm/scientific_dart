@@ -13,8 +13,8 @@ void main() {
           expect(view.toList(), [1, 2, 3, 4]);
 
           // Mutating view must affect original
-          view.setCell([0, 1], 99);
-          expect(a.getCell([1]), 99);
+          view.setCell([0, 1], Int32(99));
+          expect(a.getCell([1]).value, 99);
         });
       });
 

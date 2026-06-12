@@ -55,7 +55,7 @@ void main() {
           DType.complex128,
         );
 
-        final d = det(a);
+        final d = det<Complex>(a);
 
         expect(d.shape, []);
         expect(d.data[0].real, closeTo(-4.0, 1e-9));
@@ -81,7 +81,7 @@ void main() {
           DType.complex64,
         );
 
-        final d = det(a);
+        final d = det<Complex>(a);
 
         expect(d.shape, [2]);
         expect(d.data[0].real, closeTo(-4.0, 1e-4));

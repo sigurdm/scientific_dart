@@ -26,7 +26,7 @@ void main() {
       });
 
       test('complex types', () {
-        final a = NDArray.create([2], DType.complex128);
+        final a = NDArray<Complex>.create([2], DType.complex128);
         a.data[0] = Complex(3.0, 4.0); // (3+4i)^2 = 9 - 16 + 24i = -7 + 24i
         a.data[1] = Complex(0.0, -2.0); // (0-2i)^2 = -4
 
@@ -74,7 +74,7 @@ void main() {
         final a = NDArray.fromList(Float64List.fromList([2.0, 3.0]), [
           2,
         ], DType.float64);
-        final outRecycler = NDArray.zeros([2], DType.float64);
+        final outRecycler = NDArray<double>.zeros([2], DType.float64);
         final res = square(a, out: outRecycler);
         expect(identical(res, outRecycler), true);
         expect(outRecycler.data[0], 4.0);
@@ -225,7 +225,7 @@ void main() {
       });
 
       test('complex types', () {
-        final a = NDArray.create([3], DType.complex128);
+        final a = NDArray<Complex>.create([3], DType.complex128);
         a.data[0] = Complex(double.nan, 1.0);
         a.data[1] = Complex(1.0, double.infinity);
         a.data[2] = Complex(1.0, 2.0);

@@ -52,11 +52,11 @@ kiss_fft_cfg _allocateKissFFTPlan(int nfft, int inverse_fft) {
 /// {@example /example/fft_example.dart lang=dart}
 ///
 /// Reference: [Cooley-Tukey FFT Algorithm](https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm)
-NDArray<R, MR> fft<T, MT extends Marker, R extends Complex, MR extends Marker>(
-  NDArray<T, MT> a, {
+NDArray<R> fft<T, R extends Complex>(
+  NDArray<T> a, {
   int? n,
   int axis = -1,
-  NDArray<R, MR>? out,
+  NDArray<R>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute fft() on a disposed array.');
@@ -110,7 +110,7 @@ NDArray<R, MR> fft<T, MT extends Marker, R extends Complex, MR extends Marker>(
 
     final transposedInput = a.transpose(axes);
     if (out != null) {
-      final NDArray<R, MR> transposedResult = fft(transposedInput, n: n);
+      final transposedResult = fft<T, R>(transposedInput, n: n);
       final finalResult = transposedResult.transpose(axes);
       finalResult.copy(out: out);
       transposedResult.dispose();
@@ -118,14 +118,14 @@ NDArray<R, MR> fft<T, MT extends Marker, R extends Complex, MR extends Marker>(
       transposedInput.dispose();
       return out;
     } else {
-      final NDArray<R, MR> transposedResult = fft(transposedInput, n: n);
+      final transposedResult = fft<T, R>(transposedInput, n: n);
       final finalResult = transposedResult.transpose(axes);
       transposedInput.dispose();
       return finalResult;
     }
   }
 
-  final NDArray<T, MT> inputA;
+  final NDArray<T> inputA;
   final bool wasCopied;
   if (!a.isContiguous) {
     inputA = a.copy();
@@ -135,7 +135,7 @@ NDArray<R, MR> fft<T, MT extends Marker, R extends Complex, MR extends Marker>(
     wasCopied = false;
   }
 
-  final result = out ?? NDArray.zeros(outShape, targetDType as DType<R, MR>);
+  final result = out ?? NDArray<R>.zeros(outShape, targetDType as DType<R>);
 
   // Count how many 1D row sub-signals exist to execute strided walks
   final totalElements = inputA.shape.reduce((x, y) => x * y);
@@ -255,11 +255,11 @@ NDArray<R, MR> fft<T, MT extends Marker, R extends Complex, MR extends Marker>(
 ///
 /// **Example:**
 /// {@example /example/fft_example.dart lang=dart}
-NDArray<R, MR> ifft<T, MT extends Marker, R extends Complex, MR extends Marker>(
-  NDArray<T, MT> a, {
+NDArray<R> ifft<T, R extends Complex>(
+  NDArray<T> a, {
   int? n,
   int axis = -1,
-  NDArray<R, MR>? out,
+  NDArray<R>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute ifft() on a disposed array.');
@@ -313,7 +313,7 @@ NDArray<R, MR> ifft<T, MT extends Marker, R extends Complex, MR extends Marker>(
 
     final transposedInput = a.transpose(axes);
     if (out != null) {
-      final NDArray<R, MR> transposedResult = ifft(transposedInput, n: n);
+      final transposedResult = ifft<T, R>(transposedInput, n: n);
       final finalResult = transposedResult.transpose(axes);
       finalResult.copy(out: out);
       transposedResult.dispose();
@@ -321,14 +321,14 @@ NDArray<R, MR> ifft<T, MT extends Marker, R extends Complex, MR extends Marker>(
       transposedInput.dispose();
       return out;
     } else {
-      final NDArray<R, MR> transposedResult = ifft(transposedInput, n: n);
+      final transposedResult = ifft<T, R>(transposedInput, n: n);
       final finalResult = transposedResult.transpose(axes);
       transposedInput.dispose();
       return finalResult;
     }
   }
 
-  final NDArray<T, MT> inputA;
+  final NDArray<T> inputA;
   final bool wasCopied;
   if (!a.isContiguous) {
     inputA = a.copy();
@@ -338,7 +338,7 @@ NDArray<R, MR> ifft<T, MT extends Marker, R extends Complex, MR extends Marker>(
     wasCopied = false;
   }
 
-  final result = out ?? NDArray.zeros(outShape, targetDType as DType<R, MR>);
+  final result = out ?? NDArray<R>.zeros(outShape, targetDType as DType<R>);
 
   final totalElements = inputA.shape.reduce((x, y) => x * y);
   final signalsCount = totalElements ~/ lastAxisDim;
@@ -465,10 +465,7 @@ NDArray<R, MR> ifft<T, MT extends Marker, R extends Complex, MR extends Marker>(
 /// {@example /example/fftshift_example.dart lang=dart}
 ///
 /// Reference: [NumPy fftshift](https://numpy.org/doc/stable/reference/generated/numpy.fft.fftshift.html)
-NDArray<T, MT> fftshift<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a, {
-  dynamic axes,
-}) {
+NDArray<T> fftshift<T extends Object>(NDArray<T> a, {dynamic axes}) {
   if (a.isDisposed) {
     throw StateError('Cannot shift a disposed array.');
   }
@@ -507,7 +504,7 @@ NDArray<T, MT> fftshift<T extends Object, MT extends Marker>(
   }
 
   return NDArray.scope(() {
-    NDArray<T, MT> current = a;
+    NDArray<T> current = a;
     for (final axis in resolvedAxes) {
       final dimSize = current.shape[axis];
       final shift = dimSize ~/ 2;
@@ -538,10 +535,7 @@ NDArray<T, MT> fftshift<T extends Object, MT extends Marker>(
 /// {@example /example/fftshift_example.dart lang=dart}
 ///
 /// Reference: [NumPy ifftshift](https://numpy.org/doc/stable/reference/generated/numpy.fft.ifftshift.html)
-NDArray<T, MT> ifftshift<T extends Object, MT extends Marker>(
-  NDArray<T, MT> a, {
-  dynamic axes,
-}) {
+NDArray<T> ifftshift<T extends Object>(NDArray<T> a, {dynamic axes}) {
   if (a.isDisposed) {
     throw StateError('Cannot shift a disposed array.');
   }
@@ -580,7 +574,7 @@ NDArray<T, MT> ifftshift<T extends Object, MT extends Marker>(
   }
 
   return NDArray.scope(() {
-    NDArray<T, MT> current = a;
+    NDArray<T> current = a;
     for (final axis in resolvedAxes) {
       final dimSize = current.shape[axis];
       final shift = (dimSize + 1) ~/ 2;

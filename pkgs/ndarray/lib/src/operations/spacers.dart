@@ -87,14 +87,14 @@ enum SearchSide {
 /// ```dart
 /// linspace(0.0, 10.0, 5); // [0.0, 2.5, 5.0, 7.5, 10.0]
 /// ```
-NDArray<T, MT> linspace<T, MT extends Marker>(
+NDArray<T> linspace<T>(
   T start,
   T stop,
   int numSamples, {
   bool endpoint = true,
-  DType<T, MT>? dtype,
+  DType<T>? dtype,
 }) {
-  return linspaceInternal(
+  return linspaceInternal<T>(
     start,
     stop,
     numSamples,
@@ -116,14 +116,14 @@ NDArray<T, MT> linspace<T, MT extends Marker>(
 ///   - [DType.complex128] if [T] is [Complex].
 ///   - [DType.int64] if [T] is [int].
 ///   - [DType.float64] otherwise.
-(NDArray<T, MT>, T) linspaceWithStep<T, MT extends Marker>(
+(NDArray<T>, T) linspaceWithStep<T>(
   T start,
   T stop,
   int numSamples, {
   bool endpoint = true,
-  DType<T, MT>? dtype,
+  DType<T>? dtype,
 }) {
-  return linspaceInternal(
+  return linspaceInternal<T>(
     start,
     stop,
     numSamples,
@@ -157,18 +157,18 @@ NDArray<T, MT> linspace<T, MT extends Marker>(
 ///   - [DType.complex128] if [T] is [Complex].
 ///   - [DType.int64] if [T] is [int].
 ///   - [DType.float64] otherwise.
-NDArray<T, MT> linspaceGrid<T, MT extends Marker>(
-  NDArray<T, MT> start,
-  NDArray<T, MT> stop,
+NDArray<T> linspaceGrid<T>(
+  NDArray<T> start,
+  NDArray<T> stop,
   int numSamples, {
   bool endpoint = true,
   int axis = 0,
-  DType<T, MT>? dtype,
+  DType<T>? dtype,
 }) {
   if (start.isDisposed || stop.isDisposed) {
     throw StateError('Cannot execute linspaceGrid() on a disposed array.');
   }
-  return _linspaceGridInternal(
+  return _linspaceGridInternal<T>(
     start,
     stop,
     numSamples,
@@ -200,20 +200,20 @@ NDArray<T, MT> linspaceGrid<T, MT extends Marker>(
 ///   - [DType.complex128] if [T] is [Complex].
 ///   - [DType.int64] if [T] is [int].
 ///   - [DType.float64] otherwise.
-(NDArray<T, MT>, NDArray<T, MT>) linspaceGridWithStep<T, MT extends Marker>(
-  NDArray<T, MT> start,
-  NDArray<T, MT> stop,
+(NDArray<T>, NDArray<T>) linspaceGridWithStep<T>(
+  NDArray<T> start,
+  NDArray<T> stop,
   int numSamples, {
   bool endpoint = true,
   int axis = 0,
-  DType<T, MT>? dtype,
+  DType<T>? dtype,
 }) {
   if (start.isDisposed || stop.isDisposed) {
     throw StateError(
       'Cannot execute linspaceGridWithStep() on a disposed array.',
     );
   }
-  return _linspaceGridInternal(
+  return _linspaceGridInternal<T>(
     start,
     stop,
     numSamples,
@@ -223,17 +223,17 @@ NDArray<T, MT> linspaceGrid<T, MT extends Marker>(
   );
 }
 
-(NDArray<T, MT>, NDArray<T, MT>) _linspaceGridInternal<T, MT extends Marker>(
-  NDArray<T, MT> start,
-  NDArray<T, MT> stop,
+(NDArray<T>, NDArray<T>) _linspaceGridInternal<T>(
+  NDArray<T> start,
+  NDArray<T> stop,
   int numSamples, {
   bool endpoint = true,
   int axis = 0,
-  DType<T, MT>? dtype,
+  DType<T>? dtype,
 }) {
   if (numSamples <= 0) throw ArgumentError('numSamples must be positive');
 
-  final resolvedDType = dtype ?? defaultDType();
+  final resolvedDType = dtype ?? defaultDType<T>();
 
   return NDArray.scope(() {
     final startArr = toNDArray(start, resolvedDType);
@@ -259,10 +259,10 @@ NDArray<T, MT> linspaceGrid<T, MT extends Marker>(
     final stridesStop = List<int>.from(stopBroadcasted.strides);
     stridesStop.insert(actualAxis, 0);
 
-    final res = NDArray.create(resultShape, resolvedDType);
+    final res = NDArray<T>.create(resultShape, resolvedDType);
     final stridesRes = res.strides;
 
-    final step = NDArray.create(commonShape, resolvedDType);
+    final step = NDArray<T>.create(commonShape, resolvedDType);
     final stridesStepOdo = List<int>.from(step.strides);
     stridesStepOdo.insert(actualAxis, 0);
 
@@ -450,18 +450,18 @@ NDArray<T, MT> linspaceGrid<T, MT extends Marker>(
 ///   - [DType.complex128] if [T] is [Complex].
 ///   - [DType.int64] if [T] is [int].
 ///   - [DType.float64] otherwise.
-NDArray<T, MT> logspace<T, MT extends Marker>(
+NDArray<T> logspace<T>(
   T start,
   T stop,
   int numSamples, {
   double base = 10.0,
   bool endpoint = true,
-  DType<T, MT>? dtype,
+  DType<T>? dtype,
 }) {
   if (numSamples <= 0) throw ArgumentError('numSamples must be positive');
-  final resolvedDType = dtype ?? defaultDType();
+  final resolvedDType = dtype ?? defaultDType<T>();
 
-  final arr = NDArray.create([numSamples], resolvedDType);
+  final arr = NDArray<T>.create([numSamples], resolvedDType);
   final div = endpoint ? (numSamples - 1) : numSamples;
 
   switch (resolvedDType) {
@@ -540,14 +540,14 @@ NDArray<T, MT> logspace<T, MT extends Marker>(
 ///   - [DType.complex128] if [T] is [Complex].
 ///   - [DType.int64] if [T] is [int].
 ///   - [DType.float64] otherwise.
-NDArray<T, MT> logspaceGrid<T, MT extends Marker>(
-  NDArray<T, MT> start,
-  NDArray<T, MT> stop,
+NDArray<T> logspaceGrid<T>(
+  NDArray<T> start,
+  NDArray<T> stop,
   int numSamples, {
-  NDArray<double, Float64Marker>? base,
+  NDArray<double>? base,
   bool endpoint = true,
   int axis = 0,
-  DType<T, MT>? dtype,
+  DType<T>? dtype,
 }) {
   if (start.isDisposed || stop.isDisposed) {
     throw StateError('Cannot execute logspaceGrid() on a disposed array.');
@@ -557,11 +557,11 @@ NDArray<T, MT> logspaceGrid<T, MT extends Marker>(
       'Cannot execute logspaceGrid() with a disposed base array.',
     );
   }
-  final resolvedDType = dtype ?? defaultDType();
-  final actualBase = base ?? toNDArray(10.0, DType.float64);
+  final resolvedDType = dtype ?? defaultDType<T>();
+  final actualBase = base ?? toNDArray<double>(10.0, DType.float64);
 
   return NDArray.scope(() {
-    final y = linspaceGrid(
+    final y = linspaceGrid<T>(
       start,
       stop,
       numSamples,
@@ -571,7 +571,7 @@ NDArray<T, MT> logspaceGrid<T, MT extends Marker>(
     );
     final res = power(actualBase, y);
     res.detachToParentScope();
-    return res as NDArray<T, MT>;
+    return res as NDArray<T>;
   });
 }
 
@@ -588,15 +588,15 @@ NDArray<T, MT> logspaceGrid<T, MT extends Marker>(
 ///   - [DType.complex128] if [T] is [Complex].
 ///   - [DType.int64] if [T] is [int].
 ///   - [DType.float64] otherwise.
-NDArray<T, MT> geomspace<T, MT extends Marker>(
+NDArray<T> geomspace<T>(
   T start,
   T stop,
   int numSamples, {
   bool endpoint = true,
-  DType<T, MT>? dtype,
+  DType<T>? dtype,
 }) {
   if (numSamples <= 0) throw ArgumentError('numSamples must be positive');
-  final resolvedDType = dtype ?? defaultDType();
+  final resolvedDType = dtype ?? defaultDType<T>();
 
   switch (resolvedDType) {
     case DType.float64:
@@ -618,7 +618,7 @@ NDArray<T, MT> geomspace<T, MT extends Marker>(
       final div = endpoint ? (numSamples - 1) : numSamples;
       final stp = numSamples <= 1 ? 0.0 : (logStop - logStart) / div;
 
-      final arr = NDArray.create([numSamples], resolvedDType);
+      final arr = NDArray<T>.create([numSamples], resolvedDType);
       if (resolvedDType == DType.float64) {
         v_geomspace_double(arr.pointer.cast(), logStart, stp, sign, numSamples);
       } else {
@@ -640,7 +640,7 @@ NDArray<T, MT> geomspace<T, MT extends Marker>(
           ? Complex(0.0, 0.0)
           : (logStop - logStart) / div;
 
-      final arr = NDArray.create([numSamples], resolvedDType);
+      final arr = NDArray<T>.create([numSamples], resolvedDType);
       if (resolvedDType == DType.complex128) {
         v_geomspace_complex128(
           arr.pointer.cast(),
@@ -693,28 +693,27 @@ NDArray<T, MT> geomspace<T, MT extends Marker>(
 ///   - [DType.complex128] if [T] is [Complex].
 ///   - [DType.int64] if [T] is [int].
 ///   - [DType.float64] otherwise.
-NDArray<T, MT> geomspaceGrid<T, MT extends Marker>(
-  NDArray<T, MT> start,
-  NDArray<T, MT> stop,
+NDArray<T> geomspaceGrid<T>(
+  NDArray<T> start,
+  NDArray<T> stop,
   int numSamples, {
   bool endpoint = true,
   int axis = 0,
-  DType<T, MT>? dtype,
+  DType<T>? dtype,
 }) {
   if (start.isDisposed || stop.isDisposed) {
     throw StateError('Cannot execute geomspaceGrid() on a disposed array.');
   }
-  final resolvedDType = dtype ?? defaultDType();
+  final resolvedDType = dtype ?? defaultDType<T>();
 
   return NDArray.scope(() {
     final logStart =
-        divide(log(start), toNDArray(math.ln10, resolvedDType))
-            as NDArray<T, MT>;
+        divide(log(start), toNDArray<T>(math.ln10, resolvedDType))
+            as NDArray<T>;
     final logStop =
-        divide(log(stop), toNDArray(math.ln10, resolvedDType))
-            as NDArray<T, MT>;
+        divide(log(stop), toNDArray<T>(math.ln10, resolvedDType)) as NDArray<T>;
 
-    final y = linspaceGrid(
+    final y = linspaceGrid<T>(
       logStart,
       logStop,
       numSamples,
@@ -722,8 +721,8 @@ NDArray<T, MT> geomspaceGrid<T, MT extends Marker>(
       axis: axis,
       dtype: resolvedDType,
     );
-    final res = power(toNDArray(10.0, resolvedDType), y);
+    final res = power(toNDArray<T>(10.0, resolvedDType), y);
     res.detachToParentScope();
-    return res as NDArray<T, MT>;
+    return res as NDArray<T>;
   });
 }

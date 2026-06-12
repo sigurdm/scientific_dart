@@ -5,10 +5,12 @@ import 'dart:typed_data';
 import 'dart:async';
 import 'package:ffi/ffi.dart';
 import 'dart:collection';
-
+import 'operations/broadcasting.dart';
 import 'ndarray_bindings.dart';
 import 'scratch_arena.dart';
 import 'package:openblas/openblas.dart' show openblas_set_num_threads;
+
+import 'operations.dart' as ops;
 
 /// Supported data types for the elements of an [NDArray].
 extension type const Float64(double value) implements double {}
@@ -19,65 +21,28 @@ extension type const Int32(int value) implements int {}
 extension type const Uint8(int value) implements int {}
 extension type const Int16(int value) implements int {}
 
-/// Base marker interface for all types that can be stored in an [NDArray].
-abstract interface class Marker {}
+extension type const Complex64._(Complex value) implements Complex {
+  Complex64(double real, double imag) : this._(Complex(real, imag));
+}
 
-/// Marker interface for numeric elements (integers, floats, complex).
-abstract interface class NumericMarker implements Marker {}
-
-/// Marker interface for floating-point elements.
-abstract interface class FloatingMarker implements NumericMarker {}
-
-/// Marker interface for integer elements.
-abstract interface class IntegerMarker implements NumericMarker {}
-
-/// Marker interface for complex number elements.
-abstract interface class ComplexMarker implements NumericMarker {}
-
-/// Represents a boolean element in an [NDArray].
-abstract interface class BoolMarker implements Marker {}
-
-/// Marker for double-precision float (64-bit).
-final class Float64Marker implements FloatingMarker {}
-
-/// Marker for single-precision float (32-bit).
-final class Float32Marker implements FloatingMarker {}
-
-/// Marker for 64-bit signed integer.
-final class Int64Marker implements IntegerMarker {}
-
-/// Marker for 32-bit signed integer.
-final class Int32Marker implements IntegerMarker {}
-
-/// Marker for 8-bit unsigned integer.
-final class Uint8Marker implements IntegerMarker {}
-
-/// Marker for 16-bit signed integer.
-final class Int16Marker implements IntegerMarker {}
-
-/// Marker for double-precision complex (128-bit).
-final class Complex128Marker implements ComplexMarker {}
-
-/// Marker for single-precision complex (64-bit).
-final class Complex64Marker implements ComplexMarker {}
-
-/// Marker for boolean.
-final class BooleanMarker implements BoolMarker {}
+extension type const Complex128._(Complex value) implements Complex {
+  Complex128(double real, double imag) : this._(Complex(real, imag));
+}
 
 /// Supported data types for the elements of an [NDArray].
-enum DType<T, M extends Marker> {
-  float32<double, Float32Marker>('float32', 4, '<f4'),
-  float64<double, Float64Marker>('float64', 8, '<f8'),
+enum DType<T> {
+  float32<Float32>('float32', 4, '<f4'),
+  float64<Float64>('float64', 8, '<f8'),
   // 64 bits total: 32-bit float real + 32-bit float imaginary parts (8 bytes)
-  complex64<Complex, Complex64Marker>('complex64', 8, '<c8'),
+  complex64<Complex64>('complex64', 8, '<c8'),
   // 128 bits total: 64-bit double real + 64-bit double imaginary parts (16 bytes)
-  complex128<Complex, Complex128Marker>('complex128', 16, '<c16'),
-  uint8<int, Uint8Marker>('uint8', 1, '|u1'),
-  int16<int, Int16Marker>('int16', 2, '<i2'),
-  int32<int, Int32Marker>('int32', 4, '<i4'),
-  int64<int, Int64Marker>('int64', 8, '<i8'),
+  complex128<Complex128>('complex128', 16, '<c16'),
+  uint8<Uint8>('uint8', 1, '|u1'),
+  int16<Int16>('int16', 2, '<i2'),
+  int32<Int32>('int32', 4, '<i4'),
+  int64<Int64>('int64', 8, '<i8'),
   // Uses 8 bits (1 byte) per boolean value (backed by ffi.Uint8)
-  boolean<bool, BooleanMarker>('boolean', 1, '|b1');
+  boolean<bool>('boolean', 1, '|b1');
 
   final String name;
   final int byteWidth;
@@ -139,7 +104,7 @@ enum DType<T, M extends Marker> {
 /// // Explicitly free memory when done
 /// a.dispose();
 /// ```
-final class NDArray<T, M extends Marker> implements ffi.Finalizable {
+final class NDArray<T> implements ffi.Finalizable {
   /// Pointer to the raw C memory allocated for this array.
   final ffi.Pointer<ffi.Void> _pointer;
 
@@ -170,7 +135,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   final int offsetElements;
 
   /// The data type of the elements in the array.
-  final DType<T, M> dtype;
+  final DType<T> dtype;
 
   /// Returns true if the array is C-contiguous in memory.
   ///
@@ -346,7 +311,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// survive after the scope finishes (e.g. when returning it as a result).
   ///
   /// Returns this array to allow for method chaining.
-  NDArray<T, M> detachFromScope() {
+  NDArray<T> detachFromScope() {
     final root = _rootParent;
     final scope = Zone.current[_scopeKey] as _NDArrayScope?;
     scope?._untrack(root);
@@ -361,7 +326,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// to remain managed by the caller's outer scope.
   ///
   /// Returns this array to allow for method chaining.
-  NDArray<T, M> detachToParentScope() {
+  NDArray<T> detachToParentScope() {
     final root = _rootParent;
     final scope = Zone.current[_scopeKey] as _NDArrayScope?;
     if (scope != null) {
@@ -412,7 +377,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// and [Dart FFI Memory Management](https://dart.dev/guides/libraries/c-interop) for additional details.
   factory NDArray.create(
     List<int> shape,
-    DType<T, M> dtype, {
+    DType<T> dtype, {
     bool zeroInit = false,
     @internal List<int>? strides,
   }) {
@@ -452,12 +417,12 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
         final p = allocator<ffi.Double>(totalSize * 2);
         pointer = p.cast();
         final doubleList = p.asTypedList(totalSize * 2);
-        data = ComplexList(doubleList) as List<T>;
+        data = ComplexList<Complex128>(doubleList) as List<T>;
       case DType.complex64:
         final p = allocator<ffi.Float>(totalSize * 2);
         pointer = p.cast();
         final floatList = p.asTypedList(totalSize * 2);
-        data = ComplexList(floatList) as List<T>;
+        data = ComplexList<Complex64>(floatList) as List<T>;
       case DType.boolean:
         final p = allocator<ffi.Uint8>(totalSize);
         pointer = p.cast();
@@ -487,14 +452,14 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// ```dart
   /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
   /// ```
-  factory NDArray.fromList(List list, List<int> shape, DType<T, M> dtype) {
+  factory NDArray.fromList(List list, List<int> shape, DType<T> dtype) {
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     if (totalSize != list.length) {
       throw ArgumentError(
         'Total size of shape $shape ($totalSize) must match list length (${list.length})',
       );
     }
-    final arr = NDArray<T, M>.create(shape, dtype);
+    final arr = NDArray<T>.create(shape, dtype);
     final List eagerList = switch (dtype) {
       DType.float64 => Float64List.fromList(list.cast<double>()),
       DType.float32 => Float32List.fromList(list.cast<double>()),
@@ -541,8 +506,8 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   ///
   /// Refer to the [NumPy zeros reference](https://numpy.org/doc/stable/reference/generated/numpy.zeros.html)
   /// and [Dart FFI calloc allocator](https://pub.dev/documentation/ffi/latest/ffi/calloc-constant.html) for additional details.
-  factory NDArray.zeros(List<int> shape, DType<T, M> dtype) {
-    return NDArray<T, M>.create(shape, dtype, zeroInit: true);
+  factory NDArray.zeros(List<int> shape, DType<T> dtype) {
+    return NDArray<T>.create(shape, dtype, zeroInit: true);
   }
 
   /// Factory to create an array filled with ones.
@@ -552,8 +517,8 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// final a = `NDArray<double>`.ones([2, 2], DType.float64);
   /// print(a.data); // [1.0, 1.0, 1.0, 1.0]
   /// ```
-  factory NDArray.ones(List<int> shape, DType<T, M> dtype) {
-    final arr = NDArray<T, M>.create(shape, dtype);
+  factory NDArray.ones(List<int> shape, DType<T> dtype) {
+    final arr = NDArray<T>.create(shape, dtype);
     if (dtype == DType.complex128 || dtype == DType.complex64) {
       arr.fill(Complex(1.0, 0.0) as T);
     } else if (dtype == DType.boolean) {
@@ -577,9 +542,9 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
     double start,
     double stop, {
     double step = 1.0,
-    DType<T, M>? dtype,
+    DType<T>? dtype,
   }) {
-    final DType<T, M> resolvedDType = dtype ?? (DType.float64 as DType<T, M>);
+    final DType<T> resolvedDType = dtype ?? (DType.float64 as DType<T>);
     if (step == 0.0) {
       throw ArgumentError('Step size cannot be zero.');
     }
@@ -587,7 +552,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
       throw ArgumentError('Step size direction must match start/stop range.');
     }
     final length = ((stop - start) / step).ceil();
-    final arr = NDArray<T, M>.create([length], resolvedDType);
+    final arr = NDArray<T>.create([length], resolvedDType);
     for (var i = 0; i < length; i++) {
       final val = start + i * step;
       if (resolvedDType.isComplex) {
@@ -609,8 +574,8 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   ///
   /// **Gotchas:**
   /// - This only creates 2D square matrices.
-  factory NDArray.eye(int n, DType<T, M> dtype) {
-    final arr = NDArray<T, M>.zeros([n, n], dtype);
+  factory NDArray.eye(int n, DType<T> dtype) {
+    final arr = NDArray<T>.zeros([n, n], dtype);
     for (var i = 0; i < n; i++) {
       if (dtype == DType.float32 || dtype == DType.float64) {
         arr.data[i * n + i] = 1.0 as T;
@@ -635,7 +600,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// - **Shared Mutations**: Modifications to the view affect the parent and vice versa.
   /// - **No Ownership**: Calling `dispose()` on a view does nothing.
   factory NDArray.view(
-    NDArray<T, M> parent, {
+    NDArray<T> parent, {
     required List<int> shape,
     required List<int> strides,
     int offsetElements = 0,
@@ -700,7 +665,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
           DType.float64,
         );
         final doubleList = p.cast<ffi.Double>().asTypedList(viewSize * 2);
-        data = ComplexList(doubleList) as List<T>;
+        data = ComplexList<Complex128>(doubleList) as List<T>;
       case DType.complex64:
         final p = _offsetPointer(
           root._pointer,
@@ -708,7 +673,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
           DType.float32,
         );
         final floatList = p.cast<ffi.Float>().asTypedList(viewSize * 2);
-        data = ComplexList(floatList) as List<T>;
+        data = ComplexList<Complex64>(floatList) as List<T>;
       case DType.boolean:
         data =
             BoolList(physicalPointer.cast<ffi.Uint8>().asTypedList(viewSize))
@@ -757,7 +722,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   factory NDArray.fromPointer(
     ffi.Pointer<ffi.Void> pointer,
     List<int> shape,
-    DType<T, M> dtype, {
+    DType<T> dtype, {
     ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>?
     nativeFinalizer,
     List<int>? strides,
@@ -781,11 +746,15 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
         data = pointer.cast<ffi.Int16>().asTypedList(totalSize) as List<T>;
       case DType.complex128:
         data =
-            ComplexList(pointer.cast<ffi.Double>().asTypedList(totalSize * 2))
+            ComplexList<Complex128>(
+                  pointer.cast<ffi.Double>().asTypedList(totalSize * 2),
+                )
                 as List<T>;
       case DType.complex64:
         data =
-            ComplexList(pointer.cast<ffi.Float>().asTypedList(totalSize * 2))
+            ComplexList<Complex64>(
+                  pointer.cast<ffi.Float>().asTypedList(totalSize * 2),
+                )
                 as List<T>;
       case DType.boolean:
         data =
@@ -872,7 +841,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// final b = a.reshape([2, 2]);
   /// print(b.shape); // [2, 2]
   /// ```
-  NDArray<T, M> reshape(List<int> newShape) {
+  NDArray<T> reshape(List<int> newShape) {
     if (isDisposed) {
       throw StateError(
         'Cannot access an array or view whose memory has been explicitly freed/disposed!',
@@ -887,7 +856,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
     }
 
     if (!isContiguous) {
-      final result = NDArray<T, M>.create(newShape, dtype);
+      final result = NDArray<T>.create(newShape, dtype);
       _copyStridedToContiguous(result);
       return result;
     }
@@ -918,9 +887,9 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// print(flat.shape); // [4]
   /// print(flat.toList()); // [1.0, 2.0, 3.0, 4.0]
   /// ```
-  NDArray<T, M> flatten() {
+  NDArray<T> flatten() {
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
-    final result = NDArray<T, M>.create([totalSize], dtype);
+    final result = NDArray<T>.create([totalSize], dtype);
 
     if (isContiguous) {
       _copyContiguousNDArray(this, result, totalSize);
@@ -954,12 +923,12 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// b.data[0] = 99;
   /// print(a.data[0]); // 1 (decoupled memory!)
   /// ```
-  NDArray<T, M> copy({NDArray<T, M>? out}) {
+  NDArray<T> copy({NDArray<T>? out}) {
     if (isDisposed) {
       throw StateError('Cannot copy a disposed array.');
     }
 
-    final NDArray<T, M> result;
+    final NDArray<T> result;
     if (out != null) {
       if (out.isDisposed) {
         throw StateError('Cannot copy to a disposed array.');
@@ -974,7 +943,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
       }
       result = out;
     } else {
-      result = NDArray<T, M>.create(shape, dtype);
+      result = NDArray<T>.create(shape, dtype);
     }
 
     if (isContiguous) {
@@ -1006,7 +975,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
     _copyContiguousNDArray(this, dest, totalSize);
   }
 
-  void _copyStridedToContiguous(NDArray<T, M> dest) {
+  void _copyStridedToContiguous(NDArray<T> dest) {
     final marker = ScratchArena.marker;
     try {
       final cShape = ScratchArena.copyInts(shape);
@@ -1117,7 +1086,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// final r = a.ravel();
   /// print(r.shape); // [4]
   /// ```
-  NDArray<T, M> ravel() {
+  NDArray<T> ravel() {
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     if (isContiguous) {
       return NDArray._(
@@ -1234,7 +1203,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], DType.float64);
   /// final b = a.transpose(); // b has shape [2, 3] view
   /// ```
-  NDArray<T, M> transpose([List<int>? axes]) {
+  NDArray<T> transpose([List<int>? axes]) {
     if (isDisposed) {
       throw StateError(
         'Cannot access an array or view whose memory has been explicitly freed/disposed!',
@@ -1301,7 +1270,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
   /// final t = a.transposed; // shape [2, 2]
   /// ```
-  NDArray<T, M> get transposed => transpose();
+  NDArray<T> get transposed => transpose();
 
   /// Returns the single scalar value of a 0-dimensional array.
   ///
@@ -1414,7 +1383,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   ///
   /// **Preconditions:**
   /// - [mask] must share identical dimensions ([shape]) with this array.
-  void setByMask(NDArray<bool, BooleanMarker> mask, NDArray<T, M> values) {
+  void setByMask(NDArray<bool> mask, NDArray<T> values) {
     if (mask.shape.length != shape.length) {
       throw ArgumentError(
         'Mask shape length (${mask.shape.length}) must match array rank (${shape.length})',
@@ -1461,7 +1430,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   ///
   /// **Preconditions:**
   /// - [mask] must share identical dimensions ([shape]) with this array.
-  void setByMaskScalar(NDArray<bool, BooleanMarker> mask, T value) {
+  void setByMaskScalar(NDArray<bool> mask, T value) {
     if (mask.shape.length != shape.length) {
       throw ArgumentError(
         'Mask shape length (${mask.shape.length}) must match array rank (${shape.length})',
@@ -1500,11 +1469,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// **Polymorphic Equivalence:**
   /// When [axis] is `0`, equivalent to calling `this[ [indices.data] ] = value` (fancy row stack scalar mutation).
   ///
-  void setIndicesScalar(
-    NDArray<int, IntegerMarker> indices,
-    T value, {
-    int axis = 0,
-  }) {
+  void setIndicesScalar(NDArray<int> indices, T value, {int axis = 0}) {
     if (axis < 0 || axis >= shape.length) {
       throw RangeError.range(axis, 0, shape.length - 1, 'axis');
     }
@@ -1543,11 +1508,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// **Polymorphic Equivalence:**
   /// When [axis] is `0`, equivalent to calling `this[ [indices.data] ] = values` (fancy row stack array assignment).
   ///
-  void setIndices(
-    NDArray<int, IntegerMarker> indices,
-    NDArray values, {
-    int axis = 0,
-  }) {
+  void setIndices(NDArray<int> indices, NDArray values, {int axis = 0}) {
     if (axis < 0 || axis >= shape.length) {
       throw RangeError.range(axis, 0, shape.length - 1, 'axis');
     }
@@ -1623,7 +1584,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
         return getCell(intCoords);
       }
     } else if (spec is NDArray && spec.dtype == DType.boolean) {
-      final boolMask = spec as NDArray<bool, BooleanMarker>;
+      final boolMask = spec as NDArray<bool>;
       var shapesMatch = boolMask.shape.length == shape.length;
       if (shapesMatch) {
         for (var i = 0; i < shape.length; i++) {
@@ -1640,7 +1601,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
           'Boolean mask shape must exactly match array shape',
         );
       }
-    } else if (spec is NDArray<int, IntegerMarker>) {
+    } else if (spec is NDArray<int>) {
       var shapesMatch = spec.shape.length == shape.length;
       if (shapesMatch) {
         for (var i = 0; i < shape.length; i++) {
@@ -1683,11 +1644,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
       );
     }
     if (spec is int) {
-      final indices = NDArray<int, Int32Marker>.fromList(
-        [spec],
-        [1],
-        DType.int32,
-      );
+      final indices = NDArray<int>.fromList([spec], [1], DType.int32);
       if (value is NDArray) {
         setIndices(indices, value);
       } else {
@@ -1697,7 +1654,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
       if (spec.isNotEmpty && spec.first is List) {
         final subList = spec.first as List;
         final intIndices = subList.map((e) => e as int).toList();
-        final indices = NDArray<int, Int32Marker>.fromList(intIndices, [
+        final indices = NDArray<int>.fromList(intIndices, [
           intIndices.length,
         ], DType.int32);
         if (value is NDArray) {
@@ -1715,7 +1672,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
         setCell(intCoords, value as T);
       }
     } else if (spec is NDArray && spec.dtype == DType.boolean) {
-      final boolMask = spec as NDArray<bool, BooleanMarker>;
+      final boolMask = spec as NDArray<bool>;
       var shapesMatch = boolMask.shape.length == shape.length;
       if (shapesMatch) {
         for (var i = 0; i < shape.length; i++) {
@@ -1726,7 +1683,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
         }
       }
       if (shapesMatch) {
-        if (value is NDArray<T, M>) {
+        if (value is NDArray<T>) {
           setByMask(boolMask, value);
         } else if (value is T) {
           setByMaskScalar(boolMask, value);
@@ -1740,7 +1697,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
           'Boolean mask shape must exactly match array shape',
         );
       }
-    } else if (spec is NDArray<int, IntegerMarker>) {
+    } else if (spec is NDArray<int>) {
       var shapesMatch = spec.shape.length == shape.length;
       if (shapesMatch) {
         for (var i = 0; i < shape.length; i++) {
@@ -1976,6 +1933,320 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
     }
   }
 
+  NDArray _wrapScalar(dynamic value, List<int> targetShape) {
+    if (value is Complex) {
+      return NDArray.fromList(
+        <Complex>[value],
+        List.filled(targetShape.length, 1),
+        DType.complex128,
+      );
+    } else if (value is int) {
+      return NDArray.fromList(
+        <int>[value],
+        List.filled(targetShape.length, 1),
+        DType.int64,
+      );
+    } else if (value is double) {
+      return NDArray.fromList(
+        <double>[value],
+        List.filled(targetShape.length, 1),
+        DType.float64,
+      );
+    } else if (value is bool) {
+      return NDArray.fromList(
+        <bool>[value],
+        List.filled(targetShape.length, 1),
+        DType.boolean,
+      );
+    } else {
+      throw ArgumentError('Unsupported scalar type: ${value.runtimeType}');
+    }
+  }
+
+  /// Element-wise addition with full broadcasting support.
+  NDArray operator +(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.add(this, otherArr);
+  }
+
+  /// Element-wise subtraction with full broadcasting support.
+  NDArray operator -(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.subtract(this, otherArr);
+  }
+
+  /// Element-wise multiplication with full broadcasting support.
+  ///
+  /// **Overflow behavior:**
+  /// - **Integer arrays** (`int32`, `int64`, etc.) overflow silently wrapping around via standard two's complement.
+  /// - **Floating-point arrays** (`float32`, `float64`) overflow silently to `double.infinity` or `double.negativeInfinity` per IEEE 754.
+  NDArray operator *(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.multiply(this, otherArr);
+  }
+
+  /// Element-wise division with full broadcasting support.
+  ///
+  /// Always upcasts integer operands to [DType.float64] and performs floating-point division.
+  ///
+  /// **Division by Zero:**
+  /// Division by zero is handled silently under IEEE 754 floating-point rules:
+  /// - Dividing a non-zero value by zero results in `double.infinity` or `double.negativeInfinity`.
+  /// - Dividing zero by zero results in `double.nan`.
+  /// No exception is thrown.
+  NDArray operator /(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.divide(this, otherArr);
+  }
+
+  /// Element-wise floor division with full broadcasting support.
+  ///
+  /// **Division by Zero:**
+  /// - **Integer arrays**: Throws [UnsupportedError] if divisor contains any `0` elements.
+  ///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
+  /// - **Floating-point arrays**: Returns `double.nan` silently without throwing exceptions.
+  NDArray operator ~/(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.floor_divide(this, otherArr);
+  }
+
+  /// Element-wise remainder with full broadcasting support.
+  ///
+  /// **Division by Zero:**
+  /// - **Integer divisor**: Throws [UnsupportedError] if divisor contains any `0` elements.
+  ///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
+  /// - **Floating-point divisor**: Returns `double.nan` silently without throwing exceptions.
+  NDArray operator %(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.remainder(this, otherArr);
+  }
+
+  /// Numerical negative, element-wise.
+  NDArray operator -() {
+    return ops.negative(this);
+  }
+
+  /// Element-wise bitwise AND with full broadcasting support.
+  NDArray operator &(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.bitwise_and(this, otherArr);
+  }
+
+  /// Element-wise bitwise OR with full broadcasting support.
+  NDArray operator |(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.bitwise_or(this, otherArr);
+  }
+
+  /// Element-wise bitwise XOR with full broadcasting support.
+  NDArray operator ^(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.bitwise_xor(this, otherArr);
+  }
+
+  /// Element-wise bitwise NOT.
+  NDArray operator ~() {
+    return ops.invert(this);
+  }
+
+  /// Element-wise left shift with full broadcasting support.
+  NDArray operator <<(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.left_shift(this, otherArr);
+  }
+
+  /// Element-wise right shift with full broadcasting support.
+  NDArray operator >>(dynamic other) {
+    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    return ops.right_shift(this, otherArr);
+  }
+
+  /// Element-wise greater than comparison with full broadcasting support.
+  ///
+  /// **Example:**
+  /// {@example /example/ufuncs_example.dart lang=dart}
+  NDArray<bool> operator >(dynamic other) {
+    NDArray otherArr;
+    if (other is NDArray) {
+      otherArr = other;
+    } else {
+      otherArr = _wrapScalar(other, shape);
+    }
+
+    if (dtype == DType.complex128 ||
+        dtype == DType.complex64 ||
+        otherArr.dtype == DType.complex128 ||
+        otherArr.dtype == DType.complex64) {
+      throw UnsupportedError(
+        'Complex numbers do not support inequality comparisons',
+      );
+    }
+
+    final broadcastResult = broadcast(this, otherArr);
+    final commonShape = broadcastResult.shape;
+    final result = NDArray<bool>.create(commonShape, DType.boolean);
+    final resultStrides = computeCStrides(commonShape);
+
+    _dispatchCompare(
+      result.data,
+      this,
+      otherArr,
+      commonShape,
+      broadcastResult.stridesA,
+      broadcastResult.stridesB,
+      resultStrides,
+      (x, y) => (x as num) > (y as num),
+    );
+    return result;
+  }
+
+  /// Element-wise less than comparison with full broadcasting support.
+  ///
+  /// **Example:**
+  /// {@example /example/ufuncs_example.dart lang=dart}
+  NDArray<bool> operator <(dynamic other) {
+    NDArray otherArr;
+    if (other is NDArray) {
+      otherArr = other;
+    } else {
+      otherArr = _wrapScalar(other, shape);
+    }
+
+    if (dtype == DType.complex128 ||
+        dtype == DType.complex64 ||
+        otherArr.dtype == DType.complex128 ||
+        otherArr.dtype == DType.complex64) {
+      throw UnsupportedError(
+        'Complex numbers do not support inequality comparisons',
+      );
+    }
+
+    final broadcastResult = broadcast(this, otherArr);
+    final commonShape = broadcastResult.shape;
+    final result = NDArray<bool>.create(commonShape, DType.boolean);
+    final resultStrides = computeCStrides(commonShape);
+
+    _dispatchCompare(
+      result.data,
+      this,
+      otherArr,
+      commonShape,
+      broadcastResult.stridesA,
+      broadcastResult.stridesB,
+      resultStrides,
+      (x, y) => (x as num) < (y as num),
+    );
+    return result;
+  }
+
+  /// Element-wise greater-or-equal comparison with full broadcasting support.
+  ///
+  /// **Example:**
+  /// {@example /example/ufuncs_example.dart lang=dart}
+  NDArray<bool> operator >=(dynamic other) {
+    NDArray otherArr;
+    if (other is NDArray) {
+      otherArr = other;
+    } else {
+      otherArr = _wrapScalar(other, shape);
+    }
+
+    if (dtype == DType.complex128 ||
+        dtype == DType.complex64 ||
+        otherArr.dtype == DType.complex128 ||
+        otherArr.dtype == DType.complex64) {
+      throw UnsupportedError(
+        'Complex numbers do not support inequality comparisons',
+      );
+    }
+
+    final broadcastResult = broadcast(this, otherArr);
+    final commonShape = broadcastResult.shape;
+    final result = NDArray<bool>.create(commonShape, DType.boolean);
+    final resultStrides = computeCStrides(commonShape);
+
+    _dispatchCompare(
+      result.data,
+      this,
+      otherArr,
+      commonShape,
+      broadcastResult.stridesA,
+      broadcastResult.stridesB,
+      resultStrides,
+      (x, y) => (x as num) >= (y as num),
+    );
+    return result;
+  }
+
+  /// Element-wise less-or-equal comparison with full broadcasting support.
+  ///
+  /// **Example:**
+  /// {@example /example/ufuncs_example.dart lang=dart}
+  NDArray<bool> operator <=(dynamic other) {
+    NDArray otherArr;
+    if (other is NDArray) {
+      otherArr = other;
+    } else {
+      otherArr = _wrapScalar(other, shape);
+    }
+
+    if (dtype == DType.complex128 ||
+        dtype == DType.complex64 ||
+        otherArr.dtype == DType.complex128 ||
+        otherArr.dtype == DType.complex64) {
+      throw UnsupportedError(
+        'Complex numbers do not support inequality comparisons',
+      );
+    }
+
+    final broadcastResult = broadcast(this, otherArr);
+    final commonShape = broadcastResult.shape;
+    final result = NDArray<bool>.create(commonShape, DType.boolean);
+    final resultStrides = computeCStrides(commonShape);
+
+    _dispatchCompare(
+      result.data,
+      this,
+      otherArr,
+      commonShape,
+      broadcastResult.stridesA,
+      broadcastResult.stridesB,
+      resultStrides,
+      (x, y) => (x as num) <= (y as num),
+    );
+    return result;
+  }
+
+  /// Element-wise equality comparison with full broadcasting support.
+  ///
+  /// **Example:**
+  /// {@example /example/ufuncs_example.dart lang=dart}
+  NDArray<bool> eq(dynamic other) {
+    NDArray otherArr;
+    if (other is NDArray) {
+      otherArr = other;
+    } else {
+      otherArr = _wrapScalar(other, shape);
+    }
+
+    final broadcastResult = broadcast(this, otherArr);
+    final commonShape = broadcastResult.shape;
+    final result = NDArray<bool>.create(commonShape, DType.boolean);
+    final resultStrides = computeCStrides(commonShape);
+
+    _dispatchCompare(
+      result.data,
+      this,
+      otherArr,
+      commonShape,
+      broadcastResult.stridesA,
+      broadcastResult.stridesB,
+      resultStrides,
+      (x, y) => x == y,
+    );
+    return result;
+  }
+
   /// Returns a view of this array with elements sliced based on [selectors].
   ///
   /// [selectors] can contain integers (to select a single index and reduce rank)
@@ -1988,7 +2259,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// Returns a view or copy of the array with elements sliced based on [selectors].
   ///
   /// [selectors] must contain instances of [Selector] subclasses: [Index], [Slice], [Indices], [Mask].
-  NDArray<T, M> slice(List<Selector> selectors) {
+  NDArray<T> slice(List<Selector> selectors) {
     if (selectors.length > shape.length) {
       throw ArgumentError('Too many selectors for array rank');
     }
@@ -2086,7 +2357,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
     }
 
     if (isAdvanced) {
-      final result = NDArray<T, M>.create(newShape, dtype);
+      final result = NDArray<T>.create(newShape, dtype);
       final rank = shape.length;
 
       final sliceMarker = ScratchArena.marker;
@@ -2225,7 +2496,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
   /// final b = a.take([0, 1], axis: 1); // Select columns 0 and 1
   /// ```
-  NDArray<T, M> take(List<int> indices, {int axis = 0}) {
+  NDArray<T> take(List<int> indices, {int axis = 0}) {
     if (axis < 0 || axis >= shape.length) {
       throw RangeError.index(axis, shape, 'axis out of range');
     }
@@ -2238,7 +2509,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   ///
   /// The [mask] array must have elements with value 0 or 1.
   /// Returns a 1D array containing the elements where the mask is 1.
-  NDArray<T, M> applyMask(NDArray<bool, BooleanMarker> mask) {
+  NDArray<T> applyMask(NDArray<bool> mask) {
     if (shape.length == 1 &&
         mask.shape.length == 1 &&
         isContiguous &&
@@ -2250,7 +2521,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
       }
       final size = shape[0];
       final count = native_count_mask(mask.pointer.cast(), size);
-      final result = NDArray<T, M>.create([count], dtype);
+      final result = NDArray<T>.create([count], dtype);
       native_apply_mask(
         dtype.index,
         pointer.cast(),
@@ -2264,8 +2535,8 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   }
 
   void _copyAdvancedRecursive(
-    NDArray<T, M> src,
-    NDArray<T, M> dest,
+    NDArray<T> src,
+    NDArray<T> dest,
     List<Selector> selectors,
     List<int> srcIndices,
     List<int> destIndices,
@@ -2374,7 +2645,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   }
 
   void _fillListRecursive(
-    NDArray<T, M> arr,
+    NDArray<T> arr,
     List<int> indices,
     int dim,
     List<T> result,
@@ -2404,7 +2675,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// {@example /example/shape_examples.dart lang=dart}
-  NDArray<T, M> expandDims(int axis) {
+  NDArray<T> expandDims(int axis) {
     final rank = shape.length;
     if (axis < -rank - 1 || axis > rank) {
       throw RangeError.range(
@@ -2450,7 +2721,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// {@example /example/shape_examples.dart lang=dart}
-  NDArray<T, M> squeeze({dynamic axis}) {
+  NDArray<T> squeeze({dynamic axis}) {
     final rank = shape.length;
     final axesToRemove = <int>{};
 
@@ -2513,7 +2784,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// {@example /example/shape_examples.dart lang=dart}
-  NDArray<T, M> swapaxes(int axis1, int axis2) {
+  NDArray<T> swapaxes(int axis1, int axis2) {
     final rank = shape.length;
     if (axis1 < -rank || axis1 >= rank) {
       throw RangeError.range(axis1, -rank, rank - 1, 'axis1');
@@ -2557,7 +2828,7 @@ final class NDArray<T, M extends Marker> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// {@example /example/shape_examples.dart lang=dart}
-  NDArray<T, M> moveaxis(dynamic source, dynamic destination) {
+  NDArray<T> moveaxis(dynamic source, dynamic destination) {
     final rank = shape.length;
 
     List<int> srcList;
@@ -2785,7 +3056,7 @@ bool listEquals<E>(List<E>? a, List<E>? b) {
 /// A wrapper class for boolean masks used in advanced indexing.
 final class BooleanMask {
   /// The underlying boolean array.
-  final NDArray<bool, BooleanMarker> mask;
+  final NDArray<bool> mask;
 
   /// Creates a new boolean mask. Precondition: mask dtype must be `DType.boolean.`
   BooleanMask(this.mask) {
@@ -2905,7 +3176,7 @@ final class Complex {
 }
 
 /// A list view of complex numbers backed by a flat list of doubles.
-final class ComplexList extends ListBase<Complex> {
+final class ComplexList<T extends Complex> extends ListBase<T> {
   final List<double> _list;
   ComplexList(this._list);
 
@@ -2921,12 +3192,12 @@ final class ComplexList extends ListBase<Complex> {
   }
 
   @override
-  Complex operator [](int index) {
-    return Complex(_list[index * 2], _list[index * 2 + 1]);
+  T operator [](int index) {
+    return Complex(_list[index * 2], _list[index * 2 + 1]) as T;
   }
 
   @override
-  void operator []=(int index, Complex value) {
+  void operator []=(int index, T value) {
     _list[index * 2] = value.real;
     _list[index * 2 + 1] = value.imag;
   }

@@ -115,7 +115,7 @@ void main() {
         expect(resF2.toList(), [false, true, false]);
 
         // Complex128 / boolean
-        final c128 = NDArray.create([3], DType.complex128);
+        final c128 = NDArray<Complex>.create([3], DType.complex128);
         c128.data[0] = Complex(0.0, 0.0); // false
         c128.data[1] = Complex(1.0, -1.0); // true
         c128.data[2] = Complex(0.0, 0.0);

@@ -44,10 +44,10 @@ DType resolveDType(DType a, DType b) {
   return DType.int32;
 }
 
-DType<T, MT> defaultDType<T, MT extends Marker>() {
-  if (T == Complex) return DType.complex128 as DType<T, MT>;
-  if (T == int) return DType.int64 as DType<T, MT>;
-  return DType.float64 as DType<T, MT>;
+DType<T> defaultDType<T>() {
+  if (T == Complex) return DType.complex128 as DType<T>;
+  if (T == int) return DType.int64 as DType<T>;
+  return DType.float64 as DType<T>;
 }
 
 Object normalizeScalar(Object o, DType dtype) {
@@ -76,31 +76,31 @@ Object normalizeScalar(Object o, DType dtype) {
   }
 }
 
-NDArray<T, MT> toNDArray<T, MT extends Marker>(Object o, DType<T, MT> dtype) {
+NDArray<T> toNDArray<T>(Object o, DType<T> dtype) {
   if (o is NDArray) {
     if (o.isDisposed) {
       throw StateError('Cannot convert a disposed NDArray to NDArray.');
     }
-    if (o.dtype == dtype) return o as NDArray<T, MT>;
+    if (o.dtype == dtype) return o as NDArray<T>;
     return castNDArray(o, dtype);
   }
   final normalized = normalizeScalar(o, dtype);
-  return NDArray.fromList([normalized], [], dtype);
+  return NDArray<T>.fromList([normalized], [], dtype);
 }
 
-(NDArray<T, MT>, T) linspaceInternal<T, MT extends Marker>(
+(NDArray<T>, T) linspaceInternal<T>(
   T start,
   T stop,
   int numSamples, {
   bool endpoint = true,
-  DType<T, MT>? dtype,
+  DType<T>? dtype,
 }) {
   if (numSamples <= 0) throw ArgumentError('numSamples must be positive');
 
-  final resolvedDType = dtype ?? defaultDType();
+  final resolvedDType = dtype ?? defaultDType<T>();
 
   final div = endpoint ? (numSamples - 1) : numSamples;
-  final arr = NDArray.create([numSamples], resolvedDType);
+  final arr = NDArray<T>.create([numSamples], resolvedDType);
   T step;
 
   switch (resolvedDType) {
@@ -173,14 +173,7 @@ NDArray<T, MT> toNDArray<T, MT extends Marker>(Object o, DType<T, MT> dtype) {
   return (arr, step);
 }
 
-void elementWiseOp<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker,
-  Tr,
-  MTr extends Marker
->(
+void elementWiseOp<Ta, Tb, Tr>(
   List<Tr> result,
   List<Ta> a,
   List<Tb> b,
@@ -220,7 +213,7 @@ void elementWiseOp<
   final strideResult = stridesResult[dim];
 
   for (var i = 0; i < limit; i++) {
-    elementWiseOp(
+    elementWiseOp<Ta, Tb, Tr>(
       result,
       a,
       b,
@@ -276,11 +269,11 @@ int encodeDType(DType type) {
   throw ArgumentError('Unsupported dtype for casting: $type');
 }
 
-NDArray<double, Float64Marker> promoteToDouble(NDArray a) {
+NDArray<double> promoteToDouble(NDArray a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute promoteToDouble on a disposed array.');
   }
-  final res = NDArray.create(a.shape, DType.float64);
+  final res = NDArray<double>.create(a.shape, DType.float64);
   final ndim = a.shape.length;
   final marker = ScratchArena.marker;
 
@@ -309,11 +302,11 @@ NDArray<double, Float64Marker> promoteToDouble(NDArray a) {
   return res;
 }
 
-NDArray<Complex, Complex128Marker> promoteToComplex(NDArray a) {
+NDArray<Complex> promoteToComplex(NDArray a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute promoteToComplex on a disposed array.');
   }
-  final res = NDArray.create(a.shape, DType.complex128);
+  final res = NDArray<Complex>.create(a.shape, DType.complex128);
   final ndim = a.shape.length;
   final marker = ScratchArena.marker;
 
@@ -343,10 +336,10 @@ NDArray<Complex, Complex128Marker> promoteToComplex(NDArray a) {
 }
 
 /// Recursive helper to accumulate sum and count of non-NaN elements along an axis.
-void nanReduceRecursive<T, MT extends Marker>(
-  NDArray<T, MT> a,
-  NDArray<T, MT> result,
-  NDArray<int, Int32Marker> counts,
+void nanReduceRecursive<T>(
+  NDArray<T> a,
+  NDArray<T> result,
+  NDArray<int> counts,
   List<int> coordA,
   List<int> coordRes,
   int axis,
@@ -364,14 +357,14 @@ void nanReduceRecursive<T, MT extends Marker>(
   if (dim == axis) {
     for (var i = 0; i < a.shape[axis]; i++) {
       coordA[dim] = i;
-      nanReduceRecursive(a, result, counts, coordA, coordRes, axis, dim + 1);
+      nanReduceRecursive<T>(a, result, counts, coordA, coordRes, axis, dim + 1);
     }
   } else {
     final resDim = dim < axis ? dim : dim - 1;
     for (var i = 0; i < a.shape[dim]; i++) {
       coordA[dim] = i;
       coordRes[resDim] = i;
-      nanReduceRecursive(a, result, counts, coordA, coordRes, axis, dim + 1);
+      nanReduceRecursive<T>(a, result, counts, coordA, coordRes, axis, dim + 1);
     }
   }
 }
@@ -595,14 +588,9 @@ void walkStackCoords(
 }
 
 /// Recursive helper to traverse and reduce an array along an axis.
-void reduceRecursive<
-  S extends Object,
-  MS extends Marker,
-  D extends Object,
-  MD extends Marker
->(
-  NDArray<S, MS> src,
-  NDArray<D, MD> dest,
+void reduceRecursive<S extends Object, D extends Object>(
+  NDArray<S> src,
+  NDArray<D> dest,
   List<int> currentPos,
   List<int> destPos,
   int targetAxis,
@@ -633,7 +621,7 @@ void reduceRecursive<
     } else if (currentDim > targetAxis) {
       destPos[currentDim - 1] = i;
     }
-    reduceRecursive(
+    reduceRecursive<S, D>(
       src,
       dest,
       currentPos,
@@ -652,9 +640,9 @@ void copyContiguousFlat(NDArray src, NDArray dest, int destOffset, int size) {
   custom_memcpy(destPtr.cast(), srcPtr.cast(), size * width);
 }
 
-void copyConcatenateRecursive<T, MT extends Marker>(
-  NDArray<T, MT> src,
-  NDArray<T, MT> dest,
+void copyConcatenateRecursive<T>(
+  NDArray<T> src,
+  NDArray<T> dest,
   int axis,
   int axisOffset,
   List<int> currentIndices,
@@ -708,7 +696,7 @@ void copyStackRecursive(
   }
 }
 
-void unaryOp<Ta, MTa extends Marker, Tr, MTr extends Marker>(
+void unaryOp<Ta, Tr>(
   List<Tr> result,
   List<Ta> a,
   List<int> shape,
@@ -725,7 +713,7 @@ void unaryOp<Ta, MTa extends Marker, Tr, MTr extends Marker>(
   }
 
   for (var i = 0; i < shape[dim]; i++) {
-    unaryOp(
+    unaryOp<Ta, Tr>(
       result,
       a,
       shape,
@@ -739,16 +727,7 @@ void unaryOp<Ta, MTa extends Marker, Tr, MTr extends Marker>(
   }
 }
 
-void ternaryOp<
-  Ta,
-  MTa extends Marker,
-  Tb,
-  MTb extends Marker,
-  Tc,
-  MTc extends Marker,
-  Tr,
-  MTr extends Marker
->(
+void ternaryOp<Ta, Tb, Tc, Tr>(
   List<Tr> result,
   List<Ta> a,
   List<Tb> b,
@@ -794,7 +773,7 @@ void ternaryOp<
   final strideResult = stridesResult[dim];
 
   for (var i = 0; i < limit; i++) {
-    ternaryOp(
+    ternaryOp<Ta, Tb, Tc, Tr>(
       result,
       a,
       b,
@@ -825,16 +804,7 @@ bool isTrueHelper(dynamic x) {
   return false;
 }
 
-void whereOpRec<
-  Tc,
-  MTc extends Marker,
-  Tx,
-  MTx extends Marker,
-  Ty,
-  MTy extends Marker,
-  Tr,
-  MTr extends Marker
->(
+void whereOpRec<Tc, Tx, Ty, Tr>(
   List<Tr> result,
   List<Tc> cond,
   List<Tx> x,
@@ -868,7 +838,7 @@ void whereOpRec<
   }
 
   for (var i = 0; i < shape[dim]; i++) {
-    whereOpRec(
+    whereOpRec<Tc, Tx, Ty, Tr>(
       result,
       cond,
       x,
@@ -907,7 +877,7 @@ void dispatchWhere(
       y.dtype == DType.complex128 ||
       y.dtype == DType.complex64) {
     final resList = rData as List<Complex>;
-    whereOpRec(
+    whereOpRec<dynamic, dynamic, dynamic, Complex>(
       resList,
       cData,
       xData,
@@ -928,7 +898,7 @@ void dispatchWhere(
       y.dtype == DType.float64 ||
       y.dtype == DType.float32) {
     final resList = rData as List<double>;
-    whereOpRec(
+    whereOpRec<dynamic, dynamic, dynamic, double>(
       resList,
       cData,
       xData,
@@ -946,7 +916,7 @@ void dispatchWhere(
     );
   } else {
     final resList = rData as List<int>;
-    whereOpRec(
+    whereOpRec<dynamic, dynamic, dynamic, int>(
       resList,
       cData,
       xData,
@@ -1017,9 +987,9 @@ List<int> broadcast3Shapes(List<int> s1, List<int> s2, List<int> s3) {
   return common;
 }
 
-void countNonzeroRecursive<T, MT extends Marker>(
-  NDArray<T, MT> src,
-  NDArray<int, Int32Marker> dest,
+void countNonzeroRecursive<T>(
+  NDArray<T> src,
+  NDArray<int> dest,
   List<int> srcPos,
   int targetAxis,
   int currentDim,
@@ -1038,13 +1008,13 @@ void countNonzeroRecursive<T, MT extends Marker>(
 
   for (var i = 0; i < src.shape[currentDim]; i++) {
     srcPos[currentDim] = i;
-    countNonzeroRecursive(src, dest, srcPos, targetAxis, currentDim + 1);
+    countNonzeroRecursive<T>(src, dest, srcPos, targetAxis, currentDim + 1);
   }
 }
 
-void argMinMaxRecursive<T, MT extends Marker>(
-  NDArray<T, MT> src,
-  NDArray<int, Int32Marker> dest,
+void argMinMaxRecursive<T>(
+  NDArray<T> src,
+  NDArray<int> dest,
   List<int> srcPos,
   int targetAxis,
   int currentDim,
@@ -1082,13 +1052,13 @@ void argMinMaxRecursive<T, MT extends Marker>(
 
   for (var i = 0; i < src.shape[currentDim]; i++) {
     srcPos[currentDim] = i;
-    argMinMaxRecursive(src, dest, srcPos, targetAxis, currentDim + 1, isMax);
+    argMinMaxRecursive<T>(src, dest, srcPos, targetAxis, currentDim + 1, isMax);
   }
 }
 
 void selectRecursive(
   NDArray result,
-  List<NDArray<bool, BooleanMarker>> condlist,
+  List<NDArray<bool>> condlist,
   List<NDArray> choicelist,
   List<List<int>> stridesCond,
   List<List<int>> stridesChoice,
@@ -1179,10 +1149,10 @@ dynamic castValue(dynamic val, DType dtype) {
 
 enum CumOpType { sum, prod, min, max }
 
-NDArray<R, MR> cumOpFFI<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a,
+NDArray<R> cumOpFFI<T, R>(
+  NDArray<T> a,
   int axis,
-  NDArray<R, MR> result,
+  NDArray<R> result,
   CumOpType opType,
 ) {
   final rank = a.shape.length;
@@ -1445,12 +1415,9 @@ NDArray<R, MR> cumOpFFI<T, MT extends Marker, R, MR extends Marker>(
   return result;
 }
 
-NDArray<R, MR> castNDArray<R, MR extends Marker>(
-  NDArray a,
-  DType<R, MR> targetDType,
-) {
-  if (a.dtype == targetDType) return a as NDArray<R, MR>;
-  final result = NDArray.create(a.shape, targetDType);
+NDArray<R> castNDArray<R>(NDArray a, DType<R> targetDType) {
+  if (a.dtype == targetDType) return a as NDArray<R>;
+  final result = NDArray<R>.create(a.shape, targetDType);
   final aFlat = a.toList();
   for (var i = 0; i < aFlat.length; i++) {
     result.data[i] = castValue(aFlat[i], targetDType) as R;
@@ -1458,9 +1425,9 @@ NDArray<R, MR> castNDArray<R, MR extends Marker>(
   return result;
 }
 
-void _cumOpFallbackHelper<T, MT extends Marker, R, MR extends Marker>(
-  NDArray<T, MT> a,
-  NDArray<R, MR> result,
+void _cumOpFallbackHelper<T, R>(
+  NDArray<T> a,
+  NDArray<R> result,
   int axis,
   void Function(
     ffi.Pointer<ffi.Double> src,
@@ -1474,7 +1441,7 @@ void _cumOpFallbackHelper<T, MT extends Marker, R, MR extends Marker>(
   ffiFunc,
 ) {
   final temp = a.isContiguous ? a : a.copy();
-  final doubleA = NDArray.create(temp.shape, DType.float64);
+  final doubleA = NDArray<double>.create(temp.shape, DType.float64);
   final offset = temp.offsetElements;
   for (var i = 0; i < temp.size; i++) {
     final val = temp.data[offset + i];
@@ -1482,7 +1449,7 @@ void _cumOpFallbackHelper<T, MT extends Marker, R, MR extends Marker>(
         ? (val ? 1.0 : 0.0)
         : (val as num).toDouble();
   }
-  final doubleRes = NDArray.create(temp.shape, DType.float64);
+  final doubleRes = NDArray<double>.create(temp.shape, DType.float64);
   final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
   final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
   final cShape = ScratchArena.copyInts(temp.shape);
