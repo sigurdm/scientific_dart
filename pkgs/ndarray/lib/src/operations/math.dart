@@ -2349,11 +2349,7 @@ NDArray<double> hypot(NDArray x1, NDArray x2, {NDArray<double>? out}) {
 /// ```dart
 /// final p = power(a, b);
 /// ```
-NDArray<R> power<Ta, Tb, R>(
-  NDArray<Ta> x1,
-  NDArray<Tb> x2, {
-  NDArray<R>? out,
-}) {
+NDArray<R> power<Ta, Tb, R>(NDArray<Ta> x1, NDArray<Tb> x2, {NDArray<R>? out}) {
   if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute power() on a disposed array.');
   }
