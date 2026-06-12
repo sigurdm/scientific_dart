@@ -1,7 +1,6 @@
 # Codebase Quality & Enhancements Review - FINDINGS.md
 
 This file logs architectural improvements, optimization ideas, and feature gaps relative to the reference NumPy library.
-When a task is completed, describe it in DONE.md file and remove it from this file.
 
 
 ## 🛠️ Section 2: Architectural & Memory Safety Gaps
@@ -33,23 +32,11 @@ When a task is completed, describe it in DONE.md file and remove it from this fi
 ### 3.9 Progressive Scientific Generators
 - all done
 
-### 3.11 1D Set Operations
-- **Categorical Elements Matching**: Vectorized 1D set operations equivalent to standard Python sets: `intersect1d()`, `setdiff1d()`, `setxor1d()`, `union1d()`, and element check `isin()` to accelerate classification preprocessing filters.
-
-### 3.13 1D Linear Interpolation
-- **Data Alignment Solver**: Exposing piece-wise linear interpolation solver `interp(x, xp, fp)` to align uneven scientific timeseries records natively.
-
 ### 3.14 Structured Masked Arrays (ma category)
 - **Robust Missing Data Handling**: Exposing masked array wrappers (similar to standard `numpy.ma` package) to dynamically package arrays with boolean masks, allowing ufuncs and reductions to automatically bypass invalid/corrupted records natively.
 
 ### 3.16 Schur and Hessenberg linalg Decompositions
 - **Advanced Control Theory Solvers**: Exposing native LAPACK-bound solvers `linalg.schur()` and `linalg.hessenberg()` to support advanced control systems design and numeric eigenvalue search algorithms.
-
-### 3.17 Axis-Specific Matrix Splitting
-- **Standard Multi-Dimensional Segmentation**: Adding axis-specific sub-array splitting helpers `hsplit()`, `vsplit()`, and `dsplit()` to align with standard NumPy dataset segmentations.
-
-### 3.18 N-Dimensional Padding (pad category)
-- **Edge Border Manipulations**: Exposing high-performance vectorized N-Dimensional padding `pad(a, pad_width, {mode: 'constant', constant_values: 0})` to support edge reflection, border replication, and zero-padding, which are extremely vital for Convolutional Neural Network (CNN) boundary gates, signal windowing, and numeric differential equation boundaries.
 
 ### 3.20 Broad-Boundary Array Clipping (clip)
 (Completed native broadcasting array bounds clipping feature)
