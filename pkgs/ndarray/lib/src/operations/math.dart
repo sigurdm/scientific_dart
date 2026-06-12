@@ -2359,25 +2359,7 @@ NDArray<R> power<Ta, Tb, R>(
   }
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
-  final DType<R> targetDType;
-  if (out != null) {
-    targetDType = out.dtype;
-  } else {
-    final DType<dynamic> promoted;
-    if (x1.dtype == DType.complex128 ||
-        x2.dtype == DType.complex128 ||
-        x1.dtype == DType.complex64 ||
-        x2.dtype == DType.complex64) {
-      promoted = (x1.dtype == DType.complex64 || x2.dtype == DType.complex64)
-          ? DType.complex64
-          : DType.complex128;
-    } else {
-      promoted = (x1.dtype == DType.float32 || x2.dtype == DType.float32)
-          ? DType.float32
-          : DType.float64;
-    }
-    targetDType = promoted as DType<R>;
-  }
+  final targetDType = resolveDType(x1.dtype, x2.dtype);
 
   final NDArray<R> result;
   if (out != null) {
@@ -2388,7 +2370,7 @@ NDArray<R> power<Ta, Tb, R>(
     }
     result = out;
   } else {
-    result = NDArray<R>.create(shape, targetDType);
+    result = NDArray<R>.create(shape, targetDType as DType<R>);
   }
 
   if (targetDType == DType.complex128 || targetDType == DType.complex64) {
