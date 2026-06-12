@@ -36,17 +36,11 @@ When a task is completed, describe it in DONE.md file and remove it from this fi
 ### 3.11 1D Set Operations
 - **Categorical Elements Matching**: Vectorized 1D set operations equivalent to standard Python sets: `intersect1d()`, `setdiff1d()`, `setxor1d()`, `union1d()`, and element check `isin()` to accelerate classification preprocessing filters.
 
-### 3.12 Statistical Percentiles & Medians
-- **Descriptive Statistics**: Exposing robust Descriptive statistics solvers: `median(a, {int? axis})` (median calculation), `percentile(a, q, {int? axis})`, and `quantile(a, q, {int? axis})` along axes to compute IQR, outliers, and normalization parameters natively.
-
 ### 3.13 1D Linear Interpolation
 - **Data Alignment Solver**: Exposing piece-wise linear interpolation solver `interp(x, xp, fp)` to align uneven scientific timeseries records natively.
 
 ### 3.14 Structured Masked Arrays (ma category)
 - **Robust Missing Data Handling**: Exposing masked array wrappers (similar to standard `numpy.ma` package) to dynamically package arrays with boolean masks, allowing ufuncs and reductions to automatically bypass invalid/corrupted records natively.
-
-### 3.15 Quantitative Financial ufuncs
-- **Corporate & Quantitative Solvers**: Exposing high-speed financial universal functions such as Net Present Value `npv()`, Internal Rate of Return `irr()`, Future Value `fv()`, and Present Value `pv()`.
 
 ### 3.16 Schur and Hessenberg linalg Decompositions
 - **Advanced Control Theory Solvers**: Exposing native LAPACK-bound solvers `linalg.schur()` and `linalg.hessenberg()` to support advanced control systems design and numeric eigenvalue search algorithms.

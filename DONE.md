@@ -2709,3 +2709,30 @@
   * **Native Performance**: Outsourced the generation loops to high-performance C kernels (`v_linspace_double`, `v_linspace_complex128`, `v_logspace_double`, etc.) in [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.c). This bypasses Dart's JIT overhead for large coordinate arrays and leverages optimized math library calls.
 * **Verification**: Authored a comprehensive test suite [spacers_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/spacers_test.dart) verifying 14 scenarios including linear/log/geometric progressions, complex plane paths, multi-dimensional broadcasting, and axis-wise generation. All tests pass successfully!
 
+***
+
+## 78. Implemented Quantitative Financial ufuncs `fv()`, `pv()`, `npv()`, and `irr()`
+* **Issue**: Resolves **Section 3.15** in `ISSUES.md`. High-speed financial universal functions were missing from the library, preventing quantitative financial modeling and simulations.
+* **Resolution**:
+  * Implemented `fv()`, `pv()`, `npv()`, and `irr()` functions in [financial.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations/financial.dart).
+  * **Strong Type Safety**: Typed functions to strictly take and return `NDArray<Float64>` to align with `ndarray` package conventions and compile-time type safety.
+  * **0D Broadcasting Fix**: Corrected C-level kernels `s_where_double` and `s_where_float` in [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.c) to correctly handle 0D (scalar-like) arrays.
+  * **Zero-Copy Optimization**: Implemented coefficient stripping in `irr` using zero-copy slicing (`slice` with `Slice`) and FFI-accelerated `nonzero` search, avoiding heap allocation and Dart list copy overhead.
+  * **Scoping Integration**: Used `NDArray.scope` to manage memory allocations automatically, eliminating manual `.dispose()` calls.
+* **Verification**:
+  * Created [financial_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/financial_test.dart) covering 0D scalar-like arrays, broadcasting, zero-rate cases, when='begin'/'end' modes, and `irr` sign-change exceptions.
+  * Created [financial_example.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/example/financial_example.dart) demonstrating usage of all 4 functions with scoped memory management.
+  * All tests pass successfully and static analysis is clean.
+
+***
+
+## 79. Implemented Descriptive Statistics Percentiles & Medians
+* **Issue**: Resolves **Section 3.12** in `ISSUES.md`. Exposing robust descriptive statistics solvers was missing, preventing users from calculating percentiles, quantiles, and medians along axes.
+* **Resolution**:
+  * Implemented `median()`, `percentile()`, and `quantile()` in [stats.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/lib/src/operations/stats.dart).
+  * **13 Estimation Methods**: Implemented all 13 percentile/quantile estimation methods from NumPy (including linear, inverted_cdf, averaged_inverted_cdf, closest_observation, interpolated_inverted_cdf, hazen, weibull, median_unbiased, normal_unbiased, etc.).
+  * **C-Heap Acceleration**: Offloaded index and weight calculations for all 13 methods to optimized FFI C functions in [custom_ufuncs.c](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/hook/custom_ufuncs.c) (e.g., `r_median_double`, `s_median_double`, and percentile calculation helpers).
+  * **Type Parity**: Added full support for float32, float64, int32, int64, uint8, and complex (complex64, complex128) data types.
+* **Verification**:
+  * Authored comprehensive unit tests in [percentiles_test.dart](file:///usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/test/percentiles_test.dart) verifying all 13 estimation methods against NumPy reference values, axis-specific reductions, and boundary cases.
+  * All tests pass successfully.
