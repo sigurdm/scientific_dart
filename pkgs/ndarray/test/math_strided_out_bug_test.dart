@@ -266,13 +266,17 @@ void main() {
 
     test("comparison (greater) with broadcasting", () {
       final a = NDArray.fromList([1.0, 2.0], [2], DType.float64); // shape [2]
-      final b = NDArray.fromList([0.0, 3.0, 4.0, 1.0], [2, 2], DType.float64); // shape [2, 2]
+      final b = NDArray.fromList(
+        [0.0, 3.0, 4.0, 1.0],
+        [2, 2],
+        DType.float64,
+      ); // shape [2, 2]
       // a broadcasted to [[1.0, 2.0], [1.0, 2.0]]
       // b is [[0.0, 3.0], [4.0, 1.0]]
       // a > b:
       // [[1.0 > 0.0, 2.0 > 3.0], [1.0 > 4.0, 2.0 > 1.0]]
       // -> [[true, false], [false, true]]
-      
+
       final res = greater(a, b);
       print("TEST res.data: ${res.data}");
       print("TEST res.data[1]: ${res.data[1]}");

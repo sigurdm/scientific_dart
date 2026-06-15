@@ -5000,7 +5000,9 @@ void _compareHelper(
 ) {
   final rank = result.shape.length;
   final marker = ScratchArena.marker;
-  final cShape = result.shape.isEmpty ? ffi.nullptr : ScratchArena.copyInts(result.shape);
+  final cShape = result.shape.isEmpty
+      ? ffi.nullptr
+      : ScratchArena.copyInts(result.shape);
   final cStridesA = stridesA.isEmpty
       ? ffi.nullptr
       : ScratchArena.copyInts(stridesA);
@@ -6634,12 +6636,12 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
 /// final a = NDArray.fromList([Complex(1.0, 2.0)], [1], DType.complex128);
 /// final c = conj(a); // [Complex(1.0, -2.0)]
 /// ```
-NDArray conj(NDArray a, {NDArray? out}) {
+NDArray<T> conj<T>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute conj() on a disposed array.');
   }
   final targetDType = a.dtype;
-  final result = out ?? NDArray.create(a.shape, targetDType);
+  final result = out ?? NDArray<T>.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -6705,109 +6707,13 @@ NDArray conj(NDArray a, {NDArray? out}) {
     case DType.int16:
     case DType.boolean:
       // Real/boolean numbers are their own complex conjugates!
-      if (a.isContiguous && result.isContiguous) {
-        final totalSize = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-        result.data.setRange(0, totalSize, a.data);
-      } else if (result.isContiguous) {
-        final rank = a.shape.length;
-        final marker = ScratchArena.marker;
-        final cShape = ScratchArena.copyInts(a.shape);
-        final cStridesA = ScratchArena.copyInts(a.strides);
-        try {
-          switch (targetDType) {
-            case DType.float64:
-              s_flatten_double(
-                a.pointer.cast(),
-                cStridesA,
-                result.pointer.cast(),
-                cShape,
-                rank,
-              );
-            case DType.float32:
-              s_flatten_float(
-                a.pointer.cast(),
-                cStridesA,
-                result.pointer.cast(),
-                cShape,
-                rank,
-              );
-            case DType.int64:
-              s_flatten_int64(
-                a.pointer.cast(),
-                cStridesA,
-                result.pointer.cast(),
-                cShape,
-                rank,
-              );
-            case DType.int32:
-              s_flatten_int32(
-                a.pointer.cast(),
-                cStridesA,
-                result.pointer.cast(),
-                cShape,
-                rank,
-              );
-            case DType.uint8:
-              s_flatten_uint8(
-                a.pointer.cast(),
-                cStridesA,
-                result.pointer.cast(),
-                cShape,
-                rank,
-              );
-            case DType.int16:
-              s_flatten_int16(
-                a.pointer.cast(),
-                cStridesA,
-                result.pointer.cast(),
-                cShape,
-                rank,
-              );
-            case DType.boolean:
-              s_flatten_uint8(
-                a.pointer.cast(),
-                cStridesA,
-                result.pointer.cast(),
-                cShape,
-                rank,
-              );
-            default:
-              // Fallback recursive copy for other strided types
-              unaryOp<dynamic, dynamic>(
-                result.data,
-                a.data,
-                a.shape,
-                a.strides,
-                result.strides,
-                0,
-                a.offsetElements,
-                result.offsetElements,
-                (x) => x,
-              );
-          }
-        } finally {
-          ScratchArena.reset(marker);
-        }
-      } else {
-        // Fallback recursive copy if result is strided
-        unaryOp<dynamic, dynamic>(
-          result.data,
-          a.data,
-          a.shape,
-          a.strides,
-          result.strides,
-          0,
-          a.offsetElements,
-          result.offsetElements,
-          (x) => x,
-        );
-      }
+      a.copy(out: result);
       return result;
   }
 }
 
 /// Alias for [conj].
-NDArray conjugate(NDArray a, {NDArray? out}) => conj(a, out: out);
+NDArray<T> conjugate<T>(NDArray<T> a, {NDArray<T>? out}) => conj(a, out: out);
 
 /// Rolls array elements along a given axis.
 ///

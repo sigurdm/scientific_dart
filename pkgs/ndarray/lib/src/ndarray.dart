@@ -10,6 +10,7 @@ import 'scratch_arena.dart';
 import 'package:openblas/openblas.dart' show openblas_set_num_threads;
 
 import 'operations.dart' as ops;
+import 'operations/helpers.dart' as helpers;
 
 /// Supported data types for the elements of an [NDArray].
 extension type const Float64(double value) implements double {}
@@ -965,19 +966,18 @@ final class NDArray<T> implements ffi.Finalizable {
           'Destination array must have matching shape and dtype (expected shape $shape, dtype $dtype; got shape ${out.shape}, dtype ${out.dtype}).',
         );
       }
-      if (!out.isContiguous) {
-        throw ArgumentError('Destination array must be contiguous.');
-      }
       result = out;
     } else {
       result = NDArray<T>.create(shape, dtype);
     }
 
-    if (isContiguous) {
+    if (isContiguous && result.isContiguous) {
       final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
       _copyContiguousNDArray(this, result, totalSize);
-    } else {
+    } else if (result.isContiguous) {
       _copyStridedToContiguous(result);
+    } else {
+      _copyStrided(result);
     }
 
     return result;
@@ -1084,6 +1084,20 @@ final class NDArray<T> implements ffi.Finalizable {
     } finally {
       ScratchArena.reset(marker);
     }
+  }
+
+  void _copyStrided(NDArray<T> dest) {
+    helpers.unaryOp<dynamic, dynamic>(
+      dest.data,
+      data,
+      shape,
+      strides,
+      dest.strides,
+      0,
+      offsetElements,
+      dest.offsetElements,
+      (x) => x,
+    );
   }
 
   /// Returns a flattened one-dimensional view or copy of this array.
