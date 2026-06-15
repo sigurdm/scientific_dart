@@ -226,17 +226,7 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
         );
         return result;
       case DType.boolean:
-        unaryOp<bool, bool>(
-          result.data as List<bool>,
-          a.data as List<bool>,
-          a.shape,
-          a.strides,
-          result.strides,
-          0,
-          a.offsetElements,
-          result.offsetElements,
-          (x) => x,
-        );
+        a.copy(out: result);
         return result;
       case DType.uint8:
       case DType.int16:
@@ -3170,17 +3160,7 @@ NDArray<T> sign<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
         (x) => x.sign,
       );
     case DType.boolean:
-      unaryOp<bool, bool>(
-        result.data as List<bool>,
-        a.data as List<bool>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => x,
-      );
+      a.copy(out: result);
   }
   return result;
 }
@@ -3222,17 +3202,8 @@ NDArray<T> ceil<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
     case DType.int32:
     case DType.int16:
     case DType.uint8:
-      unaryOp<int, int>(
-        result.data as List<int>,
-        a.data as List<int>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => x,
-      );
+    case DType.boolean:
+      a.copy(out: result);
     case DType.float64:
     case DType.float32:
       unaryOp<double, double>(
@@ -3245,18 +3216,6 @@ NDArray<T> ceil<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
         a.offsetElements,
         result.offsetElements,
         (x) => x.ceilToDouble(),
-      );
-    case DType.boolean:
-      unaryOp<bool, bool>(
-        result.data as List<bool>,
-        a.data as List<bool>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => x,
       );
   }
   return result;
@@ -3299,17 +3258,8 @@ NDArray<T> floor<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
     case DType.int32:
     case DType.int16:
     case DType.uint8:
-      unaryOp<int, int>(
-        result.data as List<int>,
-        a.data as List<int>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => x,
-      );
+    case DType.boolean:
+      a.copy(out: result);
     case DType.float64:
     case DType.float32:
       unaryOp<double, double>(
@@ -3322,18 +3272,6 @@ NDArray<T> floor<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
         a.offsetElements,
         result.offsetElements,
         (x) => x.floorToDouble(),
-      );
-    case DType.boolean:
-      unaryOp<bool, bool>(
-        result.data as List<bool>,
-        a.data as List<bool>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => x,
       );
   }
   return result;
@@ -3376,17 +3314,8 @@ NDArray<T> round<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
     case DType.int32:
     case DType.int16:
     case DType.uint8:
-      unaryOp<int, int>(
-        result.data as List<int>,
-        a.data as List<int>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => x,
-      );
+    case DType.boolean:
+      a.copy(out: result);
     case DType.float64:
     case DType.float32:
       unaryOp<double, double>(
@@ -3399,18 +3328,6 @@ NDArray<T> round<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
         a.offsetElements,
         result.offsetElements,
         (x) => x.roundToDouble(),
-      );
-    case DType.boolean:
-      unaryOp<bool, bool>(
-        result.data as List<bool>,
-        a.data as List<bool>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => x,
       );
   }
   return result;
