@@ -1296,6 +1296,34 @@ int ndarray_find_index(
     int *matchCoords
 );
 
+// Pairwise distance functions
+typedef enum {
+    METRIC_EUCLIDEAN = 0,
+    METRIC_COSINE,
+    METRIC_HAMMING
+} DistanceMetric;
+
+void ndarray_pdist(
+    int dtype,
+    const void *x,
+    int M, int N,
+    int strideRowX, int strideColX,
+    int metric,
+    double *out,
+    int strideOut
+);
+
+void ndarray_cdist(
+    int dtype,
+    const void *xa, const void *xb,
+    int M, int K, int N,
+    int strideRowXA, int strideColXA,
+    int strideRowXB, int strideColXB,
+    int metric,
+    double *out,
+    int strideRowOut, int strideColOut
+);
+
 #endif /* CUSTOM_UFUNCS_H */
 
 

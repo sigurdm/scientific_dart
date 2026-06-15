@@ -8376,3 +8376,174 @@ int ndarray_find_index(
             return 0;
     }
 }
+
+#define COMPUTE_EUCLIDEAN(type, u, strideU, v, strideV, N, result) do { \
+    double sum = 0.0; \
+    for (int i = 0; i < N; i++) { \
+        double diff = (double)((const type*)u)[i * strideU] - (double)((const type*)v)[i * strideV]; \
+        sum += diff * diff; \
+    } \
+    result = sqrt(sum); \
+} while(0)
+
+#define COMPUTE_COSINE(type, u, strideU, v, strideV, N, result) do { \
+    double dot = 0.0; \
+    double norm_u = 0.0; \
+    double norm_v = 0.0; \
+    for (int i = 0; i < N; i++) { \
+        double val_u = (double)((const type*)u)[i * strideU]; \
+        double val_v = (double)((const type*)v)[i * strideV]; \
+        dot += val_u * val_v; \
+        norm_u += val_u * val_u; \
+        norm_v += val_v * val_v; \
+    } \
+    if (norm_u == 0.0 || norm_v == 0.0) { \
+        result = NAN; \
+    } else { \
+        result = 1.0 - (dot / (sqrt(norm_u) * sqrt(norm_v))); \
+    } \
+} while(0)
+
+#define COMPUTE_HAMMING(type, u, strideU, v, strideV, N, result) do { \
+    if (N == 0) { \
+        result = NAN; \
+    } else { \
+        double diff_count = 0.0; \
+        for (int i = 0; i < N; i++) { \
+            if (((const type*)u)[i * strideU] != ((const type*)v)[i * strideV]) { \
+                diff_count += 1.0; \
+            } \
+        } \
+        result = diff_count / (double)N; \
+    } \
+} while(0)
+
+#define COMPUTE_DIST(type, u, strideU, v, strideV, N, metric, result) do { \
+    switch(metric) { \
+        case METRIC_EUCLIDEAN: COMPUTE_EUCLIDEAN(type, u, strideU, v, strideV, N, result); break; \
+        case METRIC_COSINE: COMPUTE_COSINE(type, u, strideU, v, strideV, N, result); break; \
+        case METRIC_HAMMING: COMPUTE_HAMMING(type, u, strideU, v, strideV, N, result); break; \
+        default: result = NAN; break; \
+    } \
+} while(0)
+
+#define DEFINE_PDIST(type) \
+static void pdist_##type(const type *x, int M, int N, int strideRowX, int strideColX, int metric, double *out, int strideOut) { \
+    int idx = 0; \
+    for (int i = 0; i < M; i++) { \
+        const type *u = x + i * strideRowX; \
+        for (int j = i + 1; j < M; j++) { \
+            const type *v = x + j * strideRowX; \
+            double res; \
+            COMPUTE_DIST(type, u, strideColX, v, strideColX, N, metric, res); \
+            out[idx * strideOut] = res; \
+            idx++; \
+        } \
+    } \
+}
+
+DEFINE_PDIST(double)
+DEFINE_PDIST(float)
+DEFINE_PDIST(int64_t)
+DEFINE_PDIST(int32_t)
+DEFINE_PDIST(int16_t)
+DEFINE_PDIST(uint8_t)
+
+#undef DEFINE_PDIST
+
+void ndarray_pdist(
+    int dtype,
+    const void *x,
+    int M, int N,
+    int strideRowX, int strideColX,
+    int metric,
+    double *out,
+    int strideOut
+) {
+    if (x == NULL || out == NULL || M < 2 || N < 0) return;
+    switch(dtype) {
+        case DTYPE_FLOAT64:
+            pdist_double((const double*)x, M, N, strideRowX, strideColX, metric, out, strideOut);
+            break;
+        case DTYPE_FLOAT32:
+            pdist_float((const float*)x, M, N, strideRowX, strideColX, metric, out, strideOut);
+            break;
+        case DTYPE_INT32:
+            pdist_int32_t((const int32_t*)x, M, N, strideRowX, strideColX, metric, out, strideOut);
+            break;
+        case DTYPE_INT64:
+            pdist_int64_t((const int64_t*)x, M, N, strideRowX, strideColX, metric, out, strideOut);
+            break;
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN:
+            pdist_uint8_t((const uint8_t*)x, M, N, strideRowX, strideColX, metric, out, strideOut);
+            break;
+        case DTYPE_INT16:
+            pdist_int16_t((const int16_t*)x, M, N, strideRowX, strideColX, metric, out, strideOut);
+            break;
+        default:
+            break;
+    }
+}
+
+#define DEFINE_CDIST(type) \
+static void cdist_##type(const type *xa, const type *xb, int M, int K, int N, \
+                  int strideRowXA, int strideColXA, \
+                  int strideRowXB, int strideColXB, \
+                  int metric, \
+                  double *out, int strideRowOut, int strideColOut) { \
+    for (int i = 0; i < M; i++) { \
+        const type *u = xa + i * strideRowXA; \
+        for (int j = 0; j < K; j++) { \
+            const type *v = xb + j * strideRowXB; \
+            double res; \
+            COMPUTE_DIST(type, u, strideColXA, v, strideColXB, N, metric, res); \
+            out[i * strideRowOut + j * strideColOut] = res; \
+        } \
+    } \
+}
+
+DEFINE_CDIST(double)
+DEFINE_CDIST(float)
+DEFINE_CDIST(int64_t)
+DEFINE_CDIST(int32_t)
+DEFINE_CDIST(int16_t)
+DEFINE_CDIST(uint8_t)
+
+#undef DEFINE_CDIST
+
+void ndarray_cdist(
+    int dtype,
+    const void *xa, const void *xb,
+    int M, int K, int N,
+    int strideRowXA, int strideColXA,
+    int strideRowXB, int strideColXB,
+    int metric,
+    double *out,
+    int strideRowOut, int strideColOut
+) {
+    if (xa == NULL || xb == NULL || out == NULL || M <= 0 || K <= 0 || N < 0) return;
+    switch(dtype) {
+        case DTYPE_FLOAT64:
+            cdist_double((const double*)xa, (const double*)xb, M, K, N, strideRowXA, strideColXA, strideRowXB, strideColXB, metric, out, strideRowOut, strideColOut);
+            break;
+        case DTYPE_FLOAT32:
+            cdist_float((const float*)xa, (const float*)xb, M, K, N, strideRowXA, strideColXA, strideRowXB, strideColXB, metric, out, strideRowOut, strideColOut);
+            break;
+        case DTYPE_INT32:
+            cdist_int32_t((const int32_t*)xa, (const int32_t*)xb, M, K, N, strideRowXA, strideColXA, strideRowXB, strideColXB, metric, out, strideRowOut, strideColOut);
+            break;
+        case DTYPE_INT64:
+            cdist_int64_t((const int64_t*)xa, (const int64_t*)xb, M, K, N, strideRowXA, strideColXA, strideRowXB, strideColXB, metric, out, strideRowOut, strideColOut);
+            break;
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN:
+            cdist_uint8_t((const uint8_t*)xa, (const uint8_t*)xb, M, K, N, strideRowXA, strideColXA, strideRowXB, strideColXB, metric, out, strideRowOut, strideColOut);
+            break;
+        case DTYPE_INT16:
+            cdist_int16_t((const int16_t*)xa, (const int16_t*)xb, M, K, N, strideRowXA, strideColXA, strideRowXB, strideColXB, metric, out, strideRowOut, strideColOut);
+            break;
+        default:
+            break;
+    }
+}

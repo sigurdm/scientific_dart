@@ -18115,6 +18115,66 @@ external int ndarray_find_index(
   ffi.Pointer<ffi.Int> matchCoords,
 );
 
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void ndarray_pdist(
+  int dtype,
+  ffi.Pointer<ffi.Void> x,
+  int M,
+  int N,
+  int strideRowX,
+  int strideColX,
+  int metric,
+  ffi.Pointer<ffi.Double> out,
+  int strideOut,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void ndarray_cdist(
+  int dtype,
+  ffi.Pointer<ffi.Void> xa,
+  ffi.Pointer<ffi.Void> xb,
+  int M,
+  int K,
+  int N,
+  int strideRowXA,
+  int strideColXA,
+  int strideRowXB,
+  int strideColXB,
+  int metric,
+  ffi.Pointer<ffi.Double> out,
+  int strideRowOut,
+  int strideColOut,
+);
+
 typedef ptrdiff_t = ffi.Long;
 typedef Dartptrdiff_t = int;
 
@@ -18323,6 +18383,23 @@ final class cpx_f_t extends ffi.Struct {
   /// Real component
   @ffi.Float()
   external double i;
+}
+
+/// Pairwise distance functions
+enum DistanceMetric {
+  METRIC_EUCLIDEAN(0),
+  METRIC_COSINE(1),
+  METRIC_HAMMING(2);
+
+  final int value;
+  const DistanceMetric(this.value);
+
+  static DistanceMetric fromValue(int value) => switch (value) {
+    0 => METRIC_EUCLIDEAN,
+    1 => METRIC_COSINE,
+    2 => METRIC_HAMMING,
+    _ => throw ArgumentError('Unknown value for DistanceMetric: $value'),
+  };
 }
 
 const int NULL = 0;
