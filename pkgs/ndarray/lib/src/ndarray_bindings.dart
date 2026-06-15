@@ -16552,7 +16552,9 @@ external void s_det_complex_float(
   lapack_getrf,
 );
 
-/// Optimized FFI Eigenvector assembly intrinsics
+/// Assembles complex eigenvectors for double precision.
+/// Combines real and imaginary parts from LAPACK dgeev output into complex128 format,
+/// handling conjugate pairs for complex eigenvalues.
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<cpx_t>,
@@ -16578,6 +16580,9 @@ external void assemble_eigenvectors_double(
   int n,
 );
 
+/// Assembles complex eigenvectors for single precision.
+/// Combines real and imaginary parts from LAPACK sgeev output into complex64 format,
+/// handling conjugate pairs for complex eigenvalues.
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<cpx_f_t>,
@@ -16603,7 +16608,8 @@ external void assemble_eigenvectors_float(
   int n,
 );
 
-/// Optimized integer matrix multiplication intrinsics
+/// Performs matrix multiplication for 64-bit signed integers.
+/// Computes res = a * b using a strided row-major implementation.
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int64>,
@@ -16635,6 +16641,8 @@ external void matmul_int64(
   int k,
 );
 
+/// Performs matrix multiplication for 32-bit signed integers.
+/// Computes res = a * b using a strided row-major implementation.
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int32>,
@@ -16666,6 +16674,8 @@ external void matmul_int32(
   int k,
 );
 
+/// Performs matrix multiplication for 16-bit signed integers.
+/// Computes res = a * b using a strided row-major implementation.
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int16>,
@@ -16697,6 +16707,8 @@ external void matmul_int16(
   int k,
 );
 
+/// Performs matrix multiplication for 8-bit unsigned integers.
+/// Computes res = a * b using a strided row-major implementation.
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Uint8>,

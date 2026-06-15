@@ -100,12 +100,12 @@ void main(List<String> args) async {
           .resolve('custom_sorting.obj')
           .toFilePath();
 
-      var res = await Process.run(compilerPath, [
+      var res = await Process.run(cppCompilerPath, [
         '/c',
         '/O2',
         '/EHsc',
         '/I${input.packageRoot.toFilePath()}',
-        input.packageRoot.resolve('hook/custom_ufuncs.c').toFilePath(),
+        input.packageRoot.resolve('hook/custom_ufuncs.cpp').toFilePath(),
         '/Fo:$ufuncsObj',
       ]);
       if (res.exitCode != 0) {
@@ -142,13 +142,13 @@ void main(List<String> args) async {
       final ufuncsObj = outputDir.uri.resolve('custom_ufuncs.o').toFilePath();
       final sortingObj = outputDir.uri.resolve('custom_sorting.o').toFilePath();
 
-      print('Compiling custom_ufuncs.c...');
-      var res = await Process.run(compilerPath, [
+      print('Compiling custom_ufuncs.cpp...');
+      var res = await Process.run(cppCompilerPath, [
         '-c',
         '-fPIC',
         '-O3',
         '-I${input.packageRoot.toFilePath()}',
-        input.packageRoot.resolve('hook/custom_ufuncs.c').toFilePath(),
+        input.packageRoot.resolve('hook/custom_ufuncs.cpp').toFilePath(),
         '-o',
         ufuncsObj,
       ]);
@@ -208,7 +208,7 @@ void main(List<String> args) async {
         input.packageRoot.resolve('hook/custom_sorting.h'),
       );
       output.dependencies.add(
-        input.packageRoot.resolve('hook/custom_ufuncs.c'),
+        input.packageRoot.resolve('hook/custom_ufuncs.cpp'),
       );
       output.dependencies.add(
         input.packageRoot.resolve('hook/custom_ufuncs.h'),

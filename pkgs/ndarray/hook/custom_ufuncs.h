@@ -1,7 +1,11 @@
-#ifndef CUSTOM_UFUNCS_H
-#define CUSTOM_UFUNCS_H
+#pragma once
+
 
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef enum {
     QUANTILE_INVERTED_CDF = 0,
@@ -958,6 +962,12 @@ void s_det_complex_double(const cpx_t *a, const int *stridesA, cpx_t *res, const
 void s_det_complex_float(const cpx_f_t *a, const int *stridesA, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, cpx_f_t *aCopy, int *ipiv, int (*lapack_getrf)(int, int, int, void *, int, int *));
 
 /* Optimized FFI Eigenvector assembly intrinsics */
+
+/**
+ * Assembles complex eigenvectors for double precision.
+ * Combines real and imaginary parts from LAPACK dgeev output into complex128 format,
+ * handling conjugate pairs for complex eigenvalues.
+ */
 void assemble_eigenvectors_double(
     cpx_t *w,
     int strideWLast,
@@ -970,6 +980,11 @@ void assemble_eigenvectors_double(
     int n
 );
 
+/**
+ * Assembles complex eigenvectors for single precision.
+ * Combines real and imaginary parts from LAPACK sgeev output into complex64 format,
+ * handling conjugate pairs for complex eigenvalues.
+ */
 void assemble_eigenvectors_float(
     cpx_f_t *w,
     int strideWLast,
@@ -983,6 +998,11 @@ void assemble_eigenvectors_float(
 );
 
 /* Optimized integer matrix multiplication intrinsics */
+
+/**
+ * Performs matrix multiplication for 64-bit signed integers.
+ * Computes res = a * b using a strided row-major implementation.
+ */
 void matmul_int64(
     int64_t *res,
     int strideResRow,
@@ -998,6 +1018,10 @@ void matmul_int64(
     int k
 );
 
+/**
+ * Performs matrix multiplication for 32-bit signed integers.
+ * Computes res = a * b using a strided row-major implementation.
+ */
 void matmul_int32(
     int32_t *res,
     int strideResRow,
@@ -1013,6 +1037,10 @@ void matmul_int32(
     int k
 );
 
+/**
+ * Performs matrix multiplication for 16-bit signed integers.
+ * Computes res = a * b using a strided row-major implementation.
+ */
 void matmul_int16(
     int16_t *res,
     int strideResRow,
@@ -1028,6 +1056,10 @@ void matmul_int16(
     int k
 );
 
+/**
+ * Performs matrix multiplication for 8-bit unsigned integers.
+ * Computes res = a * b using a strided row-major implementation.
+ */
 void matmul_uint8(
     uint8_t *res,
     int strideResRow,
@@ -1231,6 +1263,17 @@ void s_interp_float(const float *x, const int *stridesX,
 #define CMP_OP_GT 4
 #define CMP_OP_GE 5
 
+#ifdef __cplusplus
+enum class ComparisonOp : int {
+    EQ = CMP_OP_EQ,
+    NE = CMP_OP_NE,
+    LT = CMP_OP_LT,
+    LE = CMP_OP_LE,
+    GT = CMP_OP_GT,
+    GE = CMP_OP_GE
+};
+#endif
+
 int ndarray_equals(
     int dtype,
     const void *a, const int *stridesA,
@@ -1324,7 +1367,6 @@ void ndarray_cdist(
     int strideRowOut, int strideColOut
 );
 
-#endif /* CUSTOM_UFUNCS_H */
-
-
-
+#ifdef __cplusplus
+}
+#endif

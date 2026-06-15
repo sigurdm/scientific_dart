@@ -1,5 +1,5 @@
-#ifndef CUSTOM_SORTING_H
-#define CUSTOM_SORTING_H
+#pragma once
+
 
 #include <stddef.h>
 #include <stdint.h>
@@ -106,4 +106,3 @@ void native_count_nonzero_int16(const void *src, const int *stridesSrc, int *des
 }
 #endif
 
-#endif // CUSTOM_SORTING_H

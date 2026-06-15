@@ -15,7 +15,7 @@
 #include "custom_ufuncs.h"
 #include <math.h>
 #include <stdlib.h>
-#include <complex.h>
+#include <complex>
 #include <stdio.h>
 #include "custom_sorting.h"
 
@@ -32,6 +32,449 @@
 #else
 #define VECTORIZED_TARGETS
 #endif
+// ============================================================================
+// C++ TEMPLATES FOR CASTING, SET OPERATIONS, AND STRIDED LOOPS
+// ============================================================================
+
+// Forward declarations of helper functions defined later
+static inline void xoshiro256_seed(uint64_t seed, uint64_t s[4]);
+static inline uint64_t xoshiro256_next(uint64_t s[4]);
+static void fill_secure_bytes(void *dest, size_t size);
+
+// --- Casting Templates ---
+template <typename DestType, typename SrcType>
+struct caster {
+    static inline DestType cast(SrcType val) {
+        return static_cast<DestType>(val);
+    }
+};
+
+template <>
+struct caster<double, cpx_t> {
+    static inline double cast(cpx_t val) { return val.r; }
+};
+template <>
+struct caster<double, cpx_f_t> {
+    static inline double cast(cpx_f_t val) { return (double)val.r; }
+};
+
+template <typename SrcType>
+struct caster<cpx_t, SrcType> {
+    static inline cpx_t cast(SrcType val) { return cpx_t{static_cast<double>(val), 0.0}; }
+};
+template <>
+struct caster<cpx_t, cpx_t> {
+    static inline cpx_t cast(cpx_t val) { return val; }
+};
+template <>
+struct caster<cpx_t, cpx_f_t> {
+    static inline cpx_t cast(cpx_f_t val) { return cpx_t{(double)val.r, (double)val.i}; }
+};
+
+template <typename SrcType, typename DestType>
+static void s_cast_generic_impl(
+    const void *src_ptr, const int *stridesSrc,
+    void *dest_ptr,
+    const int *shape, int rank, int total_elements
+) {
+    const SrcType *src = (const SrcType *)src_ptr;
+    DestType *dest = (DestType *)dest_ptr;
+    if (rank == 0) {
+        dest[0] = caster<DestType, SrcType>::cast(src[0]);
+        return;
+    }
+    int coord[8] = {0};
+    int offsetSrc = 0;
+    for (int el = 0; el < total_elements; el++) {
+        dest[el] = caster<DestType, SrcType>::cast(src[offsetSrc]);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetSrc += stridesSrc[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetSrc -= (shape[d] - 1) * stridesSrc[d];
+        }
+    }
+}
+
+// --- Set Operations Templates ---
+template <typename T>
+struct set_comparator {
+    static inline int compare(T a, T b) {
+        if (a < b) return -1;
+        if (a > b) return 1;
+        return 0;
+    }
+};
+
+template <>
+struct set_comparator<cpx_t> {
+    static inline int compare(cpx_t a, cpx_t b) {
+        if (a.r < b.r) return -1;
+        if (a.r > b.r) return 1;
+        if (a.i < b.i) return -1;
+        if (a.i > b.i) return 1;
+        return 0;
+    }
+};
+
+template <>
+struct set_comparator<cpx_f_t> {
+    static inline int compare(cpx_f_t a, cpx_f_t b) {
+        if (a.r < b.r) return -1;
+        if (a.r > b.r) return 1;
+        if (a.i < b.i) return -1;
+        if (a.i > b.i) return 1;
+        return 0;
+    }
+};
+
+template <typename T>
+static int intersect1d_impl(const T *ar1, int size1, const T *ar2, int size2, T *dest) {
+    int i = 0, j = 0, k = 0;
+    while (i < size1 && j < size2) {
+        int cmp = set_comparator<T>::compare(ar1[i], ar2[j]);
+        if (cmp < 0) {
+            i++;
+        } else if (cmp > 0) {
+            j++;
+        } else {
+            dest[k++] = ar1[i];
+            i++;
+            j++;
+        }
+    }
+    return k;
+}
+
+template <typename T>
+static int setdiff1d_impl(const T *ar1, int size1, const T *ar2, int size2, T *dest) {
+    int i = 0, j = 0, k = 0;
+    while (i < size1) {
+        if (j >= size2) {
+            dest[k++] = ar1[i++];
+            continue;
+        }
+        int cmp = set_comparator<T>::compare(ar1[i], ar2[j]);
+        if (cmp < 0) {
+            dest[k++] = ar1[i++];
+        } else if (cmp > 0) {
+            j++;
+        } else {
+            i++;
+        }
+    }
+    return k;
+}
+
+template <typename T>
+static int setxor1d_impl(const T *ar1, int size1, const T *ar2, int size2, T *dest) {
+    int i = 0, j = 0, k = 0;
+    while (i < size1 || j < size2) {
+        if (i >= size1) {
+            dest[k++] = ar2[j++];
+            continue;
+        }
+        if (j >= size2) {
+            dest[k++] = ar1[i++];
+            continue;
+        }
+        int cmp = set_comparator<T>::compare(ar1[i], ar2[j]);
+        if (cmp < 0) {
+            dest[k++] = ar1[i++];
+        } else if (cmp > 0) {
+            dest[k++] = ar2[j++];
+        } else {
+            i++;
+            j++;
+        }
+    }
+    return k;
+}
+
+template <typename T>
+static int union1d_impl(const T *ar1, int size1, const T *ar2, int size2, T *dest) {
+    int i = 0, j = 0, k = 0;
+    while (i < size1 || j < size2) {
+        if (i >= size1) {
+            dest[k++] = ar2[j++];
+            continue;
+        }
+        if (j >= size2) {
+            dest[k++] = ar1[i++];
+            continue;
+        }
+        int cmp = set_comparator<T>::compare(ar1[i], ar2[j]);
+        if (cmp < 0) {
+            dest[k++] = ar1[i++];
+        } else if (cmp > 0) {
+            dest[k++] = ar2[j++];
+        } else {
+            dest[k++] = ar1[i];
+            i++;
+            j++;
+        }
+    }
+    return k;
+}
+
+template <typename T>
+static void isin_impl(const T *ar1, int size1, const T *ar2, int size2, uint8_t *dest, int invert) {
+    for (int i = 0; i < size1; i++) {
+        T val = ar1[i];
+        int found = 0;
+        int low = 0;
+        int high = size2 - 1;
+        while (low <= high) {
+            int mid = low + (high - low) / 2;
+            int cmp = set_comparator<T>::compare(ar2[mid], val);
+            if (cmp < 0) {
+                low = mid + 1;
+            } else if (cmp > 0) {
+                high = mid - 1;
+            } else {
+                found = 1;
+                break;
+            }
+        }
+        dest[i] = invert ? !found : found;
+    }
+}
+
+// --- Strided Loop Templates ---
+template <typename T, typename Op>
+static void strided_cum_op_impl(
+    const T *src, const int *stridesSrc,
+    T *res, const int *stridesRes,
+    const int *shape, int rank, int axis, Op op
+) {
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    for (int o = 0; o < outer_size; o++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                offsetRes += coord[d] * stridesRes[d];
+            }
+        }
+        T acc;
+        for (int i = 0; i < shape[axis]; i++) {
+            int idxSrc = offsetSrc + i * stridesSrc[axis];
+            int idxRes = offsetRes + i * stridesRes[axis];
+            acc = (i == 0) ? src[idxSrc] : op(acc, src[idxSrc]);
+            res[idxRes] = acc;
+        }
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+template <typename T, typename Op>
+static void strided_diff_op_impl(
+    const T *src, const int *stridesSrc,
+    T *res, const int *stridesRes,
+    const int *shape, int rank, int axis, Op op
+) {
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    for (int o = 0; o < outer_size; o++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                offsetRes += coord[d] * stridesRes[d];
+            }
+        }
+        for (int i = 0; i < shape[axis] - 1; i++) {
+            int idxSrcCurr = offsetSrc + i * stridesSrc[axis];
+            int idxSrcNext = offsetSrc + (i + 1) * stridesSrc[axis];
+            int idxRes = offsetRes + i * stridesRes[axis];
+            res[idxRes] = op(src[idxSrcNext], src[idxSrcCurr]);
+        }
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+template <typename T, typename Op>
+static void strided_unary_op_impl(
+    const T *src, const int *stridesSrc,
+    T *res, const int *stridesRes,
+    const int *shape, int rank, Op op
+) {
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
+    int coord[8] = {0};
+    int total_size = 1;
+    for (int d = 0; d < rank; d++) total_size *= shape[d];
+    for (int i = 0; i < total_size; i++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetSrc += coord[d] * stridesSrc[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        res[offsetRes] = op(src[offsetSrc]);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+template <typename T, typename Op>
+static void v_unary_impl(const T * RESTRICT src, T * RESTRICT res, int size, Op op) {
+    if (src == nullptr || res == nullptr || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = op(src[i]);
+    }
+}
+
+template <typename T>
+static void v_fill_impl(T * RESTRICT res, T value, int size) {
+    if (res == nullptr || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = value;
+    }
+}
+
+template <typename T, typename BoundsType, typename RangeType>
+static void v_randint_impl(T *res, int size, BoundsType low, BoundsType high, unsigned long long seed) {
+    if (res == nullptr || size <= 0 || low >= high) return;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
+    RangeType range = (RangeType)high - (RangeType)low;
+    for (int i = 0; i < size; i++) {
+        res[i] = (T)(low + (RangeType)(xoshiro256_next(s) % (unsigned long long)range));
+    }
+}
+
+template <typename T, typename BoundsType, typename RangeType>
+static void v_secure_randint_impl(T *res, int size, BoundsType low, BoundsType high) {
+    if (res == nullptr || size <= 0 || low >= high) return;
+    fill_secure_bytes(res, size * sizeof(T));
+    RangeType range = (RangeType)high - (RangeType)low;
+    for (int i = 0; i < size; i++) {
+        res[i] = (T)(low + (RangeType)((unsigned long long)res[i] % (unsigned long long)range));
+    }
+}
+
+template <typename T1, typename T2, typename TRes, typename Op>
+static void strided_binary_op_impl(
+    const T1 *a, const int *stridesA,
+    const T2 *b, const int *stridesB,
+    TRes *res, const int *stridesRes,
+    const int *shape, int rank, Op op
+) {
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    int coord[8] = {0};
+    int offsetA = 0, offsetB = 0, offsetRes = 0;
+    for (int el = 0; el < total_elements; el++) {
+        res[offsetRes] = op(a[offsetA], b[offsetB]);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetA += stridesA[d];
+                offsetB += stridesB[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetA -= (shape[d] - 1) * stridesA[d];
+            offsetB -= (shape[d] - 1) * stridesB[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
+    }
+}
+
+template <typename T1, typename T2, typename TRes, typename Op>
+static void v_binary_impl(const T1 * RESTRICT a, const T2 * RESTRICT b, TRes * RESTRICT res, int size, Op op) {
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = op(a[i], b[i]);
+    }
+}
+
+template <typename T>
+static void s_where_impl(
+    const unsigned char *cond, const int *stridesCond,
+    const T *x, const int *stridesX,
+    const T *y, const int *stridesY,
+    T *res, const int *stridesRes,
+    const int *shape, int rank
+) {
+    if (cond == nullptr || x == nullptr || y == nullptr || res == nullptr || rank < 0 || rank > 8) return;
+    if (rank == 0) {
+        res[0] = cond[0] ? x[0] : y[0];
+        return;
+    }
+    int is_contiguous = 1;
+    int expected_stride = 1;
+    for (int i = rank - 1; i >= 0; i--) {
+        if (stridesCond[i] != expected_stride ||
+            stridesX[i] != expected_stride ||
+            stridesY[i] != expected_stride ||
+            stridesRes[i] != expected_stride) {
+            is_contiguous = 0;
+            break;
+        }
+        expected_stride *= shape[i];
+    }
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (is_contiguous) {
+        for (int i = 0; i < total_elements; i++) {
+            res[i] = cond[i] ? x[i] : y[i];
+        }
+        return;
+    }
+    int coord[8] = {0};
+    int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0;
+    for (int el = 0; el < total_elements; el++) {
+        res[offsetRes] = cond[offsetCond] ? x[offsetX] : y[offsetY];
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetCond += stridesCond[d];
+                offsetX    += stridesX[d];
+                offsetY    += stridesY[d];
+                offsetRes  += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetCond -= (shape[d] - 1) * stridesCond[d];
+            offsetX    -= (shape[d] - 1) * stridesX[d];
+            offsetY    -= (shape[d] - 1) * stridesY[d];
+            offsetRes  -= (shape[d] - 1) * stridesRes[d];
+        }
+    }
+}
+
+
+
 
 // Macro to define strided binary operations
 #define DEFINE_STRIDED_BINARY_OP(name, typeA, typeB, typeResult, op) \
@@ -39,85 +482,65 @@ void name(const typeA *a, const int *stridesA, \
           const typeB *b, const int *stridesB, \
           typeResult *res, const int *stridesRes, \
           const int *shape, int rank) { \
-    if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return; \
-    int total_elements = 1; \
-    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
-    int coord[8] = {0}; \
-    int offsetA = 0, offsetB = 0, offsetRes = 0; \
-    for (int el = 0; el < total_elements; el++) { \
-        res[offsetRes] = op(a[offsetA], b[offsetB]); \
-        for (int d = rank - 1; d >= 0; d--) { \
-            coord[d]++; \
-            if (coord[d] < shape[d]) { \
-                offsetA += stridesA[d]; \
-                offsetB += stridesB[d]; \
-                offsetRes += stridesRes[d]; \
-                break; \
-            } \
-            coord[d] = 0; \
-            offsetA -= (shape[d] - 1) * stridesA[d]; \
-            offsetB -= (shape[d] - 1) * stridesB[d]; \
-            offsetRes -= (shape[d] - 1) * stridesRes[d]; \
-        } \
-    } \
+    strided_binary_op_impl(a, stridesA, b, stridesB, res, stridesRes, shape, rank, [](typeA x, typeB y) { return op(x, y); }); \
 }
 
-#include <complex.h>
+#include <complex>
 
 static inline cpx_t cpx_add_cast(cpx_t x, cpx_t y) {
-    double complex cx = *((double complex*)&x);
-    double complex cy = *((double complex*)&y);
-    double complex cres = cx + cy;
-    return *((cpx_t*)&cres);
+    std::complex<double> cx(x.r, x.i);
+    std::complex<double> cy(y.r, y.i);
+    std::complex<double> cres = cx + cy;
+    return {cres.real(), cres.imag()};
 }
 
 static inline cpx_t cpx_sub_cast(cpx_t x, cpx_t y) {
-    double complex cx = *((double complex*)&x);
-    double complex cy = *((double complex*)&y);
-    double complex cres = cx - cy;
-    return *((cpx_t*)&cres);
+    std::complex<double> cx(x.r, x.i);
+    std::complex<double> cy(y.r, y.i);
+    std::complex<double> cres = cx - cy;
+    return {cres.real(), cres.imag()};
 }
 
 static inline cpx_t cpx_mul_cast(cpx_t x, cpx_t y) {
-    double complex cx = *((double complex*)&x);
-    double complex cy = *((double complex*)&y);
-    double complex cres = cx * cy;
-    return *((cpx_t*)&cres);
+    std::complex<double> cx(x.r, x.i);
+    std::complex<double> cy(y.r, y.i);
+    std::complex<double> cres = cx * cy;
+    return {cres.real(), cres.imag()};
 }
 
 static inline cpx_t cpx_div_cast(cpx_t x, cpx_t y) {
-    double complex cx = *((double complex*)&x);
-    double complex cy = *((double complex*)&y);
-    double complex cres = cx / cy;
-    return *((cpx_t*)&cres);
+    std::complex<double> cx(x.r, x.i);
+    std::complex<double> cy(y.r, y.i);
+    std::complex<double> cres = cx / cy;
+    return {cres.real(), cres.imag()};
 }
 
 static inline cpx_f_t cpx_add_f_cast(cpx_f_t x, cpx_f_t y) {
-    float complex cx = *((float complex*)&x);
-    float complex cy = *((float complex*)&y);
-    float complex cres = cx + cy;
-    return *((cpx_f_t*)&cres);
+    std::complex<float> cx(x.r, x.i);
+    std::complex<float> cy(y.r, y.i);
+    std::complex<float> cres = cx + cy;
+    return {cres.real(), cres.imag()};
 }
 
 static inline cpx_f_t cpx_sub_f_cast(cpx_f_t x, cpx_f_t y) {
-    float complex cx = *((float complex*)&x);
-    float complex cy = *((float complex*)&y);
-    float complex cres = cx - cy;
-    return *((cpx_f_t*)&cres);
+    std::complex<float> cx(x.r, x.i);
+    std::complex<float> cy(y.r, y.i);
+    std::complex<float> cres = cx - cy;
+    return {cres.real(), cres.imag()};
 }
 
 static inline cpx_f_t cpx_mul_f_cast(cpx_f_t x, cpx_f_t y) {
-    float complex cx = *((float complex*)&x);
-    float complex cy = *((float complex*)&y);
-    float complex cres = cx * cy;
-    return *((cpx_f_t*)&cres);
+    std::complex<float> cx(x.r, x.i);
+    std::complex<float> cy(y.r, y.i);
+    std::complex<float> cres = cx * cy;
+    return {cres.real(), cres.imag()};
 }
 
 static inline cpx_f_t cpx_div_f_cast(cpx_f_t x, cpx_f_t y) {
-    float complex cx = *((float complex*)&x);
-    float complex cy = *((float complex*)&y);
-    float complex cres = cx / cy;
-    return *((cpx_f_t*)&cres);
+    std::complex<float> cx(x.r, x.i);
+    std::complex<float> cy(y.r, y.i);
+    std::complex<float> cres = cx / cy;
+    return {cres.real(), cres.imag()};
 }
 
 // 1. DOUBLE PRECISION (FLOAT64) FLAT CONTIGUOUS KERNELS
@@ -126,28 +549,19 @@ static inline cpx_f_t cpx_div_f_cast(cpx_f_t x, cpx_f_t y) {
 #define IMPLEMENT_V_BINARY(name, type, op) \
 VECTORIZED_TARGETS \
 void v_##name##_##type(const type * RESTRICT a, const type * RESTRICT b, type * RESTRICT res, int size) { \
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return; \
-    for (int i = 0; i < size; i++) { \
-        res[i] = a[i] op b[i]; \
-    } \
+    v_binary_impl(a, b, res, size, [](type x, type y) { return x op y; }); \
 }
 
 #define IMPLEMENT_V_UNARY(name, type, func) \
 VECTORIZED_TARGETS \
 void v_##name##_##type(const type * RESTRICT src, type * RESTRICT res, int size) { \
-    if (src == NULL || res == NULL || size <= 0) return; \
-    for (int i = 0; i < size; i++) { \
-        res[i] = func(src[i]); \
-    } \
+    v_unary_impl(src, res, size, [](type x) { return func(x); }); \
 }
 
 #define IMPLEMENT_V_BINARY_FUNC(name, type, func) \
 VECTORIZED_TARGETS \
 void v_##name##_##type(const type * RESTRICT a, const type * RESTRICT b, type * RESTRICT res, int size) { \
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return; \
-    for (int i = 0; i < size; i++) { \
-        res[i] = func(a[i], b[i]); \
-    } \
+    v_binary_impl(a, b, res, size, [](type x, type y) { return func(x, y); }); \
 }
 
 IMPLEMENT_V_BINARY(add, double, +)
@@ -173,7 +587,7 @@ IMPLEMENT_V_BINARY_FUNC(atan2, double, atan2)
 
 
 double r_sum_double(const double *src, int size) {
-    if (src == NULL || size <= 0) return 0.0;
+    if (src == nullptr || size <= 0) return 0.0;
     double acc0 = 0.0, acc1 = 0.0, acc2 = 0.0, acc3 = 0.0;
     double acc4 = 0.0, acc5 = 0.0, acc6 = 0.0, acc7 = 0.0;
     
@@ -199,7 +613,7 @@ double r_sum_double(const double *src, int size) {
 }
 
 double r_prod_double(const double *src, int size) {
-    if (src == NULL || size <= 0) return 1.0;
+    if (src == nullptr || size <= 0) return 1.0;
     double acc = 1.0;
     for (int i = 0; i < size; i++) {
         acc *= src[i];
@@ -208,14 +622,14 @@ double r_prod_double(const double *src, int size) {
 }
 
 double r_mean_double(const double *src, int size) {
-    if (src == NULL || size <= 0) return 0.0;
+    if (src == nullptr || size <= 0) return 0.0;
     return r_sum_double(src, size) / (double)size;
 }
 
 void s_sum_double(const double *src, const int *stridesSrc,
                   double *dest, const int *stridesDest,
                   const int *shape, int rank, int axis) {
-    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int size_axis = shape[axis];
     int coord[8] = {0};
     int outer_size = 1;
@@ -255,7 +669,7 @@ void s_sum_double(const double *src, const int *stridesSrc,
 void s_mean_double(const double *src, const int *stridesSrc,
                    double *dest, const int *stridesDest,
                    const int *shape, int rank, int axis) {
-    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int size_axis = shape[axis];
     if (size_axis <= 0) return;
     
@@ -310,7 +724,7 @@ void s_add_double(const double *a, const int *stridesA,
                   const double *b, const int *stridesB,
                   double *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
     
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -372,7 +786,7 @@ void s_sub_double(const double *a, const int *stridesA,
                   const double *b, const int *stridesB,
                   double *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
     
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -434,7 +848,7 @@ void s_mul_double(const double *a, const int *stridesA,
                   const double *b, const int *stridesB,
                   double *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
     
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -496,7 +910,7 @@ void s_div_double(const double *a, const int *stridesA,
                   const double *b, const int *stridesB,
                   double *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
     
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -559,7 +973,7 @@ void s_div_double(const double *a, const int *stridesA,
 // ============================================================================
 
 void v_add_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size) {
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return;
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i].r = a[i].r + b[i].r;
         res[i].i = a[i].i + b[i].i;
@@ -567,7 +981,7 @@ void v_add_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size) {
 }
 
 void v_sub_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size) {
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return;
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i].r = a[i].r - b[i].r;
         res[i].i = a[i].i - b[i].i;
@@ -575,7 +989,7 @@ void v_sub_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size) {
 }
 
 void v_mul_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size) {
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return;
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         double r1 = a[i].r, i1 = a[i].i;
         double r2 = b[i].r, i2 = b[i].i;
@@ -586,7 +1000,7 @@ void v_mul_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size) {
 }
 
 void v_div_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size) {
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return;
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         double r1 = a[i].r, i1 = a[i].i;
         double r2 = b[i].r, i2 = b[i].i;
@@ -606,7 +1020,7 @@ void s_add_complex(const cpx_t *a, const int *stridesA,
                   const cpx_t *b, const int *stridesB,
                   cpx_t *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
@@ -636,7 +1050,7 @@ void s_sub_complex(const cpx_t *a, const int *stridesA,
                   const cpx_t *b, const int *stridesB,
                   cpx_t *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
@@ -666,7 +1080,7 @@ void s_mul_complex(const cpx_t *a, const int *stridesA,
                   const cpx_t *b, const int *stridesB,
                   cpx_t *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
@@ -698,7 +1112,7 @@ void s_div_complex(const cpx_t *a, const int *stridesA,
                   const cpx_t *b, const int *stridesB,
                   cpx_t *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
@@ -737,126 +1151,126 @@ void s_div_complex(const cpx_t *a, const int *stridesA,
 // ============================================================================
 
 void v_add_float(const float *a, const float *b, float *res, int size) {
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return;
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = a[i] + b[i];
     }
 }
 
 void v_sub_float(const float *a, const float *b, float *res, int size) {
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return;
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = a[i] - b[i];
     }
 }
 
 void v_mul_float(const float *a, const float *b, float *res, int size) {
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return;
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = a[i] * b[i];
     }
 }
 
 void v_div_float(const float *a, const float *b, float *res, int size) {
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return;
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = a[i] / b[i];
     }
 }
 
 void v_sin_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = sinf(src[i]);
     }
 }
 
 void v_cos_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = cosf(src[i]);
     }
 }
 
 void v_exp_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = expf(src[i]);
     }
 }
 
 void v_log_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = logf(src[i]);
     }
 }
 
 void v_sinh_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = sinhf(src[i]);
     }
 }
 
 void v_cosh_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = coshf(src[i]);
     }
 }
 
 void v_tanh_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = tanhf(src[i]);
     }
 }
 
 void v_asinh_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = asinhf(src[i]);
     }
 }
 
 void v_acosh_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = acoshf(src[i]);
     }
 }
 
 void v_atanh_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = atanhf(src[i]);
     }
 }
 
 void v_asin_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = asinf(src[i]);
     }
 }
 
 void v_acos_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = acosf(src[i]);
     }
 }
 
 void v_atan_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = atanf(src[i]);
     }
 }
 
 void v_atan2_float(const float *y, const float *x, float *res, int size) {
-    if (y == NULL || x == NULL || res == NULL || size <= 0) return;
+    if (y == nullptr || x == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = atan2f(y[i], x[i]);
     }
@@ -864,7 +1278,7 @@ void v_atan2_float(const float *y, const float *x, float *res, int size) {
 
 
 float r_sum_float(const float *src, int size) {
-    if (src == NULL || size <= 0) return 0.0f;
+    if (src == nullptr || size <= 0) return 0.0f;
     float acc0 = 0.0f, acc1 = 0.0f, acc2 = 0.0f, acc3 = 0.0f;
     float acc4 = 0.0f, acc5 = 0.0f, acc6 = 0.0f, acc7 = 0.0f;
     
@@ -890,7 +1304,7 @@ float r_sum_float(const float *src, int size) {
 }
 
 float r_prod_float(const float *src, int size) {
-    if (src == NULL || size <= 0) return 1.0f;
+    if (src == nullptr || size <= 0) return 1.0f;
     float acc = 1.0f;
     for (int i = 0; i < size; i++) {
         acc *= src[i];
@@ -899,14 +1313,14 @@ float r_prod_float(const float *src, int size) {
 }
 
 float r_mean_float(const float *src, int size) {
-    if (src == NULL || size <= 0) return 0.0f;
+    if (src == nullptr || size <= 0) return 0.0f;
     return r_sum_float(src, size) / (float)size;
 }
 
 void s_sum_float(const float *src, const int *stridesSrc,
                  float *dest, const int *stridesDest,
                  const int *shape, int rank, int axis) {
-    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int size_axis = shape[axis];
     int coord[8] = {0};
     int outer_size = 1;
@@ -946,7 +1360,7 @@ void s_sum_float(const float *src, const int *stridesSrc,
 void s_mean_float(const float *src, const int *stridesSrc,
                   float *dest, const int *stridesDest,
                   const int *shape, int rank, int axis) {
-    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int size_axis = shape[axis];
     if (size_axis <= 0) return;
     
@@ -990,49 +1404,49 @@ void s_mean_float(const float *src, const int *stridesSrc,
 // ============================================================================
 
 void v_sqrt_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = sqrt(src[i]);
     }
 }
 
 void v_tan_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = tan(src[i]);
     }
 }
 
 void v_abs_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = fabs(src[i]);
     }
 }
 
 void v_ceil_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = ceil(src[i]);
     }
 }
 
 void v_floor_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = floor(src[i]);
     }
 }
 
 void v_round_double(const double *src, double *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = round(src[i]);
     }
 }
 
 void v_clip_double(const double *src, double *res, double min_val, double max_val, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         double val = src[i];
         if (val < min_val) val = min_val;
@@ -1042,49 +1456,49 @@ void v_clip_double(const double *src, double *res, double min_val, double max_va
 }
 
 void v_sqrt_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = sqrtf(src[i]);
     }
 }
 
 void v_tan_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = tanf(src[i]);
     }
 }
 
 void v_abs_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = fabsf(src[i]);
     }
 }
 
 void v_ceil_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = ceilf(src[i]);
     }
 }
 
 void v_floor_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = floorf(src[i]);
     }
 }
 
 void v_round_float(const float *src, float *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = roundf(src[i]);
     }
 }
 
 void v_clip_float(const float *src, float *res, float min_val, float max_val, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         float val = src[i];
         if (val < min_val) val = min_val;
@@ -1103,51 +1517,7 @@ void s_where_##NAME(const unsigned char *cond, const int *stridesCond, \
                     const TYPE *y, const int *stridesY, \
                     TYPE *res, const int *stridesRes, \
                     const int *shape, int rank) { \
-    if (cond == NULL || x == NULL || y == NULL || res == NULL || rank < 0 || rank > 8) return; \
-    if (rank == 0) { \
-        res[0] = cond[0] ? x[0] : y[0]; \
-        return; \
-    } \
-    int is_contiguous = 1; \
-    int expected_stride = 1; \
-    for (int i = rank - 1; i >= 0; i--) { \
-        if (stridesCond[i] != expected_stride || \
-            stridesX[i] != expected_stride || \
-            stridesY[i] != expected_stride || \
-            stridesRes[i] != expected_stride) { \
-            is_contiguous = 0; \
-            break; \
-        } \
-        expected_stride *= shape[i]; \
-    } \
-    int total_elements = 1; \
-    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
-    if (is_contiguous) { \
-        for (int i = 0; i < total_elements; i++) { \
-            res[i] = cond[i] ? x[i] : y[i]; \
-        } \
-        return; \
-    } \
-    int coord[8] = {0}; \
-    int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0; \
-    for (int el = 0; el < total_elements; el++) { \
-        res[offsetRes] = cond[offsetCond] ? x[offsetX] : y[offsetY]; \
-        for (int d = rank - 1; d >= 0; d--) { \
-            coord[d]++; \
-            if (coord[d] < shape[d]) { \
-                offsetCond += stridesCond[d]; \
-                offsetX    += stridesX[d]; \
-                offsetY    += stridesY[d]; \
-                offsetRes  += stridesRes[d]; \
-                break; \
-            } \
-            coord[d] = 0; \
-            offsetCond -= (shape[d] - 1) * stridesCond[d]; \
-            offsetX    -= (shape[d] - 1) * stridesX[d]; \
-            offsetY    -= (shape[d] - 1) * stridesY[d]; \
-            offsetRes  -= (shape[d] - 1) * stridesRes[d]; \
-        } \
-    } \
+    s_where_impl<TYPE>(cond, stridesCond, x, stridesX, y, stridesY, res, stridesRes, shape, rank); \
 }
 
 DEFINE_S_WHERE(double, double)
@@ -1196,7 +1566,7 @@ static inline uint64_t xoshiro256_next(uint64_t s[4]) {
 }
 
 void v_normal_double(double *res, int size, double loc, double scale, unsigned long long seed) {
-    if (res == NULL || size <= 0 || scale <= 0.0) return;
+    if (res == nullptr || size <= 0 || scale <= 0.0) return;
 
     uint64_t s[4];
     xoshiro256_seed(seed, s);
@@ -1222,7 +1592,7 @@ void v_normal_double(double *res, int size, double loc, double scale, unsigned l
 }
 
 void v_normal_float(float *res, int size, float loc, float scale, unsigned long long seed) {
-    if (res == NULL || size <= 0 || scale <= 0.0f) return;
+    if (res == nullptr || size <= 0 || scale <= 0.0f) return;
 
     uint64_t s[4];
     xoshiro256_seed(seed, s);
@@ -1248,7 +1618,7 @@ void v_normal_float(float *res, int size, float loc, float scale, unsigned long 
 }
 
 void v_uniform_double(double *res, int size, unsigned long long seed) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
 
     uint64_t s[4];
     xoshiro256_seed(seed, s);
@@ -1259,7 +1629,7 @@ void v_uniform_double(double *res, int size, unsigned long long seed) {
 }
 
 void v_uniform_float(float *res, int size, unsigned long long seed) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
 
     uint64_t s[4];
     xoshiro256_seed(seed, s);
@@ -1271,13 +1641,7 @@ void v_uniform_float(float *res, int size, unsigned long long seed) {
 
 #define IMPLEMENT_V_RANDINT(TYPE_NAME, TYPE, BOUNDS_TYPE, RANGE_TYPE) \
 void v_randint_##TYPE_NAME(TYPE *res, int size, BOUNDS_TYPE low, BOUNDS_TYPE high, unsigned long long seed) { \
-    if (res == NULL || size <= 0 || low >= high) return; \
-    uint64_t s[4]; \
-    xoshiro256_seed(seed, s); \
-    RANGE_TYPE range = (RANGE_TYPE)high - (RANGE_TYPE)low; \
-    for (int i = 0; i < size; i++) { \
-        res[i] = (TYPE)(low + (RANGE_TYPE)(xoshiro256_next(s) % (unsigned long long)range)); \
-    } \
+    v_randint_impl<TYPE, BOUNDS_TYPE, RANGE_TYPE>(res, size, low, high, seed); \
 }
 
 IMPLEMENT_V_RANDINT(int64, int64_t, int64_t, int64_t)
@@ -1286,12 +1650,8 @@ IMPLEMENT_V_RANDINT(int16, int16_t, int, int)
 IMPLEMENT_V_RANDINT(uint8, uint8_t, int, int)
 
 #define IMPLEMENT_V_FILL(TYPE_NAME, TYPE) \
-VECTORIZED_TARGETS \
 void v_fill_##TYPE_NAME(TYPE * RESTRICT res, TYPE value, int size) { \
-    if (res == NULL || size <= 0) return; \
-    for (int i = 0; i < size; i++) { \
-        res[i] = value; \
-    } \
+    v_fill_impl(res, value, size); \
 }
 
 IMPLEMENT_V_FILL(double, double)
@@ -1300,21 +1660,21 @@ IMPLEMENT_V_FILL(int64, int64_t)
 IMPLEMENT_V_FILL(int32, int32_t)
 
 void v_linspace_double(double *res, double start, double step, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = start + i * step;
     }
 }
 
 void v_linspace_float(float *res, float start, float step, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = start + i * step;
     }
 }
 
 void v_linspace_complex128(cpx_t *res, double startR, double startI, double stepR, double stepI, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i].r = startR + i * stepR;
         res[i].i = startI + i * stepI;
@@ -1322,7 +1682,7 @@ void v_linspace_complex128(cpx_t *res, double startR, double startI, double step
 }
 
 void v_linspace_complex64(cpx_f_t *res, float startR, float startI, float stepR, float stepI, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i].r = startR + i * stepR;
         res[i].i = startI + i * stepI;
@@ -1330,100 +1690,100 @@ void v_linspace_complex64(cpx_f_t *res, float startR, float startI, float stepR,
 }
 
 void v_linspace_int64(int64_t *res, double start, double step, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = (int64_t)(start + i * step);
     }
 }
 
 void v_linspace_int32(int32_t *res, double start, double step, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = (int32_t)(start + i * step);
     }
 }
 
 void v_linspace_int16(int16_t *res, double start, double step, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = (int16_t)(start + i * step);
     }
 }
 
 void v_linspace_uint8(uint8_t *res, double start, double step, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = (uint8_t)(start + i * step);
     }
 }
 
 void v_logspace_double(double *res, double start, double step, double base, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = pow(base, start + i * step);
     }
 }
 
 void v_logspace_float(float *res, float start, float step, float base, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = powf(base, start + i * step);
     }
 }
 
 void v_logspace_complex128(cpx_t *res, double startR, double startI, double stepR, double stepI, double baseR, double baseI, int size) {
-    if (res == NULL || size <= 0) return;
-    double complex cbase = baseR + baseI * I;
+    if (res == nullptr || size <= 0) return;
+    std::complex<double> cbase(baseR, baseI);
     for (int i = 0; i < size; i++) {
-        double complex cexp = (startR + i * stepR) + (startI + i * stepI) * I;
-        double complex cres = cpow(cbase, cexp);
-        res[i].r = creal(cres);
-        res[i].i = cimag(cres);
+        std::complex<double> cexp(startR + i * stepR, startI + i * stepI);
+        std::complex<double> cres = std::pow(cbase, cexp);
+        res[i].r = cres.real();
+        res[i].i = cres.imag();
     }
 }
 
 void v_logspace_complex64(cpx_f_t *res, float startR, float startI, float stepR, float stepI, float baseR, float baseI, int size) {
-    if (res == NULL || size <= 0) return;
-    float complex cbase = baseR + baseI * I;
+    if (res == nullptr || size <= 0) return;
+    std::complex<float> cbase(baseR, baseI);
     for (int i = 0; i < size; i++) {
-        float complex cexp = (startR + i * stepR) + (startI + i * stepI) * I;
-        float complex cres = cpowf(cbase, cexp);
-        res[i].r = crealf(cres);
-        res[i].i = cimagf(cres);
+        std::complex<float> cexp(startR + i * stepR, startI + i * stepI);
+        std::complex<float> cres = std::pow(cbase, cexp);
+        res[i].r = cres.real();
+        res[i].i = cres.imag();
     }
 }
 
 void v_geomspace_double(double *res, double logStart, double step, double sign, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = sign * pow(10.0, logStart + i * step);
     }
 }
 
 void v_geomspace_float(float *res, float logStart, float step, float sign, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = sign * powf(10.0f, logStart + i * step);
     }
 }
 
 void v_geomspace_complex128(cpx_t *res, double logStartR, double logStartI, double stepR, double stepI, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        double complex cexp = (logStartR + i * stepR) + (logStartI + i * stepI) * I;
-        double complex cres = cpow(10.0, cexp);
-        res[i].r = creal(cres);
-        res[i].i = cimag(cres);
+        std::complex<double> cexp(logStartR + i * stepR, logStartI + i * stepI);
+        std::complex<double> cres = std::pow(10.0, cexp);
+        res[i].r = cres.real();
+        res[i].i = cres.imag();
     }
 }
 
 void v_geomspace_complex64(cpx_f_t *res, float logStartR, float logStartI, float stepR, float stepI, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        float complex cexp = (logStartR + i * stepR) + (logStartI + i * stepI) * I;
-        float complex cres = cpowf(10.0f, cexp);
-        res[i].r = crealf(cres);
-        res[i].i = cimagf(cres);
+        std::complex<float> cexp(logStartR + i * stepR, logStartI + i * stepI);
+        std::complex<float> cres = std::pow(10.0f, cexp);
+        res[i].r = cres.real();
+        res[i].i = cres.imag();
     }
 }
 
@@ -1495,7 +1855,7 @@ static inline void hash_boolean(uint32_t *hash, uint8_t val) {
 // ============================================================================
 
 void s_flatten_double(const double *src, const int *stridesSrc, double *dest, const int *shape, int rank) {
-    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
@@ -1519,7 +1879,7 @@ void s_flatten_double(const double *src, const int *stridesSrc, double *dest, co
 }
 
 void s_flatten_float(const float *src, const int *stridesSrc, float *dest, const int *shape, int rank) {
-    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
@@ -1543,7 +1903,7 @@ void s_flatten_float(const float *src, const int *stridesSrc, float *dest, const
 }
 
 void s_flatten_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *shape, int rank) {
-    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
@@ -1567,7 +1927,7 @@ void s_flatten_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, c
 }
 
 void s_flatten_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *shape, int rank) {
-    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
@@ -1591,7 +1951,7 @@ void s_flatten_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, c
 }
 
 void s_flatten_complex128(const double *src, const int *stridesSrc, double *dest, const int *shape, int rank) {
-    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
@@ -1618,7 +1978,7 @@ void s_flatten_complex128(const double *src, const int *stridesSrc, double *dest
 }
 
 void s_flatten_complex64(const float *src, const int *stridesSrc, float *dest, const int *shape, int rank) {
-    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
@@ -1645,7 +2005,7 @@ void s_flatten_complex64(const float *src, const int *stridesSrc, float *dest, c
 }
 
 void s_flatten_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *shape, int rank) {
-    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
@@ -1669,7 +2029,7 @@ void s_flatten_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, c
 }
 
 void s_flatten_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *shape, int rank) {
-    if (src == NULL || dest == NULL || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
@@ -1698,7 +2058,7 @@ void s_flatten_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, c
 // ============================================================================
 
 uint32_t s_hash_double(const double *a, const int *strides, const int *shape, int rank, int is_contiguous) {
-    if (a == NULL) return 0;
+    if (a == nullptr) return 0;
     uint32_t hash = 2166136261U;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -1732,7 +2092,7 @@ uint32_t s_hash_double(const double *a, const int *strides, const int *shape, in
 }
 
 uint32_t s_hash_float(const float *a, const int *strides, const int *shape, int rank, int is_contiguous) {
-    if (a == NULL) return 0;
+    if (a == nullptr) return 0;
     uint32_t hash = 2166136261U;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -1766,7 +2126,7 @@ uint32_t s_hash_float(const float *a, const int *strides, const int *shape, int 
 }
 
 uint32_t s_hash_int64(const int64_t *a, const int *strides, const int *shape, int rank, int is_contiguous) {
-    if (a == NULL) return 0;
+    if (a == nullptr) return 0;
     uint32_t hash = 2166136261U;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -1800,7 +2160,7 @@ uint32_t s_hash_int64(const int64_t *a, const int *strides, const int *shape, in
 }
 
 uint32_t s_hash_int32(const int32_t *a, const int *strides, const int *shape, int rank, int is_contiguous) {
-    if (a == NULL) return 0;
+    if (a == nullptr) return 0;
     uint32_t hash = 2166136261U;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -1834,7 +2194,7 @@ uint32_t s_hash_int32(const int32_t *a, const int *strides, const int *shape, in
 }
 
 uint32_t s_hash_complex128(const double *a, const int *strides, const int *shape, int rank, int is_contiguous) {
-    if (a == NULL) return 0;
+    if (a == nullptr) return 0;
     uint32_t hash = 2166136261U;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -1872,7 +2232,7 @@ uint32_t s_hash_complex128(const double *a, const int *strides, const int *shape
 }
 
 uint32_t s_hash_complex64(const float *a, const int *strides, const int *shape, int rank, int is_contiguous) {
-    if (a == NULL) return 0;
+    if (a == nullptr) return 0;
     uint32_t hash = 2166136261U;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -1910,7 +2270,7 @@ uint32_t s_hash_complex64(const float *a, const int *strides, const int *shape, 
 }
 
 uint32_t s_hash_boolean(const uint8_t *a, const int *strides, const int *shape, int rank, int is_contiguous) {
-    if (a == NULL) return 0;
+    if (a == nullptr) return 0;
     uint32_t hash = 2166136261U;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -1948,7 +2308,7 @@ uint32_t s_hash_boolean(const uint8_t *a, const int *strides, const int *shape, 
 // ============================================================================
 
 void v_poisson_int64(int64_t *res, int size, double lam, unsigned long long seed) {
-    if (res == NULL || size <= 0 || lam <= 0.0) return;
+    if (res == nullptr || size <= 0 || lam <= 0.0) return;
 
     uint64_t s[4];
     xoshiro256_seed(seed, s);
@@ -1995,7 +2355,7 @@ void v_poisson_int64(int64_t *res, int size, double lam, unsigned long long seed
 }
 
 void v_poisson_int32(int32_t *res, int size, double lam, unsigned long long seed) {
-    if (res == NULL || size <= 0 || lam <= 0.0) return;
+    if (res == nullptr || size <= 0 || lam <= 0.0) return;
 
     uint64_t s[4];
     xoshiro256_seed(seed, s);
@@ -2042,7 +2402,7 @@ void v_poisson_int32(int32_t *res, int size, double lam, unsigned long long seed
 }
 
 void v_binomial_int64(int64_t *res, int size, int n, double p, unsigned long long seed) {
-    if (res == NULL || size <= 0 || n < 0 || p < 0.0 || p > 1.0) return;
+    if (res == nullptr || size <= 0 || n < 0 || p < 0.0 || p > 1.0) return;
 
     uint64_t s[4];
     xoshiro256_seed(seed, s);
@@ -2105,7 +2465,7 @@ void v_binomial_int64(int64_t *res, int size, int n, double p, unsigned long lon
 }
 
 void v_binomial_int32(int32_t *res, int size, int n, double p, unsigned long long seed) {
-    if (res == NULL || size <= 0 || n < 0 || p < 0.0 || p > 1.0) return;
+    if (res == nullptr || size <= 0 || n < 0 || p < 0.0 || p > 1.0) return;
 
     uint64_t s[4];
     xoshiro256_seed(seed, s);
@@ -2179,10 +2539,10 @@ typedef LONG (WINAPI *BCryptGenRandomFunc)(
 
 static void fill_secure_bytes_win(void *dest, size_t size) {
     HMODULE hBcrypt = LoadLibraryA("bcrypt.dll");
-    if (hBcrypt != NULL) {
+    if (hBcrypt != nullptr) {
         BCryptGenRandomFunc pBCryptGenRandom = (BCryptGenRandomFunc)GetProcAddress(hBcrypt, "BCryptGenRandom");
-        if (pBCryptGenRandom != NULL) {
-            pBCryptGenRandom(NULL, (unsigned char*)dest, (unsigned long)size, 0x00000002);
+        if (pBCryptGenRandom != nullptr) {
+            pBCryptGenRandom(nullptr, (unsigned char*)dest, (unsigned long)size, 0x00000002);
         }
         FreeLibrary(hBcrypt);
     }
@@ -2210,7 +2570,7 @@ static void fill_secure_bytes(void *dest, size_t size) {
 }
 
 void v_secure_uniform_double(double *res, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     fill_secure_bytes(res, size * sizeof(double));
     unsigned long long *temp = (unsigned long long *)res;
     for (int i = 0; i < size; i++) {
@@ -2219,7 +2579,7 @@ void v_secure_uniform_double(double *res, int size) {
 }
 
 void v_secure_uniform_float(float *res, int size) {
-    if (res == NULL || size <= 0) return;
+    if (res == nullptr || size <= 0) return;
     fill_secure_bytes(res, size * sizeof(float));
     unsigned int *temp = (unsigned int *)res;
     for (int i = 0; i < size; i++) {
@@ -2229,12 +2589,7 @@ void v_secure_uniform_float(float *res, int size) {
 
 #define IMPLEMENT_V_SECURE_RANDINT(TYPE_NAME, TYPE, BOUNDS_TYPE, RANGE_TYPE) \
 void v_secure_randint_##TYPE_NAME(TYPE *res, int size, BOUNDS_TYPE low, BOUNDS_TYPE high) { \
-    if (res == NULL || size <= 0 || low >= high) return; \
-    fill_secure_bytes(res, size * sizeof(TYPE)); \
-    RANGE_TYPE range = (RANGE_TYPE)high - (RANGE_TYPE)low; \
-    for (int i = 0; i < size; i++) { \
-        res[i] = (TYPE)(low + (RANGE_TYPE)((unsigned long long)res[i] % (unsigned long long)range)); \
-    } \
+    v_secure_randint_impl<TYPE, BOUNDS_TYPE, RANGE_TYPE>(res, size, low, high); \
 }
 
 IMPLEMENT_V_SECURE_RANDINT(int64, int64_t, int64_t, int64_t)
@@ -2243,7 +2598,7 @@ IMPLEMENT_V_SECURE_RANDINT(int16, int16_t, int, int)
 IMPLEMENT_V_SECURE_RANDINT(uint8, uint8_t, int, int)
 
 void v_secure_normal_double(double *res, int size, double loc, double scale) {
-    if (res == NULL || size <= 0 || scale <= 0.0) return;
+    if (res == nullptr || size <= 0 || scale <= 0.0) return;
     v_secure_uniform_double(res, size);
     int i = 0;
     while (i < size) {
@@ -2261,7 +2616,7 @@ void v_secure_normal_double(double *res, int size, double loc, double scale) {
 }
 
 void v_secure_normal_float(float *res, int size, float loc, float scale) {
-    if (res == NULL || size <= 0 || scale <= 0.0f) return;
+    if (res == nullptr || size <= 0 || scale <= 0.0f) return;
     v_secure_uniform_float(res, size);
     int i = 0;
     while (i < size) {
@@ -2279,7 +2634,7 @@ void v_secure_normal_float(float *res, int size, float loc, float scale) {
 }
 
 void v_tril_double(const double *src, double *res, int batch_count, int rows, int cols, int k) {
-    if (src == NULL || res == NULL || batch_count <= 0 || rows <= 0 || cols <= 0) return;
+    if (src == nullptr || res == nullptr || batch_count <= 0 || rows <= 0 || cols <= 0) return;
     int matrix_size = rows * cols;
     for (int b = 0; b < batch_count; b++) {
         const double *s_mat = src + b * matrix_size;
@@ -2294,7 +2649,7 @@ void v_tril_double(const double *src, double *res, int batch_count, int rows, in
 }
 
 void v_tril_float(const float *src, float *res, int batch_count, int rows, int cols, int k) {
-    if (src == NULL || res == NULL || batch_count <= 0 || rows <= 0 || cols <= 0) return;
+    if (src == nullptr || res == nullptr || batch_count <= 0 || rows <= 0 || cols <= 0) return;
     int matrix_size = rows * cols;
     for (int b = 0; b < batch_count; b++) {
         const float *s_mat = src + b * matrix_size;
@@ -2309,7 +2664,7 @@ void v_tril_float(const float *src, float *res, int batch_count, int rows, int c
 }
 
 void v_triu_double(const double *src, double *res, int batch_count, int rows, int cols, int k) {
-    if (src == NULL || res == NULL || batch_count <= 0 || rows <= 0 || cols <= 0) return;
+    if (src == nullptr || res == nullptr || batch_count <= 0 || rows <= 0 || cols <= 0) return;
     int matrix_size = rows * cols;
     for (int b = 0; b < batch_count; b++) {
         const double *s_mat = src + b * matrix_size;
@@ -2324,7 +2679,7 @@ void v_triu_double(const double *src, double *res, int batch_count, int rows, in
 }
 
 void v_triu_float(const float *src, float *res, int batch_count, int rows, int cols, int k) {
-    if (src == NULL || res == NULL || batch_count <= 0 || rows <= 0 || cols <= 0) return;
+    if (src == nullptr || res == nullptr || batch_count <= 0 || rows <= 0 || cols <= 0) return;
     int matrix_size = rows * cols;
     for (int b = 0; b < batch_count; b++) {
         const float *s_mat = src + b * matrix_size;
@@ -2342,35 +2697,7 @@ void v_triu_float(const float *src, float *res, int batch_count, int rows, int c
 void FUNCNAME(const T *src, const int *stridesSrc, \
               T *res, const int *stridesRes, \
               const int *shape, int rank, int axis) { \
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return; \
-    int coord[8] = {0}; \
-    int outer_size = 1; \
-    for (int d = 0; d < rank; d++) { \
-        if (d != axis) outer_size *= shape[d]; \
-    } \
-    for (int o = 0; o < outer_size; o++) { \
-        int offsetSrc = 0; \
-        int offsetRes = 0; \
-        for (int d = 0; d < rank; d++) { \
-            if (d != axis) { \
-                offsetSrc += coord[d] * stridesSrc[d]; \
-                offsetRes += coord[d] * stridesRes[d]; \
-            } \
-        } \
-        T acc; \
-        for (int i = 0; i < shape[axis]; i++) { \
-            int idxSrc = offsetSrc + i * stridesSrc[axis]; \
-            int idxRes = offsetRes + i * stridesRes[axis]; \
-            acc = (i == 0) ? src[idxSrc] : OP(acc, src[idxSrc]); \
-            res[idxRes] = acc; \
-        } \
-        for (int d = rank - 1; d >= 0; d--) { \
-            if (d == axis) continue; \
-            coord[d]++; \
-            if (coord[d] < shape[d]) break; \
-            coord[d] = 0; \
-        } \
-    } \
+    strided_cum_op_impl(src, stridesSrc, res, stridesRes, shape, rank, axis, [](T a, T b) { return OP(a, b); }); \
 }
 
 // standard real ops
@@ -2430,34 +2757,7 @@ static inline cpx_f_t cpx_sub_f(cpx_f_t a, cpx_f_t b) {
 void FUNCNAME(const T *src, const int *stridesSrc, \
               T *res, const int *stridesRes, \
               const int *shape, int rank, int axis) { \
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return; \
-    int coord[8] = {0}; \
-    int outer_size = 1; \
-    for (int d = 0; d < rank; d++) { \
-        if (d != axis) outer_size *= shape[d]; \
-    } \
-    for (int o = 0; o < outer_size; o++) { \
-        int offsetSrc = 0; \
-        int offsetRes = 0; \
-        for (int d = 0; d < rank; d++) { \
-            if (d != axis) { \
-                offsetSrc += coord[d] * stridesSrc[d]; \
-                offsetRes += coord[d] * stridesRes[d]; \
-            } \
-        } \
-        for (int i = 0; i < shape[axis] - 1; i++) { \
-            int idxSrcCurr = offsetSrc + i * stridesSrc[axis]; \
-            int idxSrcNext = offsetSrc + (i + 1) * stridesSrc[axis]; \
-            int idxRes = offsetRes + i * stridesRes[axis]; \
-            res[idxRes] = SUB_OP(src[idxSrcNext], src[idxSrcCurr]); \
-        } \
-        for (int d = rank - 1; d >= 0; d--) { \
-            if (d == axis) continue; \
-            coord[d]++; \
-            if (coord[d] < shape[d]) break; \
-            coord[d] = 0; \
-        } \
-    } \
+    strided_diff_op_impl(src, stridesSrc, res, stridesRes, shape, rank, axis, [](T a, T b) { return SUB_OP(a, b); }); \
 }
 
 #define SUB_REAL(x, y) ((x) - (y))
@@ -2473,24 +2773,7 @@ DEFINE_STRIDED_DIFF_OP(s_diff_complex64, cpx_f_t, cpx_sub_f)
 void FUNCNAME(const T *src, const int *stridesSrc, \
               T *res, const int *stridesRes, \
               const int *shape, int rank) { \
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0) return; \
-    int coord[8] = {0}; \
-    int total_size = 1; \
-    for (int d = 0; d < rank; d++) total_size *= shape[d]; \
-    for (int i = 0; i < total_size; i++) { \
-        int offsetSrc = 0; \
-        int offsetRes = 0; \
-        for (int d = 0; d < rank; d++) { \
-            offsetSrc += coord[d] * stridesSrc[d]; \
-            offsetRes += coord[d] * stridesRes[d]; \
-        } \
-        res[offsetRes] = OP(src[offsetSrc]); \
-        for (int d = rank - 1; d >= 0; d--) { \
-            coord[d]++; \
-            if (coord[d] < shape[d]) break; \
-            coord[d] = 0; \
-        } \
-    } \
+    strided_unary_op_impl(src, stridesSrc, res, stridesRes, shape, rank, [](T x) { return OP(x); }); \
 }
 
 #define OP_SIN_D(x) sin(x)
@@ -2577,10 +2860,7 @@ static inline cpx_f_t cpx_atan_f(cpx_f_t z) {
 
 #define DEFINE_COMPLEX_UNARY_VEC(FUNCNAME, T, OP) \
 void FUNCNAME(const T *src, T *res, int size) { \
-    if (src == NULL || res == NULL || size <= 0) return; \
-    for (int i = 0; i < size; i++) { \
-        res[i] = OP(src[i]); \
-    } \
+    v_unary_impl(src, res, size, [](T x) { return OP(x); }); \
 }
 
 DEFINE_COMPLEX_UNARY_VEC(v_sin_complex128, cpx_t, cpx_sin)
@@ -2629,7 +2909,7 @@ void s_atan2_double(const double *y, const int *stridesY,
                    const double *x, const int *stridesX,
                    double *res, const int *stridesRes,
                    const int *shape, int rank) {
-    if (y == NULL || x == NULL || res == NULL || rank <= 0 || rank > 8) return;
+    if (y == nullptr || x == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
@@ -2658,7 +2938,7 @@ void s_atan2_float(const float *y, const int *stridesY,
                   const float *x, const int *stridesX,
                   float *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (y == NULL || x == NULL || res == NULL || rank <= 0 || rank > 8) return;
+    if (y == nullptr || x == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
@@ -2743,21 +3023,21 @@ DEFINE_STRIDED_UNARY_OP(s_atanh_complex128, cpx_t, cpx_atanh)
 DEFINE_STRIDED_UNARY_OP(s_atanh_complex64, cpx_f_t, cpx_atanh_f)
 
 void v_hypot_complex128(const cpx_t *x1, const cpx_t *x2, double *res, int size) {
-    if (x1 == NULL || x2 == NULL || res == NULL || size <= 0) return;
+    if (x1 == nullptr || x2 == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = sqrt(x1[i].r*x1[i].r + x1[i].i*x1[i].i + x2[i].r*x2[i].r + x2[i].i*x2[i].i);
     }
 }
 
 void v_hypot_complex64(const cpx_f_t *x1, const cpx_f_t *x2, float *res, int size) {
-    if (x1 == NULL || x2 == NULL || res == NULL || size <= 0) return;
+    if (x1 == nullptr || x2 == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = sqrtf(x1[i].r*x1[i].r + x1[i].i*x1[i].i + x2[i].r*x2[i].r + x2[i].i*x2[i].i);
     }
 }
 
 void s_hypot_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank) {
-    if (x1 == NULL || x2 == NULL || res == NULL || shape == NULL || rank <= 0) return;
+    if (x1 == nullptr || x2 == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
@@ -2778,7 +3058,7 @@ void s_hypot_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, 
 }
 
 void s_hypot_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank) {
-    if (x1 == NULL || x2 == NULL || res == NULL || shape == NULL || rank <= 0) return;
+    if (x1 == nullptr || x2 == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
@@ -2821,21 +3101,21 @@ static inline cpx_f_t cpx_pow_f(cpx_f_t z1, cpx_f_t z2) {
 }
 
 void v_pow_complex128(const cpx_t *x1, const cpx_t *x2, cpx_t *res, int size) {
-    if (x1 == NULL || x2 == NULL || res == NULL || size <= 0) return;
+    if (x1 == nullptr || x2 == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = cpx_pow(x1[i], x2[i]);
     }
 }
 
 void v_pow_complex64(const cpx_f_t *x1, const cpx_f_t *x2, cpx_f_t *res, int size) {
-    if (x1 == NULL || x2 == NULL || res == NULL || size <= 0) return;
+    if (x1 == nullptr || x2 == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = cpx_pow_f(x1[i], x2[i]);
     }
 }
 
 void s_pow_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, cpx_t *res, const int *stridesRes, const int *shape, int rank) {
-    if (x1 == NULL || x2 == NULL || res == NULL || shape == NULL || rank <= 0) return;
+    if (x1 == nullptr || x2 == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
@@ -2856,7 +3136,7 @@ void s_pow_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, co
 }
 
 void s_pow_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, cpx_f_t *res, const int *stridesRes, const int *shape, int rank) {
-    if (x1 == NULL || x2 == NULL || res == NULL || shape == NULL || rank <= 0) return;
+    if (x1 == nullptr || x2 == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
@@ -2877,7 +3157,7 @@ void s_pow_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2,
 }
 
 void v_conj_complex128(const cpx_t *src, cpx_t *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i].r = src[i].r;
         res[i].i = -src[i].i;
@@ -2885,7 +3165,7 @@ void v_conj_complex128(const cpx_t *src, cpx_t *res, int size) {
 }
 
 void v_conj_complex64(const cpx_f_t *src, cpx_f_t *res, int size) {
-    if (src == NULL || res == NULL || size <= 0) return;
+    if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i].r = src[i].r;
         res[i].i = -src[i].i;
@@ -2893,7 +3173,7 @@ void v_conj_complex64(const cpx_f_t *src, cpx_f_t *res, int size) {
 }
 
 void s_conj_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank) {
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0) return;
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
@@ -2914,7 +3194,7 @@ void s_conj_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, cons
 }
 
 void s_conj_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank) {
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0) return;
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
@@ -2974,13 +3254,9 @@ static inline cpx_f_t cpx_div_f(cpx_f_t x, cpx_f_t y) {
 
 #define DEFINE_V_UFUNC(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, OP_SYM) \
 void v_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const Tb *b, Tr *res, int size) { \
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return; \
-    for (int i = 0; i < size; i++) { \
-        Ta x = a[i]; \
-        Tb y = b[i]; \
-        res[i] = EXPR_##Tr_tok(OP, Ta_tok, Tb_tok, x, y, OP_SYM); \
-        (void)x; (void)y; \
-    } \
+    v_binary_impl(a, b, res, size, [](Ta x, Tb y) { \
+        return EXPR_##Tr_tok(OP, Ta_tok, Tb_tok, x, y, OP_SYM); \
+    }); \
 }
 
 #define DEFINE_S_UFUNC(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, OP_SYM) \
@@ -2988,30 +3264,9 @@ void s_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const int *stridesA, \
                                              const Tb *b, const int *stridesB, \
                                              Tr *res, const int *stridesRes, \
                                              const int *shape, int rank) { \
-    if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return; \
-    int total_elements = 1; \
-    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
-    int coord[8] = {0}; \
-    int offsetA = 0, offsetB = 0, offsetRes = 0; \
-    for (int el = 0; el < total_elements; el++) { \
-        Ta x = a[offsetA]; \
-        Tb y = b[offsetB]; \
-        res[offsetRes] = EXPR_##Tr_tok(OP, Ta_tok, Tb_tok, x, y, OP_SYM); \
-        (void)x; (void)y; \
-        for (int d = rank - 1; d >= 0; d--) { \
-            coord[d]++; \
-            if (coord[d] < shape[d]) { \
-                offsetA += stridesA[d]; \
-                offsetB += stridesB[d]; \
-                offsetRes += stridesRes[d]; \
-                break; \
-            } \
-            coord[d] = 0; \
-            offsetA -= (shape[d] - 1) * stridesA[d]; \
-            offsetB -= (shape[d] - 1) * stridesB[d]; \
-            offsetRes -= (shape[d] - 1) * stridesRes[d]; \
-        } \
-    } \
+    strided_binary_op_impl(a, stridesA, b, stridesB, res, stridesRes, shape, rank, [](Ta x, Tb y) { \
+        return EXPR_##Tr_tok(OP, Ta_tok, Tb_tok, x, y, OP_SYM); \
+    }); \
 }
 
 #define DEFINE_V_S_UFUNC(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, OP_SYM) \
@@ -3036,35 +3291,35 @@ GENERATE_COMMUTATIVE_COMBINATIONS(mul, BUILD_MUL_COMBINATIONS)
 GENERATE_DIV_COMBINATIONS(div, BUILD_DIV_COMBINATIONS)
 
 void cast_uint8_to_double(const uint8_t *src, double *dst, int size) {
-    if (src == NULL || dst == NULL || size <= 0) return;
+    if (src == nullptr || dst == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         dst[i] = (double)src[i];
     }
 }
 
 void cast_int16_to_double(const int16_t *src, double *dst, int size) {
-    if (src == NULL || dst == NULL || size <= 0) return;
+    if (src == nullptr || dst == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         dst[i] = (double)src[i];
     }
 }
 
 void cast_double_to_uint8(const double *src, uint8_t *dst, int size) {
-    if (src == NULL || dst == NULL || size <= 0) return;
+    if (src == nullptr || dst == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         dst[i] = (uint8_t)src[i];
     }
 }
 
 void cast_double_to_int16(const double *src, int16_t *dst, int size) {
-    if (src == NULL || dst == NULL || size <= 0) return;
+    if (src == nullptr || dst == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         dst[i] = (int16_t)src[i];
     }
 }
 
 void s_cast_uint8_to_double(const uint8_t *src, const int *stridesSrc, double *dst, const int *stridesDst, const int *shape, int rank) {
-    if (src == NULL || dst == NULL || rank <= 0 || rank > 8) return;
+    if (src == nullptr || dst == nullptr || rank <= 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     int coord[8] = {0};
@@ -3086,7 +3341,7 @@ void s_cast_uint8_to_double(const uint8_t *src, const int *stridesSrc, double *d
 }
 
 void s_cast_int16_to_double(const int16_t *src, const int *stridesSrc, double *dst, const int *stridesDst, const int *shape, int rank) {
-    if (src == NULL || dst == NULL || rank <= 0 || rank > 8) return;
+    if (src == nullptr || dst == nullptr || rank <= 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     int coord[8] = {0};
@@ -3108,7 +3363,7 @@ void s_cast_int16_to_double(const int16_t *src, const int *stridesSrc, double *d
 }
 
 void s_cast_double_to_uint8(const double *src, const int *stridesSrc, uint8_t *dst, const int *stridesDst, const int *shape, int rank) {
-    if (src == NULL || dst == NULL || rank <= 0 || rank > 8) return;
+    if (src == nullptr || dst == nullptr || rank <= 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     int coord[8] = {0};
@@ -3130,7 +3385,7 @@ void s_cast_double_to_uint8(const double *src, const int *stridesSrc, uint8_t *d
 }
 
 void s_cast_double_to_int16(const double *src, const int *stridesSrc, int16_t *dst, const int *stridesDst, const int *shape, int rank) {
-    if (src == NULL || dst == NULL || rank <= 0 || rank > 8) return;
+    if (src == nullptr || dst == nullptr || rank <= 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     int coord[8] = {0};
@@ -3174,7 +3429,7 @@ void copy_and_cast_strided(
     int src_type, const void *src_ptr, const int *strides_src,
     int dest_type, void *dest_ptr, const int *shape, int rank) {
     
-    if (src_ptr == NULL || dest_ptr == NULL || rank < 0 || rank > 8) return;
+    if (src_ptr == nullptr || dest_ptr == nullptr || rank < 0 || rank > 8) return;
 
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -3358,7 +3613,7 @@ void copy_advanced_c(
     int **indices_ptrs,
     const int *indices_lens
 ) {
-    if (src_ptr == NULL || dest_ptr == NULL || rank <= 0) return;
+    if (src_ptr == nullptr || dest_ptr == nullptr || rank <= 0) return;
     char *dest_ptr_cursor = (char *)dest_ptr;
     copy_advanced_recursive_c(
         (const char *)src_ptr,
@@ -3384,7 +3639,7 @@ void copy_advanced_c(
  * ============================================================================
  */
 
-static int division_error_flag = 0;
+static thread_local int division_error_flag = 0;
 
 int get_and_reset_division_error(void) {
     int err = division_error_flag;
@@ -3489,7 +3744,7 @@ static inline cpx_f_t cpx_square_f(cpx_f_t z) {
 
 #define DEFINE_CONTIGUOUS_UNARY_IMPL(name, typeSrc, typeRes, expr) \
 void name(const typeSrc *src, typeRes *res, int size) { \
-    if (src == NULL || res == NULL || size <= 0) return; \
+    if (src == nullptr || res == nullptr || size <= 0) return; \
     for (int i = 0; i < size; i++) { \
         typeSrc x = src[i]; \
         res[i] = (expr); \
@@ -3498,7 +3753,7 @@ void name(const typeSrc *src, typeRes *res, int size) { \
 
 #define DEFINE_CONTIGUOUS_BINARY_IMPL(name, typeA, typeB, typeRes, expr) \
 void name(const typeA *a, const typeB *b, typeRes *res, int size) { \
-    if (a == NULL || b == NULL || res == NULL || size <= 0) return; \
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return; \
     for (int i = 0; i < size; i++) { \
         typeA x = a[i]; \
         typeB y = b[i]; \
@@ -3552,7 +3807,7 @@ DEFINE_CONTIGUOUS_BINARY_IMPL(v_copysign_float, float, float, float, copysignf(x
 void name(const typeSrc *src, const int *stridesSrc, \
           typeRes *res, const int *stridesRes, \
           const int *shape, int rank) { \
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || rank > 8) return; \
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || rank > 8) return; \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
     int coord[8] = {0}; \
@@ -3586,7 +3841,7 @@ void name(const typeA *a, const int *stridesA, \
           const typeB *b, const int *stridesB, \
           typeRes *res, const int *stridesRes, \
           const int *shape, int rank) { \
-    if (a == NULL || b == NULL || res == NULL || shape == NULL || rank <= 0 || rank > 8) return; \
+    if (a == nullptr || b == nullptr || res == nullptr || shape == nullptr || rank <= 0 || rank > 8) return; \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
     int coord[8] = {0}; \
@@ -3785,7 +4040,7 @@ DEFINE_STRIDED_UNARY_IMPL(s_invert_int16, int16_t, int16_t, (int16_t)(~x))
 void name(const type *a, const int *stridesA, const int *shapeA, \
           const type *b, const int *stridesB, const int *shapeB, \
           type *res, const int *stridesRes, const int *shapeRes, int rank) { \
-    if (a == NULL || b == NULL || res == NULL || rank <= 0 || rank > 8) return; \
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return; \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shapeRes[i]; \
     int coord[8] = {0}; \
@@ -3842,7 +4097,7 @@ DEFINE_KRON_IMPL(s_kron_complex64, cpx_f_t, cpx_f_kron_mul)
 void name(const type *a, int strideA, int sizeA, \
           const type *b, int strideB, int sizeB, \
           type *res, int strideRowRes, int strideColRes) { \
-    if (a == NULL || b == NULL || res == NULL || sizeA <= 0 || sizeB <= 0) return; \
+    if (a == nullptr || b == nullptr || res == nullptr || sizeA <= 0 || sizeB <= 0) return; \
     for (int i = 0; i < sizeA; i++) { \
         type valA = a[i * strideA]; \
         for (int j = 0; j < sizeB; j++) { \
@@ -3911,7 +4166,7 @@ DEFINE_CROSS_2D_IMPL(s_cross_2d_complex64, cpx_f_t, cpx_f_kron_mul, cpx_sub_f)
 /* Vector Norm Reductions */
 #define DEFINE_NORM_REDUCTIONS(suffix, type) \
 double r_norm_l1_##suffix(const type *src, int stride, int size) { \
-    if (src == NULL || size <= 0) return 0.0; \
+    if (src == nullptr || size <= 0) return 0.0; \
     double sum = 0.0; \
     for (int i = 0; i < size; i++) { \
         double val = (double)src[i * stride]; \
@@ -3920,7 +4175,7 @@ double r_norm_l1_##suffix(const type *src, int stride, int size) { \
     return sum; \
 } \
 double r_norm_l2_##suffix(const type *src, int stride, int size) { \
-    if (src == NULL || size <= 0) return 0.0; \
+    if (src == nullptr || size <= 0) return 0.0; \
     double sum = 0.0; \
     for (int i = 0; i < size; i++) { \
         double val = (double)src[i * stride]; \
@@ -3929,7 +4184,7 @@ double r_norm_l2_##suffix(const type *src, int stride, int size) { \
     return sum; \
 } \
 double r_norm_lp_##suffix(const type *src, int stride, int size, double p) { \
-    if (src == NULL || size <= 0) return 0.0; \
+    if (src == nullptr || size <= 0) return 0.0; \
     double sum = 0.0; \
     for (int i = 0; i < size; i++) { \
         double val = (double)src[i * stride]; \
@@ -3939,7 +4194,7 @@ double r_norm_lp_##suffix(const type *src, int stride, int size, double p) { \
     return sum; \
 } \
 double r_norm_inf_##suffix(const type *src, int stride, int size) { \
-    if (src == NULL || size <= 0) return 0.0; \
+    if (src == nullptr || size <= 0) return 0.0; \
     double max_val = -1.0; \
     for (int i = 0; i < size; i++) { \
         double val = (double)src[i * stride]; \
@@ -3949,7 +4204,7 @@ double r_norm_inf_##suffix(const type *src, int stride, int size) { \
     return max_val; \
 } \
 double r_norm_neg_inf_##suffix(const type *src, int stride, int size) { \
-    if (src == NULL || size <= 0) return 0.0; \
+    if (src == nullptr || size <= 0) return 0.0; \
     double min_val = -1.0; \
     for (int i = 0; i < size; i++) { \
         double val = (double)src[i * stride]; \
@@ -3963,7 +4218,7 @@ DEFINE_NORM_REDUCTIONS(double, double)
 
 #define DEFINE_NORM_REDUCTIONS_FLOAT(suffix, type) \
 float r_norm_l1_##suffix(const type *src, int stride, int size) { \
-    if (src == NULL || size <= 0) return 0.0f; \
+    if (src == nullptr || size <= 0) return 0.0f; \
     float sum = 0.0f; \
     for (int i = 0; i < size; i++) { \
         float val = (float)src[i * stride]; \
@@ -3972,7 +4227,7 @@ float r_norm_l1_##suffix(const type *src, int stride, int size) { \
     return sum; \
 } \
 float r_norm_l2_##suffix(const type *src, int stride, int size) { \
-    if (src == NULL || size <= 0) return 0.0f; \
+    if (src == nullptr || size <= 0) return 0.0f; \
     float sum = 0.0f; \
     for (int i = 0; i < size; i++) { \
         float val = (float)src[i * stride]; \
@@ -3981,7 +4236,7 @@ float r_norm_l2_##suffix(const type *src, int stride, int size) { \
     return sum; \
 } \
 float r_norm_lp_##suffix(const type *src, int stride, int size, float p) { \
-    if (src == NULL || size <= 0) return 0.0f; \
+    if (src == nullptr || size <= 0) return 0.0f; \
     float sum = 0.0f; \
     for (int i = 0; i < size; i++) { \
         float val = (float)src[i * stride]; \
@@ -3991,7 +4246,7 @@ float r_norm_lp_##suffix(const type *src, int stride, int size, float p) { \
     return sum; \
 } \
 float r_norm_inf_##suffix(const type *src, int stride, int size) { \
-    if (src == NULL || size <= 0) return 0.0f; \
+    if (src == nullptr || size <= 0) return 0.0f; \
     float max_val = -1.0f; \
     for (int i = 0; i < size; i++) { \
         float val = (float)src[i * stride]; \
@@ -4001,7 +4256,7 @@ float r_norm_inf_##suffix(const type *src, int stride, int size) { \
     return max_val; \
 } \
 float r_norm_neg_inf_##suffix(const type *src, int stride, int size) { \
-    if (src == NULL || size <= 0) return 0.0f; \
+    if (src == nullptr || size <= 0) return 0.0f; \
     float min_val = -1.0f; \
     for (int i = 0; i < size; i++) { \
         float val = (float)src[i * stride]; \
@@ -4016,7 +4271,7 @@ DEFINE_NORM_REDUCTIONS_FLOAT(float, float)
 /* Complex Norms */
 #define DEFINE_COMPLEX_NORM_REDUCTIONS(suffix, type, float_type, sqrt_fn, pow_fn) \
 float_type r_norm_l1_##suffix(const type *src, int stride, int size) { \
-    if (src == NULL || size <= 0) return (float_type)0.0; \
+    if (src == nullptr || size <= 0) return (float_type)0.0; \
     float_type sum = (float_type)0.0; \
     for (int i = 0; i < size; i++) { \
         float_type r = (float_type)src[i * stride].r; \
@@ -4026,7 +4281,7 @@ float_type r_norm_l1_##suffix(const type *src, int stride, int size) { \
     return sum; \
 } \
 float_type r_norm_l2_##suffix(const type *src, int stride, int size) { \
-    if (src == NULL || size <= 0) return (float_type)0.0; \
+    if (src == nullptr || size <= 0) return (float_type)0.0; \
     float_type sum = (float_type)0.0; \
     for (int i = 0; i < size; i++) { \
         float_type r = (float_type)src[i * stride].r; \
@@ -4036,7 +4291,7 @@ float_type r_norm_l2_##suffix(const type *src, int stride, int size) { \
     return sum; \
 } \
 float_type r_norm_lp_##suffix(const type *src, int stride, int size, float_type p) { \
-    if (src == NULL || size <= 0) return (float_type)0.0; \
+    if (src == nullptr || size <= 0) return (float_type)0.0; \
     float_type sum = (float_type)0.0; \
     for (int i = 0; i < size; i++) { \
         float_type r = (float_type)src[i * stride].r; \
@@ -4046,7 +4301,7 @@ float_type r_norm_lp_##suffix(const type *src, int stride, int size, float_type 
     return sum; \
 } \
 float_type r_norm_inf_##suffix(const type *src, int stride, int size) { \
-    if (src == NULL || size <= 0) return (float_type)0.0; \
+    if (src == nullptr || size <= 0) return (float_type)0.0; \
     float_type max_val = (float_type)-1.0; \
     for (int i = 0; i < size; i++) { \
         float_type r = (float_type)src[i * stride].r; \
@@ -4057,7 +4312,7 @@ float_type r_norm_inf_##suffix(const type *src, int stride, int size) { \
     return max_val; \
 } \
 float_type r_norm_neg_inf_##suffix(const type *src, int stride, int size) { \
-    if (src == NULL || size <= 0) return (float_type)0.0; \
+    if (src == nullptr || size <= 0) return (float_type)0.0; \
     float_type min_val = (float_type)-1.0; \
     for (int i = 0; i < size; i++) { \
         float_type r = (float_type)src[i * stride].r; \
@@ -4073,7 +4328,7 @@ DEFINE_COMPLEX_NORM_REDUCTIONS(complex64, cpx_f_t, float, sqrtf, powf)
 
 /* Window Functions */
 void v_hanning_double(double *res, int M) {
-    if (res == NULL || M <= 0) return;
+    if (res == nullptr || M <= 0) return;
     if (M == 1) {
         res[0] = 1.0;
         return;
@@ -4085,7 +4340,7 @@ void v_hanning_double(double *res, int M) {
 }
 
 void v_hanning_float(float *res, int M) {
-    if (res == NULL || M <= 0) return;
+    if (res == nullptr || M <= 0) return;
     if (M == 1) {
         res[0] = 1.0f;
         return;
@@ -4097,7 +4352,7 @@ void v_hanning_float(float *res, int M) {
 }
 
 void v_hamming_double(double *res, int M) {
-    if (res == NULL || M <= 0) return;
+    if (res == nullptr || M <= 0) return;
     if (M == 1) {
         res[0] = 1.0;
         return;
@@ -4109,7 +4364,7 @@ void v_hamming_double(double *res, int M) {
 }
 
 void v_hamming_float(float *res, int M) {
-    if (res == NULL || M <= 0) return;
+    if (res == nullptr || M <= 0) return;
     if (M == 1) {
         res[0] = 1.0f;
         return;
@@ -4130,7 +4385,7 @@ void s_clip_##TYPE_NAME(const TYPE *a, const int *stridesA, \
                         const TYPE *max_val, const int *stridesMax, \
                         TYPE *res, const int *stridesRes, \
                         const int *shape, int rank) { \
-    if (a == NULL || min_val == NULL || max_val == NULL || res == NULL || rank < 0 || rank > 8) return; \
+    if (a == nullptr || min_val == nullptr || max_val == nullptr || res == nullptr || rank < 0 || rank > 8) return; \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
     if (rank == 0) { \
@@ -4201,7 +4456,7 @@ void s_trapz_double(const double *y, const int *stridesY,
                     const double *x, int strideX, double dx,
                     double *res, const int *stridesRes,
                     const int *shape, int rank, int axis) {
-    if (y == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (y == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int coord[8] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
@@ -4229,7 +4484,7 @@ void s_trapz_double(const double *y, const int *stridesY,
             double y_next = y[idxSrcNext];
             
             double h = dx;
-            if (x != NULL) {
+            if (x != nullptr) {
                 h = x[(i + 1) * strideX] - x[i * strideX];
             }
             sum += 0.5 * (y_curr + y_next) * h;
@@ -4250,7 +4505,7 @@ void s_trapz_float(const float *y, const int *stridesY,
                    const float *x, int strideX, float dx,
                    float *res, const int *stridesRes,
                    const int *shape, int rank, int axis) {
-    if (y == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (y == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int coord[8] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
@@ -4278,7 +4533,7 @@ void s_trapz_float(const float *y, const int *stridesY,
             float y_next = y[idxSrcNext];
             
             float h = dx;
-            if (x != NULL) {
+            if (x != nullptr) {
                 h = x[(i + 1) * strideX] - x[i * strideX];
             }
             sum += 0.5f * (y_curr + y_next) * h;
@@ -4299,7 +4554,7 @@ void s_trapz_complex128(const cpx_t *y, const int *stridesY,
                         const double *x, int strideX, double dx,
                         cpx_t *res, const int *stridesRes,
                         const int *shape, int rank, int axis) {
-    if (y == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (y == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int coord[8] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
@@ -4327,7 +4582,7 @@ void s_trapz_complex128(const cpx_t *y, const int *stridesY,
             cpx_t y_next = y[idxSrcNext];
             
             double h = dx;
-            if (x != NULL) {
+            if (x != nullptr) {
                 h = x[(i + 1) * strideX] - x[i * strideX];
             }
             sum.r += 0.5 * (y_curr.r + y_next.r) * h;
@@ -4349,7 +4604,7 @@ void s_trapz_complex64(const cpx_f_t *y, const int *stridesY,
                    const float *x, int strideX, float dx,
                    cpx_f_t *res, const int *stridesRes,
                    const int *shape, int rank, int axis) {
-    if (y == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (y == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int coord[8] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
@@ -4377,7 +4632,7 @@ void s_trapz_complex64(const cpx_f_t *y, const int *stridesY,
             cpx_f_t y_next = y[idxSrcNext];
 
             float h = dx;
-            if (x != NULL) {
+            if (x != nullptr) {
                 h = x[(i + 1) * strideX] - x[i * strideX];
             }
             sum.r += 0.5f * (y_curr.r + y_next.r) * h;
@@ -4399,7 +4654,7 @@ void s_trapz_complex128_all(const cpx_t *y, const int *stridesY,
                             const cpx_t *x, int strideX, cpx_t dx,
                             cpx_t *res, const int *stridesRes,
                             const int *shape, int rank, int axis) {
-    if (y == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (y == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int coord[8] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
@@ -4427,7 +4682,7 @@ void s_trapz_complex128_all(const cpx_t *y, const int *stridesY,
             cpx_t y_next = y[idxSrcNext];
 
             cpx_t h = dx;
-            if (x != NULL) {
+            if (x != nullptr) {
                 h.r = x[(i + 1) * strideX].r - x[i * strideX].r;
                 h.i = x[(i + 1) * strideX].i - x[i * strideX].i;
             }
@@ -4454,7 +4709,7 @@ void s_gradient_double(const double *src, const int *stridesSrc,
                        const double *x, int strideX, double dx,
                        double *res, const int *stridesRes,
                        const int *shape, int rank, int axis, int edge_order) {
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     
     int N = shape[axis];
     
@@ -4476,7 +4731,7 @@ void s_gradient_double(const double *src, const int *stridesSrc,
             res[offsetRes] = 0.0;
         } else if (N == 2) {
             double h = dx;
-            if (x != NULL) {
+            if (x != nullptr) {
                 h = x[strideX] - x[0];
             }
             double diff = (src[offsetSrc + stridesSrc[axis]] - src[offsetSrc]) / h;
@@ -4486,7 +4741,7 @@ void s_gradient_double(const double *src, const int *stridesSrc,
             // Left boundary (i = 0)
             if (edge_order == 1) {
                 double h = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h = x[strideX] - x[0];
                 }
                 double diff = (src[offsetSrc + stridesSrc[axis]] - src[offsetSrc]) / h;
@@ -4494,7 +4749,7 @@ void s_gradient_double(const double *src, const int *stridesSrc,
             } else {
                 double h0 = dx;
                 double h1 = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h0 = x[strideX] - x[0];
                     h1 = x[2 * strideX] - x[strideX];
                 }
@@ -4522,7 +4777,7 @@ void s_gradient_double(const double *src, const int *stridesSrc,
                 
                 double h_s = dx;
                 double h_d = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h_s = x[i * strideX] - x[(i - 1) * strideX];
                     h_d = x[(i + 1) * strideX] - x[i * strideX];
                 }
@@ -4535,14 +4790,14 @@ void s_gradient_double(const double *src, const int *stridesSrc,
             int idxSrcEnd = offsetSrc + (N - 1) * stridesSrc[axis];
             if (edge_order == 1) {
                 double h = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h = x[(N - 1) * strideX] - x[(N - 2) * strideX];
                 }
                 res[idxResEnd] = (src[idxSrcEnd] - src[idxSrcEnd - stridesSrc[axis]]) / h;
             } else {
                 double h0 = dx;
                 double h1 = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h0 = x[(N - 2) * strideX] - x[(N - 3) * strideX];
                     h1 = x[(N - 1) * strideX] - x[(N - 2) * strideX];
                 }
@@ -4571,7 +4826,7 @@ void s_gradient_float(const float *src, const int *stridesSrc,
                      const float *x, int strideX, float dx,
                      float *res, const int *stridesRes,
                      const int *shape, int rank, int axis, int edge_order) {
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     
     int N = shape[axis];
     int coord[8] = {0};
@@ -4592,7 +4847,7 @@ void s_gradient_float(const float *src, const int *stridesSrc,
             res[offsetRes] = 0.0f;
         } else if (N == 2) {
             float h = dx;
-            if (x != NULL) {
+            if (x != nullptr) {
                 h = x[strideX] - x[0];
             }
             float diff = (src[offsetSrc + stridesSrc[axis]] - src[offsetSrc]) / h;
@@ -4602,14 +4857,14 @@ void s_gradient_float(const float *src, const int *stridesSrc,
             // Left boundary (i = 0)
             if (edge_order == 1) {
                 float h = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h = x[strideX] - x[0];
                 }
                 res[offsetRes] = (src[offsetSrc + stridesSrc[axis]] - src[offsetSrc]) / h;
             } else {
                 float h0 = dx;
                 float h1 = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h0 = x[strideX] - x[0];
                     h1 = x[2 * strideX] - x[strideX];
                 }
@@ -4637,7 +4892,7 @@ void s_gradient_float(const float *src, const int *stridesSrc,
                 
                 float h_s = dx;
                 float h_d = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h_s = x[i * strideX] - x[(i - 1) * strideX];
                     h_d = x[(i + 1) * strideX] - x[i * strideX];
                 }
@@ -4650,14 +4905,14 @@ void s_gradient_float(const float *src, const int *stridesSrc,
             int idxSrcEnd = offsetSrc + (N - 1) * stridesSrc[axis];
             if (edge_order == 1) {
                 float h = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h = x[(N - 1) * strideX] - x[(N - 2) * strideX];
                 }
                 res[idxResEnd] = (src[idxSrcEnd] - src[idxSrcEnd - stridesSrc[axis]]) / h;
             } else {
                 float h0 = dx;
                 float h1 = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h0 = x[(N - 2) * strideX] - x[(N - 3) * strideX];
                     h1 = x[(N - 1) * strideX] - x[(N - 2) * strideX];
                 }
@@ -4686,7 +4941,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
                            const double *x, int strideX, double dx,
                            cpx_t *res, const int *stridesRes,
                            const int *shape, int rank, int axis, int edge_order) {
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     
     int N = shape[axis];
     int coord[8] = {0};
@@ -4707,7 +4962,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
             res[offsetRes] = (cpx_t){0.0, 0.0};
         } else if (N == 2) {
             double h = dx;
-            if (x != NULL) {
+            if (x != nullptr) {
                 h = x[strideX] - x[0];
             }
             cpx_t f0 = src[offsetSrc];
@@ -4719,7 +4974,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
             // Left boundary (i = 0)
             if (edge_order == 1) {
                 double h = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h = x[strideX] - x[0];
                 }
                 cpx_t f0 = src[offsetSrc];
@@ -4728,7 +4983,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
             } else {
                 double h0 = dx;
                 double h1 = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h0 = x[strideX] - x[0];
                     h1 = x[2 * strideX] - x[strideX];
                 }
@@ -4759,7 +5014,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
                 
                 double h_s = dx;
                 double h_d = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h_s = x[i * strideX] - x[(i - 1) * strideX];
                     h_d = x[(i + 1) * strideX] - x[i * strideX];
                 }
@@ -4776,7 +5031,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
             int idxSrcEnd = offsetSrc + (N - 1) * stridesSrc[axis];
             if (edge_order == 1) {
                 double h = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h = x[(N - 1) * strideX] - x[(N - 2) * strideX];
                 }
                 cpx_t f0 = src[idxSrcEnd - stridesSrc[axis]];
@@ -4785,7 +5040,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
             } else {
                 double h0 = dx;
                 double h1 = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h0 = x[(N - 2) * strideX] - x[(N - 3) * strideX];
                     h1 = x[(N - 1) * strideX] - x[(N - 2) * strideX];
                 }
@@ -4817,7 +5072,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
                           const float *x, int strideX, float dx,
                           cpx_f_t *res, const int *stridesRes,
                           const int *shape, int rank, int axis, int edge_order) {
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     
     int N = shape[axis];
     int coord[8] = {0};
@@ -4838,7 +5093,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
             res[offsetRes] = (cpx_f_t){0.0f, 0.0f};
         } else if (N == 2) {
             float h = dx;
-            if (x != NULL) {
+            if (x != nullptr) {
                 h = x[strideX] - x[0];
             }
             cpx_f_t f0 = src[offsetSrc];
@@ -4850,7 +5105,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
             // Left boundary (i = 0)
             if (edge_order == 1) {
                 float h = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h = x[strideX] - x[0];
                 }
                 cpx_f_t f0 = src[offsetSrc];
@@ -4859,7 +5114,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
             } else {
                 float h0 = dx;
                 float h1 = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h0 = x[strideX] - x[0];
                     h1 = x[2 * strideX] - x[strideX];
                 }
@@ -4890,7 +5145,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
                 
                 float h_s = dx;
                 float h_d = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h_s = x[i * strideX] - x[(i - 1) * strideX];
                     h_d = x[(i + 1) * strideX] - x[i * strideX];
                 }
@@ -4907,7 +5162,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
             int idxSrcEnd = offsetSrc + (N - 1) * stridesSrc[axis];
             if (edge_order == 1) {
                 float h = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h = x[(N - 1) * strideX] - x[(N - 2) * strideX];
                 }
                 cpx_f_t f0 = src[idxSrcEnd - stridesSrc[axis]];
@@ -4916,7 +5171,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
             } else {
                 float h0 = dx;
                 float h1 = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h0 = x[(N - 2) * strideX] - x[(N - 3) * strideX];
                     h1 = x[(N - 1) * strideX] - x[(N - 2) * strideX];
                 }
@@ -4965,7 +5220,7 @@ void s_gradient_complex128_all(const cpx_t *src, const int *stridesSrc,
                                const cpx_t *x, int strideX, cpx_t dx,
                                cpx_t *res, const int *stridesRes,
                                const int *shape, int rank, int axis, int edge_order) {
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     
     int N = shape[axis];
     int coord[8] = {0};
@@ -4987,7 +5242,7 @@ void s_gradient_complex128_all(const cpx_t *src, const int *stridesSrc,
             res[offsetRes].i = 0.0;
         } else if (N == 2) {
             cpx_t h = dx;
-            if (x != NULL) {
+            if (x != nullptr) {
                 h.r = x[strideX].r - x[0].r;
                 h.i = x[strideX].i - x[0].i;
             }
@@ -5000,7 +5255,7 @@ void s_gradient_complex128_all(const cpx_t *src, const int *stridesSrc,
             // Left boundary (i = 0)
             if (edge_order == 1) {
                 cpx_t h = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h.r = x[strideX].r - x[0].r;
                     h.i = x[strideX].i - x[0].i;
                 }
@@ -5010,7 +5265,7 @@ void s_gradient_complex128_all(const cpx_t *src, const int *stridesSrc,
             } else {
                 cpx_t h0 = dx;
                 cpx_t h1 = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h0.r = x[strideX].r - x[0].r;
                     h0.i = x[strideX].i - x[0].i;
                     h1.r = x[2 * strideX].r - x[strideX].r;
@@ -5053,7 +5308,7 @@ void s_gradient_complex128_all(const cpx_t *src, const int *stridesSrc,
                 
                 cpx_t h_s = dx;
                 cpx_t h_d = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h_s.r = x[i * strideX].r - x[(i - 1) * strideX].r;
                     h_s.i = x[i * strideX].i - x[(i - 1) * strideX].i;
                     h_d.r = x[(i + 1) * strideX].r - x[i * strideX].r;
@@ -5082,7 +5337,7 @@ void s_gradient_complex128_all(const cpx_t *src, const int *stridesSrc,
             int idxSrcEnd = offsetSrc + (N - 1) * stridesSrc[axis];
             if (edge_order == 1) {
                 cpx_t h = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h.r = x[(N - 1) * strideX].r - x[(N - 2) * strideX].r;
                     h.i = x[(N - 1) * strideX].i - x[(N - 2) * strideX].i;
                 }
@@ -5092,7 +5347,7 @@ void s_gradient_complex128_all(const cpx_t *src, const int *stridesSrc,
             } else {
                 cpx_t h0 = dx;
                 cpx_t h1 = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h0.r = x[(N - 2) * strideX].r - x[(N - 3) * strideX].r;
                     h0.i = x[(N - 2) * strideX].i - x[(N - 3) * strideX].i;
                     h1.r = x[(N - 1) * strideX].r - x[(N - 2) * strideX].r;
@@ -5134,7 +5389,7 @@ void s_trapz_complex64_all(const cpx_f_t *y, const int *stridesY,
                            const cpx_f_t *x, int strideX, cpx_f_t dx,
                            cpx_f_t *res, const int *stridesRes,
                            const int *shape, int rank, int axis) {
-    if (y == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (y == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int coord[8] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
@@ -5162,7 +5417,7 @@ void s_trapz_complex64_all(const cpx_f_t *y, const int *stridesY,
             cpx_f_t y_next = y[idxSrcNext];
             
             cpx_f_t h = dx;
-            if (x != NULL) {
+            if (x != nullptr) {
                 h.r = x[(i + 1) * strideX].r - x[i * strideX].r;
                 h.i = x[(i + 1) * strideX].i - x[i * strideX].i;
             }
@@ -5204,7 +5459,7 @@ void s_gradient_complex64_all(const cpx_f_t *src, const int *stridesSrc,
                               const cpx_f_t *x, int strideX, cpx_f_t dx,
                               cpx_f_t *res, const int *stridesRes,
                               const int *shape, int rank, int axis, int edge_order) {
-    if (src == NULL || res == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     
     int N = shape[axis];
     int coord[8] = {0};
@@ -5226,7 +5481,7 @@ void s_gradient_complex64_all(const cpx_f_t *src, const int *stridesSrc,
             res[offsetRes].i = 0.0f;
         } else if (N == 2) {
             cpx_f_t h = dx;
-            if (x != NULL) {
+            if (x != nullptr) {
                 h.r = x[strideX].r - x[0].r;
                 h.i = x[strideX].i - x[0].i;
             }
@@ -5238,7 +5493,7 @@ void s_gradient_complex64_all(const cpx_f_t *src, const int *stridesSrc,
         } else {
             if (edge_order == 1) {
                 cpx_f_t h = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h.r = x[strideX].r - x[0].r;
                     h.i = x[strideX].i - x[0].i;
                 }
@@ -5248,7 +5503,7 @@ void s_gradient_complex64_all(const cpx_f_t *src, const int *stridesSrc,
             } else {
                 cpx_f_t h0 = dx;
                 cpx_f_t h1 = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h0.r = x[strideX].r - x[0].r;
                     h0.i = x[strideX].i - x[0].i;
                     h1.r = x[2 * strideX].r - x[strideX].r;
@@ -5287,7 +5542,7 @@ void s_gradient_complex64_all(const cpx_f_t *src, const int *stridesSrc,
                 
                 cpx_f_t h_s = dx;
                 cpx_f_t h_d = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h_s.r = x[i * strideX].r - x[(i - 1) * strideX].r;
                     h_s.i = x[i * strideX].i - x[(i - 1) * strideX].i;
                     h_d.r = x[(i + 1) * strideX].r - x[i * strideX].r;
@@ -5311,7 +5566,7 @@ void s_gradient_complex64_all(const cpx_f_t *src, const int *stridesSrc,
             int idxSrcEnd = offsetSrc + (N - 1) * stridesSrc[axis];
             if (edge_order == 1) {
                 cpx_f_t h = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h.r = x[(N - 1) * strideX].r - x[(N - 2) * strideX].r;
                     h.i = x[(N - 1) * strideX].i - x[(N - 2) * strideX].i;
                 }
@@ -5321,7 +5576,7 @@ void s_gradient_complex64_all(const cpx_f_t *src, const int *stridesSrc,
             } else {
                 cpx_f_t h0 = dx;
                 cpx_f_t h1 = dx;
-                if (x != NULL) {
+                if (x != nullptr) {
                     h0.r = x[(N - 2) * strideX].r - x[(N - 3) * strideX].r;
                     h0.i = x[(N - 2) * strideX].i - x[(N - 3) * strideX].i;
                     h1.r = x[(N - 1) * strideX].r - x[(N - 2) * strideX].r;
@@ -5367,7 +5622,7 @@ void name(const type *start, const int *stridesStart, \
           type *res, const int *stridesRes, \
           type *step, const int *stridesStep, \
           const int *shape, int rank, int axis, int numSamples, int endpoint) { \
-    if (start == NULL || stop == NULL || res == NULL || rank <= 0 || rank > 8) return; \
+    if (start == nullptr || stop == nullptr || res == nullptr || rank <= 0 || rank > 8) return; \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
     double div = endpoint ? (double)(numSamples - 1) : (double)numSamples; \
@@ -5377,7 +5632,7 @@ void name(const type *start, const int *stridesStart, \
         int i = coord[axis]; \
         double t = (div <= 0.0) ? 0.0 : (double)i / div; \
         val_expr; \
-        if (step != NULL && coord[axis] == 0) { \
+        if (step != nullptr && coord[axis] == 0) { \
             step_expr; \
         } \
         for (int d = rank - 1; d >= 0; d--) { \
@@ -5386,14 +5641,14 @@ void name(const type *start, const int *stridesStart, \
                 offsetStart += stridesStart[d]; \
                 offsetStop += stridesStop[d]; \
                 offsetRes += stridesRes[d]; \
-                if (step != NULL) offsetStep += stridesStep[d]; \
+                if (step != nullptr) offsetStep += stridesStep[d]; \
                 break; \
             } \
             coord[d] = 0; \
             offsetStart -= (shape[d] - 1) * stridesStart[d]; \
             offsetStop -= (shape[d] - 1) * stridesStop[d]; \
             offsetRes -= (shape[d] - 1) * stridesRes[d]; \
-            if (step != NULL) offsetStep -= (shape[d] - 1) * stridesStep[d]; \
+            if (step != nullptr) offsetStep -= (shape[d] - 1) * stridesStep[d]; \
         } \
     } \
 }
@@ -5472,7 +5727,7 @@ void name(const type *a, const int *stridesA, \
           const int *shape, int rank, \
           type *aCopy, int *ipiv, \
           int (*lapack_getrf)(int, int, int, void *, int, int *)) { \
-    if (a == NULL || res == NULL || aCopy == NULL || ipiv == NULL || lapack_getrf == NULL || rank < 2 || rank > 8) return; \
+    if (a == nullptr || res == nullptr || aCopy == nullptr || ipiv == nullptr || lapack_getrf == nullptr || rank < 2 || rank > 8) return; \
     int n = shape[rank - 1]; \
     int stack_elements = 1; \
     for (int i = 0; i < rank - 2; i++) stack_elements *= shape[i]; \
@@ -5521,7 +5776,7 @@ void name(const type *a, const int *stridesA, \
           const int *shape, int rank, \
           type *aCopy, int *ipiv, \
           int (*lapack_getrf)(int, int, int, void *, int, int *)) { \
-    if (a == NULL || res == NULL || aCopy == NULL || ipiv == NULL || lapack_getrf == NULL || rank < 2 || rank > 8) return; \
+    if (a == nullptr || res == nullptr || aCopy == nullptr || ipiv == nullptr || lapack_getrf == nullptr || rank < 2 || rank > 8) return; \
     int n = shape[rank - 1]; \
     int stack_elements = 1; \
     for (int i = 0; i < rank - 2; i++) stack_elements *= shape[i]; \
@@ -5577,6 +5832,10 @@ DEFINE_DET_REAL(s_det_float, float)
 DEFINE_DET_COMPLEX(s_det_complex_double, cpx_t)
 DEFINE_DET_COMPLEX(s_det_complex_float, cpx_f_t)
 
+/**
+ * Assembles complex eigenvectors for double precision.
+ * Reconstructs complex eigenvectors from the real Schur-like form returned by LAPACK dgeev.
+ */
 void assemble_eigenvectors_double(
     cpx_t *w,
     int strideWLast,
@@ -5588,7 +5847,7 @@ void assemble_eigenvectors_double(
     const double *vrReal,
     int n
 ) {
-    if (w == NULL || vr == NULL || wr == NULL || wi == NULL || vrReal == NULL || n <= 0) {
+    if (w == nullptr || vr == nullptr || wr == nullptr || wi == nullptr || vrReal == nullptr || n <= 0) {
         return;
     }
 
@@ -5619,6 +5878,10 @@ void assemble_eigenvectors_double(
     }
 }
 
+/**
+ * Assembles complex eigenvectors for single precision.
+ * Reconstructs complex eigenvectors from the real Schur-like form returned by LAPACK sgeev.
+ */
 void assemble_eigenvectors_float(
     cpx_f_t *w,
     int strideWLast,
@@ -5630,7 +5893,7 @@ void assemble_eigenvectors_float(
     const float *vrReal,
     int n
 ) {
-    if (w == NULL || vr == NULL || wr == NULL || wi == NULL || vrReal == NULL || n <= 0) {
+    if (w == nullptr || vr == nullptr || wr == nullptr || wi == nullptr || vrReal == nullptr || n <= 0) {
         return;
     }
 
@@ -5661,6 +5924,10 @@ void assemble_eigenvectors_float(
     }
 }
 
+/**
+ * Macro to define optimized matrix multiplication for integer types.
+ * Performs a standard 3-loop matmul supporting arbitrary strides for input and output matrices.
+ */
 #define DEFINE_MATMUL_INT(name, type) \
 void name( \
     type *res, \
@@ -5676,7 +5943,7 @@ void name( \
     int n, \
     int k \
 ) { \
-    if (res == NULL || a == NULL || b == NULL || m <= 0 || n <= 0 || k <= 0) { \
+    if (res == nullptr || a == nullptr || b == nullptr || m <= 0 || n <= 0 || k <= 0) { \
         return; \
     } \
     for (int r = 0; r < m; r++) { \
@@ -5696,7 +5963,7 @@ DEFINE_MATMUL_INT(matmul_int16, int16_t)
 DEFINE_MATMUL_INT(matmul_uint8, uint8_t)
 
 uint8_t v_any_less_than_zero_int32(const int32_t *arr, int size) {
-    if (arr == NULL || size <= 0) return 0;
+    if (arr == nullptr || size <= 0) return 0;
     for (int i = 0; i < size; i++) {
         if (arr[i] < 0) return 1;
     }
@@ -5704,7 +5971,7 @@ uint8_t v_any_less_than_zero_int32(const int32_t *arr, int size) {
 }
 
 uint8_t v_any_less_than_zero_int64(const int64_t *arr, int size) {
-    if (arr == NULL || size <= 0) return 0;
+    if (arr == nullptr || size <= 0) return 0;
     for (int i = 0; i < size; i++) {
         if (arr[i] < 0) return 1;
     }
@@ -5712,7 +5979,7 @@ uint8_t v_any_less_than_zero_int64(const int64_t *arr, int size) {
 }
 
 uint8_t v_any_equal_to_zero_int32(const int32_t *arr, int size) {
-    if (arr == NULL || size <= 0) return 0;
+    if (arr == nullptr || size <= 0) return 0;
     for (int i = 0; i < size; i++) {
         if (arr[i] == 0) return 1;
     }
@@ -5720,7 +5987,7 @@ uint8_t v_any_equal_to_zero_int32(const int32_t *arr, int size) {
 }
 
 uint8_t v_any_equal_to_zero_int64(const int64_t *arr, int size) {
-    if (arr == NULL || size <= 0) return 0;
+    if (arr == nullptr || size <= 0) return 0;
     for (int i = 0; i < size; i++) {
         if (arr[i] == 0) return 1;
     }
@@ -5737,65 +6004,42 @@ uint8_t v_any_equal_to_zero_int64(const int64_t *arr, int size) {
 #define BOOL_TO_DOUBLE(x) ((double)(x))
 #define BOOL_TO_COMPLEX(x) ((cpx_t){(double)(x), 0.0})
 
-#define DEFINE_CAST_LOOP(src_type, dest_type, expr) \
-    { \
-        const src_type *src = (const src_type *)src_ptr; \
-        dest_type *dest = (dest_type *)dest_ptr; \
-        if (rank == 0) { \
-            dest[0] = expr(src[0]); \
-            return; \
-        } \
-        int coord[8] = {0}; \
-        int offsetSrc = 0; \
-        for (int el = 0; el < total_elements; el++) { \
-            dest[el] = expr(src[offsetSrc]); \
-            for (int d = rank - 1; d >= 0; d--) { \
-                coord[d]++; \
-                if (coord[d] < shape[d]) { \
-                    offsetSrc += stridesSrc[d]; \
-                    break; \
-                } \
-                coord[d] = 0; \
-                offsetSrc -= (shape[d] - 1) * stridesSrc[d]; \
-            } \
-        } \
+
+template <typename DestType>
+static void dispatch_cast_src(
+    const void *src_ptr, const int *stridesSrc, int dtypeSrc,
+    void *dest_ptr,
+    const int *shape, int rank, int total_elements
+) {
+    switch (dtypeSrc) {
+        case DTYPE_FLOAT64: s_cast_generic_impl<double, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
+        case DTYPE_FLOAT32: s_cast_generic_impl<float, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
+        case DTYPE_INT32: s_cast_generic_impl<int32_t, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
+        case DTYPE_INT64: s_cast_generic_impl<int64_t, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
+        case DTYPE_UINT8: s_cast_generic_impl<uint8_t, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
+        case DTYPE_INT16: s_cast_generic_impl<int16_t, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
+        case DTYPE_COMPLEX128: s_cast_generic_impl<cpx_t, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
+        case DTYPE_COMPLEX64: s_cast_generic_impl<cpx_f_t, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
+        case DTYPE_BOOLEAN: s_cast_generic_impl<uint8_t, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
     }
+}
 
 void s_cast_generic(
     const void *src_ptr, const int *stridesSrc, int dtypeSrc,
     void *dest_ptr, int dtypeDst,
     const int *shape, int rank
 ) {
-    if (src_ptr == NULL || dest_ptr == NULL || rank < 0 || rank > 8) return;
+    if (src_ptr == nullptr || dest_ptr == nullptr || rank < 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
-    if (dtypeDst == DTYPE_FLOAT64) { // dest is double
-        switch (dtypeSrc) {
-            case DTYPE_FLOAT64: DEFINE_CAST_LOOP(double, double, TO_DOUBLE) break;
-            case DTYPE_FLOAT32: DEFINE_CAST_LOOP(float, double, TO_DOUBLE) break;
-            case DTYPE_INT32: DEFINE_CAST_LOOP(int32_t, double, TO_DOUBLE) break;
-            case DTYPE_INT64: DEFINE_CAST_LOOP(int64_t, double, TO_DOUBLE) break;
-            case DTYPE_UINT8: DEFINE_CAST_LOOP(uint8_t, double, TO_DOUBLE) break;
-            case DTYPE_INT16: DEFINE_CAST_LOOP(int16_t, double, TO_DOUBLE) break;
-            case DTYPE_COMPLEX128: DEFINE_CAST_LOOP(cpx_t, double, COMPLEX_TO_DOUBLE) break;
-            case DTYPE_COMPLEX64: DEFINE_CAST_LOOP(cpx_f_t, double, COMPLEXF_TO_DOUBLE) break;
-            case DTYPE_BOOLEAN: DEFINE_CAST_LOOP(uint8_t, double, BOOL_TO_DOUBLE) break;
-        }
-    } else if (dtypeDst == DTYPE_COMPLEX128) { // dest is complex128 (cpx_t)
-        switch (dtypeSrc) {
-            case DTYPE_FLOAT64: DEFINE_CAST_LOOP(double, cpx_t, TO_COMPLEX) break;
-            case DTYPE_FLOAT32: DEFINE_CAST_LOOP(float, cpx_t, TO_COMPLEX) break;
-            case DTYPE_INT32: DEFINE_CAST_LOOP(int32_t, cpx_t, TO_COMPLEX) break;
-            case DTYPE_INT64: DEFINE_CAST_LOOP(int64_t, cpx_t, TO_COMPLEX) break;
-            case DTYPE_UINT8: DEFINE_CAST_LOOP(uint8_t, cpx_t, TO_COMPLEX) break;
-            case DTYPE_INT16: DEFINE_CAST_LOOP(int16_t, cpx_t, TO_COMPLEX) break;
-            case DTYPE_COMPLEX128: DEFINE_CAST_LOOP(cpx_t, cpx_t, (cpx_t)) break;
-            case DTYPE_COMPLEX64: DEFINE_CAST_LOOP(cpx_f_t, cpx_t, COMPLEXF_TO_COMPLEX) break;
-            case DTYPE_BOOLEAN: DEFINE_CAST_LOOP(uint8_t, cpx_t, BOOL_TO_COMPLEX) break;
-        }
+    if (dtypeDst == DTYPE_FLOAT64) {
+        dispatch_cast_src<double>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+    } else if (dtypeDst == DTYPE_COMPLEX128) {
+        dispatch_cast_src<cpx_t>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
     }
 }
+
 
 void v_extract_upper_triangular(
     const void *src_ptr,
@@ -5804,7 +6048,7 @@ void v_extract_upper_triangular(
     int n,
     int dtype
 ) {
-    if (src_ptr == NULL || dest_ptr == NULL || k <= 0 || n <= 0) return;
+    if (src_ptr == nullptr || dest_ptr == nullptr || k <= 0 || n <= 0) return;
     
     switch (dtype) {
         case DTYPE_FLOAT64: {
@@ -5855,7 +6099,7 @@ void v_zero_upper_triangular(
     int n,
     int dtype
 ) {
-    if (ptr == NULL || n <= 0) return;
+    if (ptr == nullptr || n <= 0) return;
     
     switch (dtype) {
         case DTYPE_FLOAT64: {
@@ -6043,7 +6287,7 @@ static inline TYPE stats_median_##NAME_SUFFIX(const TYPE *base, int _stride, int
     /* Median calculation requires temporary buffer. We use malloc here. */ \
     /* In actual usage, len is capped by dimension size. */ \
     TYPE *buf = (TYPE*)malloc(len * sizeof(TYPE)); \
-    if (buf == NULL) return (TYPE)0; \
+    if (buf == nullptr) return (TYPE)0; \
     for (int i = 0; i < len; i++) { \
         buf[i] = *(base + i * _stride); \
     } \
@@ -6095,7 +6339,7 @@ static inline cpx_t stats_mean_complex128(const cpx_t *base, int stride, int len
 static inline cpx_t stats_median_complex128(const cpx_t *base, int stride, int len) {
     double *buf_r = (double*)malloc(len * sizeof(double));
     double *buf_i = (double*)malloc(len * sizeof(double));
-    if (buf_r == NULL || buf_i == NULL) {
+    if (buf_r == nullptr || buf_i == nullptr) {
         if (buf_r) free(buf_r);
         if (buf_i) free(buf_i);
         return (cpx_t){0, 0};
@@ -6149,7 +6393,7 @@ static inline cpx_f_t stats_mean_complex64(const cpx_f_t *base, int stride, int 
 static inline cpx_f_t stats_median_complex64(const cpx_f_t *base, int stride, int len) {
     float *buf_r = (float*)malloc(len * sizeof(float));
     float *buf_i = (float*)malloc(len * sizeof(float));
-    if (buf_r == NULL || buf_i == NULL) {
+    if (buf_r == nullptr || buf_i == nullptr) {
         if (buf_r) free(buf_r);
         if (buf_i) free(buf_i);
         return (cpx_f_t){0, 0};
@@ -6185,7 +6429,7 @@ void pad_axis_##TYPE_NAME( \
     T endBefore, T endAfter, \
     int statLengthBefore, int statLengthAfter \
 ) { \
-    if (src == NULL || dest == NULL || shapeSrc == NULL || shapeDest == NULL || stridesSrc == NULL || rank <= 0 || rank > 8) return; \
+    if (src == nullptr || dest == nullptr || shapeSrc == nullptr || shapeDest == nullptr || stridesSrc == nullptr || rank <= 0 || rank > 8) return; \
     int total_elements_dest = 1; \
     for (int i = 0; i < rank; i++) total_elements_dest *= shapeDest[i]; \
     int coordDest[8] = {0}; \
@@ -6360,7 +6604,7 @@ void pad_axis_##TYPE_NAME( \
     T endBefore, T endAfter, \
     int statLengthBefore, int statLengthAfter \
 ) { \
-    if (src == NULL || dest == NULL || shapeSrc == NULL || shapeDest == NULL || stridesSrc == NULL || rank <= 0 || rank > 8) return; \
+    if (src == nullptr || dest == nullptr || shapeSrc == nullptr || shapeDest == nullptr || stridesSrc == nullptr || rank <= 0 || rank > 8) return; \
     int total_elements_dest = 1; \
     for (int i = 0; i < rank; i++) total_elements_dest *= shapeDest[i]; \
     int coordDest[8] = {0}; \
@@ -6524,61 +6768,6 @@ DEFINE_PAD_AXIS_COMPLEX(complex64, cpx_f_t, stats_min_complex64, stats_max_compl
  * ============================================================================
  */
 
-#define DEFINE_COMPACT_SORTED(TYPE_NAME, T, EQ_OP) \
-int compact_sorted_##TYPE_NAME(T *arr, int size) { \
-    if (size <= 1) return size; \
-    int write_idx = 1; \
-    for (int read_idx = 1; read_idx < size; read_idx++) { \
-        if (!(EQ_OP(arr[read_idx], arr[write_idx - 1]))) { \
-            arr[write_idx] = arr[read_idx]; \
-            write_idx++; \
-        } \
-    } \
-    return write_idx; \
-}
-
-#define EQ_FLOAT64(a, b) ((a) == (b) || (isnan(a) && isnan(b)))
-#define EQ_FLOAT32(a, b) ((a) == (b) || (isnan(a) && isnan(b)))
-#define EQ_INT32(a, b) ((a) == (b))
-#define EQ_INT64(a, b) ((a) == (b))
-#define EQ_UINT8(a, b) ((a) == (b))
-#define EQ_COMPLEX128(a, b) (((a).r == (b).r || (isnan((a).r) && isnan((b).r))) && ((a).i == (b).i || (isnan((a).i) && isnan((b).i))))
-#define EQ_COMPLEX64(a, b) (((a).r == (b).r || (isnan((a).r) && isnan((b).r))) && ((a).i == (b).i || (isnan((a).i) && isnan((b).i))))
-
-DEFINE_COMPACT_SORTED(float64, double, EQ_FLOAT64)
-DEFINE_COMPACT_SORTED(float32, float, EQ_FLOAT32)
-DEFINE_COMPACT_SORTED(int32, int32_t, EQ_INT32)
-DEFINE_COMPACT_SORTED(int64, int64_t, EQ_INT64)
-DEFINE_COMPACT_SORTED(uint8, uint8_t, EQ_UINT8)
-DEFINE_COMPACT_SORTED(complex128, cpx_t, EQ_COMPLEX128)
-DEFINE_COMPACT_SORTED(complex64, cpx_f_t, EQ_COMPLEX64)
-
-#define DEFINE_UNIQUE_OP(TYPE_NAME, T, SORT_FN, COMPACT_FN) \
-int unique_##TYPE_NAME(const T *src, T *dest, int size) { \
-    if (size <= 0) return 0; \
-    custom_memcpy(dest, src, size * sizeof(T)); \
-    SORT_FN(dest, size, 0); \
-    return COMPACT_FN(dest, size); \
-}
-
-static void sort_float64(double *arr, int size, int kind) { native_sort_double(arr, size, kind); }
-static void sort_float32(float *arr, int size, int kind) { native_sort_float(arr, size, kind); }
-static void sort_int32(int32_t *arr, int size, int kind) { native_sort_int32((int *)arr, size, kind); }
-static void sort_int64(int64_t *arr, int size, int kind) { native_sort_int64((long long *)arr, size, kind); }
-static void sort_uint8(uint8_t *arr, int size, int kind) { native_sort_uint8(arr, size, kind); }
-static void sort_complex128(cpx_t *arr, int size, int kind) { native_sort_complex128((double *)arr, size, kind); }
-static void sort_complex64(cpx_f_t *arr, int size, int kind) { native_sort_complex64((float *)arr, size, kind); }
-
-DEFINE_UNIQUE_OP(float64, double, sort_float64, compact_sorted_float64)
-DEFINE_UNIQUE_OP(float32, float, sort_float32, compact_sorted_float32)
-DEFINE_UNIQUE_OP(int32, int32_t, sort_int32, compact_sorted_int32)
-DEFINE_UNIQUE_OP(int64, int64_t, sort_int64, compact_sorted_int64)
-DEFINE_UNIQUE_OP(uint8, uint8_t, sort_uint8, compact_sorted_uint8)
-DEFINE_UNIQUE_OP(complex128, cpx_t, sort_complex128, compact_sorted_complex128)
-DEFINE_UNIQUE_OP(complex64, cpx_f_t, sort_complex64, compact_sorted_complex64)
-
-/* ndarray_unique moved to custom_sorting.cpp */
-
 static inline int set_cmp_double(double a, double b) {
     int nan_a = isnan(a);
     int nan_b = isnan(b);
@@ -6631,192 +6820,81 @@ static inline int set_cmp_complex64(cpx_f_t a, cpx_f_t b) {
     return set_cmp_float(a.i, b.i);
 }
 
-#define DEFINE_INTERSECT1D_OP(TYPE_NAME, T, CMP_FN) \
-int intersect1d_##TYPE_NAME(const T *ar1, int size1, const T *ar2, int size2, T *dest) { \
-    int i = 0, j = 0, k = 0; \
-    while (i < size1 && j < size2) { \
-        int cmp = CMP_FN(ar1[i], ar2[j]); \
-        if (cmp < 0) { \
-            i++; \
-        } else if (cmp > 0) { \
-            j++; \
-        } else { \
-            dest[k++] = ar1[i]; \
-            i++; \
-            j++; \
-        } \
-    } \
-    return k; \
+
+extern "C" int ndarray_intersect1d(const void *ar1, int size1, const void *ar2, int size2, void *dest, int dtype) {
+    if (ar1 == nullptr || ar2 == nullptr || dest == nullptr) return 0;
+    switch (dtype) {
+        case DTYPE_FLOAT64: return intersect1d_impl((const double *)ar1, size1, (const double *)ar2, size2, (double *)dest);
+        case DTYPE_FLOAT32: return intersect1d_impl((const float *)ar1, size1, (const float *)ar2, size2, (float *)dest);
+        case DTYPE_INT32: return intersect1d_impl((const int32_t *)ar1, size1, (const int32_t *)ar2, size2, (int32_t *)dest);
+        case DTYPE_INT64: return intersect1d_impl((const int64_t *)ar1, size1, (const int64_t *)ar2, size2, (int64_t *)dest);
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN: return intersect1d_impl((const uint8_t *)ar1, size1, (const uint8_t *)ar2, size2, (uint8_t *)dest);
+        case DTYPE_COMPLEX128: return intersect1d_impl((const cpx_t *)ar1, size1, (const cpx_t *)ar2, size2, (cpx_t *)dest);
+        case DTYPE_COMPLEX64: return intersect1d_impl((const cpx_f_t *)ar1, size1, (const cpx_f_t *)ar2, size2, (cpx_f_t *)dest);
+        default: return 0;
+    }
 }
 
-DEFINE_INTERSECT1D_OP(float64, double, set_cmp_double)
-DEFINE_INTERSECT1D_OP(float32, float, set_cmp_float)
-DEFINE_INTERSECT1D_OP(int32, int32_t, set_cmp_int32)
-DEFINE_INTERSECT1D_OP(int64, int64_t, set_cmp_int64)
-DEFINE_INTERSECT1D_OP(uint8, uint8_t, set_cmp_uint8)
-DEFINE_INTERSECT1D_OP(complex128, cpx_t, set_cmp_complex128)
-DEFINE_INTERSECT1D_OP(complex64, cpx_f_t, set_cmp_complex64)
-
-#define DEFINE_SETDIFF1D_OP(TYPE_NAME, T, CMP_FN) \
-int setdiff1d_##TYPE_NAME(const T *ar1, int size1, const T *ar2, int size2, T *dest) { \
-    int i = 0, j = 0, k = 0; \
-    while (i < size1) { \
-        if (j >= size2) { \
-            dest[k++] = ar1[i++]; \
-            continue; \
-        } \
-        int cmp = CMP_FN(ar1[i], ar2[j]); \
-        if (cmp < 0) { \
-            dest[k++] = ar1[i++]; \
-        } else if (cmp > 0) { \
-            j++; \
-        } else { \
-            i++; \
-        } \
-    } \
-    return k; \
+extern "C" int ndarray_setdiff1d(const void *ar1, int size1, const void *ar2, int size2, void *dest, int dtype) {
+    if (ar1 == nullptr || ar2 == nullptr || dest == nullptr) return 0;
+    switch (dtype) {
+        case DTYPE_FLOAT64: return setdiff1d_impl((const double *)ar1, size1, (const double *)ar2, size2, (double *)dest);
+        case DTYPE_FLOAT32: return setdiff1d_impl((const float *)ar1, size1, (const float *)ar2, size2, (float *)dest);
+        case DTYPE_INT32: return setdiff1d_impl((const int32_t *)ar1, size1, (const int32_t *)ar2, size2, (int32_t *)dest);
+        case DTYPE_INT64: return setdiff1d_impl((const int64_t *)ar1, size1, (const int64_t *)ar2, size2, (int64_t *)dest);
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN: return setdiff1d_impl((const uint8_t *)ar1, size1, (const uint8_t *)ar2, size2, (uint8_t *)dest);
+        case DTYPE_COMPLEX128: return setdiff1d_impl((const cpx_t *)ar1, size1, (const cpx_t *)ar2, size2, (cpx_t *)dest);
+        case DTYPE_COMPLEX64: return setdiff1d_impl((const cpx_f_t *)ar1, size1, (const cpx_f_t *)ar2, size2, (cpx_f_t *)dest);
+        default: return 0;
+    }
 }
 
-DEFINE_SETDIFF1D_OP(float64, double, set_cmp_double)
-DEFINE_SETDIFF1D_OP(float32, float, set_cmp_float)
-DEFINE_SETDIFF1D_OP(int32, int32_t, set_cmp_int32)
-DEFINE_SETDIFF1D_OP(int64, int64_t, set_cmp_int64)
-DEFINE_SETDIFF1D_OP(uint8, uint8_t, set_cmp_uint8)
-DEFINE_SETDIFF1D_OP(complex128, cpx_t, set_cmp_complex128)
-DEFINE_SETDIFF1D_OP(complex64, cpx_f_t, set_cmp_complex64)
-
-#define DEFINE_SETXOR1D_OP(TYPE_NAME, T, CMP_FN) \
-int setxor1d_##TYPE_NAME(const T *ar1, int size1, const T *ar2, int size2, T *dest) { \
-    int i = 0, j = 0, k = 0; \
-    while (i < size1 || j < size2) { \
-        if (i >= size1) { \
-            dest[k++] = ar2[j++]; \
-            continue; \
-        } \
-        if (j >= size2) { \
-            dest[k++] = ar1[i++]; \
-            continue; \
-        } \
-        int cmp = CMP_FN(ar1[i], ar2[j]); \
-        if (cmp < 0) { \
-            dest[k++] = ar1[i++]; \
-        } else if (cmp > 0) { \
-            dest[k++] = ar2[j++]; \
-        } else { \
-            i++; \
-            j++; \
-        } \
-    } \
-    return k; \
+extern "C" int ndarray_setxor1d(const void *ar1, int size1, const void *ar2, int size2, void *dest, int dtype) {
+    if (ar1 == nullptr || ar2 == nullptr || dest == nullptr) return 0;
+    switch (dtype) {
+        case DTYPE_FLOAT64: return setxor1d_impl((const double *)ar1, size1, (const double *)ar2, size2, (double *)dest);
+        case DTYPE_FLOAT32: return setxor1d_impl((const float *)ar1, size1, (const float *)ar2, size2, (float *)dest);
+        case DTYPE_INT32: return setxor1d_impl((const int32_t *)ar1, size1, (const int32_t *)ar2, size2, (int32_t *)dest);
+        case DTYPE_INT64: return setxor1d_impl((const int64_t *)ar1, size1, (const int64_t *)ar2, size2, (int64_t *)dest);
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN: return setxor1d_impl((const uint8_t *)ar1, size1, (const uint8_t *)ar2, size2, (uint8_t *)dest);
+        case DTYPE_COMPLEX128: return setxor1d_impl((const cpx_t *)ar1, size1, (const cpx_t *)ar2, size2, (cpx_t *)dest);
+        case DTYPE_COMPLEX64: return setxor1d_impl((const cpx_f_t *)ar1, size1, (const cpx_f_t *)ar2, size2, (cpx_f_t *)dest);
+        default: return 0;
+    }
 }
 
-DEFINE_SETXOR1D_OP(float64, double, set_cmp_double)
-DEFINE_SETXOR1D_OP(float32, float, set_cmp_float)
-DEFINE_SETXOR1D_OP(int32, int32_t, set_cmp_int32)
-DEFINE_SETXOR1D_OP(int64, int64_t, set_cmp_int64)
-DEFINE_SETXOR1D_OP(uint8, uint8_t, set_cmp_uint8)
-DEFINE_SETXOR1D_OP(complex128, cpx_t, set_cmp_complex128)
-DEFINE_SETXOR1D_OP(complex64, cpx_f_t, set_cmp_complex64)
-
-#define DEFINE_UNION1D_OP(TYPE_NAME, T, CMP_FN) \
-int union1d_##TYPE_NAME(const T *ar1, int size1, const T *ar2, int size2, T *dest) { \
-    int i = 0, j = 0, k = 0; \
-    while (i < size1 || j < size2) { \
-        if (i >= size1) { \
-            dest[k++] = ar2[j++]; \
-            continue; \
-        } \
-        if (j >= size2) { \
-            dest[k++] = ar1[i++]; \
-            continue; \
-        } \
-        int cmp = CMP_FN(ar1[i], ar2[j]); \
-        if (cmp < 0) { \
-            dest[k++] = ar1[i++]; \
-        } else if (cmp > 0) { \
-            dest[k++] = ar2[j++]; \
-        } else { \
-            dest[k++] = ar1[i]; \
-            i++; \
-            j++; \
-        } \
-    } \
-    return k; \
+extern "C" int ndarray_union1d(const void *ar1, int size1, const void *ar2, int size2, void *dest, int dtype) {
+    if (ar1 == nullptr || ar2 == nullptr || dest == nullptr) return 0;
+    switch (dtype) {
+        case DTYPE_FLOAT64: return union1d_impl((const double *)ar1, size1, (const double *)ar2, size2, (double *)dest);
+        case DTYPE_FLOAT32: return union1d_impl((const float *)ar1, size1, (const float *)ar2, size2, (float *)dest);
+        case DTYPE_INT32: return union1d_impl((const int32_t *)ar1, size1, (const int32_t *)ar2, size2, (int32_t *)dest);
+        case DTYPE_INT64: return union1d_impl((const int64_t *)ar1, size1, (const int64_t *)ar2, size2, (int64_t *)dest);
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN: return union1d_impl((const uint8_t *)ar1, size1, (const uint8_t *)ar2, size2, (uint8_t *)dest);
+        case DTYPE_COMPLEX128: return union1d_impl((const cpx_t *)ar1, size1, (const cpx_t *)ar2, size2, (cpx_t *)dest);
+        case DTYPE_COMPLEX64: return union1d_impl((const cpx_f_t *)ar1, size1, (const cpx_f_t *)ar2, size2, (cpx_f_t *)dest);
+        default: return 0;
+    }
 }
 
-DEFINE_UNION1D_OP(float64, double, set_cmp_double)
-DEFINE_UNION1D_OP(float32, float, set_cmp_float)
-DEFINE_UNION1D_OP(int32, int32_t, set_cmp_int32)
-DEFINE_UNION1D_OP(int64, int64_t, set_cmp_int64)
-DEFINE_UNION1D_OP(uint8, uint8_t, set_cmp_uint8)
-DEFINE_UNION1D_OP(complex128, cpx_t, set_cmp_complex128)
-DEFINE_UNION1D_OP(complex64, cpx_f_t, set_cmp_complex64)
-
-#define DISPATCH_SET_OP(OP_NAME) \
-int ndarray_##OP_NAME(const void *ar1, int size1, const void *ar2, int size2, void *dest, int dtype) { \
-    if (ar1 == NULL || ar2 == NULL || dest == NULL) return 0; \
-    switch (dtype) { \
-        case DTYPE_FLOAT64: return OP_NAME##_float64((const double *)ar1, size1, (const double *)ar2, size2, (double *)dest); \
-        case DTYPE_FLOAT32: return OP_NAME##_float32((const float *)ar1, size1, (const float *)ar2, size2, (float *)dest); \
-        case DTYPE_INT32: return OP_NAME##_int32((const int32_t *)ar1, size1, (const int32_t *)ar2, size2, (int32_t *)dest); \
-        case DTYPE_INT64: return OP_NAME##_int64((const int64_t *)ar1, size1, (const int64_t *)ar2, size2, (int64_t *)dest); \
-        case DTYPE_UINT8: \
-        case DTYPE_BOOLEAN: return OP_NAME##_uint8((const uint8_t *)ar1, size1, (const uint8_t *)ar2, size2, (uint8_t *)dest); \
-        case DTYPE_COMPLEX128: return OP_NAME##_complex128((const cpx_t *)ar1, size1, (const cpx_t *)ar2, size2, (cpx_t *)dest); \
-        case DTYPE_COMPLEX64: return OP_NAME##_complex64((const cpx_f_t *)ar1, size1, (const cpx_f_t *)ar2, size2, (cpx_f_t *)dest); \
-        default: return 0; \
-    } \
+extern "C" void ndarray_isin(const void *ar1, int size1, const void *ar2, int size2, uint8_t *dest, int dtype, int invert) {
+    if (ar1 == nullptr || ar2 == nullptr || dest == nullptr) return;
+    switch (dtype) {
+        case DTYPE_FLOAT64: isin_impl((const double *)ar1, size1, (const double *)ar2, size2, dest, invert); break;
+        case DTYPE_FLOAT32: isin_impl((const float *)ar1, size1, (const float *)ar2, size2, dest, invert); break;
+        case DTYPE_INT32: isin_impl((const int32_t *)ar1, size1, (const int32_t *)ar2, size2, dest, invert); break;
+        case DTYPE_INT64: isin_impl((const int64_t *)ar1, size1, (const int64_t *)ar2, size2, dest, invert); break;
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN: isin_impl((const uint8_t *)ar1, size1, (const uint8_t *)ar2, size2, dest, invert); break;
+        case DTYPE_COMPLEX128: isin_impl((const cpx_t *)ar1, size1, (const cpx_t *)ar2, size2, dest, invert); break;
+        case DTYPE_COMPLEX64: isin_impl((const cpx_f_t *)ar1, size1, (const cpx_f_t *)ar2, size2, dest, invert); break;
+    }
 }
 
-DISPATCH_SET_OP(intersect1d)
-DISPATCH_SET_OP(setdiff1d)
-DISPATCH_SET_OP(setxor1d)
-DISPATCH_SET_OP(union1d)
-
-#define DEFINE_ISIN_OP(TYPE_NAME, T, CMP_FN) \
-void isin_##TYPE_NAME(const T *ar1, int size1, const T *ar2, int size2, uint8_t *dest, int invert) { \
-    for (int i = 0; i < size1; i++) { \
-        T val = ar1[i]; \
-        int found = 0; \
-        int low = 0; \
-        int high = size2 - 1; \
-        while (low <= high) { \
-            int mid = low + (high - low) / 2; \
-            int cmp = CMP_FN(ar2[mid], val); \
-            if (cmp < 0) { \
-                low = mid + 1; \
-            } else if (cmp > 0) { \
-                high = mid - 1; \
-            } else { \
-                found = 1; \
-                break; \
-            } \
-        } \
-        dest[i] = invert ? !found : found; \
-    } \
-}
-
-DEFINE_ISIN_OP(float64, double, set_cmp_double)
-DEFINE_ISIN_OP(float32, float, set_cmp_float)
-DEFINE_ISIN_OP(int32, int32_t, set_cmp_int32)
-DEFINE_ISIN_OP(int64, int64_t, set_cmp_int64)
-DEFINE_ISIN_OP(uint8, uint8_t, set_cmp_uint8)
-DEFINE_ISIN_OP(complex128, cpx_t, set_cmp_complex128)
-DEFINE_ISIN_OP(complex64, cpx_f_t, set_cmp_complex64)
-
-void ndarray_isin(const void *ar1, int size1, const void *ar2, int size2, uint8_t *dest, int dtype, int invert) { \
-    if (ar1 == NULL || ar2 == NULL || dest == NULL) return; \
-    switch (dtype) { \
-        case DTYPE_FLOAT64: isin_float64((const double *)ar1, size1, (const double *)ar2, size2, dest, invert); break; \
-        case DTYPE_FLOAT32: isin_float32((const float *)ar1, size1, (const float *)ar2, size2, dest, invert); break; \
-        case DTYPE_INT32: isin_int32((const int32_t *)ar1, size1, (const int32_t *)ar2, size2, dest, invert); break; \
-        case DTYPE_INT64: isin_int64((const int64_t *)ar1, size1, (const int64_t *)ar2, size2, dest, invert); break; \
-        case DTYPE_UINT8: \
-        case DTYPE_BOOLEAN: isin_uint8((const uint8_t *)ar1, size1, (const uint8_t *)ar2, size2, dest, invert); break; \
-        case DTYPE_COMPLEX128: isin_complex128((const cpx_t *)ar1, size1, (const cpx_t *)ar2, size2, dest, invert); break; \
-        case DTYPE_COMPLEX64: isin_complex64((const cpx_f_t *)ar1, size1, (const cpx_f_t *)ar2, size2, dest, invert); break; \
-    } \
-}
 // --- MEDIAN & QUANTILE IMPLEMENTATIONS ---
 
 // Helper macro for median reduction to avoid code duplication.
@@ -6825,11 +6903,11 @@ void ndarray_isin(const void *ar1, int size1, const void *ar2, int size2, uint8_
 void NAME(const TYPE *src, const int *stridesSrc, \
           TYPE *dest, const int *stridesDest, \
           const int *shape, int rank, int axis) { \
-    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return; \
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return; \
     int size_axis = shape[axis]; \
     if (size_axis <= 0) return; \
     TYPE *tmp_buf = (TYPE *)malloc(size_axis * sizeof(TYPE)); \
-    if (tmp_buf == NULL) return; \
+    if (tmp_buf == nullptr) return; \
     int coord[8] = {0}; \
     int outer_size = 1; \
     for (int d = 0; d < rank; d++) { \
@@ -6873,11 +6951,11 @@ void NAME(const TYPE *src, const int *stridesSrc, \
 void s_median_double(const double *src, const int *stridesSrc,
                      double *dest, const int *stridesDest,
                      const int *shape, int rank, int axis) {
-    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int size_axis = shape[axis];
     if (size_axis <= 0) return;
     double *tmp_buf = (double *)malloc(size_axis * sizeof(double));
-    if (tmp_buf == NULL) return;
+    if (tmp_buf == nullptr) return;
     int coord[8] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
@@ -6920,11 +6998,11 @@ void s_median_double(const double *src, const int *stridesSrc,
 void s_median_float(const float *src, const int *stridesSrc,
                     float *dest, const int *stridesDest,
                     const int *shape, int rank, int axis) {
-    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int size_axis = shape[axis];
     if (size_axis <= 0) return;
     float *tmp_buf = (float *)malloc(size_axis * sizeof(float));
-    if (tmp_buf == NULL) return;
+    if (tmp_buf == nullptr) return;
     int coord[8] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
@@ -6971,11 +7049,11 @@ IMPLEMENT_MEDIAN_REDUCTION(s_median_uint8, uint8_t, insertion_sort_uint8, uint8_
 void s_median_complex128(const cpx_t *src, const int *stridesSrc,
                          cpx_t *dest, const int *stridesDest,
                          const int *shape, int rank, int axis) {
-    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int size_axis = shape[axis];
     if (size_axis <= 0) return;
     double *tmp_buf = (double *)malloc(size_axis * sizeof(double));
-    if (tmp_buf == NULL) return;
+    if (tmp_buf == nullptr) return;
     int coord[8] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
@@ -7035,11 +7113,11 @@ void s_median_complex128(const cpx_t *src, const int *stridesSrc,
 void s_median_complex64(const cpx_f_t *src, const int *stridesSrc,
                         cpx_f_t *dest, const int *stridesDest,
                         const int *shape, int rank, int axis) {
-    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return;
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int size_axis = shape[axis];
     if (size_axis <= 0) return;
     float *tmp_buf = (float *)malloc(size_axis * sizeof(float));
-    if (tmp_buf == NULL) return;
+    if (tmp_buf == nullptr) return;
     int coord[8] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
@@ -7221,7 +7299,7 @@ double stats_quantile_##NAME_SUFFIX(const TYPE *base, int _stride, int len, doub
     if (q < 0.0) q = 0.0; \
     if (q > 1.0) q = 1.0; \
     TYPE *buf = (TYPE*)malloc(len * sizeof(TYPE)); \
-    if (buf == NULL) return 0.0; \
+    if (buf == nullptr) return 0.0; \
     for (int i = 0; i < len; i++) { \
         buf[i] = *(base + i * _stride); \
     } \
@@ -7251,12 +7329,12 @@ double r_quantile_uint8(const uint8_t *src, int size, double q, int method) { re
 void NAME(const TYPE *src, const int *stridesSrc, \
           double *dest, const int *stridesDest, \
           const int *shape, int rank, int axis, double q, int method) { \
-    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return; \
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return; \
     int size_axis = shape[axis]; \
     if (size_axis <= 0) return; \
     if (q < 0.0 || q > 1.0) return; \
     TYPE *tmp_buf = (TYPE *)malloc(size_axis * sizeof(TYPE)); \
-    if (tmp_buf == NULL) return; \
+    if (tmp_buf == nullptr) return; \
     int coord[8] = {0}; \
     int outer_size = 1; \
     for (int d = 0; d < rank; d++) { \
@@ -7333,16 +7411,16 @@ void v_interp_double(const double *x, int x_size,
                      const double *xp, int xp_size,
                      const double *fp, double *res,
                      const double *left, const double *right) {
-    if (x == NULL || xp == NULL || fp == NULL || res == NULL || x_size <= 0 || xp_size <= 0) {
+    if (x == nullptr || xp == nullptr || fp == nullptr || res == nullptr || x_size <= 0 || xp_size <= 0) {
         return;
     }
     if (xp_size == 1) {
         double val = fp[0];
         for (int i = 0; i < x_size; i++) {
             if (x[i] < xp[0]) {
-                res[i] = (left != NULL) ? *left : val;
+                res[i] = (left != nullptr) ? *left : val;
             } else if (x[i] > xp[0]) {
-                res[i] = (right != NULL) ? *right : val;
+                res[i] = (right != nullptr) ? *right : val;
             } else {
                 res[i] = val;
             }
@@ -7356,9 +7434,9 @@ void v_interp_double(const double *x, int x_size,
     for (int i = 0; i < x_size; i++) {
         double xv = x[i];
         if (xv < xp_min) {
-            res[i] = (left != NULL) ? *left : fp[0];
+            res[i] = (left != nullptr) ? *left : fp[0];
         } else if (xv > xp_max) {
-            res[i] = (right != NULL) ? *right : fp[xp_size - 1];
+            res[i] = (right != nullptr) ? *right : fp[xp_size - 1];
         } else {
             int j = find_interval_double(xp, xp_size, 1, xv);
             double x0 = xp[j];
@@ -7380,7 +7458,7 @@ void s_interp_double(const double *x, const int *stridesX,
                      double *res, const int *stridesRes,
                      const int *shape, int rank,
                      const double *left, const double *right) {
-    if (x == NULL || xp == NULL || fp == NULL || res == NULL || rank <= 0 || rank > 8 || xp_size <= 0) {
+    if (x == nullptr || xp == nullptr || fp == nullptr || res == nullptr || rank <= 0 || rank > 8 || xp_size <= 0) {
         return;
     }
 
@@ -7394,9 +7472,9 @@ void s_interp_double(const double *x, const int *stridesX,
         for (int el = 0; el < total_elements; el++) {
             double xv = x[offsetX];
             if (xv < xp0) {
-                res[offsetRes] = (left != NULL) ? *left : val;
+                res[offsetRes] = (left != nullptr) ? *left : val;
             } else if (xv > xp0) {
-                res[offsetRes] = (right != NULL) ? *right : val;
+                res[offsetRes] = (right != nullptr) ? *right : val;
             } else {
                 res[offsetRes] = val;
             }
@@ -7426,9 +7504,9 @@ void s_interp_double(const double *x, const int *stridesX,
     for (int el = 0; el < total_elements; el++) {
         double xv = x[offsetX];
         if (xv < xp_min) {
-            res[offsetRes] = (left != NULL) ? *left : fp[0];
+            res[offsetRes] = (left != nullptr) ? *left : fp[0];
         } else if (xv > xp_max) {
-            res[offsetRes] = (right != NULL) ? *right : fp[(xp_size - 1) * strideFP];
+            res[offsetRes] = (right != nullptr) ? *right : fp[(xp_size - 1) * strideFP];
         } else {
             int j = find_interval_double(xp, xp_size, strideXP, xv);
             double x0 = xp[j * strideXP];
@@ -7477,16 +7555,16 @@ void v_interp_float(const float *x, int x_size,
                     const float *xp, int xp_size,
                     const float *fp, float *res,
                     const float *left, const float *right) {
-    if (x == NULL || xp == NULL || fp == NULL || res == NULL || x_size <= 0 || xp_size <= 0) {
+    if (x == nullptr || xp == nullptr || fp == nullptr || res == nullptr || x_size <= 0 || xp_size <= 0) {
         return;
     }
     if (xp_size == 1) {
         float val = fp[0];
         for (int i = 0; i < x_size; i++) {
             if (x[i] < xp[0]) {
-                res[i] = (left != NULL) ? *left : val;
+                res[i] = (left != nullptr) ? *left : val;
             } else if (x[i] > xp[0]) {
-                res[i] = (right != NULL) ? *right : val;
+                res[i] = (right != nullptr) ? *right : val;
             } else {
                 res[i] = val;
             }
@@ -7500,9 +7578,9 @@ void v_interp_float(const float *x, int x_size,
     for (int i = 0; i < x_size; i++) {
         float xv = x[i];
         if (xv < xp_min) {
-            res[i] = (left != NULL) ? *left : fp[0];
+            res[i] = (left != nullptr) ? *left : fp[0];
         } else if (xv > xp_max) {
-            res[i] = (right != NULL) ? *right : fp[xp_size - 1];
+            res[i] = (right != nullptr) ? *right : fp[xp_size - 1];
         } else {
             int j = find_interval_float(xp, xp_size, 1, xv);
             float x0 = xp[j];
@@ -7524,7 +7602,7 @@ void s_interp_float(const float *x, const int *stridesX,
                     float *res, const int *stridesRes,
                     const int *shape, int rank,
                     const float *left, const float *right) {
-    if (x == NULL || xp == NULL || fp == NULL || res == NULL || rank <= 0 || rank > 8 || xp_size <= 0) {
+    if (x == nullptr || xp == nullptr || fp == nullptr || res == nullptr || rank <= 0 || rank > 8 || xp_size <= 0) {
         return;
     }
 
@@ -7538,9 +7616,9 @@ void s_interp_float(const float *x, const int *stridesX,
         for (int el = 0; el < total_elements; el++) {
             float xv = x[offsetX];
             if (xv < xp0) {
-                res[offsetRes] = (left != NULL) ? *left : val;
+                res[offsetRes] = (left != nullptr) ? *left : val;
             } else if (xv > xp0) {
-                res[offsetRes] = (right != NULL) ? *right : val;
+                res[offsetRes] = (right != nullptr) ? *right : val;
             } else {
                 res[offsetRes] = val;
             }
@@ -7570,9 +7648,9 @@ void s_interp_float(const float *x, const int *stridesX,
     for (int el = 0; el < total_elements; el++) {
         float xv = x[offsetX];
         if (xv < xp_min) {
-            res[offsetRes] = (left != NULL) ? *left : fp[0];
+            res[offsetRes] = (left != nullptr) ? *left : fp[0];
         } else if (xv > xp_max) {
-            res[offsetRes] = (right != NULL) ? *right : fp[(xp_size - 1) * strideFP];
+            res[offsetRes] = (right != nullptr) ? *right : fp[(xp_size - 1) * strideFP];
         } else {
             int j = find_interval_float(xp, xp_size, strideXP, xv);
             float x0 = xp[j * strideXP];
@@ -7604,269 +7682,208 @@ void s_interp_float(const float *x, const int *stridesX,
 // SECTION 12: COMPARISON & EQUALITY KERNELS
 // ============================================================================
 
-#define EXPR_EQ(x, y) ((x) == (y))
-#define EXPR_NE(x, y) ((x) != (y))
-#define EXPR_LT(x, y) ((x) < (y))
-#define EXPR_LE(x, y) ((x) <= (y))
-#define EXPR_GT(x, y) ((x) > (y))
-#define EXPR_GE(x, y) ((x) >= (y))
+// C++ Operators for cpx_t and cpx_f_t to allow templated comparisons
+inline bool operator==(const cpx_t& x, const cpx_t& y) { return x.r == y.r && x.i == y.i; }
+inline bool operator!=(const cpx_t& x, const cpx_t& y) { return !(x == y); }
+inline bool operator==(const cpx_f_t& x, const cpx_f_t& y) { return x.r == y.r && x.i == y.i; }
+inline bool operator!=(const cpx_f_t& x, const cpx_f_t& y) { return !(x == y); }
+inline bool operator==(const cpx_t& x, const cpx_f_t& y) { return x.r == y.r && x.i == y.i; }
+inline bool operator==(const cpx_f_t& x, const cpx_t& y) { return x.r == y.r && x.i == y.i; }
+inline bool operator!=(const cpx_t& x, const cpx_f_t& y) { return !(x == y); }
+inline bool operator!=(const cpx_f_t& x, const cpx_t& y) { return !(x == y); }
 
-#define EXPR_EQ_C128_C128(x, y) ((x).r == (y).r && (x).i == (y).i)
-#define EXPR_NE_C128_C128(x, y) ((x).r != (y).r || (x).i != (y).i)
-#define EXPR_EQ_C64_C64(x, y) ((x).r == (y).r && (x).i == (y).i)
-#define EXPR_NE_C64_C64(x, y) ((x).r != (y).r || (x).i != (y).i)
+template<typename T> inline bool operator==(const cpx_t& x, const T& y) { return x.r == y && x.i == 0; }
+template<typename T> inline bool operator==(const T& x, const cpx_t& y) { return y == x; }
+template<typename T> inline bool operator!=(const cpx_t& x, const T& y) { return !(x == y); }
+template<typename T> inline bool operator!=(const T& x, const cpx_t& y) { return !(x == y); }
 
-#define EXPR_EQ_C128_REAL(x, y) ((x).r == (y) && (x).i == 0)
-#define EXPR_NE_C128_REAL(x, y) ((x).r != (y) || (x).i != 0)
-#define EXPR_EQ_REAL_C128(x, y) ((x) == (y).r && (y).i == 0)
-#define EXPR_NE_REAL_C128(x, y) ((x) != (y).r || (y).i != 0)
+template<typename T> inline bool operator==(const cpx_f_t& x, const T& y) { return x.r == y && x.i == 0; }
+template<typename T> inline bool operator==(const T& x, const cpx_f_t& y) { return y == x; }
+template<typename T> inline bool operator!=(const cpx_f_t& x, const T& y) { return !(x == y); }
+template<typename T> inline bool operator!=(const T& x, const cpx_f_t& y) { return !(x == y); }
 
-#define EXPR_EQ_C64_REAL(x, y) ((x).r == (y) && (x).i == 0)
-#define EXPR_NE_C64_REAL(x, y) ((x).r != (y) || (x).i != 0)
-#define EXPR_EQ_REAL_C64(x, y) ((x) == (y).r && (y).i == 0)
-#define EXPR_NE_REAL_C64(x, y) ((x) != (y).r || (y).i != 0)
+struct OpEq {
+    template<typename T1, typename T2>
+    static inline bool apply(const T1& x, const T2& y) { return x == y; }
+};
+struct OpNe {
+    template<typename T1, typename T2>
+    static inline bool apply(const T1& x, const T2& y) { return x != y; }
+};
+struct OpLt {
+    template<typename T1, typename T2>
+    static inline bool apply(const T1& x, const T2& y) { return x < y; }
+};
+struct OpLe {
+    template<typename T1, typename T2>
+    static inline bool apply(const T1& x, const T2& y) { return x <= y; }
+};
+struct OpGt {
+    template<typename T1, typename T2>
+    static inline bool apply(const T1& x, const T2& y) { return x > y; }
+};
+struct OpGe {
+    template<typename T1, typename T2>
+    static inline bool apply(const T1& x, const T2& y) { return x >= y; }
+};
 
-#define EXPR_EQ_C128_C64(x, y) ((x).r == (y).r && (x).i == (y).i)
-#define EXPR_NE_C128_C64(x, y) ((x).r != (y).r || (x).i != (y).i)
-#define EXPR_EQ_C64_C128(x, y) ((x).r == (y).r && (x).i == (y).i)
-#define EXPR_NE_C64_C128(x, y) ((x).r != (y).r || (x).i != (y).i)
-
-#define DEFINE_COMPARE_FUNC(NAME, T1, T2, EXPR) \
-void NAME(const T1 *a, const int *stridesA, \
-          const T2 *b, const int *stridesB, \
-          uint8_t *res, const int *stridesRes, \
-          const int *shape, int rank) { \
-    if (a == NULL || b == NULL || res == NULL || rank < 0 || rank > 8) return; \
-    int total_elements = 1; \
-    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
-    int is_a_contig = 1, is_b_contig = 1, is_res_contig = 1; \
-    int expected_stride = 1; \
-    for (int i = rank - 1; i >= 0; i--) { \
-        if (stridesA[i] != expected_stride) is_a_contig = 0; \
-        if (stridesB[i] != expected_stride) is_b_contig = 0; \
-        if (stridesRes[i] != expected_stride) is_res_contig = 0; \
-        expected_stride *= shape[i]; \
-    } \
-    int is_a_scal = 1, is_b_scal = 1; \
-    for (int i = 0; i < rank; i++) { \
-        if (stridesA[i] != 0) is_a_scal = 0; \
-        if (stridesB[i] != 0) is_b_scal = 0; \
-    } \
-    if (is_res_contig) { \
-        if (is_a_contig && is_b_contig) { \
-            for (int i = 0; i < total_elements; i++) { \
-                res[i] = (EXPR(a[i], b[i])) ? 1 : 0; \
-            } \
-            return; \
-        } \
-        if (is_a_contig && is_b_scal) { \
-            T2 val = b[0]; \
-            for (int i = 0; i < total_elements; i++) { \
-                res[i] = (EXPR(a[i], val)) ? 1 : 0; \
-            } \
-            return; \
-        } \
-        if (is_a_scal && is_b_contig) { \
-            T1 val = a[0]; \
-            for (int i = 0; i < total_elements; i++) { \
-                res[i] = (EXPR(val, b[i])) ? 1 : 0; \
-            } \
-            return; \
-        } \
-    } \
-    int coord[8] = {0}; \
-    int offsetA = 0, offsetB = 0, offsetRes = 0; \
-    for (int el = 0; el < total_elements; el++) { \
-        res[offsetRes] = (EXPR(a[offsetA], b[offsetB])) ? 1 : 0; \
-        for (int d = rank - 1; d >= 0; d--) { \
-            coord[d]++; \
-            if (coord[d] < shape[d]) { \
-                offsetA += stridesA[d]; \
-                offsetB += stridesB[d]; \
-                offsetRes += stridesRes[d]; \
-                break; \
-            } \
-            coord[d] = 0; \
-            offsetA -= (shape[d] - 1) * stridesA[d]; \
-            offsetB -= (shape[d] - 1) * stridesB[d]; \
-            offsetRes -= (shape[d] - 1) * stridesRes[d]; \
-        } \
-    } \
+template <typename T1, typename T2, typename Op>
+void s_compare_impl(const T1 *a, const int *stridesA,
+                    const T2 *b, const int *stridesB,
+                    uint8_t *res, const int *stridesRes,
+                    const int *shape, int rank) {
+    if (a == nullptr || b == nullptr || res == nullptr || rank < 0 || rank > 8) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    int is_a_contig = 1, is_b_contig = 1, is_res_contig = 1;
+    int expected_stride = 1;
+    for (int i = rank - 1; i >= 0; i--) {
+        if (stridesA[i] != expected_stride) is_a_contig = 0;
+        if (stridesB[i] != expected_stride) is_b_contig = 0;
+        if (stridesRes[i] != expected_stride) is_res_contig = 0;
+        expected_stride *= shape[i];
+    }
+    int is_a_scal = 1, is_b_scal = 1;
+    for (int i = 0; i < rank; i++) {
+        if (stridesA[i] != 0) is_a_scal = 0;
+        if (stridesB[i] != 0) is_b_scal = 0;
+    }
+    if (is_res_contig) {
+        if (is_a_contig && is_b_contig) {
+            for (int i = 0; i < total_elements; i++) {
+                res[i] = (Op::apply(a[i], b[i])) ? 1 : 0;
+            }
+            return;
+        }
+        if (is_a_contig && is_b_scal) {
+            T2 val = b[0];
+            for (int i = 0; i < total_elements; i++) {
+                res[i] = (Op::apply(a[i], val)) ? 1 : 0;
+            }
+            return;
+        }
+        if (is_a_scal && is_b_contig) {
+            T1 val = a[0];
+            for (int i = 0; i < total_elements; i++) {
+                res[i] = (Op::apply(val, b[i])) ? 1 : 0;
+            }
+            return;
+        }
+    }
+    int coord[8] = {0};
+    int offsetA = 0, offsetB = 0, offsetRes = 0;
+    for (int el = 0; el < total_elements; el++) {
+        res[offsetRes] = (Op::apply(a[offsetA], b[offsetB])) ? 1 : 0;
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetA += stridesA[d];
+                offsetB += stridesB[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetA -= (shape[d] - 1) * stridesA[d];
+            offsetB -= (shape[d] - 1) * stridesB[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
+    }
 }
 
-// Instantiate real-real comparisons
-#define DEFINE_REAL_COMPARE_T2(OP_NAME, T1, T1_NAME, T2, T2_NAME, EXPR) \
-    DEFINE_COMPARE_FUNC(s_compare_##OP_NAME##_##T1_NAME##_##T2_NAME, T1, T2, EXPR)
-
-#define DEFINE_REAL_COMPARE_T1(OP_NAME, T1, T1_NAME, EXPR) \
-    DEFINE_REAL_COMPARE_T2(OP_NAME, T1, T1_NAME, double, double, EXPR) \
-    DEFINE_REAL_COMPARE_T2(OP_NAME, T1, T1_NAME, float, float, EXPR) \
-    DEFINE_REAL_COMPARE_T2(OP_NAME, T1, T1_NAME, int32_t, int32, EXPR) \
-    DEFINE_REAL_COMPARE_T2(OP_NAME, T1, T1_NAME, int64_t, int64, EXPR) \
-    DEFINE_REAL_COMPARE_T2(OP_NAME, T1, T1_NAME, uint8_t, uint8, EXPR) \
-    DEFINE_REAL_COMPARE_T2(OP_NAME, T1, T1_NAME, int16_t, int16, EXPR)
-
-#define DEFINE_REAL_COMPARE_ALL(OP_NAME, EXPR) \
-    DEFINE_REAL_COMPARE_T1(OP_NAME, double, double, EXPR) \
-    DEFINE_REAL_COMPARE_T1(OP_NAME, float, float, EXPR) \
-    DEFINE_REAL_COMPARE_T1(OP_NAME, int32_t, int32, EXPR) \
-    DEFINE_REAL_COMPARE_T1(OP_NAME, int64_t, int64, EXPR) \
-    DEFINE_REAL_COMPARE_T1(OP_NAME, uint8_t, uint8, EXPR) \
-    DEFINE_REAL_COMPARE_T1(OP_NAME, int16_t, int16, EXPR)
-
-DEFINE_REAL_COMPARE_ALL(eq, EXPR_EQ)
-DEFINE_REAL_COMPARE_ALL(ne, EXPR_NE)
-DEFINE_REAL_COMPARE_ALL(lt, EXPR_LT)
-DEFINE_REAL_COMPARE_ALL(le, EXPR_LE)
-DEFINE_REAL_COMPARE_ALL(gt, EXPR_GT)
-DEFINE_REAL_COMPARE_ALL(ge, EXPR_GE)
-
-#undef DEFINE_REAL_COMPARE_ALL
-#undef DEFINE_REAL_COMPARE_T1
-#undef DEFINE_REAL_COMPARE_T2
-
-// Complex vs Complex
-#define DEFINE_COMPLEX_COMP_CC(OP_NAME, T1, T1_NAME, T2, T2_NAME, EXPR) \
-    DEFINE_COMPARE_FUNC(s_compare_##OP_NAME##_##T1_NAME##_##T2_NAME, T1, T2, EXPR)
-
-// Complex vs Real
-#define DEFINE_COMPLEX_COMP_CR(OP_NAME, CPX_T, CPX_NAME, R_T, R_NAME, EXPR) \
-    DEFINE_COMPARE_FUNC(s_compare_##OP_NAME##_##CPX_NAME##_##R_NAME, CPX_T, R_T, EXPR)
-
-// Real vs Complex
-#define DEFINE_COMPLEX_COMP_RC(OP_NAME, R_T, R_NAME, CPX_T, CPX_NAME, EXPR) \
-    DEFINE_COMPARE_FUNC(s_compare_##OP_NAME##_##R_NAME##_##CPX_NAME, R_T, CPX_T, EXPR)
-
-#define INSTANTIATE_CR_RC_C128(OP_NAME, R_T, R_NAME, EXPR_CR, EXPR_RC) \
-    DEFINE_COMPLEX_COMP_CR(OP_NAME, cpx_t, complex128, R_T, R_NAME, EXPR_CR) \
-    DEFINE_COMPLEX_COMP_RC(OP_NAME, R_T, R_NAME, cpx_t, complex128, EXPR_RC)
-
-#define INSTANTIATE_CR_RC_C64(OP_NAME, R_T, R_NAME, EXPR_CR, EXPR_RC) \
-    DEFINE_COMPLEX_COMP_CR(OP_NAME, cpx_f_t, complex64, R_T, R_NAME, EXPR_CR) \
-    DEFINE_COMPLEX_COMP_RC(OP_NAME, R_T, R_NAME, cpx_f_t, complex64, EXPR_RC)
-
-// EQ
-DEFINE_COMPLEX_COMP_CC(eq, cpx_t, complex128, cpx_t, complex128, EXPR_EQ_C128_C128)
-DEFINE_COMPLEX_COMP_CC(eq, cpx_f_t, complex64, cpx_f_t, complex64, EXPR_EQ_C64_C64)
-DEFINE_COMPLEX_COMP_CC(eq, cpx_t, complex128, cpx_f_t, complex64, EXPR_EQ_C128_C64)
-DEFINE_COMPLEX_COMP_CC(eq, cpx_f_t, complex64, cpx_t, complex128, EXPR_EQ_C64_C128)
-
-INSTANTIATE_CR_RC_C128(eq, double, double, EXPR_EQ_C128_REAL, EXPR_EQ_REAL_C128)
-INSTANTIATE_CR_RC_C128(eq, float, float, EXPR_EQ_C128_REAL, EXPR_EQ_REAL_C128)
-INSTANTIATE_CR_RC_C128(eq, int32_t, int32, EXPR_EQ_C128_REAL, EXPR_EQ_REAL_C128)
-INSTANTIATE_CR_RC_C128(eq, int64_t, int64, EXPR_EQ_C128_REAL, EXPR_EQ_REAL_C128)
-INSTANTIATE_CR_RC_C128(eq, uint8_t, uint8, EXPR_EQ_C128_REAL, EXPR_EQ_REAL_C128)
-INSTANTIATE_CR_RC_C128(eq, int16_t, int16, EXPR_EQ_C128_REAL, EXPR_EQ_REAL_C128)
-
-INSTANTIATE_CR_RC_C64(eq, double, double, EXPR_EQ_C64_REAL, EXPR_EQ_REAL_C64)
-INSTANTIATE_CR_RC_C64(eq, float, float, EXPR_EQ_C64_REAL, EXPR_EQ_REAL_C64)
-INSTANTIATE_CR_RC_C64(eq, int32_t, int32, EXPR_EQ_C64_REAL, EXPR_EQ_REAL_C64)
-INSTANTIATE_CR_RC_C64(eq, int64_t, int64, EXPR_EQ_C64_REAL, EXPR_EQ_REAL_C64)
-INSTANTIATE_CR_RC_C64(eq, uint8_t, uint8, EXPR_EQ_C64_REAL, EXPR_EQ_REAL_C64)
-INSTANTIATE_CR_RC_C64(eq, int16_t, int16, EXPR_EQ_C64_REAL, EXPR_EQ_REAL_C64)
-
-// NE
-DEFINE_COMPLEX_COMP_CC(ne, cpx_t, complex128, cpx_t, complex128, EXPR_NE_C128_C128)
-DEFINE_COMPLEX_COMP_CC(ne, cpx_f_t, complex64, cpx_f_t, complex64, EXPR_NE_C64_C64)
-DEFINE_COMPLEX_COMP_CC(ne, cpx_t, complex128, cpx_f_t, complex64, EXPR_NE_C128_C64)
-DEFINE_COMPLEX_COMP_CC(ne, cpx_f_t, complex64, cpx_t, complex128, EXPR_NE_C64_C128)
-
-INSTANTIATE_CR_RC_C128(ne, double, double, EXPR_NE_C128_REAL, EXPR_NE_REAL_C128)
-INSTANTIATE_CR_RC_C128(ne, float, float, EXPR_NE_C128_REAL, EXPR_NE_REAL_C128)
-INSTANTIATE_CR_RC_C128(ne, int32_t, int32, EXPR_NE_C128_REAL, EXPR_NE_REAL_C128)
-INSTANTIATE_CR_RC_C128(ne, int64_t, int64, EXPR_NE_C128_REAL, EXPR_NE_REAL_C128)
-INSTANTIATE_CR_RC_C128(ne, uint8_t, uint8, EXPR_NE_C128_REAL, EXPR_NE_REAL_C128)
-INSTANTIATE_CR_RC_C128(ne, int16_t, int16, EXPR_NE_C128_REAL, EXPR_NE_REAL_C128)
-
-INSTANTIATE_CR_RC_C64(ne, double, double, EXPR_NE_C64_REAL, EXPR_NE_REAL_C64)
-INSTANTIATE_CR_RC_C64(ne, float, float, EXPR_NE_C64_REAL, EXPR_NE_REAL_C64)
-INSTANTIATE_CR_RC_C64(ne, int32_t, int32, EXPR_NE_C64_REAL, EXPR_NE_REAL_C64)
-INSTANTIATE_CR_RC_C64(ne, int64_t, int64, EXPR_NE_C64_REAL, EXPR_NE_REAL_C64)
-INSTANTIATE_CR_RC_C64(ne, uint8_t, uint8, EXPR_NE_C64_REAL, EXPR_NE_REAL_C64)
-INSTANTIATE_CR_RC_C64(ne, int16_t, int16, EXPR_NE_C64_REAL, EXPR_NE_REAL_C64)
-
-#undef INSTANTIATE_CR_RC_C64
-#undef INSTANTIATE_CR_RC_C128
-#undef DEFINE_COMPLEX_COMP_RC
-#undef DEFINE_COMPLEX_COMP_CR
-#undef DEFINE_COMPLEX_COMP_CC
-
-#define DISPATCH_COMPARE_B_REAL(OP_NAME, T1_NAME) \
-    switch (dtypeB) { \
-        case DTYPE_FLOAT64: s_compare_##OP_NAME##_##T1_NAME##_double(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
-        case DTYPE_FLOAT32: s_compare_##OP_NAME##_##T1_NAME##_float(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
-        case DTYPE_INT32: s_compare_##OP_NAME##_##T1_NAME##_int32(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
-        case DTYPE_INT64: s_compare_##OP_NAME##_##T1_NAME##_int64(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
-        case DTYPE_UINT8: s_compare_##OP_NAME##_##T1_NAME##_uint8(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
-        case DTYPE_INT16: s_compare_##OP_NAME##_##T1_NAME##_int16(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
-        case DTYPE_BOOLEAN: s_compare_##OP_NAME##_##T1_NAME##_uint8(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+template <typename T1, typename Op>
+void dispatch_compare_B_real(const T1 *a, const int *stridesA,
+                             int dtypeB, const void *b, const int *stridesB,
+                             uint8_t *res, const int *stridesRes,
+                             const int *shape, int rank) {
+    switch (dtypeB) {
+        case DTYPE_FLOAT64: s_compare_impl<T1, double, Op>(a, stridesA, (const double*)b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_FLOAT32: s_compare_impl<T1, float, Op>(a, stridesA, (const float*)b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_INT32: s_compare_impl<T1, int32_t, Op>(a, stridesA, (const int32_t*)b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_INT64: s_compare_impl<T1, int64_t, Op>(a, stridesA, (const int64_t*)b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_UINT8: s_compare_impl<T1, uint8_t, Op>(a, stridesA, (const uint8_t*)b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_INT16: s_compare_impl<T1, int16_t, Op>(a, stridesA, (const int16_t*)b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_BOOLEAN: s_compare_impl<T1, uint8_t, Op>(a, stridesA, (const uint8_t*)b, stridesB, res, stridesRes, shape, rank); break;
     }
+}
 
-#define DISPATCH_COMPARE_B_ALL(OP_NAME, T1_NAME) \
-    switch (dtypeB) { \
-        case DTYPE_FLOAT64: s_compare_##OP_NAME##_##T1_NAME##_double(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
-        case DTYPE_FLOAT32: s_compare_##OP_NAME##_##T1_NAME##_float(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
-        case DTYPE_INT32: s_compare_##OP_NAME##_##T1_NAME##_int32(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
-        case DTYPE_INT64: s_compare_##OP_NAME##_##T1_NAME##_int64(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
-        case DTYPE_UINT8: s_compare_##OP_NAME##_##T1_NAME##_uint8(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
-        case DTYPE_INT16: s_compare_##OP_NAME##_##T1_NAME##_int16(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
-        case DTYPE_BOOLEAN: s_compare_##OP_NAME##_##T1_NAME##_uint8(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
-        case DTYPE_COMPLEX128: s_compare_##OP_NAME##_##T1_NAME##_complex128(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
-        case DTYPE_COMPLEX64: s_compare_##OP_NAME##_##T1_NAME##_complex64(a, stridesA, b, stridesB, res, stridesRes, shape, rank); break; \
+template <typename T1, typename Op>
+void dispatch_compare_B_all(const T1 *a, const int *stridesA,
+                            int dtypeB, const void *b, const int *stridesB,
+                            uint8_t *res, const int *stridesRes,
+                            const int *shape, int rank) {
+    switch (dtypeB) {
+        case DTYPE_FLOAT64: s_compare_impl<T1, double, Op>(a, stridesA, (const double*)b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_FLOAT32: s_compare_impl<T1, float, Op>(a, stridesA, (const float*)b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_INT32: s_compare_impl<T1, int32_t, Op>(a, stridesA, (const int32_t*)b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_INT64: s_compare_impl<T1, int64_t, Op>(a, stridesA, (const int64_t*)b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_UINT8: s_compare_impl<T1, uint8_t, Op>(a, stridesA, (const uint8_t*)b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_INT16: s_compare_impl<T1, int16_t, Op>(a, stridesA, (const int16_t*)b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_BOOLEAN: s_compare_impl<T1, uint8_t, Op>(a, stridesA, (const uint8_t*)b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_COMPLEX128: s_compare_impl<T1, cpx_t, Op>(a, stridesA, (const cpx_t*)b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_COMPLEX64: s_compare_impl<T1, cpx_f_t, Op>(a, stridesA, (const cpx_f_t*)b, stridesB, res, stridesRes, shape, rank); break;
     }
+}
 
-#define DISPATCH_COMPARE_A_REAL(OP_NAME) \
-    switch (dtypeA) { \
-        case DTYPE_FLOAT64: DISPATCH_COMPARE_B_REAL(OP_NAME, double); break; \
-        case DTYPE_FLOAT32: DISPATCH_COMPARE_B_REAL(OP_NAME, float); break; \
-        case DTYPE_INT32: DISPATCH_COMPARE_B_REAL(OP_NAME, int32); break; \
-        case DTYPE_INT64: DISPATCH_COMPARE_B_REAL(OP_NAME, int64); break; \
-        case DTYPE_UINT8: DISPATCH_COMPARE_B_REAL(OP_NAME, uint8); break; \
-        case DTYPE_INT16: DISPATCH_COMPARE_B_REAL(OP_NAME, int16); break; \
-        case DTYPE_BOOLEAN: DISPATCH_COMPARE_B_REAL(OP_NAME, uint8); break; \
+template <typename Op>
+void dispatch_compare_A_real(int dtypeA, const void *a, const int *stridesA,
+                             int dtypeB, const void *b, const int *stridesB,
+                             uint8_t *res, const int *stridesRes,
+                             const int *shape, int rank) {
+    switch (dtypeA) {
+        case DTYPE_FLOAT64: dispatch_compare_B_real<double, Op>((const double*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_FLOAT32: dispatch_compare_B_real<float, Op>((const float*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_INT32: dispatch_compare_B_real<int32_t, Op>((const int32_t*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_INT64: dispatch_compare_B_real<int64_t, Op>((const int64_t*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_UINT8: dispatch_compare_B_real<uint8_t, Op>((const uint8_t*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_INT16: dispatch_compare_B_real<int16_t, Op>((const int16_t*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_BOOLEAN: dispatch_compare_B_real<uint8_t, Op>((const uint8_t*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
     }
+}
 
-#define DISPATCH_COMPARE_A_ALL(OP_NAME) \
-    switch (dtypeA) { \
-        case DTYPE_FLOAT64: DISPATCH_COMPARE_B_ALL(OP_NAME, double); break; \
-        case DTYPE_FLOAT32: DISPATCH_COMPARE_B_ALL(OP_NAME, float); break; \
-        case DTYPE_INT32: DISPATCH_COMPARE_B_ALL(OP_NAME, int32); break; \
-        case DTYPE_INT64: DISPATCH_COMPARE_B_ALL(OP_NAME, int64); break; \
-        case DTYPE_UINT8: DISPATCH_COMPARE_B_ALL(OP_NAME, uint8); break; \
-        case DTYPE_INT16: DISPATCH_COMPARE_B_ALL(OP_NAME, int16); break; \
-        case DTYPE_BOOLEAN: DISPATCH_COMPARE_B_ALL(OP_NAME, uint8); break; \
-        case DTYPE_COMPLEX128: DISPATCH_COMPARE_B_ALL(OP_NAME, complex128); break; \
-        case DTYPE_COMPLEX64: DISPATCH_COMPARE_B_ALL(OP_NAME, complex64); break; \
+template <typename Op>
+void dispatch_compare_A_all(int dtypeA, const void *a, const int *stridesA,
+                            int dtypeB, const void *b, const int *stridesB,
+                            uint8_t *res, const int *stridesRes,
+                            const int *shape, int rank) {
+    switch (dtypeA) {
+        case DTYPE_FLOAT64: dispatch_compare_B_all<double, Op>((const double*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_FLOAT32: dispatch_compare_B_all<float, Op>((const float*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_INT32: dispatch_compare_B_all<int32_t, Op>((const int32_t*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_INT64: dispatch_compare_B_all<int64_t, Op>((const int64_t*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_UINT8: dispatch_compare_B_all<uint8_t, Op>((const uint8_t*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_INT16: dispatch_compare_B_all<int16_t, Op>((const int16_t*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_BOOLEAN: dispatch_compare_B_all<uint8_t, Op>((const uint8_t*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_COMPLEX128: dispatch_compare_B_all<cpx_t, Op>((const cpx_t*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case DTYPE_COMPLEX64: dispatch_compare_B_all<cpx_f_t, Op>((const cpx_f_t*)a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
     }
+}
 
-void ndarray_compare(
+extern "C" void ndarray_compare(
     int op, int dtypeA, int dtypeB,
     const void *a, const int *stridesA,
     const void *b, const int *stridesB,
     uint8_t *res, const int *stridesRes,
     const int *shape, int rank
 ) {
-    switch (op) {
-        case CMP_OP_EQ: DISPATCH_COMPARE_A_ALL(eq); break;
-        case CMP_OP_NE: DISPATCH_COMPARE_A_ALL(ne); break;
-        case CMP_OP_LT: DISPATCH_COMPARE_A_REAL(lt); break;
-        case CMP_OP_LE: DISPATCH_COMPARE_A_REAL(le); break;
-        case CMP_OP_GT: DISPATCH_COMPARE_A_REAL(gt); break;
-        case CMP_OP_GE: DISPATCH_COMPARE_A_REAL(ge); break;
+    ComparisonOp cop = static_cast<ComparisonOp>(op);
+    switch (cop) {
+        case ComparisonOp::EQ: dispatch_compare_A_all<OpEq>(dtypeA, a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case ComparisonOp::NE: dispatch_compare_A_all<OpNe>(dtypeA, a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case ComparisonOp::LT: dispatch_compare_A_real<OpLt>(dtypeA, a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case ComparisonOp::LE: dispatch_compare_A_real<OpLe>(dtypeA, a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case ComparisonOp::GT: dispatch_compare_A_real<OpGt>(dtypeA, a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
+        case ComparisonOp::GE: dispatch_compare_A_real<OpGe>(dtypeA, a, stridesA, dtypeB, b, stridesB, res, stridesRes, shape, rank); break;
     }
 }
 
-#undef DISPATCH_COMPARE_A_ALL
-#undef DISPATCH_COMPARE_A_REAL
-#undef DISPATCH_COMPARE_B_ALL
-#undef DISPATCH_COMPARE_B_REAL
+#define EXPR_EQ(x, y) ((x) == (y))
 
 // Structural Equality
 #define DEFINE_EQUALS_FUNC(NAME, TYPE, EXPR) \
 int NAME(const TYPE *a, const int *stridesA, \
          const TYPE *b, const int *stridesB, \
          const int *shape, int rank) { \
-    if (a == NULL || b == NULL || rank < 0 || rank > 8) return 0; \
+    if (a == nullptr || b == nullptr || rank < 0 || rank > 8) return 0; \
     if (rank == 0) return EXPR(a[0], b[0]) ? 1 : 0; \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
@@ -7895,8 +7912,8 @@ DEFINE_EQUALS_FUNC(s_equals_int32, int32_t, EXPR_EQ)
 DEFINE_EQUALS_FUNC(s_equals_int64, int64_t, EXPR_EQ)
 DEFINE_EQUALS_FUNC(s_equals_uint8, uint8_t, EXPR_EQ)
 DEFINE_EQUALS_FUNC(s_equals_int16, int16_t, EXPR_EQ)
-DEFINE_EQUALS_FUNC(s_equals_complex128, cpx_t, EXPR_EQ_C128_C128)
-DEFINE_EQUALS_FUNC(s_equals_complex64, cpx_f_t, EXPR_EQ_C64_C64)
+DEFINE_EQUALS_FUNC(s_equals_complex128, cpx_t, EXPR_EQ)
+DEFINE_EQUALS_FUNC(s_equals_complex64, cpx_f_t, EXPR_EQ)
 
 #undef DEFINE_EQUALS_FUNC
 
@@ -7924,7 +7941,7 @@ int ndarray_equals(
 
 #define DEFINE_R_MINMAX(NAME, TYPE, OP) \
 TYPE r_##NAME##_##TYPE(const TYPE *src, int size) { \
-    if (src == NULL || size <= 0) return (TYPE)0; \
+    if (src == nullptr || size <= 0) return (TYPE)0; \
     TYPE acc = src[0]; \
     for (int i = 1; i < size; i++) { \
         if (src[i] OP acc) acc = src[i]; \
@@ -7954,7 +7971,7 @@ DEFINE_R_MINMAX(max, int16_t, >)
 void s_##NAME##_##TYPE(const TYPE *src, const int *stridesSrc, \
                        TYPE *dest, const int *stridesDest, \
                        const int *shape, int rank, int axis) { \
-    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return; \
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return; \
     int size_axis = shape[axis]; \
     if (size_axis <= 0) return; \
     int coord[8] = {0}; \
@@ -8010,7 +8027,7 @@ DEFINE_S_MINMAX(max, int16_t, >)
 
 #define DEFINE_R_NANMINMAX(NAME, TYPE, OP) \
 TYPE r_##NAME##_##TYPE(const TYPE *src, int size) { \
-    if (src == NULL || size <= 0) return (TYPE)NAN; \
+    if (src == nullptr || size <= 0) return (TYPE)NAN; \
     TYPE acc = (TYPE)NAN; \
     int i = 0; \
     for (; i < size; i++) { \
@@ -8041,7 +8058,7 @@ DEFINE_R_NANMINMAX(nanmax, float, >)
 void s_##NAME##_##TYPE(const TYPE *src, const int *stridesSrc, \
                        TYPE *dest, const int *stridesDest, \
                        const int *shape, int rank, int axis) { \
-    if (src == NULL || dest == NULL || shape == NULL || rank <= 0 || axis < 0 || axis >= rank) return; \
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return; \
     int size_axis = shape[axis]; \
     if (size_axis <= 0) return; \
     int coord[8] = {0}; \
@@ -8103,20 +8120,21 @@ int s_find_index_##NAME(const TYPE *a, const int *stridesA, \
                         int op, TYPE target, \
                         const int *startCoords, const int *directions, \
                         int *matchCoords) { \
-    if (a == NULL || rank < 0 || rank > 8) return 0; \
+    if (a == nullptr || rank < 0 || rank > 8) return 0; \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
     if (total_elements <= 0) return 0; \
+    ComparisonOp cop = static_cast<ComparisonOp>(op); \
     if (rank == 0) { \
         TYPE val = a[0]; \
         int match = 0; \
-        switch(op) { \
-            case CMP_OP_EQ: match = (val == target); break; \
-            case CMP_OP_NE: match = (val != target); break; \
-            case CMP_OP_LT: match = (val < target); break; \
-            case CMP_OP_LE: match = (val <= target); break; \
-            case CMP_OP_GT: match = (val > target); break; \
-            case CMP_OP_GE: match = (val >= target); break; \
+        switch(cop) { \
+            case ComparisonOp::EQ: match = (val == target); break; \
+            case ComparisonOp::NE: match = (val != target); break; \
+            case ComparisonOp::LT: match = (val < target); break; \
+            case ComparisonOp::LE: match = (val <= target); break; \
+            case ComparisonOp::GT: match = (val > target); break; \
+            case ComparisonOp::GE: match = (val >= target); break; \
         } \
         return match ? 1 : 0; \
     } \
@@ -8132,16 +8150,16 @@ int s_find_index_##NAME(const TYPE *a, const int *stridesA, \
     while (1) { \
         TYPE val = a[offsetA]; \
         int match = 0; \
-        switch(op) { \
-            case CMP_OP_EQ: match = (val == target); break; \
-            case CMP_OP_NE: match = (val != target); break; \
-            case CMP_OP_LT: match = (val < target); break; \
-            case CMP_OP_LE: match = (val <= target); break; \
-            case CMP_OP_GT: match = (val > target); break; \
-            case CMP_OP_GE: match = (val >= target); break; \
+        switch(cop) { \
+            case ComparisonOp::EQ: match = (val == target); break; \
+            case ComparisonOp::NE: match = (val != target); break; \
+            case ComparisonOp::LT: match = (val < target); break; \
+            case ComparisonOp::LE: match = (val <= target); break; \
+            case ComparisonOp::GT: match = (val > target); break; \
+            case ComparisonOp::GE: match = (val >= target); break; \
         } \
         if (match) { \
-            if (matchCoords != NULL) { \
+            if (matchCoords != nullptr) { \
                 for (int i = 0; i < rank; i++) { \
                     matchCoords[i] = coord[i]; \
                 } \
@@ -8195,17 +8213,18 @@ int s_find_index_complex128(const cpx_t *a, const int *stridesA,
                              int op, cpx_t target,
                              const int *startCoords, const int *directions,
                              int *matchCoords) {
-    if (a == NULL || rank < 0 || rank > 8) return 0;
+    if (a == nullptr || rank < 0 || rank > 8) return 0;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (total_elements <= 0) return 0;
     if (rank == 0) {
         cpx_t val = a[0];
         int match = 0;
-        if (op == CMP_OP_EQ) {
-            match = (val.r == target.r && val.i == target.i);
-        } else if (op == CMP_OP_NE) {
-            match = (val.r != target.r || val.i != target.i);
+        ComparisonOp cop = static_cast<ComparisonOp>(op);
+        if (cop == ComparisonOp::EQ) {
+            match = (val == target);
+        } else if (cop == ComparisonOp::NE) {
+            match = (val != target);
         }
         return match ? 1 : 0;
     }
@@ -8221,13 +8240,14 @@ int s_find_index_complex128(const cpx_t *a, const int *stridesA,
     while (1) {
         cpx_t val = a[offsetA];
         int match = 0;
-        if (op == CMP_OP_EQ) {
-            match = (val.r == target.r && val.i == target.i);
-        } else if (op == CMP_OP_NE) {
-            match = (val.r != target.r || val.i != target.i);
+        ComparisonOp cop = static_cast<ComparisonOp>(op);
+        if (cop == ComparisonOp::EQ) {
+            match = (val == target);
+        } else if (cop == ComparisonOp::NE) {
+            match = (val != target);
         }
         if (match) {
-            if (matchCoords != NULL) {
+            if (matchCoords != nullptr) {
                 for (int i = 0; i < rank; i++) {
                     matchCoords[i] = coord[i];
                 }
@@ -8272,17 +8292,18 @@ int s_find_index_complex64(const cpx_f_t *a, const int *stridesA,
                             int op, cpx_f_t target,
                             const int *startCoords, const int *directions,
                             int *matchCoords) {
-    if (a == NULL || rank < 0 || rank > 8) return 0;
+    if (a == nullptr || rank < 0 || rank > 8) return 0;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (total_elements <= 0) return 0;
     if (rank == 0) {
         cpx_f_t val = a[0];
         int match = 0;
-        if (op == CMP_OP_EQ) {
-            match = (val.r == target.r && val.i == target.i);
-        } else if (op == CMP_OP_NE) {
-            match = (val.r != target.r || val.i != target.i);
+        ComparisonOp cop = static_cast<ComparisonOp>(op);
+        if (cop == ComparisonOp::EQ) {
+            match = (val == target);
+        } else if (cop == ComparisonOp::NE) {
+            match = (val != target);
         }
         return match ? 1 : 0;
     }
@@ -8298,13 +8319,14 @@ int s_find_index_complex64(const cpx_f_t *a, const int *stridesA,
     while (1) {
         cpx_f_t val = a[offsetA];
         int match = 0;
-        if (op == CMP_OP_EQ) {
-            match = (val.r == target.r && val.i == target.i);
-        } else if (op == CMP_OP_NE) {
-            match = (val.r != target.r || val.i != target.i);
+        ComparisonOp cop = static_cast<ComparisonOp>(op);
+        if (cop == ComparisonOp::EQ) {
+            match = (val == target);
+        } else if (cop == ComparisonOp::NE) {
+            match = (val != target);
         }
         if (match) {
-            if (matchCoords != NULL) {
+            if (matchCoords != nullptr) {
                 for (int i = 0; i < rank; i++) {
                     matchCoords[i] = coord[i];
                 }
@@ -8353,7 +8375,7 @@ int ndarray_find_index(
     const int *directions,
     int *matchCoords
 ) {
-    if (a == NULL || target == NULL) return 0;
+    if (a == nullptr || target == nullptr) return 0;
     switch (dtype) {
         case DTYPE_FLOAT64:
             return s_find_index_double((const double*)a, stridesA, shape, rank, op, *(const double*)target, startCoords, directions, matchCoords);
@@ -8460,7 +8482,7 @@ void ndarray_pdist(
     double *out,
     int strideOut
 ) {
-    if (x == NULL || out == NULL || M < 2 || N < 0) return;
+    if (x == nullptr || out == nullptr || M < 2 || N < 0) return;
     switch(dtype) {
         case DTYPE_FLOAT64:
             pdist_double((const double*)x, M, N, strideRowX, strideColX, metric, out, strideOut);
@@ -8522,7 +8544,7 @@ void ndarray_cdist(
     double *out,
     int strideRowOut, int strideColOut
 ) {
-    if (xa == NULL || xb == NULL || out == NULL || M <= 0 || K <= 0 || N < 0) return;
+    if (xa == nullptr || xb == nullptr || out == nullptr || M <= 0 || K <= 0 || N < 0) return;
     switch(dtype) {
         case DTYPE_FLOAT64:
             cdist_double((const double*)xa, (const double*)xb, M, K, N, strideRowXA, strideColXA, strideRowXB, strideColXB, metric, out, strideRowOut, strideColOut);
