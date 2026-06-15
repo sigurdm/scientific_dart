@@ -2004,8 +2004,10 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Returns a boolean [NDArray] where each element is `true` if the corresponding
   /// element in this array equals the element in [other], and `false` otherwise.
   ///
-  /// Unlike standard Dart operator `==` which checks for structural equality of the
-  /// NDArray objects themselves, [eq] performs element-wise value comparison.
+  /// Unlike the standard Dart operator `==` which defaults to object identity,
+  /// the `==` operator on [NDArray] checks for structural equality of the
+  /// arrays themselves (returning a single boolean). In contrast, [eq]
+  /// performs element-wise value comparison and returns an [NDArray<bool>].
   ///
   /// **Preconditions:**
   /// - The shape of [other] (or this array) must be broadcast-compatible with the other.
