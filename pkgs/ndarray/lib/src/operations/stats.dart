@@ -885,6 +885,18 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write min to a disposed output array.');
   }
+  if (axis == null && a.size == 0) {
+    throw ArgumentError('Cannot compute min of an empty array.');
+  }
+  if (axis != null) {
+    if (axis < 0 || axis >= a.shape.length) {
+      throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+    }
+    if (a.shape[axis] == 0) {
+      throw ArgumentError('Cannot compute min along axis $axis of size 0.');
+    }
+  }
+
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
@@ -901,40 +913,113 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 
   if (axis == null) {
     final temp = a.isContiguous ? a : a.copy();
-    final offset = temp.offsetElements;
-    var minVal = temp.data[offset];
-    for (var i = 1; i < temp.size; i++) {
-      minVal = math.min(minVal, temp.data[offset + i]);
+    final size = temp.size;
+    final ptr = temp.pointer;
+    dynamic minVal;
+    switch (temp.dtype) {
+      case DType.float64:
+        minVal = r_min_double(ptr.cast(), size);
+      case DType.float32:
+        minVal = r_min_float(ptr.cast(), size);
+      case DType.int64:
+        minVal = r_min_int64_t(ptr.cast(), size);
+      case DType.int32:
+        minVal = r_min_int32_t(ptr.cast(), size);
+      case DType.uint8:
+        minVal = r_min_uint8_t(ptr.cast(), size);
+      case DType.int16:
+        minVal = r_min_int16_t(ptr.cast(), size);
     }
     if (!identical(temp, a)) {
       temp.dispose();
     }
     final result = out ?? NDArray<T>.create([], a.dtype);
-    result.data[0] = minVal;
+    result.setCell([], minVal as T);
     return result;
   }
 
-  if (axis < 0 || axis >= a.shape.length) {
-    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final result = out ?? NDArray<T>.create(newShape, a.dtype);
+
+  final rank = a.shape.length;
+  final marker = ScratchArena.marker;
+  final cBuffer = ScratchArena.getStridedBuffer(rank);
+  final cShape = cBuffer;
+  final cStridesA = cBuffer + rank;
+  final cStridesRes = cBuffer + (rank * 2);
+  for (var i = 0; i < rank; i++) {
+    cShape[i] = a.shape[i];
+    cStridesA[i] = a.strides[i];
+  }
+  for (var i = 0; i < result.shape.length; i++) {
+    cStridesRes[i] = result.strides[i];
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final selectors = List<Selector>.generate(a.shape.length, (j) {
-    if (j == axis) return Index(0);
-    return Slice();
-  });
-  final firstSlice = a.slice(selectors);
-
-  final result = out ?? NDArray<T>.create(newShape, a.dtype);
-  firstSlice.copy(out: result);
-
-  for (var i = 1; i < a.shape[axis]; i++) {
-    final currentSelectors = List<Selector>.generate(a.shape.length, (j) {
-      if (j == axis) return Index(i);
-      return Slice();
-    });
-    final currentSlice = a.slice(currentSelectors);
-    elementWiseMin(result, currentSlice);
+  try {
+    switch (a.dtype) {
+      case DType.float64:
+        s_min_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.float32:
+        s_min_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.int64:
+        s_min_int64_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.int32:
+        s_min_int32_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.uint8:
+        s_min_uint8_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.int16:
+        s_min_int16_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+    }
+  } finally {
+    ScratchArena.reset(marker);
   }
 
   return result;
@@ -972,6 +1057,17 @@ NDArray<T> nanmin<T extends Object>(
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for nanmin');
   }
+  if (axis == null && a.size == 0) {
+    throw ArgumentError('Cannot compute nanmin of an empty array.');
+  }
+  if (axis != null) {
+    if (axis < 0 || axis >= a.shape.length) {
+      throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+    }
+    if (a.shape[axis] == 0) {
+      throw ArgumentError('Cannot compute nanmin along axis $axis of size 0.');
+    }
+  }
 
   final targetShape = axis == null
       ? <int>[]
@@ -988,67 +1084,130 @@ NDArray<T> nanmin<T extends Object>(
   }
 
   if (axis == null) {
-    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
-
-    var minVal = double.infinity;
-    var hasValid = false;
-    var hasNan = false;
-
-    for (var i = 0; i < elements.length; i++) {
-      final val = elements[i];
-      if (val is double) {
-        if (val.isNaN) {
-          hasNan = true;
-          continue;
-        }
-        if (val < minVal) {
-          minVal = val;
-          hasValid = true;
-        }
-      } else if (val is num) {
-        final dVal = val.toDouble();
-        if (dVal < minVal) {
-          minVal = dVal;
-          hasValid = true;
-        }
-      }
+    final temp = a.isContiguous ? a : a.copy();
+    final size = temp.size;
+    final ptr = temp.pointer;
+    dynamic minVal;
+    switch (temp.dtype) {
+      case DType.float64:
+        minVal = r_nanmin_double(ptr.cast(), size);
+      case DType.float32:
+        minVal = r_nanmin_float(ptr.cast(), size);
+      case DType.int64:
+        minVal = r_min_int64_t(ptr.cast(), size);
+      case DType.int32:
+        minVal = r_min_int32_t(ptr.cast(), size);
+      case DType.uint8:
+        minVal = r_min_uint8_t(ptr.cast(), size);
+      case DType.int16:
+        minVal = r_min_int16_t(ptr.cast(), size);
+      case DType.boolean:
+        minVal = r_min_uint8_t(ptr.cast(), size) != 0;
+      default:
+        throw UnsupportedError('Unsupported dtype for nanmin: ${temp.dtype}');
     }
-
+    if (!identical(temp, a)) {
+      temp.dispose();
+    }
     final result = out ?? NDArray<T>.create([], a.dtype);
-    if (!hasValid) {
-      result.data[0] = (hasNan ? double.nan : double.infinity) as dynamic;
-    } else {
-      result.data[0] =
-          ((a.dtype == DType.float64 || a.dtype == DType.float32)
-                  ? minVal
-                  : minVal.toInt())
-              as dynamic;
-    }
+    result.setCell([], minVal as T);
     return result;
   }
 
-  if (axis < 0 || axis >= a.shape.length) {
-    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final result = out ?? NDArray<T>.create(newShape, a.dtype);
+
+  final rank = a.shape.length;
+  final marker = ScratchArena.marker;
+  final cBuffer = ScratchArena.getStridedBuffer(rank);
+  final cShape = cBuffer;
+  final cStridesA = cBuffer + rank;
+  final cStridesRes = cBuffer + (rank * 2);
+  for (var i = 0; i < rank; i++) {
+    cShape[i] = a.shape[i];
+    cStridesA[i] = a.strides[i];
+  }
+  for (var i = 0; i < result.shape.length; i++) {
+    cStridesRes[i] = result.strides[i];
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final selectors = List<Selector>.generate(a.shape.length, (j) {
-    if (j == axis) return Index(0);
-    return Slice();
-  });
-  final firstSlice = a.slice(selectors);
-
-  final result = out ?? NDArray<T>.create(newShape, a.dtype);
-  firstSlice.copy(out: result);
-
-  for (var i = 1; i < a.shape[axis]; i++) {
-    final currentSelectors = List<Selector>.generate(a.shape.length, (j) {
-      if (j == axis) return Index(i);
-      return Slice();
-    });
-    final currentSlice = a.slice(currentSelectors);
-    elementWiseNanMin(result, currentSlice);
+  try {
+    switch (a.dtype) {
+      case DType.float64:
+        s_nanmin_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.float32:
+        s_nanmin_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.int64:
+        s_min_int64_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.int32:
+        s_min_int32_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.uint8:
+        s_min_uint8_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.int16:
+        s_min_int16_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.boolean:
+        s_min_uint8_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      default:
+        throw UnsupportedError('Unsupported dtype for nanmin: ${a.dtype}');
+    }
+  } finally {
+    ScratchArena.reset(marker);
   }
 
   return result;
@@ -1066,6 +1225,18 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write max to a disposed output array.');
   }
+  if (axis == null && a.size == 0) {
+    throw ArgumentError('Cannot compute max of an empty array.');
+  }
+  if (axis != null) {
+    if (axis < 0 || axis >= a.shape.length) {
+      throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+    }
+    if (a.shape[axis] == 0) {
+      throw ArgumentError('Cannot compute max along axis $axis of size 0.');
+    }
+  }
+
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
@@ -1082,40 +1253,113 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 
   if (axis == null) {
     final temp = a.isContiguous ? a : a.copy();
-    final offset = temp.offsetElements;
-    var maxVal = temp.data[offset];
-    for (var i = 1; i < temp.size; i++) {
-      maxVal = math.max(maxVal, temp.data[offset + i]);
+    final size = temp.size;
+    final ptr = temp.pointer;
+    dynamic maxVal;
+    switch (temp.dtype) {
+      case DType.float64:
+        maxVal = r_max_double(ptr.cast(), size);
+      case DType.float32:
+        maxVal = r_max_float(ptr.cast(), size);
+      case DType.int64:
+        maxVal = r_max_int64_t(ptr.cast(), size);
+      case DType.int32:
+        maxVal = r_max_int32_t(ptr.cast(), size);
+      case DType.uint8:
+        maxVal = r_max_uint8_t(ptr.cast(), size);
+      case DType.int16:
+        maxVal = r_max_int16_t(ptr.cast(), size);
     }
     if (!identical(temp, a)) {
       temp.dispose();
     }
     final result = out ?? NDArray<T>.create([], a.dtype);
-    result.data[0] = maxVal;
+    result.setCell([], maxVal as T);
     return result;
   }
 
-  if (axis < 0 || axis >= a.shape.length) {
-    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final result = out ?? NDArray<T>.create(newShape, a.dtype);
+
+  final rank = a.shape.length;
+  final marker = ScratchArena.marker;
+  final cBuffer = ScratchArena.getStridedBuffer(rank);
+  final cShape = cBuffer;
+  final cStridesA = cBuffer + rank;
+  final cStridesRes = cBuffer + (rank * 2);
+  for (var i = 0; i < rank; i++) {
+    cShape[i] = a.shape[i];
+    cStridesA[i] = a.strides[i];
+  }
+  for (var i = 0; i < result.shape.length; i++) {
+    cStridesRes[i] = result.strides[i];
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final selectors = List<Selector>.generate(a.shape.length, (j) {
-    if (j == axis) return Index(0);
-    return Slice();
-  });
-  final firstSlice = a.slice(selectors);
-
-  final result = out ?? NDArray<T>.create(newShape, a.dtype);
-  firstSlice.copy(out: result);
-
-  for (var i = 1; i < a.shape[axis]; i++) {
-    final currentSelectors = List<Selector>.generate(a.shape.length, (j) {
-      if (j == axis) return Index(i);
-      return Slice();
-    });
-    final currentSlice = a.slice(currentSelectors);
-    elementWiseMax(result, currentSlice);
+  try {
+    switch (a.dtype) {
+      case DType.float64:
+        s_max_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.float32:
+        s_max_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.int64:
+        s_max_int64_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.int32:
+        s_max_int32_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.uint8:
+        s_max_uint8_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.int16:
+        s_max_int16_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+    }
+  } finally {
+    ScratchArena.reset(marker);
   }
 
   return result;
@@ -1153,6 +1397,17 @@ NDArray<T> nanmax<T extends Object>(
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for nanmax');
   }
+  if (axis == null && a.size == 0) {
+    throw ArgumentError('Cannot compute nanmax of an empty array.');
+  }
+  if (axis != null) {
+    if (axis < 0 || axis >= a.shape.length) {
+      throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+    }
+    if (a.shape[axis] == 0) {
+      throw ArgumentError('Cannot compute nanmax along axis $axis of size 0.');
+    }
+  }
 
   final targetShape = axis == null
       ? <int>[]
@@ -1169,67 +1424,130 @@ NDArray<T> nanmax<T extends Object>(
   }
 
   if (axis == null) {
-    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final List<dynamic> elements = size == a.data.length ? a.data : a.toList();
-
-    var maxVal = -double.infinity;
-    var hasValid = false;
-    var hasNan = false;
-
-    for (var i = 0; i < elements.length; i++) {
-      final val = elements[i];
-      if (val is double) {
-        if (val.isNaN) {
-          hasNan = true;
-          continue;
-        }
-        if (val > maxVal) {
-          maxVal = val;
-          hasValid = true;
-        }
-      } else if (val is num) {
-        final dVal = val.toDouble();
-        if (dVal > maxVal) {
-          maxVal = dVal;
-          hasValid = true;
-        }
-      }
+    final temp = a.isContiguous ? a : a.copy();
+    final size = temp.size;
+    final ptr = temp.pointer;
+    dynamic maxVal;
+    switch (temp.dtype) {
+      case DType.float64:
+        maxVal = r_nanmax_double(ptr.cast(), size);
+      case DType.float32:
+        maxVal = r_nanmax_float(ptr.cast(), size);
+      case DType.int64:
+        maxVal = r_max_int64_t(ptr.cast(), size);
+      case DType.int32:
+        maxVal = r_max_int32_t(ptr.cast(), size);
+      case DType.uint8:
+        maxVal = r_max_uint8_t(ptr.cast(), size);
+      case DType.int16:
+        maxVal = r_max_int16_t(ptr.cast(), size);
+      case DType.boolean:
+        maxVal = r_max_uint8_t(ptr.cast(), size) != 0;
+      default:
+        throw UnsupportedError('Unsupported dtype for nanmax: ${temp.dtype}');
     }
-
+    if (!identical(temp, a)) {
+      temp.dispose();
+    }
     final result = out ?? NDArray<T>.create([], a.dtype);
-    if (!hasValid) {
-      result.data[0] = (hasNan ? double.nan : -double.infinity) as dynamic;
-    } else {
-      result.data[0] =
-          ((a.dtype == DType.float64 || a.dtype == DType.float32)
-                  ? maxVal
-                  : maxVal.toInt())
-              as dynamic;
-    }
+    result.setCell([], maxVal as T);
     return result;
   }
 
-  if (axis < 0 || axis >= a.shape.length) {
-    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final result = out ?? NDArray<T>.create(newShape, a.dtype);
+
+  final rank = a.shape.length;
+  final marker = ScratchArena.marker;
+  final cBuffer = ScratchArena.getStridedBuffer(rank);
+  final cShape = cBuffer;
+  final cStridesA = cBuffer + rank;
+  final cStridesRes = cBuffer + (rank * 2);
+  for (var i = 0; i < rank; i++) {
+    cShape[i] = a.shape[i];
+    cStridesA[i] = a.strides[i];
+  }
+  for (var i = 0; i < result.shape.length; i++) {
+    cStridesRes[i] = result.strides[i];
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final selectors = List<Selector>.generate(a.shape.length, (j) {
-    if (j == axis) return Index(0);
-    return Slice();
-  });
-  final firstSlice = a.slice(selectors);
-
-  final result = out ?? NDArray<T>.create(newShape, a.dtype);
-  firstSlice.copy(out: result);
-
-  for (var i = 1; i < a.shape[axis]; i++) {
-    final currentSelectors = List<Selector>.generate(a.shape.length, (j) {
-      if (j == axis) return Index(i);
-      return Slice();
-    });
-    final currentSlice = a.slice(currentSelectors);
-    elementWiseNanMax(result, currentSlice);
+  try {
+    switch (a.dtype) {
+      case DType.float64:
+        s_nanmax_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.float32:
+        s_nanmax_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.int64:
+        s_max_int64_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.int32:
+        s_max_int32_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.uint8:
+        s_max_uint8_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.int16:
+        s_max_int16_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      case DType.boolean:
+        s_max_uint8_t(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          axis,
+        );
+      default:
+        throw UnsupportedError('Unsupported dtype for nanmax: ${a.dtype}');
+    }
+  } finally {
+    ScratchArena.reset(marker);
   }
 
   return result;
@@ -1389,16 +1707,9 @@ NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
       }
     }
 
-    final List elements = size == a.data.length ? a.data : a.toList();
-    dynamic acc;
-    for (var i = 0; i < elements.length; i++) {
-      acc = (i == 0)
-          ? elements[i]
-          : (((acc as Comparable).compareTo(elements[i]) < 0)
-                ? acc
-                : elements[i]);
-      result.data[i] = acc as T;
-    }
+    final flatA = a.reshape([size]);
+    cumOpFFI(flatA, 0, result, CumOpType.min);
+    flatA.dispose();
     return result;
   }
 
@@ -1455,16 +1766,9 @@ NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
       }
     }
 
-    final List elements = size == a.data.length ? a.data : a.toList();
-    dynamic acc;
-    for (var i = 0; i < elements.length; i++) {
-      acc = (i == 0)
-          ? elements[i]
-          : (((acc as Comparable).compareTo(elements[i]) > 0)
-                ? acc
-                : elements[i]);
-      result.data[i] = acc as T;
-    }
+    final flatA = a.reshape([size]);
+    cumOpFFI(flatA, 0, result, CumOpType.max);
+    flatA.dispose();
     return result;
   }
 

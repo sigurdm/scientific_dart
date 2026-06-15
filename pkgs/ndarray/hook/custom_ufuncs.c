@@ -8098,14 +8098,15 @@ DEFINE_S_NANMINMAX(nanmax, float, >)
 
 // Find Index
 #define DEFINE_FIND_INDEX_FUNC(NAME, TYPE) \
-int64_t s_find_index_##NAME(const TYPE *a, const int *stridesA, \
-                            const int *shape, int rank, \
-                            int op, TYPE target, \
-                            const int *startCoords, const int *directions) { \
-    if (a == NULL || rank < 0 || rank > 8) return -1; \
+int s_find_index_##NAME(const TYPE *a, const int *stridesA, \
+                        const int *shape, int rank, \
+                        int op, TYPE target, \
+                        const int *startCoords, const int *directions, \
+                        int *matchCoords) { \
+    if (a == NULL || rank < 0 || rank > 8) return 0; \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
-    if (total_elements <= 0) return -1; \
+    if (total_elements <= 0) return 0; \
     if (rank == 0) { \
         TYPE val = a[0]; \
         int match = 0; \
@@ -8117,11 +8118,11 @@ int64_t s_find_index_##NAME(const TYPE *a, const int *stridesA, \
             case CMP_OP_GT: match = (val > target); break; \
             case CMP_OP_GE: match = (val >= target); break; \
         } \
-        return match ? 0 : -1; \
+        return match ? 1 : 0; \
     } \
     int coord[8]; \
     for (int i = 0; i < rank; i++) { \
-        if (startCoords[i] < 0 || startCoords[i] >= shape[i]) return -1; \
+        if (startCoords[i] < 0 || startCoords[i] >= shape[i]) return 0; \
         coord[i] = startCoords[i]; \
     } \
     int offsetA = 0; \
@@ -8140,13 +8141,12 @@ int64_t s_find_index_##NAME(const TYPE *a, const int *stridesA, \
             case CMP_OP_GE: match = (val >= target); break; \
         } \
         if (match) { \
-            int64_t flat = 0; \
-            int64_t stride = 1; \
-            for (int i = rank - 1; i >= 0; i--) { \
-                flat += coord[i] * stride; \
-                stride *= shape[i]; \
+            if (matchCoords != NULL) { \
+                for (int i = 0; i < rank; i++) { \
+                    matchCoords[i] = coord[i]; \
+                } \
             } \
-            return flat; \
+            return 1; \
         } \
         int finished = 0; \
         for (int d = rank - 1; d >= 0; d--) { \
@@ -8178,7 +8178,7 @@ int64_t s_find_index_##NAME(const TYPE *a, const int *stridesA, \
         } \
         if (finished) break; \
     } \
-    return -1; \
+    return 0; \
 }
 
 DEFINE_FIND_INDEX_FUNC(double, double)
@@ -8190,14 +8190,15 @@ DEFINE_FIND_INDEX_FUNC(int16, int16_t)
 
 #undef DEFINE_FIND_INDEX_FUNC
 
-int64_t s_find_index_complex128(const cpx_t *a, const int *stridesA,
-                               const int *shape, int rank,
-                               int op, cpx_t target,
-                               const int *startCoords, const int *directions) {
-    if (a == NULL || rank < 0 || rank > 8) return -1;
+int s_find_index_complex128(const cpx_t *a, const int *stridesA,
+                             const int *shape, int rank,
+                             int op, cpx_t target,
+                             const int *startCoords, const int *directions,
+                             int *matchCoords) {
+    if (a == NULL || rank < 0 || rank > 8) return 0;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
-    if (total_elements <= 0) return -1;
+    if (total_elements <= 0) return 0;
     if (rank == 0) {
         cpx_t val = a[0];
         int match = 0;
@@ -8206,11 +8207,11 @@ int64_t s_find_index_complex128(const cpx_t *a, const int *stridesA,
         } else if (op == CMP_OP_NE) {
             match = (val.r != target.r || val.i != target.i);
         }
-        return match ? 0 : -1;
+        return match ? 1 : 0;
     }
     int coord[8];
     for (int i = 0; i < rank; i++) {
-        if (startCoords[i] < 0 || startCoords[i] >= shape[i]) return -1;
+        if (startCoords[i] < 0 || startCoords[i] >= shape[i]) return 0;
         coord[i] = startCoords[i];
     }
     int offsetA = 0;
@@ -8226,13 +8227,12 @@ int64_t s_find_index_complex128(const cpx_t *a, const int *stridesA,
             match = (val.r != target.r || val.i != target.i);
         }
         if (match) {
-            int64_t flat = 0;
-            int64_t stride = 1;
-            for (int i = rank - 1; i >= 0; i--) {
-                flat += coord[i] * stride;
-                stride *= shape[i];
+            if (matchCoords != NULL) {
+                for (int i = 0; i < rank; i++) {
+                    matchCoords[i] = coord[i];
+                }
             }
-            return flat;
+            return 1;
         }
         int finished = 0;
         for (int d = rank - 1; d >= 0; d--) {
@@ -8264,17 +8264,18 @@ int64_t s_find_index_complex128(const cpx_t *a, const int *stridesA,
         }
         if (finished) break;
     }
-    return -1;
+    return 0;
 }
 
-int64_t s_find_index_complex64(const cpx_f_t *a, const int *stridesA,
-                              const int *shape, int rank,
-                              int op, cpx_f_t target,
-                              const int *startCoords, const int *directions) {
-    if (a == NULL || rank < 0 || rank > 8) return -1;
+int s_find_index_complex64(const cpx_f_t *a, const int *stridesA,
+                            const int *shape, int rank,
+                            int op, cpx_f_t target,
+                            const int *startCoords, const int *directions,
+                            int *matchCoords) {
+    if (a == NULL || rank < 0 || rank > 8) return 0;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
-    if (total_elements <= 0) return -1;
+    if (total_elements <= 0) return 0;
     if (rank == 0) {
         cpx_f_t val = a[0];
         int match = 0;
@@ -8283,11 +8284,11 @@ int64_t s_find_index_complex64(const cpx_f_t *a, const int *stridesA,
         } else if (op == CMP_OP_NE) {
             match = (val.r != target.r || val.i != target.i);
         }
-        return match ? 0 : -1;
+        return match ? 1 : 0;
     }
     int coord[8];
     for (int i = 0; i < rank; i++) {
-        if (startCoords[i] < 0 || startCoords[i] >= shape[i]) return -1;
+        if (startCoords[i] < 0 || startCoords[i] >= shape[i]) return 0;
         coord[i] = startCoords[i];
     }
     int offsetA = 0;
@@ -8303,13 +8304,12 @@ int64_t s_find_index_complex64(const cpx_f_t *a, const int *stridesA,
             match = (val.r != target.r || val.i != target.i);
         }
         if (match) {
-            int64_t flat = 0;
-            int64_t stride = 1;
-            for (int i = rank - 1; i >= 0; i--) {
-                flat += coord[i] * stride;
-                stride *= shape[i];
+            if (matchCoords != NULL) {
+                for (int i = 0; i < rank; i++) {
+                    matchCoords[i] = coord[i];
+                }
             }
-            return flat;
+            return 1;
         }
         int finished = 0;
         for (int d = rank - 1; d >= 0; d--) {
@@ -8341,37 +8341,38 @@ int64_t s_find_index_complex64(const cpx_f_t *a, const int *stridesA,
         }
         if (finished) break;
     }
-    return -1;
+    return 0;
 }
 
-int64_t ndarray_find_index(
+int ndarray_find_index(
     int op, int dtype,
     const void *a, const int *stridesA,
     const int *shape, int rank,
     const void *target,
     const int *startCoords,
-    const int *directions
+    const int *directions,
+    int *matchCoords
 ) {
-    if (a == NULL || target == NULL) return -1;
+    if (a == NULL || target == NULL) return 0;
     switch (dtype) {
         case DTYPE_FLOAT64:
-            return s_find_index_double((const double*)a, stridesA, shape, rank, op, *(const double*)target, startCoords, directions);
+            return s_find_index_double((const double*)a, stridesA, shape, rank, op, *(const double*)target, startCoords, directions, matchCoords);
         case DTYPE_FLOAT32:
-            return s_find_index_float((const float*)a, stridesA, shape, rank, op, *(const float*)target, startCoords, directions);
+            return s_find_index_float((const float*)a, stridesA, shape, rank, op, *(const float*)target, startCoords, directions, matchCoords);
         case DTYPE_INT32:
-            return s_find_index_int32((const int32_t*)a, stridesA, shape, rank, op, *(const int32_t*)target, startCoords, directions);
+            return s_find_index_int32((const int32_t*)a, stridesA, shape, rank, op, *(const int32_t*)target, startCoords, directions, matchCoords);
         case DTYPE_INT64:
-            return s_find_index_int64((const int64_t*)a, stridesA, shape, rank, op, *(const int64_t*)target, startCoords, directions);
+            return s_find_index_int64((const int64_t*)a, stridesA, shape, rank, op, *(const int64_t*)target, startCoords, directions, matchCoords);
         case DTYPE_UINT8:
         case DTYPE_BOOLEAN:
-            return s_find_index_uint8((const uint8_t*)a, stridesA, shape, rank, op, *(const uint8_t*)target, startCoords, directions);
+            return s_find_index_uint8((const uint8_t*)a, stridesA, shape, rank, op, *(const uint8_t*)target, startCoords, directions, matchCoords);
         case DTYPE_INT16:
-            return s_find_index_int16((const int16_t*)a, stridesA, shape, rank, op, *(const int16_t*)target, startCoords, directions);
+            return s_find_index_int16((const int16_t*)a, stridesA, shape, rank, op, *(const int16_t*)target, startCoords, directions, matchCoords);
         case DTYPE_COMPLEX128:
-            return s_find_index_complex128((const cpx_t*)a, stridesA, shape, rank, op, *(const cpx_t*)target, startCoords, directions);
+            return s_find_index_complex128((const cpx_t*)a, stridesA, shape, rank, op, *(const cpx_t*)target, startCoords, directions, matchCoords);
         case DTYPE_COMPLEX64:
-            return s_find_index_complex64((const cpx_f_t*)a, stridesA, shape, rank, op, *(const cpx_f_t*)target, startCoords, directions);
+            return s_find_index_complex64((const cpx_f_t*)a, stridesA, shape, rank, op, *(const cpx_f_t*)target, startCoords, directions, matchCoords);
         default:
-            return -1;
+            return 0;
     }
 }

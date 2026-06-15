@@ -13,7 +13,8 @@ Remember when adding new operations, fixing old ones:
 * It is usally ok for the result of an operation to have same dtype as the input. We like the conversions to be explicit.
 * Avoid accessing or indexing `NDArray.data` directly in Dart code (as it is `@internal`).
 * Use the `.scalar` getter to access the value of 0-dimensional arrays.
-
+* Always prefer NDArray<Float64> or NDArray<Float32> over NDArray<double> for argument and return values.
+* Whenever applicable, use NDArray.scope instead of manually calling dispose. Remember that results must be attached to the parent scope before returning. 
  
 
 When running dart commands use the sdk specified in .vscode/settings.json.

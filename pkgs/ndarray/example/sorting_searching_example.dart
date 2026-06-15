@@ -159,41 +159,20 @@ void runSearchSortedExample() {
 }
 
 void runFindIndexExample() {
-  print('\n--- Element-wise Search (findIndex) ---');
-  // 1D Array Search
-  final a = NDArray.fromList([1.0, 2.0, 3.0, 2.0, 1.0], [5], DType.float64);
-  print('Array a: ${a.toList()}');
+  print('\n--- Coordinates Discovery (findIndex) ---');
+  NDArray.scope(() {
+    final a = NDArray.fromList([1.0, 2.0, 3.0, 2.0, 1.0], [5], DType.float64);
+    print('Array a: ${a.toList()}');
+    final coords = findIndex(a, CompareOp.equal, 2.0);
+    print('findIndex(a, ==, 2.0) coordinates: $coords'); // [1]
 
-  // Find first index of 2.0
-  final idx1 = findIndex(a, CompareOp.equal, 2.0);
-  print('First index of 2.0: $idx1'); // 1
-
-  // Find last index of 2.0 (searching backwards)
-  final idx2 = findIndex(a, CompareOp.equal, 2.0, directions: [-1]);
-  print('Last index of 2.0 (backwards): $idx2'); // 3
-
-  // Search forward starting from index 2
-  final idx3 = findIndex(a, CompareOp.equal, 2.0, startCoords: [2]);
-  print('First index of 2.0 starting from 2: $idx3'); // 3
-
-  // 2D Array Search with custom directions
-  final mat = NDArray.fromList(
-    [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
-    [2, 3],
-    DType.float64,
-  );
-  print('\nMatrix mat:\n[[1.0, 2.0, 3.0],\n [4.0, 5.0, 6.0]]');
-
-  // Start at [0, 2] (value 3.0), search forward along rows, backward along columns ([1, -1])
-  // Traversal order: [0, 2] (3.0), [0, 1] (2.0), [0, 0] (1.0), [1, 2] (6.0), [1, 1] (5.0), [1, 0] (4.0)
-  // Find first value greater than 4.0 in this traversal
-  final flatIdx = findIndex(
-    mat,
-    CompareOp.greater,
-    4.0,
-    startCoords: [0, 2],
-    directions: [1, -1],
-  );
-  // Matches 6.0 at [1, 2], which is flat index 5 in C-contiguous layout
-  print('First index > 4.0 (start [0,2], directions [1, -1]): $flatIdx'); // 5
+    final a2d = NDArray.fromList(
+      [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+      [2, 3],
+      DType.float64,
+    );
+    print('2D Array:\n[[1.0, 2.0, 3.0],\n [4.0, 5.0, 6.0]]');
+    final coords2d = findIndex(a2d, CompareOp.greater, 4.0);
+    print('findIndex(a2d, >, 4.0) coordinates: $coords2d'); // [1, 1] (for 5.0)
+  });
 }

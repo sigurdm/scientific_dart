@@ -331,9 +331,9 @@ bool _hasSameSign(NDArray<Float64> coeffs) {
 
   final first = coeffs.getCell([0]);
   if (first > 0) {
-    return findIndex(coeffs, CompareOp.lessEqual, 0.0) == -1;
+    return findIndex(coeffs, CompareOp.lessEqual, 0.0) == null;
   } else if (first < 0) {
-    return findIndex(coeffs, CompareOp.greaterEqual, 0.0) == -1;
+    return findIndex(coeffs, CompareOp.greaterEqual, 0.0) == null;
   }
   return false;
 }

@@ -601,9 +601,9 @@ void main() {
             [5],
             DType.float64,
           );
-          expect(findIndex(a, CompareOp.equal, 2.0), 1);
-          expect(findIndex(a, CompareOp.greater, 2.0), 2);
-          expect(findIndex(a, CompareOp.equal, 4.0), -1);
+          expect(findIndex(a, CompareOp.equal, 2.0), [1]);
+          expect(findIndex(a, CompareOp.greater, 2.0), [2]);
+          expect(findIndex(a, CompareOp.equal, 4.0), null);
         }),
       );
 
@@ -615,8 +615,8 @@ void main() {
             [5],
             DType.float64,
           );
-          expect(findIndex(a, CompareOp.equal, 2.0, directions: [-1]), 3);
-          expect(findIndex(a, CompareOp.equal, 1.0, directions: [-1]), 4);
+          expect(findIndex(a, CompareOp.equal, 2.0, directions: [-1]), [3]);
+          expect(findIndex(a, CompareOp.equal, 1.0, directions: [-1]), [4]);
         }),
       );
 
@@ -628,8 +628,8 @@ void main() {
             [5],
             DType.float64,
           );
-          expect(findIndex(a, CompareOp.equal, 2.0, startCoords: [2]), 3);
-          expect(findIndex(a, CompareOp.equal, 1.0, startCoords: [1]), 4);
+          expect(findIndex(a, CompareOp.equal, 2.0, startCoords: [2]), [3]);
+          expect(findIndex(a, CompareOp.equal, 1.0, startCoords: [1]), [4]);
         }),
       );
 
@@ -649,7 +649,7 @@ void main() {
               startCoords: [2],
               directions: [-1],
             ),
-            1,
+            [1],
           );
           expect(
             findIndex(
@@ -659,7 +659,7 @@ void main() {
               startCoords: [3],
               directions: [-1],
             ),
-            0,
+            [0],
           );
         }),
       );
@@ -677,18 +677,19 @@ void main() {
           expect(sliced.shape, [3]);
           expect(sliced.isContiguous, isFalse);
 
-          expect(
-            findIndex(sliced, CompareOp.equal, 3.0),
+          expect(findIndex(sliced, CompareOp.equal, 3.0), [
             1,
-          ); // flat index in sliced is 1
-          expect(findIndex(sliced, CompareOp.equal, 5.0), 2);
-          expect(findIndex(sliced, CompareOp.equal, 2.0), -1); // 2.0 is skipped
+          ]); // flat index in sliced is 1
+          expect(findIndex(sliced, CompareOp.equal, 5.0), [2]);
+          expect(
+            findIndex(sliced, CompareOp.equal, 2.0),
+            null,
+          ); // 2.0 is skipped
 
           // Backward on strided
-          expect(
-            findIndex(sliced, CompareOp.greater, 2.0, directions: [-1]),
+          expect(findIndex(sliced, CompareOp.greater, 2.0, directions: [-1]), [
             2,
-          ); // 5.0 is at index 2
+          ]); // 5.0 is at index 2
         }),
       );
 
@@ -711,7 +712,7 @@ void main() {
               startCoords: [0, 2],
               directions: [1, -1],
             ),
-            2,
+            [0, 2],
           ); // 3.0 matches immediately, flat index 2
 
           expect(
@@ -722,7 +723,7 @@ void main() {
               startCoords: [0, 2],
               directions: [1, -1],
             ),
-            5,
+            [1, 2],
           ); // 6.0 is at [1, 2], flat index 5
 
           expect(
@@ -733,7 +734,7 @@ void main() {
               startCoords: [1, 2],
               directions: [1, -1],
             ),
-            -1,
+            null,
           ); // starts at [1, 2], doesn't visit row 0
         }),
       );
@@ -756,7 +757,7 @@ void main() {
           ); // wrong rank
 
           final empty = NDArray<double>.create([0], DType.float64);
-          expect(findIndex(empty, CompareOp.equal, 1.0), -1);
+          expect(findIndex(empty, CompareOp.equal, 1.0), null);
         }),
       );
     });

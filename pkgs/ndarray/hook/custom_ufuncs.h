@@ -1286,13 +1286,14 @@ void s_nanmin_double(const double *src, const int *stridesSrc, double *dest, con
 void s_nanmax_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_nanmin_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_nanmax_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
-int64_t ndarray_find_index(
+int ndarray_find_index(
     int op, int dtype,
     const void *a, const int *stridesA,
     const int *shape, int rank,
     const void *target,
     const int *startCoords,
-    const int *directions
+    const int *directions,
+    int *matchCoords
 );
 
 #endif /* CUSTOM_UFUNCS_H */
