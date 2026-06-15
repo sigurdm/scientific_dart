@@ -1821,20 +1821,47 @@ enum CompareOp {
   greaterEqual,
 }
 
-/// Finds the coordinates of the first element in [a] that satisfies the condition [op] with [target].
+/// Finds the coordinates of the first element in [a] that satisfies the comparison [op] with [target].
 ///
-/// Returns `null` if no such element is found.
+/// Traverses the array element-by-element starting from [startCoords] (which defaults to
+/// `0` for dimensions with positive direction, or `shape[i] - 1` for negative) and steps in the
+/// directions specified by [directions] (which defaults to forward `1` for all dimensions).
+///
+/// Returns a list of coordinates (e.g. `[row, col]`) on match, or `null` if no matching element is found.
+/// For 0-dimensional arrays, returns `[]` on match.
 ///
 /// **Preconditions:**
 /// - The array [a] must not be disposed.
-/// - [target] must match the DType of [a] (e.g. [double] for [DType.float64], [Complex] for complex types).
+/// - [target] must match the Dart representation of the [DType] of [a] (e.g., [double] for [DType.float64],
+///   [int] for integer types, [Complex] for complex types).
 /// - Complex types only support [CompareOp.equal] and [CompareOp.notEqual].
+/// - If [startCoords] is provided, its length must match [a.shape.length] (the rank of the array),
+///   and each coordinate `startCoords[i]` must satisfy `0 <= startCoords[i] < a.shape[i]`.
+/// - If [directions] is provided, its length must match [a.shape.length], and it must only
+///   contain `1` (forward search) or `-1` (backward search) for each dimension.
+///
+/// **Exceptions Thrown:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if the length of [startCoords] or [directions] does not match the rank of [a].
+/// - [ArgumentError] if [directions] contains any values other than `1` or `-1`.
+/// - [RangeError] if any coordinate in [startCoords] is out of bounds for the array's shape.
+/// - [UnsupportedError] if [a] has a complex data type and [op] is an inequality operator (e.g., [CompareOp.less]).
+///
+/// **Performance Considerations:**
+/// - Complexity is $O(N)$ in the worst case where $N$ is the number of elements in [a].
+/// - It performs a linear search with early-exit (short-circuiting) implemented in native C, which is
+///   highly optimized and avoids allocating temporary boolean masks or intermediate coordinate arrays.
+///   No intermediate Dart objects are allocated for coordinate tracking during search.
+/// - Runs in $O(1)$ memory overhead (allocates FFI arguments via [ScratchArena]).
+///
+/// **Equivalent NumPy Operations:**
+/// - In NumPy, coordinates of matching elements are typically found using `np.argwhere(cond)`.
+///   However, `np.argwhere` evaluates the condition on the entire array and returns all matches, which
+///   allocates memory. This function is analogous to a fast, low-overhead version that returns only the
+///   first matching coordinate index list: `np.argwhere(op(a, target))[0]` (if one exists).
 ///
 /// **Example:**
-/// ```dart
-/// final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-/// final coords = findIndex(a, CompareOp.greater, 1.5); // returns [1]
-/// ```
+/// {@example /example/sorting_searching_example.dart lang=dart}
 List<int>? findIndex<T extends Object>(
   NDArray<T> a,
   CompareOp op,
