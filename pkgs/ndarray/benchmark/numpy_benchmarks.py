@@ -227,3 +227,75 @@ def run_strided_add():
     np.add(strided_x, strided_y, out=strided_out)
 t_strided_add = run_benchmark("StridedAdd", lambda: None, run_strided_add, 200)
 print(f"MEMORY Track| Strided non-contiguous add(x, y)         [shape=500x500]: {t_strided_add:.2f} us")
+
+print("\n--- TRACK E: DISTANCE METRICS ---")
+
+# Setup data
+rng_dist = np.random.default_rng(42)
+x_dist = rng_dist.normal(size=(500, 100))
+# for hamming
+x_dist_int = rng_dist.integers(0, 2, size=(500, 100), dtype=np.int32)
+
+xa_dist = rng_dist.normal(size=(500, 100))
+xb_dist = rng_dist.normal(size=(500, 100))
+
+xa_dist_int = rng_dist.integers(0, 2, size=(500, 100), dtype=np.int32)
+xb_dist_int = rng_dist.integers(0, 2, size=(500, 100), dtype=np.int32)
+
+# pdist Euclidean
+def run_pdist_euclidean():
+    # We use broadcasting Euclidean
+    M = x_dist.shape[0]
+    dists = np.sqrt(np.sum((x_dist[:, np.newaxis, :] - x_dist[np.newaxis, :, :]) ** 2, axis=-1))
+    _ = dists[np.triu_indices(M, k=1)]
+
+t_pdist_euc = run_benchmark("PdistEuclidean", lambda: None, run_pdist_euclidean, 50)
+print(f"DISTANCE Track| NumPy pdist Euclidean                          [shape=500x100]: {t_pdist_euc:.2f} us")
+
+# pdist Cosine
+def run_pdist_cosine():
+    M = x_dist.shape[0]
+    dot_product = np.dot(x_dist, x_dist.T)
+    norm_x = np.linalg.norm(x_dist, axis=1)
+    norm_x[norm_x == 0] = np.nan
+    dists = 1.0 - dot_product / (norm_x[:, np.newaxis] * norm_x[np.newaxis, :])
+    _ = dists[np.triu_indices(M, k=1)]
+
+t_pdist_cos = run_benchmark("PdistCosine", lambda: None, run_pdist_cosine, 50)
+print(f"DISTANCE Track| NumPy pdist Cosine                             [shape=500x100]: {t_pdist_cos:.2f} us")
+
+# pdist Hamming
+def run_pdist_hamming():
+    M = x_dist_int.shape[0]
+    dists = np.mean(x_dist_int[:, np.newaxis, :] != x_dist_int[np.newaxis, :, :], axis=-1)
+    _ = dists[np.triu_indices(M, k=1)]
+
+t_pdist_ham = run_benchmark("PdistHamming", lambda: None, run_pdist_hamming, 50)
+print(f"DISTANCE Track| NumPy pdist Hamming                             [shape=500x100]: {t_pdist_ham:.2f} us")
+
+# cdist Euclidean
+def run_cdist_euclidean():
+    _ = np.sqrt(np.sum((xa_dist[:, np.newaxis, :] - xb_dist[np.newaxis, :, :]) ** 2, axis=-1))
+
+t_cdist_euc = run_benchmark("CdistEuclidean", lambda: None, run_cdist_euclidean, 50)
+print(f"DISTANCE Track| NumPy cdist Euclidean                          [shape=500x100 vs 500x100]: {t_cdist_euc:.2f} us")
+
+# cdist Cosine
+def run_cdist_cosine():
+    dot_product = np.dot(xa_dist, xb_dist.T)
+    norm_a = np.linalg.norm(xa_dist, axis=1)
+    norm_b = np.linalg.norm(xb_dist, axis=1)
+    norm_a[norm_a == 0] = np.nan
+    norm_b[norm_b == 0] = np.nan
+    _ = 1.0 - dot_product / (norm_a[:, np.newaxis] * norm_b[np.newaxis, :])
+
+t_cdist_cos = run_benchmark("CdistCosine", lambda: None, run_cdist_cosine, 50)
+print(f"DISTANCE Track| NumPy cdist Cosine                             [shape=500x100 vs 500x100]: {t_cdist_cos:.2f} us")
+
+# cdist Hamming
+def run_cdist_hamming():
+    _ = np.mean(xa_dist_int[:, np.newaxis, :] != xb_dist_int[np.newaxis, :, :], axis=-1)
+
+t_cdist_ham = run_benchmark("CdistHamming", lambda: None, run_cdist_hamming, 50)
+print(f"DISTANCE Track| NumPy cdist Hamming                             [shape=500x100 vs 500x100]: {t_cdist_ham:.2f} us")
+

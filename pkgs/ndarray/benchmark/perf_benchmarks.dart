@@ -744,6 +744,169 @@ class StridedElementwiseAddBenchmark extends NdarrayBenchmarkBase {
 }
 
 // ============================================================================
+// 5. DISTANCE METRICS TRACK (pdist & cdist)
+// ============================================================================
+
+class PdistEuclideanBenchmark extends NdarrayBenchmarkBase {
+  late NDArray<double> x;
+
+  PdistEuclideanBenchmark()
+    : super(
+        'DISTANCE Track| pdist Euclidean                                 [shape=500x100]',
+      );
+
+  @override
+  void setup() {
+    x = normal([500, 100], seed: 42);
+  }
+
+  @override
+  void run() {
+    final res = pdist(x, metric: DistanceMetric.euclidean);
+    res.dispose();
+  }
+
+  @override
+  void teardown() {
+    x.dispose();
+  }
+}
+
+class PdistCosineBenchmark extends NdarrayBenchmarkBase {
+  late NDArray<double> x;
+
+  PdistCosineBenchmark()
+    : super(
+        'DISTANCE Track| pdist Cosine                                    [shape=500x100]',
+      );
+
+  @override
+  void setup() {
+    x = normal([500, 100], seed: 42);
+  }
+
+  @override
+  void run() {
+    final res = pdist(x, metric: DistanceMetric.cosine);
+    res.dispose();
+  }
+
+  @override
+  void teardown() {
+    x.dispose();
+  }
+}
+
+class PdistHammingBenchmark extends NdarrayBenchmarkBase {
+  late NDArray<Int32> x;
+
+  PdistHammingBenchmark()
+    : super(
+        'DISTANCE Track| pdist Hamming                                   [shape=500x100]',
+      );
+
+  @override
+  void setup() {
+    x = randint([500, 100], low: 0, high: 2, dtype: DType.int32, seed: 42);
+  }
+
+  @override
+  void run() {
+    final res = pdist(x, metric: DistanceMetric.hamming);
+    res.dispose();
+  }
+
+  @override
+  void teardown() {
+    x.dispose();
+  }
+}
+
+class CdistEuclideanBenchmark extends NdarrayBenchmarkBase {
+  late NDArray<double> xa;
+  late NDArray<double> xb;
+
+  CdistEuclideanBenchmark()
+    : super(
+        'DISTANCE Track| cdist Euclidean                                 [shape=500x100 vs 500x100]',
+      );
+
+  @override
+  void setup() {
+    xa = normal([500, 100], seed: 42);
+    xb = normal([500, 100], seed: 43);
+  }
+
+  @override
+  void run() {
+    final res = cdist(xa, xb, metric: DistanceMetric.euclidean);
+    res.dispose();
+  }
+
+  @override
+  void teardown() {
+    xa.dispose();
+    xb.dispose();
+  }
+}
+
+class CdistCosineBenchmark extends NdarrayBenchmarkBase {
+  late NDArray<double> xa;
+  late NDArray<double> xb;
+
+  CdistCosineBenchmark()
+    : super(
+        'DISTANCE Track| cdist Cosine                                    [shape=500x100 vs 500x100]',
+      );
+
+  @override
+  void setup() {
+    xa = normal([500, 100], seed: 42);
+    xb = normal([500, 100], seed: 43);
+  }
+
+  @override
+  void run() {
+    final res = cdist(xa, xb, metric: DistanceMetric.cosine);
+    res.dispose();
+  }
+
+  @override
+  void teardown() {
+    xa.dispose();
+    xb.dispose();
+  }
+}
+
+class CdistHammingBenchmark extends NdarrayBenchmarkBase {
+  late NDArray<Int32> xa;
+  late NDArray<Int32> xb;
+
+  CdistHammingBenchmark()
+    : super(
+        'DISTANCE Track| cdist Hamming                                   [shape=500x100 vs 500x100]',
+      );
+
+  @override
+  void setup() {
+    xa = randint([500, 100], low: 0, high: 2, dtype: DType.int32, seed: 42);
+    xb = randint([500, 100], low: 0, high: 2, dtype: DType.int32, seed: 43);
+  }
+
+  @override
+  void run() {
+    final res = cdist(xa, xb, metric: DistanceMetric.hamming);
+    res.dispose();
+  }
+
+  @override
+  void teardown() {
+    xa.dispose();
+    xb.dispose();
+  }
+}
+
+// ============================================================================
 // MAIN SUITE RUNNER ENTRYPOINT
 // ============================================================================
 
@@ -800,6 +963,14 @@ void main() {
   ContiguousViewFlattenBenchmark().report();
   ContiguousViewSumBenchmark().report();
   StridedElementwiseAddBenchmark().report();
+
+  print('\n--- TRACK E: DISTANCE METRICS (pdist & cdist) ---');
+  PdistEuclideanBenchmark().report();
+  PdistCosineBenchmark().report();
+  PdistHammingBenchmark().report();
+  CdistEuclideanBenchmark().report();
+  CdistCosineBenchmark().report();
+  CdistHammingBenchmark().report();
 
   print(
     '\n============================================================================',

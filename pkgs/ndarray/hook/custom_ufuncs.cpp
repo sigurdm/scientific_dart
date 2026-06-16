@@ -8432,9 +8432,7 @@ int ndarray_find_index(
     } else { \
         double diff_count = 0.0; \
         for (int i = 0; i < N; i++) { \
-            if (((const type*)u)[i * strideU] != ((const type*)v)[i * strideV]) { \
-                diff_count += 1.0; \
-            } \
+            diff_count += (((const type*)u)[i * strideU] != ((const type*)v)[i * strideV]); \
         } \
         result = diff_count / (double)N; \
     } \
