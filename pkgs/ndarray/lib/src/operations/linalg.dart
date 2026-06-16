@@ -698,9 +698,8 @@ NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
 
 /// Compute the multiplicative inverse of a square 2D matrix.
 ///
-/// Natively offloads computation to high-speed OpenBLAS LAPACK LU decomposition routines
-/// (`LAPACKE_dgetrf`/`LAPACKE_dgetri` for Float64, and `LAPACKE_sgetrf`/`LAPACKE_sgetri` for Float32),
-/// yielding maximum sequential execution throughput.
+/// Uses OpenBLAS LAPACK LU decomposition routines
+/// (`LAPACKE_dgetrf`/`LAPACKE_dgetri` for Float64, and `LAPACKE_sgetrf`/`LAPACKE_sgetri` for Float32).
 ///
 /// **Preconditions:**
 /// - Input array [a] must be a square 2D matrix (`shape.length == 2` and `shape[0] == shape[1]`).
@@ -927,7 +926,7 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// - [ArgumentError] if [a.dtype] is not a supported floating point data type.
 ///
 /// **Performance considerations:**
-/// - Algorithmic complexity is $O(N^3)$ leveraging optimized native LAPACK linear algebra solvers.
+/// - Algorithmic complexity is $O(N^3)$ using LAPACK linear algebra solvers.
 ///
 /// **Example:**
 /// ```dart
@@ -954,7 +953,7 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// - [ArgumentError] if [a.dtype] is not a supported data type.
 ///
 /// **Performance considerations:**
-/// - Algorithmic complexity is $O(N^3)$ leveraging optimized native LAPACK linear algebra solvers.
+/// - Algorithmic complexity is $O(N^3)$ using LAPACK linear algebra solvers.
 /// - Fully vectorized and batched in native C for float64, complex64, and complex128, minimizing FFI transitions.
 ///
 /// **Example:**
@@ -979,7 +978,7 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// - [ArgumentError] if [a.dtype] is not a supported data type.
 ///
 /// **Performance considerations:**
-/// - Algorithmic complexity is $O(N^3)$ leveraging optimized native LAPACK linear algebra solvers.
+/// - Algorithmic complexity is $O(N^3)$ using LAPACK linear algebra solvers.
 /// - Fully vectorized and batched in native C for float64, complex64, and complex128, minimizing FFI transitions.
 ///
 /// **Example:**
@@ -1189,7 +1188,7 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// - [ArgumentError] if [b] dimensions do not match [a].
 /// - [ArgumentError] if [a] is singular and cannot be solved.
 /// **Performance considerations:**
-/// - Algorithmic complexity is $O(N^3)$ executed in native C-compiled space.
+/// - Algorithmic complexity is $O(N^3)$ executed natively.
 ///
 /// **Example:**
 /// ```dart
@@ -2024,7 +2023,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// Decomposes a matrix [a] out an orthogonal matrix `Q` and an upper triangular matrix `R`
 /// such that `a = Q * R`.
-/// Natively offloads to LAPACK solvers (`dgeqrf` / `sgeqrf` and `dorgqr` / `sorgqr`) depending on precision.
+/// Uses LAPACK solvers (`dgeqrf` / `sgeqrf` and `dorgqr` / `sorgqr`) depending on precision.
 ///
 /// **Preconditions:**
 /// - Input matrix [a] must be at least 2-dimensional.
@@ -2032,9 +2031,6 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// **Throws:**
 /// - [ArgumentError] if [a] rank is less than 2.
 /// - [StateError] if native FFI memory allocation or LAPACK solver initialization fails.
-///
-/// **Performance considerations:**
-/// - Executes at high-speed natively in unmanaged C space.
 ///
 /// **Example:**
 /// ```dart
@@ -2271,7 +2267,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// Decomposes a matrix [a] out left singular vectors `U`, singular values `S`,
 /// and right singular vectors Vh such that `a = U * diag(S) * Vh`.
-/// Natively offloads to LAPACK solvers (`dgesdd` / `sgesdd`) depending on precision.
+/// Uses LAPACK solvers (`dgesdd` / `sgesdd`) depending on precision.
 ///
 /// **Preconditions:**
 /// - Input matrix [a] must be at least 2-dimensional.
@@ -2279,9 +2275,6 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// **Throws:**
 /// - [ArgumentError] if [a] rank is less than 2.
 /// - [StateError] if native FFI memory allocation or LAPACK solver initialization fails.
-///
-/// **Performance considerations:**
-/// - Executes at high-speed natively in unmanaged C space.
 ///
 /// **Example:**
 /// ```dart

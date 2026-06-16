@@ -14,11 +14,15 @@ import 'operations/helpers.dart' as helpers;
 
 /// Supported data types for the elements of an [NDArray].
 extension type const Float64(double value) implements double {}
+
 extension type const Float32(double value) implements double {}
 
 extension type const Int64(int value) implements int {}
+
 extension type const Int32(int value) implements int {}
+
 extension type const Uint8(int value) implements int {}
+
 extension type const Int16(int value) implements int {}
 
 extension type const Complex64._(Complex value) implements Complex {
@@ -70,7 +74,7 @@ enum DType<T> {
 ///   invalidated view causes crashes or undefined behavior.
 ///
 /// **Arithmetic Error & Overflow Handling:**
-/// Mathematical operations on [NDArray] are backed by highly-optimized native C ufuncs,
+/// Mathematical operations on [NDArray] are backed by native C ufuncs,
 /// and adhere to the following rules:
 /// - **Division by Zero**:
 ///   - **True Division (`/`)**: Performs floating-point division under IEEE 754 standards.
@@ -145,9 +149,8 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - When reshaping a non-contiguous view.
   ///
   /// **Why is it relevant?**
-  /// - **Performance**: Contiguous arrays allow for optimized, vectorized operations
-  ///   (like BLAS calls) that achieve maximum memory throughput. Non-contiguous
-  ///   arrays often fall back to slower element-by-element iteration.
+  /// - **Performance**: Contiguous arrays allow for vectorized operations
+  ///   (like BLAS calls). Non-contiguous arrays may fall back to element-by-element iteration.
   ///
   /// **How to make an array contiguous?**
   /// - Call [copy] to allocate a new contiguous array with the same elements.
@@ -389,8 +392,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Performance considerations:**
   /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$ where $N$ is the total
   ///   number of elements (product of all dimensions in [shape]).
-  /// - Offloads allocation directly to raw OS heap memory management (virtual memory page mappings),
-  ///   bypassing Dart isolate VM GC pressure.
+  /// - Allocates memory directly from the OS heap (virtual memory page mappings).
   ///
   /// **Example:**
   /// ```dart
@@ -524,7 +526,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Performance considerations:**
   /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$ where $N$ is the total
   ///   number of elements (product of all dimensions in [shape]).
-  /// - Bypasses isolate VM GC pressure entirely by allocating memory via unmanaged `calloc` pages.
+  /// - Allocates memory from the C heap using `calloc`.
   ///
   /// **Example:**
   /// ```dart
@@ -860,7 +862,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - [ArgumentError] if the total size of [newShape] does not match the original size.
   ///
   /// **Performance considerations:**
-  /// - If the array [isContiguous], this operation is extremely fast ($O(1)$), returning a zero-allocation view sharing backing memory.
+  /// - If the array [isContiguous], this is a $O(1)$ operation, returning a zero-allocation view sharing backing memory.
   /// - If the array is a non-contiguous view, this flattens it first, performing a copy and allocating a new contiguous array ($O(N)$ complexity).
   ///
   /// **Example:**
@@ -903,8 +905,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Returns a copy of the array collapsed into a one-dimensional tensor list.
   ///
   /// **Performance considerations:**
-  /// - For C-contiguous layouts, offloads copy directly to raw unmanaged hardware FFI
-  ///   pointer `setRange` copies, achieving maximum sequential throughput.
+  /// - For C-contiguous layouts, copies memory directly.
   /// - For strided non-contiguous views, performs dynamic coordinate walk copy.
   /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
   ///
@@ -935,11 +936,8 @@ final class NDArray<T> implements ffi.Finalizable {
   /// C-contiguous strides).
   ///
   /// **Performance considerations:**
-  /// - For C-contiguous layouts, offloads elements copy directly to raw unmanaged FFI
-  ///   memmove/memcpy sweeps, achieving optimal performance.
-  /// - For strided non-contiguous views, delegates the copy/flatten operation to optimized
-  ///   native FFI/C functions (intrinsics) to write into the contiguous destination array
-  ///   without allocating intermediate structures in Dart.
+  /// - For C-contiguous layouts, copies elements directly using memmove/memcpy.
+  /// - For strided non-contiguous views, uses native C intrinsics to copy into the contiguous destination array.
   ///
   /// **Throws:**
   /// - [StateError] if the array is already disposed.
@@ -1146,8 +1144,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Fills the array with [value] in-place.
   ///
   /// **Performance considerations:**
-  /// - For contiguous same-type arrays, utilizes blazing fast native C register filling kernels
-  ///   (`v_fill_double`, `v_fill_float`, `v_fill_int64`, `v_fill_int32`), bypassing Dart VM loops entirely.
+  /// - For contiguous same-type arrays, utilizes native C fill kernels.
   /// - For strided or non-contiguous views, falls back to sequential element walk mutations.
   /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
   ///
@@ -1908,7 +1905,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
   ///
   /// **Performance:**
-  /// - Execution is offloaded to native C++ SIMD-optimized comparison loops.
+  /// - Uses native C++ SIMD vectorization.
   /// - Time Complexity: `O(N)` where `N` is the broadcasted size of the arrays.
   /// - Space Complexity: `O(N)` to allocate the resulting boolean array (unless an `out` parameter is used in the underlying ufunc).
   ///
@@ -1935,7 +1932,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
   ///
   /// **Performance:**
-  /// - Offloaded to native C++ SIMD-optimized comparison loops.
+  /// - Uses native C++ SIMD vectorization.
   /// - Time Complexity: `O(N)` where `N` is the broadcasted size.
   ///
   /// **Example:**
@@ -1961,7 +1958,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
   ///
   /// **Performance:**
-  /// - Offloaded to native C++ SIMD-optimized comparison loops.
+  /// - Uses native C++ SIMD vectorization.
   /// - Time Complexity: `O(N)` where `N` is the broadcasted size.
   ///
   /// **Example:**
@@ -1987,7 +1984,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
   ///
   /// **Performance:**
-  /// - Offloaded to native C++ SIMD-optimized comparison loops.
+  /// - Uses native C++ SIMD vectorization.
   /// - Time Complexity: `O(N)` where `N` is the broadcasted size.
   ///
   /// **Example:**
@@ -2017,7 +2014,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
   ///
   /// **Performance:**
-  /// - Offloaded to native C++ SIMD-optimized comparison loops.
+  /// - Uses native C++ SIMD vectorization.
   /// - Time Complexity: `O(N)` where `N` is the broadcasted size.
   ///
   /// **Example:**
@@ -3150,17 +3147,17 @@ void _copyContiguousNDArray(NDArray src, NDArray dest, int size) {
 }
 
 /// Private class to manage a collection of [NDArray]s within a [Zone]
-/// using a high-performance hybrid scaling design: a flat fast-path List
-/// for collections up to 100 elements (yielding zero GC and blazingly fast sweeps),
-/// promoting seamlessly to a HashSet for larger collections to guarantee O(1) scaling.
+/// using a hybrid scaling design: a flat List
+/// for collections up to 100 elements,
+/// promoting to a HashSet for larger collections to maintain O(1) scaling.
 final class _NDArrayScope {
   // Parent outer scope context (if nested)
   final _NDArrayScope? _parentScope;
 
-  // Standard fast-path: flat List of tracked arrays
+  // Flat List of tracked arrays for small collections
   final List<NDArray> _list = [];
 
-  // Fallback slow-path: Set for large-scale scopes (> 100 arrays)
+  // Set for large-scale scopes (> 100 arrays)
   Set<NDArray>? _set;
 
   _NDArrayScope(this._parentScope);

@@ -13,9 +13,8 @@ import 'helpers.dart';
 ///
 /// This function corresponds to NumPy's `sort` function.
 ///
-/// It uses native ANSI C `qsort` via FFI to perform zero-copy, high-speed
-/// in-place sorting straight on the C heap for contiguous last-axis rows, completely
-/// bypassing Dart memory marshalling.
+/// It uses native ANSI C `qsort` to perform in-place sorting
+/// on the C heap for contiguous last-axis rows.
 ///
 /// Complex numbers are sorted lexicographically: by their real parts first,
 /// and by their imaginary parts if the real parts are equal.
@@ -706,8 +705,8 @@ NDArray<int> argpartition(NDArray a, dynamic kth, {int axis = -1}) {
 ///
 /// This function corresponds to NumPy's `searchsorted` function.
 ///
-/// Binary search is performed at C-speed using native pointers, fully supporting
-/// arbitrary multi-dimensional shapes for the query array [v]. The returned index
+/// Binary search is performed using native pointers, supporting
+/// multi-dimensional shapes for the query array [v]. The returned index
 /// array will have the exact same shape as [v].
 ///
 /// ### Preconditions
@@ -979,7 +978,7 @@ NDArray<int> searchsorted(
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ where $N$ is the broadcasted result size.
 /// - If all arrays are contiguous, of `float32`/`float64`/`int32`/`int64` types, and C-contiguous,
-///   leverages high-speed C FFI vector operations (`s_where_double`/`s_where_float`) for ultra-high performance.
+///   uses vectorized C operations (`s_where_double`/`s_where_float`).
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array (or list of arrays) on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose()]** on all returned arrays to prevent native leaks, unless executing inside a managed [NDArray.scope()].
@@ -1849,15 +1848,15 @@ enum CompareOp {
 ///
 /// **Performance Considerations:**
 /// - Complexity is $O(N)$ in the worst case where $N$ is the number of elements in [a].
-/// - It performs a linear search with early-exit (short-circuiting) implemented in native C, which is
-///   highly optimized and avoids allocating temporary boolean masks or intermediate coordinate arrays.
+/// - It performs a linear search with early-exit (short-circuiting) implemented in native C, which
+///   avoids allocating temporary boolean masks or intermediate coordinate arrays.
 ///   No intermediate Dart objects are allocated for coordinate tracking during search.
 /// - Runs in $O(1)$ memory overhead (allocates FFI arguments via [ScratchArena]).
 ///
 /// **Equivalent NumPy Operations:**
 /// - In NumPy, coordinates of matching elements are typically found using `np.argwhere(cond)`.
 ///   However, `np.argwhere` evaluates the condition on the entire array and returns all matches, which
-///   allocates memory. This function is analogous to a fast, low-overhead version that returns only the
+///   allocates memory. This function is analogous to a version that returns only the
 ///   first matching coordinate index list: `np.argwhere(op(a, target))[0]` (if one exists).
 ///
 /// **Example:**

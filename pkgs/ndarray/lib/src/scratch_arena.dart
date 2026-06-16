@@ -2,9 +2,9 @@ import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'ndarray.dart' show Complex, ComplexList;
 
-/// An Isolate-local scratch memory arena for high-performance transient FFI allocations.
+/// An Isolate-local scratch memory arena for transient FFI allocations.
 ///
-/// Bypasses malloc/free boundary overhead by maintaining pre-allocated persistent C heap memory.
+/// Maintains pre-allocated persistent C heap memory to reduce allocation overhead.
 final class ScratchArena {
   ScratchArena._();
 
@@ -242,7 +242,7 @@ final class ScratchArena {
   ///
   /// **Performance considerations:**
   /// - Time complexity is $O(N)$ where $N$ is the number of elements in [list].
-  /// - Specially optimized for [ComplexList] to perform a direct high-speed contiguous memory copy.
+  /// - Specially optimized for [ComplexList] to perform a direct contiguous memory copy.
   ///
   /// **Example:**
   /// {@example /example/scratch_arena_example.dart}
@@ -271,7 +271,7 @@ final class ScratchArena {
   ///
   /// **Performance considerations:**
   /// - Time complexity is $O(N)$ where $N$ is the number of elements in [list].
-  /// - Specially optimized for [ComplexList] to perform a direct high-speed contiguous memory copy.
+  /// - Specially optimized for [ComplexList] to perform a direct contiguous memory copy.
   ///
   /// **Example:**
   /// {@example /example/scratch_arena_example.dart}

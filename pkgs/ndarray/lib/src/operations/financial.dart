@@ -1,15 +1,15 @@
 /// Quantitative Financial Operations.
 ///
-/// This library provides vectorized, high-performance financial functions
+/// This library provides vectorized financial functions
 /// (`fv`, `pv`, `npv`, `irr`) designed for quantitative simulation and modeling.
 ///
 /// **Intended Use Cases:**
 /// - **Quantitative Modeling**: Large-scale parameter sweeps, grid searches, and portfolio valuation.
-/// - **Monte Carlo Simulations**: Simulating thousands of randomized cash flow scenarios where speed is critical.
-/// - **High-Performance Backtesting**: Backtesting quantitative strategies that involve periodic cash flows.
+/// - **Monte Carlo Simulations**: Simulating thousands of randomized cash flow scenarios.
+/// - **Backtesting**: Backtesting quantitative strategies that involve periodic cash flows.
 ///
 /// **Limitations & Non-Goals:**
-/// - **Not for Ledger Accounting**: These functions use double-precision floats (`Float64`) for speed and vectorization. They are not intended for commercial banking or exact ledger accounting where arbitrary-precision decimals are mandatory to prevent rounding errors.
+/// - **Not for Ledger Accounting**: These functions use double-precision floats (`Float64`) for vectorization. They are not intended for commercial banking or exact ledger accounting where arbitrary-precision decimals are mandatory to prevent rounding errors.
 /// - **Not for Arbitrary Date Cash Flows**: These functions assume flat, periodic intervals. They do not support date-aware discounting (e.g., `XNPV`/`XIRR`).
 /// - **Constant Rates**: `npv` assumes a constant discount rate across all periods, rather than a yield curve.
 library;
@@ -26,9 +26,8 @@ import 'sorting.dart';
 /// Replicates the behavior of `numpy_financial.fv` exactly.
 ///
 /// **Decimal Support:**
-/// `Decimal` is not supported because `ndarray` is optimized for high-performance
-/// quantitative simulations using double-precision floats via FFI, and `Decimal`
-/// cannot be vectorized.
+/// `Decimal` is not supported because `ndarray` uses double-precision floats
+/// for quantitative simulations, which allow vectorization.
 ///
 /// {@example /example/financial_example.dart lang=dart}
 NDArray<Float64> fv(
@@ -75,9 +74,8 @@ NDArray<Float64> fv(
 /// Replicates the behavior of `numpy_financial.pv` exactly.
 ///
 /// **Decimal Support:**
-/// `Decimal` is not supported because `ndarray` is optimized for high-performance
-/// quantitative simulations using double-precision floats via FFI, and `Decimal`
-/// cannot be vectorized.
+/// `Decimal` is not supported because `ndarray` uses double-precision floats
+/// for quantitative simulations, which allow vectorization.
 ///
 /// {@example /example/financial_example.dart lang=dart}
 NDArray<Float64> pv(
@@ -125,9 +123,8 @@ NDArray<Float64> pv(
 /// Replicates the behavior of `numpy_financial.npv` exactly.
 ///
 /// **Decimal Support:**
-/// `Decimal` is not supported because `ndarray` is optimized for high-performance
-/// quantitative simulations using double-precision floats via FFI, and `Decimal`
-/// cannot be vectorized.
+/// `Decimal` is not supported because `ndarray` uses double-precision floats
+/// for quantitative simulations, which allow vectorization.
 ///
 /// {@example /example/financial_example.dart lang=dart}
 NDArray<Float64> npv(
@@ -176,9 +173,8 @@ NDArray<Float64> npv(
 /// Replicates the behavior of `numpy_financial.irr` exactly.
 ///
 /// **Decimal Support:**
-/// `Decimal` is not supported because `ndarray` is optimized for high-performance
-/// quantitative simulations using double-precision floats via FFI, and `Decimal`
-/// cannot be vectorized.
+/// `Decimal` is not supported because `ndarray` uses double-precision floats
+/// for quantitative simulations, which allow vectorization.
 ///
 /// {@example /example/financial_example.dart lang=dart}
 NDArray<Float64> irr(
@@ -324,7 +320,7 @@ NDArray<Float64>? _getStrippedCoeffs(NDArray<Float64> values) {
 /// 1. It allows for an immediate early-exit as soon as a sign change is found.
 /// 2. It avoids allocating intermediate boolean/coordinate arrays.
 /// Benchmarks show that for typical cash flows (N < 100), this manual loop is
-/// 30x to 150x faster than bulk FFI pipelines.
+/// faster than bulk FFI pipelines.
 bool _hasSameSign(NDArray<Float64> coeffs) {
   final length = coeffs.shape[0];
   if (length <= 1) return true;

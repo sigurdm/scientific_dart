@@ -30,8 +30,8 @@ kiss_fft_cfg _allocateKissFFTPlan(int nfft, int inverse_fft) {
 ///
 /// The resulting array is **always complex** (DType.complex128 or DType.complex64 depending on precision).
 ///
-/// Natively offloads computation to pocketfft's pocketfft/KissFFT mixed-radix prime factoring, supporting
-/// arbitrary non-power-of-two sequence lengths at high speeds.
+/// Uses pocketfft's pocketfft/KissFFT mixed-radix prime factoring, supporting
+/// arbitrary non-power-of-two sequence lengths.
 ///
 /// **Preconditions:**
 /// - Input [a] must have rank $\ge 1$ (not empty or 0-dimensional).

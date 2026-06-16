@@ -94,7 +94,6 @@ NDArray<Float64> _promoteToFloat64(NDArray a) {
 /// - [ArgumentError] if [out] shape does not match `[M * (M - 1) / 2]`.
 ///
 /// **Performance Considerations:**
-/// - Uses FFI to accelerate computation.
 /// - Time complexity is $O(M^2 N)$ where $M$ is the number of observations and $N$ is the number of features.
 /// - Space complexity is $O(M^2)$ for the output array.
 ///
@@ -197,7 +196,6 @@ NDArray<Float64> pdist<T extends Object>(
 /// - [ArgumentError] if [out] shape does not match `[M, K]`.
 ///
 /// **Performance Considerations:**
-/// - Uses FFI to accelerate computation.
 /// - Time complexity is $O(M K N)$.
 /// - Space complexity is $O(M K)$ for the output array.
 ///

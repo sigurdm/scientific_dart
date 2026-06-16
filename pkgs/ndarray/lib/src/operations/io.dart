@@ -53,8 +53,8 @@ DType<dynamic> _descrToDType(String descr) {
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ where $N$ is the total number of elements in the array.
-/// - Zero-copy block disk operations are performed for contiguous arrays, dumping unmanaged C-heap
-///   memory directly to the disk as a native byte view, minimizing RAM allocations and CPU sweeps.
+/// - Direct block disk operations are performed for contiguous arrays, writing unmanaged C-heap
+///   memory directly to the disk as a native byte view.
 /// - Non-contiguous strided or transposed views are copied into a contiguous sequence prior to block serialization.
 ///
 /// **Example:**
@@ -142,11 +142,10 @@ void save<T>(String filepath, NDArray<T> a) {
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ where $N$ is the total number of elements in the loaded array.
-/// - Performs zero-copy direct binary block transfers straight from the file stream into unmanaged C-heap
-///   memory pages, minimizing GC pressure.
-/// - Supports native **zero-copy Column-Major Fortran strides mapping** in $O(1)$ time: if a file is flagged
-///   as `fortran_order: True` (column-major from Python), it loads sequential columns straight into the C heap
-///   and configures column-major strides directly, completely eliminating slow sorting data loops!
+/// - Performs direct binary block transfers from the file stream into unmanaged C-heap memory pages.
+/// - Supports **Column-Major Fortran strides mapping** in $O(1)$ time: if a file is flagged
+///   as `fortran_order: True` (column-major from Python), it loads sequential columns into the C heap
+///   and configures column-major strides directly, without reshaping data.
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose()]** to prevent native leaks, unless executing inside a managed [NDArray.scope()].

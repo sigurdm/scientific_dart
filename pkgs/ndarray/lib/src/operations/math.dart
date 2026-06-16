@@ -257,8 +257,7 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
-/// - For C-contiguous array layouts, offloads the loop directly to high-speed native C
-///   vector math kernels (`v_sin_double`/`v_sin_float`), bypassing all Dart VM loop overhead.
+/// - For C-contiguous array layouts, uses native C vector math kernels (`v_sin_double`/`v_sin_float`).
 ///
 /// **Example:**
 /// {@example /example/transcendental_example.dart lang=dart}
@@ -398,8 +397,7 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
-/// - For C-contiguous array layouts, offloads the loop directly to high-speed native C
-///   vector math kernels (`v_cos_double`/`v_cos_float`), bypassing all Dart VM loop overhead.
+/// - For C-contiguous array layouts, uses native C vector math kernels (`v_cos_double`/`v_cos_float`).
 ///
 /// **Example:**
 /// {@example /example/transcendental_example.dart lang=dart}
@@ -542,8 +540,7 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
-/// - For C-contiguous array layouts, offloads the loop directly to high-speed native C
-///   vector math kernels (`v_exp_double`/`v_exp_float`), bypassing all Dart VM loop overhead.
+/// - For C-contiguous array layouts, uses native C vector math kernels (`v_exp_double`/`v_exp_float`).
 ///
 /// **Example:**
 /// {@example /example/transcendental_example.dart lang=dart}
@@ -641,8 +638,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
-/// - For C-contiguous array layouts, offloads the loop directly to high-speed native C
-///   vector math kernels (`v_log_double`/`v_log_float`), bypassing all Dart VM loop overhead.
+/// - For C-contiguous array layouts, uses native C vector math kernels (`v_log_double`/`v_log_float`).
 ///
 /// **Example:**
 /// {@example /example/transcendental_example.dart lang=dart}
@@ -4163,7 +4159,7 @@ NDArray<T> copysign<T extends Object>(
 ///
 /// **Performance considerations:**
 /// - Time complexity is $O(N)$ where $N$ is the total number of elements in [a].
-/// - For contiguous arrays, offloads directly to C optimized kernels via FFI, executing in $O(N)$ time with $O(1)$ extra memory.
+/// - For contiguous arrays, uses C kernels, executing in $O(N)$ time with $O(1)$ extra memory.
 /// - Otherwise, performs element-wise strided iteration in Dart.
 ///
 /// **Example:**
@@ -4546,8 +4542,7 @@ NDArray<T> clipArray<T>(
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
-/// - For C-contiguous layout layouts, offloads the loop directly to high-speed native C
-///   vector logical kernels (`v_logical_not`), bypassing all Dart VM loop overhead.
+/// - For C-contiguous layouts, uses native C vector logical kernels (`v_logical_not`).
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
@@ -4964,8 +4959,7 @@ void _compareHelper(
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
-/// - For C-contiguous layout layouts, offloads the loop directly to high-speed native C
-///   vector logical kernels (`v_logical_and`), bypassing all Dart VM loop overhead.
+/// - For C-contiguous layouts, uses native C vector logical kernels (`v_logical_and`).
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
@@ -5004,8 +4998,7 @@ NDArray<bool> logical_and<Ta, Tb>(
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
-/// - For C-contiguous layout layouts, offloads the loop directly to high-speed native C
-///   vector logical kernels (`v_logical_or`), bypassing all Dart VM loop overhead.
+/// - For C-contiguous layouts, uses native C vector logical kernels (`v_logical_or`).
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
@@ -5037,8 +5030,7 @@ NDArray<bool> logical_or<Ta, Tb>(
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
-/// - For C-contiguous layout layouts, offloads the loop directly to high-speed native C
-///   vector logical kernels (`v_logical_xor`), bypassing all Dart VM loop overhead.
+/// - For C-contiguous layouts, uses native C vector logical kernels (`v_logical_xor`).
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
@@ -6118,7 +6110,7 @@ final class LstsqResult<T> {
 /// - [StateError] if native FFI memory allocation fails or the SVD solver fails to converge.
 ///
 /// **Performance considerations:**
-/// - Algorithmic complexity is $O(M N \min(M, N))$ operations executed in highly-optimized native C space.
+/// - Algorithmic complexity is $O(M N \min(M, N))$ operations executed natively.
 ///
 /// **Example:**
 /// {@example /example/linalg_lstsq_example.dart lang=dart}
@@ -12294,7 +12286,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
-/// - For contiguous layouts, offloads the loop directly to optimized native C vector bitwise kernels, bypassing Dart VM loop overhead.
+/// - For contiguous layouts, uses native C vector bitwise kernels.
 ///
 /// **Example:**
 /// {@example /example/bitwise_example.dart lang=dart}
@@ -12442,7 +12434,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
-/// - For contiguous layouts, offloads the loop directly to optimized native C vector bitwise kernels, bypassing Dart VM loop overhead.
+/// - For contiguous layouts, uses native C vector bitwise kernels.
 ///
 /// **Example:**
 /// {@example /example/bitwise_example.dart lang=dart}
@@ -12590,7 +12582,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
-/// - For contiguous layouts, offloads the loop directly to optimized native C vector bitwise kernels, bypassing Dart VM loop overhead.
+/// - For contiguous layouts, uses native C vector bitwise kernels.
 ///
 /// **Example:**
 /// {@example /example/bitwise_example.dart lang=dart}
@@ -12738,7 +12730,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
-/// - For contiguous layouts, offloads the loop directly to optimized native C vector bitwise kernels, bypassing Dart VM loop overhead.
+/// - For contiguous layouts, uses native C vector bitwise kernels.
 ///
 /// **Example:**
 /// {@example /example/bitwise_example.dart lang=dart}
@@ -12886,7 +12878,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
-/// - For contiguous layouts, offloads the loop directly to optimized native C vector bitwise kernels, bypassing Dart VM loop overhead.
+/// - For contiguous layouts, uses native C vector bitwise kernels.
 ///
 /// **Example:**
 /// {@example /example/bitwise_example.dart lang=dart}
@@ -13032,7 +13024,7 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
-/// - For contiguous layouts, offloads the loop directly to optimized native C vector bitwise kernels, bypassing Dart VM loop overhead.
+/// - For contiguous layouts, uses native C vector bitwise kernels.
 ///
 /// **Example:**
 /// {@example /example/bitwise_example.dart lang=dart}
@@ -13219,7 +13211,7 @@ _prepareBinaryBitwise<Ta, Tb, Tr>(
 /// - [ArgumentError] if [out] has incompatible shape or dtype.
 ///
 /// **Performance considerations:**
-/// - Algorithmic complexity is $O(N_a \times N_b)$ using optimized sequential native heap FFI memory sweeps.
+/// - Algorithmic complexity is $O(N_a \times N_b)$ using sequential native heap memory sweeps.
 ///
 /// **Example:**
 /// {@example /example/linalg_advanced_example.dart lang=dart}
@@ -13617,7 +13609,7 @@ NDArray<R> outer<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 /// - [ArgumentError] if [out] has incompatible shape or dtype.
 ///
 /// **Performance considerations:**
-/// - Uses optimized native FFI vector cross loops, bypassing stack dimensions sequentially.
+/// - Uses native C vector cross loops.
 ///
 /// **Example:**
 /// {@example /example/linalg_advanced_example.dart lang=dart}
@@ -13949,7 +13941,7 @@ NDArray<R> cross<Ta, Tb, R>(
 /// - [ArgumentError] if [axis] or [ord] combinations are invalid.
 ///
 /// **Performance considerations:**
-/// - Uses fast native vector reductions for Chebyshev, L1, and L2 vector calculations.
+/// - Uses native vector reductions for Chebyshev, L1, and L2 vector calculations.
 ///
 /// **Example:**
 /// {@example /example/linalg_advanced_example.dart lang=dart}

@@ -21,8 +21,7 @@ import 'linalg.dart';
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
 ///   the generated array (product of [shape] dimensions).
-/// - Offloads element generation directly to high-speed C FFI vector functions (`v_uniform_double` / `v_uniform_float`),
-///   yielding ultra-high performance and avoiding Dart loop context switching overhead.
+/// - Uses native C vector functions (`v_uniform_double` / `v_uniform_float`) for element generation.
 ///
 /// **Example:**
 /// {@example /example/random_example.dart lang=dart}
@@ -91,7 +90,7 @@ NDArray<T> uniform<T extends num>(
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ in both time and space, where $N$ is the total size of the generated array.
-/// - Leverages optimized native C FFI vector calls (`v_randint_int64`, `v_randint_int32` etc.) yielding excellent execution speeds.
+/// - Uses native C vector functions (`v_randint_int64`, `v_randint_int32` etc.).
 ///
 /// **Memory Ownership & Recycle:**
 /// - If the optional [out] recycler buffer is provided, it is populated in-place, avoiding heap allocations.
@@ -171,10 +170,9 @@ NDArray<T> randint<T extends num>(
 ///
 /// This function corresponds to NumPy's `random.normal` function.
 ///
-/// **Box-Muller Optimization**:
-/// It utilizes the mathematical Box-Muller transform to generate two independent
-/// standard normal random scalars (`z0` and `z1`) from two uniform ones simultaneously,
-/// cutting the costly transcendental CPU trig/log function calls by exactly 50%.
+/// **Box-Muller Transform**:
+/// It utilizes the Box-Muller transform to generate two independent
+/// standard normal random scalars simultaneously, reducing transcendental function calls.
 ///
 /// **Preconditions:**
 /// - [scale] (standard deviation) must be strictly positive.
@@ -187,8 +185,7 @@ NDArray<T> randint<T extends num>(
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
 ///   the generated array.
-/// - Offloads element generation directly to high-speed C FFI vector functions (`v_normal_double` / `v_normal_float`),
-///   combining Box-Muller math with native vector speed.
+/// - Uses native C vector functions (`v_normal_double` / `v_normal_float`) with Box-Muller transform.
 ///
 /// **Example:**
 /// {@example /example/random_example.dart lang=dart}
@@ -345,7 +342,7 @@ NDArray<T> exponential<T extends num>(
 /// - For small lambda (`lam < 30.0`), it executes Knuth's precise inversion algorithm.
 /// - For large lambda (`lam >= 30.0`), Knuth's method averages `lam` steps per element
 ///   and suffers severe numerical float underflow. To avoid stalls and underflows, it
-///   automatically switches to high-speed **Gaussian Approximation** with continuity correction.
+///   automatically switches to **Gaussian Approximation** with continuity correction.
 ///
 /// **Preconditions:**
 /// - [lam] (lambda, the rate/mean) must be strictly positive.
@@ -415,7 +412,7 @@ NDArray<T> poisson<T extends num>(
 ///   independent random tests).
 /// - For large `n >= 50`, counting `n` trials gets slow ($O(n)$). It triggers an optimized
 ///   **Normal Distribution Approximation** with mean `n*p` and standard deviation `sqrt(n*p*(1-p))`
-///   for high-speed probabilistic simulations.
+///   for probabilistic simulations.
 ///
 /// **Preconditions:**
 /// - [n] (number of trials) must be non-negative.
@@ -431,7 +428,7 @@ NDArray<T> poisson<T extends num>(
 /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
 ///   the generated array.
 /// - For small [n] (< 50), Bernoulli simulation runs in $O(n)$ loops per element. For large [n], the Normal
-///   distribution approximation executes in stable $O(1)$ steps per element, avoiding performance degradation.
+///   distribution approximation executes in stable $O(1)$ steps per element.
 ///
 /// **Example:**
 /// {@example /example/random_example.dart lang=dart}
@@ -514,8 +511,7 @@ NDArray<T> binomial<T extends num>(
 /// - [ArgumentError] if [cov] is not symmetric positive-definite.
 ///
 /// **Performance considerations:**
-/// - Leverages high-speed LAPACK Cholesky solver and native CBLAS double/float matrix multiplication,
-///   yielding spectacular compiled execution speeds.
+/// - Uses LAPACK Cholesky solver and CBLAS matrix multiplication.
 ///
 /// **Example:**
 /// ```dart
