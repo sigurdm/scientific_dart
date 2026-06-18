@@ -30,3 +30,6 @@ pkgs/openblas/third_party/
 # Transient Local Test / Benchmark Run Outputs
 scratch/
 
+# Local pub cache
+pub_cache/
+
