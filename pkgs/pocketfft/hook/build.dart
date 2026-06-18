@@ -73,47 +73,45 @@ void main(List<String> args) async {
     final libFile = File.fromUri(outputDir.uri.resolve(libName));
 
     // 3. Compile plain-C source code using Process.run for extreme reliability
-    if (!libFile.existsSync()) {
-      final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
-      print('Compiling pocketfft plain C files via compiler: $compilerPath');
+    final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
+    print('Compiling pocketfft plain C files via compiler: $compilerPath');
 
-      final isMSVC =
-          os == OS.windows && compilerPath.toLowerCase().contains('cl');
-      final compileArgs = isMSVC
-          ? <String>[
-              '/LD',
-              '/O2',
-              '/EHsc',
-              '/Dkiss_fft_scalar=double',
-              '/I',
-              srcDir.uri.toFilePath(),
-              srcDir.uri.resolve('kiss_fft.c').toFilePath(),
-              srcDir.uri.resolve('kiss_fftr.c').toFilePath(),
-              '/Fe:${libFile.path}',
-            ]
-          : <String>[
-              '-shared',
-              '-fPIC',
-              '-O3',
-              '-ffast-math',
-              '-Dkiss_fft_scalar=double',
-              '-I',
-              srcDir.uri.toFilePath(),
-              srcDir.uri.resolve('kiss_fft.c').toFilePath(),
-              srcDir.uri.resolve('kiss_fftr.c').toFilePath(),
-              '-o',
-              libFile.path,
-              '-lm',
-            ];
+    final isMSVC =
+        os == OS.windows && compilerPath.toLowerCase().contains('cl');
+    final compileArgs = isMSVC
+        ? <String>[
+            '/LD',
+            '/O2',
+            '/EHsc',
+            '/Dkiss_fft_scalar=double',
+            '/I',
+            srcDir.uri.toFilePath(),
+            srcDir.uri.resolve('kiss_fft.c').toFilePath(),
+            srcDir.uri.resolve('kiss_fftr.c').toFilePath(),
+            srcDir.uri.resolve('kiss_fftnd.c').toFilePath(),
+            '/Fe:${libFile.path}',
+          ]
+        : <String>[
+            '-shared',
+            '-fPIC',
+            '-O3',
+            '-ffast-math',
+            '-Dkiss_fft_scalar=double',
+            '-I',
+            srcDir.uri.toFilePath(),
+            srcDir.uri.resolve('kiss_fft.c').toFilePath(),
+            srcDir.uri.resolve('kiss_fftr.c').toFilePath(),
+            srcDir.uri.resolve('kiss_fftnd.c').toFilePath(),
+            '-o',
+            libFile.path,
+            '-lm',
+          ];
 
-      final res = await Process.run(compilerPath, compileArgs);
-      if (res.exitCode != 0) {
-        throw StateError(
-          'PocketFFT native C compilation failed: ${res.stderr}',
-        );
-      }
-      print('Compiled shared library binary successfully at: ${libFile.path}');
+    final res = await Process.run(compilerPath, compileArgs);
+    if (res.exitCode != 0) {
+      throw StateError('PocketFFT native C compilation failed: ${res.stderr}');
     }
+    print('Compiled shared library binary successfully at: ${libFile.path}');
 
     // 4. Register the dynamic CodeAsset in the hooks pipeline
     if (libFile.existsSync()) {
@@ -127,6 +125,7 @@ void main(List<String> args) async {
       );
       output.dependencies.add(srcDir.uri.resolve('kiss_fft.c'));
       output.dependencies.add(srcDir.uri.resolve('kiss_fftr.c'));
+      output.dependencies.add(srcDir.uri.resolve('kiss_fftnd.c'));
       print('Registered pocketfft native dynamic code asset successfully.');
     }
   });

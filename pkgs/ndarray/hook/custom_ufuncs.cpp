@@ -3079,6 +3079,7 @@ void s_hypot_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x
 }
 
 static inline cpx_t cpx_pow(cpx_t z1, cpx_t z2) {
+    if (z2.r == 0.0 && z2.i == 0.0) return (cpx_t){1.0, 0.0};
     double mag = sqrt(z1.r*z1.r + z1.i*z1.i);
     if (mag == 0.0) return (cpx_t){0.0, 0.0};
     double L = log(mag);
@@ -3090,6 +3091,7 @@ static inline cpx_t cpx_pow(cpx_t z1, cpx_t z2) {
 }
 
 static inline cpx_f_t cpx_pow_f(cpx_f_t z1, cpx_f_t z2) {
+    if (z2.r == 0.0f && z2.i == 0.0f) return (cpx_f_t){1.0f, 0.0f};
     float mag = sqrtf(z1.r*z1.r + z1.i*z1.i);
     if (mag == 0.0f) return (cpx_f_t){0.0f, 0.0f};
     float L = logf(mag);
@@ -3099,6 +3101,7 @@ static inline cpx_f_t cpx_pow_f(cpx_f_t z1, cpx_f_t z2) {
     float eR = expf(R);
     return (cpx_f_t){eR * cosf(imag_val), eR * sinf(imag_val)};
 }
+
 
 void v_pow_complex128(const cpx_t *x1, const cpx_t *x2, cpx_t *res, int size) {
     if (x1 == nullptr || x2 == nullptr || res == nullptr || size <= 0) return;
@@ -3232,16 +3235,19 @@ static inline cpx_t cpx_from_cpx64(cpx_f_t v) { return (cpx_t){(double)v.r, (dou
 static inline cpx_f_t cpx_f_from_cpx(cpx_t v) { return (cpx_f_t){(float)v.r, (float)v.i}; }
 
 static inline cpx_t cpx_div(cpx_t x, cpx_t y) {
-    double denom = y.r * y.r + y.i * y.i;
-    if (denom == 0.0) return (cpx_t){NAN, NAN};
-    return (cpx_t){(x.r * y.r + x.i * y.i) / denom, (x.i * y.r - x.r * y.i) / denom};
+    std::complex<double> cx(x.r, x.i);
+    std::complex<double> cy(y.r, y.i);
+    std::complex<double> cres = cx / cy;
+    return {cres.real(), cres.imag()};
 }
 
 static inline cpx_f_t cpx_div_f(cpx_f_t x, cpx_f_t y) {
-    float denom = y.r * y.r + y.i * y.i;
-    if (denom == 0.0f) return (cpx_f_t){NAN, NAN};
-    return (cpx_f_t){(x.r * y.r + x.i * y.i) / denom, (x.i * y.r - x.r * y.i) / denom};
+    std::complex<float> cx(x.r, x.i);
+    std::complex<float> cy(y.r, y.i);
+    std::complex<float> cres = cx / cy;
+    return {cres.real(), cres.imag()};
 }
+
 
 #define EXPR_double(OP, Ta, Tb, x, y, OP_SYM) ((double)x OP_SYM (double)y)
 #define EXPR_float(OP, Ta, Tb, x, y, OP_SYM) ((float)x OP_SYM (float)y)

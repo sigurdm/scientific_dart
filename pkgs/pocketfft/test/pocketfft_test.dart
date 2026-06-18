@@ -43,5 +43,14 @@ void main() {
         }
       },
     );
+    test('Can allocate and free ND FFT config', () {
+      final dims = malloc<ffi.Int>(2);
+      dims[0] = 2;
+      dims[1] = 2;
+      final cfg = kiss_fftnd_alloc(dims, 2, 0, ffi.nullptr, ffi.nullptr);
+      expect(cfg.address != 0, true);
+      free(cfg.cast<ffi.Void>());
+      malloc.free(dims);
+    });
   });
 }

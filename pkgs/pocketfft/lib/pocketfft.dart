@@ -10,4 +10,7 @@ export 'src/pocketfft_bindings.dart'
         kiss_fftr_alloc,
         kiss_fftr,
         kiss_fftri,
+        kiss_fftnd_cfg,
+        kiss_fftnd_alloc,
+        kiss_fftnd,
         free;

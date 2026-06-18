@@ -6,6 +6,7 @@ workspace:
   - pkgs/ndarray
   - pkgs/pocketfft
   - pkgs/guitar_tuner
+  - pkgs/ndarray_ma
 dependencies:
   http: ^1.6.0
 

@@ -2895,14 +2895,15 @@ final class Complex {
   Complex operator /(dynamic other) {
     if (other is Complex) {
       final div = other.real * other.real + other.imag * other.imag;
-      if (div == 0) throw ArgumentError('Division by zero');
+      if (div == 0.0) {
+        return Complex(real / 0.0, imag / 0.0);
+      }
       return Complex(
         (real * other.real + imag * other.imag) / div,
         (imag * other.real - real * other.imag) / div,
       );
     } else if (other is num) {
       final val = other.toDouble();
-      if (val == 0) throw ArgumentError('Division by zero');
       return Complex(real / val, imag / val);
     } else {
       throw ArgumentError(
@@ -2925,12 +2926,16 @@ final class Complex {
   /// Supports [num] and [Complex] exponents.
   Complex pow(dynamic exponent) {
     if (exponent is num) {
+      if (exponent == 0) return Complex(1.0, 0.0);
       final r = abs;
       final theta = arg;
       final newR = math.pow(r, exponent);
       final newTheta = theta * exponent;
       return Complex(newR * math.cos(newTheta), newR * math.sin(newTheta));
     } else if (exponent is Complex) {
+      if (exponent.real == 0.0 && exponent.imag == 0.0) {
+        return Complex(1.0, 0.0);
+      }
       // z^w = exp(w * log(z))
       final lz = log();
       final prod = exponent * lz;

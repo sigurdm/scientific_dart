@@ -16,7 +16,7 @@ void main() {
         expect(freq.dtype, DType.complex128);
 
         for (var i = 0; i < 4; i++) {
-          final Complex c = freq.data[i];
+          final Complex c = freq.getCell([i]);
           expect(c.real, closeTo(1.0, 1e-9));
           expect(c.imag, closeTo(0.0, 1e-9));
         }
@@ -31,12 +31,12 @@ void main() {
         ], DType.float64);
         final freq = fft(a);
 
-        final Complex dcComponent = freq.data[0];
+        final Complex dcComponent = freq.getCell([0]);
         expect(dcComponent.real, closeTo(8.0, 1e-9));
         expect(dcComponent.imag, closeTo(0.0, 1e-9));
 
         for (var i = 1; i < 4; i++) {
-          final Complex c = freq.data[i];
+          final Complex c = freq.getCell([i]);
           expect(c.real, closeTo(0.0, 1e-9));
           expect(c.imag, closeTo(0.0, 1e-9));
         }
@@ -59,8 +59,8 @@ void main() {
         expect(restored.dtype, DType.complex128);
 
         for (var i = 0; i < 8; i++) {
-          final Complex c = restored.data[i];
-          expect(c.real, closeTo(a.data[i], 1e-9));
+          final Complex c = restored.getCell([i]);
+          expect(c.real, closeTo(a.getCell([i]), 1e-9));
           expect(c.imag, closeTo(0.0, 1e-9));
         }
       }),
@@ -79,7 +79,7 @@ void main() {
 
         final restored6 = ifft(freq6);
         for (var i = 0; i < 6; i++) {
-          expect(restored6.data[i].real, closeTo(a6.data[i], 1e-9));
+          expect(restored6.getCell([i]).real, closeTo(a6.getCell([i]), 1e-9));
         }
 
         final a5 = NDArray.fromList(
@@ -92,7 +92,7 @@ void main() {
 
         final restored5 = ifft(freq5);
         expect(restored5.shape, [5]);
-        expect(restored5.data[4].real, closeTo(1.0, 1e-9));
+        expect(restored5.getCell([4]).real, closeTo(1.0, 1e-9));
       }),
     );
 
@@ -107,10 +107,10 @@ void main() {
 
         final restored = ifft(paddedFreq);
         expect(restored.shape, [4]);
-        expect(restored.data[0].real, closeTo(1.0, 1e-9));
-        expect(restored.data[1].real, closeTo(2.0, 1e-9));
-        expect(restored.data[2].real, closeTo(0.0, 1e-9));
-        expect(restored.data[3].real, closeTo(0.0, 1e-9));
+        expect(restored.getCell([0]).real, closeTo(1.0, 1e-9));
+        expect(restored.getCell([1]).real, closeTo(2.0, 1e-9));
+        expect(restored.getCell([2]).real, closeTo(0.0, 1e-9));
+        expect(restored.getCell([3]).real, closeTo(0.0, 1e-9));
       }),
     );
 
@@ -129,7 +129,7 @@ void main() {
         final restored32 = ifft(freq32);
         expect(restored32.dtype, DType.complex64);
         expect(restored32.shape, [4]);
-        expect(restored32.data[0].real, closeTo(1.0, 1e-5));
+        expect(restored32.getCell([0]).real, closeTo(1.0, 1e-5));
 
         final comp64 = NDArray.fromList(
           [
@@ -148,8 +148,8 @@ void main() {
         final restored64 = ifft(freq64);
         expect(restored64.dtype, DType.complex64);
         expect(restored64.shape, [4]);
-        expect(restored64.data[0].real, closeTo(1.0, 1e-5));
-        expect(restored64.data[0].imag, closeTo(2.0, 1e-5));
+        expect(restored64.getCell([0]).real, closeTo(1.0, 1e-5));
+        expect(restored64.getCell([0]).imag, closeTo(2.0, 1e-5));
 
         final realSignal = NDArray.fromList(
           Float64List.fromList([1.0, 2.0, 3.0, 4.0]),
@@ -184,23 +184,33 @@ void main() {
         );
         final freqContig = fft(contiguous);
 
+        final flatFreq = freq.ravel();
+        final flatFreqContig = freqContig.ravel();
         for (var i = 0; i < 4; i++) {
-          expect(freq.data[i].real, closeTo(freqContig.data[i].real, 1e-5));
-          expect(freq.data[i].imag, closeTo(freqContig.data[i].imag, 1e-5));
+          expect(
+            flatFreq.getCell([i]).real,
+            closeTo(flatFreqContig.getCell([i]).real, 1e-5),
+          );
+          expect(
+            flatFreq.getCell([i]).imag,
+            closeTo(flatFreqContig.getCell([i]).imag, 1e-5),
+          );
         }
 
         final restored = ifft(freq);
         expect(restored.shape, [2, 2]);
         final restoredContig = ifft(freqContig);
 
+        final flatRestored = restored.ravel();
+        final flatRestoredContig = restoredContig.ravel();
         for (var i = 0; i < 4; i++) {
           expect(
-            restored.data[i].real,
-            closeTo(restoredContig.data[i].real, 1e-5),
+            flatRestored.getCell([i]).real,
+            closeTo(flatRestoredContig.getCell([i]).real, 1e-5),
           );
           expect(
-            restored.data[i].imag,
-            closeTo(restoredContig.data[i].imag, 1e-5),
+            flatRestored.getCell([i]).imag,
+            closeTo(flatRestoredContig.getCell([i]).imag, 1e-5),
           );
         }
       }),
@@ -232,10 +242,11 @@ void main() {
           final freq = fft(a, axis: 0).copy();
           expect(freq.shape, [2, 2]);
           expect(freq.dtype, DType.complex128);
-          expect(freq.data[0].real, closeTo(4.0, 1e-9));
-          expect(freq.data[1].real, closeTo(6.0, 1e-9));
-          expect(freq.data[2].real, closeTo(-2.0, 1e-9));
-          expect(freq.data[3].real, closeTo(-2.0, 1e-9));
+          final flat = freq.ravel();
+          expect(flat.getCell([0]).real, closeTo(4.0, 1e-9));
+          expect(flat.getCell([1]).real, closeTo(6.0, 1e-9));
+          expect(flat.getCell([2]).real, closeTo(-2.0, 1e-9));
+          expect(flat.getCell([3]).real, closeTo(-2.0, 1e-9));
         }),
       );
 
@@ -250,10 +261,11 @@ void main() {
           final freq = fft(a, axis: 1).copy();
           expect(freq.shape, [2, 2]);
           expect(freq.dtype, DType.complex128);
-          expect(freq.data[0].real, closeTo(3.0, 1e-9));
-          expect(freq.data[1].real, closeTo(-1.0, 1e-9));
-          expect(freq.data[2].real, closeTo(7.0, 1e-9));
-          expect(freq.data[3].real, closeTo(-1.0, 1e-9));
+          final flat = freq.ravel();
+          expect(flat.getCell([0]).real, closeTo(3.0, 1e-9));
+          expect(flat.getCell([1]).real, closeTo(-1.0, 1e-9));
+          expect(flat.getCell([2]).real, closeTo(7.0, 1e-9));
+          expect(flat.getCell([3]).real, closeTo(-1.0, 1e-9));
         }),
       );
 
@@ -272,10 +284,11 @@ void main() {
           );
           final restored = ifft(a, axis: 0).copy();
           expect(restored.shape, [2, 2]);
-          expect(restored.data[0].real, closeTo(1.0, 1e-9));
-          expect(restored.data[1].real, closeTo(2.0, 1e-9));
-          expect(restored.data[2].real, closeTo(3.0, 1e-9));
-          expect(restored.data[3].real, closeTo(4.0, 1e-9));
+          final flat = restored.ravel();
+          expect(flat.getCell([0]).real, closeTo(1.0, 1e-9));
+          expect(flat.getCell([1]).real, closeTo(2.0, 1e-9));
+          expect(flat.getCell([2]).real, closeTo(3.0, 1e-9));
+          expect(flat.getCell([3]).real, closeTo(4.0, 1e-9));
         }),
       );
     });
@@ -375,6 +388,221 @@ void main() {
 
           a.dispose();
           expect(() => fftshift(a), throwsStateError);
+        }),
+      );
+    });
+
+    group('Frequency Generators', () {
+      test('fftfreq even', () {
+        final freqs = fftfreq(4, d: 2.0);
+        expect(freqs.shape, [4]);
+        expect(freqs.dtype, DType.float64);
+        expect(freqs.getCell([0]), closeTo(0.0, 1e-9));
+        expect(freqs.getCell([1]), closeTo(0.125, 1e-9));
+        expect(freqs.getCell([2]), closeTo(-0.25, 1e-9));
+        expect(freqs.getCell([3]), closeTo(-0.125, 1e-9));
+      });
+
+      test('fftfreq odd', () {
+        final freqs = fftfreq(5, d: 1.0);
+        expect(freqs.shape, [5]);
+        expect(freqs.getCell([0]), closeTo(0.0, 1e-9));
+        expect(freqs.getCell([1]), closeTo(0.2, 1e-9));
+        expect(freqs.getCell([2]), closeTo(0.4, 1e-9));
+        expect(freqs.getCell([3]), closeTo(-0.4, 1e-9));
+        expect(freqs.getCell([4]), closeTo(-0.2, 1e-9));
+      });
+
+      test('rfftfreq even', () {
+        final freqs = rfftfreq(4, d: 1.0);
+        expect(freqs.shape, [3]);
+        expect(freqs.getCell([0]), closeTo(0.0, 1e-9));
+        expect(freqs.getCell([1]), closeTo(0.25, 1e-9));
+        expect(freqs.getCell([2]), closeTo(0.5, 1e-9));
+      });
+
+      test('rfftfreq odd', () {
+        final freqs = rfftfreq(5, d: 2.0);
+        expect(freqs.shape, [3]);
+        expect(freqs.getCell([0]), closeTo(0.0, 1e-9));
+        expect(freqs.getCell([1]), closeTo(0.1, 1e-9));
+        expect(freqs.getCell([2]), closeTo(0.2, 1e-9));
+      });
+    });
+
+    group('Real 1D FFTs (rfft & irfft)', () {
+      test(
+        'rfft even length (N=4) float64',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+          final freq = rfft(a);
+          expect(freq.shape, [3]);
+          expect(freq.dtype, DType.complex128);
+          expect(freq.getCell([0]).real, closeTo(10.0, 1e-9));
+          expect(freq.getCell([0]).imag, closeTo(0.0, 1e-9));
+          expect(freq.getCell([1]).real, closeTo(-2.0, 1e-9));
+          expect(freq.getCell([1]).imag, closeTo(2.0, 1e-9));
+          expect(freq.getCell([2]).real, closeTo(-2.0, 1e-9));
+          expect(freq.getCell([2]).imag, closeTo(0.0, 1e-9));
+        }),
+      );
+
+      test(
+        'rfft odd length (N=3) float64 fallback',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+          final freq = rfft(a);
+          expect(freq.shape, [2]);
+          expect(freq.dtype, DType.complex128);
+          expect(freq.getCell([0]).real, closeTo(6.0, 1e-9));
+          expect(freq.getCell([0]).imag, closeTo(0.0, 1e-9));
+          expect(freq.getCell([1]).real, closeTo(-1.5, 1e-9));
+          expect(freq.getCell([1]).imag, closeTo(0.86602540378, 1e-9));
+        }),
+      );
+
+      test(
+        'irfft even length (N=4) float64 roundtrip',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+          final freq = rfft(a);
+          final restored = irfft(freq, n: 4);
+          expect(restored.shape, [4]);
+          expect(restored.dtype, DType.float64);
+          for (var i = 0; i < 4; i++) {
+            expect(restored.getCell([i]), closeTo(a.getCell([i]), 1e-9));
+          }
+        }),
+      );
+
+      test(
+        'irfft odd length (N=3) float64 fallback roundtrip',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+          final freq = rfft(a);
+          final restored = irfft(freq, n: 3);
+          expect(restored.shape, [3]);
+          expect(restored.dtype, DType.float64);
+          for (var i = 0; i < 3; i++) {
+            expect(restored.getCell([i]), closeTo(a.getCell([i]), 1e-9));
+          }
+        }),
+      );
+
+      test(
+        'rfft & irfft float32 precision',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float32);
+          final freq = rfft(a);
+          expect(freq.dtype, DType.complex64);
+          final restored = irfft(freq, n: 4);
+          expect(restored.dtype, DType.float32);
+          for (var i = 0; i < 4; i++) {
+            expect(restored.getCell([i]), closeTo(a.getCell([i]), 1e-5));
+          }
+        }),
+      );
+
+      test(
+        'rfft with out parameter',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+          final out = NDArray<Complex128>.zeros([3], DType.complex128);
+          rfft(a, out: out);
+          expect(out.getCell([0]).real, closeTo(10.0, 1e-9));
+        }),
+      );
+
+      test(
+        'irfft with out parameter',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+          final freq = rfft(a);
+          final out = NDArray<Float64>.zeros([4], DType.float64);
+          irfft(freq, n: 4, out: out);
+          for (var i = 0; i < 4; i++) {
+            expect(out.getCell([i]), closeTo(a.getCell([i]), 1e-9));
+          }
+        }),
+      );
+    });
+
+    group('Multi-dimensional FFTs (fftn, ifftn, fft2, ifft2)', () {
+      test(
+        'fftn 2D Kronecker Delta float64',
+        () => NDArray.scope(() {
+          final list = List<double>.filled(16, 0.0);
+          list[0] = 1.0;
+          final a2 = NDArray.fromList(list, [4, 4], DType.float64);
+
+          final freq = fftn(a2);
+          expect(freq.shape, [4, 4]);
+          expect(freq.dtype, DType.complex128);
+
+          final flatFreq = freq.ravel();
+          for (var i = 0; i < 16; i++) {
+            expect(flatFreq.getCell([i]).real, closeTo(1.0, 1e-9));
+            expect(flatFreq.getCell([i]).imag, closeTo(0.0, 1e-9));
+          }
+        }),
+      );
+
+      test(
+        'fftn 2D roundtrip',
+        () => NDArray.scope(() {
+          final list = List<double>.generate(16, (i) => i.toDouble());
+          final a = NDArray.fromList(list, [4, 4], DType.float64);
+          final freq = fftn(a);
+          final restored = ifftn(freq);
+          expect(restored.shape, [4, 4]);
+          final flatRestored = restored.ravel();
+          final flatA = a.ravel();
+          for (var i = 0; i < 16; i++) {
+            expect(
+              flatRestored.getCell([i]).real,
+              closeTo(flatA.getCell([i]), 1e-9),
+            );
+            expect(flatRestored.getCell([i]).imag, closeTo(0.0, 1e-9));
+          }
+        }),
+      );
+
+      test(
+        'fftn 2D with padding and truncation',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          final freq = fftn(a, s: [3, 1], axes: [0, 1]);
+          expect(freq.shape, [3, 1]);
+
+          final flat = freq.ravel();
+          expect(flat.getCell([0]).real, closeTo(4.0, 1e-9));
+          expect(flat.getCell([1]).real, closeTo(-0.5, 1e-9));
+          expect(flat.getCell([1]).imag, closeTo(-2.59807621135, 1e-9));
+          expect(flat.getCell([2]).real, closeTo(-0.5, 1e-9));
+          expect(flat.getCell([2]).imag, closeTo(2.59807621135, 1e-9));
+        }),
+      );
+
+      test(
+        'fft2 and ifft2 wrappers',
+        () => NDArray.scope(() {
+          final list = List<double>.generate(16, (i) => i.toDouble());
+          final a = NDArray.fromList(list, [4, 4], DType.float64);
+          final freq = fft2(a);
+          final restored = ifft2(freq);
+          expect(restored.shape, [4, 4]);
+          final flatRestored = restored.ravel();
+          final flatA = a.ravel();
+          for (var i = 0; i < 16; i++) {
+            expect(
+              flatRestored.getCell([i]).real,
+              closeTo(flatA.getCell([i]), 1e-9),
+            );
+          }
         }),
       );
     });

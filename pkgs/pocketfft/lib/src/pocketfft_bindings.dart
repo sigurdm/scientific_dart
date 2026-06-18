@@ -2598,22 +2598,35 @@ external void kiss_fftri(
   ffi.Pointer<ffi.Double> timedata,
 );
 
-/// Natively sort a double precision float64 array of the specified size in-place.
-/// Uses pure C-to-C callbacks via standard library qsort to prevent FFI boundary jumps.
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Int)>()
-external void native_sort_double(ffi.Pointer<ffi.Double> array, int size);
+@ffi.Native<
+  kiss_fftnd_cfg Function(
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Size>,
+  )
+>()
+external kiss_fftnd_cfg kiss_fftnd_alloc(
+  ffi.Pointer<ffi.Int> dims,
+  int ndims,
+  int inverse_fft,
+  ffi.Pointer<ffi.Void> mem,
+  ffi.Pointer<ffi.Size> lenmem,
+);
 
-/// Natively sort a single precision float32 array of the specified size in-place.
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Int)>()
-external void native_sort_float(ffi.Pointer<ffi.Float> array, int size);
-
-/// Natively sort an int64 array of the specified size in-place.
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.LongLong>, ffi.Int)>()
-external void native_sort_int64(ffi.Pointer<ffi.LongLong> array, int size);
-
-/// Natively sort an int32 array of the specified size in-place.
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int>, ffi.Int)>()
-external void native_sort_int32(ffi.Pointer<ffi.Int> array, int size);
+@ffi.Native<
+  ffi.Void Function(
+    kiss_fftnd_cfg,
+    ffi.Pointer<kiss_fft_cpx>,
+    ffi.Pointer<kiss_fft_cpx>,
+  )
+>()
+external void kiss_fftnd(
+  kiss_fftnd_cfg cfg,
+  ffi.Pointer<kiss_fft_cpx> fin,
+  ffi.Pointer<kiss_fft_cpx> fout,
+);
 
 typedef _Float32 = ffi.Float;
 typedef Dart_Float32 = double;
@@ -3233,6 +3246,10 @@ final class kiss_fftr_state extends ffi.Opaque {}
 
 /// Real optimized version can save about 45% cpu time vs. complex fft of a real seq.
 typedef kiss_fftr_cfg = ffi.Pointer<kiss_fftr_state>;
+
+final class kiss_fftnd_state extends ffi.Opaque {}
+
+typedef kiss_fftnd_cfg = ffi.Pointer<kiss_fftnd_state>;
 
 const int FP_NAN$1 = 0;
 
