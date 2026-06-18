@@ -99,7 +99,7 @@ enum DType<T> {
 /// **Example Usage:**
 /// ```dart
 /// // Create a 2x3 array filled with ones
-/// final a = `NDArray<double>`.ones([2, 3], DType.float64);
+/// final a = NDArray<double>.ones([2, 3], DType.float64);
 /// print(a.data); // [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 ///
 /// // Explicitly free memory when done
@@ -258,7 +258,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// NDArray.scope(() {
   ///   final a = NDArray.zeros([10]); // Automatically disposed by scope
   ///   final b = NDArray.unmanaged(() {
-  ///     return NDArray.ones([10]); // 100% unmanaged, survives the scope block!
+  ///     return NDArray.ones([10]); // completely unmanaged, survives the scope block!
   ///   });
   /// });
   /// ```
@@ -396,7 +396,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.create([2, 2], DType.float64, zeroInit: true);
+  /// final a = NDArray<double>.create([2, 2], DType.float64, zeroInit: true);
   /// print(a.toList()); // [0.0, 0.0, 0.0, 0.0]
   /// ```
   ///
@@ -530,7 +530,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.zeros([2, 2], DType.float64);
+  /// final a = NDArray<double>.zeros([2, 2], DType.float64);
   /// print(a.toList()); // [0.0, 0.0, 0.0, 0.0]
   /// ```
   ///
@@ -544,7 +544,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.ones([2, 2], DType.float64);
+  /// final a = NDArray<double>.ones([2, 2], DType.float64);
   /// print(a.data); // [1.0, 1.0, 1.0, 1.0]
   /// ```
   factory NDArray.ones(List<int> shape, DType<T> dtype) {
@@ -565,7 +565,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.arange(0.0, 5.0, step: 1.0, dtype: DType.float64);
+  /// final a = NDArray<double>.arange(0.0, 5.0, step: 1.0, dtype: DType.float64);
   /// print(a.data); // [0.0, 1.0, 2.0, 3.0, 4.0]
   /// ```
   factory NDArray.arange(
@@ -598,7 +598,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.eye(3, DType.float64);
+  /// final a = NDArray<double>.eye(3, DType.float64);
   /// print(a.data); // [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
   /// ```
   ///
@@ -911,7 +911,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+  /// final a = NDArray<double>.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
   /// final flat = a.flatten();
   /// print(flat.shape); // [4]
   /// print(flat.toList()); // [1.0, 2.0, 3.0, 4.0]
@@ -1150,7 +1150,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = `NDArray<double>`.create([100], DType.float64);
+  /// final a = NDArray<double>.create([100], DType.float64);
   /// a.fill(42.0);
   /// ```
   void fill(T value) {
@@ -1404,23 +1404,18 @@ final class NDArray<T> implements ffi.Finalizable {
     data[offsetElements + offset] = value;
   }
 
-  /// Modifies elements where the provided boolean binary [mask] contains `1`.
+  /// Modifies elements where the provided boolean [mask] contains `true`,
+  /// drawing sequential values from another [NDArray] [values].
   ///
   /// **Polymorphic Equivalence:**
-  /// Equivalent to calling `this[mask] = value`.
+  /// Equivalent to calling `this[mask] = values`.
   ///
   /// **Preconditions:**
   /// - [mask] must share identical dimensions ([shape]) with this array.
-  /// - [mask] values must be binary (`0` or `1`).
   ///
-  /// **Arguments:**
-  /// - [value]: Can be a single scalar of matching type (performs uniform clipping)
-  ///   or an [NDArray] containing sequential values to write into the masked positions.
-  /// Modifies elements where the provided boolean binary [mask] contains `true`
-  /// drawing sequential values from another [NDArray].
-  ///
-  /// **Preconditions:**
-  /// - [mask] must share identical dimensions ([shape]) with this array.
+  /// **Throws:**
+  /// - [ArgumentError] if [mask] shape does not match this array's shape.
+  /// - [ArgumentError] if [values] has fewer elements than the number of `true` targets in [mask].
   void setByMask(NDArray<bool> mask, NDArray<T> values) {
     if (mask.shape.length != shape.length) {
       throw ArgumentError(
@@ -1505,7 +1500,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Modifies entire sub-matrix rows or slices along the specified [axis] targeted by a 1D list of [indices], setting them all to a single [value].
   ///
   /// **Polymorphic Equivalence:**
-  /// When [axis] is `0`, equivalent to calling `this[ [indices.data] ] = value` (fancy row stack scalar mutation).
+  /// When [axis] is `0`, equivalent to calling `this[ [indices.data] ] = value` (advanced row stack scalar mutation).
   ///
   void setIndicesScalar(NDArray<int> indices, T value, {int axis = 0}) {
     if (axis < 0 || axis >= shape.length) {
@@ -1544,7 +1539,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Modifies entire sub-matrix rows or slices along the specified [axis] targeted by a 1D list of [indices], overwriting them with sequential values from [values].
   ///
   /// **Polymorphic Equivalence:**
-  /// When [axis] is `0`, equivalent to calling `this[ [indices.data] ] = values` (fancy row stack array assignment).
+  /// When [axis] is `0`, equivalent to calling `this[ [indices.data] ] = values` (advanced row stack array assignment).
   ///
   void setIndices(NDArray<int> indices, NDArray values, {int axis = 0}) {
     if (axis < 0 || axis >= shape.length) {
@@ -1573,7 +1568,7 @@ final class NDArray<T> implements ffi.Finalizable {
         if (dim == sliceShape.length) {
           if (valOffset >= valData.length) {
             throw ArgumentError(
-              'Source values array contains fewer elements than required for the fancy index allocation',
+              'Source values array contains fewer elements than required for the advanced index allocation',
             );
           }
           data[currentOffset] = valData[valOffset++] as T;
@@ -1906,8 +1901,8 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Performance:**
   /// - Uses native C++ SIMD vectorization.
-  /// - Time Complexity: `O(N)` where `N` is the broadcasted size of the arrays.
-  /// - Space Complexity: `O(N)` to allocate the resulting boolean array (unless an `out` parameter is used in the underlying ufunc).
+  /// - Time Complexity: $O(N)$ where `N` is the broadcasted size of the arrays.
+  /// - Space Complexity: $O(N)$ to allocate the resulting boolean array (unless an `out` parameter is used in the underlying ufunc).
   ///
   /// **Example:**
   /// {@example /example/comparison_operations_example.dart lang=dart}
@@ -1933,7 +1928,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Performance:**
   /// - Uses native C++ SIMD vectorization.
-  /// - Time Complexity: `O(N)` where `N` is the broadcasted size.
+  /// - Time Complexity: $O(N)$ where `N` is the broadcasted size.
   ///
   /// **Example:**
   /// {@example /example/comparison_operations_example.dart lang=dart}
@@ -1959,7 +1954,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Performance:**
   /// - Uses native C++ SIMD vectorization.
-  /// - Time Complexity: `O(N)` where `N` is the broadcasted size.
+  /// - Time Complexity: $O(N)$ where `N` is the broadcasted size.
   ///
   /// **Example:**
   /// {@example /example/comparison_operations_example.dart lang=dart}
@@ -1985,7 +1980,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Performance:**
   /// - Uses native C++ SIMD vectorization.
-  /// - Time Complexity: `O(N)` where `N` is the broadcasted size.
+  /// - Time Complexity: $O(N)$ where `N` is the broadcasted size.
   ///
   /// **Example:**
   /// {@example /example/comparison_operations_example.dart lang=dart}
@@ -2015,7 +2010,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Performance:**
   /// - Uses native C++ SIMD vectorization.
-  /// - Time Complexity: `O(N)` where `N` is the broadcasted size.
+  /// - Time Complexity: $O(N)$ where `N` is the broadcasted size.
   ///
   /// **Example:**
   /// {@example /example/comparison_operations_example.dart lang=dart}
@@ -2026,8 +2021,9 @@ final class NDArray<T> implements ffi.Finalizable {
     return ops.equal(this, otherArr);
   }
 
-  /// Returns a view of this array with elements sliced based on [selectors].
+  /// Returns a view or copy of the array with elements sliced based on [selectors].
   ///
+  /// [selectors] must contain instances of [Selector] subclasses: [Index], [Slice], [Indices], [Mask].
   /// [selectors] can contain integers (to select a single index and reduce rank)
   /// or [Slice] objects (to select a range and keep rank).
   ///
@@ -2035,9 +2031,6 @@ final class NDArray<T> implements ffi.Finalizable {
   /// ```dart
   /// final view = arr.slice([Slice(1, 3), 2]);
   /// ```
-  /// Returns a view or copy of the array with elements sliced based on [selectors].
-  ///
-  /// [selectors] must contain instances of [Selector] subclasses: [Index], [Slice], [Indices], [Mask].
   NDArray<T> slice(List<Selector> selectors) {
     if (selectors.length > shape.length) {
       throw ArgumentError('Too many selectors for array rank');
@@ -2286,8 +2279,8 @@ final class NDArray<T> implements ffi.Finalizable {
 
   /// Selects elements matching a boolean [mask].
   ///
-  /// The [mask] array must have elements with value 0 or 1.
-  /// Returns a 1D array containing the elements where the mask is 1.
+  /// The [mask] array must have elements with value true or false.
+  /// Returns a 1D array containing the elements where the mask is true.
   NDArray<T> applyMask(NDArray<bool> mask) {
     if (shape.length == 1 &&
         mask.shape.length == 1 &&

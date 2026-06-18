@@ -93,11 +93,11 @@ NDArray<Float64> _promoteToFloat64(NDArray a) {
 /// - [ArgumentError] if [x] has a complex data type.
 /// - [ArgumentError] if [out] shape does not match `[M * (M - 1) / 2]`.
 ///
-/// **Performance Considerations:**
+/// **Performance considerations:**
 /// - Time complexity is $O(M^2 N)$ where $M$ is the number of observations and $N$ is the number of features.
 /// - Space complexity is $O(M^2)$ for the output array.
 ///
-/// @example /example/distance_example.dart
+/// {@example /example/distance_example.dart}
 NDArray<Float64> pdist<T extends Object>(
   NDArray<T> x, {
   DistanceMetric metric = DistanceMetric.euclidean,
@@ -195,11 +195,11 @@ NDArray<Float64> pdist<T extends Object>(
 /// - [ArgumentError] if [xa] or [xb] has a complex data type.
 /// - [ArgumentError] if [out] shape does not match `[M, K]`.
 ///
-/// **Performance Considerations:**
+/// **Performance considerations:**
 /// - Time complexity is $O(M K N)$.
 /// - Space complexity is $O(M K)$ for the output array.
 ///
-/// @example /example/distance_example.dart
+/// {@example /example/distance_example.dart}
 NDArray<Float64> cdist<Ta extends Object, Tb extends Object>(
   NDArray<Ta> xa,
   NDArray<Tb> xb, {

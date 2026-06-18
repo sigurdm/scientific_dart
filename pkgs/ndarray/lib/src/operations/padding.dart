@@ -194,7 +194,7 @@ Object _getDefaultValue(DType dtype) {
 /// This operation returns a new array with padded values along each axis, or
 /// writes to [out] if provided.
 ///
-/// ### Preconditions
+/// **Preconditions:**
 /// - The [array] must not be disposed.
 /// - If [out] is provided, it must not be disposed, and its shape must match the
 ///   calculated padded shape.
@@ -202,12 +202,12 @@ Object _getDefaultValue(DType dtype) {
 /// - The length of [padWidth], [constantValues], [endValues], and [statLength]
 ///   must match the rank of the [array] when specified per-axis.
 ///
-/// ### Exceptions
+/// **Throws:**
 /// - Throws [StateError] if [array] or [out] is disposed.
 /// - Throws [ArgumentError] if [array] is 0-dimensional, or if parameter
 ///   dimensions mismatch.
 ///
-/// ### Performance Considerations
+/// **Performance considerations:**
 /// - The operation performs padding sequentially axis-by-axis.
 /// - If an axis has 0 padding (both before and after), it is skipped to save
 ///   memory and copy overhead, unless it is the only axis or `out` is provided
@@ -216,7 +216,7 @@ Object _getDefaultValue(DType dtype) {
 ///   to avoid redundant calculations (like sorting for median) for every padded
 ///   element.
 ///
-/// ### Example
+/// **Example:**
 /// {@example /example/padding_example.dart}
 NDArray<T> pad<T extends Object>(
   NDArray<T> array,

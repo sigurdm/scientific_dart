@@ -46,7 +46,7 @@ bool _listEquals(List a, List b) {
   return true;
 }
 
-/// Integrate along the given axis using the composite trapezoidal rule.
+/// Integrates along the given axis using the composite trapezoidal rule.
 ///
 /// The composite trapezoidal rule approximates the integral of a function by
 /// dividing the area under the curve into trapezoids:
@@ -383,7 +383,7 @@ NDArray<T> trapz<T extends Object>(
   return result;
 }
 
-/// Calculate the N-Dimensional gradient along a single axis.
+/// Calculates the N-Dimensional gradient along a single axis.
 ///
 /// Returns a single [NDArray] representing the derivative along [axis].
 /// For a 1D array, this is equivalent to `gradientArray(f)[0]`.
@@ -425,7 +425,7 @@ NDArray<T> trapz<T extends Object>(
 /// - [ArgumentError] if [edgeOrder] is not 1 or 2.
 ///
 /// **Memory Ownership & Lifetime:**
-/// - Allocates a new array on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose()]** to prevent native leaks, unless executing inside a managed [NDArray.scope()].
+/// - Allocates a new array on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose]** to prevent native leaks, unless executing inside a managed [NDArray.scope()].
 ///
 /// **Example:**
 /// ```dart
@@ -750,7 +750,7 @@ NDArray<T> gradient<T extends Object>(
   return result;
 }
 
-/// Calculate the n-dimensional gradient along multiple axes.
+/// Calculates the n-dimensional gradient along multiple axes.
 ///
 /// Returns a [List<NDArray>] containing the partial derivatives along each
 /// specified [axis]. For a 1D array, this returns a list with a single element
@@ -790,7 +790,7 @@ NDArray<T> gradient<T extends Object>(
 /// - [ArgumentError] if [edgeOrder] is not 1 or 2.
 ///
 /// **Memory Ownership & Lifetime:**
-/// - Allocates a list of new arrays on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose()]** on all returned arrays in the list to prevent native leaks, unless executing inside a managed [NDArray.scope()].
+/// - Allocates a list of new arrays on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose]** on all returned arrays in the list to prevent native leaks, unless executing inside a managed [NDArray.scope()].
 ///
 /// **Example:**
 /// ```dart

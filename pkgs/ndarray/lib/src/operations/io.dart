@@ -148,7 +148,7 @@ void save<T>(String filepath, NDArray<T> a) {
 ///   and configures column-major strides directly, without reshaping data.
 ///
 /// **Memory Ownership & Lifetime:**
-/// - Allocates a new array on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose()]** to prevent native leaks, unless executing inside a managed [NDArray.scope()].
+/// - Allocates a new array on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose]** to prevent native leaks, unless executing inside a managed [NDArray.scope()].
 ///
 /// **Example:**
 /// {@example /example/numpy_interop_example.dart lang=dart}
@@ -472,7 +472,7 @@ void savez(
 /// - [FormatException] if the file is not a valid ZIP archive or contains corrupted inner `.npy` byte streams.
 ///
 /// **Performance considerations:**
-/// - **Memory Consideration Warning (3x Footprint Hazard):** During `.npz` deserialization, this method reads the
+/// - **Memory overhead:** During `.npz` deserialization, this method reads the
 ///   archive bytes and decodes them fully in memory via `ZipDecoder().decodeBytes()`. When deserializing each `.npy` file,
 ///   it allocates a contiguous unmanaged C-heap memory block and copies the bytes block.
 ///   This creates a temporary **3x RAM footprint amplification factor** (compressed archive bytes list + fully
@@ -481,7 +481,7 @@ void savez(
 ///   free memory pages to prevent Out-Of-Memory (OOM) isolate VM kills.
 ///
 /// **Memory Ownership & Lifetime:**
-/// - Allocates new arrays on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose()]** on all returned arrays in the map to prevent native leaks, unless executing inside a managed [NDArray.scope()].
+/// - Allocates new arrays on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose]** on all returned arrays in the map to prevent native leaks, unless executing inside a managed [NDArray.scope()].
 ///
 /// **Example:**
 /// {@example /example/numpy_interop_example.dart lang=dart}

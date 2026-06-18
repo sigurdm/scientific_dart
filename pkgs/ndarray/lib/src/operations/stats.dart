@@ -103,7 +103,7 @@ enum QuantileMethod {
   nearest,
 }
 
-/// Compute the sum of elements in the array.
+/// Computes the sum of elements in the array.
 ///
 /// If [axis] is provided, sums along that axis and returns a new array.
 /// Otherwise, sums all elements and returns a 0-D array containing the sum.
@@ -231,7 +231,7 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   return result;
 }
 
-/// Compute the product of elements in the array.
+/// Computes the product of elements in the array.
 ///
 /// If [axis] is provided, multiplies along that axis and returns a new array.
 /// Otherwise, multiplies all elements and returns a 0-D array containing the product.
@@ -468,7 +468,7 @@ NDArray<bool> any<T extends Object>(
   return result;
 }
 
-/// Compute the arithmetic mean of array elements along a specified axis.
+/// Computes the arithmetic mean of array elements along a specified axis.
 ///
 /// **Preconditions:**
 /// - Input array [a] elements must be numeric (`T extends num` or Complex).
@@ -646,7 +646,7 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
   }
 }
 
-/// Compute the standard deviation of array elements along a specified axis.
+/// Computes the standard deviation of array elements along a specified axis.
 ///
 /// Standard deviation is a measure of the spread of a distribution. The standard deviation
 /// is computed for the flattened array by default, otherwise over the specified axis.
@@ -711,7 +711,7 @@ NDArray<double> std<T extends num>(
   }
 }
 
-/// Compute the variance along the specified axis, ignoring NaNs.
+/// Computes the variance along the specified axis, ignoring NaNs.
 ///
 /// **Preconditions:**
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
@@ -724,7 +724,7 @@ NDArray<double> std<T extends num>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
+/// final a = NDArray<double>.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
 /// final v = nanvar(a); // returns 0-D array containing 0.6666666666666666
 /// ```
 NDArray<double> nanvar<T extends num>(
@@ -814,7 +814,7 @@ NDArray<double> nanvar<T extends num>(
   }
 }
 
-/// Compute the standard deviation along the specified axis, ignoring NaNs.
+/// Computes the standard deviation along the specified axis, ignoring NaNs.
 ///
 /// **Preconditions:**
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
@@ -827,7 +827,7 @@ NDArray<double> nanvar<T extends num>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
+/// final a = NDArray<double>.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
 /// final s = nanstd(a); // returns 0-D array containing sqrt(0.6666666666666666)
 /// ```
 NDArray<double> nanstd<T extends num>(
@@ -873,9 +873,9 @@ NDArray<double> nanstd<T extends num>(
   }
 }
 
-/// Compute the minimum of elements in the array.
+/// Computes the minimum of elements in the array.
 ///
-/// **Gotchas:**
+/// **Edge cases:**
 /// - Returns a 0-dimensional [NDArray] if [axis] is null, or a new [NDArray] if [axis] is provided.
 /// - Preserves the original data type (DType) of the input array along the reduction axis.
 NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
@@ -1025,7 +1025,7 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   return result;
 }
 
-/// Compute the minimum of elements along a specified axis, ignoring NaNs.
+/// Computes the minimum of elements along a specified axis, ignoring NaNs.
 ///
 /// This corresponds to NumPy's `nanmin` function.
 ///
@@ -1213,9 +1213,9 @@ NDArray<T> nanmin<T extends Object>(
   return result;
 }
 
-/// Compute the maximum of elements in the array.
+/// Computes the maximum of elements in the array.
 ///
-/// **Gotchas:**
+/// **Edge cases:**
 /// - Returns a 0-dimensional [NDArray] if [axis] is null, or a new [NDArray] if [axis] is provided.
 /// - Preserves the original data type (DType) of the input array along the reduction axis.
 NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
@@ -1365,7 +1365,7 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   return result;
 }
 
-/// Compute the maximum of elements along a specified axis, ignoring NaNs.
+/// Computes the maximum of elements along a specified axis, ignoring NaNs.
 ///
 /// This corresponds to NumPy's `nanmax` function.
 ///
@@ -1553,6 +1553,19 @@ NDArray<T> nanmax<T extends Object>(
   return result;
 }
 
+/// Computes the cumulative sum of array elements along a specified axis.
+///
+/// **Preconditions:**
+/// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
+/// - If provided, the [out] recycler must have compatible shape and dtype.
+///
+/// **Throws:**
+/// - [StateError] if the array is disposed.
+/// - [ArgumentError] if [axis] is out of bounds.
+/// - [ArgumentError] if [out] recycler shape or dtype is incompatible.
+///
+/// **Example:**
+/// {@example /example/cumulative_example.dart lang=dart}
 NDArray<R> cumsum<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cumsum() on a disposed array.');
@@ -1607,7 +1620,7 @@ NDArray<R> cumsum<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
   return cumOpFFI(a, targetAxis, result, CumOpType.sum);
 }
 
-/// Compute the cumulative product of array elements along a specified axis.
+/// Computes the cumulative product of array elements along a specified axis.
 ///
 /// **Preconditions:**
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
@@ -1674,7 +1687,7 @@ NDArray<R> cumprod<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
   return cumOpFFI(a, targetAxis, result, CumOpType.prod);
 }
 
-/// Compute the cumulative minimum of array elements along a specified axis.
+/// Computes the cumulative minimum of array elements along a specified axis.
 ///
 /// **Preconditions:**
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
@@ -1733,7 +1746,7 @@ NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   return cumOpFFI(a, targetAxis, result, CumOpType.min);
 }
 
-/// Compute the cumulative maximum of array elements along a specified axis.
+/// Computes the cumulative maximum of array elements along a specified axis.
 ///
 /// **Preconditions:**
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
@@ -1792,7 +1805,7 @@ NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   return cumOpFFI(a, targetAxis, result, CumOpType.max);
 }
 
-/// Compute the variance of array elements along a specified axis.
+/// Computes the variance of array elements along a specified axis.
 ///
 /// Variance is a measure of the spread of a distribution. The variance is computed for
 /// the flattened array by default, otherwise over the specified axis.
@@ -1889,7 +1902,7 @@ NDArray<double> variance<T extends num>(
   }
 }
 
-/// Compute the arithmetic mean along a specified axis, ignoring NaNs.
+/// Computes the arithmetic mean along a specified axis, ignoring NaNs.
 ///
 /// **Preconditions:**
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
@@ -1903,7 +1916,7 @@ NDArray<double> variance<T extends num>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], DType.float64);
+/// final a = NDArray<double>.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], DType.float64);
 /// final m = nanmean(a); // returns 0-D array containing 2.6666666666666665
 /// ```
 NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
@@ -2028,7 +2041,7 @@ NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
   return result;
 }
 
-/// Compute the q-th quantile along the specified axis.
+/// Computes the q-th quantile along the specified axis.
 ///
 /// The quantile is a value between 0 and 1.
 ///
@@ -2236,7 +2249,7 @@ double r_quantile_helper(NDArray a, int size, double q, int method) {
   }
 }
 
-/// Compute the q-th percentile of the data along the specified axis.
+/// Computes the q-th percentile of the data along the specified axis.
 ///
 /// The percentile is a value between 0 and 100.
 ///
@@ -2261,7 +2274,7 @@ NDArray<double> percentile<T extends Object>(
   return quantile(a, q / 100.0, axis: axis, method: method, out: out);
 }
 
-/// Compute the median along the specified axis.
+/// Computes the median along the specified axis.
 ///
 /// **Preconditions:**
 /// - Input array [a] elements must be numeric (`T extends num` or Complex).

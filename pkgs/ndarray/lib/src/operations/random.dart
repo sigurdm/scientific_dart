@@ -73,7 +73,7 @@ NDArray<T> uniform<T extends num>(
   return arr;
 }
 
-/// Return random integers from the half-open interval `[low, high)`.
+/// Returns random integers from the half-open interval `[low, high)`.
 ///
 /// Generates uniformly distributed random integers of the specified integer [dtype]
 /// in the range `[low, high)`.
@@ -94,7 +94,7 @@ NDArray<T> uniform<T extends num>(
 ///
 /// **Memory Ownership & Recycle:**
 /// - If the optional [out] recycler buffer is provided, it is populated in-place, avoiding heap allocations.
-/// - Otherwise, allocates a new array on the unmanaged C heap. **The caller takes full ownership** of this memory page and **must explicitly call [dispose()]** to prevent native memory leaks, unless executing inside a managed [NDArray.scope()].
+/// - Otherwise, allocates a new array on the unmanaged C heap. **The caller takes full ownership** of this memory page and **must explicitly call [dispose]** to prevent native memory leaks, unless executing inside a managed [NDArray.scope()].
 ///
 /// **NumPy Counterpart:**
 /// - Equates directly to NumPy's `np.random.randint`.
@@ -166,7 +166,7 @@ NDArray<T> randint<T extends num>(
   return arr;
 }
 
-/// Draw random samples from a normal (Gaussian) distribution.
+/// Draws random samples from a normal (Gaussian) distribution.
 ///
 /// This function corresponds to NumPy's `random.normal` function.
 ///
@@ -249,7 +249,7 @@ NDArray<T> normal<T extends num>(
   return arr;
 }
 
-/// Draw samples from an exponential distribution.
+/// Draws samples from an exponential distribution.
 ///
 /// This function corresponds to NumPy's `random.exponential` function.
 /// It uses Inverse Transform Sampling to extract exponential variables.
@@ -334,7 +334,7 @@ NDArray<T> exponential<T extends num>(
   return arr;
 }
 
-/// Draw samples from a Poisson distribution.
+/// Draws samples from a Poisson distribution.
 ///
 /// This function corresponds to NumPy's `random.poisson` function.
 ///
@@ -403,7 +403,7 @@ NDArray<T> poisson<T extends num>(
   return arr;
 }
 
-/// Draw samples from a Binomial distribution.
+/// Draws samples from a Binomial distribution.
 ///
 /// This function corresponds to NumPy's `random.binomial` function.
 ///
@@ -485,7 +485,7 @@ NDArray<T> binomial<T extends num>(
   return arr;
 }
 
-/// Draw random samples from a multivariate normal (Gaussian) distribution.
+/// Draws random samples from a multivariate normal (Gaussian) distribution.
 ///
 /// This corresponds to NumPy's `random.multivariate_normal` function.
 ///
@@ -604,7 +604,7 @@ NDArray<T> multivariateNormal<T extends num>(
   });
 }
 
-/// Draw samples from a multinomial distribution.
+/// Draws samples from a multinomial distribution.
 ///
 /// This corresponds to NumPy's `random.multinomial` function.
 ///

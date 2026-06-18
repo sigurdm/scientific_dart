@@ -35,7 +35,7 @@ enum SortKind {
 /// - [SearchSide.left] returns the index of the **first** suitable location found (the leftmost match).
 /// - [SearchSide.right] returns the index of the **last** suitable location found (the rightmost match).
 ///
-/// ### Inline Example:
+/// **Example:**
 /// ```dart
 /// import 'package:ndarray/ndarray.dart';
 ///
@@ -65,23 +65,12 @@ enum SearchSide {
   right,
 }
 
-/// Returns an array with evenly spaced values over a specified interval.
-///
-/// Returns [numSamples] evenly spaced samples, calculated over the interval `[start, stop]`.
+/// Returns [numSamples] (must be non-negative) evenly spaced samples, calculated over the interval `[start, stop]`.
 ///
 /// The endpoint of the interval can optionally be excluded.
-///
 /// Supports [Complex] bounds for path generation in the complex plane.
-///
-/// **Parameters:**
-/// - [start]: The starting value of the sequence.
-/// - [stop]: The end value of the sequence.
-/// - [numSamples]: Number of samples to generate. Must be non-negative.
-/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
-/// - [dtype]: The type of the output array. If not provided, it defaults to:
-///   - [DType.complex128] if [T] is [Complex].
-///   - [DType.int64] if [T] is [int].
-///   - [DType.float64] otherwise.
+/// If [endpoint] is true, `stop` is the last sample. Otherwise, it is not included.
+/// If [dtype] is not provided, it defaults to [DType.complex128] if [T] is [Complex], [DType.int64] if [T] is [int], and [DType.float64] otherwise.
 ///
 /// **Example:**
 /// ```dart
@@ -103,19 +92,11 @@ NDArray<T> linspace<T>(
   ).$1;
 }
 
-/// Similar to [linspace], but also returns the calculated step size.
+/// Computes evenly spaced samples over a specified interval and returns them along with the step size.
 ///
 /// Returns a Record `(samples, step)`.
-///
-/// **Parameters:**
-/// - [start]: The starting value of the sequence.
-/// - [stop]: The end value of the sequence.
-/// - [numSamples]: Number of samples to generate. Must be non-negative.
-/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
-/// - [dtype]: The type of the output array. If not provided, it defaults to:
-///   - [DType.complex128] if [T] is [Complex].
-///   - [DType.int64] if [T] is [int].
-///   - [DType.float64] otherwise.
+/// If [endpoint] is true, `stop` is the last sample. Otherwise, it is not included.
+/// If [dtype] is not provided, it defaults to [DType.complex128] if [T] is [Complex], [DType.int64] if [T] is [int], and [DType.float64] otherwise.
 (NDArray<T>, T) linspaceWithStep<T>(
   T start,
   T stop,
@@ -151,7 +132,7 @@ NDArray<T> linspace<T>(
 /// - [start]: The starting value(s) as an [NDArray].
 /// - [stop]: The end value(s) as an [NDArray].
 /// - [numSamples]: Number of samples to generate. Must be non-negative.
-/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [endpoint]: If true, `stop` is the last sample. Otherwise, it is not included.
 /// - [axis]: The axis in the result to store the samples. Defaults to 0.
 /// - [dtype]: The type of the output array. If not provided, it defaults to:
 ///   - [DType.complex128] if [T] is [Complex].
@@ -194,7 +175,7 @@ NDArray<T> linspaceGrid<T>(
 /// - [start]: The starting value(s) as an [NDArray].
 /// - [stop]: The end value(s) as an [NDArray].
 /// - [numSamples]: Number of samples to generate. Must be non-negative.
-/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [endpoint]: If true, `stop` is the last sample. Otherwise, it is not included.
 /// - [axis]: The axis in the result to store the samples. Defaults to 0.
 /// - [dtype]: The type of the output array. If not provided, it defaults to:
 ///   - [DType.complex128] if [T] is [Complex].
@@ -445,7 +426,7 @@ NDArray<T> linspaceGrid<T>(
 /// - [stop]: The end value of the sequence.
 /// - [numSamples]: Number of samples to generate. Must be non-negative.
 /// - [base]: The base of the log space. Defaults to 10.0.
-/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [endpoint]: If true, `stop` is the last sample. Otherwise, it is not included.
 /// - [dtype]: The type of the output array. If not provided, it defaults to:
 ///   - [DType.complex128] if [T] is [Complex].
 ///   - [DType.int64] if [T] is [int].
@@ -534,7 +515,7 @@ NDArray<T> logspace<T>(
 /// - [stop]: The end value(s) as an [NDArray].
 /// - [numSamples]: Number of samples to generate. Must be non-negative.
 /// - [base]: The base of the log space as an [NDArray]. Defaults to 10.0.
-/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [endpoint]: If true, `stop` is the last sample. Otherwise, it is not included.
 /// - [axis]: The axis in the result to store the samples. Defaults to 0.
 /// - [dtype]: The type of the output array. If not provided, it defaults to:
 ///   - [DType.complex128] if [T] is [Complex].
@@ -585,7 +566,7 @@ NDArray<T> logspaceGrid<T extends Object>(
 /// - [start]: The starting value of the sequence.
 /// - [stop]: The end value of the sequence.
 /// - [numSamples]: Number of samples to generate. Must be non-negative.
-/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [endpoint]: If true, `stop` is the last sample. Otherwise, it is not included.
 /// - [dtype]: The type of the output array. If not provided, it defaults to:
 ///   - [DType.complex128] if [T] is [Complex].
 ///   - [DType.int64] if [T] is [int].
@@ -689,7 +670,7 @@ NDArray<T> geomspace<T>(
 /// - [start]: The starting value(s) as an [NDArray].
 /// - [stop]: The end value(s) as an [NDArray].
 /// - [numSamples]: Number of samples to generate. Must be non-negative.
-/// - [endpoint]: If True, `stop` is the last sample. Otherwise, it is not included.
+/// - [endpoint]: If true, `stop` is the last sample. Otherwise, it is not included.
 /// - [axis]: The axis in the result to store the samples. Defaults to 0.
 /// - [dtype]: The type of the output array. If not provided, it defaults to:
 ///   - [DType.complex128] if [T] is [Complex].

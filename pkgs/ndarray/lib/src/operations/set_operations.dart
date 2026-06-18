@@ -4,7 +4,7 @@ import '../ndarray_bindings.dart';
 import 'helpers.dart'; // for encodeDType
 import 'sorting.dart';
 
-/// Find the unique elements of an array.
+/// Finds the unique elements of an array.
 ///
 /// Returns the sorted unique elements of an array.
 ///
@@ -117,7 +117,7 @@ dynamic unique<T extends Object>(
   return result;
 }
 
-/// Find the intersection of two arrays.
+/// Finds the intersection of two arrays.
 ///
 /// Returns the sorted, unique values that are in both of the input arrays.
 NDArray<T> intersect1d<T extends Object>(
@@ -187,7 +187,7 @@ NDArray<T> intersect1d<T extends Object>(
   return result;
 }
 
-/// Find the set difference of two arrays.
+/// Finds the set difference of two arrays.
 ///
 /// Returns the unique values in [ar1] that are not in [ar2].
 NDArray<T> setdiff1d<T extends Object>(
@@ -257,7 +257,7 @@ NDArray<T> setdiff1d<T extends Object>(
   return result;
 }
 
-/// Find the set exclusive-or of two arrays.
+/// Finds the set exclusive-or of two arrays.
 ///
 /// Returns the sorted, unique values that are in only one (not both) of the input arrays.
 NDArray<T> setxor1d<T extends Object>(
@@ -327,7 +327,7 @@ NDArray<T> setxor1d<T extends Object>(
   return result;
 }
 
-/// Find the union of two arrays.
+/// Finds the union of two arrays.
 ///
 /// Returns the unique, sorted array of values that are in either of the two input arrays.
 NDArray<T> union1d<T extends Object>(NDArray<T> ar1, NDArray<T> ar2) {

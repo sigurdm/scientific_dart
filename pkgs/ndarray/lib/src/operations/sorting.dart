@@ -701,7 +701,7 @@ NDArray<int> argpartition(NDArray a, dynamic kth, {int axis = -1}) {
   }
 }
 
-/// Find indices where elements of [v] should be inserted to maintain order in a sorted 1-D array [a].
+/// Finds indices where elements of [v] should be inserted to maintain order in a sorted 1-D array [a].
 ///
 /// This function corresponds to NumPy's `searchsorted` function.
 ///
@@ -709,22 +709,22 @@ NDArray<int> argpartition(NDArray a, dynamic kth, {int axis = -1}) {
 /// multi-dimensional shapes for the query array [v]. The returned index
 /// array will have the exact same shape as [v].
 ///
-/// ### Preconditions
+/// **Preconditions:**
 /// - [a] must be a 1-D array. If [sorter] is `null`, [a] must be sorted in ascending order.
 /// - [v] must have a matching data type to [a].
 /// - [sorter] (optional) must be a 1-D integer array of the same size as [a]
 ///   containing indices that sort [a] into ascending order. If provided, binary search
 ///   is performed indirectly using the sorter indices, completely copy-free.
 ///
-/// ### Throws
+/// **Throws:**
 /// - [ArgumentError] if [a] is not 1-D, [sorter] shape/size is invalid, or if data types mismatch.
 /// - [StateError] if any input array is already disposed.
 ///
-/// ### Performance Considerations
+/// **Performance considerations:**
 /// - **Time Complexity**: $O(M \log N)$ where $N$ is the size of [a] and $M$ is the size of [v].
 /// - **Memory Complexity**: $O(M)$ to hold the returned N-dimensional shape. The C search runs in $O(1)$ auxiliary space.
 ///
-/// ### Inline Example:
+/// **Example:**
 /// ```dart
 /// import 'package:ndarray/ndarray.dart';
 ///
@@ -954,7 +954,7 @@ NDArray<int> searchsorted(
   return result;
 }
 
-/// Return elements chosen from [x] or [y] depending on [condition], or the indices where [condition] is true.
+/// Returns elements chosen from [x] or [y] depending on [condition], or the indices where [condition] is true.
 ///
 /// This function implements a ternary conditional selector or coordinate selector depending on its arguments:
 /// 1. **Ternary Select (Three Arguments):**
@@ -981,7 +981,7 @@ NDArray<int> searchsorted(
 ///   uses vectorized C operations (`s_where_double`/`s_where_float`).
 ///
 /// **Memory Ownership & Lifetime:**
-/// - Allocates a new array (or list of arrays) on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose()]** on all returned arrays to prevent native leaks, unless executing inside a managed [NDArray.scope()].
+/// - Allocates a new array (or list of arrays) on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose]** on all returned arrays to prevent native leaks, unless executing inside a managed [NDArray.scope()].
 ///
 /// **NumPy Counterpart:**
 /// - Maps directly to NumPy's `np.where`.
@@ -1839,14 +1839,14 @@ enum CompareOp {
 /// - If [directions] is provided, its length must match [a.shape.length], and it must only
 ///   contain `1` (forward search) or `-1` (backward search) for each dimension.
 ///
-/// **Exceptions Thrown:**
+/// **Throws:**
 /// - [StateError] if [a] is disposed.
 /// - [ArgumentError] if the length of [startCoords] or [directions] does not match the rank of [a].
 /// - [ArgumentError] if [directions] contains any values other than `1` or `-1`.
 /// - [RangeError] if any coordinate in [startCoords] is out of bounds for the array's shape.
 /// - [UnsupportedError] if [a] has a complex data type and [op] is an inequality operator (e.g., [CompareOp.less]).
 ///
-/// **Performance Considerations:**
+/// **Performance considerations:**
 /// - Complexity is $O(N)$ in the worst case where $N$ is the number of elements in [a].
 /// - It performs a linear search with early-exit (short-circuiting) implemented in native C, which
 ///   avoids allocating temporary boolean masks or intermediate coordinate arrays.

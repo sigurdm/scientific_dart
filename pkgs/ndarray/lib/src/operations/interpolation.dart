@@ -22,17 +22,12 @@ void _validateSorted(NDArray<double> xp) {
   }
 }
 
-/// One-dimensional linear interpolation.
+/// Computes one-dimensional linear interpolation.
 ///
 /// Returns the one-dimensional piecewise linear interpolant to a function with
 /// given discrete data points ([xp], [fp]), evaluated at [x].
-///
-/// [x] is the coordinates at which to evaluate the interpolated values.
-/// [xp] is the x-coordinates of the data points, must be strictly increasing.
-/// [fp] is the y-coordinates of the data points, same length as [xp].
-///
-/// [left] is the value to return for `x < xp[0]`, default is `fp[0]`.
-/// [right] is the value to return for `x > xp[xp.length-1]`, default is `fp[fp.length-1]`.
+/// The [xp] array must be strictly increasing and have the same length as [fp].
+/// Optional [left] and [right] specify values to return for `x < xp[0]` and `x > xp[xp.length-1]` respectively, defaulting to `fp[0]` and `fp[fp.length-1]`.
 ///
 /// **Preconditions:**
 /// - [x], [xp], [fp] must not be disposed.

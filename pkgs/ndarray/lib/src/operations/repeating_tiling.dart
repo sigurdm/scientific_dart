@@ -24,7 +24,7 @@ import '../ndarray.dart';
 ///   the dimension along [axis], or it contains negative values.
 /// - [ArgumentError] if [out] shape or [DType] is incompatible.
 ///
-/// **Performance Considerations:**
+/// **Performance considerations:**
 /// - Time Complexity: $O(N)$ where $N$ is the total number of elements in the
 ///   output array.
 /// - Space Complexity: $O(N)$ for the output array (unless [out] is provided).
@@ -157,9 +157,9 @@ NDArray<T> repeat<T>(
 
 /// Constructs an array by repeating [a] the number of times given by [reps].
 ///
-/// If [reps] has length `d`, the result will have dimension of `max(d, a.ndim)`.
-/// If `a.ndim < d`, [a] is promoted to be d-dimensional by prepending new axes.
-/// If `a.ndim > d`, [reps] is promoted to `a.ndim` by pre-pending 1's to it.
+/// If [reps] has length `d`, the result will have dimension of `max(d, a.rank)`.
+/// If `a.rank < d`, [a] is promoted to be d-dimensional by prepending new axes.
+/// If `a.rank > d`, [reps] is promoted to `a.rank` by pre-pending 1's to it.
 ///
 /// **Preconditions:**
 /// - [reps] must be an `NDArray<int>`.
@@ -171,7 +171,7 @@ NDArray<T> repeat<T>(
 /// - [ArgumentError] if [reps] contains negative values.
 /// - [ArgumentError] if [out] shape or [DType] is incompatible.
 ///
-/// **Performance Considerations:**
+/// **Performance considerations:**
 /// - Time Complexity: $O(N)$ where $N$ is the total number of elements in the
 ///   output array.
 /// - Space Complexity: $O(N)$ for the output array (unless [out] is provided).

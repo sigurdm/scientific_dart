@@ -7,7 +7,7 @@ import 'ndarray.dart';
 /// order.
 ///
 /// To achieve maximum performance and zero heap allocation during iteration,
-/// [NDIter] reuse the same list of coordinates and updates it in-place.
+/// [NDIter] reuses the same list of coordinates and updates it in-place.
 /// Therefore, the coordinates returned by [coords] must not be stored or
 /// modified by the consumer.
 ///
@@ -71,8 +71,6 @@ final class NDIter {
   /// - Iteration (calling [moveNext]) is zero-allocation.
   /// - Construction allocates internal helper lists to track state.
   ///
-  /// **Throws:**
-  /// - [StateError] if the array is disposed.
   NDIter(NDArray array) : this._internal([array], array.shape);
 
   /// Creates an iterator that iterates over two arrays simultaneously,
@@ -82,9 +80,6 @@ final class NDIter {
   /// - Iteration (calling [moveNext]) is zero-allocation.
   /// - Construction allocates internal helper lists to track state.
   ///
-  /// **Throws:**
-  /// - [StateError] if either array is disposed.
-  /// - [ArgumentError] if shapes are incompatible for broadcasting.
   NDIter.broadcast2(NDArray a, NDArray b)
     : this._internal([a, b], NDIter._broadcastShapes(a.shape, b.shape));
 
@@ -95,9 +90,6 @@ final class NDIter {
   /// - Iteration (calling [moveNext]) is zero-allocation.
   /// - Construction allocates internal helper lists to track state.
   ///
-  /// **Throws:**
-  /// - [StateError] if any array is disposed.
-  /// - [ArgumentError] if list of arrays is empty or shapes are incompatible.
   NDIter.broadcast(List<NDArray> arrays)
     : this._internal(
         arrays,
@@ -158,6 +150,9 @@ final class NDIter {
   ///
   /// **Preconditions:**
   /// - [arrayIndex] must be greater than or equal to 0 and less than the number of arrays being iterated.
+  ///
+  /// **Throws:**
+  /// - [RangeError] if [arrayIndex] is out of bounds.
   int getIndex(int arrayIndex) {
     if (arrayIndex < 0 || arrayIndex >= _numArrays) {
       throw RangeError.range(arrayIndex, 0, _numArrays - 1, 'arrayIndex');
@@ -239,8 +234,6 @@ final class NDEnumerate<T> {
 
   /// Creates an enumeration over the specified [array].
   ///
-  /// **Throws:**
-  /// - [StateError] if the array is disposed.
   NDEnumerate(NDArray<T> array) : _array = array, _iter = NDIter(array);
 
   /// Advances to the next element.

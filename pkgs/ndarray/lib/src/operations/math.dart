@@ -34,7 +34,7 @@ void setNumThreads(int numThreads) {
   openblas_set_num_threads(numThreads);
 }
 
-/// Compute the element-wise square root of the array.
+/// Computes the element-wise square root of the array.
 ///
 /// Returns a new array with the results.
 ///
@@ -45,7 +45,7 @@ void setNumThreads(int numThreads) {
 /// print(b.data); // [1.0, 2.0, 3.0]
 /// ```
 ///
-/// **Gotchas:**
+/// **Edge cases:**
 /// - Negative values will result in [double.nan].
 NDArray<R> sqrt<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
@@ -92,7 +92,7 @@ NDArray<R> sqrt<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
-/// Compute the element-wise square of the input array.
+/// Computes the element-wise square of the input array.
 ///
 /// **Throws:**
 /// - [StateError] if the array has been disposed.
@@ -246,7 +246,7 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
   }
 }
 
-/// Compute the element-wise sine of the array.
+/// Computes the element-wise sine of the array.
 ///
 /// **Preconditions:**
 /// - Input array [a] elements must be numeric (`T extends num`).
@@ -386,7 +386,7 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
-/// Compute the element-wise cosine of the array.
+/// Computes the element-wise cosine of the array.
 ///
 /// **Preconditions:**
 /// - Input array [a] elements must be numeric (`T extends num`).
@@ -529,7 +529,7 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
-/// Compute the element-wise exponential of the array.
+/// Computes the element-wise exponential of the array.
 ///
 /// **Preconditions:**
 /// - Input array [a] elements must be numeric (`T extends num`).
@@ -627,7 +627,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
-/// Compute the element-wise natural logarithm of the array.
+/// Computes the element-wise natural logarithm of the array.
 ///
 /// **Preconditions:**
 /// - Input array [a] elements must be numeric (`T extends num`).
@@ -724,7 +724,7 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
-/// Compute the sum of array elements along a specified axis, treating NaNs as zeros.
+/// Computes the sum of array elements along a specified axis, treating NaNs as zeros.
 ///
 /// **Preconditions:**
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
@@ -737,7 +737,7 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], DType.float64);
+/// final a = NDArray<double>.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], DType.float64);
 /// final s = nansum(a); // returns 4.0
 /// ```
 NDArray<T> nansum<T extends Object>(
@@ -825,7 +825,7 @@ NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
   return concatenate(arrays, axis: 1);
 }
 
-/// Return a deep, C-contiguous copy of the given array.
+/// Returns a deep, C-contiguous copy of the given array.
 ///
 /// The copy preserves the logical order and values of the elements defined by
 /// [a]'s shape and strides. However, the physical memory layout of the returned
@@ -851,7 +851,7 @@ NDArray<T> copy<T extends Object>(NDArray<T> a) {
   return a.copy();
 }
 
-/// Compute the element-wise tangent of the array.
+/// Computes the element-wise tangent of the array.
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
@@ -978,7 +978,7 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
-/// Compute the element-wise arc sine (inverse sine) of the array.
+/// Computes the element-wise arc sine (inverse sine) of the array.
 ///
 /// **Preconditions:**
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
@@ -1113,7 +1113,7 @@ NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
-/// Compute the element-wise arc cosine (inverse cosine) of the array.
+/// Computes the element-wise arc cosine (inverse cosine) of the array.
 ///
 /// **Preconditions:**
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
@@ -1248,7 +1248,7 @@ NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
-/// Compute the element-wise arc tangent (inverse tangent) of the array.
+/// Computes the element-wise arc tangent (inverse tangent) of the array.
 ///
 /// **Preconditions:**
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
@@ -1383,7 +1383,7 @@ NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
-/// Compute the element-wise hyperbolic sine of the array.
+/// Computes the element-wise hyperbolic sine of the array.
 ///
 /// **Preconditions:**
 /// - Input array [a] elements must be numeric (`T extends num`).
@@ -1474,7 +1474,7 @@ NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   return result;
 }
 
-/// Compute the element-wise hyperbolic cosine of the array.
+/// Computes the element-wise hyperbolic cosine of the array.
 ///
 /// **Preconditions:**
 /// - Input array [a] elements must be numeric (`T extends num`).
@@ -1565,7 +1565,7 @@ NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   return result;
 }
 
-/// Compute the element-wise hyperbolic tangent of the array.
+/// Computes the element-wise hyperbolic tangent of the array.
 ///
 /// **Preconditions:**
 /// - Input array [a] elements must be numeric (`T extends num`).
@@ -1657,7 +1657,7 @@ NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   return result;
 }
 
-/// Compute the element-wise inverse hyperbolic sine of the array.
+/// Computes the element-wise inverse hyperbolic sine of the array.
 ///
 /// **Preconditions:**
 /// - Input array [a] elements must be numeric (`T extends num`).
@@ -1748,7 +1748,7 @@ NDArray<double> asinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   return result;
 }
 
-/// Compute the element-wise inverse hyperbolic cosine of the array.
+/// Computes the element-wise inverse hyperbolic cosine of the array.
 ///
 /// **Preconditions:**
 /// - Input array [a] elements must be numeric (`T extends num`).
@@ -1839,7 +1839,7 @@ NDArray<double> acosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
   return result;
 }
 
-/// Compute the element-wise inverse hyperbolic tangent of the array.
+/// Computes the element-wise inverse hyperbolic tangent of the array.
 ///
 /// **Preconditions:**
 /// - Input array [a] elements must be numeric (`T extends num`).
@@ -1961,7 +1961,7 @@ NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
-/// Compute the element-wise arc tangent of [y] / [x] with full broadcasting support.
+/// Computes the element-wise arc tangent of [y] / [x] with full broadcasting support.
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
@@ -2140,7 +2140,7 @@ NDArray<double> atan2<Ty, Tx>(
   return result;
 }
 
-/// Compute the element-wise hypotenuse `sqrt(x1**2 + x2**2)` with broadcasting support.
+/// Computes the element-wise hypotenuse `sqrt(x1**2 + x2**2)` with broadcasting support.
 ///
 /// **Example:**
 /// ```dart
@@ -3079,7 +3079,7 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
-/// Compute the element-wise sign of the array.
+/// Computes the element-wise sign of the array.
 ///
 /// For real numbers, returns:
 /// - -1 if x < 0
@@ -3401,7 +3401,7 @@ Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<Complex>`.create([2], `DType.complex128);`
+/// final a = NDArray<Complex>.create([2], `DType.complex128);`
 /// a.data[0] = Complex(3.0, 4.0);
 /// a.data[1] = Complex(-1.0, 0.0);
 /// final r = real(a); // [3.0, -1.0] (`DType.float64)`
@@ -3472,7 +3472,7 @@ NDArray<R> real<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<Complex>`.create([2], `DType.complex128);`
+/// final a = NDArray<Complex>.create([2], `DType.complex128);`
 /// a.data[0] = Complex(3.0, 4.0);
 /// a.data[1] = Complex(-1.0, 0.0);
 /// final im = imag(a); // [4.0, 0.0] (`DType.float64)`
@@ -3998,7 +3998,7 @@ NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
   }
 }
 
-/// Return first element-wise argument with the sign of the second element-wise argument.
+/// Returns first element-wise argument with the sign of the second element-wise argument.
 ///
 /// **Throws:**
 /// - [StateError] if either array has been disposed.
@@ -4528,7 +4528,7 @@ NDArray<T> clipArray<T>(
   }
 }
 
-/// Compute the element-wise truth value of NOT [a].
+/// Computes the element-wise truth value of NOT [a].
 ///
 /// Returns a boolean array of the same shape as [a] containing the element-wise logical negation.
 ///
@@ -4944,7 +4944,7 @@ void _compareHelper(
   }
 }
 
-/// Compute the element-wise truth value of [a] AND [b] with broadcasting support.
+/// Computes the element-wise truth value of [a] AND [b] with broadcasting support.
 ///
 /// Returns a boolean array containing the element-wise logical AND results.
 ///
@@ -4983,7 +4983,7 @@ NDArray<bool> logical_and<Ta, Tb>(
   );
 }
 
-/// Compute the element-wise truth value of [a] OR [b] with broadcasting support.
+/// Computes the element-wise truth value of [a] OR [b] with broadcasting support.
 ///
 /// Returns a boolean array containing the element-wise logical OR results.
 ///
@@ -5015,7 +5015,7 @@ NDArray<bool> logical_or<Ta, Tb>(
   return _runBinaryLogical(a, b, out, v_logical_or, s_logical_or, 'logical_or');
 }
 
-/// Compute the element-wise truth value of [a] XOR [b] with broadcasting support.
+/// Computes the element-wise truth value of [a] XOR [b] with broadcasting support.
 ///
 /// Returns a boolean array containing the element-wise logical XOR results.
 ///
@@ -5341,8 +5341,8 @@ NDArray<bool> _runBinaryLogical<Ta, Tb>(
 /// - [ArgumentError] if [v] rank is not 1 or 2.
 ///
 /// **Memory Ownership & Lifetime Warning:**
-/// - **If [v] is 2D (extracting diagonal):** Returns a **zero-copy metadata view** sharing the underlying C memory page. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [v] will invalidate the returned view. Calling [dispose()] on the view does nothing.
-/// - **If [v] is 1D (constructing diagonal):** Allocates a new 2D array on the unmanaged C heap (unless [out] is provided). **The caller takes full ownership** of this memory and **must explicitly call [dispose()]** to prevent native leaks.
+/// - **If [v] is 2D (extracting diagonal):** Returns a **zero-copy metadata view** sharing the underlying C memory page. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [v] will invalidate the returned view. Calling [dispose] on the view does nothing.
+/// - **If [v] is 1D (constructing diagonal):** Allocates a new 2D array on the unmanaged C heap (unless [out] is provided). **The caller takes full ownership** of this memory and **must explicitly call [dispose]** to prevent native leaks.
 ///
 /// **Example:**
 /// {@example /example/diag_example.dart lang=dart}
@@ -5672,7 +5672,7 @@ NDArray nan_to_num(
   return resultCopy;
 }
 
-/// Compute the broadcasted shape list of two shapes.
+/// Computes the broadcasted shape list of two shapes.
 List<int> broadcastShapes(List<int> s1, List<int> s2) {
   final len = math.max(s1.length, s2.length);
   final common = List<int>.filled(len, 1);
@@ -5692,7 +5692,7 @@ List<int> broadcastShapes(List<int> s1, List<int> s2) {
   return common;
 }
 
-/// Return an array drawn from elements in [choicelist], depending on conditions in [condlist].
+/// Returns an array drawn from elements in [choicelist], depending on conditions in [condlist].
 ///
 /// This corresponds to NumPy's `select` function.
 ///
@@ -5790,7 +5790,7 @@ NDArray select(
   return result;
 }
 
-/// Return the Hanning (Hann) window.
+/// Returns the Hanning (Hann) window.
 ///
 /// The Hanning window is a taper formed by using a weighted cosine:
 ///
@@ -5833,7 +5833,7 @@ NDArray<T> hanning<T>(int M, {DType<T>? dtype}) {
   }
 }
 
-/// Return the Hamming window.
+/// Returns the Hamming window.
 ///
 /// The Hamming window is a taper formed by using an optimized weighted cosine:
 ///
@@ -6337,7 +6337,7 @@ LstsqResult<T> lstsq<T>(
   }
 }
 
-/// Compute the cumulative sum of array elements along a specified axis.
+/// Computes the cumulative sum of array elements along a specified axis.
 ///
 /// **Preconditions:**
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
@@ -6350,7 +6350,7 @@ LstsqResult<T> lstsq<T>(
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
-/// Calculate the n-th discrete difference along the given axis.
+/// Calculates the n-th discrete difference along the given axis.
 ///
 /// The first difference is given by `out[i] = a[i+1] - a[i]` along the given axis.
 /// Higher differences are calculated recursively.
@@ -6532,7 +6532,7 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
   return result;
 }
 
-/// Compute the element-wise complex conjugate of the array elements.
+/// Computes the element-wise complex conjugate of the array elements.
 ///
 /// **Preconditions:**
 /// - The array must not be disposed.
@@ -12268,7 +12268,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   throw UnsupportedError('Unsupported operand types');
 }
 
-/// Compute the bitwise AND of two arrays, element-wise.
+/// Computes the bitwise AND of two arrays, element-wise.
 ///
 /// Calculates the bitwise AND of two integer arrays, element-wise.
 ///
@@ -12416,7 +12416,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
   return result;
 }
 
-/// Compute the bitwise OR of two arrays, element-wise.
+/// Computes the bitwise OR of two arrays, element-wise.
 ///
 /// Calculates the bitwise OR of two integer arrays, element-wise.
 ///
@@ -12564,7 +12564,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
   return result;
 }
 
-/// Compute the bitwise XOR of two arrays, element-wise.
+/// Computes the bitwise XOR of two arrays, element-wise.
 ///
 /// Calculates the bitwise XOR of two integer arrays, element-wise.
 ///
@@ -13008,7 +13008,7 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
   return result;
 }
 
-/// Compute bitwise inversion, or bitwise NOT, element-wise.
+/// Computes bitwise inversion, or bitwise NOT, element-wise.
 ///
 /// Calculates the bitwise NOT of an integer array, element-wise.
 ///
@@ -13421,7 +13421,7 @@ NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   return result;
 }
 
-/// Compute the outer product of two vectors.
+/// Computes the outer product of two vectors.
 ///
 /// Given two input vectors [a] and [b], computes the outer product matrix:
 /// `res[i, j] = a[i] * b[j]`.
@@ -13593,7 +13593,7 @@ NDArray<R> outer<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   return result;
 }
 
-/// Compute the cross product of two (arrays of) vectors.
+/// Computes the cross product of two (arrays of) vectors.
 ///
 /// The cross product of two vectors is defined in 3D (and 2D, where it returns the z-component as a scalar).
 /// If the inputs are multidimensional, the cross product is computed along the specified axes.
@@ -13926,7 +13926,7 @@ NDArray<R> cross<Ta, Tb, R>(
   return result;
 }
 
-/// Compute a vector or matrix norm.
+/// Computes a vector or matrix norm.
 ///
 /// Computes one of the standard vector or matrix norms (magnitude) along the specified axis/axes.
 /// The result is always a real-valued floating-point array.

@@ -696,7 +696,7 @@ NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
   });
 }
 
-/// Compute the multiplicative inverse of a square 2D matrix.
+/// Computes the multiplicative inverse of a square 2D matrix.
 ///
 /// Uses OpenBLAS LAPACK LU decomposition routines
 /// (`LAPACKE_dgetrf`/`LAPACKE_dgetri` for Float64, and `LAPACKE_sgetrf`/`LAPACKE_sgetri` for Float32).
@@ -912,7 +912,7 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
   });
 }
 
-/// Compute the determinant of a square matrix or a stack of square matrices using OpenBLAS.
+/// Computes the determinant of a square matrix or a stack of square matrices using OpenBLAS.
 ///
 /// Transforms the matrix and calculates its determinant natively via LAPACK LU decomposition.
 /// Returns the determinant as a double or a stack of determinants.
@@ -937,7 +937,7 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// Refer to the [Determinant Reference](https://en.wikipedia.org/wiki/Determinant)
 /// and [LAPACK LU solver](https://en.wikipedia.org/wiki/LU_decomposition) for additional details.
-/// Compute the determinant of a square matrix or a stack of square matrices using OpenBLAS/LAPACK.
+/// Computes the determinant of a square matrix or a stack of square matrices using OpenBLAS/LAPACK.
 ///
 /// Transforms the matrix and calculates its determinant natively via LAPACK LU decomposition.
 /// Supports both real (float32, float64) and complex (complex64, complex128) data types.
@@ -962,7 +962,7 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// final d = det(a);
 /// print(d); // -2.0
 /// ```
-/// Compute the determinant of a square matrix or a stack of square matrices using OpenBLAS/LAPACK.
+/// Computes the determinant of a square matrix or a stack of square matrices using OpenBLAS/LAPACK.
 ///
 /// Transforms the matrix and calculates its determinant natively via LAPACK LU decomposition.
 /// Supports both real (float32, float64) and complex (complex64, complex128) data types.
@@ -1192,8 +1192,8 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([3.0, 1.0, 1.0, 2.0], [2, 2], DType.float64);
-/// final b = `NDArray<double>`.fromList([9.0, 8.0], [2], DType.float64);
+/// final a = NDArray<double>.fromList([3.0, 1.0, 1.0, 2.0], [2, 2], DType.float64);
+/// final b = NDArray<double>.fromList([9.0, 8.0], [2], DType.float64);
 /// final x = solve(a, b);
 /// print(x.toList()); // [2.0, 3.0]
 /// ```
@@ -1359,7 +1359,7 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
   });
 }
 
-/// Compute the eigenvalues and right eigenvectors of a square array or stack of square arrays.
+/// Computes the eigenvalues and right eigenvectors of a square array or stack of square arrays.
 ///
 /// Returns a record `(eigenvalues, eigenvectors)` containing:
 /// - **eigenvalues**: An `NDArray<Complex>` of shape `[..., N]` containing the eigenvalues.
@@ -1690,7 +1690,7 @@ extension EigRecordDispose
   }
 }
 
-/// Compute the Moore-Penrose pseudo-inverse of a 2D matrix.
+/// Computes the Moore-Penrose pseudo-inverse of a 2D matrix.
 ///
 /// Uses Singular Value Decomposition (SVD) to resolve the pseudo-inverse.
 /// Singular values smaller than [rcond] * max(singular_value) are treated as zero.
@@ -1872,7 +1872,7 @@ NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
   });
 }
 
-/// Compute the Cholesky decomposition of a square, positive-definite 2D matrix.
+/// Computes the Cholesky decomposition of a square, positive-definite 2D matrix.
 ///
 /// Factorizes a symmetric (or Hermitian for complex), positive-definite matrix [a] into
 /// $A = L L^*$ (or $A = L L^T$ for real matrices), where $L$ is a lower triangular matrix
@@ -2034,7 +2034,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([12.0, -51.0, 4.0, 6.0, 167.0, -68.0, -4.0, 24.0, -41.0], [3, 3], DType.float64);
+/// final a = NDArray<double>.fromList([12.0, -51.0, 4.0, 6.0, 167.0, -68.0, -4.0, 24.0, -41.0], [3, 3], DType.float64);
 /// final res = qr(a);
 /// final q = res.Q;
 /// final r = res.R;
@@ -2278,7 +2278,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = `NDArray<double>`.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], DType.float64);
+/// final a = NDArray<double>.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], DType.float64);
 /// final res = svd(a);
 /// final u = res.U;
 /// final s = res.S;
