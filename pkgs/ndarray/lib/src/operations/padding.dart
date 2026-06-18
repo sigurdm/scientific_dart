@@ -28,7 +28,7 @@ final class PadWidth {
   ///
   /// If [after] is not specified, it defaults to [before].
   ///
-  /// Preconditions:
+  /// **Preconditions:**
   /// - [before] must be non-negative.
   /// - [after] must be non-negative if specified.
   factory PadWidth.all(int before, [int? after]) {
@@ -41,7 +41,7 @@ final class PadWidth {
 
   /// Creates a [PadWidth] with specific widths for each axis.
   ///
-  /// Preconditions:
+  /// **Preconditions:**
   /// - All before and after widths must be non-negative.
   factory PadWidth.axes(List<(int before, int after)> widths) {
     for (final (before, after) in widths) {
@@ -119,7 +119,7 @@ final class StatLength {
   ///
   /// If [after] is not specified, it defaults to [before].
   ///
-  /// Preconditions:
+  /// **Preconditions:**
   /// - [before] must be positive.
   /// - [after] must be positive if specified.
   factory StatLength.all(int before, [int? after]) {
@@ -134,7 +134,7 @@ final class StatLength {
 
   /// Creates a [StatLength] with specific lengths for each axis.
   ///
-  /// Preconditions:
+  /// **Preconditions:**
   /// - All before and after lengths must be positive.
   factory StatLength.axes(List<(int before, int after)> lengths) {
     for (final (before, after) in lengths) {

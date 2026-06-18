@@ -400,7 +400,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// print(a.toList()); // [0.0, 0.0, 0.0, 0.0]
   /// ```
   ///
-  /// **Gotchas:**
+  /// **Edge cases:**
   /// - Backing heap pages are not managed by isolate garbage collection. Call `dispose()` explicitly to prevent leaks.
   ///
   /// Refer to the [NumPy Array Creation Guidelines](https://numpy.org/doc/stable/reference/routines.array-creation.html)
@@ -602,7 +602,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// print(a.data); // [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
   /// ```
   ///
-  /// **Gotchas:**
+  /// **Edge cases:**
   /// - This only creates 2D square matrices.
   factory NDArray.eye(int n, DType<T> dtype) {
     final arr = NDArray<T>.zeros([n, n], dtype);
