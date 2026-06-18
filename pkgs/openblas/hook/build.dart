@@ -126,27 +126,54 @@ void main(List<String> args) async {
               file: libFile.uri,
             ),
           );
-          output.dependencies.add(libFile.uri);
+          output.dependencies.add(
+            input.packageRoot.resolve('hook/custom_extensions.c'),
+          );
           print('Using built OpenBLAS library at ${libFile.path}');
 
           // Compile custom extensions!
+          final extLibName = os == OS.windows
+              ? 'libopenblas_extensions.dll'
+              : (os == OS.macOS
+                    ? 'libopenblas_extensions.dylib'
+                    : 'libopenblas_extensions.so');
           final extLibFile = File(
-            outputDir.uri.resolve('libopenblas_extensions.so').toFilePath(),
+            outputDir.uri.resolve(extLibName).toFilePath(),
           );
           final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
-          final compileArgs = [
-            '-shared',
-            '-fPIC',
-            '-O3',
-            '-I${extractDir}lapack-netlib/LAPACKE/include',
-            input.packageRoot.resolve('hook/custom_extensions.c').toFilePath(),
-            '-o',
-            extLibFile.path,
-            '-L$extractDir',
-            '-Wl,-rpath,$extractDir',
-            '-lopenblas',
-            '-lm',
-          ];
+          final isMSVC =
+              os == OS.windows && compilerPath.toLowerCase().contains('cl');
+
+          final compileArgs = isMSVC
+              ? [
+                  '/LD',
+                  '/O2',
+                  '/EHsc',
+                  '/I${extractDir}lapack-netlib/LAPACKE/include',
+                  input.packageRoot
+                      .resolve('hook/custom_extensions.c')
+                      .toFilePath(),
+                  '/Fe:${extLibFile.path}',
+                  '/link',
+                  '/LIBPATH:$extractDir',
+                  'libopenblas.lib',
+                ]
+              : [
+                  '-shared',
+                  '-fPIC',
+                  '-O3',
+                  '-I${extractDir}lapack-netlib/LAPACKE/include',
+                  input.packageRoot
+                      .resolve('hook/custom_extensions.c')
+                      .toFilePath(),
+                  '-o',
+                  extLibFile.path,
+                  '-L$extractDir',
+                  '-Wl,-rpath,$extractDir',
+                  '-lopenblas',
+                  '-lm',
+                ];
+
           print(
             'Compiling custom extensions with: $compilerPath ${compileArgs.join(' ')}',
           );

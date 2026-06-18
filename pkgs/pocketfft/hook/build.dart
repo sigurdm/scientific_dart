@@ -126,6 +126,11 @@ void main(List<String> args) async {
       output.dependencies.add(srcDir.uri.resolve('kiss_fft.c'));
       output.dependencies.add(srcDir.uri.resolve('kiss_fftr.c'));
       output.dependencies.add(srcDir.uri.resolve('kiss_fftnd.c'));
+      output.dependencies.add(srcDir.uri.resolve('kiss_fft.h'));
+      output.dependencies.add(srcDir.uri.resolve('kiss_fft_log.h'));
+      output.dependencies.add(srcDir.uri.resolve('kiss_fftnd.h'));
+      output.dependencies.add(srcDir.uri.resolve('kiss_fftr.h'));
+      output.dependencies.add(srcDir.uri.resolve('_kiss_fft_guts.h'));
       print('Registered pocketfft native dynamic code asset successfully.');
     }
   });

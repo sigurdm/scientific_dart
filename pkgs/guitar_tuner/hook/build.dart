@@ -24,30 +24,43 @@ void main(List<String> args) async {
 
     final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
 
-    final compileArgs = <String>[
-      '-shared',
-      '-fPIC',
-      '-O3',
-      input.packageRoot.resolve('hook/tuner_bridge.c').toFilePath(),
-      '-o',
-      libFile.path,
-      '-lm',
-    ];
+    final isMSVC =
+        os == OS.windows && compilerPath.toLowerCase().contains('cl');
 
-    if (os == OS.linux) {
-      compileArgs.add('-lpthread');
-      compileArgs.add('-ldl');
-    } else if (os == OS.macOS) {
-      compileArgs.addAll([
-        '-framework',
-        'CoreAudio',
-        '-framework',
-        'AudioToolbox',
-        '-framework',
-        'AudioUnit',
-        '-framework',
-        'CoreFoundation',
-      ]);
+    final compileArgs = isMSVC
+        ? <String>[
+            '/LD',
+            '/O2',
+            '/EHsc',
+            input.packageRoot.resolve('hook/tuner_bridge.c').toFilePath(),
+            '/Fe:${libFile.path}',
+          ]
+        : <String>[
+            '-shared',
+            '-fPIC',
+            '-O3',
+            input.packageRoot.resolve('hook/tuner_bridge.c').toFilePath(),
+            '-o',
+            libFile.path,
+            '-lm',
+          ];
+
+    if (!isMSVC) {
+      if (os == OS.linux) {
+        compileArgs.add('-lpthread');
+        compileArgs.add('-ldl');
+      } else if (os == OS.macOS) {
+        compileArgs.addAll([
+          '-framework',
+          'CoreAudio',
+          '-framework',
+          'AudioToolbox',
+          '-framework',
+          'AudioUnit',
+          '-framework',
+          'CoreFoundation',
+        ]);
+      }
     }
 
     final res = await Process.run(compilerPath, compileArgs);
@@ -55,13 +68,16 @@ void main(List<String> args) async {
       throw StateError('Guitar tuner bridge compilation failed: ${res.stderr}');
     }
 
-    output.assets.code.add(
-      CodeAsset(
-        package: packageName,
-        name: 'tuner_bridge',
-        linkMode: DynamicLoadingBundled(),
-        file: libFile.uri,
-      ),
-    );
+    if (libFile.existsSync()) {
+      output.assets.code.add(
+        CodeAsset(
+          package: packageName,
+          name: 'tuner_bridge',
+          linkMode: DynamicLoadingBundled(),
+          file: libFile.uri,
+        ),
+      );
+      output.dependencies.add(input.packageRoot.resolve('hook/tuner_bridge.c'));
+    }
   });
 }
