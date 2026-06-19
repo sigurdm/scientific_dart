@@ -495,17 +495,16 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write mean to a disposed output array.');
   }
-  final DType<R> targetDType =
-      (a.dtype.isComplex ? DType.complex128 : DType.float64) as DType<R>;
-
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
+  final expectedDType = a.dtype.isComplex ? DType.complex128 : DType.float64;
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != targetDType) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != expectedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
+  final DType<R> targetDType = expectedDType as DType<R>;
 
   if (axis == null) {
     if (a.isContiguous) {
@@ -1926,17 +1925,16 @@ NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write nanmean to a disposed output array.');
   }
-  final DType<R> targetDType =
-      (a.dtype.isComplex ? DType.complex128 : DType.float64) as DType<R>;
-
   final targetShape = axis == null
       ? <int>[]
       : (List<int>.from(a.shape)..removeAt(axis));
+  final expectedDType = a.dtype.isComplex ? DType.complex128 : DType.float64;
   if (out != null) {
-    if (!listEquals(out.shape, targetShape) || out.dtype != targetDType) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != expectedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
+  final DType<R> targetDType = expectedDType as DType<R>;
 
   if (axis == null) {
     NDArray promotedA;

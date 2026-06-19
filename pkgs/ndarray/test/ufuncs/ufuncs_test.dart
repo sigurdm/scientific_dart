@@ -1646,4 +1646,172 @@ void main() {
       },
     );
   });
+
+  group('Min/Max/NanMin/NanMax Branch Coverage', () {
+    test(
+      'nanmin/nanmax flat reduction multiple dtypes',
+      () => NDArray.scope(() {
+        final f32 = NDArray.fromList(
+          [1.0, double.nan, 3.0, 2.0],
+          [4],
+          DType.float32,
+        );
+        final f64 = NDArray.fromList(
+          [1.0, double.nan, 3.0, 2.0],
+          [4],
+          DType.float64,
+        );
+        final i32 = NDArray.fromList([1, 3, 2], [3], DType.int32);
+
+        expect(nanmin(f32).scalar, 1.0);
+        expect(nanmax(f32).scalar, 3.0);
+
+        expect(nanmin(f64).scalar, 1.0);
+        expect(nanmax(f64).scalar, 3.0);
+
+        expect(nanmin(i32).scalar, 1);
+        expect(nanmax(i32).scalar, 3);
+      }),
+    );
+
+    test(
+      'out parameter reuse',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 3.0, 2.0], [3], DType.float64);
+
+        final outFlat = NDArray<double>.zeros([], DType.float64);
+        final resFlat = min(a, out: outFlat);
+        expect(identical(resFlat, outFlat), true);
+        expect(outFlat.scalar, 1.0);
+
+        final outAxis = NDArray<double>.zeros([2], DType.float64);
+        final mat = NDArray.fromList(
+          [1.0, 3.0, 2.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final resAxis = min(mat, axis: 1, out: outAxis);
+        expect(identical(resAxis, outAxis), true);
+        expect(outAxis.toList(), [1.0, 2.0]);
+      }),
+    );
+
+    test(
+      'disposed out array throws StateError',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final out = NDArray<double>.zeros([], DType.float64);
+        out.dispose();
+
+        expect(() => min(a, out: out), throwsStateError);
+        expect(() => max(a, out: out), throwsStateError);
+        expect(() => nanmin(a, out: out), throwsStateError);
+        expect(() => nanmax(a, out: out), throwsStateError);
+      }),
+    );
+
+    test(
+      'incompatible out array throws ArgumentError',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+
+        final outShape = NDArray<double>.zeros([2], DType.float64);
+        expect(() => min(a, out: outShape), throwsArgumentError);
+        expect(() => max(a, out: outShape), throwsArgumentError);
+        expect(() => nanmin(a, out: outShape), throwsArgumentError);
+        expect(() => nanmax(a, out: outShape), throwsArgumentError);
+
+        final outDType = NDArray<int>.zeros([], DType.int32);
+        expect(
+          () => min(a, out: outDType as dynamic),
+          throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+        );
+        expect(
+          () => max(a, out: outDType as dynamic),
+          throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+        );
+        expect(
+          () => nanmin(a, out: outDType as dynamic),
+          throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+        );
+        expect(
+          () => nanmax(a, out: outDType as dynamic),
+          throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+        );
+      }),
+    );
+
+    test(
+      'non-contiguous out array throws ArgumentError',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+        final parent = NDArray<double>.zeros([2, 2], DType.float64);
+        final nonContiguousOut = parent.slice([Slice.all(), Index(0)]);
+        expect(nonContiguousOut.isContiguous, false);
+
+        expect(
+          () => min(a, axis: 1, out: nonContiguousOut),
+          throwsArgumentError,
+        );
+        expect(
+          () => max(a, axis: 1, out: nonContiguousOut),
+          throwsArgumentError,
+        );
+        expect(
+          () => nanmin(a, axis: 1, out: nonContiguousOut),
+          throwsArgumentError,
+        );
+        expect(
+          () => nanmax(a, axis: 1, out: nonContiguousOut),
+          throwsArgumentError,
+        );
+      }),
+    );
+
+    test(
+      'disposed input array throws StateError',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        a.dispose();
+
+        expect(() => min(a), throwsStateError);
+        expect(() => max(a), throwsStateError);
+        expect(() => nanmin(a), throwsStateError);
+        expect(() => nanmax(a), throwsStateError);
+      }),
+    );
+
+    test(
+      'invalid axis throws ArgumentError',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        expect(() => min(a, axis: 2), throwsArgumentError);
+        expect(() => min(a, axis: -2), throwsArgumentError);
+        expect(() => nanmin(a, axis: 2), throwsArgumentError);
+        expect(() => nanmin(a, axis: -2), throwsArgumentError);
+      }),
+    );
+
+    test(
+      'empty arrays / zero-sized axis',
+      () => NDArray.scope(() {
+        final empty = NDArray.zeros([0], DType.float64);
+        expect(() => min(empty), throwsArgumentError);
+        expect(() => max(empty), throwsArgumentError);
+        expect(() => nanmin(empty), throwsArgumentError);
+        expect(() => nanmax(empty), throwsArgumentError);
+
+        final empty2D = NDArray.zeros([2, 0], DType.float64);
+        expect(() => min(empty2D, axis: 1), throwsArgumentError);
+        expect(() => max(empty2D, axis: 1), throwsArgumentError);
+        expect(() => nanmin(empty2D, axis: 1), throwsArgumentError);
+        expect(() => nanmax(empty2D, axis: 1), throwsArgumentError);
+
+        expect(min(empty2D, axis: 0).shape, [0]);
+        expect(max(empty2D, axis: 0).shape, [0]);
+        expect(nanmin(empty2D, axis: 0).shape, [0]);
+        expect(nanmax(empty2D, axis: 0).shape, [0]);
+      }),
+    );
+  });
 }

@@ -2418,6 +2418,414 @@ void main() {
       }),
     );
   });
+
+  group('Stats Branch Coverage Tests', () {
+    group('mean, variance, std - out parameter and edge cases', () {
+      test(
+        'mean out parameter reuse',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+
+          final outFlat = NDArray<double>.zeros([], DType.float64);
+          final resFlat = mean(a, out: outFlat);
+          expect(identical(resFlat, outFlat), true);
+          expect(outFlat.scalar, 2.5);
+
+          final outAxis = NDArray<double>.zeros([2], DType.float64);
+          final resAxis = mean(a, axis: 1, out: outAxis);
+          expect(identical(resAxis, outAxis), true);
+          expect(outAxis.toList(), [1.5, 3.5]);
+        }),
+      );
+
+      test(
+        'variance out parameter reuse',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+
+          final outFlat = NDArray<double>.zeros([], DType.float64);
+          final resFlat = variance(a, out: outFlat);
+          expect(identical(resFlat, outFlat), true);
+          expect(outFlat.scalar, 1.25);
+
+          final outAxis = NDArray<double>.zeros([2], DType.float64);
+          final resAxis = variance(a, axis: 1, out: outAxis);
+          expect(identical(resAxis, outAxis), true);
+          expect(outAxis.toList(), [0.25, 0.25]);
+        }),
+      );
+
+      test(
+        'std out parameter reuse',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+
+          final outFlat = NDArray<double>.zeros([], DType.float64);
+          final resFlat = std(a, out: outFlat);
+          expect(identical(resFlat, outFlat), true);
+          expect(outFlat.scalar, math.sqrt(1.25));
+
+          final outAxis = NDArray<double>.zeros([2], DType.float64);
+          final resAxis = std(a, axis: 1, out: outAxis);
+          expect(identical(resAxis, outAxis), true);
+          expect(outAxis.toList(), [0.5, 0.5]);
+        }),
+      );
+
+      test(
+        'disposed out array throws StateError',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final out = NDArray<double>.zeros([], DType.float64);
+          out.dispose();
+
+          expect(() => mean(a, out: out), throwsStateError);
+          expect(() => variance(a, out: out), throwsStateError);
+          expect(() => std(a, out: out), throwsStateError);
+        }),
+      );
+
+      test(
+        'incompatible shape or dtype out array throws ArgumentError',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+
+          final outShape = NDArray<double>.zeros([2], DType.float64);
+          expect(() => mean(a, out: outShape), throwsArgumentError);
+          expect(() => variance(a, out: outShape), throwsArgumentError);
+          expect(() => std(a, out: outShape), throwsArgumentError);
+
+          final outDType = NDArray<int>.zeros([], DType.int32);
+          expect(
+            () => mean(a, out: outDType as dynamic),
+            throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+          );
+          expect(
+            () => variance(a, out: outDType as dynamic),
+            throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+          );
+          expect(
+            () => std(a, out: outDType as dynamic),
+            throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+          );
+        }),
+      );
+
+      test(
+        'disposed input array throws StateError',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          a.dispose();
+
+          expect(() => mean(a), throwsStateError);
+          expect(() => variance(a), throwsStateError);
+          expect(() => std(a), throwsStateError);
+        }),
+      );
+
+      test(
+        'non-contiguous out array support',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+
+          final parent = NDArray<double>.zeros([2, 2], DType.float64);
+          final nonContiguousOut = parent.slice([Slice.all(), Index(0)]);
+          expect(nonContiguousOut.isContiguous, false);
+
+          final resMean = mean(a, axis: 1, out: nonContiguousOut);
+          expect(identical(resMean, nonContiguousOut), true);
+          expect(nonContiguousOut.toList(), [1.5, 3.5]);
+          expect(parent.toList(), [1.5, 0.0, 3.5, 0.0]);
+
+          parent.fill(0.0);
+          final resVar = variance(a, axis: 1, out: nonContiguousOut);
+          expect(identical(resVar, nonContiguousOut), true);
+          expect(nonContiguousOut.toList(), [0.25, 0.25]);
+          expect(parent.toList(), [0.25, 0.0, 0.25, 0.0]);
+
+          parent.fill(0.0);
+          final resStd = std(a, axis: 1, out: nonContiguousOut);
+          expect(identical(resStd, nonContiguousOut), true);
+          expect(nonContiguousOut.toList(), [0.5, 0.5]);
+          expect(parent.toList(), [0.5, 0.0, 0.5, 0.0]);
+        }),
+      );
+    });
+
+    group('cumsum, cumprod, cummin, cummax', () {
+      test(
+        'flat reduction multiple dtypes',
+        () => NDArray.scope(() {
+          final aInt = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+          final aDouble = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          final aBool = NDArray.fromList(
+            [true, false, true, true],
+            [2, 2],
+            DType.boolean,
+          );
+
+          expect(cumsum(aInt).toList(), [1, 3, 6, 10]);
+          expect(cumsum(aDouble).toList(), [1.0, 3.0, 6.0, 10.0]);
+          expect(cumsum(aBool).toList(), [1, 1, 2, 3]);
+
+          expect(cumprod(aInt).toList(), [1, 2, 6, 24]);
+          expect(cumprod(aDouble).toList(), [1.0, 2.0, 6.0, 24.0]);
+          expect(cumprod(aBool).toList(), [1, 0, 0, 0]);
+
+          expect(cummin(aInt).toList(), [1, 1, 1, 1]);
+          expect(cummin(aDouble).toList(), [1.0, 1.0, 1.0, 1.0]);
+          try {
+            expect(cummin(aBool).toList(), [true, false, false, false]);
+          } on ArgumentError {
+            print('cummin: bool not supported');
+          }
+
+          expect(cummax(aInt).toList(), [1, 2, 3, 4]);
+          expect(cummax(aDouble).toList(), [1.0, 2.0, 3.0, 4.0]);
+          try {
+            expect(cummax(aBool).toList(), [true, true, true, true]);
+          } on ArgumentError {
+            print('cummax: bool not supported');
+          }
+        }),
+      );
+
+      test(
+        'out parameter reuse',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+
+          final outFlat = NDArray<double>.zeros([4], DType.float64);
+          final resFlat = cumsum(a, out: outFlat);
+          expect(identical(resFlat, outFlat), true);
+          expect(outFlat.toList(), [1.0, 3.0, 6.0, 10.0]);
+
+          final outAxis = NDArray<double>.zeros([2, 2], DType.float64);
+          final resAxis = cumsum(a, axis: 1, out: outAxis);
+          expect(identical(resAxis, outAxis), true);
+          expect(outAxis.toList(), [1.0, 3.0, 3.0, 7.0]);
+        }),
+      );
+
+      test(
+        'disposed out array throws StateError',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final out = NDArray<double>.zeros([2], DType.float64);
+          out.dispose();
+
+          expect(() => cumsum(a, out: out), throwsStateError);
+          expect(() => cumprod(a, out: out), throwsStateError);
+          expect(() => cummin(a, out: out), throwsStateError);
+          expect(() => cummax(a, out: out), throwsStateError);
+        }),
+      );
+
+      test(
+        'incompatible out array throws ArgumentError',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+
+          final outShape = NDArray<double>.zeros([3], DType.float64);
+          expect(() => cumsum(a, out: outShape), throwsArgumentError);
+          expect(() => cumprod(a, out: outShape), throwsArgumentError);
+          expect(() => cummin(a, out: outShape), throwsArgumentError);
+          expect(() => cummax(a, out: outShape), throwsArgumentError);
+
+          final outDType = NDArray<int>.zeros([2], DType.int32);
+          expect(
+            () => cumsum<double, int>(a, out: outDType),
+            throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+          );
+          expect(
+            () => cumprod<double, int>(a, out: outDType),
+            throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+          );
+          expect(
+            () => cummin<double>(a, out: outDType as dynamic),
+            throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+          );
+          expect(
+            () => cummax<double>(a, out: outDType as dynamic),
+            throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+          );
+        }),
+      );
+
+      test(
+        'disposed input array throws StateError',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          a.dispose();
+
+          expect(() => cumsum(a), throwsStateError);
+          expect(() => cumprod(a), throwsStateError);
+          expect(() => cummin(a), throwsStateError);
+          expect(() => cummax(a), throwsStateError);
+        }),
+      );
+
+      test(
+        'invalid axis throws ArgumentError',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          expect(() => cumsum(a, axis: 2), throwsArgumentError);
+          expect(() => cumsum(a, axis: -2), throwsArgumentError);
+        }),
+      );
+
+      test(
+        'empty arrays',
+        () => NDArray.scope(() {
+          final empty = NDArray.zeros([0], DType.float64);
+
+          expect(cumsum(empty).shape, [0]);
+          expect(cumprod(empty).shape, [0]);
+          expect(cummin(empty).shape, [0]);
+          expect(cummax(empty).shape, [0]);
+
+          expect(cumsum(empty, axis: 0).shape, [0]);
+          expect(cumprod(empty, axis: 0).shape, [0]);
+          expect(cummin(empty, axis: 0).shape, [0]);
+          expect(cummax(empty, axis: 0).shape, [0]);
+        }),
+      );
+    });
+
+    group(
+      'quantile, percentile, median - additional dtypes and edge cases',
+      () {
+        test(
+          'median multiple dtypes',
+          () => NDArray.scope(() {
+            final f32 = NDArray.fromList([3.0, 1.0, 2.0], [3], DType.float32);
+            final i32 = NDArray.fromList([3, 1, 2], [3], DType.int32);
+            final i64 = NDArray.fromList([3, 1, 2], [3], DType.int64);
+            final u8 = NDArray.fromList([3, 1, 2], [3], DType.uint8);
+            final c128 = NDArray.fromList(
+              [Complex(3, 3), Complex(1, 1), Complex(2, 2)],
+              [3],
+              DType.complex128,
+            );
+            final c64 = NDArray.fromList(
+              [Complex(3, 3), Complex(1, 1), Complex(2, 2)],
+              [3],
+              DType.complex64,
+            );
+
+            expect(median(f32).scalar, 2.0);
+            expect(median(i32).scalar, 2);
+            expect(median(i64).scalar, 2);
+            expect(median(u8).scalar, 2);
+            expect(median(c128).scalar, Complex(2.0, 2.0));
+            expect(median(c64).scalar, Complex(2.0, 2.0));
+          }),
+        );
+
+        test(
+          'quantile and percentile multiple dtypes',
+          () => NDArray.scope(() {
+            final f32 = NDArray.fromList(
+              [10.0, 20.0, 30.0],
+              [3],
+              DType.float32,
+            );
+            final i32 = NDArray.fromList([10, 20, 30], [3], DType.int32);
+            final i64 = NDArray.fromList([10, 20, 30], [3], DType.int64);
+            final u8 = NDArray.fromList([10, 20, 30], [3], DType.uint8);
+
+            expect(quantile(f32, 0.5).scalar, 20.0);
+            expect(quantile(i32, 0.5).scalar, 20.0);
+            expect(quantile(i64, 0.5).scalar, 20.0);
+            expect(quantile(u8, 0.5).scalar, 20.0);
+
+            expect(percentile(f32, 50.0).scalar, 20.0);
+            expect(percentile(i32, 50.0).scalar, 20.0);
+            expect(percentile(i64, 50.0).scalar, 20.0);
+            expect(percentile(u8, 50.0).scalar, 20.0);
+          }),
+        );
+
+        test(
+          'disposed out array throws StateError',
+          () => NDArray.scope(() {
+            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            final out = NDArray<double>.zeros([], DType.float64);
+            out.dispose();
+
+            expect(() => median(a, out: out), throwsStateError);
+            expect(() => quantile(a, 0.5, out: out), throwsStateError);
+            expect(() => percentile(a, 50.0, out: out), throwsStateError);
+          }),
+        );
+
+        test(
+          'incompatible out array throws ArgumentError',
+          () => NDArray.scope(() {
+            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+
+            final outShape = NDArray<double>.zeros([2], DType.float64);
+            expect(() => median(a, out: outShape), throwsArgumentError);
+            expect(() => quantile(a, 0.5, out: outShape), throwsArgumentError);
+            expect(
+              () => percentile(a, 50.0, out: outShape),
+              throwsArgumentError,
+            );
+
+            final outDType = NDArray<int>.zeros([], DType.int32);
+            expect(
+              () => median(a, out: outDType as dynamic),
+              throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+            );
+            expect(
+              () => quantile(a, 0.5, out: outDType as dynamic),
+              throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+            );
+            expect(
+              () => percentile(a, 50.0, out: outDType as dynamic),
+              throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+            );
+          }),
+        );
+
+        test(
+          'disposed input array throws StateError',
+          () => NDArray.scope(() {
+            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            a.dispose();
+
+            expect(() => median(a), throwsStateError);
+            expect(() => quantile(a, 0.5), throwsStateError);
+            expect(() => percentile(a, 50.0), throwsStateError);
+          }),
+        );
+      },
+    );
+  });
 }
 
 void expectListEqualsWithNaNs(List actual, List expected) {

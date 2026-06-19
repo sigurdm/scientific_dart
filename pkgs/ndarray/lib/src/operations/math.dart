@@ -80,12 +80,25 @@ NDArray<R> sqrt<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 
   final temp = a.isContiguous ? a : a.copy();
   final tempNum = temp as NDArray<num>;
-  final rData = result.data as List<double>;
-  final offset = temp.offsetElements;
-  final resOffset = result.offsetElements;
-  for (var i = 0; i < temp.size; i++) {
-    rData[resOffset + i] = math.sqrt(tempNum.data[offset + i].toDouble());
+
+  if (result.isContiguous) {
+    final rData = result.data as List<double>;
+    final offset = temp.offsetElements;
+    final resOffset = result.offsetElements;
+    for (var i = 0; i < temp.size; i++) {
+      rData[resOffset + i] = math.sqrt(tempNum.data[offset + i].toDouble());
+    }
+  } else {
+    final tempOut = NDArray.create(result.shape, result.dtype);
+    final rData = tempOut.data as List<double>;
+    final offset = temp.offsetElements;
+    for (var i = 0; i < temp.size; i++) {
+      rData[i] = math.sqrt(tempNum.data[offset + i].toDouble());
+    }
+    tempOut.copy(out: result);
+    tempOut.dispose();
   }
+
   if (!identical(temp, a)) {
     temp.dispose();
   }

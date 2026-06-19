@@ -21,6 +21,7 @@ void main() async {
   final testProcess = await Process.run(Platform.executable, [
     'test',
     '--coverage=coverage/raw',
+    '--branch-coverage',
   ]);
 
   if (testProcess.exitCode != 0) {
@@ -68,10 +69,14 @@ void main() async {
 
   var totalLinesFound = 0;
   var totalLinesHit = 0;
+  var totalBranchesFound = 0;
+  var totalBranchesHit = 0;
 
   String? currentFile;
   var currentFileLinesFound = 0;
   var currentFileLinesHit = 0;
+  var currentFileBranchesFound = 0;
+  var currentFileBranchesHit = 0;
 
   print(
     '\n----------------------------------------------------------------------------',
@@ -81,7 +86,7 @@ void main() async {
     '----------------------------------------------------------------------------',
   );
   print(
-    '${"FILE NAME".padRight(35)} | ${"COVERAGE %".padRight(12)} | ${"EXECUTED / TOTAL LINES"}',
+    '${"FILE NAME".padRight(35)} | ${"LINE COV %".padRight(12)} | ${"BRANCH COV %".padRight(12)}',
   );
   print(
     '----------------------------------------------------------------------------',
@@ -89,29 +94,43 @@ void main() async {
 
   for (final line in lines) {
     if (line.startsWith('SF:')) {
-      // Source File header line
       final fullPath = line.substring(3);
-      // Extract file basename/relative path for premium readability
       currentFile = fullPath.contains('lib/src/')
           ? fullPath.substring(fullPath.indexOf('lib/src/'))
           : fullPath.substring(fullPath.lastIndexOf('/') + 1);
       currentFileLinesFound = 0;
       currentFileLinesHit = 0;
+      currentFileBranchesFound = 0;
+      currentFileBranchesHit = 0;
     } else if (line.startsWith('LF:')) {
-      // Lines Found count
       currentFileLinesFound = int.parse(line.substring(3));
       totalLinesFound += currentFileLinesFound;
     } else if (line.startsWith('LH:')) {
-      // Lines Hit count
       currentFileLinesHit = int.parse(line.substring(3));
       totalLinesHit += currentFileLinesHit;
-
-      // Conclude file record block and print out row!
+    } else if (line.startsWith('BRDA:')) {
+      currentFileBranchesFound++;
+      totalBranchesFound++;
+      final parts = line.split(',');
+      final taken = int.parse(parts.last);
+      if (taken > 0) {
+        currentFileBranchesHit++;
+        totalBranchesHit++;
+      }
+    } else if (line == 'end_of_record') {
       if (currentFile != null && currentFileLinesFound > 0) {
-        final pct = (currentFileLinesHit / currentFileLinesFound) * 100.0;
-        final pctStr = '${pct.toStringAsFixed(1)}%';
+        final linePct = (currentFileLinesHit / currentFileLinesFound) * 100.0;
+        final linePctStr = '${linePct.toStringAsFixed(1)}%';
+
+        final branchPct = currentFileBranchesFound > 0
+            ? (currentFileBranchesHit / currentFileBranchesFound) * 100.0
+            : 0.0;
+        final branchPctStr = currentFileBranchesFound > 0
+            ? '${branchPct.toStringAsFixed(1)}%'
+            : 'N/A';
+
         print(
-          '${currentFile.padRight(35)} | ${pctStr.padRight(12)} | $currentFileLinesHit / $currentFileLinesFound',
+          '${currentFile.padRight(35)} | ${linePctStr.padRight(12)} | ${branchPctStr.padRight(12)} | Line: $currentFileLinesHit/$currentFileLinesFound | Branch: $currentFileBranchesHit/$currentFileBranchesFound',
         );
       }
     }
@@ -125,11 +144,17 @@ void main() async {
       'Error: No executable code lines discovered in lib/ directory reports!',
     );
   } else {
-    final globalPct = (totalLinesHit / totalLinesFound) * 100.0;
-    print('🏆 GLOBAL WORKSPACE LINE COVERAGE SUMMARY:');
-    print('   GLOBAL COVERAGE : ${globalPct.toStringAsFixed(2)}%');
-    print('   LINES EXECUTED  : $totalLinesHit');
-    print('   TOTAL LINES     : $totalLinesFound');
+    final globalLinePct = (totalLinesHit / totalLinesFound) * 100.0;
+    final globalBranchPct = totalBranchesFound > 0
+        ? (totalBranchesHit / totalBranchesFound) * 100.0
+        : 0.0;
+    print('🏆 GLOBAL WORKSPACE COVERAGE SUMMARY:');
+    print(
+      '   GLOBAL LINE COVERAGE   : ${globalLinePct.toStringAsFixed(2)}% ($totalLinesHit / $totalLinesFound)',
+    );
+    print(
+      '   GLOBAL BRANCH COVERAGE : ${globalBranchPct.toStringAsFixed(2)}% ($totalBranchesHit / $totalBranchesFound)',
+    );
   }
   print(
     '============================================================================\n',

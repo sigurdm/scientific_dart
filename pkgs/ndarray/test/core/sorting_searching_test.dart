@@ -374,6 +374,139 @@ void main() {
           ]); // col0 max is row 1(40), col1 max row 0(30), col2 max row 1(60)
         }),
       );
+
+      group('Argmin/Argmax Branch Coverage', () {
+        test(
+          'multiple dtypes',
+          () => NDArray.scope(() {
+            final i32 = NDArray.fromList([3, 1, 2], [3], DType.int32);
+            final i64 = NDArray.fromList([3, 1, 2], [3], DType.int64);
+            final u8 = NDArray.fromList([3, 1, 2], [3], DType.uint8);
+            final f32 = NDArray.fromList([3.0, 1.0, 2.0], [3], DType.float32);
+
+            expect(argmin(i32).scalar, 1);
+            expect(argmax(i32).scalar, 0);
+
+            expect(argmin(i64).scalar, 1);
+            expect(argmax(i64).scalar, 0);
+
+            expect(argmin(u8).scalar, 1);
+            expect(argmax(u8).scalar, 0);
+
+            expect(argmin(f32).scalar, 1);
+            expect(argmax(f32).scalar, 0);
+          }),
+        );
+
+        test(
+          'out parameter reuse',
+          () => NDArray.scope(() {
+            final a = NDArray.fromList([10.0, 50.0, 5.0], [3], DType.float64);
+
+            final outFlat = NDArray<int>.zeros([], DType.int32);
+            final resFlat = argmin(a, out: outFlat);
+            expect(identical(resFlat, outFlat), true);
+            expect(outFlat.scalar, 2);
+
+            final outAxis = NDArray<int>.zeros([1], DType.int32);
+            final mat = NDArray.fromList(
+              [10.0, 50.0, 5.0],
+              [1, 3],
+              DType.float64,
+            );
+            final resAxis = argmin(mat, axis: 1, out: outAxis);
+            expect(identical(resAxis, outAxis), true);
+            expect(outAxis.toList(), [2]);
+          }),
+        );
+
+        test(
+          'disposed out array throws StateError',
+          () => NDArray.scope(() {
+            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            final out = NDArray<int>.zeros([], DType.int32);
+            out.dispose();
+
+            expect(() => argmin(a, out: out), throwsStateError);
+            expect(() => argmax(a, out: out), throwsStateError);
+          }),
+        );
+
+        test(
+          'incompatible out array throws ArgumentError',
+          () => NDArray.scope(() {
+            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+
+            // Incompatible shape
+            final outShape = NDArray<int>.zeros([2], DType.int32);
+            expect(() => argmin(a, out: outShape), throwsArgumentError);
+            expect(() => argmax(a, out: outShape), throwsArgumentError);
+
+            // Incompatible dtype
+            final outDType = NDArray<double>.zeros([], DType.float64);
+            expect(
+              () => argmin(a, out: outDType as dynamic),
+              throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+            );
+            expect(
+              () => argmax(a, out: outDType as dynamic),
+              throwsA(anyOf(isA<TypeError>(), isA<ArgumentError>())),
+            );
+          }),
+        );
+
+        test(
+          'disposed input array throws StateError',
+          () => NDArray.scope(() {
+            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            a.dispose();
+
+            expect(() => argmin(a), throwsStateError);
+            expect(() => argmax(a), throwsStateError);
+          }),
+        );
+
+        test(
+          'invalid axis throws ArgumentError/RangeError',
+          () => NDArray.scope(() {
+            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            expect(
+              () => argmin(a, axis: 2),
+              throwsA(anyOf(isA<ArgumentError>(), isA<RangeError>())),
+            );
+            expect(
+              () => argmin(a, axis: -2),
+              throwsA(anyOf(isA<ArgumentError>(), isA<RangeError>())),
+            );
+          }),
+        );
+
+        test(
+          'empty arrays throws ArgumentError',
+          () => NDArray.scope(() {
+            final empty = NDArray.zeros([0], DType.float64);
+            expect(() => argmin(empty), throwsArgumentError);
+            expect(() => argmax(empty), throwsArgumentError);
+
+            expect(() => argmin(empty, axis: 0), throwsArgumentError);
+            expect(() => argmax(empty, axis: 0), throwsArgumentError);
+          }),
+        );
+
+        test(
+          'zero-sized axis throws ArgumentError',
+          () => NDArray.scope(() {
+            final a = NDArray.zeros([2, 0], DType.float64);
+            // Reducing along zero-sized axis (axis 1)
+            expect(() => argmin(a, axis: 1), throwsArgumentError);
+            expect(() => argmax(a, axis: 1), throwsArgumentError);
+
+            // Reducing along non-zero-sized axis (axis 0), but overall size is 0
+            expect(() => argmin(a, axis: 0), throwsArgumentError);
+            expect(() => argmax(a, axis: 0), throwsArgumentError);
+          }),
+        );
+      });
     });
 
     group('SortKind custom quicksort/heapsort/mergesort/stable tests', () {
