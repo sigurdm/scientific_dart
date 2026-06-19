@@ -146,7 +146,7 @@ void main(List<String> args) async {
       var res = await Process.run(cppCompilerPath, [
         '-c',
         '-fPIC',
-        '-O3',
+        '-O0',
         '-I${input.packageRoot.toFilePath()}',
         input.packageRoot.resolve('hook/custom_ufuncs.cpp').toFilePath(),
         '-o',
@@ -160,7 +160,7 @@ void main(List<String> args) async {
       res = await Process.run(cppCompilerPath, [
         '-c',
         '-fPIC',
-        '-O3',
+        '-O0',
         '-I${input.packageRoot.toFilePath()}',
         '-I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',
         input.packageRoot.resolve('hook/custom_sorting.cpp').toFilePath(),
