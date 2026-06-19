@@ -5,12 +5,15 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 
 void main() {
+  late Directory tempDir;
   group('NDArray NumPy Binary Interoperability & I/O Tests', () {
     setUpAll(() {
-      // Ensure scratch directory exists for test file writes
-      final dir = Directory('scratch');
-      if (!dir.existsSync()) {
-        dir.createSync();
+      tempDir = Directory.systemTemp.createTempSync('ndarray_io_test_');
+    });
+
+    tearDownAll(() {
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
       }
     });
 
@@ -24,7 +27,7 @@ void main() {
             DType.float64,
           );
 
-          const path = 'scratch/test_f64.npy';
+          final path = '${tempDir.path}/test_f64.npy';
           save(path, a);
 
           final loaded = load(path);
@@ -42,7 +45,7 @@ void main() {
             [4],
             DType.float32,
           );
-          const path = 'scratch/test_f32.npy';
+          final path = '${tempDir.path}/test_f32.npy';
           save(path, a);
 
           final loaded = load(path);
@@ -59,7 +62,7 @@ void main() {
             2,
             2,
           ], DType.int32);
-          const path = 'scratch/test_i32.npy';
+          final path = '${tempDir.path}/test_i32.npy';
           save(path, a);
 
           final loaded = load(path);
@@ -76,7 +79,7 @@ void main() {
             [2],
             DType.int64,
           );
-          const path = 'scratch/test_i64.npy';
+          final path = '${tempDir.path}/test_i64.npy';
           save(path, a);
 
           final loaded = load(path);
@@ -94,7 +97,7 @@ void main() {
             DType.complex128,
           );
 
-          const path = 'scratch/test_c16.npy';
+          final path = '${tempDir.path}/test_c16.npy';
           save(path, a);
 
           final loaded = load(path);
@@ -115,7 +118,7 @@ void main() {
             DType.complex64,
           );
 
-          const path = 'scratch/test_c8.npy';
+          final path = '${tempDir.path}/test_c8.npy';
           save(path, a);
 
           final loaded = load(path);
@@ -140,7 +143,7 @@ void main() {
           final view = parent.transpose();
           expect(view.isContiguous, false);
 
-          const path = 'scratch/test_view.npy';
+          final path = '${tempDir.path}/test_view.npy';
           save(path, view); // should make contiguous copy in-flight
 
           final loaded = load(path);
@@ -165,7 +168,7 @@ void main() {
 
           final map = {'array_one': arr1, 'array_two': arr2};
 
-          const path = 'scratch/archive.npz';
+          final path = '${tempDir.path}/archive.npz';
           savez(path, map, compressed: false);
 
           final loaded = loadz(path);
@@ -184,7 +187,7 @@ void main() {
           final arr1 = NDArray.fromList(Float32List.fromList([0.5, 1.5]), [
             2,
           ], DType.float32);
-          const path = 'scratch/archive_comp.npz';
+          final path = '${tempDir.path}/archive_comp.npz';
           savez(path, {'x': arr1}, compressed: true);
 
           final loaded = loadz(path);
@@ -253,7 +256,7 @@ void main() {
             level: Deflate.NO_COMPRESSION,
           )!;
 
-          const path = 'scratch/archive_fortran_simulated.npz';
+          final path = '${tempDir.path}/archive_fortran_simulated.npz';
           File(path).writeAsBytesSync(zipBytes, flush: true);
 
           // Load the archive
@@ -321,7 +324,7 @@ void main() {
           );
 
           // Write this fake file to disk
-          const path = 'scratch/fortran_simulated.npy';
+          final path = '${tempDir.path}/fortran_simulated.npy';
           File(path).writeAsBytesSync(fullBuffer, flush: true);
 
           // Load it via ndarray load()!
@@ -350,11 +353,11 @@ void main() {
         'Non-existent files throw FileSystemException in load and loadz',
         () {
           expect(
-            () => load('scratch/non_existent_file.npy'),
+            () => load('${tempDir.path}/non_existent_file.npy'),
             throwsA(isA<FileSystemException>()),
           );
           expect(
-            () => loadz('scratch/non_existent_archive.npz'),
+            () => loadz('${tempDir.path}/non_existent_archive.npz'),
             throwsA(isA<FileSystemException>()),
           );
         },
@@ -363,7 +366,7 @@ void main() {
       test(
         'Invalid Magic signature in load() throws FormatException',
         () => NDArray.scope(() {
-          final file = File('scratch/corrupted.npy');
+          final file = File('${tempDir.path}/corrupted.npy');
           file.writeAsBytesSync([
             0x00,
             0x01,
@@ -374,14 +377,17 @@ void main() {
             0x06,
             0x07,
           ]);
-          expect(() => load('scratch/corrupted.npy'), throwsFormatException);
+          expect(
+            () => load('${tempDir.path}/corrupted.npy'),
+            throwsFormatException,
+          );
         }),
       );
 
       test(
         'Big-endian header descriptor throws UnsupportedError',
         () => NDArray.scope(() {
-          const path = 'scratch/big_endian_simulated.npy';
+          final path = '${tempDir.path}/big_endian_simulated.npy';
           _writeFakeNpy(
             path,
             "{'descr': '>f8', 'fortran_order': False, 'shape': (2,)}",
@@ -393,7 +399,7 @@ void main() {
       test(
         'Unsupported NumPy descriptor throws UnsupportedError',
         () => NDArray.scope(() {
-          const path = 'scratch/bad_descr.npy';
+          final path = '${tempDir.path}/bad_descr.npy';
           _writeFakeNpy(
             path,
             "{'descr': '<u2', 'fortran_order': False, 'shape': (2,)}",
@@ -405,7 +411,7 @@ void main() {
       test(
         'Missing descr in header throws FormatException',
         () => NDArray.scope(() {
-          const path = 'scratch/missing_descr.npy';
+          final path = '${tempDir.path}/missing_descr.npy';
           _writeFakeNpy(path, "{'fortran_order': False, 'shape': (2,)}");
           expect(() => load(path), throwsFormatException);
         }),
@@ -414,7 +420,7 @@ void main() {
       test(
         'Missing fortran_order in header throws FormatException',
         () => NDArray.scope(() {
-          const path = 'scratch/missing_fortran.npy';
+          final path = '${tempDir.path}/missing_fortran.npy';
           _writeFakeNpy(path, "{'descr': '<f8', 'shape': (2,)}");
           expect(() => load(path), throwsFormatException);
         }),
@@ -423,7 +429,7 @@ void main() {
       test(
         'Missing shape in header throws FormatException',
         () => NDArray.scope(() {
-          const path = 'scratch/missing_shape.npy';
+          final path = '${tempDir.path}/missing_shape.npy';
           _writeFakeNpy(path, "{'descr': '<f8', 'fortran_order': False}");
           expect(() => load(path), throwsFormatException);
         }),
@@ -432,10 +438,10 @@ void main() {
       test(
         'Short npy file lacking format version headers throws FormatException',
         () {
-          final file = File('scratch/short_version.npy');
+          final file = File('${tempDir.path}/short_version.npy');
           file.writeAsBytesSync([0x93, 0x4e, 0x55, 0x4d, 0x50, 0x59, 0x01]);
           expect(
-            () => load('scratch/short_version.npy'),
+            () => load('${tempDir.path}/short_version.npy'),
             throwsFormatException,
           );
         },
@@ -444,11 +450,11 @@ void main() {
         'load() throws FormatException when header lacks "descr" parameter',
         () {
           _writeFakeNpy(
-            'scratch/missing_descr.npy',
+            '${tempDir.path}/missing_descr.npy',
             "{'fortran_order': False, 'shape': (2, 2)}",
           );
           expect(
-            () => load('scratch/missing_descr.npy'),
+            () => load('${tempDir.path}/missing_descr.npy'),
             throwsFormatException,
           );
         },
@@ -458,11 +464,11 @@ void main() {
         'load() throws UnsupportedError when descriptor is unsupported',
         () => NDArray.scope(() {
           _writeFakeNpy(
-            'scratch/unsupported_dtype.npy',
+            '${tempDir.path}/unsupported_dtype.npy',
             "{'descr': '<f16', 'fortran_order': False, 'shape': (2, 2)}",
           );
           expect(
-            () => load('scratch/unsupported_dtype.npy'),
+            () => load('${tempDir.path}/unsupported_dtype.npy'),
             throwsUnsupportedError,
           );
         }),
@@ -494,7 +500,7 @@ void main() {
             level: Deflate.NO_COMPRESSION,
           )!;
 
-          const path = 'scratch/bad_archive_magic.npz';
+          final path = '${tempDir.path}/bad_archive_magic.npz';
           File(path).writeAsBytesSync(zipBytes, flush: true);
 
           expect(() => loadz(path), throwsFormatException);
@@ -507,7 +513,8 @@ void main() {
         'Save into brand new nested directory makes parent directory recursive',
         () => NDArray.scope(() {
           final a = NDArray.ones([2], DType.float64);
-          const path = 'scratch/nested_non_existent/nested_level/arr.npy';
+          final path =
+              '${tempDir.path}/nested_non_existent/nested_level/arr.npy';
           save(path, a);
 
           final file = File(path);
@@ -516,7 +523,9 @@ void main() {
           expect(loaded.toList(), [1.0, 1.0]);
 
           file.deleteSync();
-          Directory('scratch/nested_non_existent').deleteSync(recursive: true);
+          Directory(
+            '${tempDir.path}/nested_non_existent',
+          ).deleteSync(recursive: true);
         }),
       );
 
@@ -531,7 +540,7 @@ void main() {
           final view = parent.transposed;
           expect(view.isContiguous, false);
 
-          const path = 'scratch/archive_with_view.npz';
+          final path = '${tempDir.path}/archive_with_view.npz';
           savez(path, {'view_key': view}, compressed: false);
 
           final loaded = loadz(path);
@@ -546,7 +555,8 @@ void main() {
         'Savez npz file into brand new nested directory makes parent directory recursive',
         () => NDArray.scope(() {
           final a = NDArray.ones([2], DType.float64);
-          const path = 'scratch/nested_npz_dir/nested_level/archive.npz';
+          final path =
+              '${tempDir.path}/nested_npz_dir/nested_level/archive.npz';
           savez(path, {'arr': a}, compressed: false);
 
           final file = File(path);
@@ -555,7 +565,9 @@ void main() {
           expect(loaded['arr']!.toList(), [1.0, 1.0]);
 
           file.deleteSync();
-          Directory('scratch/nested_npz_dir').deleteSync(recursive: true);
+          Directory(
+            '${tempDir.path}/nested_npz_dir',
+          ).deleteSync(recursive: true);
         }),
       );
     });
@@ -603,7 +615,7 @@ void main() {
         offset += headerBytes.length;
         fullBuffer.setRange(offset, offset + rawDataBytes.length, rawDataBytes);
 
-        const path = 'scratch/double_quotes_simulated.npy';
+        final path = '${tempDir.path}/double_quotes_simulated.npy';
         File(path).writeAsBytesSync(fullBuffer, flush: true);
 
         // Load should parse successfully now
@@ -624,8 +636,8 @@ void main() {
           DType.float32,
         );
         final f32View = f32.transposed; // non-contiguous!
-        save('scratch/f32_view.npy', f32View);
-        final f32Loaded = load('scratch/f32_view.npy');
+        save('${tempDir.path}/f32_view.npy', f32View);
+        final f32Loaded = load('${tempDir.path}/f32_view.npy');
         expect(f32Loaded.shape, [2, 2]);
         expect(f32Loaded.dtype, DType.float32);
         expect(f32Loaded.toList(), [1.0, 3.0, 2.0, 4.0]);
@@ -633,15 +645,15 @@ void main() {
         // 2. int32
         final i32 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
         final i32View = i32.transposed;
-        save('scratch/i32_view.npy', i32View);
-        final i32Loaded = load('scratch/i32_view.npy');
+        save('${tempDir.path}/i32_view.npy', i32View);
+        final i32Loaded = load('${tempDir.path}/i32_view.npy');
         expect(i32Loaded.toList(), [1, 3, 2, 4]);
 
         // 3. int64
         final i64 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int64);
         final i64View = i64.transposed;
-        save('scratch/i64_view.npy', i64View);
-        final i64Loaded = load('scratch/i64_view.npy');
+        save('${tempDir.path}/i64_view.npy', i64View);
+        final i64Loaded = load('${tempDir.path}/i64_view.npy');
         expect(i64Loaded.toList(), [1, 3, 2, 4]);
 
         // 4. boolean
@@ -651,8 +663,8 @@ void main() {
           DType.boolean,
         );
         final bView = b.transposed;
-        save('scratch/b_view.npy', bView);
-        final bLoaded = load('scratch/b_view.npy');
+        save('${tempDir.path}/b_view.npy', bView);
+        final bLoaded = load('${tempDir.path}/b_view.npy');
         expect(bLoaded.toList(), [true, true, false, false]);
 
         // 5. complex128
@@ -667,8 +679,8 @@ void main() {
           DType.complex128,
         );
         final c128View = c128.transposed;
-        save('scratch/c128_view.npy', c128View);
-        final c128Loaded = load('scratch/c128_view.npy');
+        save('${tempDir.path}/c128_view.npy', c128View);
+        final c128Loaded = load('${tempDir.path}/c128_view.npy');
         expect(c128Loaded.toList(), [
           Complex(1.0, 1.0),
           Complex(3.0, 3.0),
@@ -688,8 +700,8 @@ void main() {
           DType.complex64,
         );
         final c64View = c64.transposed;
-        save('scratch/c64_view.npy', c64View);
-        final c64Loaded = load('scratch/c64_view.npy');
+        save('${tempDir.path}/c64_view.npy', c64View);
+        final c64Loaded = load('${tempDir.path}/c64_view.npy');
         expect(c64Loaded.toList(), [
           Complex(1.0, 1.0),
           Complex(3.0, 3.0),
@@ -704,15 +716,15 @@ void main() {
       () => NDArray.scope(() {
         // 1. Uint8
         final u8 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.uint8);
-        save('scratch/u8_array.npy', u8);
-        final u8Loaded = load('scratch/u8_array.npy');
+        save('${tempDir.path}/u8_array.npy', u8);
+        final u8Loaded = load('${tempDir.path}/u8_array.npy');
         expect(u8Loaded.toList(), [1, 2, 3, 4]);
         expect(u8Loaded.dtype, DType.uint8);
 
         // 2. Int16
         final i16 = NDArray.fromList([10, 20, 30, 40], [2, 2], DType.int16);
-        save('scratch/i16_array.npy', i16);
-        final i16Loaded = load('scratch/i16_array.npy');
+        save('${tempDir.path}/i16_array.npy', i16);
+        final i16Loaded = load('${tempDir.path}/i16_array.npy');
         expect(i16Loaded.toList(), [10, 20, 30, 40]);
         expect(i16Loaded.dtype, DType.int16);
       }),
