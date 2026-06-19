@@ -1261,5 +1261,373 @@ void main() {
         }),
       );
     });
+    test(
+      'arange() zero and negative step validation',
+      () => NDArray.scope(() {
+        expect(() => NDArray.arange(0.0, 5.0, step: 0.0), throwsArgumentError);
+        expect(() => NDArray.arange(0.0, 5.0, step: -1.0), throwsArgumentError);
+        expect(() => NDArray.arange(5.0, 0.0, step: 1.0), throwsArgumentError);
+
+        // Valid arange with negative step
+        final a = NDArray<double>.arange(
+          5.0,
+          0.0,
+          step: -1.0,
+          dtype: DType.float64,
+        );
+        expect(a.toList(), [5.0, 4.0, 3.0, 2.0, 1.0]);
+      }),
+    );
+
+    test(
+      'NDArray Structural Value Equality operator == and hashCode',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+        final b = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+        final c = NDArray.fromList([1.0, 2.0, 9.0], [3], DType.float64);
+        final d = NDArray.fromList([1.0, 2.0, 3.0], [1, 3], DType.float64);
+
+        expect(a == b, true);
+        expect(a == c, false);
+        expect(a == d, false); // different shape
+        expect(a.hashCode == b.hashCode, true);
+
+        // Non-contiguous view comparisons tests (triggering recursive walkers)
+        final parent1 = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final parent2 = NDArray.fromList(
+          [1.0, 3.0, 2.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+
+        final viewT1 =
+            parent1.transposed; // non-contiguous: [[1.0, 3.0], [2.0, 4.0]]
+        expect(viewT1.isContiguous, false);
+
+        // 1. Non-contiguous == contiguous
+        expect(viewT1 == parent2, true);
+        expect(viewT1 == parent1, false);
+
+        // 2. Non-contiguous hashCode
+        expect(viewT1.hashCode == parent2.hashCode, true);
+      }),
+    );
+
+    test(
+      'DType.complex64 array creation, viewing and operations coverage',
+      () => NDArray.scope(() {
+        final a = NDArray<Complex>.create([2, 2], DType.complex64);
+        expect(a.shape, [2, 2]);
+        expect(a.dtype, DType.complex64);
+
+        a.setCell([0, 0], Complex(1.0, 2.0));
+        a.setCell([0, 1], Complex(3.0, 4.0));
+        a.setCell([1, 0], Complex(5.0, 6.0));
+        a.setCell([1, 1], Complex(7.0, 8.0));
+
+        expect(a.getCell([0, 0]), Complex(1.0, 2.0));
+        expect(a.getCell([1, 1]), Complex(7.0, 8.0));
+
+        // View creation coverage (parent.dtype == DType.complex64)
+        final view = a.slice([Index(0)]); // Select first row
+        expect(view.shape, [2]);
+        expect(view.dtype, DType.complex64);
+        expect(view.getCell([0]), Complex(1.0, 2.0));
+        expect(view.getCell([1]), Complex(3.0, 4.0));
+
+        // Operation coverage (add complex64 arrays)
+        final b = NDArray<Complex>.create([2, 2], DType.complex64);
+        for (var i = 0; i < 2; i++) {
+          for (var j = 0; j < 2; j++) {
+            b.setCell([i, j], Complex(10.0, 10.0));
+          }
+        }
+
+        final c = add(a, b);
+        expect(c.dtype, DType.complex64);
+        expect(c.getCell([0, 0]), Complex(11.0, 12.0));
+        expect(c.getCell([1, 1]), Complex(17.0, 18.0));
+      }),
+    );
+
+    test(
+      'linspace() with num == 1 coverage',
+      () => NDArray.scope(() {
+        final a = linspace<double>(5.0, 10.0, 1, dtype: DType.float64);
+        expect(a.shape, [1]);
+        expect(a.toList(), [5.0]);
+      }),
+    );
+
+    test(
+      'DType properties getters isComplex, isFloating, isInteger coverage',
+      () {
+        expect(DType.complex128.isComplex, true);
+        expect(DType.float64.isComplex, false);
+        expect(DType.float64.isFloating, true);
+        expect(DType.int64.isFloating, false);
+        expect(DType.int64.isInteger, true);
+        expect(DType.float64.isInteger, false);
+      },
+    );
+
+    test(
+      'NDArray.eye() factory with integer dtype coverage',
+      () => NDArray.scope(() {
+        final a = NDArray.eye(2, DType.int32);
+        expect(a.toList(), [1, 0, 0, 1]);
+        expect(a.dtype, DType.int32);
+      }),
+    );
+
+    test(
+      'NDArray.view() FFI constructors with float32 and int64 coverage',
+      () => NDArray.scope(() {
+        final pF32 = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float32);
+        final vF32 = NDArray.view(
+          pF32,
+          shape: [2],
+          strides: [1],
+          offsetElements: 1,
+        );
+        expect(vF32.toList(), [2.0, 3.0]);
+        expect(vF32.dtype, DType.float32);
+
+        final pI64 = NDArray.fromList([10, 20, 30], [3], DType.int64);
+        final vI64 = NDArray.view(
+          pI64,
+          shape: [2],
+          strides: [1],
+          offsetElements: 1,
+        );
+        expect(vI64.toList(), [20, 30]);
+        expect(vI64.dtype, DType.int64);
+      }),
+    );
+
+    test(
+      'NDArray.ones() factory with complex dtypes coverage',
+      () => NDArray.scope(() {
+        final a = NDArray.ones([2], DType.complex128);
+        expect(a.toList(), [Complex(1.0, 0.0), Complex(1.0, 0.0)]);
+        expect(a.dtype, DType.complex128);
+
+        final b = NDArray.ones([2], DType.complex64);
+        expect(b.toList(), [Complex(1.0, 0.0), Complex(1.0, 0.0)]);
+        expect(b.dtype, DType.complex64);
+      }),
+    );
+
+    test(
+      'NDArray.eye() complex identity matrix type safety validations',
+      () => NDArray.scope(() {
+        final eye128 = NDArray<Complex>.eye(3, DType.complex128);
+        expect(eye128.dtype, DType.complex128);
+        expect(eye128.getCell([0, 0]), Complex(1.0, 0.0));
+        expect(eye128.getCell([0, 1]), Complex(0.0, 0.0));
+        expect(eye128.getCell([1, 1]), Complex(1.0, 0.0));
+
+        final eye64 = NDArray<Complex>.eye(3, DType.complex64);
+        expect(eye64.dtype, DType.complex64);
+        expect(eye64.getCell([0, 0]), Complex(1.0, 0.0));
+        expect(eye64.getCell([1, 1]), Complex(1.0, 0.0));
+      }),
+    );
+
+    test(
+      'arange() and linspace() type safety with complex dtypes',
+      () => NDArray.scope(() {
+        // 1. arange with complex128
+        final a128 = NDArray<Complex>.arange(0, 3, dtype: DType.complex128);
+        expect(a128.shape, [3]);
+        expect(a128.dtype, DType.complex128);
+        expect(a128.toList(), [
+          Complex(0.0, 0.0),
+          Complex(1.0, 0.0),
+          Complex(2.0, 0.0),
+        ]);
+
+        // 2. arange with complex64
+        final a64 = NDArray<Complex>.arange(1, 3, dtype: DType.complex64);
+        expect(a64.shape, [2]);
+        expect(a64.dtype, DType.complex64);
+        expect(a64.toList(), [Complex(1.0, 0.0), Complex(2.0, 0.0)]);
+
+        // 3. linspace with complex128
+        final l128 = linspace<Complex>(
+          Complex(1.0, 0.0),
+          Complex(2.0, 0.0),
+          3,
+          dtype: DType.complex128,
+        );
+        expect(l128.shape, [3]);
+        expect(l128.dtype, DType.complex128);
+        expect(l128.toList(), [
+          Complex(1.0, 0.0),
+          Complex(1.5, 0.0),
+          Complex(2.0, 0.0),
+        ]);
+
+        // 4. linspace with single-element num == 1 and complex64
+        final l64 = linspace<Complex>(
+          Complex(5.0, 0.0),
+          Complex(10.0, 0.0),
+          1,
+          dtype: DType.complex64,
+        );
+        expect(l64.shape, [1]);
+        expect(l64.dtype, DType.complex64);
+        expect(l64.toList(), [Complex(5.0, 0.0)]);
+      }),
+    );
+
+    test(
+      'FFI native C flatten() and hashCode() correctness and invariants across all DTypes',
+      () => NDArray.scope(() {
+        // 1. Float64
+        final f64 = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final f64T = f64.transposed;
+        final f64Flat = f64T.flatten();
+        expect(f64Flat.isContiguous, true);
+        expect(f64Flat.toList(), [1.0, 3.0, 2.0, 4.0]);
+        final f64Contig = NDArray.fromList(
+          [1.0, 3.0, 2.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        expect(f64T == f64Contig, true);
+        expect(f64T.hashCode == f64Contig.hashCode, true);
+
+        // 2. Float32
+        final f32 = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float32,
+        );
+        final f32T = f32.transposed;
+        final f32Flat = f32T.flatten();
+        expect(f32Flat.isContiguous, true);
+        expect(f32Flat.toList(), [1.0, 3.0, 2.0, 4.0]);
+        final f32Contig = NDArray.fromList(
+          [1.0, 3.0, 2.0, 4.0],
+          [2, 2],
+          DType.float32,
+        );
+        expect(f32T == f32Contig, true);
+        expect(f32T.hashCode == f32Contig.hashCode, true);
+
+        // 3. Int64
+        final i64 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int64);
+        final i64T = i64.transposed;
+        final i64Flat = i64T.flatten();
+        expect(i64Flat.isContiguous, true);
+        expect(i64Flat.toList(), [1, 3, 2, 4]);
+        final i64Contig = NDArray.fromList([1, 3, 2, 4], [2, 2], DType.int64);
+        expect(i64T == i64Contig, true);
+        expect(i64T.hashCode == i64Contig.hashCode, true);
+
+        // 4. Int32
+        final i32 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+        final i32T = i32.transposed;
+        final i32Flat = i32T.flatten();
+        expect(i32Flat.isContiguous, true);
+        expect(i32Flat.toList(), [1, 3, 2, 4]);
+        final i32Contig = NDArray.fromList([1, 3, 2, 4], [2, 2], DType.int32);
+        expect(i32T == i32Contig, true);
+        expect(i32T.hashCode == i32Contig.hashCode, true);
+
+        // 5. Complex128
+        final c128 = NDArray<Complex>.fromList(
+          [
+            Complex(1.0, 1.0),
+            Complex(2.0, 2.0),
+            Complex(3.0, 3.0),
+            Complex(4.0, 4.0),
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+        final c128T = c128.transposed;
+        final c128Flat = c128T.flatten();
+        expect(c128Flat.isContiguous, true);
+        expect(c128Flat.toList(), [
+          Complex(1.0, 1.0),
+          Complex(3.0, 3.0),
+          Complex(2.0, 2.0),
+          Complex(4.0, 4.0),
+        ]);
+        final c128Contig = NDArray<Complex>.fromList(
+          [
+            Complex(1.0, 1.0),
+            Complex(3.0, 3.0),
+            Complex(2.0, 2.0),
+            Complex(4.0, 4.0),
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+        expect(c128T == c128Contig, true);
+        expect(c128T.hashCode == c128Contig.hashCode, true);
+
+        // 6. Complex64
+        final c64 = NDArray<Complex>.fromList(
+          [
+            Complex(1.0, 1.0),
+            Complex(2.0, 2.0),
+            Complex(3.0, 3.0),
+            Complex(4.0, 4.0),
+          ],
+          [2, 2],
+          DType.complex64,
+        );
+        final c64T = c64.transposed;
+        final c64Flat = c64T.flatten();
+        expect(c64Flat.isContiguous, true);
+        expect(c64Flat.toList(), [
+          Complex(1.0, 1.0),
+          Complex(3.0, 3.0),
+          Complex(2.0, 2.0),
+          Complex(4.0, 4.0),
+        ]);
+        final c64Contig = NDArray<Complex>.fromList(
+          [
+            Complex(1.0, 1.0),
+            Complex(3.0, 3.0),
+            Complex(2.0, 2.0),
+            Complex(4.0, 4.0),
+          ],
+          [2, 2],
+          DType.complex64,
+        );
+        expect(c64T == c64Contig, true);
+        expect(c64T.hashCode == c64Contig.hashCode, true);
+
+        // 7. Boolean
+        final b = NDArray.fromList(
+          [true, false, true, false],
+          [2, 2],
+          DType.boolean,
+        );
+        final bT = b.transposed;
+        final bFlat = bT.flatten();
+        expect(bFlat.isContiguous, true);
+        expect(bFlat.toList(), [true, true, false, false]);
+        final bContig = NDArray.fromList(
+          [true, true, false, false],
+          [2, 2],
+          DType.boolean,
+        );
+        expect(bT == bContig, true);
+        expect(bT.hashCode == bContig.hashCode, true);
+      }),
+    );
   });
 }

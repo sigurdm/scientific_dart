@@ -1534,5 +1534,199 @@ void main() {
       expect(identical(res, out), isTrue);
       expect(out.toList(), [-2.0, 3.0]);
     });
+    test(
+      'add() contiguous float32 SIMD fast paths and remainders coverage',
+      () {
+        final a8 = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+          [8],
+          DType.float32,
+        );
+        final b8 = NDArray.fromList(
+          [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0],
+          [8],
+          DType.float32,
+        );
+
+        final res8 = add(a8, b8);
+        expect(res8.dtype, DType.float32);
+        expect(res8.toList(), [11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0]);
+
+        final a6 = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [6],
+          DType.float32,
+        );
+        final b6 = NDArray.fromList(
+          [10.0, 10.0, 10.0, 10.0, 10.0, 10.0],
+          [6],
+          DType.float32,
+        );
+
+        final res6 = add(a6, b6);
+        expect(res6.dtype, DType.float32);
+        expect(res6.toList(), [11.0, 12.0, 13.0, 14.0, 15.0, 16.0]);
+      },
+    );
+
+    test(
+      'subtract() contiguous float64 and float32 FFI fast paths coverage',
+      () {
+        final a64 = NDArray.fromList([20.0, 30.0], [2], DType.float64);
+        final b64 = NDArray.fromList([5.0, 10.0], [2], DType.float64);
+
+        final res64 = subtract(a64, b64);
+        expect(res64.dtype, DType.float64);
+        expect(res64.toList(), [15.0, 20.0]);
+
+        final a32 = NDArray.fromList([20.0, 30.0], [2], DType.float32);
+        final b32 = NDArray.fromList([5.0, 10.0], [2], DType.float32);
+
+        final res32 = subtract(a32, b32);
+        expect(res32.dtype, DType.float32);
+        expect(res32.toList(), [15.0, 20.0]);
+      },
+    );
+
+    test(
+      'add() cross-type complex/int and int/complex additions coverage',
+      () => NDArray.scope(() {
+        final c = NDArray<Complex>.fromList(
+          [Complex(1.0, 1.0)],
+          [1],
+          DType.complex128,
+        );
+        final i = NDArray<int>.fromList([2], [1], DType.int64);
+        final d = NDArray<double>.fromList([3.0], [1], DType.float64);
+
+        // 1. Complex + int
+        final res1 = add(c, i);
+        expect(res1.dtype, DType.complex128);
+        expect(res1.getCell([0]).real, 3.0);
+        expect(res1.getCell([0]).imag, 1.0);
+
+        // 2. double + Complex
+        final res2 = add(d, c);
+        expect(res2.dtype, DType.complex128);
+        expect(res2.getCell([0]).real, 4.0);
+        expect(res2.getCell([0]).imag, 1.0);
+
+        // 3. int + Complex
+        final res3 = add(i, c);
+        expect(res3.dtype, DType.complex128);
+        expect(res3.getCell([0]).real, 3.0);
+      }),
+    );
+
+    test(
+      'Cross-type arithmetic coverage for subtract, multiply, and divide',
+      () {
+        final c = NDArray<Complex>.fromList(
+          [Complex(10.0, 10.0)],
+          [1],
+          DType.complex128,
+        );
+        final i = NDArray<int>.fromList([2], [1], DType.int64);
+        final d = NDArray<double>.fromList([4.0], [1], DType.float64);
+
+        // --- subtract() Gaps ---
+        // 1. Complex - int
+        final s1 = subtract(c, i);
+        expect(s1.dtype, DType.complex128);
+        expect(s1.getCell([0]), Complex(8.0, 10.0));
+
+        // 2. int - Complex
+        final s2 = subtract(i, c);
+        expect(s2.dtype, DType.complex128);
+        expect(s2.getCell([0]), Complex(-8.0, -10.0));
+
+        // 3. double - int
+        final s3 = subtract(d, i);
+        expect(s3.dtype, DType.float64);
+        expect(s3.getCell([0]), 2.0);
+
+        // 4. int - double
+        final s4 = subtract(i, d);
+        expect(s4.dtype, DType.float64);
+        expect(s4.getCell([0]), -2.0);
+
+        // 5. int - int
+        final s5 = subtract(i, i);
+        expect(s5.dtype, DType.int64);
+        expect(s5.getCell([0]), 0);
+
+        // --- multiply() Gaps ---
+        // 1. Complex * Complex
+        final m1 = multiply(c, c);
+        expect(m1.dtype, DType.complex128);
+        expect(m1.getCell([0]), Complex(0.0, 200.0)); // (10+10i)^2 = 0 + 200i
+
+        // 2. Complex * double
+        final m2 = multiply(c, d);
+        expect(m2.dtype, DType.complex128);
+        expect(m2.getCell([0]), Complex(40.0, 40.0));
+
+        // 3. Complex * int
+        final m3 = multiply(c, i);
+        expect(m3.dtype, DType.complex128);
+        expect(m3.getCell([0]), Complex(20.0, 20.0));
+
+        // 4. double * Complex
+        final m4 = multiply(d, c);
+        expect(m4.dtype, DType.complex128);
+        expect(m4.getCell([0]), Complex(40.0, 40.0));
+
+        // 5. int * Complex
+        final m5 = multiply(i, c);
+        expect(m5.dtype, DType.complex128);
+        expect(m5.getCell([0]), Complex(20.0, 20.0));
+
+        // 6. double * int
+        final m6 = multiply(d, i);
+        expect(m6.dtype, DType.float64);
+        expect(m6.getCell([0]), 8.0);
+
+        // 7. int * double
+        final m7 = multiply(i, d);
+        expect(m7.dtype, DType.float64);
+        expect(m7.getCell([0]), 8.0);
+
+        // 8. int * int
+        final m8 = multiply(i, i);
+        expect(m8.dtype, DType.int64);
+        expect(m8.getCell([0]), 4);
+
+        // --- divide() Gaps ---
+        // 1. Complex / Complex
+        final div1 = divide(c, c);
+        expect(div1.dtype, DType.complex128);
+        expect(div1.getCell([0]), Complex(1.0, 0.0));
+
+        // 2. Complex / double
+        final div2 = divide(c, d);
+        expect(div2.dtype, DType.complex128);
+        expect(div2.getCell([0]), Complex(2.5, 2.5));
+
+        // 3. Complex / int
+        final div3 = divide(c, i);
+        expect(div3.dtype, DType.complex128);
+        expect(div3.getCell([0]), Complex(5.0, 5.0));
+
+        // 4. double / Complex
+        final div4 = divide(d, c);
+        expect(div4.dtype, DType.complex128);
+        expect(
+          div4.getCell([0]),
+          Complex(0.2, -0.2),
+        ); // 4 / (10+10i) = 0.2 - 0.2i
+
+        // 5. int / Complex
+        final div5 = divide(i, c);
+        expect(
+          div5.getCell([0]),
+          Complex(0.1, -0.1),
+        ); // 2 / (10+10i) = 0.1 - 0.1i
+      },
+    );
   });
 }

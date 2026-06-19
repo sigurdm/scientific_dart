@@ -304,5 +304,194 @@ void main() {
       expect(s.toList()[1].imag, 0.0);
       expect(s.dtype, DType.complex128);
     });
+    group('FFI accelerated Hyperbolic and Trigonometric Tests', () {
+      test(
+        'linalg.sinh(), cosh(), tanh(), asinh(), acosh(), and atanh() FFI-accelerated correctness',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([0.0, 1.0, -1.0], [3], DType.float64);
+
+          // 1. sinh
+          final sh = sinh(a);
+          expect(sh.getCell([0]), closeTo(0.0, 1e-9));
+          expect(
+            sh.getCell([1]),
+            closeTo((math.exp(1.0) - math.exp(-1.0)) / 2.0, 1e-9),
+          );
+
+          // 2. cosh
+          final ch = cosh(a);
+          expect(ch.getCell([0]), closeTo(1.0, 1e-9));
+          expect(
+            ch.getCell([1]),
+            closeTo((math.exp(1.0) + math.exp(-1.0)) / 2.0, 1e-9),
+          );
+
+          // 3. tanh
+          final th = tanh(a);
+          expect(th.getCell([0]), closeTo(0.0, 1e-9));
+          expect(
+            th.getCell([1]),
+            closeTo((math.exp(2.0) - 1) / (math.exp(2.0) + 1), 1e-9),
+          );
+
+          // 4. inverse hyperbolic loops
+          final ash = asinh(sh);
+          expect(allClose(ash, a, atol: 1e-9), true);
+
+          // 5. in-place recycler out reuse
+          final recycler = NDArray<double>.zeros([3], DType.float64);
+          final shRec = sinh(a, out: recycler);
+          expect(identical(shRec, recycler), true);
+          expect(shRec.getCell([0]), closeTo(0.0, 1e-9));
+        }),
+      );
+
+      test(
+        'linalg.sin(), cos(), and tan() complex FFI-accelerated correctness',
+        () => NDArray.scope(() {
+          final a = NDArray<Complex>.fromList(
+            [Complex(0.0, 0.0), Complex(0.1, 0.2), Complex(0.1, -0.2)],
+            [3],
+            DType.complex128,
+          );
+
+          // 1. sin(z)
+          final s = sin(a);
+          expect(s.dtype, DType.complex128);
+          expect(s.getCell([0]), Complex(0.0, 0.0));
+          expect(
+            s.getCell([1]).real,
+            closeTo(
+              math.sin(0.1) * ((math.exp(0.2) + math.exp(-0.2)) / 2.0),
+              1e-9,
+            ),
+          );
+          expect(
+            s.getCell([1]).imag,
+            closeTo(
+              math.cos(0.1) * ((math.exp(0.2) - math.exp(-0.2)) / 2.0),
+              1e-9,
+            ),
+          );
+
+          // 2. cos(z)
+          final c = cos(a);
+          expect(c.dtype, DType.complex128);
+          expect(c.getCell([0]), Complex(1.0, 0.0));
+          expect(
+            c.getCell([1]).real,
+            closeTo(
+              math.cos(0.1) * ((math.exp(0.2) + math.exp(-0.2)) / 2.0),
+              1e-9,
+            ),
+          );
+          expect(
+            c.getCell([1]).imag,
+            closeTo(
+              -math.sin(0.1) * ((math.exp(0.2) - math.exp(-0.2)) / 2.0),
+              1e-9,
+            ),
+          );
+
+          // 3. tan(z)
+          final t = tan(a);
+          expect(t.dtype, DType.complex128);
+          expect(t.getCell([0]), Complex(0.0, 0.0));
+          final denom =
+              math.cos(0.2) + ((math.exp(0.4) + math.exp(-0.4)) / 2.0);
+          expect(t.getCell([1]).real, closeTo(math.sin(0.2) / denom, 1e-9));
+          expect(
+            t.getCell([1]).imag,
+            closeTo(((math.exp(0.4) - math.exp(-0.4)) / 2.0) / denom, 1e-9),
+          );
+
+          // 4. in-place out recycler reuse
+          final recycler = NDArray<Complex>.zeros([3], DType.complex128);
+          final sRec = sin(a, out: recycler);
+          expect(identical(sRec, recycler), true);
+          expect(sRec.getCell([0]), Complex(0.0, 0.0));
+
+          // 5. inverse complex trig (asin, acos, atan)
+          final as = asin(s);
+
+          for (var i = 0; i < 3; i++) {
+            expect(as.getCell([i]).real, closeTo(a.getCell([i]).real, 1e-8));
+            expect(as.getCell([i]).imag, closeTo(a.getCell([i]).imag, 1e-8));
+          }
+
+          final ac = acos(c);
+          for (var i = 0; i < 3; i++) {
+            expect(ac.getCell([i]).real, closeTo(a.getCell([i]).real, 1e-8));
+            expect(ac.getCell([i]).imag, closeTo(a.getCell([i]).imag, 1e-8));
+          }
+
+          final at = atan(t);
+          for (var i = 0; i < 3; i++) {
+            expect(at.getCell([i]).real, closeTo(a.getCell([i]).real, 1e-8));
+            expect(at.getCell([i]).imag, closeTo(a.getCell([i]).imag, 1e-8));
+          }
+          // 6. complex atanh, hypot, power
+          final ath = atanh(a);
+          expect(ath.dtype, DType.complex128);
+          expect(
+            ath.getCell([1]).real,
+            closeTo(
+              0.25 * math.log(((1.1) * (1.1) + 0.04) / ((0.9) * (0.9) + 0.04)),
+              1e-9,
+            ),
+          );
+          expect(
+            ath.getCell([1]).imag,
+            closeTo(0.5 * math.atan2(0.4, 1.0 - 0.01 - 0.04), 1e-9),
+          );
+
+          final h = hypot(a, a);
+          expect(h.dtype, DType.float64);
+          expect(h.getCell([1]), closeTo(math.sqrt(0.1), 1e-9));
+
+          final z2 = NDArray<Complex>.fromList(
+            List.filled(3, Complex(2.0, 0.0)),
+            [3],
+            DType.complex128,
+          );
+          final p = power(a, z2);
+          expect(p.dtype, DType.complex128);
+          expect(p.getCell([1]).real, closeTo(-0.03, 1e-9));
+          expect(p.getCell([1]).imag, closeTo(0.04, 1e-9));
+
+          // 7. FFI complex conjugation (conj)
+          final conjContig = conj(a);
+          expect(conjContig.dtype, DType.complex128);
+          expect(conjContig.getCell([0]), Complex(0.0, 0.0));
+          expect(conjContig.getCell([1]), Complex(0.1, -0.2));
+          expect(conjContig.getCell([2]), Complex(0.1, 0.2));
+
+          // Strided complex view conjugation
+          final sliceA = a.slice([Slice(start: 1, stop: 3)]); // shape [2]
+          final conjSlice = conj(sliceA);
+          expect(conjSlice.dtype, DType.complex128);
+          expect(conjSlice.shape, [2]);
+          expect(conjSlice.getCell([0]), Complex(0.1, -0.2));
+          expect(conjSlice.getCell([1]), Complex(0.1, 0.2));
+
+          // Real array conjugation
+          final realA = NDArray<double>.fromList(
+            [1.0, 2.0, 3.0],
+            [3],
+            DType.float64,
+          );
+          final conjReal = conj(realA);
+          expect(conjReal.dtype, DType.float64);
+          expect(conjReal.getCell([0]), 1.0);
+          expect(conjReal.getCell([1]), 2.0);
+
+          // Recycler out buffer reuse
+          final conjRecycler = NDArray<Complex>.zeros([3], DType.complex128);
+          final conjRes = conj(a, out: conjRecycler);
+          expect(identical(conjRes, conjRecycler), true);
+          expect(conjRes.getCell([1]), Complex(0.1, -0.2));
+        }),
+      );
+    });
   });
 }

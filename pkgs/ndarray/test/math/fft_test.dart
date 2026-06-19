@@ -606,5 +606,238 @@ void main() {
         }),
       );
     });
+    test(
+      'fft() and ifft() empty/0D shape validation checks',
+      () => NDArray.scope(() {
+        final emptyArr = NDArray.zeros([], DType.float64);
+
+        expect(() => fft(emptyArr), throwsArgumentError);
+        expect(() => ifft(emptyArr), throwsArgumentError);
+      }),
+    );
+
+    test(
+      'fft() and ifft() invalid transform length n <= 0 checks',
+      () => NDArray.scope(() {
+        final signal = NDArray.zeros([5], DType.float64);
+
+        expect(() => fft(signal, n: 0), throwsArgumentError);
+        expect(() => fft(signal, n: -5), throwsArgumentError);
+        expect(() => ifft(signal, n: 0), throwsArgumentError);
+        expect(() => ifft(signal, n: -1), throwsArgumentError);
+      }),
+    );
+
+    test(
+      'fft() and ifft() processing complex inputs directly',
+      () => NDArray.scope(() {
+        final complexSignal = NDArray<Complex>.fromList(
+          [Complex(1.0, 1.0), Complex(2.0, 2.0)],
+          [2],
+          DType.complex128,
+        );
+
+        final freq = fft(complexSignal);
+        expect(freq.dtype, DType.complex128);
+        expect(freq.shape, [2]);
+
+        final time = ifft(freq);
+        expect(time.dtype, DType.complex128);
+        expect(time.shape, [2]);
+
+        // The inverse transform must recover the original complex signal values (within floating precision)
+        expect(time.getCell([0]).real, closeTo(1.0, 1e-9));
+        expect(time.getCell([0]).imag, closeTo(1.0, 1e-9));
+        expect(time.getCell([1]).real, closeTo(2.0, 1e-9));
+        expect(time.getCell([1]).imag, closeTo(2.0, 1e-9));
+      }),
+    );
+
+    test(
+      'fft() and ifft() with real inputs and zero padding padding checks',
+      () {
+        final realSignal = NDArray<double>.fromList(
+          [1.0, 2.0],
+          [2],
+          DType.float64,
+        );
+
+        // 1. fft with zero-padding (n = 4)
+        final freqPadded = fft(realSignal, n: 4);
+        expect(freqPadded.shape, [4]);
+
+        // 2. ifft with real input and zero padding (n = 4)
+        final timePadded = ifft(realSignal, n: 4);
+        expect(timePadded.shape, [4]);
+      },
+    );
+
+    test(
+      'ifft() with non-contiguous strided view input',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          [
+            Complex(1.0, 1.0),
+            Complex(2.0, 2.0),
+            Complex(3.0, 3.0),
+            Complex(4.0, 4.0),
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+
+        // Transposed view is non-contiguous
+        final transposed = parent.transposed;
+        expect(transposed.isContiguous, false);
+
+        // Should automatically copy transposed inside ifft
+        final result = ifft(transposed);
+
+        expect(result.shape, [2, 2]);
+        expect(result.dtype, DType.complex128);
+        final resultList = result.toList();
+        expect(resultList[0].real, closeTo(2.0, 1e-9));
+        expect(resultList[0].imag, closeTo(2.0, 1e-9));
+        expect(resultList[1].real, closeTo(-1.0, 1e-9));
+        expect(resultList[1].imag, closeTo(-1.0, 1e-9));
+        expect(resultList[2].real, closeTo(3.0, 1e-9));
+        expect(resultList[2].imag, closeTo(3.0, 1e-9));
+        expect(resultList[3].real, closeTo(-1.0, 1e-9));
+        expect(resultList[3].imag, closeTo(-1.0, 1e-9));
+      }),
+    );
+
+    test(
+      'FFT and IFFT zero-padding with ComplexList inputs and outputs',
+      () => NDArray.scope(() {
+        final a = NDArray<Complex>.create([4], DType.complex128);
+        a.setCell([0], Complex(1.0, 0.0));
+        a.setCell([1], Complex(2.0, 0.0));
+        a.setCell([2], Complex(3.0, 0.0));
+        a.setCell([3], Complex(4.0, 0.0));
+
+        // Trigger zero-padding block for ComplexList input
+        final res = fft(a, n: 8);
+        expect(res.shape, [8]);
+        expect(res.dtype, DType.complex128);
+
+        // Trigger IFFT zero-padding block for ComplexList input
+        final invRes = ifft(res, n: 12);
+        expect(invRes.shape, [12]);
+        expect(invRes.dtype, DType.complex128);
+      }),
+    );
+
+    test(
+      'Zero-copy FFT and IFFT contiguous Float64 complex128 correctness',
+      () {
+        // 1. 1D Complex Vector Zero-Copy FFT and IFFT
+        final a = NDArray<Complex>.fromList(
+          [
+            Complex(1.0, 0.0),
+            Complex(2.0, 0.0),
+            Complex(3.0, 0.0),
+            Complex(4.0, 0.0),
+          ],
+          [4],
+          DType.complex128,
+        );
+
+        final resFFT = fft(a);
+        expect(resFFT.dtype, DType.complex128);
+        expect(resFFT.shape, [4]);
+
+        // Mathematical FFT outputs for [1, 2, 3, 4]:
+        // F(0) = 10 + 0i
+        // F(1) = -2 + 2i
+        // F(2) = -2 + 0i
+        // F(3) = -2 - 2i
+        expect(resFFT.getCell([0]), Complex(10.0, 0.0));
+        expect(resFFT.getCell([1]).real, closeTo(-2.0, 1e-10));
+        expect(resFFT.getCell([1]).imag, closeTo(2.0, 1e-10));
+        expect(resFFT.getCell([2]).real, closeTo(-2.0, 1e-10));
+        expect(resFFT.getCell([2]).imag, closeTo(0.0, 1e-10));
+        expect(resFFT.getCell([3]).real, closeTo(-2.0, 1e-10));
+        expect(resFFT.getCell([3]).imag, closeTo(-2.0, 1e-10));
+
+        // Round-trip back with zero-copy IFFT
+        final resIFFT = ifft(resFFT);
+        expect(resIFFT.dtype, DType.complex128);
+        expect(resIFFT.shape, [4]);
+        expect(resIFFT.getCell([0]).real, closeTo(1.0, 1e-10));
+        expect(resIFFT.getCell([0]).imag, closeTo(0.0, 1e-10));
+        expect(resIFFT.getCell([1]).real, closeTo(2.0, 1e-10));
+        expect(resIFFT.getCell([1]).imag, closeTo(0.0, 1e-10));
+        expect(resIFFT.getCell([2]).real, closeTo(3.0, 1e-10));
+        expect(resIFFT.getCell([2]).imag, closeTo(0.0, 1e-10));
+        expect(resIFFT.getCell([3]).real, closeTo(4.0, 1e-10));
+        expect(resIFFT.getCell([3]).imag, closeTo(0.0, 1e-10));
+
+        // 2. High-Dimensional Stacked 2D Complex Matrix Zero-Copy FFT and IFFT
+        final mat = NDArray<Complex>.fromList(
+          [
+            Complex(1.0, 0.0),
+            Complex(2.0, 0.0),
+            Complex(3.0, 0.0),
+            Complex(4.0, 0.0),
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+
+        final matFFT = fft(mat);
+        expect(matFFT.shape, [2, 2]);
+        expect(matFFT.dtype, DType.complex128);
+
+        // Row 0: [1, 2] -> [3, -1]
+        // Row 1: [3, 4] -> [7, -1]
+        expect(matFFT.getCell([0, 0]).real, closeTo(3.0, 1e-10));
+        expect(matFFT.getCell([0, 1]).real, closeTo(-1.0, 1e-10));
+        expect(matFFT.getCell([1, 0]).real, closeTo(7.0, 1e-10));
+        expect(matFFT.getCell([1, 1]).real, closeTo(-1.0, 1e-10));
+
+        final matIFFT = ifft(matFFT);
+        expect(matIFFT.shape, [2, 2]);
+        expect(matIFFT.getCell([0, 0]).real, closeTo(1.0, 1e-10));
+        expect(matIFFT.getCell([0, 1]).real, closeTo(2.0, 1e-10));
+        expect(matIFFT.getCell([1, 0]).real, closeTo(3.0, 1e-10));
+        expect(matIFFT.getCell([1, 1]).real, closeTo(4.0, 1e-10));
+      },
+    );
+
+    test('Multi-dimensional axis support inside fft() and ifft()', () {
+      final mat = NDArray<Complex>.fromList(
+        [
+          Complex(1.0, 0.0),
+          Complex(1.0, 0.0),
+          Complex(2.0, 0.0),
+          Complex(2.0, 0.0),
+        ],
+        [2, 2],
+        DType.complex128,
+      );
+
+      final fLast = fft(mat, axis: 1);
+      expect(fLast.shape, [2, 2]);
+      expect(fLast.getCell([0, 0]), Complex(2.0, 0.0));
+      expect(fLast.getCell([0, 1]), Complex(0.0, 0.0));
+      expect(fLast.getCell([1, 0]), Complex(4.0, 0.0));
+      expect(fLast.getCell([1, 1]), Complex(0.0, 0.0));
+
+      final fSwapped = fft(mat, axis: 0).copy();
+      expect(fSwapped.shape, [2, 2]);
+      expect(fSwapped.getCell([0, 0]), Complex(3.0, 0.0));
+      expect(fSwapped.getCell([0, 1]), Complex(3.0, 0.0));
+      expect(fSwapped.getCell([1, 0]), Complex(-1.0, 0.0));
+      expect(fSwapped.getCell([1, 1]), Complex(-1.0, 0.0));
+
+      final roundtrip = ifft(fSwapped, axis: 0).copy();
+      expect(roundtrip.shape, [2, 2]);
+      expect(roundtrip.getCell([0, 0]).real, closeTo(1.0, 1e-9));
+      expect(roundtrip.getCell([1, 0]).real, closeTo(2.0, 1e-9));
+
+      expect(() => fft(mat, axis: 2), throwsRangeError);
+      expect(() => fft(mat, axis: -3), throwsRangeError);
+    });
   });
 }

@@ -1,5 +1,6 @@
 import 'package:ndarray/ndarray.dart';
 import 'package:test/test.dart';
+import 'dart:math' as math;
 
 void main() {
   group('Percentiles, Medians, and Quantiles Tests', () {
@@ -1913,6 +1914,217 @@ void main() {
         expect(() => mgrid([]), throwsArgumentError);
       });
     });
+    test(
+      'nansum() and nanmean() ufunc correctness across float dtypes',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          [1.0, double.nan, 3.0, double.nan, 5.0],
+          [5],
+          DType.float64,
+        );
+
+        // 1. nansum
+        final sF64 = nansum(a);
+        expect(sF64.shape, <int>[]);
+        expect(sF64.dtype, DType.float64);
+        expect(sF64.scalar, 9.0); // 1 + 3 + 5 = 9
+
+        // 2. nanmean
+        final mF64 = nanmean(a);
+        expect(mF64.shape, <int>[]);
+        expect(mF64.dtype, DType.float64);
+        expect(mF64.scalar, 3.0); // 9 / 3 = 3
+      }),
+    );
+
+    test(
+      'nansum() and nanmean() along axis check',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          [1.0, double.nan, 3.0, 4.0, 5.0, double.nan],
+          [2, 3],
+          DType.float64,
+        );
+
+        // Integrate columns (axis = 1)
+        final sAxis1 = nansum(a, axis: 1);
+        expect(sAxis1.shape, [2]);
+        expect(sAxis1.toList(), [4.0, 9.0]); // row 0: 1+3=4, row 1: 4+5=9
+
+        final mAxis1 = nanmean(a, axis: 1);
+        expect(mAxis1.shape, [2]);
+        expect(mAxis1.toList(), [2.0, 4.5]); // row 0: 4/2=2.0, row 1: 9/2=4.5
+
+        // Integrate rows (axis = 0)
+        final sAxis0 = nansum(a, axis: 0);
+        expect(sAxis0.shape, [3]);
+        expect(sAxis0.toList(), [
+          5.0,
+          5.0,
+          3.0,
+        ]); // col 0: 1+4=5, col 1: 5, col 2: 3
+
+        final mAxis0 = nanmean(a, axis: 0);
+        expect(mAxis0.shape, [3]);
+        expect(mAxis0.toList(), [
+          2.5,
+          5.0,
+          3.0,
+        ]); // col 0: 5/2=2.5, col 1: 5/1=5, col 2: 3/1=3
+      }),
+    );
+
+    test(
+      'nansum() and nanmean() on empty/disposed/preconditions',
+      () => NDArray.scope(() {
+        final empty = NDArray.zeros([0], DType.float64);
+        expect(nansum(empty).scalar, 0.0);
+        expect(nanmean<double>(empty).scalar.isNaN, true);
+
+        final a = NDArray.fromList([1.0, double.nan], [2], DType.float64);
+        a.dispose();
+        expect(() => nansum(a), throwsStateError);
+        expect(() => nanmean(a), throwsStateError);
+      }),
+    );
+
+    test(
+      'variance() and std() on non-contiguous view calculation',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [3, 2],
+          DType.float64,
+        );
+
+        final viewT = parent.transposed;
+
+        expect(variance(viewT).scalar, closeTo(17.5 / 6.0, 1e-9));
+        expect(std(viewT).scalar, closeTo(math.sqrt(17.5 / 6.0), 1e-9));
+      }),
+    );
+
+    test(
+      'variance() and std() on sliced view calculation',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [3, 2],
+          DType.float64,
+        );
+
+        final view = parent.slice([Slice(start: 0, stop: 2), Slice.all()]);
+        expect(variance(view).scalar, closeTo(1.25, 1e-9));
+        expect(std(view).scalar, closeTo(math.sqrt(1.25), 1e-9));
+      }),
+    );
+
+    test(
+      'percentile() and quantile() statistical estimation correctness',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          [15.0, 20.0, 35.0, 40.0, 50.0],
+          [5],
+          DType.float64,
+        );
+
+        // 1. percentile (q = 30) -> idx = 4 * 0.3 = 1.2 -> 20 + 0.2*(35-20) = 23.0
+        final p30 = percentile(a, 30.0);
+        expect(p30.scalar, closeTo(23.0, 1e-9));
+
+        // 2. quantile (q = 0.30)
+        final q30 = quantile(a, 0.3);
+        expect(q30.scalar, closeTo(23.0, 1e-9));
+      }),
+    );
+
+    test(
+      'percentile() and quantile() invalid inputs and limits checks',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+
+        expect(() => percentile(a, -5.0), throwsArgumentError);
+        expect(() => percentile(a, 105.0), throwsArgumentError);
+        expect(() => quantile(a, -0.1), throwsArgumentError);
+        expect(() => quantile(a, 1.1), throwsArgumentError);
+      }),
+    );
+
+    test(
+      'percentile() along columns and rows axis integration correctness',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          [1.0, 5.0, 3.0, 4.0, 2.0, 6.0],
+          [2, 3],
+          DType.float64,
+        );
+
+        // axis 1: row 0: 1, 3, 5 -> q=50 -> 3.0; row 1: 2, 4, 6 -> q=50 -> 4.0
+        final p50Axis1 = percentile(a, 50.0, axis: 1);
+        expect(p50Axis1.shape, [2]);
+        expect(p50Axis1.toList(), [3.0, 4.0]);
+
+        // axis 0: col 0: 1, 4 -> q=50 -> 2.5; col 1: 5, 2 -> 3.5; col 2: 3, 6 -> 4.5
+        final p50Axis0 = percentile(a, 50.0, axis: 0);
+        expect(p50Axis0.shape, [3]);
+        expect(p50Axis0.toList(), [2.5, 3.5, 4.5]);
+      }),
+    );
+
+    test(
+      'percentile() quantile() contiguous float32 coverage',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float32);
+
+        final p = percentile(a, 50.0);
+        expect(p.dtype, DType.float64); // percentile always returns float64
+        expect(p.scalar, closeTo(20.0, 1e-9));
+
+        final q = quantile(a, 0.5);
+        expect(q.dtype, DType.float64);
+        expect(q.scalar, closeTo(20.0, 1e-9));
+      }),
+    );
+
+    test(
+      'percentile() quantile() non-contiguous transposed views',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          [10.0, 20.0, 30.0, 40.0],
+          [2, 2],
+          DType.float64,
+        );
+        final transposed = parent.transposed; // non-contiguous [2, 2]
+        expect(transposed.isContiguous, false);
+
+        // transposed: [[10.0, 30.0], [20.0, 40.0]]
+        final p = percentile(transposed, 50.0, axis: 1);
+        expect(p.shape, [2]);
+        expect(p.toList(), [20.0, 30.0]); // row 0 median: 20, row 1 median: 30
+      }),
+    );
+
+    test(
+      'percentile() quantile() with out parameter recycler',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float64);
+        final outPercentile = NDArray<double>.zeros([], DType.float64);
+
+        final resP = percentile(a, 50.0, out: outPercentile);
+        expect(identical(resP, outPercentile), true);
+        expect(outPercentile.scalar, 20.0);
+
+        final outQuantile = NDArray<double>.zeros([], DType.float64);
+        final resQ = quantile(a, 0.5, out: outQuantile);
+        expect(identical(resQ, outQuantile), true);
+        expect(outQuantile.scalar, 20.0);
+
+        // Incompatible shape throws ArgumentError
+        final badOut = NDArray<double>.zeros([2], DType.float64);
+        expect(() => percentile(a, 50.0, out: badOut), throwsArgumentError);
+        expect(() => quantile(a, 0.5, out: badOut), throwsArgumentError);
+      }),
+    );
   });
 }
 

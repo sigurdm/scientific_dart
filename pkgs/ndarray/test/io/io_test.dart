@@ -559,6 +559,164 @@ void main() {
         }),
       );
     });
+    test(
+      'NPY double quotes / mixed quotes header parsing compatibility',
+      () => NDArray.scope(() {
+        // Construct a fake .npy buffer using double quotes in header dictionary
+        final headerStr =
+            '{"descr": "<f8", "fortran_order": False, "shape": (2, 2)}';
+
+        final prefixLen = 6 + 2 + 2;
+        var paddedHeaderLen =
+            ((prefixLen + headerStr.length + 1) + 63) ~/ 64 * 64 - prefixLen;
+        final padCount = paddedHeaderLen - headerStr.length - 1;
+        final paddedHeader = "$headerStr${' ' * padCount}\n";
+
+        final headerBytes = Uint8List.fromList(paddedHeader.codeUnits);
+        final lenBytes = Uint8List(2);
+        ByteData.view(
+          lenBytes.buffer,
+        ).setUint16(0, headerBytes.length, Endian.little);
+
+        final rawData = Float64List.fromList([1.0, 2.0, 3.0, 4.0]);
+        final rawDataBytes = Uint8List.view(rawData.buffer);
+
+        final fullBuffer = Uint8List(
+          6 + 2 + 2 + headerBytes.length + rawDataBytes.length,
+        );
+        var offset = 0;
+
+        fullBuffer.setRange(offset, offset + 6, const [
+          0x93,
+          0x4e,
+          0x55,
+          0x4d,
+          0x50,
+          0x59,
+        ]);
+        offset += 6;
+        fullBuffer.setRange(offset, offset + 2, const [0x01, 0x00]);
+        offset += 2;
+        fullBuffer.setRange(offset, offset + 2, lenBytes);
+        offset += 2;
+        fullBuffer.setRange(offset, offset + headerBytes.length, headerBytes);
+        offset += headerBytes.length;
+        fullBuffer.setRange(offset, offset + rawDataBytes.length, rawDataBytes);
+
+        const path = 'scratch/double_quotes_simulated.npy';
+        File(path).writeAsBytesSync(fullBuffer, flush: true);
+
+        // Load should parse successfully now
+        final loaded = load(path);
+        expect(loaded.shape, [2, 2]);
+        expect(loaded.dtype, DType.float64);
+        expect(loaded.toList(), [1.0, 2.0, 3.0, 4.0]);
+      }),
+    );
+
+    test(
+      'save() and load() non-contiguous strided views of all dtypes',
+      () => NDArray.scope(() {
+        // 1. float32
+        final f32 = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float32,
+        );
+        final f32View = f32.transposed; // non-contiguous!
+        save('scratch/f32_view.npy', f32View);
+        final f32Loaded = load('scratch/f32_view.npy');
+        expect(f32Loaded.shape, [2, 2]);
+        expect(f32Loaded.dtype, DType.float32);
+        expect(f32Loaded.toList(), [1.0, 3.0, 2.0, 4.0]);
+
+        // 2. int32
+        final i32 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+        final i32View = i32.transposed;
+        save('scratch/i32_view.npy', i32View);
+        final i32Loaded = load('scratch/i32_view.npy');
+        expect(i32Loaded.toList(), [1, 3, 2, 4]);
+
+        // 3. int64
+        final i64 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int64);
+        final i64View = i64.transposed;
+        save('scratch/i64_view.npy', i64View);
+        final i64Loaded = load('scratch/i64_view.npy');
+        expect(i64Loaded.toList(), [1, 3, 2, 4]);
+
+        // 4. boolean
+        final b = NDArray.fromList(
+          [true, false, true, false],
+          [2, 2],
+          DType.boolean,
+        );
+        final bView = b.transposed;
+        save('scratch/b_view.npy', bView);
+        final bLoaded = load('scratch/b_view.npy');
+        expect(bLoaded.toList(), [true, true, false, false]);
+
+        // 5. complex128
+        final c128 = NDArray<Complex>.fromList(
+          [
+            Complex(1.0, 1.0),
+            Complex(2.0, 2.0),
+            Complex(3.0, 3.0),
+            Complex(4.0, 4.0),
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+        final c128View = c128.transposed;
+        save('scratch/c128_view.npy', c128View);
+        final c128Loaded = load('scratch/c128_view.npy');
+        expect(c128Loaded.toList(), [
+          Complex(1.0, 1.0),
+          Complex(3.0, 3.0),
+          Complex(2.0, 2.0),
+          Complex(4.0, 4.0),
+        ]);
+
+        // 6. complex64
+        final c64 = NDArray<Complex>.fromList(
+          [
+            Complex(1.0, 1.0),
+            Complex(2.0, 2.0),
+            Complex(3.0, 3.0),
+            Complex(4.0, 4.0),
+          ],
+          [2, 2],
+          DType.complex64,
+        );
+        final c64View = c64.transposed;
+        save('scratch/c64_view.npy', c64View);
+        final c64Loaded = load('scratch/c64_view.npy');
+        expect(c64Loaded.toList(), [
+          Complex(1.0, 1.0),
+          Complex(3.0, 3.0),
+          Complex(2.0, 2.0),
+          Complex(4.0, 4.0),
+        ]);
+      }),
+    );
+
+    test(
+      'save() and load() Uint8 and Int16 arrays coverage',
+      () => NDArray.scope(() {
+        // 1. Uint8
+        final u8 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.uint8);
+        save('scratch/u8_array.npy', u8);
+        final u8Loaded = load('scratch/u8_array.npy');
+        expect(u8Loaded.toList(), [1, 2, 3, 4]);
+        expect(u8Loaded.dtype, DType.uint8);
+
+        // 2. Int16
+        final i16 = NDArray.fromList([10, 20, 30, 40], [2, 2], DType.int16);
+        save('scratch/i16_array.npy', i16);
+        final i16Loaded = load('scratch/i16_array.npy');
+        expect(i16Loaded.toList(), [10, 20, 30, 40]);
+        expect(i16Loaded.dtype, DType.int16);
+      }),
+    );
   });
 }
 

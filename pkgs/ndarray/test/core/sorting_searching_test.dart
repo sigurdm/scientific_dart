@@ -776,5 +776,47 @@ void main() {
         }),
       );
     });
+    test(
+      'count_nonzero() fallback path on non-contiguous views',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          Float64List.fromList([1.0, 0.0, 3.0, 0.0, 5.0, 6.0]),
+          [2, 3],
+          DType.float64,
+        );
+
+        // Non-contiguous column slice: select column 0 (elements [1.0, 0.0] -> strides are [3, 1], column 0 is data[0], data[3])
+        // Column 2 is: [3.0, 6.0] (nonzero count is 2).
+        final view = a.slice([Slice.all(), Index(2)]);
+        expect(view.isContiguous, false);
+        expect(view.toList(), [3.0, 6.0]);
+
+        // In the old code, count_nonzero(view) would incorrectly return 0 due to discarded recursion yields!
+        expect(count_nonzero(view).scalar, 2);
+      }),
+    );
+
+    test(
+      'qsort floating-point NaN sorting safety and stability',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          [3.0, double.nan, 1.0, double.nan, 2.0],
+          [5],
+          DType.float64,
+        );
+
+        final b = sort(a);
+
+        final bList = b.toList();
+        // The 3 non-NaN elements must be sorted ascending: 1.0, 2.0, 3.0
+        expect(bList[0], 1.0);
+        expect(bList[1], 2.0);
+        expect(bList[2], 3.0);
+
+        // The NaNs must be pushed consistently to the end of the array
+        expect(bList[3].isNaN, true);
+        expect(bList[4].isNaN, true);
+      }),
+    );
   });
 }

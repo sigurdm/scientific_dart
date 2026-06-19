@@ -617,5 +617,26 @@ void main() {
         expect(() => ifft(a), throwsStateError);
       });
     });
+    test(
+      'View Invalidation Safety (throws StateError on disposed views)',
+      () => NDArray.scope(() {
+        final parent = NDArray.ones([2, 2], DType.float64);
+        final view = parent.slice([Index(0)]); // Select first row
+
+        expect(parent.isDisposed, false);
+        expect(view.isDisposed, false);
+
+        parent.dispose();
+
+        expect(parent.isDisposed, true);
+        expect(view.isDisposed, true);
+
+        // Accessing public APIs should throw StateError
+        expect(() => view.toList(), throwsStateError);
+        expect(() => view.pointer, throwsStateError);
+        expect(() => view[0], throwsStateError);
+        expect(() => view.reshape([2]), throwsStateError);
+      }),
+    );
   });
 }

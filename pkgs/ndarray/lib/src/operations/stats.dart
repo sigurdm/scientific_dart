@@ -1991,10 +1991,9 @@ NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
     result.fill(normalizeScalar(0, targetDType) as R);
   } else {
     if (targetDType.isComplex) {
-      result =
-          NDArray<Complex>.create(newShape, DType.complex128) as NDArray<R>;
+      result = NDArray<Complex>.zeros(newShape, DType.complex128) as NDArray<R>;
     } else {
-      result = NDArray<double>.create(newShape, DType.float64) as NDArray<R>;
+      result = NDArray<double>.zeros(newShape, DType.float64) as NDArray<R>;
     }
   }
   final counts = NDArray<int>.zeros(newShape, DType.int32);

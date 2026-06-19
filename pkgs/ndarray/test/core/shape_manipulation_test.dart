@@ -1983,5 +1983,228 @@ void main() {
         });
       });
     });
+    test(
+      'reshape() non-contiguous view copies memory first',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          Float64List.fromList([1.0, 2.0, 3.0, 4.0]),
+          [2, 2],
+          DType.float64,
+        );
+
+        // Transposed view is non-contiguous (strides: [1, 2])
+        final transposed = parent.transposed;
+        expect(transposed.isContiguous, false);
+        expect(transposed.toList(), [1.0, 3.0, 2.0, 4.0]);
+
+        // Reshaping the transposed view: it should automatically copy first
+        final reshaped = transposed.reshape([4]);
+        expect(reshaped.isContiguous, true);
+        expect(reshaped.toList(), [1.0, 3.0, 2.0, 4.0]);
+
+        // Verify memory decoupling (modifying reshaped does NOT affect parent)
+        reshaped.setCell([0], Float64(99.0));
+        expect(parent.getCell([0, 0]), 1.0);
+      }),
+    );
+
+    test(
+      'transpose() negative axis support',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          Float64List.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
+          [2, 3],
+          DType.float64,
+        );
+        // Reverse axes order via negative indices: [-1, -2] is equivalent to [1, 0]
+        final b = a.transpose([-1, -2]);
+        expect(b.shape, [3, 2]);
+        expect(b.toList(), [1.0, 4.0, 2.0, 5.0, 3.0, 6.0]);
+      }),
+    );
+
+    test(
+      'reshape() size mismatch throws ArgumentError coverage',
+      () => NDArray.scope(() {
+        final a = NDArray.ones([2, 2], DType.float64);
+        expect(() => a.reshape([3]), throwsArgumentError);
+      }),
+    );
+
+    test(
+      'transpose() invalid axes length throws ArgumentError coverage',
+      () => NDArray.scope(() {
+        final a = NDArray.ones([2, 2], DType.float64);
+        expect(() => a.transpose([0]), throwsArgumentError);
+      }),
+    );
+
+    test(
+      'broadcastShapes() incompatible shapes throws ArgumentError',
+      () => NDArray.scope(() {
+        final a = NDArray.ones([2], DType.float64);
+        final b = NDArray.ones([3], DType.float64);
+
+        expect(() => add(a, b), throwsArgumentError);
+      }),
+    );
+
+    test(
+      'Contiguous sub-slice flatten() optimization correctness',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [4],
+          DType.float64,
+        );
+        // Slice representing the first 2 elements (strides: [1], contiguous: true, totalSize < data.length!)
+        final view = parent.slice([Slice(start: 0, stop: 2)]);
+
+        expect(view.isContiguous, true);
+        expect(view.shape, [2]);
+
+        final flat = view.flatten();
+        expect(flat.shape, [2]);
+        expect(flat.isContiguous, true);
+        expect(flat.toList(), [1.0, 2.0]);
+      }),
+    );
+
+    test(
+      'expand_dims() and squeeze() shape view manipulations ufunc correctness',
+      () {
+        // 1. expand_dims() verification
+        final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+
+        final aExp0 = expand_dims(a, 0);
+        final aExp1 = expand_dims(a, 1);
+        final aExpNeg = expand_dims(a, -1); // normalized to axis 1
+
+        expect(aExp0.shape, [1, 3]);
+        expect(aExp0.strides, [1, 1]);
+
+        expect(aExp1.shape, [3, 1]);
+        expect(aExp1.strides, [1, 1]);
+
+        expect(aExpNeg.shape, [3, 1]);
+
+        // expand_dims out of bounds exception
+        expect(() => expand_dims(a, 3), throwsArgumentError);
+
+        // 2. squeeze() verification
+        final b = NDArray.zeros([1, 3, 1], DType.float64);
+
+        final bSqueezedAll = squeeze(b);
+        final bSqueezed0 = squeeze(b, axis: [0]);
+
+        expect(bSqueezedAll.shape, [3]);
+        expect(bSqueezedAll.strides, [1]);
+
+        expect(bSqueezed0.shape, [3, 1]);
+
+        // Squeeze non-unit dimension axis throws ArgumentError
+        expect(() => squeeze(b, axis: [1]), throwsArgumentError);
+      },
+    );
+
+    test(
+      'concatenate() validation errors throws exceptions',
+      () => NDArray.scope(() {
+        expect(() => concatenate(<NDArray<Object>>[]), throwsArgumentError);
+
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final wrongRank = NDArray.fromList([1.0, 2.0], [1, 2], DType.float64);
+        final wrongDType = NDArray.fromList([1, 2], [2], DType.int32);
+
+        expect(() => concatenate([a, a], axis: 5), throwsRangeError);
+        expect(() => concatenate([a, a], axis: -5), throwsRangeError);
+        expect(
+          () => concatenate(<NDArray<Object>>[a, wrongDType]),
+          throwsArgumentError,
+        );
+
+        expect(
+          () => concatenate(<NDArray<Object>>[a, wrongRank]),
+          throwsArgumentError,
+        );
+
+        final mat1 = NDArray.fromList(
+          [1.0, 1.0, 1.0, 1.0],
+          [2, 2],
+          DType.float64,
+        );
+        final mat2 = NDArray.fromList(
+          [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+          [2, 3],
+          DType.float64,
+        );
+        expect(
+          () => concatenate(<NDArray<double>>[mat1, mat2], axis: 0),
+          throwsArgumentError,
+        );
+      }),
+    );
+
+    test(
+      'Sliding Window Views slidingWindowView() zero-copy view correctness',
+      () {
+        // 1D array sliding window of size 3
+        final a = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0],
+          [5],
+          DType.float64,
+        );
+
+        final view = slidingWindowView(a, [3]);
+        expect(view.shape, [3, 3]);
+        expect(view.dtype, DType.float64);
+
+        expect(view.getCell([0, 0]), 1.0);
+        expect(view.getCell([0, 1]), 2.0);
+        expect(view.getCell([0, 2]), 3.0);
+
+        expect(view.getCell([1, 0]), 2.0);
+        expect(view.getCell([1, 1]), 3.0);
+        expect(view.getCell([1, 2]), 4.0);
+
+        expect(view.getCell([2, 0]), 3.0);
+        expect(view.getCell([2, 1]), 4.0);
+        expect(view.getCell([2, 2]), 5.0);
+
+        // 2D array sliding window along specified axis
+        final mat = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+          [2, 4],
+          DType.float64,
+        );
+
+        // Slide window of size 2 along axis 1 (columns)
+        final win2d = slidingWindowView(mat, [2], axis: [1]);
+        expect(win2d.shape, [
+          2,
+          3,
+          2,
+        ]); // original [2, 4] -> columns: 4 - 2 + 1 = 3 -> [2, 3, 2]
+
+        expect(win2d.getCell([0, 0, 0]), 1.0);
+        expect(win2d.getCell([0, 0, 1]), 2.0);
+        expect(win2d.getCell([0, 1, 0]), 2.0);
+        expect(win2d.getCell([0, 1, 1]), 3.0);
+
+        // Verify ArgumentError validations
+        expect(
+          () => slidingWindowView(a, [6]),
+          throwsArgumentError,
+        ); // window exceeds size
+        expect(
+          () => slidingWindowView(a, [0]),
+          throwsArgumentError,
+        ); // invalid positive size
+        expect(
+          () => slidingWindowView(a, [2, 2]),
+          throwsArgumentError,
+        ); // axes count mismatch
+      },
+    );
   });
 }

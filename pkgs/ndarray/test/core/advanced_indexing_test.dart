@@ -325,5 +325,66 @@ void main() {
         );
       });
     });
+    test(
+      'setByMask() with NDArray values and capacity validations',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final mask = NDArray.fromList(
+          [true, false, false, true],
+          [2, 2],
+          DType.boolean,
+        );
+        final values = NDArray.fromList([99.0, 100.0], [2], DType.float64);
+        final insufficientValues = NDArray.fromList([99.0], [1], DType.float64);
+
+        // 1. Incompatible capacity throws ArgumentError
+        expect(
+          () => parent.setByMask(mask, insufficientValues),
+          throwsArgumentError,
+        );
+
+        // 2. Valid array value mask mutation
+        parent.setByMask(mask, values);
+        expect(parent.toList(), [99.0, 2.0, 3.0, 100.0]);
+      }),
+    );
+
+    test(
+      'setIndices() RangeError and ArgumentError boundaries coverage',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final indices = NDArray.fromList([0, 1], [2], DType.int32);
+        final values = NDArray.fromList(
+          [10.0, 20.0, 30.0, 40.0],
+          [2, 2],
+          DType.float64,
+        );
+        final insufficientValues = NDArray.fromList([10.0], [1], DType.float64);
+
+        // 1. Invalid axis throws RangeError
+        expect(
+          () => parent.setIndices(indices, values, axis: -1),
+          throwsRangeError,
+        );
+        expect(
+          () => parent.setIndices(indices, values, axis: 2),
+          throwsRangeError,
+        );
+
+        // 2. Insufficient values capacity throws ArgumentError
+        expect(
+          () => parent.setIndices(indices, insufficientValues, axis: 0),
+          throwsArgumentError,
+        );
+      }),
+    );
   });
 }

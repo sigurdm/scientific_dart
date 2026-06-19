@@ -1084,5 +1084,566 @@ void main() {
         expect(() => any(a, axis: -5), throwsArgumentError);
       }),
     );
+    test(
+      '_resolveDType() complex64 and float64 cross-promotion coverage',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([Complex(1.0, 1.0)], [1], DType.complex64);
+        final b = NDArray.fromList([2.0], [1], DType.float64);
+
+        final c = add(a, b);
+        expect(c.dtype, DType.complex128);
+        expect(c.getCell([0]).real, 3.0);
+        expect(c.getCell([0]).imag, 1.0);
+      }),
+    );
+
+    test(
+      'ufuncs in-place out buffer shape and dtype validation checks',
+      () => NDArray.scope(() {
+        final a = NDArray<double>.ones([3], DType.float64);
+        final b = NDArray<double>.ones([3], DType.float64);
+        final incompatibleOut = NDArray<double>.ones([4], DType.float64);
+        final incompatibleDTypeOut = NDArray<int>.ones([3], DType.int32);
+
+        // 1. add() contiguous shape mismatch
+        expect(() => add(a, b, out: incompatibleOut), throwsArgumentError);
+        expect(() => add(a, b, out: incompatibleDTypeOut), throwsArgumentError);
+
+        // 2. add() broadcast shape mismatch
+        final broadcastA = NDArray.ones([1, 3], DType.float64);
+        expect(
+          () => add(broadcastA, b, out: incompatibleOut),
+          throwsArgumentError,
+        );
+
+        // 3. sqrt() shape mismatch
+        expect(() => sqrt(a, out: incompatibleOut), throwsArgumentError);
+
+        // 4. sin() shape mismatch
+        expect(() => sin(a, out: incompatibleOut), throwsArgumentError);
+      }),
+    );
+
+    test(
+      '_resolveDType cross-promotion additions coverage',
+      () => NDArray.scope(() {
+        final f64 = NDArray<double>.fromList([1.0], [1], DType.float64);
+        final f32 = NDArray<double>.fromList([2.0], [1], DType.float32);
+        final i64 = NDArray<int>.fromList([3], [1], DType.int64);
+        final i32 = NDArray<int>.fromList([4], [1], DType.int32);
+
+        // 1. float64 + float32 -> float64
+        final r1 = add(f64, f32);
+        expect(r1.dtype, DType.float64);
+
+        // 2. float32 + int64 -> float64
+        final r2 = add(f32, i64);
+        expect(r2.dtype, DType.float64);
+
+        // 2b. float32 + int32 -> float64
+        final r2b = add(f32, i32);
+        expect(r2b.dtype, DType.float64);
+
+        // 3. int64 + int32 -> int64
+        final r3 = add(i64, i32);
+        expect(r3.dtype, DType.int64);
+
+        // 4. int32 + float64 -> float64
+        final r4 = add(i32, f64);
+        expect(r4.dtype, DType.float64);
+        expect(r4.toList(), [5.0]);
+      }),
+    );
+
+    test(
+      'prod() contiguous FFI leaf paths coverage',
+      () => NDArray.scope(() {
+        final f64 = NDArray<double>.fromList(
+          [2.0, 3.0, 4.0],
+          [3],
+          DType.float64,
+        );
+        final f32 = NDArray<double>.fromList(
+          [5.0, 2.0, 3.0],
+          [3],
+          DType.float32,
+        );
+
+        // 1. float64 contiguous FFI prod()
+        final r1 = prod(f64);
+        expect(r1.scalar, closeTo(24.0, 1e-9));
+
+        // 2. float32 contiguous FFI prod()
+        final r2 = prod(f32);
+        expect(r2.scalar, closeTo(30.0, 1e-9));
+      }),
+    );
+
+    test(
+      'prod() and sum() on non-contiguous strided views along axes',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [3, 2],
+          DType.float64,
+        );
+        final viewT = parent.transposed; // non-contiguous view of shape [2, 3]
+        expect(viewT.isContiguous, false);
+
+        // Global reduction
+        expect(prod(viewT).scalar, 720.0); // 1*2*3*4*5*6 = 720
+        expect(sum(viewT).scalar, 21.0);
+
+        // Reduction along axes (triggers _reduceRecursive fallback paths)
+        final p0 = prod(viewT, axis: 0); // Product along axis 0 -> shape [3]
+        expect(p0.shape, [3]);
+        expect(p0.toList(), [
+          2.0,
+          12.0,
+          30.0,
+        ]); // col 0: 1*2=2, col 1: 3*4=12, col 2: 5*6=30
+
+        final p1 = prod(viewT, axis: 1); // Product along axis 1 -> shape [2]
+        expect(p1.shape, [2]);
+        expect(p1.toList(), [15.0, 48.0]); // row 0: 1*3*5=15, row 1: 2*4*6=48
+      }),
+    );
+
+    test(
+      'clip() with named out parameter recycler and sliced contiguous view',
+      () {
+        final parent = NDArray.fromList(
+          Float64List.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
+          [3, 2],
+          DType.float64,
+        );
+
+        final view = parent.slice([Slice(start: 0, stop: 2), Slice.all()]);
+        final out = NDArray<double>.zeros([2, 2], DType.float64);
+
+        final res = clip(view, min: 2.0, max: 3.0, out: out);
+        expect(identical(res, out), true);
+        expect(out.toList(), [2.0, 2.0, 3.0, 3.0]);
+
+        expect(parent.toList(), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+      },
+    );
+
+    test(
+      'where() with out parameter recycler and shape validations',
+      () => NDArray.scope(() {
+        final cond = NDArray.fromList(
+          [true, false, false, true],
+          [2, 2],
+          DType.boolean,
+        );
+        final x = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+        final y = NDArray.fromList(
+          [10.0, 20.0, 30.0, 40.0],
+          [2, 2],
+          DType.float64,
+        );
+        final out = NDArray<double>.zeros([2, 2], DType.float64);
+        final incompatibleOut = NDArray<double>.zeros([3], DType.float64);
+
+        // 1. Incompatible shape throws ArgumentError
+        expect(() => where(cond, x, y, incompatibleOut), throwsArgumentError);
+
+        // 2. Valid in-place recycling
+        final res = where(cond, x, y, out);
+        expect(identical(res, out), true);
+        expect(out.toList(), [1.0, 20.0, 30.0, 4.0]);
+      }),
+    );
+
+    test(
+      'NDArray.fill() ufunc correctness and performance speedups verification',
+      () {
+        // 1. Contiguous Double Precision fill
+        final a = NDArray<double>.zeros([5], DType.float64);
+        a.fill(42.5);
+        expect(a.toList(), [42.5, 42.5, 42.5, 42.5, 42.5]);
+
+        // 2. Contiguous Int32 Precision fill
+        final b = NDArray<int>.zeros([5], DType.int32);
+        b.fill(99);
+        expect(b.toList(), [99, 99, 99, 99, 99]);
+
+        // 3. Strided view fallback JIT fill
+        final parent = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [4],
+          DType.float64,
+        );
+        final view = parent.slice([
+          Slice(start: 0, stop: 4, step: 2),
+        ]); // indices: 0, 2
+
+        expect(view.shape, [2]);
+        expect(view.isContiguous, false);
+
+        view.fill(Float64(77.0));
+        expect(parent.toList(), [77.0, 2.0, 77.0, 4.0]);
+      },
+    );
+
+    test(
+      'isClose() and allClose() approximate equality ufunc correctness',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 1.00001, 2.0], [3], DType.float64);
+        final b = NDArray.fromList([1.0, 1.00003, 2.0], [3], DType.float64);
+
+        // 1. Default tolerances: rtol = 1e-05, atol = 1e-08
+        final closeDefault = isClose(a, b);
+        expect(closeDefault.toList(), [true, false, true]);
+
+        // 2. Stretched tolerances: rtol = 1e-04
+        final closeStretched = isClose(a, b, rtol: 1e-04);
+        expect(closeStretched.toList(), [true, true, true]);
+
+        // 3. allClose logic
+        expect(allClose(a, b), false);
+        expect(allClose(a, b, rtol: 1e-04), true);
+
+        // 4. Infinite matching values
+        final infA = NDArray.fromList(
+          [double.infinity, double.negativeInfinity],
+          [2],
+          DType.float64,
+        );
+        final infB = NDArray.fromList(
+          [double.infinity, double.negativeInfinity],
+          [2],
+          DType.float64,
+        );
+        final infC = NDArray.fromList(
+          [double.negativeInfinity, double.infinity],
+          [2],
+          DType.float64,
+        );
+
+        final closeInf = isClose(infA, infB);
+        final closeInfMismatch = isClose(infA, infC);
+
+        expect(closeInf.toList(), [true, true]);
+        expect(closeInfMismatch.toList(), [false, false]);
+
+        // 5. NaN value equalNan checks
+        final nanA = NDArray.fromList([double.nan], [1], DType.float64);
+        final nanB = NDArray.fromList([double.nan], [1], DType.float64);
+
+        final closeNanDefault = isClose(nanA, nanB);
+        final closeNanEqual = isClose(nanA, nanB, equalNan: true);
+
+        expect(closeNanDefault.toList(), [false]);
+        expect(closeNanEqual.toList(), [true]);
+      }),
+    );
+
+    test(
+      'nan_to_num() dataset cleaning ufunc correctness',
+      () => NDArray.scope(() {
+        // 1. Default Float64 cleaning
+        final a = NDArray.fromList(
+          [1.0, double.nan, double.infinity, double.negativeInfinity],
+          [4],
+          DType.float64,
+        );
+
+        final cleanDefault = nan_to_num(a);
+
+        expect(cleanDefault.toList()[0], 1.0);
+        expect(cleanDefault.toList()[1], 0.0);
+        expect(cleanDefault.toList()[2], double.maxFinite);
+        expect(cleanDefault.toList()[3], -double.maxFinite);
+
+        // 2. Custom parameters cleaning
+        final cleanCustom = nan_to_num(
+          a,
+          nan: 99.0,
+          posinf: 500.0,
+          neginf: -500.0,
+        );
+
+        expect(cleanCustom.toList(), [1.0, 99.0, 500.0, -500.0]);
+
+        // 3. View-safe in-place recycling
+        final parent = NDArray.fromList(
+          [double.nan, 2.0, double.nan, 4.0],
+          [4],
+          DType.float64,
+        );
+        final view = parent.slice([
+          Slice(start: 0, stop: 4, step: 2),
+        ]); // indices: 0, 2
+
+        expect(view.isContiguous, false);
+        nan_to_num(view, nan: 100.0, out: view);
+
+        expect(parent.toList(), [100.0, 2.0, 100.0, 4.0]);
+      }),
+    );
+
+    test(
+      'Contiguous sub-slice view sum() and prod() FFI reductions correctness',
+      () {
+        final parent = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [4],
+          DType.float64,
+        );
+        final view = parent.slice([
+          Slice(start: 0, stop: 2),
+        ]); // elements: 1.0, 2.0
+
+        expect(view.isContiguous, true);
+        expect(view.shape, [2]);
+
+        // 1. sum() verification
+        final s = sum(view);
+        expect(s.scalar, 3.0);
+
+        // 2. prod() verification
+        final p = prod(view);
+        expect(p.scalar, 2.0);
+      },
+    );
+
+    test(
+      'Non-contiguous/strided integer ufuncs fallback walks (tan, abs, ceil, floor, round)',
+      () {
+        final i = NDArray.fromList([-1, -2, -3, -4], [2, 2], DType.int64);
+        final iT = i.transposed;
+
+        final rAbs = abs(iT);
+        expect(rAbs.toList(), [1, 3, 2, 4]);
+
+        final rTan = tan(iT);
+        expect(rTan.getCell([0, 0]), closeTo(math.tan(-1.0), 1e-9));
+
+        final rCeil = ceil(iT);
+        expect(rCeil.toList(), [-1, -3, -2, -4]);
+
+        final rFloor = floor(iT);
+        expect(rFloor.toList(), [-1, -3, -2, -4]);
+
+        final rRound = round(iT);
+        expect(rRound.toList(), [-1, -3, -2, -4]);
+      },
+    );
+
+    test(
+      'Contiguous and non-contiguous clip() precision ufuncs coverage',
+      () => NDArray.scope(() {
+        // 1. Contiguous Float32 clip
+        final f32 = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float32);
+        final resF32 = clip(f32, min: 2.0, max: 3.0);
+        expect(resF32.dtype, DType.float32);
+        expect(resF32.toList(), [2.0, 2.0, 3.0, 3.0]);
+
+        // 2. Non-contiguous integer clip
+        final i32 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+        final i32T = i32.transposed;
+        final resI32 = clip(i32T, min: 2, max: 3);
+        expect(resI32.toList(), [
+          2,
+          3,
+          2,
+          3,
+        ]); // transposed: 1, 3, 2, 4 -> clipped: 2, 3, 2, 3
+
+        // 3. Non-contiguous double clip
+        final f64 = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final f64T = f64.transposed;
+        final resF64 = clip(f64T, min: 2.0, max: 3.0);
+        expect(resF64.toList(), [2.0, 3.0, 2.0, 3.0]);
+      }),
+    );
+
+    test(
+      'Advanced Vector Selection select() correctness and broadcasting',
+      () => NDArray.scope(() {
+        final cond1 = NDArray.fromList(
+          [true, false, false],
+          [3],
+          DType.boolean,
+        );
+        final cond2 = NDArray.fromList(
+          [false, true, false],
+          [3],
+          DType.boolean,
+        );
+
+        final choice1 = NDArray.fromList([10, 20, 30], [3], DType.int32);
+        final choice2 = NDArray.fromList([100, 200, 300], [3], DType.int32);
+
+        // 1. Standard select
+        final res = select(
+          [cond1, cond2],
+          [choice1, choice2],
+          defaultValue: 999,
+        );
+
+        expect(res.shape, [3]);
+        expect(res.dtype, DType.int32);
+        expect(
+          res.toList(),
+          [10, 200, 999],
+        ); // cond1 true at 0 -> 10; cond2 true at 1 -> 200; default at 2 -> 999
+
+        // 2. Broadcasting select (scalar condition, vector choices)
+        final condScalar = NDArray.fromList([true], [1], DType.boolean);
+        final resB = select([condScalar], [choice1], defaultValue: 999);
+
+        expect(resB.shape, [3]); // broadcasted
+        expect(resB.toList(), [10, 20, 30]);
+
+        // 3. Verify ArgumentError throwing exceptions
+        expect(() => select([], [choice1]), throwsArgumentError); // empty list
+        expect(() => select([cond1], []), throwsArgumentError);
+        expect(
+          () => select([cond1, cond2], [choice1]),
+          throwsArgumentError,
+        ); // length mismatch
+
+        final badShapeChoice = NDArray.fromList([1, 2], [2], DType.int32);
+        expect(
+          () => select([cond1], [badShapeChoice]),
+          throwsArgumentError,
+        ); // shape mismatch
+      }),
+    );
+
+    test(
+      'Type-preserving reductions min(), max(), nanmin(), nanmax() DType parity',
+      () {
+        // 1. Integer min() / max() DType preservation
+        final aInt32 = NDArray.fromList(
+          [10, 2, 30, 4, 50, 6],
+          [3, 2],
+          DType.int32,
+        );
+
+        final minI32 = min(aInt32, axis: 0);
+        expect(minI32.shape, [2]);
+        expect(minI32.dtype, DType.int32); // Preserves Int32!
+        expect(minI32.toList(), [10, 2]);
+
+        final maxI32 = max(aInt32, axis: 0);
+        expect(maxI32.shape, [2]);
+        expect(maxI32.dtype, DType.int32); // Preserves Int32!
+        expect(maxI32.toList(), [50, 6]);
+
+        // 2. Float32 min() / max() DType preservation
+        final aFloat32 = NDArray.fromList(
+          [10.0, 2.0, 30.0, 4.0, 50.0, 6.0],
+          [3, 2],
+          DType.float32,
+        );
+
+        final minF32 = min(aFloat32, axis: 0);
+        expect(minF32.dtype, DType.float32); // Preserves Float32!
+
+        // 3. nanmin() / nanmax() DType preservation
+        final nanF64 = NDArray.fromList(
+          [1.0, double.nan, 3.0, 4.0, double.nan, 6.0],
+          [3, 2],
+          DType.float64,
+        );
+
+        final nanMinF64 = nanmin(nanF64, axis: 0);
+        expect(nanMinF64.shape, [2]);
+        expect(nanMinF64.dtype, DType.float64);
+        expect(nanMinF64.getCell([0]), 1.0);
+
+        final nanMaxF64 = nanmax(nanF64, axis: 0);
+        expect(nanMaxF64.shape, [2]);
+        expect(nanMaxF64.dtype, DType.float64);
+        expect(nanMaxF64.getCell([0]), 3.0);
+        expect(nanMaxF64.getCell([1]), 6.0);
+      },
+    );
+
+    test(
+      'NDArray cross-type comparison operators coverage',
+      () => NDArray.scope(() {
+        final comp = NDArray<Complex>.create([2], DType.complex128);
+        comp.setCell([0], Complex(1.0, 0.0));
+        comp.setCell([1], Complex(3.0, 0.0));
+
+        final dbl = NDArray.fromList([2.0, 2.0], [2], DType.float64);
+        final integer = NDArray.fromList([2, 2], [2], DType.int32);
+
+        // 1. Complex with double
+        final cDbl = comp.eq(dbl);
+        expect(cDbl.toList(), [false, false]); // 1 != 2, 3 != 2
+
+        // 2. Complex with int
+        final cInt = comp.eq(integer);
+        expect(cInt.toList(), [false, false]);
+
+        // 3. double with Complex
+        final dblC = dbl.eq(comp);
+        expect(dblC.toList(), [false, false]);
+
+        // 4. double with int
+        final dblInt = dbl.eq(integer);
+        expect(dblInt.toList(), [true, true]);
+
+        // 5. int with Complex
+        final intC = integer.eq(comp);
+        expect(intC.toList(), [false, false]);
+
+        // 6. int with double
+        final intDbl = integer.eq(dbl);
+        expect(intDbl.toList(), [true, true]);
+      }),
+    );
+
+    test(
+      'Complex array reductions (sum, prod, mean) and stacking coverage',
+      () {
+        final a = NDArray<Complex>.fromList(
+          [
+            Complex(1.0, 1.0),
+            Complex(2.0, 0.0),
+            Complex(3.0, 0.0),
+            Complex(4.0, 0.0),
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+
+        // Test sum()
+        final totalSum = sum(a);
+        expect(totalSum.scalar, Complex(10.0, 1.0));
+
+        // Test mean()
+        final totalMean = mean(a);
+        expect(totalMean.scalar, Complex(2.5, 0.25));
+
+        // Test prod()
+        final totalProd = prod(a);
+        expect(totalProd.scalar, Complex(24.0, 24.0)); // (1+i)*2*3*4 = 24 + 24i
+
+        // Test concatenate() and hstack()
+        final b = NDArray<Complex>.fromList(
+          [Complex(10.0, 0.0), Complex(10.0, 0.0)],
+          [1, 2],
+          DType.complex128,
+        );
+
+        final row0 = a.slice([Index(0)]).reshape([1, 2]);
+        final combined = concatenate([row0, b], axis: 0);
+        expect(combined.shape, [2, 2]);
+        expect(combined.dtype, DType.complex128);
+        expect(combined.getCell([0, 0]), Complex(1.0, 1.0));
+        expect(combined.getCell([1, 0]), Complex(10.0, 0.0));
+      },
+    );
   });
 }

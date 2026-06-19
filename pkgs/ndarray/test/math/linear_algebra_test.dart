@@ -2181,5 +2181,335 @@ void main() {
         expect(result.toList(), [19, 22, 43, 50]);
       });
     });
+    test(
+      'matmul() high-speed 1D vector dot product gate',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+        final b = NDArray.fromList([4.0, 5.0, 6.0], [3], DType.float64);
+
+        final c = matmul(a, b);
+
+        expect(c.shape, []); // Must be a 0D scalar array
+        expect(c.dtype, DType.float64);
+        // 1*4 + 2*5 + 3*6 = 4 + 10 + 18 = 32
+        expect(c.scalar, 32.0);
+      }),
+    );
+
+    test(
+      'Cholesky decomposition on non-contiguous strided view correctness',
+      () => NDArray.scope(() {
+        // Symmetric positive-definite parent matrix
+        final parentNonContig = NDArray.fromList(
+          [4.0, 0.0, 12.0, 0.0, 0.0, 0.0, 12.0, 0.0, 37.0],
+          [3, 3],
+          DType.float64,
+        );
+        final viewNonContig = parentNonContig.slice([
+          Slice(start: 0, stop: 3, step: 2),
+          Slice(start: 0, stop: 3, step: 2),
+        ]);
+        expect(viewNonContig.isContiguous, false);
+        expect(viewNonContig.toList(), [4.0, 12.0, 12.0, 37.0]);
+
+        final l = cholesky(viewNonContig);
+        expect(l.shape, [2, 2]);
+        expect(l.toList(), [2.0, 0.0, 6.0, 1.0]);
+      }),
+    );
+
+    test(
+      'Matrix Inversion on non-contiguous transposed view with out recycler buffer',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          [4.0, 7.0, 2.0, 6.0],
+          [2, 2],
+          DType.float64,
+        );
+        final viewT = parent.transposed; // non-contiguous!
+        expect(viewT.isContiguous, false);
+
+        final out = NDArray<double>.create([2, 2], DType.float64);
+        final result = inv(viewT, out: out);
+
+        expect(result == out, true);
+        final expected = [0.6, -0.2, -0.7, 0.4];
+        final actual = result.toList();
+        for (var i = 0; i < 4; i++) {
+          expect(actual[i], closeTo(expected[i], 1e-9));
+        }
+      }),
+    );
+
+    test(
+      'inv() in-place out buffer validations and solvers coverage',
+      () => NDArray.scope(() {
+        final a = NDArray<double>.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final out = NDArray<double>.zeros([2, 2], DType.float64);
+        final incompatibleOut = NDArray<double>.ones([3, 3], DType.float64);
+
+        // 1. Incompatible out shape throws ArgumentError
+        expect(() => inv(a, out: incompatibleOut), throwsArgumentError);
+
+        // 2. Valid in-place solving
+        final res = inv(a, out: out);
+        expect(identical(res, out), true);
+        final resList = res.toList();
+        expect(resList[0], closeTo(-2.0, 1e-9));
+        expect(resList[1], closeTo(1.0, 1e-9));
+        expect(resList[2], closeTo(1.5, 1e-9));
+        expect(resList[3], closeTo(-0.5, 1e-9));
+      }),
+    );
+
+    test(
+      'matmul() copy-free 100% transposed and sliced views multi-dimensional multiplication',
+      () {
+        final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+        final b = NDArray.fromList([5.0, 6.0, 7.0, 8.0], [2, 2], DType.float64);
+
+        final aT = a.transposed;
+        final bT = b.transposed;
+
+        final result = matmul(aT, bT);
+
+        expect(result.shape, [2, 2]);
+        expect(result.toList(), [23.0, 31.0, 34.0, 46.0]);
+      },
+    );
+
+    test(
+      'diag() diagonal matrix ufunc correctness and zero-copy view validations',
+      () {
+        // 1. Main diagonal extraction (k = 0)
+        final mat = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+          [3, 3],
+          DType.float64,
+        );
+
+        final mainDiag = diag(mat);
+
+        expect(mainDiag.shape, [3]);
+        expect(mainDiag.isContiguous, false); // spaced view
+        expect(mainDiag.toList(), [1.0, 5.0, 9.0]);
+
+        // 2. Strided views offset extractions (k = 1 and k = -1)
+        final upperDiag = diag(mat, k: 1);
+        final lowerDiag = diag(mat, k: -1);
+
+        expect(upperDiag.shape, [2]);
+        expect(upperDiag.toList(), [2.0, 6.0]);
+        expect(lowerDiag.shape, [2]);
+        expect(lowerDiag.toList(), [4.0, 8.0]);
+
+        // 3. Construct diagonal 2D matrix from 1D vector
+        final vec = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+        final dMat = diag(vec);
+        final uDiagMat = diag(vec, k: 1);
+
+        expect(dMat.shape, [2, 2]);
+        expect(dMat.toList(), [10.0, 0.0, 0.0, 20.0]);
+
+        expect(uDiagMat.shape, [3, 3]);
+        expect(uDiagMat.toList(), [
+          0.0,
+          10.0,
+          0.0,
+          0.0,
+          0.0,
+          20.0,
+          0.0,
+          0.0,
+          0.0,
+        ]);
+
+        // 4. Rank out of bounds throws ArgumentError
+        final tensor3d = NDArray.zeros([2, 2, 2], DType.float64);
+        expect(() => diag(tensor3d), throwsArgumentError);
+
+        // 5. In-place recycler out reuse
+        final outRecycler = NDArray<double>.zeros([3, 3], DType.float64);
+        final dMatRec = diag(vec, k: 1, out: outRecycler);
+        expect(identical(dMatRec, outRecycler), true);
+        expect(dMatRec.toList(), [
+          0.0,
+          10.0,
+          0.0,
+          0.0,
+          0.0,
+          20.0,
+          0.0,
+          0.0,
+          0.0,
+        ]);
+      },
+    );
+
+    test(
+      'Linear Algebra solvers det() and solve() singular and preconditions exceptions',
+      () {
+        // 1. det() singular matrix returns 0.0
+        final singularMat = NDArray.fromList(
+          [
+            1.0, 2.0,
+            2.0, 4.0, // linearly dependent rows!
+          ],
+          [2, 2],
+          DType.float64,
+        );
+        expect(det(singularMat).scalar, 0.0);
+
+        // 2. solve() non-square matrix throws ArgumentError
+        final nonSquareA = NDArray.fromList(
+          [1.0, 2.0, 3.0],
+          [1, 3],
+          DType.float64,
+        );
+        final b = NDArray.fromList([1.0], [1], DType.float64);
+        expect(() => solve(nonSquareA, b), throwsArgumentError);
+
+        // 3. solve() incompatible RHS shape throws ArgumentError
+        final squareA = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final incompatibleB = NDArray.fromList(
+          [1.0, 2.0, 3.0],
+          [3],
+          DType.float64,
+        );
+        expect(() => solve(squareA, incompatibleB), throwsArgumentError);
+
+        // 4. solve() singular Float64 matrix throws singular SingularMatrixException
+        final singularFloat64A = NDArray.fromList(
+          [1.0, 2.0, 2.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final validB = NDArray.fromList([5.0, 6.0], [2], DType.float64);
+        expect(
+          () => solve(singularFloat64A, validB),
+          throwsA(isA<SingularMatrixException>()),
+        );
+
+        // 5. solve() singular Float32 matrix throws singular SingularMatrixException
+        final singularFloat32A = NDArray.fromList(
+          [1.0, 2.0, 2.0, 4.0],
+          [2, 2],
+          DType.float32,
+        );
+        final validFloat32B = NDArray.fromList([5.0, 6.0], [2], DType.float32);
+        expect(
+          () => solve(singularFloat32A, validFloat32B),
+          throwsA(isA<SingularMatrixException>()),
+        );
+      },
+    );
+
+    test(
+      'solve() optimized contiguous block copy and non-contiguous view solvers correctness',
+      () {
+        // 1. Contiguous Float64 matrix solve
+        final a = NDArray.fromList([3.0, 1.0, 1.0, 2.0], [2, 2], DType.float64);
+        final b = NDArray.fromList([9.0, 8.0], [2], DType.float64);
+
+        final x = solve(a, b);
+        expect(x.toList(), [2.0, 3.0]);
+
+        // 2. Non-contiguous transposed Float64 matrix solve
+        final aParent = NDArray.fromList(
+          [3.0, 1.0, 1.0, 2.0],
+          [2, 2],
+          DType.float64,
+        );
+        final aTransposed = aParent.transposed; // non-contiguous!
+        // aTransposed is: [[3.0, 1.0], [1.0, 2.0]] which is symmetric, so solve is same
+        final bParent = NDArray.fromList([9.0, 8.0], [2], DType.float64);
+
+        final x2 = solve(aTransposed, bParent);
+        expect(x2.toList(), [2.0, 3.0]);
+      },
+    );
+
+    test(
+      'linalg.tril() and linalg.triu() matrix extractions correctness',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+          [3, 3],
+          DType.float64,
+        );
+
+        // 1. tril standard
+        final l = tril(a);
+        expect(l.toList(), [1.0, 0.0, 0.0, 4.0, 5.0, 0.0, 7.0, 8.0, 9.0]);
+
+        // 2. triu standard
+        final u = triu(a);
+        expect(u.toList(), [1.0, 2.0, 3.0, 0.0, 5.0, 6.0, 0.0, 0.0, 9.0]);
+
+        // 3. offsets (k=1, k=-1)
+        final lK1 = tril(a, k: 1);
+        expect(lK1.toList(), [1.0, 2.0, 0.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);
+
+        final uKM1 = triu(a, k: -1);
+        expect(uKM1.toList(), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 0.0, 8.0, 9.0]);
+
+        // 4. in-place recycler out reuse
+        final outBuffer = NDArray<double>.zeros([3, 3], DType.float64);
+        final lOut = tril(a, k: 0, out: outBuffer);
+        expect(identical(lOut, outBuffer), true);
+        expect(lOut.toList(), [1.0, 0.0, 0.0, 4.0, 5.0, 0.0, 7.0, 8.0, 9.0]);
+      }),
+    );
+
+    test(
+      'linalg.pinv() and linalg.matrix_power() correctness',
+      () => NDArray.scope(() {
+        // 1. pinv
+        final a = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [2, 3],
+          DType.float64,
+        );
+        final aPlus = pinv(a);
+        expect(aPlus.shape, [3, 2]);
+
+        // Verify A * A+ * A = A (approximately)
+        final temp = matmul(a, aPlus);
+        final rec = matmul(temp, a);
+        expect(allClose(rec, a, atol: 1e-7), true);
+
+        temp.dispose();
+        rec.dispose();
+        aPlus.dispose();
+
+        // 2. matrix_power
+        final t = NDArray.fromList([0.8, 0.2, 0.1, 0.9], [2, 2], DType.float64);
+
+        final t2 = matrix_power(t, 2);
+        final tTimesT = matmul(t, t);
+        expect(allClose(t2, tTimesT, atol: 1e-9), true);
+
+        final t0 = matrix_power(t, 0);
+        expect(t0.toList(), [1.0, 0.0, 0.0, 1.0]);
+
+        final tInv = matrix_power(t, -1);
+        final check = matmul(t, tInv);
+        expect(allClose(check, t0, atol: 1e-9), true);
+
+        t2.dispose();
+        tTimesT.dispose();
+        t0.dispose();
+        tInv.dispose();
+        check.dispose();
+      }),
+    );
   });
 }

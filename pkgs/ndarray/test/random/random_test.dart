@@ -683,5 +683,282 @@ void main() {
         }),
       );
     });
+    test(
+      'randint() supporting wide ranges (> 2^32)',
+      () => NDArray.scope(() {
+        // Generate a 64-bit integer range that exceeds 2^32
+        final a = randint(
+          [10],
+          low: 100000000000,
+          high: 200000000000,
+          dtype: DType.int64,
+        );
+        expect(a.shape, [10]);
+        expect(a.dtype, DType.int64);
+        final aList = a.toList();
+        for (final val in aList) {
+          expect(val, greaterThanOrEqualTo(100000000000));
+          expect(val, lessThan(200000000000));
+        }
+      }),
+    );
+
+    test(
+      'exponential() supporting lam (rate) parameter alias',
+      () => NDArray.scope(() {
+        final a = exponential([10], lam: 2.0); // lam = 2.0 -> scale = 0.5
+        expect(a.shape, [10]);
+        expect(a.dtype, DType.float64);
+        final aList = a.toList();
+        for (final val in aList) {
+          expect(val, greaterThanOrEqualTo(0.0));
+        }
+
+        expect(() => exponential([10], lam: -1.0), throwsArgumentError);
+      }),
+    );
+
+    test(
+      'uniform() validation checks coverage',
+      () => NDArray.scope(() {
+        expect(
+          () => uniform([5], dtype: DType.int64 as dynamic),
+          throwsArgumentError,
+        );
+      }),
+    );
+
+    test(
+      'randint() validation checks coverage',
+      () => NDArray.scope(() {
+        expect(
+          () => randint([5], low: 0, high: 10, dtype: DType.float64 as dynamic),
+          throwsArgumentError,
+        );
+        expect(() => randint([5], low: 10, high: 5), throwsArgumentError);
+      }),
+    );
+
+    test(
+      'normal() validation and zero-avoidance checks coverage',
+      () => NDArray.scope(() {
+        expect(() => normal([5], scale: 0.0), throwsArgumentError);
+
+        final a = normal([2]);
+        expect(a.shape, [2]);
+        expect(a.dtype, DType.float64);
+      }),
+    );
+
+    test(
+      'exponential() validation checks coverage',
+      () => NDArray.scope(() {
+        expect(
+          () => exponential([5], dtype: DType.int32 as dynamic),
+          throwsArgumentError,
+        );
+      }),
+    );
+
+    test(
+      'poisson() validation, large lambda, and zero-avoidance checks',
+      () => NDArray.scope(() {
+        expect(
+          () => poisson([5], dtype: DType.float64 as dynamic),
+          throwsArgumentError,
+        );
+        expect(() => poisson([5], lam: 0.0), throwsArgumentError);
+
+        final a = poisson([2], lam: 40.0);
+        expect(a.shape, [2]);
+        expect(a.dtype, DType.int64);
+      }),
+    );
+
+    test(
+      'binomial() validation, zero trials, zero stddev, and zero-avoidance checks',
+      () {
+        expect(
+          () => binomial([5], n: 10, p: 0.5, dtype: DType.float64 as dynamic),
+          throwsArgumentError,
+        );
+        expect(() => binomial([5], n: -1, p: 0.5), throwsArgumentError);
+        expect(() => binomial([5], n: 10, p: 1.5), throwsArgumentError);
+
+        final zeroTrials = binomial([5], n: 0, p: 0.5);
+        expect(zeroTrials.toList(), [0, 0, 0, 0, 0]);
+
+        final zeroStddev = binomial([5], n: 100, p: 1.0);
+        expect(zeroStddev.toList(), [100, 100, 100, 100, 100]);
+
+        final a = binomial([2], n: 100, p: 0.5);
+        expect(a.shape, [2]);
+        expect(a.dtype, DType.int64);
+
+        final oddLength = binomial([5], n: 100, p: 0.5);
+        expect(oddLength.shape, [5]);
+        expect(oddLength.dtype, DType.int64);
+      },
+    );
+
+    test(
+      'uniform() and normal() Float32, and randint() Int32 coverage',
+      () => NDArray.scope(() {
+        // 1. uniform with float32
+        final u = uniform([10], dtype: DType.float32);
+        expect(u.shape, [10]);
+        expect(u.dtype, DType.float32);
+        final uList = u.toList();
+        for (final val in uList) {
+          expect(val, greaterThanOrEqualTo(0.0));
+          expect(val, lessThan(1.0));
+        }
+
+        // 2. randint with int32
+        final ri = randint([10], low: 0, high: 5, dtype: DType.int32);
+        expect(ri.shape, [10]);
+        expect(ri.dtype, DType.int32);
+        final riList = ri.toList();
+        for (final val in riList) {
+          expect(val, greaterThanOrEqualTo(0));
+          expect(val, lessThan(5));
+        }
+
+        // 3. normal with float32
+        final n = normal([10], dtype: DType.float32);
+        expect(n.shape, [10]);
+        expect(n.dtype, DType.float32);
+      }),
+    );
+
+    test(
+      'Multivariate Normal Distribution multivariateNormal() correctness',
+      () => NDArray.scope(() {
+        final mean = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+        // Identity covariance Sigma = I
+        final cov = NDArray.fromList(
+          [1.0, 0.0, 0.0, 1.0],
+          [2, 2],
+          DType.float64,
+        );
+
+        // Draw 500 samples (returns shape [500, 2])
+        final samples = multivariateNormal(mean, cov, size: [500]);
+
+        expect(samples.shape, [500, 2]);
+        expect(samples.dtype, DType.float64);
+
+        // Check statistical means of the drawn samples to verify standard convergence!
+        var sumX = 0.0;
+        var sumY = 0.0;
+        for (var i = 0; i < 500; i++) {
+          sumX += samples.getCell([i, 0]);
+          sumY += samples.getCell([i, 1]);
+        }
+        final meanX = sumX / 500;
+        final meanY = sumY / 500;
+
+        // Means should converge closely to [10, 20] under standard deviation 1
+        expect(meanX, closeTo(10.0, 0.5));
+        expect(meanY, closeTo(20.0, 0.5));
+
+        // Verify ArgumentError throwing exceptions
+        final badMean = NDArray.fromList([10.0, 20.0], [1, 2], DType.float64);
+        expect(() => multivariateNormal(badMean, cov), throwsArgumentError);
+
+        final mismatchedMean = NDArray.fromList([10.0], [1], DType.float64);
+        expect(
+          () => multivariateNormal(mismatchedMean, cov),
+          throwsArgumentError,
+        );
+      }),
+    );
+
+    test('Multinomial Distribution multinomial() trial simulation correctness', () {
+      final pvals = NDArray.fromList([0.2, 0.5, 0.3], [3], DType.float64);
+
+      // Draw 1000 samples of 10 trials (shape [1000, 3])
+      final samples = multinomial(10, pvals, size: [1000]);
+
+      expect(samples.shape, [1000, 3]);
+      expect(samples.dtype, DType.int32);
+
+      // Test multinomial with pvals requiring normalization (does not sum to 1.0)
+      final nonNormalizedPvals = NDArray.fromList(
+        [0.2, 0.6, 0.3],
+        [3],
+        DType.float64,
+      );
+      final samplesNonNorm = multinomial(10, nonNormalizedPvals, size: [5]);
+      expect(samplesNonNorm.shape, [5, 3]);
+
+      // For every sample, the sum of category counts must exactly equal the trials 'n' (10)!
+      for (var i = 0; i < 1000; i++) {
+        final sum =
+            samples.getCell([i, 0]) +
+            samples.getCell([i, 1]) +
+            samples.getCell([i, 2]);
+        expect(sum, 10);
+      }
+
+      // Statistical ratios should converge close to [0.2, 0.5, 0.3]
+      var count0 = 0.0;
+      var count1 = 0.0;
+      var count2 = 0.0;
+      for (var i = 0; i < 1000; i++) {
+        count0 += samples.getCell([i, 0]);
+        count1 += samples.getCell([i, 1]);
+        count2 += samples.getCell([i, 2]);
+      }
+      final r0 = count0 / 10000.0;
+      final r1 = count1 / 10000.0;
+      final r2 = count2 / 10000.0;
+
+      expect(r0, closeTo(0.2, 0.05));
+      expect(r1, closeTo(0.5, 0.05));
+      expect(r2, closeTo(0.3, 0.05));
+
+      // Verify exceptions throwing
+      expect(
+        () => multinomial(-5, pvals),
+        throwsArgumentError,
+      ); // negative trials
+
+      final badShapePvals = NDArray.fromList([0.5, 0.5], [1, 2], DType.float64);
+      expect(
+        () => multinomial(10, badShapePvals),
+        throwsArgumentError,
+      ); // bad shape pvals
+
+      final negativePvals = NDArray.fromList([-0.2, 1.2], [2], DType.float64);
+      expect(
+        () => multinomial(10, negativePvals),
+        throwsArgumentError,
+      ); // negative probability
+    });
+
+    test(
+      'Random generators support out parameter recycler buffer reuse',
+      () => NDArray.scope(() {
+        final buffer = NDArray<Float64>.zeros([10], DType.float64);
+
+        // 1. uniform out
+        final u = uniform([10], out: buffer);
+        expect(identical(u, buffer), true);
+
+        // 2. normal out
+        final n = normal([10], out: buffer);
+        expect(identical(n, buffer), true);
+
+        // 3. exponential out
+        final e = exponential([10], out: buffer);
+        expect(identical(e, buffer), true);
+
+        // 4. randint out
+        final bufferInt = NDArray<Int64>.zeros([10], DType.int64);
+        final r = randint([10], low: 0, high: 10, out: bufferInt);
+        expect(identical(r, bufferInt), true);
+      }),
+    );
   });
 }
