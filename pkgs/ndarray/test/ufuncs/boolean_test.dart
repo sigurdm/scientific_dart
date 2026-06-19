@@ -10,10 +10,10 @@ void main() {
 
         expect(arr.shape, [2, 3]);
         expect(arr.dtype, DType.boolean);
-        expect(arr.data.length, 6);
+        expect(arr.size, 6);
 
         // Check true default zeros allocation (false)
-        expect(arr.data, [false, false, false, false, false, false]);
+        expect(arr.toList(), [false, false, false, false, false, false]);
       }),
     );
 
@@ -22,13 +22,13 @@ void main() {
       () => NDArray.scope(() {
         final arr = NDArray<bool>.zeros([4], DType.boolean);
 
-        arr.data[0] = true;
-        arr.data[2] = true;
+        arr[[0]] = true;
+        arr[[2]] = true;
 
-        expect(arr.data[0], true);
-        expect(arr.data[1], false);
-        expect(arr.data[2], true);
-        expect(arr.data[3], false);
+        expect(arr[[0]], true);
+        expect(arr[[1]], false);
+        expect(arr[[2]], true);
+        expect(arr[[3]], false);
 
         expect(arr.toList(), [true, false, true, false]);
       }),
@@ -74,7 +74,7 @@ void main() {
         expect(view.toList(), [true, false]);
 
         // Mutate via the view and check if parent reflects it instantly!
-        view.data[1] = true; // view -> [true, true]
+        view[[1]] = true; // view -> [true, true]
 
         expect(parent.toList(), [true, false, true, true]);
         // Success! Confirms zero-copy C heap pointer sharing works flawlessly on boolean bytes!
@@ -93,5 +93,49 @@ void main() {
         expect(result.toList(), [2, 1, 1]);
       }),
     );
+  });
+
+  group('Boolean argmin/argmax bug repro', () {
+    test('argmax/argmin on boolean array', () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([false, true, false], [3], DType.boolean);
+        final maxIdx = argmax(a);
+        expect(maxIdx.scalar, 1);
+        final minIdx = argmin(a);
+        expect(minIdx.scalar, 0);
+        final a2D = NDArray.fromList(
+          [false, true, false, false],
+          [2, 2],
+          DType.boolean,
+        );
+        final max2D = argmax(a2D, axis: 1);
+        expect(max2D.toList(), [1, 0]);
+      });
+    });
+  });
+
+  group('Boolean cumsum bug repro', () {
+    test('cumsum on boolean array', () {
+      NDArray.scope(() {
+        final a = NDArray.fromList(
+          [true, false, true, true],
+          [4],
+          DType.boolean,
+        );
+        final result = cumsum(a);
+        expect(result.dtype, DType.int32);
+        expect(result.shape, [4]);
+        expect(result.toList(), [1, 1, 2, 3]);
+        final a2D = NDArray.fromList(
+          [true, false, true, true],
+          [2, 2],
+          DType.boolean,
+        );
+        final result2D = cumsum(a2D, axis: 0);
+        expect(result2D.dtype, DType.int32);
+        expect(result2D.shape, [2, 2]);
+        expect(result2D.toList(), [1, 0, 2, 1]);
+      });
+    });
   });
 }

@@ -649,4 +649,890 @@ void main() {
       }),
     );
   });
+
+  group('Extensions', () {
+    test(
+      'Float64NDArrayOperations Contiguous & Strided ufuncs and Recycler',
+      () {
+        NDArray.scope(() {
+          // Contiguous same-shape
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          final b = NDArray.fromList(
+            [10.0, 20.0, 30.0, 40.0],
+            [2, 2],
+            DType.float64,
+          );
+
+          final resAdd = add(a, b);
+          expect(resAdd.toList(), [11.0, 22.0, 33.0, 44.0]);
+
+          final resSub = subtract(a, b);
+          expect(resSub.toList(), [-9.0, -18.0, -27.0, -36.0]);
+
+          final resMul = multiply(a, b);
+          expect(resMul.toList(), [10.0, 40.0, 90.0, 160.0]);
+
+          final resDiv = divide(b, a);
+          expect(resDiv.toList(), [10.0, 10.0, 10.0, 10.0]);
+
+          // Strided non-contiguous views and broadcasting
+          final aView = a.transpose();
+          final bView = b.transpose();
+          final resAddView = add(aView, bView);
+          expect(resAddView.toList(), [11.0, 33.0, 22.0, 44.0]);
+
+          // out Recycler parameter
+          final intoBuf = NDArray<Float64>.create([2, 2], DType.float64);
+          final resInto = add<double, double, double>(a, b, out: intoBuf);
+          expect(resInto, intoBuf);
+          expect(resInto.toList(), [11.0, 22.0, 33.0, 44.0]);
+
+          // out incompatible shape/dtype throws ArgumentError
+          expect(
+            () => add<double, double, double>(
+              a,
+              b,
+              out: NDArray<Float64>.create([3], DType.float64),
+            ),
+            throwsArgumentError,
+          );
+
+          // matmul
+          final resMatmul = matmul(a, b);
+          expect(resMatmul.toList(), [70.0, 100.0, 150.0, 220.0]);
+
+          // Mixed Float32
+          final f32 = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float32,
+          );
+          expect(add(a, f32).toList(), [2.0, 4.0, 6.0, 8.0]);
+          expect(subtract(a, f32).toList(), [0.0, 0.0, 0.0, 0.0]);
+          expect(multiply(a, f32).toList(), [1.0, 4.0, 9.0, 16.0]);
+          expect(divide(a, f32).toList(), [1.0, 1.0, 1.0, 1.0]);
+
+          // Mixed Int64
+          final i64 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int64);
+          expect(add(a, i64).toList(), [2.0, 4.0, 6.0, 8.0]);
+          expect(subtract(a, i64).toList(), [0.0, 0.0, 0.0, 0.0]);
+          expect(multiply(a, i64).toList(), [1.0, 4.0, 9.0, 16.0]);
+          expect(divide(a, i64).toList(), [1.0, 1.0, 1.0, 1.0]);
+
+          // Mixed Scalar
+          expect(
+            add(a, NDArray.fromList([10.0], [1], DType.float64)).toList(),
+            [11.0, 12.0, 13.0, 14.0],
+          );
+          expect(
+            subtract(a, NDArray.fromList([1.0], [1], DType.float64)).toList(),
+            [0.0, 1.0, 2.0, 3.0],
+          );
+          expect(
+            multiply(a, NDArray.fromList([2.0], [1], DType.float64)).toList(),
+            [2.0, 4.0, 6.0, 8.0],
+          );
+          expect(
+            divide(a, NDArray.fromList([0.5], [1], DType.float64)).toList(),
+            [2.0, 4.0, 6.0, 8.0],
+          );
+        });
+      },
+    );
+
+    test(
+      'Float32NDArrayOperations Contiguous & Strided ufuncs and Mixed Scalar',
+      () {
+        NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float32,
+          );
+          final b = NDArray.fromList(
+            [10.0, 20.0, 30.0, 40.0],
+            [2, 2],
+            DType.float32,
+          );
+
+          final resAdd = add(a, b);
+          expect(resAdd.toList(), [11.0, 22.0, 33.0, 44.0]);
+
+          final resSub = subtract(a, b);
+          expect(resSub.toList(), [-9.0, -18.0, -27.0, -36.0]);
+
+          final resMul = multiply(a, b);
+          expect(resMul.toList(), [10.0, 40.0, 90.0, 160.0]);
+
+          final resDiv = divide(b, a);
+          expect(resDiv.toList(), [10.0, 10.0, 10.0, 10.0]);
+
+          // Strided view
+          final aView = a.transpose();
+          final bView = b.transpose();
+          expect(add(aView, bView).toList(), [11.0, 33.0, 22.0, 44.0]);
+
+          // Recycler
+          final intoBuf = NDArray<Float32>.create([2, 2], DType.float32);
+          expect(add<double, double, double>(a, b, out: intoBuf), intoBuf);
+
+          // Incompatible recycler
+          expect(
+            () => add<double, double, double>(
+              a,
+              b,
+              out: NDArray<Float32>.create([3], DType.float32),
+            ),
+            throwsArgumentError,
+          );
+
+          // Mixed Float64
+          final f64 = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          expect(add(a, f64).toList(), [2.0, 4.0, 6.0, 8.0]);
+          expect(subtract(a, f64).toList(), [0.0, 0.0, 0.0, 0.0]);
+          expect(multiply(a, f64).toList(), [1.0, 4.0, 9.0, 16.0]);
+          expect(divide(a, f64).toList(), [1.0, 1.0, 1.0, 1.0]);
+
+          // Mixed Scalar
+          expect(
+            add(a, NDArray.fromList([10.0], [1], DType.float32)).toList(),
+            [11.0, 12.0, 13.0, 14.0],
+          );
+          expect(
+            subtract(a, NDArray.fromList([1.0], [1], DType.float32)).toList(),
+            [0.0, 1.0, 2.0, 3.0],
+          );
+          expect(
+            multiply(a, NDArray.fromList([2.0], [1], DType.float32)).toList(),
+            [2.0, 4.0, 6.0, 8.0],
+          );
+          expect(
+            divide(a, NDArray.fromList([0.5], [1], DType.float32)).toList(),
+            [2.0, 4.0, 6.0, 8.0],
+          );
+        });
+      },
+    );
+
+    test(
+      'Int64NDArrayOperations Contiguous & Strided ufuncs and Mixed Double',
+      () {
+        NDArray.scope(() {
+          final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int64);
+          final b = NDArray.fromList([10, 20, 30, 40], [2, 2], DType.int64);
+
+          final resAdd = add(a, b);
+          expect(resAdd.toList(), [11, 22, 33, 44]);
+
+          final resSub = subtract(a, b);
+          expect(resSub.toList(), [-9, -18, -27, -36]);
+
+          final resMul = multiply(a, b);
+          expect(resMul.toList(), [10, 40, 90, 160]);
+
+          final resDiv = divide(b, a);
+          expect(resDiv.toList(), [10.0, 10.0, 10.0, 10.0]);
+
+          // Strided view
+          final aView = a.transpose();
+          final bView = b.transpose();
+          expect(add(aView, bView).toList(), [11, 33, 22, 44]);
+
+          // Recycler
+          final intoBuf = NDArray<Int64>.create([2, 2], DType.int64);
+          expect(add<int, int, int>(a, b, out: intoBuf), intoBuf);
+
+          final intoDoubleBuf = NDArray<Float64>.create([2, 2], DType.float64);
+          expect(
+            divide<int, int, double>(b, a, out: intoDoubleBuf),
+            intoDoubleBuf,
+          );
+
+          // Incompatible recycler
+          expect(
+            () => add<int, int, int>(
+              a,
+              b,
+              out: NDArray<Int64>.create([3], DType.int64),
+            ),
+            throwsArgumentError,
+          );
+          expect(
+            () => divide<int, int, double>(
+              b,
+              a,
+              out: NDArray<Float64>.create([3], DType.float64),
+            ),
+            throwsArgumentError,
+          );
+
+          // Mixed Double
+          final f64 = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          expect(add(a, f64).toList(), [2.0, 4.0, 6.0, 8.0]);
+          expect(subtract(a, f64).toList(), [0.0, 0.0, 0.0, 0.0]);
+          expect(multiply(a, f64).toList(), [1.0, 4.0, 9.0, 16.0]);
+
+          // Mixed Scalar
+          expect(add(a, NDArray.fromList([10], [1], DType.int64)).toList(), [
+            11,
+            12,
+            13,
+            14,
+          ]);
+          expect(
+            subtract(a, NDArray.fromList([1], [1], DType.int64)).toList(),
+            [0, 1, 2, 3],
+          );
+          expect(
+            multiply(a, NDArray.fromList([2], [1], DType.int64)).toList(),
+            [2, 4, 6, 8],
+          );
+        });
+      },
+    );
+
+    test(
+      'Int32NDArrayOperations Contiguous & Strided ufuncs and Mixed Int64',
+      () {
+        NDArray.scope(() {
+          final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+          final b = NDArray.fromList([10, 20, 30, 40], [2, 2], DType.int32);
+
+          final resAdd = add(a, b);
+          expect(resAdd.toList(), [11, 22, 33, 44]);
+
+          final resSub = subtract(a, b);
+          expect(resSub.toList(), [-9, -18, -27, -36]);
+
+          final resMul = multiply(a, b);
+          expect(resMul.toList(), [10, 40, 90, 160]);
+
+          final resDiv = divide(b, a);
+          expect(resDiv.toList(), [10.0, 10.0, 10.0, 10.0]);
+
+          // Strided view
+          final aView = a.transpose();
+          final bView = b.transpose();
+          expect(add(aView, bView).toList(), [11, 33, 22, 44]);
+
+          // Recycler
+          final intoBuf = NDArray<Int32>.create([2, 2], DType.int32);
+          expect(add<int, int, int>(a, b, out: intoBuf), intoBuf);
+
+          final intoDoubleBuf = NDArray<Float64>.create([2, 2], DType.float64);
+          expect(
+            divide<int, int, double>(b, a, out: intoDoubleBuf),
+            intoDoubleBuf,
+          );
+
+          // Incompatible recycler
+          expect(
+            () => add<int, int, int>(
+              a,
+              b,
+              out: NDArray<Int32>.create([3], DType.int32),
+            ),
+            throwsArgumentError,
+          );
+          expect(
+            () => divide<int, int, double>(
+              b,
+              a,
+              out: NDArray<Float64>.create([3], DType.float64),
+            ),
+            throwsArgumentError,
+          );
+
+          // Mixed Int64
+          final i64 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int64);
+          expect(add(a, i64).toList(), [2, 4, 6, 8]);
+          expect(subtract(a, i64).toList(), [0, 0, 0, 0]);
+          expect(multiply(a, i64).toList(), [1, 4, 9, 16]);
+
+          // Mixed Scalar
+          expect(add(a, NDArray.fromList([10], [1], DType.int32)).toList(), [
+            11,
+            12,
+            13,
+            14,
+          ]);
+          expect(
+            subtract(a, NDArray.fromList([1], [1], DType.int32)).toList(),
+            [0, 1, 2, 3],
+          );
+          expect(
+            multiply(a, NDArray.fromList([2], [1], DType.int32)).toList(),
+            [2, 4, 6, 8],
+          );
+        });
+      },
+    );
+
+    test(
+      'ComplexNDArrayOperations Contiguous & Strided ufuncs and Mixed Scalar',
+      () {
+        NDArray.scope(() {
+          final a = NDArray.fromList(
+            [Complex(1, 2), Complex(3, 4)],
+            [2],
+            DType.complex128,
+          );
+          final b = NDArray.fromList(
+            [Complex(10, 20), Complex(30, 40)],
+            [2],
+            DType.complex128,
+          );
+
+          final resAdd = add(a, b);
+          expect(resAdd.toList()[0].real, 11.0);
+          expect(resAdd.toList()[0].imag, 22.0);
+          expect(resAdd.toList()[1].real, 33.0);
+          expect(resAdd.toList()[1].imag, 44.0);
+
+          final resSub = subtract(a, b);
+          expect(resSub.toList()[0].real, -9.0);
+          expect(resSub.toList()[0].imag, -18.0);
+
+          final resMul = multiply(a, b);
+          // (1+2i)*(10+20i) = 10 + 20i + 20i - 40 = -30 + 40i
+          expect(resMul.toList()[0].real, -30.0);
+          expect(resMul.toList()[0].imag, 40.0);
+
+          final resDiv = divide(b, a);
+          // (10+20i)/(1+2i) = 10*(1+2i)/(1+2i) = 10
+          expect(resDiv.toList()[0].real, 10.0);
+          expect(resDiv.toList()[0].imag, 0.0);
+
+          // Strided view and recycler
+          final aView = a.slice([const Slice(start: 0, stop: 2, step: 1)]);
+          final bView = b.slice([const Slice(start: 0, stop: 2, step: 1)]);
+          final intoBuf = NDArray<Complex>.create([2], DType.complex128);
+          expect(
+            add<Complex, Complex, Complex>(aView, bView, out: intoBuf),
+            intoBuf,
+          );
+
+          // Incompatible recycler
+          expect(
+            () => add<Complex, Complex, Complex>(
+              a,
+              b,
+              out: NDArray<Complex>.create([3], DType.complex128),
+            ),
+            throwsArgumentError,
+          );
+
+          // Mixed Float64
+          final f64 = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final resAddF64 = add(a, f64);
+          expect(resAddF64.toList()[0].real, 2.0);
+          expect(resAddF64.toList()[0].imag, 2.0);
+
+          final resSubF64 = subtract(a, f64);
+          expect(resSubF64.toList()[0].real, 0.0);
+          expect(resSubF64.toList()[0].imag, 2.0);
+
+          final resMulF64 = multiply(a, f64);
+          expect(resMulF64.toList()[0].real, 1.0);
+          expect(resMulF64.toList()[0].imag, 2.0);
+
+          final resDivF64 = divide(a, f64);
+          expect(resDivF64.toList()[0].real, 1.0);
+          expect(resDivF64.toList()[0].imag, 2.0);
+
+          // Mixed Int64
+          final i64 = NDArray.fromList([1, 2], [2], DType.int64);
+          final resAddI64 = add(a, i64);
+          expect(resAddI64.toList()[0].real, 2.0);
+          expect(resAddI64.toList()[0].imag, 2.0);
+
+          final resSubI64 = subtract(a, i64);
+          expect(resSubI64.toList()[0].real, 0.0);
+
+          final resMulI64 = multiply(a, i64);
+          expect(resMulI64.toList()[0].real, 1.0);
+
+          final resDivI64 = divide(a, i64);
+          expect(resDivI64.toList()[0].real, 1.0);
+
+          // Mixed Scalar
+          expect(
+            add(
+              a,
+              NDArray.fromList([Complex(10, 10)], [1], DType.complex128),
+            ).toList()[0].real,
+            11.0,
+          );
+          expect(
+            subtract(
+              a,
+              NDArray.fromList([Complex(1, 1)], [1], DType.complex128),
+            ).toList()[0].real,
+            0.0,
+          );
+          expect(
+            multiply(
+              a,
+              NDArray.fromList([Complex(2.0, 0.0)], [1], DType.complex128),
+            ).toList()[0].real,
+            2.0,
+          );
+          expect(
+            divide(
+              a,
+              NDArray.fromList([Complex(0.5, 0.0)], [1], DType.complex128),
+            ).toList()[0].real,
+            2.0,
+          );
+        });
+      },
+    );
+  });
+
+  group("Math Strided Out Bug", () {
+    test("add with strided out and offsets", () {
+      final baseA = NDArray.fromList(
+        Float64List.fromList([0.0, 1.0, 2.0, 0.0]),
+        [4],
+        DType.float64,
+      );
+      final baseB = NDArray.fromList(
+        Float64List.fromList([0.0, 3.0, 4.0, 0.0]),
+        [4],
+        DType.float64,
+      );
+
+      final a = baseA.slice([Slice(start: 1, stop: 3)]);
+      final b = baseB.slice([Slice(start: 1, stop: 3)]);
+
+      final baseOut = NDArray.zeros([4], DType.float64);
+      final out = baseOut.slice([Slice(start: 0, stop: 4, step: 2)]);
+
+      add(a, b, out: out);
+
+      expect(baseOut.toList(), [4.0, 0.0, 6.0, 0.0]);
+    });
+
+    test("abs with strided out and offsets (real)", () {
+      final baseA = NDArray.fromList(
+        Float64List.fromList([0.0, -1.5, -2.0, 0.0]),
+        [4],
+        DType.float64,
+      );
+      final a = baseA.slice([Slice(start: 1, stop: 3)]);
+
+      final baseOut = NDArray.zeros([4], DType.float64);
+      final out = baseOut.slice([Slice(start: 0, stop: 4, step: 2)]);
+
+      abs(a, out: out);
+
+      expect(baseOut.toList(), [1.5, 0.0, 2.0, 0.0]);
+    });
+
+    test("abs with strided out (complex -> real)", () {
+      final baseA = NDArray<Complex>.fromList(
+        [Complex(0, 0), Complex(-3, 4), Complex(5, -12), Complex(0, 0)],
+        [4],
+        DType.complex128,
+      );
+      final a = baseA.slice([Slice(start: 1, stop: 3)]);
+
+      final baseOut = NDArray.zeros([4], DType.float64);
+      final out = baseOut.slice([Slice(start: 0, stop: 4, step: 2)]);
+
+      abs(a, out: out);
+
+      expect(baseOut.toList(), [5.0, 0.0, 13.0, 0.0]);
+    });
+
+    test("conj with strided out (real)", () {
+      final baseA = NDArray.fromList(
+        Float64List.fromList([0.0, 1.0, 2.0, 0.0]),
+        [4],
+        DType.float64,
+      );
+      final a = baseA.slice([Slice(start: 1, stop: 3)]);
+
+      final baseOut = NDArray.zeros([4], DType.float64);
+      final out = baseOut.slice([Slice(start: 0, stop: 4, step: 2)]);
+
+      conj(a, out: out);
+
+      expect(baseOut.toList(), [1.0, 0.0, 2.0, 0.0]);
+    });
+
+    test("conj with strided out (complex)", () {
+      final baseA = NDArray<Complex>.fromList(
+        [Complex(0, 0), Complex(1, -2), Complex(3, -4), Complex(0, 0)],
+        [4],
+        DType.complex128,
+      );
+      final a = baseA.slice([Slice(start: 1, stop: 3)]);
+
+      final baseOut = NDArray<Complex>.fromList(
+        [Complex(0, 0), Complex(0, 0), Complex(0, 0), Complex(0, 0)],
+        [4],
+        DType.complex128,
+      );
+      final out = baseOut.slice([Slice(start: 0, stop: 4, step: 2)]);
+
+      conj(a, out: out);
+
+      expect(baseOut.toList(), [
+        Complex(1, 2),
+        Complex(0, 0),
+        Complex(3, 4),
+        Complex(0, 0),
+      ]);
+    });
+
+    test("hypot with strided out and offsets", () {
+      final baseA = NDArray.fromList(
+        Float64List.fromList([0.0, 3.0, 5.0, 0.0]),
+        [4],
+        DType.float64,
+      );
+      final baseB = NDArray.fromList(
+        Float64List.fromList([0.0, 4.0, 12.0, 0.0]),
+        [4],
+        DType.float64,
+      );
+      final a = baseA.slice([Slice(start: 1, stop: 3)]);
+      final b = baseB.slice([Slice(start: 1, stop: 3)]);
+
+      final baseOut = NDArray.zeros([4], DType.float64);
+      final out = baseOut.slice([Slice(start: 0, stop: 4, step: 2)]);
+
+      hypot(a, b, out: out);
+
+      expect(baseOut.toList(), [5.0, 0.0, 13.0, 0.0]);
+    });
+
+    test("Unary op (sin) with strided out and non-zero offset input", () {
+      final aBacking = Int32List.fromList([99, 0, 99, 1]);
+      final aParent = NDArray.fromList(aBacking, [4], DType.int32);
+      final a = aParent.slice([
+        Slice(start: 1, stop: 4, step: 2),
+      ]); // shape [2], strides [2], offset 1
+
+      final outBacking = Float64List.fromList([99.0, 99.0, 99.0, 99.0, 99.0]);
+      final outParent = NDArray.fromList(outBacking, [5], DType.float64);
+      final out = outParent.slice([
+        Slice(start: 1, stop: 5, step: 2),
+      ]); // shape [2], strides [2], offset 1
+
+      sin(a, out: out);
+
+      final outList = outParent.toList();
+      expect(outList[0], 99.0);
+      expect(outList[1], closeTo(0.0, 1e-7));
+      expect(outList[2], 99.0);
+      expect(outList[3], closeTo(0.84147098, 1e-7));
+      expect(outList[4], 99.0);
+    });
+
+    test("Binary op (add) with strided out and non-zero offset inputs", () {
+      final aBacking = Float64List.fromList([99.0, 1.0, 99.0, 2.0]);
+      final a = NDArray.fromList(
+        aBacking,
+        [4],
+        DType.float64,
+      ).slice([Slice(start: 1, stop: 4, step: 2)]); // [1.0, 2.0]
+
+      final bBacking = Float64List.fromList([99.0, 10.0, 99.0, 20.0]);
+      final b = NDArray.fromList(
+        bBacking,
+        [4],
+        DType.float64,
+      ).slice([Slice(start: 1, stop: 4, step: 2)]); // [10.0, 20.0]
+
+      final outBacking = Float64List.fromList([99.0, 99.0, 99.0, 99.0, 99.0]);
+      final outParent = NDArray.fromList(outBacking, [5], DType.float64);
+      final out = outParent.slice([Slice(start: 1, stop: 5, step: 2)]);
+
+      add(a, b, out: out);
+
+      expect(outParent.toList(), [99.0, 11.0, 99.0, 22.0, 99.0]);
+    });
+
+    test("Real-number conj with strided out (Worker 2 version)", () {
+      final aBacking = Float64List.fromList([1.0, 2.0]);
+      final a = NDArray.fromList(aBacking, [2], DType.float64);
+
+      final outBacking = Float64List.fromList([99.0, 99.0, 99.0, 99.0, 99.0]);
+      final outParent = NDArray.fromList(outBacking, [5], DType.float64);
+      final out = outParent.slice([Slice(start: 1, stop: 5, step: 2)]);
+
+      conj(a, out: out);
+
+      expect(outParent.toList(), [99.0, 1.0, 99.0, 2.0, 99.0]);
+    });
+
+    test("Optimized abs with contiguous input/output", () {
+      final a = NDArray.fromList(Float64List.fromList([-1.0, -2.0]), [
+        2,
+      ], DType.float64);
+      final out = NDArray<double>.create([2], DType.float64);
+      abs(a, out: out);
+      expect(out.toList(), [1.0, 2.0]);
+    });
+
+    test(
+      "Optimized abs with contiguous sliced view (length != data.length)",
+      () {
+        final base = NDArray.fromList(
+          Float64List.fromList([-9.0, -1.0, -2.0, -9.0]),
+          [4],
+          DType.float64,
+        );
+        final a = base.slice([
+          Slice(start: 1, stop: 3),
+        ]); // shape [2], contiguous, offset 1, data.length is 4
+        final outBase = NDArray.zeros([4], DType.float64);
+        final out = outBase.slice([
+          Slice(start: 1, stop: 3),
+        ]); // shape [2], contiguous
+
+        abs(a, out: out);
+
+        expect(outBase.toList(), [0.0, 1.0, 2.0, 0.0]);
+      },
+    );
+
+    test("sin with contiguous input and strided out", () {
+      final a = NDArray.fromList(
+        Float64List.fromList([0.0, 1.5707963267948966]),
+        [2],
+        DType.float64,
+      ); // contiguous
+
+      final baseOut = NDArray.fromList(
+        Float64List.fromList([99.0, 99.0, 99.0, 99.0, 99.0]),
+        [5],
+        DType.float64,
+      );
+      final out = baseOut.slice([
+        Slice(start: 1, stop: 5, step: 2),
+      ]); // strided, shape [2]
+
+      sin(a, out: out);
+
+      final outList = baseOut.toList();
+      expect(outList[0], 99.0);
+      expect(outList[1], closeTo(0.0, 1e-7)); // sin(0)
+      expect(outList[2], 99.0);
+      expect(outList[3], closeTo(1.0, 1e-7)); // sin(pi/2)
+      expect(outList[4], 99.0);
+    });
+
+    test("comparison (greater) with broadcasting", () {
+      final a = NDArray.fromList([1.0, 2.0], [2], DType.float64); // shape [2]
+      final b = NDArray.fromList(
+        [0.0, 3.0, 4.0, 1.0],
+        [2, 2],
+        DType.float64,
+      ); // shape [2, 2]
+
+      final res = greater(a, b);
+      expect(res.shape, [2, 2]);
+      expect(res.toList(), [true, false, false, true]);
+    });
+  });
+
+  group('Math Out Param', () {
+    test('hypot with out parameter', () {
+      final a = NDArray.fromList(Float64List.fromList([3.0, 5.0]), [
+        2,
+      ], DType.float64);
+      final b = NDArray.fromList(Float64List.fromList([4.0, 12.0]), [
+        2,
+      ], DType.float64);
+      final out = NDArray<double>.create([2], DType.float64);
+
+      final res = hypot(a, b, out: out);
+      expect(identical(res, out), isTrue);
+      final outList = out.toList();
+      expect(outList[0], closeTo(5.0, 1e-10));
+      expect(outList[1], closeTo(13.0, 1e-10));
+
+      // Incompatible shape/dtype validation
+      final badOut = NDArray<double>.create([3], DType.float64);
+      expect(() => hypot(a, b, out: badOut), throwsArgumentError);
+    });
+
+    test('power with out parameter', () {
+      final a = NDArray.fromList(Float64List.fromList([2.0, 3.0]), [
+        2,
+      ], DType.float64);
+      final b = NDArray.fromList(Float64List.fromList([3.0, 2.0]), [
+        2,
+      ], DType.float64);
+      final out = NDArray.create([2], DType.float64);
+
+      final res = power(a, b, out: out);
+      expect(identical(res, out), isTrue);
+      expect(out.toList(), [8.0, 9.0]);
+
+      final badOut = NDArray.create([2], DType.float32);
+      expect(() => power(a, b, out: badOut), throwsArgumentError);
+    });
+
+    test('negative with out parameter', () {
+      final a = NDArray.fromList(Int32List.fromList([2, -3]), [2], DType.int32);
+      final out = NDArray.create([2], DType.int32);
+
+      final res = negative(a, out: out);
+      expect(identical(res, out), isTrue);
+      expect(out.toList(), [-2, 3]);
+
+      final badOut = NDArray.create([3], DType.int32);
+      expect(() => negative(a, out: badOut), throwsArgumentError);
+    });
+
+    test('floor_divide with out parameter', () {
+      final a = NDArray.fromList(Int32List.fromList([10, 25]), [
+        2,
+      ], DType.int32);
+      final b = NDArray.fromList(Int32List.fromList([3, 4]), [2], DType.int32);
+      final out = NDArray.create([2], DType.int32);
+
+      final res = floor_divide(a, b, out: out);
+      expect(identical(res, out), isTrue);
+      expect(out.toList(), [3, 6]);
+
+      final badOut = NDArray.create([2], DType.float64);
+      expect(() => floor_divide(a, b, out: badOut), throwsArgumentError);
+    });
+
+    test('remainder and mod with out parameter', () {
+      final a = NDArray.fromList(Int32List.fromList([10, 25]), [
+        2,
+      ], DType.int32);
+      final b = NDArray.fromList(Int32List.fromList([3, 4]), [2], DType.int32);
+      final out = NDArray.create([2], DType.int32);
+
+      final res = remainder(a, b, out: out);
+      expect(identical(res, out), isTrue);
+      expect(out.toList(), [1, 1]);
+
+      final outMod = NDArray.create([2], DType.int32);
+      final resMod = mod(a, b, out: outMod);
+      expect(identical(resMod, outMod), isTrue);
+      expect(outMod.toList(), [1, 1]);
+    });
+
+    test('abs with out parameter', () {
+      final a = NDArray.fromList(Float64List.fromList([-1.5, 2.0]), [
+        2,
+      ], DType.float64);
+      final out = NDArray.create([2], DType.float64);
+
+      final res = abs(a, out: out);
+      expect(identical(res, out), isTrue);
+      expect(out.toList(), [1.5, 2.0]);
+    });
+
+    test('sign with out parameter', () {
+      final a = NDArray.fromList(Float64List.fromList([-1.5, 0.0, 2.5]), [
+        3,
+      ], DType.float64);
+      final out = NDArray.create([3], DType.float64);
+
+      final res = sign(a, out: out);
+      expect(identical(res, out), isTrue);
+      expect(out.toList(), [-1.0, 0.0, 1.0]);
+    });
+
+    test('ceil with out parameter', () {
+      final a = NDArray.fromList(Float64List.fromList([1.2, -1.7]), [
+        2,
+      ], DType.float64);
+      final out = NDArray.create([2], DType.float64);
+
+      final res = ceil(a, out: out);
+      expect(identical(res, out), isTrue);
+      expect(out.toList(), [2.0, -1.0]);
+    });
+
+    test('floor with out parameter', () {
+      final a = NDArray.fromList(Float64List.fromList([1.2, -1.7]), [
+        2,
+      ], DType.float64);
+      final out = NDArray.create([2], DType.float64);
+
+      final res = floor(a, out: out);
+      expect(identical(res, out), isTrue);
+      expect(out.toList(), [1.0, -2.0]);
+    });
+
+    test('round with out parameter', () {
+      final a = NDArray.fromList(Float64List.fromList([1.2, -1.7]), [
+        2,
+      ], DType.float64);
+      final out = NDArray.create([2], DType.float64);
+
+      final res = round(a, out: out);
+      expect(identical(res, out), isTrue);
+      expect(out.toList(), [1.0, -2.0]);
+    });
+
+    test('isnan with out parameter', () {
+      final a = NDArray.fromList(Float64List.fromList([1.0, double.nan]), [
+        2,
+      ], DType.float64);
+      final out = NDArray<bool>.create([2], DType.boolean);
+
+      final res = isnan(a, out: out);
+      expect(identical(res, out), isTrue);
+      expect(out.toList(), [false, true]);
+    });
+
+    test('isinf with out parameter', () {
+      final a = NDArray.fromList(Float64List.fromList([1.0, double.infinity]), [
+        2,
+      ], DType.float64);
+      final out = NDArray<bool>.create([2], DType.boolean);
+
+      final res = isinf(a, out: out);
+      expect(identical(res, out), isTrue);
+      expect(out.toList(), [false, true]);
+    });
+
+    test('isfinite with out parameter', () {
+      final a = NDArray.fromList(Float64List.fromList([1.0, double.infinity]), [
+        2,
+      ], DType.float64);
+      final out = NDArray<bool>.create([2], DType.boolean);
+
+      final res = isfinite(a, out: out);
+      expect(identical(res, out), isTrue);
+      expect(out.toList(), [true, false]);
+    });
+
+    test('copysign with out parameter', () {
+      final x1 = NDArray.fromList(Float64List.fromList([2.0, -3.0]), [
+        2,
+      ], DType.float64);
+      final x2 = NDArray.fromList(Float64List.fromList([-1.0, 1.0]), [
+        2,
+      ], DType.float64);
+      final out = NDArray.create([2], DType.float64);
+
+      final res = copysign(x1, x2, out: out);
+      expect(identical(res, out), isTrue);
+      expect(out.toList(), [-2.0, 3.0]);
+    });
+  });
 }
