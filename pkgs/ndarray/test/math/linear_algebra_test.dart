@@ -4,7 +4,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 void main() {
-  group('NDArray Advanced LAPACK Linear Algebra Decompositions Tests', () {
+  group('Decompositions', () {
     group('LAPACK Inversion (inv) tests', () {
       test(
         'Invert Float64 square matrix and check identity reconstruction',
@@ -20,10 +20,10 @@ void main() {
           expect(aInv.dtype, DType.float64);
 
           // Check exact values (approx 0.6, -0.7, -0.2, 0.4)
-          expect(aInv.data[0], closeTo(0.6, 1e-6));
-          expect(aInv.data[1], closeTo(-0.7, 1e-6));
-          expect(aInv.data[2], closeTo(-0.2, 1e-6));
-          expect(aInv.data[3], closeTo(0.4, 1e-6));
+          expect(aInv.toList()[0], closeTo(0.6, 1e-6));
+          expect(aInv.toList()[1], closeTo(-0.7, 1e-6));
+          expect(aInv.toList()[2], closeTo(-0.2, 1e-6));
+          expect(aInv.toList()[3], closeTo(0.4, 1e-6));
         }),
       );
 
@@ -39,10 +39,10 @@ void main() {
           final aInv = inv(a);
           expect(aInv.dtype, DType.float32);
           // expected inverse for [[1,2],[3,4]] is [[-2, 1], [1.5, -0.5]]
-          expect(aInv.data[0], closeTo(-2.0, 1e-5));
-          expect(aInv.data[1], closeTo(1.0, 1e-5));
-          expect(aInv.data[2], closeTo(1.5, 1e-5));
-          expect(aInv.data[3], closeTo(-0.5, 1e-5));
+          expect(aInv.toList()[0], closeTo(-2.0, 1e-5));
+          expect(aInv.toList()[1], closeTo(1.0, 1e-5));
+          expect(aInv.toList()[2], closeTo(1.5, 1e-5));
+          expect(aInv.toList()[3], closeTo(-0.5, 1e-5));
         }),
       );
 
@@ -98,18 +98,18 @@ void main() {
           expect(l.shape, [3, 3]);
 
           // Check that the strictly upper triangular elements are zeroed out!
-          expect(l.data[1], 0.0);
-          expect(l.data[2], 0.0);
-          expect(l.data[5], 0.0);
+          expect(l.toList()[1], 0.0);
+          expect(l.toList()[2], 0.0);
+          expect(l.toList()[5], 0.0);
 
           // Check exact expected lower triangular values
           // L = [[2, 0, 0], [6, 1, 0], [-8, 5, 3]]
-          expect(l.data[0], closeTo(2.0, 1e-6));
-          expect(l.data[3], closeTo(6.0, 1e-6));
-          expect(l.data[4], closeTo(1.0, 1e-6));
-          expect(l.data[6], closeTo(-8.0, 1e-6));
-          expect(l.data[7], closeTo(5.0, 1e-6));
-          expect(l.data[8], closeTo(3.0, 1e-6));
+          expect(l.toList()[0], closeTo(2.0, 1e-6));
+          expect(l.toList()[3], closeTo(6.0, 1e-6));
+          expect(l.toList()[4], closeTo(1.0, 1e-6));
+          expect(l.toList()[6], closeTo(-8.0, 1e-6));
+          expect(l.toList()[7], closeTo(5.0, 1e-6));
+          expect(l.toList()[8], closeTo(3.0, 1e-6));
         }),
       );
 
@@ -124,10 +124,10 @@ void main() {
           final l = cholesky(a);
           expect(l.dtype, DType.float32);
           // L = [[2, 0], [1, 1]]
-          expect(l.data[0], closeTo(2.0, 1e-5));
-          expect(l.data[1], 0.0);
-          expect(l.data[2], closeTo(1.0, 1e-5));
-          expect(l.data[3], closeTo(1.0, 1e-5));
+          expect(l.toList()[0], closeTo(2.0, 1e-5));
+          expect(l.toList()[1], 0.0);
+          expect(l.toList()[2], closeTo(1.0, 1e-5));
+          expect(l.toList()[3], closeTo(1.0, 1e-5));
         }),
       );
 
@@ -148,17 +148,17 @@ void main() {
           expect(l.dtype, DType.complex128);
 
           // Expected: L = [[2.0, 0.0], [1.0 - 0.5i, sqrt(1.75)]]
-          expect(l.data[0].real, closeTo(2.0, 1e-9));
-          expect(l.data[0].imag, closeTo(0.0, 1e-9));
+          expect(l.toList()[0].real, closeTo(2.0, 1e-9));
+          expect(l.toList()[0].imag, closeTo(0.0, 1e-9));
 
-          expect(l.data[1].real, closeTo(0.0, 1e-9));
-          expect(l.data[1].imag, closeTo(0.0, 1e-9));
+          expect(l.toList()[1].real, closeTo(0.0, 1e-9));
+          expect(l.toList()[1].imag, closeTo(0.0, 1e-9));
 
-          expect(l.data[2].real, closeTo(1.0, 1e-9));
-          expect(l.data[2].imag, closeTo(-0.5, 1e-9));
+          expect(l.toList()[2].real, closeTo(1.0, 1e-9));
+          expect(l.toList()[2].imag, closeTo(-0.5, 1e-9));
 
-          expect(l.data[3].real, closeTo(math.sqrt(1.75), 1e-9));
-          expect(l.data[3].imag, closeTo(0.0, 1e-9));
+          expect(l.toList()[3].real, closeTo(math.sqrt(1.75), 1e-9));
+          expect(l.toList()[3].imag, closeTo(0.0, 1e-9));
         }),
       );
 
@@ -179,17 +179,17 @@ void main() {
           expect(l.dtype, DType.complex64);
 
           // Expected: L = [[2.0, 0.0], [1.0 - 0.5i, sqrt(1.75)]]
-          expect(l.data[0].real, closeTo(2.0, 1e-5));
-          expect(l.data[0].imag, closeTo(0.0, 1e-5));
+          expect(l.toList()[0].real, closeTo(2.0, 1e-5));
+          expect(l.toList()[0].imag, closeTo(0.0, 1e-5));
 
-          expect(l.data[1].real, closeTo(0.0, 1e-5));
-          expect(l.data[1].imag, closeTo(0.0, 1e-5));
+          expect(l.toList()[1].real, closeTo(0.0, 1e-5));
+          expect(l.toList()[1].imag, closeTo(0.0, 1e-5));
 
-          expect(l.data[2].real, closeTo(1.0, 1e-5));
-          expect(l.data[2].imag, closeTo(-0.5, 1e-5));
+          expect(l.toList()[2].real, closeTo(1.0, 1e-5));
+          expect(l.toList()[2].imag, closeTo(-0.5, 1e-5));
 
-          expect(l.data[3].real, closeTo(math.sqrt(1.75), 1e-5));
-          expect(l.data[3].imag, closeTo(0.0, 1e-5));
+          expect(l.toList()[3].real, closeTo(math.sqrt(1.75), 1e-5));
+          expect(l.toList()[3].imag, closeTo(0.0, 1e-5));
         }),
       );
 
@@ -217,17 +217,17 @@ void main() {
           expect(identical(res, outL), true);
 
           // Check that the strictly upper triangular elements are zeroed out!
-          expect(outL.data[1], 0.0);
-          expect(outL.data[2], 0.0);
-          expect(outL.data[5], 0.0);
+          expect(outL.toList()[1], 0.0);
+          expect(outL.toList()[2], 0.0);
+          expect(outL.toList()[5], 0.0);
 
           // Check exact expected lower triangular values
-          expect(outL.data[0], closeTo(2.0, 1e-6));
-          expect(outL.data[3], closeTo(6.0, 1e-6));
-          expect(outL.data[4], closeTo(1.0, 1e-6));
-          expect(outL.data[6], closeTo(-8.0, 1e-6));
-          expect(outL.data[7], closeTo(5.0, 1e-6));
-          expect(outL.data[8], closeTo(3.0, 1e-6));
+          expect(outL.toList()[0], closeTo(2.0, 1e-6));
+          expect(outL.toList()[3], closeTo(6.0, 1e-6));
+          expect(outL.toList()[4], closeTo(1.0, 1e-6));
+          expect(outL.toList()[6], closeTo(-8.0, 1e-6));
+          expect(outL.toList()[7], closeTo(5.0, 1e-6));
+          expect(outL.toList()[8], closeTo(3.0, 1e-6));
         }),
       );
     });
@@ -260,9 +260,9 @@ void main() {
           expect(r.shape, [3, 3]);
 
           // Verify R is upper triangular: elements under diagonal are exactly 0
-          expect(r.data[3], 0.0);
-          expect(r.data[6], 0.0);
-          expect(r.data[7], 0.0);
+          expect(r.toList()[3], 0.0);
+          expect(r.toList()[6], 0.0);
+          expect(r.toList()[7], 0.0);
 
           // Verify Q is orthogonal: Q * Q^T should equal Identity Matrix!
           // To perform matrix multiplication, we could loop or verify dot products.
@@ -270,7 +270,7 @@ void main() {
           double dotRow(int rA, int rB) {
             var s = 0.0;
             for (var i = 0; i < 3; i++) {
-              s += q.data[rA * 3 + i] * q.data[rB * 3 + i];
+              s += q.toList()[rA * 3 + i] * q.toList()[rB * 3 + i];
             }
             return s;
           }
@@ -304,7 +304,7 @@ void main() {
           final res = qr(a);
           expect(res.Q.dtype, DType.float32);
           expect(res.R.dtype, DType.float32);
-          expect(res.R.data[3], 0.0);
+          expect(res.R.toList()[3], 0.0);
         }),
       );
 
@@ -331,7 +331,7 @@ void main() {
           final res = qr(view);
           expect(res.Q.shape, [3, 3]);
           expect(res.R.shape, [3, 3]);
-          expect(res.R.data[3], 0.0);
+          expect(res.R.toList()[3], 0.0);
         }),
       );
 
@@ -363,9 +363,9 @@ void main() {
           expect(identical(res.R, rBuffer), true);
 
           // Verify correctness of QR values in the recycled buffers
-          expect(res.R.data[3], 0.0);
-          expect(res.R.data[6], 0.0);
-          expect(res.R.data[7], 0.0);
+          expect(res.R.toList()[3], 0.0);
+          expect(res.R.toList()[6], 0.0);
+          expect(res.R.toList()[7], 0.0);
         }),
       );
 
@@ -448,8 +448,8 @@ void main() {
           expect(vh.shape, [2, 2]); // full matrix
 
           // Singular values in S must be sorted in descending order by LAPACK rules!
-          expect(s.data[0], greaterThan(s.data[1]));
-          expect(s.data[0], greaterThan(0.0));
+          expect(s.toList()[0], greaterThan(s.toList()[1]));
+          expect(s.toList()[0], greaterThan(0.0));
         }),
       );
 
@@ -535,8 +535,8 @@ void main() {
           ], DType.float64);
           final x = solve(a, b);
           expect(x.shape, [2, 1]);
-          expect(x.data[0], closeTo(2.0, 1e-9));
-          expect(x.data[1], closeTo(3.0, 1e-9));
+          expect(x.toList()[0], closeTo(2.0, 1e-9));
+          expect(x.toList()[1], closeTo(3.0, 1e-9));
         }),
       );
 
@@ -554,28 +554,35 @@ void main() {
           ], DType.float32);
           final x = solve(a, b);
           expect(x.shape, [2, 1]);
-          expect(x.data[0], closeTo(2.0, 1e-5));
-          expect(x.data[1], closeTo(3.0, 1e-5));
+          expect(x.toList()[0], closeTo(2.0, 1e-5));
+          expect(x.toList()[1], closeTo(3.0, 1e-5));
         }),
       );
 
       test(
         'Solve Complex128 system of equations',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.create([2, 2], DType.complex128);
-          a.data[0] = Complex(3.0, 0.0);
-          a.data[1] = Complex(1.0, 0.0);
-          a.data[2] = Complex(1.0, 0.0);
-          a.data[3] = Complex(2.0, 0.0);
+          final a = NDArray.fromList(
+            [
+              Complex(3.0, 0.0),
+              Complex(1.0, 0.0),
+              Complex(1.0, 0.0),
+              Complex(2.0, 0.0),
+            ],
+            [2, 2],
+            DType.complex128,
+          );
 
-          final b = NDArray<Complex>.create([2, 1], DType.complex128);
-          b.data[0] = Complex(9.0, 0.0);
-          b.data[1] = Complex(8.0, 0.0);
+          final b = NDArray.fromList(
+            [Complex(9.0, 0.0), Complex(8.0, 0.0)],
+            [2, 1],
+            DType.complex128,
+          );
 
           final x = solve(a, b);
           expect(x.dtype, DType.complex128);
-          expect(x.data[0], Complex(2.0, 0.0));
-          expect(x.data[1], Complex(3.0, 0.0));
+          expect(x.toList()[0], Complex(2.0, 0.0));
+          expect(x.toList()[1], Complex(3.0, 0.0));
         }),
       );
 
@@ -626,28 +633,35 @@ void main() {
           final x = solve(a, b, out: outBuffer);
           expect(identical(x, outBuffer), true);
           expect(x.shape, [2, 1]);
-          expect(x.data[0], closeTo(2.0, 1e-9));
-          expect(x.data[1], closeTo(3.0, 1e-9));
+          expect(x.toList()[0], closeTo(2.0, 1e-9));
+          expect(x.toList()[1], closeTo(3.0, 1e-9));
         }),
       );
 
       test(
         'Solve Complex64 system of equations',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.create([2, 2], DType.complex64);
-          a.data[0] = Complex(3.0, 0.0);
-          a.data[1] = Complex(1.0, 0.0);
-          a.data[2] = Complex(1.0, 0.0);
-          a.data[3] = Complex(2.0, 0.0);
+          final a = NDArray.fromList(
+            [
+              Complex(3.0, 0.0),
+              Complex(1.0, 0.0),
+              Complex(1.0, 0.0),
+              Complex(2.0, 0.0),
+            ],
+            [2, 2],
+            DType.complex64,
+          );
 
-          final b = NDArray<Complex>.create([2, 1], DType.complex64);
-          b.data[0] = Complex(9.0, 0.0);
-          b.data[1] = Complex(8.0, 0.0);
+          final b = NDArray.fromList(
+            [Complex(9.0, 0.0), Complex(8.0, 0.0)],
+            [2, 1],
+            DType.complex64,
+          );
 
           final x = solve(a, b);
           expect(x.dtype, DType.complex64);
-          expect(x.data[0].real, closeTo(2.0, 1e-5));
-          expect(x.data[1].real, closeTo(3.0, 1e-5));
+          expect(x.toList()[0].real, closeTo(2.0, 1e-5));
+          expect(x.toList()[1].real, closeTo(3.0, 1e-5));
         }),
       );
     });
@@ -666,10 +680,10 @@ void main() {
           expect(w.shape, [2]);
           expect(vr.shape, [2, 2]);
 
-          expect(w.data[0].real, closeTo(-1.0, 1e-9));
-          expect(w.data[0].imag, closeTo(0.0, 1e-9));
-          expect(w.data[1].real, closeTo(-2.0, 1e-9));
-          expect(w.data[1].imag, closeTo(0.0, 1e-9));
+          expect(w.toList()[0].real, closeTo(-1.0, 1e-9));
+          expect(w.toList()[0].imag, closeTo(0.0, 1e-9));
+          expect(w.toList()[1].real, closeTo(-2.0, 1e-9));
+          expect(w.toList()[1].imag, closeTo(0.0, 1e-9));
         }),
       );
 
@@ -683,40 +697,50 @@ void main() {
           );
           final (eigenvalues: w, eigenvectors: _) = eig(a);
           expect(w.dtype, DType.complex64);
-          expect(w.data[0].real, closeTo(-1.0, 1e-5));
-          expect(w.data[1].real, closeTo(-2.0, 1e-5));
+          expect(w.toList()[0].real, closeTo(-1.0, 1e-5));
+          expect(w.toList()[1].real, closeTo(-2.0, 1e-5));
         }),
       );
 
       test(
         'Eigenvalues/eigenvectors of Complex128 matrix',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.create([2, 2], DType.complex128);
-          a.data[0] = Complex(0.0, 0.0);
-          a.data[1] = Complex(1.0, 0.0);
-          a.data[2] = Complex(-2.0, 0.0);
-          a.data[3] = Complex(-3.0, 0.0);
+          final a = NDArray.fromList(
+            [
+              Complex(0.0, 0.0),
+              Complex(1.0, 0.0),
+              Complex(-2.0, 0.0),
+              Complex(-3.0, 0.0),
+            ],
+            [2, 2],
+            DType.complex128,
+          );
 
           final (eigenvalues: w, eigenvectors: _) = eig(a);
           expect(w.dtype, DType.complex128);
-          expect(w.data[0].real, closeTo(-1.0, 1e-9));
-          expect(w.data[1].real, closeTo(-2.0, 1e-9));
+          expect(w.toList()[0].real, closeTo(-1.0, 1e-9));
+          expect(w.toList()[1].real, closeTo(-2.0, 1e-9));
         }),
       );
 
       test(
         'Eigenvalues/eigenvectors of Complex64 matrix',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.create([2, 2], DType.complex64);
-          a.data[0] = Complex(0.0, 0.0);
-          a.data[1] = Complex(1.0, 0.0);
-          a.data[2] = Complex(-2.0, 0.0);
-          a.data[3] = Complex(-3.0, 0.0);
+          final a = NDArray.fromList(
+            [
+              Complex(0.0, 0.0),
+              Complex(1.0, 0.0),
+              Complex(-2.0, 0.0),
+              Complex(-3.0, 0.0),
+            ],
+            [2, 2],
+            DType.complex64,
+          );
 
           final (eigenvalues: w, eigenvectors: _) = eig(a);
           expect(w.dtype, DType.complex64);
-          expect(w.data[0].real, closeTo(-1.0, 1e-5));
-          expect(w.data[1].real, closeTo(-2.0, 1e-5));
+          expect(w.toList()[0].real, closeTo(-1.0, 1e-5));
+          expect(w.toList()[1].real, closeTo(-2.0, 1e-5));
         }),
       );
 
@@ -739,8 +763,8 @@ void main() {
           expect(identical(w, outW), true);
           expect(identical(vr, outVR), true);
 
-          expect(w.data[0].real, closeTo(-1.0, 1e-9));
-          expect(w.data[1].real, closeTo(-2.0, 1e-9));
+          expect(w.toList()[0].real, closeTo(-1.0, 1e-9));
+          expect(w.toList()[1].real, closeTo(-2.0, 1e-9));
         }),
       );
     });
@@ -859,11 +883,11 @@ void main() {
           expect(res.residuals.shape, [1]);
 
           // Analytical solution: c = -0.1, m = 2.05
-          expect(res.x.data[0], closeTo(-0.1, 1e-9));
-          expect(res.x.data[1], closeTo(2.05, 1e-9));
+          expect(res.x.toList()[0], closeTo(-0.1, 1e-9));
+          expect(res.x.toList()[1], closeTo(2.05, 1e-9));
 
           // Residual: sum of squared errors = 0.05^2 + (-0.1)^2 + 0.05^2 = 0.0025 + 0.01 + 0.0025 = 0.015
-          expect(res.residuals.data[0], closeTo(0.015, 1e-9));
+          expect(res.residuals.toList()[0], closeTo(0.015, 1e-9));
         }),
       );
 
@@ -881,9 +905,9 @@ void main() {
           expect(res.residuals.shape, [0]); // no residuals computed
 
           // Minimum norm solution: x_i = 6 * a_i / sum(a_i^2) = 6 * a_i / 14
-          expect(res.x.data[0], closeTo(6.0 / 14.0, 1e-9));
-          expect(res.x.data[1], closeTo(12.0 / 14.0, 1e-9));
-          expect(res.x.data[2], closeTo(18.0 / 14.0, 1e-9));
+          expect(res.x.toList()[0], closeTo(6.0 / 14.0, 1e-9));
+          expect(res.x.toList()[1], closeTo(12.0 / 14.0, 1e-9));
+          expect(res.x.toList()[2], closeTo(18.0 / 14.0, 1e-9));
         }),
       );
 
@@ -904,8 +928,8 @@ void main() {
           expect(res.residuals.shape, [
             0,
           ]); // square full rank -> empty residuals
-          expect(res.x.data[0], closeTo(xSolve.data[0], 1e-9));
-          expect(res.x.data[1], closeTo(xSolve.data[1], 1e-9));
+          expect(res.x.toList()[0], closeTo(xSolve.toList()[0], 1e-9));
+          expect(res.x.toList()[1], closeTo(xSolve.toList()[1], 1e-9));
         }),
       );
 
@@ -921,31 +945,38 @@ void main() {
 
           final res = lstsq(a, b);
           expect(res.x.dtype, DType.float32);
-          expect(res.x.data[0], closeTo(1.0, 1e-6));
-          expect(res.x.data[1], closeTo(2.0, 1e-6));
+          expect(res.x.toList()[0], closeTo(1.0, 1e-6));
+          expect(res.x.toList()[1], closeTo(2.0, 1e-6));
         }),
       );
 
       test(
         'Complex128 least-squares solver',
         () => NDArray.scope(() {
-          final a = NDArray<Complex>.create([2, 2], DType.complex128);
-          a.data[0] = Complex(3.0, 0.0);
-          a.data[1] = Complex(1.0, 0.0);
-          a.data[2] = Complex(1.0, 0.0);
-          a.data[3] = Complex(2.0, 0.0);
+          final a = NDArray.fromList(
+            [
+              Complex(3.0, 0.0),
+              Complex(1.0, 0.0),
+              Complex(1.0, 0.0),
+              Complex(2.0, 0.0),
+            ],
+            [2, 2],
+            DType.complex128,
+          );
 
-          final b = NDArray<Complex>.create([2, 1], DType.complex128);
-          b.data[0] = Complex(9.0, 0.0);
-          b.data[1] = Complex(8.0, 0.0);
+          final b = NDArray.fromList(
+            [Complex(9.0, 0.0), Complex(8.0, 0.0)],
+            [2, 1],
+            DType.complex128,
+          );
 
           final res = lstsq(a, b);
           expect(res.x.dtype, DType.complex128);
           expect(res.residuals.dtype, DType.float64);
-          expect(res.x.data[0].real, closeTo(2.0, 1e-9));
-          expect(res.x.data[0].imag, closeTo(0.0, 1e-9));
-          expect(res.x.data[1].real, closeTo(3.0, 1e-9));
-          expect(res.x.data[1].imag, closeTo(0.0, 1e-9));
+          expect(res.x.toList()[0].real, closeTo(2.0, 1e-9));
+          expect(res.x.toList()[0].imag, closeTo(0.0, 1e-9));
+          expect(res.x.toList()[1].real, closeTo(3.0, 1e-9));
+          expect(res.x.toList()[1].imag, closeTo(0.0, 1e-9));
         }),
       );
 
@@ -963,8 +994,8 @@ void main() {
           final res = lstsq(a, b, out: outBuffer);
 
           expect(identical(res.x, outBuffer), true);
-          expect(res.x.data[0], closeTo(-0.1, 1e-9));
-          expect(res.x.data[1], closeTo(2.05, 1e-9));
+          expect(res.x.toList()[0], closeTo(-0.1, 1e-9));
+          expect(res.x.toList()[1], closeTo(2.05, 1e-9));
         }),
       );
       test(
@@ -991,7 +1022,7 @@ void main() {
           expect(res.shape, [2, 3]);
           // Each cell = sum_{k} (1 * sum_{m} (1 * 1)) = 10 * 5 = 50
           for (var i = 0; i < 6; i++) {
-            expect(res.data[i], 50.0);
+            expect(res.toList()[i], 50.0);
           }
         }),
       );
@@ -1008,7 +1039,7 @@ void main() {
 
           expect(res.shape, [3]);
           for (var i = 0; i < 3; i++) {
-            expect(res.data[i], 50.0);
+            expect(res.toList()[i], 50.0);
           }
         }),
       );
@@ -1025,7 +1056,7 @@ void main() {
 
           expect(res.shape, [2]);
           for (var i = 0; i < 2; i++) {
-            expect(res.data[i], 50.0);
+            expect(res.toList()[i], 50.0);
           }
         }),
       );
@@ -1058,7 +1089,7 @@ void main() {
           expect(res == out, true);
           expect(out.shape, [2, 3]);
           for (var i = 0; i < 6; i++) {
-            expect(out.data[i], 50.0);
+            expect(out.toList()[i], 50.0);
           }
         }),
       );
@@ -1089,8 +1120,8 @@ void main() {
           final d64 = det(a64);
           expect(d64.shape, [2]);
           expect(d64.dtype, DType.float64);
-          expect(d64.data[0], closeTo(-2.0, 1e-9));
-          expect(d64.data[1], closeTo(-2.0, 1e-9));
+          expect(d64.toList()[0], closeTo(-2.0, 1e-9));
+          expect(d64.toList()[1], closeTo(-2.0, 1e-9));
 
           // Float32 precision stacked matrix [2, 2, 2]
           final a32 = NDArray.fromList(
@@ -1101,8 +1132,8 @@ void main() {
 
           final d32 = det(a32);
           expect(d32.shape, [2]);
-          expect(d32.data[0], closeTo(-2.0, 1e-5));
-          expect(d32.data[1], closeTo(-2.0, 1e-5));
+          expect(d32.toList()[0], closeTo(-2.0, 1e-5));
+          expect(d32.toList()[1], closeTo(-2.0, 1e-5));
 
           // High rank 4D stack det [2, 2, 2, 2]
           final a4d = NDArray.fromList(
@@ -1116,7 +1147,7 @@ void main() {
           final d4d = det(a4d);
           expect(d4d.shape, [2, 2]);
           for (var i = 0; i < 4; i++) {
-            expect(d4d.data[i], closeTo(5.0, 1e-9));
+            expect(d4d.toList()[i], closeTo(5.0, 1e-9));
           }
         }),
       );
@@ -1138,11 +1169,11 @@ void main() {
           expect(vr.dtype, DType.complex128);
 
           // Slice 0
-          expect(w.data[0].real, closeTo(-1.0, 1e-9));
-          expect(w.data[1].real, closeTo(-2.0, 1e-9));
+          expect(w.toList()[0].real, closeTo(-1.0, 1e-9));
+          expect(w.toList()[1].real, closeTo(-2.0, 1e-9));
           // Slice 1
-          expect(w.data[2].real, closeTo(-1.0, 1e-9));
-          expect(w.data[3].real, closeTo(-2.0, 1e-9));
+          expect(w.toList()[2].real, closeTo(-1.0, 1e-9));
+          expect(w.toList()[3].real, closeTo(-2.0, 1e-9));
         }),
       );
 
@@ -1182,13 +1213,13 @@ void main() {
           expect(r.shape, [2, 3, 3]);
 
           // Verify upper triangular slice 0 and 1
-          expect(r.data[3], 0.0); // r[0, 1, 0]
-          expect(r.data[6], 0.0); // r[0, 2, 0]
-          expect(r.data[7], 0.0); // r[0, 2, 1]
+          expect(r.toList()[3], 0.0); // r[0, 1, 0]
+          expect(r.toList()[6], 0.0); // r[0, 2, 0]
+          expect(r.toList()[7], 0.0); // r[0, 2, 1]
 
-          expect(r.data[12], 0.0); // r[1, 1, 0]
-          expect(r.data[15], 0.0); // r[1, 2, 0]
-          expect(r.data[16], 0.0); // r[1, 2, 1]
+          expect(r.toList()[12], 0.0); // r[1, 1, 0]
+          expect(r.toList()[15], 0.0); // r[1, 2, 0]
+          expect(r.toList()[16], 0.0); // r[1, 2, 1]
 
           // Verify Q slice 0 orthogonality: dot product of row 0 and row 1 is 0
           double dotRow(NDArray mat, int slice, int rA, int rB) {
@@ -1196,7 +1227,8 @@ void main() {
             final offset = slice * 9;
             for (var i = 0; i < 3; i++) {
               s +=
-                  mat.data[offset + rA * 3 + i] * mat.data[offset + rB * 3 + i];
+                  mat.toList()[offset + rA * 3 + i] *
+                  mat.toList()[offset + rB * 3 + i];
             }
             return s;
           }
@@ -1226,8 +1258,8 @@ void main() {
           expect(uT.shape, [2, 3, 3]);
           expect(sT.shape, [2, 2]);
           expect(vhT.shape, [2, 2, 2]);
-          expect(sT.data[0], greaterThan(sT.data[1]));
-          expect(sT.data[2], greaterThan(sT.data[3]));
+          expect(sT.toList()[0], greaterThan(sT.toList()[1]));
+          expect(sT.toList()[2], greaterThan(sT.toList()[3]));
 
           // 2. Wide matrix svd: [2, 2, 3] (tests transposed wide matrix path under batch)
           final aWide = NDArray.fromList(
@@ -1268,8 +1300,8 @@ void main() {
           expect(d.shape, [2]);
           // slice 0: [[1, 2], [3, 4]] -> det = -2
           // slice 1: [[5, 6], [7, 8]] -> det = -2
-          expect(d.data[0], closeTo(-2.0, 1e-9));
-          expect(d.data[1], closeTo(-2.0, 1e-9));
+          expect(d.toList()[0], closeTo(-2.0, 1e-9));
+          expect(d.toList()[1], closeTo(-2.0, 1e-9));
         }),
       );
     });
@@ -1336,8 +1368,8 @@ void main() {
           );
           final resc = kron(ac, bc);
           expect(resc.dtype, DType.complex128);
-          expect(resc.data[0].real, -5.0);
-          expect(resc.data[0].imag, 10.0);
+          expect(resc.toList()[0].real, -5.0);
+          expect(resc.toList()[0].imag, 10.0);
         }),
       );
 
@@ -1364,8 +1396,8 @@ void main() {
           );
           final resc = outer(uc, vc);
           expect(resc.dtype, DType.complex128);
-          expect(resc.data[0].real, 0.0);
-          expect(resc.data[0].imag, 2.0);
+          expect(resc.toList()[0].real, 0.0);
+          expect(resc.toList()[0].imag, 2.0);
         }),
       );
 
@@ -1384,7 +1416,7 @@ void main() {
           final u2 = NDArray.fromList([3.0, 4.0], [2], DType.float64);
           final res2d = cross(u1, u2);
           expect(res2d.shape, []);
-          expect(res2d.data[0], -2.0);
+          expect(res2d.toList()[0], -2.0);
 
           // Stacked/multidimensional cross product
           final sa = NDArray.fromList(
@@ -1412,10 +1444,10 @@ void main() {
             [4],
             DType.float64,
           );
-          expect(norm(x, ord: 1).data[0], 10.0);
-          expect(norm(x, ord: 2).data[0], closeTo(math.sqrt(30.0), 1e-9));
-          expect(norm(x, ord: double.infinity).data[0], 4.0);
-          expect(norm(x, ord: double.negativeInfinity).data[0], 1.0);
+          expect(norm(x, ord: 1).toList()[0], 10.0);
+          expect(norm(x, ord: 2).toList()[0], closeTo(math.sqrt(30.0), 1e-9));
+          expect(norm(x, ord: double.infinity).toList()[0], 4.0);
+          expect(norm(x, ord: double.negativeInfinity).toList()[0], 1.0);
 
           // Matrix Norms
           final m = NDArray.fromList(
@@ -1423,21 +1455,24 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          expect(norm(m, ord: 'fro').data[0], closeTo(math.sqrt(30.0), 1e-9));
-          expect(norm(m, ord: 1).data[0], 6.0); // max of col sums ([4, 6])
           expect(
-            norm(m, ord: double.infinity).data[0],
+            norm(m, ord: 'fro').toList()[0],
+            closeTo(math.sqrt(30.0), 1e-9),
+          );
+          expect(norm(m, ord: 1).toList()[0], 6.0); // max of col sums ([4, 6])
+          expect(
+            norm(m, ord: double.infinity).toList()[0],
             7.0,
           ); // max of row sums ([3, 7])
 
           // Singular value matrix norms (ord=2)
           final sNorm = norm(m, ord: 2);
-          expect(sNorm.data[0], greaterThan(0.0));
+          expect(sNorm.toList()[0], greaterThan(0.0));
 
           // keepdims support
           final kd = norm(x, ord: 1, keepdims: true);
           expect(kd.shape, [1]);
-          expect(kd.data[0], 10.0);
+          expect(kd.toList()[0], 10.0);
 
           // Axis reductions
           final m3 = NDArray.fromList(
@@ -1447,8 +1482,8 @@ void main() {
           );
           final normAxis = norm(m3, ord: 1, axis: 0);
           expect(normAxis.shape, [2]);
-          expect(normAxis.data[0], 4.0); // 1 + 3
-          expect(normAxis.data[1], 6.0); // 2 + 4
+          expect(normAxis.toList()[0], 4.0); // 1 + 3
+          expect(normAxis.toList()[1], 6.0); // 2 + 4
         }),
       );
 
@@ -1500,10 +1535,10 @@ void main() {
             if (dtype == DType.boolean) {
               expect(res.toList(), [1, 1, 0, 0]);
             } else if (dtype.isComplex) {
-              expect(res.data[0].real, 3.0);
-              expect(res.data[1].real, 4.0);
-              expect(res.data[2].real, 6.0);
-              expect(res.data[3].real, 8.0);
+              expect(res.toList()[0].real, 3.0);
+              expect(res.toList()[1].real, 4.0);
+              expect(res.toList()[2].real, 6.0);
+              expect(res.toList()[3].real, 8.0);
             } else {
               expect(
                 res.toList(),
@@ -1567,10 +1602,10 @@ void main() {
             if (dtype == DType.boolean) {
               expect(res.toList(), [1, 1, 0, 0]);
             } else if (dtype.isComplex) {
-              expect(res.data[0].real, 8.0);
-              expect(res.data[1].real, 10.0);
-              expect(res.data[2].real, 12.0);
-              expect(res.data[3].real, 15.0);
+              expect(res.toList()[0].real, 8.0);
+              expect(res.toList()[1].real, 10.0);
+              expect(res.toList()[2].real, 12.0);
+              expect(res.toList()[3].real, 15.0);
             } else {
               expect(
                 res.toList(),
@@ -1642,9 +1677,9 @@ void main() {
             if (dtype == DType.boolean) {
               expect(res.toList(), [0, 0, 1]);
             } else if (dtype.isComplex) {
-              expect(res.data[0].real, 0.0);
-              expect(res.data[1].real, 0.0);
-              expect(res.data[2].real, 1.0);
+              expect(res.toList()[0].real, 0.0);
+              expect(res.toList()[1].real, 0.0);
+              expect(res.toList()[2].real, 1.0);
             } else {
               expect(
                 res.toList(),
@@ -1700,15 +1735,430 @@ void main() {
             expect(res.dtype, expectedDType);
 
             if (dtype == DType.boolean) {
-              expect(res.data[0], 2.0);
+              expect(res.toList()[0], 2.0);
             } else if (dtype == DType.uint8) {
-              expect(res.data[0], 258.0);
+              expect(res.toList()[0], 258.0);
             } else {
-              expect(res.data[0], 6.0);
+              expect(res.toList()[0], 6.0);
             }
           }
         }),
       );
+    });
+  });
+
+  group('Determinant Tests', () {
+    test(
+      '2D Complex128 Matrix Determinant',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          [
+            Complex(1.0, 1.0),
+            Complex(2.0, -1.0),
+            Complex(3.0, 0.0),
+            Complex(4.0, 2.0),
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+
+        final d = det<Complex>(a);
+
+        expect(d.shape, []);
+        expect(d.scalar.real, closeTo(-4.0, 1e-9));
+        expect(d.scalar.imag, closeTo(9.0, 1e-9));
+      }),
+    );
+
+    test(
+      '3D Stacked Complex64 Matrix Determinant',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          [
+            // Matrix 0
+            Complex(1.0, 1.0), Complex(2.0, -1.0),
+            Complex(3.0, 0.0), Complex(4.0, 2.0),
+            // Matrix 1
+            Complex(2.0, 0.0), Complex(0.0, 1.0),
+            Complex(0.0, -1.0), Complex(3.0, 0.0),
+          ],
+          [2, 2, 2],
+          DType.complex64,
+        );
+
+        final d = det<Complex>(a);
+
+        expect(d.shape, [2]);
+        final dList = d.toList();
+        expect(dList[0].real, closeTo(-4.0, 1e-4));
+        expect(dList[0].imag, closeTo(9.0, 1e-4));
+        expect(dList[1].real, closeTo(5.0, 1e-4));
+        expect(dList[1].imag, closeTo(0.0, 1e-4));
+      }),
+    );
+  });
+
+  group('Complex Matrix Multiplication Tests', () {
+    test(
+      'Complex128 Matrix Multiplication',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          [
+            Complex(1.0, 2.0),
+            Complex(3.0, 4.0),
+            Complex(5.0, 6.0),
+            Complex(7.0, 8.0),
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+
+        final b = NDArray.fromList(
+          [
+            Complex(9.0, 10.0),
+            Complex(11.0, 12.0),
+            Complex(13.0, 14.0),
+            Complex(15.0, 16.0),
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+
+        final result = matmul(a, b);
+
+        expect(result.shape, [2, 2]);
+        expect(result.dtype, DType.complex128);
+
+        final Complex c00 = result.toList()[0] as Complex;
+        expect(c00.real, closeTo(-28.0, 1e-9));
+        expect(c00.imag, closeTo(122.0, 1e-9));
+      }),
+    );
+
+    test(
+      'Complex64 Matrix Multiplication',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          [
+            Complex(1.0, 2.0),
+            Complex(3.0, 4.0),
+            Complex(5.0, 6.0),
+            Complex(7.0, 8.0),
+          ],
+          [2, 2],
+          DType.complex64,
+        );
+
+        final b = NDArray.fromList(
+          [
+            Complex(9.0, 10.0),
+            Complex(11.0, 12.0),
+            Complex(13.0, 14.0),
+            Complex(15.0, 16.0),
+          ],
+          [2, 2],
+          DType.complex64,
+        );
+
+        final result = matmul(a, b);
+
+        expect(result.shape, [2, 2]);
+        expect(result.dtype, DType.complex64);
+
+        final Complex c00 = result.toList()[0] as Complex;
+        expect(c00.real, closeTo(-28.0, 1e-5));
+        expect(c00.imag, closeTo(122.0, 1e-5));
+      }),
+    );
+
+    test(
+      'Complex128 Transposed Matrix Multiplication',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          [
+            Complex(1.0, 2.0),
+            Complex(3.0, 4.0),
+            Complex(5.0, 6.0),
+            Complex(7.0, 8.0),
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+
+        final b = NDArray.fromList(
+          [
+            Complex(9.0, 10.0),
+            Complex(11.0, 12.0),
+            Complex(13.0, 14.0),
+            Complex(15.0, 16.0),
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+
+        final result = matmul(a.transpose(), b);
+
+        expect(result.shape, [2, 2]);
+        expect(result.dtype, DType.complex128);
+
+        final Complex c00 = result.toList()[0] as Complex;
+        expect(c00.real, closeTo(-30.0, 1e-9));
+        expect(c00.imag, closeTo(176.0, 1e-9));
+      }),
+    );
+
+    test(
+      'Complex128 Sliced Matrix Multiplication',
+      () => NDArray.scope(() {
+        final a = NDArray.fromList(
+          [
+            Complex(1.0, 2.0),
+            Complex(3.0, 4.0),
+            Complex(5.0, 6.0),
+            Complex(7.0, 8.0),
+            Complex(9.0, 10.0),
+            Complex(11.0, 12.0),
+          ],
+          [2, 3],
+          DType.complex128,
+        );
+
+        final b = NDArray.fromList(
+          [
+            Complex(9.0, 10.0),
+            Complex(11.0, 12.0),
+            Complex(13.0, 14.0),
+            Complex(15.0, 16.0),
+            Complex(17.0, 18.0),
+            Complex(19.0, 20.0),
+          ],
+          [3, 2],
+          DType.complex128,
+        );
+
+        final aSlice = a.slice([const Slice(), const Slice(start: 0, stop: 2)]);
+        final bSlice = b.slice([const Slice(start: 0, stop: 2), const Slice()]);
+
+        final result = matmul(aSlice, bSlice);
+
+        expect(result.shape, [2, 2]);
+        expect(result.dtype, DType.complex128);
+
+        final Complex c00 = result.toList()[0] as Complex;
+        expect(c00.real, closeTo(-28.0, 1e-9));
+        expect(c00.imag, closeTo(122.0, 1e-9));
+      }),
+    );
+  });
+
+  group('Matmul Stack Broadcasting Tests', () {
+    group('Standard 3D Batch Matmul tests', () {
+      test(
+        'Verify uniform batch matrix stack multiply [2, 2, 2] x [2, 2, 2] -> [2, 2, 2]',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Float64List.fromList([
+              1.0, 2.0, 3.0, 4.0, // batch 0
+              5.0, 6.0, 7.0, 8.0, // batch 1
+            ]),
+            [2, 2, 2],
+            DType.float64,
+          );
+
+          final b = NDArray.fromList(
+            Float64List.fromList([
+              1.0, 0.0, 0.0, 1.0, // batch 0 identity
+              2.0, 2.0, 2.0, 2.0, // batch 1 twos
+            ]),
+            [2, 2, 2],
+            DType.float64,
+          );
+
+          final res = matmul(a, b);
+
+          expect(res.shape, [2, 2, 2]);
+          expect(res.dtype, DType.float64);
+
+          expect(res.toList().sublist(0, 4), [1.0, 2.0, 3.0, 4.0]);
+          expect(res.toList().sublist(4, 8), [22.0, 22.0, 30.0, 30.0]);
+        }),
+      );
+    });
+
+    group('Asymmetric Stack Shape Broadcasting tests', () {
+      test(
+        'Verify broadcast mapping stretching [2, 1, 2, 2] x [3, 2, 2] -> [2, 3, 2, 2]',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Float64List.fromList([
+              1.0, 0.0, 0.0, 1.0, // block 0 (identity)
+              2.0, 0.0, 0.0, 2.0, // block 1 (scaled twos identity)
+            ]),
+            [2, 1, 2, 2],
+            DType.float64,
+          );
+
+          final b = NDArray.fromList(
+            Float64List.fromList([
+              1.0, 2.0, 3.0, 4.0, // sub-block 0
+              5.0, 6.0, 7.0, 8.0, // sub-block 1
+              9.0, 10.0, 11.0, 12.0, // sub-block 2
+            ]),
+            [3, 2, 2],
+            DType.float64,
+          );
+
+          final res = matmul(a, b);
+
+          expect(res.shape, [2, 3, 2, 2]);
+
+          final resList = res.toList();
+          expect(resList.sublist(0, 4), [1.0, 2.0, 3.0, 4.0]); // b[0]
+          expect(resList.sublist(4, 8), [5.0, 6.0, 7.0, 8.0]); // b[1]
+          expect(resList.sublist(8, 12), [9.0, 10.0, 11.0, 12.0]); // b[2]
+
+          expect(resList.sublist(12, 16), [2.0, 4.0, 6.0, 8.0]);
+          expect(resList.sublist(16, 20), [10.0, 12.0, 14.0, 16.0]);
+          expect(resList.sublist(20, 24), [18.0, 20.0, 22.0, 24.0]);
+        }),
+      );
+    });
+
+    group('1D Vector Promotions & Dot Products tests', () {
+      test(
+        'Verify pure 1D Vector Dot Product [3] x [3] -> [] (0D Scalar)',
+        () => NDArray.scope(() {
+          final v1 = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0]), [
+            3,
+          ], DType.float64);
+          final v2 = NDArray.fromList(Float64List.fromList([4.0, 5.0, 6.0]), [
+            3,
+          ], DType.float64);
+
+          final dotRes = matmul(v1, v2);
+          expect(dotRes.shape, <int>[]); // 0D scalar array
+          expect(dotRes.scalar, 32.0);
+        }),
+      );
+
+      test(
+        'Verify Matrix-Vector multiplication [2, 3] x [3] -> [2]',
+        () => NDArray.scope(() {
+          final mat = NDArray.fromList(
+            Float64List.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
+            [2, 3],
+            DType.float64,
+          );
+          final vec = NDArray.fromList(Float64List.fromList([1.0, 1.0, 1.0]), [
+            3,
+          ], DType.float64);
+
+          final res = matmul(mat, vec);
+          expect(res.shape, [2]);
+          expect(res.toList(), [6.0, 15.0]);
+        }),
+      );
+
+      test(
+        'Verify Vector-Matrix multiplication [3] x [3, 2] -> [2]',
+        () => NDArray.scope(() {
+          final vec = NDArray.fromList(Float64List.fromList([1.0, 2.0, 3.0]), [
+            3,
+          ], DType.float64);
+          final mat = NDArray.fromList(
+            Float64List.fromList([1.0, 0.0, 0.0, 1.0, 1.0, 1.0]),
+            [3, 2],
+            DType.float64,
+          );
+
+          final res = matmul(vec, mat);
+          expect(res.shape, [2]);
+          expect(res.toList(), [4.0, 5.0]);
+        }),
+      );
+
+      test(
+        'matmul() throws ArgumentError on incompatible 1D vector dot dimensions',
+        () => NDArray.scope(() {
+          final v1 = NDArray<double>.fromList(
+            Float64List.fromList([1.0, 2.0]),
+            [2],
+            DType.float64,
+          );
+          final v2 = NDArray<double>.fromList(
+            Float64List.fromList([1.0, 2.0, 3.0]),
+            [3],
+            DType.float64,
+          );
+          expect(() => matmul(v1, v2), throwsArgumentError);
+        }),
+      );
+
+      test(
+        'matmul() throws ArgumentError on incompatible inner dimensions',
+        () => NDArray.scope(() {
+          final a = NDArray<double>.zeros([2, 3], DType.float64);
+          final b = NDArray<double>.zeros([2, 2], DType.float64);
+          expect(() => matmul(a, b), throwsArgumentError);
+        }),
+      );
+    });
+
+    group('Float32 Single-Precision matmul tests', () {
+      test(
+        'Verify Float32 1D Vector Dot Product sdot',
+        () => NDArray.scope(() {
+          final v1 = NDArray<double>.fromList(
+            Float32List.fromList([1.0, 2.0]),
+            [2],
+            DType.float32,
+          );
+          final v2 = NDArray<double>.fromList(
+            Float32List.fromList([3.0, 4.0]),
+            [2],
+            DType.float32,
+          );
+
+          final res = matmul(v1, v2);
+          expect(res.shape, []);
+          expect(res.dtype, DType.float32);
+          expect(res.scalar, closeTo(11.0, 1e-5));
+        }),
+      );
+
+      test(
+        'Verify Float32 2D Matrix Multiply sgemm',
+        () => NDArray.scope(() {
+          final a = NDArray<double>.fromList(
+            Float32List.fromList([1.0, 2.0, 3.0, 4.0]),
+            [2, 2],
+            DType.float32,
+          );
+          final b = NDArray<double>.fromList(
+            Float32List.fromList([5.0, 6.0, 7.0, 8.0]),
+            [2, 2],
+            DType.float32,
+          );
+
+          final res = matmul(a, b);
+          expect(res.shape, [2, 2]);
+          expect(res.dtype, DType.float32);
+          expect(res.toList(), [19.0, 22.0, 43.0, 50.0]);
+        }),
+      );
+    });
+  });
+
+  group('Matmul Bug Repro', () {
+    test('matmul on integer matrices', () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+        final b = NDArray.fromList([5, 6, 7, 8], [2, 2], DType.int32);
+        final result = matmul(a, b);
+        expect(result.dtype, DType.int32);
+        expect(result.shape, [2, 2]);
+        expect(result.toList(), [19, 22, 43, 50]);
+      });
     });
   });
 }

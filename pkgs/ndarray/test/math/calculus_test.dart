@@ -10,7 +10,7 @@ void main() {
         final res = trapz(y); // Default step(1.0)
         expect(res.shape, []);
         expect(
-          res.data[0],
+          res.toList()[0],
           closeTo(4.5, 1e-9),
         ); // 0.5*(1+2)*1 + 0.5*(2+4)*1 = 1.5 + 3 = 4.5
       }),
@@ -22,7 +22,7 @@ void main() {
         final y = NDArray<double>.fromList([1.0, 2.0, 4.0], [3], DType.float64);
         final res = trapz(y, spacing: Spacing.step(2.0));
         expect(res.shape, []);
-        expect(res.data[0], closeTo(9.0, 1e-9));
+        expect(res.toList()[0], closeTo(9.0, 1e-9));
       }),
     );
 
@@ -34,7 +34,7 @@ void main() {
         final res = trapz(y, spacing: Spacing.coordinates(x));
         expect(res.shape, []);
         expect(
-          res.data[0],
+          res.toList()[0],
           closeTo(6.0, 1e-9),
         ); // 0.5*(1+2)*2 + 0.5*(2+4)*1 = 3.0 + 3.0 = 6.0
       }),
@@ -50,7 +50,7 @@ void main() {
         );
         final resFloat = trapz(yFloat);
         expect(resFloat.dtype, DType.float32);
-        expect(resFloat.data[0], closeTo(4.5, 1e-7));
+        expect(resFloat.toList()[0], closeTo(4.5, 1e-7));
       }),
     );
 
@@ -64,9 +64,9 @@ void main() {
         );
         final res = trapz(y);
         expect(res.dtype, DType.complex128);
-        expect(res.data[0].real, closeTo(4.5, 1e-9));
+        expect(res.toList()[0].real, closeTo(4.5, 1e-9));
         expect(
-          res.data[0].imag,
+          res.toList()[0].imag,
           closeTo(6.5, 1e-9),
         ); // 0.5*(2+3)*1 + 0.5*(3+5)*1 = 2.5 + 4 = 6.5
       }),
@@ -85,15 +85,15 @@ void main() {
         // Integrate along columns (axis = 1)
         final resAxis1 = trapz(y, axis: 1);
         expect(resAxis1.shape, [2]);
-        expect(resAxis1.data[0], closeTo(4.5, 1e-9));
-        expect(resAxis1.data[1], closeTo(9.0, 1e-9));
+        expect(resAxis1.toList()[0], closeTo(4.5, 1e-9));
+        expect(resAxis1.toList()[1], closeTo(9.0, 1e-9));
 
         // Integrate along rows (axis = 0)
         final resAxis0 = trapz(y, axis: 0);
         expect(resAxis0.shape, [3]);
-        expect(resAxis0.data[0], closeTo(1.5, 1e-9)); // 0.5*(1+2)*1 = 1.5
-        expect(resAxis0.data[1], closeTo(3.0, 1e-9)); // 0.5*(2+4)*1 = 3.0
-        expect(resAxis0.data[2], closeTo(6.0, 1e-9)); // 0.5*(4+8)*1 = 6.0
+        expect(resAxis0.toList()[0], closeTo(1.5, 1e-9)); // 0.5*(1+2)*1 = 1.5
+        expect(resAxis0.toList()[1], closeTo(3.0, 1e-9)); // 0.5*(2+4)*1 = 3.0
+        expect(resAxis0.toList()[2], closeTo(6.0, 1e-9)); // 0.5*(4+8)*1 = 6.0
       }),
     );
 
@@ -130,13 +130,13 @@ void main() {
         final res = gradient(f, spacing: Spacing.step(1.0), edgeOrder: 1);
         expect(res.shape, [4]);
         expect(
-          res.data[0],
+          res.toList()[0],
           closeTo(1.0, 1e-9),
         ); // one-sided forward: (2.0 - 1.0) / 1
-        expect(res.data[1], closeTo(1.5, 1e-9)); // central: (4.0 - 1.0) / 2
-        expect(res.data[2], closeTo(2.5, 1e-9)); // central: (7.0 - 2.0) / 2
+        expect(res.toList()[1], closeTo(1.5, 1e-9)); // central: (4.0 - 1.0) / 2
+        expect(res.toList()[2], closeTo(2.5, 1e-9)); // central: (7.0 - 2.0) / 2
         expect(
-          res.data[3],
+          res.toList()[3],
           closeTo(3.0, 1e-9),
         ); // one-sided backward: (7.0 - 4.0) / 1
       }),
@@ -153,13 +153,13 @@ void main() {
         final res = gradient(f, spacing: Spacing.step(1.0), edgeOrder: 2);
         expect(res.shape, [4]);
         expect(
-          res.data[0],
+          res.toList()[0],
           closeTo(0.5, 1e-9),
         ); // parabolic forward: (-3*1 + 4*2 - 4) / 2 = 0.5
-        expect(res.data[1], closeTo(1.5, 1e-9)); // central: 1.5
-        expect(res.data[2], closeTo(2.5, 1e-9)); // central: 2.5
+        expect(res.toList()[1], closeTo(1.5, 1e-9)); // central: 1.5
+        expect(res.toList()[2], closeTo(2.5, 1e-9)); // central: 2.5
         expect(
-          res.data[3],
+          res.toList()[3],
           closeTo(3.5, 1e-9),
         ); // parabolic backward: (3*7 - 4*4 + 2) / 2 = 3.5
       }),
@@ -179,13 +179,19 @@ void main() {
           edgeOrder: 1,
         );
         expect(res.shape, [4]);
-        expect(res.data[0], closeTo(1.0, 1e-9)); // one-sided: (2-1)/(1-0) = 1.0
         expect(
-          res.data[1],
+          res.toList()[0],
+          closeTo(1.0, 1e-9),
+        ); // one-sided: (2-1)/(1-0) = 1.0
+        expect(
+          res.toList()[1],
           closeTo(1.0, 1e-9),
         ); // central: (1^2*4 + 3*2 - 4*1)/6 = 1.0
-        expect(res.data[2], closeTo(2.333333333, 1e-7)); // central: 7/3
-        expect(res.data[3], closeTo(3.0, 1e-9)); // one-sided: (7-4)/(4-3) = 3.0
+        expect(res.toList()[2], closeTo(2.333333333, 1e-7)); // central: 7/3
+        expect(
+          res.toList()[3],
+          closeTo(3.0, 1e-9),
+        ); // one-sided: (7-4)/(4-3) = 3.0
       }),
     );
 
@@ -199,10 +205,10 @@ void main() {
         );
         final res = gradient(f, spacing: Spacing.step(1.0));
         expect(res.dtype, DType.complex128);
-        expect(res.data[0].real, closeTo(1.0, 1e-9));
-        expect(res.data[0].imag, closeTo(1.0, 1e-9));
-        expect(res.data[1].real, closeTo(1.5, 1e-9));
-        expect(res.data[1].imag, closeTo(1.5, 1e-9));
+        expect(res.toList()[0].real, closeTo(1.0, 1e-9));
+        expect(res.toList()[0].imag, closeTo(1.0, 1e-9));
+        expect(res.toList()[1].real, closeTo(1.5, 1e-9));
+        expect(res.toList()[1].imag, closeTo(1.5, 1e-9));
       }),
     );
 
@@ -218,15 +224,15 @@ void main() {
         // Gradient along columns (axis = 1)
         final resCol = gradient(f, spacing: Spacing.step(1.0), axis: 1);
         expect(resCol.shape, [2, 3]);
-        expect(resCol.data[0], closeTo(1.0, 1e-9)); // (2-1)/1
-        expect(resCol.data[1], closeTo(1.5, 1e-9)); // (4-1)/2
-        expect(resCol.data[2], closeTo(2.0, 1e-9)); // (4-2)/1
+        expect(resCol.toList()[0], closeTo(1.0, 1e-9)); // (2-1)/1
+        expect(resCol.toList()[1], closeTo(1.5, 1e-9)); // (4-1)/2
+        expect(resCol.toList()[2], closeTo(2.0, 1e-9)); // (4-2)/1
 
         // Gradient along rows (axis = 0)
         final resRow = gradient(f, spacing: Spacing.step(1.0), axis: 0);
         expect(resRow.shape, [2, 3]);
-        expect(resRow.data[0], closeTo(1.0, 1e-9)); // (2-1)/1
-        expect(resRow.data[3], closeTo(1.0, 1e-9)); // (2-1)/1 (backward)
+        expect(resRow.toList()[0], closeTo(1.0, 1e-9)); // (2-1)/1
+        expect(resRow.toList()[3], closeTo(1.0, 1e-9)); // (2-1)/1 (backward)
       }),
     );
 
@@ -246,12 +252,12 @@ void main() {
         expect(grads.length, 2);
         // Gradient along row axis (axis = 0), spacing dx0 = 1.0
         expect(grads[0].shape, [2, 3]);
-        expect(grads[0].data[0], closeTo(1.0, 1e-9));
+        expect(grads[0].toList()[0], closeTo(1.0, 1e-9));
 
         // Gradient along column axis (axis = 1), spacing dx1 = 2.0
         expect(grads[1].shape, [2, 3]);
-        expect(grads[1].data[0], closeTo(0.5, 1e-9)); // (2-1)/2
-        expect(grads[1].data[1], closeTo(0.75, 1e-9)); // (4-1)/4
+        expect(grads[1].toList()[0], closeTo(0.5, 1e-9)); // (2-1)/2
+        expect(grads[1].toList()[1], closeTo(0.75, 1e-9)); // (4-1)/4
       }),
     );
 
@@ -268,8 +274,8 @@ void main() {
         expect(grads.length, 2);
         expect(grads[0].shape, [2, 3]);
         expect(grads[1].shape, [2, 3]);
-        expect(grads[0].data[0], closeTo(1.0, 1e-9));
-        expect(grads[1].data[0], closeTo(1.0, 1e-9));
+        expect(grads[0].toList()[0], closeTo(1.0, 1e-9));
+        expect(grads[1].toList()[0], closeTo(1.0, 1e-9));
       }),
     );
 
@@ -303,8 +309,8 @@ void main() {
         // Constant spacing dx = 0.5i
         final res = trapz(y, spacing: Spacing.step(Complex(0, 0.5)));
         expect(res.dtype, DType.complex128);
-        expect(res.data[0].real, closeTo(-0.5, 1e-9));
-        expect(res.data[0].imag, closeTo(0.0, 1e-9));
+        expect(res.toList()[0].real, closeTo(-0.5, 1e-9));
+        expect(res.toList()[0].imag, closeTo(0.0, 1e-9));
       }),
     );
 
@@ -325,8 +331,8 @@ void main() {
 
         // At z=i, f'(i) = 2i.
         // Central diff: (f(2i) - f(0)) / (2i - 0) = (-4 - 0) / 2i = -2 / i = 2i.
-        expect(grads.data[1].real, closeTo(0.0, 1e-9));
-        expect(grads.data[1].imag, closeTo(2.0, 1e-9));
+        expect(grads.toList()[1].real, closeTo(0.0, 1e-9));
+        expect(grads.toList()[1].imag, closeTo(2.0, 1e-9));
       }),
     );
 
@@ -342,8 +348,24 @@ void main() {
         final grads = gradientArray(f, spacings: [Spacing.coordinates(coords)]);
 
         expect(grads.length, 1);
-        expect(grads[0].data[1].imag, closeTo(2.0, 1e-9));
+        expect(grads[0].toList()[1].imag, closeTo(2.0, 1e-9));
       }),
     );
+  });
+
+  group('Integer Spacing Bug Repro', () {
+    test('trapz and gradient with integer step spacing', () {
+      NDArray.scope(() {
+        final y = NDArray.fromList([1.0, 2.0, 4.0], [3], DType.float64);
+        final result = trapz(y, spacing: const Spacing.step(1));
+        expect(result.shape, []);
+        expect(result.scalar, 4.5);
+        final grad = gradient(y, spacing: const Spacing.step(2));
+        expect(grad.shape, [3]);
+        expect(grad.toList()[0], closeTo(0.5, 1e-9));
+        expect(grad.toList()[1], closeTo(0.75, 1e-9));
+        expect(grad.toList()[2], closeTo(1.0, 1e-9));
+      });
+    });
   });
 }
