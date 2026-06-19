@@ -1508,6 +1508,40 @@ void main() {
         inv.dispose();
         cnt.dispose();
       });
+
+      test('disposed array throws StateError', () {
+        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        a.dispose();
+        expect(() => unique(a), throwsStateError);
+      });
+
+      test('empty 2D array returns empty 1D array', () {
+        final a = NDArray<int>.create([2, 0], DType.int32);
+        final res = unique(a);
+        expect(res.shape, [0]);
+        expect(res.toList(), <int>[]);
+        a.dispose();
+        res.dispose();
+      });
+
+      test('empty 1D array with optional returns', () {
+        final a = NDArray<int>.create([0], DType.int32);
+        final (u, index: idx, inverse: inv, counts: cnt) = unique(
+          a,
+          returnIndex: true,
+          returnInverse: true,
+          returnCounts: true,
+        );
+        expect(u.shape, [0]);
+        expect(idx!.shape, [0]);
+        expect(inv!.shape, [0]);
+        expect(cnt!.shape, [0]);
+        a.dispose();
+        u.dispose();
+        idx.dispose();
+        inv.dispose();
+        cnt.dispose();
+      });
     });
 
     group('intersect1d', () {
@@ -1588,6 +1622,73 @@ void main() {
         b.dispose();
         res.dispose();
       });
+
+      test('disposed arrays throw StateError', () {
+        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        a.dispose();
+        expect(() => intersect1d(a, b), throwsStateError);
+        expect(() => intersect1d(b, a), throwsStateError);
+        b.dispose();
+      });
+
+      test('empty inputs returns empty', () {
+        final a = NDArray<int>.create([0], DType.int32);
+        final b = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final res1 = intersect1d(a, b);
+        expect(res1.shape, [0]);
+        expect(res1.toList(), <int>[]);
+
+        final res2 = intersect1d(b, a);
+        expect(res2.shape, [0]);
+        expect(res2.toList(), <int>[]);
+
+        final res3 = intersect1d(a, a);
+        expect(res3.shape, [0]);
+        expect(res3.toList(), <int>[]);
+
+        a.dispose();
+        b.dispose();
+        res1.dispose();
+        res2.dispose();
+        res3.dispose();
+      });
+
+      test('no common elements returns empty', () {
+        final a = NDArray<int>.fromList([1, 2], [2], DType.int32);
+        final b = NDArray<int>.fromList([3, 4], [2], DType.int32);
+        final res = intersect1d(a, b);
+        expect(res.shape, [0]);
+        expect(res.toList(), <int>[]);
+        a.dispose();
+        b.dispose();
+        res.dispose();
+      });
+
+      test('2D and non-contiguous inputs', () {
+        final a = NDArray<int>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+        final bFull = NDArray<int>.fromList([3, 99, 4, 99], [4], DType.int32);
+        final b = bFull.slice([Slice(step: 2)]); // [3, 4] but non-contiguous
+
+        final res = intersect1d(a, b);
+        expect(res.shape, [2]);
+        expect(res.toList(), [3, 4]);
+
+        a.dispose();
+        bFull.dispose();
+        res.dispose();
+      });
+
+      test('assumeUnique with sorted unique inputs', () {
+        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        final res = intersect1d(a, b, assumeUnique: true);
+        expect(res.shape, [2]);
+        expect(res.toList(), [2, 3]);
+        a.dispose();
+        b.dispose();
+        res.dispose();
+      });
     });
 
     group('setdiff1d', () {
@@ -1626,6 +1727,62 @@ void main() {
         b.dispose();
         res.dispose();
       });
+
+      test('disposed arrays throw StateError', () {
+        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        a.dispose();
+        expect(() => setdiff1d(a, b), throwsStateError);
+        expect(() => setdiff1d(b, a), throwsStateError);
+        b.dispose();
+      });
+
+      test('assumeUnique: true', () {
+        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        final res = setdiff1d(a, b, assumeUnique: true);
+        expect(res.shape, [1]);
+        expect(res.toList(), [1]);
+        a.dispose();
+        b.dispose();
+        res.dispose();
+      });
+
+      test('empty first array returns empty', () {
+        final a = NDArray<int>.create([0], DType.int32);
+        final b = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final res = setdiff1d(a, b);
+        expect(res.shape, [0]);
+        expect(res.toList(), <int>[]);
+        a.dispose();
+        b.dispose();
+        res.dispose();
+      });
+
+      test('first array is subset of second returns empty', () {
+        final a = NDArray<int>.fromList([2, 3], [2], DType.int32);
+        final b = NDArray<int>.fromList([1, 2, 3, 4], [4], DType.int32);
+        final res = setdiff1d(a, b);
+        expect(res.shape, [0]);
+        expect(res.toList(), <int>[]);
+        a.dispose();
+        b.dispose();
+        res.dispose();
+      });
+
+      test('2D and non-contiguous inputs', () {
+        final a = NDArray<int>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+        final bFull = NDArray<int>.fromList([3, 99, 4, 99], [4], DType.int32);
+        final b = bFull.slice([Slice(step: 2)]); // [3, 4] but non-contiguous
+
+        final res = setdiff1d(a, b);
+        expect(res.shape, [2]);
+        expect(res.toList(), [1, 2]);
+
+        a.dispose();
+        bFull.dispose();
+        res.dispose();
+      });
     });
 
     group('setxor1d', () {
@@ -1650,6 +1807,62 @@ void main() {
         b.dispose();
         res.dispose();
       });
+
+      test('disposed arrays throw StateError', () {
+        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        a.dispose();
+        expect(() => setxor1d(a, b), throwsStateError);
+        expect(() => setxor1d(b, a), throwsStateError);
+        b.dispose();
+      });
+
+      test('assumeUnique: true', () {
+        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        final res = setxor1d(a, b, assumeUnique: true);
+        expect(res.shape, [2]);
+        expect(res.toList(), [1, 4]);
+        a.dispose();
+        b.dispose();
+        res.dispose();
+      });
+
+      test('both inputs empty returns empty', () {
+        final a = NDArray<int>.create([0], DType.int32);
+        final b = NDArray<int>.create([0], DType.int32);
+        final res = setxor1d(a, b);
+        expect(res.shape, [0]);
+        expect(res.toList(), <int>[]);
+        a.dispose();
+        b.dispose();
+        res.dispose();
+      });
+
+      test('identical inputs returns empty', () {
+        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final b = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final res = setxor1d(a, b);
+        expect(res.shape, [0]);
+        expect(res.toList(), <int>[]);
+        a.dispose();
+        b.dispose();
+        res.dispose();
+      });
+
+      test('2D and non-contiguous inputs', () {
+        final a = NDArray<int>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+        final bFull = NDArray<int>.fromList([3, 99, 4, 99], [4], DType.int32);
+        final b = bFull.slice([Slice(step: 2)]); // [3, 4] but non-contiguous
+
+        final res = setxor1d(a, b);
+        expect(res.shape, [2]);
+        expect(res.toList(), [1, 2]);
+
+        a.dispose();
+        bFull.dispose();
+        res.dispose();
+      });
     });
 
     group('union1d', () {
@@ -1672,6 +1885,40 @@ void main() {
         expect(res.toList(), [1, 2, 3, 4, 5]);
         a.dispose();
         b.dispose();
+        res.dispose();
+      });
+
+      test('disposed arrays throw StateError', () {
+        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        a.dispose();
+        expect(() => union1d(a, b), throwsStateError);
+        expect(() => union1d(b, a), throwsStateError);
+        b.dispose();
+      });
+
+      test('both inputs empty returns empty', () {
+        final a = NDArray<int>.create([0], DType.int32);
+        final b = NDArray<int>.create([0], DType.int32);
+        final res = union1d(a, b);
+        expect(res.shape, [0]);
+        expect(res.toList(), <int>[]);
+        a.dispose();
+        b.dispose();
+        res.dispose();
+      });
+
+      test('2D and non-contiguous inputs', () {
+        final a = NDArray<int>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+        final bFull = NDArray<int>.fromList([3, 99, 4, 99], [4], DType.int32);
+        final b = bFull.slice([Slice(step: 2)]); // [3, 4] but non-contiguous
+
+        final res = union1d(a, b);
+        expect(res.shape, [4]);
+        expect(res.toList(), [1, 2, 3, 4]);
+
+        a.dispose();
+        bFull.dispose();
         res.dispose();
       });
     });
@@ -1759,6 +2006,51 @@ void main() {
 
         element.dispose();
         testElements.dispose();
+        res.dispose();
+      });
+
+      test('disposed arrays throw StateError', () {
+        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        a.dispose();
+        expect(() => isin(a, b), throwsStateError);
+        expect(() => isin(b, a), throwsStateError);
+        b.dispose();
+      });
+
+      test('non-contiguous element array', () {
+        final aFull = NDArray<int>.fromList(
+          [1, 99, 2, 99, 3, 99],
+          [6],
+          DType.int32,
+        );
+        final a = aFull.slice([Slice(step: 2)]); // [1, 2, 3] but non-contiguous
+        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+
+        final res = isin(a, b);
+        expect(res.shape, [3]);
+        expect(res.toList(), [false, true, true]);
+
+        aFull.dispose();
+        b.dispose();
+        res.dispose();
+      });
+
+      test('non-contiguous testElements array', () {
+        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final bFull = NDArray<int>.fromList(
+          [2, 99, 3, 99, 4, 99],
+          [6],
+          DType.int32,
+        );
+        final b = bFull.slice([Slice(step: 2)]); // [2, 3, 4] but non-contiguous
+
+        final res = isin(a, b);
+        expect(res.shape, [3]);
+        expect(res.toList(), [false, true, true]);
+
+        a.dispose();
+        bFull.dispose();
         res.dispose();
       });
     });
