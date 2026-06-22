@@ -54,6 +54,7 @@ void v_mul_double(const double *a, const double *b, double *res, int size);
 void v_div_double(const double *a, const double *b, double *res, int size);
 
 void v_sin_double(const double *src, double *res, int size);
+void v_sinc_double(const double *src, double *res, int size);
 void v_cos_double(const double *src, double *res, int size);
 void v_exp_double(const double *src, double *res, int size);
 void v_log_double(const double *src, double *res, int size);
@@ -79,6 +80,7 @@ void v_mul_float(const float *a, const float *b, float *res, int size);
 void v_div_float(const float *a, const float *b, float *res, int size);
 
 void v_sin_float(const float *src, float *res, int size);
+void v_sinc_float(const float *src, float *res, int size);
 void v_cos_float(const float *src, float *res, int size);
 void v_exp_float(const float *src, float *res, int size);
 void v_log_float(const float *src, float *res, int size);
@@ -147,6 +149,8 @@ void v_atanh_float(const float *src, float *res, int size);
 
 void v_sin_complex128(const cpx_t *src, cpx_t *res, int size);
 void v_sin_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_sinc_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_sinc_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
 void v_cos_complex128(const cpx_t *src, cpx_t *res, int size);
 void v_cos_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
 void v_tan_complex128(const cpx_t *src, cpx_t *res, int size);
@@ -376,6 +380,8 @@ void s_where_complex64(const unsigned char *cond, const int *stridesCond,
 
 void s_sin_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
 void s_sin_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_sinc_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_sinc_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
 void s_cos_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
 void s_cos_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
 void s_tan_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
@@ -460,6 +466,8 @@ void s_unwrap_float(const float *src, const int *stridesSrc, float *res, const i
 
 void s_sin_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
 void s_sin_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_sinc_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_sinc_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
 void s_cos_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
 void s_cos_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
 

@@ -1386,6 +1386,125 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
+/// Computes the element-wise sinc of the array.
+///
+/// **Preconditions:**
+/// - Input array [a] elements must be numeric (`T extends num`) or [Complex].
+/// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
+///
+/// **Throws:**
+/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For C-contiguous array layouts, uses native C vector math kernels (`v_sinc_double`/`v_sinc_float` etc).
+NDArray<R> sinc<T, R>(NDArray<T> a, {NDArray<R>? out}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute sinc() on a disposed array.');
+  }
+
+  // Handle integer types by promoting to float64 (double)
+  if (a.dtype.isInteger) {
+    final promoted = promoteToDouble(a);
+    final res = sinc<double, double>(promoted, out: out as NDArray<double>?);
+    promoted.dispose();
+    return res as NDArray<R>;
+  }
+
+  final DType<dynamic> targetDType;
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    targetDType = a.dtype;
+  } else {
+    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  }
+
+  final NDArray<R> result;
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for sinc.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray<R>.create(a.shape, targetDType as DType<R>);
+  }
+
+  if (a.isContiguous && result.isContiguous) {
+    switch (a.dtype) {
+      case DType.float64:
+        v_sinc_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case DType.float32:
+        v_sinc_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case DType.complex128:
+        v_sinc_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case DType.complex64:
+        v_sinc_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      default:
+        break;
+    }
+  } else {
+    final rank = a.shape.length;
+    final cBuffer = ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+
+    if (a.dtype == DType.float64) {
+      s_sinc_double(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.float32) {
+      s_sinc_float(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.complex128) {
+      s_sinc_complex128(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.complex64) {
+      s_sinc_complex64(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    }
+  }
+
+  throw ArgumentError('Unsupported DType for sinc: ${a.dtype}');
+}
+
 /// Computes the element-wise cosine of the array.
 ///
 /// **Preconditions:**
