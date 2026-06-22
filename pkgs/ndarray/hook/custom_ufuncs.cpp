@@ -99,6 +99,33 @@ static void s_cast_generic_impl(
     }
 }
 
+template <typename T>
+static inline T real_sinc(T x) {
+    const T pi = (T)3.14159265358979323846;
+    T abs_x = std::abs(x);
+    if (abs_x < (T)1e-4) {
+        T x2 = x * x;
+        T pi2 = pi * pi;
+        return (T)1.0 - (pi2 * x2) / (T)6.0 + (pi2 * pi2 * x2 * x2) / (T)120.0;
+    } else {
+        return std::sin(pi * x) / (pi * x);
+    }
+}
+
+template <typename T>
+static inline std::complex<T> complex_sinc_impl(std::complex<T> cz) {
+    const T pi = (T)3.14159265358979323846;
+    T abs_z = std::abs(cz);
+    if (abs_z < (T)1e-4) {
+        std::complex<T> z2 = cz * cz;
+        T pi2 = pi * pi;
+        return (T)1.0 - (pi2 * z2) / (T)6.0 + (pi2 * pi2 * z2 * z2) / (T)120.0;
+    } else {
+        std::complex<T> pi_z = pi * cz;
+        return std::sin(pi_z) / pi_z;
+    }
+}
+
 // --- Set Operations Templates ---
 template <typename T>
 struct set_comparator {
@@ -570,6 +597,7 @@ IMPLEMENT_V_BINARY(mul, double, *)
 IMPLEMENT_V_BINARY(div, double, /)
 
 IMPLEMENT_V_UNARY(sin, double, sin)
+IMPLEMENT_V_UNARY(sinc, double, real_sinc)
 IMPLEMENT_V_UNARY(cos, double, cos)
 IMPLEMENT_V_UNARY(exp, double, exp)
 IMPLEMENT_V_UNARY(log, double, log)
@@ -1182,6 +1210,13 @@ void v_sin_float(const float *src, float *res, int size) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = sinf(src[i]);
+    }
+}
+
+void v_sinc_float(const float *src, float *res, int size) {
+    if (src == nullptr || res == nullptr || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = real_sinc<float>(src[i]);
     }
 }
 
@@ -2786,12 +2821,29 @@ DEFINE_STRIDED_UNARY_OP(s_sin_float, float, OP_SIN_F)
 DEFINE_STRIDED_UNARY_OP(s_cos_double, double, OP_COS_D)
 DEFINE_STRIDED_UNARY_OP(s_cos_float, float, OP_COS_F)
 
+#define OP_SINC_D(x) real_sinc<double>(x)
+#define OP_SINC_F(x) real_sinc<float>(x)
+DEFINE_STRIDED_UNARY_OP(s_sinc_double, double, OP_SINC_D)
+DEFINE_STRIDED_UNARY_OP(s_sinc_float, float, OP_SINC_F)
+
 // complex trig helper definitions
 static inline cpx_t cpx_sin(cpx_t z) {
     return (cpx_t){sin(z.r) * cosh(z.i), cos(z.r) * sinh(z.i)};
 }
 static inline cpx_f_t cpx_sin_f(cpx_f_t z) {
     return (cpx_f_t){sinf(z.r) * coshf(z.i), cosf(z.r) * sinhf(z.i)};
+}
+
+static inline cpx_t cpx_sinc(cpx_t z) {
+    std::complex<double> cz(z.r, z.i);
+    auto cres = complex_sinc_impl(cz);
+    return {cres.real(), cres.imag()};
+}
+
+static inline cpx_f_t cpx_sinc_f(cpx_f_t z) {
+    std::complex<float> cz(z.r, z.i);
+    auto cres = complex_sinc_impl(cz);
+    return {cres.real(), cres.imag()};
 }
 
 static inline cpx_t cpx_cos(cpx_t z) {
@@ -2901,6 +2953,8 @@ void FUNCNAME(const T *src, T *res, int size) { \
 
 DEFINE_COMPLEX_UNARY_VEC(v_sin_complex128, cpx_t, cpx_sin)
 DEFINE_COMPLEX_UNARY_VEC(v_sin_complex64, cpx_f_t, cpx_sin_f)
+DEFINE_COMPLEX_UNARY_VEC(v_sinc_complex128, cpx_t, cpx_sinc)
+DEFINE_COMPLEX_UNARY_VEC(v_sinc_complex64, cpx_f_t, cpx_sinc_f)
 DEFINE_COMPLEX_UNARY_VEC(v_cos_complex128, cpx_t, cpx_cos)
 DEFINE_COMPLEX_UNARY_VEC(v_cos_complex64, cpx_f_t, cpx_cos_f)
 DEFINE_COMPLEX_UNARY_VEC(v_tan_complex128, cpx_t, cpx_tan)
@@ -2924,6 +2978,8 @@ DEFINE_COMPLEX_UNARY_VEC(v_asinh_complex64, cpx_f_t, cpx_asinh_f)
 
 DEFINE_STRIDED_UNARY_OP(s_sin_complex128, cpx_t, cpx_sin)
 DEFINE_STRIDED_UNARY_OP(s_sin_complex64, cpx_f_t, cpx_sin_f)
+DEFINE_STRIDED_UNARY_OP(s_sinc_complex128, cpx_t, cpx_sinc)
+DEFINE_STRIDED_UNARY_OP(s_sinc_complex64, cpx_f_t, cpx_sinc_f)
 DEFINE_STRIDED_UNARY_OP(s_cos_complex128, cpx_t, cpx_cos)
 DEFINE_STRIDED_UNARY_OP(s_cos_complex64, cpx_f_t, cpx_cos_f)
 DEFINE_STRIDED_UNARY_OP(s_tan_complex128, cpx_t, cpx_tan)
