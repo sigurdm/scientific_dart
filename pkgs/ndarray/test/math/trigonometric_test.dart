@@ -805,5 +805,76 @@ void main() {
         );
       });
     });
+
+    test('Complex exp, log, sqrt, abs, acosh (contiguous & strided)', () {
+      NDArray.scope(() {
+        for (final dtype in [DType.complex128, DType.complex64]) {
+          final isComplex128 = dtype == DType.complex128;
+          final double tol = isComplex128 ? 1e-12 : 1e-6;
+
+          // Contiguous
+          final cContig = NDArray<Complex>.fromList(
+            [Complex(0.2, 0.3), Complex(-0.4, 0.1)],
+            [2],
+            dtype,
+          );
+
+          // Strided
+          final cStrided = NDArray<Complex>.fromList(
+            [
+              Complex(0.2, 0.3),
+              Complex(99, 99),
+              Complex(-0.4, 0.1),
+              Complex(99, 99),
+            ],
+            [4],
+            dtype,
+          ).slice([const Slice(start: 0, stop: 4, step: 2)]);
+
+          for (final a in [cContig, cStrided]) {
+            // exp & log round-trip
+            final e = exp(a);
+            expect(e.dtype, dtype);
+            final le = log(e);
+            expect(le.dtype, dtype);
+            for (var i = 0; i < 2; i++) {
+              expect(le.getCell([i]).real, closeTo(a.getCell([i]).real, tol));
+              expect(le.getCell([i]).imag, closeTo(a.getCell([i]).imag, tol));
+            }
+
+            // sqrt & square round-trip
+            final sqt = sqrt(a);
+            expect(sqt.dtype, dtype);
+            final sq = square(sqt);
+            expect(sq.dtype, dtype);
+            for (var i = 0; i < 2; i++) {
+              expect(sq.getCell([i]).real, closeTo(a.getCell([i]).real, tol));
+              expect(sq.getCell([i]).imag, closeTo(a.getCell([i]).imag, tol));
+            }
+
+            // abs (magnitude)
+            final ab = abs(a);
+            expect(ab.dtype, isComplex128 ? DType.float64 : DType.float32);
+            for (var i = 0; i < 2; i++) {
+              final expectedAbs = math.sqrt(
+                a.getCell([i]).real * a.getCell([i]).real +
+                    a.getCell([i]).imag * a.getCell([i]).imag,
+              );
+              expect(ab.getCell([i]), closeTo(expectedAbs, tol));
+            }
+
+            // cosh & acosh round-trip (cosh(acosh(a)) == a)
+            final ach = acosh(a);
+            expect(ach.dtype, dtype);
+            final ch = cosh(ach);
+            expect(ch.dtype, dtype);
+            for (var i = 0; i < 2; i++) {
+              expect(ch.getCell([i]).real, closeTo(a.getCell([i]).real, tol));
+              expect(ch.getCell([i]).imag, closeTo(a.getCell([i]).imag, tol));
+            }
+          }
+        }
+      });
+    });
   });
 }

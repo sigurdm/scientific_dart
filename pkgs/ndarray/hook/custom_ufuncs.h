@@ -57,6 +57,10 @@ void v_sin_double(const double *src, double *res, int size);
 void v_cos_double(const double *src, double *res, int size);
 void v_exp_double(const double *src, double *res, int size);
 void v_log_double(const double *src, double *res, int size);
+void v_expm1_double(const double *src, double *res, int size);
+void v_log1p_double(const double *src, double *res, int size);
+void v_logaddexp_double(const double *a, const double *b, double *res, int size);
+void v_logaddexp2_double(const double *a, const double *b, double *res, int size);
 
 double r_sum_double(const double *src, int size);
 double r_prod_double(const double *src, int size);
@@ -78,6 +82,10 @@ void v_sin_float(const float *src, float *res, int size);
 void v_cos_float(const float *src, float *res, int size);
 void v_exp_float(const float *src, float *res, int size);
 void v_log_float(const float *src, float *res, int size);
+void v_expm1_float(const float *src, float *res, int size);
+void v_log1p_float(const float *src, float *res, int size);
+void v_logaddexp_float(const float *a, const float *b, float *res, int size);
+void v_logaddexp2_float(const float *a, const float *b, float *res, int size);
 
 float r_sum_float(const float *src, int size);
 float r_prod_float(const float *src, int size);
@@ -91,6 +99,8 @@ void v_abs_double(const double *src, double *res, int size);
 void v_ceil_double(const double *src, double *res, int size);
 void v_floor_double(const double *src, double *res, int size);
 void v_round_double(const double *src, double *res, int size);
+void v_rint_double(const double *src, double *res, int size);
+void v_trunc_double(const double *src, double *res, int size);
 void v_clip_double(const double *src, double *res, double min_val, double max_val, int size);
 
 void v_sqrt_float(const float *src, float *res, int size);
@@ -99,6 +109,8 @@ void v_abs_float(const float *src, float *res, int size);
 void v_ceil_float(const float *src, float *res, int size);
 void v_floor_float(const float *src, float *res, int size);
 void v_round_float(const float *src, float *res, int size);
+void v_rint_float(const float *src, float *res, int size);
+void v_trunc_float(const float *src, float *res, int size);
 void v_clip_float(const float *src, float *res, float min_val, float max_val, int size);
 
 void v_asin_double(const double *src, double *res, int size);
@@ -148,6 +160,20 @@ void v_tanh_complex128(const cpx_t *src, cpx_t *res, int size);
 void v_tanh_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
 void v_asinh_complex128(const cpx_t *src, cpx_t *res, int size);
 void v_asinh_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_exp_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_exp_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_log_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_log_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_sqrt_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_sqrt_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_acosh_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_acosh_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_abs_complex128(const cpx_t *src, double *res, int size);
+void v_abs_complex64(const cpx_f_t *src, float *res, int size);
+void v_expm1_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_expm1_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_log1p_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_log1p_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
 
 void v_hypot_complex128(const cpx_t *x1, const cpx_t *x2, double *res, int size);
 void v_hypot_complex64(const cpx_f_t *x1, const cpx_f_t *x2, float *res, int size);
@@ -158,6 +184,8 @@ void v_pow_complex64(const cpx_f_t *x1, const cpx_f_t *x2, cpx_f_t *res, int siz
 
 void v_conj_complex128(const cpx_t *src, cpx_t *res, int size);
 void v_conj_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_angle_complex128(const cpx_t *src, double *res, int size);
+void v_angle_complex64(const cpx_f_t *src, float *res, int size);
 
 void v_square_double(const double *src, double *res, int size);
 void v_square_float(const float *src, float *res, int size);
@@ -343,6 +371,20 @@ void s_tanh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, cons
 void s_tanh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
 void s_asinh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
 void s_asinh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_exp_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_exp_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_log_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_log_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_sqrt_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_sqrt_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_acosh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_acosh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_abs_complex128(const cpx_t *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_abs_complex64(const cpx_f_t *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_expm1_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_expm1_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_log1p_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_log1p_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
 
 void s_hypot_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank);
 void s_hypot_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank);
@@ -352,6 +394,8 @@ void s_pow_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2,
 
 void s_conj_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
 void s_conj_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_angle_complex128(const cpx_t *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_angle_complex64(const cpx_f_t *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
 
 void s_cumsum_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis);
 void s_cumsum_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, int axis);
@@ -383,6 +427,8 @@ void s_diff_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const
 void s_diff_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank, int axis);
 void s_diff_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, int axis);
 void s_diff_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_unwrap_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis, double discont);
+void s_unwrap_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, int axis, float discont);
 
 void s_sin_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
 void s_sin_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
@@ -405,6 +451,18 @@ void s_exp_double(const double *src, const int *stridesSrc, double *res, const i
 void s_exp_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
 void s_log_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
 void s_log_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_expm1_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_expm1_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_log1p_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_log1p_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_rint_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_rint_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_trunc_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_trunc_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_logaddexp_double(const double *a, const int *stridesA, const double *b, const int *stridesB, double *res, const int *stridesRes, const int *shape, int rank);
+void s_logaddexp_float(const float *a, const int *stridesA, const float *b, const int *stridesB, float *res, const int *stridesRes, const int *shape, int rank);
+void s_logaddexp2_double(const double *a, const int *stridesA, const double *b, const int *stridesB, double *res, const int *stridesRes, const int *shape, int rank);
+void s_logaddexp2_float(const float *a, const int *stridesA, const float *b, const int *stridesB, float *res, const int *stridesRes, const int *shape, int rank);
 
 void s_sinh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
 void s_sinh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);

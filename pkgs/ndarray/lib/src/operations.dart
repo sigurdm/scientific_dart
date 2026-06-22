@@ -20,3 +20,4 @@ export 'operations/set_operations.dart';
 export 'operations/interpolation.dart';
 export 'operations/financial.dart';
 export 'operations/distance.dart';
+export 'operations/dsp.dart';

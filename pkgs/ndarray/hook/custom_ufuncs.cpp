@@ -14,6 +14,9 @@
 
 #include "custom_ufuncs.h"
 #include <math.h>
+#include <cmath>
+#include <limits>
+#include <algorithm>
 #include <stdlib.h>
 #include <complex>
 #include <stdio.h>
@@ -40,6 +43,33 @@
 static inline void xoshiro256_seed(uint64_t seed, uint64_t s[4]);
 static inline uint64_t xoshiro256_next(uint64_t s[4]);
 static void fill_secure_bytes(void *dest, size_t size);
+
+template <typename T>
+inline T logaddexp_op(T x, T y) {
+    if (std::isnan(x) || std::isnan(y)) {
+        return std::numeric_limits<T>::quiet_NaN();
+    }
+    if (x == y) {
+        return x + std::log(static_cast<T>(2.0));
+    }
+    T max_val = std::max(x, y);
+    T min_val = std::min(x, y);
+    return max_val + std::log1p(std::exp(min_val - max_val));
+}
+
+template <typename T>
+inline T logaddexp2_op(T x, T y) {
+    if (std::isnan(x) || std::isnan(y)) {
+        return std::numeric_limits<T>::quiet_NaN();
+    }
+    if (x == y) {
+        return x + static_cast<T>(1.0);
+    }
+    T max_val = std::max(x, y);
+    T min_val = std::min(x, y);
+    T ln2 = std::log(static_cast<T>(2.0));
+    return max_val + std::log1p(std::exp((min_val - max_val) * ln2)) / ln2;
+}
 
 // --- Casting Templates ---
 template <typename DestType, typename SrcType>
@@ -281,6 +311,65 @@ static void strided_cum_op_impl(
     }
 }
 
+template <typename T>
+static void strided_unwrap_op_impl(
+    const T *src, const int *stridesSrc,
+    T *res, const int *stridesRes,
+    const int *shape, int rank, int axis, T discont
+) {
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
+    int coord[8] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    const T pi = (T)3.14159265358979323846;
+    const T two_pi = 2 * pi;
+
+    for (int o = 0; o < outer_size; o++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                offsetRes += coord[d] * stridesRes[d];
+            }
+        }
+        T prev_val = 0;
+        T cum_correction = 0;
+        for (int i = 0; i < shape[axis]; i++) {
+            int idxSrc = offsetSrc + i * stridesSrc[axis];
+            int idxRes = offsetRes + i * stridesRes[axis];
+            T val = src[idxSrc];
+            if (i == 0) {
+                res[idxRes] = val;
+            } else {
+                T dd = val - prev_val;
+                T ddmod = dd + pi;
+                T q = std::floor(ddmod / two_pi);
+                ddmod = ddmod - q * two_pi;
+                ddmod -= pi;
+                if (std::abs(ddmod + pi) < 1e-9 && dd > 0) {
+                    ddmod = pi;
+                }
+                T ph_correct = ddmod - dd;
+                if (std::abs(dd) < discont) {
+                    ph_correct = 0;
+                }
+                cum_correction += ph_correct;
+                res[idxRes] = val + cum_correction;
+            }
+            prev_val = val;
+        }
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
 template <typename T, typename Op>
 static void strided_diff_op_impl(
     const T *src, const int *stridesSrc,
@@ -345,6 +434,40 @@ static void strided_unary_op_impl(
 
 template <typename T, typename Op>
 static void v_unary_impl(const T * RESTRICT src, T * RESTRICT res, int size, Op op) {
+    if (src == nullptr || res == nullptr || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = op(src[i]);
+    }
+}
+
+template <typename T_IN, typename T_OUT, typename Op>
+static void strided_unary_cast_impl(
+    const T_IN *src, const int *stridesSrc,
+    T_OUT *res, const int *stridesRes,
+    const int *shape, int rank, Op op
+) {
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
+    int coord[8] = {0};
+    int total_size = 1;
+    for (int d = 0; d < rank; d++) total_size *= shape[d];
+    for (int i = 0; i < total_size; i++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetSrc += coord[d] * stridesSrc[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        res[offsetRes] = op(src[offsetSrc]);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+template <typename T_IN, typename T_OUT, typename Op>
+static void v_unary_cast_impl(const T_IN * RESTRICT src, T_OUT * RESTRICT res, int size, Op op) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = op(src[i]);
@@ -584,6 +707,20 @@ IMPLEMENT_V_UNARY(acos, double, acos)
 IMPLEMENT_V_UNARY(atan, double, atan)
 
 IMPLEMENT_V_BINARY_FUNC(atan2, double, atan2)
+
+IMPLEMENT_V_UNARY(expm1, double, expm1)
+IMPLEMENT_V_UNARY(expm1, float, expm1f)
+IMPLEMENT_V_UNARY(log1p, double, log1p)
+IMPLEMENT_V_UNARY(log1p, float, log1pf)
+IMPLEMENT_V_UNARY(rint, double, rint)
+IMPLEMENT_V_UNARY(rint, float, rintf)
+IMPLEMENT_V_UNARY(trunc, double, trunc)
+IMPLEMENT_V_UNARY(trunc, float, truncf)
+
+IMPLEMENT_V_BINARY_FUNC(logaddexp, double, logaddexp_op<double>)
+IMPLEMENT_V_BINARY_FUNC(logaddexp, float, logaddexp_op<float>)
+IMPLEMENT_V_BINARY_FUNC(logaddexp2, double, logaddexp2_op<double>)
+IMPLEMENT_V_BINARY_FUNC(logaddexp2, float, logaddexp2_op<float>)
 
 
 double r_sum_double(const double *src, int size) {
@@ -2894,11 +3031,119 @@ static inline cpx_f_t cpx_asinh_f(cpx_f_t z) {
     return (cpx_f_t){w.i, -w.r};
 }
 
+static inline cpx_t cpx_exp(cpx_t z) {
+    std::complex<double> cz(z.r, z.i);
+    std::complex<double> cres = std::exp(cz);
+    return {cres.real(), cres.imag()};
+}
+
+static inline cpx_f_t cpx_exp_f(cpx_f_t z) {
+    std::complex<float> cz(z.r, z.i);
+    std::complex<float> cres = std::exp(cz);
+    return {cres.real(), cres.imag()};
+}
+
+static inline cpx_t cpx_log(cpx_t z) {
+    std::complex<double> cz(z.r, z.i);
+    std::complex<double> cres = std::log(cz);
+    return {cres.real(), cres.imag()};
+}
+
+static inline cpx_f_t cpx_log_f(cpx_f_t z) {
+    std::complex<float> cz(z.r, z.i);
+    std::complex<float> cres = std::log(cz);
+    return {cres.real(), cres.imag()};
+}
+
+static inline cpx_t cpx_sqrt(cpx_t z) {
+    std::complex<double> cz(z.r, z.i);
+    std::complex<double> cres = std::sqrt(cz);
+    return {cres.real(), cres.imag()};
+}
+
+static inline cpx_f_t cpx_sqrt_f(cpx_f_t z) {
+    std::complex<float> cz(z.r, z.i);
+    std::complex<float> cres = std::sqrt(cz);
+    return {cres.real(), cres.imag()};
+}
+
+static inline cpx_t cpx_acosh(cpx_t z) {
+    std::complex<double> cz(z.r, z.i);
+    std::complex<double> cres = std::acosh(cz);
+    return {cres.real(), cres.imag()};
+}
+
+static inline cpx_f_t cpx_acosh_f(cpx_f_t z) {
+    std::complex<float> cz(z.r, z.i);
+    std::complex<float> cres = std::acosh(cz);
+    return {cres.real(), cres.imag()};
+}
+
+static inline cpx_t cpx_expm1(cpx_t z) {
+    double expm1_a = expm1(z.r);
+    double sin_b_2 = sin(z.i / 2.0);
+    double real_part = expm1_a * cos(z.i) - 2.0 * sin_b_2 * sin_b_2;
+    double imag_part = exp(z.r) * sin(z.i);
+    return {real_part, imag_part};
+}
+
+static inline cpx_f_t cpx_expm1_f(cpx_f_t z) {
+    float expm1_a = expm1f(z.r);
+    float sin_b_2 = sinf(z.i / 2.0f);
+    float real_part = expm1_a * cosf(z.i) - 2.0f * sin_b_2 * sin_b_2;
+    float imag_part = expf(z.r) * sinf(z.i);
+    return {real_part, imag_part};
+}
+
+static inline cpx_t cpx_log1p(cpx_t z) {
+    double r2 = z.r * z.r;
+    double i2 = z.i * z.i;
+    double u = 2.0 * z.r + r2 + i2;
+    double real_part;
+    if (std::abs(u) < 0.5) {
+        real_part = 0.5 * log1p(u);
+    } else {
+        real_part = log(hypot(1.0 + z.r, z.i));
+    }
+    double imag_part = atan2(z.i, 1.0 + z.r);
+    return {real_part, imag_part};
+}
+
+static inline cpx_f_t cpx_log1p_f(cpx_f_t z) {
+    float r2 = z.r * z.r;
+    float i2 = z.i * z.i;
+    float u = 2.0f * z.r + r2 + i2;
+    float real_part;
+    if (std::abs(u) < 0.5f) {
+        real_part = 0.5f * log1pf(u);
+    } else {
+        real_part = logf(hypotf(1.0f + z.r, z.i));
+    }
+    float imag_part = atan2f(z.i, 1.0f + z.r);
+    return {real_part, imag_part};
+}
+
+#define DEFINE_UNARY_CAST_VEC(FUNCNAME, T_IN, T_OUT, OP) \
+void FUNCNAME(const T_IN *src, T_OUT *res, int size) { \
+    v_unary_cast_impl<T_IN, T_OUT>(src, res, size, [](T_IN x) { return OP(x); }); \
+}
+
+#define DEFINE_STRIDED_UNARY_CAST_OP(FUNCNAME, T_IN, T_OUT, OP) \
+void FUNCNAME(const T_IN *src, const int *stridesSrc, \
+              T_OUT *res, const int *stridesRes, \
+              const int *shape, int rank) { \
+    strided_unary_cast_impl<T_IN, T_OUT>(src, stridesSrc, res, stridesRes, shape, rank, [](T_IN x) { return OP(x); }); \
+}
+
 #define DEFINE_COMPLEX_UNARY_VEC(FUNCNAME, T, OP) \
 void FUNCNAME(const T *src, T *res, int size) { \
     v_unary_impl(src, res, size, [](T x) { return OP(x); }); \
 }
 
+DEFINE_COMPLEX_UNARY_VEC(v_expm1_complex128, cpx_t, cpx_expm1)
+DEFINE_COMPLEX_UNARY_VEC(v_expm1_complex64, cpx_f_t, cpx_expm1_f)
+DEFINE_COMPLEX_UNARY_VEC(v_log1p_complex128, cpx_t, cpx_log1p)
+DEFINE_COMPLEX_UNARY_VEC(v_log1p_complex64, cpx_f_t, cpx_log1p_f)
 DEFINE_COMPLEX_UNARY_VEC(v_sin_complex128, cpx_t, cpx_sin)
 DEFINE_COMPLEX_UNARY_VEC(v_sin_complex64, cpx_f_t, cpx_sin_f)
 DEFINE_COMPLEX_UNARY_VEC(v_cos_complex128, cpx_t, cpx_cos)
@@ -2921,6 +3166,19 @@ DEFINE_COMPLEX_UNARY_VEC(v_tanh_complex128, cpx_t, cpx_tanh)
 DEFINE_COMPLEX_UNARY_VEC(v_tanh_complex64, cpx_f_t, cpx_tanh_f)
 DEFINE_COMPLEX_UNARY_VEC(v_asinh_complex128, cpx_t, cpx_asinh)
 DEFINE_COMPLEX_UNARY_VEC(v_asinh_complex64, cpx_f_t, cpx_asinh_f)
+DEFINE_COMPLEX_UNARY_VEC(v_exp_complex128, cpx_t, cpx_exp)
+DEFINE_COMPLEX_UNARY_VEC(v_exp_complex64, cpx_f_t, cpx_exp_f)
+DEFINE_COMPLEX_UNARY_VEC(v_log_complex128, cpx_t, cpx_log)
+DEFINE_COMPLEX_UNARY_VEC(v_log_complex64, cpx_f_t, cpx_log_f)
+DEFINE_COMPLEX_UNARY_VEC(v_sqrt_complex128, cpx_t, cpx_sqrt)
+DEFINE_COMPLEX_UNARY_VEC(v_sqrt_complex64, cpx_f_t, cpx_sqrt_f)
+DEFINE_COMPLEX_UNARY_VEC(v_acosh_complex128, cpx_t, cpx_acosh)
+DEFINE_COMPLEX_UNARY_VEC(v_acosh_complex64, cpx_f_t, cpx_acosh_f)
+
+DEFINE_STRIDED_UNARY_OP(s_expm1_complex128, cpx_t, cpx_expm1)
+DEFINE_STRIDED_UNARY_OP(s_expm1_complex64, cpx_f_t, cpx_expm1_f)
+DEFINE_STRIDED_UNARY_OP(s_log1p_complex128, cpx_t, cpx_log1p)
+DEFINE_STRIDED_UNARY_OP(s_log1p_complex64, cpx_f_t, cpx_log1p_f)
 
 DEFINE_STRIDED_UNARY_OP(s_sin_complex128, cpx_t, cpx_sin)
 DEFINE_STRIDED_UNARY_OP(s_sin_complex64, cpx_f_t, cpx_sin_f)
@@ -2944,6 +3202,100 @@ DEFINE_STRIDED_UNARY_OP(s_tanh_complex128, cpx_t, cpx_tanh)
 DEFINE_STRIDED_UNARY_OP(s_tanh_complex64, cpx_f_t, cpx_tanh_f)
 DEFINE_STRIDED_UNARY_OP(s_asinh_complex128, cpx_t, cpx_asinh)
 DEFINE_STRIDED_UNARY_OP(s_asinh_complex64, cpx_f_t, cpx_asinh_f)
+DEFINE_STRIDED_UNARY_OP(s_exp_complex128, cpx_t, cpx_exp)
+DEFINE_STRIDED_UNARY_OP(s_exp_complex64, cpx_f_t, cpx_exp_f)
+DEFINE_STRIDED_UNARY_OP(s_log_complex128, cpx_t, cpx_log)
+DEFINE_STRIDED_UNARY_OP(s_log_complex64, cpx_f_t, cpx_log_f)
+DEFINE_STRIDED_UNARY_OP(s_sqrt_complex128, cpx_t, cpx_sqrt)
+DEFINE_STRIDED_UNARY_OP(s_sqrt_complex64, cpx_f_t, cpx_sqrt_f)
+DEFINE_STRIDED_UNARY_OP(s_acosh_complex128, cpx_t, cpx_acosh)
+DEFINE_STRIDED_UNARY_OP(s_acosh_complex64, cpx_f_t, cpx_acosh_f)
+
+void v_abs_complex128(const cpx_t *src, double *res, int size) {
+    if (src == nullptr || res == nullptr || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        std::complex<double> cz(src[i].r, src[i].i);
+        res[i] = std::abs(cz);
+    }
+}
+
+void v_abs_complex64(const cpx_f_t *src, float *res, int size) {
+    if (src == nullptr || res == nullptr || size <= 0) return;
+    for (int i = 0; i < size; i++) {
+        std::complex<float> cz(src[i].r, src[i].i);
+        res[i] = std::abs(cz);
+    }
+}
+
+void s_abs_complex128(const cpx_t *src, const int *stridesSrc,
+                      double *res, const int *stridesRes,
+                      const int *shape, int rank) {
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
+    int coord[8] = {0};
+    int total_size = 1;
+    for (int d = 0; d < rank; d++) total_size *= shape[d];
+    for (int i = 0; i < total_size; i++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetSrc += coord[d] * stridesSrc[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        std::complex<double> cz(src[offsetSrc].r, src[offsetSrc].i);
+        res[offsetRes] = std::abs(cz);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+void s_abs_complex64(const cpx_f_t *src, const int *stridesSrc,
+                     float *res, const int *stridesRes,
+                     const int *shape, int rank) {
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
+    int coord[8] = {0};
+    int total_size = 1;
+    for (int d = 0; d < rank; d++) total_size *= shape[d];
+    for (int i = 0; i < total_size; i++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            offsetSrc += coord[d] * stridesSrc[d];
+            offsetRes += coord[d] * stridesRes[d];
+        }
+        std::complex<float> cz(src[offsetSrc].r, src[offsetSrc].i);
+        res[offsetRes] = std::abs(cz);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+static inline double cpx_angle(cpx_t z) {
+    return std::atan2(z.i, z.r);
+}
+
+static inline float cpx_angle_f(cpx_f_t z) {
+    return std::atan2(z.i, z.r);
+}
+
+DEFINE_UNARY_CAST_VEC(v_angle_complex128, cpx_t, double, cpx_angle)
+DEFINE_UNARY_CAST_VEC(v_angle_complex64, cpx_f_t, float, cpx_angle_f)
+
+DEFINE_STRIDED_UNARY_CAST_OP(s_angle_complex128, cpx_t, double, cpx_angle)
+DEFINE_STRIDED_UNARY_CAST_OP(s_angle_complex64, cpx_f_t, float, cpx_angle_f)
+
+void s_unwrap_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis, double discont) {
+    strided_unwrap_op_impl(src, stridesSrc, res, stridesRes, shape, rank, axis, discont);
+}
+
+void s_unwrap_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, int axis, float discont) {
+    strided_unwrap_op_impl(src, stridesSrc, res, stridesRes, shape, rank, axis, discont);
+}
 
 #define OP_ASIN_D(x) asin(x)
 #define OP_ASIN_F(x) asinf(x)
@@ -3941,6 +4293,23 @@ DEFINE_STRIDED_BINARY_IMPL(s_remainder_int32, int32_t, int32_t, int32_t, int32_r
 
 DEFINE_STRIDED_BINARY_IMPL(s_copysign_double, double, double, double, copysign(x, y))
 DEFINE_STRIDED_BINARY_IMPL(s_copysign_float, float, float, float, copysignf(x, y))
+
+DEFINE_STRIDED_UNARY_IMPL(s_expm1_double, double, double, expm1(x))
+DEFINE_STRIDED_UNARY_IMPL(s_expm1_float, float, float, expm1f(x))
+
+DEFINE_STRIDED_UNARY_IMPL(s_log1p_double, double, double, log1p(x))
+DEFINE_STRIDED_UNARY_IMPL(s_log1p_float, float, float, log1pf(x))
+
+DEFINE_STRIDED_UNARY_IMPL(s_rint_double, double, double, rint(x))
+DEFINE_STRIDED_UNARY_IMPL(s_rint_float, float, float, rintf(x))
+
+DEFINE_STRIDED_UNARY_IMPL(s_trunc_double, double, double, trunc(x))
+DEFINE_STRIDED_UNARY_IMPL(s_trunc_float, float, float, truncf(x))
+
+DEFINE_STRIDED_BINARY_IMPL(s_logaddexp_double, double, double, double, logaddexp_op<double>(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_logaddexp_float, float, float, float, logaddexp_op<float>(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_logaddexp2_double, double, double, double, logaddexp2_op<double>(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_logaddexp2_float, float, float, float, logaddexp2_op<float>(x, y))
 
 DEFINE_STRIDED_UNARY_IMPL(s_isnan_double, double, uint8_t, isnan(x) ? 1 : 0)
 DEFINE_STRIDED_UNARY_IMPL(s_isnan_float, float, uint8_t, isnan(x) ? 1 : 0)
