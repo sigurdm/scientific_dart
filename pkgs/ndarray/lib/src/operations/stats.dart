@@ -2475,3 +2475,198 @@ Object r_median_helper(NDArray a, int size) {
       throw ArgumentError('Unsupported dtype for median: ${a.dtype}');
   }
 }
+
+/// Computes the range of values (maximum - minimum) along the specified axis.
+///
+/// If [axis] is null, it computes the range over the entire array and returns a 0-D array.
+///
+/// **Preconditions:**
+/// - The array [a] must not be disposed.
+/// - If [out] is provided, it must not be disposed, and it must have the correct shape and dtype.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+/// final p = ptp(a); // returns 0-D array containing 3.0 (4.0 - 1.0)
+/// final p0 = ptp(a, axis: 0); // returns NDArray [2.0, 2.0]
+/// ```
+NDArray<T> ptp<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute ptp of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write ptp to a disposed output array.');
+  }
+
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  return NDArray.scope(() {
+    final mx = max(a, axis: axis);
+    final mn = min(a, axis: axis);
+    final res = subtract<T, T, T>(mx, mn, out: out);
+    return res.detachToParentScope();
+  });
+}
+
+/// Helper to cast an NDArray to a target DType using s_cast_generic.
+NDArray<R> _castTo<R>(NDArray a, DType<R> targetDType) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute _castTo on a disposed array.');
+  }
+  if (a.dtype == targetDType) {
+    return a.copy() as NDArray<R>;
+  }
+
+  final res = NDArray<R>.create(a.shape, targetDType);
+  final ndim = a.shape.length;
+  final marker = ScratchArena.marker;
+
+  try {
+    final cBuffer = ScratchArena.getStridedBuffer(ndim);
+    final cShape = cBuffer;
+    final cStridesSrc = cBuffer + ndim;
+
+    for (var i = 0; i < ndim; i++) {
+      cShape[i] = a.shape[i];
+      cStridesSrc[i] = a.strides[i];
+    }
+
+    s_cast_generic(
+      a.pointer.cast(),
+      cStridesSrc,
+      encodeDType(a.dtype),
+      res.pointer.cast(),
+      encodeDType(targetDType),
+      cShape,
+      ndim,
+    );
+  } finally {
+    ScratchArena.reset(marker);
+  }
+  return res;
+}
+
+/// Computes the weighted average along the specified axis.
+///
+/// If [weights] is null, it is equivalent to [mean].
+///
+/// **Preconditions:**
+/// - The array [a] must not be disposed.
+/// - If [weights] is provided, it must not be disposed.
+/// - If [weights] is 1-D, its length must match the shape of [a] along [axis].
+///   - If [axis] is null, [weights] can only be 1-D if [a] is also 1-D.
+/// - If [weights] is not 1-D, it must have the same shape as [a].
+/// - If [out] is provided, it must not be disposed and must have correct shape and dtype.
+///
+/// **Returns:**
+/// A record containing:
+/// - `average`: The computed weighted average.
+/// - `sumOfWeights`: The sum of weights along the axis, promoted to the result type [R],
+///   if [returned] is true. Otherwise null.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+/// final w = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+/// final res = average(a, weights: w, returned: true);
+/// print(res.average.scalar); // 3.0
+/// print(res.sumOfWeights?.scalar); // 10.0
+/// ```
+({NDArray<R> average, NDArray<R>? sumOfWeights})
+average<T extends num, W extends num, R extends num>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<W>? weights,
+  bool returned = false,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute average of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write average to a disposed output array.');
+  }
+
+  if (weights == null) {
+    return NDArray.scope(() {
+      final avg = mean<R, T>(a, axis: axis, out: out);
+      return (average: avg.detachToParentScope(), sumOfWeights: null);
+    });
+  }
+
+  if (weights.isDisposed) {
+    throw StateError('Cannot compute average with disposed weights.');
+  }
+
+  // Validate shapes
+  if (weights.shape.length == 1) {
+    if (axis == null) {
+      if (a.shape.length != 1) {
+        throw ArgumentError(
+          'If axis is null and weights is 1-D, input array must also be 1-D.',
+        );
+      }
+    } else {
+      if (axis < 0 || axis >= a.shape.length) {
+        throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+      }
+      if (weights.shape[0] != a.shape[axis]) {
+        throw ArgumentError(
+          'Length of 1-D weights (${weights.shape[0]}) must match shape of input along axis $axis (${a.shape[axis]}).',
+        );
+      }
+    }
+  } else {
+    if (!listEquals(weights.shape, a.shape)) {
+      throw ArgumentError(
+        'Shape of weights ${weights.shape} must match shape of input ${a.shape} if weights is not 1-D.',
+      );
+    }
+  }
+
+  return NDArray.scope(() {
+    NDArray<W> broadcastedWeights = weights;
+
+    if (weights.shape.length == 1 && a.shape.length > 1) {
+      final targetAxis = axis!;
+      final reshapedShape = List<int>.filled(a.shape.length, 1);
+      reshapedShape[targetAxis] = weights.shape[0];
+      broadcastedWeights = weights.reshape(reshapedShape);
+    }
+
+    final weighted_a = multiply<T, W, Object>(a, broadcastedWeights);
+    final weighted_sum = sum<Object>(weighted_a, axis: axis);
+    final targetShape = axis == null
+        ? <int>[]
+        : (List<int>.from(a.shape)..removeAt(axis));
+    final sum_of_weights = weights.shape.length == 1
+        ? (axis == null
+              ? sum<W>(weights)
+              : () {
+                  final s = sum<W>(weights).scalar;
+                  final res = NDArray<W>.zeros(targetShape, weights.dtype);
+                  res.fill(s);
+                  return res;
+                }())
+        : sum<W>(weights, axis: axis);
+    final avg = divide<Object, W, R>(weighted_sum, sum_of_weights, out: out);
+
+    NDArray<R>? sumOfWeightsResult;
+    if (returned) {
+      sumOfWeightsResult = _castTo<R>(sum_of_weights, avg.dtype);
+    }
+
+    avg.detachToParentScope();
+    sumOfWeightsResult?.detachToParentScope();
+
+    return (average: avg, sumOfWeights: sumOfWeightsResult);
+  });
+}
