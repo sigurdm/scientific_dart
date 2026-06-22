@@ -140,6 +140,15 @@ void v_atan_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
 void v_atanh_complex128(const cpx_t *src, cpx_t *res, int size);
 void v_atanh_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
 
+void v_sinh_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_sinh_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_cosh_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_cosh_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_tanh_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_tanh_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_asinh_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_asinh_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+
 void v_hypot_complex128(const cpx_t *x1, const cpx_t *x2, double *res, int size);
 void v_hypot_complex64(const cpx_f_t *x1, const cpx_f_t *x2, float *res, int size);
 
@@ -325,6 +334,15 @@ void s_atan_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, c
 
 void s_atanh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
 void s_atanh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_sinh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_sinh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_cosh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_cosh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_tanh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_tanh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_asinh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_asinh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
 
 void s_hypot_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank);
 void s_hypot_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank);

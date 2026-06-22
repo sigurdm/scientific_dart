@@ -548,6 +548,7 @@ void main() {
             loc: loc,
             scale: scale,
             dtype: DType.float64,
+            seed: 42,
           );
 
           final sampleMean = mean(a).scalar;
@@ -574,7 +575,12 @@ void main() {
         'Basic property and statistics validation',
         () => NDArray.scope(() {
           const scale = 2.5;
-          final a = exponential([5000], scale: scale, dtype: DType.float64);
+          final a = exponential(
+            [5000],
+            scale: scale,
+            dtype: DType.float64,
+            seed: 42,
+          );
 
           expect(a.shape, [5000]);
           // All values in an exponential distribution are strictly non-negative
@@ -594,7 +600,7 @@ void main() {
         'Small lambda exact Knuth path checks',
         () => NDArray.scope(() {
           const lam = 4.0;
-          final a = poisson([5000], lam: lam, dtype: DType.int64);
+          final a = poisson([5000], lam: lam, dtype: DType.int64, seed: 42);
           expect(a.dtype, DType.int64);
 
           final sampleMean = mean(a).scalar;
@@ -611,7 +617,7 @@ void main() {
         () => NDArray.scope(() {
           const lam = 50.0;
           // Large lam triggers Track B to avoid numerical underflow or infinite loops!
-          final a = poisson([5000], lam: lam, dtype: DType.int32);
+          final a = poisson([5000], lam: lam, dtype: DType.int32, seed: 42);
           expect(a.dtype, DType.int32);
 
           final sampleMean = mean(a).scalar;
@@ -629,7 +635,7 @@ void main() {
         () => NDArray.scope(() {
           const n = 20;
           const p = 0.4;
-          final a = binomial([5000], n: n, p: p, dtype: DType.int64);
+          final a = binomial([5000], n: n, p: p, dtype: DType.int64, seed: 42);
 
           expect(a.dtype, DType.int64);
           for (final val in a.toList()) {
@@ -648,7 +654,7 @@ void main() {
         () => NDArray.scope(() {
           const n = 1000;
           const p = 0.3;
-          final a = binomial([5000], n: n, p: p, dtype: DType.int32);
+          final a = binomial([5000], n: n, p: p, dtype: DType.int32, seed: 42);
 
           expect(a.dtype, DType.int32);
           final sampleMean = mean(a).scalar;

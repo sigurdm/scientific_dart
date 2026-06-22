@@ -10,6 +10,7 @@ import 'math.dart';
 import 'sorting.dart';
 import 'broadcasting.dart';
 import 'helpers.dart';
+import 'stats.dart';
 
 /// Supported sorting algorithms.
 ///
@@ -689,12 +690,41 @@ NDArray<T> geomspaceGrid<T extends Object>(
   }
   final resolvedDType = dtype ?? defaultDType<T>();
 
+  if (resolvedDType.isInteger || resolvedDType == DType.boolean) {
+    throw UnsupportedError(
+      'geomspaceGrid not supported for type $resolvedDType',
+    );
+  }
+
   return NDArray.scope(() {
-    final logStart =
-        divide(log(start), toNDArray<T>(math.ln10, resolvedDType))
-            as NDArray<T>;
-    final logStop =
-        divide(log(stop), toNDArray<T>(math.ln10, resolvedDType)) as NDArray<T>;
+    final startArr = toNDArray(start, resolvedDType);
+    final stopArr = toNDArray(stop, resolvedDType);
+
+    final zero = toNDArray<T>(0.0, resolvedDType);
+    final startZero = equal(startArr, zero);
+    final stopZero = equal(stopArr, zero);
+    if (any(startZero).scalar || any(stopZero).scalar) {
+      throw ArgumentError('Geometric sequence cannot include zero.');
+    }
+
+    if (resolvedDType.isFloating) {
+      final prod = multiply(startArr, stopArr);
+      final signZeroOrNeg = lessEqual(prod, zero);
+      if (any(signZeroOrNeg).scalar) {
+        throw ArgumentError(
+          'Geometric sequence start and stop must have same sign.',
+        );
+      }
+    }
+
+    final logStart = divide<T, T, T>(
+      log<T, T>(startArr),
+      toNDArray<T>(math.ln10, resolvedDType),
+    );
+    final logStop = divide<T, T, T>(
+      log<T, T>(stopArr),
+      toNDArray<T>(math.ln10, resolvedDType),
+    );
 
     final y = linspaceGrid<T>(
       logStart,

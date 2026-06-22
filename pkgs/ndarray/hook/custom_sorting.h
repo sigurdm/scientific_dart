@@ -80,6 +80,7 @@ int custom_memcmp(const void *s1, const void *s2, size_t n);
 void native_zero_memory(void *ptr, size_t bytes);
 void custom_memcpy(void *dest, const void *src, size_t n);
 void native_collect_nonzero_coords(const unsigned char *cond, int total_size, const int *shape, const int *strides, int rank, int **out_coords);
+void native_collect_nonzero_coords_grouped(const unsigned char *cond, int total_size, const int *shape, const int *strides, int rank, int *out_coords);
 void native_to_bool_mask_double(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest);
 void native_to_bool_mask_float(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest);
 void native_to_bool_mask_int64(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest);
@@ -100,6 +101,8 @@ void native_count_nonzero_int64(const void *src, const int *stridesSrc, int *des
 void native_count_nonzero_int32(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
 void native_count_nonzero_uint8(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
 void native_count_nonzero_int16(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
+void native_count_nonzero_complex128(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
+void native_count_nonzero_complex64(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
 
 
 #ifdef __cplusplus

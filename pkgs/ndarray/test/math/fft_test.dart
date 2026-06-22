@@ -839,5 +839,271 @@ void main() {
       expect(() => fft(mat, axis: 2), throwsRangeError);
       expect(() => fft(mat, axis: -3), throwsRangeError);
     });
+
+    group('Integer Input FFT Tests', () {
+      test(
+        'int32 input FFT promotes to complex128 and is correct',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1, 0, 0, 0], [4], DType.int32);
+          final freq = fft(a);
+          expect(freq.dtype, DType.complex128);
+          expect(freq.shape, [4]);
+          for (var i = 0; i < 4; i++) {
+            final c = freq.getCell([i]);
+            expect(c.real, closeTo(1.0, 1e-9));
+            expect(c.imag, closeTo(0.0, 1e-9));
+          }
+        }),
+      );
+
+      test(
+        'int64 input FFT promotes to complex128 and is correct',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1, 0, 0, 0], [4], DType.int64);
+          final freq = fft(a);
+          expect(freq.dtype, DType.complex128);
+          expect(freq.shape, [4]);
+          for (var i = 0; i < 4; i++) {
+            final c = freq.getCell([i]);
+            expect(c.real, closeTo(1.0, 1e-9));
+            expect(c.imag, closeTo(0.0, 1e-9));
+          }
+        }),
+      );
+
+      test(
+        'int16 input FFT promotes to complex128 and is correct',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1, 0, 0, 0], [4], DType.int16);
+          final freq = fft(a);
+          expect(freq.dtype, DType.complex128);
+          expect(freq.shape, [4]);
+          for (var i = 0; i < 4; i++) {
+            final c = freq.getCell([i]);
+            expect(c.real, closeTo(1.0, 1e-9));
+            expect(c.imag, closeTo(0.0, 1e-9));
+          }
+        }),
+      );
+
+      test(
+        'uint8 input FFT promotes to complex128 and is correct',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1, 0, 0, 0], [4], DType.uint8);
+          final freq = fft(a);
+          expect(freq.dtype, DType.complex128);
+          expect(freq.shape, [4]);
+          for (var i = 0; i < 4; i++) {
+            final c = freq.getCell([i]);
+            expect(c.real, closeTo(1.0, 1e-9));
+            expect(c.imag, closeTo(0.0, 1e-9));
+          }
+        }),
+      );
+
+      test(
+        'int32 input fftn promotes to complex128 and is correct',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [2, 4],
+            DType.int32,
+          );
+          final freq = fftn(a);
+          expect(freq.dtype, DType.complex128);
+          expect(freq.shape, [2, 4]);
+          final flat = freq.ravel();
+          for (var i = 0; i < 8; i++) {
+            expect(flat.getCell([i]).real, closeTo(1.0, 1e-9));
+            expect(flat.getCell([i]).imag, closeTo(0.0, 1e-9));
+          }
+        }),
+      );
+
+      test(
+        'int64 input fftn promotes to complex128 and is correct',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [2, 4],
+            DType.int64,
+          );
+          final freq = fftn(a);
+          expect(freq.dtype, DType.complex128);
+          final flat = freq.ravel();
+          for (var i = 0; i < 8; i++) {
+            expect(flat.getCell([i]).real, closeTo(1.0, 1e-9));
+          }
+        }),
+      );
+
+      test(
+        'int16 input fftn promotes to complex128 and is correct',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [2, 4],
+            DType.int16,
+          );
+          final freq = fftn(a);
+          expect(freq.dtype, DType.complex128);
+          final flat = freq.ravel();
+          for (var i = 0; i < 8; i++) {
+            expect(flat.getCell([i]).real, closeTo(1.0, 1e-9));
+          }
+        }),
+      );
+
+      test(
+        'uint8 input fftn promotes to complex128 and is correct',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [2, 4],
+            DType.uint8,
+          );
+          final freq = fftn(a);
+          expect(freq.dtype, DType.complex128);
+          final flat = freq.ravel();
+          for (var i = 0; i < 8; i++) {
+            expect(flat.getCell([i]).real, closeTo(1.0, 1e-9));
+          }
+        }),
+      );
+
+      test(
+        'int32 input fftn with complex64 out promotes to complex64 and calls _copyIntToFloatCpx',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [2, 4],
+            DType.int32,
+          );
+          final out = NDArray<Complex64>.zeros([2, 4], DType.complex64);
+          final freq = fftn(a, out: out);
+          expect(freq.dtype, DType.complex64);
+          final flat = freq.ravel();
+          for (var i = 0; i < 8; i++) {
+            expect(flat.getCell([i]).real, closeTo(1.0, 1e-5));
+          }
+        }),
+      );
+
+      test(
+        'int64 input fftn with complex64 out promotes to complex64',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [2, 4],
+            DType.int64,
+          );
+          final out = NDArray<Complex64>.zeros([2, 4], DType.complex64);
+          final freq = fftn(a, out: out);
+          expect(freq.dtype, DType.complex64);
+        }),
+      );
+
+      test(
+        'int16 input fftn with complex64 out promotes to complex64',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [2, 4],
+            DType.int16,
+          );
+          final out = NDArray<Complex64>.zeros([2, 4], DType.complex64);
+          final freq = fftn(a, out: out);
+          expect(freq.dtype, DType.complex64);
+        }),
+      );
+
+      test(
+        'uint8 input fftn with complex64 out promotes to complex64',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [2, 4],
+            DType.uint8,
+          );
+          final out = NDArray<Complex64>.zeros([2, 4], DType.complex64);
+          final freq = fftn(a, out: out);
+          expect(freq.dtype, DType.complex64);
+        }),
+      );
+    });
+
+    group('FFT Preconditions and Error Handling', () {
+      test(
+        'disposed input throws StateError',
+        () => NDArray.scope(() {
+          final a = NDArray.zeros([8], DType.float64);
+          a.dispose();
+
+          expect(() => fft(a), throwsStateError);
+          expect(() => ifft(a), throwsStateError);
+          expect(() => rfft(a), throwsStateError);
+          expect(() => irfft(a), throwsStateError);
+          expect(() => fftn(a), throwsStateError);
+          expect(() => ifftn(a), throwsStateError);
+
+          final a2D = NDArray.zeros([2, 2], DType.float64);
+          a2D.dispose();
+          expect(() => fft2(a2D), throwsStateError);
+          expect(() => ifft2(a2D), throwsStateError);
+
+          expect(() => fftshift(a), throwsStateError);
+          expect(() => ifftshift(a), throwsStateError);
+        }),
+      );
+
+      test(
+        'disposed out buffer throws StateError',
+        () => NDArray.scope(() {
+          final a = NDArray.zeros([8], DType.float64);
+          final complexInput = NDArray<Complex>.zeros([5], DType.complex128);
+          final outComplex = NDArray<Complex128>.zeros([8], DType.complex128);
+          outComplex.dispose();
+
+          expect(() => fft(a, out: outComplex), throwsStateError);
+          expect(() => ifft(complexInput, out: outComplex), throwsStateError);
+
+          final outReal = NDArray<double>.zeros([8], DType.float64);
+          outReal.dispose();
+          final rfftOut = NDArray<Complex128>.zeros([5], DType.complex128);
+          rfftOut.dispose();
+          expect(() => rfft(a, out: rfftOut), throwsStateError);
+
+          final complexInputForIrfft = NDArray<Complex>.zeros([
+            5,
+          ], DType.complex128);
+          expect(
+            () => irfft(complexInputForIrfft, n: 8, out: outReal),
+            throwsStateError,
+          );
+        }),
+      );
+
+      test(
+        'incompatible out buffer shape throws ArgumentError',
+        () => NDArray.scope(() {
+          final a = NDArray.zeros([8], DType.float64);
+
+          final outWrongShape = NDArray<Complex128>.zeros([
+            9,
+          ], DType.complex128);
+          expect(() => fft(a, out: outWrongShape), throwsArgumentError);
+        }),
+      );
+
+      test(
+        'float64 input FFT with complex64 out buffer works (demotion)',
+        () => NDArray.scope(() {
+          final a = NDArray.zeros([8], DType.float64);
+          final out = NDArray<Complex64>.zeros([8], DType.complex64);
+          final freq = fft(a, out: out);
+          expect(freq.dtype, DType.complex64);
+        }),
+      );
+    });
   });
 }

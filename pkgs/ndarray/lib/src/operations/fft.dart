@@ -89,15 +89,15 @@ NDArray<R> fft<T, R extends Complex>(
   final outShape = List<int>.from(a.shape);
   outShape[normAxis] = targetLen;
 
-  final targetDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
-      ? DType.complex64
-      : DType.complex128;
+  final targetDType =
+      out?.dtype ??
+      ((a.dtype == DType.float32 || a.dtype == DType.complex64)
+          ? DType.complex64
+          : DType.complex128);
 
   if (out != null) {
-    if (!listEquals(out.shape, outShape) || out.dtype != targetDType) {
-      throw ArgumentError(
-        'Provided out buffer has incompatible shape or dtype.',
-      );
+    if (!listEquals(out.shape, outShape)) {
+      throw ArgumentError('Provided out buffer has incompatible shape.');
     }
     if (!out.isContiguous) {
       throw ArgumentError('Provided out buffer must be contiguous.');
@@ -292,15 +292,15 @@ NDArray<R> ifft<T, R extends Complex>(
   final outShape = List<int>.from(a.shape);
   outShape[normAxis] = targetLen;
 
-  final targetDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
-      ? DType.complex64
-      : DType.complex128;
+  final targetDType =
+      out?.dtype ??
+      ((a.dtype == DType.float32 || a.dtype == DType.complex64)
+          ? DType.complex64
+          : DType.complex128);
 
   if (out != null) {
-    if (!listEquals(out.shape, outShape) || out.dtype != targetDType) {
-      throw ArgumentError(
-        'Provided out buffer has incompatible shape or dtype.',
-      );
+    if (!listEquals(out.shape, outShape)) {
+      throw ArgumentError('Provided out buffer has incompatible shape.');
     }
     if (!out.isContiguous) {
       throw ArgumentError('Provided out buffer must be contiguous.');
@@ -1048,15 +1048,15 @@ NDArray<R> rfft<T, R extends Complex>(
   final outShape = List<int>.from(a.shape);
   outShape[normAxis] = targetLen ~/ 2 + 1;
 
-  final targetDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
-      ? DType.complex64
-      : DType.complex128;
+  final targetDType =
+      out?.dtype ??
+      ((a.dtype == DType.float32 || a.dtype == DType.complex64)
+          ? DType.complex64
+          : DType.complex128);
 
   if (out != null) {
-    if (!listEquals(out.shape, outShape) || out.dtype != targetDType) {
-      throw ArgumentError(
-        'Provided out buffer has incompatible shape or dtype.',
-      );
+    if (!listEquals(out.shape, outShape)) {
+      throw ArgumentError('Provided out buffer has incompatible shape.');
     }
     if (!out.isContiguous) {
       throw ArgumentError('Provided out buffer must be contiguous.');
@@ -1244,15 +1244,15 @@ NDArray<R> irfft<T, R extends double>(
   final outShape = List<int>.from(a.shape);
   outShape[normAxis] = targetLen;
 
-  final targetDType = (a.dtype == DType.complex64 || a.dtype == DType.float32)
-      ? DType.float32
-      : DType.float64;
+  final targetDType =
+      out?.dtype ??
+      ((a.dtype == DType.complex64 || a.dtype == DType.float32)
+          ? DType.float32
+          : DType.float64);
 
   if (out != null) {
-    if (!listEquals(out.shape, outShape) || out.dtype != targetDType) {
-      throw ArgumentError(
-        'Provided out buffer has incompatible shape or dtype.',
-      );
+    if (!listEquals(out.shape, outShape)) {
+      throw ArgumentError('Provided out buffer has incompatible shape.');
     }
     if (!out.isContiguous) {
       throw ArgumentError('Provided out buffer must be contiguous.');
@@ -1542,9 +1542,11 @@ NDArray<R> _fftnND<T, R extends Complex>(
     }
   }
 
-  final targetDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
-      ? DType.complex64
-      : DType.complex128;
+  final targetDType =
+      out?.dtype ??
+      ((a.dtype == DType.float32 || a.dtype == DType.complex64)
+          ? DType.complex64
+          : DType.complex128);
 
   final outShape = List<int>.from(a.shape);
   for (var i = 0; i < axesResolved.length; i++) {
@@ -1552,10 +1554,8 @@ NDArray<R> _fftnND<T, R extends Complex>(
   }
 
   if (out != null) {
-    if (!listEquals(out.shape, outShape) || out.dtype != targetDType) {
-      throw ArgumentError(
-        'Provided out buffer has incompatible shape or dtype.',
-      );
+    if (!listEquals(out.shape, outShape)) {
+      throw ArgumentError('Provided out buffer has incompatible shape.');
     }
     if (!out.isContiguous) {
       throw ArgumentError('Provided out buffer must be contiguous.');

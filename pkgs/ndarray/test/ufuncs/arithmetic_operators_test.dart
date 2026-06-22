@@ -1728,5 +1728,187 @@ void main() {
         ); // 2 / (10+10i) = 0.1 - 0.1i
       },
     );
+
+    test(
+      'Phase 2: Strided Binary Operators (add, subtract, multiply, divide)',
+      () {
+        NDArray.scope(() {
+          // float64 strided
+          final a = NDArray.fromList(
+            [1.0, -9.9, 2.0, -9.9, 3.0],
+            [5],
+            DType.float64,
+          ).slice([const Slice(start: 0, stop: 5, step: 2)]);
+          final b = NDArray.fromList(
+            [10.0, -9.9, 20.0, -9.9, 30.0],
+            [5],
+            DType.float64,
+          ).slice([const Slice(start: 0, stop: 5, step: 2)]);
+
+          expect(a.isContiguous, false);
+          expect(b.isContiguous, false);
+
+          final resAdd = add(a, b);
+          expect(resAdd.dtype, DType.float64);
+          expect(resAdd.toList(), [11.0, 22.0, 33.0]);
+
+          final resSub = subtract(a, b);
+          expect(resSub.toList(), [-9.0, -18.0, -27.0]);
+
+          final resMul = multiply(a, b);
+          expect(resMul.toList(), [10.0, 40.0, 90.0]);
+
+          final resDiv = divide(b, a);
+          expect(resDiv.toList(), [10.0, 10.0, 10.0]);
+
+          // complex128 strided
+          final z1 = NDArray<Complex>.fromList(
+            [
+              Complex(1.0, 2.0),
+              Complex(9, 9),
+              Complex(3.0, 4.0),
+              Complex(9, 9),
+            ],
+            [4],
+            DType.complex128,
+          ).slice([const Slice(start: 0, stop: 4, step: 2)]);
+
+          final z2 = NDArray<Complex>.fromList(
+            [
+              Complex(10.0, 20.0),
+              Complex(9, 9),
+              Complex(30.0, 40.0),
+              Complex(9, 9),
+            ],
+            [4],
+            DType.complex128,
+          ).slice([const Slice(start: 0, stop: 4, step: 2)]);
+
+          final zAdd = add(z1, z2);
+          expect(zAdd.dtype, DType.complex128);
+          expect(zAdd.getCell([0]), Complex(11.0, 22.0));
+          expect(zAdd.getCell([1]), Complex(33.0, 44.0));
+
+          final zSub = subtract(z2, z1);
+          expect(zSub.getCell([0]), Complex(9.0, 18.0));
+          expect(zSub.getCell([1]), Complex(27.0, 36.0));
+        });
+      },
+    );
+
+    test('Phase 2: Combinatorial DType Promotions', () {
+      NDArray.scope(() {
+        // int32 + float64 -> float64
+        final i32 = NDArray.fromList([1, 2], [2], DType.int32);
+        final f64 = NDArray.fromList([0.5, 1.5], [2], DType.float64);
+        final res1 = i32 + f64;
+        expect(res1.dtype, DType.float64);
+        expect(res1.toList(), [1.5, 3.5]);
+
+        // int64 * int32 -> int64
+        final i64 = NDArray.fromList([3, 4], [2], DType.int64);
+        final res2 = i64 * i32;
+        expect(res2.dtype, DType.int64);
+        expect(res2.toList(), [3, 8]);
+
+        // uint8 + int16 -> int16 (promoted to int16 as it can represent all uint8 values)
+        final u8 = NDArray.fromList([10, 20], [2], DType.uint8);
+        final i16 = NDArray.fromList([100, 200], [2], DType.int16);
+        final res3 = u8 + i16;
+        expect(res3.dtype, DType.int16);
+        expect(res3.toList(), [110, 220]);
+      });
+    });
+
+    test(
+      'Phase 2: logical_not on non-boolean numeric arrays (contiguous & strided)',
+      () {
+        NDArray.scope(() {
+          // --- int32 contiguous ---
+          final i32 = NDArray.fromList([0, 1, -2, 0], [4], DType.int32);
+          final resI32 = logical_not(i32);
+          expect(resI32.dtype, DType.boolean);
+          expect(resI32.toList(), [true, false, false, true]);
+
+          // --- int32 strided ---
+          final i32Strided = NDArray.fromList(
+            [0, 99, 1, 99, -2, 99, 0],
+            [7],
+            DType.int32,
+          ).slice([const Slice(start: 0, stop: 7, step: 2)]);
+          expect(i32Strided.isContiguous, false);
+          final resI32Strided = logical_not(i32Strided);
+          expect(resI32Strided.toList(), [true, false, false, true]);
+
+          // --- float64 contiguous ---
+          final f64 = NDArray.fromList(
+            [0.0, 0.5, -1.2, 0.0],
+            [4],
+            DType.float64,
+          );
+          final resF64 = logical_not(f64);
+          expect(resF64.dtype, DType.boolean);
+          expect(resF64.toList(), [true, false, false, true]);
+
+          // --- float64 strided ---
+          final f64Strided = NDArray.fromList(
+            [0.0, 9.9, 0.5, 9.9, -1.2, 9.9, 0.0],
+            [7],
+            DType.float64,
+          ).slice([const Slice(start: 0, stop: 7, step: 2)]);
+          final resF64Strided = logical_not(f64Strided);
+          expect(resF64Strided.toList(), [true, false, false, true]);
+        });
+      },
+    );
+
+    test(
+      'Phase 2: Precondition and State Validations (Disposed StateError)',
+      () {
+        NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final b = NDArray.fromList([3.0, 4.0], [2], DType.float64);
+
+          // 1. Disposed input array
+          a.dispose();
+          expect(() => add(a, b), throwsStateError);
+          expect(() => subtract(b, a), throwsStateError);
+          expect(() => sin(a), throwsStateError);
+
+          // Re-create to test disposed out buffer
+          final a2 = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final outDisposed = NDArray<Float64>.create([2], DType.float64);
+          outDisposed.dispose();
+          expect(() => add(a2, b, out: outDisposed), throwsStateError);
+          expect(() => sin(a2, out: outDisposed), throwsStateError);
+        });
+      },
+    );
+
+    test(
+      'Phase 2: Precondition and State Validations (Mismatched Shape/DType ArgumentError)',
+      () {
+        NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final b = NDArray.fromList([3.0, 4.0], [2], DType.float64);
+
+          // Mismatched shape for out buffer
+          final outBadShape = NDArray<Float64>.create([3], DType.float64);
+          expect(() => add(a, b, out: outBadShape), throwsArgumentError);
+          expect(() => sin(a, out: outBadShape), throwsArgumentError);
+
+          // Incompatible DType for out buffer
+          final outBadDType = NDArray<Int32>.create([2], DType.int32);
+          expect(
+            () => add<double, double, int>(a, b, out: outBadDType),
+            throwsArgumentError,
+          );
+          expect(
+            () => sin<double, int>(a, out: outBadDType),
+            throwsArgumentError,
+          );
+        });
+      },
+    );
   });
 }

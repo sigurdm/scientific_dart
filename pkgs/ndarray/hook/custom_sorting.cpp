@@ -1085,6 +1085,40 @@ extern "C" void native_collect_nonzero_coords(
     }
 }
 
+extern "C" void native_collect_nonzero_coords_grouped(
+    const unsigned char *cond,
+    int total_size,
+    const int *shape,
+    const int *strides,
+    int rank,
+    int *out_coords
+) {
+    if (cond == nullptr || shape == nullptr || strides == nullptr || out_coords == nullptr || total_size <= 0 || rank <= 0) return;
+    int coord[32] = {0};
+    int offset = 0;
+    int write_idx = 0;
+
+    for (int el = 0; el < total_size; el++) {
+        if (cond[offset]) {
+            for (int d = 0; d < rank; d++) {
+                out_coords[write_idx * rank + d] = coord[d];
+            }
+            write_idx++;
+        }
+
+        // Advance odometer multidimensional walk
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offset += strides[d];
+                break;
+            }
+            coord[d] = 0;
+            offset -= (shape[d] - 1) * strides[d];
+        }
+    }
+}
+
 extern "C" void native_to_bool_mask_double(const void *src, int size, const int *shape, const int *strides, int rank, int is_contiguous, unsigned char *dest) {
     to_bool_mask((const double *)src, size, shape, strides, rank, is_contiguous, dest);
 }
@@ -1146,6 +1180,14 @@ extern "C" void native_count_nonzero_uint8(const void *src, const int *stridesSr
 }
 extern "C" void native_count_nonzero_int16(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous) {
     count_nonzero((const short *)src, stridesSrc, dest, stridesDest, shape, rank, axis, is_contiguous);
+}
+
+extern "C" void native_count_nonzero_complex128(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous) {
+    count_nonzero((const complex128_t *)src, stridesSrc, dest, stridesDest, shape, rank, axis, is_contiguous);
+}
+
+extern "C" void native_count_nonzero_complex64(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous) {
+    count_nonzero((const complex64_t *)src, stridesSrc, dest, stridesDest, shape, rank, axis, is_contiguous);
 }
 
 HWY_BEFORE_NAMESPACE();

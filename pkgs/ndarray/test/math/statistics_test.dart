@@ -2826,6 +2826,575 @@ void main() {
       },
     );
   });
+
+  // =========================================================================
+  // Phase 3: Expanded Statistics Tests (Synthesis)
+  // =========================================================================
+
+  group("NaN-Aware Reduction Tests", () {
+    test("Flat float64 nanvar, nanstd, nanmin, nanmax", () {
+      NDArray.scope(() {
+        final a = NDArray.fromList(
+          [1.0, double.nan, 3.0, 4.0, double.nan, 6.0],
+          [6],
+          DType.float64,
+        );
+
+        final v = nanvar(a);
+        expect(v.shape, <int>[]);
+        expect(v.dtype, DType.float64);
+        expect(v.scalar, closeTo(3.25, 1e-9));
+
+        final s = nanstd(a);
+        expect(s.shape, <int>[]);
+        expect(s.dtype, DType.float64);
+        expect(s.scalar, closeTo(math.sqrt(3.25), 1e-9));
+
+        final mi = nanmin(a);
+        expect(mi.shape, <int>[]);
+        expect(mi.dtype, DType.float64);
+        expect(mi.scalar, 1.0);
+
+        final ma = nanmax(a);
+        expect(ma.shape, <int>[]);
+        expect(ma.dtype, DType.float64);
+        expect(ma.scalar, 6.0);
+      });
+    });
+
+    test("Flat float32 nanvar, nanstd, nanmin, nanmax", () {
+      NDArray.scope(() {
+        final a = NDArray.fromList(
+          [1.0, double.nan, 3.0, 4.0, double.nan, 6.0],
+          [6],
+          DType.float32,
+        );
+
+        final v = nanvar(a);
+        expect(v.dtype, DType.float64);
+        expect(v.scalar, closeTo(3.25, 1e-6));
+
+        final s = nanstd(a);
+        expect(s.dtype, DType.float64);
+        expect(s.scalar, closeTo(math.sqrt(3.25), 1e-6));
+
+        final mi = nanmin(a);
+        expect(mi.dtype, DType.float32);
+        expect(mi.scalar, 1.0);
+
+        final ma = nanmax(a);
+        expect(ma.dtype, DType.float32);
+        expect(ma.scalar, 6.0);
+      });
+    });
+
+    test("2D float64 nanvar, nanstd, nanmin, nanmax axis-wise", () {
+      NDArray.scope(() {
+        // [[1.0, double.nan, 3.0],
+        //  [4.0, 2.0,        double.nan]]
+        final a = NDArray.fromList(
+          [1.0, double.nan, 3.0, 4.0, 2.0, double.nan],
+          [2, 3],
+          DType.float64,
+        );
+
+        final v0 = nanvar(a, axis: 0);
+        expect(v0.shape, [3]);
+        expect(v0.toList(), [2.25, 0.0, 0.0]);
+
+        final s0 = nanstd(a, axis: 0);
+        expect(s0.shape, [3]);
+        expect(s0.toList(), [1.5, 0.0, 0.0]);
+
+        final mi0 = nanmin(a, axis: 0);
+        expect(mi0.shape, [3]);
+        expect(mi0.toList(), [1.0, 2.0, 3.0]);
+
+        final ma0 = nanmax(a, axis: 0);
+        expect(ma0.shape, [3]);
+        expect(ma0.toList(), [4.0, 2.0, 3.0]);
+
+        final v1 = nanvar(a, axis: 1);
+        expect(v1.shape, [2]);
+        expect(v1.toList(), [1.0, 1.0]);
+
+        final s1 = nanstd(a, axis: 1);
+        expect(s1.shape, [2]);
+        expect(s1.toList(), [1.0, 1.0]);
+
+        final mi1 = nanmin(a, axis: 1);
+        expect(mi1.shape, [2]);
+        expect(mi1.toList(), [1.0, 2.0]);
+
+        final ma1 = nanmax(a, axis: 1);
+        expect(ma1.shape, [2]);
+        expect(ma1.toList(), [3.0, 4.0]);
+      });
+    });
+
+    test("Edge case: All-NaN array or slice", () {
+      NDArray.scope(() {
+        final a = NDArray.fromList(
+          [double.nan, double.nan, double.nan],
+          [3],
+          DType.float64,
+        );
+
+        expect(nanvar(a).scalar.isNaN, true);
+        expect(nanstd(a).scalar.isNaN, true);
+        expect(nanmin(a).scalar.isNaN, true);
+        expect(nanmax(a).scalar.isNaN, true);
+
+        // [[1.0, 2.0],
+        //  [nan, nan]]
+        final b = NDArray.fromList(
+          [1.0, 2.0, double.nan, double.nan],
+          [2, 2],
+          DType.float64,
+        );
+
+        final v = nanvar(b, axis: 1);
+        expect(v.shape, [2]);
+        expectListEqualsWithNaNs(v.toList(), [0.25, double.nan]);
+
+        final s = nanstd(b, axis: 1);
+        expect(s.shape, [2]);
+        expectListEqualsWithNaNs(s.toList(), [0.5, double.nan]);
+
+        final mi = nanmin(b, axis: 1);
+        expect(mi.shape, [2]);
+        expectListEqualsWithNaNs(mi.toList(), [1.0, double.nan]);
+
+        final ma = nanmax(b, axis: 1);
+        expect(ma.shape, [2]);
+        expectListEqualsWithNaNs(ma.toList(), [2.0, double.nan]);
+
+        // 2D all-NaN (Episode 2 case)
+        final a2 = NDArray.fromList(
+          [double.nan, double.nan, double.nan, double.nan],
+          [2, 2],
+          DType.float64,
+        );
+
+        final v0 = nanvar(a2, axis: 0);
+        expect(v0.toList().every((x) => x.isNaN), true);
+
+        final mi0 = nanmin(a2, axis: 0);
+        expect(mi0.toList().every((x) => x.isNaN), true);
+      });
+    });
+
+    test(
+      "Mixed contiguous and strided non-contiguous views with NaNs (Case 1)",
+      () {
+        NDArray.scope(() {
+          final base = NDArray.fromList(
+            [
+              1.0,
+              99.0,
+              double.nan,
+              99.0,
+              3.0,
+              99.0,
+              99.0,
+              99.0,
+              99.0,
+              99.0,
+              99.0,
+              99.0,
+              4.0,
+              99.0,
+              2.0,
+              99.0,
+              double.nan,
+              99.0,
+            ],
+            [3, 6],
+            DType.float64,
+          );
+
+          final a = base.slice([
+            const Slice(start: 0, stop: 3, step: 2),
+            const Slice(start: 0, stop: 6, step: 2),
+          ]);
+
+          expect(a.shape, [2, 3]);
+          expect(a.isContiguous, false);
+
+          expect(a.getCell([0, 0]), 1.0);
+          expect(a.getCell([0, 1]).isNaN, true);
+          expect(a.getCell([0, 2]), 3.0);
+          expect(a.getCell([1, 0]), 4.0);
+          expect(a.getCell([1, 1]), 2.0);
+          expect(a.getCell([1, 2]).isNaN, true);
+
+          final v1 = nanvar(a, axis: 1);
+          expect(v1.shape, [2]);
+          expect(v1.toList(), [1.0, 1.0]);
+
+          final s1 = nanstd(a, axis: 1);
+          expect(s1.shape, [2]);
+          expect(s1.toList(), [1.0, 1.0]);
+
+          final mi1 = nanmin(a, axis: 1);
+          expect(mi1.shape, [2]);
+          expect(mi1.toList(), [1.0, 2.0]);
+
+          final ma1 = nanmax(a, axis: 1);
+          expect(ma1.shape, [2]);
+          expect(ma1.toList(), [3.0, 4.0]);
+        });
+      },
+    );
+
+    test(
+      "Strided non-contiguous views with NaNs (Case 2 - triggers nanmean bug)",
+      () {
+        NDArray.scope(() {
+          final full = NDArray.fromList(
+            [1.0, 99.0, double.nan, 4.0, 99.0, 2.0, 3.0, 99.0, double.nan],
+            [3, 3],
+            DType.float64,
+          );
+
+          final view = full.slice([
+            const Slice(start: 0, stop: 3),
+            const Slice(start: 0, stop: 3, step: 2),
+          ]);
+
+          expect(view.isContiguous, false);
+
+          // Global reduction (axis: null) triggers the bug fix
+          expect(nanvar(view).scalar, closeTo(1.25, 1e-9));
+          expect(nanstd(view).scalar, closeTo(math.sqrt(1.25), 1e-9));
+          expect(nanmin(view).scalar, 1.0);
+          expect(nanmax(view).scalar, 4.0);
+
+          final v0 = nanvar(view, axis: 0);
+          expect(v0.shape, [2]);
+          expect(v0.toList()[0], closeTo(1.5555555555555556, 1e-9));
+          expect(v0.toList()[1], 0.0);
+
+          final mn0 = nanmin(view, axis: 0);
+          expect(mn0.shape, [2]);
+          expect(mn0.toList()[0], 1.0);
+          expect(mn0.toList()[1], 2.0);
+        });
+      },
+    );
+  });
+
+  group("Strided Medians and Quantiles", () {
+    test("Strided median and quantile (global, 1D slice)", () {
+      NDArray.scope(() {
+        final base = NDArray.fromList(
+          [10.0, 99.0, 20.0, 99.0, 30.0, 99.0, 40.0, 99.0, 50.0],
+          [9],
+          DType.float64,
+        );
+        final a = base.slice([const Slice(start: 0, stop: 9, step: 2)]);
+        expect(a.isContiguous, false);
+        expect(a.shape, [5]);
+        expect(a.toList(), [10.0, 20.0, 30.0, 40.0, 50.0]);
+
+        final m = median(a);
+        expect(m.shape, <int>[]);
+        expect(m.scalar, 30.0);
+
+        final q = quantile(a, 0.5);
+        expect(q.shape, <int>[]);
+        expect(q.scalar, 30.0);
+      });
+    });
+
+    test("Median on strided view (2D slice, forces r_median_helper)", () {
+      NDArray.scope(() {
+        final full = NDArray.fromList(
+          [1.0, 99.0, 3.0, 5.0, 99.0, 2.0, 4.0, 99.0, 6.0],
+          [3, 3],
+          DType.float64,
+        );
+
+        final view = full.slice([
+          const Slice(start: 0, stop: 3),
+          const Slice(start: 0, stop: 3, step: 2),
+        ]);
+
+        expect(view.isContiguous, false);
+
+        final m = median(view);
+        expect(m.shape, <int>[]);
+        expect(m.scalar, 3.5);
+      });
+    });
+
+    test("Strided quantile with different QuantileMethods (1D slice)", () {
+      NDArray.scope(() {
+        final base = NDArray.fromList(
+          [10.0, 99.0, 20.0, 99.0, 30.0, 99.0, 40.0, 99.0],
+          [8],
+          DType.float64,
+        );
+        final a = base.slice([const Slice(start: 0, stop: 8, step: 2)]);
+        expect(a.isContiguous, false);
+        expect(a.shape, [4]);
+        expect(a.toList(), [10.0, 20.0, 30.0, 40.0]);
+
+        expect(
+          quantile(a, 0.35, method: QuantileMethod.linear).scalar,
+          closeTo(20.5, 1e-9),
+        );
+        expect(
+          quantile(a, 0.35, method: QuantileMethod.lower).scalar,
+          closeTo(20.0, 1e-9),
+        );
+        expect(
+          quantile(a, 0.35, method: QuantileMethod.higher).scalar,
+          closeTo(30.0, 1e-9),
+        );
+        expect(
+          quantile(a, 0.35, method: QuantileMethod.midpoint).scalar,
+          closeTo(25.0, 1e-9),
+        );
+        expect(
+          quantile(a, 0.35, method: QuantileMethod.nearest).scalar,
+          closeTo(20.0, 1e-9),
+        );
+        expect(
+          quantile(a, 0.5, method: QuantileMethod.hazen).scalar,
+          closeTo(25.0, 1e-9),
+        );
+        expect(
+          quantile(a, 0.5, method: QuantileMethod.weibull).scalar,
+          closeTo(25.0, 1e-9),
+        );
+      });
+    });
+
+    test(
+      "Quantile on strided view (2D slice, forces r_quantile_helper) and multiple methods",
+      () {
+        NDArray.scope(() {
+          final full = NDArray.fromList(
+            [10.0, 99.0, 20.0, 30.0, 99.0, 40.0],
+            [2, 3],
+            DType.float64,
+          );
+
+          final view = full.slice([
+            const Slice(start: 0, stop: 2),
+            const Slice(start: 0, stop: 3, step: 2),
+          ]);
+
+          expect(view.isContiguous, false);
+
+          expect(
+            quantile(view, 0.35, method: QuantileMethod.linear).scalar,
+            closeTo(20.5, 1e-9),
+          );
+          expect(
+            quantile(view, 0.35, method: QuantileMethod.lower).scalar,
+            20.0,
+          );
+          expect(
+            quantile(view, 0.35, method: QuantileMethod.higher).scalar,
+            30.0,
+          );
+          expect(
+            quantile(view, 0.35, method: QuantileMethod.midpoint).scalar,
+            25.0,
+          );
+          expect(
+            quantile(view, 0.35, method: QuantileMethod.nearest).scalar,
+            20.0,
+          );
+          expect(
+            quantile(view, 0.35, method: QuantileMethod.hazen).scalar,
+            closeTo(19.0, 1e-9),
+          );
+          expect(
+            quantile(view, 0.35, method: QuantileMethod.weibull).scalar,
+            closeTo(17.5, 1e-9),
+          );
+        });
+      },
+    );
+  });
+
+  group("Recycler Neutral Initialization", () {
+    test("sum axis-wise with pre-filled out buffer", () {
+      NDArray.scope(() {
+        final a = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [2, 3],
+          DType.float64,
+        );
+
+        final out = NDArray<double>.fromList(
+          [99.9, 99.9, 99.9],
+          [3],
+          DType.float64,
+        );
+
+        final res = sum(a, axis: 0, out: out);
+
+        expect(identical(res, out), true);
+        expect(out.toList(), [5.0, 7.0, 9.0]);
+      });
+    });
+
+    test("prod axis-wise with pre-filled out buffer", () {
+      NDArray.scope(() {
+        final a = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [2, 3],
+          DType.float64,
+        );
+
+        final out = NDArray<double>.fromList([99.9, 99.9], [2], DType.float64);
+
+        final res = prod(a, axis: 1, out: out);
+
+        expect(identical(res, out), true);
+        expect(out.toList(), [6.0, 120.0]);
+      });
+    });
+  });
+
+  group("Precondition & State Validations", () {
+    NDArray<double> getDisposed() {
+      final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+      a.dispose();
+      return a;
+    }
+
+    test("Disposed input array throws StateError", () {
+      NDArray.scope(() {
+        final disposed = getDisposed();
+
+        expect(() => mean(disposed), throwsStateError);
+        expect(() => variance(disposed), throwsStateError);
+        expect(() => std(disposed), throwsStateError);
+        expect(() => median(disposed), throwsStateError);
+        expect(() => quantile(disposed, 0.5), throwsStateError);
+        expect(() => percentile(disposed, 50.0), throwsStateError);
+        expect(() => nanmean(disposed), throwsStateError);
+        expect(() => nanvar(disposed), throwsStateError);
+        expect(() => nanstd(disposed), throwsStateError);
+        expect(() => nanmin(disposed), throwsStateError);
+        expect(() => nanmax(disposed), throwsStateError);
+        expect(() => sum(disposed), throwsStateError);
+        expect(() => prod(disposed), throwsStateError);
+        expect(() => min(disposed), throwsStateError);
+        expect(() => max(disposed), throwsStateError);
+      });
+    });
+
+    test("Disposed out buffer throws StateError", () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final disposedOut = getDisposed();
+
+        expect(() => mean(a, out: disposedOut), throwsStateError);
+        expect(() => variance(a, out: disposedOut), throwsStateError);
+        expect(() => std(a, out: disposedOut), throwsStateError);
+        expect(() => median(a, out: disposedOut), throwsStateError);
+        expect(() => quantile(a, 0.5, out: disposedOut), throwsStateError);
+        expect(() => percentile(a, 50.0, out: disposedOut), throwsStateError);
+        expect(() => nanmean(a, out: disposedOut), throwsStateError);
+        expect(() => nanvar(a, out: disposedOut), throwsStateError);
+        expect(() => nanstd(a, out: disposedOut), throwsStateError);
+        expect(() => nanmin(a, out: disposedOut), throwsStateError);
+        expect(() => nanmax(a, out: disposedOut), throwsStateError);
+        expect(() => sum(a, out: disposedOut), throwsStateError);
+        expect(() => prod(a, out: disposedOut), throwsStateError);
+        expect(() => min(a, out: disposedOut), throwsStateError);
+        expect(() => max(a, out: disposedOut), throwsStateError);
+      });
+    });
+
+    test("Mismatched out buffer shape throws ArgumentError", () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final invalidOut = NDArray<double>.zeros([2], DType.float64);
+
+        expect(() => mean(a, out: invalidOut), throwsArgumentError);
+        expect(() => variance(a, out: invalidOut), throwsArgumentError);
+        expect(() => std(a, out: invalidOut), throwsArgumentError);
+        expect(() => median(a, out: invalidOut), throwsArgumentError);
+        expect(() => quantile(a, 0.5, out: invalidOut), throwsArgumentError);
+        expect(() => percentile(a, 50.0, out: invalidOut), throwsArgumentError);
+        expect(() => nanmean(a, out: invalidOut), throwsArgumentError);
+        expect(() => nanvar(a, out: invalidOut), throwsArgumentError);
+        expect(() => nanstd(a, out: invalidOut), throwsArgumentError);
+        expect(() => nanmin(a, out: invalidOut), throwsArgumentError);
+        expect(() => nanmax(a, out: invalidOut), throwsArgumentError);
+        expect(() => sum(a, out: invalidOut), throwsArgumentError);
+        expect(() => prod(a, out: invalidOut), throwsArgumentError);
+        expect(() => min(a, out: invalidOut), throwsArgumentError);
+        expect(() => max(a, out: invalidOut), throwsArgumentError);
+      });
+    });
+
+    test("Mismatched out buffer dtype throws ArgumentError/TypeError", () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final invalidOut = NDArray<int>.zeros([], DType.int32);
+
+        final throwsMismatched = throwsA(
+          anyOf(isA<TypeError>(), isA<ArgumentError>()),
+        );
+
+        expect(() => mean(a, out: invalidOut as dynamic), throwsMismatched);
+        expect(() => variance(a, out: invalidOut as dynamic), throwsMismatched);
+        expect(() => std(a, out: invalidOut as dynamic), throwsMismatched);
+        expect(() => median(a, out: invalidOut as dynamic), throwsMismatched);
+        expect(
+          () => quantile(a, 0.5, out: invalidOut as dynamic),
+          throwsMismatched,
+        );
+        expect(
+          () => percentile(a, 50.0, out: invalidOut as dynamic),
+          throwsMismatched,
+        );
+        expect(() => nanmean(a, out: invalidOut as dynamic), throwsMismatched);
+        expect(() => nanvar(a, out: invalidOut as dynamic), throwsMismatched);
+        expect(() => nanstd(a, out: invalidOut as dynamic), throwsMismatched);
+        expect(() => nanmin(a, out: invalidOut as dynamic), throwsMismatched);
+        expect(() => nanmax(a, out: invalidOut as dynamic), throwsMismatched);
+        expect(() => sum(a, out: invalidOut as dynamic), throwsMismatched);
+        expect(() => prod(a, out: invalidOut as dynamic), throwsMismatched);
+        expect(() => min(a, out: invalidOut as dynamic), throwsMismatched);
+        expect(() => max(a, out: invalidOut as dynamic), throwsMismatched);
+      });
+    });
+
+    test("Out of bounds axis throws ArgumentError", () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final invalidAxis = 2;
+
+        expect(() => mean(a, axis: invalidAxis), throwsArgumentError);
+        expect(() => variance(a, axis: invalidAxis), throwsArgumentError);
+        expect(() => std(a, axis: invalidAxis), throwsArgumentError);
+        expect(() => median(a, axis: invalidAxis), throwsArgumentError);
+        expect(() => quantile(a, 0.5, axis: invalidAxis), throwsArgumentError);
+        expect(
+          () => percentile(a, 50.0, axis: invalidAxis),
+          throwsArgumentError,
+        );
+        expect(() => nanmean(a, axis: invalidAxis), throwsArgumentError);
+        expect(() => nanvar(a, axis: invalidAxis), throwsArgumentError);
+        expect(() => nanstd(a, axis: invalidAxis), throwsArgumentError);
+        expect(() => nanmin(a, axis: invalidAxis), throwsArgumentError);
+        expect(() => nanmax(a, axis: invalidAxis), throwsArgumentError);
+        expect(() => sum(a, axis: invalidAxis), throwsArgumentError);
+        expect(() => prod(a, axis: invalidAxis), throwsArgumentError);
+        expect(() => min(a, axis: invalidAxis), throwsArgumentError);
+        expect(() => max(a, axis: invalidAxis), throwsArgumentError);
+      });
+    });
+  });
 }
 
 void expectListEqualsWithNaNs(List actual, List expected) {

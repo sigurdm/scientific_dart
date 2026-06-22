@@ -2858,6 +2858,42 @@ static inline cpx_f_t cpx_atan_f(cpx_f_t z) {
     return (cpx_f_t){r, s};
 }
 
+static inline cpx_t cpx_sinh(cpx_t z) {
+    return (cpx_t){sinh(z.r) * cos(z.i), cosh(z.r) * sin(z.i)};
+}
+static inline cpx_f_t cpx_sinh_f(cpx_f_t z) {
+    return (cpx_f_t){sinhf(z.r) * cosf(z.i), coshf(z.r) * sinf(z.i)};
+}
+
+static inline cpx_t cpx_cosh(cpx_t z) {
+    return (cpx_t){cosh(z.r) * cos(z.i), sinh(z.r) * sin(z.i)};
+}
+static inline cpx_f_t cpx_cosh_f(cpx_f_t z) {
+    return (cpx_f_t){coshf(z.r) * cosf(z.i), sinhf(z.r) * sinf(z.i)};
+}
+
+static inline cpx_t cpx_tanh(cpx_t z) {
+    double denom = cosh(2.0 * z.r) + cos(2.0 * z.i);
+    if (denom == 0.0) return (cpx_t){0.0, 0.0};
+    return (cpx_t){sinh(2.0 * z.r) / denom, sin(2.0 * z.i) / denom};
+}
+static inline cpx_f_t cpx_tanh_f(cpx_f_t z) {
+    float denom = coshf(2.0f * z.r) + cosf(2.0f * z.i);
+    if (denom == 0.0f) return (cpx_f_t){0.0f, 0.0f};
+    return (cpx_f_t){sinhf(2.0f * z.r) / denom, sinf(2.0f * z.i) / denom};
+}
+
+static inline cpx_t cpx_asinh(cpx_t z) {
+    cpx_t iz = {-z.i, z.r};
+    cpx_t w = cpx_asin(iz);
+    return (cpx_t){w.i, -w.r};
+}
+static inline cpx_f_t cpx_asinh_f(cpx_f_t z) {
+    cpx_f_t iz = {-z.i, z.r};
+    cpx_f_t w = cpx_asin_f(iz);
+    return (cpx_f_t){w.i, -w.r};
+}
+
 #define DEFINE_COMPLEX_UNARY_VEC(FUNCNAME, T, OP) \
 void FUNCNAME(const T *src, T *res, int size) { \
     v_unary_impl(src, res, size, [](T x) { return OP(x); }); \
@@ -2877,6 +2913,15 @@ DEFINE_COMPLEX_UNARY_VEC(v_acos_complex64, cpx_f_t, cpx_acos_f)
 DEFINE_COMPLEX_UNARY_VEC(v_atan_complex128, cpx_t, cpx_atan)
 DEFINE_COMPLEX_UNARY_VEC(v_atan_complex64, cpx_f_t, cpx_atan_f)
 
+DEFINE_COMPLEX_UNARY_VEC(v_sinh_complex128, cpx_t, cpx_sinh)
+DEFINE_COMPLEX_UNARY_VEC(v_sinh_complex64, cpx_f_t, cpx_sinh_f)
+DEFINE_COMPLEX_UNARY_VEC(v_cosh_complex128, cpx_t, cpx_cosh)
+DEFINE_COMPLEX_UNARY_VEC(v_cosh_complex64, cpx_f_t, cpx_cosh_f)
+DEFINE_COMPLEX_UNARY_VEC(v_tanh_complex128, cpx_t, cpx_tanh)
+DEFINE_COMPLEX_UNARY_VEC(v_tanh_complex64, cpx_f_t, cpx_tanh_f)
+DEFINE_COMPLEX_UNARY_VEC(v_asinh_complex128, cpx_t, cpx_asinh)
+DEFINE_COMPLEX_UNARY_VEC(v_asinh_complex64, cpx_f_t, cpx_asinh_f)
+
 DEFINE_STRIDED_UNARY_OP(s_sin_complex128, cpx_t, cpx_sin)
 DEFINE_STRIDED_UNARY_OP(s_sin_complex64, cpx_f_t, cpx_sin_f)
 DEFINE_STRIDED_UNARY_OP(s_cos_complex128, cpx_t, cpx_cos)
@@ -2890,6 +2935,15 @@ DEFINE_STRIDED_UNARY_OP(s_acos_complex128, cpx_t, cpx_acos)
 DEFINE_STRIDED_UNARY_OP(s_acos_complex64, cpx_f_t, cpx_acos_f)
 DEFINE_STRIDED_UNARY_OP(s_atan_complex128, cpx_t, cpx_atan)
 DEFINE_STRIDED_UNARY_OP(s_atan_complex64, cpx_f_t, cpx_atan_f)
+
+DEFINE_STRIDED_UNARY_OP(s_sinh_complex128, cpx_t, cpx_sinh)
+DEFINE_STRIDED_UNARY_OP(s_sinh_complex64, cpx_f_t, cpx_sinh_f)
+DEFINE_STRIDED_UNARY_OP(s_cosh_complex128, cpx_t, cpx_cosh)
+DEFINE_STRIDED_UNARY_OP(s_cosh_complex64, cpx_f_t, cpx_cosh_f)
+DEFINE_STRIDED_UNARY_OP(s_tanh_complex128, cpx_t, cpx_tanh)
+DEFINE_STRIDED_UNARY_OP(s_tanh_complex64, cpx_f_t, cpx_tanh_f)
+DEFINE_STRIDED_UNARY_OP(s_asinh_complex128, cpx_t, cpx_asinh)
+DEFINE_STRIDED_UNARY_OP(s_asinh_complex64, cpx_f_t, cpx_asinh_f)
 
 #define OP_ASIN_D(x) asin(x)
 #define OP_ASIN_F(x) asinf(x)

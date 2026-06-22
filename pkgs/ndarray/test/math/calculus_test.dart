@@ -351,6 +351,40 @@ void main() {
         expect(grads[0].toList()[1].imag, closeTo(2.0, 1e-9));
       }),
     );
+
+    test(
+      'trapz() contour integration along imaginary axis with complex64',
+      () => NDArray.scope(() {
+        // Integrate f(z) = z from 0 to i
+        // Points: 0, 0.5i, i
+        final y = NDArray<Complex>.fromList(
+          [Complex(0, 0), Complex(0, 0.5), Complex(0, 1.0)],
+          [3],
+          DType.complex64,
+        );
+        // Constant spacing dx = 0.5i
+        final res = trapz(y, spacing: Spacing.step(Complex(0, 0.5)));
+        expect(res.dtype, DType.complex64);
+        expect(res.toList()[0].real, closeTo(-0.5, 1e-5));
+        expect(res.toList()[0].imag, closeTo(0.0, 1e-5));
+      }),
+    );
+
+    test(
+      'trapz() with complex coordinates on complex64',
+      () => NDArray.scope(() {
+        final y = NDArray<Complex>.fromList(
+          [Complex(0, 0), Complex(0, 0.5), Complex(0, 1.0)],
+          [3],
+          DType.complex64,
+        );
+        final coords = [Complex(0, 0), Complex(0, 0.5), Complex(0, 1.0)];
+        final res = trapz(y, spacing: Spacing.coordinates(coords));
+        expect(res.dtype, DType.complex64);
+        expect(res.toList()[0].real, closeTo(-0.5, 1e-5));
+        expect(res.toList()[0].imag, closeTo(0.0, 1e-5));
+      }),
+    );
   });
 
   group('Integer Spacing Bug Repro', () {
@@ -404,6 +438,197 @@ void main() {
         final dRecycled = diff(mat, axis: 1, out: recycler);
         expect(identical(dRecycled, recycler), true);
         expect(dRecycled.toList(), [2.0, 6.0, 3.0, 10.0]);
+      }),
+    );
+  });
+
+  group('Strided Gradient Tests', () {
+    test(
+      'float64 strided gradient',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          List<double>.generate(10, (i) => i.toDouble() * i.toDouble()),
+          [10],
+          DType.float64,
+        );
+        final view = parent.slice([const Slice(start: 0, stop: 10, step: 2)]);
+        expect(view.isContiguous, false);
+
+        final grad = gradient(view, spacing: const Spacing.step(2.0));
+        expect(grad.dtype, DType.float64);
+        expect(grad.shape, [5]);
+        expect(grad.toList()[0], closeTo(2.0, 1e-9));
+        expect(grad.toList()[1], closeTo(4.0, 1e-9));
+        expect(grad.toList()[2], closeTo(8.0, 1e-9));
+        expect(grad.toList()[3], closeTo(12.0, 1e-9));
+        expect(grad.toList()[4], closeTo(14.0, 1e-9));
+      }),
+    );
+
+    test(
+      'float32 strided gradient',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          List<double>.generate(10, (i) => i.toDouble() * i.toDouble()),
+          [10],
+          DType.float32,
+        );
+        final view = parent.slice([const Slice(start: 0, stop: 10, step: 2)]);
+        expect(view.isContiguous, false);
+
+        final grad = gradient(view, spacing: const Spacing.step(2.0));
+        expect(grad.dtype, DType.float32);
+        expect(grad.shape, [5]);
+        expect(grad.toList()[0], closeTo(2.0, 1e-5));
+        expect(grad.toList()[1], closeTo(4.0, 1e-5));
+        expect(grad.toList()[2], closeTo(8.0, 1e-5));
+        expect(grad.toList()[3], closeTo(12.0, 1e-5));
+        expect(grad.toList()[4], closeTo(14.0, 1e-5));
+      }),
+    );
+
+    test(
+      'complex128 strided gradient',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          List<Complex>.generate(
+            10,
+            (i) => Complex(i.toDouble() * i.toDouble(), i.toDouble()),
+          ),
+          [10],
+          DType.complex128,
+        );
+        final view = parent.slice([const Slice(start: 0, stop: 10, step: 2)]);
+        expect(view.isContiguous, false);
+
+        final grad = gradient(view, spacing: const Spacing.step(2.0));
+        expect(grad.dtype, DType.complex128);
+        expect(grad.shape, [5]);
+
+        expect(grad.toList()[0].real, closeTo(2.0, 1e-9));
+        expect(grad.toList()[0].imag, closeTo(1.0, 1e-9));
+        expect(grad.toList()[1].real, closeTo(4.0, 1e-9));
+        expect(grad.toList()[1].imag, closeTo(1.0, 1e-9));
+        expect(grad.toList()[2].real, closeTo(8.0, 1e-9));
+        expect(grad.toList()[2].imag, closeTo(1.0, 1e-9));
+      }),
+    );
+
+    test(
+      'complex64 strided gradient',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          List<Complex>.generate(
+            10,
+            (i) => Complex(i.toDouble() * i.toDouble(), i.toDouble()),
+          ),
+          [10],
+          DType.complex64,
+        );
+        final view = parent.slice([const Slice(start: 0, stop: 10, step: 2)]);
+        expect(view.isContiguous, false);
+
+        final grad = gradient(view, spacing: const Spacing.step(2.0));
+        expect(grad.dtype, DType.complex64);
+        expect(grad.shape, [5]);
+
+        expect(grad.toList()[0].real, closeTo(2.0, 1e-5));
+        expect(grad.toList()[0].imag, closeTo(1.0, 1e-5));
+        expect(grad.toList()[1].real, closeTo(4.0, 1e-5));
+        expect(grad.toList()[1].imag, closeTo(1.0, 1e-5));
+        expect(grad.toList()[2].real, closeTo(8.0, 1e-5));
+        expect(grad.toList()[2].imag, closeTo(1.0, 1e-5));
+      }),
+    );
+
+    test(
+      'gradientArray on strided 2D view',
+      () => NDArray.scope(() {
+        final parent = NDArray.fromList(
+          List<double>.generate(16, (i) => i.toDouble()),
+          [4, 4],
+          DType.float64,
+        );
+        final view = parent.transposed;
+        expect(view.isContiguous, false);
+
+        final grads = gradientArray(view);
+        expect(grads.length, 2);
+        expect(grads[0].shape, [4, 4]);
+        expect(grads[1].shape, [4, 4]);
+
+        expect(grads[0].toList().every((e) => (e - 1.0).abs() < 1e-9), true);
+        expect(grads[1].toList().every((e) => (e - 4.0).abs() < 1e-9), true);
+      }),
+    );
+  });
+
+  group('Calculus Preconditions and Error Handling', () {
+    test(
+      'disposed input throws StateError',
+      () => NDArray.scope(() {
+        final a = NDArray.zeros([8], DType.float64);
+        a.dispose();
+
+        expect(() => trapz(a), throwsStateError);
+        expect(() => gradient(a), throwsStateError);
+        expect(() => gradientArray(a), throwsStateError);
+        expect(() => diff(a), throwsStateError);
+      }),
+    );
+
+    test(
+      'disposed out buffer throws StateError',
+      () => NDArray.scope(() {
+        final a = NDArray.zeros([8], DType.float64);
+
+        final outTrapz = NDArray<double>.zeros([], DType.float64);
+        outTrapz.dispose();
+        expect(() => trapz(a, out: outTrapz), throwsStateError);
+
+        final outGrad = NDArray<double>.zeros([8], DType.float64);
+        outGrad.dispose();
+        expect(() => gradient(a, out: outGrad), throwsStateError);
+        expect(() => gradientArray(a, out: [outGrad]), throwsStateError);
+
+        final outDiff = NDArray<double>.zeros([7], DType.float64);
+        outDiff.dispose();
+        expect(() => diff(a, out: outDiff), throwsStateError);
+      }),
+    );
+
+    test(
+      'incompatible out buffer shape or dtype throws ArgumentError',
+      () => NDArray.scope(() {
+        final a = NDArray.zeros([8], DType.float64);
+
+        final outGradWrongShape = NDArray<double>.zeros([9], DType.float64);
+        expect(() => gradient(a, out: outGradWrongShape), throwsArgumentError);
+
+        final outGradWrongDtype = NDArray<double>.zeros([8], DType.float32);
+        expect(() => gradient(a, out: outGradWrongDtype), throwsArgumentError);
+
+        final outDiffWrongShape = NDArray<double>.zeros([8], DType.float64);
+        expect(() => diff(a, out: outDiffWrongShape), throwsArgumentError);
+
+        final outDiffWrongDtype = NDArray<double>.zeros([7], DType.float32);
+        expect(() => diff(a, out: outDiffWrongDtype), throwsArgumentError);
+      }),
+    );
+
+    test(
+      'out of bounds axis throws ArgumentError',
+      () => NDArray.scope(() {
+        final a = NDArray.zeros([8], DType.float64);
+
+        expect(() => trapz(a, axis: 1), throwsArgumentError);
+        expect(() => trapz(a, axis: -2), throwsArgumentError);
+
+        expect(() => gradient(a, axis: 1), throwsArgumentError);
+        expect(() => gradient(a, axis: -2), throwsArgumentError);
+
+        expect(() => diff(a, axis: 1), throwsArgumentError);
+        expect(() => diff(a, axis: -2), throwsArgumentError);
       }),
     );
   });

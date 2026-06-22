@@ -951,5 +951,335 @@ void main() {
         expect(bList[4].isNaN, true);
       }),
     );
+
+    group('argwhere Tests', () {
+      test(
+        'argwhere with 1D, 2D, and 3D arrays of various DTypes',
+        () => NDArray.scope(() {
+          final a1 = NDArray.fromList([0, 1, 0, 3], [4], DType.int32);
+          final res1 = argwhere(a1);
+          expect(res1.shape, [2, 1]);
+          expect(res1.toList(), [1, 3]);
+
+          final a2 = NDArray.fromList(
+            [0.0, 1.5, 0.0, 0.0, 2.5, 0.0],
+            [2, 3],
+            DType.float64,
+          );
+          final res2 = argwhere(a2);
+          expect(res2.shape, [2, 2]);
+          expect(res2.toList(), [0, 1, 1, 1]);
+
+          final a3 = NDArray.fromList(
+            [0, 0, 1, 0, 0, 0, 0, 1],
+            [2, 2, 2],
+            DType.uint8,
+          );
+          final res3 = argwhere(a3);
+          expect(res3.shape, [2, 3]);
+          expect(res3.toList(), [0, 1, 0, 1, 1, 1]);
+        }),
+      );
+
+      test(
+        'argwhere with 0-D scalar arrays (both zero and non-zero)',
+        () => NDArray.scope(() {
+          final nonzeroScalar = NDArray.fromList([5.0], [], DType.float64);
+          final res1 = argwhere(nonzeroScalar);
+          expect(res1.shape, [1, 0]);
+          expect(res1.toList(), <int>[]);
+
+          final zeroScalar = NDArray.fromList([0.0], [], DType.float64);
+          final res2 = argwhere(zeroScalar);
+          expect(res2.shape, [0, 0]);
+          expect(res2.toList(), <int>[]);
+        }),
+      );
+
+      test(
+        'argwhere with strided non-contiguous views',
+        () => NDArray.scope(() {
+          final mat = NDArray.fromList(
+            [0, 1, 0, 2, 0, 0, 0, 0, 3],
+            [3, 3],
+            DType.int32,
+          );
+
+          final transposed = mat.transpose();
+          expect(transposed.isContiguous, isFalse);
+          final res = argwhere(transposed);
+          expect(res.shape, [3, 2]);
+          expect(res.toList(), [0, 1, 1, 0, 2, 2]);
+
+          final sliced = mat.slice([
+            Slice(start: 0, stop: 3, step: 2),
+            Slice.all(),
+          ]);
+          expect(sliced.isContiguous, isFalse);
+          final resSliced = argwhere(sliced);
+          expect(resSliced.shape, [2, 2]);
+          expect(resSliced.toList(), [0, 1, 1, 2]);
+        }),
+      );
+
+      test(
+        'argwhere on disposed array throws StateError',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1, 2, 3], [3], DType.int32);
+          a.dispose();
+          expect(() => argwhere(a), throwsStateError);
+        }),
+      );
+    });
+
+    group('nonzero Strided & DType Tests', () {
+      test(
+        'nonzero on strided non-contiguous views',
+        () => NDArray.scope(() {
+          final mat = NDArray.fromList(
+            [0, 1, 0, 2, 0, 0, 0, 0, 3],
+            [3, 3],
+            DType.int32,
+          );
+          final transposed = mat.transpose();
+          final coords = nonzero(transposed);
+          expect(coords.length, 2);
+          expect(coords[0].toList(), [0, 1, 2]);
+          expect(coords[1].toList(), [1, 0, 2]);
+        }),
+      );
+
+      test(
+        'nonzero on different DTypes',
+        () => NDArray.scope(() {
+          final f64 = NDArray.fromList([0.0, 1.5, 0.0], [3], DType.float64);
+          final resF64 = nonzero(f64);
+          expect(resF64[0].toList(), [1]);
+
+          final c128 = NDArray<Complex>.fromList(
+            [Complex(0.0, 0.0), Complex(1.0, 0.0), Complex(0.0, 2.0)],
+            [3],
+            DType.complex128,
+          );
+          final resC128 = nonzero(c128);
+          expect(resC128[0].toList(), [1, 2]);
+
+          final u8 = NDArray.fromList([0, 255, 0], [3], DType.uint8);
+          final resU8 = nonzero(u8);
+          expect(resU8[0].toList(), [1]);
+
+          final boolean = NDArray.fromList(
+            [false, true, false],
+            [3],
+            DType.boolean,
+          );
+          final resBool = nonzero(boolean);
+          expect(resBool[0].toList(), [1]);
+
+          final i16 = NDArray.fromList([0, 10, 0], [3], DType.int16);
+          final resI16 = nonzero(i16);
+          expect(resI16[0].toList(), [1]);
+        }),
+      );
+    });
+
+    group('partition & argpartition Expansion', () {
+      test(
+        'partitioning on Complex128 and Complex64 arrays',
+        () => NDArray.scope(() {
+          final c128 = NDArray<Complex>.fromList(
+            [
+              Complex(3.0, 3.0),
+              Complex(1.0, 1.0),
+              Complex(4.0, 4.0),
+              Complex(2.0, 2.0),
+            ],
+            [4],
+            DType.complex128,
+          );
+          final p128 = partition(c128, 1);
+          final p128List = p128.toList();
+          expect(p128List[1], Complex(2.0, 2.0));
+          expect(p128List[0].real <= 2.0, true);
+          expect(p128List[2].real >= 2.0, true);
+
+          final c64 = NDArray<Complex>.fromList(
+            [
+              Complex(3.0, 3.0),
+              Complex(1.0, 1.0),
+              Complex(4.0, 4.0),
+              Complex(2.0, 2.0),
+            ],
+            [4],
+            DType.complex64,
+          );
+          final p64 = partition(c64, 1);
+          final p64List = p64.toList();
+          expect(p64List[1], Complex(2.0, 2.0));
+        }),
+      );
+
+      test(
+        'negative kth pivots',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([3, 4, 2, 1], [4], DType.int32);
+          final p1 = partition(a, -1);
+          expect(p1.toList()[3], 4);
+          for (var i = 0; i < 3; i++) {
+            expect(p1.toList()[i] <= 4, true);
+          }
+
+          final p2 = partition(a, -2);
+          expect(p2.toList()[2], 3);
+
+          final p3 = partition(a, [-2, -1]);
+          expect(p3.toList()[2], 3);
+          expect(p3.toList()[3], 4);
+        }),
+      );
+
+      test(
+        'edge cases like uniqueK being empty',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([3, 4, 2, 1], [4], DType.int32);
+          final p = partition(a, <int>[]);
+          expect(p.toList(), [3, 4, 2, 1]);
+
+          final idx = argpartition(a, <int>[]);
+          expect(idx.toList(), [0, 1, 2, 3]);
+        }),
+      );
+
+      test(
+        'out-of-bounds kth values or invalid types throw correct errors',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([3, 4, 2, 1], [4], DType.int32);
+          expect(() => partition(a, 4), throwsRangeError);
+          expect(() => partition(a, -5), throwsRangeError);
+          expect(() => partition(a, 'invalid'), throwsArgumentError);
+
+          expect(() => argpartition(a, 4), throwsRangeError);
+          expect(() => argpartition(a, -5), throwsRangeError);
+          expect(() => argpartition(a, 'invalid'), throwsArgumentError);
+        }),
+      );
+    });
+
+    group('sort & argsort Expansion', () {
+      test(
+        'sorting on Float32, UInt8, and Complex64',
+        () => NDArray.scope(() {
+          final f32 = NDArray.fromList([3.0, 1.0, 2.0], [3], DType.float32);
+          expect(sort(f32).toList(), [1.0, 2.0, 3.0]);
+
+          final u8 = NDArray.fromList([3, 1, 2], [3], DType.uint8);
+          expect(sort(u8).toList(), [1, 2, 3]);
+
+          final c64 = NDArray<Complex>.fromList(
+            [Complex(3.0, 3.0), Complex(1.0, 1.0), Complex(2.0, 2.0)],
+            [3],
+            DType.complex64,
+          );
+          expect(sort(c64).toList(), [
+            Complex(1.0, 1.0),
+            Complex(2.0, 2.0),
+            Complex(3.0, 3.0),
+          ]);
+        }),
+      );
+
+      test(
+        'sorting empty arrays and 0-D scalar arrays',
+        () => NDArray.scope(() {
+          final empty = NDArray<double>.create([0], DType.float64);
+          expect(sort(empty).toList(), <double>[]);
+
+          final scalar = NDArray.fromList([5.0], [], DType.float64);
+          expect(sort(scalar).toList(), [5.0]);
+        }),
+      );
+    });
+
+    group('where Expansion', () {
+      test(
+        'where using a pre-allocated out recycler buffer',
+        () => NDArray.scope(() {
+          final cond = NDArray.fromList([true, false], [2], DType.boolean);
+          final x = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final y = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+          final out = NDArray<double>.zeros([2], DType.float64);
+
+          final res = where(cond, x, y, out) as NDArray;
+          expect(identical(res, out), true);
+          expect(out.toList(), [1.0, 20.0]);
+        }),
+      );
+
+      test(
+        'where error conditions',
+        () => NDArray.scope(() {
+          final cond = NDArray.fromList([true, false], [2], DType.boolean);
+          final x = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final y = NDArray.fromList([10.0, 20.0], [2], DType.float64);
+
+          final cond9 = NDArray<bool>.zeros([
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+          ], DType.boolean);
+          final x9 = NDArray<double>.zeros([
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+          ], DType.float64);
+          final y9 = NDArray<double>.zeros([
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+          ], DType.float64);
+          expect(() => where(cond9, x9, y9), throwsUnsupportedError);
+
+          final outBadShape = NDArray<double>.zeros([3], DType.float64);
+          expect(() => where(cond, x, y, outBadShape), throwsArgumentError);
+
+          final outBadDType = NDArray<int>.zeros([2], DType.int32);
+          expect(
+            () => where(cond, x, y, outBadDType as dynamic),
+            throwsArgumentError,
+          );
+
+          final condBad = NDArray.fromList([1.0, 0.0], [2], DType.float64);
+          expect(
+            () => where(condBad as dynamic, x, y),
+            throwsA(anyOf(isA<ArgumentError>(), isA<TypeError>())),
+          );
+
+          final xMismatch = NDArray.fromList(
+            [1.0, 2.0, 3.0],
+            [3],
+            DType.float64,
+          );
+          expect(() => where(cond, xMismatch, y), throwsArgumentError);
+        }),
+      );
+    });
   });
 }

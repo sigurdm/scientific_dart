@@ -1407,20 +1407,27 @@ NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
+NDArray<R> sinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute sinh() on a disposed array.');
   }
-  final DType<double> targetDType = a.dtype == DType.float32
-      ? DType.float32 as DType<double>
-      : DType.float64 as DType<double>;
-  final result = out ?? NDArray<double>.create(a.shape, targetDType);
+  final DType<dynamic> targetDType;
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    targetDType = a.dtype;
+  } else {
+    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  }
+
+  final NDArray<R> result;
   if (out != null) {
-    if (!listEquals(out.shape, a.shape)) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
-        'Provided out buffer has incompatible shape for sinh.',
+        'Provided out buffer has incompatible shape or dtype for sinh.',
       );
     }
+    result = out;
+  } else {
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.isContiguous && result.isContiguous) {
@@ -1431,46 +1438,70 @@ NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
       case DType.float32:
         v_sinh_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
+      case DType.complex128:
+        v_sinh_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case DType.complex64:
+        v_sinh_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
       default:
         break;
     }
   } else {
     final rank = a.shape.length;
-    final marker = ScratchArena.marker;
-    final cShape = ScratchArena.copyInts(a.shape);
-    final cStridesA = ScratchArena.copyInts(a.strides);
-    final cStridesRes = ScratchArena.copyInts(result.strides);
-    try {
-      switch (a.dtype) {
-        case DType.float64:
-          s_sinh_double(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-          );
-          return result;
-        case DType.float32:
-          s_sinh_float(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-          );
-          return result;
-        default:
-          break;
-      }
-    } finally {
-      ScratchArena.reset(marker);
+    final cBuffer = ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    if (a.dtype == DType.float64) {
+      s_sinh_double(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.float32) {
+      s_sinh_float(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.complex128) {
+      s_sinh_complex128(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.complex64) {
+      s_sinh_complex64(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
     }
   }
 
-  unaryOp<T, double>(
+  unaryOp<T, R>(
     result.data,
     a.data,
     a.shape,
@@ -1481,7 +1512,7 @@ NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     result.offsetElements,
     (x) {
       final val = (x as num).toDouble();
-      return (math.exp(val) - math.exp(-val)) / 2.0;
+      return (math.exp(val) - math.exp(-val)) / 2.0 as R;
     },
   );
   return result;
@@ -1498,20 +1529,27 @@ NDArray<double> sinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
+NDArray<R> cosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute cosh() on a disposed array.');
   }
-  final DType<double> targetDType = a.dtype == DType.float32
-      ? DType.float32 as DType<double>
-      : DType.float64 as DType<double>;
-  final result = out ?? NDArray<double>.create(a.shape, targetDType);
+  final DType<dynamic> targetDType;
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    targetDType = a.dtype;
+  } else {
+    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  }
+
+  final NDArray<R> result;
   if (out != null) {
-    if (!listEquals(out.shape, a.shape)) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
-        'Provided out buffer has incompatible shape for cosh.',
+        'Provided out buffer has incompatible shape or dtype for cosh.',
       );
     }
+    result = out;
+  } else {
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.isContiguous && result.isContiguous) {
@@ -1522,46 +1560,70 @@ NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
       case DType.float32:
         v_cosh_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
+      case DType.complex128:
+        v_cosh_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case DType.complex64:
+        v_cosh_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
       default:
         break;
     }
   } else {
     final rank = a.shape.length;
-    final marker = ScratchArena.marker;
-    final cShape = ScratchArena.copyInts(a.shape);
-    final cStridesA = ScratchArena.copyInts(a.strides);
-    final cStridesRes = ScratchArena.copyInts(result.strides);
-    try {
-      switch (a.dtype) {
-        case DType.float64:
-          s_cosh_double(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-          );
-          return result;
-        case DType.float32:
-          s_cosh_float(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-          );
-          return result;
-        default:
-          break;
-      }
-    } finally {
-      ScratchArena.reset(marker);
+    final cBuffer = ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    if (a.dtype == DType.float64) {
+      s_cosh_double(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.float32) {
+      s_cosh_float(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.complex128) {
+      s_cosh_complex128(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.complex64) {
+      s_cosh_complex64(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
     }
   }
 
-  unaryOp<T, double>(
+  unaryOp<T, R>(
     result.data,
     a.data,
     a.shape,
@@ -1572,7 +1634,7 @@ NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     result.offsetElements,
     (x) {
       final val = (x as num).toDouble();
-      return (math.exp(val) + math.exp(-val)) / 2.0;
+      return (math.exp(val) + math.exp(-val)) / 2.0 as R;
     },
   );
   return result;
@@ -1589,20 +1651,27 @@ NDArray<double> cosh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
+NDArray<R> tanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute tanh() on a disposed array.');
   }
-  final DType<double> targetDType = a.dtype == DType.float32
-      ? DType.float32 as DType<double>
-      : DType.float64 as DType<double>;
-  final result = out ?? NDArray<double>.create(a.shape, targetDType);
+  final DType<dynamic> targetDType;
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    targetDType = a.dtype;
+  } else {
+    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  }
+
+  final NDArray<R> result;
   if (out != null) {
-    if (!listEquals(out.shape, a.shape)) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
-        'Provided out buffer has incompatible shape for tanh.',
+        'Provided out buffer has incompatible shape or dtype for tanh.',
       );
     }
+    result = out;
+  } else {
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.isContiguous && result.isContiguous) {
@@ -1613,46 +1682,70 @@ NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
       case DType.float32:
         v_tanh_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
+      case DType.complex128:
+        v_tanh_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case DType.complex64:
+        v_tanh_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
       default:
         break;
     }
   } else {
     final rank = a.shape.length;
-    final marker = ScratchArena.marker;
-    final cShape = ScratchArena.copyInts(a.shape);
-    final cStridesA = ScratchArena.copyInts(a.strides);
-    final cStridesRes = ScratchArena.copyInts(result.strides);
-    try {
-      switch (a.dtype) {
-        case DType.float64:
-          s_tanh_double(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-          );
-          return result;
-        case DType.float32:
-          s_tanh_float(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-          );
-          return result;
-        default:
-          break;
-      }
-    } finally {
-      ScratchArena.reset(marker);
+    final cBuffer = ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    if (a.dtype == DType.float64) {
+      s_tanh_double(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.float32) {
+      s_tanh_float(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.complex128) {
+      s_tanh_complex128(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.complex64) {
+      s_tanh_complex64(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
     }
   }
 
-  unaryOp<T, double>(
+  unaryOp<T, R>(
     result.data,
     a.data,
     a.shape,
@@ -1664,7 +1757,7 @@ NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     (x) {
       final val = (x as num).toDouble();
       final exp2val = math.exp(2.0 * val);
-      return (exp2val - 1.0) / (exp2val + 1.0);
+      return (exp2val - 1.0) / (exp2val + 1.0) as R;
     },
   );
   return result;
@@ -1681,20 +1774,27 @@ NDArray<double> tanh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<double> asinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
+NDArray<R> asinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute asinh() on a disposed array.');
   }
-  final DType<double> targetDType = a.dtype == DType.float32
-      ? DType.float32 as DType<double>
-      : DType.float64 as DType<double>;
-  final result = out ?? NDArray<double>.create(a.shape, targetDType);
+  final DType<dynamic> targetDType;
+  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+    targetDType = a.dtype;
+  } else {
+    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
+  }
+
+  final NDArray<R> result;
   if (out != null) {
-    if (!listEquals(out.shape, a.shape)) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
-        'Provided out buffer has incompatible shape for asinh.',
+        'Provided out buffer has incompatible shape or dtype for asinh.',
       );
     }
+    result = out;
+  } else {
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
   if (a.isContiguous && result.isContiguous) {
@@ -1705,46 +1805,70 @@ NDArray<double> asinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
       case DType.float32:
         v_asinh_float(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
+      case DType.complex128:
+        v_asinh_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case DType.complex64:
+        v_asinh_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
       default:
         break;
     }
   } else {
     final rank = a.shape.length;
-    final marker = ScratchArena.marker;
-    final cShape = ScratchArena.copyInts(a.shape);
-    final cStridesA = ScratchArena.copyInts(a.strides);
-    final cStridesRes = ScratchArena.copyInts(result.strides);
-    try {
-      switch (a.dtype) {
-        case DType.float64:
-          s_asinh_double(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-          );
-          return result;
-        case DType.float32:
-          s_asinh_float(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-          );
-          return result;
-        default:
-          break;
-      }
-    } finally {
-      ScratchArena.reset(marker);
+    final cBuffer = ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+    if (a.dtype == DType.float64) {
+      s_asinh_double(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.float32) {
+      s_asinh_float(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.complex128) {
+      s_asinh_complex128(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (a.dtype == DType.complex64) {
+      s_asinh_complex64(
+        a.pointer.cast(),
+        cStridesA,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
     }
   }
 
-  unaryOp<T, double>(
+  unaryOp<T, R>(
     result.data,
     a.data,
     a.shape,
@@ -1755,7 +1879,7 @@ NDArray<double> asinh<T extends num>(NDArray<T> a, {NDArray<double>? out}) {
     result.offsetElements,
     (x) {
       final val = (x as num).toDouble();
-      return math.log(val + math.sqrt(val * val + 1.0));
+      return math.log(val + math.sqrt(val * val + 1.0)) as R;
     },
   );
   return result;

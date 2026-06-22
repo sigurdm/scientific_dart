@@ -1944,7 +1944,13 @@ NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
       promotedA = promoteToDouble(a);
     }
 
-    final List elements = promotedA.data;
+    final size = promotedA.shape.isEmpty
+        ? 1
+        : promotedA.shape.reduce((x, y) => x * y);
+    final List elements =
+        (size == promotedA.data.length && promotedA.isContiguous)
+        ? promotedA.data
+        : promotedA.toList();
     var sumVal = (targetDType.isComplex ? Complex(0, 0) : 0.0) as dynamic;
     var count = 0;
     for (var i = 0; i < elements.length; i++) {

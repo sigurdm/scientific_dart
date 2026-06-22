@@ -26,6 +26,11 @@ DType resolveDType(DType a, DType b) {
   if (b == DType.boolean) return a;
   if (a == b) return a;
 
+  if ((a == DType.uint8 && b == DType.int16) ||
+      (a == DType.int16 && b == DType.uint8)) {
+    return DType.int16;
+  }
+
   final isAIntLarge = a == DType.int64 || a == DType.int32;
   final isBIntLarge = b == DType.int64 || b == DType.int32;
 
@@ -47,6 +52,7 @@ DType resolveDType(DType a, DType b) {
 DType<T> defaultDType<T>() {
   if (T == Complex) return DType.complex128 as DType<T>;
   if (T == int) return DType.int64 as DType<T>;
+  if (T == bool) return DType.boolean as DType<T>;
   return DType.float64 as DType<T>;
 }
 

@@ -170,8 +170,8 @@ void main() {
       expect(c.toList(), [2, 2, 3]);
       expect(
         c.dtype,
-        DType.int32,
-      ); // resolved dtype of uint8 and int16 is int32
+        DType.int16,
+      ); // resolved dtype of uint8 and int16 is int16 (NumPy style)
     });
 
     test('floor_divide with uint8/float64', () {
@@ -191,7 +191,7 @@ void main() {
       // This should not crash
       final c = remainder(a, b);
       expect(c.toList(), [2, 0, 1]);
-      expect(c.dtype, DType.int32);
+      expect(c.dtype, DType.int16);
     });
 
     test('remainder with uint8/float64', () {

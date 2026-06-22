@@ -1366,6 +1366,166 @@ List<NDArray<int>> nonzero(NDArray a) {
   return results;
 }
 
+/// Find the indices of array elements that are non-zero, grouped by element.
+///
+/// Returns a 2D array of shape `[M, N]` where `M` is the number of non-zero
+/// elements, and `N` is the rank of [a].
+///
+/// It is an error if [a] is disposed.
+NDArray<int> argwhere(NDArray a) {
+  if (a.isDisposed) {
+    throw StateError('Cannot execute argwhere() on a disposed array.');
+  }
+  final rank = a.shape.length;
+
+  return NDArray.scope(() {
+    final count = count_nonzero<Object>(a as NDArray<Object>).scalar;
+
+    if (rank == 0) {
+      if (count > 0) {
+        return NDArray<int>.create([1, 0], DType.int32).detachToParentScope();
+      } else {
+        return NDArray<int>.create([0, 0], DType.int32).detachToParentScope();
+      }
+    }
+
+    final result = NDArray<int>.create(
+      [count, rank],
+      DType.int32,
+      zeroInit: true,
+    );
+    if (count == 0) {
+      return result.detachToParentScope();
+    }
+
+    // Convert input to a contiguous boolean mask using type-specialized native C intrinsics!
+    final cond = NDArray<bool>.create(a.shape, DType.boolean);
+    final marker = ScratchArena.marker;
+    try {
+      final cShape = ScratchArena.allocate<ffi.Int>(
+        rank * ffi.sizeOf<ffi.Int>(),
+      );
+      final cStrides = ScratchArena.allocate<ffi.Int>(
+        rank * ffi.sizeOf<ffi.Int>(),
+      );
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStrides[i] = a.strides[i];
+      }
+
+      final isContiguousVal = a.isContiguous ? 1 : 0;
+
+      switch (a.dtype) {
+        case DType.float64:
+          native_to_bool_mask_double(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            cond.pointer.cast(),
+          );
+        case DType.float32:
+          native_to_bool_mask_float(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            cond.pointer.cast(),
+          );
+        case DType.int64:
+          native_to_bool_mask_int64(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            cond.pointer.cast(),
+          );
+        case DType.int32:
+          native_to_bool_mask_int32(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            cond.pointer.cast(),
+          );
+        case DType.complex128:
+          native_to_bool_mask_complex128(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            cond.pointer.cast(),
+          );
+        case DType.complex64:
+          native_to_bool_mask_complex64(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            cond.pointer.cast(),
+          );
+        case DType.boolean:
+        case DType.uint8:
+          native_to_bool_mask_uint8(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            cond.pointer.cast(),
+          );
+        case DType.int16:
+          native_to_bool_mask_int16(
+            a.pointer.cast(),
+            a.size,
+            cShape,
+            cStrides,
+            rank,
+            isContiguousVal,
+            cond.pointer.cast(),
+          );
+      }
+
+      final cCondShape = ScratchArena.allocate<ffi.Int>(
+        rank * ffi.sizeOf<ffi.Int>(),
+      );
+      final cCondStrides = ScratchArena.allocate<ffi.Int>(
+        rank * ffi.sizeOf<ffi.Int>(),
+      );
+      for (var i = 0; i < rank; i++) {
+        cCondShape[i] = cond.shape[i];
+        cCondStrides[i] = cond.strides[i];
+      }
+
+      native_collect_nonzero_coords_grouped(
+        cond.pointer.cast(),
+        cond.size,
+        cCondShape,
+        cCondStrides,
+        rank,
+        result.pointer.cast<ffi.Int>(),
+      );
+    } finally {
+      ScratchArena.reset(marker);
+    }
+
+    return result.detachToParentScope();
+  });
+}
+
 void _dispatchCountNonzeroFFI(
   ffi.Pointer<ffi.Void> src,
   ffi.Pointer<ffi.Int> stridesSrc,
@@ -1445,8 +1605,28 @@ void _dispatchCountNonzeroFFI(
         axis,
         isContig,
       );
-    default:
-      throw UnsupportedError('Unsupported data type for count_nonzero: $dtype');
+    case DType.complex128:
+      native_count_nonzero_complex128(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isContig,
+      );
+    case DType.complex64:
+      native_count_nonzero_complex64(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isContig,
+      );
   }
 }
 
