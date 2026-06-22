@@ -3031,6 +3031,51 @@ static inline cpx_f_t cpx_asinh_f(cpx_f_t z) {
     return (cpx_f_t){w.i, -w.r};
 }
 
+static thread_local int division_error_flag = 0;
+
+static inline cpx_t cpx_log2(cpx_t z) {
+    std::complex<double> cz(z.r, z.i);
+    std::complex<double> res = std::log(cz) / std::log(2.0);
+    return {res.real(), res.imag()};
+}
+static inline cpx_f_t cpx_log2_f(cpx_f_t z) {
+    std::complex<float> cz(z.r, z.i);
+    std::complex<float> res = std::log(cz) / std::log(2.0f);
+    return {res.real(), res.imag()};
+}
+static inline cpx_t cpx_log10(cpx_t z) {
+    std::complex<double> cz(z.r, z.i);
+    std::complex<double> res = std::log(cz) / std::log(10.0);
+    return {res.real(), res.imag()};
+}
+static inline cpx_f_t cpx_log10_f(cpx_f_t z) {
+    std::complex<float> cz(z.r, z.i);
+    std::complex<float> res = std::log(cz) / std::log(10.0f);
+    return {res.real(), res.imag()};
+}
+static inline cpx_t cpx_reciprocal(cpx_t z) {
+    std::complex<double> cz(z.r, z.i);
+    std::complex<double> res = 1.0 / cz;
+    return {res.real(), res.imag()};
+}
+static inline cpx_f_t cpx_reciprocal_f(cpx_f_t z) {
+    std::complex<float> cz(z.r, z.i);
+    std::complex<float> res = 1.0f / cz;
+    return {res.real(), res.imag()};
+}
+template <typename T>
+static inline T int_reciprocal(T x) {
+    if (x == 0) {
+        division_error_flag = 1;
+        return 0;
+    }
+    return 1 / x;
+}
+static inline int64_t int64_reciprocal(int64_t x) { return int_reciprocal(x); }
+static inline int32_t int32_reciprocal(int32_t x) { return int_reciprocal(x); }
+static inline int16_t int16_reciprocal(int16_t x) { return int_reciprocal(x); }
+static inline uint8_t uint8_reciprocal(uint8_t x) { return int_reciprocal(x); }
+
 static inline cpx_t cpx_exp(cpx_t z) {
     std::complex<double> cz(z.r, z.i);
     std::complex<double> cres = std::exp(cz);
@@ -4051,8 +4096,6 @@ void copy_advanced_c(
  * ============================================================================
  */
 
-static thread_local int division_error_flag = 0;
-
 int get_and_reset_division_error(void) {
     int err = division_error_flag;
     division_error_flag = 0;
@@ -4182,6 +4225,38 @@ DEFINE_CONTIGUOUS_UNARY_IMPL(v_square_int32, int32_t, int32_t, x * x)
 DEFINE_CONTIGUOUS_UNARY_IMPL(v_square_complex128, cpx_t, cpx_t, cpx_square(x))
 DEFINE_CONTIGUOUS_UNARY_IMPL(v_square_complex64, cpx_f_t, cpx_f_t, cpx_square_f(x))
 
+// log2 and log10 real contiguous
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_log2_double, double, double, log2(x))
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_log2_float, float, float, log2f(x))
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_log10_double, double, double, log10(x))
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_log10_float, float, float, log10f(x))
+
+// log2 and log10 complex contiguous
+DEFINE_COMPLEX_UNARY_VEC(v_log2_complex128, cpx_t, cpx_log2)
+DEFINE_COMPLEX_UNARY_VEC(v_log2_complex64, cpx_f_t, cpx_log2_f)
+DEFINE_COMPLEX_UNARY_VEC(v_log10_complex128, cpx_t, cpx_log10)
+DEFINE_COMPLEX_UNARY_VEC(v_log10_complex64, cpx_f_t, cpx_log10_f)
+
+// reciprocal contiguous
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_reciprocal_double, double, double, 1.0 / x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_reciprocal_float, float, float, 1.0f / x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_reciprocal_complex128, cpx_t, cpx_t, cpx_reciprocal(x))
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_reciprocal_complex64, cpx_f_t, cpx_f_t, cpx_reciprocal_f(x))
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_reciprocal_int64, int64_t, int64_t, int64_reciprocal(x))
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_reciprocal_int32, int32_t, int32_t, int32_reciprocal(x))
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_reciprocal_int16, int16_t, int16_t, int16_reciprocal(x))
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_reciprocal_uint8, uint8_t, uint8_t, uint8_reciprocal(x))
+
+// positive contiguous
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_positive_double, double, double, x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_positive_float, float, float, x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_positive_complex128, cpx_t, cpx_t, x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_positive_complex64, cpx_f_t, cpx_f_t, x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_positive_int64, int64_t, int64_t, x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_positive_int32, int32_t, int32_t, x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_positive_int16, int16_t, int16_t, x)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_positive_uint8, uint8_t, uint8_t, x)
+
 DEFINE_CONTIGUOUS_BINARY_IMPL(v_pow_double, double, double, double, pow(x, y))
 DEFINE_CONTIGUOUS_BINARY_IMPL(v_pow_float, float, float, float, powf(x, y))
 
@@ -4247,6 +4322,38 @@ DEFINE_STRIDED_UNARY_IMPL(s_square_int64, int64_t, int64_t, x * x)
 DEFINE_STRIDED_UNARY_IMPL(s_square_int32, int32_t, int32_t, x * x)
 DEFINE_STRIDED_UNARY_IMPL(s_square_complex128, cpx_t, cpx_t, cpx_square(x))
 DEFINE_STRIDED_UNARY_IMPL(s_square_complex64, cpx_f_t, cpx_f_t, cpx_square_f(x))
+
+// log2 and log10 real strided
+DEFINE_STRIDED_UNARY_IMPL(s_log2_double, double, double, log2(x))
+DEFINE_STRIDED_UNARY_IMPL(s_log2_float, float, float, log2f(x))
+DEFINE_STRIDED_UNARY_IMPL(s_log10_double, double, double, log10(x))
+DEFINE_STRIDED_UNARY_IMPL(s_log10_float, float, float, log10f(x))
+
+// log2 and log10 complex strided
+DEFINE_STRIDED_UNARY_IMPL(s_log2_complex128, cpx_t, cpx_t, cpx_log2(x))
+DEFINE_STRIDED_UNARY_IMPL(s_log2_complex64, cpx_f_t, cpx_f_t, cpx_log2_f(x))
+DEFINE_STRIDED_UNARY_IMPL(s_log10_complex128, cpx_t, cpx_t, cpx_log10(x))
+DEFINE_STRIDED_UNARY_IMPL(s_log10_complex64, cpx_f_t, cpx_f_t, cpx_log10_f(x))
+
+// reciprocal strided
+DEFINE_STRIDED_UNARY_IMPL(s_reciprocal_double, double, double, 1.0 / x)
+DEFINE_STRIDED_UNARY_IMPL(s_reciprocal_float, float, float, 1.0f / x)
+DEFINE_STRIDED_UNARY_IMPL(s_reciprocal_complex128, cpx_t, cpx_t, cpx_reciprocal(x))
+DEFINE_STRIDED_UNARY_IMPL(s_reciprocal_complex64, cpx_f_t, cpx_f_t, cpx_reciprocal_f(x))
+DEFINE_STRIDED_UNARY_IMPL(s_reciprocal_int64, int64_t, int64_t, int64_reciprocal(x))
+DEFINE_STRIDED_UNARY_IMPL(s_reciprocal_int32, int32_t, int32_t, int32_reciprocal(x))
+DEFINE_STRIDED_UNARY_IMPL(s_reciprocal_int16, int16_t, int16_t, int16_reciprocal(x))
+DEFINE_STRIDED_UNARY_IMPL(s_reciprocal_uint8, uint8_t, uint8_t, uint8_reciprocal(x))
+
+// positive strided
+DEFINE_STRIDED_UNARY_IMPL(s_positive_double, double, double, x)
+DEFINE_STRIDED_UNARY_IMPL(s_positive_float, float, float, x)
+DEFINE_STRIDED_UNARY_IMPL(s_positive_complex128, cpx_t, cpx_t, x)
+DEFINE_STRIDED_UNARY_IMPL(s_positive_complex64, cpx_f_t, cpx_f_t, x)
+DEFINE_STRIDED_UNARY_IMPL(s_positive_int64, int64_t, int64_t, x)
+DEFINE_STRIDED_UNARY_IMPL(s_positive_int32, int32_t, int32_t, x)
+DEFINE_STRIDED_UNARY_IMPL(s_positive_int16, int16_t, int16_t, x)
+DEFINE_STRIDED_UNARY_IMPL(s_positive_uint8, uint8_t, uint8_t, x)
 
 #define DEFINE_STRIDED_BINARY_IMPL(name, typeA, typeB, typeRes, expr) \
 void name(const typeA *a, const int *stridesA, \
