@@ -17,6 +17,16 @@ void main() {
       });
     });
 
+    test('ptp 2D contiguous axis=null', () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0, 6.0, 4.0], [2, 2], DType.float64);
+        final p = ptp(a);
+        expect(p.shape, <int>[]);
+        expect(p.dtype, DType.float64);
+        expect(p.scalar, 5.0);
+      });
+    });
+
     test('ptp 2D contiguous axis=0', () {
       NDArray.scope(() {
         final a = NDArray.fromList(
@@ -105,6 +115,21 @@ void main() {
         ); // incompatible dtype
         expect(() => ptp(a, out: out), throwsArgumentError);
       });
+
+      NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0, 6.0, 4.0], [2, 2], DType.float64);
+        expect(() => ptp(a, axis: 3), throwsArgumentError);
+        expect(() => ptp(a, axis: -3), throwsArgumentError);
+      });
+    });
+
+    test('ptp negative axis', () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0, 6.0, 4.0], [2, 2], DType.float64);
+        final p = ptp(a, axis: -1); // equivalent to axis 1
+        expect(p.shape, [2]);
+        expect(p.toList(), [1.0, 2.0]);
+      });
     });
   });
 
@@ -116,10 +141,20 @@ void main() {
         expect(res.average.shape, <int>[]);
         expect(res.average.scalar, 2.5);
         expect(res.sumOfWeights, null);
+
+        final a2 = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final resAxis = average(a2, axis: 0);
+        expect(resAxis.average.shape, [2]);
+        expect(resAxis.average.toList(), [2.0, 3.0]);
+        expect(resAxis.sumOfWeights, null);
       });
     });
 
-    test('average with 1D weights axis=0', () {
+    test('average with 1D weights axis=0 (1D input)', () {
       NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
         final w = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
@@ -136,7 +171,56 @@ void main() {
       });
     });
 
-    test('average with 1D weights axis=1 (2D input)', () {
+    test('average 1D weights, axis specified (2D input)', () {
+      NDArray.scope(() {
+        // [[1, 2],
+        //  [3, 4]]
+        final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+        final w = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+
+        // Axis 0: weights apply to rows.
+        // (1*1 + 3*2)/(1+2) = 7/3 = 2.333...
+        // (2*1 + 4*2)/(1+2) = 10/3 = 3.333...
+        final res0 = average(a, axis: 0, weights: w, returned: true);
+        expect(res0.average.shape, [2]);
+        expect(res0.average.toList()[0], closeTo(7 / 3, 1e-9));
+        expect(res0.average.toList()[1], closeTo(10 / 3, 1e-9));
+        expect(res0.sumOfWeights, isNotNull);
+        expect(res0.sumOfWeights!.shape, [2]); // Broadcasted to average shape
+        expect(res0.sumOfWeights!.toList(), [3.0, 3.0]);
+
+        // Axis 1: weights apply to columns.
+        // (1*1 + 2*2)/(1+2) = 5/3 = 1.666...
+        // (3*1 + 4*2)/(1+2) = 11/3 = 3.666...
+        final res1 = average(a, axis: 1, weights: w, returned: true);
+        expect(res1.average.shape, [2]);
+        expect(res1.average.toList()[0], closeTo(5 / 3, 1e-9));
+        expect(res1.average.toList()[1], closeTo(11 / 3, 1e-9));
+        expect(res1.sumOfWeights, isNotNull);
+        expect(res1.sumOfWeights!.shape, [2]); // Broadcasted to average shape
+        expect(res1.sumOfWeights!.toList(), [3.0, 3.0]);
+      });
+    });
+
+    test('average 1D weights, axis=null (only allowed if a is 1D)', () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+        final w = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+
+        final res = average(a, weights: w);
+        expect(res.average.shape, <int>[]);
+        expect(res.average.scalar, closeTo(14 / 6, 1e-9));
+
+        final a2d = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        expect(() => average(a2d, weights: w), throwsArgumentError);
+      });
+    });
+
+    test('average with 1D weights axis=1 (2D input [2, 3])', () {
       NDArray.scope(() {
         final a = NDArray.fromList(
           [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
@@ -146,9 +230,8 @@ void main() {
         final w = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
         final res = average(a, axis: 1, weights: w, returned: true);
 
-        // Row 1: (1*1 + 2*2 + 3*3) / 6 = (1 + 4 + 9) / 6 = 14 / 6 = 2.3333333333333335
-        // Row 2: (4*1 + 5*2 + 6*3) / 6 = (4 + 10 + 18) / 6 = 32 / 6 = 5.333333333333333
-        // sum of weights = 1 + 2 + 3 = 6
+        // Row 1: (1*1 + 2*2 + 3*3) / 6 = 14 / 6 = 2.333...
+        // Row 2: (4*1 + 5*2 + 6*3) / 6 = 32 / 6 = 5.333...
         expect(res.average.shape, [2]);
         expect(res.average.toList()[0], closeTo(2.3333333333333335, 1e-9));
         expect(res.average.toList()[1], closeTo(5.333333333333333, 1e-9));
@@ -164,9 +247,6 @@ void main() {
         final w = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 
         final res = average(a, weights: w, returned: true); // global average
-        // weighted sum = 1*1 + 2*2 + 3*3 + 4*4 = 30
-        // sum of weights = 1 + 2 + 3 + 4 = 10
-        // avg = 3.0
         expect(res.average.shape, <int>[]);
         expect(res.average.scalar, 3.0);
         expect(res.sumOfWeights!.scalar, 10.0);
@@ -179,9 +259,6 @@ void main() {
         final w = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 
         final res = average(a, axis: 0, weights: w, returned: true);
-        // col 0: (1*1 + 3*3) / (1+3) = 10 / 4 = 2.5
-        // col 1: (2*2 + 4*4) / (2+4) = 20 / 6 = 3.3333333333333335
-        // sum of weights: [4.0, 6.0]
         expect(res.average.shape, [2]);
         expect(res.average.toList()[0], 2.5);
         expect(res.average.toList()[1], closeTo(3.3333333333333335, 1e-9));
@@ -208,10 +285,7 @@ void main() {
 
         expect(res.average.dtype, DType.float64);
         expect(res.average.scalar, 3.0);
-        expect(
-          res.sumOfWeights!.dtype,
-          DType.float64,
-        ); // should be promoted to R (double)
+        expect(res.sumOfWeights!.dtype, DType.float64);
         expect(res.sumOfWeights!.scalar, 10.0);
       });
     });
@@ -226,15 +300,36 @@ void main() {
       NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
         final w = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-        // length mismatch
         expect(() => average(a, weights: w), throwsArgumentError);
       });
 
       NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
         final w = NDArray.fromList([1.0, 2.0], [2], DType.float64);
-        // axis is null, but weights is 1-D and a is 2-D
         expect(() => average(a, weights: w), throwsArgumentError);
+      });
+
+      NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        expect(() => average(a, axis: 2), throwsArgumentError);
+        expect(() => average(a, axis: -2), throwsArgumentError);
+      });
+    });
+
+    test('average negative axis', () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+        final w = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final res = average(
+          a,
+          axis: -2,
+          weights: w,
+          returned: true,
+        ); // axis -2 is axis 0
+        expect(res.average.shape, [2]);
+        expect(res.average.toList()[0], closeTo(7 / 3, 1e-9));
+        expect(res.average.toList()[1], closeTo(10 / 3, 1e-9));
+        expect(res.sumOfWeights!.toList(), [3.0, 3.0]);
       });
     });
   });

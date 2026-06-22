@@ -8,6 +8,7 @@ import '../scratch_arena.dart';
 // Standalone operational relative cross-imports
 import 'math.dart';
 import 'helpers.dart';
+import 'broadcasting.dart';
 
 /// Methods for estimating quantiles/percentiles.
 ///
@@ -2486,9 +2487,9 @@ Object r_median_helper(NDArray a, int size) {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
-/// final p = ptp(a); // returns 0-D array containing 3.0 (4.0 - 1.0)
-/// final p0 = ptp(a, axis: 0); // returns NDArray [2.0, 2.0]
+/// final a = NDArray.fromList([1.0, 2.0, 6.0, 4.0], [2, 2], DType.float64);
+/// final p = ptp(a); // returns 0-D array containing 5.0
+/// final p0 = ptp(a, axis: 0); // returns NDArray [5.0, 2.0]
 /// ```
 NDArray<T> ptp<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   if (a.isDisposed) {
@@ -2498,9 +2499,14 @@ NDArray<T> ptp<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     throw StateError('Cannot write ptp to a disposed output array.');
   }
 
-  final targetShape = axis == null
+  final resolvedAxis = axis != null && axis < 0 ? a.rank + axis : axis;
+  if (resolvedAxis != null && (resolvedAxis < 0 || resolvedAxis >= a.rank)) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final targetShape = resolvedAxis == null
       ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+      : (List<int>.from(a.shape)..removeAt(resolvedAxis));
 
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
@@ -2509,10 +2515,13 @@ NDArray<T> ptp<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
   }
 
   return NDArray.scope(() {
-    final mx = max(a, axis: axis);
-    final mn = min(a, axis: axis);
+    final mx = max(a, axis: resolvedAxis);
+    final mn = min(a, axis: resolvedAxis);
     final res = subtract<T, T, T>(mx, mn, out: out);
-    return res.detachToParentScope();
+    if (out == null) {
+      res.detachToParentScope();
+    }
+    return res;
   });
 }
 
@@ -2595,11 +2604,34 @@ average<T extends num, W extends num, R extends num>(
     throw StateError('Cannot write average to a disposed output array.');
   }
 
+  final resolvedAxis = axis != null && axis < 0 ? a.rank + axis : axis;
+  if (resolvedAxis != null && (resolvedAxis < 0 || resolvedAxis >= a.rank)) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final targetShape = resolvedAxis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(resolvedAxis));
+
+  if (out != null) {
+    final DType expectedDType;
+    if (weights == null) {
+      expectedDType = a.dtype.isComplex ? DType.complex128 : DType.float64;
+    } else {
+      var resolved = resolveDType(a.dtype, weights.dtype);
+      if (resolved.isInteger) {
+        resolved = DType.float64;
+      }
+      expectedDType = resolved;
+    }
+    if (!listEquals(out.shape, targetShape) || out.dtype != expectedDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
   if (weights == null) {
-    return NDArray.scope(() {
-      final avg = mean<R, T>(a, axis: axis, out: out);
-      return (average: avg.detachToParentScope(), sumOfWeights: null);
-    });
+    final avg = mean<R, T>(a, axis: resolvedAxis, out: out);
+    return (average: avg, sumOfWeights: null);
   }
 
   if (weights.isDisposed) {
@@ -2608,19 +2640,21 @@ average<T extends num, W extends num, R extends num>(
 
   // Validate shapes
   if (weights.shape.length == 1) {
-    if (axis == null) {
+    if (resolvedAxis == null) {
       if (a.shape.length != 1) {
         throw ArgumentError(
           'If axis is null and weights is 1-D, input array must also be 1-D.',
         );
       }
-    } else {
-      if (axis < 0 || axis >= a.shape.length) {
-        throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
-      }
-      if (weights.shape[0] != a.shape[axis]) {
+      if (weights.size != a.size) {
         throw ArgumentError(
-          'Length of 1-D weights (${weights.shape[0]}) must match shape of input along axis $axis (${a.shape[axis]}).',
+          'weights length (${weights.size}) must match a length (${a.size}).',
+        );
+      }
+    } else {
+      if (weights.shape[0] != a.shape[resolvedAxis]) {
+        throw ArgumentError(
+          'Length of 1-D weights (${weights.shape[0]}) must match shape of input along axis $resolvedAxis (${a.shape[resolvedAxis]}).',
         );
       }
     }
@@ -2636,35 +2670,26 @@ average<T extends num, W extends num, R extends num>(
     NDArray<W> broadcastedWeights = weights;
 
     if (weights.shape.length == 1 && a.shape.length > 1) {
-      final targetAxis = axis!;
+      final targetAxis = resolvedAxis!;
       final reshapedShape = List<int>.filled(a.shape.length, 1);
       reshapedShape[targetAxis] = weights.shape[0];
       broadcastedWeights = weights.reshape(reshapedShape);
     }
 
-    final weighted_a = multiply<T, W, Object>(a, broadcastedWeights);
-    final weighted_sum = sum<Object>(weighted_a, axis: axis);
-    final targetShape = axis == null
-        ? <int>[]
-        : (List<int>.from(a.shape)..removeAt(axis));
-    final sum_of_weights = weights.shape.length == 1
-        ? (axis == null
-              ? sum<W>(weights)
-              : () {
-                  final s = sum<W>(weights).scalar;
-                  final res = NDArray<W>.zeros(targetShape, weights.dtype);
-                  res.fill(s);
-                  return res;
-                }())
-        : sum<W>(weights, axis: axis);
-    final avg = divide<Object, W, R>(weighted_sum, sum_of_weights, out: out);
+    final weighted_a = multiply<T, W, num>(a, broadcastedWeights);
+    final weighted_sum = sum<num>(weighted_a, axis: resolvedAxis);
+    final sum_of_weights = sum<num>(broadcastedWeights, axis: resolvedAxis);
+    final avg = divide<num, num, R>(weighted_sum, sum_of_weights, out: out);
 
     NDArray<R>? sumOfWeightsResult;
     if (returned) {
-      sumOfWeightsResult = _castTo<R>(sum_of_weights, avg.dtype);
+      final promoted = _castTo<R>(sum_of_weights, avg.dtype);
+      sumOfWeightsResult = broadcastTo<R>(promoted, avg.shape);
     }
 
-    avg.detachToParentScope();
+    if (out == null) {
+      avg.detachToParentScope();
+    }
     sumOfWeightsResult?.detachToParentScope();
 
     return (average: avg, sumOfWeights: sumOfWeightsResult);
