@@ -14,12 +14,9 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 ## 🧪 Section 3: NumPy Compatibility Roadmap (Missing Features)
 
 ### 3.1 Universal Functions (ufuncs)
-- **ML & High-Precision Helpers**:
-  - Base-2 and Base-10 logarithms: `log2()`, `log10()`.
 - **Special Functions**:
-  - `sinc()` (normalized/unnormalized sinc function).
   - `i0()` (modified Bessel function of the first kind, order 0) for filter windowing.
-- **Arithmetic Helpers**: `reciprocal()` ($1/x$), `positive()` (unary plus).
+(Completed log2, log10, reciprocal, positive, and sinc ufuncs)
 
 ### 3.2 Array Manipulation & Geometry
 (Completed shaping, repeating, rearranging, and splitting features)
@@ -28,8 +25,7 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 ### 3.3 Statistics & Sorting
 - **Binning & Histograms**: `histogram()` (1D/2D/ND binning), `bincount()` (integer occurrences), and `digitize()` (bin indices assignment).
 - **Correlation & Covariance**: `cov()` (covariance matrix estimation) and `corrcoef()` (Pearson correlation coefficients).
-- **Averages & Ranges**: `average()` (weighted average along axis) and `ptp()` (peak-to-peak range along axis).
-(Completed sorting, partitioning, and searchsorted features)
+(Completed average, ptp, sorting, partitioning, and searchsorted features)
 
 ### 3.4 Random & DType
 (Completed sampling choice, shuffle, permutation, and media types expansion)
