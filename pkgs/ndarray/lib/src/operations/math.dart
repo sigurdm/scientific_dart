@@ -1914,6 +1914,9 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// - Integer arrays will be upcasted to `float64`.
 ///
 /// For complex inputs, computes `log(z) / log(2)`.
+///
+/// **Example:**
+/// {@example /example/easy_ufuncs_example.dart lang=dart}
 NDArray<R> log2<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute log2() on a disposed array.');
@@ -2035,6 +2038,9 @@ NDArray<R> log2<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// - Integer arrays will be upcasted to `float64`.
 ///
 /// For complex inputs, computes `log(z) / log(10)`.
+///
+/// **Example:**
+/// {@example /example/easy_ufuncs_example.dart lang=dart}
 NDArray<R> log10<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute log10() on a disposed array.');
@@ -2156,6 +2162,9 @@ NDArray<R> log10<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// For integer types, division by zero throws an [UnsupportedError].
 /// Returns an array with the same dtype as the input.
+///
+/// **Example:**
+/// {@example /example/easy_ufuncs_example.dart lang=dart}
 NDArray<T> reciprocal<T>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute reciprocal() on a disposed array.');
@@ -2351,6 +2360,9 @@ NDArray<T> reciprocal<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// Numerical positive, element-wise.
 ///
 /// Returns a copy of [a] for all numeric types.
+///
+/// **Example:**
+/// {@example /example/easy_ufuncs_example.dart lang=dart}
 NDArray<T> positive<T>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute positive() on a disposed array.');
