@@ -79,6 +79,16 @@ void v_cos_float(const float *src, float *res, int size);
 void v_exp_float(const float *src, float *res, int size);
 void v_log_float(const float *src, float *res, int size);
 
+void v_log2_double(const double *src, double *res, int size);
+void v_log2_float(const float *src, float *res, int size);
+void v_log2_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_log2_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+
+void v_log10_double(const double *src, double *res, int size);
+void v_log10_float(const float *src, float *res, int size);
+void v_log10_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_log10_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+
 float r_sum_float(const float *src, int size);
 float r_prod_float(const float *src, int size);
 float r_mean_float(const float *src, int size);
@@ -165,6 +175,24 @@ void v_square_int64(const int64_t *src, int64_t *res, int size);
 void v_square_int32(const int32_t *src, int32_t *res, int size);
 void v_square_complex128(const cpx_t *src, cpx_t *res, int size);
 void v_square_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+
+void v_reciprocal_double(const double *src, double *res, int size);
+void v_reciprocal_float(const float *src, float *res, int size);
+void v_reciprocal_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_reciprocal_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_reciprocal_int64(const int64_t *src, int64_t *res, int size);
+void v_reciprocal_int32(const int32_t *src, int32_t *res, int size);
+void v_reciprocal_int16(const int16_t *src, int16_t *res, int size);
+void v_reciprocal_uint8(const uint8_t *src, uint8_t *res, int size);
+
+void v_positive_double(const double *src, double *res, int size);
+void v_positive_float(const float *src, float *res, int size);
+void v_positive_complex128(const cpx_t *src, cpx_t *res, int size);
+void v_positive_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_positive_int64(const int64_t *src, int64_t *res, int size);
+void v_positive_int32(const int32_t *src, int32_t *res, int size);
+void v_positive_int16(const int16_t *src, int16_t *res, int size);
+void v_positive_uint8(const uint8_t *src, uint8_t *res, int size);
 
 void v_pow_double(const double *x1, const double *x2, double *res, int size);
 void v_pow_float(const float *x1, const float *x2, float *res, int size);
@@ -406,6 +434,16 @@ void s_exp_float(const float *src, const int *stridesSrc, float *res, const int 
 void s_log_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
 void s_log_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
 
+void s_log2_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_log2_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_log2_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_log2_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_log10_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_log10_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_log10_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_log10_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+
 void s_sinh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
 void s_sinh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
 void s_cosh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
@@ -425,6 +463,24 @@ void s_square_int64(const int64_t *src, const int *stridesSrc, int64_t *res, con
 void s_square_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank);
 void s_square_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
 void s_square_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_reciprocal_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_reciprocal_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_reciprocal_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_reciprocal_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_reciprocal_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank);
+void s_reciprocal_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank);
+void s_reciprocal_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank);
+void s_reciprocal_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+
+void s_positive_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void s_positive_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_positive_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_positive_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_positive_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank);
+void s_positive_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank);
+void s_positive_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank);
+void s_positive_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
 
 void s_pow_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank);
 void s_pow_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank);
