@@ -1,3 +1,4 @@
+#define HAVE_LAPACK_CONFIG_H
 #define HAVE_STDINT_H
 #include <stdint.h>
 #define int32_t int32_t
