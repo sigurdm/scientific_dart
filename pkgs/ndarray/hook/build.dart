@@ -139,6 +139,7 @@ void main(List<String> args) async {
       var res = await Process.run(cppCompilerPath, [
         '/c',
         '/O2',
+        '/MD',
         '/EHsc',
         '/D_USE_MATH_DEFINES',
         '/I${input.packageRoot.toFilePath()}',
@@ -156,6 +157,7 @@ void main(List<String> args) async {
       res = await Process.run(cppCompilerPath, [
         '/c',
         '/O2',
+        '/MD',
         '/EHsc',
         '/D_USE_MATH_DEFINES',
         '/I${input.packageRoot.toFilePath()}',
@@ -182,6 +184,7 @@ void main(List<String> args) async {
 
       res = await Process.run(cppCompilerPath, [
         '/LD',
+        '/MD',
         ufuncsObj,
         sortingObj,
         libhwyContrib.path,
