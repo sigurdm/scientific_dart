@@ -13,6 +13,7 @@
  */
 
 #include "custom_ufuncs.h"
+#include <cstring>
 #include <math.h>
 #include <cmath>
 #include <limits>
@@ -69,6 +70,47 @@ inline T logaddexp2_op(T x, T y) {
     T min_val = std::min(x, y);
     T ln2 = std::log(static_cast<T>(2.0));
     return max_val + std::log1p(std::exp((min_val - max_val) * ln2)) / ln2;
+}
+
+// --- Integer Exponentiation Helper ---
+template <typename T>
+struct ipow_helper {
+    static inline T pow(T base, T exp) {
+        if (exp < 0) {
+            if (base == 1) return 1;
+            if (base == -1) return (exp % 2 == 0) ? 1 : -1;
+            return 0;
+        }
+        T result = 1;
+        T b = base;
+        T e = exp;
+        while (e > 0) {
+            if (e & 1) result *= b;
+            b *= b;
+            e >>= 1;
+        }
+        return result;
+    }
+};
+
+template <>
+struct ipow_helper<uint8_t> {
+    static inline uint8_t pow(uint8_t base, uint8_t exp) {
+        uint8_t result = 1;
+        uint8_t b = base;
+        uint8_t e = exp;
+        while (e > 0) {
+            if (e & 1) result *= b;
+            b *= b;
+            e >>= 1;
+        }
+        return result;
+    }
+};
+
+template <typename T>
+inline T ipow(T base, T exp) {
+    return ipow_helper<T>::pow(base, exp);
 }
 
 // --- Casting Templates ---
@@ -9159,3 +9201,48 @@ void ndarray_cdist(
             break;
     }
 }
+
+// Integer Absolute Value Implementations (Contiguous)
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_abs_int64, int64_t, int64_t, std::abs(x))
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_abs_int32, int32_t, int32_t, std::abs(x))
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_abs_int16, int16_t, int16_t, std::abs(x))
+
+void v_abs_uint8(const uint8_t *src, uint8_t *res, int size) {
+    if (src == nullptr || res == nullptr || size <= 0) return;
+    if (src == res) return;
+    memmove(res, src, size * sizeof(uint8_t));
+}
+
+// Integer Absolute Value Implementations (Strided)
+DEFINE_STRIDED_UNARY_IMPL(s_abs_int64, int64_t, int64_t, std::abs(x))
+DEFINE_STRIDED_UNARY_IMPL(s_abs_int32, int32_t, int32_t, std::abs(x))
+DEFINE_STRIDED_UNARY_IMPL(s_abs_int16, int16_t, int16_t, std::abs(x))
+
+void s_abs_uint8(const uint8_t *src, const int *stridesSrc,
+                  uint8_t *res, const int *stridesRes,
+                  const int *shape, int rank) {
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
+    if (src == res) {
+        bool same_strides = true;
+        for (int i = 0; i < rank; i++) {
+            if (stridesSrc[i] != stridesRes[i]) {
+                same_strides = false;
+                break;
+            }
+        }
+        if (same_strides) return;
+    }
+    strided_unary_cast_impl(src, stridesSrc, res, stridesRes, shape, rank, [](uint8_t x) { return x; });
+}
+
+// Integer Exponentiation Implementations (Contiguous)
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_pow_int64, int64_t, int64_t, int64_t, ipow(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_pow_int32, int32_t, int32_t, int32_t, ipow(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_pow_int16, int16_t, int16_t, int16_t, ipow(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_pow_uint8, uint8_t, uint8_t, uint8_t, ipow(x, y))
+
+// Integer Exponentiation Implementations (Strided)
+DEFINE_STRIDED_BINARY_IMPL(s_pow_int64, int64_t, int64_t, int64_t, ipow(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_pow_int32, int32_t, int32_t, int32_t, ipow(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_pow_int16, int16_t, int16_t, int16_t, ipow(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_pow_uint8, uint8_t, uint8_t, uint8_t, ipow(x, y))

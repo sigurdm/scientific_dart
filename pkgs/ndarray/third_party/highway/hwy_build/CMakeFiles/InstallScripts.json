@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/usr/local/google/home/sigurdm/projects/math/pkgs/ndarray/third_party/highway/hwy_build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

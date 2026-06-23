@@ -1389,6 +1389,88 @@ void main() {
       expect(() => power(a, b, out: badOut), throwsArgumentError);
     });
 
+    test('integer power contiguous and strided', () {
+      NDArray.scope(() {
+        // Contiguous
+        final a64 = NDArray.fromList([2, 3, 4], [3], DType.int64);
+        final b64 = NDArray.fromList([3, 2, 0], [3], DType.int64);
+        final r64 = power(a64, b64);
+        expect(r64.dtype, DType.int64);
+        expect(r64.toList(), [8, 9, 1]);
+
+        final a32 = NDArray.fromList([2, 3, 4], [3], DType.int32);
+        final b32 = NDArray.fromList([3, 2, 0], [3], DType.int32);
+        final r32 = power(a32, b32);
+        expect(r32.dtype, DType.int32);
+        expect(r32.toList(), [8, 9, 1]);
+
+        final a16 = NDArray.fromList([2, 3, 4], [3], DType.int16);
+        final b16 = NDArray.fromList([3, 2, 0], [3], DType.int16);
+        final r16 = power(a16, b16);
+        expect(r16.dtype, DType.int16);
+        expect(r16.toList(), [8, 9, 1]);
+
+        final u8 = NDArray.fromList([2, 3, 4], [3], DType.uint8);
+        final bu8 = NDArray.fromList([3, 2, 0], [3], DType.uint8);
+        final ru8 = power(u8, bu8);
+        expect(ru8.dtype, DType.uint8);
+        expect(ru8.toList(), [8, 9, 1]);
+
+        // Strided
+        final a64s = NDArray.fromList(
+          [2, 99, 3, 99, 4],
+          [5],
+          DType.int64,
+        ).slice([const Slice(start: 0, stop: 5, step: 2)]);
+        final b64s = NDArray.fromList(
+          [3, 99, 2, 99, 0],
+          [5],
+          DType.int64,
+        ).slice([const Slice(start: 0, stop: 5, step: 2)]);
+        final r64s = power(a64s, b64s);
+        expect(r64s.dtype, DType.int64);
+        expect(r64s.toList(), [8, 9, 1]);
+
+        // Strided Broadcasting
+        // a: [2, 3] (2,)
+        // b: [[3], [2]] (2, 1)
+        // res: (2, 2)
+        // [[2^3, 3^3],
+        //  [2^2, 3^2]] = [[8, 27], [4, 9]]
+        final ab = NDArray.fromList([2, 3], [2], DType.int32);
+        final bb = NDArray.fromList([3, 2], [2, 1], DType.int32);
+        final rb = power(ab, bb);
+        expect(rb.shape, [2, 2]);
+        expect(rb.toList(), [8, 27, 4, 9]);
+
+        // Edge cases for exponentiation
+        // 0^0 -> 1
+        // negative base, positive exponent
+        final negativeBase = NDArray.fromList([-2], [1], DType.int32);
+        final oddExp = NDArray.fromList([3], [1], DType.int32);
+        final evenExp = NDArray.fromList([4], [1], DType.int32);
+        expect(power(negativeBase, oddExp).toList()[0], -8);
+        expect(power(negativeBase, evenExp).toList()[0], 16);
+
+        final zeroBase = NDArray.fromList([0], [1], DType.int32);
+        final positiveExp = NDArray.fromList([3], [1], DType.int32);
+        final zeroExp = NDArray.fromList([0], [1], DType.int32);
+        expect(power(zeroBase, positiveExp).toList()[0], 0);
+        expect(power(zeroBase, zeroExp).toList()[0], 1);
+
+        // Negative exponents should throw ArgumentError
+        final negExp = NDArray.fromList([-3], [1], DType.int32);
+        expect(() => power(a32, negExp), throwsArgumentError);
+
+        final negExpStrided = NDArray.fromList([1, -1], [2], DType.int32);
+        expect(() => power(a32, negExpStrided), throwsArgumentError);
+
+        // Disposed state errors
+        a32.dispose();
+        expect(() => power(a32, b32), throwsStateError);
+      });
+    });
+
     test('negative with out parameter', () {
       final a = NDArray.fromList(Int32List.fromList([2, -3]), [2], DType.int32);
       final out = NDArray.create([2], DType.int32);

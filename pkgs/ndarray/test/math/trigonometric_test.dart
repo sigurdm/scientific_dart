@@ -877,4 +877,91 @@ void main() {
       });
     });
   });
+
+  group('Integer Abs Tests', () {
+    test('Contiguous integer abs', () {
+      NDArray.scope(() {
+        final a64 = NDArray.fromList([-1, -2, 3, 0], [4], DType.int64);
+        final a32 = NDArray.fromList([-1, -2, 3, 0], [4], DType.int32);
+        final a16 = NDArray.fromList([-1, -2, 3, 0], [4], DType.int16);
+        final u8 = NDArray.fromList([1, 2, 3, 0], [4], DType.uint8);
+
+        final r64 = abs(a64);
+        final r32 = abs(a32);
+        final r16 = abs(a16);
+        final ru8 = abs(u8);
+
+        expect(r64.dtype, DType.int64);
+        expect(r64.toList(), [1, 2, 3, 0]);
+
+        expect(r32.dtype, DType.int32);
+        expect(r32.toList(), [1, 2, 3, 0]);
+
+        expect(r16.dtype, DType.int16);
+        expect(r16.toList(), [1, 2, 3, 0]);
+
+        expect(ru8.dtype, DType.uint8);
+        expect(ru8.toList(), [1, 2, 3, 0]);
+      });
+    });
+
+    test('Strided integer abs', () {
+      NDArray.scope(() {
+        final a64 = NDArray.fromList(
+          [-1, 99, -2, 99, 3, 99, 0],
+          [7],
+          DType.int64,
+        ).slice([const Slice(start: 0, stop: 7, step: 2)]);
+        final a32 = NDArray.fromList(
+          [-1, 99, -2, 99, 3, 99, 0],
+          [7],
+          DType.int32,
+        ).slice([const Slice(start: 0, stop: 7, step: 2)]);
+        final a16 = NDArray.fromList(
+          [-1, 99, -2, 99, 3, 99, 0],
+          [7],
+          DType.int16,
+        ).slice([const Slice(start: 0, stop: 7, step: 2)]);
+        final u8 = NDArray.fromList(
+          [1, 99, 2, 99, 3, 99, 0],
+          [7],
+          DType.uint8,
+        ).slice([const Slice(start: 0, stop: 7, step: 2)]);
+
+        expect(a64.isContiguous, false);
+
+        final r64 = abs(a64);
+        final r32 = abs(a32);
+        final r16 = abs(a16);
+        final ru8 = abs(u8);
+
+        expect(r64.dtype, DType.int64);
+        expect(r64.toList(), [1, 2, 3, 0]);
+
+        expect(r32.dtype, DType.int32);
+        expect(r32.toList(), [1, 2, 3, 0]);
+
+        expect(r16.dtype, DType.int16);
+        expect(r16.toList(), [1, 2, 3, 0]);
+
+        expect(ru8.dtype, DType.uint8);
+        expect(ru8.toList(), [1, 2, 3, 0]);
+      });
+    });
+
+    test('Integer abs error handling', () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([-1, -2, 3, 0], [4], DType.int32);
+        a.dispose();
+        expect(() => abs(a), throwsStateError);
+
+        final aValid = NDArray.fromList([-1, -2, 3, 0], [4], DType.int32);
+        final outInvalidShape = NDArray<Int32>.create([3], DType.int32);
+        expect(() => abs(aValid, out: outInvalidShape), throwsArgumentError);
+
+        final outInvalidDType = NDArray<Float64>.create([4], DType.float64);
+        expect(() => abs(aValid, out: outInvalidDType), throwsArgumentError);
+      });
+    });
+  });
 }

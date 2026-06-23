@@ -1507,6 +1507,27 @@ void ndarray_cdist(
     int strideRowOut, int strideColOut
 );
 
+// Integer Absolute Value and Exponentiation ufuncs
+void v_abs_int64(const int64_t *src, int64_t *res, int size);
+void v_abs_int32(const int32_t *src, int32_t *res, int size);
+void v_abs_int16(const int16_t *src, int16_t *res, int size);
+void v_abs_uint8(const uint8_t *src, uint8_t *res, int size);
+
+void s_abs_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank);
+void s_abs_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank);
+void s_abs_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank);
+void s_abs_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+
+void v_pow_int64(const int64_t *x1, const int64_t *x2, int64_t *res, int size);
+void v_pow_int32(const int32_t *x1, const int32_t *x2, int32_t *res, int size);
+void v_pow_int16(const int16_t *x1, const int16_t *x2, int16_t *res, int size);
+void v_pow_uint8(const uint8_t *x1, const uint8_t *x2, uint8_t *res, int size);
+
+void s_pow_int64(const int64_t *x1, const int *stridesX1, const int64_t *x2, const int *stridesX2, int64_t *res, const int *stridesRes, const int *shape, int rank);
+void s_pow_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, const int *stridesX2, int32_t *res, const int *stridesRes, const int *shape, int rank);
+void s_pow_int16(const int16_t *x1, const int *stridesX1, const int16_t *x2, const int *stridesX2, int16_t *res, const int *stridesRes, const int *shape, int rank);
+void s_pow_uint8(const uint8_t *x1, const int *stridesX1, const uint8_t *x2, const int *stridesX2, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+
 #ifdef __cplusplus
 }
 #endif

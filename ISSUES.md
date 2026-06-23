@@ -5,9 +5,7 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 
 ## 🛠️ Section 2: Architectural & Memory Safety Gaps & Correctness
 
-- **Performance Gaps (Slow Dart Fallbacks)**: 
-  - Absolute value for integers falls back to slow Dart loops instead of utilizing FFI.
-  - Integer exponentiation (`pow`/`power`) falls back to a Dart loop wrapping `math.pow`.
+(Completed integer absolute value and exponentiation FFI optimizations)
 
 ---
 

@@ -12,6 +12,7 @@ import 'manipulation.dart';
 import 'broadcasting.dart';
 import 'helpers.dart';
 import 'linalg.dart';
+import 'stats.dart';
 
 /// Configure the number of parallel execution threads used by OpenBLAS at runtime.
 ///
@@ -4247,6 +4248,27 @@ NDArray<R> power<Ta, Tb, R>(NDArray<Ta> x1, NDArray<Tb> x2, {NDArray<R>? out}) {
   final shape = broadcastResult.shape;
   final targetDType = resolveDType(x1.dtype, x2.dtype);
 
+  if (targetDType.isInteger) {
+    if (x2.dtype == DType.int64 ||
+        x2.dtype == DType.int32 ||
+        x2.dtype == DType.int16) {
+      final x2Num = x2 as NDArray<num>;
+      if (x2Num.rank == 0) {
+        if (x2Num.scalar < 0) {
+          throw ArgumentError(
+            'Integers to negative integer powers are not allowed.',
+          );
+        }
+      } else {
+        if (min(x2Num).scalar < 0) {
+          throw ArgumentError(
+            'Integers to negative integer powers are not allowed.',
+          );
+        }
+      }
+    }
+  }
+
   final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
@@ -4354,6 +4376,38 @@ NDArray<R> power<Ta, Tb, R>(NDArray<Ta> x1, NDArray<Tb> x2, {NDArray<R>? out}) {
         x1.size,
       );
       return result;
+    } else if (targetDType == DType.int64) {
+      v_pow_int64(
+        x1.pointer.cast(),
+        x2.pointer.cast(),
+        result.pointer.cast(),
+        x1.size,
+      );
+      return result;
+    } else if (targetDType == DType.int32) {
+      v_pow_int32(
+        x1.pointer.cast(),
+        x2.pointer.cast(),
+        result.pointer.cast(),
+        x1.size,
+      );
+      return result;
+    } else if (targetDType == DType.int16) {
+      v_pow_int16(
+        x1.pointer.cast(),
+        x2.pointer.cast(),
+        result.pointer.cast(),
+        x1.size,
+      );
+      return result;
+    } else if (targetDType == DType.uint8) {
+      v_pow_uint8(
+        x1.pointer.cast(),
+        x2.pointer.cast(),
+        result.pointer.cast(),
+        x1.size,
+      );
+      return result;
     }
   } else if (shape.length <= 8) {
     final rank = shape.length;
@@ -4382,6 +4436,54 @@ NDArray<R> power<Ta, Tb, R>(NDArray<Ta> x1, NDArray<Tb> x2, {NDArray<R>? out}) {
       return result;
     } else if (targetDType == DType.float32) {
       s_pow_float(
+        x1.pointer.cast(),
+        cStridesA,
+        x2.pointer.cast(),
+        cStridesB,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (targetDType == DType.int64) {
+      s_pow_int64(
+        x1.pointer.cast(),
+        cStridesA,
+        x2.pointer.cast(),
+        cStridesB,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (targetDType == DType.int32) {
+      s_pow_int32(
+        x1.pointer.cast(),
+        cStridesA,
+        x2.pointer.cast(),
+        cStridesB,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (targetDType == DType.int16) {
+      s_pow_int16(
+        x1.pointer.cast(),
+        cStridesA,
+        x2.pointer.cast(),
+        cStridesB,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+      return result;
+    } else if (targetDType == DType.uint8) {
+      s_pow_uint8(
         x1.pointer.cast(),
         cStridesA,
         x2.pointer.cast(),
@@ -4961,13 +5063,11 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute abs() on a disposed array.');
   }
-  final DType<R> targetDType =
-      (switch (a.dtype) {
-            DType.complex64 => DType.float32,
-            DType.complex128 => DType.float64,
-            _ => a.dtype,
-          })
-          as DType<R>;
+  final targetDType = switch (a.dtype) {
+    DType.complex64 => DType.float32,
+    DType.complex128 => DType.float64,
+    _ => a.dtype,
+  };
 
   final NDArray<R> result;
   if (out != null) {
@@ -4978,7 +5078,7 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType);
+    result = NDArray.create(a.shape, targetDType as DType<R>);
   }
 
   if (a.isContiguous && result.isContiguous) {
@@ -4995,40 +5095,102 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
       case DType.complex64:
         v_abs_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
         return result;
+      case DType.int64:
+        v_abs_int64(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case DType.int32:
+        v_abs_int32(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case DType.int16:
+        v_abs_int16(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
+      case DType.uint8:
+        v_abs_uint8(a.pointer.cast(), result.pointer.cast(), a.size);
+        return result;
       default:
         break;
     }
-  } else if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
+  } else if (a.dtype == DType.complex128 ||
+      a.dtype == DType.complex64 ||
+      a.dtype == DType.int64 ||
+      a.dtype == DType.int32 ||
+      a.dtype == DType.int16 ||
+      a.dtype == DType.uint8) {
     final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-    }
-    if (a.dtype == DType.complex128) {
-      s_abs_complex128(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-      );
-      return result;
-    } else {
-      s_abs_complex64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-      );
-      return result;
+    if (rank <= 8) {
+      final cBuffer = ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+        cStridesRes[i] = result.strides[i];
+      }
+      switch (a.dtype) {
+        case DType.complex128:
+          s_abs_complex128(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        case DType.complex64:
+          s_abs_complex64(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        case DType.int64:
+          s_abs_int64(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        case DType.int32:
+          s_abs_int32(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        case DType.int16:
+          s_abs_int16(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        case DType.uint8:
+          s_abs_uint8(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+          );
+          return result;
+        default:
+          break;
+      }
     }
   }
 
