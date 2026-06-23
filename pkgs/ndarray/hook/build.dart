@@ -176,7 +176,16 @@ void main(List<String> args) async {
       final allExports = extractExportsFromBindings(
         input.packageRoot.resolve('lib/src/ndarray_bindings.dart').toFilePath(),
       );
-      final exportArgs = allExports.map((name) => '/EXPORT:$name').toList();
+
+      final defFile = File(
+        outputDir.uri.resolve('libndarray.def').toFilePath(),
+      );
+      final defContent = [
+        'LIBRARY libndarray',
+        'EXPORTS',
+        ...allExports,
+      ].join('\n');
+      await defFile.writeAsString(defContent);
 
       res = await Process.run(cppCompilerPath, [
         '/LD',
@@ -187,7 +196,7 @@ void main(List<String> args) async {
         libhwy.path,
         '/Fe:${libFile.path}',
         '/link',
-        ...exportArgs,
+        '/def:${defFile.path}',
       ], environment: msvcEnv);
       if (res.exitCode != 0) {
         throw StateError(
