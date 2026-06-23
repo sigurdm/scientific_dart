@@ -402,9 +402,7 @@ NDArray<int> digitize(
     }
 
     final currentLastBinVal = counts.getCell([M - 1]);
-    counts.setCell([
-      M - 1,
-    ], currentLastBinVal + equalLastEdgeWeightSum);
+    counts.setCell([M - 1], currentLastBinVal + equalLastEdgeWeightSum);
 
     final histView = counts.slice([Slice(start: 1, stop: M)]);
     final hist = histView.copy();

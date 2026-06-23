@@ -2777,9 +2777,7 @@ NDArray<Float64> cov(
     }
 
     final mDouble = _castTo(m2D, DType.float64);
-    final yDouble = y2D != null
-        ? _castTo(y2D, DType.float64)
-        : null;
+    final yDouble = y2D != null ? _castTo(y2D, DType.float64) : null;
 
     NDArray<Float64> X_double;
     if (yDouble != null) {
@@ -2788,12 +2786,8 @@ NDArray<Float64> cov(
       X_double = mDouble;
     }
 
-    final w_f = fweights != null
-        ? _castTo(fweights, DType.float64)
-        : null;
-    final w_a = aweights != null
-        ? _castTo(aweights, DType.float64)
-        : null;
+    final w_f = fweights != null ? _castTo(fweights, DType.float64) : null;
+    final w_a = aweights != null ? _castTo(aweights, DType.float64) : null;
 
     final w = (w_f != null && w_a != null)
         ? multiply<Float64, Float64, Float64>(w_f, w_a)
