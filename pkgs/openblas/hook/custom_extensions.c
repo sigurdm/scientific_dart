@@ -1,3 +1,5 @@
+#define HAVE_STDINT_H
+#include <stdint.h>
 #include <lapacke.h>
 
 void* get_dgetrf_ptr(void) {
