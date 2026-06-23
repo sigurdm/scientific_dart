@@ -24,6 +24,19 @@ jobs:
         with:
           sdk: 3.11.5
 
+      - name: Cache Build Artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            .dart_tool/
+            pkgs/ndarray/.dart_tool/
+            pkgs/openblas/.dart_tool/
+            pkgs/pocketfft/.dart_tool/
+            pkgs/ndarray/third_party/highway/hwy_build/
+          key: ${{ runner.os }}-dart-build-${{ hashFiles('**/pubspec.yaml', '**/build.dart', '**/*.c', '**/*.cpp', '**/*.h', '**/*.def') }}
+          restore-keys: |
+            ${{ runner.os }}-dart-build-
+
       - name: Verify CMake
         run: cmake --version
 
