@@ -83,6 +83,28 @@ void main(List<String> args) async {
         final headersDir = extractDir.resolve('include/');
         final libDir = extractDir.resolve('lib/');
 
+        // Patch lapack.h to avoid C2373 redefinition errors on MSVC Windows
+        if (isMSVC) {
+          final lapackHeader = File(
+            headersDir.resolve('lapack.h').toFilePath(),
+          );
+          if (lapackHeader.existsSync()) {
+            print(
+              'Patching lapack.h to resolve int32_t/uint32_t redefinition conflicts on MSVC...',
+            );
+            var content = await lapackHeader.readAsString();
+            content = content.replaceAll(
+              RegExp(r'typedef\s+[^;]+int32_t\s*;'),
+              '/* patched typedef int32_t */',
+            );
+            content = content.replaceAll(
+              RegExp(r'typedef\s+[^;]+uint32_t\s*;'),
+              '/* patched typedef uint32_t */',
+            );
+            await lapackHeader.writeAsString(content);
+          }
+        }
+
         final String openblasLibName;
         if (isMSVC) {
           openblasLibName = 'libopenblas.lib';
