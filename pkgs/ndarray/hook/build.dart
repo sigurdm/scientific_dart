@@ -173,13 +173,9 @@ void main(List<String> args) async {
         );
       }
 
-      final ufuncsExports = extractExports(
-        input.packageRoot.resolve('hook/custom_ufuncs.h').toFilePath(),
+      final allExports = extractExportsFromBindings(
+        input.packageRoot.resolve('lib/src/ndarray_bindings.dart').toFilePath(),
       );
-      final sortingExports = extractExports(
-        input.packageRoot.resolve('hook/custom_sorting.h').toFilePath(),
-      );
-      final allExports = [...ufuncsExports, ...sortingExports];
       final exportArgs = allExports.map((name) => '/EXPORT:$name').toList();
 
       res = await Process.run(cppCompilerPath, [
@@ -281,23 +277,26 @@ void main(List<String> args) async {
   });
 }
 
-List<String> extractExports(String headerPath) {
-  final file = File(headerPath);
-  if (!file.existsSync()) return [];
+List<String> extractExportsFromBindings(String bindingsPath) {
+  final file = File(bindingsPath);
+  if (!file.existsSync()) {
+    print(
+      'WARNING: Bindings file not found at $bindingsPath. Dynamic library exports list might be incomplete!',
+    );
+    return [];
+  }
 
   final content = file.readAsStringSync();
-  // Match standard function declarations like: void function_name(args);
-  final regex = RegExp(
-    r'\b(void|int|double|float|long\s+long|uint8_t|int16_t|int32_t|int64_t|size_t|custom_memcmp)\s+(\w+)\s*\(',
-  );
+  final regex = RegExp(r'external\s+[\w\d_<>.]+\s+(\w+)\s*\(');
 
   final exports = <String>[];
   for (final match in regex.allMatches(content)) {
-    final name = match.group(2);
+    final name = match.group(1);
     if (name != null && !exports.contains(name)) {
       exports.add(name);
     }
   }
+  print('Extracted ${exports.length} export symbols from $bindingsPath');
   return exports;
 }
 
