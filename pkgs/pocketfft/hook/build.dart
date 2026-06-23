@@ -114,7 +114,11 @@ void main(List<String> args) async {
 
     final res = await Process.run(compilerPath, compileArgs);
     if (res.exitCode != 0) {
-      throw StateError('PocketFFT native C compilation failed: ${res.stderr}');
+      throw StateError(
+        'PocketFFT native C compilation failed (exit ${res.exitCode}):\n'
+        'stdout: ${res.stdout}\n'
+        'stderr: ${res.stderr}',
+      );
     }
     print('Compiled shared library binary successfully at: ${libFile.path}');
 
