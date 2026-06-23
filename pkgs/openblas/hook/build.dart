@@ -127,6 +127,11 @@ void main(List<String> args) async {
             input.packageRoot.resolve('hook/custom_extensions.c').toFilePath(),
             '/Fe:${extLibFile.path}',
             openblasLibFile.path,
+            '/link',
+            '/EXPORT:get_dgetrf_ptr',
+            '/EXPORT:get_sgetrf_ptr',
+            '/EXPORT:get_zgetrf_ptr',
+            '/EXPORT:get_cgetrf_ptr',
           ];
         } else {
           compileArgs = [

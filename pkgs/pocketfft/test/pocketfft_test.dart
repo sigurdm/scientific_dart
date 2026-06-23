@@ -37,7 +37,7 @@ void main() {
           }
         } finally {
           // Release heap configurations and buffers
-          free(cfg.cast<ffi.Void>());
+          malloc.free(cfg);
           malloc.free(fin);
           malloc.free(fout);
         }
@@ -49,7 +49,7 @@ void main() {
       dims[1] = 2;
       final cfg = kiss_fftnd_alloc(dims, 2, 0, ffi.nullptr, ffi.nullptr);
       expect(cfg.address != 0, true);
-      free(cfg.cast<ffi.Void>());
+      malloc.free(cfg);
       malloc.free(dims);
     });
   });

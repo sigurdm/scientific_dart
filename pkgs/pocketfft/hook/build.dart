@@ -95,6 +95,14 @@ void main(List<String> args) async {
             srcDir.uri.resolve('kiss_fftr.c').toFilePath(),
             srcDir.uri.resolve('kiss_fftnd.c').toFilePath(),
             '/Fe:${libFile.path}',
+            '/link',
+            '/EXPORT:kiss_fft_alloc',
+            '/EXPORT:kiss_fft',
+            '/EXPORT:kiss_fftr_alloc',
+            '/EXPORT:kiss_fftr',
+            '/EXPORT:kiss_fftri',
+            '/EXPORT:kiss_fftnd_alloc',
+            '/EXPORT:kiss_fftnd',
           ]
         : <String>[
             '-shared',
