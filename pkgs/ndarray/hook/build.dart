@@ -22,7 +22,8 @@ void main(List<String> args) async {
     }
     final libFile = File.fromUri(outputDir.uri.resolve(libName));
 
-    final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
+    final compilerPath =
+        cCompiler?.compiler.toFilePath() ?? (os == OS.windows ? 'cl' : 'cc');
     final compilerLower = compilerPath.toLowerCase();
     final isGNU =
         compilerLower.contains('gcc') ||
@@ -32,7 +33,7 @@ void main(List<String> args) async {
 
     // Compile highway if needed
     final highwayDir = input.packageRoot.resolve('third_party/highway/');
-    final highwayBuildDir = Directory.fromUri(highwayDir.resolve('build'));
+    final highwayBuildDir = Directory.fromUri(highwayDir.resolve('hwy_build'));
 
     final String hwyLibName;
     final String hwyContribLibName;

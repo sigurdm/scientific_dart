@@ -16,7 +16,8 @@ void main(List<String> args) async {
         final packageName = input.packageName;
         final os = input.config.code.targetOS;
         final cCompiler = input.config.code.cCompiler;
-        final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
+        final compilerPath =
+            cCompiler?.compiler.toFilePath() ?? (os == OS.windows ? 'cl' : 'cc');
 
         final compilerLower = compilerPath.toLowerCase();
         final isGNU =
@@ -284,7 +285,8 @@ void main(List<String> args) async {
           final extLibFile = File(
             outputDir.uri.resolve(extLibName).toFilePath(),
           );
-          final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
+          final compilerPath =
+              cCompiler?.compiler.toFilePath() ?? (os == OS.windows ? 'cl' : 'cc');
           final isMSVC =
               os == OS.windows && compilerPath.toLowerCase().contains('cl');
 

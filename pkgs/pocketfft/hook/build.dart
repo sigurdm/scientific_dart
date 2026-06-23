@@ -73,7 +73,8 @@ void main(List<String> args) async {
     final libFile = File.fromUri(outputDir.uri.resolve(libName));
 
     // 3. Compile plain-C source code using Process.run for extreme reliability
-    final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
+    final compilerPath =
+        cCompiler?.compiler.toFilePath() ?? (os == OS.windows ? 'cl' : 'cc');
     print('Compiling pocketfft plain C files via compiler: $compilerPath');
 
     final compilerLower = compilerPath.toLowerCase();
