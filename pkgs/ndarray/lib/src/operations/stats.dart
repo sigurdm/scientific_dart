@@ -9,8 +9,8 @@ import '../scratch_arena.dart';
 import 'math.dart';
 import 'helpers.dart';
 import 'broadcasting.dart';
-import 'manipulation.dart';
 import 'linalg.dart';
+import 'manipulation.dart';
 
 /// Methods for estimating quantiles/percentiles.
 ///
@@ -2698,197 +2698,235 @@ average<T extends num, W extends num, R extends num>(
   });
 }
 
-NDArray<Float64> _diagonal(NDArray<Float64> a) {
-  final M = a.shape[0];
-  final s0 = a.strides[0];
-  final s1 = a.strides[1];
-  return NDArray<Float64>.view(a, shape: [M], strides: [s0 + s1]);
-}
-
 /// Estimate a covariance matrix, given data and weights.
-NDArray<Float64> cov(
-  NDArray m, {
-  NDArray? y,
+NDArray<Float64> cov<T extends num>(
+  NDArray<T> m, {
+  NDArray<T>? y,
   bool rowvar = true,
+  bool bias = false,
   int? ddof,
   NDArray<int>? fweights,
   NDArray<num>? aweights,
 }) {
   if (m.isDisposed) {
-    throw StateError('Cannot execute cov on a disposed array.');
+    throw StateError('Cannot compute covariance of a disposed array.');
   }
   if (y != null && y.isDisposed) {
-    throw StateError('Cannot execute cov with a disposed y array.');
+    throw StateError('Cannot compute covariance with a disposed array y.');
   }
   if (fweights != null && fweights.isDisposed) {
-    throw StateError('Cannot execute cov with disposed fweights.');
+    throw StateError('fweights is disposed.');
   }
   if (aweights != null && aweights.isDisposed) {
-    throw StateError('Cannot execute cov with disposed aweights.');
-  }
-
-  if (m.dtype.isComplex || (y != null && y.dtype.isComplex)) {
-    throw ArgumentError('Complex arrays are not supported in cov.');
+    throw StateError('aweights is disposed.');
   }
 
   return NDArray.scope(() {
-    NDArray m2D;
-    if (m.shape.length == 1) {
-      m2D = m.reshape([1, m.shape[0]]);
-    } else if (m.shape.length == 2) {
-      m2D = rowvar ? m : m.transpose();
-    } else {
+    NDArray<Float64> X;
+    final mDouble = m.dtype == DType.float64
+        ? m as NDArray<Float64>
+        : promoteToDouble(m);
+
+    if (mDouble.shape.length > 2) {
       throw ArgumentError('m must be 1D or 2D.');
     }
 
-    final N = m2D.shape[1];
+    final bool mIs1D = m.shape.length == 1;
+    NDArray<Float64> prepM = mDouble;
+    if (mIs1D) {
+      prepM = mDouble.reshape([1, mDouble.size]);
+    }
 
-    NDArray? y2D;
+    NDArray<Float64>? prepY;
+    bool yIs1D = false;
     if (y != null) {
-      if (y.shape.length == 1) {
-        y2D = y.reshape([1, y.shape[0]]);
-      } else if (y.shape.length == 2) {
-        y2D = rowvar ? y : y.transpose();
-      } else {
+      final yDouble = y.dtype == DType.float64
+          ? y as NDArray<Float64>
+          : promoteToDouble(y);
+      if (yDouble.shape.length > 2) {
         throw ArgumentError('y must be 1D or 2D.');
       }
-      if (y2D.shape[1] != N) {
-        throw ArgumentError(
-          'm and y must have the same number of observations.',
-        );
+      yIs1D = y.shape.length == 1;
+      prepY = yDouble;
+      if (yIs1D) {
+        prepY = yDouble.reshape([1, yDouble.size]);
       }
     }
 
-    if (fweights != null) {
-      if (!listEquals(fweights.shape, [N])) {
-        throw ArgumentError('fweights must be 1D of size $N.');
+    if (!rowvar) {
+      if (!mIs1D) {
+        prepM = prepM.transpose();
       }
-      if (min(fweights).scalar < 0) {
-        throw ArgumentError('fweights must be non-negative.');
-      }
-    }
-    if (aweights != null) {
-      if (!listEquals(aweights.shape, [N])) {
-        throw ArgumentError('aweights must be 1D of size $N.');
-      }
-      if (min(aweights).scalar < 0) {
-        throw ArgumentError('aweights must be non-negative.');
-      }
-    }
-
-    final mDouble = _castTo(m2D, DType.float64);
-    final yDouble = y2D != null ? _castTo(y2D, DType.float64) : null;
-
-    NDArray<Float64> X_double;
-    if (yDouble != null) {
-      X_double = concatenate<Float64>([mDouble, yDouble], axis: 0);
-    } else {
-      X_double = mDouble;
-    }
-
-    final w_f = fweights != null ? _castTo(fweights, DType.float64) : null;
-    final w_a = aweights != null ? _castTo(aweights, DType.float64) : null;
-
-    final w = (w_f != null && w_a != null)
-        ? multiply<Float64, Float64, Float64>(w_f, w_a)
-        : (w_f ?? w_a);
-
-    NDArray<Float64> mu;
-    if (w == null) {
-      mu = mean<Float64, Float64>(X_double, axis: 1);
-    } else {
-      final X_w = multiply<Float64, Float64, Float64>(X_double, w);
-      final sum_X_w = sum<Float64>(X_w, axis: 1);
-      final sum_w = sum<Float64>(w).scalar;
-      final sum_w_arr = NDArray<Float64>.fromList([sum_w], [], DType.float64);
-      mu = divide<Float64, Float64, Float64>(sum_X_w, sum_w_arr);
-    }
-
-    final mu_reshaped = mu.reshape([X_double.shape[0], 1]);
-    final X_centered = subtract<Float64, Float64, Float64>(
-      X_double,
-      mu_reshaped,
-    );
-
-    NDArray<Float64> fact;
-    if (w == null) {
-      fact = matmul<Float64, Float64, Float64>(
-        X_centered,
-        X_centered.transpose(),
-      );
-    } else {
-      final X_centered_w = multiply<Float64, Float64, Float64>(X_centered, w);
-      fact = matmul<Float64, Float64, Float64>(
-        X_centered_w,
-        X_centered.transpose(),
-      );
-    }
-
-    final ddof_val = ddof ?? 1;
-    double denom;
-
-    if (w == null) {
-      denom = (N - ddof_val).toDouble();
-    } else {
-      final sum_w = sum<Float64>(w).scalar;
-      if (ddof_val == 0) {
-        denom = sum_w;
-      } else {
-        if (w_a == null) {
-          denom = sum_w - ddof_val;
-        } else {
-          final w_times_a = multiply<Float64, Float64, Float64>(w, w_a);
-          final sum_w_times_a = sum<Float64>(w_times_a).scalar;
-          denom = sum_w - ddof_val * sum_w_times_a / sum_w;
+      if (prepY != null) {
+        if (prepY.shape[0] != 1) {
+          prepY = prepY.transpose();
         }
       }
     }
 
-    final denom_arr = NDArray<Float64>.fromList([denom], [], DType.float64);
-    final result = divide<Float64, Float64, Float64>(fact, denom_arr);
-
-    var finalResult = result;
-    if (m.shape.length == 1 && y == null) {
-      final view = result.reshape([]);
-      finalResult = view.copy();
+    if (prepY != null) {
+      X = concatenate([prepM, prepY], axis: 0);
+    } else {
+      X = prepM;
     }
 
-    finalResult.detachToParentScope();
-    return finalResult;
+    final N = X.shape[1];
+    final fweightsLocal = fweights;
+    final aweightsLocal = aweights;
+
+    if (fweightsLocal != null) {
+      if (fweightsLocal.shape.length != 1 || fweightsLocal.size != N) {
+        throw ArgumentError(
+          'fweights must be 1D and have size equal to number of observations ($N).',
+        );
+      }
+      final minF = min(fweightsLocal).scalar;
+      if (minF < 0) {
+        throw ArgumentError('fweights must be non-negative.');
+      }
+    }
+    if (aweightsLocal != null) {
+      if (aweightsLocal.shape.length != 1 || aweightsLocal.size != N) {
+        throw ArgumentError(
+          'aweights must be 1D and have size equal to number of observations ($N).',
+        );
+      }
+      final minA = min(aweightsLocal).scalar;
+      if (minA < 0) {
+        throw ArgumentError('aweights must be non-negative.');
+      }
+    }
+
+    NDArray<Float64> w;
+    NDArray<Float64> a;
+
+    if (fweightsLocal == null && aweightsLocal == null) {
+      w = NDArray<Float64>.ones([N], DType.float64);
+      a = NDArray<Float64>.ones([N], DType.float64);
+    } else {
+      final fDouble = fweightsLocal != null
+          ? promoteToDouble(fweightsLocal)
+          : NDArray<Float64>.ones([N], DType.float64);
+      final aDouble = aweightsLocal != null
+          ? (aweightsLocal.dtype == DType.float64
+                ? aweightsLocal as NDArray<Float64>
+                : promoteToDouble(aweightsLocal))
+          : NDArray<Float64>.ones([N], DType.float64);
+
+      w = multiply<Float64, Float64, Float64>(fDouble, aDouble);
+      a = aDouble;
+    }
+
+    final v1 = sum(w).scalar;
+    final wTimesA = multiply<Float64, Float64, Float64>(w, a);
+    final v2 = sum(wTimesA).scalar;
+
+    final wReshaped = w.reshape([1, N]);
+    final XTimesW = multiply<Float64, Float64, Float64>(X, wReshaped);
+    final sumXW = sum(XTimesW, axis: 1);
+    final meanVal = divide<Float64, Float64, Float64>(
+      sumXW,
+      NDArray<Float64>.fromList([Float64(v1)], [], DType.float64),
+    );
+
+    final meanReshaped = meanVal.reshape([X.shape[0], 1]);
+    final X_centered = subtract<Float64, Float64, Float64>(X, meanReshaped);
+
+    final X_centered_weighted = multiply<Float64, Float64, Float64>(
+      X_centered,
+      wReshaped,
+    );
+    final X_centered_T = X_centered.transpose();
+    final dotVal = matmul<Float64, Float64, Float64>(
+      X_centered_weighted,
+      X_centered_T,
+    );
+
+    final int resolvedDdof = ddof ?? (bias ? 0 : 1);
+    final denominator = v1 * v1 - resolvedDdof * v2;
+    final double fact;
+    if (denominator == 0) {
+      fact = double.nan;
+    } else {
+      fact = v1 / denominator;
+    }
+
+    final factArr = NDArray<Float64>.fromList(
+      [Float64(fact)],
+      [],
+      DType.float64,
+    );
+    final result = multiply<Float64, Float64, Float64>(dotVal, factArr);
+
+    final squeezed = result.squeeze();
+    return squeezed.detachToParentScope();
   });
 }
 
-/// Pearson product-moment correlation coefficients.
-NDArray<Float64> corrcoef(NDArray x, {NDArray? y, bool rowvar = true}) {
-  if (x.isDisposed) {
-    throw StateError('Cannot execute corrcoef on a disposed array.');
+/// Compute Pearson product-moment correlation coefficients.
+NDArray<Float64> corrcoef<T extends num>(
+  NDArray<T> m, {
+  NDArray<T>? y,
+  bool rowvar = true,
+  NDArray<int>? fweights,
+  NDArray<num>? aweights,
+}) {
+  if (m.isDisposed) {
+    throw StateError(
+      'Cannot compute correlation coefficient of a disposed array.',
+    );
   }
   if (y != null && y.isDisposed) {
-    throw StateError('Cannot execute corrcoef with a disposed y array.');
+    throw StateError(
+      'Cannot compute correlation coefficient with a disposed array y.',
+    );
   }
 
   return NDArray.scope(() {
-    final C = cov(x, y: y, rowvar: rowvar);
+    final C = cov(
+      m,
+      y: y,
+      rowvar: rowvar,
+      fweights: fweights,
+      aweights: aweights,
+    );
 
-    NDArray<Float64> C2D;
     if (C.shape.isEmpty) {
-      C2D = C.reshape([1, 1]);
-    } else {
-      C2D = C;
+      final val = C.scalar;
+      final resVal = val == 0.0 ? double.nan : 1.0;
+      return NDArray<Float64>.fromList(
+        [Float64(resVal)],
+        [],
+        DType.float64,
+      ).detachToParentScope();
     }
 
-    final M = C2D.shape[0];
-    final d = _diagonal(C2D);
-    final stddev = sqrt<Float64, Float64>(d);
-    final stddev_reshaped_col = stddev.reshape([M, 1]);
-    final stddev_reshaped_row = stddev.reshape([1, M]);
-    final divisor = multiply<Float64, Float64, Float64>(
-      stddev_reshaped_col,
-      stddev_reshaped_row,
+    final K = C.shape[0];
+    final stdList = <double>[];
+    for (var i = 0; i < K; i++) {
+      final variance = C.getCell([i, i]);
+      stdList.add(math.sqrt(variance));
+    }
+    final std = NDArray<Float64>.fromList(
+      stdList.map((e) => Float64(e)).toList(),
+      [K],
+      DType.float64,
     );
-    final R = divide<Float64, Float64, Float64>(C2D, divisor);
 
-    R.detachToParentScope();
-    return R;
+    final stdCol = std.reshape([K, 1]);
+    final stdRow = std.reshape([1, K]);
+    final stdOuter = multiply<Float64, Float64, Float64>(stdCol, stdRow);
+
+    final R = divide<Float64, Float64, Float64>(C, stdOuter);
+    for (var i = 0; i < K; i++) {
+      if (stdList[i] == 0.0) {
+        for (var j = 0; j < K; j++) {
+          R.setCell([i, j], Float64(double.nan));
+          R.setCell([j, i], Float64(double.nan));
+        }
+      }
+    }
+
+    return R.detachToParentScope();
   });
 }

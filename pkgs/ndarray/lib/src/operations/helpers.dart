@@ -266,11 +266,11 @@ int encodeDType(DType type) {
   return type.index;
 }
 
-NDArray<double> promoteToDouble(NDArray a) {
+NDArray<Float64> promoteToDouble(NDArray a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute promoteToDouble on a disposed array.');
   }
-  final res = NDArray<double>.create(a.shape, DType.float64);
+  final res = NDArray<Float64>.create(a.shape, DType.float64);
   final ndim = a.shape.length;
   final marker = ScratchArena.marker;
 
@@ -1005,9 +1005,30 @@ NDArray<R> cumOpFFI<T, R>(
 NDArray<R> castNDArray<R>(NDArray a, DType<R> targetDType) {
   if (a.dtype == targetDType) return a as NDArray<R>;
   final result = NDArray<R>.create(a.shape, targetDType);
-  final aFlat = a.toList();
-  for (var i = 0; i < aFlat.length; i++) {
-    result.data[i] = castValue(aFlat[i], targetDType) as R;
+  final ndim = a.shape.length;
+  final marker = ScratchArena.marker;
+
+  try {
+    final cBuffer = ScratchArena.getStridedBuffer(ndim);
+    final cShape = cBuffer;
+    final cStridesSrc = cBuffer + ndim;
+
+    for (var i = 0; i < ndim; i++) {
+      cShape[i] = a.shape[i];
+      cStridesSrc[i] = a.strides[i];
+    }
+
+    s_cast_generic(
+      a.pointer.cast(),
+      cStridesSrc,
+      encodeDType(a.dtype),
+      result.pointer.cast(),
+      encodeDType(targetDType),
+      cShape,
+      ndim,
+    );
+  } finally {
+    ScratchArena.reset(marker);
   }
   return result;
 }

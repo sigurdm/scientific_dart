@@ -121,26 +121,47 @@ struct caster {
     }
 };
 
-template <>
-struct caster<double, cpx_t> {
-    static inline double cast(cpx_t val) { return val.r; }
-};
-template <>
-struct caster<double, cpx_f_t> {
-    static inline double cast(cpx_f_t val) { return (double)val.r; }
+// Casting FROM complex to scalar (returns real part cast to DestType)
+template <typename DestType>
+struct caster<DestType, cpx_t> {
+    static inline DestType cast(cpx_t val) { return static_cast<DestType>(val.r); }
 };
 
+template <typename DestType>
+struct caster<DestType, cpx_f_t> {
+    static inline DestType cast(cpx_f_t val) { return static_cast<DestType>(val.r); }
+};
+
+// Casting FROM scalar to complex (sets real part, imag is 0)
 template <typename SrcType>
 struct caster<cpx_t, SrcType> {
     static inline cpx_t cast(SrcType val) { return cpx_t{static_cast<double>(val), 0.0}; }
 };
+
+template <typename SrcType>
+struct caster<cpx_f_t, SrcType> {
+    static inline cpx_f_t cast(SrcType val) { return cpx_f_t{static_cast<float>(val), 0.0f}; }
+};
+
+// Complex to Complex casts
 template <>
 struct caster<cpx_t, cpx_t> {
     static inline cpx_t cast(cpx_t val) { return val; }
 };
+
+template <>
+struct caster<cpx_f_t, cpx_f_t> {
+    static inline cpx_f_t cast(cpx_f_t val) { return val; }
+};
+
 template <>
 struct caster<cpx_t, cpx_f_t> {
     static inline cpx_t cast(cpx_f_t val) { return cpx_t{(double)val.r, (double)val.i}; }
+};
+
+template <>
+struct caster<cpx_f_t, cpx_t> {
+    static inline cpx_f_t cast(cpx_t val) { return cpx_f_t{(float)val.r, (float)val.i}; }
 };
 
 template <typename SrcType, typename DestType>
@@ -2942,16 +2963,16 @@ DEFINE_STRIDED_CUM_OP(s_cummax_int32, int32_t, OP_MAX)
 
 // custom complex ops
 static inline cpx_t cpx_add(cpx_t a, cpx_t b) {
-    return cpx_t{a.r + b.r, a.i + b.i};
+    return (cpx_t){a.r + b.r, a.i + b.i};
 }
 static inline cpx_t cpx_mul(cpx_t a, cpx_t b) {
-    return cpx_t{a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r};
+    return (cpx_t){a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r};
 }
 static inline cpx_f_t cpx_add_f(cpx_f_t a, cpx_f_t b) {
-    return cpx_f_t{a.r + b.r, a.i + b.i};
+    return (cpx_f_t){a.r + b.r, a.i + b.i};
 }
 static inline cpx_f_t cpx_mul_f(cpx_f_t a, cpx_f_t b) {
-    return cpx_f_t{a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r};
+    return (cpx_f_t){a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r};
 }
 
 DEFINE_STRIDED_CUM_OP(s_cumsum_complex128, cpx_t, cpx_add)
@@ -2961,10 +2982,10 @@ DEFINE_STRIDED_CUM_OP(s_cumprod_complex64, cpx_f_t, cpx_mul_f)
 
 // complex subtraction helpers
 static inline cpx_t cpx_sub(cpx_t a, cpx_t b) {
-    return cpx_t{a.r - b.r, a.i - b.i};
+    return (cpx_t){a.r - b.r, a.i - b.i};
 }
 static inline cpx_f_t cpx_sub_f(cpx_f_t a, cpx_f_t b) {
-    return cpx_f_t{a.r - b.r, a.i - b.i};
+    return (cpx_f_t){a.r - b.r, a.i - b.i};
 }
 
 #define DEFINE_STRIDED_DIFF_OP(FUNCNAME, T, SUB_OP) \
@@ -3007,10 +3028,10 @@ DEFINE_STRIDED_UNARY_OP(s_sinc_float, float, OP_SINC_F)
 
 // complex trig helper definitions
 static inline cpx_t cpx_sin(cpx_t z) {
-    return cpx_t{sin(z.r) * cosh(z.i), cos(z.r) * sinh(z.i)};
+    return (cpx_t){sin(z.r) * cosh(z.i), cos(z.r) * sinh(z.i)};
 }
 static inline cpx_f_t cpx_sin_f(cpx_f_t z) {
-    return cpx_f_t{sinf(z.r) * coshf(z.i), cosf(z.r) * sinhf(z.i)};
+    return (cpx_f_t){sinf(z.r) * coshf(z.i), cosf(z.r) * sinhf(z.i)};
 }
 
 static inline cpx_t cpx_sinc(cpx_t z) {
@@ -3026,21 +3047,21 @@ static inline cpx_f_t cpx_sinc_f(cpx_f_t z) {
 }
 
 static inline cpx_t cpx_cos(cpx_t z) {
-    return cpx_t{cos(z.r) * cosh(z.i), -sin(z.r) * sinh(z.i)};
+    return (cpx_t){cos(z.r) * cosh(z.i), -sin(z.r) * sinh(z.i)};
 }
 static inline cpx_f_t cpx_cos_f(cpx_f_t z) {
-    return cpx_f_t{cosf(z.r) * coshf(z.i), -sinf(z.r) * sinhf(z.i)};
+    return (cpx_f_t){cosf(z.r) * coshf(z.i), -sinf(z.r) * sinhf(z.i)};
 }
 
 static inline cpx_t cpx_tan(cpx_t z) {
     double denom = cos(2.0 * z.r) + cosh(2.0 * z.i);
-    if (denom == 0.0) return cpx_t{0.0, 0.0};
-    return cpx_t{sin(2.0 * z.r) / denom, sinh(2.0 * z.i) / denom};
+    if (denom == 0.0) return (cpx_t){0.0, 0.0};
+    return (cpx_t){sin(2.0 * z.r) / denom, sinh(2.0 * z.i) / denom};
 }
 static inline cpx_f_t cpx_tan_f(cpx_f_t z) {
     float denom = cosf(2.0f * z.r) + coshf(2.0f * z.i);
-    if (denom == 0.0f) return cpx_f_t{0.0f, 0.0f};
-    return cpx_f_t{sinf(2.0f * z.r) / denom, sinhf(2.0f * z.i) / denom};
+    if (denom == 0.0f) return (cpx_f_t){0.0f, 0.0f};
+    return (cpx_f_t){sinf(2.0f * z.r) / denom, sinhf(2.0f * z.i) / denom};
 }
 
 static inline cpx_t cpx_asin(cpx_t z) {
@@ -3052,7 +3073,7 @@ static inline cpx_t cpx_asin(cpx_t z) {
     if (v > 1.0) v = 1.0;
     double r = asin(v);
     double s = (z.i >= 0 ? 1.0 : -1.0) * log(u + sqrt(u*u - 1.0));
-    return cpx_t{r, s};
+    return (cpx_t){r, s};
 }
 
 static inline cpx_f_t cpx_asin_f(cpx_f_t z) {
@@ -3064,65 +3085,65 @@ static inline cpx_f_t cpx_asin_f(cpx_f_t z) {
     if (v > 1.0f) v = 1.0f;
     float r = asinf(v);
     float s = (z.i >= 0.0f ? 1.0f : -1.0f) * logf(u + sqrtf(u*u - 1.0f));
-    return cpx_f_t{r, s};
+    return (cpx_f_t){r, s};
 }
 
 static inline cpx_t cpx_acos(cpx_t z) {
     cpx_t s = cpx_asin(z);
-    return cpx_t{3.14159265358979323846 / 2.0 - s.r, -s.i};
+    return (cpx_t){3.14159265358979323846 / 2.0 - s.r, -s.i};
 }
 
 static inline cpx_f_t cpx_acos_f(cpx_f_t z) {
     cpx_f_t s = cpx_asin_f(z);
-    return cpx_f_t{3.14159265358979323846f / 2.0f - s.r, -s.i};
+    return (cpx_f_t){3.14159265358979323846f / 2.0f - s.r, -s.i};
 }
 
 static inline cpx_t cpx_atan(cpx_t z) {
     double r = 0.5 * atan2(2.0 * z.r, 1.0 - z.r*z.r - z.i*z.i);
     double s = 0.25 * log((z.r*z.r + (z.i + 1.0)*(z.i + 1.0)) / (z.r*z.r + (z.i - 1.0)*(z.i - 1.0)));
-    return cpx_t{r, s};
+    return (cpx_t){r, s};
 }
 
 static inline cpx_f_t cpx_atan_f(cpx_f_t z) {
     float r = 0.5f * atan2f(2.0f * z.r, 1.0f - z.r*z.r - z.i*z.i);
     float s = 0.25f * logf((z.r*z.r + (z.i + 1.0f)*(z.i + 1.0f)) / (z.r*z.r + (z.i - 1.0f)*(z.i - 1.0f)));
-    return cpx_f_t{r, s};
+    return (cpx_f_t){r, s};
 }
 
 static inline cpx_t cpx_sinh(cpx_t z) {
-    return cpx_t{sinh(z.r) * cos(z.i), cosh(z.r) * sin(z.i)};
+    return (cpx_t){sinh(z.r) * cos(z.i), cosh(z.r) * sin(z.i)};
 }
 static inline cpx_f_t cpx_sinh_f(cpx_f_t z) {
-    return cpx_f_t{sinhf(z.r) * cosf(z.i), coshf(z.r) * sinf(z.i)};
+    return (cpx_f_t){sinhf(z.r) * cosf(z.i), coshf(z.r) * sinf(z.i)};
 }
 
 static inline cpx_t cpx_cosh(cpx_t z) {
-    return cpx_t{cosh(z.r) * cos(z.i), sinh(z.r) * sin(z.i)};
+    return (cpx_t){cosh(z.r) * cos(z.i), sinh(z.r) * sin(z.i)};
 }
 static inline cpx_f_t cpx_cosh_f(cpx_f_t z) {
-    return cpx_f_t{coshf(z.r) * cosf(z.i), sinhf(z.r) * sinf(z.i)};
+    return (cpx_f_t){coshf(z.r) * cosf(z.i), sinhf(z.r) * sinf(z.i)};
 }
 
 static inline cpx_t cpx_tanh(cpx_t z) {
     double denom = cosh(2.0 * z.r) + cos(2.0 * z.i);
-    if (denom == 0.0) return cpx_t{0.0, 0.0};
-    return cpx_t{sinh(2.0 * z.r) / denom, sin(2.0 * z.i) / denom};
+    if (denom == 0.0) return (cpx_t){0.0, 0.0};
+    return (cpx_t){sinh(2.0 * z.r) / denom, sin(2.0 * z.i) / denom};
 }
 static inline cpx_f_t cpx_tanh_f(cpx_f_t z) {
     float denom = coshf(2.0f * z.r) + cosf(2.0f * z.i);
-    if (denom == 0.0f) return cpx_f_t{0.0f, 0.0f};
-    return cpx_f_t{sinhf(2.0f * z.r) / denom, sinf(2.0f * z.i) / denom};
+    if (denom == 0.0f) return (cpx_f_t){0.0f, 0.0f};
+    return (cpx_f_t){sinhf(2.0f * z.r) / denom, sinf(2.0f * z.i) / denom};
 }
 
 static inline cpx_t cpx_asinh(cpx_t z) {
     cpx_t iz = {-z.i, z.r};
     cpx_t w = cpx_asin(iz);
-    return cpx_t{w.i, -w.r};
+    return (cpx_t){w.i, -w.r};
 }
 static inline cpx_f_t cpx_asinh_f(cpx_f_t z) {
     cpx_f_t iz = {-z.i, z.r};
     cpx_f_t w = cpx_asin_f(iz);
-    return cpx_f_t{w.i, -w.r};
+    return (cpx_f_t){w.i, -w.r};
 }
 
 static thread_local int division_error_flag = 0;
@@ -3557,13 +3578,13 @@ DEFINE_STRIDED_UNARY_OP(s_atanh_float, float, OP_ATANH_F)
 static inline cpx_t cpx_atanh(cpx_t z) {
     double r = 0.25 * log(((1.0 + z.r)*(1.0 + z.r) + z.i*z.i) / ((1.0 - z.r)*(1.0 - z.r) + z.i*z.i));
     double s = 0.5 * atan2(2.0 * z.i, 1.0 - z.r*z.r - z.i*z.i);
-    return cpx_t{r, s};
+    return (cpx_t){r, s};
 }
 
 static inline cpx_f_t cpx_atanh_f(cpx_f_t z) {
     float r = 0.25f * logf(((1.0f + z.r)*(1.0f + z.r) + z.i*z.i) / ((1.0f - z.r)*(1.0f - z.r) + z.i*z.i));
     float s = 0.5f * atan2f(2.0f * z.i, 1.0f - z.r*z.r - z.i*z.i);
-    return cpx_f_t{r, s};
+    return (cpx_f_t){r, s};
 }
 
 DEFINE_COMPLEX_UNARY_VEC(v_atanh_complex128, cpx_t, cpx_atanh)
@@ -3628,27 +3649,27 @@ void s_hypot_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x
 }
 
 static inline cpx_t cpx_pow(cpx_t z1, cpx_t z2) {
-    if (z2.r == 0.0 && z2.i == 0.0) return cpx_t{1.0, 0.0};
+    if (z2.r == 0.0 && z2.i == 0.0) return (cpx_t){1.0, 0.0};
     double mag = sqrt(z1.r*z1.r + z1.i*z1.i);
-    if (mag == 0.0) return cpx_t{0.0, 0.0};
+    if (mag == 0.0) return (cpx_t){0.0, 0.0};
     double L = log(mag);
     double theta = atan2(z1.i, z1.r);
     double R = z2.r * L - z2.i * theta;
     double imag_val = z2.i * L + z2.r * theta;
     double eR = exp(R);
-    return cpx_t{eR * cos(imag_val), eR * sin(imag_val)};
+    return (cpx_t){eR * cos(imag_val), eR * sin(imag_val)};
 }
 
 static inline cpx_f_t cpx_pow_f(cpx_f_t z1, cpx_f_t z2) {
-    if (z2.r == 0.0f && z2.i == 0.0f) return cpx_f_t{1.0f, 0.0f};
+    if (z2.r == 0.0f && z2.i == 0.0f) return (cpx_f_t){1.0f, 0.0f};
     float mag = sqrtf(z1.r*z1.r + z1.i*z1.i);
-    if (mag == 0.0f) return cpx_f_t{0.0f, 0.0f};
+    if (mag == 0.0f) return (cpx_f_t){0.0f, 0.0f};
     float L = logf(mag);
     float theta = atan2f(z1.i, z1.r);
     float R = z2.r * L - z2.i * theta;
     float imag_val = z2.i * L + z2.r * theta;
     float eR = expf(R);
-    return cpx_f_t{eR * cosf(imag_val), eR * sinf(imag_val)};
+    return (cpx_f_t){eR * cosf(imag_val), eR * sinf(imag_val)};
 }
 
 
@@ -3771,17 +3792,17 @@ void s_conj_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, c
  * ============================================================================
  */
 
-static inline cpx_t cpx_from_double(double v) { return cpx_t{v, 0.0}; }
-static inline cpx_t cpx_from_float(float v) { return cpx_t{(double)v, 0.0}; }
-static inline cpx_t cpx_from_int64(int64_t v) { return cpx_t{(double)v, 0.0}; }
-static inline cpx_t cpx_from_int32(int32_t v) { return cpx_t{(double)v, 0.0}; }
-static inline cpx_t cpx_from_uint8(uint8_t v) { return cpx_t{(double)v, 0.0}; }
-static inline cpx_t cpx_from_int16(int16_t v) { return cpx_t{(double)v, 0.0}; }
+static inline cpx_t cpx_from_double(double v) { return (cpx_t){v, 0.0}; }
+static inline cpx_t cpx_from_float(float v) { return (cpx_t){(double)v, 0.0}; }
+static inline cpx_t cpx_from_int64(int64_t v) { return (cpx_t){(double)v, 0.0}; }
+static inline cpx_t cpx_from_int32(int32_t v) { return (cpx_t){(double)v, 0.0}; }
+static inline cpx_t cpx_from_uint8(uint8_t v) { return (cpx_t){(double)v, 0.0}; }
+static inline cpx_t cpx_from_int16(int16_t v) { return (cpx_t){(double)v, 0.0}; }
 static inline cpx_t cpx_from_cpx(cpx_t v) { return v; }
 
-static inline cpx_t cpx_from_cpx64(cpx_f_t v) { return cpx_t{(double)v.r, (double)v.i}; }
+static inline cpx_t cpx_from_cpx64(cpx_f_t v) { return (cpx_t){(double)v.r, (double)v.i}; }
 
-static inline cpx_f_t cpx_f_from_cpx(cpx_t v) { return cpx_f_t{(float)v.r, (float)v.i}; }
+static inline cpx_f_t cpx_f_from_cpx(cpx_t v) { return (cpx_f_t){(float)v.r, (float)v.i}; }
 
 static inline cpx_t cpx_div(cpx_t x, cpx_t y) {
     std::complex<double> cx(x.r, x.i);
@@ -4289,10 +4310,10 @@ static inline int32_t int32_remainder(int32_t x, int32_t y) {
 }
 
 static inline cpx_t cpx_square(cpx_t z) {
-    return cpx_t{z.r * z.r - z.i * z.i, 2.0 * z.r * z.i};
+    return (cpx_t){z.r * z.r - z.i * z.i, 2.0 * z.r * z.i};
 }
 static inline cpx_f_t cpx_square_f(cpx_f_t z) {
-    return cpx_f_t{z.r * z.r - z.i * z.i, 2.0f * z.r * z.i};
+    return (cpx_f_t){z.r * z.r - z.i * z.i, 2.0f * z.r * z.i};
 }
 
 #define DEFINE_CONTIGUOUS_UNARY_IMPL(name, typeSrc, typeRes, expr) \
@@ -5593,7 +5614,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
         }
         
         if (N == 1) {
-            res[offsetRes] = cpx_t{0.0, 0.0};
+            res[offsetRes] = (cpx_t){0.0, 0.0};
         } else if (N == 2) {
             double h = dx;
             if (x != nullptr) {
@@ -5601,7 +5622,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
             }
             cpx_t f0 = src[offsetSrc];
             cpx_t f1 = src[offsetSrc + stridesSrc[axis]];
-            cpx_t diff = cpx_t{(f1.r - f0.r) / h, (f1.i - f0.i) / h};
+            cpx_t diff = (cpx_t){(f1.r - f0.r) / h, (f1.i - f0.i) / h};
             res[offsetRes] = diff;
             res[offsetRes + stridesRes[axis]] = diff;
         } else {
@@ -5613,7 +5634,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
                 }
                 cpx_t f0 = src[offsetSrc];
                 cpx_t f1 = src[offsetSrc + stridesSrc[axis]];
-                res[offsetRes] = cpx_t{(f1.r - f0.r) / h, (f1.i - f0.i) / h};
+                res[offsetRes] = (cpx_t){(f1.r - f0.r) / h, (f1.i - f0.i) / h};
             } else {
                 double h0 = dx;
                 double h1 = dx;
@@ -5629,7 +5650,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
                 double b = (h0 + h1) / (h0 * h1);
                 double c = -h0 / (h1 * (h0 + h1));
                 
-                res[offsetRes] = cpx_t{
+                res[offsetRes] = (cpx_t){
                     a * f0.r + b * f1.r + c * f2.r,
                     a * f0.i + b * f1.i + c * f2.i
                 };
@@ -5654,7 +5675,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
                 }
                 
                 double denom = h_s * h_d * (h_s + h_d);
-                res[idxRes] = cpx_t{
+                res[idxRes] = (cpx_t){
                     (h_s * h_s * f_next.r + (h_d * h_d - h_s * h_s) * f_curr.r - h_d * h_d * f_prev.r) / denom,
                     (h_s * h_s * f_next.i + (h_d * h_d - h_s * h_s) * f_curr.i - h_d * h_d * f_prev.i) / denom
                 };
@@ -5670,7 +5691,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
                 }
                 cpx_t f0 = src[idxSrcEnd - stridesSrc[axis]];
                 cpx_t f1 = src[idxSrcEnd];
-                res[idxResEnd] = cpx_t{(f1.r - f0.r) / h, (f1.i - f0.i) / h};
+                res[idxResEnd] = (cpx_t){(f1.r - f0.r) / h, (f1.i - f0.i) / h};
             } else {
                 double h0 = dx;
                 double h1 = dx;
@@ -5686,7 +5707,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
                 double b = -(h0 + h1) / (h0 * h1);
                 double c = (2.0 * h1 + h0) / (h1 * (h0 + h1));
                 
-                res[idxResEnd] = cpx_t{
+                res[idxResEnd] = (cpx_t){
                     a * f0.r + b * f1.r + c * f2.r,
                     a * f0.i + b * f1.i + c * f2.i
                 };
@@ -5724,7 +5745,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
         }
         
         if (N == 1) {
-            res[offsetRes] = cpx_f_t{0.0f, 0.0f};
+            res[offsetRes] = (cpx_f_t){0.0f, 0.0f};
         } else if (N == 2) {
             float h = dx;
             if (x != nullptr) {
@@ -5732,7 +5753,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
             }
             cpx_f_t f0 = src[offsetSrc];
             cpx_f_t f1 = src[offsetSrc + stridesSrc[axis]];
-            cpx_f_t diff = cpx_f_t{(f1.r - f0.r) / h, (f1.i - f0.i) / h};
+            cpx_f_t diff = (cpx_f_t){(f1.r - f0.r) / h, (f1.i - f0.i) / h};
             res[offsetRes] = diff;
             res[offsetRes + stridesRes[axis]] = diff;
         } else {
@@ -5744,7 +5765,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
                 }
                 cpx_f_t f0 = src[offsetSrc];
                 cpx_f_t f1 = src[offsetSrc + stridesSrc[axis]];
-                res[offsetRes] = cpx_f_t{(f1.r - f0.r) / h, (f1.i - f0.i) / h};
+                res[offsetRes] = (cpx_f_t){(f1.r - f0.r) / h, (f1.i - f0.i) / h};
             } else {
                 float h0 = dx;
                 float h1 = dx;
@@ -5760,7 +5781,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
                 float b = (h0 + h1) / (h0 * h1);
                 float c = -h0 / (h1 * (h0 + h1));
                 
-                res[offsetRes] = cpx_f_t{
+                res[offsetRes] = (cpx_f_t){
                     a * f0.r + b * f1.r + c * f2.r,
                     a * f0.i + b * f1.i + c * f2.i
                 };
@@ -5785,7 +5806,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
                 }
                 
                 float denom = h_s * h_d * (h_s + h_d);
-                res[idxRes] = cpx_f_t{
+                res[idxRes] = (cpx_f_t){
                     (h_s * h_s * f_next.r + (h_d * h_d - h_s * h_s) * f_curr.r - h_d * h_d * f_prev.r) / denom,
                     (h_s * h_s * f_next.i + (h_d * h_d - h_s * h_s) * f_curr.i - h_d * h_d * f_prev.i) / denom
                 };
@@ -5801,7 +5822,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
                 }
                 cpx_f_t f0 = src[idxSrcEnd - stridesSrc[axis]];
                 cpx_f_t f1 = src[idxSrcEnd];
-                res[idxResEnd] = cpx_f_t{(f1.r - f0.r) / h, (f1.i - f0.i) / h};
+                res[idxResEnd] = (cpx_f_t){(f1.r - f0.r) / h, (f1.i - f0.i) / h};
             } else {
                 float h0 = dx;
                 float h1 = dx;
@@ -5817,7 +5838,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
                 float b = -(h0 + h1) / (h0 * h1);
                 float c = (2.0f * h1 + h0) / (h1 * (h0 + h1));
                 
-                res[idxResEnd] = cpx_f_t{
+                res[idxResEnd] = (cpx_f_t){
                     a * f0.r + b * f1.r + c * f2.r,
                     a * f0.i + b * f1.i + c * f2.i
                 };
@@ -6631,12 +6652,12 @@ uint8_t v_any_equal_to_zero_int64(const int64_t *arr, int size) {
 
 
 #define TO_DOUBLE(x) ((double)(x))
-#define TO_COMPLEX(x) (cpx_t{(double)(x), 0.0})
+#define TO_COMPLEX(x) ((cpx_t){(double)(x), 0.0})
 #define COMPLEX_TO_DOUBLE(x) ((x).r)
 #define COMPLEXF_TO_DOUBLE(x) ((double)(x).r)
-#define COMPLEXF_TO_COMPLEX(x) (cpx_t{(double)(x).r, (double)(x).i})
+#define COMPLEXF_TO_COMPLEX(x) ((cpx_t){(double)(x).r, (double)(x).i})
 #define BOOL_TO_DOUBLE(x) ((double)(x))
-#define BOOL_TO_COMPLEX(x) (cpx_t{(double)(x), 0.0})
+#define BOOL_TO_COMPLEX(x) ((cpx_t){(double)(x), 0.0})
 
 
 template <typename DestType>
@@ -6667,10 +6688,34 @@ void s_cast_generic(
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
-    if (dtypeDst == DTYPE_FLOAT64) {
-        dispatch_cast_src<double>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
-    } else if (dtypeDst == DTYPE_COMPLEX128) {
-        dispatch_cast_src<cpx_t>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+    switch (dtypeDst) {
+        case DTYPE_FLOAT64:
+            dispatch_cast_src<double>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+            break;
+        case DTYPE_FLOAT32:
+            dispatch_cast_src<float>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+            break;
+        case DTYPE_INT32:
+            dispatch_cast_src<int32_t>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+            break;
+        case DTYPE_INT64:
+            dispatch_cast_src<int64_t>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+            break;
+        case DTYPE_UINT8:
+            dispatch_cast_src<uint8_t>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+            break;
+        case DTYPE_INT16:
+            dispatch_cast_src<int16_t>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+            break;
+        case DTYPE_COMPLEX128:
+            dispatch_cast_src<cpx_t>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+            break;
+        case DTYPE_COMPLEX64:
+            dispatch_cast_src<cpx_f_t>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+            break;
+        case DTYPE_BOOLEAN:
+            dispatch_cast_src<uint8_t>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+            break;
     }
 }
 
@@ -6883,13 +6928,13 @@ static inline cpx_t interpolate_complex128(cpx_t start, cpx_t end, int step, int
     if (total_steps <= 0) return end;
     double r = start.r + (end.r - start.r) * (double)step / total_steps;
     double i = start.i + (end.i - start.i) * (double)step / total_steps;
-    return cpx_t{r, i};
+    return (cpx_t){r, i};
 }
 static inline cpx_f_t interpolate_complex64(cpx_f_t start, cpx_f_t end, int step, int total_steps) {
     if (total_steps <= 0) return end;
     float r = start.r + (end.r - start.r) * (float)step / total_steps;
     float i = start.i + (end.i - start.i) * (float)step / total_steps;
-    return cpx_f_t{r, i};
+    return (cpx_f_t){r, i};
 }
 
 // Helper macros for defining numeric statistics (double, float, int64, int32, uint8)
@@ -6968,7 +7013,7 @@ static inline cpx_t stats_mean_complex128(const cpx_t *base, int stride, int len
         sum_r += v.r;
         sum_i += v.i;
     }
-    return cpx_t{sum_r / len, sum_i / len};
+    return (cpx_t){sum_r / len, sum_i / len};
 }
 static inline cpx_t stats_median_complex128(const cpx_t *base, int stride, int len) {
     double *buf_r = (double*)malloc(len * sizeof(double));
@@ -6976,7 +7021,7 @@ static inline cpx_t stats_median_complex128(const cpx_t *base, int stride, int l
     if (buf_r == nullptr || buf_i == nullptr) {
         if (buf_r) free(buf_r);
         if (buf_i) free(buf_i);
-        return cpx_t{0, 0};
+        return (cpx_t){0, 0};
     }
     for (int i = 0; i < len; i++) {
         cpx_t v = *(base + i * stride);
@@ -6995,7 +7040,7 @@ static inline cpx_t stats_median_complex128(const cpx_t *base, int stride, int l
     }
     free(buf_r);
     free(buf_i);
-    return cpx_t{res_r, res_i};
+    return (cpx_t){res_r, res_i};
 }
 
 static inline cpx_f_t stats_min_complex64(const cpx_f_t *base, int stride, int len) {
@@ -7022,7 +7067,7 @@ static inline cpx_f_t stats_mean_complex64(const cpx_f_t *base, int stride, int 
         sum_r += v.r;
         sum_i += v.i;
     }
-    return cpx_f_t{sum_r / len, sum_i / len};
+    return (cpx_f_t){sum_r / len, sum_i / len};
 }
 static inline cpx_f_t stats_median_complex64(const cpx_f_t *base, int stride, int len) {
     float *buf_r = (float*)malloc(len * sizeof(float));
@@ -7030,7 +7075,7 @@ static inline cpx_f_t stats_median_complex64(const cpx_f_t *base, int stride, in
     if (buf_r == nullptr || buf_i == nullptr) {
         if (buf_r) free(buf_r);
         if (buf_i) free(buf_i);
-        return cpx_f_t{0, 0};
+        return (cpx_f_t){0, 0};
     }
     for (int i = 0; i < len; i++) {
         cpx_f_t v = *(base + i * stride);
@@ -7049,7 +7094,7 @@ static inline cpx_f_t stats_median_complex64(const cpx_f_t *base, int stride, in
     }
     free(buf_r);
     free(buf_i);
-    return cpx_f_t{res_r, res_i};
+    return (cpx_f_t){res_r, res_i};
 }
 
 #define DEFINE_PAD_AXIS(TYPE_NAME, T, STATS_MIN, STATS_MAX, STATS_MEAN, STATS_MEDIAN, INTERPOLATE) \
