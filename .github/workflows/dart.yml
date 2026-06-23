@@ -1,0 +1,53 @@
+name: Dart CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Dart SDK
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.11.5
+
+      - name: Verify CMake
+        run: cmake --version
+
+      - name: Set up MSVC Developer Command Prompt
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Dependencies
+        run: dart pub get
+
+      - name: Verify Formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze Code
+        run: dart analyze .
+
+      - name: Run Tests (pocketfft)
+        run: dart test
+        working-directory: pkgs/pocketfft
+
+      - name: Run Tests (openblas)
+        run: dart test
+        working-directory: pkgs/openblas
+
+      - name: Run Tests (ndarray)
+        run: dart test
+        working-directory: pkgs/ndarray

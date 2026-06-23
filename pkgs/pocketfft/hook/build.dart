@@ -76,8 +76,12 @@ void main(List<String> args) async {
     final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
     print('Compiling pocketfft plain C files via compiler: $compilerPath');
 
-    final isMSVC =
-        os == OS.windows && compilerPath.toLowerCase().contains('cl');
+    final compilerLower = compilerPath.toLowerCase();
+    final isGNU =
+        compilerLower.contains('gcc') ||
+        compilerLower.contains('clang') ||
+        compilerLower.contains('g++');
+    final isMSVC = os == OS.windows && !isGNU;
     final compileArgs = isMSVC
         ? <String>[
             '/LD',
@@ -104,7 +108,7 @@ void main(List<String> args) async {
             srcDir.uri.resolve('kiss_fftnd.c').toFilePath(),
             '-o',
             libFile.path,
-            '-lm',
+            if (os != OS.windows) '-lm',
           ];
 
     final res = await Process.run(compilerPath, compileArgs);

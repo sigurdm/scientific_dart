@@ -13,7 +13,151 @@ void main(List<String> args) async {
     final openblas = OpenBlasBinary.forBuild(input);
     switch (openblas) {
       case PrecompiledBinary():
-        print('Precompiled binary not supported yet.');
+        final packageName = input.packageName;
+        final os = input.config.code.targetOS;
+        final cCompiler = input.config.code.cCompiler;
+        final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
+
+        final compilerLower = compilerPath.toLowerCase();
+        final isGNU =
+            compilerLower.contains('gcc') ||
+            compilerLower.contains('clang') ||
+            compilerLower.contains('g++');
+        final isMSVC = os == OS.windows && !isGNU;
+
+        if (os != OS.windows) {
+          throw UnimplementedError(
+            'Precompiled binaries only supported on Windows for now.',
+          );
+        }
+
+        final outputDir = Directory.fromUri(input.outputDirectory);
+        if (!outputDir.existsSync()) {
+          outputDir.createSync(recursive: true);
+        }
+
+        final zipUrl =
+            'https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.33/OpenBLAS-0.3.33-x64.zip';
+        final extractDir = outputDir.uri.resolve('OpenBLAS-precompiled/');
+        final extractDirFile = Directory.fromUri(extractDir);
+
+        if (!extractDirFile.existsSync()) {
+          print('Downloading precompiled OpenBLAS zip...');
+          final client = HttpClient();
+          List<int> zipBytes;
+          try {
+            final request = await client.getUrl(Uri.parse(zipUrl));
+            final response = await request.close();
+            if (response.statusCode != 200) {
+              throw HttpException(
+                'Failed to download OpenBLAS zip: status ${response.statusCode}',
+              );
+            }
+            final bytesBuilder = BytesBuilder();
+            await for (final chunk in response) {
+              bytesBuilder.add(chunk);
+            }
+            zipBytes = bytesBuilder.toBytes();
+          } finally {
+            client.close();
+          }
+
+          print('Extracting precompiled OpenBLAS zip...');
+          final archive = ZipDecoder().decodeBytes(zipBytes);
+          for (final file in archive) {
+            final outPath = extractDir.resolve(file.name).toFilePath();
+            if (file.isFile) {
+              final outFile = File(outPath);
+              outFile.createSync(recursive: true);
+              outFile.writeAsBytesSync(file.content as List<int>, flush: true);
+            } else {
+              Directory(outPath).createSync(recursive: true);
+            }
+          }
+        }
+
+        // Locate files
+        final dllFile = File.fromUri(extractDir.resolve('bin/libopenblas.dll'));
+        final headersDir = extractDir.resolve('include/');
+        final libDir = extractDir.resolve('lib/');
+
+        final String openblasLibName;
+        if (isMSVC) {
+          openblasLibName = 'libopenblas.lib';
+        } else {
+          openblasLibName = 'libopenblas.dll.a';
+        }
+        final openblasLibFile = File.fromUri(libDir.resolve(openblasLibName));
+
+        if (!dllFile.existsSync()) {
+          throw StateError('Expected DLL not found at: ${dllFile.path}');
+        }
+        if (!openblasLibFile.existsSync()) {
+          throw StateError(
+            'Expected import library not found at: ${openblasLibFile.path}',
+          );
+        }
+
+        // Register OpenBLAS binary
+        output.assets.code.add(
+          CodeAsset(
+            package: packageName,
+            name: 'openblas',
+            linkMode: DynamicLoadingBundled(),
+            file: dllFile.uri,
+          ),
+        );
+        output.dependencies.add(
+          input.packageRoot.resolve('hook/custom_extensions.c'),
+        );
+
+        // Compile custom extensions
+        final extLibName = 'libopenblas_extensions.dll'; // We are on Windows
+        final extLibFile = File(outputDir.uri.resolve(extLibName).toFilePath());
+
+        final List<String> compileArgs;
+        if (isMSVC) {
+          compileArgs = [
+            '/LD',
+            '/O2',
+            '/EHsc',
+            '/I${headersDir.toFilePath()}',
+            input.packageRoot.resolve('hook/custom_extensions.c').toFilePath(),
+            '/Fe:${extLibFile.path}',
+            openblasLibFile.path,
+          ];
+        } else {
+          compileArgs = [
+            '-shared',
+            '-fPIC',
+            '-O3',
+            '-I${headersDir.toFilePath()}',
+            input.packageRoot.resolve('hook/custom_extensions.c').toFilePath(),
+            '-o',
+            extLibFile.path,
+            openblasLibFile.path,
+          ];
+        }
+
+        print(
+          'Compiling custom extensions with: $compilerPath ${compileArgs.join(' ')}',
+        );
+        final extRes = await Process.run(compilerPath, compileArgs);
+        if (extRes.exitCode != 0) {
+          throw StateError(
+            'Failed to compile custom extensions: ${extRes.stderr}',
+          );
+        }
+        print('Compiled custom extensions successfully at: ${extLibFile.path}');
+
+        output.assets.code.add(
+          CodeAsset(
+            package: packageName,
+            name: 'openblas_extensions',
+            linkMode: DynamicLoadingBundled(),
+            file: extLibFile.uri,
+          ),
+        );
         break;
       case CompileOpenBlas(:final sourceUrl):
         final packageName = input.packageName;
@@ -208,7 +352,10 @@ void main(List<String> args) async {
 sealed class OpenBlasBinary {
   OpenBlasBinary._();
 
-  factory OpenBlasBinary.forBuild(dynamic input) {
+  factory OpenBlasBinary.forBuild(BuildInput input) {
+    if (input.config.code.targetOS == OS.windows) {
+      return PrecompiledBinary();
+    }
     return CompileOpenBlas(
       'https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.33/OpenBLAS-0.3.33.tar.gz',
     );

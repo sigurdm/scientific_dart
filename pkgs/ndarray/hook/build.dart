@@ -22,13 +22,39 @@ void main(List<String> args) async {
     }
     final libFile = File.fromUri(outputDir.uri.resolve(libName));
 
+    final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
+    final compilerLower = compilerPath.toLowerCase();
+    final isGNU =
+        compilerLower.contains('gcc') ||
+        compilerLower.contains('clang') ||
+        compilerLower.contains('g++');
+    final isMSVC = os == OS.windows && !isGNU;
+
     // Compile highway if needed
     final highwayDir = input.packageRoot.resolve('third_party/highway/');
     final highwayBuildDir = Directory.fromUri(highwayDir.resolve('build'));
-    final libhwy = File.fromUri(highwayBuildDir.uri.resolve('libhwy.a'));
-    final libhwyContrib = File.fromUri(
-      highwayBuildDir.uri.resolve('libhwy_contrib.a'),
-    );
+
+    final String hwyLibName;
+    final String hwyContribLibName;
+    final Uri hwyLibUri;
+    final Uri hwyContribLibUri;
+
+    if (isMSVC) {
+      hwyLibName = 'hwy.lib';
+      hwyContribLibName = 'hwy_contrib.lib';
+      hwyLibUri = highwayBuildDir.uri.resolve('Release/$hwyLibName');
+      hwyContribLibUri = highwayBuildDir.uri.resolve(
+        'Release/$hwyContribLibName',
+      );
+    } else {
+      hwyLibName = 'libhwy.a';
+      hwyContribLibName = 'libhwy_contrib.a';
+      hwyLibUri = highwayBuildDir.uri.resolve(hwyLibName);
+      hwyContribLibUri = highwayBuildDir.uri.resolve(hwyContribLibName);
+    }
+
+    final libhwy = File.fromUri(hwyLibUri);
+    final libhwyContrib = File.fromUri(hwyContribLibUri);
 
     if (!libhwy.existsSync() || !libhwyContrib.existsSync()) {
       print('Highway static libraries not found. Compiling highway...');
@@ -60,6 +86,7 @@ void main(List<String> args) async {
         '--target',
         'hwy',
         'hwy_contrib',
+        if (isMSVC) ...['--config', 'Release'],
         '--parallel',
       ], workingDirectory: highwayBuildDir.path);
 
@@ -73,7 +100,6 @@ void main(List<String> args) async {
       print('Highway compiled successfully.');
     }
 
-    final compilerPath = cCompiler?.compiler.toFilePath() ?? 'cc';
     var cppCompilerPath = compilerPath;
     if (compilerPath.endsWith('gcc')) {
       cppCompilerPath =
@@ -92,8 +118,6 @@ void main(List<String> args) async {
       'Compiling ndarray custom C++ extensions using compiler: $cppCompilerPath',
     );
 
-    final isMSVC =
-        os == OS.windows && compilerPath.toLowerCase().contains('cl');
     if (isMSVC) {
       final ufuncsObj = outputDir.uri.resolve('custom_ufuncs.obj').toFilePath();
       final sortingObj = outputDir.uri
@@ -129,12 +153,8 @@ void main(List<String> args) async {
         '/LD',
         ufuncsObj,
         sortingObj,
-        input.packageRoot
-            .resolve('third_party/highway/build/libhwy_contrib.a')
-            .toFilePath(),
-        input.packageRoot
-            .resolve('third_party/highway/build/libhwy.a')
-            .toFilePath(),
+        libhwyContrib.path,
+        libhwy.path,
         '/Fe:${libFile.path}',
       ]);
       if (res.exitCode != 0) throw StateError('Linking failed: ${res.stderr}');
@@ -177,15 +197,11 @@ void main(List<String> args) async {
         '-fPIC',
         ufuncsObj,
         sortingObj,
-        input.packageRoot
-            .resolve('third_party/highway/build/libhwy_contrib.a')
-            .toFilePath(),
-        input.packageRoot
-            .resolve('third_party/highway/build/libhwy.a')
-            .toFilePath(),
+        libhwyContrib.path,
+        libhwy.path,
         '-o',
         libFile.path,
-        '-lm',
+        if (os != OS.windows) '-lm',
       ]);
       if (res.exitCode != 0) throw StateError('Linking failed: ${res.stderr}');
     }
