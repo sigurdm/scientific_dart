@@ -167,7 +167,9 @@ void main(List<String> args) async {
         );
         if (extRes.exitCode != 0) {
           throw StateError(
-            'Failed to compile custom extensions: ${extRes.stderr}',
+            'Failed to compile custom extensions (exit ${extRes.exitCode}):\n'
+            'stdout: ${extRes.stdout}\n'
+            'stderr: ${extRes.stderr}',
           );
         }
         print('Compiled custom extensions successfully at: ${extLibFile.path}');
