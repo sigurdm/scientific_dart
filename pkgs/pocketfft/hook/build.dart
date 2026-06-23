@@ -112,9 +112,10 @@ void main(List<String> args) async {
             if (os != OS.windows) '-lm',
           ];
 
-    print('Environment PATH: ${Platform.environment['PATH']}');
-    print('Environment INCLUDE: ${Platform.environment['INCLUDE']}');
-    print('Environment LIB: ${Platform.environment['LIB']}');
+    print('Environment Keys: ${Platform.environment.keys.where((k) => k.toUpperCase().contains(\'INC\') || k.toUpperCase().contains(\'LIB\') || k.toUpperCase() == \'PATH\').toList()}');
+    print('Environment PATH: ${Platform.environment['PATH'] ?? Platform.environment['Path'] ?? Platform.environment['path']}');
+    print('Environment INCLUDE: ${Platform.environment['INCLUDE'] ?? Platform.environment['Include'] ?? Platform.environment['include']}');
+    print('Environment LIB: ${Platform.environment['LIB'] ?? Platform.environment['Lib'] ?? Platform.environment['lib']}');
 
     final res = await Process.run(compilerPath, compileArgs);
     if (res.exitCode != 0) {
