@@ -797,7 +797,16 @@ extern "C" void native_sort_double(double *array, int size, int kind) {
     if (non_nan_size <= 1) return;
 
     if (kind == 0 || kind == 2) {
+#if VQSORT_ENABLED
         hwy::VQSort(array, non_nan_size, hwy::SortAscending());
+#else
+        if (kind == 0) {
+            std::sort(array, array + non_nan_size);
+        } else {
+            std::make_heap(array, array + non_nan_size);
+            std::sort_heap(array, array + non_nan_size);
+        }
+#endif
     } else {
         tim_fast_double_tim_sort(array, non_nan_size);
     }
@@ -815,7 +824,16 @@ extern "C" void native_sort_float(float *array, int size, int kind) {
     if (non_nan_size <= 1) return;
 
     if (kind == 0 || kind == 2) {
+#if VQSORT_ENABLED
         hwy::VQSort(array, non_nan_size, hwy::SortAscending());
+#else
+        if (kind == 0) {
+            std::sort(array, array + non_nan_size);
+        } else {
+            std::make_heap(array, array + non_nan_size);
+            std::sort_heap(array, array + non_nan_size);
+        }
+#endif
     } else {
         tim_fast_float_tim_sort(array, non_nan_size);
     }
