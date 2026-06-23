@@ -8,7 +8,15 @@ import '../scratch_arena.dart';
 import '../exceptions.dart';
 import '../ndarray_extensions_bindings.dart';
 import '../ndarray_bindings.dart'
-    hide s_det_double, s_det_float, s_det_complex_double, s_det_complex_float;
+    hide
+        s_det_double,
+        s_det_float,
+        s_det_complex_double,
+        s_det_complex_float,
+        s_slogdet_double,
+        s_slogdet_float,
+        s_slogdet_complex_double,
+        s_slogdet_complex_float;
 
 // Standalone operational relative cross-imports
 import 'math.dart';
@@ -1173,6 +1181,192 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
   });
 }
 
+/// Computes the sign and natural logarithm of the absolute value of the determinant of a square 2D matrix or stack of matrices.
+///
+/// **Preconditions:**
+/// - Input array [a] must have rank >= 2 and the last two dimensions must be square (`a.shape[rank - 1] == a.shape[rank - 2]`).
+/// - The dtype of [a] must be [DType.float64], [DType.float32], [DType.complex128], or [DType.complex64].
+/// - If provided, recycler buffers [outSign] and [outLogdet] must be contiguous, match the shape of the stack (`a.shape.sublist(0, rank - 2)`), and have correct dtypes:
+///   - [outSign] must have the same dtype as [a].
+///   - [outLogdet] must have the corresponding real dtype (e.g., [DType.float64] for [DType.float64]/[DType.complex128] inputs, or [DType.float32] for [DType.float32]/[DType.complex64] inputs).
+///
+/// **Throws:**
+/// - [ArgumentError] if [a] rank < 2, or the last two dimensions are not square.
+/// - [ArgumentError] if [a] dtype is unsupported.
+/// - [ArgumentError] if [outSign] or [outLogdet] shape/dtype are incompatible.
+///
+/// **Returns:**
+/// - A record `(sign, logdet)` of two NDArrays, representing the sign (or phase) and log of the absolute determinant.
+///
+/// Reference: [NumPy linalg.slogdet](https://numpy.org/doc/stable/reference/generated/numpy.linalg.slogdet.html)
+(NDArray<T> sign, NDArray<R> logdet) slogdet<T, R extends num>(
+  NDArray<T> a, {
+  NDArray<T>? outSign,
+  NDArray<R>? outLogdet,
+}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute slogdet of a disposed array.');
+  }
+  if (outSign != null && outSign.isDisposed) {
+    throw StateError('Cannot write slogdet sign to a disposed output array.');
+  }
+  if (outLogdet != null && outLogdet.isDisposed) {
+    throw StateError('Cannot write slogdet logdet to a disposed output array.');
+  }
+  if (a.dtype != DType.float64 &&
+      a.dtype != DType.float32 &&
+      a.dtype != DType.complex128 &&
+      a.dtype != DType.complex64) {
+    throw ArgumentError('slogdet only supports float and complex dtypes');
+  }
+  final rank = a.shape.length;
+  if (rank < 2 || a.shape[rank - 1] != a.shape[rank - 2]) {
+    throw ArgumentError(
+      'Matrix must be square and at least 2D (was ${a.shape})',
+    );
+  }
+  final stackShape = a.shape.sublist(0, rank - 2);
+
+  final DType<R> logdetDType =
+      (a.dtype == DType.float32 || a.dtype == DType.complex64)
+      ? DType.float32 as DType<R>
+      : DType.float64 as DType<R>;
+
+  if (outSign != null) {
+    if (!listEquals(outSign.shape, stackShape) || outSign.dtype != a.dtype) {
+      throw ArgumentError(
+        'Provided outSign buffer has incompatible shape or dtype.',
+      );
+    }
+    if (!outSign.isContiguous) {
+      throw ArgumentError('Provided outSign buffer must be contiguous.');
+    }
+  }
+
+  if (outLogdet != null) {
+    if (!listEquals(outLogdet.shape, stackShape) ||
+        outLogdet.dtype != logdetDType) {
+      throw ArgumentError(
+        'Provided outLogdet buffer has incompatible shape or dtype.',
+      );
+    }
+    if (!outLogdet.isContiguous) {
+      throw ArgumentError('Provided outLogdet buffer must be contiguous.');
+    }
+  }
+
+  return NDArray.scope(() {
+    final signResult = outSign ?? NDArray<T>.zeros(stackShape, a.dtype);
+    final logdetResult = outLogdet ?? NDArray<R>.zeros(stackShape, logdetDType);
+
+    final marker = ScratchArena.marker;
+    try {
+      final cStridesA = ScratchArena.copyInts(a.strides);
+      final cStridesSign = ScratchArena.copyInts(signResult.strides);
+      final cStridesLogdet = ScratchArena.copyInts(logdetResult.strides);
+      final cShape = ScratchArena.copyInts(a.shape);
+
+      final n = a.shape[rank - 1];
+
+      switch (a.dtype) {
+        case DType.float64:
+          final cCopy = ScratchArena.allocate<ffi.Double>(
+            n * n * ffi.sizeOf<ffi.Double>(),
+          );
+          final cIpiv = ScratchArena.allocate<ffi.Int>(
+            n * ffi.sizeOf<ffi.Int>(),
+          );
+          s_slogdet_double(
+            a.pointer.cast<ffi.Double>(),
+            cStridesA,
+            signResult.pointer.cast<ffi.Double>(),
+            cStridesSign,
+            logdetResult.pointer.cast<ffi.Double>(),
+            cStridesLogdet,
+            cShape,
+            rank,
+            cCopy,
+            cIpiv,
+            get_dgetrf_ptr(),
+          );
+        case DType.float32:
+          final cCopy = ScratchArena.allocate<ffi.Float>(
+            n * n * ffi.sizeOf<ffi.Float>(),
+          );
+          final cIpiv = ScratchArena.allocate<ffi.Int>(
+            n * ffi.sizeOf<ffi.Int>(),
+          );
+          s_slogdet_float(
+            a.pointer.cast<ffi.Float>(),
+            cStridesA,
+            signResult.pointer.cast<ffi.Float>(),
+            cStridesSign,
+            logdetResult.pointer.cast<ffi.Float>(),
+            cStridesLogdet,
+            cShape,
+            rank,
+            cCopy,
+            cIpiv,
+            get_sgetrf_ptr(),
+          );
+        case DType.complex128:
+          final cCopy = ScratchArena.allocate<ffi.Double>(
+            2 * n * n * ffi.sizeOf<ffi.Double>(),
+          );
+          final cIpiv = ScratchArena.allocate<ffi.Int>(
+            n * ffi.sizeOf<ffi.Int>(),
+          );
+          s_slogdet_complex_double(
+            a.pointer.cast<ffi.Double>(),
+            cStridesA,
+            signResult.pointer.cast<ffi.Double>(),
+            cStridesSign,
+            logdetResult.pointer.cast<ffi.Double>(),
+            cStridesLogdet,
+            cShape,
+            rank,
+            cCopy,
+            cIpiv,
+            get_zgetrf_ptr(),
+          );
+        case DType.complex64:
+          final cCopy = ScratchArena.allocate<ffi.Float>(
+            2 * n * n * ffi.sizeOf<ffi.Float>(),
+          );
+          final cIpiv = ScratchArena.allocate<ffi.Int>(
+            n * ffi.sizeOf<ffi.Int>(),
+          );
+          s_slogdet_complex_float(
+            a.pointer.cast<ffi.Float>(),
+            cStridesA,
+            signResult.pointer.cast<ffi.Float>(),
+            cStridesSign,
+            logdetResult.pointer.cast<ffi.Float>(),
+            cStridesLogdet,
+            cShape,
+            rank,
+            cCopy,
+            cIpiv,
+            get_cgetrf_ptr(),
+          );
+        default:
+          throw UnsupportedError('Unsupported dtype ${a.dtype}');
+      }
+    } finally {
+      ScratchArena.reset(marker);
+    }
+
+    if (outSign == null) {
+      signResult.detachToParentScope();
+    }
+    if (outLogdet == null) {
+      logdetResult.detachToParentScope();
+    }
+
+    return (signResult, logdetResult);
+  });
+}
+
 /// Solve a linear matrix equation, or system of linear scalar equations.
 ///
 /// Computes the "exact" solution, `x`, of the linear equation `a * x = b`.
@@ -1688,6 +1882,279 @@ extension EigRecordDispose
     eigenvalues.dispose();
     eigenvectors.dispose();
   }
+}
+
+/// Computes only the eigenvalues of a general square 2D matrix or stack of matrices.
+///
+/// Unlike [eig], this function does not compute eigenvectors, making it much faster.
+///
+/// **Preconditions:**
+/// - Input matrix [a] must be square and at least 2-dimensional (was shape stack x N x N).
+/// - Matrix [a] cannot have integer data type (throws [ArgumentError]; cast to float manually).
+/// - If provided, the [out] buffer must be contiguous, match the expected shape of the eigenvalues stack,
+///   and have the correct complex dtype ([DType.complex64] for Float32/Complex64 inputs, or [DType.complex128] for Float64/Complex128 inputs).
+///
+/// **Throws:**
+/// - [ArgumentError] if [a] is not square or rank < 2.
+/// - [ArgumentError] if [a] has integer dtype.
+/// - [ArgumentError] if [out] shape or dtype is incompatible.
+/// - [UnimplementedError] if [a] dtype is unsupported.
+///
+/// **Returns:**
+/// - A contiguous `NDArray<Complex>` containing the computed eigenvalues.
+///
+/// Reference: [NumPy linalg.eigvals](https://numpy.org/doc/stable/reference/generated/numpy.linalg.eigvals.html)
+NDArray<Complex> eigvals<T>(NDArray<T> a, {NDArray<Complex>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot compute eigvals of a disposed array.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Cannot write eigvals result to a disposed output array.');
+  }
+  final rank = a.shape.length;
+  if (rank < 2 || a.shape[rank - 1] != a.shape[rank - 2]) {
+    throw ArgumentError(
+      'Matrix must be square and at least 2D (was ${a.shape})',
+    );
+  }
+  final n = a.shape[rank - 1];
+  final stackShape = a.shape.sublist(0, rank - 2);
+
+  final compDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+      ? DType.complex64
+      : DType.complex128;
+
+  final wShape = [...stackShape, n];
+
+  return NDArray.scope(() {
+    final NDArray<Complex> w;
+
+    if (out != null) {
+      w = out;
+      if (!listEquals(w.shape, wShape) || w.dtype != compDType) {
+        throw ArgumentError(
+          'Provided out eigenvalues buffer has incompatible shape or dtype (expected shape $wShape and dtype $compDType, got shape ${w.shape} and dtype ${w.dtype}).',
+        );
+      }
+      if (!w.isContiguous) {
+        throw ArgumentError(
+          'Provided out eigenvalues buffer must be contiguous.',
+        );
+      }
+    } else {
+      w = NDArray<Complex>.create(wShape, compDType);
+    }
+
+    final jobvl = 'N'.codeUnitAt(0);
+    final jobvr = 'N'.codeUnitAt(0);
+
+    if (a.dtype.isInteger) {
+      throw ArgumentError(
+        'Integer arrays are not supported directly for eigenvalue decomposition. '
+        'Please convert the array to float64 or float32 manually.',
+      );
+    }
+
+    if (a.dtype != DType.complex128 &&
+        a.dtype != DType.complex64 &&
+        a.dtype != DType.float64 &&
+        a.dtype != DType.float32) {
+      throw UnimplementedError('Type ${a.dtype} not supported for eigvals');
+    }
+
+    final NDArray src = a;
+    walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+      coords,
+    ) {
+      var offsetA = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetA += coords[i] * src.strides[i];
+      }
+
+      final sliceView = NDArray.view(
+        src,
+        shape: [n, n],
+        strides: src.strides.sublist(rank - 2),
+        offsetElements: offsetA,
+      );
+      final sliceCopy = sliceView.copy();
+
+      var offsetW = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetW += coords[i] * w.strides[i];
+      }
+
+      switch (src.dtype) {
+        case DType.complex128:
+          final w2D = NDArray<Complex>.create([n], DType.complex128);
+
+          final info = LAPACKE_zgeev(
+            101, // ROW_MAJOR
+            jobvl,
+            jobvr,
+            n,
+            sliceCopy.pointer.cast<ffi.Double>(),
+            n,
+            w2D.pointer.cast<ffi.Double>(),
+            ffi.nullptr.cast<ffi.Double>(),
+            1, // ldvl
+            ffi.nullptr.cast<ffi.Double>(),
+            1, // ldvr
+          );
+
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_zgeev: $info',
+            );
+          }
+          if (info > 0) {
+            throw ArgumentError(
+              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+            );
+          }
+
+          final wView = NDArray<Complex>.view(
+            w,
+            shape: [n],
+            strides: w.strides.isEmpty ? [1] : [w.strides.last],
+            offsetElements: offsetW,
+          );
+          w2D.copy(out: wView);
+          w2D.dispose();
+
+        case DType.complex64:
+          final w2D = NDArray<Complex>.create([n], DType.complex64);
+
+          final info = LAPACKE_cgeev(
+            101, // ROW_MAJOR
+            jobvl,
+            jobvr,
+            n,
+            sliceCopy.pointer.cast<ffi.Float>(),
+            n,
+            w2D.pointer.cast<ffi.Float>(),
+            ffi.nullptr.cast<ffi.Float>(),
+            1, // ldvl
+            ffi.nullptr.cast<ffi.Float>(),
+            1, // ldvr
+          );
+
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_cgeev: $info',
+            );
+          }
+          if (info > 0) {
+            throw ArgumentError(
+              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+            );
+          }
+
+          final wView = NDArray<Complex>.view(
+            w,
+            shape: [n],
+            strides: w.strides.isEmpty ? [1] : [w.strides.last],
+            offsetElements: offsetW,
+          );
+          w2D.copy(out: wView);
+          w2D.dispose();
+
+        case DType.float64:
+          final wr = NDArray<double>.zeros([n], DType.float64);
+          final wi = NDArray<double>.zeros([n], DType.float64);
+
+          final info = LAPACKE_dgeev(
+            101,
+            jobvl,
+            jobvr,
+            n,
+            sliceCopy.pointer.cast<ffi.Double>(),
+            n,
+            wr.pointer.cast<ffi.Double>(),
+            wi.pointer.cast<ffi.Double>(),
+            ffi.nullptr.cast<ffi.Double>(),
+            1, // ldvl
+            ffi.nullptr.cast<ffi.Double>(),
+            1, // ldvr
+          );
+
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_dgeev: $info',
+            );
+          }
+          if (info > 0) {
+            throw ArgumentError(
+              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+            );
+          }
+
+          final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
+          assemble_eigenvalues_double(
+            w.pointer.cast<cpx_t>() + offsetW,
+            strideWLast,
+            wr.pointer.cast<ffi.Double>(),
+            wi.pointer.cast<ffi.Double>(),
+            n,
+          );
+
+          wr.dispose();
+          wi.dispose();
+
+        case DType.float32:
+          final wr = NDArray<double>.zeros([n], DType.float32);
+          final wi = NDArray<double>.zeros([n], DType.float32);
+
+          final info = LAPACKE_sgeev(
+            101,
+            jobvl,
+            jobvr,
+            n,
+            sliceCopy.pointer.cast<ffi.Float>(),
+            n,
+            wr.pointer.cast<ffi.Float>(),
+            wi.pointer.cast<ffi.Float>(),
+            ffi.nullptr.cast<ffi.Float>(),
+            1, // ldvl
+            ffi.nullptr.cast<ffi.Float>(),
+            1, // ldvr
+          );
+
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_sgeev: $info',
+            );
+          }
+          if (info > 0) {
+            throw ArgumentError(
+              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+            );
+          }
+
+          final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
+          assemble_eigenvalues_float(
+            w.pointer.cast<cpx_f_t>() + offsetW,
+            strideWLast,
+            wr.pointer.cast<ffi.Float>(),
+            wi.pointer.cast<ffi.Float>(),
+            n,
+          );
+
+          wr.dispose();
+          wi.dispose();
+        default:
+          throw UnimplementedError(
+            'Type ${src.dtype} not supported for eigvals',
+          );
+      }
+      sliceCopy.dispose();
+    });
+
+    if (out == null) {
+      w.detachToParentScope();
+    }
+    return w;
+  });
 }
 
 /// Computes the Moore-Penrose pseudo-inverse of a 2D matrix.

@@ -9413,3 +9413,292 @@ void s_bincount_weights_int64_float(const int64_t *src, int strideSrc, const flo
         }
     }
 }
+
+#define DEFINE_SLOGDET_REAL(name, type) \
+void name(const type *a, const int *stridesA, \
+          type *sign, const int *stridesSign, \
+          type *logdet, const int *stridesLogdet, \
+          const int *shape, int rank, \
+          type *aCopy, int *ipiv, \
+          int (*lapack_getrf)(int, int, int, void *, int, int *)) { \
+    if (a == nullptr || sign == nullptr || logdet == nullptr || aCopy == nullptr || ipiv == nullptr || lapack_getrf == nullptr || rank < 2 || rank > 8) return; \
+    int n = shape[rank - 1]; \
+    int stack_elements = 1; \
+    for (int i = 0; i < rank - 2; i++) stack_elements *= shape[i]; \
+    int coord[8] = {0}; \
+    int offsetA = 0, offsetSign = 0, offsetLogdet = 0; \
+    for (int el = 0; el < stack_elements; el++) { \
+        for (int i = 0; i < n; i++) { \
+            for (int j = 0; j < n; j++) { \
+                aCopy[i * n + j] = a[offsetA + i * stridesA[rank - 2] + j * stridesA[rank - 1]]; \
+            } \
+        } \
+        int info = lapack_getrf(101, n, n, aCopy, n, ipiv); \
+        type signValue = 1.0; \
+        type logdetValue = 0.0;         if (info > 0) { \
+            signValue = 0.0; \
+            logdetValue = -std::numeric_limits<type>::infinity(); \
+        } else if (info < 0) { \
+            signValue = std::numeric_limits<type>::quiet_NaN(); \
+            logdetValue = std::numeric_limits<type>::quiet_NaN(); \
+        } else { \
+            for (int i = 0; i < n; i++) { \
+                type val = aCopy[i * n + i]; \
+                if (val == 0.0) { \
+                    signValue = 0.0; \
+                    logdetValue = -std::numeric_limits<type>::infinity(); \
+                    break;                 } \
+                if (val < 0.0) { \
+                    signValue = -signValue; \
+                    logdetValue += std::log(-val); \
+                } else { \
+                    logdetValue += std::log(val); \
+                } \
+            } \
+            if (signValue != 0.0 && !std::isnan(signValue)) { \
+                int swaps = 0; \
+                for (int i = 0; i < n; i++) {                     if (ipiv[i] != i + 1) swaps++; \
+                } \
+                if (swaps % 2 != 0) signValue = -signValue; \
+            } \
+        } \
+        sign[offsetSign] = signValue; \
+        logdet[offsetLogdet] = logdetValue; \
+        for (int d = rank - 3; d >= 0; d--) { \
+            coord[d]++;             if (coord[d] < shape[d]) { \
+                offsetA += stridesA[d]; \
+                offsetSign += stridesSign[d]; \
+                offsetLogdet += stridesLogdet[d]; \
+                break; \
+            } \
+            coord[d] = 0; \
+            offsetA -= (shape[d] - 1) * stridesA[d]; \
+            offsetSign -= (shape[d] - 1) * stridesSign[d]; \
+            offsetLogdet -= (shape[d] - 1) * stridesLogdet[d]; \
+        } \
+    } \
+}
+
+#define DEFINE_SLOGDET_COMPLEX(name, cpx_type, real_type) \
+void name(const cpx_type *a, const int *stridesA, \
+          cpx_type *sign, const int *stridesSign, \
+          real_type *logdet, const int *stridesLogdet, \
+          const int *shape, int rank, \
+          cpx_type *aCopy, int *ipiv, \
+          int (*lapack_getrf)(int, int, int, void *, int, int *)) { \
+    if (a == nullptr || sign == nullptr || logdet == nullptr || aCopy == nullptr || ipiv == nullptr || lapack_getrf == nullptr || rank < 2 || rank > 8) return; \
+    int n = shape[rank - 1]; \
+    int stack_elements = 1; \
+    for (int i = 0; i < rank - 2; i++) stack_elements *= shape[i]; \
+    int coord[8] = {0}; \
+    int offsetA = 0, offsetSign = 0, offsetLogdet = 0; \
+    for (int el = 0; el < stack_elements; el++) { \
+        for (int i = 0; i < n; i++) { \
+            for (int j = 0; j < n; j++) { \
+                aCopy[i * n + j] = a[offsetA + i * stridesA[rank - 2] + j * stridesA[rank - 1]]; \
+            } \
+        } \
+        int info = lapack_getrf(101, n, n, aCopy, n, ipiv); \
+        cpx_type signValue = {1.0, 0.0}; \
+        real_type logdetValue = 0.0; \
+        if (info > 0) { \
+            signValue.r = 0.0; \
+            signValue.i = 0.0; \
+            logdetValue = -std::numeric_limits<real_type>::infinity(); \
+        } else if (info < 0) { \
+            signValue.r = std::numeric_limits<real_type>::quiet_NaN(); \
+            signValue.i = std::numeric_limits<real_type>::quiet_NaN(); \
+            logdetValue = std::numeric_limits<real_type>::quiet_NaN(); \
+        } else { \
+            for (int i = 0; i < n; i++) { \
+                real_type r = aCopy[i * n + i].r; \
+                real_type imag = aCopy[i * n + i].i; \
+                real_type abs_val = std::hypot(r, imag); \
+                if (abs_val == 0.0) { \
+                    signValue.r = 0.0; \
+                    signValue.i = 0.0; \
+                    logdetValue = -std::numeric_limits<real_type>::infinity(); \
+                    break; \
+                } \
+                logdetValue += std::log(abs_val); \
+                real_type sr = r / abs_val; \
+                real_type si = imag / abs_val; \
+                real_type old_sr = signValue.r; \
+                real_type old_si = signValue.i; \
+                signValue.r = old_sr * sr - old_si * si; \
+                signValue.i = old_sr * si + old_si * sr; \
+            } \
+            if ((signValue.r != 0.0 || signValue.i != 0.0) && !std::isnan(signValue.r) && !std::isnan(signValue.i)) { \
+                int swaps = 0; \
+                for (int i = 0; i < n; i++) { \
+                    if (ipiv[i] != i + 1) swaps++; \
+                } \
+                if (swaps % 2 != 0) { \
+                    signValue.r = -signValue.r; \
+                    signValue.i = -signValue.i; \
+                } \
+            } \
+        } \
+        sign[offsetSign] = signValue; \
+        logdet[offsetLogdet] = logdetValue; \
+        for (int d = rank - 3; d >= 0; d--) { \
+            coord[d]++; \
+            if (coord[d] < shape[d]) { \
+                offsetA += stridesA[d]; \
+                offsetSign += stridesSign[d]; \
+                offsetLogdet += stridesLogdet[d]; \
+                break; \
+            } \
+            coord[d] = 0; \
+            offsetA -= (shape[d] - 1) * stridesA[d]; \
+            offsetSign -= (shape[d] - 1) * stridesSign[d]; \
+            offsetLogdet -= (shape[d] - 1) * stridesLogdet[d]; \
+        } \
+    } \
+}
+
+DEFINE_SLOGDET_REAL(s_slogdet_double, double)
+DEFINE_SLOGDET_REAL(s_slogdet_float, float)
+DEFINE_SLOGDET_COMPLEX(s_slogdet_complex_double, cpx_t, double)
+DEFINE_SLOGDET_COMPLEX(s_slogdet_complex_float, cpx_f_t, float)
+
+// Eigenvalue assembly helpers
+void assemble_eigenvalues_double(
+    cpx_t *w,
+    int strideWLast,
+    const double *wr,
+    const double *wi,
+    int n
+) {
+    if (w == nullptr || wr == nullptr || wi == nullptr || n <= 0) {
+        return;
+    }
+    for (int j = 0; j < n; j++) {
+        w[j * strideWLast].r = wr[j];
+        w[j * strideWLast].i = wi[j];
+    }
+}
+
+void assemble_eigenvalues_float(
+    cpx_f_t *w,
+    int strideWLast,
+    const float *wr,
+    const float *wi,
+    int n
+) {
+    if (w == nullptr || wr == nullptr || wi == nullptr || n <= 0) {
+        return;
+    }
+    for (int j = 0; j < n; j++) {
+        w[j * strideWLast].r = wr[j];
+        w[j * strideWLast].i = wi[j];
+    }
+}
+
+// ============================================================================
+// SECTION: MODIFIED BESSEL FUNCTION OF THE FIRST KIND, ORDER 0 (i0)
+// ============================================================================
+
+const double NDARRAY_PI = 3.14159265358979323846;
+
+template <typename T>
+static inline T i0_real_impl(T x) {
+    T abs_x = std::abs(x);
+    if (abs_x <= (T)3.75) {
+        T t = x / (T)3.75;
+        T u = t * t;
+        return (T)1.0 + u * ((T)3.5156229 + u * ((T)3.0899424 + u * ((T)1.2067492 + u * ((T)0.2659732 + u * ((T)0.0360768 + u * (T)0.0045813)))));
+    } else {
+        T t = (T)3.75 / abs_x;
+        T term = (T)0.39894228 + t * ((T)0.01328592 + t * ((T)0.00225319 + t * (-(T)0.00157565 + t * ((T)0.00916281 + t * (-(T)0.02057706 + t * ((T)0.02635537 + t * (-(T)0.01647633 + t * (T)0.00392377)))))));
+        return (std::exp(abs_x) / std::sqrt(abs_x)) * term;
+    }
+}
+
+template <typename T>
+static inline std::complex<T> i0_complex_impl(std::complex<T> z) {
+    T x = z.real();
+    T y = z.imag();
+    if (y == (T)0.0) {
+        return std::complex<T>(i0_real_impl(x), (T)0.0);
+    }
+    
+    T X = std::abs(x);
+    T Y = std::abs(y);
+    
+    std::complex<T> z_q1(X, Y);
+    T abs_z = std::abs(z_q1);
+    std::complex<T> res;
+    
+    if (abs_z <= (T)15.0) {
+        // Power series
+        std::complex<T> sum = (T)1.0;
+        std::complex<T> term = (T)1.0;
+        std::complex<T> z2_4 = (z_q1 * z_q1) / (T)4.0;
+        for (int k = 1; k <= 100; ++k) {
+            term = term * z2_4 / (T)(k * k);
+            sum += term;
+            if (std::abs(term) < (T)1e-15) {
+                break;
+            }
+        }
+        res = sum;
+    } else {
+        // Asymptotic expansion with both terms, valid in first quadrant
+        std::complex<T> one(1.0, 0.0);
+        std::complex<T> eight(8.0, 0.0);
+        std::complex<T> w128(128.0, 0.0);
+        std::complex<T> w1024(1024.0, 0.0);
+        std::complex<T> w32768(32768.0, 0.0);
+        
+        std::complex<T> term1 = one / (eight * z_q1);
+        std::complex<T> term2 = std::complex<T>(9.0, 0.0) / (w128 * z_q1 * z_q1);
+        std::complex<T> term3 = std::complex<T>(75.0, 0.0) / (w1024 * z_q1 * z_q1 * z_q1);
+        std::complex<T> term4 = std::complex<T>(1225.0, 0.0) / (w32768 * z_q1 * z_q1 * z_q1 * z_q1);
+        
+        std::complex<T> A_z = one + term1 + term2 + term3 + term4;
+        std::complex<T> A_neg_z = one - term1 + term2 - term3 + term4;
+        
+        std::complex<T> pi(NDARRAY_PI, 0.0);
+        std::complex<T> two_pi_z = std::complex<T>(2.0, 0.0) * pi * z_q1;
+        std::complex<T> sqrt_two_pi_z = std::sqrt(two_pi_z);
+        
+        std::complex<T> term_exp = std::exp(z_q1) * A_z / sqrt_two_pi_z;
+        std::complex<T> term_neg_exp = std::complex<T>(0.0, 1.0) * std::exp(-z_q1) * A_neg_z / sqrt_two_pi_z;
+        
+        res = term_exp + term_neg_exp;
+    }
+    
+    if ((x < (T)0.0) ^ (y < (T)0.0)) {
+        res = std::conj(res);
+    }
+    return res;
+}
+
+static inline cpx_f_t cpx_i0_f(cpx_f_t z) {
+    std::complex<float> cz(z.r, z.i);
+    auto cres = i0_complex_impl(cz);
+    return {cres.real(), cres.imag()};
+}
+
+static inline cpx_t cpx_i0(cpx_t z) {
+    std::complex<double> cz(z.r, z.i);
+    auto cres = i0_complex_impl(cz);
+    return {cres.real(), cres.imag()};
+}
+
+extern "C" {
+
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_i0_float, float, float, i0_real_impl<float>(x))
+DEFINE_STRIDED_UNARY_IMPL(s_i0_float, float, float, i0_real_impl<float>(x))
+
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_i0_double, double, double, i0_real_impl<double>(x))
+DEFINE_STRIDED_UNARY_IMPL(s_i0_double, double, double, i0_real_impl<double>(x))
+
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_i0_complex64, cpx_f_t, cpx_f_t, cpx_i0_f(x))
+DEFINE_STRIDED_UNARY_IMPL(s_i0_complex64, cpx_f_t, cpx_f_t, cpx_i0_f(x))
+
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_i0_complex128, cpx_t, cpx_t, cpx_i0(x))
+DEFINE_STRIDED_UNARY_IMPL(s_i0_complex128, cpx_t, cpx_t, cpx_i0(x))
+
+}

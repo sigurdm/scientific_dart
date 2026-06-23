@@ -1543,6 +1543,24 @@ void s_bincount_weights_int64_double(const int64_t *src, int strideSrc, const do
 void s_bincount_weights_int32_float(const int32_t *src, int strideSrc, const float *weights, int strideWeights, float *res, int strideRes, int size, int res_size);
 void s_bincount_weights_int64_float(const int64_t *src, int strideSrc, const float *weights, int strideWeights, float *res, int strideRes, int size, int res_size);
 
+void s_slogdet_double(const double *a, const int *stridesA, double *sign, const int *stridesSign, double *logdet, const int *stridesLogdet, const int *shape, int rank, double *aCopy, int *ipiv, int (*lapack_getrf)(int, int, int, void *, int, int *));
+void s_slogdet_float(const float *a, const int *stridesA, float *sign, const int *stridesSign, float *logdet, const int *stridesLogdet, const int *shape, int rank, float *aCopy, int *ipiv, int (*lapack_getrf)(int, int, int, void *, int, int *));
+void s_slogdet_complex_double(const cpx_t *a, const int *stridesA, cpx_t *sign, const int *stridesSign, double *logdet, const int *stridesLogdet, const int *shape, int rank, cpx_t *aCopy, int *ipiv, int (*lapack_getrf)(int, int, int, void *, int, int *));
+void s_slogdet_complex_float(const cpx_f_t *a, const int *stridesA, cpx_f_t *sign, const int *stridesSign, float *logdet, const int *stridesLogdet, const int *shape, int rank, cpx_f_t *aCopy, int *ipiv, int (*lapack_getrf)(int, int, int, void *, int, int *));
+
+void assemble_eigenvalues_double(cpx_t *w, int strideWLast, const double *wr, const double *wi, int n);
+void assemble_eigenvalues_float(cpx_f_t *w, int strideWLast, const float *wr, const float *wi, int n);
+
+/* Bessel I0 operations */
+void v_i0_float(const float *src, float *res, int size);
+void s_i0_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void v_i0_double(const double *src, double *res, int size);
+void s_i0_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
+void v_i0_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void s_i0_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void v_i0_complex128(const cpx_t *src, cpx_t *res, int size);
+void s_i0_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+
 #ifdef __cplusplus
 }
 #endif

@@ -20624,6 +20624,361 @@ external void s_bincount_weights_int64_float(
   int res_size,
 );
 
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Int Function(
+          ffi.Int,
+          ffi.Int,
+          ffi.Int,
+          ffi.Pointer<ffi.Void>,
+          ffi.Int,
+          ffi.Pointer<ffi.Int>,
+        )
+      >
+    >,
+  )
+>()
+external void s_slogdet_double(
+  ffi.Pointer<ffi.Double> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Double> sign,
+  ffi.Pointer<ffi.Int> stridesSign,
+  ffi.Pointer<ffi.Double> logdet,
+  ffi.Pointer<ffi.Int> stridesLogdet,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  ffi.Pointer<ffi.Double> aCopy,
+  ffi.Pointer<ffi.Int> ipiv,
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Int,
+        ffi.Int,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+        ffi.Int,
+        ffi.Pointer<ffi.Int>,
+      )
+    >
+  >
+  lapack_getrf,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Int Function(
+          ffi.Int,
+          ffi.Int,
+          ffi.Int,
+          ffi.Pointer<ffi.Void>,
+          ffi.Int,
+          ffi.Pointer<ffi.Int>,
+        )
+      >
+    >,
+  )
+>()
+external void s_slogdet_float(
+  ffi.Pointer<ffi.Float> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<ffi.Float> sign,
+  ffi.Pointer<ffi.Int> stridesSign,
+  ffi.Pointer<ffi.Float> logdet,
+  ffi.Pointer<ffi.Int> stridesLogdet,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  ffi.Pointer<ffi.Float> aCopy,
+  ffi.Pointer<ffi.Int> ipiv,
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Int,
+        ffi.Int,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+        ffi.Int,
+        ffi.Pointer<ffi.Int>,
+      )
+    >
+  >
+  lapack_getrf,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Int Function(
+          ffi.Int,
+          ffi.Int,
+          ffi.Int,
+          ffi.Pointer<ffi.Void>,
+          ffi.Int,
+          ffi.Pointer<ffi.Int>,
+        )
+      >
+    >,
+  )
+>()
+external void s_slogdet_complex_double(
+  ffi.Pointer<cpx_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_t> sign,
+  ffi.Pointer<ffi.Int> stridesSign,
+  ffi.Pointer<ffi.Double> logdet,
+  ffi.Pointer<ffi.Int> stridesLogdet,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  ffi.Pointer<cpx_t> aCopy,
+  ffi.Pointer<ffi.Int> ipiv,
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Int,
+        ffi.Int,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+        ffi.Int,
+        ffi.Pointer<ffi.Int>,
+      )
+    >
+  >
+  lapack_getrf,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Int Function(
+          ffi.Int,
+          ffi.Int,
+          ffi.Int,
+          ffi.Pointer<ffi.Void>,
+          ffi.Int,
+          ffi.Pointer<ffi.Int>,
+        )
+      >
+    >,
+  )
+>()
+external void s_slogdet_complex_float(
+  ffi.Pointer<cpx_f_t> a,
+  ffi.Pointer<ffi.Int> stridesA,
+  ffi.Pointer<cpx_f_t> sign,
+  ffi.Pointer<ffi.Int> stridesSign,
+  ffi.Pointer<ffi.Float> logdet,
+  ffi.Pointer<ffi.Int> stridesLogdet,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  ffi.Pointer<cpx_f_t> aCopy,
+  ffi.Pointer<ffi.Int> ipiv,
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Int,
+        ffi.Int,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+        ffi.Int,
+        ffi.Pointer<ffi.Int>,
+      )
+    >
+  >
+  lapack_getrf,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void assemble_eigenvalues_double(
+  ffi.Pointer<cpx_t> w,
+  int strideWLast,
+  ffi.Pointer<ffi.Double> wr,
+  ffi.Pointer<ffi.Double> wi,
+  int n,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void assemble_eigenvalues_float(
+  ffi.Pointer<cpx_f_t> w,
+  int strideWLast,
+  ffi.Pointer<ffi.Float> wr,
+  ffi.Pointer<ffi.Float> wi,
+  int n,
+);
+
+/// Bessel I0 operations
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Pointer<ffi.Float>, ffi.Int)
+>()
+external void v_i0_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_i0_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Pointer<ffi.Double>, ffi.Int)
+>()
+external void v_i0_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_i0_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<cpx_f_t>, ffi.Pointer<cpx_f_t>, ffi.Int)
+>()
+external void v_i0_complex64(
+  ffi.Pointer<cpx_f_t> src,
+  ffi.Pointer<cpx_f_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_i0_complex64(
+  ffi.Pointer<cpx_f_t> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<cpx_f_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<cpx_t>, ffi.Pointer<cpx_t>, ffi.Int)
+>()
+external void v_i0_complex128(
+  ffi.Pointer<cpx_t> src,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_i0_complex128(
+  ffi.Pointer<cpx_t> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
 typedef ptrdiff_t = ffi.Long;
 typedef Dartptrdiff_t = int;
 
