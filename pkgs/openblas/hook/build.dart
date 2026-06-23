@@ -89,6 +89,13 @@ void main(List<String> args) async {
             headersDir.resolve('lapack.h').toFilePath(),
           );
           if (lapackHeader.existsSync()) {
+            final linesBefore = await lapackHeader.readAsLines();
+            print('--- lapack.h BEFORE PATCH (lines 810-845) ---');
+            for (var i = 809; i < linesBefore.length && i < 845; i++) {
+              print('${i + 1}: ${linesBefore[i]}');
+            }
+            print('---------------------------------------------');
+
             print(
               'Patching lapack.h to resolve int32_t/uint32_t redefinition conflicts on MSVC...',
             );
@@ -102,6 +109,13 @@ void main(List<String> args) async {
               '/* patched typedef uint32_t */',
             );
             await lapackHeader.writeAsString(content);
+
+            final linesAfter = await lapackHeader.readAsLines();
+            print('--- lapack.h AFTER PATCH (lines 810-845) ---');
+            for (var i = 809; i < linesAfter.length && i < 845; i++) {
+              print('${i + 1}: ${linesAfter[i]}');
+            }
+            print('--------------------------------------------');
           }
         }
 
