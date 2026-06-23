@@ -144,7 +144,22 @@ void main(List<String> args) async {
         print(
           'Compiling custom extensions with: $compilerPath ${compileArgs.join(' ')}',
         );
-        final extRes = await Process.run(compilerPath, compileArgs);
+        final runEnv = <String, String>{...Platform.environment};
+        if (isMSVC) {
+          final msvcEnv = await getMSVCEnvironment();
+          for (final key in ['INCLUDE', 'LIB', 'LIBPATH']) {
+            final val = msvcEnv[key] ?? msvcEnv[key.toLowerCase()];
+            if (val != null) {
+              runEnv[key] = val;
+            }
+          }
+        }
+
+        final extRes = await Process.run(
+          compilerPath,
+          compileArgs,
+          environment: runEnv,
+        );
         if (extRes.exitCode != 0) {
           throw StateError(
             'Failed to compile custom extensions: ${extRes.stderr}',
@@ -377,4 +392,73 @@ class CompileOpenBlas extends OpenBlasBinary {
 
 class ExternalOpenBlas extends OpenBlasBinary {
   ExternalOpenBlas() : super._();
+}
+
+/// Helper function to query Visual Studio to obtain the proper environment variables
+/// (like INCLUDE, LIB, and LIBPATH) for MSVC compilation on Windows.
+Future<Map<String, String>> getMSVCEnvironment() async {
+  if (!Platform.isWindows) return {};
+
+  // Find vswhere.exe
+  String vswherePath = 'vswhere.exe'; // Try PATH first
+  // Fallback to default installer directory if not in PATH
+  final programFilesX86 =
+      Platform.environment['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)';
+  final defaultVswhere =
+      '$programFilesX86\\Microsoft Visual Studio\\Installer\\vswhere.exe';
+  if (await File(defaultVswhere).exists()) {
+    vswherePath = defaultVswhere;
+  }
+
+  try {
+    // Run vswhere to find Visual Studio installation path
+    final vswhereRes = await Process.run(vswherePath, [
+      '-latest',
+      '-property',
+      'installationPath',
+    ]);
+    if (vswhereRes.exitCode != 0) {
+      print('vswhere failed with exit code ${vswhereRes.exitCode}');
+      return {};
+    }
+
+    final vsPath = vswhereRes.stdout.toString().trim();
+    if (vsPath.isEmpty) {
+      print('vswhere returned empty path');
+      return {};
+    }
+
+    final vcvarsPath = '$vsPath\\VC\\Auxiliary\\Build\\vcvarsall.bat';
+    if (!await File(vcvarsPath).exists()) {
+      print('vcvarsall.bat not found at $vcvarsPath');
+      return {};
+    }
+
+    // Run vcvarsall.bat to get env vars. Use amd64 since CI/runners are 64-bit.
+    final envRes = await Process.run('cmd.exe', [
+      '/c',
+      'call "$vcvarsPath" amd64 && set',
+    ]);
+    if (envRes.exitCode != 0) {
+      print('vcvarsall.bat failed with exit code ${envRes.exitCode}');
+      return {};
+    }
+
+    final envMap = <String, String>{};
+    final lines = envRes.stdout.toString().split('\n');
+    for (final line in lines) {
+      final parts = line.split('=');
+      if (parts.length >= 2) {
+        final key = parts[0].trim();
+        final value = parts.sublist(1).join('=').trim();
+        if (key.isNotEmpty) {
+          envMap[key] = value;
+        }
+      }
+    }
+    return envMap;
+  } catch (e) {
+    print('Error detecting MSVC environment: $e');
+    return {};
+  }
 }
