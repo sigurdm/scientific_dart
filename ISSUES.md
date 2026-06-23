@@ -38,7 +38,7 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 - all done
 
 ### 3.14 Structured Masked Arrays (ma category)
-- **Robust Missing Data Handling**: Exposing masked array wrappers (similar to standard `numpy.ma` package) to dynamically package arrays with boolean masks, allowing ufuncs and reductions to automatically bypass invalid/corrupted records natively.
+- (Completed in a separate package)
 
 ### 3.16 Schur and Hessenberg linalg Decompositions
 - **Advanced Control Theory Solvers**: Exposing native LAPACK-bound solvers `linalg.schur()` and `linalg.hessenberg()` to support advanced control systems design and numeric eigenvalue search algorithms.

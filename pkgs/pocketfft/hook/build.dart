@@ -213,13 +213,31 @@ Future<Map<String, String>> getMSVCEnvironment() async {
       return {};
     }
 
-    // Run vcvarsall.bat to get env vars. Use amd64 since CI/runners are 64-bit.
-    final envRes = await Process.run('cmd.exe', [
-      '/c',
-      'call "$vcvarsPath" amd64 && set',
-    ]);
+    // To avoid Dart process argument escaping issues on Windows, we write a temporary
+    // batch file that calls vcvarsall.bat and prints the environment, then run it.
+    final tempDir = Directory.systemTemp;
+    final tempFile = File(
+      '${tempDir.path}\\get_msvc_env_${DateTime.now().millisecondsSinceEpoch}.bat',
+    );
+    try {
+      await tempFile.writeAsString(
+        '@echo off\ncall "$vcvarsPath" amd64\nset\n',
+      );
+    } catch (e) {
+      print('Failed to write temporary batch file: $e');
+      return {};
+    }
+
+    final envRes = await Process.run('cmd.exe', ['/c', tempFile.path]);
+
+    try {
+      await tempFile.delete();
+    } catch (_) {}
+
     if (envRes.exitCode != 0) {
-      print('vcvarsall.bat failed with exit code ${envRes.exitCode}');
+      print(
+        'Temporary MSVC environment batch file failed with exit code ${envRes.exitCode}',
+      );
       print('vcvarsall.bat stdout: ${envRes.stdout}');
       print('vcvarsall.bat stderr: ${envRes.stderr}');
       return {};
