@@ -112,6 +112,10 @@ void main(List<String> args) async {
             if (os != OS.windows) '-lm',
           ];
 
+    print('Environment PATH: ${Platform.environment['PATH']}');
+    print('Environment INCLUDE: ${Platform.environment['INCLUDE']}');
+    print('Environment LIB: ${Platform.environment['LIB']}');
+
     final res = await Process.run(compilerPath, compileArgs);
     if (res.exitCode != 0) {
       throw StateError(
