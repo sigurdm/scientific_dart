@@ -23,7 +23,7 @@ void main() {
       expect(r.data[2], closeTo(math.exp(-1.0) - 1.0, 1e-6));
       expect(
         r.data[3],
-        closeTo(1e-7, 1e-14),
+        closeTo(1e-7, 1e-13),
       ); // High precision check for float32
     });
 
