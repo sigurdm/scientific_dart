@@ -37,14 +37,13 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 - (Completed in a separate package)
 
 ### 3.16 Schur and Hessenberg linalg Decompositions
-- **Advanced Control Theory Solvers**: Exposing native LAPACK-bound solvers `linalg.schur()` and `linalg.hessenberg()` to support advanced control systems design and numeric eigenvalue search algorithms.
+(Completed Schur and Hessenberg decompositions)
 
 ### 3.20 Broad-Boundary Array Clipping (clip)
 (Completed native broadcasting array bounds clipping feature)
 
 ### 3.21 Advanced Linear Algebra (`linalg`)
-- **Symmetric/Hermitian Eigenvalue Solvers**: `eigh()` and `eigvalsh()` for faster, more stable eigenvalue/vector computation of symmetric/complex Hermitian matrices.
-(Completed eigvals and slogdet linear algebra functions)
+(Completed eigh, eigvalsh, eigvals, and slogdet linear algebra functions)
 
 ---
 

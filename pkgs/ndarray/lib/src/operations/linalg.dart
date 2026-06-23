@@ -3031,3 +3031,922 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
 
   return (U: uMat, S: sMat, Vh: vtMat);
 }
+
+/// Computes the eigenvalues and eigenvectors of a complex Hermitian (conjugate symmetric) or a real symmetric matrix.
+///
+/// Returns a record containing:
+/// - [eigenvalues]: A 1D array containing the eigenvalues in ascending order.
+/// - [eigenvectors]: A 2D matrix whose columns are the normalized eigenvectors.
+///
+/// **Preconditions:**
+/// - [a] must be a square 2D matrix, or a stack of square 2D matrices.
+/// - [a] must have a floating-point or complex dtype (`Float32`, `Float64`, `Complex64`, `Complex128`).
+///   Integer types are promoted to `Float64`.
+/// - If provided, [outEigenvalues] and [outEigenvectors] must have compatible shapes and dtypes.
+///
+/// **Throws:**
+/// - [ArgumentError] if [a] is not square or has rank < 2.
+/// - [ArgumentError] if [a] has unsupported dtype.
+/// - [ArgumentError] if [outEigenvalues] or [outEigenvectors] are incompatible.
+/// - [StateError] if the LAPACK call fails.
+({NDArray<num> eigenvalues, NDArray eigenvectors}) eigh<T>(
+  NDArray<T> a, {
+  String uplo = 'L',
+  NDArray<num>? outEigenvalues,
+  NDArray? outEigenvectors,
+}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot calculate eigh on a disposed array.');
+  }
+  if (a.rank < 2) {
+    throw ArgumentError('Array must be at least 2-dimensional.');
+  }
+  final m = a.shape[a.rank - 2];
+  final n = a.shape[a.rank - 1];
+  if (m != n) {
+    throw ArgumentError('Last two dimensions must be square (got $m x $n).');
+  }
+
+  final bool promoted = a.dtype.isInteger;
+  DType targetDType = a.dtype;
+  if (promoted) {
+    targetDType = DType.float64;
+  }
+
+  if (targetDType != DType.float64 &&
+      targetDType != DType.float32 &&
+      targetDType != DType.complex128 &&
+      targetDType != DType.complex64) {
+    throw ArgumentError('Unsupported dtype: ${a.dtype}');
+  }
+
+  final DType<num> eigenvalueDType =
+      (targetDType.isComplex
+              ? (targetDType == DType.complex128
+                    ? DType.float64
+                    : DType.float32)
+              : targetDType)
+          as DType<num>;
+
+  final stackShape = a.shape.sublist(0, a.rank - 2);
+
+  final eigenvaluesShape = [...stackShape, n];
+  final eigenvectorsShape = [...stackShape, n, n];
+
+  if (outEigenvalues != null) {
+    if (outEigenvalues.isDisposed) {
+      throw StateError('outEigenvalues is disposed.');
+    }
+    if (!outEigenvalues.isContiguous) {
+      throw ArgumentError('outEigenvalues must be contiguous.');
+    }
+    if (!listEquals(outEigenvalues.shape, eigenvaluesShape) ||
+        outEigenvalues.dtype != eigenvalueDType) {
+      throw ArgumentError(
+        'Incompatible outEigenvalues (expected shape $eigenvaluesShape and dtype $eigenvalueDType, got shape ${outEigenvalues.shape} and dtype ${outEigenvalues.dtype}).',
+      );
+    }
+  }
+
+  if (outEigenvectors != null) {
+    if (outEigenvectors.isDisposed) {
+      throw StateError('outEigenvectors is disposed.');
+    }
+    if (!outEigenvectors.isContiguous) {
+      throw ArgumentError('outEigenvectors must be contiguous.');
+    }
+    if (!listEquals(outEigenvectors.shape, eigenvectorsShape) ||
+        outEigenvectors.dtype != targetDType) {
+      throw ArgumentError(
+        'Incompatible outEigenvectors (expected shape $eigenvectorsShape and dtype $targetDType, got shape ${outEigenvectors.shape} and dtype ${outEigenvectors.dtype}).',
+      );
+    }
+  }
+
+  final NDArray<num> wMat;
+  if (outEigenvalues != null) {
+    wMat = outEigenvalues;
+  } else {
+    wMat = _zerosTyped(eigenvaluesShape, eigenvalueDType) as NDArray<num>;
+  }
+
+  final NDArray vMat;
+  if (outEigenvectors != null) {
+    vMat = outEigenvectors;
+  } else {
+    vMat = _zerosTyped(eigenvectorsShape, targetDType);
+  }
+
+  final uploChar = uplo.toUpperCase();
+  if (uploChar != 'L' && uploChar != 'U') {
+    throw ArgumentError("uplo must be 'L' or 'U'.");
+  }
+  final uploVal = uploChar.codeUnitAt(0);
+  final jobzVal = 86; // 'V'
+
+  final aCopy2D = _createTyped2D(n, n, targetDType);
+  final w2D = _zerosTyped([n], eigenvalueDType) as NDArray<num>;
+
+  final marker = ScratchArena.marker;
+  try {
+    walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+      coords,
+    ) {
+      final sliceView = a.slice([
+        ...coords.map((c) => Index(c)),
+        Slice.all(),
+        Slice.all(),
+      ]);
+      if (sliceView.dtype == targetDType) {
+        sliceView.copy(out: aCopy2D as NDArray<T>);
+      } else {
+        final casted = castNDArray(sliceView, targetDType);
+        casted.copy(out: aCopy2D);
+        casted.dispose();
+      }
+      sliceView.dispose();
+
+      int info = 0;
+      switch (targetDType) {
+        case DType.float64:
+          info = LAPACKE_dsyevd(
+            101,
+            jobzVal,
+            uploVal,
+            n,
+            aCopy2D.pointer.cast<ffi.Double>(),
+            n,
+            w2D.pointer.cast<ffi.Double>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_dsyevd failed: $info');
+        case DType.float32:
+          info = LAPACKE_ssyevd(
+            101,
+            jobzVal,
+            uploVal,
+            n,
+            aCopy2D.pointer.cast<ffi.Float>(),
+            n,
+            w2D.pointer.cast<ffi.Float>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_ssyevd failed: $info');
+        case DType.complex128:
+          info = LAPACKE_zheevd(
+            101,
+            jobzVal,
+            uploVal,
+            n,
+            aCopy2D.pointer.cast<ffi.Double>(),
+            n,
+            w2D.pointer.cast<ffi.Double>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_zheevd failed: $info');
+        case DType.complex64:
+          info = LAPACKE_cheevd(
+            101,
+            jobzVal,
+            uploVal,
+            n,
+            aCopy2D.pointer.cast<ffi.Float>(),
+            n,
+            w2D.pointer.cast<ffi.Float>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_cheevd failed: $info');
+        default:
+          throw UnimplementedError();
+      }
+
+      final wSlice = wMat.slice([...coords.map((c) => Index(c)), Slice.all()]);
+      w2D.copyToContiguous(wSlice);
+      wSlice.dispose();
+
+      final vSlice = vMat.slice([
+        ...coords.map((c) => Index(c)),
+        Slice.all(),
+        Slice.all(),
+      ]);
+      aCopy2D.copyToContiguous(vSlice);
+      vSlice.dispose();
+    });
+  } finally {
+    ScratchArena.reset(marker);
+    aCopy2D.dispose();
+    w2D.dispose();
+  }
+
+  return (eigenvalues: wMat, eigenvectors: vMat);
+}
+
+/// Computes the eigenvalues of a complex Hermitian or real symmetric matrix.
+///
+/// Returns a 1D array containing the eigenvalues in ascending order.
+///
+/// **Preconditions:**
+/// - [a] must be a square 2D matrix, or a stack of square 2D matrices.
+/// - [a] must have a floating-point or complex dtype (`Float32`, `Float64`, `Complex64`, `Complex128`).
+///   Integer types are promoted to `Float64`.
+/// - If provided, [out] must have compatible shape and dtype.
+///
+/// **Throws:**
+/// - [ArgumentError] if [a] is not square or has rank < 2.
+/// - [ArgumentError] if [a] has unsupported dtype.
+/// - [ArgumentError] if [out] is incompatible.
+/// - [StateError] if the LAPACK call fails.
+NDArray<num> eigvalsh<T>(NDArray<T> a, {String uplo = 'L', NDArray<num>? out}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot calculate eigvalsh on a disposed array.');
+  }
+  if (a.rank < 2) {
+    throw ArgumentError('Array must be at least 2-dimensional.');
+  }
+  final m = a.shape[a.rank - 2];
+  final n = a.shape[a.rank - 1];
+  if (m != n) {
+    throw ArgumentError('Last two dimensions must be square (got $m x $n).');
+  }
+
+  final bool promoted = a.dtype.isInteger;
+  DType targetDType = a.dtype;
+  if (promoted) {
+    targetDType = DType.float64;
+  }
+
+  if (targetDType != DType.float64 &&
+      targetDType != DType.float32 &&
+      targetDType != DType.complex128 &&
+      targetDType != DType.complex64) {
+    throw ArgumentError('Unsupported dtype: ${a.dtype}');
+  }
+
+  final DType<num> eigenvalueDType =
+      (targetDType.isComplex
+              ? (targetDType == DType.complex128
+                    ? DType.float64
+                    : DType.float32)
+              : targetDType)
+          as DType<num>;
+
+  final stackShape = a.shape.sublist(0, a.rank - 2);
+  final eigenvaluesShape = [...stackShape, n];
+
+  if (out != null) {
+    if (out.isDisposed) {
+      throw StateError('out is disposed.');
+    }
+    if (!out.isContiguous) {
+      throw ArgumentError('out must be contiguous.');
+    }
+    if (!listEquals(out.shape, eigenvaluesShape) ||
+        out.dtype != eigenvalueDType) {
+      throw ArgumentError(
+        'Incompatible out (expected shape $eigenvaluesShape and dtype $eigenvalueDType, got shape ${out.shape} and dtype ${out.dtype}).',
+      );
+    }
+  }
+
+  final NDArray<num> wMat;
+  if (out != null) {
+    wMat = out;
+  } else {
+    wMat = _zerosTyped(eigenvaluesShape, eigenvalueDType) as NDArray<num>;
+  }
+
+  final uploChar = uplo.toUpperCase();
+  if (uploChar != 'L' && uploChar != 'U') {
+    throw ArgumentError("uplo must be 'L' or 'U'.");
+  }
+  final uploVal = uploChar.codeUnitAt(0);
+  final jobzVal = 78; // 'N'
+
+  final aCopy2D = _createTyped2D(n, n, targetDType);
+  final w2D = _zerosTyped([n], eigenvalueDType) as NDArray<num>;
+
+  final marker = ScratchArena.marker;
+  try {
+    walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+      coords,
+    ) {
+      final sliceView = a.slice([
+        ...coords.map((c) => Index(c)),
+        Slice.all(),
+        Slice.all(),
+      ]);
+      if (sliceView.dtype == targetDType) {
+        sliceView.copy(out: aCopy2D as NDArray<T>);
+      } else {
+        final casted = castNDArray(sliceView, targetDType);
+        casted.copy(out: aCopy2D);
+        casted.dispose();
+      }
+      sliceView.dispose();
+
+      int info = 0;
+      switch (targetDType) {
+        case DType.float64:
+          info = LAPACKE_dsyevd(
+            101,
+            jobzVal,
+            uploVal,
+            n,
+            aCopy2D.pointer.cast<ffi.Double>(),
+            n,
+            w2D.pointer.cast<ffi.Double>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_dsyevd failed: $info');
+        case DType.float32:
+          info = LAPACKE_ssyevd(
+            101,
+            jobzVal,
+            uploVal,
+            n,
+            aCopy2D.pointer.cast<ffi.Float>(),
+            n,
+            w2D.pointer.cast<ffi.Float>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_ssyevd failed: $info');
+        case DType.complex128:
+          info = LAPACKE_zheevd(
+            101,
+            jobzVal,
+            uploVal,
+            n,
+            aCopy2D.pointer.cast<ffi.Double>(),
+            n,
+            w2D.pointer.cast<ffi.Double>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_zheevd failed: $info');
+        case DType.complex64:
+          info = LAPACKE_cheevd(
+            101,
+            jobzVal,
+            uploVal,
+            n,
+            aCopy2D.pointer.cast<ffi.Float>(),
+            n,
+            w2D.pointer.cast<ffi.Float>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_cheevd failed: $info');
+        default:
+          throw UnimplementedError();
+      }
+
+      final wSlice = wMat.slice([...coords.map((c) => Index(c)), Slice.all()]);
+      w2D.copyToContiguous(wSlice);
+      wSlice.dispose();
+    });
+  } finally {
+    ScratchArena.reset(marker);
+    aCopy2D.dispose();
+    w2D.dispose();
+  }
+
+  return wMat;
+}
+
+/// Computes the Schur decomposition of a matrix.
+///
+/// A = Z * T * Z^H
+///
+/// Returns a record containing:
+/// - [T]: The Schur form. For real input and `output = 'real'`, it is quasi-upper triangular.
+///   For `output = 'complex'`, it is upper triangular.
+/// - [Z]: The unitary matrix of Schur vectors.
+///
+/// **Preconditions:**
+/// - [a] must be a square 2D matrix, or a stack of square 2D matrices.
+/// - [a] must have a floating-point or complex dtype. Integer types are promoted to `Float64`.
+/// - [output] must be 'real' or 'complex'.
+/// - If provided, [outT] and [outZ] must have compatible shapes and dtypes.
+///
+/// **Throws:**
+/// - [ArgumentError] if [a] is not square or has rank < 2.
+/// - [ArgumentError] if [output] is invalid.
+/// - [ArgumentError] if [outT] or [outZ] are incompatible.
+/// - [StateError] if the LAPACK call fails.
+({NDArray T, NDArray Z}) schur<T>(
+  NDArray<T> a, {
+  String output = 'real',
+  NDArray? outT,
+  NDArray? outZ,
+}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot calculate schur on a disposed array.');
+  }
+  if (a.rank < 2) {
+    throw ArgumentError('Array must be at least 2-dimensional.');
+  }
+  final m = a.shape[a.rank - 2];
+  final n = a.shape[a.rank - 1];
+  if (m != n) {
+    throw ArgumentError('Last two dimensions must be square (got $m x $n).');
+  }
+
+  final outputLower = output.toLowerCase();
+  if (outputLower != 'real' && outputLower != 'complex') {
+    throw ArgumentError("output must be 'real' or 'complex'.");
+  }
+
+  final bool promoted = a.dtype.isInteger;
+  DType targetDType = a.dtype;
+  if (promoted) {
+    targetDType = DType.float64;
+  }
+
+  if (targetDType != DType.float64 &&
+      targetDType != DType.float32 &&
+      targetDType != DType.complex128 &&
+      targetDType != DType.complex64) {
+    throw ArgumentError('Unsupported dtype: ${a.dtype}');
+  }
+
+  if (outputLower == 'complex' && !targetDType.isComplex) {
+    if (targetDType == DType.float64) {
+      targetDType = DType.complex128;
+    } else {
+      targetDType = DType.complex64;
+    }
+  }
+
+  final stackShape = a.shape.sublist(0, a.rank - 2);
+  final schurShape = [...stackShape, n, n];
+
+  if (outT != null) {
+    if (outT.isDisposed) throw StateError('outT is disposed.');
+    if (!outT.isContiguous) throw ArgumentError('outT must be contiguous.');
+    if (!listEquals(outT.shape, schurShape) || outT.dtype != targetDType) {
+      throw ArgumentError('Incompatible outT.');
+    }
+  }
+
+  if (outZ != null) {
+    if (outZ.isDisposed) throw StateError('outZ is disposed.');
+    if (!outZ.isContiguous) throw ArgumentError('outZ must be contiguous.');
+    if (!listEquals(outZ.shape, schurShape) || outZ.dtype != targetDType) {
+      throw ArgumentError('Incompatible outZ.');
+    }
+  }
+
+  final NDArray tMat = outT ?? _zerosTyped(schurShape, targetDType);
+  final NDArray zMat = outZ ?? _zerosTyped(schurShape, targetDType);
+
+  final jobvsVal = 86; // 'V'
+  final sortVal = 78; // 'N'
+
+  final aCopy2D = _createTyped2D(n, n, targetDType);
+  final z2D = _zerosTyped([n, n], targetDType);
+
+  final marker = ScratchArena.marker;
+  try {
+    final ffi.Pointer<ffi.Void> wr;
+    final ffi.Pointer<ffi.Void> wi;
+    final ffi.Pointer<ffi.Void> w;
+
+    if (targetDType == DType.float64) {
+      wr = ScratchArena.allocate<ffi.Double>(
+        n * ffi.sizeOf<ffi.Double>(),
+      ).cast<ffi.Void>();
+      wi = ScratchArena.allocate<ffi.Double>(
+        n * ffi.sizeOf<ffi.Double>(),
+      ).cast<ffi.Void>();
+      w = ffi.nullptr.cast<ffi.Void>();
+    } else if (targetDType == DType.float32) {
+      wr = ScratchArena.allocate<ffi.Float>(
+        n * ffi.sizeOf<ffi.Float>(),
+      ).cast<ffi.Void>();
+      wi = ScratchArena.allocate<ffi.Float>(
+        n * ffi.sizeOf<ffi.Float>(),
+      ).cast<ffi.Void>();
+      w = ffi.nullptr.cast<ffi.Void>();
+    } else if (targetDType == DType.complex128) {
+      wr = ffi.nullptr.cast<ffi.Void>();
+      wi = ffi.nullptr.cast<ffi.Void>();
+      w = ScratchArena.allocate<ffi.Double>(
+        2 * n * ffi.sizeOf<ffi.Double>(),
+      ).cast<ffi.Void>();
+    } else {
+      // complex64
+      wr = ffi.nullptr.cast<ffi.Void>();
+      wi = ffi.nullptr.cast<ffi.Void>();
+      w = ScratchArena.allocate<ffi.Float>(
+        2 * n * ffi.sizeOf<ffi.Float>(),
+      ).cast<ffi.Void>();
+    }
+
+    final sdimPtr = ScratchArena.allocate<lapack_int>(ffi.sizeOf<lapack_int>());
+
+    walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+      coords,
+    ) {
+      final sliceView = a.slice([
+        ...coords.map((c) => Index(c)),
+        Slice.all(),
+        Slice.all(),
+      ]);
+
+      if (sliceView.dtype == targetDType) {
+        sliceView.copy(out: aCopy2D as NDArray<T>);
+      } else {
+        final casted = castNDArray(sliceView, targetDType);
+        casted.copy(out: aCopy2D);
+        casted.dispose();
+      }
+      sliceView.dispose();
+
+      int info = 0;
+      switch (targetDType) {
+        case DType.float64:
+          info = LAPACKE_dgees(
+            101,
+            jobvsVal,
+            sortVal,
+            ffi.nullptr.cast(),
+            n,
+            aCopy2D.pointer.cast<ffi.Double>(),
+            n,
+            sdimPtr,
+            wr.cast<ffi.Double>(),
+            wi.cast<ffi.Double>(),
+            z2D.pointer.cast<ffi.Double>(),
+            n,
+          );
+          if (info != 0) throw StateError('LAPACKE_dgees failed: $info');
+        case DType.float32:
+          info = LAPACKE_sgees(
+            101,
+            jobvsVal,
+            sortVal,
+            ffi.nullptr.cast(),
+            n,
+            aCopy2D.pointer.cast<ffi.Float>(),
+            n,
+            sdimPtr,
+            wr.cast<ffi.Float>(),
+            wi.cast<ffi.Float>(),
+            z2D.pointer.cast<ffi.Float>(),
+            n,
+          );
+          if (info != 0) throw StateError('LAPACKE_sgees failed: $info');
+        case DType.complex128:
+          info = LAPACKE_zgees(
+            101,
+            jobvsVal,
+            sortVal,
+            ffi.nullptr.cast(),
+            n,
+            aCopy2D.pointer.cast<ffi.Double>(),
+            n,
+            sdimPtr,
+            w.cast<ffi.Double>(),
+            z2D.pointer.cast<ffi.Double>(),
+            n,
+          );
+          if (info != 0) throw StateError('LAPACKE_zgees failed: $info');
+        case DType.complex64:
+          info = LAPACKE_cgees(
+            101,
+            jobvsVal,
+            sortVal,
+            ffi.nullptr.cast(),
+            n,
+            aCopy2D.pointer.cast<ffi.Float>(),
+            n,
+            sdimPtr,
+            w.cast<ffi.Float>(),
+            z2D.pointer.cast<ffi.Float>(),
+            n,
+          );
+          if (info != 0) throw StateError('LAPACKE_cgees failed: $info');
+        default:
+          throw UnimplementedError();
+      }
+
+      final tSlice = tMat.slice([
+        ...coords.map((c) => Index(c)),
+        Slice.all(),
+        Slice.all(),
+      ]);
+      aCopy2D.copyToContiguous(tSlice);
+      tSlice.dispose();
+
+      final zSlice = zMat.slice([
+        ...coords.map((c) => Index(c)),
+        Slice.all(),
+        Slice.all(),
+      ]);
+      z2D.copyToContiguous(zSlice);
+      zSlice.dispose();
+    });
+  } finally {
+    ScratchArena.reset(marker);
+    aCopy2D.dispose();
+    z2D.dispose();
+  }
+
+  return (T: tMat, Z: zMat);
+}
+
+/// Computes the Hessenberg decomposition of a matrix.
+///
+/// A = Q * H * Q^H
+///
+/// Returns a record containing:
+/// - [H]: The Hessenberg matrix (zero below the first subdiagonal).
+/// - [Q]: The unitary matrix.
+///
+/// **Preconditions:**
+/// - [a] must be a square 2D matrix, or a stack of square 2D matrices.
+/// - [a] must have a floating-point or complex dtype. Integer types are promoted to `Float64`.
+/// - If provided, [outH] and [outQ] must have compatible shapes and dtypes.
+///
+/// **Throws:**
+/// - [ArgumentError] if [a] is not square or has rank < 2.
+/// - [ArgumentError] if [outH] or [outQ] are incompatible.
+/// - [StateError] if the LAPACK call fails.
+({NDArray H, NDArray Q}) hessenberg<T>(
+  NDArray<T> a, {
+  NDArray? outH,
+  NDArray? outQ,
+}) {
+  if (a.isDisposed) {
+    throw StateError('Cannot calculate hessenberg on a disposed array.');
+  }
+  if (a.rank < 2) {
+    throw ArgumentError('Array must be at least 2-dimensional.');
+  }
+  final m = a.shape[a.rank - 2];
+  final n = a.shape[a.rank - 1];
+  if (m != n) {
+    throw ArgumentError('Last two dimensions must be square (got $m x $n).');
+  }
+
+  final bool promoted = a.dtype.isInteger;
+  DType targetDType = a.dtype;
+  if (promoted) {
+    targetDType = DType.float64;
+  }
+
+  if (targetDType != DType.float64 &&
+      targetDType != DType.float32 &&
+      targetDType != DType.complex128 &&
+      targetDType != DType.complex64) {
+    throw ArgumentError('Unsupported dtype: ${a.dtype}');
+  }
+
+  final stackShape = a.shape.sublist(0, a.rank - 2);
+  final hessenbergShape = [...stackShape, n, n];
+
+  if (outH != null) {
+    if (outH.isDisposed) throw StateError('outH is disposed.');
+    if (!outH.isContiguous) throw ArgumentError('outH must be contiguous.');
+    if (!listEquals(outH.shape, hessenbergShape) || outH.dtype != targetDType) {
+      throw ArgumentError('Incompatible outH.');
+    }
+  }
+
+  if (outQ != null) {
+    if (outQ.isDisposed) throw StateError('outQ is disposed.');
+    if (!outQ.isContiguous) throw ArgumentError('outQ must be contiguous.');
+    if (!listEquals(outQ.shape, hessenbergShape) || outQ.dtype != targetDType) {
+      throw ArgumentError('Incompatible outQ.');
+    }
+  }
+
+  final NDArray hMat = outH ?? _zerosTyped(hessenbergShape, targetDType);
+  final NDArray qMat = outQ ?? _zerosTyped(hessenbergShape, targetDType);
+
+  final aCopy2D = _createTyped2D(n, n, targetDType);
+  final q2D = _zerosTyped([n, n], targetDType);
+
+  final marker = ScratchArena.marker;
+  try {
+    final ffi.Pointer<ffi.Void> tau;
+    final int elements = (n - 1) * (targetDType.isComplex ? 2 : 1);
+    if (targetDType == DType.float64 || targetDType == DType.complex128) {
+      tau = ScratchArena.allocate<ffi.Double>(
+        elements * ffi.sizeOf<ffi.Double>(),
+      ).cast<ffi.Void>();
+    } else {
+      tau = ScratchArena.allocate<ffi.Float>(
+        elements * ffi.sizeOf<ffi.Float>(),
+      ).cast<ffi.Void>();
+    }
+
+    walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+      coords,
+    ) {
+      final sliceView = a.slice([
+        ...coords.map((c) => Index(c)),
+        Slice.all(),
+        Slice.all(),
+      ]);
+      if (sliceView.dtype == targetDType) {
+        sliceView.copy(out: aCopy2D as NDArray<T>);
+      } else {
+        final casted = castNDArray(sliceView, targetDType);
+        casted.copy(out: aCopy2D);
+        casted.dispose();
+      }
+      sliceView.dispose();
+
+      int info = 0;
+      final ilo = 1;
+      final ihi = n;
+
+      switch (targetDType) {
+        case DType.float64:
+          info = LAPACKE_dgehrd(
+            101,
+            n,
+            ilo,
+            ihi,
+            aCopy2D.pointer.cast<ffi.Double>(),
+            n,
+            tau.cast<ffi.Double>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_dgehrd failed: $info');
+        case DType.float32:
+          info = LAPACKE_sgehrd(
+            101,
+            n,
+            ilo,
+            ihi,
+            aCopy2D.pointer.cast<ffi.Float>(),
+            n,
+            tau.cast<ffi.Float>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_sgehrd failed: $info');
+        case DType.complex128:
+          info = LAPACKE_zgehrd(
+            101,
+            n,
+            ilo,
+            ihi,
+            aCopy2D.pointer.cast<ffi.Double>(),
+            n,
+            tau.cast<ffi.Double>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_zgehrd failed: $info');
+        case DType.complex64:
+          info = LAPACKE_cgehrd(
+            101,
+            n,
+            ilo,
+            ihi,
+            aCopy2D.pointer.cast<ffi.Float>(),
+            n,
+            tau.cast<ffi.Float>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_cgehrd failed: $info');
+        default:
+          throw UnimplementedError();
+      }
+
+      aCopy2D.copy(out: q2D);
+
+      final hSlice = hMat.slice([
+        ...coords.map((c) => Index(c)),
+        Slice.all(),
+        Slice.all(),
+      ]);
+      aCopy2D.copyToContiguous(hSlice);
+
+      // Zero out elements below the first subdiagonal in H using direct pointer access.
+      switch (targetDType) {
+        case DType.float64:
+          final ptr = hSlice.pointer.cast<ffi.Double>();
+          for (var i = 2; i < n; i++) {
+            for (var j = 0; j < i - 1; j++) {
+              ptr[i * n + j] = 0.0;
+            }
+          }
+        case DType.float32:
+          final ptr = hSlice.pointer.cast<ffi.Float>();
+          for (var i = 2; i < n; i++) {
+            for (var j = 0; j < i - 1; j++) {
+              ptr[i * n + j] = 0.0;
+            }
+          }
+        case DType.complex128:
+          final ptr = hSlice.pointer.cast<ffi.Double>();
+          for (var i = 2; i < n; i++) {
+            for (var j = 0; j < i - 1; j++) {
+              ptr[2 * (i * n + j)] = 0.0;
+              ptr[2 * (i * n + j) + 1] = 0.0;
+            }
+          }
+        case DType.complex64:
+          final ptr = hSlice.pointer.cast<ffi.Float>();
+          for (var i = 2; i < n; i++) {
+            for (var j = 0; j < i - 1; j++) {
+              ptr[2 * (i * n + j)] = 0.0;
+              ptr[2 * (i * n + j) + 1] = 0.0;
+            }
+          }
+        default:
+          break;
+      }
+
+      switch (targetDType) {
+        case DType.float64:
+          info = LAPACKE_dorghr(
+            101,
+            n,
+            ilo,
+            ihi,
+            q2D.pointer.cast<ffi.Double>(),
+            n,
+            tau.cast<ffi.Double>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_dorghr failed: $info');
+        case DType.float32:
+          info = LAPACKE_sorghr(
+            101,
+            n,
+            ilo,
+            ihi,
+            q2D.pointer.cast<ffi.Float>(),
+            n,
+            tau.cast<ffi.Float>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_sorghr failed: $info');
+        case DType.complex128:
+          info = LAPACKE_zunghr(
+            101,
+            n,
+            ilo,
+            ihi,
+            q2D.pointer.cast<ffi.Double>(),
+            n,
+            tau.cast<ffi.Double>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_zunghr failed: $info');
+        case DType.complex64:
+          info = LAPACKE_cunghr(
+            101,
+            n,
+            ilo,
+            ihi,
+            q2D.pointer.cast<ffi.Float>(),
+            n,
+            tau.cast<ffi.Float>(),
+          );
+          if (info != 0) throw StateError('LAPACKE_cunghr failed: $info');
+        default:
+          throw UnimplementedError();
+      }
+
+      hSlice.dispose();
+
+      final qSlice = qMat.slice([
+        ...coords.map((c) => Index(c)),
+        Slice.all(),
+        Slice.all(),
+      ]);
+      q2D.copyToContiguous(qSlice);
+      qSlice.dispose();
+    });
+  } finally {
+    ScratchArena.reset(marker);
+    aCopy2D.dispose();
+    q2D.dispose();
+  }
+
+  return (H: hMat, Q: qMat);
+}
+
+/// Alias for [hessenberg] matching alternative spelling.
+({NDArray H, NDArray Q}) heessenberg<T>(
+  NDArray<T> a, {
+  NDArray? outH,
+  NDArray? outQ,
+}) => hessenberg(a, outH: outH, outQ: outQ);
+
+NDArray _createTyped2D(int rows, int cols, DType dtype) {
+  switch (dtype) {
+    case DType.float64:
+      return NDArray<Float64>.create([rows, cols], DType.float64);
+    case DType.float32:
+      return NDArray<Float32>.create([rows, cols], DType.float32);
+    case DType.complex128:
+      return NDArray<Complex128>.create([rows, cols], DType.complex128);
+    case DType.complex64:
+      return NDArray<Complex64>.create([rows, cols], DType.complex64);
+    default:
+      throw UnimplementedError('Unsupported dtype: $dtype');
+  }
+}
+
+NDArray _zerosTyped(List<int> shape, DType dtype) {
+  switch (dtype) {
+    case DType.float64:
+      return NDArray<Float64>.zeros(shape, DType.float64);
+    case DType.float32:
+      return NDArray<Float32>.zeros(shape, DType.float32);
+    case DType.complex128:
+      return NDArray<Complex128>.zeros(shape, DType.complex128);
+    case DType.complex64:
+      return NDArray<Complex64>.zeros(shape, DType.complex64);
+    default:
+      throw UnimplementedError('Unsupported dtype: $dtype');
+  }
+}
