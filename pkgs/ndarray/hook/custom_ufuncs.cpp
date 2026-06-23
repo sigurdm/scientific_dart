@@ -9246,3 +9246,125 @@ DEFINE_STRIDED_BINARY_IMPL(s_pow_int64, int64_t, int64_t, int64_t, ipow(x, y))
 DEFINE_STRIDED_BINARY_IMPL(s_pow_int32, int32_t, int32_t, int32_t, ipow(x, y))
 DEFINE_STRIDED_BINARY_IMPL(s_pow_int16, int16_t, int16_t, int16_t, ipow(x, y))
 DEFINE_STRIDED_BINARY_IMPL(s_pow_uint8, uint8_t, uint8_t, uint8_t, ipow(x, y))
+
+// Bincount Implementations (Contiguous)
+void v_bincount_int32(const int32_t *src, int64_t *res, int size, int res_size) {
+    if (src == nullptr || res == nullptr || size <= 0 || res_size <= 0) return;
+    for (int i = 0; i < size; ++i) {
+        int32_t val = src[i];
+        if (val >= 0 && val < res_size) {
+            res[val]++;
+        }
+    }
+}
+
+void v_bincount_int64(const int64_t *src, int64_t *res, int size, int res_size) {
+    if (src == nullptr || res == nullptr || size <= 0 || res_size <= 0) return;
+    for (int i = 0; i < size; ++i) {
+        int64_t val = src[i];
+        if (val >= 0 && val < res_size) {
+            res[val]++;
+        }
+    }
+}
+
+void v_bincount_weights_int32_double(const int32_t *src, const double *weights, double *res, int size, int res_size) {
+    if (src == nullptr || weights == nullptr || res == nullptr || size <= 0 || res_size <= 0) return;
+    for (int i = 0; i < size; ++i) {
+        int32_t val = src[i];
+        if (val >= 0 && val < res_size) {
+            res[val] += weights[i];
+        }
+    }
+}
+
+void v_bincount_weights_int64_double(const int64_t *src, const double *weights, double *res, int size, int res_size) {
+    if (src == nullptr || weights == nullptr || res == nullptr || size <= 0 || res_size <= 0) return;
+    for (int i = 0; i < size; ++i) {
+        int64_t val = src[i];
+        if (val >= 0 && val < res_size) {
+            res[val] += weights[i];
+        }
+    }
+}
+
+void v_bincount_weights_int32_float(const int32_t *src, const float *weights, float *res, int size, int res_size) {
+    if (src == nullptr || weights == nullptr || res == nullptr || size <= 0 || res_size <= 0) return;
+    for (int i = 0; i < size; ++i) {
+        int32_t val = src[i];
+        if (val >= 0 && val < res_size) {
+            res[val] += weights[i];
+        }
+    }
+}
+
+void v_bincount_weights_int64_float(const int64_t *src, const float *weights, float *res, int size, int res_size) {
+    if (src == nullptr || weights == nullptr || res == nullptr || size <= 0 || res_size <= 0) return;
+    for (int i = 0; i < size; ++i) {
+        int64_t val = src[i];
+        if (val >= 0 && val < res_size) {
+            res[val] += weights[i];
+        }
+    }
+}
+
+// Bincount Implementations (Strided)
+void s_bincount_int32(const int32_t *src, int strideSrc, int64_t *res, int strideRes, int size, int res_size) {
+    if (src == nullptr || res == nullptr || size <= 0 || res_size <= 0) return;
+    for (int i = 0; i < size; ++i) {
+        int32_t val = src[i * strideSrc];
+        if (val >= 0 && val < res_size) {
+            res[val * strideRes]++;
+        }
+    }
+}
+
+void s_bincount_int64(const int64_t *src, int strideSrc, int64_t *res, int strideRes, int size, int res_size) {
+    if (src == nullptr || res == nullptr || size <= 0 || res_size <= 0) return;
+    for (int i = 0; i < size; ++i) {
+        int64_t val = src[i * strideSrc];
+        if (val >= 0 && val < res_size) {
+            res[val * strideRes]++;
+        }
+    }
+}
+
+void s_bincount_weights_int32_double(const int32_t *src, int strideSrc, const double *weights, int strideWeights, double *res, int strideRes, int size, int res_size) {
+    if (src == nullptr || weights == nullptr || res == nullptr || size <= 0 || res_size <= 0) return;
+    for (int i = 0; i < size; ++i) {
+        int32_t val = src[i * strideSrc];
+        if (val >= 0 && val < res_size) {
+            res[val * strideRes] += weights[i * strideWeights];
+        }
+    }
+}
+
+void s_bincount_weights_int64_double(const int64_t *src, int strideSrc, const double *weights, int strideWeights, double *res, int strideRes, int size, int res_size) {
+    if (src == nullptr || weights == nullptr || res == nullptr || size <= 0 || res_size <= 0) return;
+    for (int i = 0; i < size; ++i) {
+        int64_t val = src[i * strideSrc];
+        if (val >= 0 && val < res_size) {
+            res[val * strideRes] += weights[i * strideWeights];
+        }
+    }
+}
+
+void s_bincount_weights_int32_float(const int32_t *src, int strideSrc, const float *weights, int strideWeights, float *res, int strideRes, int size, int res_size) {
+    if (src == nullptr || weights == nullptr || res == nullptr || size <= 0 || res_size <= 0) return;
+    for (int i = 0; i < size; ++i) {
+        int32_t val = src[i * strideSrc];
+        if (val >= 0 && val < res_size) {
+            res[val * strideRes] += weights[i * strideWeights];
+        }
+    }
+}
+
+void s_bincount_weights_int64_float(const int64_t *src, int strideSrc, const float *weights, int strideWeights, float *res, int strideRes, int size, int res_size) {
+    if (src == nullptr || weights == nullptr || res == nullptr || size <= 0 || res_size <= 0) return;
+    for (int i = 0; i < size; ++i) {
+        int64_t val = src[i * strideSrc];
+        if (val >= 0 && val < res_size) {
+            res[val * strideRes] += weights[i * strideWeights];
+        }
+    }
+}

@@ -21,9 +21,7 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 
 
 ### 3.3 Statistics & Sorting
-- **Binning & Histograms**: `histogram()` (1D/2D/ND binning), `bincount()` (integer occurrences), and `digitize()` (bin indices assignment).
-- **Correlation & Covariance**: `cov()` (covariance matrix estimation) and `corrcoef()` (Pearson correlation coefficients).
-(Completed average, ptp, sorting, partitioning, and searchsorted features)
+(Completed binning, histograms, covariance, correlation, average, ptp, sorting, partitioning, and searchsorted features)
 
 ### 3.4 Random & DType
 (Completed sampling choice, shuffle, permutation, and media types expansion)

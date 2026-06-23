@@ -3394,6 +3394,111 @@ void main() {
         expect(() => max(a, axis: invalidAxis), throwsArgumentError);
       });
     });
+
+    group('cov and corrcoef tests', () {
+      test('simple cov 1D', () {
+        NDArray.scope(() {
+          final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+          final res = cov(x);
+          expect(res.shape, <int>[]);
+          expect(res.dtype, DType.float64);
+          expect(res.scalar, closeTo(1.0, 1e-7));
+        });
+      });
+
+      test('cov 2D (rowvar=true)', () {
+        NDArray.scope(() {
+          final x = NDArray.fromList(
+            [1.0, 2.0, 3.0, 1.0, 1.0, 1.0],
+            [2, 3],
+            DType.float64,
+          );
+          final res = cov(x);
+          expect(res.shape, [2, 2]);
+          expect(res.toList(), [1.0, 0.0, 0.0, 0.0]);
+        });
+      });
+
+      test('cov 2D (rowvar=false)', () {
+        NDArray.scope(() {
+          final x = NDArray.fromList(
+            [1.0, 1.0, 2.0, 1.0, 3.0, 1.0],
+            [3, 2],
+            DType.float64,
+          );
+          final res = cov(x, rowvar: false);
+          expect(res.shape, [2, 2]);
+          expect(res.toList(), [1.0, 0.0, 0.0, 0.0]);
+        });
+      });
+
+      test('cov with y', () {
+        NDArray.scope(() {
+          final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+          final y = NDArray.fromList([1.0, 1.0, 1.0], [3], DType.float64);
+          final res = cov(x, y: y);
+          expect(res.shape, [2, 2]);
+          expect(res.toList(), [1.0, 0.0, 0.0, 0.0]);
+        });
+      });
+
+      test('cov with fweights', () {
+        NDArray.scope(() {
+          final x = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final fw = NDArray.fromList([2, 1], [2], DType.int32);
+          final res = cov(x, fweights: fw);
+          expect(res.scalar, closeTo(0.33333333, 1e-7));
+        });
+      });
+
+      test('cov with aweights', () {
+        NDArray.scope(() {
+          final x = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final aw = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final res = cov(x, aweights: aw);
+          expect(res.scalar, closeTo(0.5, 1e-7));
+        });
+      });
+
+      test('corrcoef 1D', () {
+        NDArray.scope(() {
+          final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+          final res = corrcoef(x);
+          expect(res.shape, [1, 1]);
+          expect(res.toList(), [1.0]);
+        });
+      });
+
+      test('corrcoef 2D', () {
+        NDArray.scope(() {
+          final x = NDArray.fromList(
+            [1.0, 2.0, 3.0, 1.0, 2.0, 3.01],
+            [2, 3],
+            DType.float64,
+          );
+          final res = corrcoef(x);
+          expect(res.shape, [2, 2]);
+          expect(res.getCell([0, 0]), closeTo(1.0, 1e-7));
+          expect(res.getCell([1, 1]), closeTo(1.0, 1e-7));
+          expect(res.getCell([0, 1]), closeTo(0.99999, 1e-3));
+        });
+      });
+
+      test('corrcoef division by zero', () {
+        NDArray.scope(() {
+          final x = NDArray.fromList(
+            [1.0, 2.0, 3.0, 1.0, 1.0, 1.0],
+            [2, 3],
+            DType.float64,
+          );
+          final res = corrcoef(x);
+          expect(res.shape, [2, 2]);
+          expect(res.getCell([0, 0]), closeTo(1.0, 1e-7));
+          expect(res.getCell([1, 1]).isNaN, true);
+          expect(res.getCell([0, 1]).isNaN, true);
+        });
+      });
+    });
   });
 }
 

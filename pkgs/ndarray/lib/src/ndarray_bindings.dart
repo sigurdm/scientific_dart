@@ -20395,6 +20395,235 @@ external void s_pow_uint8(
   int rank,
 );
 
+/// Bincount operations
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void v_bincount_int32(
+  ffi.Pointer<ffi.Int32> src,
+  ffi.Pointer<ffi.Int64> res,
+  int size,
+  int res_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void v_bincount_int64(
+  ffi.Pointer<ffi.Int64> src,
+  ffi.Pointer<ffi.Int64> res,
+  int size,
+  int res_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void v_bincount_weights_int32_double(
+  ffi.Pointer<ffi.Int32> src,
+  ffi.Pointer<ffi.Double> weights,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+  int res_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void v_bincount_weights_int64_double(
+  ffi.Pointer<ffi.Int64> src,
+  ffi.Pointer<ffi.Double> weights,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+  int res_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void v_bincount_weights_int32_float(
+  ffi.Pointer<ffi.Int32> src,
+  ffi.Pointer<ffi.Float> weights,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+  int res_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void v_bincount_weights_int64_float(
+  ffi.Pointer<ffi.Int64> src,
+  ffi.Pointer<ffi.Float> weights,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+  int res_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_bincount_int32(
+  ffi.Pointer<ffi.Int32> src,
+  int strideSrc,
+  ffi.Pointer<ffi.Int64> res,
+  int strideRes,
+  int size,
+  int res_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_bincount_int64(
+  ffi.Pointer<ffi.Int64> src,
+  int strideSrc,
+  ffi.Pointer<ffi.Int64> res,
+  int strideRes,
+  int size,
+  int res_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_bincount_weights_int32_double(
+  ffi.Pointer<ffi.Int32> src,
+  int strideSrc,
+  ffi.Pointer<ffi.Double> weights,
+  int strideWeights,
+  ffi.Pointer<ffi.Double> res,
+  int strideRes,
+  int size,
+  int res_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_bincount_weights_int64_double(
+  ffi.Pointer<ffi.Int64> src,
+  int strideSrc,
+  ffi.Pointer<ffi.Double> weights,
+  int strideWeights,
+  ffi.Pointer<ffi.Double> res,
+  int strideRes,
+  int size,
+  int res_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_bincount_weights_int32_float(
+  ffi.Pointer<ffi.Int32> src,
+  int strideSrc,
+  ffi.Pointer<ffi.Float> weights,
+  int strideWeights,
+  ffi.Pointer<ffi.Float> res,
+  int strideRes,
+  int size,
+  int res_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_bincount_weights_int64_float(
+  ffi.Pointer<ffi.Int64> src,
+  int strideSrc,
+  ffi.Pointer<ffi.Float> weights,
+  int strideWeights,
+  ffi.Pointer<ffi.Float> res,
+  int strideRes,
+  int size,
+  int res_size,
+);
+
 typedef ptrdiff_t = ffi.Long;
 typedef Dartptrdiff_t = int;
 

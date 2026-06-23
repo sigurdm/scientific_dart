@@ -9,6 +9,8 @@ import '../scratch_arena.dart';
 import 'math.dart';
 import 'helpers.dart';
 import 'broadcasting.dart';
+import 'manipulation.dart';
+import 'linalg.dart';
 
 /// Methods for estimating quantiles/percentiles.
 ///
@@ -2693,5 +2695,206 @@ average<T extends num, W extends num, R extends num>(
     sumOfWeightsResult?.detachToParentScope();
 
     return (average: avg, sumOfWeights: sumOfWeightsResult);
+  });
+}
+
+NDArray<Float64> _diagonal(NDArray<Float64> a) {
+  final M = a.shape[0];
+  final s0 = a.strides[0];
+  final s1 = a.strides[1];
+  return NDArray<Float64>.view(a, shape: [M], strides: [s0 + s1]);
+}
+
+/// Estimate a covariance matrix, given data and weights.
+NDArray<Float64> cov(
+  NDArray m, {
+  NDArray? y,
+  bool rowvar = true,
+  int? ddof,
+  NDArray<int>? fweights,
+  NDArray<num>? aweights,
+}) {
+  if (m.isDisposed) {
+    throw StateError('Cannot execute cov on a disposed array.');
+  }
+  if (y != null && y.isDisposed) {
+    throw StateError('Cannot execute cov with a disposed y array.');
+  }
+  if (fweights != null && fweights.isDisposed) {
+    throw StateError('Cannot execute cov with disposed fweights.');
+  }
+  if (aweights != null && aweights.isDisposed) {
+    throw StateError('Cannot execute cov with disposed aweights.');
+  }
+
+  if (m.dtype.isComplex || (y != null && y.dtype.isComplex)) {
+    throw ArgumentError('Complex arrays are not supported in cov.');
+  }
+
+  return NDArray.scope(() {
+    NDArray m2D;
+    if (m.shape.length == 1) {
+      m2D = m.reshape([1, m.shape[0]]);
+    } else if (m.shape.length == 2) {
+      m2D = rowvar ? m : m.transpose();
+    } else {
+      throw ArgumentError('m must be 1D or 2D.');
+    }
+
+    final N = m2D.shape[1];
+
+    NDArray? y2D;
+    if (y != null) {
+      if (y.shape.length == 1) {
+        y2D = y.reshape([1, y.shape[0]]);
+      } else if (y.shape.length == 2) {
+        y2D = rowvar ? y : y.transpose();
+      } else {
+        throw ArgumentError('y must be 1D or 2D.');
+      }
+      if (y2D.shape[1] != N) {
+        throw ArgumentError(
+          'm and y must have the same number of observations.',
+        );
+      }
+    }
+
+    if (fweights != null) {
+      if (!listEquals(fweights.shape, [N])) {
+        throw ArgumentError('fweights must be 1D of size $N.');
+      }
+      if (min(fweights).scalar < 0) {
+        throw ArgumentError('fweights must be non-negative.');
+      }
+    }
+    if (aweights != null) {
+      if (!listEquals(aweights.shape, [N])) {
+        throw ArgumentError('aweights must be 1D of size $N.');
+      }
+      if (min(aweights).scalar < 0) {
+        throw ArgumentError('aweights must be non-negative.');
+      }
+    }
+
+    final mDouble = _castTo(m2D, DType.float64);
+    final yDouble = y2D != null
+        ? _castTo(y2D, DType.float64)
+        : null;
+
+    NDArray<Float64> X_double;
+    if (yDouble != null) {
+      X_double = concatenate<Float64>([mDouble, yDouble], axis: 0);
+    } else {
+      X_double = mDouble;
+    }
+
+    final w_f = fweights != null
+        ? _castTo(fweights, DType.float64)
+        : null;
+    final w_a = aweights != null
+        ? _castTo(aweights, DType.float64)
+        : null;
+
+    final w = (w_f != null && w_a != null)
+        ? multiply<Float64, Float64, Float64>(w_f, w_a)
+        : (w_f ?? w_a);
+
+    NDArray<Float64> mu;
+    if (w == null) {
+      mu = mean<Float64, Float64>(X_double, axis: 1);
+    } else {
+      final X_w = multiply<Float64, Float64, Float64>(X_double, w);
+      final sum_X_w = sum<Float64>(X_w, axis: 1);
+      final sum_w = sum<Float64>(w).scalar;
+      final sum_w_arr = NDArray<Float64>.fromList([sum_w], [], DType.float64);
+      mu = divide<Float64, Float64, Float64>(sum_X_w, sum_w_arr);
+    }
+
+    final mu_reshaped = mu.reshape([X_double.shape[0], 1]);
+    final X_centered = subtract<Float64, Float64, Float64>(
+      X_double,
+      mu_reshaped,
+    );
+
+    NDArray<Float64> fact;
+    if (w == null) {
+      fact = matmul<Float64, Float64, Float64>(
+        X_centered,
+        X_centered.transpose(),
+      );
+    } else {
+      final X_centered_w = multiply<Float64, Float64, Float64>(X_centered, w);
+      fact = matmul<Float64, Float64, Float64>(
+        X_centered_w,
+        X_centered.transpose(),
+      );
+    }
+
+    final ddof_val = ddof ?? 1;
+    double denom;
+
+    if (w == null) {
+      denom = (N - ddof_val).toDouble();
+    } else {
+      final sum_w = sum<Float64>(w).scalar;
+      if (ddof_val == 0) {
+        denom = sum_w;
+      } else {
+        if (w_a == null) {
+          denom = sum_w - ddof_val;
+        } else {
+          final w_times_a = multiply<Float64, Float64, Float64>(w, w_a);
+          final sum_w_times_a = sum<Float64>(w_times_a).scalar;
+          denom = sum_w - ddof_val * sum_w_times_a / sum_w;
+        }
+      }
+    }
+
+    final denom_arr = NDArray<Float64>.fromList([denom], [], DType.float64);
+    final result = divide<Float64, Float64, Float64>(fact, denom_arr);
+
+    var finalResult = result;
+    if (m.shape.length == 1 && y == null) {
+      final view = result.reshape([]);
+      finalResult = view.copy();
+    }
+
+    finalResult.detachToParentScope();
+    return finalResult;
+  });
+}
+
+/// Pearson product-moment correlation coefficients.
+NDArray<Float64> corrcoef(NDArray x, {NDArray? y, bool rowvar = true}) {
+  if (x.isDisposed) {
+    throw StateError('Cannot execute corrcoef on a disposed array.');
+  }
+  if (y != null && y.isDisposed) {
+    throw StateError('Cannot execute corrcoef with a disposed y array.');
+  }
+
+  return NDArray.scope(() {
+    final C = cov(x, y: y, rowvar: rowvar);
+
+    NDArray<Float64> C2D;
+    if (C.shape.isEmpty) {
+      C2D = C.reshape([1, 1]);
+    } else {
+      C2D = C;
+    }
+
+    final M = C2D.shape[0];
+    final d = _diagonal(C2D);
+    final stddev = sqrt<Float64, Float64>(d);
+    final stddev_reshaped_col = stddev.reshape([M, 1]);
+    final stddev_reshaped_row = stddev.reshape([1, M]);
+    final divisor = multiply<Float64, Float64, Float64>(
+      stddev_reshaped_col,
+      stddev_reshaped_row,
+    );
+    final R = divide<Float64, Float64, Float64>(C2D, divisor);
+
+    R.detachToParentScope();
+    return R;
   });
 }

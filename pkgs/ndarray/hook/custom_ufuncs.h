@@ -1528,6 +1528,21 @@ void s_pow_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, con
 void s_pow_int16(const int16_t *x1, const int *stridesX1, const int16_t *x2, const int *stridesX2, int16_t *res, const int *stridesRes, const int *shape, int rank);
 void s_pow_uint8(const uint8_t *x1, const int *stridesX1, const uint8_t *x2, const int *stridesX2, uint8_t *res, const int *stridesRes, const int *shape, int rank);
 
+/* Bincount operations */
+void v_bincount_int32(const int32_t *src, int64_t *res, int size, int res_size);
+void v_bincount_int64(const int64_t *src, int64_t *res, int size, int res_size);
+void v_bincount_weights_int32_double(const int32_t *src, const double *weights, double *res, int size, int res_size);
+void v_bincount_weights_int64_double(const int64_t *src, const double *weights, double *res, int size, int res_size);
+void v_bincount_weights_int32_float(const int32_t *src, const float *weights, float *res, int size, int res_size);
+void v_bincount_weights_int64_float(const int64_t *src, const float *weights, float *res, int size, int res_size);
+
+void s_bincount_int32(const int32_t *src, int strideSrc, int64_t *res, int strideRes, int size, int res_size);
+void s_bincount_int64(const int64_t *src, int strideSrc, int64_t *res, int strideRes, int size, int res_size);
+void s_bincount_weights_int32_double(const int32_t *src, int strideSrc, const double *weights, int strideWeights, double *res, int strideRes, int size, int res_size);
+void s_bincount_weights_int64_double(const int64_t *src, int strideSrc, const double *weights, int strideWeights, double *res, int strideRes, int size, int res_size);
+void s_bincount_weights_int32_float(const int32_t *src, int strideSrc, const float *weights, int strideWeights, float *res, int strideRes, int size, int res_size);
+void s_bincount_weights_int64_float(const int64_t *src, int strideSrc, const float *weights, int strideWeights, float *res, int strideRes, int size, int res_size);
+
 #ifdef __cplusplus
 }
 #endif

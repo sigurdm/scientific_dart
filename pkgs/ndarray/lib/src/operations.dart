@@ -3,6 +3,7 @@ library;
 
 export 'operations/math.dart';
 export 'operations/stats.dart';
+export 'operations/binning.dart';
 export 'operations/sorting.dart';
 export 'operations/linalg.dart';
 export 'operations/spacers.dart';
