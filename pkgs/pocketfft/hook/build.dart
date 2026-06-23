@@ -220,6 +220,8 @@ Future<Map<String, String>> getMSVCEnvironment() async {
     ]);
     if (envRes.exitCode != 0) {
       print('vcvarsall.bat failed with exit code ${envRes.exitCode}');
+      print('vcvarsall.bat stdout: ${envRes.stdout}');
+      print('vcvarsall.bat stderr: ${envRes.stderr}');
       return {};
     }
 
