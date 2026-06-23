@@ -9,5 +9,6 @@ coverage/
 
 # Transient Local Test / Benchmark Run Outputs
 scratch/
+third_party/highway/hwy_build/
 third_party/highway/build/
 

@@ -31,6 +31,14 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Verify MSVC Environment
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: |
+          echo INCLUDE: %INCLUDE%
+          echo LIB: %LIB%
+          where cl.exe
+
       - name: Install Dependencies
         run: dart pub get
 
