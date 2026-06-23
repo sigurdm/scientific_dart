@@ -30,6 +30,7 @@ void main(List<String> args) async {
         compilerLower.contains('clang') ||
         compilerLower.contains('g++');
     final isMSVC = os == OS.windows && !isGNU;
+    final msvcEnv = isMSVC ? await getMSVCEnvironment() : <String, String>{};
 
     // Compile highway if needed
     final highwayDir = input.packageRoot.resolve('third_party/highway/');
@@ -64,13 +65,18 @@ void main(List<String> args) async {
       }
 
       // Run cmake configuration
-      final cmakeRes = await Process.run('cmake', [
-        '-DCMAKE_BUILD_TYPE=Release',
-        '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
-        '-DHWY_ENABLE_TESTS=OFF',
-        '-DHWY_ENABLE_EXAMPLES=OFF',
-        '..',
-      ], workingDirectory: highwayBuildDir.path);
+      final cmakeRes = await Process.run(
+        'cmake',
+        [
+          '-DCMAKE_BUILD_TYPE=Release',
+          '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
+          '-DHWY_ENABLE_TESTS=OFF',
+          '-DHWY_ENABLE_EXAMPLES=OFF',
+          '..',
+        ],
+        workingDirectory: highwayBuildDir.path,
+        environment: msvcEnv,
+      );
 
       if (cmakeRes.exitCode != 0) {
         throw StateError(
@@ -81,15 +87,20 @@ void main(List<String> args) async {
       }
 
       // Run cmake build
-      final buildRes = await Process.run('cmake', [
-        '--build',
-        '.',
-        '--target',
-        'hwy',
-        'hwy_contrib',
-        if (isMSVC) ...['--config', 'Release'],
-        '--parallel',
-      ], workingDirectory: highwayBuildDir.path);
+      final buildRes = await Process.run(
+        'cmake',
+        [
+          '--build',
+          '.',
+          '--target',
+          'hwy',
+          'hwy_contrib',
+          if (isMSVC) ...['--config', 'Release'],
+          '--parallel',
+        ],
+        workingDirectory: highwayBuildDir.path,
+        environment: msvcEnv,
+      );
 
       if (buildRes.exitCode != 0) {
         throw StateError(
@@ -132,9 +143,13 @@ void main(List<String> args) async {
         '/I${input.packageRoot.toFilePath()}',
         input.packageRoot.resolve('hook/custom_ufuncs.cpp').toFilePath(),
         '/Fo:$ufuncsObj',
-      ]);
+      ], environment: msvcEnv);
       if (res.exitCode != 0) {
-        throw StateError('Ufuncs compilation failed: ${res.stderr}');
+        throw StateError(
+          'Ufuncs compilation failed:\n'
+          'stdout: ${res.stdout}\n'
+          'stderr: ${res.stderr}',
+        );
       }
 
       res = await Process.run(cppCompilerPath, [
@@ -145,10 +160,23 @@ void main(List<String> args) async {
         '/I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',
         input.packageRoot.resolve('hook/custom_sorting.cpp').toFilePath(),
         '/Fo:$sortingObj',
-      ]);
+      ], environment: msvcEnv);
       if (res.exitCode != 0) {
-        throw StateError('Sorting compilation failed: ${res.stderr}');
+        throw StateError(
+          'Sorting compilation failed:\n'
+          'stdout: ${res.stdout}\n'
+          'stderr: ${res.stderr}',
+        );
       }
+
+      final ufuncsExports = extractExports(
+        input.packageRoot.resolve('hook/custom_ufuncs.h').toFilePath(),
+      );
+      final sortingExports = extractExports(
+        input.packageRoot.resolve('hook/custom_sorting.h').toFilePath(),
+      );
+      final allExports = [...ufuncsExports, ...sortingExports];
+      final exportArgs = allExports.map((name) => '/EXPORT:$name').toList();
 
       res = await Process.run(cppCompilerPath, [
         '/LD',
@@ -157,8 +185,16 @@ void main(List<String> args) async {
         libhwyContrib.path,
         libhwy.path,
         '/Fe:${libFile.path}',
-      ]);
-      if (res.exitCode != 0) throw StateError('Linking failed: ${res.stderr}');
+        '/link',
+        ...exportArgs,
+      ], environment: msvcEnv);
+      if (res.exitCode != 0) {
+        throw StateError(
+          'Linking failed:\n'
+          'stdout: ${res.stdout}\n'
+          'stderr: ${res.stderr}',
+        );
+      }
     } else {
       final ufuncsObj = outputDir.uri.resolve('custom_ufuncs.o').toFilePath();
       final sortingObj = outputDir.uri.resolve('custom_sorting.o').toFilePath();
@@ -238,4 +274,104 @@ void main(List<String> args) async {
       );
     }
   });
+}
+
+List<String> extractExports(String headerPath) {
+  final file = File(headerPath);
+  if (!file.existsSync()) return [];
+
+  final content = file.readAsStringSync();
+  // Match standard function declarations like: void function_name(args);
+  final regex = RegExp(
+    r'\b(void|int|double|float|long\s+long|uint8_t|int16_t|int32_t|int64_t|size_t|custom_memcmp)\s+(\w+)\s*\(',
+  );
+
+  final exports = <String>[];
+  for (final match in regex.allMatches(content)) {
+    final name = match.group(2);
+    if (name != null && !exports.contains(name)) {
+      exports.add(name);
+    }
+  }
+  return exports;
+}
+
+Future<Map<String, String>> getMSVCEnvironment() async {
+  if (!Platform.isWindows) return {};
+
+  String vswherePath = 'vswhere.exe';
+  final programFilesX86 =
+      Platform.environment['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)';
+  final defaultVswhere =
+      '$programFilesX86\\Microsoft Visual Studio\\Installer\\vswhere.exe';
+  if (await File(defaultVswhere).exists()) {
+    vswherePath = defaultVswhere;
+  }
+
+  try {
+    final vswhereRes = await Process.run(vswherePath, [
+      '-latest',
+      '-property',
+      'installationPath',
+    ]);
+    if (vswhereRes.exitCode != 0) {
+      print('vswhere failed with exit code ${vswhereRes.exitCode}');
+      return {};
+    }
+
+    final vsPath = vswhereRes.stdout.toString().trim();
+    if (vsPath.isEmpty) {
+      print('vswhere returned empty path');
+      return {};
+    }
+
+    final vcvarsPath = '$vsPath\\VC\\Auxiliary\\Build\\vcvarsall.bat';
+    if (!await File(vcvarsPath).exists()) {
+      print('vcvarsall.bat not found at $vcvarsPath');
+      return {};
+    }
+
+    final tempDir = Directory.systemTemp;
+    final tempFile = File(
+      '${tempDir.path}\\get_msvc_env_${DateTime.now().millisecondsSinceEpoch}.bat',
+    );
+    try {
+      await tempFile.writeAsString(
+        '@echo off\ncall "$vcvarsPath" amd64\nset\n',
+      );
+    } catch (e) {
+      print('Failed to write temporary batch file: $e');
+      return {};
+    }
+
+    final envRes = await Process.run('cmd.exe', ['/c', tempFile.path]);
+
+    try {
+      await tempFile.delete();
+    } catch (_) {}
+
+    if (envRes.exitCode != 0) {
+      print(
+        'Temporary MSVC environment batch file failed with exit code ${envRes.exitCode}',
+      );
+      return {};
+    }
+
+    final envMap = <String, String>{};
+    final lines = envRes.stdout.toString().split('\n');
+    for (final line in lines) {
+      final parts = line.split('=');
+      if (parts.length >= 2) {
+        final key = parts[0].trim();
+        final value = parts.sublist(1).join('=').trim();
+        if (key.isNotEmpty) {
+          envMap[key] = value;
+        }
+      }
+    }
+    return envMap;
+  } catch (e) {
+    print('Error detecting MSVC environment: $e');
+    return {};
+  }
 }
