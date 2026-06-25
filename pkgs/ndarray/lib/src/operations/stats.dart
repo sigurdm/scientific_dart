@@ -2930,3 +2930,87 @@ NDArray<Float64> corrcoef<T extends num>(
     return R.detachToParentScope();
   });
 }
+
+/// Computes the sum of array elements over a given axis treating Not a Numbers (NaNs) as zero.
+///
+/// Returns a new array with the results.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray<double>.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], DType.float64);
+/// final s = nansum(a); // returns 4.0
+/// ```
+NDArray<T> nansum<T extends Object>(
+  NDArray<T> a, {
+  int? axis,
+  NDArray<T>? out,
+}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute nansum() on a disposed array.');
+  }
+  final targetShape = axis == null
+      ? <int>[]
+      : (List<int>.from(a.shape)..removeAt(axis));
+  if (out != null) {
+    if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  if (axis == null) {
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    T acc;
+    if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+      var sumVal = 0;
+      for (var i = 0; i < elements.length; i++) {
+        sumVal += elements[i] as int;
+      }
+      acc = sumVal as T;
+    } else if (a.dtype == DType.complex64 || a.dtype == DType.complex128) {
+      var sumVal = Complex(0.0, 0.0);
+      for (var i = 0; i < elements.length; i++) {
+        final val = elements[i] as Complex;
+        if (val.real.isNaN || val.imag.isNaN) continue;
+        sumVal += val;
+      }
+      acc = sumVal as T;
+    } else {
+      var sumVal = 0.0;
+      for (var i = 0; i < elements.length; i++) {
+        final val = elements[i] as double;
+        if (val.isNaN) continue;
+        sumVal += val;
+      }
+      acc = sumVal as T;
+    }
+    final result = out ?? NDArray<T>.create([], a.dtype);
+    result.data[0] = acc;
+    return result;
+  }
+
+  if (axis < 0 || axis >= a.shape.length) {
+    throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
+  }
+
+  final newShape = List<int>.from(a.shape)..removeAt(axis);
+  final result = out ?? NDArray<T>.zeros(newShape, a.dtype);
+  if (out != null) {
+    result.fill(normalizeScalar(0, a.dtype) as T);
+  }
+
+  reduceRecursive<T, T>(
+    a,
+    result,
+    List<int>.filled(a.shape.length, 0),
+    List<int>.filled(newShape.length, 0),
+    axis,
+    0,
+    (current, val) {
+      if (val is double && val.isNaN) return current;
+      if (val is Complex && (val.real.isNaN || val.imag.isNaN)) return current;
+      return ((current as dynamic) + val) as T;
+    },
+  );
+  return result;
+}

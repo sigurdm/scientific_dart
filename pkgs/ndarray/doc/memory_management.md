@@ -220,4 +220,63 @@ void useSelfManagedBuffer() {
 > 2. **Avoid Use-After-Free:** If you use the *Externally Managed* mode, ensure the backing C pointer remains valid for the entire duration that the `NDArray` (or any of its views, transposes, or slices) is active.
 > 3. **Metadata Integrity:** You must guarantee that the provided `shape` and `strides` match the actual allocated size of the raw memory block. Incorrect metadata will lead to out-of-bounds reads/writes and hard segmentation faults.
 
+---
+
+## Allocation Tracking (Memory Leak Detection)
+
+For debugging and testing, `ndarray` provides an opt-in allocation tracking mode that tracks all memory-allocating (root) `NDArray`s. This allows you to verify that all created arrays have been properly disposed of by the end of your program or test run.
+
+To ensure zero overhead in production, this feature is controlled by a compile-time constant.
+
+### Enabling Tracking
+
+To enable allocation tracking, compile or run your program with the `TRACK_NDARRAY_ALLOCATIONS` environment declaration set to `true`:
+
+```bash
+dart --define=TRACK_NDARRAY_ALLOCATIONS=true run bin/main.dart
+# Or for tests:
+dart --define=TRACK_NDARRAY_ALLOCATIONS=true test --use-data-isolate-strategy
+```
+
+### Checking for Leaks
+
+When tracking is enabled, you can use the static methods on `NDArray` to inspect active allocations and assert that everything has been disposed:
+
+```dart
+import 'package:ndarray/ndarray.dart';
+
+void main() {
+  // If compiled with TRACK_NDARRAY_ALLOCATIONS=true
+  if (NDArray.trackAllocations) {
+    print('Tracking is active!');
+  }
+
+  final a = NDArray.zeros([100], DType.float64);
+
+  // Retrieve currently active root allocations
+  print(NDArray.trackedAllocations.length); // Prints 1
+
+  a.dispose();
+
+  print(NDArray.trackedAllocations.length); // Prints 0
+
+  // Throws StateError if there are any undisposed tracked arrays
+  NDArray.checkNoLeaks(); 
+}
+```
+
+If `NDArray.checkNoLeaks()` is called and there are leaks, it throws a `StateError` with details about the leaked arrays:
+
+```
+StateError: Detected 1 undisposed NDArrays:
+  NDArray(shape: [100], dtype: Float64)
+```
+
+You can also clear the tracked allocations manually using `NDArray.clearTrackedAllocations()`.
+
+### Zero Overhead in Production
+
+When `TRACK_NDARRAY_ALLOCATIONS` is not defined (or set to `false`), the tracking code is completely optimized away by the Dart compiler, resulting in exactly zero runtime overhead.
+
+
 

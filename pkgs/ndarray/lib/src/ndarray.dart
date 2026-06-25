@@ -212,6 +212,44 @@ final class NDArray<T> implements ffi.Finalizable {
 
   static const _scopeKey = #ndarray.NDArrayScope;
 
+  /// Whether to track all created memory-allocating (root) [NDArray]s.
+  ///
+  /// When enabled, all root [NDArray]s are tracked until they are disposed.
+  /// This can be used to detect memory leaks in tests or during debugging.
+  ///
+  /// Note: enabling this will keep undisposed [NDArray]s in memory,
+  /// preventing them from being garbage collected, which allows
+  /// [checkNoLeaks] to report them.
+  static const bool trackAllocations = bool.fromEnvironment(
+    'TRACK_NDARRAY_ALLOCATIONS',
+  );
+
+  static final Set<NDArray> _trackedAllocations = HashSet(
+    equals: identical,
+    hashCode: identityHashCode,
+  );
+
+  /// Returns a copy of the currently tracked (undisposed) root [NDArray]s.
+  static List<NDArray> get trackedAllocations => _trackedAllocations.toList();
+
+  /// Checks that all tracked [NDArray]s have been disposed.
+  ///
+  /// Throws a [StateError] if there are undisposed arrays.
+  static void checkNoLeaks() {
+    if (_trackedAllocations.isNotEmpty) {
+      final leaks = _trackedAllocations.toList();
+      throw StateError(
+        'Detected ${leaks.length} undisposed NDArrays:\n'
+        "${leaks.map((a) => '  NDArray(shape: ${a.shape}, dtype: ${a.dtype})').join('\n')}",
+      );
+    }
+  }
+
+  /// Clears the list of tracked allocations.
+  static void clearTrackedAllocations() {
+    _trackedAllocations.clear();
+  }
+
   /// Executes [callback] within an automatic resource management scope.
   ///
   /// Any [NDArray] created during the execution of [callback] (including
@@ -324,6 +362,9 @@ final class NDArray<T> implements ffi.Finalizable {
       }
       final scope = Zone.current[_scopeKey] as _NDArrayScope?;
       scope?._track(this);
+      if (trackAllocations) {
+        _trackedAllocations.add(this);
+      }
     }
   }
 
@@ -2687,6 +2728,10 @@ final class NDArray<T> implements ffi.Finalizable {
     if (_parent != null) return; // Views don't own memory
     if (_isDisposed) return; // Guard against double-free!
     _isDisposed = true;
+
+    if (trackAllocations) {
+      _trackedAllocations.remove(this);
+    }
 
     if (!_isExternallyOwned) {
       _finalizer.detach(this);

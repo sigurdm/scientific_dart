@@ -1,4 +1,5 @@
 import 'dart:ffi' as ffi;
+import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:ndarray/ndarray.dart';
 import 'package:ndarray/src/ndarray.dart';
@@ -638,5 +639,84 @@ void main() {
         expect(() => view.reshape([2]), throwsStateError);
       }),
     );
+
+    group('Allocation Tracking Integration Tests', () {
+      late File tempFile;
+
+      setUp(() {
+        tempFile = File('test/core/temp_tracker_helper.dart');
+        tempFile.writeAsStringSync('''
+import 'package:ndarray/ndarray.dart';
+
+void main() {
+  print('trackAllocations: \${NDArray.trackAllocations}');
+  final a = NDArray.zeros([10], DType.float64);
+  print('trackedCount: \${NDArray.trackedAllocations.length}');
+  
+  // Test views are not tracked directly
+  a.slice([Index(0)]);
+  print('trackedCountAfterView: \${NDArray.trackedAllocations.length}');
+
+  // Test checkNoLeaks throws
+  try {
+    NDArray.checkNoLeaks();
+    print('checkNoLeaks: OK');
+  } catch (e) {
+    print('checkNoLeaks: FAILED');
+  }
+
+  a.dispose();
+  print('trackedCountAfterDispose: \${NDArray.trackedAllocations.length}');
+  
+  // Test checkNoLeaks passes
+  try {
+    NDArray.checkNoLeaks();
+    print('checkNoLeaksAfterDispose: OK');
+  } catch (e) {
+    print('checkNoLeaksAfterDispose: FAILED');
+  }
+}
+''');
+      });
+
+      tearDown(() {
+        if (tempFile.existsSync()) {
+          tempFile.deleteSync();
+        }
+      });
+
+      test('Verifies tracking is disabled by default', () async {
+        final result = await Process.run(
+          Platform.resolvedExecutable,
+          [tempFile.path],
+        );
+
+        expect(result.exitCode, 0);
+        expect(result.stdout, contains('trackAllocations: false'));
+        expect(result.stdout, contains('trackedCount: 0'));
+        expect(result.stdout, contains('trackedCountAfterView: 0'));
+        expect(result.stdout, contains('checkNoLeaks: OK'));
+        expect(result.stdout, contains('trackedCountAfterDispose: 0'));
+        expect(result.stdout, contains('checkNoLeaksAfterDispose: OK'));
+      });
+
+      test('Verifies tracking works when enabled via define', () async {
+        final result = await Process.run(
+          Platform.resolvedExecutable,
+          [
+            '--define=TRACK_NDARRAY_ALLOCATIONS=true',
+            tempFile.path,
+          ],
+        );
+
+        expect(result.exitCode, 0);
+        expect(result.stdout, contains('trackAllocations: true'));
+        expect(result.stdout, contains('trackedCount: 1'));
+        expect(result.stdout, contains('trackedCountAfterView: 1'));
+        expect(result.stdout, contains('checkNoLeaks: FAILED'));
+        expect(result.stdout, contains('trackedCountAfterDispose: 0'));
+        expect(result.stdout, contains('checkNoLeaksAfterDispose: OK'));
+      });
+    });
   });
 }

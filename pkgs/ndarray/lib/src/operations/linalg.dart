@@ -3950,3 +3950,1438 @@ NDArray _zerosTyped(List<int> shape, DType dtype) {
       throw UnimplementedError('Unsupported dtype: $dtype');
   }
 }
+
+/// Computes the Kronecker product of two arrays.
+///
+/// **Example:**
+/// {@example /example/linalg_advanced_example.dart lang=dart}
+///
+/// Reference: [NumPy kron](https://numpy.org/doc/stable/reference/generated/numpy.kron.html)
+NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute kron() on a disposed array.');
+  }
+
+  final rankA = a.rank;
+  final rankB = b.rank;
+  final maxRank = math.max(rankA, rankB);
+
+  final paddedShapeA = List<int>.filled(maxRank, 1);
+  final paddedStridesA = List<int>.filled(maxRank, 0);
+  for (var i = 0; i < rankA; i++) {
+    paddedShapeA[maxRank - rankA + i] = a.shape[i];
+    paddedStridesA[maxRank - rankA + i] = a.strides[i];
+  }
+
+  final paddedShapeB = List<int>.filled(maxRank, 1);
+  final paddedStridesB = List<int>.filled(maxRank, 0);
+  for (var i = 0; i < rankB; i++) {
+    paddedShapeB[maxRank - rankB + i] = b.shape[i];
+    paddedStridesB[maxRank - rankB + i] = b.strides[i];
+  }
+
+  final expectedShape = List<int>.filled(maxRank, 0);
+  for (var i = 0; i < maxRank; i++) {
+    expectedShape[i] = paddedShapeA[i] * paddedShapeB[i];
+  }
+
+  final targetDType = resolveDType(a.dtype, b.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, expectedShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out recycler has incompatible shape or dtype (expected shape $expectedShape and dtype $targetDType).',
+      );
+    }
+  }
+
+  final result =
+      out ?? NDArray<R>.create(expectedShape, targetDType as DType<R>);
+
+  final aCast = castNDArray(a, targetDType);
+  final bCast = castNDArray(b, targetDType);
+
+  final marker = ScratchArena.marker;
+  final cStridesA = ScratchArena.allocate<ffi.Int>(
+    maxRank * ffi.sizeOf<ffi.Int>(),
+  );
+  final cShapeA = ScratchArena.allocate<ffi.Int>(
+    maxRank * ffi.sizeOf<ffi.Int>(),
+  );
+  final cStridesB = ScratchArena.allocate<ffi.Int>(
+    maxRank * ffi.sizeOf<ffi.Int>(),
+  );
+  final cShapeB = ScratchArena.allocate<ffi.Int>(
+    maxRank * ffi.sizeOf<ffi.Int>(),
+  );
+  final cStridesRes = ScratchArena.allocate<ffi.Int>(
+    maxRank * ffi.sizeOf<ffi.Int>(),
+  );
+  final cShapeRes = ScratchArena.allocate<ffi.Int>(
+    maxRank * ffi.sizeOf<ffi.Int>(),
+  );
+
+  for (var i = 0; i < maxRank; i++) {
+    cStridesA[i] = paddedStridesA[i];
+    cShapeA[i] = paddedShapeA[i];
+    cStridesB[i] = paddedStridesB[i];
+    cShapeB[i] = paddedShapeB[i];
+    cStridesRes[i] = result.strides[i];
+    cShapeRes[i] = result.shape[i];
+  }
+
+  try {
+    switch (targetDType) {
+      case DType.float64:
+        s_kron_double(
+          aCast.pointer.cast(),
+          cStridesA,
+          cShapeA,
+          bCast.pointer.cast(),
+          cStridesB,
+          cShapeB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          maxRank,
+        );
+      case DType.float32:
+        s_kron_float(
+          aCast.pointer.cast(),
+          cStridesA,
+          cShapeA,
+          bCast.pointer.cast(),
+          cStridesB,
+          cShapeB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          maxRank,
+        );
+      case DType.int64:
+        s_kron_int64(
+          aCast.pointer.cast(),
+          cStridesA,
+          cShapeA,
+          bCast.pointer.cast(),
+          cStridesB,
+          cShapeB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          maxRank,
+        );
+      case DType.int32:
+        s_kron_int32(
+          aCast.pointer.cast(),
+          cStridesA,
+          cShapeA,
+          bCast.pointer.cast(),
+          cStridesB,
+          cShapeB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          maxRank,
+        );
+      case DType.uint8:
+        s_kron_uint8(
+          aCast.pointer.cast(),
+          cStridesA,
+          cShapeA,
+          bCast.pointer.cast(),
+          cStridesB,
+          cShapeB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          maxRank,
+        );
+      case DType.int16:
+        s_kron_int16(
+          aCast.pointer.cast(),
+          cStridesA,
+          cShapeA,
+          bCast.pointer.cast(),
+          cStridesB,
+          cShapeB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          maxRank,
+        );
+      case DType.complex128:
+        s_kron_complex128(
+          aCast.pointer.cast(),
+          cStridesA,
+          cShapeA,
+          bCast.pointer.cast(),
+          cStridesB,
+          cShapeB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          maxRank,
+        );
+      case DType.complex64:
+        s_kron_complex64(
+          aCast.pointer.cast(),
+          cStridesA,
+          cShapeA,
+          bCast.pointer.cast(),
+          cStridesB,
+          cShapeB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          maxRank,
+        );
+      case DType.boolean:
+        s_kron_boolean(
+          aCast.pointer.cast(),
+          cStridesA,
+          cShapeA,
+          bCast.pointer.cast(),
+          cStridesB,
+          cShapeB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          maxRank,
+        );
+    }
+  } finally {
+    ScratchArena.reset(marker);
+    if (aCast != a) aCast.dispose();
+    if (bCast != b) bCast.dispose();
+  }
+
+  if (out == null) {
+    result.detachToParentScope();
+  }
+  return result;
+}
+
+/// Computes the outer product of two vectors.
+///
+/// Given two input vectors [a] and [b], computes the outer product matrix:
+/// `res[i, j] = a[i] * b[j]`.
+/// If the input arrays are not 1-dimensional, they are flattened first.
+///
+/// **Preconditions:**
+/// - Both arrays [a] and [b] must not be disposed.
+/// - If provided, the [out] recycler must have shape `[size(a), size(b)]` and the correct dtype.
+///
+/// **Throws:**
+/// - [StateError] if [a] or [b] is disposed.
+/// - [ArgumentError] if [out] has incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(N_a \times N_b)$ using highly optimized native strided loops.
+///
+/// **Example:**
+/// {@example /example/linalg_advanced_example.dart lang=dart}
+///
+/// Reference: [NumPy outer](https://numpy.org/doc/stable/reference/generated/numpy.outer.html)
+NDArray<R> outer<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute outer() on a disposed array.');
+  }
+
+  final sizeA = a.size;
+  final sizeB = b.size;
+  final expectedShape = [sizeA, sizeB];
+  final targetDType = resolveDType(a.dtype, b.dtype);
+
+  if (out != null) {
+    if (!listEquals(out.shape, expectedShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out recycler has incompatible shape or dtype (expected shape $expectedShape and dtype $targetDType).',
+      );
+    }
+  }
+
+  final result =
+      out ?? NDArray<R>.create(expectedShape, targetDType as DType<R>);
+
+  final flatA = a.rank == 1 ? a : a.ravel();
+  final flatB = b.rank == 1 ? b : b.ravel();
+
+  final aCast = castNDArray(flatA, targetDType);
+  final bCast = castNDArray(flatB, targetDType);
+
+  try {
+    switch (targetDType) {
+      case DType.float64:
+        s_outer_double(
+          aCast.pointer.cast(),
+          aCast.strides.isEmpty ? 1 : aCast.strides[0],
+          sizeA,
+          bCast.pointer.cast(),
+          bCast.strides.isEmpty ? 1 : bCast.strides[0],
+          sizeB,
+          result.pointer.cast(),
+          result.strides[0],
+          result.strides[1],
+        );
+      case DType.float32:
+        s_outer_float(
+          aCast.pointer.cast(),
+          aCast.strides.isEmpty ? 1 : aCast.strides[0],
+          sizeA,
+          bCast.pointer.cast(),
+          bCast.strides.isEmpty ? 1 : bCast.strides[0],
+          sizeB,
+          result.pointer.cast(),
+          result.strides[0],
+          result.strides[1],
+        );
+      case DType.int64:
+        s_outer_int64(
+          aCast.pointer.cast(),
+          aCast.strides.isEmpty ? 1 : aCast.strides[0],
+          sizeA,
+          bCast.pointer.cast(),
+          bCast.strides.isEmpty ? 1 : bCast.strides[0],
+          sizeB,
+          result.pointer.cast(),
+          result.strides[0],
+          result.strides[1],
+        );
+      case DType.int32:
+        s_outer_int32(
+          aCast.pointer.cast(),
+          aCast.strides.isEmpty ? 1 : aCast.strides[0],
+          sizeA,
+          bCast.pointer.cast(),
+          bCast.strides.isEmpty ? 1 : bCast.strides[0],
+          sizeB,
+          result.pointer.cast(),
+          result.strides[0],
+          result.strides[1],
+        );
+      case DType.uint8:
+        s_outer_uint8(
+          aCast.pointer.cast(),
+          aCast.strides.isEmpty ? 1 : aCast.strides[0],
+          sizeA,
+          bCast.pointer.cast(),
+          bCast.strides.isEmpty ? 1 : bCast.strides[0],
+          sizeB,
+          result.pointer.cast(),
+          result.strides[0],
+          result.strides[1],
+        );
+      case DType.int16:
+        s_outer_int16(
+          aCast.pointer.cast(),
+          aCast.strides.isEmpty ? 1 : aCast.strides[0],
+          sizeA,
+          bCast.pointer.cast(),
+          bCast.strides.isEmpty ? 1 : bCast.strides[0],
+          sizeB,
+          result.pointer.cast(),
+          result.strides[0],
+          result.strides[1],
+        );
+      case DType.complex128:
+        s_outer_complex128(
+          aCast.pointer.cast(),
+          aCast.strides.isEmpty ? 1 : aCast.strides[0],
+          sizeA,
+          bCast.pointer.cast(),
+          bCast.strides.isEmpty ? 1 : bCast.strides[0],
+          sizeB,
+          result.pointer.cast(),
+          result.strides[0],
+          result.strides[1],
+        );
+      case DType.complex64:
+        s_outer_complex64(
+          aCast.pointer.cast(),
+          aCast.strides.isEmpty ? 1 : aCast.strides[0],
+          sizeA,
+          bCast.pointer.cast(),
+          bCast.strides.isEmpty ? 1 : bCast.strides[0],
+          sizeB,
+          result.pointer.cast(),
+          result.strides[0],
+          result.strides[1],
+        );
+      case DType.boolean:
+        s_outer_boolean(
+          aCast.pointer.cast(),
+          aCast.strides.isEmpty ? 1 : aCast.strides[0],
+          sizeA,
+          bCast.pointer.cast(),
+          bCast.strides.isEmpty ? 1 : bCast.strides[0],
+          sizeB,
+          result.pointer.cast(),
+          result.strides[0],
+          result.strides[1],
+        );
+    }
+  } finally {
+    if (flatA != a) flatA.dispose();
+    if (flatB != b) flatB.dispose();
+    if (aCast != flatA) aCast.dispose();
+    if (bCast != flatB) bCast.dispose();
+  }
+
+  if (out == null) {
+    result.detachToParentScope();
+  }
+  return result;
+}
+
+/// Computes the cross product of two (arrays of) vectors.
+///
+/// The cross product of two vectors is defined in 3D (and 2D, where it returns the z-component as a scalar).
+/// If the inputs are multidimensional, the cross product is computed along the specified axes.
+///
+/// **Preconditions:**
+/// - Both arrays [a] and [b] must not be disposed.
+/// - The size of the cross product axes must be 2 or 3.
+/// - If provided, the recycler [out] must have the correct shape and dtype.
+///
+/// **Throws:**
+/// - [StateError] if [a] or [b] is disposed.
+/// - [ArgumentError] if axes sizes are not 2 or 3, or are mismatched.
+/// - [ArgumentError] if [out] has incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Uses native C vector cross loops.
+///
+/// **Example:**
+/// {@example /example/linalg_advanced_example.dart lang=dart}
+///
+/// Reference: [NumPy cross](https://numpy.org/doc/stable/reference/generated/numpy.cross.html)
+NDArray<R> cross<Ta, Tb, R>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  int? axisa,
+  int? axisb,
+  int? axisc,
+  int? axis,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute cross() on a disposed array.');
+  }
+
+  var axisA = axis ?? axisa ?? -1;
+  var axisB = axis ?? axisb ?? -1;
+  var axisC = axis ?? axisc ?? -1;
+
+  if (axisA < 0) axisA = a.rank + axisA;
+  if (axisB < 0) axisB = b.rank + axisB;
+
+  if (axisA < 0 || axisA >= a.rank) {
+    throw ArgumentError('axisa $axisA out of bounds for shape ${a.shape}');
+  }
+  if (axisB < 0 || axisB >= b.rank) {
+    throw ArgumentError('axisb $axisB out of bounds for shape ${b.shape}');
+  }
+
+  final lenA = a.shape[axisA];
+  final lenB = b.shape[axisB];
+
+  if ((lenA != 2 && lenA != 3) || (lenB != 2 && lenB != 3)) {
+    throw ArgumentError(
+      'Cross product axes sizes must be 2 or 3 (got axisa size $lenA and axisb size $lenB).',
+    );
+  }
+  if (lenA != lenB) {
+    throw ArgumentError(
+      'Mismatched cross product axes sizes: axisa size $lenA != axisb size $lenB.',
+    );
+  }
+
+  final is3D = lenA == 3;
+
+  final stackA = List<int>.from(a.shape)..removeAt(axisA);
+  final stackB = List<int>.from(b.shape)..removeAt(axisB);
+  final broadcastStack = broadcastStackShapes(stackA, stackB);
+
+  final expectedShape = List<int>.from(broadcastStack);
+  if (is3D) {
+    var finalAxisC = axisC;
+    if (finalAxisC < 0) finalAxisC = expectedShape.length + 1 + finalAxisC;
+    if (finalAxisC < 0 || finalAxisC > expectedShape.length) {
+      finalAxisC = expectedShape.length;
+    }
+    expectedShape.insert(finalAxisC, 3);
+    axisC = finalAxisC;
+  }
+
+  final targetDType = resolveDType(a.dtype, b.dtype);
+  if (out != null) {
+    if (!listEquals(out.shape, expectedShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out recycler has incompatible shape or dtype (expected shape $expectedShape and dtype $targetDType).',
+      );
+    }
+  }
+
+  final result =
+      out ?? NDArray<R>.create(expectedShape, targetDType as DType<R>);
+
+  final aCast = castNDArray(a, targetDType);
+  final bCast = castNDArray(b, targetDType);
+
+  final lenResult = broadcastStack.length;
+  final walkStridesA = List<int>.filled(lenResult, 0);
+  final walkStridesB = List<int>.filled(lenResult, 0);
+  final walkStridesRes = List<int>.filled(lenResult, 0);
+
+  for (var i = 0; i < lenResult; i++) {
+    final resAxis = lenResult - 1 - i;
+    final axisIdxA = stackA.length - 1 - i;
+    final axisIdxB = stackB.length - 1 - i;
+
+    var resAxisIdx = resAxis;
+    if (is3D && resAxis >= axisC) {
+      resAxisIdx = resAxis + 1;
+    }
+
+    if (axisIdxA >= 0) {
+      final origAxisA = axisIdxA < axisA ? axisIdxA : axisIdxA + 1;
+      walkStridesA[resAxis] = (stackA[axisIdxA] == broadcastStack[resAxis])
+          ? aCast.strides[origAxisA]
+          : 0;
+    }
+    if (axisIdxB >= 0) {
+      final origAxisB = axisIdxB < axisB ? axisIdxB : axisIdxB + 1;
+      walkStridesB[resAxis] = (stackB[axisIdxB] == broadcastStack[resAxis])
+          ? bCast.strides[origAxisB]
+          : 0;
+    }
+    walkStridesRes[resAxis] = result.strides[resAxisIdx];
+  }
+
+  final strideVecA = aCast.strides[axisA];
+  final strideVecB = bCast.strides[axisB];
+  final strideVecRes = is3D ? result.strides[axisC] : 0;
+
+  void walk(int dim, int offsetA, int offsetB, int offsetRes) {
+    if (dim == lenResult) {
+      switch (targetDType) {
+        case DType.float64:
+          if (is3D) {
+            s_cross_3d_double(
+              aCast.pointer.cast<ffi.Double>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<ffi.Double>() + offsetB,
+              strideVecB,
+              result.pointer.cast<ffi.Double>() + offsetRes,
+              strideVecRes,
+            );
+          } else {
+            s_cross_2d_double(
+              aCast.pointer.cast<ffi.Double>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<ffi.Double>() + offsetB,
+              strideVecB,
+              result.pointer.cast<ffi.Double>() + offsetRes,
+            );
+          }
+        case DType.float32:
+          if (is3D) {
+            s_cross_3d_float(
+              aCast.pointer.cast<ffi.Float>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<ffi.Float>() + offsetB,
+              strideVecB,
+              result.pointer.cast<ffi.Float>() + offsetRes,
+              strideVecRes,
+            );
+          } else {
+            s_cross_2d_float(
+              aCast.pointer.cast<ffi.Float>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<ffi.Float>() + offsetB,
+              strideVecB,
+              result.pointer.cast<ffi.Float>() + offsetRes,
+            );
+          }
+        case DType.int64:
+          if (is3D) {
+            s_cross_3d_int64(
+              aCast.pointer.cast<ffi.Int64>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<ffi.Int64>() + offsetB,
+              strideVecB,
+              result.pointer.cast<ffi.Int64>() + offsetRes,
+              strideVecRes,
+            );
+          } else {
+            s_cross_2d_int64(
+              aCast.pointer.cast<ffi.Int64>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<ffi.Int64>() + offsetB,
+              strideVecB,
+              result.pointer.cast<ffi.Int64>() + offsetRes,
+            );
+          }
+        case DType.int32:
+          if (is3D) {
+            s_cross_3d_int32(
+              aCast.pointer.cast<ffi.Int32>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<ffi.Int32>() + offsetB,
+              strideVecB,
+              result.pointer.cast<ffi.Int32>() + offsetRes,
+              strideVecRes,
+            );
+          } else {
+            s_cross_2d_int32(
+              aCast.pointer.cast<ffi.Int32>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<ffi.Int32>() + offsetB,
+              strideVecB,
+              result.pointer.cast<ffi.Int32>() + offsetRes,
+            );
+          }
+        case DType.uint8:
+          if (is3D) {
+            s_cross_3d_uint8(
+              aCast.pointer.cast<ffi.Uint8>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<ffi.Uint8>() + offsetB,
+              strideVecB,
+              result.pointer.cast<ffi.Uint8>() + offsetRes,
+              strideVecRes,
+            );
+          } else {
+            s_cross_2d_uint8(
+              aCast.pointer.cast<ffi.Uint8>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<ffi.Uint8>() + offsetB,
+              strideVecB,
+              result.pointer.cast<ffi.Uint8>() + offsetRes,
+            );
+          }
+        case DType.int16:
+          if (is3D) {
+            s_cross_3d_int16(
+              aCast.pointer.cast<ffi.Int16>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<ffi.Int16>() + offsetB,
+              strideVecB,
+              result.pointer.cast<ffi.Int16>() + offsetRes,
+              strideVecRes,
+            );
+          } else {
+            s_cross_2d_int16(
+              aCast.pointer.cast<ffi.Int16>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<ffi.Int16>() + offsetB,
+              strideVecB,
+              result.pointer.cast<ffi.Int16>() + offsetRes,
+            );
+          }
+        case DType.complex128:
+          if (is3D) {
+            s_cross_3d_complex128(
+              aCast.pointer.cast<cpx_t>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<cpx_t>() + offsetB,
+              strideVecB,
+              result.pointer.cast<cpx_t>() + offsetRes,
+              strideVecRes,
+            );
+          } else {
+            s_cross_2d_complex128(
+              aCast.pointer.cast<cpx_t>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<cpx_t>() + offsetB,
+              strideVecB,
+              result.pointer.cast<cpx_t>() + offsetRes,
+            );
+          }
+        case DType.complex64:
+          if (is3D) {
+            s_cross_3d_complex64(
+              aCast.pointer.cast<cpx_f_t>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<cpx_f_t>() + offsetB,
+              strideVecB,
+              result.pointer.cast<cpx_f_t>() + offsetRes,
+              strideVecRes,
+            );
+          } else {
+            s_cross_2d_complex64(
+              aCast.pointer.cast<cpx_f_t>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<cpx_f_t>() + offsetB,
+              strideVecB,
+              result.pointer.cast<cpx_f_t>() + offsetRes,
+            );
+          }
+        case DType.boolean:
+          if (is3D) {
+            s_cross_3d_boolean(
+              aCast.pointer.cast<ffi.Uint8>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<ffi.Uint8>() + offsetB,
+              strideVecB,
+              result.pointer.cast<ffi.Uint8>() + offsetRes,
+              strideVecRes,
+            );
+          } else {
+            s_cross_2d_boolean(
+              aCast.pointer.cast<ffi.Uint8>() + offsetA,
+              strideVecA,
+              bCast.pointer.cast<ffi.Uint8>() + offsetB,
+              strideVecB,
+              result.pointer.cast<ffi.Uint8>() + offsetRes,
+            );
+          }
+      }
+      return;
+    }
+
+    final size = broadcastStack[dim];
+    final strideA = walkStridesA[dim];
+    final strideB = walkStridesB[dim];
+    final strideRes = walkStridesRes[dim];
+
+    for (var i = 0; i < size; i++) {
+      walk(
+        dim + 1,
+        offsetA + i * strideA,
+        offsetB + i * strideB,
+        offsetRes + i * strideRes,
+      );
+    }
+  }
+
+  walk(0, 0, 0, 0);
+
+  if (aCast != a) aCast.dispose();
+  if (bCast != b) bCast.dispose();
+
+  if (out == null) {
+    result.detachToParentScope();
+  }
+  return result;
+}
+
+/// Computes a vector or matrix norm.
+///
+/// Computes one of the standard vector or matrix norms (magnitude) along the specified axis/axes.
+/// The result is always a real-valued floating-point array.
+///
+/// **Preconditions:**
+/// - Input [a] must not be disposed.
+/// - If provided, the recycler [out] must have the correct shape and dtype.
+/// - If provided, [axis] must be within bounds.
+///
+/// **Throws:**
+/// - [StateError] if [a] is disposed.
+/// - [ArgumentError] if [axis] or [ord] combinations are invalid.
+///
+/// **Performance considerations:**
+/// - Uses native vector reductions for Chebyshev, L1, and L2 vector calculations.
+///
+/// **Example:**
+/// {@example /example/linalg_advanced_example.dart lang=dart}
+///
+/// Reference: [NumPy linalg.norm](https://numpy.org/doc/stable/reference/generated/numpy.linalg.norm.html)
+NDArray<double> norm<T>(
+  NDArray<T> a, {
+  dynamic ord,
+  dynamic axis,
+  bool keepdims = false,
+  NDArray<double>? out,
+}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute norm() on a disposed array.');
+  }
+
+  final rank = a.shape.length;
+  List<int> targetAxes;
+  if (axis == null) {
+    if (rank > 2) {
+      throw ArgumentError(
+        'Improper axis specification: If axis is null, input must be 1D or 2D.',
+      );
+    }
+    targetAxes = List<int>.generate(rank, (i) => i);
+  } else if (axis is int) {
+    var normAx = axis;
+    if (normAx < 0) normAx = rank + normAx;
+    if (normAx < 0 || normAx >= rank) {
+      throw ArgumentError('axis $axis is out of bounds.');
+    }
+    targetAxes = [normAx];
+  } else if (axis is List<int>) {
+    if (axis.length != 2) {
+      throw ArgumentError('axis list must contain exactly 1 or 2 elements.');
+    }
+    final normAxes = List<int>.from(axis);
+    for (var i = 0; i < 2; i++) {
+      if (normAxes[i] < 0) normAxes[i] = rank + normAxes[i];
+      if (normAxes[i] < 0 || normAxes[i] >= rank) {
+        throw ArgumentError('axis ${axis[i]} is out of bounds.');
+      }
+    }
+    if (normAxes[0] == normAxes[1]) {
+      throw ArgumentError('axes must be distinct.');
+    }
+    targetAxes = normAxes;
+  } else {
+    throw ArgumentError('axis must be null, int, or List<int>.');
+  }
+
+  final isVecNorm = targetAxes.length == 1;
+  final DType targetDType =
+      (a.dtype == DType.float32 || a.dtype == DType.complex64)
+      ? DType.float32
+      : DType.float64;
+
+  final List<int> expectedShape;
+  if (keepdims) {
+    expectedShape = List<int>.from(a.shape);
+    for (final ax in targetAxes) {
+      expectedShape[ax] = 1;
+    }
+  } else {
+    expectedShape = List<int>.from(a.shape);
+    final sortedAxes = List<int>.from(targetAxes)
+      ..sort((x, y) => y.compareTo(x));
+    for (final ax in sortedAxes) {
+      expectedShape.removeAt(ax);
+    }
+  }
+
+  if (out != null) {
+    if (!listEquals(out.shape, expectedShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype.',
+      );
+    }
+  }
+
+  final result =
+      out ??
+      NDArray<double>.create(expectedShape, targetDType as DType<double>);
+
+  if (targetAxes.length == rank && !keepdims) {
+    // Global norm
+    if (isVecNorm) {
+      final val = _vectorNorm<T>(a, ord, targetDType);
+      result.data[0] = val;
+    } else {
+      final val = _matrixNorm<T>(a, ord, targetDType);
+      result.data[0] = val;
+    }
+    if (out == null) {
+      result.detachToParentScope();
+    }
+    return result;
+  }
+
+  // Reduction along specific axes
+  final List<int> currentCoords = List<int>.filled(a.shape.length, 0);
+
+  final List<int> stackShape = List<int>.from(a.shape);
+  final sortedAxes = List<int>.from(targetAxes)..sort((x, y) => y.compareTo(x));
+  for (final ax in sortedAxes) {
+    stackShape.removeAt(ax);
+  }
+
+  void walkStack(int dim, List<int> coords) {
+    if (dim == stackShape.length) {
+      // Reconstruct original coordinates for slicing
+      var stackIdx = 0;
+      for (var i = 0; i < a.shape.length; i++) {
+        if (!targetAxes.contains(i)) {
+          currentCoords[i] = coords[stackIdx++];
+        }
+      }
+
+      final NDArray<T> slice;
+      if (isVecNorm) {
+        final ax = targetAxes[0];
+        final len = a.shape[ax];
+        var offset = a.offsetElements;
+        for (var i = 0; i < a.shape.length; i++) {
+          if (i != ax) {
+            offset += currentCoords[i] * a.strides[i];
+          }
+        }
+        slice = NDArray.view(
+          a,
+          shape: [len],
+          strides: [a.strides[ax]],
+          offsetElements: offset,
+        );
+      } else {
+        final ax0 = targetAxes[0];
+        final ax1 = targetAxes[1];
+        final len0 = a.shape[ax0];
+        final len1 = a.shape[ax1];
+        var offset = a.offsetElements;
+        for (var i = 0; i < a.shape.length; i++) {
+          if (i != ax0 && i != ax1) {
+            offset += currentCoords[i] * a.strides[i];
+          }
+        }
+        slice = NDArray.view(
+          a,
+          shape: [len0, len1],
+          strides: [a.strides[ax0], a.strides[ax1]],
+          offsetElements: offset,
+        );
+      }
+
+      final double val;
+      if (isVecNorm) {
+        val = _vectorNorm<T>(slice, ord, targetDType);
+      } else {
+        val = _matrixNorm<T>(slice, ord, targetDType);
+      }
+      slice.dispose();
+
+      // Calculate dest flat index
+      var destOffset = result.offsetElements;
+      if (keepdims) {
+        for (var i = 0; i < result.shape.length; i++) {
+          if (!targetAxes.contains(i)) {
+            destOffset += currentCoords[i] * result.strides[i];
+          }
+        }
+      } else {
+        for (var i = 0; i < result.shape.length; i++) {
+          destOffset += coords[i] * result.strides[i];
+        }
+      }
+      result.data[destOffset] = val;
+      return;
+    }
+
+    final limit = stackShape[dim];
+    for (var i = 0; i < limit; i++) {
+      coords[dim] = i;
+      walkStack(dim + 1, coords);
+    }
+  }
+
+  walkStack(0, List<int>.filled(stackShape.length, 0));
+
+  if (out == null) {
+    result.detachToParentScope();
+  }
+  return result;
+}
+
+double _vectorNorm<T>(NDArray<T> a, dynamic ord, DType targetDType) {
+  final needsCast = a.dtype != targetDType;
+  final castedA = needsCast ? castNDArray(a, targetDType) : a;
+
+  final size = castedA.size;
+  final stride = castedA.strides.isEmpty ? 1 : castedA.strides[0];
+
+  try {
+    if (ord == null || ord == 2) {
+      double sum;
+      if (targetDType == DType.float32) {
+        if (castedA.dtype.isComplex) {
+          sum = r_norm_l2_complex64(castedA.pointer.cast(), stride, size);
+        } else {
+          sum = r_norm_l2_float(castedA.pointer.cast(), stride, size);
+        }
+      } else {
+        if (castedA.dtype.isComplex) {
+          sum = r_norm_l2_complex128(castedA.pointer.cast(), stride, size);
+        } else {
+          sum = r_norm_l2_double(castedA.pointer.cast(), stride, size);
+        }
+      }
+      return math.sqrt(sum);
+    } else if (ord == 1) {
+      if (targetDType == DType.float32) {
+        if (castedA.dtype.isComplex) {
+          return r_norm_l1_complex64(castedA.pointer.cast(), stride, size);
+        } else {
+          return r_norm_l1_float(castedA.pointer.cast(), stride, size);
+        }
+      } else {
+        if (castedA.dtype.isComplex) {
+          return r_norm_l1_complex128(castedA.pointer.cast(), stride, size);
+        } else {
+          return r_norm_l1_double(castedA.pointer.cast(), stride, size);
+        }
+      }
+    } else if (ord == double.infinity) {
+      if (targetDType == DType.float32) {
+        if (castedA.dtype.isComplex) {
+          return r_norm_inf_complex64(castedA.pointer.cast(), stride, size);
+        } else {
+          return r_norm_inf_float(castedA.pointer.cast(), stride, size);
+        }
+      } else {
+        if (castedA.dtype.isComplex) {
+          return r_norm_inf_complex128(castedA.pointer.cast(), stride, size);
+        } else {
+          return r_norm_inf_double(castedA.pointer.cast(), stride, size);
+        }
+      }
+    } else if (ord == double.negativeInfinity) {
+      if (targetDType == DType.float32) {
+        if (castedA.dtype.isComplex) {
+          return r_norm_neg_inf_complex64(castedA.pointer.cast(), stride, size);
+        } else {
+          return r_norm_neg_inf_float(castedA.pointer.cast(), stride, size);
+        }
+      } else {
+        if (castedA.dtype.isComplex) {
+          return r_norm_neg_inf_complex128(
+            castedA.pointer.cast(),
+            stride,
+            size,
+          );
+        } else {
+          return r_norm_neg_inf_double(castedA.pointer.cast(), stride, size);
+        }
+      }
+    } else if (ord is num) {
+      double sum;
+      final p = ord.toDouble();
+      if (targetDType == DType.float32) {
+        if (castedA.dtype.isComplex) {
+          sum = r_norm_lp_complex64(castedA.pointer.cast(), stride, size, p);
+        } else {
+          sum = r_norm_lp_float(castedA.pointer.cast(), stride, size, p);
+        }
+      } else {
+        if (castedA.dtype.isComplex) {
+          sum = r_norm_lp_complex128(castedA.pointer.cast(), stride, size, p);
+        } else {
+          sum = r_norm_lp_double(castedA.pointer.cast(), stride, size, p);
+        }
+      }
+      return math.pow(sum, 1.0 / p).toDouble();
+    } else {
+      throw ArgumentError('Invalid vector norm order: $ord');
+    }
+  } finally {
+    if (needsCast) castedA.dispose();
+  }
+}
+
+double _matrixNorm<T>(NDArray<T> a, dynamic ord, DType targetDType) {
+  final rows = a.shape[0];
+  final cols = a.shape[1];
+
+  if (ord == null || ord == 'fro') {
+    final flat = a.ravel();
+    final res = _vectorNorm(flat, 2, targetDType);
+    flat.dispose();
+    return res;
+  } else if (ord == 1) {
+    var maxColSum = 0.0;
+    for (var c = 0; c < cols; c++) {
+      final colSlice = NDArray.view(
+        a,
+        shape: [rows],
+        strides: [a.strides[0]],
+        offsetElements: c * a.strides[1],
+      );
+      final sum = _vectorNorm(colSlice, 1, targetDType);
+      if (sum > maxColSum) maxColSum = sum;
+      colSlice.dispose();
+    }
+    return maxColSum;
+  } else if (ord == -1) {
+    double? minColSum;
+    for (var c = 0; c < cols; c++) {
+      final colSlice = NDArray.view(
+        a,
+        shape: [rows],
+        strides: [a.strides[0]],
+        offsetElements: c * a.strides[1],
+      );
+      final sum = _vectorNorm(colSlice, 1, targetDType);
+      if (minColSum == null || sum < minColSum) minColSum = sum;
+      colSlice.dispose();
+    }
+    return minColSum ?? 0.0;
+  } else if (ord == double.infinity) {
+    var maxRowSum = 0.0;
+    for (var r = 0; r < rows; r++) {
+      final rowSlice = NDArray.view(
+        a,
+        shape: [cols],
+        strides: [a.strides[1]],
+        offsetElements: r * a.strides[0],
+      );
+      final sum = _vectorNorm(rowSlice, 1, targetDType);
+      if (sum > maxRowSum) maxRowSum = sum;
+      rowSlice.dispose();
+    }
+    return maxRowSum;
+  } else if (ord == double.negativeInfinity) {
+    double? minRowSum;
+    for (var r = 0; r < rows; r++) {
+      final rowSlice = NDArray.view(
+        a,
+        shape: [cols],
+        strides: [a.strides[1]],
+        offsetElements: r * a.strides[0],
+      );
+      final sum = _vectorNorm(rowSlice, 1, targetDType);
+      if (minRowSum == null || sum < minRowSum) minRowSum = sum;
+      rowSlice.dispose();
+    }
+    return minRowSum ?? 0.0;
+  } else if (ord == 2 || ord == -2) {
+    final castedA =
+        (a.dtype == DType.float64 ||
+            a.dtype == DType.float32 ||
+            a.dtype.isComplex)
+        ? a
+        : castNDArray(a, DType.float64);
+    try {
+      switch (castedA.dtype) {
+        case DType.complex128:
+        case DType.complex64:
+          final svdRes = svd(castedA as NDArray<Complex>);
+          final s = svdRes.S;
+          final val = ord == 2 ? s.data[0] : s.data[s.data.length - 1];
+          svdRes.dispose();
+          return val;
+        case DType.float64:
+        case DType.float32:
+          final svdRes = svd(castedA as NDArray<double>);
+          final s = svdRes.S;
+          final val = ord == 2 ? s.data[0] : s.data[s.data.length - 1];
+          svdRes.dispose();
+          return (val as num).toDouble();
+        default:
+          throw UnimplementedError();
+      }
+    } finally {
+      if (castedA != a) castedA.dispose();
+    }
+  } else {
+    throw ArgumentError('Invalid matrix norm order: $ord');
+  }
+}
+
+extension QRRecordDispose on ({NDArray Q, NDArray R}) {
+  void dispose() {
+    Q.dispose();
+    R.dispose();
+  }
+}
+
+extension SVDRecordDispose on ({NDArray U, NDArray S, NDArray Vh}) {
+  void dispose() {
+    U.dispose();
+    S.dispose();
+    Vh.dispose();
+  }
+}
+
+/// Result of a least-squares solver [lstsq].
+///
+/// Reference: [NumPy linalg.lstsq](https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html)
+final class LstsqResult<T> {
+  /// Least-squares solution.
+  ///
+  /// If the input [b] is 1-dimensional, [x] has shape `[N]`.
+  /// If [b] is 2-dimensional, [x] has shape `[N, K]`.
+  final NDArray<T> x;
+
+  /// Sums of squared residuals.
+  ///
+  /// Squared Euclidean 2-norm for each column in $b - a x$.
+  /// If the input [b] is 1-dimensional, [residuals] has shape `[1]`.
+  /// If [b] is 2-dimensional, [residuals] has shape `[K]`.
+  ///
+  /// **Note:** Residuals are only computed if the first dimension of the input matrix $a$
+  /// is strictly greater than its second dimension ($M > N$) and the effective rank is $N$.
+  /// Otherwise, it is returned as an empty array of shape `[0]`.
+  final NDArray<double> residuals;
+
+  /// Effective rank of the input matrix $a$.
+  final int rank;
+
+  /// Singular values of the input matrix $a$.
+  ///
+  /// Stored in descending order of magnitude.
+  /// Shape is `[min(M, N)]`.
+  final NDArray<double> s;
+
+  /// Creates a new [LstsqResult] instance.
+  LstsqResult({
+    required this.x,
+    required this.residuals,
+    required this.rank,
+    required this.s,
+  });
+}
+
+/// Computes the least-squares solution to a linear matrix equation $a x = b$.
+///
+/// Solves the equation $a x = b$ by computing a vector/matrix $x$ that minimizes the
+/// Euclidean 2-norm $\|b - a x\|_2^2$.
+///
+/// Natively offloads to LAPACK divide-and-conquer SVD-based least-squares solvers
+/// (`dgelsd`, `sgelsd`, `zgelsd`, `cgelsd`) depending on precision.
+///
+/// The optional parameter [rcond] acts as the cut-off ratio for small singular values.
+/// Singular values smaller than `rcond * largest_singular_value` are treated as zero.
+/// If [rcond] is omitted or null, a negative value is passed to the LAPACK solver,
+/// which falls back to using the machine precision to determine the effective rank.
+///
+/// The optional recycler parameter [out] allows reusing an existing array for the output,
+/// avoiding new memory allocation.
+///
+/// **Preconditions:**
+/// - Input matrix [a] must be 2-dimensional of shape `[M, N]`.
+/// - Input array [b] must be 1-dimensional of shape `[M]` or 2-dimensional of shape `[M, K]`.
+/// - The first dimension of [b] must exactly match the first dimension of [a] ($M$).
+/// - Input arrays [a] and [b] must have the matching floating-point or complex [DType]. Integers or boolean
+///   arrays are not supported.
+/// - If provided, the recycler [out] must have the shape `[N]` (if [b] is 1D) or `[N, K]` (if [b] is 2D),
+///   and its dtype must exactly match the dtype of [a] and [b].
+///
+/// **Throws:**
+/// - [StateError] if [a] or [b] is disposed.
+/// - [ArgumentError] if [a] or [b] does not have a floating-point or complex DType.
+/// - [ArgumentError] if [b]'s DType does not match [a]'s DType.
+/// - [ArgumentError] if [a] is not 2D, or [b] is not 1D or 2D.
+/// - [ArgumentError] if [b]'s first dimension does not match [a]'s first dimension.
+/// - [StateError] if [out] is provided but disposed.
+/// - [ArgumentError] if [out] has mismatched shape or dtype.
+/// - [StateError] if native FFI memory allocation fails or the SVD solver fails to converge.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(M N \min(M, N))$ operations executed natively.
+///
+/// **Example:**
+/// {@example /example/linalg_lstsq_example.dart lang=dart}
+///
+/// Reference: [NumPy linalg.lstsq](https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html)
+LstsqResult<T> lstsq<T>(
+  NDArray<T> a,
+  NDArray<T> b, {
+  double? rcond,
+  NDArray<T>? out,
+}) {
+  if (a.isDisposed || b.isDisposed) {
+    throw StateError('Cannot execute lstsq() on a disposed array.');
+  }
+  if (!a.dtype.isFloating && !a.dtype.isComplex) {
+    throw ArgumentError(
+      'Input array a must have a floating-point or complex DType (was ${a.dtype}).',
+    );
+  }
+  if (a.dtype != b.dtype) {
+    throw ArgumentError(
+      'Input array b must have the matching DType as a (expected ${a.dtype}, was ${b.dtype}).',
+    );
+  }
+  if (a.shape.length != 2) {
+    throw ArgumentError(
+      'Input matrix a must be 2-dimensional (was shape ${a.shape}).',
+    );
+  }
+  if (b.shape.length != 1 && b.shape.length != 2) {
+    throw ArgumentError(
+      'Input right-hand side b must be 1D or 2D (was shape ${b.shape}).',
+    );
+  }
+  final m = a.shape[0];
+  final n = a.shape[1];
+  if (b.shape[0] != m) {
+    throw ArgumentError(
+      'First dimension of b (${b.shape[0]}) must match first dimension of a ($m).',
+    );
+  }
+
+  final nrhs = b.shape.length > 1 ? b.shape[1] : 1;
+
+  if (out != null) {
+    if (out.isDisposed) {
+      throw StateError('Cannot write to a disposed out buffer.');
+    }
+    final expectedXShape = b.shape.length > 1 ? [n, nrhs] : [n];
+    if (!listEquals(out.shape, expectedXShape) || out.dtype != a.dtype) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  // Create a contiguous copy of `a` (overwrite-safe)
+  final aCopy = a.copy();
+
+  // Row-major LAPACKE_gelsd requires b array size to be max(m, n) * nrhs
+  final maxMN = m > n ? m : n;
+  final bCopyShape = b.shape.length > 1 ? [maxMN, nrhs] : [maxMN];
+  final bCopy = NDArray<T>.zeros(bCopyShape, a.dtype);
+
+  // Copy b into bCopy
+  final byteCount = b.data.length * a.dtype.byteWidth;
+  if (b.isContiguous) {
+    ffi.Pointer.fromAddress(bCopy.pointer.address)
+        .cast<ffi.Uint8>()
+        .asTypedList(byteCount)
+        .setAll(
+          0,
+          ffi.Pointer.fromAddress(
+            b.pointer.address,
+          ).cast<ffi.Uint8>().asTypedList(byteCount),
+        );
+  } else {
+    final bContig = b.copy();
+    ffi.Pointer.fromAddress(bCopy.pointer.address)
+        .cast<ffi.Uint8>()
+        .asTypedList(byteCount)
+        .setAll(
+          0,
+          ffi.Pointer.fromAddress(
+            bContig.pointer.address,
+          ).cast<ffi.Uint8>().asTypedList(byteCount),
+        );
+    bContig.dispose();
+  }
+
+  final minMN = m < n ? m : n;
+  // Singular values s is always real
+  final sDType = (a.dtype == DType.complex64 || a.dtype == DType.float32)
+      ? DType.float32
+      : DType.float64;
+  final s = NDArray<double>.zeros([minMN], sDType as dynamic);
+
+  final marker = ScratchArena.marker;
+  final rankPtr = ScratchArena.allocate<ffi.Int>(4);
+  final resolvedRcond = rcond ?? -1.0; // negative rcond uses machine precision
+
+  try {
+    int info;
+    switch (a.dtype) {
+      case DType.float64:
+        info = LAPACKE_dgelsd(
+          101, // ROW_MAJOR
+          m,
+          n,
+          nrhs,
+          aCopy.pointer.cast<ffi.Double>(),
+          n,
+          bCopy.pointer.cast<ffi.Double>(),
+          nrhs,
+          s.pointer.cast<ffi.Double>(),
+          resolvedRcond,
+          rankPtr,
+        );
+      case DType.float32:
+        info = LAPACKE_sgelsd(
+          101,
+          m,
+          n,
+          nrhs,
+          aCopy.pointer.cast<ffi.Float>(),
+          n,
+          bCopy.pointer.cast<ffi.Float>(),
+          nrhs,
+          s.pointer.cast<ffi.Float>(),
+          resolvedRcond,
+          rankPtr,
+        );
+      case DType.complex128:
+        info = LAPACKE_zgelsd(
+          101,
+          m,
+          n,
+          nrhs,
+          aCopy.pointer.cast<ffi.Double>(),
+          n,
+          bCopy.pointer.cast<ffi.Double>(),
+          nrhs,
+          s.pointer.cast<ffi.Double>(),
+          resolvedRcond,
+          rankPtr,
+        );
+      case DType.complex64:
+        info = LAPACKE_cgelsd(
+          101,
+          m,
+          n,
+          nrhs,
+          aCopy.pointer.cast<ffi.Float>(),
+          n,
+          bCopy.pointer.cast<ffi.Float>(),
+          nrhs,
+          s.pointer.cast<ffi.Float>(),
+          resolvedRcond,
+          rankPtr,
+        );
+      default:
+        throw UnimplementedError(
+          'Unsupported target DType for lstsq: ${a.dtype}',
+        );
+    }
+
+    if (info < 0) {
+      throw ArgumentError('Illegal value in call to LAPACKE gelsd: $info');
+    }
+    if (info > 0) {
+      throw StateError(
+        'The SVD algorithm in LAPACKE gelsd failed to converge ($info).',
+      );
+    }
+
+    final rank = rankPtr.value;
+
+    // Extract solution x: first n rows of bCopy
+    final xShape = b.shape.length > 1 ? [n, nrhs] : [n];
+    final x = out ?? NDArray<T>.zeros(xShape, a.dtype);
+    final elementsToCopy = n * nrhs;
+    x.data.setRange(0, elementsToCopy, bCopy.data.sublist(0, elementsToCopy));
+
+    // Extract residuals: sum of squares of elements from row n to m-1 for each column
+    final NDArray<double> residuals;
+    if (m > n && rank == n) {
+      final resShape = b.shape.length > 1 ? [nrhs] : [1];
+      residuals = NDArray<double>.zeros(resShape, sDType as dynamic);
+      if (a.dtype.isComplex) {
+        for (var j = 0; j < nrhs; j++) {
+          var sum = 0.0;
+          for (var i = n; i < m; i++) {
+            final complexVal = bCopy.data[i * nrhs + j] as Complex;
+            sum +=
+                complexVal.real * complexVal.real +
+                complexVal.imag * complexVal.imag;
+          }
+          residuals.data[j] = sum;
+        }
+      } else {
+        for (var j = 0; j < nrhs; j++) {
+          var sum = 0.0;
+          for (var i = n; i < m; i++) {
+            final val = bCopy.data[i * nrhs + j] as num;
+            sum += val * val;
+          }
+          residuals.data[j] = sum;
+        }
+      }
+    } else {
+      residuals = NDArray<double>.zeros([0], sDType as dynamic);
+    }
+
+    // Attach to scope or return
+    if (out == null) {
+      x.detachToParentScope();
+    }
+    residuals.detachToParentScope();
+    s.detachToParentScope();
+
+    return LstsqResult<T>(x: x, residuals: residuals, rank: rank, s: s);
+  } finally {
+    ScratchArena.reset(marker);
+    aCopy.dispose();
+    bCopy.dispose();
+  }
+}
