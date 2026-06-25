@@ -39,3 +39,7 @@ dart tool/generate_coverage.dart
 
 ## License
 This workspace is licensed under the **[Apache License, Version 2.0](file:///usr/local/google/home/sigurdm/projects/math/LICENSE)**.
+
+## Disclaimer
+
+This is not an official Google product.
