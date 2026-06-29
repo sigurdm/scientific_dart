@@ -6,8 +6,8 @@ import 'package:ndarray/ndarray.dart';
 void _divisionWorker(SendPort sendPort) {
   NDArray.scope(() {
     try {
-      final a = NDArray.scalar(1, DType.int64);
-      final b = NDArray.scalar(0, DType.int64);
+      final a = NDArray.scalar(1, dtype: DType.int64);
+      final b = NDArray.scalar(0, dtype: DType.int64);
       floor_divide(
         a,
         b,
@@ -27,8 +27,8 @@ void _divisionWorker(SendPort sendPort) {
 void _normalWorker(SendPort sendPort) {
   NDArray.scope(() {
     try {
-      final a = NDArray.scalar(4, DType.int64);
-      final b = NDArray.scalar(2, DType.int64);
+      final a = NDArray.scalar(4, dtype: DType.int64);
+      final b = NDArray.scalar(2, dtype: DType.int64);
       final res = floor_divide(a, b);
       if (res.scalar == 2) {
         sendPort.send('OK');

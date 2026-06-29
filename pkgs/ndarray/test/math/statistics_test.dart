@@ -1081,7 +1081,7 @@ void main() {
     test('0D x (scalar) contiguous', () {
       final xp = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
       final fp = NDArray.fromList([10.0, 20.0, 40.0], [3], DType.float64);
-      final x = NDArray<Float64>.scalar(Float64(1.5), DType.float64);
+      final x = NDArray<Float64>.scalar(Float64(1.5), dtype: DType.float64);
 
       final res = interp(x, xp, fp);
 
@@ -1112,7 +1112,7 @@ void main() {
         Slice(start: 0, stop: 5, step: 2),
       ]); // [10.0, 20.0, 40.0]
 
-      final x = NDArray<Float64>.scalar(Float64(1.5), DType.float64);
+      final x = NDArray<Float64>.scalar(Float64(1.5), dtype: DType.float64);
 
       final res = interp(x, xp, fp);
 
@@ -1132,14 +1132,20 @@ void main() {
         NDArray.scope(() {
           final rate = NDArray<Float64>.scalar(
             Float64(0.05 / 12),
-            DType.float64,
+            dtype: DType.float64,
           );
           final nper = NDArray<Float64>.scalar(
             Float64(10.0 * 12),
-            DType.float64,
+            dtype: DType.float64,
           );
-          final pmt = NDArray<Float64>.scalar(Float64(-100.0), DType.float64);
-          final pvVal = NDArray<Float64>.scalar(Float64(-100.0), DType.float64);
+          final pmt = NDArray<Float64>.scalar(
+            Float64(-100.0),
+            dtype: DType.float64,
+          );
+          final pvVal = NDArray<Float64>.scalar(
+            Float64(-100.0),
+            dtype: DType.float64,
+          );
 
           final res = fv(rate, nper, pmt, pvVal);
           expect(res.shape, <int>[]);
@@ -1150,10 +1156,22 @@ void main() {
 
       test('Rate = 0 case', () {
         NDArray.scope(() {
-          final rate = NDArray<Float64>.scalar(Float64(0.0), DType.float64);
-          final nper = NDArray<Float64>.scalar(Float64(120.0), DType.float64);
-          final pmt = NDArray<Float64>.scalar(Float64(-100.0), DType.float64);
-          final pvVal = NDArray<Float64>.scalar(Float64(-100.0), DType.float64);
+          final rate = NDArray<Float64>.scalar(
+            Float64(0.0),
+            dtype: DType.float64,
+          );
+          final nper = NDArray<Float64>.scalar(
+            Float64(120.0),
+            dtype: DType.float64,
+          );
+          final pmt = NDArray<Float64>.scalar(
+            Float64(-100.0),
+            dtype: DType.float64,
+          );
+          final pvVal = NDArray<Float64>.scalar(
+            Float64(-100.0),
+            dtype: DType.float64,
+          );
 
           final res = fv(rate, nper, pmt, pvVal);
           // fv = - (pv + pmt * nper) = - (-100 + -100 * 120) = - (-12100) = 12100
@@ -1170,10 +1188,16 @@ void main() {
           );
           final nper = NDArray<Float64>.scalar(
             Float64(10.0 * 12),
-            DType.float64,
+            dtype: DType.float64,
           );
-          final pmt = NDArray<Float64>.scalar(Float64(-100.0), DType.float64);
-          final pvVal = NDArray<Float64>.scalar(Float64(-100.0), DType.float64);
+          final pmt = NDArray<Float64>.scalar(
+            Float64(-100.0),
+            dtype: DType.float64,
+          );
+          final pvVal = NDArray<Float64>.scalar(
+            Float64(-100.0),
+            dtype: DType.float64,
+          );
 
           final res = fv(rate, nper, pmt, pvVal);
           expect(res.shape, [3]);
@@ -1187,14 +1211,20 @@ void main() {
         NDArray.scope(() {
           final rate = NDArray<Float64>.scalar(
             Float64(0.05 / 12),
-            DType.float64,
+            dtype: DType.float64,
           );
           final nper = NDArray<Float64>.scalar(
             Float64(10.0 * 12),
-            DType.float64,
+            dtype: DType.float64,
           );
-          final pmt = NDArray<Float64>.scalar(Float64(-100.0), DType.float64);
-          final pvVal = NDArray<Float64>.scalar(Float64(-100.0), DType.float64);
+          final pmt = NDArray<Float64>.scalar(
+            Float64(-100.0),
+            dtype: DType.float64,
+          );
+          final pvVal = NDArray<Float64>.scalar(
+            Float64(-100.0),
+            dtype: DType.float64,
+          );
 
           final resEnd = fv(rate, nper, pmt, pvVal, when: 'end');
           final resBegin = fv(rate, nper, pmt, pvVal, when: 'begin');
@@ -1210,14 +1240,20 @@ void main() {
         NDArray.scope(() {
           final rate = NDArray<Float64>.scalar(
             Float64(0.05 / 12),
-            DType.float64,
+            dtype: DType.float64,
           );
           final nper = NDArray<Float64>.scalar(
             Float64(10.0 * 12),
-            DType.float64,
+            dtype: DType.float64,
           );
-          final pmt = NDArray<Float64>.scalar(Float64(-100.0), DType.float64);
-          final pvVal = NDArray<Float64>.scalar(Float64(-100.0), DType.float64);
+          final pmt = NDArray<Float64>.scalar(
+            Float64(-100.0),
+            dtype: DType.float64,
+          );
+          final pvVal = NDArray<Float64>.scalar(
+            Float64(-100.0),
+            dtype: DType.float64,
+          );
           final out = NDArray<Float64>.zeros([], DType.float64);
 
           final res = fv(rate, nper, pmt, pvVal, out: out);
@@ -1232,16 +1268,19 @@ void main() {
         NDArray.scope(() {
           final rate = NDArray<Float64>.scalar(
             Float64(0.05 / 12),
-            DType.float64,
+            dtype: DType.float64,
           );
           final nper = NDArray<Float64>.scalar(
             Float64(10.0 * 12),
-            DType.float64,
+            dtype: DType.float64,
           );
-          final pmt = NDArray<Float64>.scalar(Float64(-100.0), DType.float64);
+          final pmt = NDArray<Float64>.scalar(
+            Float64(-100.0),
+            dtype: DType.float64,
+          );
           final fvVal = NDArray<Float64>.scalar(
             Float64(15692.92889433575),
-            DType.float64,
+            dtype: DType.float64,
           );
 
           final res = pv(rate, nper, pmt, fvVal);
@@ -1252,12 +1291,21 @@ void main() {
 
       test('Rate = 0 case', () {
         NDArray.scope(() {
-          final rate = NDArray<Float64>.scalar(Float64(0.0), DType.float64);
-          final nper = NDArray<Float64>.scalar(Float64(120.0), DType.float64);
-          final pmt = NDArray<Float64>.scalar(Float64(-100.0), DType.float64);
+          final rate = NDArray<Float64>.scalar(
+            Float64(0.0),
+            dtype: DType.float64,
+          );
+          final nper = NDArray<Float64>.scalar(
+            Float64(120.0),
+            dtype: DType.float64,
+          );
+          final pmt = NDArray<Float64>.scalar(
+            Float64(-100.0),
+            dtype: DType.float64,
+          );
           final fvVal = NDArray<Float64>.scalar(
             Float64(12100.0),
-            DType.float64,
+            dtype: DType.float64,
           );
 
           final res = pv(rate, nper, pmt, fvVal);
@@ -1275,12 +1323,15 @@ void main() {
           );
           final nper = NDArray<Float64>.scalar(
             Float64(10.0 * 12),
-            DType.float64,
+            dtype: DType.float64,
           );
-          final pmt = NDArray<Float64>.scalar(Float64(-100.0), DType.float64);
+          final pmt = NDArray<Float64>.scalar(
+            Float64(-100.0),
+            dtype: DType.float64,
+          );
           final fvVal = NDArray<Float64>.scalar(
             Float64(15692.93),
-            DType.float64,
+            dtype: DType.float64,
           );
 
           final res = pv(rate, nper, pmt, fvVal);
@@ -1295,7 +1346,10 @@ void main() {
     group('Net Present Value (npv) Tests', () {
       test('1D cash flows, scalar rate', () {
         NDArray.scope(() {
-          final rate = NDArray<Float64>.scalar(Float64(0.08), DType.float64);
+          final rate = NDArray<Float64>.scalar(
+            Float64(0.08),
+            dtype: DType.float64,
+          );
           final cashflows = NDArray.fromList(
             [-40000.0, 5000.0, 8000.0, 12000.0, 30000.0],
             [5],

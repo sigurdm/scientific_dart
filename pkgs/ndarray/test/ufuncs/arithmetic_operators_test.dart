@@ -1387,6 +1387,9 @@ void main() {
 
       final badOut = NDArray.create([2], DType.float32);
       expect(() => power(a, b, out: badOut), throwsArgumentError);
+
+      final diffDType = NDArray.fromList([2, 3], [2], DType.int64);
+      expect(() => power<num>(a, diffDType), throwsArgumentError);
     });
 
     test('integer power contiguous and strided', () {

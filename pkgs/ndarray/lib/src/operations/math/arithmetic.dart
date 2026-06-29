@@ -125,8 +125,6 @@ NDArray<R> sqrt<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   return result;
 }
 
-// --- JETSKI ADDITIONS: ML and high-precision helper universal functions ---
-
 Complex _complexExpm1(Complex z) {
   final a = z.real;
   final b = z.imag;
@@ -1590,178 +1588,153 @@ NDArray<T> positive<T>(NDArray<T> a, {NDArray<T>? out}) {
   return result;
 }
 
-NDArray<R> power<Ta, Tb, R>(NDArray<Ta> x1, NDArray<Tb> x2, {NDArray<R>? out}) {
+/// First array elements raised to powers from second array elements, element-wise.
+///
+/// Raise each base in [x1] to the positionally corresponding power in [x2].
+/// Both [x1] and [x2] must have the same [DType].
+///
+/// Preconditions:
+/// - [x1] and [x2] must not be disposed.
+/// - [x1] and [x2] must have matching [DType].
+/// - [x1] and [x2] shapes must be broadcastable.
+///
+/// Parameters:
+/// - [x1]: First input array of bases.
+/// - [x2]: Second input array of exponents. Must have same [DType] as [x1].
+/// - [out]: Optional output array buffer to store results.
+///
+/// Throws:
+/// - [StateError] if [x1], [x2], or [out] is disposed.
+/// - [ArgumentError] if [x1] and [x2] have different dtypes.
+/// - [ArgumentError] if [out] has incompatible shape or dtype.
+/// - [ArgumentError] if integer bases are raised to negative integer powers.
+///
+/// Performance Considerations:
+/// - Contiguous arrays leverage vector sweeps (`v_pow_*`).
+/// - Strided broadcasting uses multi-dimensional FFI iterators (`s_pow_*`).
+NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
   if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute power() on a disposed array.');
   }
+  if (x1.dtype != x2.dtype) {
+    throw ArgumentError(
+      'Operands x1 and x2 must have the same dtype for power (was ${x1.dtype} and ${x2.dtype}). Perform an explicit cast first.',
+    );
+  }
   final broadcastResult = broadcast(x1, x2);
   final shape = broadcastResult.shape;
-  final targetDType = resolveDType(x1.dtype, x2.dtype);
+  final dtype = x1.dtype;
 
-  if (targetDType.isInteger) {
-    if (x2.dtype == DType.int64 ||
-        x2.dtype == DType.int32 ||
-        x2.dtype == DType.int16) {
-      final x2Num = x2 as NDArray<num>;
-      if (x2Num.rank == 0) {
-        if (x2Num.scalar < 0) {
-          throw ArgumentError(
-            'Integers to negative integer powers are not allowed.',
-          );
-        }
-      } else {
-        if (min(x2Num).scalar < 0) {
-          throw ArgumentError(
-            'Integers to negative integer powers are not allowed.',
-          );
-        }
+  if (dtype.isInteger) {
+    final x2Num = x2 as NDArray<num>;
+    if (x2Num.rank == 0) {
+      if (x2Num.scalar < 0) {
+        throw ArgumentError(
+          'Integers to negative integer powers are not allowed.',
+        );
+      }
+    } else {
+      if (min(x2Num).scalar < 0) {
+        throw ArgumentError(
+          'Integers to negative integer powers are not allowed.',
+        );
       }
     }
   }
 
-  final NDArray<R> result;
+  final NDArray<T> result;
   if (out != null) {
-    if (!listEquals(out.shape, shape) || out.dtype != targetDType) {
+    if (!listEquals(out.shape, shape) || out.dtype != dtype) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype for power.',
       );
     }
     result = out;
   } else {
-    result = NDArray<R>.create(shape, targetDType as DType<R>);
+    result = NDArray<T>.create(shape, dtype);
   }
 
-  if (targetDType == DType.complex128 || targetDType == DType.complex64) {
-    final aCpx = (x1.dtype == DType.complex128 || x1.dtype == DType.complex64)
-        ? x1
-        : NDArray<Complex>.fromList(
-            x1.data.map((e) => Complex((e as num).toDouble(), 0.0)).toList(),
-            x1.shape,
-            DType.complex128,
-          );
-    final bCpx = (x2.dtype == DType.complex128 || x2.dtype == DType.complex64)
-        ? x2
-        : NDArray<Complex>.fromList(
-            x2.data.map((e) => Complex((e as num).toDouble(), 0.0)).toList(),
-            x2.shape,
-            DType.complex128,
-          );
-    if (listEquals(x1.shape, x2.shape) &&
-        x1.isContiguous &&
-        x2.isContiguous &&
-        result.isContiguous) {
-      if (aCpx.dtype == DType.complex128) {
-        v_pow_complex128(
-          aCpx.pointer.cast(),
-          bCpx.pointer.cast(),
-          result.pointer.cast(),
-          aCpx.size,
-        );
-        return result;
-      } else {
-        v_pow_complex64(
-          aCpx.pointer.cast(),
-          bCpx.pointer.cast(),
-          result.pointer.cast(),
-          aCpx.size,
-        );
-        return result;
-      }
-    } else {
-      final rank = shape.length;
-      final marker = ScratchArena.marker;
-      final cShape = ScratchArena.copyInts(shape);
-      final cStridesA = ScratchArena.copyInts(broadcastResult.stridesA);
-      final cStridesB = ScratchArena.copyInts(broadcastResult.stridesB);
-      final cStridesRes = ScratchArena.copyInts(result.strides);
-      try {
-        if (aCpx.dtype == DType.complex128) {
-          s_pow_complex128(
-            aCpx.pointer.cast(),
-            cStridesA,
-            bCpx.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-          );
-          return result;
-        } else {
-          s_pow_complex64(
-            aCpx.pointer.cast(),
-            cStridesA,
-            bCpx.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-          );
-          return result;
-        }
-      } finally {
-        ScratchArena.reset(marker);
-      }
-    }
-  }
-
-  if (x1.isContiguous &&
+  final isContig =
+      x1.isContiguous &&
       x2.isContiguous &&
       listEquals(x1.shape, x2.shape) &&
-      result.isContiguous) {
-    if (targetDType == DType.float64) {
-      v_pow_double(
-        x1.pointer.cast(),
-        x2.pointer.cast(),
-        result.pointer.cast(),
-        x1.size,
-      );
-      return result;
-    } else if (targetDType == DType.float32) {
-      v_pow_float(
-        x1.pointer.cast(),
-        x2.pointer.cast(),
-        result.pointer.cast(),
-        x1.size,
-      );
-      return result;
-    } else if (targetDType == DType.int64) {
-      v_pow_int64(
-        x1.pointer.cast(),
-        x2.pointer.cast(),
-        result.pointer.cast(),
-        x1.size,
-      );
-      return result;
-    } else if (targetDType == DType.int32) {
-      v_pow_int32(
-        x1.pointer.cast(),
-        x2.pointer.cast(),
-        result.pointer.cast(),
-        x1.size,
-      );
-      return result;
-    } else if (targetDType == DType.int16) {
-      v_pow_int16(
-        x1.pointer.cast(),
-        x2.pointer.cast(),
-        result.pointer.cast(),
-        x1.size,
-      );
-      return result;
-    } else if (targetDType == DType.uint8) {
-      v_pow_uint8(
-        x1.pointer.cast(),
-        x2.pointer.cast(),
-        result.pointer.cast(),
-        x1.size,
-      );
-      return result;
+      result.isContiguous;
+
+  if (isContig) {
+    switch (dtype) {
+      case DType.float64:
+        v_pow_double(
+          x1.pointer.cast(),
+          x2.pointer.cast(),
+          result.pointer.cast(),
+          x1.size,
+        );
+        return result;
+      case DType.float32:
+        v_pow_float(
+          x1.pointer.cast(),
+          x2.pointer.cast(),
+          result.pointer.cast(),
+          x1.size,
+        );
+        return result;
+      case DType.int64:
+        v_pow_int64(
+          x1.pointer.cast(),
+          x2.pointer.cast(),
+          result.pointer.cast(),
+          x1.size,
+        );
+        return result;
+      case DType.int32:
+        v_pow_int32(
+          x1.pointer.cast(),
+          x2.pointer.cast(),
+          result.pointer.cast(),
+          x1.size,
+        );
+        return result;
+      case DType.int16:
+        v_pow_int16(
+          x1.pointer.cast(),
+          x2.pointer.cast(),
+          result.pointer.cast(),
+          x1.size,
+        );
+        return result;
+      case DType.uint8:
+        v_pow_uint8(
+          x1.pointer.cast(),
+          x2.pointer.cast(),
+          result.pointer.cast(),
+          x1.size,
+        );
+        return result;
+      case DType.complex128:
+        v_pow_complex128(
+          x1.pointer.cast(),
+          x2.pointer.cast(),
+          result.pointer.cast(),
+          x1.size,
+        );
+        return result;
+      case DType.complex64:
+        v_pow_complex64(
+          x1.pointer.cast(),
+          x2.pointer.cast(),
+          result.pointer.cast(),
+          x1.size,
+        );
+        return result;
+      default:
+        break;
     }
-  } else if (shape.length <= 8) {
-    final rank = shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
+  }
+
+  final rank = shape.length;
+  final marker = ScratchArena.marker;
+  try {
+    final cBuffer = ScratchArena.getStridedBuffer(rank * 4);
     final cShape = cBuffer;
     final cStridesA = cBuffer + rank;
     final cStridesB = cBuffer + (rank * 2);
@@ -1772,106 +1745,109 @@ NDArray<R> power<Ta, Tb, R>(NDArray<Ta> x1, NDArray<Tb> x2, {NDArray<R>? out}) {
       cStridesB[i] = broadcastResult.stridesB[i];
       cStridesRes[i] = result.strides[i];
     }
-    if (targetDType == DType.float64) {
-      s_pow_double(
-        x1.pointer.cast(),
-        cStridesA,
-        x2.pointer.cast(),
-        cStridesB,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-      );
-      return result;
-    } else if (targetDType == DType.float32) {
-      s_pow_float(
-        x1.pointer.cast(),
-        cStridesA,
-        x2.pointer.cast(),
-        cStridesB,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-      );
-      return result;
-    } else if (targetDType == DType.int64) {
-      s_pow_int64(
-        x1.pointer.cast(),
-        cStridesA,
-        x2.pointer.cast(),
-        cStridesB,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-      );
-      return result;
-    } else if (targetDType == DType.int32) {
-      s_pow_int32(
-        x1.pointer.cast(),
-        cStridesA,
-        x2.pointer.cast(),
-        cStridesB,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-      );
-      return result;
-    } else if (targetDType == DType.int16) {
-      s_pow_int16(
-        x1.pointer.cast(),
-        cStridesA,
-        x2.pointer.cast(),
-        cStridesB,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-      );
-      return result;
-    } else if (targetDType == DType.uint8) {
-      s_pow_uint8(
-        x1.pointer.cast(),
-        cStridesA,
-        x2.pointer.cast(),
-        cStridesB,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-      );
-      return result;
+    switch (dtype) {
+      case DType.float64:
+        s_pow_double(
+          x1.pointer.cast(),
+          cStridesA,
+          x2.pointer.cast(),
+          cStridesB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.float32:
+        s_pow_float(
+          x1.pointer.cast(),
+          cStridesA,
+          x2.pointer.cast(),
+          cStridesB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.int64:
+        s_pow_int64(
+          x1.pointer.cast(),
+          cStridesA,
+          x2.pointer.cast(),
+          cStridesB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.int32:
+        s_pow_int32(
+          x1.pointer.cast(),
+          cStridesA,
+          x2.pointer.cast(),
+          cStridesB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.int16:
+        s_pow_int16(
+          x1.pointer.cast(),
+          cStridesA,
+          x2.pointer.cast(),
+          cStridesB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.uint8:
+        s_pow_uint8(
+          x1.pointer.cast(),
+          cStridesA,
+          x2.pointer.cast(),
+          cStridesB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.complex128:
+        s_pow_complex128(
+          x1.pointer.cast(),
+          cStridesA,
+          x2.pointer.cast(),
+          cStridesB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      case DType.complex64:
+        s_pow_complex64(
+          x1.pointer.cast(),
+          cStridesA,
+          x2.pointer.cast(),
+          cStridesB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+        );
+        return result;
+      default:
+        break;
     }
+  } finally {
+    ScratchArena.reset(marker);
   }
-
-  final R Function(num) conv;
-  if (targetDType.isInteger) {
-    conv = (val) => val.toInt() as R;
-  } else {
-    conv = (val) => val.toDouble() as R;
-  }
-
-  elementWiseOp<Ta, Tb, R>(
-    result.data,
-    x1.data,
-    x2.data,
-    shape,
-    broadcastResult.stridesA,
-    broadcastResult.stridesB,
-    result.strides,
-    0,
-    x1.offsetElements,
-    x2.offsetElements,
-    result.offsetElements,
-    (valA, valB) {
-      final aVal = valA is bool ? (valA ? 1.0 : 0.0) : (valA as num).toDouble();
-      final bVal = valB is bool ? (valB ? 1.0 : 0.0) : (valB as num).toDouble();
-      return conv(math.pow(aVal, bVal));
-    },
-  );
 
   return result;
 }

@@ -40,7 +40,7 @@ NDArray<T> sort<T extends Object>(
   }
   final rank = a.shape.length;
   if (rank == 0) {
-    return NDArray<T>.scalar(a.scalar, a.dtype);
+    return NDArray<T>.scalar(a.scalar, dtype: a.dtype);
   }
 
   final targetAxis = axis < 0 ? rank + axis : axis;
@@ -199,7 +199,7 @@ NDArray<int> argsort(
   }
   final rank = a.shape.length;
   if (rank == 0) {
-    return NDArray.scalar(0, DType.int32);
+    return NDArray.scalar(0, dtype: DType.int32);
   }
 
   final targetAxis = axis < 0 ? rank + axis : axis;
@@ -322,7 +322,7 @@ NDArray<T> partition<T extends Object>(
   }
   final rank = a.shape.length;
   if (rank == 0) {
-    return NDArray<T>.scalar(a.scalar, a.dtype);
+    return NDArray<T>.scalar(a.scalar, dtype: a.dtype);
   }
 
   final targetAxis = axis < 0 ? rank + axis : axis;
@@ -520,7 +520,7 @@ NDArray<int> argpartition(NDArray a, dynamic kth, {int axis = -1}) {
   }
   final rank = a.shape.length;
   if (rank == 0) {
-    return NDArray.scalar(0, DType.int32);
+    return NDArray.scalar(0, dtype: DType.int32);
   }
 
   final targetAxis = axis < 0 ? rank + axis : axis;

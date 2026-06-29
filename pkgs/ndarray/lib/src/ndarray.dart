@@ -557,12 +557,29 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray.scalar(42, DType.int32);
+  /// final a = NDArray.scalar(42, dtype: DType.int32);
   /// print(a.shape); // []
   /// print(a.scalar); // 42
   /// ```
-  factory NDArray.scalar(T value, DType<T> dtype) {
-    return NDArray.fromList([value], [], dtype);
+  factory NDArray.scalar(T value, {DType<T>? dtype}) {
+    final resolvedDType = dtype ?? _resolveDType<T>(value);
+    return NDArray.fromList([value], [], resolvedDType);
+  }
+
+  static DType<T> _resolveDType<T>(T value) {
+    if (T == Float64) return DType.float64 as DType<T>;
+    if (T == Float32) return DType.float32 as DType<T>;
+    if (T == Int64) return DType.int64 as DType<T>;
+    if (T == Int32) return DType.int32 as DType<T>;
+    if (T == Uint8) return DType.uint8 as DType<T>;
+    if (T == Int16) return DType.int16 as DType<T>;
+    if (T == Complex128) return DType.complex128 as DType<T>;
+    if (T == Complex64) return DType.complex64 as DType<T>;
+    if (T == bool || value is bool) return DType.boolean as DType<T>;
+    if (T == int || value is int) return DType.int64 as DType<T>;
+    if (T == double || value is double) return DType.float64 as DType<T>;
+    if (T == Complex || value is Complex) return DType.complex128 as DType<T>;
+    return helpers.defaultDType<T>();
   }
 
   /// Factory to create a new C-contiguous array filled with zeros.
@@ -1373,7 +1390,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray.scalar(42, DType.int32);
+  /// final a = NDArray.scalar(42, dtype: DType.int32);
   /// print(a.scalar); // 42
   /// ```
   T get scalar {

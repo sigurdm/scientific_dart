@@ -91,7 +91,7 @@ NDArray<T> toNDArray<T>(Object o, DType<T> dtype) {
     return castNDArray(o, dtype);
   }
   final normalized = normalizeScalar(o, dtype);
-  return NDArray<T>.scalar(normalized as T, dtype);
+  return NDArray<T>.scalar(normalized as T, dtype: dtype);
 }
 
 (NDArray<T>, T) linspaceInternal<T>(

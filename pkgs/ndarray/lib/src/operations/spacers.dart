@@ -553,7 +553,7 @@ NDArray<T> logspaceGrid<T extends Object>(
       axis: axis,
       dtype: resolvedDType,
     );
-    final res = power<T, T, T>(actualBase, y);
+    final res = power<T>(actualBase, y);
     res.detachToParentScope();
     return res;
   });
@@ -734,7 +734,7 @@ NDArray<T> geomspaceGrid<T extends Object>(
       axis: axis,
       dtype: resolvedDType,
     );
-    final res = power<T, T, T>(toNDArray<T>(10.0, resolvedDType), y);
+    final res = power<T>(toNDArray<T>(10.0, resolvedDType), y);
     res.detachToParentScope();
     return res;
   });

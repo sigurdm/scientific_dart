@@ -8,19 +8,19 @@ void main() {
     // 5% (annually) compounded monthly?
     final NDArray<Float64> rate = NDArray<Float64>.scalar(
       Float64(0.05 / 12),
-      DType.float64,
+      dtype: DType.float64,
     );
     final NDArray<Float64> nper = NDArray<Float64>.scalar(
       Float64(10.0 * 12),
-      DType.float64,
+      dtype: DType.float64,
     );
     final NDArray<Float64> pmt = NDArray<Float64>.scalar(
       Float64(-100.0),
-      DType.float64,
+      dtype: DType.float64,
     );
     final NDArray<Float64> pvVal = NDArray<Float64>.scalar(
       Float64(-100.0),
-      DType.float64,
+      dtype: DType.float64,
     );
 
     final NDArray<Float64> fvResult = fv(rate, nper, pmt, pvVal);
@@ -33,7 +33,7 @@ void main() {
     // 10 years of saving $100/month at 5% annual interest?
     final NDArray<Float64> fvVal = NDArray<Float64>.scalar(
       Float64(15692.92889433575),
-      DType.float64,
+      dtype: DType.float64,
     );
     final NDArray<Float64> pvResult = pv(rate, nper, pmt, fvVal);
     print(
@@ -49,7 +49,7 @@ void main() {
     );
     final NDArray<Float64> discountRate = NDArray<Float64>.scalar(
       Float64(0.08),
-      DType.float64,
+      dtype: DType.float64,
     );
     final NDArray<Float64> npvResult = npv(discountRate, cashFlows);
     print('NPV Result: \$${npvResult.scalar.toStringAsFixed(2)}');

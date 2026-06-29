@@ -57,7 +57,7 @@ void main() {
           expect(indices1D, [0, 1]);
 
           // 0D Scalar
-          final s = NDArray.scalar(42, DType.int32);
+          final s = NDArray.scalar(42, dtype: DType.int32);
           final iter0D = NDIter(s);
           expect(iter0D.moveNext(), true);
           expect(iter0D.coords, isEmpty);
@@ -251,7 +251,7 @@ void main() {
           expect(entries1D[0].$1, [0]);
           expect(entries1D[0].$2, 9.0);
 
-          final scalar = NDArray.scalar(99, DType.int32);
+          final scalar = NDArray.scalar(99, dtype: DType.int32);
           final entries0D = ndenumerate(scalar).toList();
           expect(entries0D.length, 1);
           expect(entries0D[0].$1, []);

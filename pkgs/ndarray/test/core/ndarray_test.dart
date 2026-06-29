@@ -8,13 +8,13 @@ void main() {
     test(
       'NDArray.scalar creation',
       () => NDArray.scope(() {
-        final s = NDArray.scalar(42.0, DType.float64);
+        final s = NDArray.scalar(42.0, dtype: DType.float64);
         expect(s.shape, <int>[]);
         expect(s.rank, 0);
         expect(s.size, 1);
         expect(s.scalar, 42.0);
 
-        final sInt = NDArray.scalar(7, DType.int32);
+        final sInt = NDArray.scalar(7, dtype: DType.int32);
         expect(sInt.shape, <int>[]);
         expect(sInt.scalar, 7);
       }),

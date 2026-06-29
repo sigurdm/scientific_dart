@@ -41,8 +41,8 @@ NDArray<Float64> fv(
   return NDArray.scope(() {
     final whenArr = _parseWhen(when);
 
-    final one = NDArray<Float64>.scalar(Float64(1.0), DType.float64);
-    final zero = NDArray<Float64>.scalar(Float64(0.0), DType.float64);
+    final one = NDArray<Float64>.scalar(Float64(1.0), dtype: DType.float64);
+    final zero = NDArray<Float64>.scalar(Float64(0.0), dtype: DType.float64);
 
     // temp = (1 + rate) ** nper
     final NDArray<Float64> onePlusRate = add(one, rate);
@@ -89,8 +89,8 @@ NDArray<Float64> pv(
   return NDArray.scope(() {
     final whenArr = _parseWhen(when);
 
-    final one = NDArray<Float64>.scalar(Float64(1.0), DType.float64);
-    final zero = NDArray<Float64>.scalar(Float64(0.0), DType.float64);
+    final one = NDArray<Float64>.scalar(Float64(1.0), dtype: DType.float64);
+    final zero = NDArray<Float64>.scalar(Float64(0.0), dtype: DType.float64);
 
     // temp = (1 + rate) ** nper
     final NDArray<Float64> onePlusRate = add(one, rate);
@@ -156,7 +156,7 @@ NDArray<Float64> npv(
     final NDArray<Float64> rateExpanded = rate.reshape(rateExpandedShape);
     final NDArray<Float64> valuesExpanded = values.reshape(valuesExpandedShape);
 
-    final one = NDArray<Float64>.scalar(Float64(1.0), DType.float64);
+    final one = NDArray<Float64>.scalar(Float64(1.0), dtype: DType.float64);
     final NDArray<Float64> onePlusRate = add(one, rateExpanded);
     final NDArray<Float64> discount = power(onePlusRate, t);
 
@@ -282,7 +282,7 @@ NDArray<Float64> _parseWhen(dynamic when) {
   } else {
     throw ArgumentError('Invalid when type: ${when.runtimeType}');
   }
-  return NDArray<Float64>.scalar(Float64(val), DType.float64);
+  return NDArray<Float64>.scalar(Float64(val), dtype: DType.float64);
 }
 
 /// Strips leading zero coefficients from the cash flow values.
