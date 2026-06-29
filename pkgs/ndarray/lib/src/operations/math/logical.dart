@@ -5,7 +5,6 @@ import '../../ndarray_bindings.dart';
 import '../../scratch_arena.dart';
 import '../broadcasting.dart';
 
-
 /// Returns a boolean array of the same shape as [a] containing the element-wise logical negation.
 ///
 /// **Preconditions:**

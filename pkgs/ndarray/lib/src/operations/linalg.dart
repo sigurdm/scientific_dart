@@ -67,8 +67,7 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
             1,
           );
           result =
-              out ??
-              (NDArray.fromList([scalarRes], [], DType.float64) as NDArray<R>);
+              out ?? (NDArray.scalar(scalarRes, DType.float64) as NDArray<R>);
           if (out != null) {
             out.data[0] = scalarRes as R;
           }
@@ -83,8 +82,7 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
             1,
           );
           result =
-              out ??
-              (NDArray.fromList([scalarRes], [], DType.float32) as NDArray<R>);
+              out ?? (NDArray.scalar(scalarRes, DType.float32) as NDArray<R>);
           if (out != null) {
             out.data[0] = scalarRes as R;
           }

@@ -207,7 +207,7 @@ void main() {
       test(
         'Argsort scalar 0D array returns single index 0',
         () => NDArray.scope(() {
-          final scalar = NDArray.fromList([99.0], [], DType.float64);
+          final scalar = NDArray.scalar(99.0, DType.float64);
           final idx = argsort(scalar);
           expect(idx.shape, []);
           expect(idx.toList(), [0]);
@@ -984,12 +984,12 @@ void main() {
       test(
         'argwhere with 0-D scalar arrays (both zero and non-zero)',
         () => NDArray.scope(() {
-          final nonzeroScalar = NDArray.fromList([5.0], [], DType.float64);
+          final nonzeroScalar = NDArray.scalar(5.0, DType.float64);
           final res1 = argwhere(nonzeroScalar);
           expect(res1.shape, [1, 0]);
           expect(res1.toList(), <int>[]);
 
-          final zeroScalar = NDArray.fromList([0.0], [], DType.float64);
+          final zeroScalar = NDArray.scalar(0.0, DType.float64);
           final res2 = argwhere(zeroScalar);
           expect(res2.shape, [0, 0]);
           expect(res2.toList(), <int>[]);
@@ -1194,7 +1194,7 @@ void main() {
           final empty = NDArray<double>.create([0], DType.float64);
           expect(sort(empty).toList(), <double>[]);
 
-          final scalar = NDArray.fromList([5.0], [], DType.float64);
+          final scalar = NDArray.scalar(5.0, DType.float64);
           expect(sort(scalar).toList(), [5.0]);
         }),
       );

@@ -6,20 +6,20 @@ void main() {
     // What is the future value after 10 years of saving $100 now, with
     // an additional monthly savings of $100. Assume the interest rate is
     // 5% (annually) compounded monthly?
-    final NDArray<Float64> rate = NDArray.fromList(
-      [0.05 / 12],
-      [],
+    final NDArray<Float64> rate = NDArray<Float64>.scalar(
+      Float64(0.05 / 12),
       DType.float64,
     );
-    final NDArray<Float64> nper = NDArray.fromList(
-      [10.0 * 12],
-      [],
+    final NDArray<Float64> nper = NDArray<Float64>.scalar(
+      Float64(10.0 * 12),
       DType.float64,
     );
-    final NDArray<Float64> pmt = NDArray.fromList([-100.0], [], DType.float64);
-    final NDArray<Float64> pvVal = NDArray.fromList(
-      [-100.0],
-      [],
+    final NDArray<Float64> pmt = NDArray<Float64>.scalar(
+      Float64(-100.0),
+      DType.float64,
+    );
+    final NDArray<Float64> pvVal = NDArray<Float64>.scalar(
+      Float64(-100.0),
       DType.float64,
     );
 
@@ -31,9 +31,8 @@ void main() {
     // 2. Present Value (pv)
     // What is the present value (investment) needed to get $15,692.93 after
     // 10 years of saving $100/month at 5% annual interest?
-    final NDArray<Float64> fvVal = NDArray.fromList(
-      [15692.92889433575],
-      [],
+    final NDArray<Float64> fvVal = NDArray<Float64>.scalar(
+      Float64(15692.92889433575),
       DType.float64,
     );
     final NDArray<Float64> pvResult = pv(rate, nper, pmt, fvVal);
@@ -48,9 +47,8 @@ void main() {
       [5],
       DType.float64,
     );
-    final NDArray<Float64> discountRate = NDArray.fromList(
-      [0.08],
-      [],
+    final NDArray<Float64> discountRate = NDArray<Float64>.scalar(
+      Float64(0.08),
       DType.float64,
     );
     final NDArray<Float64> npvResult = npv(discountRate, cashFlows);

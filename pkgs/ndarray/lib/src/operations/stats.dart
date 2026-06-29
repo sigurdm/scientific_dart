@@ -2826,7 +2826,7 @@ NDArray<Float64> cov<T extends num>(
     final sumXW = sum(XTimesW, axis: 1);
     final meanVal = divide<Float64, Float64, Float64>(
       sumXW,
-      NDArray<Float64>.fromList([Float64(v1)], [], DType.float64),
+      NDArray<Float64>.scalar(Float64(v1), DType.float64),
     );
 
     final meanReshaped = meanVal.reshape([X.shape[0], 1]);
@@ -2851,11 +2851,7 @@ NDArray<Float64> cov<T extends num>(
       fact = v1 / denominator;
     }
 
-    final factArr = NDArray<Float64>.fromList(
-      [Float64(fact)],
-      [],
-      DType.float64,
-    );
+    final factArr = NDArray<Float64>.scalar(Float64(fact), DType.float64);
     final result = multiply<Float64, Float64, Float64>(dotVal, factArr);
 
     final squeezed = result.squeeze();
@@ -2894,9 +2890,8 @@ NDArray<Float64> corrcoef<T extends num>(
     if (C.shape.isEmpty) {
       final val = C.scalar;
       final resVal = val == 0.0 ? double.nan : 1.0;
-      return NDArray<Float64>.fromList(
-        [Float64(resVal)],
-        [],
+      return NDArray<Float64>.scalar(
+        Float64(resVal),
         DType.float64,
       ).detachToParentScope();
     }

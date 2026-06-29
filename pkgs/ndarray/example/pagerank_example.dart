@@ -69,12 +69,15 @@ void main() {
       final mv = matmul<Float64, Float64, Float64>(m, v);
 
       // Wrap scalar d as a 0D array for broadcasting
-      final dArr = NDArray.fromList([d], [], DType.float64);
+      final dArr = NDArray<Float64>.scalar(Float64(d), DType.float64);
       // Apply damping factor (scalar multiplication via broadcasting)
       final damped = multiply<Float64, Float64, Float64>(mv, dArr);
 
       // Wrap scalar teleport as a 0D array for broadcasting
-      final teleportArr = NDArray.fromList([teleport], [], DType.float64);
+      final teleportArr = NDArray<Float64>.scalar(
+        Float64(teleport),
+        DType.float64,
+      );
       // Add teleportation (scalar addition via broadcasting)
       final rawNext = add<Float64, Float64, Float64>(damped, teleportArr);
 

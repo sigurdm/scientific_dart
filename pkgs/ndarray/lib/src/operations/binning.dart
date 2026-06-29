@@ -362,7 +362,7 @@ NDArray<int> digitize(
     } else {
       final flippedBins = flip(bins);
       final j = searchsorted(flippedBins, x, side: side);
-      final nArr = NDArray<int>.fromList([bins.size], [], DType.int32);
+      final nArr = NDArray<int>.scalar(bins.size, DType.int32);
       res = subtract<int, int, int>(nArr, j);
     }
 
@@ -464,18 +464,14 @@ NDArray<int> digitize(
     final counts = bincount(binIndices, weights: flatWeights, minlength: M + 1);
 
     final lastEdgeVal = resolvedBinEdges.getCell([M - 1]);
-    final lastEdgeArr = NDArray<Float64>.fromList(
-      [lastEdgeVal],
-      [],
-      DType.float64,
-    );
+    final lastEdgeArr = NDArray<Float64>.scalar(lastEdgeVal, DType.float64);
     final equalLastEdge = equal(flatX, lastEdgeArr);
 
     num equalLastEdgeWeightSum = 0;
     if (flatWeights == null) {
       equalLastEdgeWeightSum = count_nonzero(equalLastEdge).scalar;
     } else {
-      final zeroScalar = NDArray<num>.fromList([0.0], [], flatWeights.dtype);
+      final zeroScalar = NDArray<num>.scalar(0.0, flatWeights.dtype);
       final lastEdgeWeights =
           where(equalLastEdge, flatWeights, zeroScalar) as NDArray<num>;
       equalLastEdgeWeightSum = sum<num>(lastEdgeWeights).scalar;
@@ -494,9 +490,8 @@ NDArray<int> digitize(
         resolvedBinEdges.slice([Slice(start: 1)]),
         resolvedBinEdges.slice([Slice(stop: M - 1)]),
       );
-      final totalSumArr = NDArray<Float64>.fromList(
-        [totalSum.toDouble()],
-        [],
+      final totalSumArr = NDArray<Float64>.scalar(
+        Float64(totalSum.toDouble()),
         DType.float64,
       );
       final divisor = multiply<Float64, Float64, Float64>(widths, totalSumArr);

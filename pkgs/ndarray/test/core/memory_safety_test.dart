@@ -686,10 +686,9 @@ void main() {
       });
 
       test('Verifies tracking is disabled by default', () async {
-        final result = await Process.run(
-          Platform.resolvedExecutable,
-          [tempFile.path],
-        );
+        final result = await Process.run(Platform.resolvedExecutable, [
+          tempFile.path,
+        ]);
 
         expect(result.exitCode, 0);
         expect(result.stdout, contains('trackAllocations: false'));
@@ -701,13 +700,10 @@ void main() {
       });
 
       test('Verifies tracking works when enabled via define', () async {
-        final result = await Process.run(
-          Platform.resolvedExecutable,
-          [
-            '--define=TRACK_NDARRAY_ALLOCATIONS=true',
-            tempFile.path,
-          ],
-        );
+        final result = await Process.run(Platform.resolvedExecutable, [
+          '--define=TRACK_NDARRAY_ALLOCATIONS=true',
+          tempFile.path,
+        ]);
 
         expect(result.exitCode, 0);
         expect(result.stdout, contains('trackAllocations: true'));

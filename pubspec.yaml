@@ -7,6 +7,7 @@ workspace:
   - pkgs/pocketfft
   - pkgs/guitar_tuner
   - pkgs/ndarray_ma
+  - pkgs/notebook
 dependencies:
   http: ^1.6.0
 

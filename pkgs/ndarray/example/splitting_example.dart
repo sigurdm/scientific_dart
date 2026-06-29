@@ -29,6 +29,7 @@ void runSplitExamples() {
     print('Sub-array 1: ${splitsAt[1].toList()}\n');
   });
 }
+
 // #enddocregion split
 
 // #docregion array_split
@@ -53,6 +54,7 @@ void runArraySplitExamples() {
     print('');
   });
 }
+
 // #enddocregion array_split
 
 // #docregion hsplit
@@ -73,6 +75,7 @@ void runHSplitExamples() {
     print('Sub-array 1:\n${splitsAt[1]}\n');
   });
 }
+
 // #enddocregion hsplit
 
 // #docregion vsplit
@@ -93,6 +96,7 @@ void runVSplitExamples() {
     print('Sub-array 1:\n${splitsAt[1]}\n');
   });
 }
+
 // #enddocregion vsplit
 
 // #docregion dsplit

@@ -8,7 +8,6 @@ import 'padding.dart';
 // Standalone operational relative cross-imports
 import 'manipulation.dart';
 
-
 /// Helper to allocate a KissFFT plan configuration on the ScratchArena stack.
 kiss_fft_cfg _allocateKissFFTPlan(int nfft, int inverse_fft) {
   final lenmem = ScratchArena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());

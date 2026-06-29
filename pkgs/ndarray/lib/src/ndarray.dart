@@ -553,6 +553,18 @@ final class NDArray<T> implements ffi.Finalizable {
     return arr;
   }
 
+  /// Factory to create a 0-dimensional scalar array containing a single [value].
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final a = NDArray.scalar(42, DType.int32);
+  /// print(a.shape); // []
+  /// print(a.scalar); // 42
+  /// ```
+  factory NDArray.scalar(T value, DType<T> dtype) {
+    return NDArray.fromList([value], [], dtype);
+  }
+
   /// Factory to create a new C-contiguous array filled with zeros.
   ///
   /// Backed directly by unmanaged C heap memory pages allocated via `calloc`.
@@ -1361,7 +1373,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray.fromList([42], [], DType.int32);
+  /// final a = NDArray.scalar(42, DType.int32);
   /// print(a.scalar); // 42
   /// ```
   T get scalar {

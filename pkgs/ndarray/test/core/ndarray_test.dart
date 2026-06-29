@@ -6,6 +6,20 @@ import 'dart:typed_data';
 void main() {
   group('NDArray Tests', () {
     test(
+      'NDArray.scalar creation',
+      () => NDArray.scope(() {
+        final s = NDArray.scalar(42.0, DType.float64);
+        expect(s.shape, <int>[]);
+        expect(s.rank, 0);
+        expect(s.size, 1);
+        expect(s.scalar, 42.0);
+
+        final sInt = NDArray.scalar(7, DType.int32);
+        expect(sInt.shape, <int>[]);
+        expect(sInt.scalar, 7);
+      }),
+    );
+    test(
       'Creation and Strides',
       () => NDArray.scope(() {
         final a = NDArray.fromList(Float64List.fromList([1, 2, 3, 4, 5, 6]), [

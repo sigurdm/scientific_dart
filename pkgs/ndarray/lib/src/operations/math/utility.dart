@@ -4,7 +4,6 @@ import 'package:openblas/openblas.dart';
 import '../../ndarray.dart';
 import '../helpers.dart';
 
-
 /// Configure the number of parallel execution threads used by OpenBLAS at runtime.
 ///
 /// **Preconditions:**

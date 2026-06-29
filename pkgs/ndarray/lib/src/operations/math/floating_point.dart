@@ -6,7 +6,6 @@ import '../../scratch_arena.dart';
 import '../helpers.dart';
 import '../broadcasting.dart';
 
-
 /// Returns an element-wise boolean mask indicating which elements of the array are NaN.
 ///
 /// **Preconditions:**

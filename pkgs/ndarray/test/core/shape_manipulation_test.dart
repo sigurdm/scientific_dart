@@ -669,7 +669,7 @@ void main() {
         test(
           'flipud invalid dimensions throws',
           () => NDArray.scope(() {
-            final a = NDArray.fromList([5], [], DType.int32);
+            final a = NDArray.scalar(5, DType.int32);
             expect(() => flipud(a), throwsArgumentError);
           }),
         );
@@ -1812,7 +1812,7 @@ void main() {
       test(
         'Preconditions - 0-D Array',
         () => NDArray.scope(() {
-          final a = NDArray<int>.fromList([1], [], DType.int32);
+          final a = NDArray<int>.scalar(1, DType.int32);
           expect(() => pad(a, PadWidth.all(1)), throwsArgumentError);
         }),
       );
