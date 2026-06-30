@@ -55,15 +55,8 @@ NDArray<T> _diagonalView<T>(NDArray<T> arr, int ax1, int ax2) {
 /// - `axes` can be an [int] `N`: contracts the last `N` axes of [a] and first `N` axes of [b].
 /// - `axes` can be a 2-element list `[axesA, axesB]` or record `(List<int>, List<int>)` specifying matching contracted axes.
 ///
-/// **Preconditions:**
-/// - Neither [a] nor [b] can be disposed.
-/// - Contracted axes dimensions must match between [a] and [b].
-///
-/// **Throws:**
-/// - [StateError] if any input or output array is disposed.
-/// - [ArgumentError] if axes specification is invalid or axis dimensions mismatch.
-/// - [RangeError] if specified axis index is out of bounds.
-///
+/// It is an error if any input or output array is disposed, if the axes specification is invalid,
+/// if axis dimensions mismatch, or if a specified axis index is out of bounds.
 NDArray<R> tensordot<Ta, Tb, R>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
@@ -192,21 +185,168 @@ NDArray<R> tensordot<Ta, Tb, R>(
   });
 }
 
-/// Evaluates the Einstein summation convention on the operands.
+/// Represents index subscript specifications for Einstein summation ([einsum]).
 ///
-/// [subscripts] specifies the subscript labels for each operand and output (e.g. `ij,jk->ik`).
-/// [operands] are the input arrays.
-/// [out] optional output buffer.
+/// Subscripts define how input tensor axes map to contracted or output dimensions.
 ///
-/// Preconditions:
-/// - All operands must not be disposed.
-/// - Subscript dimensions must match operand dimensions.
+/// Use one of the three primary constructors to create an [EinsumSubscripts] instance:
+/// - [EinsumSubscripts.parse]: Parses a standard Einstein summation string (e.g. `'ij,jk->ik'`).
+/// - [EinsumSubscripts.explicit]: Builds an explicit subscript from structured operand and output index lists.
+/// - [EinsumSubscripts.implicit]: Builds an implicit subscript from structured operand index lists.
+final class EinsumSubscripts {
+  /// The list of index labels for each operand.
+  final List<List<String>> operandSubscripts;
+
+  /// The list of index labels for the output tensor, or `null` if implicit output.
+  final List<String>? outputSubscript;
+
+  /// Creates a raw [EinsumSubscripts] instance with operand and optional output index lists.
+  const EinsumSubscripts(this.operandSubscripts, {this.outputSubscript});
+
+  /// 1. Parses a subscript string in Einstein summation notation (e.g. `'ij,jk->ik'` or `'i,j->ij'`).
+  factory EinsumSubscripts.parse(String subscripts) {
+    final cleanSub = subscripts.replaceAll(' ', '');
+    final parts = cleanSub.split('->');
+    if (parts.length > 2) {
+      throw ArgumentError(
+        'Invalid einsum subscript: multiple "->" delimiters found.',
+      );
+    }
+    final inStr = parts[0];
+    final outStr = parts.length == 2 ? parts[1] : null;
+
+    final operandSubs = inStr.isEmpty
+        ? <List<String>>[]
+        : inStr.split(',').map((s) => _tokenizeSubscriptTerm(s)).toList();
+
+    final outSubs = outStr != null ? _tokenizeSubscriptTerm(outStr) : null;
+
+    return EinsumSubscripts(operandSubs, outputSubscript: outSubs);
+  }
+
+  /// 2. Creates an explicit [EinsumSubscripts] specification with defined operand and output index lists.
+  factory EinsumSubscripts.explicit(
+    List<List<Object>> operandSubscripts,
+    List<Object> outputSubscript,
+  ) {
+    final opSubs = operandSubscripts
+        .map((list) => list.map((e) => _normalizeLabel(e)).toList())
+        .toList();
+    final outSub = outputSubscript.map((e) => _normalizeLabel(e)).toList();
+    return EinsumSubscripts(opSubs, outputSubscript: outSub);
+  }
+
+  /// 3. Creates an implicit [EinsumSubscripts] specification where output labels are automatically inferred.
+  factory EinsumSubscripts.implicit(List<List<Object>> operandSubscripts) {
+    final opSubs = operandSubscripts
+        .map((list) => list.map((e) => _normalizeLabel(e)).toList())
+        .toList();
+    return EinsumSubscripts(opSubs, outputSubscript: null);
+  }
+
+  /// Creates an [EinsumSubscripts] from a string, a list of index lists, or an existing [EinsumSubscripts] instance.
+  factory EinsumSubscripts.from(Object subscripts, {List<Object>? output}) {
+    if (subscripts is EinsumSubscripts) {
+      if (output != null) {
+        return EinsumSubscripts(
+          subscripts.operandSubscripts,
+          outputSubscript: output.map((e) => e.toString()).toList(),
+        );
+      }
+      return subscripts;
+    }
+    if (subscripts is String) {
+      final parsed = EinsumSubscripts.parse(subscripts);
+      if (output != null) {
+        return EinsumSubscripts(
+          parsed.operandSubscripts,
+          outputSubscript: output.map((e) => e.toString()).toList(),
+        );
+      }
+      return parsed;
+    }
+    if (subscripts is List) {
+      final operandSubs = <List<String>>[];
+      for (final item in subscripts) {
+        if (item is List) {
+          operandSubs.add(item.map((e) => _normalizeLabel(e)).toList());
+        } else if (item is String) {
+          operandSubs.add(_tokenizeSubscriptTerm(item));
+        } else {
+          throw ArgumentError('Invalid subscript operand element: $item');
+        }
+      }
+      final outSub = output?.map((e) => _normalizeLabel(e)).toList();
+      return EinsumSubscripts(operandSubs, outputSubscript: outSub);
+    }
+    throw ArgumentError('Unsupported subscripts format: $subscripts');
+  }
+
+  static List<String> _tokenizeSubscriptTerm(String term) {
+    final labels = <String>[];
+    for (var i = 0; i < term.length; i++) {
+      if (i + 2 < term.length && term.substring(i, i + 3) == '...') {
+        labels.add('...');
+        i += 2;
+      } else {
+        labels.add(term[i]);
+      }
+    }
+    return labels;
+  }
+
+  static String _normalizeLabel(Object label) {
+    if (label is int) {
+      if (label >= 0 && label < 26) {
+        return String.fromCharCode(97 + label);
+      }
+      return 'idx_$label';
+    }
+    return label.toString();
+  }
+
+  /// Converts this subscript specification back into a standard Einstein summation string.
+  String toSubscriptString() {
+    final inStr = operandSubscripts.map((list) => list.join('')).join(',');
+    if (outputSubscript != null) {
+      return '$inStr->${outputSubscript!.join('')}';
+    }
+    return inStr;
+  }
+
+  @override
+  String toString() => toSubscriptString();
+}
+
+/// Evaluates Einstein summation convention over multiple multi-dimensional array operands.
 ///
-/// Throws [StateError] if any operand or [out] is disposed.
-/// Throws [ArgumentError] if subscript syntax or shapes are invalid.
-NDArray<R> einsum<R>(
-  String subscripts,
-  List<NDArray> operands, {
+/// Einstein summation provides a concise notation for expressing complex tensor contractions,
+/// matrix multiplications, transpositions, traces, and array operations by specifying index labels
+/// for each input operand and the resulting output.
+///
+/// ### Einstein Summation Convention
+/// In standard Einstein summation notation:
+/// 1. Each dimension of an input tensor is assigned an index label (symbol).
+/// 2. Labels that appear in multiple input operands but **not** in the output specification are **contracted**
+///    (element-wise multiplied and summed over).
+/// 3. Labels that appear in the output specification are preserved in the result tensor in the specified order.
+/// 4. Repeated labels within a single input operand represent extracting diagonal elements along those axes.
+///
+/// Subscripts are specified using an [EinsumSubscripts] object created via one of its constructors:
+/// - [EinsumSubscripts.parse]: Parses a standard string (e.g. `EinsumSubscripts.parse('ij,jk->ik')`).
+/// - [EinsumSubscripts.explicit]: Explicit input and output index lists (e.g. `EinsumSubscripts.explicit([['i', 'j'], ['j', 'k']], ['i', 'k'])`).
+/// - [EinsumSubscripts.implicit]: Implicit input index lists (e.g. `EinsumSubscripts.implicit([['i', 'j'], ['j', 'k']])`).
+///
+/// It is an error if operands is empty, if any operand or [out] is disposed, or if subscript syntax or shapes are invalid.
+///
+/// ### References & Further Reading
+/// - [NumPy einsum Documentation](https://numpy.org/doc/stable/reference/generated/numpy.einsum.html)
+/// - [Wikipedia: Einstein Notation](https://en.wikipedia.org/wiki/Einstein_notation)
+/// - [Einsum is All You Need](https://rockt.ai/2018/04/30/einsum)
+
+NDArray<R> einsum<T extends Object, R extends Object>(
+  EinsumSubscripts subscripts,
+  List<NDArray<T>> operands, {
   NDArray<R>? out,
 }) {
   if (operands.isEmpty) {
@@ -223,7 +363,8 @@ NDArray<R> einsum<R>(
     throw StateError("Cannot write einsum result to a disposed output array.");
   }
 
-  final cleanSub = subscripts.replaceAll(" ", "");
+  final cleanSub = subscripts.toSubscriptString();
+
   late final String inStr;
   late final String outStr;
   final isExplicit = cleanSub.contains("->");

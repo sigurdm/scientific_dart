@@ -156,7 +156,7 @@ void main() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
         final b = NDArray.fromList([5.0, 6.0, 7.0, 8.0], [2, 2], DType.float64);
 
-        final res = einsum("ij,jk->ik", [a, b]);
+        final res = einsum(EinsumSubscripts.parse("ij,jk->ik"), [a, b]);
         expect(res.shape, equals([2, 2]));
         expect(res.getCell([0, 0]), equals(19.0));
         expect(res.getCell([0, 1]), equals(22.0));
@@ -168,7 +168,7 @@ void main() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
         final b = NDArray.fromList([5.0, 6.0, 7.0, 8.0], [2, 2], DType.float64);
 
-        final res = einsum("ij,jk", [a, b]);
+        final res = einsum(EinsumSubscripts.parse("ij,jk"), [a, b]);
         expect(res.shape, equals([2, 2]));
         expect(res.getCell([0, 0]), equals(19.0));
       });
@@ -179,7 +179,7 @@ void main() {
         final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
         final b = NDArray.fromList([4.0, 5.0, 6.0], [3], DType.float64);
 
-        final res = einsum("i,i->", [a, b]);
+        final res = einsum(EinsumSubscripts.parse("i,i->"), [a, b]);
         expect(res.shape, equals([]));
         expect(res.scalar, equals(32.0));
       });
@@ -190,7 +190,7 @@ void main() {
         final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
         final b = NDArray.fromList([3.0, 4.0, 5.0], [3], DType.float64);
 
-        final res = einsum("i,j->ij", [a, b]);
+        final res = einsum(EinsumSubscripts.parse("i,j->ij"), [a, b]);
         expect(res.shape, equals([2, 3]));
         expect(res.getCell([0, 0]), equals(3.0));
         expect(res.getCell([1, 2]), equals(10.0));
@@ -201,7 +201,7 @@ void main() {
       NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 
-        final res = einsum("ij->ji", [a]);
+        final res = einsum(EinsumSubscripts.parse("ij->ji"), [a]);
         expect(res.shape, equals([2, 2]));
         expect(res.getCell([0, 1]), equals(3.0));
         expect(res.getCell([1, 0]), equals(2.0));
@@ -212,7 +212,7 @@ void main() {
       NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 
-        final res = einsum("ii->", [a]);
+        final res = einsum(EinsumSubscripts.parse("ii->"), [a]);
         expect(res.shape, equals([]));
         expect(res.scalar, equals(5.0));
       });
@@ -222,7 +222,7 @@ void main() {
       NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 
-        final res = einsum("ii->i", [a]);
+        final res = einsum(EinsumSubscripts.parse("ii->i"), [a]);
         expect(res.shape, equals([2]));
         expect(res.toList(), equals([1.0, 4.0]));
       });
@@ -241,7 +241,10 @@ void main() {
           DType.float64,
         );
 
-        final res = einsum("...ij,...jk->...ik", [a, b]);
+        final res = einsum(EinsumSubscripts.parse("...ij,...jk->...ik"), [
+          a,
+          b,
+        ]);
         expect(res.shape, equals([1, 2, 2]));
         expect(res.getCell([0, 0, 0]), equals(19.0));
       });
@@ -259,7 +262,7 @@ void main() {
           [2, 2],
           DType.complex128,
         );
-        final res = einsum("ij,jk->ik", [a, b]);
+        final res = einsum(EinsumSubscripts.parse("ij,jk->ik"), [a, b]);
         expect(res.shape, equals([2, 2]));
         expect(res.dtype, equals(DType.complex128));
       });
@@ -271,16 +274,25 @@ void main() {
         final b = NDArray.fromList([5.0, 6.0, 7.0, 8.0], [2, 2], DType.float64);
         final out = NDArray.zeros([2, 2], DType.float64);
 
-        final res = einsum("ij,jk->ik", [a, b], out: out);
+        final res = einsum(EinsumSubscripts.parse("ij,jk->ik"), [
+          a,
+          b,
+        ], out: out);
         expect(identical(res, out), isTrue);
         expect(out.getCell([0, 0]), equals(19.0));
       });
     });
 
     test("throws for empty operands or subscript errors", () {
-      expect(() => einsum("ij", []), throwsArgumentError);
+      expect(
+        () => einsum(EinsumSubscripts.parse("ij"), <NDArray<Float64>>[]),
+        throwsArgumentError,
+      );
       final a = NDArray.fromList([1.0], [1], DType.float64);
-      expect(() => einsum("ij", [a]), throwsArgumentError);
+      expect(
+        () => einsum(EinsumSubscripts.parse("ij"), [a]),
+        throwsArgumentError,
+      );
       a.dispose();
     });
 
@@ -302,8 +314,70 @@ void main() {
     });
 
     test("throws for multiple arrow delimiters in einsum", () {
-      final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
-      expect(() => einsum("i->j->k", [a]), throwsArgumentError);
+      expect(() => EinsumSubscripts.parse("i->j->k"), throwsArgumentError);
     });
+
+    test(
+      "structured subscript lists (strings and integers) and EinsumSubscripts",
+      () {
+        NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          final b = NDArray.fromList(
+            [5.0, 6.0, 7.0, 8.0],
+            [2, 2],
+            DType.float64,
+          );
+
+          // 1. EinsumSubscripts.explicit
+          final resExplicit = einsum(
+            EinsumSubscripts.explicit(
+              [
+                ['i', 'j'],
+                ['j', 'k'],
+              ],
+              ['i', 'k'],
+            ),
+            [a, b],
+          );
+          expect(resExplicit.shape, equals([2, 2]));
+          expect(resExplicit.getCell([0, 0]), equals(19.0));
+
+          // 2. EinsumSubscripts.explicit with integers (0->a, 1->b, 2->c)
+          final resIntList = einsum(
+            EinsumSubscripts.explicit(
+              [
+                [0, 1],
+                [1, 2],
+              ],
+              [0, 2],
+            ),
+            [a, b],
+          );
+          expect(resIntList.shape, equals([2, 2]));
+          expect(resIntList.getCell([0, 0]), equals(19.0));
+
+          // 3. EinsumSubscripts.parse
+          final specParse = EinsumSubscripts.parse("ij,jk->ik");
+          final resParse = einsum(specParse, [a, b]);
+          expect(resParse.shape, equals([2, 2]));
+          expect(resParse.getCell([0, 0]), equals(19.0));
+          expect(specParse.toSubscriptString(), equals("ij,jk->ik"));
+
+          // 4. EinsumSubscripts.implicit
+          final specImplicit = EinsumSubscripts.implicit([
+            ['i', 'j'],
+            ['j', 'k'],
+          ]);
+          final resImplicit = einsum(specImplicit, [a, b]);
+          expect(resImplicit.shape, equals([2, 2]));
+          expect(resImplicit.getCell([0, 0]), equals(19.0));
+          expect(specImplicit.toSubscriptString(), equals("ij,jk"));
+        });
+      },
+    );
   });
 }
