@@ -21473,6 +21473,41 @@ const int CMP_OP_GE = 5;
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+  )
+>()
+external void s_correlate_full_1d_double(
+  ffi.Pointer<ffi.Double> src,
+  int n,
+  ffi.Pointer<ffi.Double> kernel,
+  int k,
+  ffi.Pointer<ffi.Double> res,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+  )
+>()
+external void s_correlate_full_1d_float(
+  ffi.Pointer<ffi.Float> src,
+  int n,
+  ffi.Pointer<ffi.Float> kernel,
+  int k,
+  ffi.Pointer<ffi.Float> res,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<ffi.Double>,
     ffi.Pointer<ffi.Int>,

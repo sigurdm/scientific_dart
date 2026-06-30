@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 import 'dart:ffi' as ffi;
-import 'package:openblas/openblas.dart';
 import '../ndarray.dart';
 import '../ndarray_bindings.dart' as bindings;
+
 import 'padding.dart';
 import '../scratch_arena.dart';
 
@@ -390,9 +390,9 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
           (in1.dtype == DType.float64 || in1.dtype == DType.float32)) {
         final N = in1.shape[0];
         final K = in2.shape[0];
-        final M = N + K - 1;
 
         final NDArray<R> result;
+
         if (out != null) {
           result = out;
         } else {
@@ -403,42 +403,17 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
           final resPtr = result.pointer.cast<ffi.Double>();
           final ptr1 = in1.pointer.cast<ffi.Double>();
           final ptr2 = in2.pointer.cast<ffi.Double>();
-
-          for (var i = 0; i < M; i++) {
-            final s = i - K + 1;
-            final in1Start = math.max(0, s);
-            final mStart = math.max(0, -s);
-            final mEnd = math.min(K, N - s);
-            final L = mEnd - mStart;
-
-            if (L > 0) {
-              resPtr[i] = cblas_ddot(L, ptr1 + in1Start, 1, ptr2 + mStart, 1);
-            } else {
-              resPtr[i] = 0.0;
-            }
-          }
+          bindings.s_correlate_full_1d_double(ptr1, N, ptr2, K, resPtr);
           return result;
         } else if (in1.dtype == DType.float32) {
           final resPtr = result.pointer.cast<ffi.Float>();
           final ptr1 = in1.pointer.cast<ffi.Float>();
           final ptr2 = in2.pointer.cast<ffi.Float>();
-
-          for (var i = 0; i < M; i++) {
-            final s = i - K + 1;
-            final in1Start = math.max(0, s);
-            final mStart = math.max(0, -s);
-            final mEnd = math.min(K, N - s);
-            final L = mEnd - mStart;
-
-            if (L > 0) {
-              resPtr[i] = cblas_sdot(L, ptr1 + in1Start, 1, ptr2 + mStart, 1);
-            } else {
-              resPtr[i] = 0.0;
-            }
-          }
+          bindings.s_correlate_full_1d_float(ptr1, N, ptr2, K, resPtr);
           return result;
         }
       }
+
       return NDArray.scope(() {
         final padWidths = List<(int, int)>.generate(
           rank,

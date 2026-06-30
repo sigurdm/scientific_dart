@@ -742,18 +742,82 @@ NDArray<R> einsum<T extends Object, R extends Object>(
               operands[0].dtype,
               operands[1].dtype,
             );
-            final res3D = NDArray<R>.zeros([
+            final res3D = NDArray<R>.create([
               numBatch,
               m,
               n,
             ], targetDType as DType<R>);
 
-            for (var bIdx = 0; bIdx < numBatch; bIdx++) {
-              final aSlice = a3D.slice([Index(bIdx)]);
-              final bSlice = b3D.slice([Index(bIdx)]);
-              final resSlice = res3D.slice([Index(bIdx)]);
+            if (a3D.isContiguous &&
+                b3D.isContiguous &&
+                res3D.isContiguous &&
+                targetDType == DType.float64) {
+              final ptrA = a3D.pointer.cast<ffi.Double>();
+              final ptrB = b3D.pointer.cast<ffi.Double>();
+              final ptrRes = res3D.pointer.cast<ffi.Double>();
+              final strideA = m * k;
+              final strideB = k * n;
+              final strideRes = m * n;
 
-              matmul<dynamic, dynamic, dynamic>(aSlice, bSlice, out: resSlice);
+              for (var bIdx = 0; bIdx < numBatch; bIdx++) {
+                cblas_dgemm(
+                  101,
+                  111,
+                  111,
+                  m,
+                  n,
+                  k,
+                  1.0,
+                  ptrA + bIdx * strideA,
+                  k,
+                  ptrB + bIdx * strideB,
+                  n,
+                  0.0,
+                  ptrRes + bIdx * strideRes,
+                  n,
+                );
+              }
+            } else if (a3D.isContiguous &&
+                b3D.isContiguous &&
+                res3D.isContiguous &&
+                targetDType == DType.float32) {
+              final ptrA = a3D.pointer.cast<ffi.Float>();
+              final ptrB = b3D.pointer.cast<ffi.Float>();
+              final ptrRes = res3D.pointer.cast<ffi.Float>();
+              final strideA = m * k;
+              final strideB = k * n;
+              final strideRes = m * n;
+
+              for (var bIdx = 0; bIdx < numBatch; bIdx++) {
+                cblas_sgemm(
+                  101,
+                  111,
+                  111,
+                  m,
+                  n,
+                  k,
+                  1.0,
+                  ptrA + bIdx * strideA,
+                  k,
+                  ptrB + bIdx * strideB,
+                  n,
+                  0.0,
+                  ptrRes + bIdx * strideRes,
+                  n,
+                );
+              }
+            } else {
+              for (var bIdx = 0; bIdx < numBatch; bIdx++) {
+                final aSlice = a3D.slice([Index(bIdx)]);
+                final bSlice = b3D.slice([Index(bIdx)]);
+                final resSlice = res3D.slice([Index(bIdx)]);
+
+                matmul<dynamic, dynamic, dynamic>(
+                  aSlice,
+                  bSlice,
+                  out: resSlice,
+                );
+              }
             }
 
             final freeAShapes = freeA.map((id) => labelSizes[id]!);

@@ -9814,10 +9814,44 @@ static void s_correlate_valid_generic(
     recursive_res(recursive_res, 0, src, res);
 }
 
+template <typename T>
+static void s_correlate_full_1d_generic(
+    const T *src, int N,
+    const T *kernel, int K,
+    T *res
+) {
+    int M = N + K - 1;
+    for (int i = 0; i < M; ++i) {
+        int s = i - K + 1;
+        int in1Start = std::max(0, s);
+        int mStart = std::max(0, -s);
+        int mEnd = std::min(K, N - s);
+        int L = mEnd - mStart;
+
+        T sum;
+        set_zero_corr(sum);
+        if (L > 0) {
+            const T* pSrc = src + in1Start;
+            const T* pK = kernel + mStart;
+            for (int l = 0; l < L; ++l) {
+                add_prod_corr(sum, pSrc[l], pK[l]);
+            }
+        }
+        res[i] = sum;
+    }
+}
+
 extern "C" {
+void s_correlate_full_1d_double(const double *src, int N, const double *kernel, int K, double *res) {
+    s_correlate_full_1d_generic<double>(src, N, kernel, K, res);
+}
+void s_correlate_full_1d_float(const float *src, int N, const float *kernel, int K, float *res) {
+    s_correlate_full_1d_generic<float>(src, N, kernel, K, res);
+}
 void s_correlate_valid_double(const double *src, const int *stridesSrc, const double *kernel, const int *stridesKernel, double *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank) {
     s_correlate_valid_generic<double>(src, stridesSrc, kernel, stridesKernel, res, stridesRes, resShape, kernelShape, rank);
 }
+
 void s_correlate_valid_float(const float *src, const int *stridesSrc, const float *kernel, const int *stridesKernel, float *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank) {
     s_correlate_valid_generic<float>(src, stridesSrc, kernel, stridesKernel, res, stridesRes, resShape, kernelShape, rank);
 }
