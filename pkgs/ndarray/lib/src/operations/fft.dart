@@ -939,22 +939,22 @@ NDArray<R> _padOrTruncate<T, R extends Complex>(
 /// Reference: [DFT sample frequencies](https://numpy.org/doc/stable/reference/generated/numpy.fft.fftfreq.html)
 NDArray<Float64> fftfreq(int n, {double d = 1.0}) {
   final val = 1.0 / (d * n);
-  final list = List<double>.filled(n, 0.0);
+  final list = List<Float64>.filled(n, Float64(0.0));
   if (n % 2 == 0) {
     final half = n ~/ 2;
     for (var i = 0; i < half; i++) {
-      list[i] = i * val;
+      list[i] = Float64(i * val);
     }
     for (var i = half; i < n; i++) {
-      list[i] = (i - n) * val;
+      list[i] = Float64((i - n) * val);
     }
   } else {
     final half = (n - 1) ~/ 2;
     for (var i = 0; i <= half; i++) {
-      list[i] = i * val;
+      list[i] = Float64(i * val);
     }
     for (var i = half + 1; i < n; i++) {
-      list[i] = (i - n) * val;
+      list[i] = Float64((i - n) * val);
     }
   }
   return NDArray<Float64>.fromList(list, [n], DType.float64);
@@ -984,7 +984,7 @@ NDArray<Float64> fftfreq(int n, {double d = 1.0}) {
 NDArray<Float64> rfftfreq(int n, {double d = 1.0}) {
   final val = 1.0 / (d * n);
   final limit = n ~/ 2 + 1;
-  final list = List<double>.generate(limit, (i) => i * val);
+  final list = List<Float64>.generate(limit, (i) => Float64(i * val));
   return NDArray<Float64>.fromList(list, [limit], DType.float64);
 }
 

@@ -193,38 +193,52 @@ void main() {
     // State transition matrix F (constant velocity model in 2D)
     // State vector: [x_pos, y_pos, x_vel, y_vel]^T
     final F = NDArray<Float64>.fromList(
-      [
+      ([
         1.0, 0.0, dt, 0.0, //
         0.0, 1.0, 0.0, dt, //
         0.0, 0.0, 1.0, 0.0, //
         0.0, 0.0, 0.0, 1.0, //
-      ],
+      ]).map((e) => Float64((e as num).toDouble())).toList(),
       [4, 4],
       DType.float64,
     );
 
     // Observation model H (we only measure position x and y)
     final H = NDArray<Float64>.fromList(
-      [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+      ([
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+      ]).map((e) => Float64((e as num).toDouble())).toList(),
       [2, 4],
       DType.float64,
     );
 
     // Process noise covariance Q (low noise on position, higher on velocity)
     final Q = NDArray<Float64>.fromList(
-      [
+      ([
         0.01, 0.0, 0.0, 0.0, //
         0.0, 0.01, 0.0, 0.0, //
         0.0, 0.0, 0.1, 0.0, //
         0.0, 0.0, 0.0, 0.1, //
-      ],
+      ]).map((e) => Float64((e as num).toDouble())).toList(),
       [4, 4],
       DType.float64,
     );
 
     // Measurement noise covariance R (GPS-like, stddev = 2.0, var = 4.0)
     final R = NDArray<Float64>.fromList(
-      [4.0, 0.0, 0.0, 4.0],
+      ([
+        4.0,
+        0.0,
+        0.0,
+        4.0,
+      ]).map((e) => Float64((e as num).toDouble())).toList(),
       [2, 2],
       DType.float64,
     );
@@ -233,24 +247,34 @@ void main() {
 
     // True initial state (start at origin, moving at velocity (1, 1))
     var trueState = NDArray<Float64>.fromList(
-      [0.0, 0.0, 1.0, 1.0],
+      ([
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+      ]).map((e) => Float64((e as num).toDouble())).toList(),
       [4, 1],
       DType.float64,
     );
 
     // Initial estimated state (slightly off, high covariance)
     final estState = NDArray<Float64>.fromList(
-      [0.5, -0.5, 0.0, 0.0],
+      ([
+        0.5,
+        -0.5,
+        0.0,
+        0.0,
+      ]).map((e) => Float64((e as num).toDouble())).toList(),
       [4, 1],
       DType.float64,
     );
     final P = NDArray<Float64>.fromList(
-      [
+      ([
         1.0, 0.0, 0.0, 0.0, //
         0.0, 1.0, 0.0, 0.0, //
         0.0, 0.0, 10.0, 0.0, //
         0.0, 0.0, 0.0, 10.0, //
-      ],
+      ]).map((e) => Float64((e as num).toDouble())).toList(),
       [4, 4],
       DType.float64,
     );

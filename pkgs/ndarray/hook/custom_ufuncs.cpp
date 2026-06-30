@@ -9702,3 +9702,136 @@ DEFINE_CONTIGUOUS_UNARY_IMPL(v_i0_complex128, cpx_t, cpx_t, cpx_i0(x))
 DEFINE_STRIDED_UNARY_IMPL(s_i0_complex128, cpx_t, cpx_t, cpx_i0(x))
 
 }
+
+
+/* Spatial N-D Correlation Implementation */
+
+inline void add_prod_corr(double& sum, double a, double b) { sum += a * b; }
+inline void add_prod_corr(float& sum, float a, float b) { sum += a * b; }
+inline void add_prod_corr(int64_t& sum, int64_t a, int64_t b) { sum += a * b; }
+inline void add_prod_corr(int32_t& sum, int32_t a, int32_t b) { sum += a * b; }
+inline void add_prod_corr(cpx_t& sum, cpx_t a, cpx_t b) {
+    sum.r += a.r * b.r + a.i * b.i;
+    sum.i += a.i * b.r - a.r * b.i;
+}
+inline void add_prod_corr(cpx_f_t& sum, cpx_f_t a, cpx_f_t b) {
+    sum.r += a.r * b.r + a.i * b.i;
+    sum.i += a.i * b.r - a.r * b.i;
+}
+
+inline void set_zero_corr(double& val) { val = 0.0; }
+inline void set_zero_corr(float& val) { val = 0.0f; }
+inline void set_zero_corr(int64_t& val) { val = 0; }
+inline void set_zero_corr(int32_t& val) { val = 0; }
+inline void set_zero_corr(cpx_t& val) { val.r = 0.0; val.i = 0.0; }
+inline void set_zero_corr(cpx_f_t& val) { val.r = 0.0f; val.i = 0.0f; }
+
+template <typename T>
+static void s_correlate_valid_generic(
+    const T *src, const int *stridesSrc,
+    const T *kernel, const int *stridesKernel,
+    T *res, const int *stridesRes,
+    const int *resShape, const int *kernelShape, int rank
+) {
+    if (rank == 1) {
+        int R = resShape[0];
+        int K = kernelShape[0];
+        int sSrc = stridesSrc[0];
+        int sK = stridesKernel[0];
+        int sRes = stridesRes[0];
+        for (int r = 0; r < R; ++r) {
+            T sum;
+            set_zero_corr(sum);
+            const T* pSrc = src + r * sSrc;
+            const T* pK = kernel;
+            for (int k = 0; k < K; ++k) {
+                add_prod_corr(sum, *pSrc, *pK);
+                pSrc += sSrc;
+                pK += sK;
+            }
+            res[r * sRes] = sum;
+        }
+        return;
+    }
+    if (rank == 2) {
+        int R0 = resShape[0], R1 = resShape[1];
+        int K0 = kernelShape[0], K1 = kernelShape[1];
+        int sS0 = stridesSrc[0], sS1 = stridesSrc[1];
+        int sK0 = stridesKernel[0], sK1 = stridesKernel[1];
+        int sR0 = stridesRes[0], sR1 = stridesRes[1];
+        for (int r0 = 0; r0 < R0; ++r0) {
+            for (int r1 = 0; r1 < R1; ++r1) {
+                T sum;
+                set_zero_corr(sum);
+                const T* pSrcRow = src + r0 * sS0 + r1 * sS1;
+                const T* pKRow = kernel;
+                for (int k0 = 0; k0 < K0; ++k0) {
+                    const T* pSrc = pSrcRow;
+                    const T* pK = pKRow;
+                    for (int k1 = 0; k1 < K1; ++k1) {
+                        add_prod_corr(sum, *pSrc, *pK);
+                        pSrc += sS1;
+                        pK += sK1;
+                    }
+                    pSrcRow += sS0;
+                    pKRow += sK0;
+                }
+                res[r0 * sR0 + r1 * sR1] = sum;
+            }
+        }
+        return;
+    }
+
+    auto recursive_kernel = [&](auto self, int dim, const T* pSrc, const T* pK, T& sum) -> void {
+        if (dim == rank) {
+            add_prod_corr(sum, *pSrc, *pK);
+            return;
+        }
+        int Kdim = kernelShape[dim];
+        int sS = stridesSrc[dim];
+        int sK = stridesKernel[dim];
+        for (int k = 0; k < Kdim; ++k) {
+            self(self, dim + 1, pSrc + k * sS, pK + k * sK, sum);
+        }
+    };
+
+    auto recursive_res = [&](auto self, int dim, const T* pSrcBase, T* pResCur) -> void {
+        if (dim == rank) {
+            T sum;
+            set_zero_corr(sum);
+            recursive_kernel(recursive_kernel, 0, pSrcBase, kernel, sum);
+            *pResCur = sum;
+            return;
+        }
+        int Rdim = resShape[dim];
+        int sS = stridesSrc[dim];
+        int sR = stridesRes[dim];
+        for (int r = 0; r < Rdim; ++r) {
+            self(self, dim + 1, pSrcBase + r * sS, pResCur + r * sR);
+        }
+    };
+
+    recursive_res(recursive_res, 0, src, res);
+}
+
+extern "C" {
+void s_correlate_valid_double(const double *src, const int *stridesSrc, const double *kernel, const int *stridesKernel, double *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank) {
+    s_correlate_valid_generic<double>(src, stridesSrc, kernel, stridesKernel, res, stridesRes, resShape, kernelShape, rank);
+}
+void s_correlate_valid_float(const float *src, const int *stridesSrc, const float *kernel, const int *stridesKernel, float *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank) {
+    s_correlate_valid_generic<float>(src, stridesSrc, kernel, stridesKernel, res, stridesRes, resShape, kernelShape, rank);
+}
+void s_correlate_valid_complex128(const cpx_t *src, const int *stridesSrc, const cpx_t *kernel, const int *stridesKernel, cpx_t *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank) {
+    s_correlate_valid_generic<cpx_t>(src, stridesSrc, kernel, stridesKernel, res, stridesRes, resShape, kernelShape, rank);
+}
+void s_correlate_valid_complex64(const cpx_f_t *src, const int *stridesSrc, const cpx_f_t *kernel, const int *stridesKernel, cpx_f_t *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank) {
+    s_correlate_valid_generic<cpx_f_t>(src, stridesSrc, kernel, stridesKernel, res, stridesRes, resShape, kernelShape, rank);
+}
+void s_correlate_valid_int64(const int64_t *src, const int *stridesSrc, const int64_t *kernel, const int *stridesKernel, int64_t *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank) {
+    s_correlate_valid_generic<int64_t>(src, stridesSrc, kernel, stridesKernel, res, stridesRes, resShape, kernelShape, rank);
+}
+void s_correlate_valid_int32(const int32_t *src, const int *stridesSrc, const int32_t *kernel, const int *stridesKernel, int32_t *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank) {
+    s_correlate_valid_generic<int32_t>(src, stridesSrc, kernel, stridesKernel, res, stridesRes, resShape, kernelShape, rank);
+}
+}
+

@@ -325,7 +325,7 @@ NDArray<Float64> _pdistCosine<T extends Object>(
     );
 
     final NDArray<Float64> div = divide(dot, denom);
-    final one = NDArray<Float64>.fromList([1.0], [1], DType.float64);
+    final one = NDArray<Float64>.fromList([Float64(1.0)], [1], DType.float64);
     final NDArray<Float64> cosDistMatrix = subtract(one, div);
 
     final flatData = cosDistMatrix.data as Float64List;
@@ -384,7 +384,7 @@ NDArray<Float64> _cdistCosine<Ta extends Object, Tb extends Object>(
     );
 
     final NDArray<Float64> div = divide(dot, denom);
-    final one = NDArray<Float64>.fromList([1.0], [1], DType.float64);
+    final one = NDArray<Float64>.fromList([Float64(1.0)], [1], DType.float64);
     subtract(one, div, out: result);
 
     if (out != null) {

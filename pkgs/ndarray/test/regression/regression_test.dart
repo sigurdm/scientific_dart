@@ -78,7 +78,11 @@ void main() {
           Complex(3.0, 4.0),
           Complex(1.0, 1.0),
         ];
-        final a = NDArray.fromList(data, [6], DType.complex128);
+        final a = NDArray<Complex128>.fromList(
+          data.map((e) => Complex128(e.real, e.imag)).toList(),
+          [6],
+          DType.complex128,
+        );
 
         // This should not crash or hang.
         final sorted = sort(a);
@@ -103,7 +107,7 @@ void main() {
 
         final actual = sorted.toList();
         for (var i = 0; i < 6; i++) {
-          final act = actual[i] as Complex;
+          final act = actual[i];
           final exp = expected[i];
           if (exp.real.isNaN) {
             expect(
@@ -130,7 +134,11 @@ void main() {
     test('Stable NaN segregation for double (stable sort)', () {
       NDArray.scope(() {
         final nan = double.nan;
-        final a = NDArray.fromList([nan, 0.0, -0.0], [3], DType.float64);
+        final a = NDArray<Float64>.fromList(
+          [Float64(nan), Float64(0.0), Float64(-0.0)],
+          [3],
+          DType.float64,
+        );
 
         final sorted = sort(a, kind: SortKind.mergesort);
 
@@ -138,15 +146,19 @@ void main() {
         expect(sorted.toList()[1], -0.0);
         expect(sorted.toList()[2].isNaN, isTrue);
 
-        expect(1.0 / (sorted.toList()[0] as double), double.infinity);
-        expect(1.0 / (sorted.toList()[1] as double), double.negativeInfinity);
+        expect(1.0 / (sorted.toList()[0]), double.infinity);
+        expect(1.0 / (sorted.toList()[1]), double.negativeInfinity);
       });
     });
 
     test('Stable NaN segregation for float (stable sort)', () {
       NDArray.scope(() {
         final nan = double.nan;
-        final a = NDArray.fromList([nan, 0.0, -0.0], [3], DType.float32);
+        final a = NDArray<Float32>.fromList(
+          [Float32(nan), Float32(0.0), Float32(-0.0)],
+          [3],
+          DType.float32,
+        );
 
         final sorted = sort(a, kind: SortKind.mergesort);
 
@@ -154,16 +166,24 @@ void main() {
         expect(sorted.toList()[1], -0.0);
         expect(sorted.toList()[2].isNaN, isTrue);
 
-        expect(1.0 / (sorted.toList()[0] as double), double.infinity);
-        expect(1.0 / (sorted.toList()[1] as double), double.negativeInfinity);
+        expect(1.0 / (sorted.toList()[0]), double.infinity);
+        expect(1.0 / (sorted.toList()[1]), double.negativeInfinity);
       });
     });
   });
 
   group('Phase 3 Type Safety Tests', () {
     test('floor_divide with uint8/int16', () {
-      final a = NDArray.fromList([4, 5, 6], [3], DType.uint8);
-      final b = NDArray.fromList([2, 2, 2], [3], DType.int16);
+      final a = NDArray<Uint8>.fromList(
+        [Uint8(4), Uint8(5), Uint8(6)],
+        [3],
+        DType.uint8,
+      );
+      final b = NDArray<Int16>.fromList(
+        [Int16(2), Int16(2), Int16(2)],
+        [3],
+        DType.int16,
+      );
 
       // This should not crash
       final c = floor_divide(a, b);
@@ -175,8 +195,16 @@ void main() {
     });
 
     test('floor_divide with uint8/float64', () {
-      final a = NDArray.fromList([5, 6, 7], [3], DType.uint8);
-      final b = NDArray.fromList([2.0, 2.0, 2.0], [3], DType.float64);
+      final a = NDArray<Uint8>.fromList(
+        [Uint8(5), Uint8(6), Uint8(7)],
+        [3],
+        DType.uint8,
+      );
+      final b = NDArray<Float64>.fromList(
+        [Float64(2.0), Float64(2.0), Float64(2.0)],
+        [3],
+        DType.float64,
+      );
 
       // This should not crash
       final c = floor_divide(a, b);
@@ -185,8 +213,16 @@ void main() {
     });
 
     test('remainder with uint8/int16', () {
-      final a = NDArray.fromList([5, 6, 7], [3], DType.uint8);
-      final b = NDArray.fromList([3, 3, 3], [3], DType.int16);
+      final a = NDArray<Uint8>.fromList(
+        [Uint8(5), Uint8(6), Uint8(7)],
+        [3],
+        DType.uint8,
+      );
+      final b = NDArray<Int16>.fromList(
+        [Int16(3), Int16(3), Int16(3)],
+        [3],
+        DType.int16,
+      );
 
       // This should not crash
       final c = remainder(a, b);
@@ -195,8 +231,16 @@ void main() {
     });
 
     test('remainder with uint8/float64', () {
-      final a = NDArray.fromList([5, 6, 7], [3], DType.uint8);
-      final b = NDArray.fromList([3.0, 3.0, 3.0], [3], DType.float64);
+      final a = NDArray<Uint8>.fromList(
+        [Uint8(5), Uint8(6), Uint8(7)],
+        [3],
+        DType.uint8,
+      );
+      final b = NDArray<Float64>.fromList(
+        [Float64(3.0), Float64(3.0), Float64(3.0)],
+        [3],
+        DType.float64,
+      );
 
       // This should not crash
       final c = remainder(a, b);
@@ -205,51 +249,75 @@ void main() {
     });
 
     test('sin with uint8/int16', () {
-      final a = NDArray.fromList([0, 30, 90], [3], DType.uint8);
+      final a = NDArray<Uint8>.fromList(
+        [Uint8(0), Uint8(30), Uint8(90)],
+        [3],
+        DType.uint8,
+      );
       // This should not crash
       final c = sin(a);
       expect(c.dtype, DType.float64); // default float type for sin on int
     });
 
     test('abs with uint8/int16', () {
-      final a = NDArray.fromList([-1, -2, 3], [3], DType.int16);
+      final a = NDArray<Int16>.fromList(
+        [Int16(-1), Int16(-2), Int16(3)],
+        [3],
+        DType.int16,
+      );
       final c = abs(a);
       expect(c.toList(), [1, 2, 3]);
       expect(c.dtype, DType.int16);
     });
 
     test('negative with uint8/int16', () {
-      final a = NDArray.fromList([1, 2, 3], [3], DType.int16);
+      final a = NDArray<Int16>.fromList(
+        [Int16(1), Int16(2), Int16(3)],
+        [3],
+        DType.int16,
+      );
       final b = negative(a);
       expect(b.toList(), [-1, -2, -3]);
       expect(b.dtype, DType.int16);
 
-      final c = NDArray.fromList([1, 2, 3], [3], DType.uint8);
+      final c = NDArray<Uint8>.fromList(
+        [Uint8(1), Uint8(2), Uint8(3)],
+        [3],
+        DType.uint8,
+      );
       final d = negative(c);
       expect(d.toList(), [255, 254, 253]); // wrap around for uint8
       expect(d.dtype, DType.uint8);
     });
 
     test('det with float32 preserves type', () {
-      final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float32);
+      final a = NDArray<Float32>.fromList(
+        [Float32(1.0), Float32(2.0), Float32(3.0), Float32(4.0)],
+        [2, 2],
+        DType.float32,
+      );
       final d = det(a);
       expect(d.dtype, DType.float32);
       expect(d.scalar, closeTo(-2.0, 1e-5));
     });
 
     test('svd and qr throw ArgumentError for integer inputs', () {
-      final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+      final a = NDArray<Int32>.fromList(
+        [Int32(1), Int32(2), Int32(3), Int32(4)],
+        [2, 2],
+        DType.int32,
+      );
       expect(() => svd(a), throwsArgumentError);
       expect(() => qr(a), throwsArgumentError);
     });
 
     test('complex SVD (complex128)', () {
-      final a = NDArray.fromList(
+      final a = NDArray<Complex128>.fromList(
         [
-          Complex(2.0, 1.0),
-          Complex(0.0, 0.0),
-          Complex(0.0, 0.0),
-          Complex(3.0, -1.0),
+          Complex128(2.0, 1.0),
+          Complex128(0.0, 0.0),
+          Complex128(0.0, 0.0),
+          Complex128(3.0, -1.0),
         ],
         [2, 2],
         DType.complex128,
@@ -262,12 +330,12 @@ void main() {
     });
 
     test('complex pinv (complex128)', () {
-      final a = NDArray.fromList(
+      final a = NDArray<Complex128>.fromList(
         [
-          Complex(2.0, 1.0),
-          Complex(0.0, 0.0),
-          Complex(0.0, 0.0),
-          Complex(3.0, -1.0),
+          Complex128(2.0, 1.0),
+          Complex128(0.0, 0.0),
+          Complex128(0.0, 0.0),
+          Complex128(3.0, -1.0),
         ],
         [2, 2],
         DType.complex128,

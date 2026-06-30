@@ -1654,38 +1654,274 @@ final class NDArray<T> implements ffi.Finalizable {
   }
 
   /// Accesses elements of the array polymorphically based on the runtime type of [spec].
+  /// Safely coercing scalar inputs to matching array element type [T].
+  T _coerceScalar(dynamic value) {
+    if (value is NDArray && (value.shape.isEmpty || value.data.length == 1)) {
+      value = value.scalar;
+    }
+    if (value is T) return value;
+    switch (dtype) {
+      case DType.float64:
+      case DType.float32:
+        if (value is num) return value.toDouble() as T;
+      case DType.int64:
+      case DType.int32:
+      case DType.int16:
+      case DType.uint8:
+        if (value is num) return value.toInt() as T;
+      case DType.complex128:
+      case DType.complex64:
+        if (value is num) return Complex(value.toDouble(), 0.0) as T;
+      case DType.boolean:
+        if (value is num) return (value != 0) as T;
+    }
+    return value as T;
+  }
+
+  /// Normalizes heterogeneous selection items into standard [Selector] objects.
+  Selector _toSelector(dynamic item) {
+    if (item is Selector) return item;
+    if (item is int) return Index(item);
+    if (item is List) {
+      if (item.isEmpty) return Indices(const <int>[]);
+      if (item.every((e) => e is int)) {
+        return Indices(item.cast<int>());
+      }
+      if (item.every((e) => e is bool)) {
+        final boolArr = NDArray<bool>.fromList(item.cast<bool>(), [
+          item.length,
+        ], DType.boolean);
+        return Mask(BooleanMask(boolArr));
+      }
+      throw ArgumentError(
+        "Selector lists must contain homogeneous integer coordinates or booleans, found: ${item.runtimeType}",
+      );
+    }
+    if (item is NDArray) {
+      if (item.dtype == DType.boolean) {
+        return Mask(BooleanMask(item as NDArray<bool>));
+      }
+      if (item.dtype.isInteger) {
+        final intList = item.toList().map((e) => e as int).toList();
+        return Indices(intList);
+      }
+    }
+    if (item is BooleanMask) return Mask(item);
+    throw ArgumentError("Unsupported selector item type: ${item.runtimeType}");
+  }
+
+  /// Mutates multi-dimensional slices targeted by normalized [selectors].
+  void _sliceAssign(List<Selector> selectors, dynamic value) {
+    if (selectors.length > shape.length) {
+      throw ArgumentError(
+        "Too many selectors for array rank (${shape.length})",
+      );
+    }
+
+    if (value is NDArray && (value.shape.isEmpty || value.data.length == 1)) {
+      value = value.scalar;
+    }
+
+    final processedSelectors = List<Selector>.from(selectors);
+    for (var i = 0; i < processedSelectors.length; i++) {
+      final sel = processedSelectors[i];
+      if (sel is Mask) {
+        final mask = sel.mask;
+        if (mask.mask.shape.length != 1 || mask.mask.shape[0] != shape[i]) {
+          throw ArgumentError(
+            "Boolean mask shape must match the size of dimension $i",
+          );
+        }
+        final size = shape[i];
+        final maskMarker = ScratchArena.marker;
+        final List<int> indices;
+        try {
+          final pIndices = ScratchArena.allocate<ffi.Int>(
+            size * ffi.sizeOf<ffi.Int>(),
+          );
+          final count = unpack_mask_c(
+            mask.mask.pointer.cast(),
+            size,
+            mask.mask.strides[0],
+            pIndices,
+          );
+          indices = pIndices.cast<ffi.Int32>().asTypedList(count).toList();
+        } finally {
+          ScratchArena.reset(maskMarker);
+        }
+        processedSelectors[i] = Indices(indices);
+      }
+    }
+
+    var isAdvanced = false;
+    for (var i = 0; i < shape.length; i++) {
+      final sel = i < processedSelectors.length
+          ? processedSelectors[i]
+          : Slice.all();
+      if (sel is Indices) {
+        isAdvanced = true;
+        break;
+      }
+    }
+
+    if (!isAdvanced) {
+      final view = slice(processedSelectors);
+      if (value is NDArray) {
+        final NDArray valArr;
+        if (listEquals(value.shape, view.shape)) {
+          valArr = value;
+        } else {
+          valArr = ops.broadcastTo(value, view.shape);
+        }
+        valArr.copy(out: view);
+      } else {
+        view.fill(_coerceScalar(value));
+      }
+    } else {
+      final targetShape = <int>[];
+      for (var i = 0; i < shape.length; i++) {
+        final sel = i < processedSelectors.length
+            ? processedSelectors[i]
+            : Slice.all();
+        if (sel is Slice) {
+          final step = sel.step;
+          final startIdx = sel.start == null
+              ? (step > 0 ? 0 : shape[i] - 1)
+              : (sel.start! < 0 ? shape[i] + sel.start! : sel.start!);
+          final stopIdx = sel.stop == null
+              ? (step > 0 ? shape[i] : -1)
+              : (sel.stop! < 0 ? shape[i] + sel.stop! : sel.stop!);
+          final realStart = startIdx.clamp(0, shape[i] - 1);
+          final realStop = stopIdx.clamp(-1, shape[i]);
+          final dimSize = ((realStop - realStart) / step).ceil();
+          targetShape.add(dimSize > 0 ? dimSize : 0);
+        } else if (sel is Indices) {
+          targetShape.add(sel.values.length);
+        }
+      }
+
+      final NDArray? valArr;
+      if (value is NDArray) {
+        if (listEquals(value.shape, targetShape)) {
+          valArr = value;
+        } else {
+          valArr = ops.broadcastTo(value, targetShape);
+        }
+      } else {
+        valArr = null;
+      }
+
+      final currentCoords = List<int>.filled(shape.length, 0);
+      final valIndices = List<int>.filled(targetShape.length, 0);
+
+      void walk(int dim, int valDim) {
+        if (dim == shape.length) {
+          if (valArr != null) {
+            setCell(currentCoords, _coerceScalar(valArr.getCell(valIndices)));
+          } else {
+            setCell(currentCoords, _coerceScalar(value));
+          }
+          return;
+        }
+
+        final sel = dim < processedSelectors.length
+            ? processedSelectors[dim]
+            : Slice.all();
+        if (sel is Index) {
+          final idx = sel.value < 0 ? shape[dim] + sel.value : sel.value;
+          currentCoords[dim] = idx;
+          walk(dim + 1, valDim);
+        } else if (sel is Slice) {
+          final step = sel.step;
+          final startIdx = sel.start == null
+              ? (step > 0 ? 0 : shape[dim] - 1)
+              : (sel.start! < 0 ? shape[dim] + sel.start! : sel.start!);
+          final stopIdx = sel.stop == null
+              ? (step > 0 ? shape[dim] : -1)
+              : (sel.stop! < 0 ? shape[dim] + sel.stop! : sel.stop!);
+          final realStart = startIdx.clamp(0, shape[dim] - 1);
+          var stepIdx = 0;
+          for (
+            var idx = realStart;
+            step > 0 ? idx < stopIdx : idx > stopIdx;
+            idx += step
+          ) {
+            currentCoords[dim] = idx;
+            if (valDim < valIndices.length) valIndices[valDim] = stepIdx;
+            walk(dim + 1, valDim + 1);
+            stepIdx++;
+          }
+        } else if (sel is Indices) {
+          for (var i = 0; i < sel.values.length; i++) {
+            final idx = sel.values[i];
+            final realIdx = idx < 0 ? shape[dim] + idx : idx;
+            currentCoords[dim] = realIdx;
+            if (valDim < valIndices.length) valIndices[valDim] = i;
+            walk(dim + 1, valDim + 1);
+          }
+        }
+      }
+
+      walk(0, 0);
+    }
+  }
+
+  /// Fetches elements polymorphically based on selection specification object [spec].
+  ///
+  /// Corresponds to NumPy multi-dimensional indexing and slicing syntax.
   ///
   /// **Behavior by Parameter Type:**
-  /// - **[int]**: Equivalent to calling `slice([Index(spec)])`. Extracts a view along the first axis.
-  /// - **`List<int>`**: Equivalent to calling `getCell(spec)`. Fetches a single coordinate cell scalar.
-  /// - **`List<List<int>>`**: Equivalent to calling `take(spec[0], axis: 0)`. Fetches sub-matrix row slices.
-  /// - **`NDArray<int>`**:
-  ///   - If shapes match exactly (`spec.shape == shape`), equivalent to calling `applyMask(spec)`.
-  ///   - If shapes differ, equivalent to calling `take(spec.data, axis: 0)`.
+  /// - **[int]**: Extracts a view along the first axis with rank reduced by 1.
+  /// - **[Slice] / [Index] / [Indices] / [Mask] / [BooleanMask]**: Single-axis selector along dimension 0.
+  /// - **`List<int>`**: Fetches a single coordinate cell scalar matching array rank.
+  /// - **`List<List<int>>`**: Fetches sub-matrix row slices targeting axis 0.
+  /// - **`List<dynamic>`**: Multi-dimensional selection objects (e.g. mixed lists of slices, index lists, integers).
+  /// - **`NDArray<bool>`**:
+  ///   - Full mask (`spec.shape == shape`): Calls [applyMask].
+  ///   - 1D mask along axis 0: Calls [slice].
+  /// - **`NDArray` (integer)**: Performs [take] for fancy index selection.
   ///
-  /// Throws an [ArgumentError] if the type of [spec] is unsupported.
+  /// **Preconditions:**
+  /// - The array must not be disposed.
+  /// - [spec] must be a supported indexing / slicing object type or list of selector objects.
+  ///
+  /// **Throws:**
+  /// - [StateError] if this array has been explicitly disposed.
+  /// - [ArgumentError] if [spec] is an unsupported type or contains dimension mismatch.
   dynamic operator [](dynamic spec) {
     if (isDisposed) {
       throw StateError(
-        'Cannot access an array or view whose memory has been explicitly freed/disposed!',
+        "Cannot access an array or view whose memory has been explicitly freed/disposed!",
       );
     }
     if (spec is int) {
       return slice([Index(spec)]);
+    } else if (spec is Slice ||
+        spec is Index ||
+        spec is Indices ||
+        spec is Mask ||
+        spec is BooleanMask) {
+      return slice([_toSelector(spec)]);
     } else if (spec is List) {
       if (spec.isNotEmpty && spec.first is List) {
         final subList = spec.first as List;
-        final intIndices = subList.map((e) => e as int).toList();
-        return take(intIndices);
-      } else {
-        final intCoords = spec.map((e) => e as int).toList();
-        if (intCoords.length != shape.length) {
+        if (subList.every((e) => e is int)) {
+          final intIndices = subList.cast<int>().toList();
+          return take(intIndices);
+        }
+      } else if (spec.every((e) => e is int)) {
+        if (spec.length != shape.length) {
           throw ArgumentError(
-            'Number of coordinate indices (${intCoords.length}) must match array rank (${shape.length})',
+            "Number of coordinate indices (${spec.length}) must match array rank (${shape.length})",
           );
         }
-        return getCell(intCoords);
+        return getCell(spec.cast<int>());
       }
+      final selectors = spec
+          .map((e) => _toSelector(e))
+          .cast<Selector>()
+          .toList();
+      return slice(selectors);
     } else if (spec is NDArray && spec.dtype == DType.boolean) {
       final boolMask = spec as NDArray<bool>;
       var shapesMatch = boolMask.shape.length == shape.length;
@@ -1699,12 +1935,14 @@ final class NDArray<T> implements ffi.Finalizable {
       }
       if (shapesMatch) {
         return applyMask(boolMask);
+      } else if (boolMask.shape.length == 1 && boolMask.shape[0] == shape[0]) {
+        return slice([Mask(BooleanMask(boolMask))]);
       } else {
         throw ArgumentError(
-          'Boolean mask shape must exactly match array shape',
+          "Boolean mask shape must exactly match array shape",
         );
       }
-    } else if (spec is NDArray<int>) {
+    } else if (spec is NDArray && spec.dtype.isInteger) {
       var shapesMatch = spec.shape.length == shape.length;
       if (shapesMatch) {
         for (var i = 0; i < shape.length; i++) {
@@ -1715,35 +1953,47 @@ final class NDArray<T> implements ffi.Finalizable {
         }
       }
       if (shapesMatch) {
-        // Handle legacy or error cases or convert to true bool if user accidentally used int array masks
         throw ArgumentError(
-          'Masking requires an NDArray of DType.boolean, not integers.',
+          "Masking requires an NDArray of DType.boolean, not integers.",
         );
       } else {
-        return take(spec.data);
+        final intList = spec.toList().map((e) => e as int).toList();
+        return take(intList);
       }
     } else {
       throw ArgumentError(
-        'Unsupported selector type for operator []: ${spec.runtimeType}',
+        "Unsupported selector type for operator []: ${spec.runtimeType}",
       );
     }
   }
 
-  /// Mutates elements of the array polymorphically based on the runtime type of [spec].
+  /// Mutates elements polymorphically based on selection specification object [spec].
+  ///
+  /// Corresponds to NumPy multi-dimensional slice assignment.
   ///
   /// **Behavior by Parameter Type:**
-  /// - **[int]**: Modifies an entire row or slice along the first axis via [setIndices] / [setIndicesScalar].
-  /// - **`List<int>`**: Modifies a single coordinate cell scalar via [setCell].
-  /// - **`List<List<int>>`**: Modifies targeted row slices along the first axis via [setIndices] / [setIndicesScalar].
-  /// - **`NDArray<int>`**:
-  ///   - If shapes match exactly, equivalent to calling `setByMask(spec, value)`.
-  ///   - If shapes differ, equivalent to calling `setIndices(spec, value)` or `setIndicesScalar(spec, value)`.
+  /// - **[int]**: Modifies row or slice along the first axis.
+  /// - **[Slice] / [Index] / [Indices] / [Mask] / [BooleanMask]**: Mutates targeted sub-matrix elements along dimension 0.
+  /// - **`List<int>`**: Modifies a single coordinate cell scalar matching array rank.
+  /// - **`List<List<int>>`**: Modifies targeted row slices along axis 0.
+  /// - **`List<dynamic>`**: Multi-dimensional selection objects (e.g. mixed lists of slices, index lists, integers).
+  /// - **`NDArray<bool>`**:
+  ///   - Full mask (`spec.shape == shape`): Calls [setByMask] or [setByMaskScalar].
+  ///   - 1D mask along axis 0: Performs slice assignment along dimension 0.
+  /// - **`NDArray` (integer)**: Modifies elements selected by fancy integer array indices.
   ///
-  /// Throws an [ArgumentError] if the type of [spec] is unsupported.
+  /// **Preconditions:**
+  /// - The array must not be disposed.
+  /// - [spec] must be a supported selection specification object.
+  /// - [value] must match elements or broadcast to the selected shape.
+  ///
+  /// **Throws:**
+  /// - [StateError] if this array has been explicitly disposed.
+  /// - [ArgumentError] if [spec] or [value] is unsupported or has dimension mismatch.
   void operator []=(dynamic spec, dynamic value) {
     if (isDisposed) {
       throw StateError(
-        'Cannot access an array or view whose memory has been explicitly freed/disposed!',
+        "Cannot access an array or view whose memory has been explicitly freed/disposed!",
       );
     }
     if (spec is int) {
@@ -1751,28 +2001,44 @@ final class NDArray<T> implements ffi.Finalizable {
       if (value is NDArray) {
         setIndices(indices, value);
       } else {
-        setIndicesScalar(indices, value as T);
+        setIndicesScalar(indices, _coerceScalar(value));
       }
+    } else if (spec is Slice ||
+        spec is Index ||
+        spec is Indices ||
+        spec is Mask ||
+        spec is BooleanMask) {
+      _sliceAssign([_toSelector(spec)], value);
     } else if (spec is List) {
       if (spec.isNotEmpty && spec.first is List) {
         final subList = spec.first as List;
-        final intIndices = subList.map((e) => e as int).toList();
-        final indices = NDArray<int>.fromList(intIndices, [
-          intIndices.length,
-        ], DType.int32);
-        if (value is NDArray) {
-          setIndices(indices, value);
-        } else {
-          setIndicesScalar(indices, value as T);
+        if (subList.every((e) => e is int)) {
+          final intIndices = subList.cast<int>().toList();
+          final indices = NDArray<int>.fromList(intIndices, [
+            intIndices.length,
+          ], DType.int32);
+          if (value is NDArray) {
+            setIndices(indices, value);
+          } else {
+            setIndicesScalar(indices, _coerceScalar(value));
+          }
+          return;
         }
-      } else {
-        final intCoords = spec.map((e) => e as int).toList();
-        if (intCoords.length != shape.length) {
+      }
+      if (spec.every((e) => e is int)) {
+        if (spec.length != shape.length) {
           throw ArgumentError(
-            'Number of coordinate indices (${intCoords.length}) must match array rank (${shape.length})',
+            "Number of coordinate indices (${spec.length}) must match array rank (${shape.length})",
           );
         }
-        setCell(intCoords, value as T);
+        final intCoords = spec.cast<int>();
+        setCell(intCoords, _coerceScalar(value));
+      } else {
+        final selectors = spec
+            .map((e) => _toSelector(e))
+            .cast<Selector>()
+            .toList();
+        _sliceAssign(selectors, value);
       }
     } else if (spec is NDArray && spec.dtype == DType.boolean) {
       final boolMask = spec as NDArray<bool>;
@@ -1788,19 +2054,17 @@ final class NDArray<T> implements ffi.Finalizable {
       if (shapesMatch) {
         if (value is NDArray<T>) {
           setByMask(boolMask, value);
-        } else if (value is T) {
-          setByMaskScalar(boolMask, value);
         } else {
-          throw ArgumentError(
-            'Value type (${value.runtimeType}) must be either NDArray<$T> or a scalar $T for mask assignment',
-          );
+          setByMaskScalar(boolMask, _coerceScalar(value));
         }
+      } else if (boolMask.shape.length == 1 && boolMask.shape[0] == shape[0]) {
+        _sliceAssign([Mask(BooleanMask(boolMask))], value);
       } else {
         throw ArgumentError(
-          'Boolean mask shape must exactly match array shape',
+          "Boolean mask shape must exactly match array shape",
         );
       }
-    } else if (spec is NDArray<int>) {
+    } else if (spec is NDArray && spec.dtype.isInteger) {
       var shapesMatch = spec.shape.length == shape.length;
       if (shapesMatch) {
         for (var i = 0; i < shape.length; i++) {
@@ -1812,18 +2076,22 @@ final class NDArray<T> implements ffi.Finalizable {
       }
       if (shapesMatch) {
         throw ArgumentError(
-          'Masking requires an NDArray of DType.boolean, not integers.',
+          "Masking requires an NDArray of DType.boolean, not integers.",
         );
       } else {
+        final intList = spec.toList().map((e) => e as int).toList();
+        final indices = NDArray<int>.fromList(intList, [
+          intList.length,
+        ], DType.int32);
         if (value is NDArray) {
-          setIndices(spec, value);
+          setIndices(indices, value);
         } else {
-          setIndicesScalar(spec, value as T);
+          setIndicesScalar(indices, _coerceScalar(value));
         }
       }
     } else {
       throw ArgumentError(
-        'Unsupported selector type for operator []=: ${spec.runtimeType}',
+        "Unsupported selector type for operator []: ${spec.runtimeType}",
       );
     }
   }

@@ -1561,6 +1561,15 @@ void s_i0_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, con
 void v_i0_complex128(const cpx_t *src, cpx_t *res, int size);
 void s_i0_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
 
+
+/* Spatial N-D Correlation */
+void s_correlate_valid_double(const double *src, const int *stridesSrc, const double *kernel, const int *stridesKernel, double *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank);
+void s_correlate_valid_float(const float *src, const int *stridesSrc, const float *kernel, const int *stridesKernel, float *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank);
+void s_correlate_valid_complex128(const cpx_t *src, const int *stridesSrc, const cpx_t *kernel, const int *stridesKernel, cpx_t *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank);
+void s_correlate_valid_complex64(const cpx_f_t *src, const int *stridesSrc, const cpx_f_t *kernel, const int *stridesKernel, cpx_f_t *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank);
+void s_correlate_valid_int64(const int64_t *src, const int *stridesSrc, const int64_t *kernel, const int *stridesKernel, int64_t *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank);
+void s_correlate_valid_int32(const int32_t *src, const int *stridesSrc, const int32_t *kernel, const int *stridesKernel, int32_t *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank);
+
 #ifdef __cplusplus
 }
 #endif

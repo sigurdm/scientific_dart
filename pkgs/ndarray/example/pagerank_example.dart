@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:ndarray/ndarray.dart';
 
 /// An example of implementing the PageRank algorithm using the `ndarray` package.
@@ -27,14 +26,14 @@ void main() {
   // 1. Create the transition probability matrix M (5x5).
   // M[i][j] is the probability of transitioning from node j to node i.
   // Columns must sum to 1 (column-stochastic).
-  final m = NDArray.fromList(
-    Float64List.fromList([
+  final m = NDArray<Float64>.fromList(
+    ([
       0.0, 0.0, 1.0, 0.0, 0.0, // Row 0 (links to 0 from: 2)
       0.5, 0.0, 0.0, 0.0, 0.0, // Row 1 (links to 1 from: 0)
       0.5, 1.0, 0.0, 0.5, 1.0, // Row 2 (links to 2 from: 0, 1, 3, 4)
       0.0, 0.0, 0.0, 0.0, 0.0, // Row 3 (links to 3 from: none)
       0.0, 0.0, 0.0, 0.5, 0.0, // Row 4 (links to 4 from: 3)
-    ]),
+    ]).map((e) => Float64(e)).toList(),
     [n, n],
     DType.float64,
   );
@@ -48,9 +47,11 @@ void main() {
   colSums.dispose();
 
   // 2. Initialize PageRank vector v (uniform distribution).
-  var v = NDArray.fromList(Float64List.fromList(List.filled(n, 1.0 / n)), [
-    n,
-  ], DType.float64);
+  var v = NDArray<Float64>.fromList(
+    List<Float64>.generate(n, (_) => Float64(1.0 / n)),
+    [n],
+    DType.float64,
+  );
 
   print('\nInitial PageRank vector v: ${v.toList()}');
 

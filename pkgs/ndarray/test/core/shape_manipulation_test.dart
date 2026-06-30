@@ -568,8 +568,8 @@ void main() {
         test(
           'Basic flip 1D Float64',
           () => NDArray.scope(() {
-            final a = NDArray.fromList(
-              [1.0, 2.0, 3.0, 4.0],
+            final a = NDArray<Float64>.fromList(
+              <Float64>[Float64(1.0), Float64(2.0), Float64(3.0), Float64(4.0)],
               [4],
               DType.float64,
             );
@@ -586,8 +586,15 @@ void main() {
         test(
           'Flip 2D along specific axes',
           () => NDArray.scope(() {
-            final a = NDArray.fromList(
-              [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            final a = NDArray<Float64>.fromList(
+              <Float64>[
+                Float64(1.0),
+                Float64(2.0),
+                Float64(3.0),
+                Float64(4.0),
+                Float64(5.0),
+                Float64(6.0),
+              ],
               [2, 3],
               DType.float64,
             );
@@ -679,7 +686,11 @@ void main() {
         test(
           'Basic roll 1D flat',
           () => NDArray.scope(() {
-            final a = NDArray.fromList([10, 20, 30, 40, 50], [5], DType.int32);
+            final a = NDArray<Int32>.fromList(
+              [Int32(10), Int32(20), Int32(30), Int32(40), Int32(50)],
+              [5],
+              DType.int32,
+            );
 
             // Roll positive shift
             final rolledPos = roll(a, 2);
@@ -776,7 +787,11 @@ void main() {
       group('split & array_split Tests', () {
         test('basic 1D equal split', () {
           NDArray.scope(() {
-            final a = NDArray.fromList([1, 2, 3, 4], [4], DType.int32);
+            final a = NDArray<Int32>.fromList(
+              [Int32(1), Int32(2), Int32(3), Int32(4)],
+              [4],
+              DType.int32,
+            );
             final splits = split(a, 2);
 
             expect(splits.length, 2);
@@ -813,7 +828,11 @@ void main() {
 
         test('split_at with list of indices', () {
           NDArray.scope(() {
-            final a = NDArray.fromList([10, 20, 30, 40, 50], [5], DType.int32);
+            final a = NDArray<Int32>.fromList(
+              [Int32(10), Int32(20), Int32(30), Int32(40), Int32(50)],
+              [5],
+              DType.int32,
+            );
             final splits = split_at(a, [1, 3]);
 
             expect(splits.length, 3);
@@ -865,7 +884,11 @@ void main() {
 
         test('hsplit 1D array splits along axis 0', () {
           NDArray.scope(() {
-            final a = NDArray.fromList([1, 2, 3, 4], [4], DType.int32);
+            final a = NDArray<Int32>.fromList(
+              [Int32(1), Int32(2), Int32(3), Int32(4)],
+              [4],
+              DType.int32,
+            );
             final splits = hsplit(a, 2);
 
             expect(splits.length, 2);
@@ -909,11 +932,11 @@ void main() {
       group('dsplit & dsplit_at Tests', () {
         test('dsplit 3D array equal split', () {
           NDArray.scope(() {
-            final a = NDArray.fromList(List.generate(16, (i) => i + 1), [
-              2,
-              2,
-              4,
-            ], DType.int32);
+            final a = NDArray<Int32>.fromList(
+              List<Int32>.generate(16, (i) => Int32(i + 1)),
+              [2, 2, 4],
+              DType.int32,
+            );
             final splits = dsplit(a, 2);
 
             expect(splits.length, 2);
@@ -930,11 +953,11 @@ void main() {
 
         test('dsplit_at 3D array at indices', () {
           NDArray.scope(() {
-            final a = NDArray.fromList(List.generate(16, (i) => i + 1), [
-              2,
-              2,
-              4,
-            ], DType.int32);
+            final a = NDArray<Int32>.fromList(
+              List<Int32>.generate(16, (i) => Int32(i + 1)),
+              [2, 2, 4],
+              DType.int32,
+            );
             final splits = dsplit_at(a, [1, 3]);
 
             expect(splits.length, 3);
@@ -974,11 +997,11 @@ void main() {
 
         test('dsplit disposed array throws', () {
           NDArray.scope(() {
-            final a = NDArray.fromList(List.generate(16, (i) => i + 1), [
-              2,
-              2,
-              4,
-            ], DType.int32);
+            final a = NDArray<Int32>.fromList(
+              List<Int32>.generate(16, (i) => Int32(i + 1)),
+              [2, 2, 4],
+              DType.int32,
+            );
             a.dispose();
             expect(() => dsplit(a, 2), throwsStateError);
             expect(() => dsplit_at(a, [1]), throwsStateError);

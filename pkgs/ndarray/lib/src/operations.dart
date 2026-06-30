@@ -22,3 +22,7 @@ export 'operations/interpolation.dart';
 export 'operations/financial.dart';
 export 'operations/distance.dart';
 export 'operations/dsp.dart';
+export 'operations/polynomial.dart';
+export 'operations/tensor_contractions.dart';
+export 'operations/indexing.dart';
+export 'operations/optimize.dart';

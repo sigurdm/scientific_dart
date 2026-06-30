@@ -7,7 +7,15 @@ void main() {
     group('Median Tests', () {
       test('Flat float64 median (odd size)', () {
         NDArray.scope(() {
-          final a = NDArray.fromList([3.0, 1.0, 2.0], [3], DType.float64);
+          final a = NDArray<Float64>.fromList(
+            ([
+              3.0,
+              1.0,
+              2.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
+            [3],
+            DType.float64,
+          );
           final m = median(a);
           expect(m.shape, <int>[]);
           expect(m.dtype, DType.float64);
@@ -17,7 +25,16 @@ void main() {
 
       test('Flat float64 median (even size)', () {
         NDArray.scope(() {
-          final a = NDArray.fromList([1.0, 3.0, 2.0, 4.0], [4], DType.float64);
+          final a = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              3.0,
+              2.0,
+              4.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
+            [4],
+            DType.float64,
+          );
           final m = median(a);
           expect(m.shape, <int>[]);
           expect(m.toList()[0], 2.5);
@@ -28,8 +45,15 @@ void main() {
         NDArray.scope(() {
           // [[1, 5, 3],
           //  [4, 2, 6]]
-          final a = NDArray.fromList(
-            [1.0, 5.0, 3.0, 4.0, 2.0, 6.0],
+          final a = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              5.0,
+              3.0,
+              4.0,
+              2.0,
+              6.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 3],
             DType.float64,
           );
@@ -47,8 +71,15 @@ void main() {
         NDArray.scope(() {
           // [[1, 5, 3], -> sorted: 1, 3, 5 -> median: 3
           //  [4, 2, 6]] -> sorted: 2, 4, 6 -> median: 4
-          final a = NDArray.fromList(
-            [1.0, 5.0, 3.0, 4.0, 2.0, 6.0],
+          final a = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              5.0,
+              3.0,
+              4.0,
+              2.0,
+              6.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 3],
             DType.float64,
           );
@@ -60,7 +91,15 @@ void main() {
 
       test('Median with out parameter', () {
         NDArray.scope(() {
-          final a = NDArray.fromList([3.0, 1.0, 2.0], [3], DType.float64);
+          final a = NDArray<Float64>.fromList(
+            ([
+              3.0,
+              1.0,
+              2.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
+            [3],
+            DType.float64,
+          );
           final out = NDArray<double>.zeros([], DType.float64);
           final m = median(a, out: out);
           expect(identical(m, out), true);
@@ -70,7 +109,11 @@ void main() {
 
       test('Median integer types (int32)', () {
         NDArray.scope(() {
-          final a = NDArray.fromList([3, 1, 2, 4], [4], DType.int32);
+          final a = NDArray<Int32>.fromList(
+            ([3, 1, 2, 4]).map((e) => Int32((e as num).toInt())).toList(),
+            [4],
+            DType.int32,
+          );
           final m = median(a);
           // 1, 2, 3, 4 -> (2+3)/2 = 2 (integer division in C kernel: (2+3)/2 = 2)
           expect(m.dtype, DType.int32);
@@ -80,7 +123,11 @@ void main() {
 
       test('Median integer types (int64)', () {
         NDArray.scope(() {
-          final a = NDArray.fromList([10, 30, 20], [3], DType.int64);
+          final a = NDArray<Int64>.fromList(
+            ([10, 30, 20]).map((e) => Int64((e as num).toInt())).toList(),
+            [3],
+            DType.int64,
+          );
           final m = median(a);
           expect(m.dtype, DType.int64);
           expect(m.toList()[0], 20);
@@ -89,7 +136,11 @@ void main() {
 
       test('Median integer types (uint8)', () {
         NDArray.scope(() {
-          final a = NDArray.fromList([5, 1, 3, 4], [4], DType.uint8);
+          final a = NDArray<Uint8>.fromList(
+            ([5, 1, 3, 4]).map((e) => Uint8((e as num).toInt())).toList(),
+            [4],
+            DType.uint8,
+          );
           final m = median(a);
           // 1, 3, 4, 5 -> (3+4)/2 = 3
           expect(m.dtype, DType.uint8);
@@ -99,8 +150,12 @@ void main() {
 
       test('Median complex128 (independent real/imag)', () {
         NDArray.scope(() {
-          final a = NDArray.fromList(
-            [Complex128(3.0, 1.0), Complex128(1.0, 9.0), Complex128(2.0, 5.0)],
+          final a = NDArray<Complex128>.fromList(
+            ([Complex128(3.0, 1.0), Complex128(1.0, 9.0), Complex128(2.0, 5.0)])
+                .map(
+                  (c) => Complex128((c as dynamic).real, (c as dynamic).imag),
+                )
+                .toList(),
             [3],
             DType.complex128,
           );
@@ -114,13 +169,15 @@ void main() {
 
       test('Median complex64 (independent real/imag)', () {
         NDArray.scope(() {
-          final a = NDArray.fromList(
-            [
-              Complex64(1.0, 4.0),
-              Complex64(3.0, 1.0),
-              Complex64(2.0, 2.0),
-              Complex64(4.0, 3.0),
-            ],
+          final a = NDArray<Complex64>.fromList(
+            ([
+                  Complex64(1.0, 4.0),
+                  Complex64(3.0, 1.0),
+                  Complex64(2.0, 2.0),
+                  Complex64(4.0, 3.0),
+                ])
+                .map((c) => Complex64((c as dynamic).real, (c as dynamic).imag))
+                .toList(),
             [4],
             DType.complex64,
           );
@@ -134,8 +191,15 @@ void main() {
 
       test('Median with negative axis', () {
         NDArray.scope(() {
-          final a = NDArray.fromList(
-            [1.0, 5.0, 3.0, 4.0, 2.0, 6.0],
+          final a = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              5.0,
+              3.0,
+              4.0,
+              2.0,
+              6.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 3],
             DType.float64,
           );
@@ -150,8 +214,14 @@ void main() {
     group('Percentile Tests', () {
       test('Flat float64 percentile (interpolation)', () {
         NDArray.scope(() {
-          final a = NDArray.fromList(
-            [15.0, 20.0, 35.0, 40.0, 50.0],
+          final a = NDArray<Float64>.fromList(
+            ([
+              15.0,
+              20.0,
+              35.0,
+              40.0,
+              50.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [5],
             DType.float64,
           );
@@ -168,8 +238,14 @@ void main() {
 
       test('Percentile 0 and 100', () {
         NDArray.scope(() {
-          final a = NDArray.fromList(
-            [15.0, 20.0, 35.0, 40.0, 50.0],
+          final a = NDArray<Float64>.fromList(
+            ([
+              15.0,
+              20.0,
+              35.0,
+              40.0,
+              50.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [5],
             DType.float64,
           );
@@ -182,8 +258,15 @@ void main() {
         NDArray.scope(() {
           // [[1, 5, 3], -> sorted: 1, 3, 5. idx = 2 * 0.75 = 1.5. low=1, high=2. val = 3 + 0.5 * (5-3) = 4.0
           //  [4, 2, 6]] -> sorted: 2, 4, 6. idx = 1.5. val = 4 + 0.5 * (6-4) = 5.0
-          final a = NDArray.fromList(
-            [1.0, 5.0, 3.0, 4.0, 2.0, 6.0],
+          final a = NDArray<Float32>.fromList(
+            ([
+              1.0,
+              5.0,
+              3.0,
+              4.0,
+              2.0,
+              6.0,
+            ]).map((e) => Float32((e as num).toDouble())).toList(),
             [2, 3],
             DType.float32,
           );
@@ -196,7 +279,11 @@ void main() {
 
       test('Percentile integer types returns double', () {
         NDArray.scope(() {
-          final a = NDArray.fromList([1, 2, 3, 4], [4], DType.int32);
+          final a = NDArray<Int32>.fromList(
+            ([1, 2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+            [4],
+            DType.int32,
+          );
           // q = 50 -> idx = 3 * 0.5 = 1.5. low=1, high=2. val = 2 + 0.5 * (3 - 2) = 2.5
           final p = percentile(a, 50.0);
           expect(p.dtype, DType.float64);
@@ -208,8 +295,14 @@ void main() {
     group('Quantile Tests', () {
       test('Quantile basic', () {
         NDArray.scope(() {
-          final a = NDArray.fromList(
-            [15.0, 20.0, 35.0, 40.0, 50.0],
+          final a = NDArray<Float64>.fromList(
+            ([
+              15.0,
+              20.0,
+              35.0,
+              40.0,
+              50.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [5],
             DType.float64,
           );
@@ -233,7 +326,11 @@ void main() {
 
       test('Invalid q throws', () {
         NDArray.scope(() {
-          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final a = NDArray<Float64>.fromList(
+            ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+            [2],
+            DType.float64,
+          );
           expect(() => percentile(a, -1.0), throwsArgumentError);
           expect(() => percentile(a, 101.0), throwsArgumentError);
           expect(() => quantile(a, -0.1), throwsArgumentError);
@@ -243,7 +340,11 @@ void main() {
 
       test('Axis out of bounds throws', () {
         NDArray.scope(() {
-          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final a = NDArray<Float64>.fromList(
+            ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+            [2],
+            DType.float64,
+          );
           expect(() => median(a, axis: 1), throwsArgumentError);
           expect(() => median(a, axis: -2), throwsArgumentError);
         });
@@ -251,7 +352,16 @@ void main() {
     });
 
     group('Percentile Methods Tests (NumPy compatibility)', () {
-      final a = NDArray.fromList([10.0, 20.0, 30.0, 40.0], [4], DType.float64);
+      final a = NDArray<Float64>.fromList(
+        ([
+          10.0,
+          20.0,
+          30.0,
+          40.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
+        [4],
+        DType.float64,
+      );
 
       test('invertedCdf', () {
         NDArray.scope(() {
@@ -453,7 +563,14 @@ void main() {
       test('Euclidean metric - Float64', () {
         NDArray.scope(() {
           final x = NDArray<Float64>.fromList(
-            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            ([
+              1.0,
+              2.0,
+              3.0,
+              4.0,
+              5.0,
+              6.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3, 2],
             DType.float64,
           );
@@ -474,7 +591,14 @@ void main() {
       test('Cosine metric - Float32', () {
         NDArray.scope(() {
           final x = NDArray<Float32>.fromList(
-            [1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+            ([
+              1.0,
+              0.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+            ]).map((e) => Float32((e as num).toDouble())).toList(),
             [3, 2],
             DType.float32,
           );
@@ -494,7 +618,17 @@ void main() {
       test('Hamming metric - Int32', () {
         NDArray.scope(() {
           final x = NDArray<Int32>.fromList(
-            [1, 0, 1, 1, 1, 0, 0, 0, 1],
+            ([
+              1,
+              0,
+              1,
+              1,
+              1,
+              0,
+              0,
+              0,
+              1,
+            ]).map((e) => Int32((e as num).toInt())).toList(),
             [3, 3],
             DType.int32,
           );
@@ -514,7 +648,7 @@ void main() {
       test('Hamming metric - Bool', () {
         NDArray.scope(() {
           final x = NDArray<bool>.fromList(
-            [true, false, true, true, true, false, false, false, true],
+            ([true, false, true, true, true, false, false, false, true]),
             [3, 3],
             DType.boolean,
           );
@@ -532,7 +666,7 @@ void main() {
         NDArray.scope(() {
           // Create a larger array and slice it to get non-contiguous views
           final xFull = NDArray<Float64>.fromList(
-            [
+            ([
               1.0,
               99.0,
               2.0,
@@ -548,7 +682,7 @@ void main() {
               5.0,
               99.0,
               6.0,
-            ],
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [5, 3],
             DType.float64,
           );
@@ -578,7 +712,7 @@ void main() {
       test('Edge case - M < 2', () {
         NDArray.scope(() {
           final x1 = NDArray<Float64>.fromList(
-            [1.0, 2.0],
+            ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
             [1, 2],
             DType.float64,
           );
@@ -619,7 +753,14 @@ void main() {
       test('Edge case - Cosine zero vectors (division by zero)', () {
         NDArray.scope(() {
           final x = NDArray<Float64>.fromList(
-            [0.0, 0.0, 1.0, 2.0, 0.0, 0.0],
+            ([
+              0.0,
+              0.0,
+              1.0,
+              2.0,
+              0.0,
+              0.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3, 2],
             DType.float64,
           );
@@ -636,7 +777,14 @@ void main() {
       test('Recycling out parameter', () {
         NDArray.scope(() {
           final x = NDArray<Float64>.fromList(
-            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            ([
+              1.0,
+              2.0,
+              3.0,
+              4.0,
+              5.0,
+              6.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3, 2],
             DType.float64,
           );
@@ -652,7 +800,14 @@ void main() {
       test('Recycling out parameter - shape mismatch throws', () {
         NDArray.scope(() {
           final x = NDArray<Float64>.fromList(
-            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            ([
+              1.0,
+              2.0,
+              3.0,
+              4.0,
+              5.0,
+              6.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3, 2],
             DType.float64,
           );
@@ -669,12 +824,24 @@ void main() {
       test('Euclidean metric - Float64', () {
         NDArray.scope(() {
           final xa = NDArray<Float64>.fromList(
-            [1.0, 2.0, 3.0, 4.0],
+            ([
+              1.0,
+              2.0,
+              3.0,
+              4.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 2],
             DType.float64,
           );
           final xb = NDArray<Float64>.fromList(
-            [5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+            ([
+              5.0,
+              6.0,
+              7.0,
+              8.0,
+              9.0,
+              10.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3, 2],
             DType.float64,
           );
@@ -702,9 +869,13 @@ void main() {
 
       test('Mixed dtypes (promotion)', () {
         NDArray.scope(() {
-          final xa = NDArray<Int32>.fromList([1, 2], [1, 2], DType.int32);
+          final xa = NDArray<Int32>.fromList(
+            ([1, 2]).map((e) => Int32((e as num).toInt())).toList(),
+            [1, 2],
+            DType.int32,
+          );
           final xb = NDArray<Float64>.fromList(
-            [3.0, 4.0],
+            ([3.0, 4.0]).map((e) => Float64((e as num).toDouble())).toList(),
             [1, 2],
             DType.float64,
           );
@@ -718,7 +889,17 @@ void main() {
       test('Strided views (non-contiguous)', () {
         NDArray.scope(() {
           final xaFull = NDArray<Float64>.fromList(
-            [1.0, 99.0, 2.0, 99.0, 99.0, 99.0, 3.0, 99.0, 4.0],
+            ([
+              1.0,
+              99.0,
+              2.0,
+              99.0,
+              99.0,
+              99.0,
+              3.0,
+              99.0,
+              4.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3, 3],
             DType.float64,
           );
@@ -728,7 +909,7 @@ void main() {
           ]); // [1, 2], [3, 4]
 
           final xbFull = NDArray<Float64>.fromList(
-            [
+            ([
               5.0,
               99.0,
               6.0,
@@ -744,7 +925,7 @@ void main() {
               9.0,
               99.0,
               10.0,
-            ],
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [5, 3],
             DType.float64,
           );
@@ -816,12 +997,24 @@ void main() {
       test('Recycling out parameter', () {
         NDArray.scope(() {
           final xa = NDArray<Float64>.fromList(
-            [1.0, 2.0, 3.0, 4.0],
+            ([
+              1.0,
+              2.0,
+              3.0,
+              4.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 2],
             DType.float64,
           );
           final xb = NDArray<Float64>.fromList(
-            [5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+            ([
+              5.0,
+              6.0,
+              7.0,
+              8.0,
+              9.0,
+              10.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3, 2],
             DType.float64,
           );
@@ -838,9 +1031,25 @@ void main() {
 
   group('1D Linear Interpolation (interp)', () {
     test('Basic interpolation', () {
-      final xp = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-      final fp = NDArray.fromList([10.0, 20.0, 40.0], [3], DType.float64);
-      final x = NDArray.fromList([1.5, 2.5], [2], DType.float64);
+      final xp = NDArray<Float64>.fromList(
+        ([1.0, 2.0, 3.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
+      final fp = NDArray<Float64>.fromList(
+        ([
+          10.0,
+          20.0,
+          40.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
+      final x = NDArray<Float64>.fromList(
+        ([1.5, 2.5]).map((e) => Float64((e as num).toDouble())).toList(),
+        [2],
+        DType.float64,
+      );
 
       final res = interp(x, xp, fp);
 
@@ -856,9 +1065,25 @@ void main() {
     });
 
     test('Boundary values (default left/right)', () {
-      final xp = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-      final fp = NDArray.fromList([10.0, 20.0, 40.0], [3], DType.float64);
-      final x = NDArray.fromList([0.0, 4.0], [2], DType.float64);
+      final xp = NDArray<Float64>.fromList(
+        ([1.0, 2.0, 3.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
+      final fp = NDArray<Float64>.fromList(
+        ([
+          10.0,
+          20.0,
+          40.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
+      final x = NDArray<Float64>.fromList(
+        ([0.0, 4.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [2],
+        DType.float64,
+      );
 
       final res = interp(x, xp, fp);
 
@@ -872,9 +1097,25 @@ void main() {
     });
 
     test('Boundary values (custom left/right)', () {
-      final xp = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-      final fp = NDArray.fromList([10.0, 20.0, 40.0], [3], DType.float64);
-      final x = NDArray.fromList([0.0, 4.0], [2], DType.float64);
+      final xp = NDArray<Float64>.fromList(
+        ([1.0, 2.0, 3.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
+      final fp = NDArray<Float64>.fromList(
+        ([
+          10.0,
+          20.0,
+          40.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
+      final x = NDArray<Float64>.fromList(
+        ([0.0, 4.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [2],
+        DType.float64,
+      );
 
       final res = interp(x, xp, fp, left: -1.0, right: -2.0);
 
@@ -888,9 +1129,25 @@ void main() {
     });
 
     test('Exact data points', () {
-      final xp = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-      final fp = NDArray.fromList([10.0, 20.0, 40.0], [3], DType.float64);
-      final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+      final xp = NDArray<Float64>.fromList(
+        ([1.0, 2.0, 3.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
+      final fp = NDArray<Float64>.fromList(
+        ([
+          10.0,
+          20.0,
+          40.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
+      final x = NDArray<Float64>.fromList(
+        ([1.0, 2.0, 3.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
 
       final res = interp(x, xp, fp);
 
@@ -905,9 +1162,30 @@ void main() {
     });
 
     test('Multi-dimensional x', () {
-      final xp = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-      final fp = NDArray.fromList([10.0, 20.0, 40.0], [3], DType.float64);
-      final x = NDArray.fromList([1.5, 2.5, 0.0, 4.0], [2, 2], DType.float64);
+      final xp = NDArray<Float64>.fromList(
+        ([1.0, 2.0, 3.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
+      final fp = NDArray<Float64>.fromList(
+        ([
+          10.0,
+          20.0,
+          40.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
+      final x = NDArray<Float64>.fromList(
+        ([
+          1.5,
+          2.5,
+          0.0,
+          4.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
+        [2, 2],
+        DType.float64,
+      );
 
       final res = interp(x, xp, fp, left: -1.0, right: -2.0);
 
@@ -924,9 +1202,21 @@ void main() {
     });
 
     test('Integer input promotion', () {
-      final xp = NDArray.fromList([1, 2, 3], [3], DType.int32);
-      final fp = NDArray.fromList([10, 20, 40], [3], DType.int32);
-      final x = NDArray.fromList([1.5, 2.5], [2], DType.float64);
+      final xp = NDArray<Int32>.fromList(
+        ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+        [3],
+        DType.int32,
+      );
+      final fp = NDArray<Int32>.fromList(
+        ([10, 20, 40]).map((e) => Int32((e as num).toInt())).toList(),
+        [3],
+        DType.int32,
+      );
+      final x = NDArray<Float64>.fromList(
+        ([1.5, 2.5]).map((e) => Float64((e as num).toDouble())).toList(),
+        [2],
+        DType.float64,
+      );
 
       final res = interp(x, xp, fp);
 
@@ -941,9 +1231,21 @@ void main() {
     });
 
     test('Single point xp/fp', () {
-      final xp = NDArray.fromList([2.0], [1], DType.float64);
-      final fp = NDArray.fromList([20.0], [1], DType.float64);
-      final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+      final xp = NDArray<Float64>.fromList(
+        ([2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [1],
+        DType.float64,
+      );
+      final fp = NDArray<Float64>.fromList(
+        ([20.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [1],
+        DType.float64,
+      );
+      final x = NDArray<Float64>.fromList(
+        ([1.0, 2.0, 3.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
 
       final res = interp(x, xp, fp);
 
@@ -964,9 +1266,25 @@ void main() {
     });
 
     test('Unsorted xp throws ArgumentError', () {
-      final xp = NDArray.fromList([2.0, 1.0, 3.0], [3], DType.float64);
-      final fp = NDArray.fromList([20.0, 10.0, 40.0], [3], DType.float64);
-      final x = NDArray.fromList([1.5], [1], DType.float64);
+      final xp = NDArray<Float64>.fromList(
+        ([2.0, 1.0, 3.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
+      final fp = NDArray<Float64>.fromList(
+        ([
+          20.0,
+          10.0,
+          40.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
+      final x = NDArray<Float64>.fromList(
+        ([1.5]).map((e) => Float64((e as num).toDouble())).toList(),
+        [1],
+        DType.float64,
+      );
 
       expect(() => interp(x, xp, fp), throwsArgumentError);
 
@@ -976,9 +1294,31 @@ void main() {
     });
 
     test('Duplicate xp throws ArgumentError (strictly increasing)', () {
-      final xp = NDArray.fromList([1.0, 2.0, 2.0, 3.0], [4], DType.float64);
-      final fp = NDArray.fromList([10.0, 20.0, 30.0, 40.0], [4], DType.float64);
-      final x = NDArray.fromList([1.5], [1], DType.float64);
+      final xp = NDArray<Float64>.fromList(
+        ([
+          1.0,
+          2.0,
+          2.0,
+          3.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
+        [4],
+        DType.float64,
+      );
+      final fp = NDArray<Float64>.fromList(
+        ([
+          10.0,
+          20.0,
+          30.0,
+          40.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
+        [4],
+        DType.float64,
+      );
+      final x = NDArray<Float64>.fromList(
+        ([1.5]).map((e) => Float64((e as num).toDouble())).toList(),
+        [1],
+        DType.float64,
+      );
 
       expect(() => interp(x, xp, fp), throwsArgumentError);
 
@@ -988,9 +1328,21 @@ void main() {
     });
 
     test('Mismatched xp and fp lengths throws ArgumentError', () {
-      final xp = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-      final fp = NDArray.fromList([10.0, 20.0], [2], DType.float64);
-      final x = NDArray.fromList([1.5], [1], DType.float64);
+      final xp = NDArray<Float64>.fromList(
+        ([1.0, 2.0, 3.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
+      final fp = NDArray<Float64>.fromList(
+        ([10.0, 20.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [2],
+        DType.float64,
+      );
+      final x = NDArray<Float64>.fromList(
+        ([1.5]).map((e) => Float64((e as num).toDouble())).toList(),
+        [1],
+        DType.float64,
+      );
 
       expect(() => interp(x, xp, fp), throwsArgumentError);
 
@@ -1000,15 +1352,51 @@ void main() {
     });
 
     test('Non-1D xp or fp throws ArgumentError', () {
-      final xp = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
-      final fp = NDArray.fromList([10.0, 20.0, 30.0, 40.0], [4], DType.float64);
-      final x = NDArray.fromList([1.5], [1], DType.float64);
+      final xp = NDArray<Float64>.fromList(
+        ([
+          1.0,
+          2.0,
+          3.0,
+          4.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
+        [2, 2],
+        DType.float64,
+      );
+      final fp = NDArray<Float64>.fromList(
+        ([
+          10.0,
+          20.0,
+          30.0,
+          40.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
+        [4],
+        DType.float64,
+      );
+      final x = NDArray<Float64>.fromList(
+        ([1.5]).map((e) => Float64((e as num).toDouble())).toList(),
+        [1],
+        DType.float64,
+      );
 
       expect(() => interp(x, xp, fp), throwsArgumentError);
 
-      final xp2 = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
-      final fp2 = NDArray.fromList(
-        [10.0, 20.0, 30.0, 40.0],
+      final xp2 = NDArray<Float64>.fromList(
+        ([
+          1.0,
+          2.0,
+          3.0,
+          4.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
+        [4],
+        DType.float64,
+      );
+      final fp2 = NDArray<Float64>.fromList(
+        ([
+          10.0,
+          20.0,
+          30.0,
+          40.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
         [2, 2],
         DType.float64,
       );
@@ -1023,9 +1411,21 @@ void main() {
     });
 
     test('Empty xp throws ArgumentError', () {
-      final xp = NDArray.fromList(<double>[], [0], DType.float64);
-      final fp = NDArray.fromList(<double>[], [0], DType.float64);
-      final x = NDArray.fromList([1.5], [1], DType.float64);
+      final xp = NDArray<Float64>.fromList(
+        (<double>[]).map((e) => Float64((e as num).toDouble())).toList(),
+        [0],
+        DType.float64,
+      );
+      final fp = NDArray<Float64>.fromList(
+        (<double>[]).map((e) => Float64((e as num).toDouble())).toList(),
+        [0],
+        DType.float64,
+      );
+      final x = NDArray<Float64>.fromList(
+        ([1.5]).map((e) => Float64((e as num).toDouble())).toList(),
+        [1],
+        DType.float64,
+      );
 
       expect(() => interp(x, xp, fp), throwsArgumentError);
 
@@ -1035,8 +1435,14 @@ void main() {
     });
 
     test('Strided inputs (views)', () {
-      final xpFull = NDArray.fromList(
-        [1.0, 99.0, 2.0, 99.0, 3.0],
+      final xpFull = NDArray<Float64>.fromList(
+        ([
+          1.0,
+          99.0,
+          2.0,
+          99.0,
+          3.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
         [5],
         DType.float64,
       );
@@ -1046,8 +1452,14 @@ void main() {
       expect(xp.isContiguous, false);
       expect(xp.shape, [3]);
 
-      final fpFull = NDArray.fromList(
-        [10.0, 99.0, 20.0, 99.0, 40.0],
+      final fpFull = NDArray<Float64>.fromList(
+        ([
+          10.0,
+          99.0,
+          20.0,
+          99.0,
+          40.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
         [5],
         DType.float64,
       );
@@ -1057,8 +1469,13 @@ void main() {
       expect(fp.isContiguous, false);
       expect(fp.shape, [3]);
 
-      final xFull = NDArray.fromList(
-        [1.5, 99.0, 2.5, 99.0],
+      final xFull = NDArray<Float64>.fromList(
+        ([
+          1.5,
+          99.0,
+          2.5,
+          99.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
         [4],
         DType.float64,
       );
@@ -1079,8 +1496,20 @@ void main() {
     });
 
     test('0D x (scalar) contiguous', () {
-      final xp = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-      final fp = NDArray.fromList([10.0, 20.0, 40.0], [3], DType.float64);
+      final xp = NDArray<Float64>.fromList(
+        ([1.0, 2.0, 3.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
+      final fp = NDArray<Float64>.fromList(
+        ([
+          10.0,
+          20.0,
+          40.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
+        [3],
+        DType.float64,
+      );
       final x = NDArray<Float64>.scalar(Float64(1.5), dtype: DType.float64);
 
       final res = interp(x, xp, fp);
@@ -1095,16 +1524,28 @@ void main() {
     });
 
     test('0D x (scalar) strided xp/fp', () {
-      final xpFull = NDArray.fromList(
-        [1.0, 99.0, 2.0, 99.0, 3.0],
+      final xpFull = NDArray<Float64>.fromList(
+        ([
+          1.0,
+          99.0,
+          2.0,
+          99.0,
+          3.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
         [5],
         DType.float64,
       );
       final xp = xpFull.slice([
         Slice(start: 0, stop: 5, step: 2),
       ]); // [1.0, 2.0, 3.0]
-      final fpFull = NDArray.fromList(
-        [10.0, 99.0, 20.0, 99.0, 40.0],
+      final fpFull = NDArray<Float64>.fromList(
+        ([
+          10.0,
+          99.0,
+          20.0,
+          99.0,
+          40.0,
+        ]).map((e) => Float64((e as num).toDouble())).toList(),
         [5],
         DType.float64,
       );
@@ -1181,8 +1622,12 @@ void main() {
 
       test('Broadcasting rate array', () {
         NDArray.scope(() {
-          final rate = NDArray.fromList(
-            [0.05 / 12, 0.06 / 12, 0.07 / 12],
+          final rate = NDArray<Float64>.fromList(
+            ([
+              0.05 / 12,
+              0.06 / 12,
+              0.07 / 12,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3],
             DType.float64,
           );
@@ -1316,8 +1761,12 @@ void main() {
 
       test('Broadcasting rate array', () {
         NDArray.scope(() {
-          final rate = NDArray.fromList(
-            [0.05 / 12, 0.04 / 12, 0.03 / 12],
+          final rate = NDArray<Float64>.fromList(
+            ([
+              0.05 / 12,
+              0.04 / 12,
+              0.03 / 12,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3],
             DType.float64,
           );
@@ -1350,8 +1799,14 @@ void main() {
             Float64(0.08),
             dtype: DType.float64,
           );
-          final cashflows = NDArray.fromList(
-            [-40000.0, 5000.0, 8000.0, 12000.0, 30000.0],
+          final cashflows = NDArray<Float64>.fromList(
+            ([
+              -40000.0,
+              5000.0,
+              8000.0,
+              12000.0,
+              30000.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [5],
             DType.float64,
           );
@@ -1364,13 +1819,24 @@ void main() {
 
       test('Broadcasting multiple rates and multiple cash flows', () {
         NDArray.scope(() {
-          final rates = NDArray.fromList(
-            [0.00, 0.05, 0.10],
+          final rates = NDArray<Float64>.fromList(
+            ([
+              0.00,
+              0.05,
+              0.10,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3],
             DType.float64,
           );
-          final cashflows = NDArray.fromList(
-            [-4000.0, 500.0, 800.0, -5000.0, 600.0, 900.0],
+          final cashflows = NDArray<Float64>.fromList(
+            ([
+              -4000.0,
+              500.0,
+              800.0,
+              -5000.0,
+              600.0,
+              900.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 3],
             DType.float64,
           );
@@ -1391,8 +1857,14 @@ void main() {
     group('Internal Rate of Return (irr) Tests', () {
       test('Simple cash flows 1D', () {
         NDArray.scope(() {
-          final cashflows = NDArray.fromList(
-            [-100.0, 39.0, 59.0, 55.0, 20.0],
+          final cashflows = NDArray<Float64>.fromList(
+            ([
+              -100.0,
+              39.0,
+              59.0,
+              55.0,
+              20.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [5],
             DType.float64,
           );
@@ -1404,8 +1876,13 @@ void main() {
 
       test('Cash flows with negative rate result', () {
         NDArray.scope(() {
-          final cashflows = NDArray.fromList(
-            [-100.0, 0.0, 0.0, 74.0],
+          final cashflows = NDArray<Float64>.fromList(
+            ([
+              -100.0,
+              0.0,
+              0.0,
+              74.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [4],
             DType.float64,
           );
@@ -1416,8 +1893,12 @@ void main() {
 
       test('Same sign cash flows returns NaN', () {
         NDArray.scope(() {
-          final cashflows = NDArray.fromList(
-            [-100.0, -50.0, -20.0],
+          final cashflows = NDArray<Float64>.fromList(
+            ([
+              -100.0,
+              -50.0,
+              -20.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3],
             DType.float64,
           );
@@ -1428,8 +1909,12 @@ void main() {
 
       test('Same sign cash flows throws exception when requested', () {
         NDArray.scope(() {
-          final cashflows = NDArray.fromList(
-            [-100.0, -50.0, -20.0],
+          final cashflows = NDArray<Float64>.fromList(
+            ([
+              -100.0,
+              -50.0,
+              -20.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3],
             DType.float64,
           );
@@ -1445,8 +1930,16 @@ void main() {
   group('Set Operations Tests', () {
     group('unique', () {
       test('double with duplicates and NaNs', () {
-        final a = NDArray<double>.fromList(
-          [3.0, 1.0, 2.0, 1.0, double.nan, 2.0, double.nan],
+        final a = NDArray<Float64>.fromList(
+          ([
+            3.0,
+            1.0,
+            2.0,
+            1.0,
+            double.nan,
+            2.0,
+            double.nan,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [7],
           DType.float64,
         );
@@ -1459,7 +1952,11 @@ void main() {
       });
 
       test('int32 flat', () {
-        final a = NDArray<int>.fromList([1, 2, 2, 3, 1, 4], [6], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 2, 3, 1, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [6],
+          DType.int32,
+        );
         final res = unique(a);
         expect(res.shape, [4]);
         expect(res.toList(), [1, 2, 3, 4]);
@@ -1468,7 +1965,11 @@ void main() {
       });
 
       test('int32 2D (flattened)', () {
-        final a = NDArray<int>.fromList([1, 2, 2, 3], [2, 2], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [2, 2],
+          DType.int32,
+        );
         final res = unique(a);
         expect(res.shape, [3]);
         expect(res.toList(), [1, 2, 3]);
@@ -1477,7 +1978,11 @@ void main() {
       });
 
       test('uint8 empty', () {
-        final a = NDArray<int>.fromList([], [0], DType.uint8);
+        final a = NDArray<Uint8>.fromList(
+          ([]).map((e) => Uint8((e as num).toInt())).toList(),
+          [0],
+          DType.uint8,
+        );
         final res = unique(a);
         expect(res.shape, [0]);
         expect(res.toList(), <int>[]);
@@ -1486,7 +1991,11 @@ void main() {
       });
 
       test('uint8 non-empty unique', () {
-        final a = NDArray<int>.fromList([3, 1, 2, 1, 3], [5], DType.uint8);
+        final a = NDArray<Uint8>.fromList(
+          ([3, 1, 2, 1, 3]).map((e) => Uint8((e as num).toInt())).toList(),
+          [5],
+          DType.uint8,
+        );
         final res = unique(a);
         expect(res.dtype, DType.uint8);
         expect(res.toList(), [1, 2, 3]);
@@ -1495,8 +2004,10 @@ void main() {
       });
 
       test('complex128', () {
-        final a = NDArray<Complex>.fromList(
-          [Complex(1, 2), Complex(3, 4), Complex(1, 2), Complex(2, 3)],
+        final a = NDArray<Complex128>.fromList(
+          ([Complex(1, 2), Complex(3, 4), Complex(1, 2), Complex(2, 3)])
+              .map((c) => Complex128((c as dynamic).real, (c as dynamic).imag))
+              .toList(),
           [4],
           DType.complex128,
         );
@@ -1509,16 +2020,18 @@ void main() {
       });
 
       test('complex128 with duplicates and NaNs', () {
-        final a = NDArray<Complex>.fromList(
-          [
-            Complex(3.0, 4.0),
-            Complex(1.0, 2.0),
-            Complex(double.nan, 2.0),
-            Complex(1.0, double.nan),
-            Complex(double.nan, double.nan),
-            Complex(1.0, 2.0),
-            Complex(double.nan, 2.0),
-          ],
+        final a = NDArray<Complex128>.fromList(
+          ([
+                Complex(3.0, 4.0),
+                Complex(1.0, 2.0),
+                Complex(double.nan, 2.0),
+                Complex(1.0, double.nan),
+                Complex(double.nan, double.nan),
+                Complex(1.0, 2.0),
+                Complex(double.nan, 2.0),
+              ])
+              .map((c) => Complex128((c as dynamic).real, (c as dynamic).imag))
+              .toList(),
           [7],
           DType.complex128,
         );
@@ -1536,7 +2049,11 @@ void main() {
       });
 
       test('int32 non-contiguous 1D', () {
-        final a = NDArray<int>.fromList([1, 2, 3, 4, 5, 6], [6], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3, 4, 5, 6]).map((e) => Int32((e as num).toInt())).toList(),
+          [6],
+          DType.int32,
+        );
         // Slice with step 2: [1, 3, 5]
         final slice = a.slice([Slice(step: 2)]);
         expect(slice.isContiguous, false);
@@ -1551,7 +2068,11 @@ void main() {
       });
 
       test('optional returns int32', () {
-        final a = NDArray<int>.fromList([1, 2, 2, 3, 1, 4], [6], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 2, 3, 1, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [6],
+          DType.int32,
+        );
 
         final (u, index: idx, inverse: inv, counts: cnt) = unique(
           a,
@@ -1573,8 +2094,16 @@ void main() {
       });
 
       test('optional returns double with NaNs', () {
-        final a = NDArray<double>.fromList(
-          [3.0, 1.0, 2.0, 1.0, double.nan, 2.0, double.nan],
+        final a = NDArray<Float64>.fromList(
+          ([
+            3.0,
+            1.0,
+            2.0,
+            1.0,
+            double.nan,
+            2.0,
+            double.nan,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [7],
           DType.float64,
         );
@@ -1599,7 +2128,11 @@ void main() {
       });
 
       test('disposed array throws StateError', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         a.dispose();
         expect(() => unique(a), throwsStateError);
       });
@@ -1635,8 +2168,16 @@ void main() {
 
     group('intersect1d', () {
       test('int32 basic', () {
-        final a = NDArray<int>.fromList([1, 3, 4, 3], [4], DType.int32);
-        final b = NDArray<int>.fromList([3, 1, 2, 1], [4], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 3, 4, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [4],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([3, 1, 2, 1]).map((e) => Int32((e as num).toInt())).toList(),
+          [4],
+          DType.int32,
+        );
         final res = intersect1d(a, b);
         expect(res.shape, [2]);
         expect(res.toList(), [1, 3]);
@@ -1646,8 +2187,16 @@ void main() {
       });
 
       test('int32 assumeUnique', () {
-        final a = NDArray<int>.fromList([1, 3, 4], [3], DType.int32);
-        final b = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         final res = intersect1d(a, b, assumeUnique: true);
         expect(res.shape, [2]);
         expect(res.toList(), [1, 3]);
@@ -1657,8 +2206,16 @@ void main() {
       });
 
       test('int32 assumeUnique with unsorted inputs', () {
-        final a = NDArray<int>.fromList([3, 1, 4], [3], DType.int32);
-        final b = NDArray<int>.fromList([2, 1, 3], [3], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([3, 1, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([2, 1, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         final res = intersect1d(a, b, assumeUnique: true);
         expect(res.shape, [2]);
         expect(res.toList(), [1, 3]);
@@ -1668,8 +2225,16 @@ void main() {
       });
 
       test('uint8 basic intersect1d', () {
-        final a = NDArray<int>.fromList([1, 2, 3, 2], [4], DType.uint8);
-        final b = NDArray<int>.fromList([2, 3, 4, 3], [4], DType.uint8);
+        final a = NDArray<Uint8>.fromList(
+          ([1, 2, 3, 2]).map((e) => Uint8((e as num).toInt())).toList(),
+          [4],
+          DType.uint8,
+        );
+        final b = NDArray<Uint8>.fromList(
+          ([2, 3, 4, 3]).map((e) => Uint8((e as num).toInt())).toList(),
+          [4],
+          DType.uint8,
+        );
         final res = intersect1d(a, b);
         expect(res.dtype, DType.uint8);
         expect(res.toList(), [2, 3]);
@@ -1679,13 +2244,21 @@ void main() {
       });
 
       test('double with NaNs', () {
-        final a = NDArray<double>.fromList(
-          [double.nan, 1.0, 2.0],
+        final a = NDArray<Float64>.fromList(
+          ([
+            double.nan,
+            1.0,
+            2.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [3],
           DType.float64,
         );
-        final b = NDArray<double>.fromList(
-          [2.0, double.nan, 3.0],
+        final b = NDArray<Float64>.fromList(
+          ([
+            2.0,
+            double.nan,
+            3.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [3],
           DType.float64,
         );
@@ -1699,8 +2272,16 @@ void main() {
       });
 
       test('int32 non-contiguous 1D', () {
-        final a = NDArray<int>.fromList([1, 2, 3, 4, 5, 6], [6], DType.int32);
-        final b = NDArray<int>.fromList([3, 0, 5, 0], [4], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3, 4, 5, 6]).map((e) => Int32((e as num).toInt())).toList(),
+          [6],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([3, 0, 5, 0]).map((e) => Int32((e as num).toInt())).toList(),
+          [4],
+          DType.int32,
+        );
         final sliceA = a.slice([Slice(step: 2)]); // [1, 3, 5]
         final sliceB = b.slice([Slice(step: 2)]); // [3, 5]
 
@@ -1713,8 +2294,16 @@ void main() {
       });
 
       test('disposed arrays throw StateError', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         a.dispose();
         expect(() => intersect1d(a, b), throwsStateError);
         expect(() => intersect1d(b, a), throwsStateError);
@@ -1723,7 +2312,11 @@ void main() {
 
       test('empty inputs returns empty', () {
         final a = NDArray<int>.create([0], DType.int32);
-        final b = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final b = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         final res1 = intersect1d(a, b);
         expect(res1.shape, [0]);
         expect(res1.toList(), <int>[]);
@@ -1744,8 +2337,16 @@ void main() {
       });
 
       test('no common elements returns empty', () {
-        final a = NDArray<int>.fromList([1, 2], [2], DType.int32);
-        final b = NDArray<int>.fromList([3, 4], [2], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2]).map((e) => Int32((e as num).toInt())).toList(),
+          [2],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [2],
+          DType.int32,
+        );
         final res = intersect1d(a, b);
         expect(res.shape, [0]);
         expect(res.toList(), <int>[]);
@@ -1755,8 +2356,16 @@ void main() {
       });
 
       test('2D and non-contiguous inputs', () {
-        final a = NDArray<int>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
-        final bFull = NDArray<int>.fromList([3, 99, 4, 99], [4], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [2, 2],
+          DType.int32,
+        );
+        final bFull = NDArray<Int32>.fromList(
+          ([3, 99, 4, 99]).map((e) => Int32((e as num).toInt())).toList(),
+          [4],
+          DType.int32,
+        );
         final b = bFull.slice([Slice(step: 2)]); // [3, 4] but non-contiguous
 
         final res = intersect1d(a, b);
@@ -1769,8 +2378,16 @@ void main() {
       });
 
       test('assumeUnique with sorted unique inputs', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         final res = intersect1d(a, b, assumeUnique: true);
         expect(res.shape, [2]);
         expect(res.toList(), [2, 3]);
@@ -1782,8 +2399,16 @@ void main() {
 
     group('setdiff1d', () {
       test('int32 basic', () {
-        final a = NDArray<int>.fromList([1, 2, 3, 2, 4], [5], DType.int32);
-        final b = NDArray<int>.fromList([2, 3, 5], [3], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3, 2, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [5],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([2, 3, 5]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         final res = setdiff1d(a, b);
         expect(res.shape, [2]);
         expect(res.toList(), [1, 4]);
@@ -1793,8 +2418,16 @@ void main() {
       });
 
       test('int32 non-contiguous 1D', () {
-        final a = NDArray<int>.fromList([1, 2, 3, 4, 5, 6], [6], DType.int32);
-        final b = NDArray<int>.fromList([3, 0, 5, 0], [4], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3, 4, 5, 6]).map((e) => Int32((e as num).toInt())).toList(),
+          [6],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([3, 0, 5, 0]).map((e) => Int32((e as num).toInt())).toList(),
+          [4],
+          DType.int32,
+        );
         final sliceA = a.slice([Slice(step: 2)]); // [1, 3, 5]
         final sliceB = b.slice([Slice(step: 2)]); // [3, 5]
 
@@ -1807,8 +2440,16 @@ void main() {
       });
 
       test('uint8 setdiff1d', () {
-        final a = NDArray<int>.fromList([1, 2, 3, 2], [4], DType.uint8);
-        final b = NDArray<int>.fromList([2, 4], [2], DType.uint8);
+        final a = NDArray<Uint8>.fromList(
+          ([1, 2, 3, 2]).map((e) => Uint8((e as num).toInt())).toList(),
+          [4],
+          DType.uint8,
+        );
+        final b = NDArray<Uint8>.fromList(
+          ([2, 4]).map((e) => Uint8((e as num).toInt())).toList(),
+          [2],
+          DType.uint8,
+        );
         final res = setdiff1d(a, b);
         expect(res.dtype, DType.uint8);
         expect(res.toList(), [1, 3]);
@@ -1818,8 +2459,16 @@ void main() {
       });
 
       test('disposed arrays throw StateError', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         a.dispose();
         expect(() => setdiff1d(a, b), throwsStateError);
         expect(() => setdiff1d(b, a), throwsStateError);
@@ -1827,8 +2476,16 @@ void main() {
       });
 
       test('assumeUnique: true', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         final res = setdiff1d(a, b, assumeUnique: true);
         expect(res.shape, [1]);
         expect(res.toList(), [1]);
@@ -1839,7 +2496,11 @@ void main() {
 
       test('empty first array returns empty', () {
         final a = NDArray<int>.create([0], DType.int32);
-        final b = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final b = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         final res = setdiff1d(a, b);
         expect(res.shape, [0]);
         expect(res.toList(), <int>[]);
@@ -1849,8 +2510,16 @@ void main() {
       });
 
       test('first array is subset of second returns empty', () {
-        final a = NDArray<int>.fromList([2, 3], [2], DType.int32);
-        final b = NDArray<int>.fromList([1, 2, 3, 4], [4], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [2],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([1, 2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [4],
+          DType.int32,
+        );
         final res = setdiff1d(a, b);
         expect(res.shape, [0]);
         expect(res.toList(), <int>[]);
@@ -1860,8 +2529,16 @@ void main() {
       });
 
       test('2D and non-contiguous inputs', () {
-        final a = NDArray<int>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
-        final bFull = NDArray<int>.fromList([3, 99, 4, 99], [4], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [2, 2],
+          DType.int32,
+        );
+        final bFull = NDArray<Int32>.fromList(
+          ([3, 99, 4, 99]).map((e) => Int32((e as num).toInt())).toList(),
+          [4],
+          DType.int32,
+        );
         final b = bFull.slice([Slice(step: 2)]); // [3, 4] but non-contiguous
 
         final res = setdiff1d(a, b);
@@ -1876,8 +2553,16 @@ void main() {
 
     group('setxor1d', () {
       test('int32 basic', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         final res = setxor1d(a, b);
         expect(res.shape, [2]);
         expect(res.toList(), [1, 4]);
@@ -1887,8 +2572,16 @@ void main() {
       });
 
       test('uint8 setxor1d', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.uint8);
-        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.uint8);
+        final a = NDArray<Uint8>.fromList(
+          ([1, 2, 3]).map((e) => Uint8((e as num).toInt())).toList(),
+          [3],
+          DType.uint8,
+        );
+        final b = NDArray<Uint8>.fromList(
+          ([2, 3, 4]).map((e) => Uint8((e as num).toInt())).toList(),
+          [3],
+          DType.uint8,
+        );
         final res = setxor1d(a, b);
         expect(res.dtype, DType.uint8);
         expect(res.toList(), [1, 4]);
@@ -1898,8 +2591,16 @@ void main() {
       });
 
       test('disposed arrays throw StateError', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         a.dispose();
         expect(() => setxor1d(a, b), throwsStateError);
         expect(() => setxor1d(b, a), throwsStateError);
@@ -1907,8 +2608,16 @@ void main() {
       });
 
       test('assumeUnique: true', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         final res = setxor1d(a, b, assumeUnique: true);
         expect(res.shape, [2]);
         expect(res.toList(), [1, 4]);
@@ -1929,8 +2638,16 @@ void main() {
       });
 
       test('identical inputs returns empty', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final b = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         final res = setxor1d(a, b);
         expect(res.shape, [0]);
         expect(res.toList(), <int>[]);
@@ -1940,8 +2657,16 @@ void main() {
       });
 
       test('2D and non-contiguous inputs', () {
-        final a = NDArray<int>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
-        final bFull = NDArray<int>.fromList([3, 99, 4, 99], [4], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [2, 2],
+          DType.int32,
+        );
+        final bFull = NDArray<Int32>.fromList(
+          ([3, 99, 4, 99]).map((e) => Int32((e as num).toInt())).toList(),
+          [4],
+          DType.int32,
+        );
         final b = bFull.slice([Slice(step: 2)]); // [3, 4] but non-contiguous
 
         final res = setxor1d(a, b);
@@ -1956,8 +2681,16 @@ void main() {
 
     group('union1d', () {
       test('int32 basic', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final b = NDArray<int>.fromList([2, 3, 4, 5], [4], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([2, 3, 4, 5]).map((e) => Int32((e as num).toInt())).toList(),
+          [4],
+          DType.int32,
+        );
         final res = union1d(a, b);
         expect(res.shape, [5]);
         expect(res.toList(), [1, 2, 3, 4, 5]);
@@ -1967,8 +2700,16 @@ void main() {
       });
 
       test('uint8 union1d', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.uint8);
-        final b = NDArray<int>.fromList([2, 3, 4, 5], [4], DType.uint8);
+        final a = NDArray<Uint8>.fromList(
+          ([1, 2, 3]).map((e) => Uint8((e as num).toInt())).toList(),
+          [3],
+          DType.uint8,
+        );
+        final b = NDArray<Uint8>.fromList(
+          ([2, 3, 4, 5]).map((e) => Uint8((e as num).toInt())).toList(),
+          [4],
+          DType.uint8,
+        );
         final res = union1d(a, b);
         expect(res.dtype, DType.uint8);
         expect(res.toList(), [1, 2, 3, 4, 5]);
@@ -1978,8 +2719,16 @@ void main() {
       });
 
       test('disposed arrays throw StateError', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         a.dispose();
         expect(() => union1d(a, b), throwsStateError);
         expect(() => union1d(b, a), throwsStateError);
@@ -1998,8 +2747,16 @@ void main() {
       });
 
       test('2D and non-contiguous inputs', () {
-        final a = NDArray<int>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
-        final bFull = NDArray<int>.fromList([3, 99, 4, 99], [4], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [2, 2],
+          DType.int32,
+        );
+        final bFull = NDArray<Int32>.fromList(
+          ([3, 99, 4, 99]).map((e) => Int32((e as num).toInt())).toList(),
+          [4],
+          DType.int32,
+        );
         final b = bFull.slice([Slice(step: 2)]); // [3, 4] but non-contiguous
 
         final res = union1d(a, b);
@@ -2014,12 +2771,16 @@ void main() {
 
     group('isin', () {
       test('int32 basic', () {
-        final element = NDArray<int>.fromList(
-          [1, 2, 3, 4, 2, 1],
+        final element = NDArray<Int32>.fromList(
+          ([1, 2, 3, 4, 2, 1]).map((e) => Int32((e as num).toInt())).toList(),
           [6],
           DType.int32,
         );
-        final testElements = NDArray<int>.fromList([2, 4], [2], DType.int32);
+        final testElements = NDArray<Int32>.fromList(
+          ([2, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [2],
+          DType.int32,
+        );
         final res = isin(element, testElements);
         expect(res.shape, [6]);
         expect(res.dtype, DType.boolean);
@@ -2030,12 +2791,16 @@ void main() {
       });
 
       test('int32 2D element shape preserved', () {
-        final element = NDArray<int>.fromList(
-          [1, 2, 3, 4],
+        final element = NDArray<Int32>.fromList(
+          ([1, 2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
           [2, 2],
           DType.int32,
         );
-        final testElements = NDArray<int>.fromList([2, 3], [2], DType.int32);
+        final testElements = NDArray<Int32>.fromList(
+          ([2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [2],
+          DType.int32,
+        );
         final res = isin(element, testElements);
         expect(res.shape, [2, 2]);
         expect(res.dtype, DType.boolean);
@@ -2046,8 +2811,16 @@ void main() {
       });
 
       test('invert', () {
-        final element = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final testElements = NDArray<int>.fromList([2], [1], DType.int32);
+        final element = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final testElements = NDArray<Int32>.fromList(
+          ([2]).map((e) => Int32((e as num).toInt())).toList(),
+          [1],
+          DType.int32,
+        );
         final res = isin(element, testElements, invert: true);
         expect(res.toList(), [true, false, true]);
         element.dispose();
@@ -2056,8 +2829,16 @@ void main() {
       });
 
       test('uint8 isin', () {
-        final element = NDArray<int>.fromList([1, 2, 3, 2], [4], DType.uint8);
-        final testElements = NDArray<int>.fromList([2, 4], [2], DType.uint8);
+        final element = NDArray<Uint8>.fromList(
+          ([1, 2, 3, 2]).map((e) => Uint8((e as num).toInt())).toList(),
+          [4],
+          DType.uint8,
+        );
+        final testElements = NDArray<Uint8>.fromList(
+          ([2, 4]).map((e) => Uint8((e as num).toInt())).toList(),
+          [2],
+          DType.uint8,
+        );
         final res = isin(element, testElements);
         expect(res.toList(), [false, true, false, true]);
         element.dispose();
@@ -2066,8 +2847,16 @@ void main() {
       });
 
       test('isin assumeUnique with unsorted testElements', () {
-        final element = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final testElements = NDArray<int>.fromList([3, 1], [2], DType.int32);
+        final element = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final testElements = NDArray<Int32>.fromList(
+          ([3, 1]).map((e) => Int32((e as num).toInt())).toList(),
+          [2],
+          DType.int32,
+        );
         final res = isin(element, testElements, assumeUnique: true);
         expect(res.toList(), [true, false, true]);
         element.dispose();
@@ -2076,13 +2865,13 @@ void main() {
       });
 
       test('non-contiguous elements and testElements', () {
-        final element = NDArray<int>.fromList(
-          [1, 2, 3, 4, 5, 6],
+        final element = NDArray<Int32>.fromList(
+          ([1, 2, 3, 4, 5, 6]).map((e) => Int32((e as num).toInt())).toList(),
           [6],
           DType.int32,
         );
-        final testElements = NDArray<int>.fromList(
-          [3, 0, 5, 0],
+        final testElements = NDArray<Int32>.fromList(
+          ([3, 0, 5, 0]).map((e) => Int32((e as num).toInt())).toList(),
           [4],
           DType.int32,
         );
@@ -2099,8 +2888,16 @@ void main() {
       });
 
       test('disposed arrays throw StateError', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final b = NDArray<Int32>.fromList(
+          ([2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
         a.dispose();
         expect(() => isin(a, b), throwsStateError);
         expect(() => isin(b, a), throwsStateError);
@@ -2108,13 +2905,24 @@ void main() {
       });
 
       test('non-contiguous element array', () {
-        final aFull = NDArray<int>.fromList(
-          [1, 99, 2, 99, 3, 99],
+        final aFull = NDArray<Int32>.fromList(
+          ([
+            1,
+            99,
+            2,
+            99,
+            3,
+            99,
+          ]).map((e) => Int32((e as num).toInt())).toList(),
           [6],
           DType.int32,
         );
         final a = aFull.slice([Slice(step: 2)]); // [1, 2, 3] but non-contiguous
-        final b = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+        final b = NDArray<Int32>.fromList(
+          ([2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
 
         final res = isin(a, b);
         expect(res.shape, [3]);
@@ -2126,9 +2934,20 @@ void main() {
       });
 
       test('non-contiguous testElements array', () {
-        final a = NDArray<int>.fromList([1, 2, 3], [3], DType.int32);
-        final bFull = NDArray<int>.fromList(
-          [2, 99, 3, 99, 4, 99],
+        final a = NDArray<Int32>.fromList(
+          ([1, 2, 3]).map((e) => Int32((e as num).toInt())).toList(),
+          [3],
+          DType.int32,
+        );
+        final bFull = NDArray<Int32>.fromList(
+          ([
+            2,
+            99,
+            3,
+            99,
+            4,
+            99,
+          ]).map((e) => Int32((e as num).toInt())).toList(),
           [6],
           DType.int32,
         );
@@ -2149,7 +2968,11 @@ void main() {
     group('asStrided Tests', () {
       test('basic 1D to 2D asStrided', () {
         NDArray.scope(() {
-          final a = NDArray.fromList([1, 2, 3, 4], [4], DType.int32);
+          final a = NDArray<Int32>.fromList(
+            ([1, 2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+            [4],
+            DType.int32,
+          );
           final view = asStrided(a, shape: [2, 2], strides: [2, 1]);
 
           expect(view.shape, [2, 2]);
@@ -2163,7 +2986,11 @@ void main() {
 
       test('asStrided keeps strides if null', () {
         NDArray.scope(() {
-          final a = NDArray.fromList([10, 20, 30], [3], DType.int32);
+          final a = NDArray<Int32>.fromList(
+            ([10, 20, 30]).map((e) => Int32((e as num).toInt())).toList(),
+            [3],
+            DType.int32,
+          );
           final view = asStrided(a);
           expect(view.shape, [3]);
           expect(view.strides, [1]);
@@ -2298,8 +3125,14 @@ void main() {
     test(
       'nansum() and nanmean() ufunc correctness across float dtypes',
       () => NDArray.scope(() {
-        final a = NDArray.fromList(
-          [1.0, double.nan, 3.0, double.nan, 5.0],
+        final a = NDArray<Float64>.fromList(
+          ([
+            1.0,
+            double.nan,
+            3.0,
+            double.nan,
+            5.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [5],
           DType.float64,
         );
@@ -2321,8 +3154,15 @@ void main() {
     test(
       'nansum() and nanmean() along axis check',
       () => NDArray.scope(() {
-        final a = NDArray.fromList(
-          [1.0, double.nan, 3.0, 4.0, 5.0, double.nan],
+        final a = NDArray<Float64>.fromList(
+          ([
+            1.0,
+            double.nan,
+            3.0,
+            4.0,
+            5.0,
+            double.nan,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [2, 3],
           DType.float64,
         );
@@ -2362,7 +3202,14 @@ void main() {
         expect(nansum(empty).scalar, 0.0);
         expect(nanmean<double>(empty).scalar.isNaN, true);
 
-        final a = NDArray.fromList([1.0, double.nan], [2], DType.float64);
+        final a = NDArray<Float64>.fromList(
+          ([
+            1.0,
+            double.nan,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
+          [2],
+          DType.float64,
+        );
         a.dispose();
         expect(() => nansum(a), throwsStateError);
         expect(() => nanmean(a), throwsStateError);
@@ -2372,8 +3219,15 @@ void main() {
     test(
       'variance() and std() on non-contiguous view calculation',
       () => NDArray.scope(() {
-        final parent = NDArray.fromList(
-          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        final parent = NDArray<Float64>.fromList(
+          ([
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [3, 2],
           DType.float64,
         );
@@ -2388,8 +3242,15 @@ void main() {
     test(
       'variance() and std() on sliced view calculation',
       () => NDArray.scope(() {
-        final parent = NDArray.fromList(
-          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        final parent = NDArray<Float64>.fromList(
+          ([
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [3, 2],
           DType.float64,
         );
@@ -2403,8 +3264,14 @@ void main() {
     test(
       'percentile() and quantile() statistical estimation correctness',
       () => NDArray.scope(() {
-        final a = NDArray.fromList(
-          [15.0, 20.0, 35.0, 40.0, 50.0],
+        final a = NDArray<Float64>.fromList(
+          ([
+            15.0,
+            20.0,
+            35.0,
+            40.0,
+            50.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [5],
           DType.float64,
         );
@@ -2422,7 +3289,11 @@ void main() {
     test(
       'percentile() and quantile() invalid inputs and limits checks',
       () => NDArray.scope(() {
-        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final a = NDArray<Float64>.fromList(
+          ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+          [2],
+          DType.float64,
+        );
 
         expect(() => percentile(a, -5.0), throwsArgumentError);
         expect(() => percentile(a, 105.0), throwsArgumentError);
@@ -2434,8 +3305,15 @@ void main() {
     test(
       'percentile() along columns and rows axis integration correctness',
       () => NDArray.scope(() {
-        final a = NDArray.fromList(
-          [1.0, 5.0, 3.0, 4.0, 2.0, 6.0],
+        final a = NDArray<Float64>.fromList(
+          ([
+            1.0,
+            5.0,
+            3.0,
+            4.0,
+            2.0,
+            6.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [2, 3],
           DType.float64,
         );
@@ -2455,7 +3333,15 @@ void main() {
     test(
       'percentile() quantile() contiguous float32 coverage',
       () => NDArray.scope(() {
-        final a = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float32);
+        final a = NDArray<Float32>.fromList(
+          ([
+            10.0,
+            20.0,
+            30.0,
+          ]).map((e) => Float32((e as num).toDouble())).toList(),
+          [3],
+          DType.float32,
+        );
 
         final p = percentile(a, 50.0);
         expect(p.dtype, DType.float64); // percentile always returns float64
@@ -2470,8 +3356,13 @@ void main() {
     test(
       'percentile() quantile() non-contiguous transposed views',
       () => NDArray.scope(() {
-        final parent = NDArray.fromList(
-          [10.0, 20.0, 30.0, 40.0],
+        final parent = NDArray<Float64>.fromList(
+          ([
+            10.0,
+            20.0,
+            30.0,
+            40.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [2, 2],
           DType.float64,
         );
@@ -2488,7 +3379,15 @@ void main() {
     test(
       'percentile() quantile() with out parameter recycler',
       () => NDArray.scope(() {
-        final a = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float64);
+        final a = NDArray<Float64>.fromList(
+          ([
+            10.0,
+            20.0,
+            30.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
+          [3],
+          DType.float64,
+        );
         final outPercentile = NDArray<double>.zeros([], DType.float64);
 
         final resP = percentile(a, 50.0, out: outPercentile);
@@ -2513,8 +3412,13 @@ void main() {
       test(
         'mean out parameter reuse',
         () => NDArray.scope(() {
-          final a = NDArray.fromList(
-            [1.0, 2.0, 3.0, 4.0],
+          final a = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+              4.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 2],
             DType.float64,
           );
@@ -2534,8 +3438,13 @@ void main() {
       test(
         'variance out parameter reuse',
         () => NDArray.scope(() {
-          final a = NDArray.fromList(
-            [1.0, 2.0, 3.0, 4.0],
+          final a = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+              4.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 2],
             DType.float64,
           );
@@ -2555,8 +3464,13 @@ void main() {
       test(
         'std out parameter reuse',
         () => NDArray.scope(() {
-          final a = NDArray.fromList(
-            [1.0, 2.0, 3.0, 4.0],
+          final a = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+              4.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 2],
             DType.float64,
           );
@@ -2576,7 +3490,11 @@ void main() {
       test(
         'disposed out array throws StateError',
         () => NDArray.scope(() {
-          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final a = NDArray<Float64>.fromList(
+            ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+            [2],
+            DType.float64,
+          );
           final out = NDArray<double>.zeros([], DType.float64);
           out.dispose();
 
@@ -2589,7 +3507,11 @@ void main() {
       test(
         'incompatible shape or dtype out array throws ArgumentError',
         () => NDArray.scope(() {
-          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final a = NDArray<Float64>.fromList(
+            ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+            [2],
+            DType.float64,
+          );
 
           final outShape = NDArray<double>.zeros([2], DType.float64);
           expect(() => mean(a, out: outShape), throwsArgumentError);
@@ -2615,7 +3537,11 @@ void main() {
       test(
         'disposed input array throws StateError',
         () => NDArray.scope(() {
-          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final a = NDArray<Float64>.fromList(
+            ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+            [2],
+            DType.float64,
+          );
           a.dispose();
 
           expect(() => mean(a), throwsStateError);
@@ -2627,8 +3553,13 @@ void main() {
       test(
         'non-contiguous out array support',
         () => NDArray.scope(() {
-          final a = NDArray.fromList(
-            [1.0, 2.0, 3.0, 4.0],
+          final a = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+              4.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 2],
             DType.float64,
           );
@@ -2661,14 +3592,23 @@ void main() {
       test(
         'flat reduction multiple dtypes',
         () => NDArray.scope(() {
-          final aInt = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
-          final aDouble = NDArray.fromList(
-            [1.0, 2.0, 3.0, 4.0],
+          final aInt = NDArray<Int32>.fromList(
+            ([1, 2, 3, 4]).map((e) => Int32((e as num).toInt())).toList(),
+            [2, 2],
+            DType.int32,
+          );
+          final aDouble = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+              4.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 2],
             DType.float64,
           );
-          final aBool = NDArray.fromList(
-            [true, false, true, true],
+          final aBool = NDArray<bool>.fromList(
+            ([true, false, true, true]),
             [2, 2],
             DType.boolean,
           );
@@ -2702,8 +3642,13 @@ void main() {
       test(
         'out parameter reuse',
         () => NDArray.scope(() {
-          final a = NDArray.fromList(
-            [1.0, 2.0, 3.0, 4.0],
+          final a = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+              4.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 2],
             DType.float64,
           );
@@ -2723,7 +3668,11 @@ void main() {
       test(
         'disposed out array throws StateError',
         () => NDArray.scope(() {
-          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final a = NDArray<Float64>.fromList(
+            ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+            [2],
+            DType.float64,
+          );
           final out = NDArray<double>.zeros([2], DType.float64);
           out.dispose();
 
@@ -2737,7 +3686,11 @@ void main() {
       test(
         'incompatible out array throws ArgumentError',
         () => NDArray.scope(() {
-          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final a = NDArray<Float64>.fromList(
+            ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+            [2],
+            DType.float64,
+          );
 
           final outShape = NDArray<double>.zeros([3], DType.float64);
           expect(() => cumsum(a, out: outShape), throwsArgumentError);
@@ -2768,7 +3721,11 @@ void main() {
       test(
         'disposed input array throws StateError',
         () => NDArray.scope(() {
-          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final a = NDArray<Float64>.fromList(
+            ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+            [2],
+            DType.float64,
+          );
           a.dispose();
 
           expect(() => cumsum(a), throwsStateError);
@@ -2781,7 +3738,11 @@ void main() {
       test(
         'invalid axis throws ArgumentError',
         () => NDArray.scope(() {
-          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final a = NDArray<Float64>.fromList(
+            ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+            [2],
+            DType.float64,
+          );
           expect(() => cumsum(a, axis: 2), throwsArgumentError);
           expect(() => cumsum(a, axis: -2), throwsArgumentError);
         }),
@@ -2811,17 +3772,45 @@ void main() {
         test(
           'median multiple dtypes',
           () => NDArray.scope(() {
-            final f32 = NDArray.fromList([3.0, 1.0, 2.0], [3], DType.float32);
-            final i32 = NDArray.fromList([3, 1, 2], [3], DType.int32);
-            final i64 = NDArray.fromList([3, 1, 2], [3], DType.int64);
-            final u8 = NDArray.fromList([3, 1, 2], [3], DType.uint8);
-            final c128 = NDArray.fromList(
-              [Complex(3, 3), Complex(1, 1), Complex(2, 2)],
+            final f32 = NDArray<Float32>.fromList(
+              ([
+                3.0,
+                1.0,
+                2.0,
+              ]).map((e) => Float32((e as num).toDouble())).toList(),
+              [3],
+              DType.float32,
+            );
+            final i32 = NDArray<Int32>.fromList(
+              ([3, 1, 2]).map((e) => Int32((e as num).toInt())).toList(),
+              [3],
+              DType.int32,
+            );
+            final i64 = NDArray<Int64>.fromList(
+              ([3, 1, 2]).map((e) => Int64((e as num).toInt())).toList(),
+              [3],
+              DType.int64,
+            );
+            final u8 = NDArray<Uint8>.fromList(
+              ([3, 1, 2]).map((e) => Uint8((e as num).toInt())).toList(),
+              [3],
+              DType.uint8,
+            );
+            final c128 = NDArray<Complex128>.fromList(
+              ([Complex(3, 3), Complex(1, 1), Complex(2, 2)])
+                  .map(
+                    (c) => Complex128((c as dynamic).real, (c as dynamic).imag),
+                  )
+                  .toList(),
               [3],
               DType.complex128,
             );
-            final c64 = NDArray.fromList(
-              [Complex(3, 3), Complex(1, 1), Complex(2, 2)],
+            final c64 = NDArray<Complex64>.fromList(
+              ([Complex(3, 3), Complex(1, 1), Complex(2, 2)])
+                  .map(
+                    (c) => Complex64((c as dynamic).real, (c as dynamic).imag),
+                  )
+                  .toList(),
               [3],
               DType.complex64,
             );
@@ -2838,14 +3827,30 @@ void main() {
         test(
           'quantile and percentile multiple dtypes',
           () => NDArray.scope(() {
-            final f32 = NDArray.fromList(
-              [10.0, 20.0, 30.0],
+            final f32 = NDArray<Float32>.fromList(
+              ([
+                10.0,
+                20.0,
+                30.0,
+              ]).map((e) => Float32((e as num).toDouble())).toList(),
               [3],
               DType.float32,
             );
-            final i32 = NDArray.fromList([10, 20, 30], [3], DType.int32);
-            final i64 = NDArray.fromList([10, 20, 30], [3], DType.int64);
-            final u8 = NDArray.fromList([10, 20, 30], [3], DType.uint8);
+            final i32 = NDArray<Int32>.fromList(
+              ([10, 20, 30]).map((e) => Int32((e as num).toInt())).toList(),
+              [3],
+              DType.int32,
+            );
+            final i64 = NDArray<Int64>.fromList(
+              ([10, 20, 30]).map((e) => Int64((e as num).toInt())).toList(),
+              [3],
+              DType.int64,
+            );
+            final u8 = NDArray<Uint8>.fromList(
+              ([10, 20, 30]).map((e) => Uint8((e as num).toInt())).toList(),
+              [3],
+              DType.uint8,
+            );
 
             expect(quantile(f32, 0.5).scalar, 20.0);
             expect(quantile(i32, 0.5).scalar, 20.0);
@@ -2862,7 +3867,11 @@ void main() {
         test(
           'disposed out array throws StateError',
           () => NDArray.scope(() {
-            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            final a = NDArray<Float64>.fromList(
+              ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+              [2],
+              DType.float64,
+            );
             final out = NDArray<double>.zeros([], DType.float64);
             out.dispose();
 
@@ -2875,7 +3884,11 @@ void main() {
         test(
           'incompatible out array throws ArgumentError',
           () => NDArray.scope(() {
-            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            final a = NDArray<Float64>.fromList(
+              ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+              [2],
+              DType.float64,
+            );
 
             final outShape = NDArray<double>.zeros([2], DType.float64);
             expect(() => median(a, out: outShape), throwsArgumentError);
@@ -2904,7 +3917,11 @@ void main() {
         test(
           'disposed input array throws StateError',
           () => NDArray.scope(() {
-            final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            final a = NDArray<Float64>.fromList(
+              ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+              [2],
+              DType.float64,
+            );
             a.dispose();
 
             expect(() => median(a), throwsStateError);
@@ -2923,8 +3940,15 @@ void main() {
   group("NaN-Aware Reduction Tests", () {
     test("Flat float64 nanvar, nanstd, nanmin, nanmax", () {
       NDArray.scope(() {
-        final a = NDArray.fromList(
-          [1.0, double.nan, 3.0, 4.0, double.nan, 6.0],
+        final a = NDArray<Float64>.fromList(
+          ([
+            1.0,
+            double.nan,
+            3.0,
+            4.0,
+            double.nan,
+            6.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [6],
           DType.float64,
         );
@@ -2953,8 +3977,15 @@ void main() {
 
     test("Flat float32 nanvar, nanstd, nanmin, nanmax", () {
       NDArray.scope(() {
-        final a = NDArray.fromList(
-          [1.0, double.nan, 3.0, 4.0, double.nan, 6.0],
+        final a = NDArray<Float32>.fromList(
+          ([
+            1.0,
+            double.nan,
+            3.0,
+            4.0,
+            double.nan,
+            6.0,
+          ]).map((e) => Float32((e as num).toDouble())).toList(),
           [6],
           DType.float32,
         );
@@ -2981,8 +4012,15 @@ void main() {
       NDArray.scope(() {
         // [[1.0, double.nan, 3.0],
         //  [4.0, 2.0,        double.nan]]
-        final a = NDArray.fromList(
-          [1.0, double.nan, 3.0, 4.0, 2.0, double.nan],
+        final a = NDArray<Float64>.fromList(
+          ([
+            1.0,
+            double.nan,
+            3.0,
+            4.0,
+            2.0,
+            double.nan,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [2, 3],
           DType.float64,
         );
@@ -3023,8 +4061,12 @@ void main() {
 
     test("Edge case: All-NaN array or slice", () {
       NDArray.scope(() {
-        final a = NDArray.fromList(
-          [double.nan, double.nan, double.nan],
+        final a = NDArray<Float64>.fromList(
+          ([
+            double.nan,
+            double.nan,
+            double.nan,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [3],
           DType.float64,
         );
@@ -3036,8 +4078,13 @@ void main() {
 
         // [[1.0, 2.0],
         //  [nan, nan]]
-        final b = NDArray.fromList(
-          [1.0, 2.0, double.nan, double.nan],
+        final b = NDArray<Float64>.fromList(
+          ([
+            1.0,
+            2.0,
+            double.nan,
+            double.nan,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [2, 2],
           DType.float64,
         );
@@ -3059,8 +4106,13 @@ void main() {
         expectListEqualsWithNaNs(ma.toList(), [2.0, double.nan]);
 
         // 2D all-NaN (Episode 2 case)
-        final a2 = NDArray.fromList(
-          [double.nan, double.nan, double.nan, double.nan],
+        final a2 = NDArray<Float64>.fromList(
+          ([
+            double.nan,
+            double.nan,
+            double.nan,
+            double.nan,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [2, 2],
           DType.float64,
         );
@@ -3077,8 +4129,8 @@ void main() {
       "Mixed contiguous and strided non-contiguous views with NaNs (Case 1)",
       () {
         NDArray.scope(() {
-          final base = NDArray.fromList(
-            [
+          final base = NDArray<Float64>.fromList(
+            ([
               1.0,
               99.0,
               double.nan,
@@ -3097,7 +4149,7 @@ void main() {
               99.0,
               double.nan,
               99.0,
-            ],
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3, 6],
             DType.float64,
           );
@@ -3140,8 +4192,18 @@ void main() {
       "Strided non-contiguous views with NaNs (Case 2 - triggers nanmean bug)",
       () {
         NDArray.scope(() {
-          final full = NDArray.fromList(
-            [1.0, 99.0, double.nan, 4.0, 99.0, 2.0, 3.0, 99.0, double.nan],
+          final full = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              99.0,
+              double.nan,
+              4.0,
+              99.0,
+              2.0,
+              3.0,
+              99.0,
+              double.nan,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3, 3],
             DType.float64,
           );
@@ -3176,8 +4238,18 @@ void main() {
   group("Strided Medians and Quantiles", () {
     test("Strided median and quantile (global, 1D slice)", () {
       NDArray.scope(() {
-        final base = NDArray.fromList(
-          [10.0, 99.0, 20.0, 99.0, 30.0, 99.0, 40.0, 99.0, 50.0],
+        final base = NDArray<Float64>.fromList(
+          ([
+            10.0,
+            99.0,
+            20.0,
+            99.0,
+            30.0,
+            99.0,
+            40.0,
+            99.0,
+            50.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [9],
           DType.float64,
         );
@@ -3198,8 +4270,18 @@ void main() {
 
     test("Median on strided view (2D slice, forces r_median_helper)", () {
       NDArray.scope(() {
-        final full = NDArray.fromList(
-          [1.0, 99.0, 3.0, 5.0, 99.0, 2.0, 4.0, 99.0, 6.0],
+        final full = NDArray<Float64>.fromList(
+          ([
+            1.0,
+            99.0,
+            3.0,
+            5.0,
+            99.0,
+            2.0,
+            4.0,
+            99.0,
+            6.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [3, 3],
           DType.float64,
         );
@@ -3219,8 +4301,17 @@ void main() {
 
     test("Strided quantile with different QuantileMethods (1D slice)", () {
       NDArray.scope(() {
-        final base = NDArray.fromList(
-          [10.0, 99.0, 20.0, 99.0, 30.0, 99.0, 40.0, 99.0],
+        final base = NDArray<Float64>.fromList(
+          ([
+            10.0,
+            99.0,
+            20.0,
+            99.0,
+            30.0,
+            99.0,
+            40.0,
+            99.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [8],
           DType.float64,
         );
@@ -3264,8 +4355,15 @@ void main() {
       "Quantile on strided view (2D slice, forces r_quantile_helper) and multiple methods",
       () {
         NDArray.scope(() {
-          final full = NDArray.fromList(
-            [10.0, 99.0, 20.0, 30.0, 99.0, 40.0],
+          final full = NDArray<Float64>.fromList(
+            ([
+              10.0,
+              99.0,
+              20.0,
+              30.0,
+              99.0,
+              40.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 3],
             DType.float64,
           );
@@ -3313,14 +4411,25 @@ void main() {
   group("Recycler Neutral Initialization", () {
     test("sum axis-wise with pre-filled out buffer", () {
       NDArray.scope(() {
-        final a = NDArray.fromList(
-          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        final a = NDArray<Float64>.fromList(
+          ([
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [2, 3],
           DType.float64,
         );
 
-        final out = NDArray<double>.fromList(
-          [99.9, 99.9, 99.9],
+        final out = NDArray<Float64>.fromList(
+          ([
+            99.9,
+            99.9,
+            99.9,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [3],
           DType.float64,
         );
@@ -3334,13 +4443,24 @@ void main() {
 
     test("prod axis-wise with pre-filled out buffer", () {
       NDArray.scope(() {
-        final a = NDArray.fromList(
-          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        final a = NDArray<Float64>.fromList(
+          ([
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+          ]).map((e) => Float64((e as num).toDouble())).toList(),
           [2, 3],
           DType.float64,
         );
 
-        final out = NDArray<double>.fromList([99.9, 99.9], [2], DType.float64);
+        final out = NDArray<Float64>.fromList(
+          ([99.9, 99.9]).map((e) => Float64((e as num).toDouble())).toList(),
+          [2],
+          DType.float64,
+        );
 
         final res = prod(a, axis: 1, out: out);
 
@@ -3352,7 +4472,11 @@ void main() {
 
   group("Precondition & State Validations", () {
     NDArray<double> getDisposed() {
-      final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+      final a = NDArray<Float64>.fromList(
+        ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+        [2],
+        DType.float64,
+      );
       a.dispose();
       return a;
     }
@@ -3381,7 +4505,11 @@ void main() {
 
     test("Disposed out buffer throws StateError", () {
       NDArray.scope(() {
-        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final a = NDArray<Float64>.fromList(
+          ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+          [2],
+          DType.float64,
+        );
         final disposedOut = getDisposed();
 
         expect(() => mean(a, out: disposedOut), throwsStateError);
@@ -3404,7 +4532,11 @@ void main() {
 
     test("Mismatched out buffer shape throws ArgumentError", () {
       NDArray.scope(() {
-        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final a = NDArray<Float64>.fromList(
+          ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+          [2],
+          DType.float64,
+        );
         final invalidOut = NDArray<double>.zeros([2], DType.float64);
 
         expect(() => mean(a, out: invalidOut), throwsArgumentError);
@@ -3427,7 +4559,11 @@ void main() {
 
     test("Mismatched out buffer dtype throws ArgumentError/TypeError", () {
       NDArray.scope(() {
-        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final a = NDArray<Float64>.fromList(
+          ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+          [2],
+          DType.float64,
+        );
         final invalidOut = NDArray<int>.zeros([], DType.int32);
 
         final throwsMismatched = throwsA(
@@ -3460,7 +4596,11 @@ void main() {
 
     test("Out of bounds axis throws ArgumentError", () {
       NDArray.scope(() {
-        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final a = NDArray<Float64>.fromList(
+          ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+          [2],
+          DType.float64,
+        );
         final invalidAxis = 2;
 
         expect(() => mean(a, axis: invalidAxis), throwsArgumentError);
@@ -3489,7 +4629,15 @@ void main() {
     group('Covariance (cov) Tests', () {
       test('1D array cov (y=null)', () {
         NDArray.scope(() {
-          final x = NDArray.fromList([-2.1, -1.0, 4.3], [3], DType.float64);
+          final x = NDArray<Float64>.fromList(
+            ([
+              -2.1,
+              -1.0,
+              4.3,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
+            [3],
+            DType.float64,
+          );
           final c = cov(x);
           expect(c.shape, <int>[]); // 0-D
           expect(c.dtype, DType.float64);
@@ -3499,8 +4647,15 @@ void main() {
 
       test('2D array cov (rowvar=true)', () {
         NDArray.scope(() {
-          final x = NDArray.fromList(
-            [0.0, 1.0, 2.0, 2.0, 1.0, 0.0],
+          final x = NDArray<Float64>.fromList(
+            ([
+              0.0,
+              1.0,
+              2.0,
+              2.0,
+              1.0,
+              0.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 3],
             DType.float64,
           );
@@ -3515,8 +4670,15 @@ void main() {
 
       test('2D array cov (rowvar=false)', () {
         NDArray.scope(() {
-          final x = NDArray.fromList(
-            [0.0, 2.0, 1.0, 1.0, 2.0, 0.0],
+          final x = NDArray<Float64>.fromList(
+            ([
+              0.0,
+              2.0,
+              1.0,
+              1.0,
+              2.0,
+              0.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3, 2],
             DType.float64,
           );
@@ -3531,8 +4693,24 @@ void main() {
 
       test('cov with y', () {
         NDArray.scope(() {
-          final x = NDArray.fromList([-2.1, -1.0, 4.3], [3], DType.float64);
-          final y = NDArray.fromList([3.0, 1.1, 0.12], [3], DType.float64);
+          final x = NDArray<Float64>.fromList(
+            ([
+              -2.1,
+              -1.0,
+              4.3,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
+            [3],
+            DType.float64,
+          );
+          final y = NDArray<Float64>.fromList(
+            ([
+              3.0,
+              1.1,
+              0.12,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
+            [3],
+            DType.float64,
+          );
           final c = cov(x, y: y);
           expect(c.shape, [2, 2]);
           expect(c.getCell([0, 0]), closeTo(11.71, 1e-4));
@@ -3544,8 +4722,20 @@ void main() {
 
       test('cov with fweights', () {
         NDArray.scope(() {
-          final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-          final fweights = NDArray.fromList([1, 2, 1], [3], DType.int64);
+          final x = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
+            [3],
+            DType.float64,
+          );
+          final fweights = NDArray<Int64>.fromList(
+            ([1, 2, 1]).map((e) => Int64((e as num).toInt())).toList(),
+            [3],
+            DType.int64,
+          );
           final c = cov(x, fweights: fweights);
           expect(c.scalar, closeTo(0.66666667, 1e-4));
         });
@@ -3553,9 +4743,21 @@ void main() {
 
       test('cov with aweights', () {
         NDArray.scope(() {
-          final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
-          final aweights = NDArray.fromList(
-            [1.0, 2.0, 1.0],
+          final x = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
+            [3],
+            DType.float64,
+          );
+          final aweights = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              1.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [3],
             DType.float64,
           );
@@ -3566,7 +4768,15 @@ void main() {
 
       test('cov ddof variation', () {
         NDArray.scope(() {
-          final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+          final x = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
+            [3],
+            DType.float64,
+          );
           final cBias = cov(x, bias: true);
           expect(cBias.scalar, closeTo(0.66666667, 1e-4));
 
@@ -3577,22 +4787,47 @@ void main() {
 
       test('cov rank > 2 throws', () {
         NDArray.scope(() {
-          final x = NDArray.fromList(
-            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+          final x = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+              4.0,
+              5.0,
+              6.0,
+              7.0,
+              8.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 2, 2],
             DType.float64,
           );
           expect(() => cov(x), throwsArgumentError);
 
-          final y = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final y = NDArray<Float64>.fromList(
+            ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+            [2],
+            DType.float64,
+          );
           expect(() => cov(y, y: x), throwsArgumentError);
         });
       });
 
       test('cov with y different dtype (int32)', () {
         NDArray.scope(() {
-          final x = NDArray.fromList([-2.1, -1.0, 4.3], [3], DType.float64);
-          final y = NDArray.fromList([3, 1, 0], [3], DType.int32);
+          final x = NDArray<Float64>.fromList(
+            ([
+              -2.1,
+              -1.0,
+              4.3,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
+            [3],
+            DType.float64,
+          );
+          final y = NDArray<Int32>.fromList(
+            ([3, 1, 0]).map((e) => Int32((e as num).toInt())).toList(),
+            [3],
+            DType.int32,
+          );
           final c = cov(x, y: y);
           expect(c.shape, [2, 2]);
           expect(c.getCell([0, 0]), closeTo(11.71, 1e-4));
@@ -3603,35 +4838,76 @@ void main() {
 
       test('cov invalid weights', () {
         NDArray.scope(() {
-          final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+          final x = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
+            [3],
+            DType.float64,
+          );
 
-          final fBadRank = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int64);
+          final fBadRank = NDArray<Int64>.fromList(
+            ([1, 2, 3, 4]).map((e) => Int64((e as num).toInt())).toList(),
+            [2, 2],
+            DType.int64,
+          );
           expect(() => cov(x, fweights: fBadRank), throwsArgumentError);
 
-          final fBadSize = NDArray.fromList([1, 2], [2], DType.int64);
+          final fBadSize = NDArray<Int64>.fromList(
+            ([1, 2]).map((e) => Int64((e as num).toInt())).toList(),
+            [2],
+            DType.int64,
+          );
           expect(() => cov(x, fweights: fBadSize), throwsArgumentError);
 
-          final fNeg = NDArray.fromList([1, -2, 1], [3], DType.int64);
+          final fNeg = NDArray<Int64>.fromList(
+            ([1, -2, 1]).map((e) => Int64((e as num).toInt())).toList(),
+            [3],
+            DType.int64,
+          );
           expect(() => cov(x, fweights: fNeg), throwsArgumentError);
 
-          final aBadRank = NDArray.fromList(
-            [1.0, 2.0, 3.0, 4.0],
+          final aBadRank = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+              4.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 2],
             DType.float64,
           );
           expect(() => cov(x, aweights: aBadRank), throwsArgumentError);
 
-          final aBadSize = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final aBadSize = NDArray<Float64>.fromList(
+            ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
+            [2],
+            DType.float64,
+          );
           expect(() => cov(x, aweights: aBadSize), throwsArgumentError);
 
-          final aNeg = NDArray.fromList([1.0, -2.0, 1.0], [3], DType.float64);
+          final aNeg = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              -2.0,
+              1.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
+            [3],
+            DType.float64,
+          );
           expect(() => cov(x, aweights: aNeg), throwsArgumentError);
         });
       });
 
       test('cov 1-element array', () {
         NDArray.scope(() {
-          final x = NDArray.fromList([1.0], [1], DType.float64);
+          final x = NDArray<Float64>.fromList(
+            ([1.0]).map((e) => Float64((e as num).toDouble())).toList(),
+            [1],
+            DType.float64,
+          );
           final c = cov(x);
           expect(c.shape, <int>[]);
           expect(c.scalar.isNaN, true);
@@ -3640,7 +4916,15 @@ void main() {
 
       test('cov 1D input, rowvar=false', () {
         NDArray.scope(() {
-          final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+          final x = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
+            [3],
+            DType.float64,
+          );
           final c = cov(x, rowvar: false);
           expect(c.shape, <int>[]);
           expect(c.scalar, closeTo(1.0, 1e-4));
@@ -3651,7 +4935,15 @@ void main() {
     group('Correlation Coefficient (corrcoef) Tests', () {
       test('1D array corrcoef', () {
         NDArray.scope(() {
-          final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+          final x = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
+            [3],
+            DType.float64,
+          );
           final r = corrcoef(x);
           expect(r.shape, <int>[]);
           expect(r.scalar, closeTo(1.0, 1e-4));
@@ -3660,8 +4952,15 @@ void main() {
 
       test('2D array corrcoef', () {
         NDArray.scope(() {
-          final x = NDArray.fromList(
-            [1.0, 2.0, 3.0, 1.0, 2.0, 3.1],
+          final x = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              2.0,
+              3.0,
+              1.0,
+              2.0,
+              3.1,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 3],
             DType.float64,
           );
@@ -3676,8 +4975,15 @@ void main() {
 
       test('corrcoef constant variable (division by zero)', () {
         NDArray.scope(() {
-          final x = NDArray.fromList(
-            [1.0, 1.0, 1.0, 1.0, 2.0, 3.0],
+          final x = NDArray<Float64>.fromList(
+            ([
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              2.0,
+              3.0,
+            ]).map((e) => Float64((e as num).toDouble())).toList(),
             [2, 3],
             DType.float64,
           );

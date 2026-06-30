@@ -2,7 +2,6 @@
 import 'dart:math' as math;
 import 'package:openblas/openblas.dart';
 import '../../ndarray.dart';
-import '../helpers.dart';
 
 /// Configure the number of parallel execution threads used by OpenBLAS at runtime.
 ///
@@ -205,102 +204,4 @@ List<int> broadcastShapes(List<int> s1, List<int> s2) {
     common[len - 1 - i] = target;
   }
   return common;
-}
-
-/// Returns an array drawn from elements in [choicelist], depending on conditions in [condlist].
-///
-/// This corresponds to NumPy's `select` function.
-///
-/// **Mathematical Mechanics**:
-/// - Evaluates a list of boolean conditions in [condlist] sequentially per cell.
-/// - Draws corresponding values from the same-indexed array in [choicelist].
-/// - If no condition is met, falls back to [defaultValue].
-/// - Leverages zero-copy, zero-allocation $N$-dimensional strides recursive walk in a single pass!
-///
-/// **Preconditions:**
-/// - [condlist] and [choicelist] must have the same length.
-/// - All condition and choice arrays must broadcast perfectly to a common shape.
-///
-/// **Throws:**
-/// - [ArgumentError] if [condlist] and [choicelist] lengths mismatch, or if any shape is incompatible.
-///
-/// **Example:**
-/// ```dart
-/// final cond1 = NDArray.fromList([true, false], [2], DType.boolean);
-/// final cond2 = NDArray.fromList([false, true], [2], DType.boolean);
-/// final choice1 = NDArray.fromList([10, 20], [2], DType.int32);
-/// final choice2 = NDArray.fromList([100, 200], [2], DType.int32);
-/// final res = select([cond1, cond2], [choice1, choice2], defaultValue: 999);
-/// print(res.toList()); // [10, 200]
-/// ```
-NDArray select(
-  List<NDArray<bool>> condlist,
-  List<NDArray> choicelist, {
-  dynamic defaultValue = 0,
-}) {
-  if (condlist.isEmpty || choicelist.isEmpty) {
-    throw ArgumentError('condlist and choicelist must not be empty');
-  }
-  if (condlist.length != choicelist.length) {
-    throw ArgumentError(
-      'condlist length (${condlist.length}) must match choicelist length (${choicelist.length})',
-    );
-  }
-
-  // 1. Calculate common broadcasted shape
-  final allShapes = <List<int>>[];
-  for (final c in condlist) {
-    allShapes.add(c.shape);
-  }
-  for (final c in choicelist) {
-    allShapes.add(c.shape);
-  }
-
-  var commonShape = allShapes[0];
-  for (var i = 1; i < allShapes.length; i++) {
-    commonShape = broadcastShapes(commonShape, allShapes[i]);
-  }
-
-  // 2. Determine target upcasted DType
-  var targetDType = choicelist[0].dtype;
-  for (var i = 1; i < choicelist.length; i++) {
-    targetDType = resolveDType(targetDType, choicelist[i].dtype);
-  }
-  if (defaultValue is double &&
-      !targetDType.isFloating &&
-      !targetDType.isComplex) {
-    targetDType = DType.float64;
-  }
-
-  final result = NDArray.create(commonShape, targetDType);
-
-  // 3. Compute strides for all condition and choice operands independently to commonShape
-  final stridesCond = condlist
-      .map((c) => broadcastStrides(c, commonShape))
-      .toList();
-  final stridesChoice = choicelist
-      .map((c) => broadcastStrides(c, commonShape))
-      .toList();
-
-  // 4. Execute recursive multi-operand strided walk
-  final currentPos = List<int>.filled(commonShape.length, 0);
-  final initialOffsetsCond = List<int>.filled(condlist.length, 0);
-  final initialOffsetsChoice = List<int>.filled(choicelist.length, 0);
-
-  selectRecursive(
-    result,
-    condlist,
-    choicelist,
-    stridesCond,
-    stridesChoice,
-    result.strides,
-    currentPos,
-    0,
-    initialOffsetsCond,
-    initialOffsetsChoice,
-    0,
-    defaultValue,
-  );
-
-  return result;
 }

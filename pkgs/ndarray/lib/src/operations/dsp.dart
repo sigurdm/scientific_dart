@@ -1,7 +1,8 @@
 import 'dart:math' as math;
 import 'dart:ffi' as ffi;
 import '../ndarray.dart';
-import '../ndarray_bindings.dart';
+import '../ndarray_bindings.dart' as bindings;
+import 'padding.dart';
 import '../scratch_arena.dart';
 
 /// Computes the element-wise phase/argument of complex numbers.
@@ -48,10 +49,18 @@ NDArray<R> angle<T extends Complex, R extends double>(
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.complex128:
-        v_angle_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        bindings.v_angle_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+        );
         return result;
       case DType.complex64:
-        v_angle_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        bindings.v_angle_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+        );
         return result;
     }
   } else {
@@ -67,7 +76,7 @@ NDArray<R> angle<T extends Complex, R extends double>(
     }
     switch (a.dtype) {
       case DType.complex128:
-        s_angle_complex128(
+        bindings.s_angle_complex128(
           a.pointer.cast(),
           cStridesA,
           result.pointer.cast(),
@@ -77,7 +86,7 @@ NDArray<R> angle<T extends Complex, R extends double>(
         );
         return result;
       case DType.complex64:
-        s_angle_complex64(
+        bindings.s_angle_complex64(
           a.pointer.cast(),
           cStridesA,
           result.pointer.cast(),
@@ -139,7 +148,7 @@ NDArray<T> unwrap<T extends double>(
 
   switch (a.dtype) {
     case DType.float64:
-      s_unwrap_double(
+      bindings.s_unwrap_double(
         a.pointer.cast(),
         cStridesA,
         result.pointer.cast(),
@@ -151,7 +160,7 @@ NDArray<T> unwrap<T extends double>(
       );
       return result;
     case DType.float32:
-      s_unwrap_float(
+      bindings.s_unwrap_float(
         a.pointer.cast(),
         cStridesA,
         result.pointer.cast(),
@@ -163,4 +172,244 @@ NDArray<T> unwrap<T extends double>(
       );
       return result;
   }
+}
+
+/// Internal helper executing direct stencil N-D valid cross-correlation.
+NDArray<R> _correlateValid<
+  T extends Object,
+  K extends Object,
+  R extends Object
+>(NDArray<T> in1, NDArray<K> in2, {NDArray<R>? out}) {
+  final rank = in1.rank;
+  final outShape = List<int>.generate(
+    rank,
+    (i) => in1.shape[i] - in2.shape[i] + 1,
+  );
+
+  final DType<R> targetDType = out?.dtype ?? (in1.dtype as DType<R>);
+
+  final result = out ?? NDArray<R>.zeros(outShape, targetDType);
+
+  final marker = ScratchArena.marker;
+  try {
+    final cBuffer = ScratchArena.allocate<ffi.Int>(
+      rank * 5 * ffi.sizeOf<ffi.Int>(),
+    );
+    final cStrides1 = cBuffer;
+    final cStrides2 = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    final cShapeRes = cBuffer + (rank * 3);
+    final cShapeK = cBuffer + (rank * 4);
+
+    for (var i = 0; i < rank; i++) {
+      cStrides1[i] = in1.strides[i];
+      cStrides2[i] = in2.strides[i];
+      cStridesRes[i] = result.strides[i];
+      cShapeRes[i] = result.shape[i];
+      cShapeK[i] = in2.shape[i];
+    }
+
+    switch (in1.dtype) {
+      case DType.float64:
+        bindings.s_correlate_valid_double(
+          in1.pointer.cast(),
+          cStrides1,
+          in2.pointer.cast(),
+          cStrides2,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          cShapeK,
+          rank,
+        );
+        break;
+      case DType.float32:
+        bindings.s_correlate_valid_float(
+          in1.pointer.cast(),
+          cStrides1,
+          in2.pointer.cast(),
+          cStrides2,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          cShapeK,
+          rank,
+        );
+        break;
+      case DType.complex128:
+        bindings.s_correlate_valid_complex128(
+          in1.pointer.cast(),
+          cStrides1,
+          in2.pointer.cast(),
+          cStrides2,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          cShapeK,
+          rank,
+        );
+        break;
+      case DType.complex64:
+        bindings.s_correlate_valid_complex64(
+          in1.pointer.cast(),
+          cStrides1,
+          in2.pointer.cast(),
+          cStrides2,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          cShapeK,
+          rank,
+        );
+        break;
+      case DType.int64:
+        bindings.s_correlate_valid_int64(
+          in1.pointer.cast(),
+          cStrides1,
+          in2.pointer.cast(),
+          cStrides2,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          cShapeK,
+          rank,
+        );
+        break;
+      case DType.int32:
+        bindings.s_correlate_valid_int32(
+          in1.pointer.cast(),
+          cStrides1,
+          in2.pointer.cast(),
+          cStrides2,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          cShapeK,
+          rank,
+        );
+        break;
+      default:
+        throw ArgumentError('Unsupported dtype for correlate');
+    }
+  } finally {
+    ScratchArena.reset(marker);
+  }
+
+  return result;
+}
+
+/// Computes the N-dimensional cross-correlation of two arrays [in1] and [in2].
+NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
+  NDArray<T> in1,
+  NDArray<K> in2, {
+  String mode = 'valid',
+  NDArray<R>? out,
+}) {
+  if (in1.isDisposed || in2.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute correlate() on a disposed array.');
+  }
+  if (in1.rank != in2.rank || in1.rank == 0) {
+    throw ArgumentError('in1 and in2 must have the same non-zero rank.');
+  }
+  if (in1.dtype != in2.dtype) {
+    throw ArgumentError('in1 and in2 must have matching DType.');
+  }
+
+  final rank = in1.rank;
+
+  if (mode == 'valid') {
+    for (var i = 0; i < rank; i++) {
+      if (in1.shape[i] < in2.shape[i]) {
+        throw ArgumentError(
+          'in1 dimensions must be >= in2 dimensions for valid mode.',
+        );
+      }
+    }
+    final expectedShape = List<int>.generate(
+      rank,
+      (i) => in1.shape[i] - in2.shape[i] + 1,
+    );
+    if (out != null && !listEquals(out.shape, expectedShape)) {
+      throw ArgumentError('Provided out buffer has incompatible shape.');
+    }
+    return _correlateValid<T, K, R>(in1, in2, out: out);
+  } else if (mode == 'full') {
+    final expectedShape = List<int>.generate(
+      rank,
+      (i) => in1.shape[i] + in2.shape[i] - 1,
+    );
+    if (out != null && !listEquals(out.shape, expectedShape)) {
+      throw ArgumentError('Provided out buffer has incompatible shape.');
+    }
+    return NDArray.scope(() {
+      final padWidths = List<(int, int)>.generate(
+        rank,
+        (i) => (in2.shape[i] - 1, in2.shape[i] - 1),
+      );
+      final padded1 = pad<T>(
+        in1,
+        PadWidth.axes(padWidths),
+        mode: PaddingMode.constant,
+      );
+      final res = _correlateValid<T, K, R>(padded1, in2, out: out);
+      return res.detachToParentScope();
+    });
+  } else if (mode == 'same') {
+    if (out != null && !listEquals(out.shape, in1.shape)) {
+      throw ArgumentError('Provided out buffer has incompatible shape.');
+    }
+    return NDArray.scope(() {
+      final fullCorr = correlate<T, K, R>(in1, in2, mode: 'full');
+      final selectors = List<Selector>.generate(rank, (i) {
+        final start = (in2.shape[i] - 1) ~/ 2;
+        return Slice(start: start, stop: start + in1.shape[i]);
+      });
+      final sliced = fullCorr.slice(selectors);
+      if (out != null) {
+        sliced.copy(out: out);
+        return out;
+      }
+      return sliced.detachToParentScope();
+    });
+  } else {
+    throw ArgumentError('Invalid mode. Must be full, valid, or same.');
+  }
+}
+
+/// Computes the N-dimensional convolution of two arrays [in1] and [in2].
+NDArray<R> convolve<T extends Object, K extends Object, R extends Object>(
+  NDArray<T> in1,
+  NDArray<K> in2, {
+  String mode = 'full',
+  NDArray<R>? out,
+}) {
+  if (in1.isDisposed || in2.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute convolve() on a disposed array.');
+  }
+  if (in1.rank != in2.rank || in1.rank == 0) {
+    throw ArgumentError('in1 and in2 must have the same non-zero rank.');
+  }
+
+  return NDArray.scope(() {
+    final reversedSelectors = List<Selector>.generate(
+      in2.rank,
+      (_) => const Slice(step: -1),
+    );
+    final flippedKernel = in2.slice(reversedSelectors);
+    final res = correlate<T, K, R>(in1, flippedKernel, mode: mode, out: out);
+    return res.detachToParentScope();
+  });
+}
+
+/// Computes 2-dimensional spatial convolution of 2D arrays [in1] and [in2].
+NDArray<R> convolve2d<T extends Object, K extends Object, R extends Object>(
+  NDArray<T> in1,
+  NDArray<K> in2, {
+  String mode = 'full',
+  NDArray<R>? out,
+}) {
+  if (in1.rank != 2 || in2.rank != 2) {
+    throw ArgumentError('convolve2d requires 2-dimensional arrays.');
+  }
+  return convolve<T, K, R>(in1, in2, mode: mode, out: out);
 }

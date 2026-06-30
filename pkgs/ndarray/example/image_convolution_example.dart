@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:ndarray/ndarray.dart';
 
 /// A class containing various implementations of 2D convolution.
@@ -226,19 +225,43 @@ void main() {
     final image = ImageConvolution.generateSyntheticImage(height, width);
 
     print('Defining Sobel kernels...');
-    final sobelX = NDArray.fromList(
-      Float64List.fromList([-1.0, 0.0, 1.0, -2.0, 0.0, 2.0, -1.0, 0.0, 1.0]),
+    final sobelX = NDArray<Float64>.fromList(
+      <Float64>[
+        Float64(-1.0),
+        Float64(0.0),
+        Float64(1.0),
+        Float64(-2.0),
+        Float64(0.0),
+        Float64(2.0),
+        Float64(-1.0),
+        Float64(0.0),
+        Float64(1.0),
+      ],
       [3, 3],
       DType.float64,
     );
 
-    final sobelY = NDArray.fromList(
-      Float64List.fromList([-1.0, -2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 1.0]),
+    final sobelY = NDArray<Float64>.fromList(
+      <Float64>[
+        Float64(-1.0),
+        Float64(-2.0),
+        Float64(-1.0),
+        Float64(0.0),
+        Float64(0.0),
+        Float64(0.0),
+        Float64(1.0),
+        Float64(2.0),
+        Float64(1.0),
+      ],
       [3, 3],
       DType.float64,
     );
 
-    final constantTwo = NDArray<Float64>.fromList([2.0], [1], DType.float64);
+    final constantTwo = NDArray<Float64>.fromList(
+      <Float64>[Float64(2.0)],
+      [1],
+      DType.float64,
+    );
 
     // Warmup
     print('Warming up...');

@@ -231,4 +231,157 @@ void main() {
       });
     });
   });
+
+  group('correlate & convolve', () {
+    test('1D correlate valid, full, same (Float64)', () {
+      NDArray.scope(() {
+        final a = NDArray<Float64>.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0],
+          [5],
+          DType.float64,
+        );
+        final v = NDArray<Float64>.fromList(
+          [1.0, 10.0, 100.0],
+          [3],
+          DType.float64,
+        );
+
+        final valid = correlate(a, v, mode: 'valid');
+        expect(valid.shape, equals([3]));
+        expect(valid.getCell([0]), closeTo(321.0, 1e-9));
+        expect(valid.getCell([1]), closeTo(432.0, 1e-9));
+        expect(valid.getCell([2]), closeTo(543.0, 1e-9));
+
+        final full = correlate(a, v, mode: 'full');
+        expect(full.shape, equals([7]));
+        expect(full.getCell([0]), closeTo(100.0, 1e-9));
+        expect(full.getCell([1]), closeTo(210.0, 1e-9));
+        expect(full.getCell([2]), closeTo(321.0, 1e-9));
+
+        final same = correlate(a, v, mode: 'same');
+        expect(same.shape, equals([5]));
+        expect(same.getCell([0]), closeTo(210.0, 1e-9));
+        expect(same.getCell([1]), closeTo(321.0, 1e-9));
+      });
+    });
+
+    test('1D convolve valid, full, same (Float64)', () {
+      NDArray.scope(() {
+        final a = NDArray<Float64>.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0],
+          [5],
+          DType.float64,
+        );
+        final v = NDArray<Float64>.fromList(
+          [1.0, 10.0, 100.0],
+          [3],
+          DType.float64,
+        );
+
+        final valid = convolve(a, v, mode: 'valid');
+        expect(valid.shape, equals([3]));
+        expect(valid.getCell([0]), closeTo(123.0, 1e-9));
+        expect(valid.getCell([1]), closeTo(234.0, 1e-9));
+        expect(valid.getCell([2]), closeTo(345.0, 1e-9));
+
+        final full = convolve(a, v, mode: 'full');
+        expect(full.shape, equals([7]));
+        expect(full.getCell([0]), closeTo(1.0, 1e-9));
+        expect(full.getCell([1]), closeTo(12.0, 1e-9));
+        expect(full.getCell([2]), closeTo(123.0, 1e-9));
+
+        final same = convolve(a, v, mode: 'same');
+        expect(same.shape, equals([5]));
+        expect(same.getCell([0]), closeTo(12.0, 1e-9));
+        expect(same.getCell([1]), closeTo(123.0, 1e-9));
+      });
+    });
+
+    test('2D convolve2d (Float64)', () {
+      NDArray.scope(() {
+        final img = NDArray<Float64>.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+          [3, 3],
+          DType.float64,
+        );
+        final k = NDArray<Float64>.fromList(
+          [1.0, 0.0, 0.0, 1.0],
+          [2, 2],
+          DType.float64,
+        );
+
+        final valid = convolve2d(img, k, mode: 'valid');
+        expect(valid.shape, equals([2, 2]));
+        // (1*1 + 5*1) = 6, (2*1 + 6*1) = 8
+        expect(valid.getCell([0, 0]), closeTo(6.0, 1e-9));
+        expect(valid.getCell([0, 1]), closeTo(8.0, 1e-9));
+        // (4*1 + 8*1) = 12, (5*1 + 9*1) = 14
+        expect(valid.getCell([1, 0]), closeTo(12.0, 1e-9));
+        expect(valid.getCell([1, 1]), closeTo(14.0, 1e-9));
+      });
+    });
+
+    test('1D correlate (Int32)', () {
+      NDArray.scope(() {
+        final a = NDArray<Int32>.fromList([1, 2, 3, 4], [4], DType.int32);
+        final v = NDArray<Int32>.fromList([1, 2], [2], DType.int32);
+
+        final valid = correlate(a, v, mode: 'valid');
+        expect(valid.dtype, DType.int32);
+        expect(valid.shape, equals([3]));
+        // 1*1 + 2*2 = 5; 2*1 + 3*2 = 8; 3*1 + 4*2 = 11
+        expect(valid.getCell([0]), 5);
+        expect(valid.getCell([1]), 8);
+        expect(valid.getCell([2]), 11);
+      });
+    });
+
+    test('Complex correlation', () {
+      NDArray.scope(() {
+        final a = NDArray<Complex128>.fromList(
+          [Complex(1.0, 2.0), Complex(3.0, 4.0)],
+          [2],
+          DType.complex128,
+        );
+        final v = NDArray<Complex128>.fromList(
+          [Complex(1.0, 1.0), Complex(2.0, 2.0)],
+          [2],
+          DType.complex128,
+        );
+
+        final res = correlate<Complex128, Complex128, Complex128>(
+          a,
+          v,
+          mode: 'valid',
+        );
+        expect(res.dtype, DType.complex128);
+        expect(res.shape, equals([1]));
+        final val = res.getCell([0]);
+        expect(val.real, closeTo(17.0, 1e-9));
+        expect(val.imag, closeTo(3.0, 1e-9));
+      });
+    });
+
+    test('Out argument & error handling', () {
+      NDArray.scope(() {
+        final a = NDArray<Float64>.fromList(
+          [1.0, 2.0, 3.0],
+          [3],
+          DType.float64,
+        );
+        final v = NDArray<Float64>.fromList([1.0, 1.0], [2], DType.float64);
+        final out = NDArray<Float64>.zeros([2], DType.float64);
+
+        final res = correlate(a, v, mode: 'valid', out: out);
+        expect(identical(res, out), true);
+        expect(res.getCell([0]), closeTo(3.0, 1e-9));
+        expect(res.getCell([1]), closeTo(5.0, 1e-9));
+
+        expect(
+          () => correlate(a, v, mode: 'invalid_mode'),
+          throwsArgumentError,
+        );
+      });
+    });
+  });
 }

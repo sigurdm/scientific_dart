@@ -45,12 +45,31 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 ### 3.21 Advanced Linear Algebra (`linalg`)
 (Completed eigh, eigvalsh, eigvals, and slogdet linear algebra functions)
 
+### 3.22 Einstein Summation (`einsum`) & Tensor Contractions
+- **Feature**: Implement `einsum(subscripts, operands)` for expressive tensor contractions (e.g. `'ij,jk->ik'`, `'ii->'`), as well as `tensordot` and `kron`.
+- **Details**: Parse subscripts, permute strided views, and dispatch contiguous sub-blocks to OpenBLAS GEMM kernels.
+
+### 3.23 Polynomial Module
+- **Feature**: Vectorized polynomial fitting, evaluation, and root finding (`polyfit`, `polyval`, `roots`), alongside orthogonal bases (Chebyshev, Legendre, Hermite).
+- **Details**: `polyfit` via SVD least-squares, `roots` via companion matrix eigenvalues.
+
+### 3.24 Advanced Indexing Operations
+- **Feature**: Implement `take_along_axis`, `put_along_axis`, `select`, and `choose`.
+- **Details**: Allow extracting and injecting array elements along specific axes using coordinate index arrays.
+
+### 3.25 N-Dimensional Convolutions & Spatial Filtering
+- **Feature**: Extend DSP features to N-D spatial signal/image processing (`convolve2d`, `correlate`).
+- **Details**: Support boundary modes (`full`, `valid`, `same`), direct stencil convolution for small kernels, and FFT-based convolution dispatches for large kernels.
+
+### 3.26 Scientific Optimization & Root Finding
+- **Feature**: Core numerical algorithms including 1D root finders (`brentq`, Newton-Raphson) and scalar/multivariate minimization (Nelder-Mead, L-BFGS).
+
 ---
 
 ## ✨ Section 4: Usability & Ergonomics
 
 ### 4.1 operator []= Selector Expansion
-- **Issue**: `operator []=` is currently constrained and can be expanded to handle more complex NumPy-style selection objects (e.g. mixed lists).
+- **Issue**: `operator []=` is currently constrained and can be expanded to handle more complex NumPy-style selection objects (e.g. mixed lists and index tuples).
 
 ---
 

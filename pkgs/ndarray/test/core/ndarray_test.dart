@@ -958,11 +958,26 @@ void main() {
             );
             expected = [true, false, true, false];
           } else if (dtype == DType.int32 || dtype == DType.int64) {
-            a = NDArray<Int64>.fromList([1, 2, 3, 4], [2, 2], dtype as dynamic);
+            a = NDArray.fromList(
+              (dtype == DType.int32
+                      ? [Int32(1), Int32(2), Int32(3), Int32(4)]
+                      : [Int64(1), Int64(2), Int64(3), Int64(4)])
+                  as dynamic,
+              [2, 2],
+              dtype as dynamic,
+            );
             expected = [1, 2, 3, 4];
           } else {
             a = NDArray.fromList(
-              [1.0, 2.0, 3.0, 4.0],
+              (dtype == DType.float32
+                      ? [Float32(1.0), Float32(2.0), Float32(3.0), Float32(4.0)]
+                      : [
+                          Float64(1.0),
+                          Float64(2.0),
+                          Float64(3.0),
+                          Float64(4.0),
+                        ])
+                  as dynamic,
               [2, 2],
               dtype as dynamic,
             );
@@ -1205,13 +1220,17 @@ void main() {
         'setIndices and setIndicesScalar bounds checks',
         () => NDArray.scope(() {
           final a = NDArray.zeros([2, 3], DType.float64);
-          final indices = NDArray<Int32>.fromList([0], [1], DType.int32);
+          final indices = NDArray<Int32>.fromList([Int32(0)], [1], DType.int32);
           expect(
             () => a.setIndicesScalar(indices, Float64(1.0), axis: 5),
             throwsRangeError,
           );
 
-          final badIndices = NDArray<Int32>.fromList([5], [1], DType.int32);
+          final badIndices = NDArray<Int32>.fromList(
+            [Int32(5)],
+            [1],
+            DType.int32,
+          );
           expect(
             () => a.setIndicesScalar(badIndices, Float64(1.0)),
             throwsRangeError,
