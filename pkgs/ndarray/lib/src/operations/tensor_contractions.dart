@@ -891,6 +891,174 @@ NDArray<R> einsum<T extends Object, R extends Object>(
           }
         }
 
+        if (subA.length == 1 &&
+            subB.length == 1 &&
+            finalOutSub.isEmpty &&
+            subA[0] == subB[0]) {
+          final opA = operands[0];
+          final opB = operands[1];
+          if (opA.isContiguous && opB.isContiguous) {
+            final len = opA.shape[0];
+            final targetDType = resolveDType(opA.dtype, opB.dtype);
+            if (targetDType == DType.float64) {
+              final NDArray<R> res;
+              if (out != null) {
+                res = out;
+              } else {
+                res = NDArray<R>.create([], DType.float64 as DType<R>);
+              }
+              final val = cblas_ddot(
+                len,
+                opA.pointer.cast<ffi.Double>(),
+                1,
+                opB.pointer.cast<ffi.Double>(),
+                1,
+              );
+              res.pointer.cast<ffi.Double>()[0] = val;
+              if (out != null) return out;
+              return _asTyped<R>(res.detachToParentScope());
+            } else if (targetDType == DType.float32) {
+              final NDArray<R> res;
+              if (out != null) {
+                res = out;
+              } else {
+                res = NDArray<R>.create([], DType.float32 as DType<R>);
+              }
+              final val = cblas_sdot(
+                len,
+                opA.pointer.cast<ffi.Float>(),
+                1,
+                opB.pointer.cast<ffi.Float>(),
+                1,
+              );
+              res.pointer.cast<ffi.Float>()[0] = val;
+              if (out != null) return out;
+              return _asTyped<R>(res.detachToParentScope());
+            }
+          }
+        }
+
+        if (subA.length == 1 &&
+            subB.length == 1 &&
+            finalOutSub.length == 2 &&
+            subA[0] == finalOutSub[0] &&
+            subB[0] == finalOutSub[1]) {
+          final aCol = operands[0].reshape([operands[0].shape[0], 1]);
+          final bRow = operands[1].reshape([1, operands[1].shape[0]]);
+          final res = multiply<Object, Object, R>(
+            aCol as NDArray<Object>,
+            bRow as NDArray<Object>,
+            out: out,
+          );
+          if (out != null) return out;
+          return _asTyped<R>(res.detachToParentScope());
+        }
+
+        if (subA.length >= 3 &&
+            subB.length == subA.length &&
+            finalOutSub.length == subA.length) {
+          final kBatch = subA.length - 2;
+          bool isBatchMatmul = true;
+          for (var b = 0; b < kBatch; b++) {
+            if (subA[b] != subB[b] || subA[b] != finalOutSub[b]) {
+              isBatchMatmul = false;
+              break;
+            }
+          }
+          if (isBatchMatmul &&
+              subA[kBatch + 1] == subB[kBatch] &&
+              subA[kBatch] == finalOutSub[kBatch] &&
+              subB[kBatch + 1] == finalOutSub[kBatch + 1]) {
+            final opA = operands[0];
+            final opB = operands[1];
+            if (opA.isContiguous && opB.isContiguous) {
+              final batchShape = opA.shape.sublist(0, kBatch);
+              final bCount = batchShape.fold(1, (x, y) => x * y);
+              final m = opA.shape[kBatch];
+              final k = opA.shape[kBatch + 1];
+              final n = opB.shape[kBatch + 1];
+              final targetDType = resolveDType(opA.dtype, opB.dtype);
+              if (targetDType == DType.float64) {
+                final NDArray<R> res;
+                if (out != null) {
+                  res = out;
+                } else {
+                  res = NDArray<R>.create([
+                    ...batchShape,
+                    m,
+                    n,
+                  ], DType.float64 as DType<R>);
+                }
+                final ptrA = opA.pointer.cast<ffi.Double>();
+                final ptrB = opB.pointer.cast<ffi.Double>();
+                final ptrRes = res.pointer.cast<ffi.Double>();
+                final strideA = m * k;
+                final strideB = k * n;
+                final strideRes = m * n;
+
+                for (var bIdx = 0; bIdx < bCount; bIdx++) {
+                  cblas_dgemm(
+                    101,
+                    111,
+                    111,
+                    m,
+                    n,
+                    k,
+                    1.0,
+                    ptrA + bIdx * strideA,
+                    k,
+                    ptrB + bIdx * strideB,
+                    n,
+                    0.0,
+                    ptrRes + bIdx * strideRes,
+                    n,
+                  );
+                }
+                if (out != null) return out;
+                return _asTyped<R>(res.detachToParentScope());
+              } else if (targetDType == DType.float32) {
+                final NDArray<R> res;
+                if (out != null) {
+                  res = out;
+                } else {
+                  res = NDArray<R>.create([
+                    ...batchShape,
+                    m,
+                    n,
+                  ], DType.float32 as DType<R>);
+                }
+                final ptrA = opA.pointer.cast<ffi.Float>();
+                final ptrB = opB.pointer.cast<ffi.Float>();
+                final ptrRes = res.pointer.cast<ffi.Float>();
+                final strideA = m * k;
+                final strideB = k * n;
+                final strideRes = m * n;
+
+                for (var bIdx = 0; bIdx < bCount; bIdx++) {
+                  cblas_sgemm(
+                    101,
+                    111,
+                    111,
+                    m,
+                    n,
+                    k,
+                    1.0,
+                    ptrA + bIdx * strideA,
+                    k,
+                    ptrB + bIdx * strideB,
+                    n,
+                    0.0,
+                    ptrRes + bIdx * strideRes,
+                    n,
+                  );
+                }
+                if (out != null) return out;
+                return _asTyped<R>(res.detachToParentScope());
+              }
+            }
+          }
+        }
+
         final shared = subA.where((id) => subB.contains(id)).toList();
         final contracted = shared
             .where((id) => !finalOutSub.contains(id))

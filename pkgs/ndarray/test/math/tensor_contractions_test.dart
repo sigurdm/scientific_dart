@@ -643,5 +643,84 @@ void main() {
         });
       },
     );
+
+    test(
+      "Einsum fast paths: vector dot (i,i->) and outer product (i,j->ij)",
+      () {
+        NDArray.scope(() {
+          // Float64 Vector Dot (i,i->)
+          final v1_64 = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+          final v2_64 = NDArray.fromList([4.0, 5.0, 6.0], [3], DType.float64);
+          final dot64 = einsum(EinsumSubscripts.parse("i,i->"), [v1_64, v2_64]);
+          expect(dot64.shape, equals([]));
+          expect(dot64.scalar, equals(32.0));
+
+          final outDot64 = NDArray<Float64>.create([], DType.float64);
+          einsum(EinsumSubscripts.parse("i,i->"), [
+            v1_64,
+            v2_64,
+          ], out: outDot64);
+          expect(outDot64.scalar, equals(32.0));
+
+          // Float32 Vector Dot (i,i->)
+          final v1_32 = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float32);
+          final v2_32 = NDArray.fromList([4.0, 5.0, 6.0], [3], DType.float32);
+          final dot32 = einsum(EinsumSubscripts.parse("i,i->"), [v1_32, v2_32]);
+          expect(dot32.shape, equals([]));
+          expect(dot32.scalar, equals(32.0));
+
+          // Vector Outer Product (i,j->ij)
+          final outer = einsum(EinsumSubscripts.parse("i,j->ij"), [
+            v1_64,
+            v2_64,
+          ]);
+          expect(outer.shape, equals([3, 3]));
+          expect(outer.getCell([0, 0]), equals(4.0));
+          expect(outer.getCell([0, 2]), equals(6.0));
+          expect(outer.getCell([2, 2]), equals(18.0));
+
+          final outOuter = NDArray<Float64>.create([3, 3], DType.float64);
+          einsum(EinsumSubscripts.parse("i,j->ij"), [
+            v1_64,
+            v2_64,
+          ], out: outOuter);
+          expect(outOuter.getCell([2, 2]), equals(18.0));
+        });
+      },
+    );
+
+    test(
+      "Einsum fast paths: 4D batch matrix multiplication (abij,abjk->abik)",
+      () {
+        NDArray.scope(() {
+          final a4d = NDArray<Float64>.fromList(
+            List.generate(16, (i) => i.toDouble()),
+            [2, 2, 2, 2],
+            DType.float64,
+          );
+          final b4d = NDArray<Float64>.fromList(
+            List.generate(16, (i) => (i + 1).toDouble()),
+            [2, 2, 2, 2],
+            DType.float64,
+          );
+          final res4d = einsum(EinsumSubscripts.parse("abij,abjk->abik"), [
+            a4d,
+            b4d,
+          ]);
+          expect(res4d.shape, equals([2, 2, 2, 2]));
+
+          final out4d = NDArray<Float64>.create([2, 2, 2, 2], DType.float64);
+          einsum(EinsumSubscripts.parse("abij,abjk->abik"), [
+            a4d,
+            b4d,
+          ], out: out4d);
+          expect(out4d.shape, equals([2, 2, 2, 2]));
+          expect(
+            out4d.getCell([0, 0, 0, 0]),
+            equals(res4d.getCell([0, 0, 0, 0])),
+          );
+        });
+      },
+    );
   });
 }
