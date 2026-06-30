@@ -88,14 +88,14 @@ void main() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
         final b = NDArray.fromList([1.0, 0.0, 0.0, 1.0], [2, 2], DType.float64);
 
-        final res = tensordot(a, b, axes: 2);
+        final res = tensordot(a, b, axes: const TensordotAxes.count(2));
         expect(res.shape, equals([]));
         expect(res.scalar, equals(5.0));
       });
     });
 
     test(
-      "computes matrix contraction with specified axes list and record syntax",
+      "computes matrix contraction with TensordotAxes.explicit and TensordotAxes.pair",
       () {
         NDArray.scope(() {
           final a = NDArray.fromList(
@@ -109,21 +109,19 @@ void main() {
             DType.float64,
           );
 
-          final resList = tensordot(
+          final resExplicit = tensordot(
             a,
             b,
-            axes: [
-              [1],
-              [0],
-            ],
+            axes: const TensordotAxes.explicit([1], [0]),
           );
-          expect(resList.shape, equals([2, 2]));
-          expect(resList.getCell([0, 0]), equals(19.0));
-          expect(resList.getCell([0, 1]), equals(22.0));
+          expect(resExplicit.shape, equals([2, 2]));
+          expect(resExplicit.getCell([0, 0]), equals(19.0));
+          expect(resExplicit.getCell([0, 1]), equals(22.0));
 
-          final resRecord = tensordot(a, b, axes: ([1], [0]));
-          expect(resRecord.shape, equals([2, 2]));
-          expect(resRecord.getCell([0, 0]), equals(19.0));
+          final resPair = tensordot(a, b, axes: TensordotAxes.pair(1, 0));
+
+          expect(resPair.shape, equals([2, 2]));
+          expect(resPair.getCell([0, 0]), equals(19.0));
         });
       },
     );
@@ -137,10 +135,7 @@ void main() {
         final res = tensordot(
           a,
           b,
-          axes: [
-            [1],
-            [0],
-          ],
+          axes: const TensordotAxes.explicit([1], [0]),
           out: out,
         );
         expect(identical(res, out), isTrue);
@@ -306,7 +301,12 @@ void main() {
           2,
           2,
         ], DType.float64);
-        final res = tensordot<double, double, double>(a, b, axes: 1);
+        final res = tensordot<double, double, double>(
+          a,
+          b,
+          axes: const TensordotAxes.count(1),
+        );
+
         final expectedMatmul = matmul(a, b);
         expect(res.shape, equals([2, 2]));
         expect(res.toList(), equals(expectedMatmul.toList()));

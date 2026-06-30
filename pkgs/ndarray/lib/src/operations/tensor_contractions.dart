@@ -42,15 +42,88 @@ NDArray<T> _diagonalView<T>(NDArray<T> arr, int ax1, int ax2) {
 /// sums products of elements over the specified axes.
 ///
 /// **Axes specification:**
-/// - `axes` can be an [int] `N`: contracts the last `N` axes of [a] and first `N` axes of [b].
-/// - `axes` can be a 2-element list `[axesA, axesB]` or record `(List<int>, List<int>)` specifying matching contracted axes.
+/// Represents contracted axis specifications for tensor dot products ([tensordot]).
 ///
-/// It is an error if any input or output array is disposed, if the axes specification is invalid,
+/// Use one of the three primary constructors to create a [TensordotAxes] instance:
+/// - [TensordotAxes.count]: Contracts the last `N` axes of array A with the first `N` axes of array B.
+/// - [TensordotAxes.explicit]: Contracts explicit axis lists of array A with corresponding axes of array B.
+/// - [TensordotAxes.pair]: Contracts a single pair of axes between array A and array B.
+final class TensordotAxes {
+  /// The number of contracted axes, or `null` if explicit axis lists are provided.
+  final int? count;
+
+  /// Explicit contracted axis indices for array A, or `null` if [count] is used.
+  final List<int>? explicitAxesA;
+
+  /// Explicit contracted axis indices for array B, or `null` if [count] is used.
+  final List<int>? explicitAxesB;
+
+  /// 1. Contracts the last [n] axes of array A with the first [n] axes of array B.
+  ///
+  /// It is an error if [n] is negative.
+  const TensordotAxes.count(int n)
+    : count = n,
+      explicitAxesA = null,
+      explicitAxesB = null;
+
+  /// 2. Contracts specified axis lists [axesA] of array A with corresponding axes [axesB] of array B.
+  ///
+  /// It is an error if [axesA] and [axesB] have different lengths.
+  const TensordotAxes.explicit(List<int> axesA, List<int> axesB)
+    : count = null,
+      explicitAxesA = axesA,
+      explicitAxesB = axesB;
+
+  /// 3. Contracts a single axis pair [axisA] of array A with [axisB] of array B.
+  TensordotAxes.pair(int axisA, int axisB)
+    : count = null,
+      explicitAxesA = [axisA],
+      explicitAxesB = [axisB];
+
+  /// Resolves contracted axis index lists for tensors of rank [rankA] and [rankB].
+  (List<int>, List<int>) resolve(int rankA, int rankB) {
+    if (count != null) {
+      final n = count!;
+      if (n < 0 || n > rankA || n > rankB) {
+        throw ArgumentError(
+          "Invalid number of contracted axes $n for tensor ranks $rankA and $rankB.",
+        );
+      }
+      final axesA = List.generate(n, (i) => rankA - n + i);
+      final axesB = List.generate(n, (i) => i);
+      return (axesA, axesB);
+    }
+
+    final axesA = explicitAxesA!;
+    final axesB = explicitAxesB!;
+    if (axesA.length != axesB.length) {
+      throw ArgumentError(
+        "Axes length mismatch: ${axesA.length} vs ${axesB.length}.",
+      );
+    }
+    return (List<int>.from(axesA), List<int>.from(axesB));
+  }
+}
+
+/// Computes tensor dot product along specified contracted axes for arrays [a] and [b].
+///
+/// Given two tensors [a] and [b], sums products of elements over specified contracted axes.
+///
+/// ### Axes Specification
+/// Axes are specified using a [TensordotAxes] object created via one of its constructors:
+/// - [TensordotAxes.count]: Contracts the last `N` axes of [a] and first `N` axes of [b].
+/// - [TensordotAxes.explicit]: Contracts explicit axis index lists (`axesA`, `axesB`).
+/// - [TensordotAxes.pair]: Contracts a single pair of axes (`axisA`, `axisB`).
+///
+/// It is an error if any input or output array is disposed, if axes specifications are invalid,
 /// if axis dimensions mismatch, or if a specified axis index is out of bounds.
+///
+/// ### References & Further Reading
+/// - [NumPy tensordot Documentation](https://numpy.org/doc/stable/reference/generated/numpy.tensordot.html)
 NDArray<R> tensordot<Ta, Tb, R>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  Object axes = 2,
+  TensordotAxes axes = const TensordotAxes.count(2),
   NDArray<R>? out,
 }) {
   if (a.isDisposed || b.isDisposed) {
@@ -62,47 +135,7 @@ NDArray<R> tensordot<Ta, Tb, R>(
     );
   }
 
-  List<int> axesA = [];
-  List<int> axesB = [];
-
-  if (axes is int) {
-    final n = axes;
-    if (n < 0 || n > a.shape.length || n > b.shape.length) {
-      throw ArgumentError(
-        "Invalid number of axes $n for shapes ${a.shape} and ${b.shape}.",
-      );
-    }
-    axesA = List.generate(n, (i) => a.shape.length - n + i);
-    axesB = List.generate(n, (i) => i);
-  } else if (axes is (List<int>, List<int>)) {
-    axesA = List<int>.from(axes.$1);
-    axesB = List<int>.from(axes.$2);
-  } else if (axes is (List<dynamic>, List<dynamic>)) {
-    axesA = axes.$1.map((e) => (e as num).toInt()).toList();
-    axesB = axes.$2.map((e) => (e as num).toInt()).toList();
-  } else if (axes is List) {
-    if (axes.length == 2 &&
-        axes[0] is int &&
-        axes[1] is int &&
-        a.shape.length == 1 &&
-        b.shape.length == 1) {
-      axesA = [axes[0] as int];
-      axesB = [axes[1] as int];
-    } else if (axes.length == 2 && axes[0] is List && axes[1] is List) {
-      axesA = (axes[0] as List).map((e) => (e as num).toInt()).toList();
-      axesB = (axes[1] as List).map((e) => (e as num).toInt()).toList();
-    } else {
-      throw ArgumentError("Unsupported axes format: $axes");
-    }
-  } else {
-    throw ArgumentError("Unsupported axes format: $axes");
-  }
-
-  if (axesA.length != axesB.length) {
-    throw ArgumentError(
-      "Axes length mismatch: ${axesA.length} vs ${axesB.length}.",
-    );
-  }
+  final (axesA, axesB) = axes.resolve(a.shape.length, b.shape.length);
 
   final normAxesA = axesA
       .map((ax) => ax < 0 ? a.shape.length + ax : ax)
@@ -566,7 +599,7 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             final tdRes = tensordot<dynamic, dynamic, R>(
               operands[0],
               operands[1],
-              axes: (axesA, axesB),
+              axes: TensordotAxes.explicit(axesA, axesB),
             );
 
             var finalRes = tdRes;
