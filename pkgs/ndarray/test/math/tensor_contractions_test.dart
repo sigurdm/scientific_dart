@@ -143,6 +143,62 @@ void main() {
         expect(out.getCell([1, 1]), equals(4.0));
       });
     });
+    test(
+      "fast path when contracting all axes of two contiguous Float64 arrays",
+      () {
+        NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          final b = NDArray.fromList(
+            [2.0, 3.0, 4.0, 5.0],
+            [2, 2],
+            DType.float64,
+          );
+          final res = tensordot(a, b, axes: const TensordotAxes.count(2));
+          expect(res.shape, equals([]));
+          expect(
+            res.scalar,
+            equals(40.0),
+          ); // 1*2 + 2*3 + 3*4 + 4*5 = 2 + 6 + 12 + 20 = 40
+
+          final out = NDArray.zeros([], DType.float64);
+          final resOut = tensordot(
+            a,
+            b,
+            axes: const TensordotAxes.count(2),
+            out: out,
+          );
+          expect(identical(resOut, out), isTrue);
+          expect(out.scalar, equals(40.0));
+        });
+      },
+    );
+
+    test(
+      "fast path when contracting all axes of two contiguous Float32 arrays",
+      () {
+        NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float32);
+          final b = NDArray.fromList([4.0, 5.0, 6.0], [3], DType.float32);
+          final res = tensordot(a, b, axes: const TensordotAxes.count(1));
+          expect(res.shape, equals([]));
+          expect(res.scalar, equals(32.0)); // 1*4 + 2*5 + 3*6 = 32
+
+          final out = NDArray.zeros([], DType.float32);
+          final resOut = tensordot(
+            a,
+            b,
+            axes: const TensordotAxes.count(1),
+            out: out,
+          );
+          expect(identical(resOut, out), isTrue);
+          expect(out.scalar, equals(32.0));
+        });
+      },
+    );
   });
 
   group("Einstein Summation (einsum)", () {
@@ -379,6 +435,40 @@ void main() {
           expect(resImplicit.shape, equals([2, 2]));
           expect(resImplicit.getCell([0, 0]), equals(19.0));
           expect(specImplicit.outputIndices, isNull);
+        });
+      },
+    );
+    test(
+      "batch matrix multiplication handler ...ij,...jk->...ik with Float64",
+      () {
+        NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+            [2, 2, 2],
+            DType.float64,
+          );
+          final b = NDArray.fromList(
+            [1.0, 0.0, 0.0, 1.0, 2.0, 0.0, 0.0, 2.0],
+            [2, 2, 2],
+            DType.float64,
+          );
+          final res = einsum(EinsumSubscripts.parse("...ij,...jk->...ik"), [
+            a,
+            b,
+          ]);
+          expect(res.shape, equals([2, 2, 2]));
+          expect(res.getCell([0, 0, 0]), equals(1.0));
+          expect(res.getCell([0, 0, 1]), equals(2.0));
+          expect(res.getCell([1, 0, 0]), equals(10.0));
+          expect(res.getCell([1, 1, 1]), equals(16.0));
+
+          final out = NDArray.zeros([2, 2, 2], DType.float64);
+          final resOut = einsum(EinsumSubscripts.parse("...ij,...jk->...ik"), [
+            a,
+            b,
+          ], out: out);
+          expect(identical(resOut, out), isTrue);
+          expect(out.getCell([1, 0, 0]), equals(10.0));
         });
       },
     );

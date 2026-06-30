@@ -378,5 +378,54 @@ void main() {
         expect(res.getCell([1]), closeTo(5.0, 1e-9));
       });
     });
+    test("1D correlate valid, full, same (Float32)", () {
+      NDArray.scope(() {
+        final a = NDArray<Float32>.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0],
+          [5],
+          DType.float32,
+        );
+        final v = NDArray<Float32>.fromList(
+          [1.0, 10.0, 100.0],
+          [3],
+          DType.float32,
+        );
+
+        final valid = correlate(a, v, mode: ConvMode.valid);
+        expect(valid.shape, equals([3]));
+        expect(valid.getCell([0]), closeTo(321.0, 1e-4));
+
+        final full = correlate(a, v, mode: ConvMode.full);
+        expect(full.shape, equals([7]));
+        expect(full.getCell([0]), closeTo(100.0, 1e-4));
+        expect(full.getCell([1]), closeTo(210.0, 1e-4));
+        expect(full.getCell([2]), closeTo(321.0, 1e-4));
+
+        final same = correlate(a, v, mode: ConvMode.same);
+        expect(same.shape, equals([5]));
+        expect(same.getCell([0]), closeTo(210.0, 1e-4));
+      });
+    });
+
+    test("1D convolve valid, full, same (Float32)", () {
+      NDArray.scope(() {
+        final a = NDArray<Float32>.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0],
+          [5],
+          DType.float32,
+        );
+        final v = NDArray<Float32>.fromList(
+          [1.0, 10.0, 100.0],
+          [3],
+          DType.float32,
+        );
+
+        final full = convolve(a, v, mode: ConvMode.full);
+        expect(full.shape, equals([7]));
+        expect(full.getCell([0]), closeTo(1.0, 1e-4));
+        expect(full.getCell([1]), closeTo(12.0, 1e-4));
+        expect(full.getCell([2]), closeTo(123.0, 1e-4));
+      });
+    });
   });
 }

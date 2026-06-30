@@ -1,4 +1,6 @@
 // ignore_for_file: non_constant_identifier_names
+import "dart:ffi" as ffi;
+import "package:openblas/openblas.dart";
 import "dart:math" as math;
 import "../ndarray.dart";
 import "math.dart";
@@ -181,6 +183,65 @@ NDArray<R> tensordot<Ta, Tb, R>(
         "Provided out buffer has incompatible shape or dtype (expected shape $targetShape and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
       );
     }
+  }
+
+  if (freeA.isEmpty && freeB.isEmpty) {
+    bool isSeq(List<int> axes, int rank) {
+      if (axes.length != rank) return false;
+      for (var i = 0; i < rank; i++) {
+        if (axes[i] != i) return false;
+      }
+      return true;
+    }
+
+    final aToUse = a.dtype == targetDType ? a : castNDArray(a, targetDType);
+    final bToUse = b.dtype == targetDType ? b : castNDArray(b, targetDType);
+
+    if (aToUse.isContiguous &&
+        bToUse.isContiguous &&
+        isSeq(normAxesA, a.shape.length) &&
+        isSeq(normAxesB, b.shape.length)) {
+      final n = aToUse.size;
+      if (targetDType == DType.float64) {
+        final val = cblas_ddot(
+          n,
+          aToUse.pointer.cast<ffi.Double>(),
+          1,
+          bToUse.pointer.cast<ffi.Double>(),
+          1,
+        );
+        if (out != null) {
+          out.pointer.cast<ffi.Double>()[0] = val;
+          if (aToUse != a) aToUse.dispose();
+          if (bToUse != b) bToUse.dispose();
+          return out;
+        }
+        final res = NDArray.scalar(val, dtype: DType.float64) as NDArray<R>;
+        if (aToUse != a) aToUse.dispose();
+        if (bToUse != b) bToUse.dispose();
+        return res;
+      } else if (targetDType == DType.float32) {
+        final val = cblas_sdot(
+          n,
+          aToUse.pointer.cast<ffi.Float>(),
+          1,
+          bToUse.pointer.cast<ffi.Float>(),
+          1,
+        );
+        if (out != null) {
+          out.pointer.cast<ffi.Float>()[0] = val;
+          if (aToUse != a) aToUse.dispose();
+          if (bToUse != b) bToUse.dispose();
+          return out;
+        }
+        final res = NDArray.scalar(val, dtype: DType.float32) as NDArray<R>;
+        if (aToUse != a) aToUse.dispose();
+        if (bToUse != b) bToUse.dispose();
+        return res;
+      }
+    }
+    if (aToUse != a) aToUse.dispose();
+    if (bToUse != b) bToUse.dispose();
   }
 
   return NDArray.scope(() {
@@ -576,6 +637,23 @@ NDArray<R> einsum<T extends Object, R extends Object>(
       }
 
       if (!hasRepeated(subA) && !hasRepeated(subB)) {
+        if (subA.length == 2 &&
+            subB.length == 2 &&
+            finalOutSub.length == 2 &&
+            subA[0] != subA[1] &&
+            subB[0] != subB[1] &&
+            subA[1] == subB[0] &&
+            subA[0] == finalOutSub[0] &&
+            subB[1] == finalOutSub[1]) {
+          final res = matmul<Object, Object, R>(
+            operands[0] as NDArray<Object>,
+            operands[1] as NDArray<Object>,
+            out: out,
+          );
+          if (out != null) return out;
+          return _asTyped<R>(res.detachToParentScope());
+        }
+
         final shared = subA.where((id) => subB.contains(id)).toList();
         final contracted = shared
             .where((id) => !finalOutSub.contains(id))
@@ -616,6 +694,90 @@ NDArray<R> einsum<T extends Object, R extends Object>(
                   out.dtype != targetDType) {
                 throw ArgumentError(
                   "Provided out buffer has incompatible shape or dtype (expected shape ${finalRes.shape} and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
+                );
+              }
+              finalRes.copy(out: out);
+              return out;
+            }
+            return _asTyped<R>(finalRes.detachToParentScope());
+          }
+        } else {
+          final freeA = subA.where((id) => !shared.contains(id)).toList();
+          final freeB = subB.where((id) => !shared.contains(id)).toList();
+
+          final allFreeInOut =
+              freeA.every((id) => finalOutSub.contains(id)) &&
+              freeB.every((id) => finalOutSub.contains(id));
+
+          if (allFreeInOut && contracted.isNotEmpty) {
+            final batchShape = batch.map((id) => labelSizes[id]!).toList();
+            final m = freeA
+                .map((id) => labelSizes[id]!)
+                .fold(1, (x, y) => x * y);
+            final k = contracted
+                .map((id) => labelSizes[id]!)
+                .fold(1, (x, y) => x * y);
+            final n = freeB
+                .map((id) => labelSizes[id]!)
+                .fold(1, (x, y) => x * y);
+
+            final permA = [
+              ...batch,
+              ...freeA,
+              ...contracted,
+            ].map((id) => subA.indexOf(id)).toList();
+            final permB = [
+              ...batch,
+              ...contracted,
+              ...freeB,
+            ].map((id) => subB.indexOf(id)).toList();
+            final aPerm = operands[0].transpose(permA);
+            final bPerm = operands[1].transpose(permB);
+
+            final numBatch = batchShape.fold(1, (x, y) => x * y);
+            final a3D = aPerm.reshape([numBatch, m, k]);
+            final b3D = bPerm.reshape([numBatch, k, n]);
+
+            final targetDType = resolveDType(
+              operands[0].dtype,
+              operands[1].dtype,
+            );
+            final res3D = NDArray<R>.zeros([
+              numBatch,
+              m,
+              n,
+            ], targetDType as DType<R>);
+
+            for (var bIdx = 0; bIdx < numBatch; bIdx++) {
+              final aSlice = a3D.slice([Index(bIdx)]);
+              final bSlice = b3D.slice([Index(bIdx)]);
+              final resSlice = res3D.slice([Index(bIdx)]);
+
+              matmul<dynamic, dynamic, dynamic>(aSlice, bSlice, out: resSlice);
+            }
+
+            final freeAShapes = freeA.map((id) => labelSizes[id]!);
+            final freeBShapes = freeB.map((id) => labelSizes[id]!);
+            final targetUnpermutedShape = [
+              ...batchShape,
+              ...freeAShapes,
+              ...freeBShapes,
+            ];
+            final resBatch = res3D.reshape(targetUnpermutedShape);
+
+            final resIds = [...batch, ...freeA, ...freeB];
+            var finalRes = resBatch;
+            if (!listEquals(resIds, finalOutSub)) {
+              final perm = finalOutSub.map((id) => resIds.indexOf(id)).toList();
+              finalRes = resBatch.transpose(perm);
+            }
+
+            final finalDType = finalRes.dtype;
+            if (out != null) {
+              if (!listEquals(out.shape, finalRes.shape) ||
+                  out.dtype != finalDType) {
+                throw ArgumentError(
+                  "Provided out buffer has incompatible shape or dtype (expected shape ${finalRes.shape} and dtype $finalDType, got shape ${out.shape} and dtype ${out.dtype}).",
                 );
               }
               finalRes.copy(out: out);

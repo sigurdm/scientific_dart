@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ffi' as ffi;
+import 'package:openblas/openblas.dart';
 import '../ndarray.dart';
 import '../ndarray_bindings.dart' as bindings;
 import 'padding.dart';
@@ -383,6 +384,61 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
       if (out != null && !listEquals(out.shape, expectedShape)) {
         throw ArgumentError('Provided out buffer has incompatible shape.');
       }
+      if (rank == 1 &&
+          in1.isContiguous &&
+          in2.isContiguous &&
+          (in1.dtype == DType.float64 || in1.dtype == DType.float32)) {
+        final N = in1.shape[0];
+        final K = in2.shape[0];
+        final M = N + K - 1;
+
+        final NDArray<R> result;
+        if (out != null) {
+          result = out;
+        } else {
+          result = NDArray<R>.zeros(expectedShape, in1.dtype as DType<R>);
+        }
+
+        if (in1.dtype == DType.float64) {
+          final resPtr = result.pointer.cast<ffi.Double>();
+          final ptr1 = in1.pointer.cast<ffi.Double>();
+          final ptr2 = in2.pointer.cast<ffi.Double>();
+
+          for (var i = 0; i < M; i++) {
+            final s = i - K + 1;
+            final in1Start = math.max(0, s);
+            final mStart = math.max(0, -s);
+            final mEnd = math.min(K, N - s);
+            final L = mEnd - mStart;
+
+            if (L > 0) {
+              resPtr[i] = cblas_ddot(L, ptr1 + in1Start, 1, ptr2 + mStart, 1);
+            } else {
+              resPtr[i] = 0.0;
+            }
+          }
+          return result;
+        } else if (in1.dtype == DType.float32) {
+          final resPtr = result.pointer.cast<ffi.Float>();
+          final ptr1 = in1.pointer.cast<ffi.Float>();
+          final ptr2 = in2.pointer.cast<ffi.Float>();
+
+          for (var i = 0; i < M; i++) {
+            final s = i - K + 1;
+            final in1Start = math.max(0, s);
+            final mStart = math.max(0, -s);
+            final mEnd = math.min(K, N - s);
+            final L = mEnd - mStart;
+
+            if (L > 0) {
+              resPtr[i] = cblas_sdot(L, ptr1 + in1Start, 1, ptr2 + mStart, 1);
+            } else {
+              resPtr[i] = 0.0;
+            }
+          }
+          return result;
+        }
+      }
       return NDArray.scope(() {
         final padWidths = List<(int, int)>.generate(
           rank,
@@ -460,7 +516,10 @@ NDArray<R> convolve<T extends Object, K extends Object, R extends Object>(
       (_) => const Slice(step: -1),
     );
     final flippedKernel = in2.slice(reversedSelectors);
-    final res = correlate<T, K, R>(in1, flippedKernel, mode: mode, out: out);
+    final contiguousKernel = flippedKernel.isContiguous
+        ? flippedKernel
+        : flippedKernel.copy();
+    final res = correlate<T, K, R>(in1, contiguousKernel, mode: mode, out: out);
     return res.detachToParentScope();
   });
 }
