@@ -15,6 +15,7 @@ Remember when adding new operations, fixing old ones:
 * Use the `.scalar` getter to access the value of 0-dimensional arrays.
 * Always prefer NDArray<Float64> or NDArray<Float32> over NDArray<double> for argument and return values.
 * Whenever applicable, use NDArray.scope instead of manually calling dispose. Remember that results must be attached to the parent scope before returning. 
+* Always use enums for options/modes instead of magic strings where NumPy or other APIs accept string options.
  
 
 When running dart commands use the sdk specified in .vscode/settings.json.
