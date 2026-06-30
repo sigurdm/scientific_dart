@@ -318,7 +318,7 @@ void main() {
     });
 
     test(
-      "structured subscript lists (strings and integers) and EinsumSubscripts",
+      "EinsumSubscripts constructors: fromIndices, parse, and fromLabels",
       () {
         NDArray.scope(() {
           final a = NDArray.fromList(
@@ -332,50 +332,53 @@ void main() {
             DType.float64,
           );
 
-          // 1. EinsumSubscripts.explicit
-          final resExplicit = einsum(
-            EinsumSubscripts.explicit(
-              [
-                ['i', 'j'],
-                ['j', 'k'],
-              ],
-              ['i', 'k'],
-            ),
-            [a, b],
+          // 1. EinsumSubscripts.fromIndices
+          final specIndices = EinsumSubscripts.fromIndices(
+            [
+              [0, 1],
+              [1, 2],
+            ],
+            [0, 2],
           );
-          expect(resExplicit.shape, equals([2, 2]));
-          expect(resExplicit.getCell([0, 0]), equals(19.0));
+          final resIndices = einsum(specIndices, [a, b]);
+          expect(resIndices.shape, equals([2, 2]));
+          expect(resIndices.getCell([0, 0]), equals(19.0));
+          expect(
+            specIndices.operandIndices,
+            equals([
+              [0, 1],
+              [1, 2],
+            ]),
+          );
+          expect(specIndices.outputIndices, equals([0, 2]));
 
-          // 2. EinsumSubscripts.explicit with integers (0->a, 1->b, 2->c)
-          final resIntList = einsum(
-            EinsumSubscripts.explicit(
-              [
-                [0, 1],
-                [1, 2],
-              ],
-              [0, 2],
-            ),
-            [a, b],
+          // 2. EinsumSubscripts.fromLabels
+          final specLabels = EinsumSubscripts.fromLabels(
+            [
+              ['i', 'j'],
+              ['j', 'k'],
+            ],
+            ['i', 'k'],
           );
-          expect(resIntList.shape, equals([2, 2]));
-          expect(resIntList.getCell([0, 0]), equals(19.0));
+          final resLabels = einsum(specLabels, [a, b]);
+          expect(resLabels.shape, equals([2, 2]));
+          expect(resLabels.getCell([0, 0]), equals(19.0));
 
           // 3. EinsumSubscripts.parse
           final specParse = EinsumSubscripts.parse("ij,jk->ik");
           final resParse = einsum(specParse, [a, b]);
           expect(resParse.shape, equals([2, 2]));
           expect(resParse.getCell([0, 0]), equals(19.0));
-          expect(specParse.toSubscriptString(), equals("ij,jk->ik"));
 
-          // 4. EinsumSubscripts.implicit
-          final specImplicit = EinsumSubscripts.implicit([
+          // 4. EinsumSubscripts.fromLabels (implicit output)
+          final specImplicit = EinsumSubscripts.fromLabels([
             ['i', 'j'],
             ['j', 'k'],
           ]);
           final resImplicit = einsum(specImplicit, [a, b]);
           expect(resImplicit.shape, equals([2, 2]));
           expect(resImplicit.getCell([0, 0]), equals(19.0));
-          expect(specImplicit.toSubscriptString(), equals("ij,jk"));
+          expect(specImplicit.outputIndices, isNull);
         });
       },
     );

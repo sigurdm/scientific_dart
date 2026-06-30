@@ -6,16 +6,6 @@ import "linalg.dart";
 import "stats.dart";
 import "helpers.dart";
 
-bool _hasRepeatedLabels(String s) {
-  final seen = <String>{};
-  for (var i = 0; i < s.length; i++) {
-    final char = s[i];
-    if (seen.contains(char)) return true;
-    seen.add(char);
-  }
-  return false;
-}
-
 NDArray<R> _asTyped<R>(NDArray arr) {
   if (arr is NDArray<R>) return arr;
   return NDArray<R>.view(
@@ -187,23 +177,69 @@ NDArray<R> tensordot<Ta, Tb, R>(
 
 /// Represents index subscript specifications for Einstein summation ([einsum]).
 ///
-/// Subscripts define how input tensor axes map to contracted or output dimensions.
+/// Subscripts define how input tensor axes map to contracted or output dimensions using numeric index identifiers.
 ///
 /// Use one of the three primary constructors to create an [EinsumSubscripts] instance:
-/// - [EinsumSubscripts.parse]: Parses a standard Einstein summation string (e.g. `'ij,jk->ik'`).
-/// - [EinsumSubscripts.explicit]: Builds an explicit subscript from structured operand and output index lists.
-/// - [EinsumSubscripts.implicit]: Builds an implicit subscript from structured operand index lists.
+/// - [EinsumSubscripts.fromIndices]: Construct directly using integer axis IDs. Ellipsis `...` is represented by `-1`.
+/// - [EinsumSubscripts.parse]: Parses standard Einstein summation notation strings (e.g. `'ij,jk->ik'`).
+/// - [EinsumSubscripts.fromLabels]: Construct using string label lists for input operands and optional output.
 final class EinsumSubscripts {
-  /// The list of index labels for each operand.
-  final List<List<String>> operandSubscripts;
+  /// The numeric index IDs for each operand tensor axis. `-1` represents an ellipsis (`...`).
+  final List<List<int>> operandIndices;
 
-  /// The list of index labels for the output tensor, or `null` if implicit output.
-  final List<String>? outputSubscript;
+  /// The numeric index IDs for output tensor axes, or `null` if implicit output.
+  final List<int>? outputIndices;
 
-  /// Creates a raw [EinsumSubscripts] instance with operand and optional output index lists.
-  const EinsumSubscripts(this.operandSubscripts, {this.outputSubscript});
+  /// Whether any operand or output subscript contains an ellipsis (`-1`).
+  final bool hasEllipsis;
 
-  /// 1. Parses a subscript string in Einstein summation notation (e.g. `'ij,jk->ik'` or `'i,j->ij'`).
+  const EinsumSubscripts._(
+    this.operandIndices,
+    this.outputIndices,
+    this.hasEllipsis,
+  );
+
+  /// 1. Creates an [EinsumSubscripts] from explicit integer index lists for operands and optional output.
+  ///
+  /// Each operand's axes are assigned integer IDs. Contracted axes share matching integer IDs across operands.
+  /// Use `-1` to represent an ellipsis (`...`) for batch broadcasting.
+  ///
+  /// It is an error if [inputIndices] is empty.
+  factory EinsumSubscripts.fromIndices(
+    List<List<int>> inputIndices, [
+    List<int>? outputIndices,
+  ]) {
+    if (inputIndices.isEmpty) {
+      throw ArgumentError('inputIndices cannot be empty.');
+    }
+
+    var containsEllipsis = false;
+    for (final op in inputIndices) {
+      if (op.contains(-1)) containsEllipsis = true;
+    }
+    if (outputIndices != null && outputIndices.contains(-1)) {
+      containsEllipsis = true;
+    }
+
+    final copyInputs = inputIndices
+        .map((l) => List<int>.unmodifiable(l))
+        .toList();
+    final copyOutput = outputIndices != null
+        ? List<int>.unmodifiable(outputIndices)
+        : null;
+
+    return EinsumSubscripts._(
+      List<List<int>>.unmodifiable(copyInputs),
+      copyOutput,
+      containsEllipsis,
+    );
+  }
+
+  /// 2. Parses a subscript string in Einstein summation notation (e.g. `'ij,jk->ik'`, `'...ij,jk->...ik'`, or `'ii->'`).
+  ///
+  /// Maps character labels (e.g. `'i'`, `'j'`) to numeric index IDs internally.
+  ///
+  /// It is an error if subscript syntax is invalid.
   factory EinsumSubscripts.parse(String subscripts) {
     final cleanSub = subscripts.replaceAll(' ', '');
     final parts = cleanSub.split('->');
@@ -212,110 +248,62 @@ final class EinsumSubscripts {
         'Invalid einsum subscript: multiple "->" delimiters found.',
       );
     }
+
     final inStr = parts[0];
     final outStr = parts.length == 2 ? parts[1] : null;
 
-    final operandSubs = inStr.isEmpty
+    final rawOperandTokens = inStr.isEmpty
         ? <List<String>>[]
-        : inStr.split(',').map((s) => _tokenizeSubscriptTerm(s)).toList();
+        : inStr.split(',').map((s) => _tokenizeTerm(s)).toList();
 
-    final outSubs = outStr != null ? _tokenizeSubscriptTerm(outStr) : null;
+    final rawOutTokens = outStr != null ? _tokenizeTerm(outStr) : null;
 
-    return EinsumSubscripts(operandSubs, outputSubscript: outSubs);
+    return EinsumSubscripts.fromLabels(rawOperandTokens, rawOutTokens);
   }
 
-  /// 2. Creates an explicit [EinsumSubscripts] specification with defined operand and output index lists.
-  factory EinsumSubscripts.explicit(
-    List<List<Object>> operandSubscripts,
-    List<Object> outputSubscript,
-  ) {
-    final opSubs = operandSubscripts
-        .map((list) => list.map((e) => _normalizeLabel(e)).toList())
+  /// 3. Creates an [EinsumSubscripts] from string label lists for input operands and optional output.
+  ///
+  /// String labels (e.g. `'i'`, `'j'`, `'k'`) are automatically assigned unique numeric index IDs.
+  /// Use `'...'` to represent an ellipsis for batch broadcasting.
+  ///
+  /// It is an error if [inputLabels] is empty.
+  factory EinsumSubscripts.fromLabels(
+    List<List<String>> inputLabels, [
+    List<String>? outputLabels,
+  ]) {
+    if (inputLabels.isEmpty) {
+      throw ArgumentError('inputLabels cannot be empty.');
+    }
+
+    final labelToId = <String, int>{};
+    var nextId = 0;
+
+    int getId(String label) {
+      if (label == '...') return -1;
+      return labelToId.putIfAbsent(label, () => nextId++);
+    }
+
+    final numericInputs = inputLabels
+        .map((list) => list.map((lbl) => getId(lbl)).toList())
         .toList();
-    final outSub = outputSubscript.map((e) => _normalizeLabel(e)).toList();
-    return EinsumSubscripts(opSubs, outputSubscript: outSub);
+
+    final numericOutput = outputLabels?.map((lbl) => getId(lbl)).toList();
+
+    return EinsumSubscripts.fromIndices(numericInputs, numericOutput);
   }
 
-  /// 3. Creates an implicit [EinsumSubscripts] specification where output labels are automatically inferred.
-  factory EinsumSubscripts.implicit(List<List<Object>> operandSubscripts) {
-    final opSubs = operandSubscripts
-        .map((list) => list.map((e) => _normalizeLabel(e)).toList())
-        .toList();
-    return EinsumSubscripts(opSubs, outputSubscript: null);
-  }
-
-  /// Creates an [EinsumSubscripts] from a string, a list of index lists, or an existing [EinsumSubscripts] instance.
-  factory EinsumSubscripts.from(Object subscripts, {List<Object>? output}) {
-    if (subscripts is EinsumSubscripts) {
-      if (output != null) {
-        return EinsumSubscripts(
-          subscripts.operandSubscripts,
-          outputSubscript: output.map((e) => e.toString()).toList(),
-        );
-      }
-      return subscripts;
-    }
-    if (subscripts is String) {
-      final parsed = EinsumSubscripts.parse(subscripts);
-      if (output != null) {
-        return EinsumSubscripts(
-          parsed.operandSubscripts,
-          outputSubscript: output.map((e) => e.toString()).toList(),
-        );
-      }
-      return parsed;
-    }
-    if (subscripts is List) {
-      final operandSubs = <List<String>>[];
-      for (final item in subscripts) {
-        if (item is List) {
-          operandSubs.add(item.map((e) => _normalizeLabel(e)).toList());
-        } else if (item is String) {
-          operandSubs.add(_tokenizeSubscriptTerm(item));
-        } else {
-          throw ArgumentError('Invalid subscript operand element: $item');
-        }
-      }
-      final outSub = output?.map((e) => _normalizeLabel(e)).toList();
-      return EinsumSubscripts(operandSubs, outputSubscript: outSub);
-    }
-    throw ArgumentError('Unsupported subscripts format: $subscripts');
-  }
-
-  static List<String> _tokenizeSubscriptTerm(String term) {
-    final labels = <String>[];
+  static List<String> _tokenizeTerm(String term) {
+    final tokens = <String>[];
     for (var i = 0; i < term.length; i++) {
       if (i + 2 < term.length && term.substring(i, i + 3) == '...') {
-        labels.add('...');
+        tokens.add('...');
         i += 2;
       } else {
-        labels.add(term[i]);
+        tokens.add(term[i]);
       }
     }
-    return labels;
+    return tokens;
   }
-
-  static String _normalizeLabel(Object label) {
-    if (label is int) {
-      if (label >= 0 && label < 26) {
-        return String.fromCharCode(97 + label);
-      }
-      return 'idx_$label';
-    }
-    return label.toString();
-  }
-
-  /// Converts this subscript specification back into a standard Einstein summation string.
-  String toSubscriptString() {
-    final inStr = operandSubscripts.map((list) => list.join('')).join(',');
-    if (outputSubscript != null) {
-      return '$inStr->${outputSubscript!.join('')}';
-    }
-    return inStr;
-  }
-
-  @override
-  String toString() => toSubscriptString();
 }
 
 /// Evaluates Einstein summation convention over multiple multi-dimensional array operands.
@@ -324,25 +312,15 @@ final class EinsumSubscripts {
 /// matrix multiplications, transpositions, traces, and array operations by specifying index labels
 /// for each input operand and the resulting output.
 ///
-/// ### Einstein Summation Convention
-/// In standard Einstein summation notation:
-/// 1. Each dimension of an input tensor is assigned an index label (symbol).
-/// 2. Labels that appear in multiple input operands but **not** in the output specification are **contracted**
-///    (element-wise multiplied and summed over).
-/// 3. Labels that appear in the output specification are preserved in the result tensor in the specified order.
-/// 4. Repeated labels within a single input operand represent extracting diagonal elements along those axes.
-///
 /// Subscripts are specified using an [EinsumSubscripts] object created via one of its constructors:
-/// - [EinsumSubscripts.parse]: Parses a standard string (e.g. `EinsumSubscripts.parse('ij,jk->ik')`).
-/// - [EinsumSubscripts.explicit]: Explicit input and output index lists (e.g. `EinsumSubscripts.explicit([['i', 'j'], ['j', 'k']], ['i', 'k'])`).
-/// - [EinsumSubscripts.implicit]: Implicit input index lists (e.g. `EinsumSubscripts.implicit([['i', 'j'], ['j', 'k']])`).
+/// - [EinsumSubscripts.fromIndices]: Construct directly using integer axis IDs.
+/// - [EinsumSubscripts.parse]: Parses a standard notation string (e.g. `EinsumSubscripts.parse('ij,jk->ik')`).
+/// - [EinsumSubscripts.fromLabels]: Construct using string label lists.
 ///
 /// It is an error if operands is empty, if any operand or [out] is disposed, or if subscript syntax or shapes are invalid.
 ///
 /// ### References & Further Reading
 /// - [NumPy einsum Documentation](https://numpy.org/doc/stable/reference/generated/numpy.einsum.html)
-/// - [Wikipedia: Einstein Notation](https://en.wikipedia.org/wiki/Einstein_notation)
-/// - [Einsum is All You Need](https://rockt.ai/2018/04/30/einsum)
 
 NDArray<R> einsum<T extends Object, R extends Object>(
   EinsumSubscripts subscripts,
@@ -363,47 +341,20 @@ NDArray<R> einsum<T extends Object, R extends Object>(
     throw StateError("Cannot write einsum result to a disposed output array.");
   }
 
-  final cleanSub = subscripts.toSubscriptString();
-
-  late final String inStr;
-  late final String outStr;
-  final isExplicit = cleanSub.contains("->");
-
-  final parts = cleanSub.split("->");
-  if (parts.length > 2) {
+  if (subscripts.operandIndices.length != operands.length) {
     throw ArgumentError(
-      'Invalid einsum subscript: contains multiple "->" delimiters.',
-    );
-  }
-  if (isExplicit) {
-    inStr = parts[0];
-    outStr = parts[1];
-  } else {
-    inStr = cleanSub;
-    outStr = "";
-  }
-
-  final rawOperandSubs = inStr.split(",");
-  if (rawOperandSubs.length != operands.length) {
-    throw ArgumentError(
-      "Number of subscript terms (${rawOperandSubs.length}) does not match number of operands (${operands.length}).",
+      "Number of subscript terms (${subscripts.operandIndices.length}) does not match number of operands (${operands.length}).",
     );
   }
 
-  var hasEllipsis = false;
-  for (final sub in rawOperandSubs) {
-    if (sub.contains("...")) hasEllipsis = true;
-  }
-  if (outStr.contains("...")) hasEllipsis = true;
+  var operandSubs = subscripts.operandIndices;
+  List<int>? outSub = subscripts.outputIndices;
 
-  final operandSubs = <String>[];
-  String finalOutStr = outStr;
-
-  if (hasEllipsis) {
+  if (subscripts.hasEllipsis) {
     int maxEllipsisDims = 0;
     for (var i = 0; i < operands.length; i++) {
-      final sub = rawOperandSubs[i];
-      final explicitCount = sub.replaceAll("...", "").length;
+      final sub = operandSubs[i];
+      final explicitCount = sub.where((id) => id != -1).length;
       final ellipsisDims = operands[i].shape.length - explicitCount;
       if (ellipsisDims < 0) {
         throw ArgumentError(
@@ -415,58 +366,68 @@ NDArray<R> einsum<T extends Object, R extends Object>(
       }
     }
 
-    final usedChars = <String>{};
-    for (final sub in rawOperandSubs) {
-      usedChars.addAll(sub.replaceAll("...", "").split(""));
-    }
-    usedChars.addAll(outStr.replaceAll("...", "").split(""));
+    final ellipsisIds = List<int>.generate(maxEllipsisDims, (i) => 10000 + i);
 
-    final ellipsisChars = <String>[];
-    var codePoint = 0x03B1; // Greek small letter alpha
-    while (ellipsisChars.length < maxEllipsisDims) {
-      final ch = String.fromCharCode(codePoint);
-      if (!usedChars.contains(ch)) {
-        ellipsisChars.add(ch);
-      }
-      codePoint++;
-    }
-    final ellipsisStr = ellipsisChars.join("");
-
-    for (var i = 0; i < rawOperandSubs.length; i++) {
-      final sub = rawOperandSubs[i];
-      if (sub.contains("...")) {
-        final explicitCount = sub.replaceAll("...", "").length;
+    final resolvedOperandSubs = <List<int>>[];
+    for (var i = 0; i < operands.length; i++) {
+      final sub = operandSubs[i];
+      if (sub.contains(-1)) {
+        final explicitCount = sub.where((id) => id != -1).length;
         final count = operands[i].shape.length - explicitCount;
-        final activeEllipsis = ellipsisChars.sublist(maxEllipsisDims - count);
-        operandSubs.add(sub.replaceFirst("...", activeEllipsis.join("")));
+        final activeEllipsis = ellipsisIds.sublist(maxEllipsisDims - count);
+        final newSub = <int>[];
+        for (final id in sub) {
+          if (id == -1) {
+            newSub.addAll(activeEllipsis);
+          } else {
+            newSub.add(id);
+          }
+        }
+        resolvedOperandSubs.add(newSub);
       } else {
-        operandSubs.add(sub);
+        resolvedOperandSubs.add(sub);
       }
     }
-    if (isExplicit) {
-      finalOutStr = outStr.replaceFirst("...", ellipsisStr);
+
+    List<int> resolvedOutSub;
+    if (outSub != null) {
+      if (outSub.contains(-1)) {
+        final newOut = <int>[];
+        for (final id in outSub) {
+          if (id == -1) {
+            newOut.addAll(ellipsisIds);
+          } else {
+            newOut.add(id);
+          }
+        }
+        resolvedOutSub = newOut;
+      } else {
+        resolvedOutSub = outSub;
+      }
     } else {
-      final labelCounts = <String, int>{};
-      for (final sub in operandSubs) {
-        for (final ch in sub.split("")) {
-          labelCounts[ch] = (labelCounts[ch] ?? 0) + 1;
+      final labelCounts = <int, int>{};
+      for (final sub in resolvedOperandSubs) {
+        for (final id in sub) {
+          labelCounts[id] = (labelCounts[id] ?? 0) + 1;
         }
       }
       final singleLabels =
           labelCounts.entries
-              .where((e) => e.value == 1 && !ellipsisChars.contains(e.key))
+              .where((e) => e.value == 1 && !ellipsisIds.contains(e.key))
               .map((e) => e.key)
               .toList()
             ..sort();
-      finalOutStr = ellipsisStr + singleLabels.join("");
+      resolvedOutSub = [...ellipsisIds, ...singleLabels];
     }
+
+    operandSubs = resolvedOperandSubs;
+    outSub = resolvedOutSub;
   } else {
-    operandSubs.addAll(rawOperandSubs);
-    if (!isExplicit) {
-      final labelCounts = <String, int>{};
+    if (outSub == null) {
+      final labelCounts = <int, int>{};
       for (final sub in operandSubs) {
-        for (final ch in sub.split("")) {
-          labelCounts[ch] = (labelCounts[ch] ?? 0) + 1;
+        for (final id in sub) {
+          labelCounts[id] = (labelCounts[id] ?? 0) + 1;
         }
       }
       final singleLabels =
@@ -475,9 +436,11 @@ NDArray<R> einsum<T extends Object, R extends Object>(
               .map((e) => e.key)
               .toList()
             ..sort();
-      finalOutStr = singleLabels.join("");
+      outSub = singleLabels;
     }
   }
+
+  final finalOutSub = outSub;
 
   for (var i = 0; i < operands.length; i++) {
     if (operandSubs[i].length != operands[i].shape.length) {
@@ -488,21 +451,21 @@ NDArray<R> einsum<T extends Object, R extends Object>(
   }
 
   return NDArray.scope(() {
-    final labelSizes = <String, int>{};
+    final labelSizes = <int, int>{};
     for (var i = 0; i < operands.length; i++) {
       final sub = operandSubs[i];
       final shape = operands[i].shape;
       for (var j = 0; j < sub.length; j++) {
-        final ch = sub[j];
+        final id = sub[j];
         final size = shape[j];
-        if (labelSizes.containsKey(ch)) {
-          if (labelSizes[ch] != size) {
+        if (labelSizes.containsKey(id)) {
+          if (labelSizes[id] != size) {
             throw ArgumentError(
-              "Dimension mismatch for label $ch: ${labelSizes[ch]} vs $size",
+              "Dimension mismatch for label ID $id: ${labelSizes[id]} vs $size",
             );
           }
         } else {
-          labelSizes[ch] = size;
+          labelSizes[id] = size;
         }
       }
     }
@@ -511,33 +474,31 @@ NDArray<R> einsum<T extends Object, R extends Object>(
       var op = _asTyped<Object>(operands[0]);
       var sub = operandSubs[0];
 
-      final seenInOp = <String, int>{};
+      final seenInOp = <int, int>{};
       for (var j = 0; j < sub.length; j++) {
-        final ch = sub[j];
-        if (seenInOp.containsKey(ch)) {
-          final firstAx = seenInOp[ch]!;
+        final id = sub[j];
+        if (seenInOp.containsKey(id)) {
+          final firstAx = seenInOp[id]!;
           final secondAx = j;
           op = _diagonalView(op, firstAx, secondAx);
-          final newSubChars = sub.split("");
-          newSubChars.removeAt(secondAx);
-          sub = newSubChars.join("");
+          final newSub = List<int>.from(sub)..removeAt(secondAx);
+          sub = newSub;
           j--;
         } else {
-          seenInOp[ch] = j;
+          seenInOp[id] = j;
         }
       }
 
-      final outChars = finalOutStr.split("");
-      final remainingChars = sub.split("");
+      final remainingIds = sub;
       final axesToSum = <int>[];
-      final keptChars = <String>[];
+      final keptIds = <int>[];
 
-      for (var j = 0; j < remainingChars.length; j++) {
-        final ch = remainingChars[j];
-        if (!outChars.contains(ch)) {
+      for (var j = 0; j < remainingIds.length; j++) {
+        final id = remainingIds[j];
+        if (!finalOutSub.contains(id)) {
           axesToSum.add(j);
         } else {
-          keptChars.add(ch);
+          keptIds.add(id);
         }
       }
 
@@ -547,10 +508,10 @@ NDArray<R> einsum<T extends Object, R extends Object>(
         res = sum<Object>(res as NDArray<Object>, axis: ax);
       }
 
-      if (keptChars.length > 1) {
+      if (keptIds.length > 1) {
         final perm = <int>[];
-        for (final ch in outChars) {
-          perm.add(keptChars.indexOf(ch));
+        for (final id in finalOutSub) {
+          perm.add(keptIds.indexOf(id));
         }
         res = res.transpose(perm);
       }
@@ -571,30 +532,36 @@ NDArray<R> einsum<T extends Object, R extends Object>(
     if (operands.length == 2) {
       final subA = operandSubs[0];
       final subB = operandSubs[1];
-      final charsA = subA.split("");
-      final charsB = subB.split("");
-      final outChars = finalOutStr.split("");
 
-      if (!_hasRepeatedLabels(subA) && !_hasRepeatedLabels(subB)) {
-        final shared = charsA.where((ch) => charsB.contains(ch)).toList();
+      bool hasRepeated(List<int> s) {
+        final seen = <int>{};
+        for (final id in s) {
+          if (seen.contains(id)) return true;
+          seen.add(id);
+        }
+        return false;
+      }
+
+      if (!hasRepeated(subA) && !hasRepeated(subB)) {
+        final shared = subA.where((id) => subB.contains(id)).toList();
         final contracted = shared
-            .where((ch) => !outChars.contains(ch))
+            .where((id) => !finalOutSub.contains(id))
             .toList();
-        final batch = shared.where((ch) => outChars.contains(ch)).toList();
+        final batch = shared.where((id) => finalOutSub.contains(id)).toList();
 
         if (batch.isEmpty) {
-          final axesA = contracted.map((ch) => charsA.indexOf(ch)).toList();
-          final axesB = contracted.map((ch) => charsB.indexOf(ch)).toList();
+          final axesA = contracted.map((id) => subA.indexOf(id)).toList();
+          final axesB = contracted.map((id) => subB.indexOf(id)).toList();
 
-          final freeA = charsA.where((ch) => !contracted.contains(ch)).toList();
-          final freeB = charsB.where((ch) => !contracted.contains(ch)).toList();
+          final freeA = subA.where((id) => !contracted.contains(id)).toList();
+          final freeB = subB.where((id) => !contracted.contains(id)).toList();
 
           final allFreeInOut =
-              freeA.every((ch) => outChars.contains(ch)) &&
-              freeB.every((ch) => outChars.contains(ch));
+              freeA.every((id) => finalOutSub.contains(id)) &&
+              freeB.every((id) => finalOutSub.contains(id));
 
           if (allFreeInOut) {
-            final tdResChars = [...freeA, ...freeB];
+            final tdResIds = [...freeA, ...freeB];
 
             final tdRes = tensordot<dynamic, dynamic, R>(
               operands[0],
@@ -603,9 +570,9 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             );
 
             var finalRes = tdRes;
-            if (!listEquals(tdResChars, outChars)) {
-              final perm = outChars
-                  .map((ch) => tdResChars.indexOf(ch))
+            if (!listEquals(tdResIds, finalOutSub)) {
+              final perm = finalOutSub
+                  .map((id) => tdResIds.indexOf(id))
                   .toList();
               finalRes = tdRes.transpose(perm);
             }
@@ -627,45 +594,43 @@ NDArray<R> einsum<T extends Object, R extends Object>(
       }
     }
 
-    final allLabelsSet = <String>{};
-    for (final ch in finalOutStr.split("")) {
-      if (ch.isNotEmpty) allLabelsSet.add(ch);
+    final allIdsSet = <int>{};
+    for (final id in finalOutSub) {
+      allIdsSet.add(id);
     }
     for (final sub in operandSubs) {
-      for (final ch in sub.split("")) {
-        if (ch.isNotEmpty) allLabelsSet.add(ch);
+      for (final id in sub) {
+        allIdsSet.add(id);
       }
     }
-    final allLabels = allLabelsSet.toList();
+    final allIds = allIdsSet.toList();
 
     final expandedOperands = <NDArray>[];
     for (var i = 0; i < operands.length; i++) {
       var op = _asTyped<Object>(operands[i]);
       var sub = operandSubs[i];
 
-      final seen = <String, int>{};
+      final seen = <int, int>{};
       for (var j = 0; j < sub.length; j++) {
-        final ch = sub[j];
-        if (seen.containsKey(ch)) {
-          final firstAx = seen[ch]!;
+        final id = sub[j];
+        if (seen.containsKey(id)) {
+          final firstAx = seen[id]!;
           op = _diagonalView(op, firstAx, j);
-          final chars = sub.split("");
-          chars.removeAt(j);
-          sub = chars.join("");
+          final newSub = List<int>.from(sub)..removeAt(j);
+          sub = newSub;
           j--;
         } else {
-          seen[ch] = j;
+          seen[id] = j;
         }
       }
 
-      final opChars = sub.split("");
       final expShape = <int>[];
       final perm = <int>[];
 
-      for (final lbl in allLabels) {
-        if (opChars.contains(lbl)) {
-          expShape.add(labelSizes[lbl]!);
-          perm.add(opChars.indexOf(lbl));
+      for (final id in allIds) {
+        if (sub.contains(id)) {
+          expShape.add(labelSizes[id]!);
+          perm.add(sub.indexOf(id));
         } else {
           expShape.add(1);
         }
@@ -684,19 +649,18 @@ NDArray<R> einsum<T extends Object, R extends Object>(
       );
     }
 
-    final outChars = finalOutStr.split("");
-    for (var j = allLabels.length - 1; j >= 0; j--) {
-      final lbl = allLabels[j];
-      if (!outChars.contains(lbl)) {
+    for (var j = allIds.length - 1; j >= 0; j--) {
+      final id = allIds[j];
+      if (!finalOutSub.contains(id)) {
         combined = sum<Object>(combined as NDArray<Object>, axis: j);
       }
     }
 
-    final remainingLabels = allLabels
-        .where((lbl) => outChars.contains(lbl))
+    final remainingIds = allIds
+        .where((id) => finalOutSub.contains(id))
         .toList();
-    if (!listEquals(remainingLabels, outChars)) {
-      final perm = outChars.map((lbl) => remainingLabels.indexOf(lbl)).toList();
+    if (!listEquals(remainingIds, finalOutSub)) {
+      final perm = finalOutSub.map((id) => remainingIds.indexOf(id)).toList();
       combined = combined.transpose(perm);
     }
 
