@@ -716,7 +716,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - **Shared Mutations**: Modifications to the view affect the parent and vice versa.
   /// - **No Ownership**: Calling `dispose()` on a view does nothing.
   factory NDArray.view(
-    NDArray<T> parent, {
+    NDArray<dynamic> parent, {
     required List<int> shape,
     required List<int> strides,
     int offsetElements = 0,
@@ -804,7 +804,7 @@ final class NDArray<T> implements ffi.Finalizable {
       parent,
       shape: shape,
       strides: strides,
-      dtype: parent.dtype,
+      dtype: parent.dtype as DType<T>,
       offsetElements: viewOffsetElements,
     );
   }

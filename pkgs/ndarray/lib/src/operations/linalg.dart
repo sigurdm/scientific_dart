@@ -2698,7 +2698,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
         offsetR += coords[i] * rMat.strides[i];
       }
 
-      final qSlice = NDArray.view(
+      final qSlice = NDArray<double>.view(
         qMat,
         shape: [m, k],
         strides: qMat.strides.sublist(rank - 2),
@@ -2707,7 +2707,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
       q2D.copy(out: qSlice);
       qSlice.dispose();
 
-      final rSlice = NDArray.view(
+      final rSlice = NDArray<double>.view(
         rMat,
         shape: [k, n],
         strides: rMat.strides.sublist(rank - 2),
