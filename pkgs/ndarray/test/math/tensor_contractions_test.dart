@@ -199,6 +199,83 @@ void main() {
         });
       },
     );
+    test("flexible axes parameter types: int, records, and lists", () {
+      NDArray.scope(() {
+        final a = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [2, 3],
+          DType.float64,
+        );
+        final b = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [3, 2],
+          DType.float64,
+        );
+
+        // 1. int N
+        final resInt = tensordot(a, b, axes: 1);
+        expect(resInt.shape, equals([2, 2]));
+        expect(resInt.getCell([0, 0]), equals(22.0)); // 1*1 + 2*3 + 3*5 = 22
+
+        // 2. (int, int) record pair
+        final resRecordPair = tensordot(a, b, axes: (1, 0));
+        expect(resRecordPair.shape, equals([2, 2]));
+        expect(resRecordPair.getCell([0, 0]), equals(22.0));
+
+        // 3. (List<int>, List<int>) record pair
+        final resRecordListPair = tensordot(a, b, axes: ([1], [0]));
+        expect(resRecordListPair.shape, equals([2, 2]));
+        expect(resRecordListPair.getCell([0, 0]), equals(22.0));
+
+        // 4. List<List<int>>
+        final resListList = tensordot(
+          a,
+          b,
+          axes: [
+            [1],
+            [0],
+          ],
+        );
+        expect(resListList.shape, equals([2, 2]));
+        expect(resListList.getCell([0, 0]), equals(22.0));
+
+        // 5. Throws for invalid axes parameter format
+        expect(() => tensordot(a, b, axes: "invalid"), throwsArgumentError);
+        expect(() => tensordot(a, b, axes: [1, 2, 3]), throwsArgumentError);
+      });
+    });
+
+    test("axes=0 outer product fast path", () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final b = NDArray.fromList([3.0, 4.0, 5.0], [3], DType.float64);
+
+        // 1. int 0
+        final res0 = tensordot(a, b, axes: 0);
+        expect(res0.shape, equals([2, 3]));
+        expect(res0.getCell([0, 0]), equals(3.0));
+        expect(res0.getCell([0, 1]), equals(4.0));
+        expect(res0.getCell([1, 2]), equals(10.0));
+
+        // 2. axes=0 with out parameter
+        final out = NDArray.zeros([2, 3], DType.float64);
+        final resOut = tensordot(a, b, axes: 0, out: out);
+        expect(identical(resOut, out), isTrue);
+        expect(out.getCell([1, 2]), equals(10.0));
+
+        // 3. 2D x 2D outer product (axes=0)
+        final a2D = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final b2D = NDArray.fromList([5.0, 6.0], [2, 1], DType.float64);
+        final res2D0 = tensordot(a2D, b2D, axes: 0);
+        expect(res2D0.shape, equals([2, 2, 2, 1]));
+        expect(res2D0.getCell([0, 0, 0, 0]), equals(5.0)); // 1*5
+        expect(res2D0.getCell([1, 1, 1, 0]), equals(24.0)); // 4*6
+      });
+    });
   });
 
   group("Einstein Summation (einsum)", () {
@@ -469,6 +546,100 @@ void main() {
           ], out: out);
           expect(identical(resOut, out), isTrue);
           expect(out.getCell([1, 0, 0]), equals(10.0));
+        });
+      },
+    );
+    test(
+      "implicit output subscripts alphabetical sorting (NumPy compatibility)",
+      () {
+        NDArray.scope(() {
+          // einsum('ji,kj', a, b) -> implicit output labels 'ik' (alphabetical order of single labels 'i', 'k')
+          // a is 2x3 (j=2, i=3), b is 4x2 (k=4, j=2)
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            [2, 3],
+            DType.float64,
+          );
+          final b = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+            [4, 2],
+            DType.float64,
+          );
+
+          final res = einsum(EinsumSubscripts.parse("ji,kj"), [a, b]);
+          // Output labels: 'ik' -> shape [3, 4]
+          expect(res.shape, equals([3, 4]));
+
+          // Calculate expected manually for res[i, k]: sum_j a[j, i] * b[k, j]
+          // For i=0, k=0: a[0, 0]*b[0, 0] + a[1, 0]*b[0, 1] = 1*1 + 4*2 = 9
+          expect(res.getCell([0, 0]), equals(9.0));
+
+          // Another case: einsum('ki,jk', a_ik, bJk) -> implicit output labels 'ij'
+          final aKi = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          final bJk = NDArray.fromList(
+            [5.0, 6.0, 7.0, 8.0],
+            [2, 2],
+            DType.float64,
+          );
+          final resIj = einsum(EinsumSubscripts.parse("ki,jk"), [aKi, bJk]);
+          expect(resIj.shape, equals([2, 2]));
+        });
+      },
+    );
+
+    test(
+      "multi-operand pairwise contraction tree optimization (3 and 4 operands)",
+      () {
+        NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          final b = NDArray.fromList(
+            [5.0, 6.0, 7.0, 8.0],
+            [2, 2],
+            DType.float64,
+          );
+          final c = NDArray.fromList(
+            [1.0, 0.0, 0.0, 1.0],
+            [2, 2],
+            DType.float64,
+          );
+          final d = NDArray.fromList(
+            [2.0, 0.0, 0.0, 2.0],
+            [2, 2],
+            DType.float64,
+          );
+
+          // 3 operands: einsum('ij,jk,kl->il', A, B, C) == (A @ B) @ C
+          final res3 = einsum(EinsumSubscripts.parse("ij,jk,kl->il"), [
+            a,
+            b,
+            c,
+          ]);
+          expect(res3.shape, equals([2, 2]));
+          expect(res3.getCell([0, 0]), equals(19.0));
+          expect(res3.getCell([0, 1]), equals(22.0));
+          expect(res3.getCell([1, 0]), equals(43.0));
+          expect(res3.getCell([1, 1]), equals(50.0));
+
+          // 4 operands: einsum('ij,jk,kl,lm->im', A, B, C, D) == ((A @ B) @ C) @ D
+          final res4 = einsum(EinsumSubscripts.parse("ij,jk,kl,lm->im"), [
+            a,
+            b,
+            c,
+            d,
+          ]);
+          expect(res4.shape, equals([2, 2]));
+          expect(res4.getCell([0, 0]), equals(38.0));
+          expect(res4.getCell([0, 1]), equals(44.0));
+          expect(res4.getCell([1, 0]), equals(86.0));
+          expect(res4.getCell([1, 1]), equals(100.0));
         });
       },
     );

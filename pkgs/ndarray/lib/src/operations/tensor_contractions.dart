@@ -60,6 +60,49 @@ final class TensordotAxes {
   /// Explicit contracted axis indices for array B, or `null` if [count] is used.
   final List<int>? explicitAxesB;
 
+  /// Creates a [TensordotAxes] instance from a flexible [axes] parameter representation.
+  ///
+  /// Supported types/formats for [axes]:
+  /// - An [int] `N`: contracts the last `N` axes of array A with the first `N` axes of array B.
+  ///   `0` computes the tensor outer product.
+  /// - A `(int, int)` record pair (e.g. `(1, 0)`): contracts a single axis pair.
+  /// - A `(List<int>, List<int>)` record pair or `List<List<int>>` (e.g. `([1], [0])`):
+  ///   contracts explicit axis index lists.
+  /// - A [TensordotAxes] object: returned as-is.
+  ///
+  /// Throws [ArgumentError] if [axes] is of an unsupported type or format.
+  factory TensordotAxes.from(Object? axes) {
+    if (axes is TensordotAxes) {
+      return axes;
+    }
+    if (axes is int) {
+      return TensordotAxes.count(axes);
+    }
+    if (axes is (int, int)) {
+      return TensordotAxes.pair(axes.$1, axes.$2);
+    }
+    if (axes is (List<int>, List<int>)) {
+      return TensordotAxes.explicit(axes.$1, axes.$2);
+    }
+    if (axes is List) {
+      if (axes.length != 2) {
+        throw ArgumentError(
+          "List axes specification must contain exactly 2 elements, got length ${axes.length}.",
+        );
+      }
+      if (axes[0] is int && axes[1] is int) {
+        return TensordotAxes.pair(axes[0] as int, axes[1] as int);
+      }
+      if (axes[0] is Iterable && axes[1] is Iterable) {
+        return TensordotAxes.explicit(
+          (axes[0] as Iterable).cast<int>().toList(),
+          (axes[1] as Iterable).cast<int>().toList(),
+        );
+      }
+    }
+    throw ArgumentError("Unsupported axes parameter type or format: $axes.");
+  }
+
   /// 1. Contracts the last [n] axes of array A with the first [n] axes of array B.
   ///
   /// It is an error if [n] is negative.
@@ -112,10 +155,12 @@ final class TensordotAxes {
 /// Given two tensors [a] and [b], sums products of elements over specified contracted axes.
 ///
 /// ### Axes Specification
-/// Axes are specified using a [TensordotAxes] object created via one of its constructors:
-/// - [TensordotAxes.count]: Contracts the last `N` axes of [a] and first `N` axes of [b].
-/// - [TensordotAxes.explicit]: Contracts explicit axis index lists (`axesA`, `axesB`).
-/// - [TensordotAxes.pair]: Contracts a single pair of axes (`axisA`, `axisB`).
+/// [axes] can be passed as:
+/// - An [int] `N`: Contracts the last `N` axes of [a] and first `N` axes of [b].
+///   Passing `0` computes the tensor outer product.
+/// - A pair `(int, int)` record (e.g., `(1, 0)`): Contracts a single axis pair.
+/// - A `(List<int>, List<int>)` record or `List<List<int>>` (e.g., `([1], [0])`): Contracts explicit lists of axes.
+/// - A [TensordotAxes] object: Pre-constructed axes specification.
 ///
 /// It is an error if any input or output array is disposed, if axes specifications are invalid,
 /// if axis dimensions mismatch, or if a specified axis index is out of bounds.
@@ -125,7 +170,7 @@ final class TensordotAxes {
 NDArray<R> tensordot<Ta, Tb, R>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  TensordotAxes axes = const TensordotAxes.count(2),
+  Object axes = const TensordotAxes.count(2),
   NDArray<R>? out,
 }) {
   if (a.isDisposed || b.isDisposed) {
@@ -137,7 +182,8 @@ NDArray<R> tensordot<Ta, Tb, R>(
     );
   }
 
-  final (axesA, axesB) = axes.resolve(a.shape.length, b.shape.length);
+  final resolvedAxes = TensordotAxes.from(axes);
+  final (axesA, axesB) = resolvedAxes.resolve(a.shape.length, b.shape.length);
 
   final normAxesA = axesA
       .map((ax) => ax < 0 ? a.shape.length + ax : ax)
@@ -160,6 +206,21 @@ NDArray<R> tensordot<Ta, Tb, R>(
         "Dimension mismatch at contracted axis: ${a.shape[axA]} != ${b.shape[axB]}",
       );
     }
+  }
+
+  if (normAxesA.isEmpty && normAxesB.isEmpty) {
+    final aShapeExpanded = [...a.shape, ...List.filled(b.shape.length, 1)];
+    final bShapeExpanded = [...List.filled(a.shape.length, 1), ...b.shape];
+
+    final aView = a.reshape(aShapeExpanded);
+    final bView = b.reshape(bShapeExpanded);
+
+    final res = multiply<Object, Object, R>(
+      aView as NDArray<Object>,
+      bView as NDArray<Object>,
+      out: out,
+    );
+    return _asTyped<R>(res);
   }
 
   final freeA = List.generate(
@@ -369,12 +430,27 @@ final class EinsumSubscripts {
       throw ArgumentError('inputLabels cannot be empty.');
     }
 
+    final distinctLabelsSet = <String>{};
+    for (final list in inputLabels) {
+      for (final lbl in list) {
+        if (lbl != '...') distinctLabelsSet.add(lbl);
+      }
+    }
+    if (outputLabels != null) {
+      for (final lbl in outputLabels) {
+        if (lbl != '...') distinctLabelsSet.add(lbl);
+      }
+    }
+
+    final sortedLabels = distinctLabelsSet.toList()..sort();
     final labelToId = <String, int>{};
-    var nextId = 0;
+    for (var i = 0; i < sortedLabels.length; i++) {
+      labelToId[sortedLabels[i]] = i;
+    }
 
     int getId(String label) {
       if (label == '...') return -1;
-      return labelToId.putIfAbsent(label, () => nextId++);
+      return labelToId[label]!;
     }
 
     final numericInputs = inputLabels
@@ -853,10 +929,97 @@ NDArray<R> einsum<T extends Object, R extends Object>(
       }
     }
 
+    if (operands.length > 2) {
+      var currentOps = List<NDArray>.from(operands);
+      var currentSubs = List<List<int>>.from(operandSubs);
+
+      bool progress = true;
+      while (currentOps.length > 2 && progress) {
+        progress = false;
+        int bestI = -1;
+        int bestJ = -1;
+        num minCost = double.infinity;
+        List<int>? bestInterOut;
+
+        for (var i = 0; i < currentOps.length; i++) {
+          for (var j = i + 1; j < currentOps.length; j++) {
+            final subI = currentSubs[i];
+            final subJ = currentSubs[j];
+            final union = <int>{...subI, ...subJ};
+
+            final neededByOthers = <int>{...finalOutSub};
+            for (var k = 0; k < currentOps.length; k++) {
+              if (k != i && k != j) {
+                neededByOthers.addAll(currentSubs[k]);
+              }
+            }
+
+            final interOut = union
+                .where((id) => neededByOthers.contains(id))
+                .toList();
+            final contracted = union
+                .where((id) => !neededByOthers.contains(id))
+                .toList();
+
+            if (contracted.isNotEmpty ||
+                union.length < subI.length + subJ.length) {
+              num cost = 1;
+              for (final id in union) {
+                cost *= labelSizes[id]!;
+              }
+              if (cost < minCost) {
+                minCost = cost;
+                bestI = i;
+                bestJ = j;
+                bestInterOut = interOut;
+              }
+            }
+          }
+        }
+
+        if (bestI != -1 && bestJ != -1 && bestInterOut != null) {
+          final opI = currentOps[bestI];
+          final opJ = currentOps[bestJ];
+          final subI = currentSubs[bestI];
+          final subJ = currentSubs[bestJ];
+
+          final specInter = EinsumSubscripts.fromIndices([
+            subI,
+            subJ,
+          ], bestInterOut);
+
+          final interRes = einsum<Object, Object>(
+            specInter,
+            [opI as NDArray<Object>, opJ as NDArray<Object>],
+          ).detachFromScope();
+
+          currentOps[bestI] = interRes;
+          currentSubs[bestI] = bestInterOut;
+          currentOps.removeAt(bestJ);
+          currentSubs.removeAt(bestJ);
+          progress = true;
+        }
+      }
+
+      if (currentOps.length == 2) {
+        final specFinal = EinsumSubscripts.fromIndices(
+          [currentSubs[0], currentSubs[1]],
+          finalOutSub,
+        );
+        final finalRes = einsum<Object, R>(
+          specFinal,
+          [currentOps[0] as NDArray<Object>, currentOps[1] as NDArray<Object>],
+          out: out,
+        );
+        return _asTyped<R>(finalRes.detachToParentScope());
+      }
+    }
+
     final allIdsSet = <int>{};
     for (final id in finalOutSub) {
       allIdsSet.add(id);
     }
+
     for (final sub in operandSubs) {
       for (final id in sub) {
         allIdsSet.add(id);
