@@ -737,6 +737,11 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             if (targetDType == DType.float64) {
               final NDArray<R> res;
               if (out != null) {
+                if (!listEquals(out.shape, [m, n]) || out.dtype != targetDType) {
+                  throw ArgumentError(
+                    "Provided out buffer has incompatible shape or dtype (expected shape [$m, $n] and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
+                  );
+                }
                 res = out;
               } else {
                 res = NDArray<R>.create([m, n], DType.float64 as DType<R>);
@@ -762,6 +767,11 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             } else if (targetDType == DType.float32) {
               final NDArray<R> res;
               if (out != null) {
+                if (!listEquals(out.shape, [m, n]) || out.dtype != targetDType) {
+                  throw ArgumentError(
+                    "Provided out buffer has incompatible shape or dtype (expected shape [$m, $n] and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
+                  );
+                }
                 res = out;
               } else {
                 res = NDArray<R>.create([m, n], DType.float32 as DType<R>);

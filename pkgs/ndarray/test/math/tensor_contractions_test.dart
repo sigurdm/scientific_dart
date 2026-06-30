@@ -722,5 +722,243 @@ void main() {
         });
       },
     );
+
+    test(
+      "Einsum multi-operand contraction with out buffer & error handling",
+      () {
+        NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          final b = NDArray.fromList(
+            [5.0, 6.0, 7.0, 8.0],
+            [2, 2],
+            DType.float64,
+          );
+          final c = NDArray.fromList(
+            [1.0, 0.0, 0.0, 1.0],
+            [2, 2],
+            DType.float64,
+          );
+
+          final outBuffer = NDArray<Float64>.create([2, 2], DType.float64);
+          einsum(EinsumSubscripts.parse("ij,jk,kl->il"), [
+            a,
+            b,
+            c,
+          ], out: outBuffer);
+          expect(outBuffer.getCell([0, 0]), equals(19.0));
+
+          final invalidOut = NDArray<Float64>.create([3, 3], DType.float64);
+          expect(
+            () => einsum(EinsumSubscripts.parse("ij,jk,kl->il"), [
+              a,
+              b,
+              c,
+            ], out: invalidOut),
+            throwsArgumentError,
+          );
+        });
+      },
+    );
+
+    test("Einsum 3-operand broadcast and reduction fallback path", () {
+      NDArray.scope(() {
+        final v1 = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final v2 = NDArray.fromList([3.0, 4.0], [2], DType.float64);
+        final v3 = NDArray.fromList([5.0, 6.0], [2], DType.float64);
+
+        final res = einsum(EinsumSubscripts.parse("i,j,k->ijk"), [v1, v2, v3]);
+        expect(res.shape, equals([2, 2, 2]));
+        expect(res.getCell([0, 0, 0]), equals(15.0)); // 1 * 3 * 5
+        expect(res.getCell([1, 1, 1]), equals(48.0)); // 2 * 4 * 6
+
+        final outBuf = NDArray<Float64>.create([2, 2, 2], DType.float64);
+        einsum(EinsumSubscripts.parse("i,j,k->ijk"), [v1, v2, v3], out: outBuf);
+        expect(outBuf.getCell([1, 1, 1]), equals(48.0));
+      });
+    });
+
+    test("Float32 fast paths for einsum (2D GEMM, 3D GEMM, 4D GEMM, vector dot)", () {
+      NDArray.scope(() {
+        // 2D GEMM Float32
+        final a2d32 = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float32);
+        final b2d32 = NDArray.fromList([5.0, 6.0, 7.0, 8.0], [2, 2], DType.float32);
+        final res2d32 = einsum(EinsumSubscripts.parse("ij,jk->ik"), [a2d32, b2d32]);
+        expect(res2d32.dtype, equals(DType.float32));
+        expect(res2d32.getCell([0, 0]), equals(19.0));
+
+        final out2d32 = NDArray.zeros([2, 2], DType.float32);
+        final res2d32Out = einsum(EinsumSubscripts.parse("ij,jk->ik"), [a2d32, b2d32], out: out2d32);
+        expect(identical(res2d32Out, out2d32), isTrue);
+        expect(out2d32.getCell([0, 0]), equals(19.0));
+
+        // 3D GEMM Float32
+        final a3d32 = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], [2, 2, 2], DType.float32);
+        final b3d32 = NDArray.fromList([1.0, 0.0, 0.0, 1.0, 2.0, 0.0, 0.0, 2.0], [2, 2, 2], DType.float32);
+        final res3d32 = einsum(EinsumSubscripts.parse("bij,bjk->bik"), [a3d32, b3d32]);
+        expect(res3d32.dtype, equals(DType.float32));
+        expect(res3d32.getCell([0, 0, 0]), equals(1.0));
+
+        final out3d32 = NDArray.zeros([2, 2, 2], DType.float32);
+        final res3d32Out = einsum(EinsumSubscripts.parse("bij,bjk->bik"), [a3d32, b3d32], out: out3d32);
+        expect(identical(res3d32Out, out3d32), isTrue);
+        expect(out3d32.getCell([0, 0, 0]), equals(1.0));
+
+        // 4D GEMM Float32
+        final a4d32 = NDArray.fromList(List.generate(16, (i) => i.toDouble()), [2, 2, 2, 2], DType.float32);
+        final b4d32 = NDArray.fromList(List.generate(16, (i) => (i + 1).toDouble()), [2, 2, 2, 2], DType.float32);
+        final res4d32 = einsum(EinsumSubscripts.parse("abij,abjk->abik"), [a4d32, b4d32]);
+        expect(res4d32.dtype, equals(DType.float32));
+
+        final out4d32 = NDArray.zeros([2, 2, 2, 2], DType.float32);
+        einsum(EinsumSubscripts.parse("abij,abjk->abik"), [a4d32, b4d32], out: out4d32);
+        expect(out4d32.dtype, equals(DType.float32));
+
+        // Vector Dot Float32 with out
+        final v1_32 = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float32);
+        final v2_32 = NDArray.fromList([4.0, 5.0, 6.0], [3], DType.float32);
+        final outDot32 = NDArray.zeros([], DType.float32);
+        final resDot32Out = einsum(EinsumSubscripts.parse("i,i->"), [v1_32, v2_32], out: outDot32);
+        expect(identical(resDot32Out, outDot32), isTrue);
+        expect(outDot32.scalar, equals(32.0));
+      });
+    });
+
+    test("Float64 fast paths with out buffer (2D GEMM, 3D GEMM, vector dot)", () {
+      NDArray.scope(() {
+        final a2d = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+        final b2d = NDArray.fromList([5.0, 6.0, 7.0, 8.0], [2, 2], DType.float64);
+        final out2d = NDArray.zeros([2, 2], DType.float64);
+        final res2dOut = einsum(EinsumSubscripts.parse("ij,jk->ik"), [a2d, b2d], out: out2d);
+        expect(identical(res2dOut, out2d), isTrue);
+
+        final a3d = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], [2, 2, 2], DType.float64);
+        final b3d = NDArray.fromList([1.0, 0.0, 0.0, 1.0, 2.0, 0.0, 0.0, 2.0], [2, 2, 2], DType.float64);
+        final out3d = NDArray.zeros([2, 2, 2], DType.float64);
+        final res3dOut = einsum(EinsumSubscripts.parse("bij,bjk->bik"), [a3d, b3d], out: out3d);
+        expect(identical(res3dOut, out3d), isTrue);
+      });
+    });
+
+    test("Single-operand einsum operations and out buffer handling", () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+        final out = NDArray.zeros([2, 2], DType.float64);
+
+        final resOut = einsum(EinsumSubscripts.parse("ij->ji"), [a], out: out);
+        expect(identical(resOut, out), isTrue);
+        expect(out.getCell([0, 1]), equals(3.0));
+
+        final wrongOut = NDArray.zeros([3, 3], DType.float64);
+        expect(() => einsum(EinsumSubscripts.parse("ij->ji"), [a], out: wrongOut), throwsArgumentError);
+
+        // Multi-axis sum reduction
+        final a3d = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], [2, 2, 2], DType.float64);
+        final resMultiSum = einsum(EinsumSubscripts.parse("ijk->i"), [a3d]);
+        expect(resMultiSum.shape, equals([2]));
+        expect(resMultiSum.toList(), equals([10.0, 26.0]));
+      });
+    });
+
+    test("einsum error handling for disposed inputs, subscript mismatches, dimension mismatch", () {
+      final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+      final b = NDArray.fromList([3.0, 4.0], [2], DType.float64);
+      final disposed = NDArray.fromList([1.0], [1], DType.float64);
+      disposed.dispose();
+
+      expect(() => einsum(EinsumSubscripts.parse("i,i->"), [disposed, b]), throwsStateError);
+      expect(() => einsum(EinsumSubscripts.parse("i,i->"), [a, b], out: disposed), throwsStateError);
+
+      expect(() => einsum(EinsumSubscripts.parse("i,j,k->"), [a, b]), throwsArgumentError);
+
+      final cWrongShape = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+      expect(() => einsum(EinsumSubscripts.parse("i,i->"), [a, cWrongShape]), throwsArgumentError);
+
+      expect(() => einsum(EinsumSubscripts.parse("...i,j->ij"), [NDArray.scalar(1.0, dtype: DType.float64), b]), throwsArgumentError);
+
+      a.dispose();
+      b.dispose();
+      cWrongShape.dispose();
+    });
+
+    test("EinsumSubscripts constructors error cases and formatting", () {
+      expect(() => EinsumSubscripts.fromLabels([]), throwsArgumentError);
+      expect(() => EinsumSubscripts.fromIndices([]), throwsArgumentError);
+
+      final specWithSpaces = EinsumSubscripts.parse(" i j , j k -> i k ");
+      expect(specWithSpaces.operandIndices.length, equals(2));
+    });
+
+    test("tensordot error handling and additional edge cases", () {
+      final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+      final b = NDArray.fromList([5.0, 6.0, 7.0, 8.0], [2, 2], DType.float64);
+      final disposed = NDArray.fromList([1.0], [1], DType.float64);
+      disposed.dispose();
+
+      expect(() => tensordot(disposed, b), throwsStateError);
+      expect(() => tensordot(a, disposed), throwsStateError);
+      expect(() => tensordot(a, b, out: disposed), throwsStateError);
+
+      expect(() => tensordot(a, b, axes: [1, 0] as Object), returnsNormally);
+
+      expect(() => TensordotAxes.count(-1).resolve(2, 2), throwsArgumentError);
+      expect(() => TensordotAxes.count(3).resolve(2, 2), throwsArgumentError);
+      expect(() => const TensordotAxes.explicit([0, 1], [0]).resolve(2, 2), throwsArgumentError);
+
+      final wrongOut = NDArray.zeros([3, 3], DType.float64);
+      expect(() => tensordot(a, b, out: wrongOut), throwsArgumentError);
+
+      expect(() => tensordot(a, b, axes: const TensordotAxes.explicit([5], [0])), throwsRangeError);
+      expect(() => tensordot(a, b, axes: const TensordotAxes.explicit([0], [5])), throwsRangeError);
+
+      final cMismatch = NDArray.fromList([1.0, 2.0, 3.0], [3, 1], DType.float64);
+      expect(() => tensordot(a, cMismatch, axes: const TensordotAxes.explicit([1], [0])), throwsArgumentError);
+
+      a.dispose();
+      b.dispose();
+      cMismatch.dispose();
+    });
+
+    test("tensordot type casting fast path and out buffer", () {
+      NDArray.scope(() {
+        final a32 = NDArray.fromList([1.0, 2.0], [2], DType.float32);
+        final b64 = NDArray.fromList([3.0, 4.0], [2], DType.float64);
+
+        final res = tensordot(a32, b64, axes: 1);
+        expect(res.dtype, equals(DType.float64));
+        expect(res.scalar, equals(11.0));
+
+        final out = NDArray.zeros([], DType.float64);
+        tensordot(a32, b64, axes: 1, out: out);
+        expect(out.scalar, equals(11.0));
+      });
+    });
+
+    test("einsum batch tensordot and fallback pathways", () {
+      NDArray.scope(() {
+        // Batch matrix multiplication with permutation required (bij,bjk -> ikb)
+        final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], [2, 2, 2], DType.float64);
+        final b = NDArray.fromList([1.0, 0.0, 0.0, 1.0, 2.0, 0.0, 0.0, 2.0], [2, 2, 2], DType.float64);
+
+        final resPerm = einsum(EinsumSubscripts.parse("bij,bjk->ikb"), [a, b]);
+        expect(resPerm.shape, equals([2, 2, 2]));
+
+        final outPerm = NDArray.zeros([2, 2, 2], DType.float64);
+        einsum(EinsumSubscripts.parse("bij,bjk->ikb"), [a, b], out: outPerm);
+        expect(outPerm.shape, equals([2, 2, 2]));
+
+        // Non-fastpath 2-operand einsum fallback
+        final resFallback = einsum(EinsumSubscripts.parse("ij,jk->k"), [a[0] as NDArray<Object>, b[0] as NDArray<Object>]);
+        expect(resFallback.shape, equals([2]));
+
+        final outFallback = NDArray.zeros([2], DType.float64);
+        einsum(EinsumSubscripts.parse("ij,jk->k"), [a[0] as NDArray<Object>, b[0] as NDArray<Object>], out: outFallback);
+        expect(outFallback.shape, equals([2]));
+      });
+    });
   });
 }
+
