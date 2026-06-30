@@ -298,11 +298,52 @@ NDArray<R> _correlateValid<
   return result;
 }
 
-/// Computes the N-dimensional cross-correlation of two arrays [in1] and [in2].
+/// Specifies the output array shape mode for cross-correlation and convolution operations.
+enum ConvMode {
+  /// Output is generated at all positions where input arrays overlap by at least one element.
+  ///
+  /// For inputs of shape $N$ and $K$, the output shape along axis $i$ is $N_i + K_i - 1$.
+  full,
+
+  /// Output is generated only at positions where kernel is fully contained inside input without padding.
+  ///
+  /// For inputs of shape $N$ and $K$, the output shape along axis $i$ is $N_i - K_i + 1$.
+  /// It is an error if any input dimension is smaller than kernel dimension.
+  valid,
+
+  /// Output shape matches input array shape $N_i$.
+  ///
+  /// Output is centered with respect to full correlation/convolution.
+  same,
+}
+
+/// Computes the N-dimensional discrete cross-correlation of two arrays [in1] and [in2].
+///
+/// Cross-correlation evaluates the similarity of two signals as a function of the displacement of one relative to the other.
+/// For $d$-dimensional input arrays $y = \text{in1}$ and $w = \text{in2}$, the cross-correlation at index $\mathbf{n}$ is:
+/// $$z[\mathbf{n}] = \sum_{\mathbf{m}} y[\mathbf{n} + \mathbf{m}] \cdot w[\mathbf{m}]$$
+///
+/// Contrast with [convolve], where the kernel array [in2] is flipped across all axes prior to cross-correlation:
+/// $$\text{convolve}(y, w) = \text{correlate}(y, \text{flip}(w))$$
+///
+/// ### Mode Parameter ([ConvMode])
+/// The [mode] parameter controls the output array shape:
+/// - [ConvMode.full]: Returns cross-correlation at all overlap positions. Output shape along axis $i$ is $N_i + K_i - 1$.
+/// - [ConvMode.valid]: Returns output only where [in2] is completely inside [in1]. Output shape along axis $i$ is $N_i - K_i + 1$.
+/// - [ConvMode.same]: Returns output centered to match the shape of [in1] ($N_i$).
+///
+/// It is an error if [in1], [in2], or [out] is disposed, if [in1] and [in2] have different ranks or rank 0,
+/// if [in1] and [in2] have different [DType]s, if [mode] is [ConvMode.valid] and any dimension of [in1] is smaller
+/// than the corresponding dimension of [in2], or if [out] has an incompatible shape or dtype.
+///
+/// ### References & Further Reading
+/// - [NumPy correlate Documentation](https://numpy.org/doc/stable/reference/generated/numpy.correlate.html)
+/// - [SciPy signal.correlate Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.correlate.html)
+/// - [Wikipedia: Cross-correlation](https://en.wikipedia.org/wiki/Cross-correlation)
 NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
   NDArray<T> in1,
   NDArray<K> in2, {
-  String mode = 'valid',
+  ConvMode mode = ConvMode.valid,
   NDArray<R>? out,
 }) {
   if (in1.isDisposed || in2.isDisposed || (out != null && out.isDisposed)) {
@@ -317,7 +358,7 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
 
   final rank = in1.rank;
 
-  if (mode == 'valid') {
+  if (mode == ConvMode.valid) {
     for (var i = 0; i < rank; i++) {
       if (in1.shape[i] < in2.shape[i]) {
         throw ArgumentError(
@@ -333,7 +374,7 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
       throw ArgumentError('Provided out buffer has incompatible shape.');
     }
     return _correlateValid<T, K, R>(in1, in2, out: out);
-  } else if (mode == 'full') {
+  } else if (mode == ConvMode.full) {
     final expectedShape = List<int>.generate(
       rank,
       (i) => in1.shape[i] + in2.shape[i] - 1,
@@ -354,12 +395,12 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
       final res = _correlateValid<T, K, R>(padded1, in2, out: out);
       return res.detachToParentScope();
     });
-  } else if (mode == 'same') {
+  } else if (mode == ConvMode.same) {
     if (out != null && !listEquals(out.shape, in1.shape)) {
       throw ArgumentError('Provided out buffer has incompatible shape.');
     }
     return NDArray.scope(() {
-      final fullCorr = correlate<T, K, R>(in1, in2, mode: 'full');
+      final fullCorr = correlate<T, K, R>(in1, in2, mode: ConvMode.full);
       final selectors = List<Selector>.generate(rank, (i) {
         final start = (in2.shape[i] - 1) ~/ 2;
         return Slice(start: start, stop: start + in1.shape[i]);
@@ -371,16 +412,39 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
       }
       return sliced.detachToParentScope();
     });
-  } else {
-    throw ArgumentError('Invalid mode. Must be full, valid, or same.');
   }
+  throw ArgumentError('Unsupported ConvMode.');
 }
 
-/// Computes the N-dimensional convolution of two arrays [in1] and [in2].
+/// Computes the N-dimensional discrete linear convolution of two multi-dimensional arrays [in1] and [in2].
+///
+/// Linear convolution evaluates the response of a linear time-invariant (LTI) system to an input signal.
+/// For $d$-dimensional input arrays $y = \text{in1}$ and $w = \text{in2}$, convolution at index $\mathbf{n}$ is:
+/// $$z[\mathbf{n}] = \sum_{\mathbf{m}} y[\mathbf{n} - \mathbf{m}] \cdot w[\mathbf{m}]$$
+///
+/// Contrast with [correlate], where the kernel array [in2] is used without spatial reversal:
+/// $$\text{convolve}(y, w) = \text{correlate}(y, \text{flip}(w))$$
+///
+/// ### Mode Parameter ([ConvMode])
+/// The [mode] parameter controls the output array shape:
+/// - [ConvMode.full]: Returns linear convolution at all positions where arrays overlap by at least 1 element.
+///   Output shape along axis $i$ is $N_i + K_i - 1$.
+/// - [ConvMode.valid]: Returns output only at positions where [in2] is completely inside [in1] without zero padding.
+///   Output shape along axis $i$ is $N_i - K_i + 1$.
+/// - [ConvMode.same]: Returns output centered to match the exact shape of [in1] ($N_i$).
+///
+/// It is an error if [in1], [in2], or [out] is disposed, if [in1] and [in2] have different ranks or rank 0,
+/// if [in1] and [in2] have different [DType]s, if [mode] is [ConvMode.valid] and any dimension of [in1] is smaller
+/// than [in2], or if [out] has an incompatible shape or dtype.
+///
+/// ### References & Further Reading
+/// - [NumPy convolve Documentation](https://numpy.org/doc/stable/reference/generated/numpy.convolve.html)
+/// - [SciPy signal.convolve Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.convolve.html)
+/// - [Wikipedia: Convolution](https://en.wikipedia.org/wiki/Convolution)
 NDArray<R> convolve<T extends Object, K extends Object, R extends Object>(
   NDArray<T> in1,
   NDArray<K> in2, {
-  String mode = 'full',
+  ConvMode mode = ConvMode.full,
   NDArray<R>? out,
 }) {
   if (in1.isDisposed || in2.isDisposed || (out != null && out.isDisposed)) {
@@ -401,11 +465,27 @@ NDArray<R> convolve<T extends Object, K extends Object, R extends Object>(
   });
 }
 
-/// Computes 2-dimensional spatial convolution of 2D arrays [in1] and [in2].
+/// Computes 2-dimensional spatial linear convolution of two 2D matrix arrays [in1] and [in2].
+///
+/// For 2D matrix input $Y = \text{in1}$ of shape $(H_1, W_1)$ and kernel $W = \text{in2}$ of shape $(H_2, W_2)$,
+/// 2D spatial convolution at matrix coordinates $(i, j)$ is defined as:
+/// $$Z[i, j] = \sum_{m} \sum_{n} Y[i - m, j - n] \cdot W[m, n]$$
+///
+/// ### Mode Parameter ([ConvMode])
+/// The [mode] parameter specifies output matrix dimensions:
+/// - [ConvMode.full]: Returns output shape $(H_1 + H_2 - 1, W_1 + W_2 - 1)$.
+/// - [ConvMode.valid]: Returns output shape $(H_1 - H_2 + 1, W_1 - W_2 + 1)$.
+/// - [ConvMode.same]: Returns output shape $(H_1, W_1)$, centered relative to full convolution.
+///
+/// It is an error if [in1] or [in2] is not a 2-dimensional array, if [in1], [in2], or [out] is disposed,
+/// if [mode] is [ConvMode.valid] and $H_1 < H_2$ or $W_1 < W_2$, or if [out] shape or dtype is invalid.
+///
+/// ### References & Further Reading
+/// - [SciPy signal.convolve2d Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.convolve2d.html)
 NDArray<R> convolve2d<T extends Object, K extends Object, R extends Object>(
   NDArray<T> in1,
   NDArray<K> in2, {
-  String mode = 'full',
+  ConvMode mode = ConvMode.full,
   NDArray<R>? out,
 }) {
   if (in1.rank != 2 || in2.rank != 2) {
