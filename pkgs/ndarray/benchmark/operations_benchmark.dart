@@ -1,7 +1,12 @@
 import 'dart:math' as math;
 import 'package:ndarray/ndarray.dart';
 
-void benchmark(String name, Function runFn, {int iterations = 200, int warmup = 20}) {
+void benchmark(
+  String name,
+  Function runFn, {
+  int iterations = 200,
+  int warmup = 20,
+}) {
   for (var i = 0; i < warmup; i++) {
     runFn();
   }
@@ -11,13 +16,21 @@ void benchmark(String name, Function runFn, {int iterations = 200, int warmup = 
   }
   sw.stop();
   final usPerOp = sw.elapsedMicroseconds / iterations;
-  print("Dart  ${name.padRight(45)}: ${usPerOp.toStringAsFixed(2).padLeft(8)} us/op");
+  print(
+    "Dart  ${name.padRight(45)}: ${usPerOp.toStringAsFixed(2).padLeft(8)} us/op",
+  );
 }
 
 void main() {
-  print("============================================================================");
-  print("         Dart Scientific NDArray Benchmark Suite                            ");
-  print("============================================================================");
+  print(
+    "============================================================================",
+  );
+  print(
+    "         Dart Scientific NDArray Benchmark Suite                            ",
+  );
+  print(
+    "============================================================================",
+  );
 
   NDArray.scope(() {
     // 1. einsum matrix multiplication
@@ -25,11 +38,16 @@ void main() {
     final bList = List.generate(10000, (i) => i.toDouble());
     final aMat = NDArray<Float64>.fromList(aList, [100, 100], DType.float64);
     final bMat = NDArray<Float64>.fromList(bList, [100, 100], DType.float64);
-    final subsMat = EinsumSubscripts.parse('ij,jk->ik');
-
+    final subs2d = EinsumSubscripts.parse('ij,jk->ik');
     benchmark("einsum matrix mult ('ij,jk->ik') [100x100]", () {
-      einsum(subsMat, [aMat, bMat]);
+      einsum(subs2d, [aMat, bMat]);
     }, iterations: 500);
+
+    final outMat = NDArray<Float64>.create([100, 100], DType.float64);
+    benchmark("einsum matrix mult with out: [100x100]", () {
+      einsum(subs2d, [aMat, bMat], out: outMat);
+    }, iterations: 500);
+
 
     // 2. einsum ellipsis broadcasting
     final a3dList = List.generate(4000, (i) => i.toDouble());
@@ -41,6 +59,12 @@ void main() {
     benchmark("einsum batch matmul ('...ij,...jk->...ik') [10x20x20]", () {
       einsum(subs3d, [a3d, b3d]);
     }, iterations: 500);
+
+    final subs3Op = EinsumSubscripts.parse('ij,jk,kl->il');
+    final cMat = NDArray<Float64>.fromList(bList, [100, 100], DType.float64);
+    benchmark("einsum 3-operand ('ij,jk,kl->il') [100x100]", () {
+      einsum(subs3Op, [aMat, bMat, cMat]);
+    }, iterations: 100);
 
     // 3. tensordot count=2
     final axesCount2 = const TensordotAxes.count(2);
@@ -82,11 +106,16 @@ void main() {
     // 9. nelder_mead 2D Rosenbrock minimization
     final x0Rosen = NDArray<Float64>.fromList([-1.2, 1.0], [2], DType.float64);
     benchmark("nelder_mead minimization [Rosenbrock 2D]", () {
-      nelder_mead((x) {
-        final px = x.getCell([0]).toDouble();
-        final py = x.getCell([1]).toDouble();
-        return 100.0 * math.pow(py - px * px, 2).toDouble() + math.pow(1.0 - px, 2).toDouble();
-      }, x0Rosen, maxiter: 1000);
+      nelder_mead(
+        (x) {
+          final px = x.getCell([0]).toDouble();
+          final py = x.getCell([1]).toDouble();
+          return 100.0 * math.pow(py - px * px, 2).toDouble() +
+              math.pow(1.0 - px, 2).toDouble();
+        },
+        x0Rosen,
+        maxiter: 1000,
+      );
     }, iterations: 100);
 
     // 10. lbfgs 2D quadratic bowl minimization

@@ -26,6 +26,10 @@ a_3d = np.arange(4000, dtype=np.float64).reshape((10, 20, 20))
 b_3d = np.arange(4000, dtype=np.float64).reshape((10, 20, 20))
 benchmark("einsum batch matmul ('...ij,...jk->...ik') [10x20x20]", lambda: np.einsum('...ij,...jk->...ik', a_3d, b_3d), iterations=500)
 
+c_mat = np.arange(10000, dtype=np.float64).reshape((100, 100))
+benchmark("einsum 3-operand ('ij,jk,kl->il') [100x100]", lambda: np.einsum('ij,jk,kl->il', a_mat, b_mat, c_mat), iterations=100)
+
+
 # 3. tensordot count=2 (100x100 matrix dot)
 benchmark("tensordot axes=2 [100x100]", lambda: np.tensordot(a_mat, b_mat, axes=2), iterations=500)
 

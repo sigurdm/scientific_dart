@@ -390,13 +390,19 @@ final class EinsumSubscripts {
     );
   }
 
-  /// 2. Parses a subscript string in Einstein summation notation (e.g. `'ij,jk->ik'`, `'...ij,jk->...ik'`, or `'ii->'`).
+  static final Map<String, EinsumSubscripts> _parseCache = {};
+
+  /// 2. Parses a subscript string in Einstein summation notation (e.g. `'ij,jk->ik'`, `'...ij,...jk->...ik'`, or `'ii->'`).
   ///
   /// Maps character labels (e.g. `'i'`, `'j'`) to numeric index IDs internally.
   ///
   /// It is an error if subscript syntax is invalid.
   factory EinsumSubscripts.parse(String subscripts) {
     final cleanSub = subscripts.replaceAll(' ', '');
+    return _parseCache.putIfAbsent(cleanSub, () => _parseImpl(cleanSub));
+  }
+
+  static EinsumSubscripts _parseImpl(String cleanSub) {
     final parts = cleanSub.split('->');
     if (parts.length > 2) {
       throw ArgumentError(
@@ -721,6 +727,65 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             subA[1] == subB[0] &&
             subA[0] == finalOutSub[0] &&
             subB[1] == finalOutSub[1]) {
+          final opA = operands[0];
+          final opB = operands[1];
+          if (opA.isContiguous && opB.isContiguous) {
+            final m = opA.shape[0];
+            final k = opA.shape[1];
+            final n = opB.shape[1];
+            final targetDType = resolveDType(opA.dtype, opB.dtype);
+            if (targetDType == DType.float64) {
+              final NDArray<R> res;
+              if (out != null) {
+                res = out;
+              } else {
+                res = NDArray<R>.create([m, n], DType.float64 as DType<R>);
+              }
+              cblas_dgemm(
+                101,
+                111,
+                111,
+                m,
+                n,
+                k,
+                1.0,
+                opA.pointer.cast<ffi.Double>(),
+                k,
+                opB.pointer.cast<ffi.Double>(),
+                n,
+                0.0,
+                res.pointer.cast<ffi.Double>(),
+                n,
+              );
+              if (out != null) return out;
+              return _asTyped<R>(res.detachToParentScope());
+            } else if (targetDType == DType.float32) {
+              final NDArray<R> res;
+              if (out != null) {
+                res = out;
+              } else {
+                res = NDArray<R>.create([m, n], DType.float32 as DType<R>);
+              }
+              cblas_sgemm(
+                101,
+                111,
+                111,
+                m,
+                n,
+                k,
+                1.0,
+                opA.pointer.cast<ffi.Float>(),
+                k,
+                opB.pointer.cast<ffi.Float>(),
+                n,
+                0.0,
+                res.pointer.cast<ffi.Float>(),
+                n,
+              );
+              if (out != null) return out;
+              return _asTyped<R>(res.detachToParentScope());
+            }
+          }
           final res = matmul<Object, Object, R>(
             operands[0] as NDArray<Object>,
             operands[1] as NDArray<Object>,
@@ -807,12 +872,31 @@ NDArray<R> einsum<T extends Object, R extends Object>(
               ...contracted,
               ...freeB,
             ].map((id) => subB.indexOf(id)).toList();
-            final aPerm = operands[0].transpose(permA);
-            final bPerm = operands[1].transpose(permB);
 
             final numBatch = batchShape.fold(1, (x, y) => x * y);
-            final a3D = aPerm.reshape([numBatch, m, k]);
-            final b3D = bPerm.reshape([numBatch, k, n]);
+
+            final isIdentityA = listEquals(
+              permA,
+              List.generate(permA.length, (i) => i),
+            );
+            final isIdentityB = listEquals(
+              permB,
+              List.generate(permB.length, (i) => i),
+            );
+
+            final NDArray a3D;
+            if (isIdentityA && operands[0].isContiguous) {
+              a3D = operands[0];
+            } else {
+              a3D = operands[0].transpose(permA).reshape([numBatch, m, k]);
+            }
+
+            final NDArray b3D;
+            if (isIdentityB && operands[1].isContiguous) {
+              b3D = operands[1];
+            } else {
+              b3D = operands[1].transpose(permB).reshape([numBatch, k, n]);
+            }
 
             final targetDType = resolveDType(
               operands[0].dtype,
@@ -988,10 +1072,10 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             subJ,
           ], bestInterOut);
 
-          final interRes = einsum<Object, Object>(
-            specInter,
-            [opI as NDArray<Object>, opJ as NDArray<Object>],
-          ).detachFromScope();
+          final interRes = einsum<Object, Object>(specInter, [
+            opI as NDArray<Object>,
+            opJ as NDArray<Object>,
+          ]).detachFromScope();
 
           currentOps[bestI] = interRes;
           currentSubs[bestI] = bestInterOut;
@@ -1002,15 +1086,14 @@ NDArray<R> einsum<T extends Object, R extends Object>(
       }
 
       if (currentOps.length == 2) {
-        final specFinal = EinsumSubscripts.fromIndices(
-          [currentSubs[0], currentSubs[1]],
-          finalOutSub,
-        );
-        final finalRes = einsum<Object, R>(
-          specFinal,
-          [currentOps[0] as NDArray<Object>, currentOps[1] as NDArray<Object>],
-          out: out,
-        );
+        final specFinal = EinsumSubscripts.fromIndices([
+          currentSubs[0],
+          currentSubs[1],
+        ], finalOutSub);
+        final finalRes = einsum<Object, R>(specFinal, [
+          currentOps[0] as NDArray<Object>,
+          currentOps[1] as NDArray<Object>,
+        ], out: out);
         return _asTyped<R>(finalRes.detachToParentScope());
       }
     }
