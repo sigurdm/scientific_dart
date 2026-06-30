@@ -358,62 +358,62 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
 
   final rank = in1.rank;
 
-  if (mode == ConvMode.valid) {
-    for (var i = 0; i < rank; i++) {
-      if (in1.shape[i] < in2.shape[i]) {
-        throw ArgumentError(
-          'in1 dimensions must be >= in2 dimensions for valid mode.',
-        );
+  switch (mode) {
+    case ConvMode.valid:
+      for (var i = 0; i < rank; i++) {
+        if (in1.shape[i] < in2.shape[i]) {
+          throw ArgumentError(
+            'in1 dimensions must be >= in2 dimensions for valid mode.',
+          );
+        }
       }
-    }
-    final expectedShape = List<int>.generate(
-      rank,
-      (i) => in1.shape[i] - in2.shape[i] + 1,
-    );
-    if (out != null && !listEquals(out.shape, expectedShape)) {
-      throw ArgumentError('Provided out buffer has incompatible shape.');
-    }
-    return _correlateValid<T, K, R>(in1, in2, out: out);
-  } else if (mode == ConvMode.full) {
-    final expectedShape = List<int>.generate(
-      rank,
-      (i) => in1.shape[i] + in2.shape[i] - 1,
-    );
-    if (out != null && !listEquals(out.shape, expectedShape)) {
-      throw ArgumentError('Provided out buffer has incompatible shape.');
-    }
-    return NDArray.scope(() {
-      final padWidths = List<(int, int)>.generate(
+      final expectedShape = List<int>.generate(
         rank,
-        (i) => (in2.shape[i] - 1, in2.shape[i] - 1),
+        (i) => in1.shape[i] - in2.shape[i] + 1,
       );
-      final padded1 = pad<T>(
-        in1,
-        PadWidth.axes(padWidths),
-        mode: PaddingMode.constant,
-      );
-      final res = _correlateValid<T, K, R>(padded1, in2, out: out);
-      return res.detachToParentScope();
-    });
-  } else if (mode == ConvMode.same) {
-    if (out != null && !listEquals(out.shape, in1.shape)) {
-      throw ArgumentError('Provided out buffer has incompatible shape.');
-    }
-    return NDArray.scope(() {
-      final fullCorr = correlate<T, K, R>(in1, in2, mode: ConvMode.full);
-      final selectors = List<Selector>.generate(rank, (i) {
-        final start = (in2.shape[i] - 1) ~/ 2;
-        return Slice(start: start, stop: start + in1.shape[i]);
-      });
-      final sliced = fullCorr.slice(selectors);
-      if (out != null) {
-        sliced.copy(out: out);
-        return out;
+      if (out != null && !listEquals(out.shape, expectedShape)) {
+        throw ArgumentError('Provided out buffer has incompatible shape.');
       }
-      return sliced.detachToParentScope();
-    });
+      return _correlateValid<T, K, R>(in1, in2, out: out);
+    case ConvMode.full:
+      final expectedShape = List<int>.generate(
+        rank,
+        (i) => in1.shape[i] + in2.shape[i] - 1,
+      );
+      if (out != null && !listEquals(out.shape, expectedShape)) {
+        throw ArgumentError('Provided out buffer has incompatible shape.');
+      }
+      return NDArray.scope(() {
+        final padWidths = List<(int, int)>.generate(
+          rank,
+          (i) => (in2.shape[i] - 1, in2.shape[i] - 1),
+        );
+        final padded1 = pad<T>(
+          in1,
+          PadWidth.axes(padWidths),
+          mode: PaddingMode.constant,
+        );
+        final res = _correlateValid<T, K, R>(padded1, in2, out: out);
+        return res.detachToParentScope();
+      });
+    case ConvMode.same:
+      if (out != null && !listEquals(out.shape, in1.shape)) {
+        throw ArgumentError('Provided out buffer has incompatible shape.');
+      }
+      return NDArray.scope(() {
+        final fullCorr = correlate<T, K, R>(in1, in2, mode: ConvMode.full);
+        final selectors = List<Selector>.generate(rank, (i) {
+          final start = (in2.shape[i] - 1) ~/ 2;
+          return Slice(start: start, stop: start + in1.shape[i]);
+        });
+        final sliced = fullCorr.slice(selectors);
+        if (out != null) {
+          sliced.copy(out: out);
+          return out;
+        }
+        return sliced.detachToParentScope();
+      });
   }
-  throw ArgumentError('Unsupported ConvMode.');
 }
 
 /// Computes the N-dimensional discrete linear convolution of two multi-dimensional arrays [in1] and [in2].
