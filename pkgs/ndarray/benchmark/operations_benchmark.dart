@@ -48,7 +48,6 @@ void main() {
       einsum(subs2d, [aMat, bMat], out: outMat);
     }, iterations: 500);
 
-
     // 2. einsum ellipsis broadcasting
     final a3dList = List.generate(4000, (i) => i.toDouble());
     final b3dList = List.generate(4000, (i) => i.toDouble());
@@ -58,6 +57,11 @@ void main() {
 
     benchmark("einsum batch matmul ('...ij,...jk->...ik') [10x20x20]", () {
       einsum(subs3d, [a3d, b3d]);
+    }, iterations: 500);
+
+    final out3d = NDArray<Float64>.create([10, 20, 20], DType.float64);
+    benchmark("einsum batch matmul with out: [10x20x20]", () {
+      einsum(subs3d, [a3d, b3d], out: out3d);
     }, iterations: 500);
 
     final subs3Op = EinsumSubscripts.parse('ij,jk,kl->il');

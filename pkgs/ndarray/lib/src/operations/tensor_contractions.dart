@@ -795,6 +795,102 @@ NDArray<R> einsum<T extends Object, R extends Object>(
           return _asTyped<R>(res.detachToParentScope());
         }
 
+        if (subA.length == 3 &&
+            subB.length == 3 &&
+            finalOutSub.length == 3 &&
+            subA[0] == subB[0] &&
+            subA[0] == finalOutSub[0] &&
+            subA[2] == subB[1] &&
+            subA[1] == finalOutSub[1] &&
+            subB[2] == finalOutSub[2]) {
+          final opA = operands[0];
+          final opB = operands[1];
+          if (opA.isContiguous && opB.isContiguous) {
+            final bCount = opA.shape[0];
+            final m = opA.shape[1];
+            final k = opA.shape[2];
+            final n = opB.shape[2];
+            final targetDType = resolveDType(opA.dtype, opB.dtype);
+            if (targetDType == DType.float64) {
+              final NDArray<R> res;
+              if (out != null) {
+                res = out;
+              } else {
+                res = NDArray<R>.create([
+                  bCount,
+                  m,
+                  n,
+                ], DType.float64 as DType<R>);
+              }
+              final ptrA = opA.pointer.cast<ffi.Double>();
+              final ptrB = opB.pointer.cast<ffi.Double>();
+              final ptrRes = res.pointer.cast<ffi.Double>();
+              final strideA = m * k;
+              final strideB = k * n;
+              final strideRes = m * n;
+
+              for (var bIdx = 0; bIdx < bCount; bIdx++) {
+                cblas_dgemm(
+                  101,
+                  111,
+                  111,
+                  m,
+                  n,
+                  k,
+                  1.0,
+                  ptrA + bIdx * strideA,
+                  k,
+                  ptrB + bIdx * strideB,
+                  n,
+                  0.0,
+                  ptrRes + bIdx * strideRes,
+                  n,
+                );
+              }
+              if (out != null) return out;
+              return _asTyped<R>(res.detachToParentScope());
+            } else if (targetDType == DType.float32) {
+              final NDArray<R> res;
+              if (out != null) {
+                res = out;
+              } else {
+                res = NDArray<R>.create([
+                  bCount,
+                  m,
+                  n,
+                ], DType.float32 as DType<R>);
+              }
+              final ptrA = opA.pointer.cast<ffi.Float>();
+              final ptrB = opB.pointer.cast<ffi.Float>();
+              final ptrRes = res.pointer.cast<ffi.Float>();
+              final strideA = m * k;
+              final strideB = k * n;
+              final strideRes = m * n;
+
+              for (var bIdx = 0; bIdx < bCount; bIdx++) {
+                cblas_sgemm(
+                  101,
+                  111,
+                  111,
+                  m,
+                  n,
+                  k,
+                  1.0,
+                  ptrA + bIdx * strideA,
+                  k,
+                  ptrB + bIdx * strideB,
+                  n,
+                  0.0,
+                  ptrRes + bIdx * strideRes,
+                  n,
+                );
+              }
+              if (out != null) return out;
+              return _asTyped<R>(res.detachToParentScope());
+            }
+          }
+        }
+
         final shared = subA.where((id) => subB.contains(id)).toList();
         final contracted = shared
             .where((id) => !finalOutSub.contains(id))

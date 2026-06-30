@@ -631,6 +631,22 @@ final class NDArray<T> implements ffi.Finalizable {
     return arr;
   }
 
+  /// Factory to create an array filled with a specified scalar [fillValue].
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final a = NDArray<double>.full([2, 2], 0.5, dtype: DType.float64);
+  /// print(a.toList()); // [0.5, 0.5, 0.5, 0.5]
+  /// ```
+  ///
+  /// Refer to the [NumPy full reference](https://numpy.org/doc/stable/reference/generated/numpy.full.html) for additional details.
+  factory NDArray.full(List<int> shape, T fillValue, {DType<T>? dtype}) {
+    final resolvedDType = dtype ?? _resolveDType<T>(fillValue);
+    final arr = NDArray<T>.create(shape, resolvedDType);
+    arr.fill(fillValue);
+    return arr;
+  }
+
   /// Factory to create an array with a range of values.
   ///
   /// **Example:**
