@@ -1,12 +1,35 @@
 // ignore_for_file: non_constant_identifier_names
 import 'dart:ffi' as ffi;
-import 'dart:typed_data';
+import 'package:openblas/openblas.dart';
 import '../ndarray.dart';
+import '../scratch_arena.dart';
+
+/// Method selection for 1D scalar root finding ([root_scalar]).
+enum RootMethod {
+  /// Brent's algorithm combining bisection, secant, and inverse quadratic interpolation.
+  brentq,
+
+  /// Newton-Raphson method (requires derivative [fprime]).
+  newton,
+
+  /// Secant method (derivative-free secant iteration).
+  secant,
+}
+
+/// Method selection for multivariate scalar function minimization ([minimize]).
+enum MinimizeMethod {
+  /// Nelder-Mead simplex algorithm (derivative-free).
+  nelderMead,
+
+  /// Limited-memory Broyden-Fletcher-Goldfarb-Shanno quasi-Newton algorithm.
+  lbfgs,
+}
 
 /// Type alias for 1D root finding results represented as a named record.
 ///
-/// Contains the calculated root location, convergence flag, iteration count,
-/// function evaluation count, and detailed diagnostic message.
+/// Contains the calculated root location [root], convergence flag [converged],
+/// iteration count [iterations], function evaluation count [functionCalls],
+/// and diagnostic message [message].
 typedef RootScalarResult = ({
   double root,
   bool converged,
@@ -17,9 +40,20 @@ typedef RootScalarResult = ({
 
 /// Type alias for multivariate scalar optimization results represented as a named record.
 ///
-/// Contains the optimal array [x], final objective value [fun], success status,
-/// iteration count [nit], function evaluation count [nfev], diagnostic message,
+/// Contains the optimal vector [x], final objective value [fun], success status [success],
+/// iteration count [nit], function evaluation count [nfev], diagnostic message [message],
 /// and optional final gradient vector [jac].
+///
+/// ### Diagnostic Message Format ([message])
+/// The [message] field provides detailed human-readable feedback on algorithm termination states:
+/// - `'Optimization terminated successfully.'`: Standard convergence when parameters meet `xatol`/`fatol` tolerances.
+/// - `'Optimization terminated successfully (gradient norm <= gtol).'`: Gradient norm reached tolerance in L-BFGS.
+/// - `'Exact root found at bracket endpoint a.'` / `'Exact root found at bracket endpoint b.'`: Exact zero found at bracket endpoints.
+/// - `'Converged to root within requested tolerance.'`: Scalar root iteration satisfied absolute/relative tolerances.
+/// - `'Maximum iterations or evaluations reached'`: Iteration limit reached prior to convergence.
+/// - `'Line search failed to find sufficient decrease'`: Line search step length could not satisfy the Armijo condition.
+/// - `'Derivative evaluated to zero.'`: Newton iteration step failed due to zero derivative.
+/// - `'Zero denominator encountered in secant step.'`: Secant step failed due to flat function value.
 typedef OptimizeResult = ({
   NDArray<Float64> x,
   double fun,
@@ -30,20 +64,18 @@ typedef OptimizeResult = ({
   NDArray<Float64>? jac,
 });
 
-/// Finds a root of a scalar function within a bracketed interval 0$ using Brent's method.
+/// Finds a root of a scalar function within a bracketed interval $[a, b]$ using Brent's method.
 ///
 /// Brent's method combines root bracketing, inverse quadratic interpolation, the secant method,
 /// and bisection to achieve superlinear convergence while guaranteeing linear convergence in worst cases.
 ///
-/// **Preconditions:**
-/// - [f] must be continuous on 0$.
-/// - (a)$ and (b)$ must have opposite signs ((a) \cdot f(b) \le 0$).
-/// - [maxiter] must be strictly positive.
-/// - Tolerances [xtol] and [rtol] must be non-negative.
+/// It is an error if $f(a)$ and $f(b)$ have the same sign ($f(a) \cdot f(b) > 0$).
+/// It is an error if [maxiter] is less than or equal to zero.
+/// It is an error if [xtol] or [rtol] is negative.
 ///
-/// **Throws:**
-/// - [ArgumentError] if (a)$ and (b)$ have the same sign.
-/// - [ArgumentError] if [maxiter] <= 0 or tolerances are negative.
+/// ### References & Further Reading
+/// - [NumPy / SciPy brentq Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.brentq.html)
+/// - [Wikipedia: Brent's method](https://en.wikipedia.org/wiki/Brent%27s_method)
 ///
 /// {@example /example/optimize_example.dart}
 RootScalarResult brentq(
@@ -86,7 +118,7 @@ RootScalarResult brentq(
 
   if (fa * fb > 0) {
     throw ArgumentError(
-      'f(a) and f(b) must have different signs. Got f()=, f()=.',
+      'f(a) and f(b) must have different signs. Got f(a)=$fa, f(b)=$fb.',
     );
   }
 
@@ -188,22 +220,22 @@ RootScalarResult brentq(
     converged: false,
     iterations: maxiter,
     functionCalls: nfev,
-    message: 'Failed to converge within maximum iterations ().',
+    message: 'Failed to converge within maximum iterations ($maxiter).',
   );
 }
 
-/// Finds a root of a scalar function using Newton-Raphson or Secant method.
+/// Finds a root of a scalar function using Newton-Raphson or Secant iteration.
 ///
-/// If derivative [fprime] is provided, Newton-Raphson iteration is performed.
-/// Otherwise, the secant method is used starting from [x0].
+/// If derivative function [fprime] is provided, Newton-Raphson iteration is performed:
+/// $$x_{k+1} = x_k - \frac{f(x_k)}{f'(x_k)}$$
+/// If [fprime] is `null`, secant iteration is used starting from initial guess [x0].
 ///
-/// **Preconditions:**
-/// - [f] must be continuous.
-/// - [maxiter] must be strictly positive.
-/// - Tolerance [tol] must be strictly positive.
+/// It is an error if [maxiter] is less than or equal to zero.
+/// It is an error if [tol] is less than or equal to zero.
 ///
-/// **Throws:**
-/// - [ArgumentError] if [maxiter] <= 0 or [tol] <= 0.
+/// ### References & Further Reading
+/// - [SciPy newton Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.newton.html)
+/// - [Wikipedia: Newton's method](https://en.wikipedia.org/wiki/Newton%27s_method)
 ///
 /// {@example /example/optimize_example.dart}
 RootScalarResult newton(
@@ -263,7 +295,7 @@ RootScalarResult newton(
       converged: false,
       iterations: maxiter,
       functionCalls: nfev,
-      message: 'Failed to converge within maximum iterations ().',
+      message: 'Failed to converge within maximum iterations ($maxiter).',
     );
   } else {
     var p1 = x0 != 0.0 ? x0 * 1.0001 : 1e-4;
@@ -302,27 +334,28 @@ RootScalarResult newton(
       converged: false,
       iterations: maxiter,
       functionCalls: nfev,
-      message: 'Failed to converge within maximum iterations ().',
+      message: 'Failed to converge within maximum iterations ($maxiter).',
     );
   }
 }
 
-/// Unified entry point for 1D root finding algorithms.
+/// Unified entry point for 1D scalar root finding algorithms.
 ///
-/// Dispatches to supported methods: , , or .
+/// Dispatches to supported root-finding methods defined in [RootMethod]:
+/// - [RootMethod.brentq]: Requires bracket endpoints [bracketA] and [bracketB].
+/// - [RootMethod.newton]: Requires initial guess [x0] and optional derivative [fprime].
+/// - [RootMethod.secant]: Requires initial guess [x0].
 ///
-/// **Preconditions:**
-/// - [method] must be one of , , or .
-/// - For , [bracketA] and [bracketB] must be provided.
-/// - For  or , [x0] must be provided.
+/// It is an error if [method] is [RootMethod.brentq] and [bracketA] or [bracketB] is omitted.
+/// It is an error if [method] is [RootMethod.newton] or [RootMethod.secant] and [x0] is omitted.
 ///
-/// **Throws:**
-/// - [ArgumentError] if [method] is unknown or required parameters for the chosen method are missing.
+/// ### References & Further Reading
+/// - [SciPy root_scalar Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.root_scalar.html)
 ///
 /// {@example /example/optimize_example.dart}
 RootScalarResult root_scalar(
   double Function(double) f, {
-  String method = 'brentq',
+  RootMethod method = RootMethod.brentq,
   double? bracketA,
   double? bracketB,
   double? x0,
@@ -332,8 +365,8 @@ RootScalarResult root_scalar(
   double tol = 1.48e-8,
   int maxiter = 100,
 }) {
-  switch (method.toLowerCase()) {
-    case 'brentq':
+  switch (method) {
+    case RootMethod.brentq:
       if (bracketA == null || bracketB == null) {
         throw ArgumentError('brentq requires bracketA and bracketB.');
       }
@@ -345,32 +378,31 @@ RootScalarResult root_scalar(
         rtol: rtol,
         maxiter: maxiter,
       );
-    case 'newton':
-    case 'secant':
+    case RootMethod.newton:
+    case RootMethod.secant:
       if (x0 == null) {
-        throw ArgumentError(' requires initial guess x0.');
+        throw ArgumentError('$method requires initial guess x0.');
       }
       return newton(f, x0, fprime: fprime, tol: tol, maxiter: maxiter);
-    default:
-      throw ArgumentError('Unknown root_scalar method: .');
   }
 }
 
-/// Minimizes a multivariate scalar objective function using Nelder-Mead simplex algorithm.
+/// Minimizes a multivariate scalar objective function using the Nelder-Mead simplex algorithm.
 ///
-/// **Preconditions:**
-/// - [x0] must not be disposed.
-/// - [x0] must be a 1D vector.
-/// - Complex dtypes are not supported.
+/// All heavy vector updates and distance calculations are offloaded to C OpenBLAS intrinsics.
 ///
-/// **Throws:**
-/// - [StateError] if [x0] is disposed.
-/// - [ArgumentError] if [x0] rank is not 1 or has complex dtype.
+/// It is an error if [x0] is disposed.
+/// It is an error if [x0] is not a 1-dimensional array.
+/// It is an error if [xatol] or [fatol] is negative.
+///
+/// ### References & Further Reading
+/// - [SciPy minimize(method='Nelder-Mead') Documentation](https://docs.scipy.org/doc/scipy/reference/optimize.minimize-neldermead.html)
+/// - [Wikipedia: Nelder-Mead method](https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method)
 ///
 /// {@example /example/optimize_example.dart}
 OptimizeResult nelder_mead(
   double Function(NDArray<Float64>) fun,
-  NDArray<num> x0, {
+  NDArray<Float64> x0, {
   double xatol = 1e-4,
   double fatol = 1e-4,
   int? maxiter,
@@ -383,20 +415,12 @@ OptimizeResult nelder_mead(
   if (x0.shape.length != 1) {
     throw ArgumentError('x0 must be a 1D vector for nelder_mead.');
   }
-  if (x0.dtype.isComplex) {
-    throw ArgumentError('Complex dtypes are not supported for optimization.');
+  if (xatol < 0 || fatol < 0) {
+    throw ArgumentError('Tolerances xatol and fatol must be non-negative.');
   }
 
   return NDArray.scope(() {
     final n = x0.shape[0];
-    final NDArray<Float64> x0Double = x0 is NDArray<Float64>
-        ? x0
-        : NDArray<Float64>.fromList(
-            List.generate(n, (j) => Float64(x0.getCell([j]).toDouble())),
-            x0.shape,
-            DType.float64,
-          );
-
     final limitIter = maxiter ?? n * 200;
     final limitFev = maxfev ?? n * 200;
 
@@ -405,162 +429,168 @@ OptimizeResult nelder_mead(
     final beta = adaptive ? 0.75 - 1.0 / (2.0 * n) : 0.5;
     final sigma = adaptive ? 1.0 - 1.0 / n : 0.5;
 
-    final sim = List<Float64List>.generate(n + 1, (_) => Float64List(n));
-    final fsim = Float64List(n + 1);
+    final arenaMarker = ScratchArena.marker;
+    try {
+      final doubleBytes = ffi.sizeOf<ffi.Double>();
+      final pSim = List<ffi.Pointer<ffi.Double>>.generate(
+        n + 1,
+        (_) => ScratchArena.allocate<ffi.Double>(n * doubleBytes),
+      );
+      final pFSim = ScratchArena.allocate<ffi.Double>((n + 1) * doubleBytes);
+      final pXBar = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
+      final pXR = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
+      final pXE = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
+      final pXC = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
 
-    final x0List = x0Double.pointer.cast<ffi.Double>().asTypedList(n);
-    for (int j = 0; j < n; j++) {
-      sim[0][j] = x0List[j];
-    }
+      final x0Ptr = x0.pointer.cast<ffi.Double>();
+      cblas_dcopy(n, x0Ptr, 1, pSim[0], 1);
 
-    for (int i = 0; i < n; i++) {
-      for (int j = 0; j < n; j++) {
-        sim[i + 1][j] = sim[0][j];
-      }
-      if (sim[i + 1][i] != 0.0) {
-        sim[i + 1][i] *= 1.05;
-      } else {
-        sim[i + 1][i] = 0.00025;
-      }
-    }
-
-    int nfev = 0;
-    double evalPoint(Float64List p) {
-      final pArr = NDArray<Float64>.fromList(p, [n], DType.float64);
-      final val = fun(pArr);
-      nfev++;
-      return val;
-    }
-
-    for (int i = 0; i <= n; i++) {
-      fsim[i] = evalPoint(sim[i]);
-    }
-
-    int nit = 0;
-    bool success = false;
-    String msg = 'Maximum iterations or evaluations reached';
-
-    while (nit < limitIter && nfev < limitFev) {
-      nit++;
-
-      final idx = List<int>.generate(n + 1, (i) => i);
-      idx.sort((a, b) => fsim[a].compareTo(fsim[b]));
-
-      final newSim = List<Float64List>.generate(n + 1, (i) => sim[idx[i]]);
-      final newFsim = Float64List(n + 1);
-      for (int i = 0; i <= n; i++) {
-        newFsim[i] = fsim[idx[i]];
-        sim[i] = newSim[i];
-        fsim[i] = newFsim[i];
-      }
-
-      double maxDiffF = 0.0;
-      for (int i = 1; i <= n; i++) {
-        final diff = (fsim[i] - fsim[0]).abs();
-        if (diff > maxDiffF) maxDiffF = diff;
-      }
-      double maxDiffX = 0.0;
-      for (int i = 1; i <= n; i++) {
-        for (int j = 0; j < n; j++) {
-          final diff = (sim[i][j] - sim[0][j]).abs();
-          if (diff > maxDiffX) maxDiffX = diff;
-        }
-      }
-
-      if (maxDiffF < fatol && maxDiffX < xatol) {
-        success = true;
-        msg = 'Optimization terminated successfully.';
-        break;
-      }
-
-      final xbar = Float64List(n);
       for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-          xbar[j] += sim[i][j];
-        }
-      }
-      for (int j = 0; j < n; j++) {
-        xbar[j] /= n;
+        cblas_dcopy(n, pSim[0], 1, pSim[i + 1], 1);
+        final val = pSim[i + 1][i];
+        pSim[i + 1][i] = val != 0.0 ? val * 1.05 : 0.00025;
       }
 
-      final xr = Float64List(n);
-      for (int j = 0; j < n; j++) {
-        xr[j] = xbar[j] + alpha * (xbar[j] - sim[n][j]);
-      }
-      final fxr = evalPoint(xr);
-
-      bool doshrink = false;
-      if (fxr < fsim[0]) {
-        final xe = Float64List(n);
-        for (int j = 0; j < n; j++) {
-          xe[j] = xbar[j] + gamma * (xr[j] - xbar[j]);
-        }
-        final fxe = evalPoint(xe);
-        if (fxe < fxr) {
-          sim[n] = xe;
-          fsim[n] = fxe;
-        } else {
-          sim[n] = xr;
-          fsim[n] = fxr;
-        }
-      } else if (fxr < fsim[n - 1]) {
-        sim[n] = xr;
-        fsim[n] = fxr;
-      } else {
-        if (fxr < fsim[n]) {
-          final xc = Float64List(n);
-          for (int j = 0; j < n; j++) {
-            xc[j] = xbar[j] + beta * (xr[j] - xbar[j]);
-          }
-          final fxc = evalPoint(xc);
-          if (fxc <= fxr) {
-            sim[n] = xc;
-            fsim[n] = fxc;
-          } else {
-            doshrink = true;
-          }
-        } else {
-          final xc = Float64List(n);
-          for (int j = 0; j < n; j++) {
-            xc[j] = xbar[j] - beta * (xbar[j] - sim[n][j]);
-          }
-          final fxc = evalPoint(xc);
-          if (fxc < fsim[n]) {
-            sim[n] = xc;
-            fsim[n] = fxc;
-          } else {
-            doshrink = true;
-          }
-        }
+      int nfev = 0;
+      double evalPoint(ffi.Pointer<ffi.Double> ptr) {
+        final pArr = NDArray<Float64>.create([n], DType.float64);
+        cblas_dcopy(n, ptr, 1, pArr.pointer.cast<ffi.Double>(), 1);
+        final val = fun(pArr);
+        nfev++;
+        return val;
       }
 
-      if (doshrink) {
+      for (int i = 0; i <= n; i++) {
+        pFSim[i] = evalPoint(pSim[i]);
+      }
+
+      int nit = 0;
+      bool success = false;
+      String msg = 'Maximum iterations or evaluations reached';
+
+      while (nit < limitIter && nfev < limitFev) {
+        nit++;
+
+        final idx = List<int>.generate(n + 1, (i) => i);
+        idx.sort((a, b) => pFSim[a].compareTo(pFSim[b]));
+
+        final tempSim = List<ffi.Pointer<ffi.Double>>.generate(
+          n + 1,
+          (i) => pSim[idx[i]],
+        );
+        final tempFSim = List<double>.generate(n + 1, (i) => pFSim[idx[i]]);
+        for (int i = 0; i <= n; i++) {
+          pSim[i] = tempSim[i];
+          pFSim[i] = tempFSim[i];
+        }
+
+        double maxDiffF = 0.0;
         for (int i = 1; i <= n; i++) {
-          for (int j = 0; j < n; j++) {
-            sim[i][j] = sim[0][j] + sigma * (sim[i][j] - sim[0][j]);
+          final diff = (pFSim[i] - pFSim[0]).abs();
+          if (diff > maxDiffF) maxDiffF = diff;
+        }
+
+        double maxDiffX = 0.0;
+        for (int i = 1; i <= n; i++) {
+          cblas_dcopy(n, pSim[i], 1, pXR, 1);
+          cblas_daxpy(n, -1.0, pSim[0], 1, pXR, 1);
+          final norm = cblas_dnrm2(n, pXR, 1);
+          if (norm > maxDiffX) maxDiffX = norm;
+        }
+
+        if (maxDiffF < fatol && maxDiffX < xatol) {
+          success = true;
+          msg = 'Optimization terminated successfully.';
+          break;
+        }
+
+        final u8Ptr = pXBar.cast<ffi.Uint8>();
+        for (int b = 0; b < n * doubleBytes; b++) {
+          u8Ptr[b] = 0;
+        }
+        for (int i = 0; i < n; i++) {
+          cblas_daxpy(n, 1.0, pSim[i], 1, pXBar, 1);
+        }
+        cblas_dscal(n, 1.0 / n, pXBar, 1);
+
+        cblas_dcopy(n, pXBar, 1, pXR, 1);
+        cblas_dscal(n, 1.0 + alpha, pXR, 1);
+        cblas_daxpy(n, -alpha, pSim[n], 1, pXR, 1);
+        final fxr = evalPoint(pXR);
+
+        bool doshrink = false;
+        if (fxr < pFSim[0]) {
+          cblas_dcopy(n, pXBar, 1, pXE, 1);
+          cblas_dscal(n, 1.0 - gamma, pXE, 1);
+          cblas_daxpy(n, gamma, pXR, 1, pXE, 1);
+          final fxe = evalPoint(pXE);
+          if (fxe < fxr) {
+            cblas_dcopy(n, pXE, 1, pSim[n], 1);
+            pFSim[n] = fxe;
+          } else {
+            cblas_dcopy(n, pXR, 1, pSim[n], 1);
+            pFSim[n] = fxr;
           }
-          fsim[i] = evalPoint(sim[i]);
+        } else if (fxr < pFSim[n - 1]) {
+          cblas_dcopy(n, pXR, 1, pSim[n], 1);
+          pFSim[n] = fxr;
+        } else {
+          if (fxr < pFSim[n]) {
+            cblas_dcopy(n, pXBar, 1, pXC, 1);
+            cblas_dscal(n, 1.0 - beta, pXC, 1);
+            cblas_daxpy(n, beta, pXR, 1, pXC, 1);
+            final fxc = evalPoint(pXC);
+            if (fxc <= fxr) {
+              cblas_dcopy(n, pXC, 1, pSim[n], 1);
+              pFSim[n] = fxc;
+            } else {
+              doshrink = true;
+            }
+          } else {
+            cblas_dcopy(n, pXBar, 1, pXC, 1);
+            cblas_dscal(n, 1.0 - beta, pXC, 1);
+            cblas_daxpy(n, beta, pSim[n], 1, pXC, 1);
+            final fxc = evalPoint(pXC);
+            if (fxc < pFSim[n]) {
+              cblas_dcopy(n, pXC, 1, pSim[n], 1);
+              pFSim[n] = fxc;
+            } else {
+              doshrink = true;
+            }
+          }
+        }
+
+        if (doshrink) {
+          for (int i = 1; i <= n; i++) {
+            cblas_dscal(n, sigma, pSim[i], 1);
+            cblas_daxpy(n, 1.0 - sigma, pSim[0], 1, pSim[i], 1);
+            pFSim[i] = evalPoint(pSim[i]);
+          }
         }
       }
-    }
 
-    final resArr = NDArray<Float64>.fromList(sim[0], [n], DType.float64);
-    return (
-      x: resArr.detachToParentScope(),
-      fun: fsim[0],
-      success: success,
-      nit: nit,
-      nfev: nfev,
-      message: msg,
-      jac: null,
-    );
+      final resArr = NDArray<Float64>.create([n], DType.float64);
+      cblas_dcopy(n, pSim[0], 1, resArr.pointer.cast<ffi.Double>(), 1);
+
+      return (
+        x: resArr.detachToParentScope(),
+        fun: pFSim[0],
+        success: success,
+        nit: nit,
+        nfev: nfev,
+        message: msg,
+        jac: null,
+      );
+    } finally {
+      ScratchArena.reset(arenaMarker);
+    }
   });
 }
 
 /// CamelCase alias for [nelder_mead].
 OptimizeResult nelderMead(
   double Function(NDArray<Float64>) fun,
-  NDArray<num> x0, {
+  NDArray<Float64> x0, {
   double xatol = 1e-4,
   double fatol = 1e-4,
   int? maxiter,
@@ -576,22 +606,25 @@ OptimizeResult nelderMead(
   adaptive: adaptive,
 );
 
-/// Minimizes a multivariate scalar objective function using L-BFGS quasi-Newton algorithm.
+/// Minimizes a multivariate scalar objective function using the L-BFGS quasi-Newton algorithm.
 ///
-/// **Preconditions:**
-/// - [x0] must not be disposed.
-/// - [x0] must be a 1D vector.
-/// - [m] must be strictly positive.
+/// All heavy matrix-free two-loop recursion step calculations and vector updates are offloaded to C OpenBLAS intrinsics.
 ///
-/// **Throws:**
-/// - [StateError] if [x0] is disposed.
-/// - [ArgumentError] if [x0] rank is not 1 or [m] <= 0.
+/// It is an error if [x0] is disposed.
+/// It is an error if [x0] is not a 1-dimensional array.
+/// It is an error if [m] is less than or equal to zero.
+/// It is an error if [gtol] is less than or equal to zero or [maxiter] is less than or equal to zero.
+///
+/// ### References & Further Reading
+/// - [SciPy minimize(method='L-BFGS-B') Documentation](https://docs.scipy.org/doc/scipy/reference/optimize.minimize-lbfgsb.html)
+/// - [Wikipedia: Limited-memory BFGS](https://en.wikipedia.org/wiki/Limited-memory_BFGS)
 ///
 /// {@example /example/optimize_example.dart}
 OptimizeResult lbfgs(
-  Function fun,
-  NDArray<num> x0, {
-  Function? jac,
+  double Function(NDArray<Float64>) fun,
+  NDArray<Float64> x0, {
+  NDArray<Float64> Function(NDArray<Float64>)? jac,
+  (double, NDArray<Float64>) Function(NDArray<Float64>)? funAndGrad,
   int m = 10,
   double gtol = 1e-5,
   int maxiter = 15000,
@@ -605,230 +638,221 @@ OptimizeResult lbfgs(
   if (m <= 0) {
     throw ArgumentError('m must be strictly positive.');
   }
-  if (x0.dtype.isComplex) {
-    throw ArgumentError('Complex dtypes are not supported for optimization.');
+  if (gtol <= 0 || maxiter <= 0) {
+    throw ArgumentError('gtol and maxiter must be positive.');
   }
 
   return NDArray.scope(() {
     final n = x0.shape[0];
-    final NDArray<Float64> x0Double = x0 is NDArray<Float64>
-        ? x0
-        : NDArray<Float64>.fromList(
-            List.generate(n, (j) => Float64(x0.getCell([j]).toDouble())),
-            x0.shape,
-            DType.float64,
-          );
+    final doubleBytes = ffi.sizeOf<ffi.Double>();
+    final arenaMarker = ScratchArena.marker;
 
-    int nfev = 0;
+    try {
+      final pXCurr = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
+      final pGCurr = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
+      final pQ = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
+      final pR = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
+      final pP = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
+      final pXNext = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
+      final pGNext = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
+      final pS = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
+      final pY = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
+      final pXTemp = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
 
-    (double, Float64List) evalFunAndGrad(Float64List xVec) {
-      final xArr = NDArray<Float64>.fromList(xVec, [n], DType.float64);
-      if (fun is (double, NDArray<Float64>) Function(NDArray<Float64>)) {
-        final (fVal, gArr) = fun(xArr);
-        nfev++;
-        return (fVal, gArr.pointer.cast<ffi.Double>().asTypedList(n));
-      } else if (fun is double Function(NDArray<Float64>)) {
-        final fVal = fun(xArr);
-        nfev++;
-        if (jac is NDArray<Float64> Function(NDArray<Float64>)) {
+      int nfev = 0;
+
+      (double, ffi.Pointer<ffi.Double>) evalFunAndGrad(
+        ffi.Pointer<ffi.Double> pX,
+        ffi.Pointer<ffi.Double> pGOut,
+      ) {
+        final xArr = NDArray<Float64>.create([n], DType.float64);
+        cblas_dcopy(n, pX, 1, xArr.pointer.cast<ffi.Double>(), 1);
+
+        if (funAndGrad != null) {
+          final (fVal, gArr) = funAndGrad(xArr);
+          nfev++;
+          cblas_dcopy(n, gArr.pointer.cast<ffi.Double>(), 1, pGOut, 1);
+          return (fVal, pGOut);
+        } else if (jac != null) {
+          final fVal = fun(xArr);
+          nfev++;
           final gArr = jac(xArr);
-          return (fVal, gArr.pointer.cast<ffi.Double>().asTypedList(n));
+          cblas_dcopy(n, gArr.pointer.cast<ffi.Double>(), 1, pGOut, 1);
+          return (fVal, pGOut);
         } else {
-          final gVec = Float64List(n);
+          final fVal = fun(xArr);
+          nfev++;
           final h = 1e-8;
           for (int i = 0; i < n; i++) {
-            final xTemp = Float64List.fromList(xVec);
-            xTemp[i] += h;
-            final fPlus = fun(
-              NDArray<Float64>.fromList(xTemp, [n], DType.float64),
-            );
-            xTemp[i] = xVec[i] - h;
-            final fMinus = fun(
-              NDArray<Float64>.fromList(xTemp, [n], DType.float64),
-            );
-            gVec[i] = (fPlus - fMinus) / (2.0 * h);
+            cblas_dcopy(n, pX, 1, pXTemp, 1);
+            pXTemp[i] += h;
+            final xPlus = NDArray<Float64>.create([n], DType.float64);
+            cblas_dcopy(n, pXTemp, 1, xPlus.pointer.cast<ffi.Double>(), 1);
+            final fPlus = fun(xPlus);
+
+            pXTemp[i] = pX[i] - h;
+            final xMinus = NDArray<Float64>.create([n], DType.float64);
+            cblas_dcopy(n, pXTemp, 1, xMinus.pointer.cast<ffi.Double>(), 1);
+            final fMinus = fun(xMinus);
+
+            pGOut[i] = (fPlus - fMinus) / (2.0 * h);
             nfev += 2;
           }
-          return (fVal, gVec);
-        }
-      } else {
-        throw ArgumentError(
-          'fun must be double Function(NDArray<Float64>) or (double, NDArray<Float64>) Function(NDArray<Float64>).',
-        );
-      }
-    }
-
-    var xCurr = Float64List.fromList(
-      x0Double.pointer.cast<ffi.Double>().asTypedList(n),
-    );
-    var (fCurr, gCurr) = evalFunAndGrad(xCurr);
-
-    final sHist = <Float64List>[];
-    final yHist = <Float64List>[];
-    final rhoHist = <double>[];
-
-    int nit = 0;
-    bool success = false;
-    String msg = 'Maximum iterations reached';
-
-    for (int iter = 0; iter < maxiter; iter++) {
-      nit++;
-
-      double gNorm = 0.0;
-      for (int i = 0; i < n; i++) {
-        if (gCurr[i].abs() > gNorm) gNorm = gCurr[i].abs();
-      }
-
-      if (gNorm <= gtol) {
-        success = true;
-        msg = 'Optimization terminated successfully (gradient norm <= gtol).';
-        break;
-      }
-
-      final q = Float64List.fromList(gCurr);
-      final k = sHist.length;
-      final alphaArr = Float64List(k);
-
-      for (int i = k - 1; i >= 0; i--) {
-        double sq = 0.0;
-        for (int j = 0; j < n; j++) {
-          sq += sHist[i][j] * q[j];
-        }
-        alphaArr[i] = rhoHist[i] * sq;
-        for (int j = 0; j < n; j++) {
-          q[j] -= alphaArr[i] * yHist[i][j];
+          return (fVal, pGOut);
         }
       }
 
-      double gamma = 1.0;
-      if (k > 0) {
-        double sy = 0.0, yy = 0.0;
-        for (int j = 0; j < n; j++) {
-          sy += sHist[k - 1][j] * yHist[k - 1][j];
-          yy += yHist[k - 1][j] * yHist[k - 1][j];
+      cblas_dcopy(n, x0.pointer.cast<ffi.Double>(), 1, pXCurr, 1);
+      var (fCurr, _) = evalFunAndGrad(pXCurr, pGCurr);
+
+      final pSHist = <ffi.Pointer<ffi.Double>>[];
+      final pYHist = <ffi.Pointer<ffi.Double>>[];
+      final rhoHist = <double>[];
+
+      int nit = 0;
+      bool success = false;
+      String msg = 'Maximum iterations reached';
+
+      for (int iter = 0; iter < maxiter; iter++) {
+        nit++;
+
+        double gNorm = 0.0;
+        for (int i = 0; i < n; i++) {
+          if (pGCurr[i].abs() > gNorm) gNorm = pGCurr[i].abs();
         }
-        if (yy > 0) gamma = sy / yy;
-      }
 
-      final r = Float64List(n);
-      for (int j = 0; j < n; j++) {
-        r[j] = gamma * q[j];
-      }
-
-      for (int i = 0; i < k; i++) {
-        double yr = 0.0;
-        for (int j = 0; j < n; j++) {
-          yr += yHist[i][j] * r[j];
-        }
-        final beta = rhoHist[i] * yr;
-        for (int j = 0; j < n; j++) {
-          r[j] += sHist[i][j] * (alphaArr[i] - beta);
-        }
-      }
-
-      final p = Float64List(n);
-      for (int j = 0; j < n; j++) {
-        p[j] = -r[j];
-      }
-
-      double alphaStep = 1.0;
-      double c1 = 1e-4;
-      double dg = 0.0;
-      for (int j = 0; j < n; j++) {
-        dg += gCurr[j] * p[j];
-      }
-
-      Float64List xNext = Float64List(n);
-      double fNext = fCurr;
-      Float64List gNext = Float64List(n);
-      bool lineSearchSuccess = false;
-
-      for (int ls = 0; ls < 25; ls++) {
-        for (int j = 0; j < n; j++) {
-          xNext[j] = xCurr[j] + alphaStep * p[j];
-        }
-        final (fTry, gTry) = evalFunAndGrad(xNext);
-
-        if (fTry <= fCurr + c1 * alphaStep * dg) {
-          fNext = fTry;
-          gNext = gTry;
-          lineSearchSuccess = true;
+        if (gNorm <= gtol) {
+          success = true;
+          msg = 'Optimization terminated successfully (gradient norm <= gtol).';
           break;
         }
-        alphaStep *= 0.5;
-      }
 
-      if (!lineSearchSuccess) {
-        msg = 'Line search failed to find sufficient decrease';
-        break;
-      }
+        cblas_dcopy(n, pGCurr, 1, pQ, 1);
+        final k = pSHist.length;
+        final alphaArr = List<double>.filled(k, 0.0);
 
-      final s = Float64List(n);
-      final y = Float64List(n);
-      double ys = 0.0;
-      for (int j = 0; j < n; j++) {
-        s[j] = xNext[j] - xCurr[j];
-        y[j] = gNext[j] - gCurr[j];
-        ys += y[j] * s[j];
-      }
-
-      if (ys > 1e-10) {
-        if (sHist.length >= m) {
-          sHist.removeAt(0);
-          yHist.removeAt(0);
-          rhoHist.removeAt(0);
+        for (int i = k - 1; i >= 0; i--) {
+          final sq = cblas_ddot(n, pSHist[i], 1, pQ, 1);
+          alphaArr[i] = rhoHist[i] * sq;
+          cblas_daxpy(n, -alphaArr[i], pYHist[i], 1, pQ, 1);
         }
-        sHist.add(s);
-        yHist.add(y);
-        rhoHist.add(1.0 / ys);
+
+        double gamma = 1.0;
+        if (k > 0) {
+          final sy = cblas_ddot(n, pSHist[k - 1], 1, pYHist[k - 1], 1);
+          final yy = cblas_ddot(n, pYHist[k - 1], 1, pYHist[k - 1], 1);
+          if (yy > 0) gamma = sy / yy;
+        }
+
+        cblas_dcopy(n, pQ, 1, pR, 1);
+        cblas_dscal(n, gamma, pR, 1);
+
+        for (int i = 0; i < k; i++) {
+          final yr = cblas_ddot(n, pYHist[i], 1, pR, 1);
+          final beta = rhoHist[i] * yr;
+          cblas_daxpy(n, alphaArr[i] - beta, pSHist[i], 1, pR, 1);
+        }
+
+        cblas_dcopy(n, pR, 1, pP, 1);
+        cblas_dscal(n, -1.0, pP, 1);
+
+        double alphaStep = 1.0;
+        double c1 = 1e-4;
+        final dg = cblas_ddot(n, pGCurr, 1, pP, 1);
+
+        double fNext = fCurr;
+        bool lineSearchSuccess = false;
+
+        for (int ls = 0; ls < 25; ls++) {
+          cblas_dcopy(n, pXCurr, 1, pXNext, 1);
+          cblas_daxpy(n, alphaStep, pP, 1, pXNext, 1);
+
+          final (fTry, _) = evalFunAndGrad(pXNext, pGNext);
+
+          if (fTry <= fCurr + c1 * alphaStep * dg) {
+            fNext = fTry;
+            lineSearchSuccess = true;
+            break;
+          }
+          alphaStep *= 0.5;
+        }
+
+        if (!lineSearchSuccess) {
+          msg = 'Line search failed to find sufficient decrease';
+          break;
+        }
+
+        cblas_dcopy(n, pXNext, 1, pS, 1);
+        cblas_daxpy(n, -1.0, pXCurr, 1, pS, 1);
+
+        cblas_dcopy(n, pGNext, 1, pY, 1);
+        cblas_daxpy(n, -1.0, pGCurr, 1, pY, 1);
+
+        final ys = cblas_ddot(n, pY, 1, pS, 1);
+
+        if (ys > 1e-10) {
+          if (pSHist.length >= m) {
+            pSHist.removeAt(0);
+            pYHist.removeAt(0);
+            rhoHist.removeAt(0);
+          }
+          final newS = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
+          final newY = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
+          cblas_dcopy(n, pS, 1, newS, 1);
+          cblas_dcopy(n, pY, 1, newY, 1);
+          pSHist.add(newS);
+          pYHist.add(newY);
+          rhoHist.add(1.0 / ys);
+        }
+
+        cblas_dcopy(n, pXNext, 1, pXCurr, 1);
+        cblas_dcopy(n, pGNext, 1, pGCurr, 1);
+        fCurr = fNext;
       }
 
-      xCurr = xNext;
-      fCurr = fNext;
-      gCurr = gNext;
-    }
+      final resX = NDArray<Float64>.create([n], DType.float64);
+      final resJac = NDArray<Float64>.create([n], DType.float64);
+      cblas_dcopy(n, pXCurr, 1, resX.pointer.cast<ffi.Double>(), 1);
+      cblas_dcopy(n, pGCurr, 1, resJac.pointer.cast<ffi.Double>(), 1);
 
-    final resX = NDArray<Float64>.fromList(xCurr, [n], DType.float64);
-    final resJac = NDArray<Float64>.fromList(gCurr, [n], DType.float64);
-    return (
-      x: resX.detachToParentScope(),
-      fun: fCurr,
-      success: success,
-      nit: nit,
-      nfev: nfev,
-      message: msg,
-      jac: resJac.detachToParentScope(),
-    );
+      return (
+        x: resX.detachToParentScope(),
+        fun: fCurr,
+        success: success,
+        nit: nit,
+        nfev: nfev,
+        message: msg,
+        jac: resJac.detachToParentScope(),
+      );
+    } finally {
+      ScratchArena.reset(arenaMarker);
+    }
   });
 }
 
-/// Unified interface for scalar and multivariate minimization.
+/// Unified entry point for multivariate scalar function minimization.
 ///
-/// Dispatches to supported methods: , , or .
+/// Dispatches to optimization algorithms defined in [MinimizeMethod]:
+/// - [MinimizeMethod.nelderMead]: Derivative-free simplex method via [nelder_mead].
+/// - [MinimizeMethod.lbfgs]: Quasi-Newton gradient method via [lbfgs].
 ///
-/// **Preconditions:**
-/// - [method] must be one of , , .
+/// It is an error if [x0] is disposed or if [x0] is not a 1-dimensional vector.
 ///
-/// **Throws:**
-/// - [ArgumentError] if [method] is unknown or parameters mismatch.
+/// ### References & Further Reading
+/// - [SciPy minimize Documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html)
 ///
 /// {@example /example/optimize_example.dart}
 OptimizeResult minimize(
-  Function fun,
-  NDArray<num> x0, {
-  String method = 'nelder-mead',
-  Function? jac,
+  double Function(NDArray<Float64>) fun,
+  NDArray<Float64> x0, {
+  MinimizeMethod method = MinimizeMethod.nelderMead,
+  NDArray<Float64> Function(NDArray<Float64>)? jac,
+  (double, NDArray<Float64>) Function(NDArray<Float64>)? funAndGrad,
   double? tol,
   int? maxiter,
 }) {
-  switch (method.toLowerCase()) {
-    case 'nelder-mead':
-    case 'neldermead':
-      if (fun is! double Function(NDArray<Float64>)) {
-        throw ArgumentError(
-          'For nelder-mead, fun must be double Function(NDArray<Float64>).',
-        );
-      }
+  switch (method) {
+    case MinimizeMethod.nelderMead:
       return nelder_mead(
         fun,
         x0,
@@ -836,17 +860,14 @@ OptimizeResult minimize(
         xatol: tol ?? 1e-4,
         maxiter: maxiter,
       );
-    case 'l-bfgs':
-    case 'l-bfgs-b':
-    case 'lbfgs':
+    case MinimizeMethod.lbfgs:
       return lbfgs(
         fun,
         x0,
         jac: jac,
+        funAndGrad: funAndGrad,
         gtol: tol ?? 1e-5,
         maxiter: maxiter ?? 15000,
       );
-    default:
-      throw ArgumentError('Unknown minimize method: .');
   }
 }

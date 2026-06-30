@@ -45,7 +45,7 @@ void main() {
     test('Unified interface dispatches to brentq', () {
       final res = root_scalar(
         (x) => x * x - 9.0,
-        method: 'brentq',
+        method: RootMethod.brentq,
         bracketA: 0.0,
         bracketB: 5.0,
       );
@@ -56,7 +56,7 @@ void main() {
     test('Unified interface dispatches to newton', () {
       final res = root_scalar(
         (x) => x * x - 9.0,
-        method: 'newton',
+        method: RootMethod.newton,
         x0: 1.0,
         fprime: (x) => 2.0 * x,
       );
@@ -66,31 +66,25 @@ void main() {
 
     test('Unified interface dispatches to secant', () {
       double f(double x) => x * x * x - x - 2.0;
-      final result = root_scalar(f, method: 'secant', x0: 1.5);
+      final result = root_scalar(f, method: RootMethod.secant, x0: 1.5);
       expect(result.converged, isTrue);
       expect(result.root, closeTo(1.5213797068, 1e-6));
-    });
-    test('Throws ArgumentError for unknown method', () {
-      expect(
-        () => root_scalar((x) => x, method: 'unknown'),
-        throwsArgumentError,
-      );
     });
   });
 
   group('Multivariate Minimization: nelder_mead()', () {
     test('Minimizes quadratic 2D bowl f(x,y) = (x-3)^2 + (y+2)^2', () {
       NDArray.scope(() {
-        final x0 = NDArray<double>.fromList([0.0, 0.0], [2], DType.float64);
+        final x0 = NDArray<Float64>.fromList([0.0, 0.0], [2], DType.float64);
         final res = nelder_mead((x) {
-          final px = (x.getCell([0]) as num).toDouble();
-          final py = (x.getCell([1]) as num).toDouble();
+          final px = x.getCell([0]).toDouble();
+          final py = x.getCell([1]).toDouble();
           return (px - 3.0) * (px - 3.0) + (py + 2.0) * (py + 2.0);
         }, x0);
 
         expect(res.success, isTrue);
-        expect((res.x.getCell([0]) as num).toDouble(), closeTo(3.0, 1e-3));
-        expect((res.x.getCell([1]) as num).toDouble(), closeTo(-2.0, 1e-3));
+        expect(res.x.getCell([0]).toDouble(), closeTo(3.0, 1e-3));
+        expect(res.x.getCell([1]).toDouble(), closeTo(-2.0, 1e-3));
         expect(res.fun, closeTo(0.0, 1e-5));
       });
     });
@@ -110,13 +104,14 @@ void main() {
       expect(result.x.getCell([0]).toDouble(), closeTo(1.0, 1e-2));
       expect(result.x.getCell([1]).toDouble(), closeTo(1.0, 1e-2));
     });
+
     test('Minimizes Rosenbrock function', () {
       NDArray.scope(() {
-        final x0 = NDArray<double>.fromList([-1.2, 1.0], [2], DType.float64);
+        final x0 = NDArray<Float64>.fromList([-1.2, 1.0], [2], DType.float64);
         final res = nelder_mead(
           (x) {
-            final px = (x.getCell([0]) as num).toDouble();
-            final py = (x.getCell([1]) as num).toDouble();
+            final px = x.getCell([0]).toDouble();
+            final py = x.getCell([1]).toDouble();
             final term1 = 1.0 - px;
             final term2 = py - px * px;
             return term1 * term1 + 100.0 * term2 * term2;
@@ -126,22 +121,8 @@ void main() {
         );
 
         expect(res.success, isTrue);
-        expect((res.x.getCell([0]) as num).toDouble(), closeTo(1.0, 1e-2));
-        expect((res.x.getCell([1]) as num).toDouble(), closeTo(1.0, 1e-2));
-      });
-    });
-
-    test('Handles int32 input with promotion', () {
-      NDArray.scope(() {
-        final x0 = NDArray<int>.fromList([0, 0], [2], DType.int32);
-        final res = nelder_mead((x) {
-          final px = (x.getCell([0]) as num).toDouble();
-          final py = (x.getCell([1]) as num).toDouble();
-          return (px - 1.0) * (px - 1.0) + (py - 1.0) * (py - 1.0);
-        }, x0);
-
-        expect(res.success, isTrue);
-        expect((res.x.getCell([0]) as num).toDouble(), closeTo(1.0, 1e-3));
+        expect(res.x.getCell([0]).toDouble(), closeTo(1.0, 1e-2));
+        expect(res.x.getCell([1]).toDouble(), closeTo(1.0, 1e-2));
       });
     });
   });
@@ -149,39 +130,43 @@ void main() {
   group('Multivariate Minimization: lbfgs()', () {
     test('Minimizes quadratic bowl with analytical gradient tuple', () {
       NDArray.scope(() {
-        final x0 = NDArray<double>.fromList([0.0, 0.0], [2], DType.float64);
-        final res = lbfgs((x) {
-          final px = (x.getCell([0]) as num).toDouble();
-          final py = (x.getCell([1]) as num).toDouble();
-          final fVal = (px - 3.0) * (px - 3.0) + (py + 2.0) * (py + 2.0);
-          final g = NDArray<Float64>.fromList(
-            [Float64(2.0 * (px - 3.0)), Float64(2.0 * (py + 2.0))],
-            [2],
-            DType.float64,
-          );
-          return (fVal, g);
-        }, x0);
+        final x0 = NDArray<Float64>.fromList([0.0, 0.0], [2], DType.float64);
+        final res = lbfgs(
+          (x) => 0.0,
+          x0,
+          funAndGrad: (x) {
+            final px = x.getCell([0]).toDouble();
+            final py = x.getCell([1]).toDouble();
+            final fVal = (px - 3.0) * (px - 3.0) + (py + 2.0) * (py + 2.0);
+            final g = NDArray<Float64>.fromList(
+              [Float64(2.0 * (px - 3.0)), Float64(2.0 * (py + 2.0))],
+              [2],
+              DType.float64,
+            );
+            return (fVal, g);
+          },
+        );
 
         expect(res.success, isTrue);
-        expect((res.x.getCell([0]) as num).toDouble(), closeTo(3.0, 1e-4));
-        expect((res.x.getCell([1]) as num).toDouble(), closeTo(-2.0, 1e-4));
+        expect(res.x.getCell([0]).toDouble(), closeTo(3.0, 1e-4));
+        expect(res.x.getCell([1]).toDouble(), closeTo(-2.0, 1e-4));
         expect(res.fun, closeTo(0.0, 1e-7));
       });
     });
 
     test('Minimizes quadratic bowl with separate jac function', () {
       NDArray.scope(() {
-        final x0 = NDArray<double>.fromList([0.0, 0.0], [2], DType.float64);
+        final x0 = NDArray<Float64>.fromList([0.0, 0.0], [2], DType.float64);
         final res = lbfgs(
           (x) {
-            final px = (x.getCell([0]) as num).toDouble();
-            final py = (x.getCell([1]) as num).toDouble();
+            final px = x.getCell([0]).toDouble();
+            final py = x.getCell([1]).toDouble();
             return (px - 3.0) * (px - 3.0) + (py + 2.0) * (py + 2.0);
           },
           x0,
           jac: (x) {
-            final px = (x.getCell([0]) as num).toDouble();
-            final py = (x.getCell([1]) as num).toDouble();
+            final px = x.getCell([0]).toDouble();
+            final py = x.getCell([1]).toDouble();
             return NDArray<Float64>.fromList(
               [Float64(2.0 * (px - 3.0)), Float64(2.0 * (py + 2.0))],
               [2],
@@ -191,8 +176,8 @@ void main() {
         );
 
         expect(res.success, isTrue);
-        expect((res.x.getCell([0]) as num).toDouble(), closeTo(3.0, 1e-4));
-        expect((res.x.getCell([1]) as num).toDouble(), closeTo(-2.0, 1e-4));
+        expect(res.x.getCell([0]).toDouble(), closeTo(3.0, 1e-4));
+        expect(res.x.getCell([1]).toDouble(), closeTo(-2.0, 1e-4));
       });
     });
 
@@ -200,17 +185,17 @@ void main() {
       'Minimizes quadratic bowl using numerical finite-differences gradient',
       () {
         NDArray.scope(() {
-          final x0 = NDArray<double>.fromList([5.0, 5.0], [2], DType.float64);
+          final x0 = NDArray<Float64>.fromList([5.0, 5.0], [2], DType.float64);
           final res = lbfgs((x) {
-            final px = (x.getCell([0]) as num).toDouble();
-            final py = (x.getCell([1]) as num).toDouble();
+            final px = x.getCell([0]).toDouble();
+            final py = x.getCell([1]).toDouble();
             return (px - 1.0) * (px - 1.0) + (py - 2.0) * (py - 2.0);
           }, x0);
 
           expect(res.success, isTrue);
           expect(res.fun, closeTo(0.0, 1e-6));
-          expect((res.x.getCell([0]) as num).toDouble(), closeTo(1.0, 1e-4));
-          expect((res.x.getCell([1]) as num).toDouble(), closeTo(2.0, 1e-4));
+          expect(res.x.getCell([0]).toDouble(), closeTo(1.0, 1e-4));
+          expect(res.x.getCell([1]).toDouble(), closeTo(2.0, 1e-4));
         });
       },
     );
@@ -219,37 +204,37 @@ void main() {
   group('Unified Minimization: minimize()', () {
     test('Dispatches to nelder-mead', () {
       NDArray.scope(() {
-        final x0 = NDArray<double>.fromList([0.0, 0.0], [2], DType.float64);
+        final x0 = NDArray<Float64>.fromList([0.0, 0.0], [2], DType.float64);
         final res = minimize(
           (NDArray<Float64> x) {
-            final px = (x.getCell([0]) as num).toDouble();
-            final py = (x.getCell([1]) as num).toDouble();
+            final px = x.getCell([0]).toDouble();
+            final py = x.getCell([1]).toDouble();
             return (px - 2.0) * (px - 2.0) + (py - 4.0) * (py - 4.0);
           },
           x0,
-          method: 'nelder-mead',
+          method: MinimizeMethod.nelderMead,
         );
 
         expect(res.success, isTrue);
-        expect((res.x.getCell([0]) as num).toDouble(), closeTo(2.0, 1e-3));
-        expect((res.x.getCell([1]) as num).toDouble(), closeTo(4.0, 1e-3));
+        expect(res.x.getCell([0]).toDouble(), closeTo(2.0, 1e-3));
+        expect(res.x.getCell([1]).toDouble(), closeTo(4.0, 1e-3));
       });
     });
 
     test('Dispatches to l-bfgs with fun and jac', () {
       NDArray.scope(() {
-        final x0 = NDArray<double>.fromList([0.0, 0.0], [2], DType.float64);
+        final x0 = NDArray<Float64>.fromList([0.0, 0.0], [2], DType.float64);
         final res = minimize(
           (NDArray<Float64> x) {
-            final px = (x.getCell([0]) as num).toDouble();
-            final py = (x.getCell([1]) as num).toDouble();
+            final px = x.getCell([0]).toDouble();
+            final py = x.getCell([1]).toDouble();
             return (px - 2.0) * (px - 2.0) + (py - 4.0) * (py - 4.0);
           },
           x0,
-          method: 'l-bfgs',
+          method: MinimizeMethod.lbfgs,
           jac: (NDArray<Float64> x) {
-            final px = (x.getCell([0]) as num).toDouble();
-            final py = (x.getCell([1]) as num).toDouble();
+            final px = x.getCell([0]).toDouble();
+            final py = x.getCell([1]).toDouble();
             return NDArray<Float64>.fromList(
               [Float64(2.0 * (px - 2.0)), Float64(2.0 * (py - 4.0))],
               [2],
@@ -259,8 +244,8 @@ void main() {
         );
 
         expect(res.success, isTrue);
-        expect((res.x.getCell([0]) as num).toDouble(), closeTo(2.0, 1e-4));
-        expect((res.x.getCell([1]) as num).toDouble(), closeTo(4.0, 1e-4));
+        expect(res.x.getCell([0]).toDouble(), closeTo(2.0, 1e-4));
+        expect(res.x.getCell([1]).toDouble(), closeTo(4.0, 1e-4));
       });
     });
   });
