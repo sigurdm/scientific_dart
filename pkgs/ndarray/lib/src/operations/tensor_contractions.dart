@@ -1280,85 +1280,98 @@ NDArray<R> einsum<T extends Object, R extends Object>(
     if (operands.length > 2) {
       var currentOps = List<NDArray>.from(operands);
       var currentSubs = List<List<int>>.from(operandSubs);
+      final toDispose = <NDArray>[];
 
-      bool progress = true;
-      while (currentOps.length > 2 && progress) {
-        progress = false;
-        int bestI = -1;
-        int bestJ = -1;
-        num minCost = double.infinity;
-        List<int>? bestInterOut;
+      try {
+        bool progress = true;
+        while (currentOps.length > 2 && progress) {
+          progress = false;
+          int bestI = -1;
+          int bestJ = -1;
+          num minCost = double.infinity;
+          List<int>? bestInterOut;
 
-        for (var i = 0; i < currentOps.length; i++) {
-          for (var j = i + 1; j < currentOps.length; j++) {
-            final subI = currentSubs[i];
-            final subJ = currentSubs[j];
-            final union = <int>{...subI, ...subJ};
+          for (var i = 0; i < currentOps.length; i++) {
+            for (var j = i + 1; j < currentOps.length; j++) {
+              final subI = currentSubs[i];
+              final subJ = currentSubs[j];
+              final union = <int>{...subI, ...subJ};
 
-            final neededByOthers = <int>{...finalOutSub};
-            for (var k = 0; k < currentOps.length; k++) {
-              if (k != i && k != j) {
-                neededByOthers.addAll(currentSubs[k]);
+              final neededByOthers = <int>{...finalOutSub};
+              for (var k = 0; k < currentOps.length; k++) {
+                if (k != i && k != j) {
+                  neededByOthers.addAll(currentSubs[k]);
+                }
               }
-            }
 
-            final interOut = union
-                .where((id) => neededByOthers.contains(id))
-                .toList();
-            final contracted = union
-                .where((id) => !neededByOthers.contains(id))
-                .toList();
+              final interOut = union
+                  .where((id) => neededByOthers.contains(id))
+                  .toList();
+              final contracted = union
+                  .where((id) => !neededByOthers.contains(id))
+                  .toList();
 
-            if (contracted.isNotEmpty ||
-                union.length < subI.length + subJ.length) {
-              num cost = 1;
-              for (final id in union) {
-                cost *= labelSizes[id]!;
-              }
-              if (cost < minCost) {
-                minCost = cost;
-                bestI = i;
-                bestJ = j;
-                bestInterOut = interOut;
+              if (contracted.isNotEmpty ||
+                  union.length < subI.length + subJ.length) {
+                num cost = 1;
+                for (final id in union) {
+                  cost *= labelSizes[id]!;
+                }
+                if (cost < minCost) {
+                  minCost = cost;
+                  bestI = i;
+                  bestJ = j;
+                  bestInterOut = interOut;
+                }
               }
             }
           }
+
+          if (bestI != -1 && bestJ != -1 && bestInterOut != null) {
+            final opI = currentOps[bestI];
+            final opJ = currentOps[bestJ];
+            final subI = currentSubs[bestI];
+            final subJ = currentSubs[bestJ];
+
+            final specInter = EinsumSubscripts.fromIndices([
+              subI,
+              subJ,
+            ], bestInterOut);
+
+            final interRes = NDArray.unmanaged(
+              () => einsum<Object, Object>(specInter, [
+                opI as NDArray<Object>,
+                opJ as NDArray<Object>,
+              ]),
+            );
+            toDispose.add(interRes);
+
+            currentOps[bestI] = interRes;
+            currentSubs[bestI] = bestInterOut;
+            currentOps.removeAt(bestJ);
+            currentSubs.removeAt(bestJ);
+            progress = true;
+          }
         }
 
-        if (bestI != -1 && bestJ != -1 && bestInterOut != null) {
-          final opI = currentOps[bestI];
-          final opJ = currentOps[bestJ];
-          final subI = currentSubs[bestI];
-          final subJ = currentSubs[bestJ];
-
-          final specInter = EinsumSubscripts.fromIndices([
-            subI,
-            subJ,
-          ], bestInterOut);
-
-          final interRes = einsum<Object, Object>(specInter, [
-            opI as NDArray<Object>,
-            opJ as NDArray<Object>,
-          ]).detachFromScope();
-
-          currentOps[bestI] = interRes;
-          currentSubs[bestI] = bestInterOut;
-          currentOps.removeAt(bestJ);
-          currentSubs.removeAt(bestJ);
-          progress = true;
+        if (currentOps.length == 2) {
+          final specFinal = EinsumSubscripts.fromIndices([
+            currentSubs[0],
+            currentSubs[1],
+          ], finalOutSub);
+          final finalRes = einsum<Object, R>(specFinal, [
+            currentOps[0] as NDArray<Object>,
+            currentOps[1] as NDArray<Object>,
+          ], out: out);
+          if (out != null) return out;
+          return _asTyped<R>(finalRes.detachToParentScope());
         }
-      }
-
-      if (currentOps.length == 2) {
-        final specFinal = EinsumSubscripts.fromIndices([
-          currentSubs[0],
-          currentSubs[1],
-        ], finalOutSub);
-        final finalRes = einsum<Object, R>(specFinal, [
-          currentOps[0] as NDArray<Object>,
-          currentOps[1] as NDArray<Object>,
-        ], out: out);
-        return _asTyped<R>(finalRes.detachToParentScope());
+      } finally {
+        for (final temp in toDispose) {
+          if (!temp.isDisposed) {
+            temp.dispose();
+          }
+        }
       }
     }
 
