@@ -19,6 +19,11 @@ NDArray<R> _asTyped<R>(NDArray arr) {
 }
 
 NDArray<T> _diagonalView<T>(NDArray<T> arr, int ax1, int ax2) {
+  if (arr.shape[ax1] != arr.shape[ax2]) {
+    throw ArgumentError(
+      "Dimension mismatch for diagonal extraction: axis $ax1 size (${arr.shape[ax1]}) != axis $ax2 size (${arr.shape[ax2]}).",
+    );
+  }
   final minAx = math.min(ax1, ax2);
   final maxAx = math.max(ax1, ax2);
 
@@ -210,6 +215,16 @@ NDArray<R> tensordot<Ta, Tb, R>(
   }
 
   if (normAxesA.isEmpty && normAxesB.isEmpty) {
+    final targetShape = [...a.shape, ...b.shape];
+    final targetDType = resolveDType(a.dtype, b.dtype);
+    if (out != null) {
+      if (!listEquals(out.shape, targetShape) || out.dtype != targetDType) {
+        throw ArgumentError(
+          "Provided out buffer has incompatible shape or dtype (expected shape $targetShape and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
+        );
+      }
+    }
+
     final aShapeExpanded = [...a.shape, ...List.filled(b.shape.length, 1)];
     final bShapeExpanded = [...List.filled(a.shape.length, 1), ...b.shape];
 

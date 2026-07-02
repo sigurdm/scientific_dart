@@ -448,6 +448,12 @@ void main() {
 
     test("throws for multiple arrow delimiters in einsum", () {
       expect(() => EinsumSubscripts.parse("i->j->k"), throwsArgumentError);
+      expect(() => EinsumSubscripts.fromIndices([]), throwsArgumentError);
+      expect(() => EinsumSubscripts.fromLabels([]), throwsArgumentError);
+      expect(
+        () => const TensordotAxes.count(-1).resolve(2, 2),
+        throwsArgumentError,
+      );
     });
 
     test(
@@ -1642,6 +1648,23 @@ void main() {
       final outMatmul = NDArray<Float64>.zeros([2, 2], DType.float64);
       einsum(EinsumSubscripts.parse('ij,jk->ik'), [aF64, bF64], out: outMatmul);
       expect(outMatmul.shape, equals([2, 2]));
+
+      // 7. tensordot error handling tests
+      expect(() => tensordot(aF64, bF64, axes: 10), throwsArgumentError);
+      final a3x5 = NDArray<Float64>.zeros([3, 5], DType.float64);
+      expect(() => tensordot(a3x5, bF64, axes: 1), throwsArgumentError);
+      final invalidOut = NDArray<Float64>.zeros([5, 5], DType.float64);
+      expect(
+        () => tensordot(aF64, bF64, axes: 0, out: invalidOut),
+        throwsArgumentError,
+      );
+
+      // 8. diagonal view dimension mismatch error
+      final aMismatchDiag = NDArray<Float64>.zeros([2, 3, 4], DType.float64);
+      expect(
+        () => einsum(EinsumSubscripts.parse('iij->ij'), [aMismatchDiag]),
+        throwsArgumentError,
+      );
     });
   });
 }
