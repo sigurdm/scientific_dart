@@ -3986,12 +3986,11 @@ NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   }
 
   final targetDType = resolveDType(a.dtype, b.dtype);
-  if (out != null) {
-    if (!listEquals(out.shape, expectedShape) || out.dtype != targetDType) {
-      throw ArgumentError(
-        'Provided out recycler has incompatible shape or dtype (expected shape $expectedShape and dtype $targetDType).',
-      );
-    }
+  if (out != null &&
+      (!listEquals(out.shape, expectedShape) || out.dtype != targetDType)) {
+    throw ArgumentError(
+      'Provided out buffer has incompatible shape or dtype (expected shape $expectedShape and dtype $targetDType).',
+    );
   }
 
   final result =

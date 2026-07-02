@@ -114,10 +114,16 @@ final class TensordotAxes {
   /// 2. Contracts specified axis lists [axesA] of array A with corresponding axes [axesB] of array B.
   ///
   /// It is an error if [axesA] and [axesB] have different lengths.
-  const TensordotAxes.explicit(List<int> axesA, List<int> axesB)
+  TensordotAxes.explicit(List<int> axesA, List<int> axesB)
     : count = null,
       explicitAxesA = axesA,
-      explicitAxesB = axesB;
+      explicitAxesB = axesB {
+    if (axesA.length != axesB.length) {
+      throw ArgumentError(
+        "Axes length mismatch: ${axesA.length} vs ${axesB.length}.",
+      );
+    }
+  }
 
   /// 3. Contracts a single axis pair [axisA] of array A with [axisB] of array B.
   TensordotAxes.pair(int axisA, int axisB)
@@ -141,11 +147,6 @@ final class TensordotAxes {
 
     final axesA = explicitAxesA!;
     final axesB = explicitAxesB!;
-    if (axesA.length != axesB.length) {
-      throw ArgumentError(
-        "Axes length mismatch: ${axesA.length} vs ${axesB.length}.",
-      );
-    }
     return (List<int>.from(axesA), List<int>.from(axesB));
   }
 }
@@ -247,9 +248,8 @@ NDArray<R> tensordot<Ta, Tb, R>(
   }
 
   if (freeA.isEmpty && freeB.isEmpty) {
-    bool isSeq(List<int> axes, int rank) {
-      if (axes.length != rank) return false;
-      for (var i = 0; i < rank; i++) {
+    bool isSeq(List<int> axes) {
+      for (var i = 0; i < axes.length; i++) {
         if (axes[i] != i) return false;
       }
       return true;
@@ -258,51 +258,44 @@ NDArray<R> tensordot<Ta, Tb, R>(
     final aToUse = a.dtype == targetDType ? a : castNDArray(a, targetDType);
     final bToUse = b.dtype == targetDType ? b : castNDArray(b, targetDType);
 
-    if (aToUse.isContiguous &&
-        bToUse.isContiguous &&
-        isSeq(normAxesA, a.shape.length) &&
-        isSeq(normAxesB, b.shape.length)) {
-      final n = aToUse.size;
-      if (targetDType == DType.float64) {
-        final val = cblas_ddot(
-          n,
-          aToUse.pointer.cast<ffi.Double>(),
-          1,
-          bToUse.pointer.cast<ffi.Double>(),
-          1,
-        );
-        if (out != null) {
-          out.pointer.cast<ffi.Double>()[0] = val;
-          if (aToUse != a) aToUse.dispose();
-          if (bToUse != b) bToUse.dispose();
-          return out;
+    try {
+      if (aToUse.isContiguous &&
+          bToUse.isContiguous &&
+          isSeq(normAxesA) &&
+          isSeq(normAxesB)) {
+        final n = aToUse.size;
+        if (targetDType == DType.float64) {
+          final val = cblas_ddot(
+            n,
+            aToUse.pointer.cast<ffi.Double>(),
+            1,
+            bToUse.pointer.cast<ffi.Double>(),
+            1,
+          );
+          if (out != null) {
+            out.pointer.cast<ffi.Double>()[0] = val;
+            return out;
+          }
+          return NDArray.scalar(val, dtype: DType.float64) as NDArray<R>;
+        } else if (targetDType == DType.float32) {
+          final val = cblas_sdot(
+            n,
+            aToUse.pointer.cast<ffi.Float>(),
+            1,
+            bToUse.pointer.cast<ffi.Float>(),
+            1,
+          );
+          if (out != null) {
+            out.pointer.cast<ffi.Float>()[0] = val;
+            return out;
+          }
+          return NDArray.scalar(val, dtype: DType.float32) as NDArray<R>;
         }
-        final res = NDArray.scalar(val, dtype: DType.float64) as NDArray<R>;
-        if (aToUse != a) aToUse.dispose();
-        if (bToUse != b) bToUse.dispose();
-        return res;
-      } else if (targetDType == DType.float32) {
-        final val = cblas_sdot(
-          n,
-          aToUse.pointer.cast<ffi.Float>(),
-          1,
-          bToUse.pointer.cast<ffi.Float>(),
-          1,
-        );
-        if (out != null) {
-          out.pointer.cast<ffi.Float>()[0] = val;
-          if (aToUse != a) aToUse.dispose();
-          if (bToUse != b) bToUse.dispose();
-          return out;
-        }
-        final res = NDArray.scalar(val, dtype: DType.float32) as NDArray<R>;
-        if (aToUse != a) aToUse.dispose();
-        if (bToUse != b) bToUse.dispose();
-        return res;
       }
+    } finally {
+      if (aToUse != a) aToUse.dispose();
+      if (bToUse != b) bToUse.dispose();
     }
-    if (aToUse != a) aToUse.dispose();
-    if (bToUse != b) bToUse.dispose();
   }
 
   return NDArray.scope(() {
@@ -737,7 +730,8 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             if (targetDType == DType.float64) {
               final NDArray<R> res;
               if (out != null) {
-                if (!listEquals(out.shape, [m, n]) || out.dtype != targetDType) {
+                if (!listEquals(out.shape, [m, n]) ||
+                    out.dtype != targetDType) {
                   throw ArgumentError(
                     "Provided out buffer has incompatible shape or dtype (expected shape [$m, $n] and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
                   );
@@ -767,7 +761,8 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             } else if (targetDType == DType.float32) {
               final NDArray<R> res;
               if (out != null) {
-                if (!listEquals(out.shape, [m, n]) || out.dtype != targetDType) {
+                if (!listEquals(out.shape, [m, n]) ||
+                    out.dtype != targetDType) {
                   throw ArgumentError(
                     "Provided out buffer has incompatible shape or dtype (expected shape [$m, $n] and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
                   );
@@ -801,7 +796,6 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             operands[1] as NDArray<Object>,
             out: out,
           );
-          if (out != null) return out;
           return _asTyped<R>(res.detachToParentScope());
         }
 
@@ -1075,6 +1069,9 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             .toList();
         final batch = shared.where((id) => finalOutSub.contains(id)).toList();
 
+        NDArray? fast2OpRes;
+        List<int>? fast2OpResIds;
+
         if (batch.isEmpty) {
           final axesA = contracted.map((id) => subA.indexOf(id)).toList();
           final axesB = contracted.map((id) => subB.indexOf(id)).toList();
@@ -1087,34 +1084,12 @@ NDArray<R> einsum<T extends Object, R extends Object>(
               freeB.every((id) => finalOutSub.contains(id));
 
           if (allFreeInOut) {
-            final tdResIds = [...freeA, ...freeB];
-
-            final tdRes = tensordot<dynamic, dynamic, R>(
+            fast2OpResIds = [...freeA, ...freeB];
+            fast2OpRes = tensordot<dynamic, dynamic, R>(
               operands[0],
               operands[1],
               axes: TensordotAxes.explicit(axesA, axesB),
             );
-
-            var finalRes = tdRes;
-            if (!listEquals(tdResIds, finalOutSub)) {
-              final perm = finalOutSub
-                  .map((id) => tdResIds.indexOf(id))
-                  .toList();
-              finalRes = tdRes.transpose(perm);
-            }
-
-            final targetDType = finalRes.dtype;
-            if (out != null) {
-              if (!listEquals(out.shape, finalRes.shape) ||
-                  out.dtype != targetDType) {
-                throw ArgumentError(
-                  "Provided out buffer has incompatible shape or dtype (expected shape ${finalRes.shape} and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
-                );
-              }
-              finalRes.copy(out: out);
-              return out;
-            }
-            return _asTyped<R>(finalRes.detachToParentScope());
           }
         } else {
           final freeA = subA.where((id) => !shared.contains(id)).toList();
@@ -1263,26 +1238,32 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             ];
             final resBatch = res3D.reshape(targetUnpermutedShape);
 
-            final resIds = [...batch, ...freeA, ...freeB];
-            var finalRes = resBatch;
-            if (!listEquals(resIds, finalOutSub)) {
-              final perm = finalOutSub.map((id) => resIds.indexOf(id)).toList();
-              finalRes = resBatch.transpose(perm);
-            }
-
-            final finalDType = finalRes.dtype;
-            if (out != null) {
-              if (!listEquals(out.shape, finalRes.shape) ||
-                  out.dtype != finalDType) {
-                throw ArgumentError(
-                  "Provided out buffer has incompatible shape or dtype (expected shape ${finalRes.shape} and dtype $finalDType, got shape ${out.shape} and dtype ${out.dtype}).",
-                );
-              }
-              finalRes.copy(out: out);
-              return out;
-            }
-            return _asTyped<R>(finalRes.detachToParentScope());
+            fast2OpResIds = [...batch, ...freeA, ...freeB];
+            fast2OpRes = resBatch;
           }
+        }
+
+        if (fast2OpRes != null && fast2OpResIds != null) {
+          var finalRes = fast2OpRes;
+          if (!listEquals(fast2OpResIds, finalOutSub)) {
+            final perm = finalOutSub
+                .map((id) => fast2OpResIds!.indexOf(id))
+                .toList();
+            finalRes = fast2OpRes.transpose(perm);
+          }
+
+          final targetDType = finalRes.dtype;
+          if (out != null) {
+            if (!listEquals(out.shape, finalRes.shape) ||
+                out.dtype != targetDType) {
+              throw ArgumentError(
+                "Provided out buffer has incompatible shape or dtype (expected shape ${finalRes.shape} and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
+              );
+            }
+            finalRes.copy(out: out);
+            return out;
+          }
+          return _asTyped<R>(finalRes.detachToParentScope());
         }
       }
     }
@@ -1446,14 +1427,6 @@ NDArray<R> einsum<T extends Object, R extends Object>(
       if (!finalOutSub.contains(id)) {
         combined = sum<Object>(combined as NDArray<Object>, axis: j);
       }
-    }
-
-    final remainingIds = allIds
-        .where((id) => finalOutSub.contains(id))
-        .toList();
-    if (!listEquals(remainingIds, finalOutSub)) {
-      final perm = finalOutSub.map((id) => remainingIds.indexOf(id)).toList();
-      combined = combined.transpose(perm);
     }
 
     final targetDType = combined.dtype;

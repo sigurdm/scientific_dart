@@ -8,10 +8,7 @@ import '../scratch_arena.dart';
 import 'helpers.dart';
 
 /// Concatenates a list of arrays along a specified axis.
-NDArray<T> concatenate<T extends Object>(
-  List<NDArray<T>> arrays, {
-  int axis = 0,
-}) {
+NDArray<T> concatenate<T>(List<NDArray<T>> arrays, {int axis = 0}) {
   if (arrays.isEmpty) {
     throw ArgumentError('List of arrays must not be empty');
   }

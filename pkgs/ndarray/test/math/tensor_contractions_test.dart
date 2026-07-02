@@ -112,7 +112,7 @@ void main() {
           final resExplicit = tensordot(
             a,
             b,
-            axes: const TensordotAxes.explicit([1], [0]),
+            axes: TensordotAxes.explicit([1], [0]),
           );
           expect(resExplicit.shape, equals([2, 2]));
           expect(resExplicit.getCell([0, 0]), equals(19.0));
@@ -135,7 +135,7 @@ void main() {
         final res = tensordot(
           a,
           b,
-          axes: const TensordotAxes.explicit([1], [0]),
+          axes: TensordotAxes.explicit([1], [0]),
           out: out,
         );
         expect(identical(res, out), isTrue);
@@ -1012,7 +1012,7 @@ void main() {
       expect(() => TensordotAxes.count(-1).resolve(2, 2), throwsArgumentError);
       expect(() => TensordotAxes.count(3).resolve(2, 2), throwsArgumentError);
       expect(
-        () => const TensordotAxes.explicit([0, 1], [0]).resolve(2, 2),
+        () => TensordotAxes.explicit([0, 1], [0]).resolve(2, 2),
         throwsArgumentError,
       );
 
@@ -1020,11 +1020,11 @@ void main() {
       expect(() => tensordot(a, b, out: wrongOut), throwsArgumentError);
 
       expect(
-        () => tensordot(a, b, axes: const TensordotAxes.explicit([5], [0])),
+        () => tensordot(a, b, axes: TensordotAxes.explicit([5], [0])),
         throwsRangeError,
       );
       expect(
-        () => tensordot(a, b, axes: const TensordotAxes.explicit([0], [5])),
+        () => tensordot(a, b, axes: TensordotAxes.explicit([0], [5])),
         throwsRangeError,
       );
 
@@ -1034,11 +1034,7 @@ void main() {
         DType.float64,
       );
       expect(
-        () => tensordot(
-          a,
-          cMismatch,
-          axes: const TensordotAxes.explicit([1], [0]),
-        ),
+        () => tensordot(a, cMismatch, axes: TensordotAxes.explicit([1], [0])),
         throwsArgumentError,
       );
 
@@ -1590,6 +1586,62 @@ void main() {
           throwsArgumentError,
         );
       });
+      // Additional coverage test cases for edge cases
+      // 1. Multi-operand fallback einsum with output permutation (lines 1445-1446)
+      final a1 = NDArray<Int64>.fromList([1, 2], [2], DType.int64);
+      final b1 = NDArray<Int64>.fromList([3, 4], [2], DType.int64);
+      final c1 = NDArray<Int64>.fromList([5, 6], [2], DType.int64);
+      final resFallbackPerm = einsum(EinsumSubscripts.parse('i,j,k->kji'), [
+        a1,
+        b1,
+        c1,
+      ]);
+      expect(resFallbackPerm.shape, equals([2, 2, 2]));
+
+      // 2. tensordot all axes with type casting non-float (lines 305-306)
+      final aInt32 = NDArray<Int32>.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+      final bInt64 = NDArray<Int64>.fromList([1, 1, 1, 1], [2, 2], DType.int64);
+      final resTdCast = tensordot(aInt32, bInt64, axes: 2);
+      expect(resTdCast.scalar, equals(10));
+
+      // 3. tensordot non-sequential axes isSeq return false (line 254)
+      final aF64 = NDArray<Float64>.fromList(
+        [1.0, 2.0, 3.0, 4.0],
+        [2, 2],
+        DType.float64,
+      );
+      final bF64 = NDArray<Float64>.fromList(
+        [1.0, 1.0, 1.0, 1.0],
+        [2, 2],
+        DType.float64,
+      );
+      final resTdNonSeq = tensordot(aF64, bF64, axes: ([1, 0], [1, 0]));
+      expect(resTdNonSeq.scalar, equals(10.0));
+
+      // 4. empty inStr in EinsumSubscripts (line 418)
+      expect(() => EinsumSubscripts.parse('->'), throwsArgumentError);
+
+      // 5. einsum operand ellipsis without output ellipsis (line 581)
+      final aEll = NDArray<Float64>.fromList(
+        [1.0, 2.0, 3.0, 4.0],
+        [1, 2, 2],
+        DType.float64,
+      );
+      final bEll = NDArray<Float64>.fromList(
+        [1.0, 0.0, 0.0, 1.0],
+        [2, 2],
+        DType.float64,
+      );
+      final resEll = einsum(EinsumSubscripts.parse('...ij,jk->ik'), [
+        aEll,
+        bEll,
+      ]);
+      expect(resEll.shape, equals([2, 2]));
+
+      // 6. matmul einsum fast path with out parameter
+      final outMatmul = NDArray<Float64>.zeros([2, 2], DType.float64);
+      einsum(EinsumSubscripts.parse('ij,jk->ik'), [aF64, bF64], out: outMatmul);
+      expect(outMatmul.shape, equals([2, 2]));
     });
   });
 }
