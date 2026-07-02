@@ -9,3 +9,5 @@ export 'math/bitwise.dart';
 export 'math/windows.dart';
 export 'math/special.dart';
 export 'math/utility.dart';
+export 'math/binary_op.dart';
+export 'math/ufunc_methods.dart';

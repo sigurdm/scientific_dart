@@ -1571,6 +1571,100 @@ void s_correlate_valid_complex64(const cpx_f_t *src, const int *stridesSrc, cons
 void s_correlate_valid_int64(const int64_t *src, const int *stridesSrc, const int64_t *kernel, const int *stridesKernel, int64_t *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank);
 void s_correlate_valid_int32(const int32_t *src, const int *stridesSrc, const int32_t *kernel, const int *stridesKernel, int32_t *res, const int *stridesRes, const int *resShape, const int *kernelShape, int rank);
 
+
+/* Generalized Ufunc Reduction, Cumulative & Scatter AT Kernels */
+double r_prod_double(const double *src, int size);
+float r_prod_float(const float *src, int size);
+int64_t r_sum_int64(const int64_t *src, int size);
+int32_t r_sum_int32(const int32_t *src, int size);
+uint8_t r_sum_uint8(const uint8_t *src, int size);
+int16_t r_sum_int16(const int16_t *src, int size);
+int64_t r_prod_int64(const int64_t *src, int size);
+int32_t r_prod_int32(const int32_t *src, int size);
+uint8_t r_prod_uint8(const uint8_t *src, int size);
+int16_t r_prod_int16(const int16_t *src, int size);
+cpx_t r_prod_complex128(const cpx_t *src, int size);
+cpx_f_t r_prod_complex64(const cpx_f_t *src, int size);
+
+void s_prod_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_prod_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_prod_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_prod_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_prod_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_prod_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_prod_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_prod_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+
+void s_sum_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_sum_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_sum_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_sum_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+
+int64_t r_bitwise_and_int64(const int64_t *src, int size);
+int32_t r_bitwise_and_int32(const int32_t *src, int size);
+uint8_t r_bitwise_and_uint8(const uint8_t *src, int size);
+int16_t r_bitwise_and_int16(const int16_t *src, int size);
+int64_t r_bitwise_or_int64(const int64_t *src, int size);
+int32_t r_bitwise_or_int32(const int32_t *src, int size);
+uint8_t r_bitwise_or_uint8(const uint8_t *src, int size);
+int16_t r_bitwise_or_int16(const int16_t *src, int size);
+int64_t r_bitwise_xor_int64(const int64_t *src, int size);
+int32_t r_bitwise_xor_int32(const int32_t *src, int size);
+uint8_t r_bitwise_xor_uint8(const uint8_t *src, int size);
+int16_t r_bitwise_xor_int16(const int16_t *src, int size);
+
+void s_bitwise_and_red_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_bitwise_and_red_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_bitwise_and_red_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_bitwise_and_red_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+
+void s_bitwise_or_red_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_bitwise_or_red_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_bitwise_or_red_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_bitwise_or_red_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+
+void s_bitwise_xor_red_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_bitwise_xor_red_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_bitwise_xor_red_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_bitwise_xor_red_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+
+uint8_t r_logical_and(const uint8_t *src, int size);
+uint8_t r_logical_or(const uint8_t *src, int size);
+uint8_t r_logical_xor(const uint8_t *src, int size);
+
+void s_logical_and_red(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_logical_or_red(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_logical_xor_red(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+
+void s_cumbitwise_and_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_cumbitwise_and_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_cumbitwise_and_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_cumbitwise_and_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+
+void s_cumbitwise_or_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_cumbitwise_or_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_cumbitwise_or_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_cumbitwise_or_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+
+void s_cumbitwise_xor_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_cumbitwise_xor_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_cumbitwise_xor_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_cumbitwise_xor_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+
+void s_cumlogical_and(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_cumlogical_or(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+void s_cumlogical_xor(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, int axis);
+
+void s_at_double(double *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const double *b, const int *stridesB, const int *shapeB, int rankB, int opCode);
+void s_at_float(float *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const float *b, const int *stridesB, const int *shapeB, int rankB, int opCode);
+void s_at_int64(int64_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const int64_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode);
+void s_at_int32(int32_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const int32_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode);
+void s_at_uint8(uint8_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const uint8_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode);
+void s_at_int16(int16_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const int16_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode);
+void s_at_complex128(cpx_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const cpx_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode);
+void s_at_complex64(cpx_f_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const cpx_f_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode);
+void s_at_boolean(uint8_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const uint8_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode);
+
 #ifdef __cplusplus
 }
 #endif

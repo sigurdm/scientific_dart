@@ -9891,3 +9891,393 @@ void s_correlate_valid_int32(const int32_t *src, const int *stridesSrc, const in
 }
 }
 
+
+
+/* ============================================================================
+ * SECTION 12: GENERALIZED UFUNC REDUCTION, CUMULATIVE & SCATTER AT KERNELS
+ * ============================================================================
+ */
+
+template <typename T, typename Op>
+static inline T r_reduce_op_impl(const T *src, int size, T default_empty, Op op) {
+    if (src == nullptr || size <= 0) return default_empty;
+    T acc = src[0];
+    for (int i = 1; i < size; i++) {
+        acc = op(acc, src[i]);
+    }
+    return acc;
+}
+
+template <typename T, typename Op>
+static inline void s_reduce_op_impl(
+    const T *src, const int *stridesSrc,
+    T *dest, const int *stridesDest,
+    const int *shape, int rank, int axis, Op op
+) {
+    if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
+    int coord[32] = {0};
+    int outer_size = 1;
+    for (int d = 0; d < rank; d++) {
+        if (d != axis) outer_size *= shape[d];
+    }
+    for (int o = 0; o < outer_size; o++) {
+        int offsetSrc = 0;
+        int offsetRes = 0;
+        for (int d = 0; d < rank; d++) {
+            if (d != axis) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                if (rank > 1) {
+                    int targetD = (d < axis) ? d : (d - 1);
+                    offsetRes += coord[d] * stridesDest[targetD];
+                }
+            }
+        }
+        if (shape[axis] > 0) {
+            T acc = src[offsetSrc];
+            int stride_axis = stridesSrc[axis];
+            for (int i = 1; i < shape[axis]; i++) {
+                acc = op(acc, src[offsetSrc + i * stride_axis]);
+            }
+            dest[offsetRes] = acc;
+        }
+        for (int d = rank - 1; d >= 0; d--) {
+            if (d == axis) continue;
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
+    }
+}
+
+// Helpers for operators
+#define OP_AND(x, y) ((x) & (y))
+#define OP_OR(x, y)  ((x) | (y))
+#define OP_XOR(x, y) ((x) ^ (y))
+#define OP_LAND(x, y) ((x) && (y) ? 1 : 0)
+#define OP_LOR(x, y)  ((x) || (y) ? 1 : 0)
+#define OP_LXOR(x, y) (((x) != 0) != ((y) != 0) ? 1 : 0)
+
+// Integer sums
+int64_t r_sum_int64(const int64_t *src, int size) { return r_reduce_op_impl(src, size, (int64_t)0, [](int64_t a, int64_t b) { return a + b; }); }
+int32_t r_sum_int32(const int32_t *src, int size) { return r_reduce_op_impl(src, size, (int32_t)0, [](int32_t a, int32_t b) { return a + b; }); }
+uint8_t r_sum_uint8(const uint8_t *src, int size) { return r_reduce_op_impl(src, size, (uint8_t)0, [](uint8_t a, uint8_t b) { return (uint8_t)(a + b); }); }
+int16_t r_sum_int16(const int16_t *src, int size) { return r_reduce_op_impl(src, size, (int16_t)0, [](int16_t a, int16_t b) { return (int16_t)(a + b); }); }
+
+void s_sum_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int64_t a, int64_t b) { return a + b; });
+}
+void s_sum_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int32_t a, int32_t b) { return a + b; });
+}
+void s_sum_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](uint8_t a, uint8_t b) { return (uint8_t)(a + b); });
+}
+void s_sum_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int16_t a, int16_t b) { return (int16_t)(a + b); });
+}
+
+// Integer and Complex Products
+int64_t r_prod_int64(const int64_t *src, int size) { return r_reduce_op_impl(src, size, (int64_t)1, [](int64_t a, int64_t b) { return a * b; }); }
+int32_t r_prod_int32(const int32_t *src, int size) { return r_reduce_op_impl(src, size, (int32_t)1, [](int32_t a, int32_t b) { return a * b; }); }
+uint8_t r_prod_uint8(const uint8_t *src, int size) { return r_reduce_op_impl(src, size, (uint8_t)1, [](uint8_t a, uint8_t b) { return (uint8_t)(a * b); }); }
+int16_t r_prod_int16(const int16_t *src, int size) { return r_reduce_op_impl(src, size, (int16_t)1, [](int16_t a, int16_t b) { return (int16_t)(a * b); }); }
+cpx_t r_prod_complex128(const cpx_t *src, int size) { return r_reduce_op_impl(src, size, cpx_t{1.0, 0.0}, cpx_mul); }
+cpx_f_t r_prod_complex64(const cpx_f_t *src, int size) { return r_reduce_op_impl(src, size, cpx_f_t{1.0f, 0.0f}, cpx_mul_f); }
+
+void s_prod_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](double a, double b) { return a * b; });
+}
+void s_prod_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](float a, float b) { return a * b; });
+}
+void s_prod_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int64_t a, int64_t b) { return a * b; });
+}
+void s_prod_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int32_t a, int32_t b) { return a * b; });
+}
+void s_prod_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](uint8_t a, uint8_t b) { return (uint8_t)(a * b); });
+}
+void s_prod_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int16_t a, int16_t b) { return (int16_t)(a * b); });
+}
+void s_prod_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, cpx_mul);
+}
+void s_prod_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, cpx_mul_f);
+}
+
+// Bitwise Reductions
+int64_t r_bitwise_and_int64(const int64_t *src, int size) { return r_reduce_op_impl(src, size, (int64_t)-1, [](int64_t a, int64_t b) { return a & b; }); }
+int32_t r_bitwise_and_int32(const int32_t *src, int size) { return r_reduce_op_impl(src, size, (int32_t)-1, [](int32_t a, int32_t b) { return a & b; }); }
+uint8_t r_bitwise_and_uint8(const uint8_t *src, int size) { return r_reduce_op_impl(src, size, (uint8_t)255, [](uint8_t a, uint8_t b) { return (uint8_t)(a & b); }); }
+int16_t r_bitwise_and_int16(const int16_t *src, int size) { return r_reduce_op_impl(src, size, (int16_t)-1, [](int16_t a, int16_t b) { return (int16_t)(a & b); }); }
+
+int64_t r_bitwise_or_int64(const int64_t *src, int size) { return r_reduce_op_impl(src, size, (int64_t)0, [](int64_t a, int64_t b) { return a | b; }); }
+int32_t r_bitwise_or_int32(const int32_t *src, int size) { return r_reduce_op_impl(src, size, (int32_t)0, [](int32_t a, int32_t b) { return a | b; }); }
+uint8_t r_bitwise_or_uint8(const uint8_t *src, int size) { return r_reduce_op_impl(src, size, (uint8_t)0, [](uint8_t a, uint8_t b) { return (uint8_t)(a | b); }); }
+int16_t r_bitwise_or_int16(const int16_t *src, int size) { return r_reduce_op_impl(src, size, (int16_t)0, [](int16_t a, int16_t b) { return (int16_t)(a | b); }); }
+
+int64_t r_bitwise_xor_int64(const int64_t *src, int size) { return r_reduce_op_impl(src, size, (int64_t)0, [](int64_t a, int64_t b) { return a ^ b; }); }
+int32_t r_bitwise_xor_int32(const int32_t *src, int size) { return r_reduce_op_impl(src, size, (int32_t)0, [](int32_t a, int32_t b) { return a ^ b; }); }
+uint8_t r_bitwise_xor_uint8(const uint8_t *src, int size) { return r_reduce_op_impl(src, size, (uint8_t)0, [](uint8_t a, uint8_t b) { return (uint8_t)(a ^ b); }); }
+int16_t r_bitwise_xor_int16(const int16_t *src, int size) { return r_reduce_op_impl(src, size, (int16_t)0, [](int16_t a, int16_t b) { return (int16_t)(a ^ b); }); }
+
+void s_bitwise_and_red_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int64_t a, int64_t b) { return a & b; });
+}
+void s_bitwise_and_red_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int32_t a, int32_t b) { return a & b; });
+}
+void s_bitwise_and_red_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](uint8_t a, uint8_t b) { return (uint8_t)(a & b); });
+}
+void s_bitwise_and_red_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int16_t a, int16_t b) { return (int16_t)(a & b); });
+}
+
+void s_bitwise_or_red_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int64_t a, int64_t b) { return a | b; });
+}
+void s_bitwise_or_red_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int32_t a, int32_t b) { return a | b; });
+}
+void s_bitwise_or_red_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](uint8_t a, uint8_t b) { return (uint8_t)(a | b); });
+}
+void s_bitwise_or_red_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int16_t a, int16_t b) { return (int16_t)(a | b); });
+}
+
+void s_bitwise_xor_red_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int64_t a, int64_t b) { return a ^ b; });
+}
+void s_bitwise_xor_red_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int32_t a, int32_t b) { return a ^ b; });
+}
+void s_bitwise_xor_red_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](uint8_t a, uint8_t b) { return (uint8_t)(a ^ b); });
+}
+void s_bitwise_xor_red_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](int16_t a, int16_t b) { return (int16_t)(a ^ b); });
+}
+
+// Logical Reductions
+uint8_t r_logical_and(const uint8_t *src, int size) { return r_reduce_op_impl(src, size, (uint8_t)1, [](uint8_t a, uint8_t b) { return (uint8_t)(a && b ? 1 : 0); }); }
+uint8_t r_logical_or(const uint8_t *src, int size) { return r_reduce_op_impl(src, size, (uint8_t)0, [](uint8_t a, uint8_t b) { return (uint8_t)(a || b ? 1 : 0); }); }
+uint8_t r_logical_xor(const uint8_t *src, int size) { return r_reduce_op_impl(src, size, (uint8_t)0, [](uint8_t a, uint8_t b) { return (uint8_t)((a != 0) != (b != 0) ? 1 : 0); }); }
+
+void s_logical_and_red(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](uint8_t a, uint8_t b) { return (uint8_t)(a && b ? 1 : 0); });
+}
+void s_logical_or_red(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](uint8_t a, uint8_t b) { return (uint8_t)(a || b ? 1 : 0); });
+}
+void s_logical_xor_red(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis) {
+    s_reduce_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, [](uint8_t a, uint8_t b) { return (uint8_t)((a != 0) != (b != 0) ? 1 : 0); });
+}
+
+// Cumulative Bitwise & Logical Operations
+DEFINE_STRIDED_CUM_OP(s_cumbitwise_and_int64, int64_t, OP_AND)
+DEFINE_STRIDED_CUM_OP(s_cumbitwise_and_int32, int32_t, OP_AND)
+DEFINE_STRIDED_CUM_OP(s_cumbitwise_and_uint8, uint8_t, OP_AND)
+DEFINE_STRIDED_CUM_OP(s_cumbitwise_and_int16, int16_t, OP_AND)
+
+DEFINE_STRIDED_CUM_OP(s_cumbitwise_or_int64, int64_t, OP_OR)
+DEFINE_STRIDED_CUM_OP(s_cumbitwise_or_int32, int32_t, OP_OR)
+DEFINE_STRIDED_CUM_OP(s_cumbitwise_or_uint8, uint8_t, OP_OR)
+DEFINE_STRIDED_CUM_OP(s_cumbitwise_or_int16, int16_t, OP_OR)
+
+DEFINE_STRIDED_CUM_OP(s_cumbitwise_xor_int64, int64_t, OP_XOR)
+DEFINE_STRIDED_CUM_OP(s_cumbitwise_xor_int32, int32_t, OP_XOR)
+DEFINE_STRIDED_CUM_OP(s_cumbitwise_xor_uint8, uint8_t, OP_XOR)
+DEFINE_STRIDED_CUM_OP(s_cumbitwise_xor_int16, int16_t, OP_XOR)
+
+DEFINE_STRIDED_CUM_OP(s_cumlogical_and, uint8_t, OP_LAND)
+DEFINE_STRIDED_CUM_OP(s_cumlogical_or, uint8_t, OP_LOR)
+DEFINE_STRIDED_CUM_OP(s_cumlogical_xor, uint8_t, OP_LXOR)
+
+// Unbuffered Scatter Update Kernels (s_at_*)
+template <typename T>
+static inline T apply_at_op(T a, T b, int opCode) {
+    switch (opCode) {
+        case 0: return a + b;
+        case 1: return a * b;
+        case 2: return a - b;
+        case 3: return a / b;
+        case 4: return (a < b) ? a : b;
+        case 5: return (a > b) ? a : b;
+        default: return a + b;
+    }
+}
+
+template <>
+inline int64_t apply_at_op<int64_t>(int64_t a, int64_t b, int opCode) {
+    switch (opCode) {
+        case 0: return a + b;
+        case 1: return a * b;
+        case 2: return a - b;
+        case 3: return (b != 0) ? (a / b) : 0;
+        case 4: return (a < b) ? a : b;
+        case 5: return (a > b) ? a : b;
+        case 6: return (b != 0) ? (a / b) : 0;
+        case 7: return (b != 0) ? (a % b) : 0;
+        case 9: return a & b;
+        case 10: return a | b;
+        case 11: return a ^ b;
+        default: return a + b;
+    }
+}
+
+template <>
+inline int32_t apply_at_op<int32_t>(int32_t a, int32_t b, int opCode) {
+    switch (opCode) {
+        case 0: return a + b;
+        case 1: return a * b;
+        case 2: return a - b;
+        case 3: return (b != 0) ? (a / b) : 0;
+        case 4: return (a < b) ? a : b;
+        case 5: return (a > b) ? a : b;
+        case 6: return (b != 0) ? (a / b) : 0;
+        case 7: return (b != 0) ? (a % b) : 0;
+        case 9: return a & b;
+        case 10: return a | b;
+        case 11: return a ^ b;
+        default: return a + b;
+    }
+}
+
+template <>
+inline uint8_t apply_at_op<uint8_t>(uint8_t a, uint8_t b, int opCode) {
+    switch (opCode) {
+        case 0: return (uint8_t)(a + b);
+        case 1: return (uint8_t)(a * b);
+        case 2: return (uint8_t)(a - b);
+        case 3: return (b != 0) ? (uint8_t)(a / b) : 0;
+        case 4: return (a < b) ? a : b;
+        case 5: return (a > b) ? a : b;
+        case 6: return (b != 0) ? (uint8_t)(a / b) : 0;
+        case 7: return (b != 0) ? (uint8_t)(a % b) : 0;
+        case 9: return (uint8_t)(a & b);
+        case 10: return (uint8_t)(a | b);
+        case 11: return (uint8_t)(a ^ b);
+        case 12: return (a != 0) && (b != 0) ? 1 : 0;
+        case 13: return (a != 0) || (b != 0) ? 1 : 0;
+        case 14: return ((a != 0) != (b != 0)) ? 1 : 0;
+        default: return (uint8_t)(a + b);
+    }
+}
+
+template <>
+inline int16_t apply_at_op<int16_t>(int16_t a, int16_t b, int opCode) {
+    switch (opCode) {
+        case 0: return (int16_t)(a + b);
+        case 1: return (int16_t)(a * b);
+        case 2: return (int16_t)(a - b);
+        case 3: return (b != 0) ? (int16_t)(a / b) : 0;
+        case 4: return (a < b) ? a : b;
+        case 5: return (a > b) ? a : b;
+        case 6: return (b != 0) ? (int16_t)(a / b) : 0;
+        case 7: return (b != 0) ? (int16_t)(a % b) : 0;
+        case 9: return (int16_t)(a & b);
+        case 10: return (int16_t)(a | b);
+        case 11: return (int16_t)(a ^ b);
+        default: return (int16_t)(a + b);
+    }
+}
+
+template <>
+inline cpx_t apply_at_op<cpx_t>(cpx_t a, cpx_t b, int opCode) {
+    switch (opCode) {
+        case 0: return cpx_add(a, b);
+        case 1: return cpx_mul(a, b);
+        case 2: return cpx_sub(a, b);
+        case 3: return cpx_div(a, b);
+        default: return cpx_add(a, b);
+    }
+}
+
+template <>
+inline cpx_f_t apply_at_op<cpx_f_t>(cpx_f_t a, cpx_f_t b, int opCode) {
+    switch (opCode) {
+        case 0: return cpx_add_f(a, b);
+        case 1: return cpx_mul_f(a, b);
+        case 2: return (cpx_f_t){a.r - b.r, a.i - b.i};
+        default: return cpx_add_f(a, b);
+    }
+}
+
+template <typename T>
+static void s_at_impl(T *a, const int *stridesA, const int *shapeA, int rankA,
+                      const int64_t *indices, int numIndices, int strideIdx,
+                      const T *b, const int *stridesB, const int *shapeB, int rankB,
+                      int opCode) {
+    if (a == nullptr || indices == nullptr || b == nullptr || numIndices <= 0 || rankA <= 0) return;
+    int axis0_len = shapeA[0];
+    int sliceSize = 1;
+    for (int d = 1; d < rankA; d++) sliceSize *= shapeA[d];
+
+    for (int i = 0; i < numIndices; i++) {
+        int64_t idx = indices[i * strideIdx];
+        if (idx < 0) idx += axis0_len;
+        if (idx < 0 || idx >= axis0_len) continue;
+
+        int offsetA = idx * stridesA[0];
+        int offsetB = (rankB == 0) ? 0 : (rankB == rankA ? i * stridesB[0] : 0);
+
+        if (sliceSize == 1) {
+            a[offsetA] = apply_at_op(a[offsetA], b[offsetB], opCode);
+        } else {
+            int coord[32] = {0};
+            for (int s = 0; s < sliceSize; s++) {
+                int offA = offsetA;
+                int offB = offsetB;
+                for (int d = 1; d < rankA; d++) {
+                    offA += coord[d - 1] * stridesA[d];
+                    int dB = (rankB == rankA) ? d : (d - 1);
+                    if (dB >= 0 && dB < rankB) {
+                        offB += coord[d - 1] * stridesB[dB];
+                    }
+                }
+                a[offA] = apply_at_op(a[offA], b[offB], opCode);
+
+                for (int d = rankA - 2; d >= 0; d--) {
+                    coord[d]++;
+                    if (coord[d] < shapeA[d + 1]) break;
+                    coord[d] = 0;
+                }
+            }
+        }
+    }
+}
+
+void s_at_double(double *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const double *b, const int *stridesB, const int *shapeB, int rankB, int opCode) {
+    s_at_impl(a, stridesA, shapeA, rankA, indices, numIndices, strideIdx, b, stridesB, shapeB, rankB, opCode);
+}
+void s_at_float(float *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const float *b, const int *stridesB, const int *shapeB, int rankB, int opCode) {
+    s_at_impl(a, stridesA, shapeA, rankA, indices, numIndices, strideIdx, b, stridesB, shapeB, rankB, opCode);
+}
+void s_at_int64(int64_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const int64_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode) {
+    s_at_impl(a, stridesA, shapeA, rankA, indices, numIndices, strideIdx, b, stridesB, shapeB, rankB, opCode);
+}
+void s_at_int32(int32_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const int32_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode) {
+    s_at_impl(a, stridesA, shapeA, rankA, indices, numIndices, strideIdx, b, stridesB, shapeB, rankB, opCode);
+}
+void s_at_uint8(uint8_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const uint8_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode) {
+    s_at_impl(a, stridesA, shapeA, rankA, indices, numIndices, strideIdx, b, stridesB, shapeB, rankB, opCode);
+}
+void s_at_int16(int16_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const int16_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode) {
+    s_at_impl(a, stridesA, shapeA, rankA, indices, numIndices, strideIdx, b, stridesB, shapeB, rankB, opCode);
+}
+void s_at_complex128(cpx_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const cpx_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode) {
+    s_at_impl(a, stridesA, shapeA, rankA, indices, numIndices, strideIdx, b, stridesB, shapeB, rankB, opCode);
+}
+void s_at_complex64(cpx_f_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const cpx_f_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode) {
+    s_at_impl(a, stridesA, shapeA, rankA, indices, numIndices, strideIdx, b, stridesB, shapeB, rankB, opCode);
+}
+void s_at_boolean(uint8_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const uint8_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode) {
+    s_at_impl(a, stridesA, shapeA, rankA, indices, numIndices, strideIdx, b, stridesB, shapeB, rankB, opCode);
+}
+
