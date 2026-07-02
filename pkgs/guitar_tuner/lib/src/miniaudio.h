@@ -25545,7 +25545,7 @@ typedef HRESULT (WINAPI   * ma_DirectSoundCaptureEnumerateAProc)(ma_DSEnumCallba
 
 static ma_uint32 ma_get_best_sample_rate_within_range(ma_uint32 sampleRateMin, ma_uint32 sampleRateMax)
 {
-    /* Normalize the range in case we were given something stupid. */
+    /* Normalize the range in case we were given something invalid. */
     if (sampleRateMin < (ma_uint32)ma_standard_sample_rate_min) {
         sampleRateMin = (ma_uint32)ma_standard_sample_rate_min;
     }
@@ -28396,13 +28396,13 @@ static const char* g_maCommonDeviceNamesALSA[] = {
     "jack"
 };
 
-/* This array allows us to blacklist specific playback devices. */
-static const char* g_maBlacklistedPlaybackDeviceNamesALSA[] = {
+/* This array allows us to blocklist specific playback devices. */
+static const char* g_maBlocklistedPlaybackDeviceNamesALSA[] = {
     ""
 };
 
-/* This array allows us to blacklist specific capture devices. */
-static const char* g_maBlacklistedCaptureDeviceNamesALSA[] = {
+/* This array allows us to blocklist specific capture devices. */
+static const char* g_maBlocklistedCaptureDeviceNamesALSA[] = {
     ""
 };
 
@@ -28506,11 +28506,11 @@ static ma_bool32 ma_is_common_device_name__alsa(const char* name)
 }
 
 
-static ma_bool32 ma_is_playback_device_blacklisted__alsa(const char* name)
+static ma_bool32 ma_is_playback_device_blocklisted__alsa(const char* name)
 {
     size_t iName;
-    for (iName = 0; iName < ma_countof(g_maBlacklistedPlaybackDeviceNamesALSA); ++iName) {
-        if (ma_strcmp(name, g_maBlacklistedPlaybackDeviceNamesALSA[iName]) == 0) {
+    for (iName = 0; iName < ma_countof(g_maBlocklistedPlaybackDeviceNamesALSA); ++iName) {
+        if (ma_strcmp(name, g_maBlocklistedPlaybackDeviceNamesALSA[iName]) == 0) {
             return MA_TRUE;
         }
     }
@@ -28518,11 +28518,11 @@ static ma_bool32 ma_is_playback_device_blacklisted__alsa(const char* name)
     return MA_FALSE;
 }
 
-static ma_bool32 ma_is_capture_device_blacklisted__alsa(const char* name)
+static ma_bool32 ma_is_capture_device_blocklisted__alsa(const char* name)
 {
     size_t iName;
-    for (iName = 0; iName < ma_countof(g_maBlacklistedCaptureDeviceNamesALSA); ++iName) {
-        if (ma_strcmp(name, g_maBlacklistedCaptureDeviceNamesALSA[iName]) == 0) {
+    for (iName = 0; iName < ma_countof(g_maBlocklistedCaptureDeviceNamesALSA); ++iName) {
+        if (ma_strcmp(name, g_maBlocklistedCaptureDeviceNamesALSA[iName]) == 0) {
             return MA_TRUE;
         }
     }
@@ -28530,12 +28530,12 @@ static ma_bool32 ma_is_capture_device_blacklisted__alsa(const char* name)
     return MA_FALSE;
 }
 
-static ma_bool32 ma_is_device_blacklisted__alsa(ma_device_type deviceType, const char* name)
+static ma_bool32 ma_is_device_blocklisted__alsa(ma_device_type deviceType, const char* name)
 {
     if (deviceType == ma_device_type_playback) {
-        return ma_is_playback_device_blacklisted__alsa(name);
+        return ma_is_playback_device_blocklisted__alsa(name);
     } else {
-        return ma_is_capture_device_blacklisted__alsa(name);
+        return ma_is_capture_device_blocklisted__alsa(name);
     }
 }
 
@@ -28926,7 +28926,7 @@ static ma_result ma_context_enumerate_devices__alsa(ma_context* pContext, ma_enu
             }
         }
 
-        if (!ma_is_device_blacklisted__alsa(deviceType, NAME)) {
+        if (!ma_is_device_blocklisted__alsa(deviceType, NAME)) {
             cbResult = callback(pContext, deviceType, &deviceInfo, pUserData);
         }
 
@@ -28938,11 +28938,11 @@ static ma_result ma_context_enumerate_devices__alsa(ma_context* pContext, ma_enu
         if (cbResult) {
             if (ma_is_common_device_name__alsa(NAME) || IOID == NULL) {
                 if (deviceType == ma_device_type_playback) {
-                    if (!ma_is_capture_device_blacklisted__alsa(NAME)) {
+                    if (!ma_is_capture_device_blocklisted__alsa(NAME)) {
                         cbResult = callback(pContext, ma_device_type_capture, &deviceInfo, pUserData);
                     }
                 } else {
-                    if (!ma_is_playback_device_blacklisted__alsa(NAME)) {
+                    if (!ma_is_playback_device_blocklisted__alsa(NAME)) {
                         cbResult = callback(pContext, ma_device_type_playback, &deviceInfo, pUserData);
                     }
                 }
@@ -29030,7 +29030,7 @@ static void ma_context_iterate_rates_and_add_native_data_format__alsa(ma_context
     ((ma_snd_pcm_hw_params_get_rate_min_proc)pContext->alsa.snd_pcm_hw_params_get_rate_min)(pHWParams, &minSampleRate, &sampleRateDir);
     ((ma_snd_pcm_hw_params_get_rate_max_proc)pContext->alsa.snd_pcm_hw_params_get_rate_max)(pHWParams, &maxSampleRate, &sampleRateDir);
 
-    /* Make sure our sample rates are clamped to sane values. Stupid devices like "pulse" will reports rates like "1" which is ridiculous. */
+    /* Make sure our sample rates are clamped to sane values. Unusual devices like "pulse" will reports rates like "1" which is ridiculous. */
     minSampleRate = ma_clamp(minSampleRate, (unsigned int)ma_standard_sample_rate_min, (unsigned int)ma_standard_sample_rate_max);
     maxSampleRate = ma_clamp(maxSampleRate, (unsigned int)ma_standard_sample_rate_min, (unsigned int)ma_standard_sample_rate_max);
 
@@ -29936,7 +29936,7 @@ static ma_result ma_device_write__alsa(ma_device* pDevice, const void* pFrames, 
                 In my testing I have had a situation where writei() does not automatically restart the device even though I've set it
                 up as such in the software parameters. What will happen is writei() will block indefinitely even though the number of
                 frames is well beyond the auto-start threshold. To work around this I've needed to add an explicit start here. Not sure
-                if this is me just being stupid and not recovering the device properly, but this definitely feels like something isn't
+                if this is me just making a mistake and not recovering the device properly, but this definitely feels like something isn't
                 quite right here.
                 */
                 resultALSA = ((ma_snd_pcm_start_proc)pDevice->pContext->alsa.snd_pcm_start)((ma_snd_pcm_t*)pDevice->alsa.pPCMPlayback);
