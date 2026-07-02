@@ -1,3 +1,4 @@
+import 'dart:ffi' as ffi;
 import 'package:ndarray/ndarray.dart';
 import 'package:ndarray/src/ndarray_bindings.dart';
 
@@ -9,14 +10,14 @@ void main() {
 
     // Warm up
     for (var i = 0; i < 100; i++) {
-      v_sin_double(x.pointer.cast(), out.pointer.cast(), size);
+      v_sin_double(x.pointer.cast(), out.pointer.cast(), size, ffi.nullptr);
       sin(x, out: out);
     }
 
     // 1. Benchmark raw FFI call only
     final swFFI = Stopwatch()..start();
     for (var i = 0; i < 1000; i++) {
-      v_sin_double(x.pointer.cast(), out.pointer.cast(), size);
+      v_sin_double(x.pointer.cast(), out.pointer.cast(), size, ffi.nullptr);
     }
     swFFI.stop();
     print('Raw FFI v_sin_double (1000 runs): ${swFFI.elapsedMilliseconds} ms');

@@ -496,24 +496,26 @@ static void strided_diff_op_impl(
     }
 }
 
-template <typename T, typename Op>
-static void strided_unary_op_impl(
+template <bool HAS_MASK, typename T, typename Op>
+static inline void strided_unary_op_loop(
     const T *src, const int *stridesSrc,
     T *res, const int *stridesRes,
-    const int *shape, int rank, Op op
+    const int *shape, int rank,
+    const uint8_t *mask, Op op
 ) {
-    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
     for (int i = 0; i < total_size; i++) {
-        int offsetSrc = 0;
-        int offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            offsetSrc += coord[d] * stridesSrc[d];
-            offsetRes += coord[d] * stridesRes[d];
+        if (!HAS_MASK || mask[i]) {
+            int offsetSrc = 0;
+            int offsetRes = 0;
+            for (int d = 0; d < rank; d++) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                offsetRes += coord[d] * stridesRes[d];
+            }
+            res[offsetRes] = op(src[offsetSrc]);
         }
-        res[offsetRes] = op(src[offsetSrc]);
         for (int d = rank - 1; d >= 0; d--) {
             coord[d]++;
             if (coord[d] < shape[d]) break;
@@ -523,10 +525,68 @@ static void strided_unary_op_impl(
 }
 
 template <typename T, typename Op>
-static void v_unary_impl(const T * RESTRICT src, T * RESTRICT res, int size, Op op) {
-    if (src == nullptr || res == nullptr || size <= 0) return;
+static void strided_unary_op_impl(
+    const T *src, const int *stridesSrc,
+    T *res, const int *stridesRes,
+    const int *shape, int rank,
+    const uint8_t *mask, Op op
+) {
+    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
+    if (mask != nullptr) {
+        strided_unary_op_loop<true>(src, stridesSrc, res, stridesRes, shape, rank, mask, op);
+    } else {
+        strided_unary_op_loop<false>(src, stridesSrc, res, stridesRes, shape, rank, nullptr, op);
+    }
+}
+
+template <bool HAS_MASK, typename T, typename Op>
+static inline void v_unary_loop(const T * RESTRICT src, T * RESTRICT res, int size, const uint8_t * RESTRICT mask, Op op) {
     for (int i = 0; i < size; i++) {
-        res[i] = op(src[i]);
+        if (HAS_MASK) {
+            if (mask[i]) {
+                res[i] = op(src[i]);
+            }
+        } else {
+            res[i] = op(src[i]);
+        }
+    }
+}
+
+template <typename T, typename Op>
+static void v_unary_impl(const T * RESTRICT src, T * RESTRICT res, int size, const uint8_t * RESTRICT mask, Op op) {
+    if (src == nullptr || res == nullptr || size <= 0) return;
+    if (mask != nullptr) {
+        v_unary_loop<true>(src, res, size, mask, op);
+    } else {
+        v_unary_loop<false>(src, res, size, nullptr, op);
+    }
+}
+
+template <bool HAS_MASK, typename T_IN, typename T_OUT, typename Op>
+static inline void strided_unary_cast_loop(
+    const T_IN *src, const int *stridesSrc,
+    T_OUT *res, const int *stridesRes,
+    const int *shape, int rank,
+    const uint8_t *mask, Op op
+) {
+    int coord[8] = {0};
+    int total_size = 1;
+    for (int d = 0; d < rank; d++) total_size *= shape[d];
+    for (int i = 0; i < total_size; i++) {
+        if (!HAS_MASK || mask[i]) {
+            int offsetSrc = 0;
+            int offsetRes = 0;
+            for (int d = 0; d < rank; d++) {
+                offsetSrc += coord[d] * stridesSrc[d];
+                offsetRes += coord[d] * stridesRes[d];
+            }
+            res[offsetRes] = op(src[offsetSrc]);
+        }
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) break;
+            coord[d] = 0;
+        }
     }
 }
 
@@ -534,33 +594,37 @@ template <typename T_IN, typename T_OUT, typename Op>
 static void strided_unary_cast_impl(
     const T_IN *src, const int *stridesSrc,
     T_OUT *res, const int *stridesRes,
-    const int *shape, int rank, Op op
+    const int *shape, int rank,
+    const uint8_t *mask, Op op
 ) {
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
-    int coord[8] = {0};
-    int total_size = 1;
-    for (int d = 0; d < rank; d++) total_size *= shape[d];
-    for (int i = 0; i < total_size; i++) {
-        int offsetSrc = 0;
-        int offsetRes = 0;
-        for (int d = 0; d < rank; d++) {
-            offsetSrc += coord[d] * stridesSrc[d];
-            offsetRes += coord[d] * stridesRes[d];
-        }
-        res[offsetRes] = op(src[offsetSrc]);
-        for (int d = rank - 1; d >= 0; d--) {
-            coord[d]++;
-            if (coord[d] < shape[d]) break;
-            coord[d] = 0;
+    if (mask != nullptr) {
+        strided_unary_cast_loop<true>(src, stridesSrc, res, stridesRes, shape, rank, mask, op);
+    } else {
+        strided_unary_cast_loop<false>(src, stridesSrc, res, stridesRes, shape, rank, nullptr, op);
+    }
+}
+
+template <bool HAS_MASK, typename T_IN, typename T_OUT, typename Op>
+static inline void v_unary_cast_loop(const T_IN * RESTRICT src, T_OUT * RESTRICT res, int size, const uint8_t * RESTRICT mask, Op op) {
+    for (int i = 0; i < size; i++) {
+        if (HAS_MASK) {
+            if (mask[i]) {
+                res[i] = op(src[i]);
+            }
+        } else {
+            res[i] = op(src[i]);
         }
     }
 }
 
 template <typename T_IN, typename T_OUT, typename Op>
-static void v_unary_cast_impl(const T_IN * RESTRICT src, T_OUT * RESTRICT res, int size, Op op) {
+static void v_unary_cast_impl(const T_IN * RESTRICT src, T_OUT * RESTRICT res, int size, const uint8_t * RESTRICT mask, Op op) {
     if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = op(src[i]);
+    if (mask != nullptr) {
+        v_unary_cast_loop<true>(src, res, size, mask, op);
+    } else {
+        v_unary_cast_loop<false>(src, res, size, nullptr, op);
     }
 }
 
@@ -593,20 +657,22 @@ static void v_secure_randint_impl(T *res, int size, BoundsType low, BoundsType h
     }
 }
 
-template <typename T1, typename T2, typename TRes, typename Op>
-static void strided_binary_op_impl(
+template <bool HAS_MASK, typename T1, typename T2, typename TRes, typename Op>
+static inline void strided_binary_op_loop(
     const T1 *a, const int *stridesA,
     const T2 *b, const int *stridesB,
     TRes *res, const int *stridesRes,
-    const int *shape, int rank, Op op
+    const int *shape, int rank,
+    const uint8_t *mask, Op op
 ) {
-    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     int coord[8] = {0};
     int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
-        res[offsetRes] = op(a[offsetA], b[offsetB]);
+        if (!HAS_MASK || mask[el]) {
+            res[offsetRes] = op(a[offsetA], b[offsetB]);
+        }
         for (int d = rank - 1; d >= 0; d--) {
             coord[d]++;
             if (coord[d] < shape[d]) {
@@ -624,10 +690,41 @@ static void strided_binary_op_impl(
 }
 
 template <typename T1, typename T2, typename TRes, typename Op>
-static void v_binary_impl(const T1 * RESTRICT a, const T2 * RESTRICT b, TRes * RESTRICT res, int size, Op op) {
-    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
+static void strided_binary_op_impl(
+    const T1 *a, const int *stridesA,
+    const T2 *b, const int *stridesB,
+    TRes *res, const int *stridesRes,
+    const int *shape, int rank,
+    const uint8_t *mask, Op op
+) {
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
+    if (mask != nullptr) {
+        strided_binary_op_loop<true>(a, stridesA, b, stridesB, res, stridesRes, shape, rank, mask, op);
+    } else {
+        strided_binary_op_loop<false>(a, stridesA, b, stridesB, res, stridesRes, shape, rank, nullptr, op);
+    }
+}
+
+template <bool HAS_MASK, typename T1, typename T2, typename TRes, typename Op>
+static inline void v_binary_loop(const T1 * RESTRICT a, const T2 * RESTRICT b, TRes * RESTRICT res, int size, const uint8_t * RESTRICT mask, Op op) {
     for (int i = 0; i < size; i++) {
-        res[i] = op(a[i], b[i]);
+        if (HAS_MASK) {
+            if (mask[i]) {
+                res[i] = op(a[i], b[i]);
+            }
+        } else {
+            res[i] = op(a[i], b[i]);
+        }
+    }
+}
+
+template <typename T1, typename T2, typename TRes, typename Op>
+static void v_binary_impl(const T1 * RESTRICT a, const T2 * RESTRICT b, TRes * RESTRICT res, int size, const uint8_t * RESTRICT mask, Op op) {
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
+    if (mask != nullptr) {
+        v_binary_loop<true>(a, b, res, size, mask, op);
+    } else {
+        v_binary_loop<false>(a, b, res, size, nullptr, op);
     }
 }
 
@@ -694,8 +791,9 @@ static void s_where_impl(
 void name(const typeA *a, const int *stridesA, \
           const typeB *b, const int *stridesB, \
           typeResult *res, const int *stridesRes, \
-          const int *shape, int rank) { \
-    strided_binary_op_impl(a, stridesA, b, stridesB, res, stridesRes, shape, rank, [](typeA x, typeB y) { return op(x, y); }); \
+          const int *shape, int rank, \
+          const uint8_t *mask) { \
+    strided_binary_op_impl(a, stridesA, b, stridesB, res, stridesRes, shape, rank, mask, [](typeA x, typeB y) { return op(x, y); }); \
 }
 
 #include <complex>
@@ -761,20 +859,20 @@ static inline cpx_f_t cpx_div_f_cast(cpx_f_t x, cpx_f_t y) {
 
 #define IMPLEMENT_V_BINARY(name, type, op) \
 VECTORIZED_TARGETS \
-void v_##name##_##type(const type * RESTRICT a, const type * RESTRICT b, type * RESTRICT res, int size) { \
-    v_binary_impl(a, b, res, size, [](type x, type y) { return x op y; }); \
+void v_##name##_##type(const type * RESTRICT a, const type * RESTRICT b, type * RESTRICT res, int size, const uint8_t * RESTRICT mask) { \
+    v_binary_impl(a, b, res, size, mask, [](type x, type y) { return x op y; }); \
 }
 
 #define IMPLEMENT_V_UNARY(name, type, func) \
 VECTORIZED_TARGETS \
-void v_##name##_##type(const type * RESTRICT src, type * RESTRICT res, int size) { \
-    v_unary_impl(src, res, size, [](type x) { return func(x); }); \
+void v_##name##_##type(const type * RESTRICT src, type * RESTRICT res, int size, const uint8_t * RESTRICT mask) { \
+    v_unary_impl(src, res, size, mask, [](type x) { return func(x); }); \
 }
 
 #define IMPLEMENT_V_BINARY_FUNC(name, type, func) \
 VECTORIZED_TARGETS \
-void v_##name##_##type(const type * RESTRICT a, const type * RESTRICT b, type * RESTRICT res, int size) { \
-    v_binary_impl(a, b, res, size, [](type x, type y) { return func(x, y); }); \
+void v_##name##_##type(const type * RESTRICT a, const type * RESTRICT b, type * RESTRICT res, int size, const uint8_t * RESTRICT mask) { \
+    v_binary_impl(a, b, res, size, mask, [](type x, type y) { return func(x, y); }); \
 }
 
 IMPLEMENT_V_BINARY(add, double, +)
@@ -1200,7 +1298,7 @@ void s_div_double(const double *a, const int *stridesA,
 // 3. COMPLEX128 VECTOR KERNELS (CONTIGUOUS & STRIDED)
 // ============================================================================
 
-void v_add_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size) {
+void v_add_complex(const cpx_t *a, const cpx_t *b, cpx_t *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i].r = a[i].r + b[i].r;
@@ -1208,7 +1306,7 @@ void v_add_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size) {
     }
 }
 
-void v_sub_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size) {
+void v_sub_complex(const cpx_t *a, const cpx_t *b, cpx_t *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i].r = a[i].r - b[i].r;
@@ -1216,7 +1314,7 @@ void v_sub_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size) {
     }
 }
 
-void v_mul_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size) {
+void v_mul_complex(const cpx_t *a, const cpx_t *b, cpx_t *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         double r1 = a[i].r, i1 = a[i].i;
@@ -1227,7 +1325,7 @@ void v_mul_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size) {
     }
 }
 
-void v_div_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size) {
+void v_div_complex(const cpx_t *a, const cpx_t *b, cpx_t *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         double r1 = a[i].r, i1 = a[i].i;
@@ -1378,133 +1476,133 @@ void s_div_complex(const cpx_t *a, const int *stridesA,
 // 4. SINGLE PRECISION (FLOAT32) VECTOR CONTIGUOUS KERNELS
 // ============================================================================
 
-void v_add_float(const float *a, const float *b, float *res, int size) {
+void v_add_float(const float *a, const float *b, float *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = a[i] + b[i];
     }
 }
 
-void v_sub_float(const float *a, const float *b, float *res, int size) {
+void v_sub_float(const float *a, const float *b, float *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = a[i] - b[i];
     }
 }
 
-void v_mul_float(const float *a, const float *b, float *res, int size) {
+void v_mul_float(const float *a, const float *b, float *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = a[i] * b[i];
     }
 }
 
-void v_div_float(const float *a, const float *b, float *res, int size) {
+void v_div_float(const float *a, const float *b, float *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = a[i] / b[i];
     }
 }
 
-void v_sin_float(const float *src, float *res, int size) {
+void v_sin_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = sinf(src[i]);
     }
 }
 
-void v_sinc_float(const float *src, float *res, int size) {
+void v_sinc_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = real_sinc<float>(src[i]);
     }
 }
 
-void v_cos_float(const float *src, float *res, int size) {
+void v_cos_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = cosf(src[i]);
     }
 }
 
-void v_exp_float(const float *src, float *res, int size) {
+void v_exp_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = expf(src[i]);
     }
 }
 
-void v_log_float(const float *src, float *res, int size) {
+void v_log_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = logf(src[i]);
     }
 }
 
-void v_sinh_float(const float *src, float *res, int size) {
+void v_sinh_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = sinhf(src[i]);
     }
 }
 
-void v_cosh_float(const float *src, float *res, int size) {
+void v_cosh_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = coshf(src[i]);
     }
 }
 
-void v_tanh_float(const float *src, float *res, int size) {
+void v_tanh_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = tanhf(src[i]);
     }
 }
 
-void v_asinh_float(const float *src, float *res, int size) {
+void v_asinh_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = asinhf(src[i]);
     }
 }
 
-void v_acosh_float(const float *src, float *res, int size) {
+void v_acosh_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = acoshf(src[i]);
     }
 }
 
-void v_atanh_float(const float *src, float *res, int size) {
+void v_atanh_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = atanhf(src[i]);
     }
 }
 
-void v_asin_float(const float *src, float *res, int size) {
+void v_asin_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = asinf(src[i]);
     }
 }
 
-void v_acos_float(const float *src, float *res, int size) {
+void v_acos_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = acosf(src[i]);
     }
 }
 
-void v_atan_float(const float *src, float *res, int size) {
+void v_atan_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = atanf(src[i]);
     }
 }
 
-void v_atan2_float(const float *y, const float *x, float *res, int size) {
+void v_atan2_float(const float *y, const float *x, float *res,int size, const uint8_t *mask) {
     if (y == nullptr || x == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = atan2f(y[i], x[i]);
@@ -1638,107 +1736,93 @@ void s_mean_float(const float *src, const int *stridesSrc,
 // 5. ADDITIONAL MATH, ROUNDING & CLIPPING KERNELS (SIMD AUTOVECTORIZABLE)
 // ============================================================================
 
-void v_sqrt_double(const double *src, double *res, int size) {
+void v_sqrt_double(const double *src, double *res, int size, const uint8_t *mask) {
+    v_unary_impl(src, res, size, mask, [](double x) { return sqrt(x); });
+}
+
+void v_tan_double(const double *src, double *res, int size, const uint8_t *mask) {
+    v_unary_impl(src, res, size, mask, [](double x) { return tan(x); });
+}
+
+void v_abs_double(const double *src, double *res, int size, const uint8_t *mask) {
+    v_unary_impl(src, res, size, mask, [](double x) { return fabs(x); });
+}
+
+void v_ceil_double(const double *src, double *res, int size, const uint8_t *mask) {
+    v_unary_impl(src, res, size, mask, [](double x) { return ceil(x); });
+}
+
+void v_floor_double(const double *src, double *res, int size, const uint8_t *mask) {
+    v_unary_impl(src, res, size, mask, [](double x) { return floor(x); });
+}
+
+void v_round_double(const double *src, double *res, int size, const uint8_t *mask) {
+    v_unary_impl(src, res, size, mask, [](double x) { return round(x); });
+}
+
+void v_clip_double(const double *src, double *res, double min_val, double max_val, int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = sqrt(src[i]);
+    if (mask != nullptr) {
+        for (int i = 0; i < size; i++) {
+            if (mask[i]) {
+                double val = src[i];
+                if (val < min_val) val = min_val;
+                if (val > max_val) val = max_val;
+                res[i] = val;
+            }
+        }
+    } else {
+        for (int i = 0; i < size; i++) {
+            double val = src[i];
+            if (val < min_val) val = min_val;
+            if (val > max_val) val = max_val;
+            res[i] = val;
+        }
     }
 }
 
-void v_tan_double(const double *src, double *res, int size) {
-    if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = tan(src[i]);
-    }
+void v_sqrt_float(const float *src, float *res, int size, const uint8_t *mask) {
+    v_unary_impl(src, res, size, mask, [](float x) { return sqrtf(x); });
 }
 
-void v_abs_double(const double *src, double *res, int size) {
-    if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = fabs(src[i]);
-    }
+void v_tan_float(const float *src, float *res, int size, const uint8_t *mask) {
+    v_unary_impl(src, res, size, mask, [](float x) { return tanf(x); });
 }
 
-void v_ceil_double(const double *src, double *res, int size) {
-    if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = ceil(src[i]);
-    }
+void v_abs_float(const float *src, float *res, int size, const uint8_t *mask) {
+    v_unary_impl(src, res, size, mask, [](float x) { return fabsf(x); });
 }
 
-void v_floor_double(const double *src, double *res, int size) {
-    if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = floor(src[i]);
-    }
+void v_ceil_float(const float *src, float *res, int size, const uint8_t *mask) {
+    v_unary_impl(src, res, size, mask, [](float x) { return ceilf(x); });
 }
 
-void v_round_double(const double *src, double *res, int size) {
-    if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = round(src[i]);
-    }
+void v_floor_float(const float *src, float *res, int size, const uint8_t *mask) {
+    v_unary_impl(src, res, size, mask, [](float x) { return floorf(x); });
 }
 
-void v_clip_double(const double *src, double *res, double min_val, double max_val, int size) {
-    if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        double val = src[i];
-        if (val < min_val) val = min_val;
-        if (val > max_val) val = max_val;
-        res[i] = val;
-    }
+void v_round_float(const float *src, float *res, int size, const uint8_t *mask) {
+    v_unary_impl(src, res, size, mask, [](float x) { return roundf(x); });
 }
 
-void v_sqrt_float(const float *src, float *res, int size) {
+void v_clip_float(const float *src, float *res, float min_val, float max_val, int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = sqrtf(src[i]);
-    }
-}
-
-void v_tan_float(const float *src, float *res, int size) {
-    if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = tanf(src[i]);
-    }
-}
-
-void v_abs_float(const float *src, float *res, int size) {
-    if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = fabsf(src[i]);
-    }
-}
-
-void v_ceil_float(const float *src, float *res, int size) {
-    if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = ceilf(src[i]);
-    }
-}
-
-void v_floor_float(const float *src, float *res, int size) {
-    if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = floorf(src[i]);
-    }
-}
-
-void v_round_float(const float *src, float *res, int size) {
-    if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        res[i] = roundf(src[i]);
-    }
-}
-
-void v_clip_float(const float *src, float *res, float min_val, float max_val, int size) {
-    if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        float val = src[i];
-        if (val < min_val) val = min_val;
-        if (val > max_val) val = max_val;
-        res[i] = val;
+    if (mask != nullptr) {
+        for (int i = 0; i < size; i++) {
+            if (mask[i]) {
+                float val = src[i];
+                if (val < min_val) val = min_val;
+                if (val > max_val) val = max_val;
+                res[i] = val;
+            }
+        }
+    } else {
+        for (int i = 0; i < size; i++) {
+            float val = src[i];
+            if (val < min_val) val = min_val;
+            if (val > max_val) val = max_val;
+            res[i] = val;
+        }
     }
 }
 
@@ -3007,8 +3091,9 @@ DEFINE_STRIDED_DIFF_OP(s_diff_complex64, cpx_f_t, cpx_sub_f)
 #define DEFINE_STRIDED_UNARY_OP(FUNCNAME, T, OP) \
 void FUNCNAME(const T *src, const int *stridesSrc, \
               T *res, const int *stridesRes, \
-              const int *shape, int rank) { \
-    strided_unary_op_impl(src, stridesSrc, res, stridesRes, shape, rank, [](T x) { return OP(x); }); \
+              const int *shape, int rank, \
+              const uint8_t *mask) { \
+    strided_unary_op_impl(src, stridesSrc, res, stridesRes, shape, rank, mask, [](T x) { return OP(x); }); \
 }
 
 #define OP_SIN_D(x) sin(x)
@@ -3284,20 +3369,20 @@ static inline cpx_f_t cpx_log1p_f(cpx_f_t z) {
 }
 
 #define DEFINE_UNARY_CAST_VEC(FUNCNAME, T_IN, T_OUT, OP) \
-void FUNCNAME(const T_IN *src, T_OUT *res, int size) { \
-    v_unary_cast_impl<T_IN, T_OUT>(src, res, size, [](T_IN x) { return OP(x); }); \
+void FUNCNAME(const T_IN *src, T_OUT *res, int size, const uint8_t *mask) { \
+    v_unary_cast_impl<T_IN, T_OUT>(src, res, size, mask, [](T_IN x) { return OP(x); }); \
 }
 
 #define DEFINE_STRIDED_UNARY_CAST_OP(FUNCNAME, T_IN, T_OUT, OP) \
 void FUNCNAME(const T_IN *src, const int *stridesSrc, \
               T_OUT *res, const int *stridesRes, \
-              const int *shape, int rank) { \
-    strided_unary_cast_impl<T_IN, T_OUT>(src, stridesSrc, res, stridesRes, shape, rank, [](T_IN x) { return OP(x); }); \
+              const int *shape, int rank, const uint8_t *mask) { \
+    strided_unary_cast_impl<T_IN, T_OUT>(src, stridesSrc, res, stridesRes, shape, rank, mask, [](T_IN x) { return OP(x); }); \
 }
 
 #define DEFINE_COMPLEX_UNARY_VEC(FUNCNAME, T, OP) \
-void FUNCNAME(const T *src, T *res, int size) { \
-    v_unary_impl(src, res, size, [](T x) { return OP(x); }); \
+void FUNCNAME(const T *src, T *res, int size, const uint8_t *mask) { \
+    v_unary_impl(src, res, size, mask, [](T x) { return OP(x); }); \
 }
 
 DEFINE_COMPLEX_UNARY_VEC(v_expm1_complex128, cpx_t, cpx_expm1)
@@ -3375,7 +3460,7 @@ DEFINE_STRIDED_UNARY_OP(s_sqrt_complex64, cpx_f_t, cpx_sqrt_f)
 DEFINE_STRIDED_UNARY_OP(s_acosh_complex128, cpx_t, cpx_acosh)
 DEFINE_STRIDED_UNARY_OP(s_acosh_complex64, cpx_f_t, cpx_acosh_f)
 
-void v_abs_complex128(const cpx_t *src, double *res, int size) {
+void v_abs_complex128(const cpx_t *src, double *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         std::complex<double> cz(src[i].r, src[i].i);
@@ -3383,7 +3468,7 @@ void v_abs_complex128(const cpx_t *src, double *res, int size) {
     }
 }
 
-void v_abs_complex64(const cpx_f_t *src, float *res, int size) {
+void v_abs_complex64(const cpx_f_t *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         std::complex<float> cz(src[i].r, src[i].i);
@@ -3393,7 +3478,7 @@ void v_abs_complex64(const cpx_f_t *src, float *res, int size) {
 
 void s_abs_complex128(const cpx_t *src, const int *stridesSrc,
                       double *res, const int *stridesRes,
-                      const int *shape, int rank) {
+                      const int *shape, int rank, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
@@ -3405,8 +3490,10 @@ void s_abs_complex128(const cpx_t *src, const int *stridesSrc,
             offsetSrc += coord[d] * stridesSrc[d];
             offsetRes += coord[d] * stridesRes[d];
         }
-        std::complex<double> cz(src[offsetSrc].r, src[offsetSrc].i);
-        res[offsetRes] = std::abs(cz);
+        if (!mask || mask[i]) {
+            std::complex<double> cz(src[offsetSrc].r, src[offsetSrc].i);
+            res[offsetRes] = std::abs(cz);
+        }
         for (int d = rank - 1; d >= 0; d--) {
             coord[d]++;
             if (coord[d] < shape[d]) break;
@@ -3417,7 +3504,7 @@ void s_abs_complex128(const cpx_t *src, const int *stridesSrc,
 
 void s_abs_complex64(const cpx_f_t *src, const int *stridesSrc,
                      float *res, const int *stridesRes,
-                     const int *shape, int rank) {
+                     const int *shape, int rank, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
@@ -3429,8 +3516,10 @@ void s_abs_complex64(const cpx_f_t *src, const int *stridesSrc,
             offsetSrc += coord[d] * stridesSrc[d];
             offsetRes += coord[d] * stridesRes[d];
         }
-        std::complex<float> cz(src[offsetSrc].r, src[offsetSrc].i);
-        res[offsetRes] = std::abs(cz);
+        if (!mask || mask[i]) {
+            std::complex<float> cz(src[offsetSrc].r, src[offsetSrc].i);
+            res[offsetRes] = std::abs(cz);
+        }
         for (int d = rank - 1; d >= 0; d--) {
             coord[d]++;
             if (coord[d] < shape[d]) break;
@@ -3478,7 +3567,7 @@ DEFINE_STRIDED_UNARY_OP(s_atan_float, float, OP_ATAN_F)
 void s_atan2_double(const double *y, const int *stridesY,
                    const double *x, const int *stridesX,
                    double *res, const int *stridesRes,
-                   const int *shape, int rank) {
+                   const int *shape, int rank, const uint8_t *mask) {
     if (y == nullptr || x == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -3507,7 +3596,7 @@ void s_atan2_double(const double *y, const int *stridesY,
 void s_atan2_float(const float *y, const int *stridesY,
                   const float *x, const int *stridesX,
                   float *res, const int *stridesRes,
-                  const int *shape, int rank) {
+                  const int *shape, int rank, const uint8_t *mask) {
     if (y == nullptr || x == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -3592,21 +3681,21 @@ DEFINE_COMPLEX_UNARY_VEC(v_atanh_complex64, cpx_f_t, cpx_atanh_f)
 DEFINE_STRIDED_UNARY_OP(s_atanh_complex128, cpx_t, cpx_atanh)
 DEFINE_STRIDED_UNARY_OP(s_atanh_complex64, cpx_f_t, cpx_atanh_f)
 
-void v_hypot_complex128(const cpx_t *x1, const cpx_t *x2, double *res, int size) {
+void v_hypot_complex128(const cpx_t *x1, const cpx_t *x2, double *res,int size, const uint8_t *mask) {
     if (x1 == nullptr || x2 == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = sqrt(x1[i].r*x1[i].r + x1[i].i*x1[i].i + x2[i].r*x2[i].r + x2[i].i*x2[i].i);
     }
 }
 
-void v_hypot_complex64(const cpx_f_t *x1, const cpx_f_t *x2, float *res, int size) {
+void v_hypot_complex64(const cpx_f_t *x1, const cpx_f_t *x2, float *res,int size, const uint8_t *mask) {
     if (x1 == nullptr || x2 == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = sqrtf(x1[i].r*x1[i].r + x1[i].i*x1[i].i + x2[i].r*x2[i].r + x2[i].i*x2[i].i);
     }
 }
 
-void s_hypot_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank) {
+void s_hypot_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape,int rank, const uint8_t *mask) {
     if (x1 == nullptr || x2 == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
@@ -3627,7 +3716,7 @@ void s_hypot_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, 
     }
 }
 
-void s_hypot_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank) {
+void s_hypot_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape,int rank, const uint8_t *mask) {
     if (x1 == nullptr || x2 == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
@@ -3673,21 +3762,21 @@ static inline cpx_f_t cpx_pow_f(cpx_f_t z1, cpx_f_t z2) {
 }
 
 
-void v_pow_complex128(const cpx_t *x1, const cpx_t *x2, cpx_t *res, int size) {
+void v_pow_complex128(const cpx_t *x1, const cpx_t *x2, cpx_t *res,int size, const uint8_t *mask) {
     if (x1 == nullptr || x2 == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = cpx_pow(x1[i], x2[i]);
     }
 }
 
-void v_pow_complex64(const cpx_f_t *x1, const cpx_f_t *x2, cpx_f_t *res, int size) {
+void v_pow_complex64(const cpx_f_t *x1, const cpx_f_t *x2, cpx_f_t *res,int size, const uint8_t *mask) {
     if (x1 == nullptr || x2 == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i] = cpx_pow_f(x1[i], x2[i]);
     }
 }
 
-void s_pow_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, cpx_t *res, const int *stridesRes, const int *shape, int rank) {
+void s_pow_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, cpx_t *res, const int *stridesRes, const int *shape,int rank, const uint8_t *mask) {
     if (x1 == nullptr || x2 == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
@@ -3708,7 +3797,7 @@ void s_pow_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, co
     }
 }
 
-void s_pow_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, cpx_f_t *res, const int *stridesRes, const int *shape, int rank) {
+void s_pow_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, cpx_f_t *res, const int *stridesRes, const int *shape,int rank, const uint8_t *mask) {
     if (x1 == nullptr || x2 == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
@@ -3729,7 +3818,7 @@ void s_pow_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2,
     }
 }
 
-void v_conj_complex128(const cpx_t *src, cpx_t *res, int size) {
+void v_conj_complex128(const cpx_t *src, cpx_t *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i].r = src[i].r;
@@ -3737,7 +3826,7 @@ void v_conj_complex128(const cpx_t *src, cpx_t *res, int size) {
     }
 }
 
-void v_conj_complex64(const cpx_f_t *src, cpx_f_t *res, int size) {
+void v_conj_complex64(const cpx_f_t *src, cpx_f_t *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
         res[i].r = src[i].r;
@@ -3745,7 +3834,7 @@ void v_conj_complex64(const cpx_f_t *src, cpx_f_t *res, int size) {
     }
 }
 
-void s_conj_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank) {
+void s_conj_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape,int rank, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
@@ -3766,7 +3855,7 @@ void s_conj_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, cons
     }
 }
 
-void s_conj_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank) {
+void s_conj_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape,int rank, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
     int coord[8] = {0};
     int total_size = 1;
@@ -3829,8 +3918,8 @@ static inline cpx_f_t cpx_div_f(cpx_f_t x, cpx_f_t y) {
 #define EXPR_cpx64(OP, Ta, Tb, x, y, OP_SYM) cpx_f_from_cpx(cpx_##OP(cpx_from_##Ta(x), cpx_from_##Tb(y)))
 
 #define DEFINE_V_UFUNC(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, OP_SYM) \
-void v_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const Tb *b, Tr *res, int size) { \
-    v_binary_impl(a, b, res, size, [](Ta x, Tb y) { \
+void v_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const Tb *b, Tr *res, int size, const uint8_t *mask) { \
+    v_binary_impl(a, b, res, size, mask, [](Ta x, Tb y) { \
         return EXPR_##Tr_tok(OP, Ta_tok, Tb_tok, x, y, OP_SYM); \
     }); \
 }
@@ -3839,8 +3928,9 @@ void v_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const Tb *b, Tr *res, 
 void s_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const int *stridesA, \
                                              const Tb *b, const int *stridesB, \
                                              Tr *res, const int *stridesRes, \
-                                             const int *shape, int rank) { \
-    strided_binary_op_impl(a, stridesA, b, stridesB, res, stridesRes, shape, rank, [](Ta x, Tb y) { \
+                                             const int *shape, int rank, \
+                                             const uint8_t *mask) { \
+    strided_binary_op_impl(a, stridesA, b, stridesB, res, stridesRes, shape, rank, mask, [](Ta x, Tb y) { \
         return EXPR_##Tr_tok(OP, Ta_tok, Tb_tok, x, y, OP_SYM); \
     }); \
 }
@@ -4317,22 +4407,13 @@ static inline cpx_f_t cpx_square_f(cpx_f_t z) {
 }
 
 #define DEFINE_CONTIGUOUS_UNARY_IMPL(name, typeSrc, typeRes, expr) \
-void name(const typeSrc *src, typeRes *res, int size) { \
-    if (src == nullptr || res == nullptr || size <= 0) return; \
-    for (int i = 0; i < size; i++) { \
-        typeSrc x = src[i]; \
-        res[i] = (expr); \
-    } \
+void name(const typeSrc * RESTRICT src, typeRes * RESTRICT res, int size, const uint8_t * RESTRICT mask) { \
+    v_unary_cast_impl(src, res, size, mask, [](typeSrc x) -> typeRes { return (expr); }); \
 }
 
 #define DEFINE_CONTIGUOUS_BINARY_IMPL(name, typeA, typeB, typeRes, expr) \
-void name(const typeA *a, const typeB *b, typeRes *res, int size) { \
-    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return; \
-    for (int i = 0; i < size; i++) { \
-        typeA x = a[i]; \
-        typeB y = b[i]; \
-        res[i] = (expr); \
-    } \
+void name(const typeA * RESTRICT a, const typeB * RESTRICT b, typeRes * RESTRICT res, int size, const uint8_t * RESTRICT mask) { \
+    v_binary_impl(a, b, res, size, mask, [](typeA x, typeB y) -> typeRes { return (expr); }); \
 }
 
 /* 1. Contiguous (Vector) Implementations */
@@ -4412,27 +4493,9 @@ DEFINE_CONTIGUOUS_BINARY_IMPL(v_copysign_float, float, float, float, copysignf(x
 #define DEFINE_STRIDED_UNARY_IMPL(name, typeSrc, typeRes, expr) \
 void name(const typeSrc *src, const int *stridesSrc, \
           typeRes *res, const int *stridesRes, \
-          const int *shape, int rank) { \
-    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || rank > 8) return; \
-    int total_elements = 1; \
-    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
-    int coord[8] = {0}; \
-    int offsetSrc = 0, offsetRes = 0; \
-    for (int el = 0; el < total_elements; el++) { \
-        typeSrc x = src[offsetSrc]; \
-        res[offsetRes] = (expr); \
-        for (int d = rank - 1; d >= 0; d--) { \
-            coord[d]++; \
-            if (coord[d] < shape[d]) { \
-                offsetSrc += stridesSrc[d]; \
-                offsetRes += stridesRes[d]; \
-                break; \
-            } \
-            coord[d] = 0; \
-            offsetSrc -= (shape[d] - 1) * stridesSrc[d]; \
-            offsetRes -= (shape[d] - 1) * stridesRes[d]; \
-        } \
-    } \
+          const int *shape, int rank, \
+          const uint8_t *mask) { \
+    strided_unary_cast_impl(src, stridesSrc, res, stridesRes, shape, rank, mask, [](typeSrc x) -> typeRes { return (expr); }); \
 }
 
 DEFINE_STRIDED_UNARY_IMPL(s_square_double, double, double, x * x)
@@ -4478,30 +4541,9 @@ DEFINE_STRIDED_UNARY_IMPL(s_positive_uint8, uint8_t, uint8_t, x)
 void name(const typeA *a, const int *stridesA, \
           const typeB *b, const int *stridesB, \
           typeRes *res, const int *stridesRes, \
-          const int *shape, int rank) { \
-    if (a == nullptr || b == nullptr || res == nullptr || shape == nullptr || rank <= 0 || rank > 8) return; \
-    int total_elements = 1; \
-    for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
-    int coord[8] = {0}; \
-    int offsetA = 0, offsetB = 0, offsetRes = 0; \
-    for (int el = 0; el < total_elements; el++) { \
-        typeA x = a[offsetA]; \
-        typeB y = b[offsetB]; \
-        res[offsetRes] = (expr); \
-        for (int d = rank - 1; d >= 0; d--) { \
-            coord[d]++; \
-            if (coord[d] < shape[d]) { \
-                offsetA += stridesA[d]; \
-                offsetB += stridesB[d]; \
-                offsetRes += stridesRes[d]; \
-                break; \
-            } \
-            coord[d] = 0; \
-            offsetA -= (shape[d] - 1) * stridesA[d]; \
-            offsetB -= (shape[d] - 1) * stridesB[d]; \
-            offsetRes -= (shape[d] - 1) * stridesRes[d]; \
-        } \
-    } \
+          const int *shape, int rank, \
+          const uint8_t *mask) { \
+    strided_binary_op_impl(a, stridesA, b, stridesB, res, stridesRes, shape, rank, mask, [](typeA x, typeB y) -> typeRes { return (expr); }); \
 }
 
 DEFINE_STRIDED_BINARY_IMPL(s_pow_double, double, double, double, pow(x, y))
@@ -5039,7 +5081,7 @@ void s_clip_##TYPE_NAME(const TYPE *a, const int *stridesA, \
                         const TYPE *min_val, const int *stridesMin, \
                         const TYPE *max_val, const int *stridesMax, \
                         TYPE *res, const int *stridesRes, \
-                        const int *shape, int rank) { \
+                        const int *shape, int rank, const uint8_t *mask) { \
     if (a == nullptr || min_val == nullptr || max_val == nullptr || res == nullptr || rank < 0 || rank > 8) return; \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
@@ -8561,7 +8603,7 @@ extern "C" void ndarray_compare(
 #define DEFINE_EQUALS_FUNC(NAME, TYPE, EXPR) \
 int NAME(const TYPE *a, const int *stridesA, \
          const TYPE *b, const int *stridesB, \
-         const int *shape, int rank) { \
+         const int *shape, int rank, const uint8_t *mask) { \
     if (a == nullptr || b == nullptr || rank < 0 || rank > 8) return 0; \
     if (rank == 0) return EXPR(a[0], b[0]) ? 1 : 0; \
     int total_elements = 1; \
@@ -8603,15 +8645,15 @@ int ndarray_equals(
     const int *shape, int rank
 ) {
     switch (dtype) {
-        case DTYPE_FLOAT64: return s_equals_double((const double*)a, stridesA, (const double*)b, stridesB, shape, rank);
-        case DTYPE_FLOAT32: return s_equals_float((const float*)a, stridesA, (const float*)b, stridesB, shape, rank);
-        case DTYPE_INT32: return s_equals_int32((const int32_t*)a, stridesA, (const int32_t*)b, stridesB, shape, rank);
-        case DTYPE_INT64: return s_equals_int64((const int64_t*)a, stridesA, (const int64_t*)b, stridesB, shape, rank);
-        case DTYPE_UINT8: return s_equals_uint8((const uint8_t*)a, stridesA, (const uint8_t*)b, stridesB, shape, rank);
-        case DTYPE_INT16: return s_equals_int16((const int16_t*)a, stridesA, (const int16_t*)b, stridesB, shape, rank);
-        case DTYPE_COMPLEX128: return s_equals_complex128((const cpx_t*)a, stridesA, (const cpx_t*)b, stridesB, shape, rank);
-        case DTYPE_COMPLEX64: return s_equals_complex64((const cpx_f_t*)a, stridesA, (const cpx_f_t*)b, stridesB, shape, rank);
-        case DTYPE_BOOLEAN: return s_equals_uint8((const uint8_t*)a, stridesA, (const uint8_t*)b, stridesB, shape, rank);
+        case DTYPE_FLOAT64: return s_equals_double((const double*)a, stridesA, (const double*)b, stridesB, shape, rank, nullptr);
+        case DTYPE_FLOAT32: return s_equals_float((const float*)a, stridesA, (const float*)b, stridesB, shape, rank, nullptr);
+        case DTYPE_INT32: return s_equals_int32((const int32_t*)a, stridesA, (const int32_t*)b, stridesB, shape, rank, nullptr);
+        case DTYPE_INT64: return s_equals_int64((const int64_t*)a, stridesA, (const int64_t*)b, stridesB, shape, rank, nullptr);
+        case DTYPE_UINT8: return s_equals_uint8((const uint8_t*)a, stridesA, (const uint8_t*)b, stridesB, shape, rank, nullptr);
+        case DTYPE_INT16: return s_equals_int16((const int16_t*)a, stridesA, (const int16_t*)b, stridesB, shape, rank, nullptr);
+        case DTYPE_COMPLEX128: return s_equals_complex128((const cpx_t*)a, stridesA, (const cpx_t*)b, stridesB, shape, rank, nullptr);
+        case DTYPE_COMPLEX64: return s_equals_complex64((const cpx_f_t*)a, stridesA, (const cpx_f_t*)b, stridesB, shape, rank, nullptr);
+        case DTYPE_BOOLEAN: return s_equals_uint8((const uint8_t*)a, stridesA, (const uint8_t*)b, stridesB, shape, rank, nullptr);
         default: return 0;
     }
 }
@@ -9252,33 +9294,13 @@ DEFINE_CONTIGUOUS_UNARY_IMPL(v_abs_int64, int64_t, int64_t, std::abs(x))
 DEFINE_CONTIGUOUS_UNARY_IMPL(v_abs_int32, int32_t, int32_t, std::abs(x))
 DEFINE_CONTIGUOUS_UNARY_IMPL(v_abs_int16, int16_t, int16_t, std::abs(x))
 
-void v_abs_uint8(const uint8_t *src, uint8_t *res, int size) {
-    if (src == nullptr || res == nullptr || size <= 0) return;
-    if (src == res) return;
-    memmove(res, src, size * sizeof(uint8_t));
-}
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_abs_uint8, uint8_t, uint8_t, x)
 
 // Integer Absolute Value Implementations (Strided)
 DEFINE_STRIDED_UNARY_IMPL(s_abs_int64, int64_t, int64_t, std::abs(x))
 DEFINE_STRIDED_UNARY_IMPL(s_abs_int32, int32_t, int32_t, std::abs(x))
 DEFINE_STRIDED_UNARY_IMPL(s_abs_int16, int16_t, int16_t, std::abs(x))
-
-void s_abs_uint8(const uint8_t *src, const int *stridesSrc,
-                  uint8_t *res, const int *stridesRes,
-                  const int *shape, int rank) {
-    if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
-    if (src == res) {
-        bool same_strides = true;
-        for (int i = 0; i < rank; i++) {
-            if (stridesSrc[i] != stridesRes[i]) {
-                same_strides = false;
-                break;
-            }
-        }
-        if (same_strides) return;
-    }
-    strided_unary_cast_impl(src, stridesSrc, res, stridesRes, shape, rank, [](uint8_t x) { return x; });
-}
+DEFINE_STRIDED_UNARY_IMPL(s_abs_uint8, uint8_t, uint8_t, x)
 
 // Integer Exponentiation Implementations (Contiguous)
 DEFINE_CONTIGUOUS_BINARY_IMPL(v_pow_int64, int64_t, int64_t, int64_t, ipow(x, y))

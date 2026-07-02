@@ -7,6 +7,7 @@ import '../scratch_arena.dart';
 
 // Standalone operational relative cross-imports
 import 'spacers.dart';
+import 'broadcasting.dart';
 
 int mapSortKind(SortKind kind) {
   switch (kind) {
@@ -1081,5 +1082,64 @@ void _cumOpFallbackHelper<T, R>(
   doubleRes.dispose();
   if (!identical(temp, a)) {
     temp.dispose();
+  }
+}
+
+/// A holder for a mask FFI pointer and any transient allocated arrays.
+///
+/// Wraps an FFI pointer ([pointer]) and manages disposal of intermediate
+/// broadcasted or contiguous mask allocations via [dispose].
+final class MaskHolder {
+  /// The native memory pointer passed to FFI ufunc kernels.
+  final ffi.Pointer<ffi.Uint8> pointer;
+
+  /// Optional temporary array allocation requiring disposal after kernel execution.
+  final NDArray<dynamic>? _tempAllocated;
+
+  /// Creates a new [MaskHolder] with the given [pointer] and optional [_tempAllocated].
+  MaskHolder(this.pointer, [this._tempAllocated]);
+
+  /// Disposes any temporary array allocations created during mask preparation.
+  void dispose() {
+    _tempAllocated?.dispose();
+  }
+}
+
+/// Prepares a [where] mask array for native elementwise ufunc execution.
+///
+/// Validates that [where] is not disposed, has boolean or uint8 data type, and
+/// broadcasts [where] to [targetShape] if necessary.
+///
+/// It is an error if [where] does not have [DType.boolean] or [DType.uint8].
+///
+/// Throws [StateError] if [where] is disposed.
+///
+/// Returns a [MaskHolder] containing the native pointer and any transient allocations.
+/// Time complexity is (1)$ for contiguous masks of matching shape, or (N)$
+/// where $ is the element count when broadcasting or copying strided masks.
+MaskHolder prepareMask(NDArray<dynamic>? where, List<int> targetShape) {
+  if (where == null) {
+    return MaskHolder(ffi.nullptr);
+  }
+  if (where.isDisposed) {
+    throw StateError('Cannot execute operation with a disposed where array.');
+  }
+  if (where.dtype != DType.boolean && where.dtype != DType.uint8) {
+    throw ArgumentError('where mask must have boolean or uint8 dtype.');
+  }
+  final aligned = listEquals(where.shape, targetShape)
+      ? where
+      : broadcastTo(where, targetShape);
+  if (aligned.isContiguous) {
+    return MaskHolder(
+      aligned.pointer.cast(),
+      !identical(aligned, where) ? aligned : null,
+    );
+  } else {
+    final temp = aligned.copy();
+    if (!identical(aligned, where)) {
+      aligned.dispose();
+    }
+    return MaskHolder(temp.pointer.cast(), temp);
   }
 }

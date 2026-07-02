@@ -48,20 +48,20 @@ typedef struct {
  * Bypasses coordinate translation and stride checking entirely for peak performance.
  */
 
-void v_add_double(const double *a, const double *b, double *res, int size);
-void v_sub_double(const double *a, const double *b, double *res, int size);
-void v_mul_double(const double *a, const double *b, double *res, int size);
-void v_div_double(const double *a, const double *b, double *res, int size);
+void v_add_double(const double *a, const double *b, double *res, int size, const uint8_t *mask);
+void v_sub_double(const double *a, const double *b, double *res, int size, const uint8_t *mask);
+void v_mul_double(const double *a, const double *b, double *res, int size, const uint8_t *mask);
+void v_div_double(const double *a, const double *b, double *res, int size, const uint8_t *mask);
 
-void v_sin_double(const double *src, double *res, int size);
-void v_sinc_double(const double *src, double *res, int size);
-void v_cos_double(const double *src, double *res, int size);
-void v_exp_double(const double *src, double *res, int size);
-void v_log_double(const double *src, double *res, int size);
-void v_expm1_double(const double *src, double *res, int size);
-void v_log1p_double(const double *src, double *res, int size);
-void v_logaddexp_double(const double *a, const double *b, double *res, int size);
-void v_logaddexp2_double(const double *a, const double *b, double *res, int size);
+void v_sin_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_sinc_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_cos_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_exp_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_log_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_expm1_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_log1p_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_logaddexp_double(const double *a, const double *b, double *res, int size, const uint8_t *mask);
+void v_logaddexp2_double(const double *a, const double *b, double *res, int size, const uint8_t *mask);
 
 double r_sum_double(const double *src, int size);
 double r_prod_double(const double *src, int size);
@@ -69,35 +69,35 @@ double r_mean_double(const double *src, int size);
 void s_sum_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_mean_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
 
-void v_add_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size);
-void v_sub_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size);
-void v_mul_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size);
-void v_div_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size);
+void v_add_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask);
+void v_sub_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask);
+void v_mul_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask);
+void v_div_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask);
 
-void v_add_float(const float *a, const float *b, float *res, int size);
-void v_sub_float(const float *a, const float *b, float *res, int size);
-void v_mul_float(const float *a, const float *b, float *res, int size);
-void v_div_float(const float *a, const float *b, float *res, int size);
+void v_add_float(const float *a, const float *b, float *res, int size, const uint8_t *mask);
+void v_sub_float(const float *a, const float *b, float *res, int size, const uint8_t *mask);
+void v_mul_float(const float *a, const float *b, float *res, int size, const uint8_t *mask);
+void v_div_float(const float *a, const float *b, float *res, int size, const uint8_t *mask);
 
-void v_sin_float(const float *src, float *res, int size);
-void v_sinc_float(const float *src, float *res, int size);
-void v_cos_float(const float *src, float *res, int size);
-void v_exp_float(const float *src, float *res, int size);
-void v_log_float(const float *src, float *res, int size);
-void v_expm1_float(const float *src, float *res, int size);
-void v_log1p_float(const float *src, float *res, int size);
-void v_logaddexp_float(const float *a, const float *b, float *res, int size);
-void v_logaddexp2_float(const float *a, const float *b, float *res, int size);
+void v_sin_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_sinc_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_cos_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_exp_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_log_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_expm1_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_log1p_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_logaddexp_float(const float *a, const float *b, float *res, int size, const uint8_t *mask);
+void v_logaddexp2_float(const float *a, const float *b, float *res, int size, const uint8_t *mask);
 
-void v_log2_double(const double *src, double *res, int size);
-void v_log2_float(const float *src, float *res, int size);
-void v_log2_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_log2_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_log2_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_log2_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_log2_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_log2_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
 
-void v_log10_double(const double *src, double *res, int size);
-void v_log10_float(const float *src, float *res, int size);
-void v_log10_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_log10_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_log10_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_log10_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_log10_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_log10_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
 
 float r_sum_float(const float *src, int size);
 float r_prod_float(const float *src, int size);
@@ -105,188 +105,188 @@ float r_mean_float(const float *src, int size);
 void s_sum_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_mean_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
 
-void v_sqrt_double(const double *src, double *res, int size);
-void v_tan_double(const double *src, double *res, int size);
-void v_abs_double(const double *src, double *res, int size);
-void v_ceil_double(const double *src, double *res, int size);
-void v_floor_double(const double *src, double *res, int size);
-void v_round_double(const double *src, double *res, int size);
-void v_rint_double(const double *src, double *res, int size);
-void v_trunc_double(const double *src, double *res, int size);
-void v_clip_double(const double *src, double *res, double min_val, double max_val, int size);
+void v_sqrt_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_tan_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_abs_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_ceil_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_floor_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_round_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_rint_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_trunc_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_clip_double(const double *src, double *res, double min_val, double max_val, int size, const uint8_t *mask);
 
-void v_sqrt_float(const float *src, float *res, int size);
-void v_tan_float(const float *src, float *res, int size);
-void v_abs_float(const float *src, float *res, int size);
-void v_ceil_float(const float *src, float *res, int size);
-void v_floor_float(const float *src, float *res, int size);
-void v_round_float(const float *src, float *res, int size);
-void v_rint_float(const float *src, float *res, int size);
-void v_trunc_float(const float *src, float *res, int size);
-void v_clip_float(const float *src, float *res, float min_val, float max_val, int size);
+void v_sqrt_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_tan_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_abs_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_ceil_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_floor_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_round_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_rint_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_trunc_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_clip_float(const float *src, float *res, float min_val, float max_val, int size, const uint8_t *mask);
 
-void v_asin_double(const double *src, double *res, int size);
-void v_asin_float(const float *src, float *res, int size);
-void v_acos_double(const double *src, double *res, int size);
-void v_acos_float(const float *src, float *res, int size);
-void v_atan_double(const double *src, double *res, int size);
-void v_atan_float(const float *src, float *res, int size);
-void v_atan2_double(const double *y, const double *x, double *res, int size);
-void v_atan2_float(const float *y, const float *x, float *res, int size);
+void v_asin_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_asin_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_acos_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_acos_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_atan_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_atan_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_atan2_double(const double *y, const double *x, double *res, int size, const uint8_t *mask);
+void v_atan2_float(const float *y, const float *x, float *res, int size, const uint8_t *mask);
 
-void v_sinh_double(const double *src, double *res, int size);
-void v_sinh_float(const float *src, float *res, int size);
-void v_cosh_double(const double *src, double *res, int size);
-void v_cosh_float(const float *src, float *res, int size);
-void v_tanh_double(const double *src, double *res, int size);
-void v_tanh_float(const float *src, float *res, int size);
-void v_asinh_double(const double *src, double *res, int size);
-void v_asinh_float(const float *src, float *res, int size);
-void v_acosh_double(const double *src, double *res, int size);
-void v_acosh_float(const float *src, float *res, int size);
-void v_atanh_double(const double *src, double *res, int size);
-void v_atanh_float(const float *src, float *res, int size);
+void v_sinh_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_sinh_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_cosh_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_cosh_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_tanh_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_tanh_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_asinh_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_asinh_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_acosh_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_acosh_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_atanh_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_atanh_float(const float *src, float *res, int size, const uint8_t *mask);
 
-void v_sin_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_sin_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_sinc_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_sinc_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_cos_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_cos_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_tan_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_tan_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_sin_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_sin_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_sinc_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_sinc_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_cos_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_cos_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_tan_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_tan_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
 
-void v_asin_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_asin_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_acos_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_acos_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_atan_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_atan_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_asin_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_asin_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_acos_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_acos_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_atan_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_atan_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
 
-void v_atanh_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_atanh_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_atanh_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_atanh_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
 
-void v_sinh_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_sinh_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_cosh_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_cosh_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_tanh_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_tanh_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_asinh_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_asinh_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_exp_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_exp_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_log_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_log_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_sqrt_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_sqrt_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_acosh_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_acosh_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_abs_complex128(const cpx_t *src, double *res, int size);
-void v_abs_complex64(const cpx_f_t *src, float *res, int size);
-void v_expm1_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_expm1_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_log1p_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_log1p_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_sinh_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_sinh_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_cosh_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_cosh_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_tanh_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_tanh_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_asinh_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_asinh_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_exp_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_exp_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_log_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_log_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_sqrt_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_sqrt_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_acosh_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_acosh_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_abs_complex128(const cpx_t *src, double *res, int size, const uint8_t *mask);
+void v_abs_complex64(const cpx_f_t *src, float *res, int size, const uint8_t *mask);
+void v_expm1_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_expm1_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_log1p_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_log1p_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
 
-void v_hypot_complex128(const cpx_t *x1, const cpx_t *x2, double *res, int size);
-void v_hypot_complex64(const cpx_f_t *x1, const cpx_f_t *x2, float *res, int size);
+void v_hypot_complex128(const cpx_t *x1, const cpx_t *x2, double *res, int size, const uint8_t *mask);
+void v_hypot_complex64(const cpx_f_t *x1, const cpx_f_t *x2, float *res, int size, const uint8_t *mask);
 
-void v_pow_complex128(const cpx_t *x1, const cpx_t *x2, cpx_t *res, int size);
-void v_pow_complex64(const cpx_f_t *x1, const cpx_f_t *x2, cpx_f_t *res, int size);
+void v_pow_complex128(const cpx_t *x1, const cpx_t *x2, cpx_t *res, int size, const uint8_t *mask);
+void v_pow_complex64(const cpx_f_t *x1, const cpx_f_t *x2, cpx_f_t *res, int size, const uint8_t *mask);
 
 
-void v_conj_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_conj_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_angle_complex128(const cpx_t *src, double *res, int size);
-void v_angle_complex64(const cpx_f_t *src, float *res, int size);
+void v_conj_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_conj_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_angle_complex128(const cpx_t *src, double *res, int size, const uint8_t *mask);
+void v_angle_complex64(const cpx_f_t *src, float *res, int size, const uint8_t *mask);
 
-void v_square_double(const double *src, double *res, int size);
-void v_square_float(const float *src, float *res, int size);
-void v_square_int64(const int64_t *src, int64_t *res, int size);
-void v_square_int32(const int32_t *src, int32_t *res, int size);
-void v_square_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_square_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
+void v_square_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_square_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_square_int64(const int64_t *src, int64_t *res, int size, const uint8_t *mask);
+void v_square_int32(const int32_t *src, int32_t *res, int size, const uint8_t *mask);
+void v_square_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_square_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
 
-void v_reciprocal_double(const double *src, double *res, int size);
-void v_reciprocal_float(const float *src, float *res, int size);
-void v_reciprocal_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_reciprocal_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_reciprocal_int64(const int64_t *src, int64_t *res, int size);
-void v_reciprocal_int32(const int32_t *src, int32_t *res, int size);
-void v_reciprocal_int16(const int16_t *src, int16_t *res, int size);
-void v_reciprocal_uint8(const uint8_t *src, uint8_t *res, int size);
+void v_reciprocal_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_reciprocal_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_reciprocal_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_reciprocal_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_reciprocal_int64(const int64_t *src, int64_t *res, int size, const uint8_t *mask);
+void v_reciprocal_int32(const int32_t *src, int32_t *res, int size, const uint8_t *mask);
+void v_reciprocal_int16(const int16_t *src, int16_t *res, int size, const uint8_t *mask);
+void v_reciprocal_uint8(const uint8_t *src, uint8_t *res, int size, const uint8_t *mask);
 
-void v_positive_double(const double *src, double *res, int size);
-void v_positive_float(const float *src, float *res, int size);
-void v_positive_complex128(const cpx_t *src, cpx_t *res, int size);
-void v_positive_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void v_positive_int64(const int64_t *src, int64_t *res, int size);
-void v_positive_int32(const int32_t *src, int32_t *res, int size);
-void v_positive_int16(const int16_t *src, int16_t *res, int size);
-void v_positive_uint8(const uint8_t *src, uint8_t *res, int size);
+void v_positive_double(const double *src, double *res, int size, const uint8_t *mask);
+void v_positive_float(const float *src, float *res, int size, const uint8_t *mask);
+void v_positive_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void v_positive_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void v_positive_int64(const int64_t *src, int64_t *res, int size, const uint8_t *mask);
+void v_positive_int32(const int32_t *src, int32_t *res, int size, const uint8_t *mask);
+void v_positive_int16(const int16_t *src, int16_t *res, int size, const uint8_t *mask);
+void v_positive_uint8(const uint8_t *src, uint8_t *res, int size, const uint8_t *mask);
 
-void v_pow_double(const double *x1, const double *x2, double *res, int size);
-void v_pow_float(const float *x1, const float *x2, float *res, int size);
+void v_pow_double(const double *x1, const double *x2, double *res, int size, const uint8_t *mask);
+void v_pow_float(const float *x1, const float *x2, float *res, int size, const uint8_t *mask);
 
-void v_floordiv_double(const double *x1, const double *x2, double *res, int size);
-void v_floordiv_float(const float *x1, const float *x2, float *res, int size);
-void v_floordiv_int64(const int64_t *x1, const int64_t *x2, int64_t *res, int size);
-void v_floordiv_int32(const int32_t *x1, const int32_t *x2, int32_t *res, int size);
+void v_floordiv_double(const double *x1, const double *x2, double *res, int size, const uint8_t *mask);
+void v_floordiv_float(const float *x1, const float *x2, float *res, int size, const uint8_t *mask);
+void v_floordiv_int64(const int64_t *x1, const int64_t *x2, int64_t *res, int size, const uint8_t *mask);
+void v_floordiv_int32(const int32_t *x1, const int32_t *x2, int32_t *res, int size, const uint8_t *mask);
 
-void v_remainder_double(const double *x1, const double *x2, double *res, int size);
-void v_remainder_float(const float *x1, const float *x2, float *res, int size);
-void v_remainder_int64(const int64_t *x1, const int64_t *x2, int64_t *res, int size);
-void v_remainder_int32(const int32_t *x1, const int32_t *x2, int32_t *res, int size);
+void v_remainder_double(const double *x1, const double *x2, double *res, int size, const uint8_t *mask);
+void v_remainder_float(const float *x1, const float *x2, float *res, int size, const uint8_t *mask);
+void v_remainder_int64(const int64_t *x1, const int64_t *x2, int64_t *res, int size, const uint8_t *mask);
+void v_remainder_int32(const int32_t *x1, const int32_t *x2, int32_t *res, int size, const uint8_t *mask);
 
-void v_isnan_double(const double *src, uint8_t *res, int size);
-void v_isnan_float(const float *src, uint8_t *res, int size);
-void v_isnan_complex128(const cpx_t *src, uint8_t *res, int size);
-void v_isnan_complex64(const cpx_f_t *src, uint8_t *res, int size);
+void v_isnan_double(const double *src, uint8_t *res, int size, const uint8_t *mask);
+void v_isnan_float(const float *src, uint8_t *res, int size, const uint8_t *mask);
+void v_isnan_complex128(const cpx_t *src, uint8_t *res, int size, const uint8_t *mask);
+void v_isnan_complex64(const cpx_f_t *src, uint8_t *res, int size, const uint8_t *mask);
 
-void v_isinf_double(const double *src, uint8_t *res, int size);
-void v_isinf_float(const float *src, uint8_t *res, int size);
-void v_isinf_complex128(const cpx_t *src, uint8_t *res, int size);
-void v_isinf_complex64(const cpx_f_t *src, uint8_t *res, int size);
+void v_isinf_double(const double *src, uint8_t *res, int size, const uint8_t *mask);
+void v_isinf_float(const float *src, uint8_t *res, int size, const uint8_t *mask);
+void v_isinf_complex128(const cpx_t *src, uint8_t *res, int size, const uint8_t *mask);
+void v_isinf_complex64(const cpx_f_t *src, uint8_t *res, int size, const uint8_t *mask);
 
-void v_isfinite_double(const double *src, uint8_t *res, int size);
-void v_isfinite_float(const float *src, uint8_t *res, int size);
-void v_isfinite_complex128(const cpx_t *src, uint8_t *res, int size);
-void v_isfinite_complex64(const cpx_f_t *src, uint8_t *res, int size);
+void v_isfinite_double(const double *src, uint8_t *res, int size, const uint8_t *mask);
+void v_isfinite_float(const float *src, uint8_t *res, int size, const uint8_t *mask);
+void v_isfinite_complex128(const cpx_t *src, uint8_t *res, int size, const uint8_t *mask);
+void v_isfinite_complex64(const cpx_f_t *src, uint8_t *res, int size, const uint8_t *mask);
 
-void v_copysign_double(const double *x1, const double *x2, double *res, int size);
-void v_copysign_float(const float *x1, const float *x2, float *res, int size);
+void v_copysign_double(const double *x1, const double *x2, double *res, int size, const uint8_t *mask);
+void v_copysign_float(const float *x1, const float *x2, float *res, int size, const uint8_t *mask);
 
 /* Vectorized Bitwise Universal Functions */
-void v_bitwise_and_int32(const int32_t *a, const int32_t *b, int32_t *res, int size);
-void v_bitwise_and_int64(const int64_t *a, const int64_t *b, int64_t *res, int size);
-void v_bitwise_and_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
-void v_bitwise_and_int16(const int16_t *a, const int16_t *b, int16_t *res, int size);
+void v_bitwise_and_int32(const int32_t *a, const int32_t *b, int32_t *res, int size, const uint8_t *mask);
+void v_bitwise_and_int64(const int64_t *a, const int64_t *b, int64_t *res, int size, const uint8_t *mask);
+void v_bitwise_and_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size, const uint8_t *mask);
+void v_bitwise_and_int16(const int16_t *a, const int16_t *b, int16_t *res, int size, const uint8_t *mask);
 
-void v_bitwise_or_int32(const int32_t *a, const int32_t *b, int32_t *res, int size);
-void v_bitwise_or_int64(const int64_t *a, const int64_t *b, int64_t *res, int size);
-void v_bitwise_or_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
-void v_bitwise_or_int16(const int16_t *a, const int16_t *b, int16_t *res, int size);
+void v_bitwise_or_int32(const int32_t *a, const int32_t *b, int32_t *res, int size, const uint8_t *mask);
+void v_bitwise_or_int64(const int64_t *a, const int64_t *b, int64_t *res, int size, const uint8_t *mask);
+void v_bitwise_or_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size, const uint8_t *mask);
+void v_bitwise_or_int16(const int16_t *a, const int16_t *b, int16_t *res, int size, const uint8_t *mask);
 
-void v_bitwise_xor_int32(const int32_t *a, const int32_t *b, int32_t *res, int size);
-void v_bitwise_xor_int64(const int64_t *a, const int64_t *b, int64_t *res, int size);
-void v_bitwise_xor_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
-void v_bitwise_xor_int16(const int16_t *a, const int16_t *b, int16_t *res, int size);
+void v_bitwise_xor_int32(const int32_t *a, const int32_t *b, int32_t *res, int size, const uint8_t *mask);
+void v_bitwise_xor_int64(const int64_t *a, const int64_t *b, int64_t *res, int size, const uint8_t *mask);
+void v_bitwise_xor_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size, const uint8_t *mask);
+void v_bitwise_xor_int16(const int16_t *a, const int16_t *b, int16_t *res, int size, const uint8_t *mask);
 
-void v_left_shift_int32(const int32_t *a, const int32_t *b, int32_t *res, int size);
-void v_left_shift_int64(const int64_t *a, const int64_t *b, int64_t *res, int size);
-void v_left_shift_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
-void v_left_shift_int16(const int16_t *a, const int16_t *b, int16_t *res, int size);
+void v_left_shift_int32(const int32_t *a, const int32_t *b, int32_t *res, int size, const uint8_t *mask);
+void v_left_shift_int64(const int64_t *a, const int64_t *b, int64_t *res, int size, const uint8_t *mask);
+void v_left_shift_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size, const uint8_t *mask);
+void v_left_shift_int16(const int16_t *a, const int16_t *b, int16_t *res, int size, const uint8_t *mask);
 
-void v_right_shift_int32(const int32_t *a, const int32_t *b, int32_t *res, int size);
-void v_right_shift_int64(const int64_t *a, const int64_t *b, int64_t *res, int size);
-void v_right_shift_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
-void v_right_shift_int16(const int16_t *a, const int16_t *b, int16_t *res, int size);
+void v_right_shift_int32(const int32_t *a, const int32_t *b, int32_t *res, int size, const uint8_t *mask);
+void v_right_shift_int64(const int64_t *a, const int64_t *b, int64_t *res, int size, const uint8_t *mask);
+void v_right_shift_uint8(const uint8_t *a, const uint8_t *b, uint8_t *res, int size, const uint8_t *mask);
+void v_right_shift_int16(const int16_t *a, const int16_t *b, int16_t *res, int size, const uint8_t *mask);
 
-void v_invert_int32(const int32_t *src, int32_t *res, int size);
-void v_invert_int64(const int64_t *src, int64_t *res, int size);
-void v_invert_uint8(const uint8_t *src, uint8_t *res, int size);
-void v_invert_int16(const int16_t *src, int16_t *res, int size);
+void v_invert_int32(const int32_t *src, int32_t *res, int size, const uint8_t *mask);
+void v_invert_int64(const int64_t *src, int64_t *res, int size, const uint8_t *mask);
+void v_invert_uint8(const uint8_t *src, uint8_t *res, int size, const uint8_t *mask);
+void v_invert_int16(const int16_t *src, int16_t *res, int size, const uint8_t *mask);
 
 
 /* ============================================================================
@@ -378,58 +378,58 @@ void s_where_complex64(const unsigned char *cond, const int *stridesCond,
                        cpx_f_t *res, const int *stridesRes,
                        const int *shape, int rank);
 
-void s_sin_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_sin_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_sinc_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_sinc_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_cos_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_cos_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_tan_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_tan_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_sin_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_sin_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_sinc_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_sinc_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_cos_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_cos_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_tan_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_tan_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_asin_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_asin_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_acos_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_acos_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_atan_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_atan_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_asin_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_asin_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_acos_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_acos_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_atan_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_atan_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_atanh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_atanh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_atanh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_atanh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_sinh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_sinh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_cosh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_cosh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_tanh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_tanh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_asinh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_asinh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_exp_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_exp_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_log_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_log_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_sqrt_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_sqrt_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_acosh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_acosh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_abs_complex128(const cpx_t *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_abs_complex64(const cpx_f_t *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_expm1_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_expm1_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_log1p_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_log1p_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_sinh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_sinh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_cosh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_cosh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_tanh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_tanh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_asinh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_asinh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_exp_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_exp_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_log_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_log_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_sqrt_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_sqrt_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_acosh_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_acosh_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_abs_complex128(const cpx_t *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_abs_complex64(const cpx_f_t *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_expm1_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_expm1_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_log1p_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_log1p_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_hypot_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank);
-void s_hypot_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank);
+void s_hypot_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_hypot_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_pow_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_pow_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_pow_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_pow_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_conj_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_conj_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_angle_complex128(const cpx_t *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_angle_complex64(const cpx_f_t *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_conj_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_conj_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_angle_complex128(const cpx_t *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_angle_complex64(const cpx_f_t *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
 void s_cumsum_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis);
 void s_cumsum_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, int axis);
@@ -464,151 +464,151 @@ void s_diff_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, c
 void s_unwrap_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, int axis, double discont);
 void s_unwrap_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, int axis, float discont);
 
-void s_sin_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_sin_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_sinc_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_sinc_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_cos_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_cos_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_sin_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_sin_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_sinc_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_sinc_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_cos_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_cos_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_asin_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_asin_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_acos_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_acos_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_atan_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_atan_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_asin_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_asin_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_acos_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_acos_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_atan_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_atan_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_atan2_double(const double *y, const int *stridesY, const double *x, const int *stridesX, double *res, const int *stridesRes, const int *shape, int rank);
-void s_atan2_float(const float *y, const int *stridesY, const float *x, const int *stridesX, float *res, const int *stridesRes, const int *shape, int rank);
+void s_atan2_double(const double *y, const int *stridesY, const double *x, const int *stridesX, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_atan2_float(const float *y, const int *stridesY, const float *x, const int *stridesX, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_tan_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_tan_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_exp_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_exp_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_log_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_log_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_expm1_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_expm1_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_log1p_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_log1p_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_rint_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_rint_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_trunc_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_trunc_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_logaddexp_double(const double *a, const int *stridesA, const double *b, const int *stridesB, double *res, const int *stridesRes, const int *shape, int rank);
-void s_logaddexp_float(const float *a, const int *stridesA, const float *b, const int *stridesB, float *res, const int *stridesRes, const int *shape, int rank);
-void s_logaddexp2_double(const double *a, const int *stridesA, const double *b, const int *stridesB, double *res, const int *stridesRes, const int *shape, int rank);
-void s_logaddexp2_float(const float *a, const int *stridesA, const float *b, const int *stridesB, float *res, const int *stridesRes, const int *shape, int rank);
+void s_tan_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_tan_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_exp_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_exp_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_log_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_log_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_expm1_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_expm1_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_log1p_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_log1p_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_rint_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_rint_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_trunc_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_trunc_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_logaddexp_double(const double *a, const int *stridesA, const double *b, const int *stridesB, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_logaddexp_float(const float *a, const int *stridesA, const float *b, const int *stridesB, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_logaddexp2_double(const double *a, const int *stridesA, const double *b, const int *stridesB, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_logaddexp2_float(const float *a, const int *stridesA, const float *b, const int *stridesB, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_log2_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_log2_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_log2_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_log2_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_log2_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_log2_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_log2_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_log2_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_log10_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_log10_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_log10_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_log10_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_log10_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_log10_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_log10_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_log10_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_sinh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_sinh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_cosh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_cosh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_tanh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_tanh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
+void s_sinh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_sinh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_cosh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_cosh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_tanh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_tanh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_asinh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_asinh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_acosh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_acosh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_atanh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_atanh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_square_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_square_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_square_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank);
-void s_square_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank);
-void s_square_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_square_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+void s_asinh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_asinh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_acosh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_acosh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_atanh_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_atanh_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_square_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_square_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_square_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_square_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_square_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_square_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_reciprocal_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_reciprocal_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_reciprocal_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_reciprocal_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_reciprocal_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank);
-void s_reciprocal_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank);
-void s_reciprocal_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank);
-void s_reciprocal_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_reciprocal_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_reciprocal_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_reciprocal_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_reciprocal_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_reciprocal_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_reciprocal_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_reciprocal_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_reciprocal_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_positive_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void s_positive_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void s_positive_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
-void s_positive_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void s_positive_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank);
-void s_positive_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank);
-void s_positive_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank);
-void s_positive_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_positive_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_positive_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_positive_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_positive_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_positive_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_positive_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_positive_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_positive_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_pow_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank);
-void s_pow_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank);
+void s_pow_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_pow_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_floordiv_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank);
-void s_floordiv_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank);
-void s_floordiv_int64(const int64_t *x1, const int *stridesX1, const int64_t *x2, const int *stridesX2, int64_t *res, const int *stridesRes, const int *shape, int rank);
-void s_floordiv_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, const int *stridesX2, int32_t *res, const int *stridesRes, const int *shape, int rank);
+void s_floordiv_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_floordiv_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_floordiv_int64(const int64_t *x1, const int *stridesX1, const int64_t *x2, const int *stridesX2, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_floordiv_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, const int *stridesX2, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_remainder_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank);
-void s_remainder_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank);
-void s_remainder_int64(const int64_t *x1, const int *stridesX1, const int64_t *x2, const int *stridesX2, int64_t *res, const int *stridesRes, const int *shape, int rank);
-void s_remainder_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, const int *stridesX2, int32_t *res, const int *stridesRes, const int *shape, int rank);
+void s_remainder_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_remainder_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_remainder_int64(const int64_t *x1, const int *stridesX1, const int64_t *x2, const int *stridesX2, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_remainder_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, const int *stridesX2, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_isnan_double(const double *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_isnan_float(const float *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_isnan_complex128(const cpx_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_isnan_complex64(const cpx_f_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_isnan_double(const double *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_isnan_float(const float *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_isnan_complex128(const cpx_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_isnan_complex64(const cpx_f_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_isinf_double(const double *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_isinf_float(const float *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_isinf_complex128(const cpx_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_isinf_complex64(const cpx_f_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_isinf_double(const double *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_isinf_float(const float *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_isinf_complex128(const cpx_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_isinf_complex64(const cpx_f_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_isfinite_double(const double *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_isfinite_float(const float *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_isfinite_complex128(const cpx_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_isfinite_complex64(const cpx_f_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_isfinite_double(const double *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_isfinite_float(const float *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_isfinite_complex128(const cpx_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_isfinite_complex64(const cpx_f_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_copysign_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank);
-void s_copysign_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank);
+void s_copysign_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_copysign_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
 /* Strided Vectorized Bitwise Universal Functions */
-void s_bitwise_and_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank);
-void s_bitwise_and_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank);
-void s_bitwise_and_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_bitwise_and_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank);
+void s_bitwise_and_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_bitwise_and_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_bitwise_and_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_bitwise_and_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_bitwise_or_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank);
-void s_bitwise_or_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank);
-void s_bitwise_or_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_bitwise_or_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank);
+void s_bitwise_or_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_bitwise_or_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_bitwise_or_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_bitwise_or_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_bitwise_xor_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank);
-void s_bitwise_xor_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank);
-void s_bitwise_xor_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_bitwise_xor_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank);
+void s_bitwise_xor_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_bitwise_xor_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_bitwise_xor_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_bitwise_xor_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_left_shift_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank);
-void s_left_shift_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank);
-void s_left_shift_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_left_shift_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank);
+void s_left_shift_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_left_shift_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_left_shift_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_left_shift_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_right_shift_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank);
-void s_right_shift_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank);
-void s_right_shift_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_right_shift_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank);
+void s_right_shift_int32(const int32_t *a, const int *stridesA, const int32_t *b, const int *stridesB, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_right_shift_int64(const int64_t *a, const int *stridesA, const int64_t *b, const int *stridesB, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_right_shift_uint8(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_right_shift_int16(const int16_t *a, const int *stridesA, const int16_t *b, const int *stridesB, int16_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void s_invert_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank);
-void s_invert_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank);
-void s_invert_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_invert_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank);
+void s_invert_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_invert_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_invert_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_invert_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
 
 /* ============================================================================
@@ -879,11 +879,12 @@ void v_triu_float(const float *src, float *res, int batch_count, int rows, int c
   MACRO(OP, cpx64, cpx64, cpx64, cpx_f_t, cpx_f_t, cpx_f_t)
 
 #define DECLARE_FFI_HELPER(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr) \
-  void v_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const Tb *b, Tr *res, int size); \
+  void v_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const Tb *b, Tr *res, int size, const uint8_t *mask); \
   void s_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const int *stridesA, \
                                                const Tb *b, const int *stridesB, \
                                                Tr *res, const int *stridesRes, \
-                                               const int *shape, int rank);
+                                               const int *shape, int rank, \
+                                               const uint8_t *mask);
 
 GENERATE_COMMUTATIVE_COMBINATIONS(add, DECLARE_FFI_HELPER)
 GENERATE_OP_COMBINATIONS(sub, DECLARE_FFI_HELPER)
@@ -905,33 +906,33 @@ void s_cast_double_to_uint8(const double *src, const int *stridesSrc, uint8_t *d
 void s_cast_double_to_int16(const double *src, const int *stridesSrc, int16_t *dst, const int *stridesDst, const int *shape, int rank);
 
 /* Logical & Casting-to-Boolean operations */
-void v_to_bool_double(const double *src, uint8_t *res, int size);
-void v_to_bool_float(const float *src, uint8_t *res, int size);
-void v_to_bool_int64(const int64_t *src, uint8_t *res, int size);
-void v_to_bool_int32(const int32_t *src, uint8_t *res, int size);
-void v_to_bool_uint8(const uint8_t *src, uint8_t *res, int size);
-void v_to_bool_int16(const int16_t *src, uint8_t *res, int size);
-void v_to_bool_complex128(const cpx_t *src, uint8_t *res, int size);
-void v_to_bool_complex64(const cpx_f_t *src, uint8_t *res, int size);
+void v_to_bool_double(const double *src, uint8_t *res, int size, const uint8_t *mask);
+void v_to_bool_float(const float *src, uint8_t *res, int size, const uint8_t *mask);
+void v_to_bool_int64(const int64_t *src, uint8_t *res, int size, const uint8_t *mask);
+void v_to_bool_int32(const int32_t *src, uint8_t *res, int size, const uint8_t *mask);
+void v_to_bool_uint8(const uint8_t *src, uint8_t *res, int size, const uint8_t *mask);
+void v_to_bool_int16(const int16_t *src, uint8_t *res, int size, const uint8_t *mask);
+void v_to_bool_complex128(const cpx_t *src, uint8_t *res, int size, const uint8_t *mask);
+void v_to_bool_complex64(const cpx_f_t *src, uint8_t *res, int size, const uint8_t *mask);
 
-void s_to_bool_double(const double *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_to_bool_float(const float *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_to_bool_int64(const int64_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_to_bool_int32(const int32_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_to_bool_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_to_bool_int16(const int16_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_to_bool_complex128(const cpx_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_to_bool_complex64(const cpx_f_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_to_bool_double(const double *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_to_bool_float(const float *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_to_bool_int64(const int64_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_to_bool_int32(const int32_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_to_bool_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_to_bool_int16(const int16_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_to_bool_complex128(const cpx_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_to_bool_complex64(const cpx_f_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void v_logical_and(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
-void v_logical_or(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
-void v_logical_xor(const uint8_t *a, const uint8_t *b, uint8_t *res, int size);
-void v_logical_not(const uint8_t *src, uint8_t *res, int size);
+void v_logical_and(const uint8_t *a, const uint8_t *b, uint8_t *res, int size, const uint8_t *mask);
+void v_logical_or(const uint8_t *a, const uint8_t *b, uint8_t *res, int size, const uint8_t *mask);
+void v_logical_xor(const uint8_t *a, const uint8_t *b, uint8_t *res, int size, const uint8_t *mask);
+void v_logical_not(const uint8_t *src, uint8_t *res, int size, const uint8_t *mask);
 
-void s_logical_and(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_logical_or(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_logical_xor(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_logical_not(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_logical_and(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_logical_or(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_logical_xor(const uint8_t *a, const int *stridesA, const uint8_t *b, const int *stridesB, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_logical_not(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
 /* Optimized native advanced indexing recursive copy kernel */
 void copy_advanced_c(
@@ -1061,12 +1062,12 @@ void v_hamming_double(double *res, int M);
 void v_hamming_float(float *res, int M);
 
 /* Strided Ternary Clip Functions */
-void s_clip_double(const double *a, const int *stridesA, const double *min_val, const int *stridesMin, const double *max_val, const int *stridesMax, double *res, const int *stridesRes, const int *shape, int rank);
-void s_clip_float(const float *a, const int *stridesA, const float *min_val, const int *stridesMin, const float *max_val, const int *stridesMax, float *res, const int *stridesRes, const int *shape, int rank);
-void s_clip_int64(const int64_t *a, const int *stridesA, const int64_t *min_val, const int *stridesMin, const int64_t *max_val, const int *stridesMax, int64_t *res, const int *stridesRes, const int *shape, int rank);
-void s_clip_int32(const int32_t *a, const int *stridesA, const int32_t *min_val, const int *stridesMin, const int32_t *max_val, const int *stridesMax, int32_t *res, const int *stridesRes, const int *shape, int rank);
-void s_clip_uint8(const uint8_t *a, const int *stridesA, const uint8_t *min_val, const int *stridesMin, const uint8_t *max_val, const int *stridesMax, uint8_t *res, const int *stridesRes, const int *shape, int rank);
-void s_clip_int16(const int16_t *a, const int *stridesA, const int16_t *min_val, const int *stridesMin, const int16_t *max_val, const int *stridesMax, int16_t *res, const int *stridesRes, const int *shape, int rank);
+void s_clip_double(const double *a, const int *stridesA, const double *min_val, const int *stridesMin, const double *max_val, const int *stridesMax, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_clip_float(const float *a, const int *stridesA, const float *min_val, const int *stridesMin, const float *max_val, const int *stridesMax, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_clip_int64(const int64_t *a, const int *stridesA, const int64_t *min_val, const int *stridesMin, const int64_t *max_val, const int *stridesMax, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_clip_int32(const int32_t *a, const int *stridesA, const int32_t *min_val, const int *stridesMin, const int32_t *max_val, const int *stridesMax, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_clip_uint8(const uint8_t *a, const int *stridesA, const uint8_t *min_val, const int *stridesMin, const uint8_t *max_val, const int *stridesMax, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_clip_int16(const int16_t *a, const int *stridesA, const int16_t *min_val, const int *stridesMin, const int16_t *max_val, const int *stridesMax, int16_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
 /* Calculus Solvers: Trapz and Gradient */
 void s_trapz_double(const double *y, const int *stridesY, const double *x, int strideX, double dx, double *res, const int *stridesRes, const int *shape, int rank, int axis);
@@ -1508,25 +1509,25 @@ void ndarray_cdist(
 );
 
 // Integer Absolute Value and Exponentiation ufuncs
-void v_abs_int64(const int64_t *src, int64_t *res, int size);
-void v_abs_int32(const int32_t *src, int32_t *res, int size);
-void v_abs_int16(const int16_t *src, int16_t *res, int size);
-void v_abs_uint8(const uint8_t *src, uint8_t *res, int size);
+void v_abs_int64(const int64_t *src, int64_t *res, int size, const uint8_t *mask);
+void v_abs_int32(const int32_t *src, int32_t *res, int size, const uint8_t *mask);
+void v_abs_int16(const int16_t *src, int16_t *res, int size, const uint8_t *mask);
+void v_abs_uint8(const uint8_t *src, uint8_t *res, int size, const uint8_t *mask);
 
-void s_abs_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank);
-void s_abs_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank);
-void s_abs_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank);
-void s_abs_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_abs_int64(const int64_t *src, const int *stridesSrc, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_abs_int32(const int32_t *src, const int *stridesSrc, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_abs_int16(const int16_t *src, const int *stridesSrc, int16_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_abs_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
-void v_pow_int64(const int64_t *x1, const int64_t *x2, int64_t *res, int size);
-void v_pow_int32(const int32_t *x1, const int32_t *x2, int32_t *res, int size);
-void v_pow_int16(const int16_t *x1, const int16_t *x2, int16_t *res, int size);
-void v_pow_uint8(const uint8_t *x1, const uint8_t *x2, uint8_t *res, int size);
+void v_pow_int64(const int64_t *x1, const int64_t *x2, int64_t *res, int size, const uint8_t *mask);
+void v_pow_int32(const int32_t *x1, const int32_t *x2, int32_t *res, int size, const uint8_t *mask);
+void v_pow_int16(const int16_t *x1, const int16_t *x2, int16_t *res, int size, const uint8_t *mask);
+void v_pow_uint8(const uint8_t *x1, const uint8_t *x2, uint8_t *res, int size, const uint8_t *mask);
 
-void s_pow_int64(const int64_t *x1, const int *stridesX1, const int64_t *x2, const int *stridesX2, int64_t *res, const int *stridesRes, const int *shape, int rank);
-void s_pow_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, const int *stridesX2, int32_t *res, const int *stridesRes, const int *shape, int rank);
-void s_pow_int16(const int16_t *x1, const int *stridesX1, const int16_t *x2, const int *stridesX2, int16_t *res, const int *stridesRes, const int *shape, int rank);
-void s_pow_uint8(const uint8_t *x1, const int *stridesX1, const uint8_t *x2, const int *stridesX2, uint8_t *res, const int *stridesRes, const int *shape, int rank);
+void s_pow_int64(const int64_t *x1, const int *stridesX1, const int64_t *x2, const int *stridesX2, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_pow_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, const int *stridesX2, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_pow_int16(const int16_t *x1, const int *stridesX1, const int16_t *x2, const int *stridesX2, int16_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_pow_uint8(const uint8_t *x1, const int *stridesX1, const uint8_t *x2, const int *stridesX2, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
 /* Bincount operations */
 void v_bincount_int32(const int32_t *src, int64_t *res, int size, int res_size);
@@ -1552,14 +1553,14 @@ void assemble_eigenvalues_double(cpx_t *w, int strideWLast, const double *wr, co
 void assemble_eigenvalues_float(cpx_f_t *w, int strideWLast, const float *wr, const float *wi, int n);
 
 /* Bessel I0 operations */
-void v_i0_float(const float *src, float *res, int size);
-void s_i0_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank);
-void v_i0_double(const double *src, double *res, int size);
-void s_i0_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank);
-void v_i0_complex64(const cpx_f_t *src, cpx_f_t *res, int size);
-void s_i0_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
-void v_i0_complex128(const cpx_t *src, cpx_t *res, int size);
-void s_i0_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void v_i0_float(const float *src, float *res, int size, const uint8_t *mask);
+void s_i0_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void v_i0_double(const double *src, double *res, int size, const uint8_t *mask);
+void s_i0_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void v_i0_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *mask);
+void s_i0_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void v_i0_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
+void s_i0_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
 
 /* Spatial N-D Correlation */

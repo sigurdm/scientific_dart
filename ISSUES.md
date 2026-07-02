@@ -64,6 +64,34 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 ### 3.26 Scientific Optimization & Root Finding
 - **Feature**: Core numerical algorithms including 1D root finders (`brentq`, Newton-Raphson) and scalar/multivariate minimization (Nelder-Mead, L-BFGS).
 
+### 3.27 Expanded Data Type (DType) Support
+- **Feature**: Add missing integer types (`int8`, `uint16`, `uint32`, `uint64`), floating-point types (`float16`, `bfloat16`), fixed-width strings/bytes (`string_`), datetime types (`datetime64`, `timedelta64`), and structured / record arrays (`recarray`).
+- **Details**: Extend core C FFI and Dart wrappers to support fixed-width string buffers, time unit encodings, and heterogeneous structured record layouts.
+
+### 3.28 Ellipsis Indexing (`...`) & Multi-Array Indexing
+- **Feature**: Support Ellipsis slicing across arbitrary dimensions dynamically, and implement full N-dimensional index array broadcasting ("fancy indexing").
+- **Details**: Expand dimension resolution during indexing to interpret `...` across non-explicit axes and compute broadcasted coordinate indexing offsets.
+
+### 3.29 Universal Function (`ufunc`) Capabilities
+- **Feature**: Support `where=` boolean mask array parameters on ufuncs to perform conditional operations without allocating transient intermediate arrays, and implement ufunc reduction/accumulation methods (`reduce`, `accumulate`, `reduceat`, `outer`, `at`).
+- **Details**: Enable strided elementwise masking in FFI kernels and add standard ufunc method dispatches for reduction, outer products, and unbuffered in-place modifications.
+
+### 3.30 Modern BitGenerator Random Generator API
+- **Feature**: Implement a modern `Generator` API powered by BitGenerators (PCG64, Philox, SFC64) to replace legacy `dart:math Random` distribution sampling.
+- **Details**: Provide high-performance BitGenerator bitstream engines and statistical distribution samplers (Normal, Gamma, Beta, etc.) matching `numpy.random.Generator`.
+
+### 3.31 Extended Matrix Functions & Tensor Solvers (`linalg`)
+- **Feature**: Implement matrix exponential/logarithm/square-root (`expm`, `logm`, `sqrtm`), generalized matrix ufuncs (`gufuncs`), and tensor solvers (`tensorsolve`, `tensorinv`).
+- **Details**: Interface with LAPACK/OpenBLAS routines for matrix functions, implement tensor inverse/solver decompositions, and provide GUFunc signature dispatching.
+
+### 3.32 Multi-Dimensional Real & Hermite FFT Routines (`fft`)
+- **Feature**: Implement 2D/N-D real FFTs (`rfft2`, `irfft2`, `rfftn`, `irfftn`) and Hermite FFTs (`hfft`, `ihfft`).
+- **Details**: Extend 1D real FFT algorithms to N-dimensional real-to-complex and Hermite-symmetric array transformations along arbitrary axis subsets.
+
+### 3.33 Object-Oriented Polynomial API
+- **Feature**: Implement OO polynomial classes (`Polynomial`, `Chebyshev`, `Legendre`, `Hermite`) with `.fit()` routines and domain mapping.
+- **Details**: Provide class hierarchy for orthogonal polynomial series, series arithmetic, domain/window mapping, and least-squares fitting against sample points.
+
 ---
 
 ## ✨ Section 4: Usability & Ergonomics

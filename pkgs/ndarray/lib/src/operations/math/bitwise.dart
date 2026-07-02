@@ -33,12 +33,23 @@ import '../helpers.dart';
 NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<Uint8>? where,
   NDArray<Tr>? out,
 }) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute bitwise_and() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'bitwise_and');
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(
+    a,
+    b,
+    where,
+    out,
+    'bitwise_and',
+  );
+  final maskHolder = prep.maskHolder;
   final aCast = prep.aCast;
   final bCast = prep.bCast;
   final result = prep.result;
@@ -53,6 +64,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.int64:
           v_bitwise_and_int64(
@@ -60,6 +72,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.uint8:
           v_bitwise_and_uint8(
@@ -67,6 +80,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.int16:
           v_bitwise_and_int16(
@@ -74,6 +88,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         default:
           throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
@@ -104,6 +119,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.int64:
           s_bitwise_and_int64(
@@ -115,6 +131,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.uint8:
           s_bitwise_and_uint8(
@@ -126,6 +143,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.int16:
           s_bitwise_and_int16(
@@ -137,6 +155,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         default:
           throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
@@ -181,12 +200,23 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
 NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<Uint8>? where,
   NDArray<Tr>? out,
 }) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute bitwise_or() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'bitwise_or');
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(
+    a,
+    b,
+    where,
+    out,
+    'bitwise_or',
+  );
+  final maskHolder = prep.maskHolder;
   final aCast = prep.aCast;
   final bCast = prep.bCast;
   final result = prep.result;
@@ -201,6 +231,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.int64:
           v_bitwise_or_int64(
@@ -208,6 +239,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.uint8:
           v_bitwise_or_uint8(
@@ -215,6 +247,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.int16:
           v_bitwise_or_int16(
@@ -222,6 +255,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         default:
           throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
@@ -252,6 +286,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.int64:
           s_bitwise_or_int64(
@@ -263,6 +298,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.uint8:
           s_bitwise_or_uint8(
@@ -274,6 +310,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.int16:
           s_bitwise_or_int16(
@@ -285,6 +322,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         default:
           throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
@@ -329,12 +367,23 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
 NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<Uint8>? where,
   NDArray<Tr>? out,
 }) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute bitwise_xor() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'bitwise_xor');
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(
+    a,
+    b,
+    where,
+    out,
+    'bitwise_xor',
+  );
+  final maskHolder = prep.maskHolder;
   final aCast = prep.aCast;
   final bCast = prep.bCast;
   final result = prep.result;
@@ -349,6 +398,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.int64:
           v_bitwise_xor_int64(
@@ -356,6 +406,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.uint8:
           v_bitwise_xor_uint8(
@@ -363,6 +414,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.int16:
           v_bitwise_xor_int16(
@@ -370,6 +422,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         default:
           throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
@@ -400,6 +453,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.int64:
           s_bitwise_xor_int64(
@@ -411,6 +465,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.uint8:
           s_bitwise_xor_uint8(
@@ -422,6 +477,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.int16:
           s_bitwise_xor_int16(
@@ -433,6 +489,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         default:
           throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
@@ -477,12 +534,23 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
 NDArray<Tr> left_shift<Ta, Tb, Tr>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<Uint8>? where,
   NDArray<Tr>? out,
 }) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute left_shift() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'left_shift');
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(
+    a,
+    b,
+    where,
+    out,
+    'left_shift',
+  );
+  final maskHolder = prep.maskHolder;
   final aCast = prep.aCast;
   final bCast = prep.bCast;
   final result = prep.result;
@@ -497,6 +565,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.int64:
           v_left_shift_int64(
@@ -504,6 +573,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.uint8:
           v_left_shift_uint8(
@@ -511,6 +581,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.int16:
           v_left_shift_int16(
@@ -518,6 +589,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         default:
           throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
@@ -548,6 +620,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.int64:
           s_left_shift_int64(
@@ -559,6 +632,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.uint8:
           s_left_shift_uint8(
@@ -570,6 +644,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.int16:
           s_left_shift_int16(
@@ -581,6 +656,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         default:
           throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
@@ -625,12 +701,23 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
 NDArray<Tr> right_shift<Ta, Tb, Tr>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<Uint8>? where,
   NDArray<Tr>? out,
 }) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute right_shift() on a disposed array.');
   }
-  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(a, b, out, 'right_shift');
+  final prep = _prepareBinaryBitwise<Ta, Tb, Tr>(
+    a,
+    b,
+    where,
+    out,
+    'right_shift',
+  );
+  final maskHolder = prep.maskHolder;
   final aCast = prep.aCast;
   final bCast = prep.bCast;
   final result = prep.result;
@@ -645,6 +732,7 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.int64:
           v_right_shift_int64(
@@ -652,6 +740,7 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.uint8:
           v_right_shift_uint8(
@@ -659,6 +748,7 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         case DType.int16:
           v_right_shift_int16(
@@ -666,6 +756,7 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
             bCast.pointer.cast(),
             result.pointer.cast(),
             size,
+            maskHolder.pointer,
           );
         default:
           throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
@@ -696,6 +787,7 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.int64:
           s_right_shift_int64(
@@ -707,6 +799,7 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.uint8:
           s_right_shift_uint8(
@@ -718,6 +811,7 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         case DType.int16:
           s_right_shift_int16(
@@ -729,6 +823,7 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
         default:
           throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
@@ -768,8 +863,14 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
 /// {@example /example/bitwise_example.dart lang=dart}
 ///
 /// Reference: [NumPy invert](https://numpy.org/doc/stable/reference/generated/numpy.invert.html)
-NDArray<Tr> invert<Ta, Tr>(NDArray<Ta> a, {NDArray<Tr>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<Tr> invert<Ta, Tr>(
+  NDArray<Ta> a, {
+  NDArray<Uint8>? where,
+  NDArray<Tr>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute invert() on a disposed array.');
   }
 
@@ -790,18 +891,39 @@ NDArray<Tr> invert<Ta, Tr>(NDArray<Ta> a, {NDArray<Tr>? out}) {
   } else {
     result = NDArray<Tr>.create(a.shape, a.dtype as DType<Tr>);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     final size = a.size;
     switch (a.dtype) {
       case DType.int32:
-        v_invert_int32(a.pointer.cast(), result.pointer.cast(), size);
+        v_invert_int32(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          size,
+          maskHolder.pointer,
+        );
       case DType.int64:
-        v_invert_int64(a.pointer.cast(), result.pointer.cast(), size);
+        v_invert_int64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          size,
+          maskHolder.pointer,
+        );
       case DType.uint8:
-        v_invert_uint8(a.pointer.cast(), result.pointer.cast(), size);
+        v_invert_uint8(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          size,
+          maskHolder.pointer,
+        );
       case DType.int16:
-        v_invert_int16(a.pointer.cast(), result.pointer.cast(), size);
+        v_invert_int16(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          size,
+          maskHolder.pointer,
+        );
       default:
         throw UnsupportedError('Unsupported integer DType: ${a.dtype}');
     }
@@ -827,6 +949,7 @@ NDArray<Tr> invert<Ta, Tr>(NDArray<Ta> a, {NDArray<Tr>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
       case DType.int64:
         s_invert_int64(
@@ -836,6 +959,7 @@ NDArray<Tr> invert<Ta, Tr>(NDArray<Ta> a, {NDArray<Tr>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
       case DType.uint8:
         s_invert_uint8(
@@ -845,6 +969,7 @@ NDArray<Tr> invert<Ta, Tr>(NDArray<Ta> a, {NDArray<Tr>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
       case DType.int16:
         s_invert_int16(
@@ -854,6 +979,7 @@ NDArray<Tr> invert<Ta, Tr>(NDArray<Ta> a, {NDArray<Tr>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
       default:
         throw UnsupportedError('Unsupported integer DType: ${a.dtype}');
@@ -871,10 +997,12 @@ NDArray<Tr> invert<Ta, Tr>(NDArray<Ta> a, {NDArray<Tr>? out}) {
   List<int> stridesA,
   List<int> stridesB,
   bool isContig,
+  MaskHolder maskHolder,
 })
 _prepareBinaryBitwise<Ta, Tb, Tr>(
   NDArray<Ta> a,
   NDArray<Tb> b,
+  NDArray<Uint8>? where,
   NDArray<Tr>? out,
   String opName,
 ) {
@@ -917,6 +1045,7 @@ _prepareBinaryBitwise<Ta, Tb, Tr>(
   } else {
     result = NDArray<Tr>.create(commonShape, targetDType as DType<Tr>);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   final isContig =
       aCast.isContiguous &&
@@ -932,5 +1061,6 @@ _prepareBinaryBitwise<Ta, Tb, Tr>(
     stridesA: stridesA,
     stridesB: stridesB,
     isContig: isContig,
+    maskHolder: maskHolder,
   );
 }

@@ -22,7 +22,11 @@ import '../stats.dart';
 ///
 /// **Edge cases:**
 /// - Negative values will result in [double.nan].
-NDArray<R> sqrt<T, R>(NDArray<T> a, {NDArray<R>? out}) {
+NDArray<R> sqrt<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute sqrt() on a disposed array.');
   }
@@ -45,20 +49,41 @@ NDArray<R> sqrt<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_sqrt_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sqrt_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_sqrt_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sqrt_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_sqrt_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sqrt_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_sqrt_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sqrt_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -84,6 +109,7 @@ NDArray<R> sqrt<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        ffi.nullptr,
       );
     } else {
       s_sqrt_complex64(
@@ -93,6 +119,7 @@ NDArray<R> sqrt<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        ffi.nullptr,
       );
     }
     return result;
@@ -196,7 +223,11 @@ double _logaddexp2(double x, double y) {
 }
 
 /// Computes the exponential minus one ($e^x - 1$) element-wise.
-NDArray<R> expm1<T, R>(NDArray<T> a, {NDArray<R>? out}) {
+NDArray<R> expm1<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute expm1() on a disposed array.');
   }
@@ -222,16 +253,36 @@ NDArray<R> expm1<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_expm1_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_expm1_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.float32:
-        v_expm1_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_expm1_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.complex128:
-        v_expm1_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_expm1_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.complex64:
-        v_expm1_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_expm1_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       default:
         break;
@@ -258,6 +309,7 @@ NDArray<R> expm1<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         case DType.float32:
@@ -268,6 +320,7 @@ NDArray<R> expm1<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         case DType.complex128:
@@ -278,6 +331,7 @@ NDArray<R> expm1<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         case DType.complex64:
@@ -288,6 +342,7 @@ NDArray<R> expm1<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         default:
@@ -348,7 +403,11 @@ NDArray<R> expm1<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 }
 
 /// Computes $\ln(1+x)$ element-wise.
-NDArray<R> log1p<T, R>(NDArray<T> a, {NDArray<R>? out}) {
+NDArray<R> log1p<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute log1p() on a disposed array.');
   }
@@ -374,16 +433,36 @@ NDArray<R> log1p<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_log1p_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log1p_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.float32:
-        v_log1p_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log1p_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.complex128:
-        v_log1p_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log1p_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.complex64:
-        v_log1p_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log1p_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       default:
         break;
@@ -410,6 +489,7 @@ NDArray<R> log1p<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         case DType.float32:
@@ -420,6 +500,7 @@ NDArray<R> log1p<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         case DType.complex128:
@@ -430,6 +511,7 @@ NDArray<R> log1p<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         case DType.complex64:
@@ -440,6 +522,7 @@ NDArray<R> log1p<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         default:
@@ -544,6 +627,7 @@ NDArray<double> logaddexp<T1, T2>(
           x2.pointer.cast(),
           result.pointer.cast(),
           x1.size,
+          ffi.nullptr,
         );
         return result;
       case (DType.float32, DType.float32):
@@ -552,6 +636,7 @@ NDArray<double> logaddexp<T1, T2>(
           x2.pointer.cast(),
           result.pointer.cast(),
           x1.size,
+          ffi.nullptr,
         );
         return result;
       default:
@@ -580,6 +665,7 @@ NDArray<double> logaddexp<T1, T2>(
             cStridesRes,
             cShape,
             shape.length,
+            ffi.nullptr,
           );
           return result;
         case (DType.float32, DType.float32, DType.float32):
@@ -592,6 +678,7 @@ NDArray<double> logaddexp<T1, T2>(
             cStridesRes,
             cShape,
             shape.length,
+            ffi.nullptr,
           );
           return result;
         default:
@@ -719,6 +806,7 @@ NDArray<double> logaddexp2<T1, T2>(
           x2.pointer.cast(),
           result.pointer.cast(),
           x1.size,
+          ffi.nullptr,
         );
         return result;
       case (DType.float32, DType.float32):
@@ -727,6 +815,7 @@ NDArray<double> logaddexp2<T1, T2>(
           x2.pointer.cast(),
           result.pointer.cast(),
           x1.size,
+          ffi.nullptr,
         );
         return result;
       default:
@@ -755,6 +844,7 @@ NDArray<double> logaddexp2<T1, T2>(
             cStridesRes,
             cShape,
             shape.length,
+            ffi.nullptr,
           );
           return result;
         case (DType.float32, DType.float32, DType.float32):
@@ -767,6 +857,7 @@ NDArray<double> logaddexp2<T1, T2>(
             cStridesRes,
             cShape,
             shape.length,
+            ffi.nullptr,
           );
           return result;
         default:
@@ -850,7 +941,11 @@ NDArray<double> logaddexp2<T1, T2>(
 }
 
 /// Rounds elements of the array to the nearest integer.
-NDArray<R> rint<T, R>(NDArray<T> a, {NDArray<R>? out}) {
+NDArray<R> rint<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute rint() on a disposed array.');
   }
@@ -874,10 +969,20 @@ NDArray<R> rint<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_rint_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_rint_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.float32:
-        v_rint_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_rint_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       default:
         break;
@@ -904,6 +1009,7 @@ NDArray<R> rint<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         case DType.float32:
@@ -914,6 +1020,7 @@ NDArray<R> rint<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         default:
@@ -960,7 +1067,11 @@ NDArray<R> rint<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 }
 
 /// Rounds elements of the array to the nearest integer towards zero.
-NDArray<R> trunc<T, R>(NDArray<T> a, {NDArray<R>? out}) {
+NDArray<R> trunc<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute trunc() on a disposed array.');
   }
@@ -984,10 +1095,20 @@ NDArray<R> trunc<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_trunc_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_trunc_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.float32:
-        v_trunc_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_trunc_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       default:
         break;
@@ -1014,6 +1135,7 @@ NDArray<R> trunc<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         case DType.float32:
@@ -1024,6 +1146,7 @@ NDArray<R> trunc<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         default:
@@ -1063,7 +1186,11 @@ NDArray<R> trunc<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// Rounds elements of the array to the nearest integer towards zero.
 ///
 /// Synonym for [trunc].
-NDArray<R> fix<T, R>(NDArray<T> a, {NDArray<R>? out}) => trunc(a, out: out);
+NDArray<R> fix<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) => trunc(a, out: out);
 
 /// Computes the element-wise square of the input array.
 ///
@@ -1076,7 +1203,7 @@ NDArray<R> fix<T, R>(NDArray<T> a, {NDArray<R>? out}) => trunc(a, out: out);
 /// final a = NDArray.fromList([2.0, 3.0], [2], DType.float64);
 /// final b = square(a); // [4.0, 9.0]
 /// ```
-NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T> square<T>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<T>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute square() on a disposed array.');
   }
@@ -1092,22 +1219,52 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_square_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_square_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.float32:
-        v_square_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_square_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.int64:
-        v_square_int64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_square_int64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.int32:
-        v_square_int32(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_square_int32(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.complex128:
-        v_square_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_square_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.complex64:
-        v_square_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_square_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.boolean:
         final aBool = a as NDArray<bool>;
@@ -1146,6 +1303,7 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.float32:
@@ -1156,6 +1314,7 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.int64:
@@ -1166,6 +1325,7 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.int32:
@@ -1176,6 +1336,7 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.complex128:
@@ -1186,6 +1347,7 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.complex64:
@@ -1196,6 +1358,7 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.boolean:
@@ -1229,7 +1392,11 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// **Example:**
 /// {@example /example/easy_ufuncs_example.dart lang=dart}
-NDArray<T> reciprocal<T>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T> reciprocal<T>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute reciprocal() on a disposed array.');
   }
@@ -1253,35 +1420,71 @@ NDArray<T> reciprocal<T>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_reciprocal_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_reciprocal_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.float32:
-        v_reciprocal_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_reciprocal_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.complex128:
         v_reciprocal_complex128(
           a.pointer.cast(),
           result.pointer.cast(),
           a.size,
+          ffi.nullptr,
         );
         return result;
       case DType.complex64:
-        v_reciprocal_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_reciprocal_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.int64:
-        v_reciprocal_int64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_reciprocal_int64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         isInt = true;
         break;
       case DType.int32:
-        v_reciprocal_int32(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_reciprocal_int32(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         isInt = true;
         break;
       case DType.int16:
-        v_reciprocal_int16(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_reciprocal_int16(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         isInt = true;
         break;
       case DType.uint8:
-        v_reciprocal_uint8(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_reciprocal_uint8(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         isInt = true;
         break;
       default:
@@ -1308,6 +1511,7 @@ NDArray<T> reciprocal<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.float32:
@@ -1318,6 +1522,7 @@ NDArray<T> reciprocal<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.complex128:
@@ -1328,6 +1533,7 @@ NDArray<T> reciprocal<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.complex64:
@@ -1338,6 +1544,7 @@ NDArray<T> reciprocal<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.int64:
@@ -1348,6 +1555,7 @@ NDArray<T> reciprocal<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         isInt = true;
         break;
@@ -1359,6 +1567,7 @@ NDArray<T> reciprocal<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         isInt = true;
         break;
@@ -1370,6 +1579,7 @@ NDArray<T> reciprocal<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         isInt = true;
         break;
@@ -1381,6 +1591,7 @@ NDArray<T> reciprocal<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         isInt = true;
         break;
@@ -1427,7 +1638,11 @@ NDArray<T> reciprocal<T>(NDArray<T> a, {NDArray<T>? out}) {
 ///
 /// **Example:**
 /// {@example /example/easy_ufuncs_example.dart lang=dart}
-NDArray<T> positive<T>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T> positive<T>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute positive() on a disposed array.');
   }
@@ -1450,28 +1665,68 @@ NDArray<T> positive<T>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_positive_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_positive_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.float32:
-        v_positive_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_positive_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.complex128:
-        v_positive_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_positive_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.complex64:
-        v_positive_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_positive_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.int64:
-        v_positive_int64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_positive_int64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.int32:
-        v_positive_int32(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_positive_int32(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.int16:
-        v_positive_int16(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_positive_int16(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.uint8:
-        v_positive_uint8(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_positive_uint8(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       default:
         break;
@@ -1497,6 +1752,7 @@ NDArray<T> positive<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.float32:
@@ -1507,6 +1763,7 @@ NDArray<T> positive<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.complex128:
@@ -1517,6 +1774,7 @@ NDArray<T> positive<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.complex64:
@@ -1527,6 +1785,7 @@ NDArray<T> positive<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.int64:
@@ -1537,6 +1796,7 @@ NDArray<T> positive<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.int32:
@@ -1547,6 +1807,7 @@ NDArray<T> positive<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.int16:
@@ -1557,6 +1818,7 @@ NDArray<T> positive<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.uint8:
@@ -1567,6 +1829,7 @@ NDArray<T> positive<T>(NDArray<T> a, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       default:
@@ -1612,7 +1875,12 @@ NDArray<T> positive<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// Performance Considerations:
 /// - Contiguous arrays leverage vector sweeps (`v_pow_*`).
 /// - Strided broadcasting uses multi-dimensional FFI iterators (`s_pow_*`).
-NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
+NDArray<T> power<T>(
+  NDArray<T> x1,
+  NDArray<T> x2, {
+  NDArray<dynamic>? where,
+  NDArray<T>? out,
+}) {
   if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute power() on a disposed array.');
   }
@@ -1668,6 +1936,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           x2.pointer.cast(),
           result.pointer.cast(),
           x1.size,
+          ffi.nullptr,
         );
         return result;
       case DType.float32:
@@ -1676,6 +1945,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           x2.pointer.cast(),
           result.pointer.cast(),
           x1.size,
+          ffi.nullptr,
         );
         return result;
       case DType.int64:
@@ -1684,6 +1954,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           x2.pointer.cast(),
           result.pointer.cast(),
           x1.size,
+          ffi.nullptr,
         );
         return result;
       case DType.int32:
@@ -1692,6 +1963,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           x2.pointer.cast(),
           result.pointer.cast(),
           x1.size,
+          ffi.nullptr,
         );
         return result;
       case DType.int16:
@@ -1700,6 +1972,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           x2.pointer.cast(),
           result.pointer.cast(),
           x1.size,
+          ffi.nullptr,
         );
         return result;
       case DType.uint8:
@@ -1708,6 +1981,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           x2.pointer.cast(),
           result.pointer.cast(),
           x1.size,
+          ffi.nullptr,
         );
         return result;
       case DType.complex128:
@@ -1716,6 +1990,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           x2.pointer.cast(),
           result.pointer.cast(),
           x1.size,
+          ffi.nullptr,
         );
         return result;
       case DType.complex64:
@@ -1724,6 +1999,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           x2.pointer.cast(),
           result.pointer.cast(),
           x1.size,
+          ffi.nullptr,
         );
         return result;
       default:
@@ -1756,6 +2032,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.float32:
@@ -1768,6 +2045,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.int64:
@@ -1780,6 +2058,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.int32:
@@ -1792,6 +2071,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.int16:
@@ -1804,6 +2084,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.uint8:
@@ -1816,6 +2097,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.complex128:
@@ -1828,6 +2110,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.complex64:
@@ -1840,6 +2123,7 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       default:
@@ -1852,7 +2136,11 @@ NDArray<T> power<T>(NDArray<T> x1, NDArray<T> x2, {NDArray<T>? out}) {
   return result;
 }
 
-NDArray<T> negative<T>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T> negative<T>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute negative() on a disposed array.');
   }
@@ -1971,6 +2259,7 @@ NDArray<T> floor_divide<T extends Object>(
             x2.pointer.cast(),
             result.pointer.cast(),
             x1.size,
+            ffi.nullptr,
           );
           return result;
         }
@@ -1981,6 +2270,7 @@ NDArray<T> floor_divide<T extends Object>(
             x2.pointer.cast(),
             result.pointer.cast(),
             x1.size,
+            ffi.nullptr,
           );
           return result;
         }
@@ -1991,6 +2281,7 @@ NDArray<T> floor_divide<T extends Object>(
             x2.pointer.cast(),
             result.pointer.cast(),
             x1.size,
+            ffi.nullptr,
           );
           final err = get_and_reset_division_error();
           if (err == 1) {
@@ -2005,6 +2296,7 @@ NDArray<T> floor_divide<T extends Object>(
             x2.pointer.cast(),
             result.pointer.cast(),
             x1.size,
+            ffi.nullptr,
           );
           final err = get_and_reset_division_error();
           if (err == 1) {
@@ -2040,6 +2332,7 @@ NDArray<T> floor_divide<T extends Object>(
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         }
@@ -2054,6 +2347,7 @@ NDArray<T> floor_divide<T extends Object>(
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         }
@@ -2068,6 +2362,7 @@ NDArray<T> floor_divide<T extends Object>(
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           final err = get_and_reset_division_error();
           if (err == 1) {
@@ -2086,6 +2381,7 @@ NDArray<T> floor_divide<T extends Object>(
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           final err = get_and_reset_division_error();
           if (err == 1) {
@@ -2191,6 +2487,7 @@ NDArray<T> remainder<T extends Object>(
             x2.pointer.cast(),
             result.pointer.cast(),
             x1.size,
+            ffi.nullptr,
           );
           return result;
         }
@@ -2201,6 +2498,7 @@ NDArray<T> remainder<T extends Object>(
             x2.pointer.cast(),
             result.pointer.cast(),
             x1.size,
+            ffi.nullptr,
           );
           return result;
         }
@@ -2211,6 +2509,7 @@ NDArray<T> remainder<T extends Object>(
             x2.pointer.cast(),
             result.pointer.cast(),
             x1.size,
+            ffi.nullptr,
           );
           final err = get_and_reset_division_error();
           if (err == 1) {
@@ -2225,6 +2524,7 @@ NDArray<T> remainder<T extends Object>(
             x2.pointer.cast(),
             result.pointer.cast(),
             x1.size,
+            ffi.nullptr,
           );
           final err = get_and_reset_division_error();
           if (err == 1) {
@@ -2260,6 +2560,7 @@ NDArray<T> remainder<T extends Object>(
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         }
@@ -2274,6 +2575,7 @@ NDArray<T> remainder<T extends Object>(
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         }
@@ -2288,6 +2590,7 @@ NDArray<T> remainder<T extends Object>(
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           final err = get_and_reset_division_error();
           if (err == 1) {
@@ -2306,6 +2609,7 @@ NDArray<T> remainder<T extends Object>(
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           final err = get_and_reset_division_error();
           if (err == 1) {
@@ -2385,7 +2689,7 @@ NDArray<T> mod<T extends Object>(
   return (floor_divide<T>(x1, x2), remainder<T>(x1, x2));
 }
 
-NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
+NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute abs() on a disposed array.');
   }
@@ -2410,28 +2714,68 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_abs_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_abs_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.float32:
-        v_abs_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_abs_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.complex128:
-        v_abs_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_abs_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.complex64:
-        v_abs_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_abs_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.int64:
-        v_abs_int64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_abs_int64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.int32:
-        v_abs_int32(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_abs_int32(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.int16:
-        v_abs_int16(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_abs_int16(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       case DType.uint8:
-        v_abs_uint8(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_abs_uint8(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       default:
         break;
@@ -2462,6 +2806,7 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         case DType.complex64:
@@ -2472,6 +2817,7 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         case DType.int64:
@@ -2482,6 +2828,7 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         case DType.int32:
@@ -2492,6 +2839,7 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         case DType.int16:
@@ -2502,6 +2850,7 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         case DType.uint8:
@@ -2512,6 +2861,7 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         default:
@@ -2582,7 +2932,11 @@ NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// ```dart
 /// final s = sign(a);
 /// ```
-NDArray<T> sign<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T> sign<T extends Object>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute sign() on a disposed array.');
   }
@@ -2650,7 +3004,11 @@ NDArray<T> sign<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
   return result;
 }
 
-NDArray<T> ceil<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T> ceil<T extends Object>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute ceil() on a disposed array.');
   }
@@ -2671,10 +3029,20 @@ NDArray<T> ceil<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 
   if (a.isContiguous && result.isContiguous) {
     if (a.dtype == DType.float64) {
-      v_ceil_double(a.pointer.cast(), result.pointer.cast(), a.size);
+      v_ceil_double(
+        a.pointer.cast(),
+        result.pointer.cast(),
+        a.size,
+        ffi.nullptr,
+      );
       return result;
     } else if (a.dtype == DType.float32) {
-      v_ceil_float(a.pointer.cast(), result.pointer.cast(), a.size);
+      v_ceil_float(
+        a.pointer.cast(),
+        result.pointer.cast(),
+        a.size,
+        ffi.nullptr,
+      );
       return result;
     }
   }
@@ -2706,7 +3074,11 @@ NDArray<T> ceil<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
   return result;
 }
 
-NDArray<T> floor<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T> floor<T extends Object>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute floor() on a disposed array.');
   }
@@ -2727,10 +3099,20 @@ NDArray<T> floor<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 
   if (a.isContiguous && result.isContiguous) {
     if (a.dtype == DType.float64) {
-      v_floor_double(a.pointer.cast(), result.pointer.cast(), a.size);
+      v_floor_double(
+        a.pointer.cast(),
+        result.pointer.cast(),
+        a.size,
+        ffi.nullptr,
+      );
       return result;
     } else if (a.dtype == DType.float32) {
-      v_floor_float(a.pointer.cast(), result.pointer.cast(), a.size);
+      v_floor_float(
+        a.pointer.cast(),
+        result.pointer.cast(),
+        a.size,
+        ffi.nullptr,
+      );
       return result;
     }
   }
@@ -2762,7 +3144,11 @@ NDArray<T> floor<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
   return result;
 }
 
-NDArray<T> round<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T> round<T extends Object>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute round() on a disposed array.');
   }
@@ -2783,10 +3169,20 @@ NDArray<T> round<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 
   if (a.isContiguous && result.isContiguous) {
     if (a.dtype == DType.float64) {
-      v_round_double(a.pointer.cast(), result.pointer.cast(), a.size);
+      v_round_double(
+        a.pointer.cast(),
+        result.pointer.cast(),
+        a.size,
+        ffi.nullptr,
+      );
       return result;
     } else if (a.dtype == DType.float32) {
-      v_round_float(a.pointer.cast(), result.pointer.cast(), a.size);
+      v_round_float(
+        a.pointer.cast(),
+        result.pointer.cast(),
+        a.size,
+        ffi.nullptr,
+      );
       return result;
     }
   }
@@ -2834,7 +3230,12 @@ typedef StridedBinaryOp =
 /// Element-wise addition of two arrays.
 ///
 /// Returns a new array with the promoted data type.
-NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
+NDArray<R> add<Ta, Tb, R>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute add() on a disposed array.');
   }
@@ -2855,6 +3256,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   } else {
     result = NDArray<R>.create(commonShape, targetDType as DType<R>);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   // Specialized paths for Float64 (as in original extensions.dart)
   final isContig =
@@ -2883,6 +3285,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.float64):
@@ -2895,6 +3298,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.float32) when isContig:
@@ -2903,6 +3307,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.float32):
@@ -2915,6 +3320,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int64) when isContig:
@@ -2923,6 +3329,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int64):
@@ -2935,6 +3342,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int32) when isContig:
@@ -2943,6 +3351,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int32):
@@ -2955,6 +3364,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.boolean) when isContig:
@@ -2964,6 +3374,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.boolean):
@@ -2977,6 +3388,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int16) when isContig:
@@ -2985,6 +3397,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int16):
@@ -2997,6 +3410,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex128) when isContig:
@@ -3005,6 +3419,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex128):
@@ -3017,6 +3432,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex64) when isContig:
@@ -3025,6 +3441,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex64):
@@ -3037,6 +3454,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float64) when isContig:
@@ -3045,6 +3463,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float64):
@@ -3057,6 +3476,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float32) when isContig:
@@ -3065,6 +3485,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float32):
@@ -3077,6 +3498,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int64) when isContig:
@@ -3085,6 +3507,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int64):
@@ -3097,6 +3520,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int32) when isContig:
@@ -3105,6 +3529,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int32):
@@ -3117,6 +3542,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.boolean) when isContig:
@@ -3126,6 +3552,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.boolean):
@@ -3139,6 +3566,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int16) when isContig:
@@ -3147,6 +3575,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int16):
@@ -3159,6 +3588,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex128) when isContig:
@@ -3167,6 +3597,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex128):
@@ -3179,6 +3610,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex64) when isContig:
@@ -3187,6 +3619,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex64):
@@ -3199,6 +3632,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float64) when isContig:
@@ -3207,6 +3641,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float64):
@@ -3219,6 +3654,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float32) when isContig:
@@ -3227,6 +3663,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float32):
@@ -3239,6 +3676,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int64) when isContig:
@@ -3247,6 +3685,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int64):
@@ -3259,6 +3698,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int32) when isContig:
@@ -3267,6 +3707,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int32):
@@ -3279,6 +3720,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.boolean) when isContig:
@@ -3288,6 +3730,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.boolean):
@@ -3301,6 +3744,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int16) when isContig:
@@ -3309,6 +3753,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int16):
@@ -3321,6 +3766,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex128) when isContig:
@@ -3329,6 +3775,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex128):
@@ -3341,6 +3788,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex64) when isContig:
@@ -3349,6 +3797,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex64):
@@ -3361,6 +3810,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float64) when isContig:
@@ -3369,6 +3819,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float64):
@@ -3381,6 +3832,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float32) when isContig:
@@ -3389,6 +3841,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float32):
@@ -3401,6 +3854,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int64) when isContig:
@@ -3409,6 +3863,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int64):
@@ -3421,6 +3876,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int32) when isContig:
@@ -3429,6 +3885,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int32):
@@ -3441,6 +3898,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.boolean) when isContig:
@@ -3450,6 +3908,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.boolean):
@@ -3463,6 +3922,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int16) when isContig:
@@ -3471,6 +3931,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int16):
@@ -3483,6 +3944,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex128) when isContig:
@@ -3491,6 +3953,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex128):
@@ -3503,6 +3966,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex64) when isContig:
@@ -3511,6 +3975,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex64):
@@ -3523,6 +3988,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float64) when isContig:
@@ -3532,6 +3998,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float64):
@@ -3545,6 +4012,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float32) when isContig:
@@ -3554,6 +4022,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float32):
@@ -3567,6 +4036,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int64) when isContig:
@@ -3576,6 +4046,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int64):
@@ -3589,6 +4060,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int32) when isContig:
@@ -3598,6 +4070,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int32):
@@ -3611,6 +4084,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.boolean) when isContig:
@@ -3622,6 +4096,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.boolean):
@@ -3637,6 +4112,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int16) when isContig:
@@ -3646,6 +4122,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int16):
@@ -3659,6 +4136,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex128) when isContig:
@@ -3668,6 +4146,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex128):
@@ -3681,6 +4160,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex64) when isContig:
@@ -3690,6 +4170,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex64):
@@ -3703,6 +4184,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float64) when isContig:
@@ -3711,6 +4193,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float64):
@@ -3723,6 +4206,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float32) when isContig:
@@ -3731,6 +4215,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float32):
@@ -3743,6 +4228,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int64) when isContig:
@@ -3751,6 +4237,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int64):
@@ -3763,6 +4250,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int32) when isContig:
@@ -3771,6 +4259,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int32):
@@ -3783,6 +4272,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.boolean) when isContig:
@@ -3792,6 +4282,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.boolean):
@@ -3805,6 +4296,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int16) when isContig:
@@ -3813,6 +4305,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int16):
@@ -3825,6 +4318,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex128) when isContig:
@@ -3833,6 +4327,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex128):
@@ -3845,6 +4340,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex64) when isContig:
@@ -3853,6 +4349,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex64):
@@ -3865,6 +4362,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float64) when isContig:
@@ -3873,6 +4371,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float64):
@@ -3885,6 +4384,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float32) when isContig:
@@ -3893,6 +4393,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float32):
@@ -3905,6 +4406,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int64) when isContig:
@@ -3913,6 +4415,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int64):
@@ -3925,6 +4428,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int32) when isContig:
@@ -3933,6 +4437,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int32):
@@ -3945,6 +4450,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.boolean) when isContig:
@@ -3954,6 +4460,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.boolean):
@@ -3967,6 +4474,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int16) when isContig:
@@ -3975,6 +4483,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int16):
@@ -3987,6 +4496,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex128) when isContig:
@@ -3995,6 +4505,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex128):
@@ -4007,6 +4518,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex64) when isContig:
@@ -4015,6 +4527,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex64):
@@ -4027,6 +4540,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float64) when isContig:
@@ -4035,6 +4549,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float64):
@@ -4047,6 +4562,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float32) when isContig:
@@ -4055,6 +4571,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float32):
@@ -4067,6 +4584,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int64) when isContig:
@@ -4075,6 +4593,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int64):
@@ -4087,6 +4606,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int32) when isContig:
@@ -4095,6 +4615,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int32):
@@ -4107,6 +4628,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.boolean) when isContig:
@@ -4116,6 +4638,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.boolean):
@@ -4129,6 +4652,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int16) when isContig:
@@ -4137,6 +4661,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int16):
@@ -4149,6 +4674,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex128) when isContig:
@@ -4157,6 +4683,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex128):
@@ -4169,6 +4696,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex64) when isContig:
@@ -4177,6 +4705,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex64):
@@ -4189,6 +4718,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
   }
@@ -4200,6 +4730,7 @@ NDArray<R> add<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 NDArray<R> subtract<Ta, Tb, R>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<dynamic>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
@@ -4222,6 +4753,7 @@ NDArray<R> subtract<Ta, Tb, R>(
   } else {
     result = NDArray<R>.create(commonShape, targetDType as DType<R>);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   final isContig =
       a.isContiguous &&
@@ -4249,6 +4781,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.float64):
@@ -4261,6 +4794,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.float32) when isContig:
@@ -4269,6 +4803,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.float32):
@@ -4281,6 +4816,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int64) when isContig:
@@ -4289,6 +4825,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int64):
@@ -4301,6 +4838,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int32) when isContig:
@@ -4309,6 +4847,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int32):
@@ -4321,6 +4860,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.boolean) when isContig:
@@ -4330,6 +4870,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.boolean):
@@ -4343,6 +4884,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int16) when isContig:
@@ -4351,6 +4893,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int16):
@@ -4363,6 +4906,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex128) when isContig:
@@ -4371,6 +4915,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex128):
@@ -4383,6 +4928,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex64) when isContig:
@@ -4391,6 +4937,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex64):
@@ -4403,6 +4950,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float64) when isContig:
@@ -4411,6 +4959,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float64):
@@ -4423,6 +4972,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float32) when isContig:
@@ -4431,6 +4981,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float32):
@@ -4443,6 +4994,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int64) when isContig:
@@ -4451,6 +5003,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int64):
@@ -4463,6 +5016,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int32) when isContig:
@@ -4471,6 +5025,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int32):
@@ -4483,6 +5038,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.boolean) when isContig:
@@ -4492,6 +5048,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.boolean):
@@ -4505,6 +5062,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int16) when isContig:
@@ -4513,6 +5071,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int16):
@@ -4525,6 +5084,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex128) when isContig:
@@ -4533,6 +5093,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex128):
@@ -4545,6 +5106,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex64) when isContig:
@@ -4553,6 +5115,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex64):
@@ -4565,6 +5128,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float64) when isContig:
@@ -4573,6 +5137,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float64):
@@ -4585,6 +5150,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float32) when isContig:
@@ -4593,6 +5159,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float32):
@@ -4605,6 +5172,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int64) when isContig:
@@ -4613,6 +5181,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int64):
@@ -4625,6 +5194,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int32) when isContig:
@@ -4633,6 +5203,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int32):
@@ -4645,6 +5216,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.boolean) when isContig:
@@ -4654,6 +5226,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.boolean):
@@ -4667,6 +5240,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int16) when isContig:
@@ -4675,6 +5249,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int16):
@@ -4687,6 +5262,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex128) when isContig:
@@ -4695,6 +5271,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex128):
@@ -4707,6 +5284,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex64) when isContig:
@@ -4715,6 +5293,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex64):
@@ -4727,6 +5306,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float64) when isContig:
@@ -4735,6 +5315,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float64):
@@ -4747,6 +5328,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float32) when isContig:
@@ -4755,6 +5337,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float32):
@@ -4767,6 +5350,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int64) when isContig:
@@ -4775,6 +5359,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int64):
@@ -4787,6 +5372,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int32) when isContig:
@@ -4795,6 +5381,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int32):
@@ -4807,6 +5394,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.boolean) when isContig:
@@ -4816,6 +5404,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.boolean):
@@ -4829,6 +5418,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int16) when isContig:
@@ -4837,6 +5427,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int16):
@@ -4849,6 +5440,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex128) when isContig:
@@ -4857,6 +5449,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex128):
@@ -4869,6 +5462,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex64) when isContig:
@@ -4877,6 +5471,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex64):
@@ -4889,6 +5484,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float64) when isContig:
@@ -4898,6 +5494,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float64):
@@ -4911,6 +5508,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float32) when isContig:
@@ -4920,6 +5518,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float32):
@@ -4933,6 +5532,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int64) when isContig:
@@ -4942,6 +5542,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int64):
@@ -4955,6 +5556,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int32) when isContig:
@@ -4964,6 +5566,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int32):
@@ -4977,6 +5580,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.boolean) when isContig:
@@ -4988,6 +5592,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.boolean):
@@ -5003,6 +5608,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int16) when isContig:
@@ -5012,6 +5618,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int16):
@@ -5025,6 +5632,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex128) when isContig:
@@ -5034,6 +5642,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex128):
@@ -5047,6 +5656,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex64) when isContig:
@@ -5056,6 +5666,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex64):
@@ -5069,6 +5680,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float64) when isContig:
@@ -5077,6 +5689,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float64):
@@ -5089,6 +5702,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float32) when isContig:
@@ -5097,6 +5711,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float32):
@@ -5109,6 +5724,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int64) when isContig:
@@ -5117,6 +5733,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int64):
@@ -5129,6 +5746,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int32) when isContig:
@@ -5137,6 +5755,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int32):
@@ -5149,6 +5768,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.boolean) when isContig:
@@ -5158,6 +5778,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.boolean):
@@ -5171,6 +5792,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int16) when isContig:
@@ -5179,6 +5801,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int16):
@@ -5191,6 +5814,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex128) when isContig:
@@ -5199,6 +5823,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex128):
@@ -5211,6 +5836,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex64) when isContig:
@@ -5219,6 +5845,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex64):
@@ -5231,6 +5858,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float64) when isContig:
@@ -5239,6 +5867,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float64):
@@ -5251,6 +5880,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float32) when isContig:
@@ -5259,6 +5889,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float32):
@@ -5271,6 +5902,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int64) when isContig:
@@ -5279,6 +5911,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int64):
@@ -5291,6 +5924,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int32) when isContig:
@@ -5299,6 +5933,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int32):
@@ -5311,6 +5946,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.boolean) when isContig:
@@ -5320,6 +5956,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.boolean):
@@ -5333,6 +5970,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int16) when isContig:
@@ -5341,6 +5979,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int16):
@@ -5353,6 +5992,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex128) when isContig:
@@ -5361,6 +6001,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex128):
@@ -5373,6 +6014,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex64) when isContig:
@@ -5381,6 +6023,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex64):
@@ -5393,6 +6036,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float64) when isContig:
@@ -5401,6 +6045,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float64):
@@ -5413,6 +6058,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float32) when isContig:
@@ -5421,6 +6067,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float32):
@@ -5433,6 +6080,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int64) when isContig:
@@ -5441,6 +6089,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int64):
@@ -5453,6 +6102,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int32) when isContig:
@@ -5461,6 +6111,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int32):
@@ -5473,6 +6124,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.boolean) when isContig:
@@ -5482,6 +6134,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.boolean):
@@ -5495,6 +6148,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int16) when isContig:
@@ -5503,6 +6157,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int16):
@@ -5515,6 +6170,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex128) when isContig:
@@ -5523,6 +6179,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex128):
@@ -5535,6 +6192,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex64) when isContig:
@@ -5543,6 +6201,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex64):
@@ -5555,6 +6214,7 @@ NDArray<R> subtract<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
   }
@@ -5570,6 +6230,7 @@ NDArray<R> subtract<Ta, Tb, R>(
 NDArray<R> multiply<Ta, Tb, R>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<dynamic>? where,
   NDArray<R>? out,
 }) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
@@ -5592,6 +6253,7 @@ NDArray<R> multiply<Ta, Tb, R>(
   } else {
     result = NDArray<R>.create(commonShape, targetDType as DType<R>);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   final isContig =
       a.isContiguous &&
@@ -5620,6 +6282,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.float64):
@@ -5632,6 +6295,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.float32) when isContig:
@@ -5640,6 +6304,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.float32):
@@ -5652,6 +6317,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int64) when isContig:
@@ -5660,6 +6326,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int64):
@@ -5672,6 +6339,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int32) when isContig:
@@ -5680,6 +6348,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int32):
@@ -5692,6 +6361,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.boolean) when isContig:
@@ -5701,6 +6371,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.boolean):
@@ -5714,6 +6385,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int16) when isContig:
@@ -5722,6 +6394,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int16):
@@ -5734,6 +6407,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex128) when isContig:
@@ -5742,6 +6416,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex128):
@@ -5754,6 +6429,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex64) when isContig:
@@ -5762,6 +6438,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex64):
@@ -5774,6 +6451,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float64) when isContig:
@@ -5782,6 +6460,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float64):
@@ -5794,6 +6473,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float32) when isContig:
@@ -5802,6 +6482,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float32):
@@ -5814,6 +6495,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int64) when isContig:
@@ -5822,6 +6504,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int64):
@@ -5834,6 +6517,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int32) when isContig:
@@ -5842,6 +6526,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int32):
@@ -5854,6 +6539,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.boolean) when isContig:
@@ -5863,6 +6549,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.boolean):
@@ -5876,6 +6563,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int16) when isContig:
@@ -5884,6 +6572,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int16):
@@ -5896,6 +6585,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex128) when isContig:
@@ -5904,6 +6594,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex128):
@@ -5916,6 +6607,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex64) when isContig:
@@ -5924,6 +6616,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex64):
@@ -5936,6 +6629,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float64) when isContig:
@@ -5944,6 +6638,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float64):
@@ -5956,6 +6651,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float32) when isContig:
@@ -5964,6 +6660,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float32):
@@ -5976,6 +6673,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int64) when isContig:
@@ -5984,6 +6682,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int64):
@@ -5996,6 +6695,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int32) when isContig:
@@ -6004,6 +6704,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int32):
@@ -6016,6 +6717,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.boolean) when isContig:
@@ -6025,6 +6727,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.boolean):
@@ -6038,6 +6741,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int16) when isContig:
@@ -6046,6 +6750,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int16):
@@ -6058,6 +6763,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex128) when isContig:
@@ -6066,6 +6772,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex128):
@@ -6078,6 +6785,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex64) when isContig:
@@ -6086,6 +6794,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex64):
@@ -6098,6 +6807,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float64) when isContig:
@@ -6106,6 +6816,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float64):
@@ -6118,6 +6829,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float32) when isContig:
@@ -6126,6 +6838,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float32):
@@ -6138,6 +6851,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int64) when isContig:
@@ -6146,6 +6860,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int64):
@@ -6158,6 +6873,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int32) when isContig:
@@ -6166,6 +6882,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int32):
@@ -6178,6 +6895,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.boolean) when isContig:
@@ -6187,6 +6905,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.boolean):
@@ -6200,6 +6919,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int16) when isContig:
@@ -6208,6 +6928,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int16):
@@ -6220,6 +6941,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex128) when isContig:
@@ -6228,6 +6950,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex128):
@@ -6240,6 +6963,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex64) when isContig:
@@ -6248,6 +6972,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex64):
@@ -6260,6 +6985,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float64) when isContig:
@@ -6269,6 +6995,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float64):
@@ -6282,6 +7009,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float32) when isContig:
@@ -6291,6 +7019,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float32):
@@ -6304,6 +7033,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int64) when isContig:
@@ -6313,6 +7043,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int64):
@@ -6326,6 +7057,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int32) when isContig:
@@ -6335,6 +7067,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int32):
@@ -6348,6 +7081,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.boolean) when isContig:
@@ -6359,6 +7093,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.boolean):
@@ -6374,6 +7109,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int16) when isContig:
@@ -6383,6 +7119,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int16):
@@ -6396,6 +7133,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex128) when isContig:
@@ -6405,6 +7143,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex128):
@@ -6418,6 +7157,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex64) when isContig:
@@ -6427,6 +7167,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex64):
@@ -6440,6 +7181,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float64) when isContig:
@@ -6448,6 +7190,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float64):
@@ -6460,6 +7203,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float32) when isContig:
@@ -6468,6 +7212,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float32):
@@ -6480,6 +7225,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int64) when isContig:
@@ -6488,6 +7234,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int64):
@@ -6500,6 +7247,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int32) when isContig:
@@ -6508,6 +7256,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int32):
@@ -6520,6 +7269,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.boolean) when isContig:
@@ -6529,6 +7279,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.boolean):
@@ -6542,6 +7293,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int16) when isContig:
@@ -6550,6 +7302,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int16):
@@ -6562,6 +7315,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex128) when isContig:
@@ -6570,6 +7324,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex128):
@@ -6582,6 +7337,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex64) when isContig:
@@ -6590,6 +7346,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex64):
@@ -6602,6 +7359,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float64) when isContig:
@@ -6610,6 +7368,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float64):
@@ -6622,6 +7381,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float32) when isContig:
@@ -6630,6 +7390,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float32):
@@ -6642,6 +7403,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int64) when isContig:
@@ -6650,6 +7412,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int64):
@@ -6662,6 +7425,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int32) when isContig:
@@ -6670,6 +7434,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int32):
@@ -6682,6 +7447,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.boolean) when isContig:
@@ -6691,6 +7457,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.boolean):
@@ -6704,6 +7471,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int16) when isContig:
@@ -6712,6 +7480,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int16):
@@ -6724,6 +7493,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex128) when isContig:
@@ -6732,6 +7502,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex128):
@@ -6744,6 +7515,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex64) when isContig:
@@ -6752,6 +7524,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex64):
@@ -6764,6 +7537,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float64) when isContig:
@@ -6772,6 +7546,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float64):
@@ -6784,6 +7559,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float32) when isContig:
@@ -6792,6 +7568,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float32):
@@ -6804,6 +7581,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int64) when isContig:
@@ -6812,6 +7590,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int64):
@@ -6824,6 +7603,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int32) when isContig:
@@ -6832,6 +7612,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int32):
@@ -6844,6 +7625,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.boolean) when isContig:
@@ -6853,6 +7635,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.boolean):
@@ -6866,6 +7649,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int16) when isContig:
@@ -6874,6 +7658,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int16):
@@ -6886,6 +7671,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex128) when isContig:
@@ -6894,6 +7680,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         a.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex128):
@@ -6906,6 +7693,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex64) when isContig:
@@ -6914,6 +7702,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex64):
@@ -6926,6 +7715,7 @@ NDArray<R> multiply<Ta, Tb, R>(
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
   }
@@ -6942,7 +7732,12 @@ NDArray<R> multiply<Ta, Tb, R>(
 /// - Dividing a non-zero value by zero results in `double.infinity` or `double.negativeInfinity`.
 /// - Dividing zero by zero results in `double.nan`.
 /// No exception is thrown.
-NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
+NDArray<R> divide<Ta, Tb, R>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute divide() on a disposed array.');
   }
@@ -6966,6 +7761,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   } else {
     result = NDArray<R>.create(commonShape, targetDType as DType<R>);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   final isContig =
       a.isContiguous &&
@@ -6994,6 +7790,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.float64):
@@ -7006,6 +7803,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.float32) when isContig:
@@ -7014,6 +7812,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.float32):
@@ -7026,6 +7825,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int64) when isContig:
@@ -7034,6 +7834,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int64):
@@ -7046,6 +7847,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int32) when isContig:
@@ -7054,6 +7856,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int32):
@@ -7066,6 +7869,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.boolean) when isContig:
@@ -7075,6 +7879,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.boolean):
@@ -7088,6 +7893,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int16) when isContig:
@@ -7096,6 +7902,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.int16):
@@ -7108,6 +7915,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex128) when isContig:
@@ -7116,6 +7924,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex128):
@@ -7128,6 +7937,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex64) when isContig:
@@ -7136,6 +7946,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float64, DType.complex64):
@@ -7148,6 +7959,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float64) when isContig:
@@ -7156,6 +7968,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float64):
@@ -7168,6 +7981,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float32) when isContig:
@@ -7176,6 +7990,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.float32):
@@ -7188,6 +8003,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int64) when isContig:
@@ -7196,6 +8012,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int64):
@@ -7208,6 +8025,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int32) when isContig:
@@ -7216,6 +8034,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int32):
@@ -7228,6 +8047,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.boolean) when isContig:
@@ -7237,6 +8057,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.boolean):
@@ -7250,6 +8071,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int16) when isContig:
@@ -7258,6 +8080,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.int16):
@@ -7270,6 +8093,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex128) when isContig:
@@ -7278,6 +8102,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex128):
@@ -7290,6 +8115,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex64) when isContig:
@@ -7298,6 +8124,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.float32, DType.complex64):
@@ -7310,6 +8137,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float64) when isContig:
@@ -7318,6 +8146,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float64):
@@ -7330,6 +8159,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float32) when isContig:
@@ -7338,6 +8168,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.float32):
@@ -7350,6 +8181,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int64) when isContig:
@@ -7358,6 +8190,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int64):
@@ -7370,6 +8203,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int32) when isContig:
@@ -7378,6 +8212,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int32):
@@ -7390,6 +8225,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.boolean) when isContig:
@@ -7399,6 +8235,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.boolean):
@@ -7412,6 +8249,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int16) when isContig:
@@ -7420,6 +8258,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.int16):
@@ -7432,6 +8271,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex128) when isContig:
@@ -7440,6 +8280,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex128):
@@ -7452,6 +8293,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex64) when isContig:
@@ -7460,6 +8302,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int64, DType.complex64):
@@ -7472,6 +8315,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float64) when isContig:
@@ -7480,6 +8324,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float64):
@@ -7492,6 +8337,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float32) when isContig:
@@ -7500,6 +8346,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.float32):
@@ -7512,6 +8359,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int64) when isContig:
@@ -7520,6 +8368,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int64):
@@ -7532,6 +8381,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int32) when isContig:
@@ -7540,6 +8390,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int32):
@@ -7552,6 +8403,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.boolean) when isContig:
@@ -7561,6 +8413,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.boolean):
@@ -7574,6 +8427,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int16) when isContig:
@@ -7582,6 +8436,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.int16):
@@ -7594,6 +8449,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex128) when isContig:
@@ -7602,6 +8458,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex128):
@@ -7614,6 +8471,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex64) when isContig:
@@ -7622,6 +8480,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int32, DType.complex64):
@@ -7634,6 +8493,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float64) when isContig:
@@ -7643,6 +8503,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float64):
@@ -7656,6 +8517,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float32) when isContig:
@@ -7665,6 +8527,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.float32):
@@ -7678,6 +8541,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int64) when isContig:
@@ -7687,6 +8551,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int64):
@@ -7700,6 +8565,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int32) when isContig:
@@ -7709,6 +8575,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int32):
@@ -7722,6 +8589,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.boolean) when isContig:
@@ -7733,6 +8601,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.boolean):
@@ -7748,6 +8617,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int16) when isContig:
@@ -7757,6 +8627,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.int16):
@@ -7770,6 +8641,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex128) when isContig:
@@ -7779,6 +8651,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex128):
@@ -7792,6 +8665,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex64) when isContig:
@@ -7801,6 +8675,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.boolean, DType.complex64):
@@ -7814,6 +8689,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float64) when isContig:
@@ -7822,6 +8698,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float64):
@@ -7834,6 +8711,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float32) when isContig:
@@ -7842,6 +8720,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.float32):
@@ -7854,6 +8733,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int64) when isContig:
@@ -7862,6 +8742,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int64):
@@ -7874,6 +8755,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int32) when isContig:
@@ -7882,6 +8764,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int32):
@@ -7894,6 +8777,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.boolean) when isContig:
@@ -7903,6 +8787,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.boolean):
@@ -7916,6 +8801,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int16) when isContig:
@@ -7924,6 +8810,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.int16):
@@ -7936,6 +8823,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex128) when isContig:
@@ -7944,6 +8832,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex128):
@@ -7956,6 +8845,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex64) when isContig:
@@ -7964,6 +8854,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.int16, DType.complex64):
@@ -7976,6 +8867,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float64) when isContig:
@@ -7984,6 +8876,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float64):
@@ -7996,6 +8889,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float32) when isContig:
@@ -8004,6 +8898,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.float32):
@@ -8016,6 +8911,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int64) when isContig:
@@ -8024,6 +8920,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int64):
@@ -8036,6 +8933,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int32) when isContig:
@@ -8044,6 +8942,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int32):
@@ -8056,6 +8955,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.boolean) when isContig:
@@ -8065,6 +8965,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.boolean):
@@ -8078,6 +8979,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int16) when isContig:
@@ -8086,6 +8988,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.int16):
@@ -8098,6 +9001,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex128) when isContig:
@@ -8106,6 +9010,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex128):
@@ -8118,6 +9023,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex64) when isContig:
@@ -8126,6 +9032,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex128, DType.complex64):
@@ -8138,6 +9045,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float64) when isContig:
@@ -8146,6 +9054,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float64):
@@ -8158,6 +9067,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float32) when isContig:
@@ -8166,6 +9076,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.float32):
@@ -8178,6 +9089,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int64) when isContig:
@@ -8186,6 +9098,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int64):
@@ -8198,6 +9111,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int32) when isContig:
@@ -8206,6 +9120,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int32):
@@ -8218,6 +9133,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.boolean) when isContig:
@@ -8227,6 +9143,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.boolean):
@@ -8240,6 +9157,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int16) when isContig:
@@ -8248,6 +9166,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.int16):
@@ -8260,6 +9179,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex128) when isContig:
@@ -8268,6 +9188,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex128):
@@ -8280,6 +9201,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex64) when isContig:
@@ -8288,6 +9210,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         b.pointer.cast(),
         result.pointer.cast(),
         a.size,
+        maskHolder.pointer,
       );
       return result;
     case (DType.complex64, DType.complex64):
@@ -8300,6 +9223,7 @@ NDArray<R> divide<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         commonShape.length,
+        maskHolder.pointer,
       );
       return result;
   }

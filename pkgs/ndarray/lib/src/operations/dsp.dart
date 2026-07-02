@@ -54,6 +54,7 @@ NDArray<R> angle<T extends Complex, R extends double>(
           a.pointer.cast(),
           result.pointer.cast(),
           a.size,
+          ffi.nullptr,
         );
         return result;
       case DType.complex64:
@@ -61,6 +62,7 @@ NDArray<R> angle<T extends Complex, R extends double>(
           a.pointer.cast(),
           result.pointer.cast(),
           a.size,
+          ffi.nullptr,
         );
         return result;
     }
@@ -84,6 +86,7 @@ NDArray<R> angle<T extends Complex, R extends double>(
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
       case DType.complex64:
@@ -94,6 +97,7 @@ NDArray<R> angle<T extends Complex, R extends double>(
           cStridesRes,
           cShape,
           rank,
+          ffi.nullptr,
         );
         return result;
     }
@@ -383,35 +387,6 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
       );
       if (out != null && !listEquals(out.shape, expectedShape)) {
         throw ArgumentError('Provided out buffer has incompatible shape.');
-      }
-      if (rank == 1 &&
-          in1.isContiguous &&
-          in2.isContiguous &&
-          (in1.dtype == DType.float64 || in1.dtype == DType.float32)) {
-        final N = in1.shape[0];
-        final K = in2.shape[0];
-
-        final NDArray<R> result;
-
-        if (out != null) {
-          result = out;
-        } else {
-          result = NDArray<R>.zeros(expectedShape, in1.dtype as DType<R>);
-        }
-
-        if (in1.dtype == DType.float64) {
-          final resPtr = result.pointer.cast<ffi.Double>();
-          final ptr1 = in1.pointer.cast<ffi.Double>();
-          final ptr2 = in2.pointer.cast<ffi.Double>();
-          bindings.s_correlate_full_1d_double(ptr1, N, ptr2, K, resPtr);
-          return result;
-        } else if (in1.dtype == DType.float32) {
-          final resPtr = result.pointer.cast<ffi.Float>();
-          final ptr1 = in1.pointer.cast<ffi.Float>();
-          final ptr2 = in2.pointer.cast<ffi.Float>();
-          bindings.s_correlate_full_1d_float(ptr1, N, ptr2, K, resPtr);
-          return result;
-        }
       }
 
       return NDArray.scope(() {

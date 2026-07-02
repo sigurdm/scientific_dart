@@ -51,21 +51,21 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
     if (a.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
-          v_to_bool_double(a.pointer.cast(), aBoolPtr, a.size);
+          v_to_bool_double(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
         case DType.float32:
-          v_to_bool_float(a.pointer.cast(), aBoolPtr, a.size);
+          v_to_bool_float(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
         case DType.int64:
-          v_to_bool_int64(a.pointer.cast(), aBoolPtr, a.size);
+          v_to_bool_int64(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
         case DType.int32:
-          v_to_bool_int32(a.pointer.cast(), aBoolPtr, a.size);
+          v_to_bool_int32(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
         case DType.uint8:
-          v_to_bool_uint8(a.pointer.cast(), aBoolPtr, a.size);
+          v_to_bool_uint8(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
         case DType.int16:
-          v_to_bool_int16(a.pointer.cast(), aBoolPtr, a.size);
+          v_to_bool_int16(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
         case DType.complex128:
-          v_to_bool_complex128(a.pointer.cast(), aBoolPtr, a.size);
+          v_to_bool_complex128(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
         case DType.complex64:
-          v_to_bool_complex64(a.pointer.cast(), aBoolPtr, a.size);
+          v_to_bool_complex64(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
         case DType.boolean:
           break;
       }
@@ -89,6 +89,7 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
             cStridesTemp,
             cShape,
             ndim,
+            ffi.nullptr,
           );
         case DType.float32:
           s_to_bool_float(
@@ -98,6 +99,7 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
             cStridesTemp,
             cShape,
             ndim,
+            ffi.nullptr,
           );
         case DType.int64:
           s_to_bool_int64(
@@ -107,6 +109,7 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
             cStridesTemp,
             cShape,
             ndim,
+            ffi.nullptr,
           );
         case DType.int32:
           s_to_bool_int32(
@@ -116,6 +119,7 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
             cStridesTemp,
             cShape,
             ndim,
+            ffi.nullptr,
           );
         case DType.uint8:
           s_to_bool_uint8(
@@ -125,6 +129,7 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
             cStridesTemp,
             cShape,
             ndim,
+            ffi.nullptr,
           );
         case DType.int16:
           s_to_bool_int16(
@@ -134,6 +139,7 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
             cStridesTemp,
             cShape,
             ndim,
+            ffi.nullptr,
           );
         case DType.complex128:
           s_to_bool_complex128(
@@ -143,6 +149,7 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
             cStridesTemp,
             cShape,
             ndim,
+            ffi.nullptr,
           );
         case DType.complex64:
           s_to_bool_complex64(
@@ -152,6 +159,7 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
             cStridesTemp,
             cShape,
             ndim,
+            ffi.nullptr,
           );
         case DType.boolean:
           break;
@@ -160,7 +168,7 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
   }
 
   if (a.isContiguous && result.isContiguous) {
-    v_logical_not(aBoolPtr, result.pointer.cast(), a.size);
+    v_logical_not(aBoolPtr, result.pointer.cast(), a.size, ffi.nullptr);
   } else {
     final ndim = a.shape.length;
     final cBuffer = ScratchArena.getStridedBuffer(ndim);
@@ -181,6 +189,7 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
       cStridesRes,
       cShape,
       ndim,
+      ffi.nullptr,
     );
   }
 
@@ -582,21 +591,21 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
   if (x.isContiguous) {
     switch (x.dtype) {
       case DType.float64:
-        v_to_bool_double(x.pointer.cast(), destPtr, x.size);
+        v_to_bool_double(x.pointer.cast(), destPtr, x.size, ffi.nullptr);
       case DType.float32:
-        v_to_bool_float(x.pointer.cast(), destPtr, x.size);
+        v_to_bool_float(x.pointer.cast(), destPtr, x.size, ffi.nullptr);
       case DType.int64:
-        v_to_bool_int64(x.pointer.cast(), destPtr, x.size);
+        v_to_bool_int64(x.pointer.cast(), destPtr, x.size, ffi.nullptr);
       case DType.int32:
-        v_to_bool_int32(x.pointer.cast(), destPtr, x.size);
+        v_to_bool_int32(x.pointer.cast(), destPtr, x.size, ffi.nullptr);
       case DType.uint8:
-        v_to_bool_uint8(x.pointer.cast(), destPtr, x.size);
+        v_to_bool_uint8(x.pointer.cast(), destPtr, x.size, ffi.nullptr);
       case DType.int16:
-        v_to_bool_int16(x.pointer.cast(), destPtr, x.size);
+        v_to_bool_int16(x.pointer.cast(), destPtr, x.size, ffi.nullptr);
       case DType.complex128:
-        v_to_bool_complex128(x.pointer.cast(), destPtr, x.size);
+        v_to_bool_complex128(x.pointer.cast(), destPtr, x.size, ffi.nullptr);
       case DType.complex64:
-        v_to_bool_complex64(x.pointer.cast(), destPtr, x.size);
+        v_to_bool_complex64(x.pointer.cast(), destPtr, x.size, ffi.nullptr);
       case DType.boolean:
         break;
     }
@@ -620,6 +629,7 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
           cStridesTemp,
           cShape,
           ndim,
+          ffi.nullptr,
         );
       case DType.float32:
         s_to_bool_float(
@@ -629,6 +639,7 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
           cStridesTemp,
           cShape,
           ndim,
+          ffi.nullptr,
         );
       case DType.int64:
         s_to_bool_int64(
@@ -638,6 +649,7 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
           cStridesTemp,
           cShape,
           ndim,
+          ffi.nullptr,
         );
       case DType.int32:
         s_to_bool_int32(
@@ -647,6 +659,7 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
           cStridesTemp,
           cShape,
           ndim,
+          ffi.nullptr,
         );
       case DType.uint8:
         s_to_bool_uint8(
@@ -656,6 +669,7 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
           cStridesTemp,
           cShape,
           ndim,
+          ffi.nullptr,
         );
       case DType.int16:
         s_to_bool_int16(
@@ -665,6 +679,7 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
           cStridesTemp,
           cShape,
           ndim,
+          ffi.nullptr,
         );
       case DType.complex128:
         s_to_bool_complex128(
@@ -674,6 +689,7 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
           cStridesTemp,
           cShape,
           ndim,
+          ffi.nullptr,
         );
       case DType.complex64:
         s_to_bool_complex64(
@@ -683,6 +699,7 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
           cStridesTemp,
           cShape,
           ndim,
+          ffi.nullptr,
         );
       case DType.boolean:
         break;
@@ -700,6 +717,7 @@ NDArray<bool> _runBinaryLogical<Ta, Tb>(
     ffi.Pointer<ffi.Uint8>,
     ffi.Pointer<ffi.Uint8>,
     int,
+    ffi.Pointer<ffi.Uint8>,
   )
   contiguousFn,
   void Function(
@@ -711,6 +729,7 @@ NDArray<bool> _runBinaryLogical<Ta, Tb>(
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<ffi.Int>,
     int,
+    ffi.Pointer<ffi.Uint8>,
   )
   stridedFn,
   String opName,
@@ -772,7 +791,13 @@ NDArray<bool> _runBinaryLogical<Ta, Tb>(
       listEquals(a.shape, b.shape);
 
   if (isContig) {
-    contiguousFn(aBoolPtr, bBoolPtr, result.pointer.cast(), result.size);
+    contiguousFn(
+      aBoolPtr,
+      bBoolPtr,
+      result.pointer.cast(),
+      result.size,
+      ffi.nullptr,
+    );
   } else {
     final ndim = commonShape.length;
     final cBuffer = ScratchArena.getStridedBuffer(ndim);
@@ -797,6 +822,7 @@ NDArray<bool> _runBinaryLogical<Ta, Tb>(
       cStridesRes,
       cShape,
       ndim,
+      ffi.nullptr,
     );
   }
 

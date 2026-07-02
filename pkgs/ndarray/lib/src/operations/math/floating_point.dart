@@ -21,8 +21,14 @@ import '../broadcasting.dart';
 /// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
 /// final mask = isnan(a); // [false, true, false]
 /// ```
-NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<bool> isnan<T>(
+  NDArray<T> a, {
+  NDArray<Uint8>? where,
+  NDArray<bool>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute isnan() on a disposed array.');
   }
   final NDArray<bool> result;
@@ -36,20 +42,41 @@ NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
   } else {
     result = NDArray<bool>.create(a.shape, DType.boolean);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_isnan_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_isnan_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_isnan_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_isnan_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_isnan_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_isnan_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_isnan_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_isnan_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.int32:
       case DType.int64:
@@ -80,6 +107,7 @@ NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.float32:
@@ -90,6 +118,7 @@ NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.complex128:
@@ -100,6 +129,7 @@ NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.complex64:
@@ -110,6 +140,7 @@ NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.int32:
@@ -166,8 +197,14 @@ NDArray<bool> isnan<T>(NDArray<T> a, {NDArray<bool>? out}) {
 /// final a = NDArray.fromList([1.0, double.infinity, 3.0], [3], DType.float64);
 /// final mask = isinf(a); // [false, true, false]
 /// ```
-NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<bool> isinf<T>(
+  NDArray<T> a, {
+  NDArray<Uint8>? where,
+  NDArray<bool>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute isinf() on a disposed array.');
   }
   final NDArray<bool> result;
@@ -181,20 +218,41 @@ NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
   } else {
     result = NDArray<bool>.create(a.shape, DType.boolean);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_isinf_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_isinf_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_isinf_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_isinf_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_isinf_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_isinf_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_isinf_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_isinf_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.int32:
       case DType.int64:
@@ -225,6 +283,7 @@ NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.float32:
@@ -235,6 +294,7 @@ NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.complex128:
@@ -245,6 +305,7 @@ NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.complex64:
@@ -255,6 +316,7 @@ NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.int32:
@@ -311,8 +373,14 @@ NDArray<bool> isinf<T>(NDArray<T> a, {NDArray<bool>? out}) {
 /// final a = NDArray.fromList([1.0, double.nan, double.infinity], [3], DType.float64);
 /// final mask = isfinite(a); // [true, false, false]
 /// ```
-NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<bool> isfinite<T extends Object>(
+  NDArray<T> a, {
+  NDArray<Uint8>? where,
+  NDArray<bool>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute isfinite() on a disposed array.');
   }
   final NDArray<bool> result;
@@ -326,20 +394,41 @@ NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
   } else {
     result = NDArray<bool>.create(a.shape, DType.boolean);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_isfinite_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_isfinite_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_isfinite_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_isfinite_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_isfinite_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_isfinite_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_isfinite_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_isfinite_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.int32:
       case DType.int64:
@@ -369,6 +458,7 @@ NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.float32:
@@ -379,6 +469,7 @@ NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.complex128:
@@ -389,6 +480,7 @@ NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.complex64:
@@ -399,6 +491,7 @@ NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.int32:
@@ -425,9 +518,13 @@ NDArray<bool> isfinite<T extends Object>(NDArray<T> a, {NDArray<bool>? out}) {
 NDArray<T> copysign<T extends Object>(
   NDArray<T> x1,
   NDArray<T> x2, {
+  NDArray<Uint8>? where,
   NDArray<T>? out,
 }) {
-  if (x1.isDisposed || x2.isDisposed || (out != null && out.isDisposed)) {
+  if (x1.isDisposed ||
+      x2.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute copysign() on a disposed array.');
   }
   if (x1.dtype.isComplex || x2.dtype.isComplex) {
@@ -452,6 +549,7 @@ NDArray<T> copysign<T extends Object>(
   } else {
     result = NDArray<T>.create(shape, targetDType);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (x1.isContiguous &&
       x2.isContiguous &&
@@ -463,6 +561,7 @@ NDArray<T> copysign<T extends Object>(
         x2.pointer.cast(),
         result.pointer.cast(),
         x1.data.length,
+        maskHolder.pointer,
       );
       return result;
     } else if (targetDType == DType.float32) {
@@ -471,6 +570,7 @@ NDArray<T> copysign<T extends Object>(
         x2.pointer.cast(),
         result.pointer.cast(),
         x1.data.length,
+        maskHolder.pointer,
       );
       return result;
     }
@@ -497,6 +597,7 @@ NDArray<T> copysign<T extends Object>(
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (targetDType == DType.float32) {
@@ -509,6 +610,7 @@ NDArray<T> copysign<T extends Object>(
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     }

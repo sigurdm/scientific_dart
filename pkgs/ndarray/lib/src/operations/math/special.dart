@@ -1,3 +1,4 @@
+import 'dart:ffi' as ffi;
 // ignore_for_file: non_constant_identifier_names
 import '../../ndarray.dart';
 import '../../ndarray_bindings.dart';
@@ -74,16 +75,36 @@ NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   void dispatchContiguous(NDArray src, NDArray dest) {
     switch (src.dtype) {
       case DType.float64:
-        v_i0_double(src.pointer.cast(), dest.pointer.cast(), src.size);
+        v_i0_double(
+          src.pointer.cast(),
+          dest.pointer.cast(),
+          src.size,
+          ffi.nullptr,
+        );
         break;
       case DType.float32:
-        v_i0_float(src.pointer.cast(), dest.pointer.cast(), src.size);
+        v_i0_float(
+          src.pointer.cast(),
+          dest.pointer.cast(),
+          src.size,
+          ffi.nullptr,
+        );
         break;
       case DType.complex128:
-        v_i0_complex128(src.pointer.cast(), dest.pointer.cast(), src.size);
+        v_i0_complex128(
+          src.pointer.cast(),
+          dest.pointer.cast(),
+          src.size,
+          ffi.nullptr,
+        );
         break;
       case DType.complex64:
-        v_i0_complex64(src.pointer.cast(), dest.pointer.cast(), src.size);
+        v_i0_complex64(
+          src.pointer.cast(),
+          dest.pointer.cast(),
+          src.size,
+          ffi.nullptr,
+        );
         break;
       default:
         throw UnsupportedError(
@@ -108,6 +129,7 @@ NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesDest,
             cShape,
             rank,
+            ffi.nullptr,
           );
           break;
         case DType.float32:
@@ -118,6 +140,7 @@ NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesDest,
             cShape,
             rank,
+            ffi.nullptr,
           );
           break;
         case DType.complex128:
@@ -128,6 +151,7 @@ NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesDest,
             cShape,
             rank,
+            ffi.nullptr,
           );
           break;
         case DType.complex64:
@@ -138,6 +162,7 @@ NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesDest,
             cShape,
             rank,
+            ffi.nullptr,
           );
           break;
         default:

@@ -1,3 +1,4 @@
+import 'dart:ffi' as ffi;
 // ignore_for_file: non_constant_identifier_names
 import '../../ndarray.dart';
 import '../../ndarray_bindings.dart';
@@ -168,7 +169,12 @@ NDArray<T> conj<T>(NDArray<T> a, {NDArray<T>? out}) {
   switch (targetDType) {
     case DType.complex128:
       if (a.isContiguous && result.isContiguous) {
-        v_conj_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_conj_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       } else {
         final rank = a.shape.length;
@@ -184,6 +190,7 @@ NDArray<T> conj<T>(NDArray<T> a, {NDArray<T>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         } finally {
@@ -192,7 +199,12 @@ NDArray<T> conj<T>(NDArray<T> a, {NDArray<T>? out}) {
       }
     case DType.complex64:
       if (a.isContiguous && result.isContiguous) {
-        v_conj_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_conj_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          ffi.nullptr,
+        );
         return result;
       } else {
         final rank = a.shape.length;
@@ -208,6 +220,7 @@ NDArray<T> conj<T>(NDArray<T> a, {NDArray<T>? out}) {
             cStridesRes,
             cShape,
             rank,
+            ffi.nullptr,
           );
           return result;
         } finally {

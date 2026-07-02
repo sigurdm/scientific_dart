@@ -25,8 +25,10 @@ import 'arithmetic.dart';
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Trigonometric Sine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
-NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute sin() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -47,20 +49,41 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_sin_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sin_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_sin_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sin_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_sin_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sin_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_sin_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sin_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -85,6 +108,7 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -95,6 +119,7 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex128) {
@@ -105,6 +130,7 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex64) {
@@ -115,6 +141,7 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     }
@@ -160,8 +187,14 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
 /// - For C-contiguous array layouts, uses native C vector math kernels (`v_sinc_double`/`v_sinc_float` etc).
-NDArray<R> sinc<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> sinc<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute sinc() on a disposed array.');
   }
 
@@ -191,20 +224,41 @@ NDArray<R> sinc<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray<R>.create(a.shape, targetDType as DType<R>);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_sinc_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sinc_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_sinc_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sinc_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_sinc_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sinc_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_sinc_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sinc_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -229,6 +283,7 @@ NDArray<R> sinc<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -239,6 +294,7 @@ NDArray<R> sinc<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex128) {
@@ -249,6 +305,7 @@ NDArray<R> sinc<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex64) {
@@ -259,6 +316,7 @@ NDArray<R> sinc<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     }
@@ -284,8 +342,10 @@ NDArray<R> sinc<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Trigonometric Cosine Function](https://en.wikipedia.org/wiki/Sine_and_cosine)
-NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute cos() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -306,20 +366,41 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_cos_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_cos_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_cos_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_cos_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_cos_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_cos_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_cos_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_cos_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -345,6 +426,7 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.float32:
@@ -355,6 +437,7 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.complex128:
@@ -365,6 +448,7 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.complex64:
@@ -375,6 +459,7 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       default:
@@ -414,8 +499,10 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/ufuncs_example.dart lang=dart}
-NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute tan() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -436,20 +523,41 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_tan_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_tan_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_tan_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_tan_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_tan_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_tan_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_tan_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_tan_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -474,6 +582,7 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -484,6 +593,7 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex128) {
@@ -494,6 +604,7 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex64) {
@@ -504,6 +615,7 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     }
@@ -550,8 +662,14 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// final a = NDArray.fromList([0.0, 1.0], [2], DType.float64);
 /// final b = asin(a); // [0.0, 1.570796...]
 /// ```
-NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> asin<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute asin() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -572,20 +690,41 @@ NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_asin_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_asin_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_asin_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_asin_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_asin_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_asin_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_asin_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_asin_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -609,6 +748,7 @@ NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -619,6 +759,7 @@ NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex128) {
@@ -629,6 +770,7 @@ NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex64) {
@@ -639,6 +781,7 @@ NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     }
@@ -685,8 +828,14 @@ NDArray<R> asin<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// final a = NDArray.fromList([1.0, 0.0], [2], DType.float64);
 /// final b = acos(a); // [0.0, 1.570796...]
 /// ```
-NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> acos<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute acos() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -707,20 +856,41 @@ NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_acos_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_acos_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_acos_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_acos_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_acos_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_acos_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_acos_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_acos_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -744,6 +914,7 @@ NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -754,6 +925,7 @@ NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex128) {
@@ -764,6 +936,7 @@ NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex64) {
@@ -774,6 +947,7 @@ NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     }
@@ -820,8 +994,14 @@ NDArray<R> acos<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// final a = NDArray.fromList([0.0, 1.0], [2], DType.float64);
 /// final b = atan(a); // [0.0, 0.785398...]
 /// ```
-NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> atan<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute atan() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -842,20 +1022,41 @@ NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_atan_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_atan_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_atan_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_atan_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_atan_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_atan_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_atan_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_atan_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -879,6 +1080,7 @@ NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -889,6 +1091,7 @@ NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex128) {
@@ -899,6 +1102,7 @@ NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex64) {
@@ -909,6 +1113,7 @@ NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     }
@@ -953,8 +1158,14 @@ NDArray<R> atan<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> sinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> sinh<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute sinh() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -975,20 +1186,41 @@ NDArray<R> sinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_sinh_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sinh_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_sinh_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sinh_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_sinh_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sinh_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_sinh_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_sinh_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -1012,6 +1244,7 @@ NDArray<R> sinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -1022,6 +1255,7 @@ NDArray<R> sinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex128) {
@@ -1032,6 +1266,7 @@ NDArray<R> sinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex64) {
@@ -1042,6 +1277,7 @@ NDArray<R> sinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     }
@@ -1075,8 +1311,14 @@ NDArray<R> sinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> cosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> cosh<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute cosh() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -1097,20 +1339,41 @@ NDArray<R> cosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_cosh_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_cosh_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_cosh_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_cosh_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_cosh_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_cosh_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_cosh_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_cosh_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -1134,6 +1397,7 @@ NDArray<R> cosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -1144,6 +1408,7 @@ NDArray<R> cosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex128) {
@@ -1154,6 +1419,7 @@ NDArray<R> cosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex64) {
@@ -1164,6 +1430,7 @@ NDArray<R> cosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     }
@@ -1197,8 +1464,14 @@ NDArray<R> cosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> tanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> tanh<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute tanh() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -1219,20 +1492,41 @@ NDArray<R> tanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_tanh_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_tanh_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_tanh_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_tanh_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_tanh_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_tanh_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_tanh_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_tanh_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -1256,6 +1550,7 @@ NDArray<R> tanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -1266,6 +1561,7 @@ NDArray<R> tanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex128) {
@@ -1276,6 +1572,7 @@ NDArray<R> tanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex64) {
@@ -1286,6 +1583,7 @@ NDArray<R> tanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     }
@@ -1320,8 +1618,14 @@ NDArray<R> tanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> asinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> asinh<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute asinh() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -1342,20 +1646,41 @@ NDArray<R> asinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_asinh_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_asinh_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_asinh_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_asinh_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_asinh_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_asinh_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_asinh_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_asinh_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -1379,6 +1704,7 @@ NDArray<R> asinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -1389,6 +1715,7 @@ NDArray<R> asinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex128) {
@@ -1399,6 +1726,7 @@ NDArray<R> asinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex64) {
@@ -1409,6 +1737,7 @@ NDArray<R> asinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     }
@@ -1442,8 +1771,14 @@ NDArray<R> asinh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> acosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> acosh<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute acosh() on a disposed array.');
   }
   final DType<R> targetDType;
@@ -1465,20 +1800,41 @@ NDArray<R> acosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_acosh_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_acosh_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_acosh_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_acosh_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_acosh_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_acosh_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_acosh_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_acosh_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -1499,6 +1855,7 @@ NDArray<R> acosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
           return result;
         case DType.float32:
@@ -1509,6 +1866,7 @@ NDArray<R> acosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
           return result;
         case DType.complex128:
@@ -1519,6 +1877,7 @@ NDArray<R> acosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
           return result;
         case DType.complex64:
@@ -1529,6 +1888,7 @@ NDArray<R> acosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
           return result;
         default:
@@ -1567,8 +1927,14 @@ NDArray<R> acosh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/hyperbolic_example.dart lang=dart}
-NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> atanh<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute atanh() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -1589,20 +1955,41 @@ NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_atanh_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_atanh_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_atanh_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_atanh_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_atanh_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_atanh_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_atanh_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_atanh_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -1626,6 +2013,7 @@ NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -1636,6 +2024,7 @@ NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex128) {
@@ -1646,6 +2035,7 @@ NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex64) {
@@ -1656,6 +2046,7 @@ NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     }
@@ -1685,9 +2076,13 @@ NDArray<R> atanh<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 NDArray<double> atan2<Ty, Tx>(
   NDArray<Ty> y,
   NDArray<Tx> x, {
+  NDArray<dynamic>? where,
   NDArray<double>? out,
 }) {
-  if (y.isDisposed || x.isDisposed || (out != null && out.isDisposed)) {
+  if (y.isDisposed ||
+      x.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute atan2() on a disposed array.');
   }
   if (y.dtype == DType.complex128 ||
@@ -1714,6 +2109,7 @@ NDArray<double> atan2<Ty, Tx>(
   } else {
     result = NDArray<double>.create(shape, targetDType);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
   if (y.isContiguous &&
@@ -1727,6 +2123,7 @@ NDArray<double> atan2<Ty, Tx>(
           x.pointer.cast(),
           result.pointer.cast(),
           y.size,
+          maskHolder.pointer,
         );
         return result;
       case (DType.float32, DType.float32):
@@ -1735,6 +2132,7 @@ NDArray<double> atan2<Ty, Tx>(
           x.pointer.cast(),
           result.pointer.cast(),
           y.size,
+          maskHolder.pointer,
         );
         return result;
       default:
@@ -1763,6 +2161,7 @@ NDArray<double> atan2<Ty, Tx>(
             cStridesRes,
             cShape,
             shape.length,
+            maskHolder.pointer,
           );
           return result;
         case (DType.float32, DType.float32, DType.float32):
@@ -1775,6 +2174,7 @@ NDArray<double> atan2<Ty, Tx>(
             cStridesRes,
             cShape,
             shape.length,
+            maskHolder.pointer,
           );
           return result;
         default:
@@ -1863,8 +2263,16 @@ NDArray<double> atan2<Ty, Tx>(
 /// ```dart
 /// final h = hypot(a, b);
 /// ```
-NDArray<R> hypot<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> hypot<Ta, Tb, R>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute hypot() on a disposed array.');
   }
   final broadcastResult = broadcast(a, b);
@@ -1886,6 +2294,7 @@ NDArray<R> hypot<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
   } else {
     result = NDArray<R>.create(shape, targetDType);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.dtype == DType.complex128 ||
       b.dtype == DType.complex128 ||
@@ -1915,6 +2324,7 @@ NDArray<R> hypot<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
           bCpx.pointer.cast(),
           result.pointer.cast(),
           aCpx.size,
+          maskHolder.pointer,
         );
         return result;
       } else {
@@ -1923,6 +2333,7 @@ NDArray<R> hypot<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
           bCpx.pointer.cast(),
           result.pointer.cast(),
           aCpx.size,
+          maskHolder.pointer,
         );
         return result;
       }
@@ -1944,6 +2355,7 @@ NDArray<R> hypot<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
           return result;
         } else {
@@ -1956,6 +2368,7 @@ NDArray<R> hypot<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
             cStridesRes,
             cShape,
             rank,
+            maskHolder.pointer,
           );
           return result;
         }
@@ -2013,8 +2426,14 @@ NDArray<R> hypot<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 /// final a = NDArray.fromList([180.0, 90.0, 45.0], [3], DType.float64);
 /// final r = deg2rad(a); // [pi, pi / 2.0, pi / 4.0]
 /// ```
-NDArray<R> deg2rad<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> deg2rad<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute deg2rad() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
@@ -2050,8 +2469,14 @@ NDArray<R> deg2rad<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// final a = NDArray.fromList([math.pi, math.pi / 2.0], [2], DType.float64);
 /// final d = rad2deg(a); // [180.0, 90.0]
 /// ```
-NDArray<R> rad2deg<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> rad2deg<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute rad2deg() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {

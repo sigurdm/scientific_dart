@@ -30,14 +30,23 @@ import '../broadcasting.dart';
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy clip](https://numpy.org/doc/stable/reference/generated/numpy.clip.html)
-NDArray<T> clip<T>(NDArray<T> a, {num? min, num? max, NDArray<T>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<T> clip<T>(
+  NDArray<T> a, {
+  num? min,
+  num? max,
+  NDArray<Uint8>? where,
+  NDArray<T>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute clip() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported for clip');
   }
   final result = out ?? NDArray<T>.create(a.shape, a.dtype);
+  final maskHolder = prepareMask(where, result.shape);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
       throw ArgumentError(
@@ -64,6 +73,7 @@ NDArray<T> clip<T>(NDArray<T> a, {num? min, num? max, NDArray<T>? out}) {
         resolvedMin.toDouble(),
         resolvedMax.toDouble(),
         size,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -73,6 +83,7 @@ NDArray<T> clip<T>(NDArray<T> a, {num? min, num? max, NDArray<T>? out}) {
         resolvedMin.toDouble(),
         resolvedMax.toDouble(),
         size,
+        maskHolder.pointer,
       );
       return result;
     }
@@ -145,6 +156,7 @@ NDArray<T> clipArray<T>(
   NDArray<T> a, {
   NDArray<T>? min,
   NDArray<T>? max,
+  NDArray<Uint8>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
@@ -190,6 +202,7 @@ NDArray<T> clipArray<T>(
     }
 
     final result = out ?? NDArray<T>.create(commonShape, a.dtype);
+    final maskHolder = prepareMask(where, result.shape);
     if (out != null) {
       if (!listEquals(out.shape, commonShape)) {
         throw ArgumentError(
@@ -243,6 +256,7 @@ NDArray<T> clipArray<T>(
             cStridesRes,
             cShape,
             ndim,
+            maskHolder.pointer,
           );
           return result;
         case DType.float32:
@@ -262,6 +276,7 @@ NDArray<T> clipArray<T>(
             cStridesRes,
             cShape,
             ndim,
+            maskHolder.pointer,
           );
           return result;
         case DType.int64:
@@ -281,6 +296,7 @@ NDArray<T> clipArray<T>(
             cStridesRes,
             cShape,
             ndim,
+            maskHolder.pointer,
           );
           return result;
         case DType.int32:
@@ -300,6 +316,7 @@ NDArray<T> clipArray<T>(
             cStridesRes,
             cShape,
             ndim,
+            maskHolder.pointer,
           );
           return result;
         case DType.uint8:
@@ -319,6 +336,7 @@ NDArray<T> clipArray<T>(
             cStridesRes,
             cShape,
             ndim,
+            maskHolder.pointer,
           );
           return result;
         case DType.int16:
@@ -338,6 +356,7 @@ NDArray<T> clipArray<T>(
             cStridesRes,
             cShape,
             ndim,
+            maskHolder.pointer,
           );
           return result;
         default:

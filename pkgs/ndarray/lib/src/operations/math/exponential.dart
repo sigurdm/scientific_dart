@@ -23,8 +23,10 @@ import '../helpers.dart';
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Exponential Function](https://en.wikipedia.org/wiki/Exponential_function)
-NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute exp() on a disposed array.');
   }
   final DType<R> targetDType;
@@ -46,20 +48,41 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_exp_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_exp_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_exp_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_exp_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_exp_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_exp_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_exp_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_exp_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -85,6 +108,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.float32:
@@ -95,6 +119,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.complex128:
@@ -105,6 +130,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.complex64:
@@ -115,6 +141,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       default:
@@ -153,8 +180,10 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Natural Logarithm](https://en.wikipedia.org/wiki/Natural_logarithm)
-NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> log<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute log() on a disposed array.');
   }
   final DType<R> targetDType;
@@ -176,20 +205,41 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType);
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_log_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_log_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_log_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_log_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -214,6 +264,7 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.float32:
@@ -224,6 +275,7 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.complex128:
@@ -234,6 +286,7 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       case DType.complex64:
@@ -244,6 +297,7 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
           cStridesRes,
           cShape,
           rank,
+          maskHolder.pointer,
         );
         return result;
       default:
@@ -275,8 +329,10 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/easy_ufuncs_example.dart lang=dart}
-NDArray<R> log2<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> log2<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute log2() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -297,20 +353,41 @@ NDArray<R> log2<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_log2_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log2_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_log2_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log2_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_log2_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log2_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_log2_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log2_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -335,6 +412,7 @@ NDArray<R> log2<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -345,6 +423,7 @@ NDArray<R> log2<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex128) {
@@ -355,6 +434,7 @@ NDArray<R> log2<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex64) {
@@ -365,6 +445,7 @@ NDArray<R> log2<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     }
@@ -399,8 +480,10 @@ NDArray<R> log2<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/easy_ufuncs_example.dart lang=dart}
-NDArray<R> log10<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> log10<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute log10() on a disposed array.');
   }
   final DType<dynamic> targetDType;
@@ -421,20 +504,41 @@ NDArray<R> log10<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   } else {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
+  final maskHolder = prepareMask(where, result.shape);
 
   if (a.isContiguous && result.isContiguous) {
     switch (a.dtype) {
       case DType.float64:
-        v_log10_double(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log10_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.float32:
-        v_log10_float(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log10_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex128:
-        v_log10_complex128(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log10_complex128(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       case DType.complex64:
-        v_log10_complex64(a.pointer.cast(), result.pointer.cast(), a.size);
+        v_log10_complex64(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
         return result;
       default:
         break;
@@ -459,6 +563,7 @@ NDArray<R> log10<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.float32) {
@@ -469,6 +574,7 @@ NDArray<R> log10<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex128) {
@@ -479,6 +585,7 @@ NDArray<R> log10<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     } else if (a.dtype == DType.complex64) {
@@ -489,6 +596,7 @@ NDArray<R> log10<T, R>(NDArray<T> a, {NDArray<R>? out}) {
         cStridesRes,
         cShape,
         rank,
+        maskHolder.pointer,
       );
       return result;
     }

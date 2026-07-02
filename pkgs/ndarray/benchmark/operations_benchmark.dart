@@ -77,7 +77,7 @@ void main() {
     }, iterations: 500);
 
     // 4. tensordot explicit ([1],[0])
-    final axesExplicit = const TensordotAxes.explicit([1], [0]);
+    final axesExplicit = TensordotAxes.explicit([1], [0]);
     benchmark("tensordot axes=([1],[0]) [100x100]", () {
       tensordot(aMat, bMat, axes: axesExplicit);
     }, iterations: 500);
