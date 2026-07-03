@@ -1,0 +1,18 @@
+/// Core text buffer, transaction history, and multi-cursor selection engine.
+///
+/// Includes piece tree text buffer, undo/redo manager, atomic transactions,
+/// selection models, and reactive snapshot event streams.
+library code_editor.core;
+
+export 'src/core/buffer/buffer_source.dart';
+export 'src/core/buffer/piece_node.dart';
+export 'src/core/buffer/piece_tree.dart';
+export 'src/core/buffer/text_buffer.dart';
+export 'src/core/events/editor_event_bus.dart';
+export 'src/core/history/edit_operation.dart';
+export 'src/core/history/editor_transaction.dart';
+export 'src/core/history/undo_manager.dart';
+export 'src/core/selection/selection.dart';
+export 'src/core/selection/selection_model.dart';
+export 'src/core/selection/text_position.dart';
+export 'src/core/state/document_snapshot.dart';
