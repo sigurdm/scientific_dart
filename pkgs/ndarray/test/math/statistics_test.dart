@@ -3038,6 +3038,12 @@ void main() {
         expect(r.start, 0.0);
         expect(r.stop, 5.0);
         expect(r.numPoints, 5);
+
+        final rMagnitude = GridRange.numpy(0, 5, Complex(3, 4));
+        expect(rMagnitude.numPoints, 5);
+
+        final rRealComplex = GridRange.numpy(0, 5, Complex(5, 0));
+        expect(rRealComplex.numPoints, 5);
       });
     });
 

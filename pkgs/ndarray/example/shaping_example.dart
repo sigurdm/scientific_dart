@@ -48,8 +48,15 @@ void runMGridExamples() {
 void runOGridExamples() {
   print('--- 3. Open Meshgrid (ogrid) ---');
   NDArray.scope(() {
-    // Generate open meshgrid of two arrays
-    final grid = ogrid([GridRange(0, 3), GridRange(0, 2)]);
+    // Generate open meshgrid of two arrays with exclusive step and inclusive complex step
+    final grid = ogrid([
+      GridRange(0, 3), // [0.0, 1.0, 2.0]
+      GridRange.numpy(
+        0,
+        1,
+        Complex(0, 3),
+      ), // 3 points inclusive: [0.0, 0.5, 1.0]
+    ]);
 
     print('X grid shape: ${grid[0].shape}');
     print('X grid: ${grid[0].toList()}');

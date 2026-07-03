@@ -372,7 +372,7 @@
         if (msg.type === 'result') {
           const callback = pendingEvaluations.get(msg.id);
           if (callback) {
-            callback(msg.output, msg.isError, msg.outputs);
+            callback(msg.output, msg.isError, msg.outputs, msg.formattedCode);
             pendingEvaluations.delete(msg.id);
           }
           if (pendingEvaluations.size === 0) {
@@ -440,11 +440,21 @@
       }
     }
 
+    let hoverHideTimeout = null;
+
     function closeHoverPopup() {
+      clearTimeout(hoverHideTimeout);
       if (activeHoverPopup) {
         activeHoverPopup.remove();
         activeHoverPopup = null;
       }
+    }
+
+    function scheduleCloseHoverPopup(delayMs = 350) {
+      clearTimeout(hoverHideTimeout);
+      hoverHideTimeout = setTimeout(() => {
+        closeHoverPopup();
+      }, delayMs);
     }
 
     function requestCompletionCm(cm, cellId) {
@@ -510,50 +520,45 @@
       cm.focus();
     }
 
-    function requestHover(editor, e) {
-      const rect = editor.getBoundingClientRect();
-      const x = e.clientX - rect.left - 12 + editor.scrollLeft;
-      const y = e.clientY - rect.top - 12 + editor.scrollTop;
-      if (x < 0 || y < 0) return;
-
-      const lineHeight = 22.5;
-      const charWidth = 9.1;
-      const lineIndex = Math.floor(y / lineHeight);
-      const colIndex = Math.floor(x / charWidth);
-
-      const lines = editor.value.split('\n');
-      if (lineIndex < 0 || lineIndex >= lines.length) return;
-
-      let offset = 0;
-      for (let i = 0; i < lineIndex; i++) {
-        offset += lines[i].length + 1;
-      }
-      offset += Math.min(colIndex, lines[lineIndex].length);
-
+    function requestHoverCm(cm, cellId, offset, x, y) {
+      const code = cm.getValue();
       const reqId = `hover-${Date.now()}`;
+
       pendingHovers.set(reqId, (hoverText) => {
         if (hoverText) {
-          showHoverPopup(e.clientX + 12, e.clientY + 12, hoverText);
+          showHoverPopup(x + 12, y + 16, hoverText);
         } else {
-          closeHoverPopup();
+          scheduleCloseHoverPopup(300);
         }
       });
 
       ws.send(JSON.stringify({
         type: 'hover',
         id: reqId,
-        code: editor.value,
+        code: code,
         offset: offset
       }));
     }
 
     function showHoverPopup(x, y, text) {
+      clearTimeout(hoverHideTimeout);
       closeHoverPopup();
+      if (!text || !text.trim()) return;
+
       const popup = document.createElement('div');
       popup.className = 'hover-popup';
       popup.style.top = `${y}px`;
       popup.style.left = `${x}px`;
       popup.innerText = text;
+
+      popup.addEventListener('mouseenter', () => {
+        clearTimeout(hoverHideTimeout);
+      });
+
+      popup.addEventListener('mouseleave', () => {
+        scheduleCloseHoverPopup(300);
+      });
+
       document.body.appendChild(popup);
       activeHoverPopup = popup;
     }
@@ -736,6 +741,34 @@
         cell.classList.add('focused');
       });
 
+      let hoverTimeout = null;
+      cm.getWrapperElement().addEventListener('mousemove', (e) => {
+        if (activeHoverPopup && (activeHoverPopup === e.target || activeHoverPopup.contains(e.target))) {
+          clearTimeout(hoverHideTimeout);
+          return;
+        }
+        clearTimeout(hoverTimeout);
+        hoverTimeout = setTimeout(() => {
+          const pos = cm.coordsChar({ left: e.clientX, top: e.clientY });
+          const token = cm.getTokenAt(pos);
+          if (token && token.string && token.string.trim().length > 0) {
+            const offset = cm.indexFromPos(pos);
+            requestHoverCm(cm, cellId, offset, e.clientX, e.clientY);
+          } else {
+            scheduleCloseHoverPopup(400);
+          }
+        }, 300);
+      });
+
+      cm.getWrapperElement().addEventListener('mouseleave', (e) => {
+        clearTimeout(hoverTimeout);
+        if (activeHoverPopup && (activeHoverPopup === e.relatedTarget || activeHoverPopup.contains(e.relatedTarget))) {
+          clearTimeout(hoverHideTimeout);
+          return;
+        }
+        scheduleCloseHoverPopup(500);
+      });
+
       if (!initialCode) {
         cm.focus();
       }
@@ -770,8 +803,13 @@
       output.innerText = 'Running...';
 
       const reqId = `${cellId}-${Date.now()}`;
-      pendingEvaluations.set(reqId, (resultText, isError, outputsArray) => {
+      pendingEvaluations.set(reqId, (resultText, isError, outputsArray, formattedCode) => {
         renderOutputElement(output, resultText, isError, outputsArray);
+        if (formattedCode && cell && cell._cm && cell._cm.getValue() !== formattedCode) {
+          const cursor = cell._cm.getCursor();
+          cell._cm.setValue(formattedCode);
+          cell._cm.setCursor(cursor);
+        }
         if (cell && !isError) {
           cell.classList.add('evaluated');
         }

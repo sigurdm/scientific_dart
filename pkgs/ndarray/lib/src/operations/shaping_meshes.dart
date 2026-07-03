@@ -49,12 +49,14 @@ final class GridRange {
 
   /// Creates a grid range specification using NumPy-style parameters.
   ///
-  /// If [step] is a [Complex] number with a non-zero imaginary part,
-  /// the absolute value of the imaginary part is treated as the [numPoints] count.
-  /// Otherwise, the real part of [step] (or a real [num]) is treated as the step size.
+  /// If [step] is a [Complex] number, the magnitude of [step] (truncated to integer)
+  /// is interpreted as specifying the [numPoints] count between [start] and [stop],
+  /// where [stop] is inclusive (matching NumPy's complex step behavior).
+  /// Otherwise, if [step] is a real [num], it is treated as the step size
+  /// where [stop] is exclusive.
   factory GridRange.numpy(double start, double stop, dynamic step) {
-    if (step is Complex && step.imag != 0.0) {
-      return GridRange(start, stop, numPoints: step.imag.abs().toInt());
+    if (step is Complex) {
+      return GridRange(start, stop, numPoints: step.abs.toInt());
     } else if (step is num) {
       return GridRange(start, stop, step: step.toDouble());
     } else {
@@ -133,8 +135,15 @@ NDArray<T> asStrided<T>(NDArray<T> x, {List<int>? shape, List<int>? strides}) {
 
 /// Returns an open multi-dimensional mesh-grid.
 ///
-/// Returns a list of zero-allocation, zero-copy, broadcastable [NDArray]s,
-/// one for each dimension range in [ranges].
+/// Returns a list of broadcastable [NDArray]s, one for each dimension range
+/// in [ranges]. Each returned array has shape `[1, ..., N_i, ..., 1]` with length
+/// greater than 1 in only the $i$-th dimension, enabling memory-efficient broadcasting.
+///
+/// Specify dimension ranges using [GridRange] or [GridRange.numpy].
+/// If a [GridRange] is specified with a [Complex] step via [GridRange.numpy],
+/// the magnitude of the step is interpreted as the total number of points (`numPoints`)
+/// between `start` and `stop` (inclusive). Otherwise, real steps create standard
+/// half-open ranges (exclusive of `stop`).
 ///
 /// **Preconditions:**
 /// - [ranges] must not be empty.
@@ -173,7 +182,14 @@ List<NDArray<double>> ogrid(
 
 /// Returns a dense multi-dimensional mesh-grid.
 ///
-/// Returns a single contiguous [NDArray] containing the coordinate grids.
+/// Returns a single contiguous [NDArray] containing the fleshed-out coordinate grids.
+/// The output array has shape `[k, d1, d2, ..., dk]`, where `k = ranges.length`.
+///
+/// Dimension ranges are specified using [GridRange] or [GridRange.numpy].
+/// If a [GridRange] is specified with a [Complex] step via [GridRange.numpy],
+/// the magnitude of the step is interpreted as the number of points (`numPoints`)
+/// between `start` and `stop` (inclusive). Otherwise, real steps create standard
+/// half-open ranges (exclusive of `stop`).
 ///
 /// **Preconditions:**
 /// - [ranges] must not be empty.

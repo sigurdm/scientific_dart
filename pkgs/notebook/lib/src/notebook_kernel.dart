@@ -8,6 +8,7 @@ import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:notebook/src/lsp_client.dart';
 import 'package:notebook/src/kernel_helper.dart';
+import 'package:dart_style/dart_style.dart';
 
 class DeclaredSymbolResult {
   final String symbol;
@@ -210,8 +211,25 @@ class NotebookKernel {
     _process?.kill();
   }
 
+  /// Formats Dart [code] using dartfmt ([DartFormatter]).
+  String formatCode(String code) {
+    final trimmed = code.trim();
+    if (trimmed.isEmpty) return trimmed;
+    try {
+      final formatter = DartFormatter(languageVersion: DartFormatter.latestLanguageVersion);
+      return formatter.format(trimmed).trim();
+    } catch (_) {
+      try {
+        final formatter = DartFormatter(languageVersion: DartFormatter.latestLanguageVersion);
+        return formatter.formatStatement(trimmed).trim();
+      } catch (_) {
+        return trimmed;
+      }
+    }
+  }
+
   Future<String> execute(String code) async {
-    code = code.trim();
+    code = formatCode(code);
     if (code.isEmpty) return '';
 
     final pubAddMatch = RegExp(

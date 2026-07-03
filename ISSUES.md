@@ -46,23 +46,19 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 (Completed eigh, eigvalsh, eigvals, and slogdet linear algebra functions)
 
 ### 3.22 Einstein Summation (`einsum`) & Tensor Contractions
-- **Feature**: Implement `einsum(subscripts, operands)` for expressive tensor contractions (e.g. `'ij,jk->ik'`, `'ii->'`), as well as `tensordot` and `kron`.
-- **Details**: Parse subscripts, permute strided views, and dispatch contiguous sub-blocks to OpenBLAS GEMM kernels.
+- (Completed einsum and tensordot; kron remaining)
 
 ### 3.23 Polynomial Module
-- **Feature**: Vectorized polynomial fitting, evaluation, and root finding (`polyfit`, `polyval`, `roots`), alongside orthogonal bases (Chebyshev, Legendre, Hermite).
-- **Details**: `polyfit` via SVD least-squares, `roots` via companion matrix eigenvalues.
+- (Completed polyfit, polyval, roots, and orthogonal series evaluations)
 
 ### 3.24 Advanced Indexing Operations
-- **Feature**: Implement `take_along_axis`, `put_along_axis`, `select`, and `choose`.
-- **Details**: Allow extracting and injecting array elements along specific axes using coordinate index arrays.
+- (Completed take_along_axis, put_along_axis, select, and choose)
 
 ### 3.25 N-Dimensional Convolutions & Spatial Filtering
-- **Feature**: Extend DSP features to N-D spatial signal/image processing (`convolve2d`, `correlate`).
-- **Details**: Support boundary modes (`full`, `valid`, `same`), direct stencil convolution for small kernels, and FFT-based convolution dispatches for large kernels.
+- (Completed convolve2d, correlate, and N-D stencil/FFT convolution)
 
 ### 3.26 Scientific Optimization & Root Finding
-- **Feature**: Core numerical algorithms including 1D root finders (`brentq`, Newton-Raphson) and scalar/multivariate minimization (Nelder-Mead, L-BFGS).
+- (Completed 1D root finders brentq/newton/secant and multivariate minimizers Nelder-Mead/L-BFGS)
 
 ### 3.27 Expanded Data Type (DType) Support
 - **Feature**: Add missing integer types (`int8`, `uint16`, `uint32`, `uint64`), floating-point types (`float16`, `bfloat16`), fixed-width strings/bytes (`string_`), datetime types (`datetime64`, `timedelta64`), and structured / record arrays (`recarray`).
@@ -73,8 +69,7 @@ This file logs architectural improvements, optimization ideas, and feature gaps 
 - **Details**: Expand dimension resolution during indexing to interpret `...` across non-explicit axes and compute broadcasted coordinate indexing offsets.
 
 ### 3.29 Universal Function (`ufunc`) Capabilities
-- **Feature**: Support `where=` boolean mask array parameters on ufuncs to perform conditional operations without allocating transient intermediate arrays, and implement ufunc reduction/accumulation methods (`reduce`, `accumulate`, `reduceat`, `outer`, `at`).
-- **Details**: Enable strided elementwise masking in FFI kernels and add standard ufunc method dispatches for reduction, outer products, and unbuffered in-place modifications.
+- (Completed where= masking parameter, reduce, accumulate, reduceat, outer, and at ufunc methods)
 
 ### 3.30 Modern BitGenerator Random Generator API
 - **Feature**: Implement a modern `Generator` API powered by BitGenerators (PCG64, Philox, SFC64) to replace legacy `dart:math Random` distribution sampling.

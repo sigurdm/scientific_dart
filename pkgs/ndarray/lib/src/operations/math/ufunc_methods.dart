@@ -1692,6 +1692,246 @@ NDArray<T> reduceatUfunc<T extends Object>(
     result = NDArray.create(resShape, a.dtype);
   }
 
+  final opCode = op.index;
+  if (numIndices > 0) {
+    final ffi.Pointer<ffi.Int64> indicesPtr;
+    if (indices.isContiguous && indices.dtype == DType.int64) {
+      indicesPtr = indices.pointer.cast<ffi.Int64>();
+    } else {
+      indicesPtr = ScratchArena.allocate<ffi.Int64>(
+        numIndices * ffi.sizeOf<ffi.Int64>(),
+      );
+      final ptr = indices.pointer;
+      if (indices.dtype == DType.int32) {
+        final p32 = ptr.cast<ffi.Int32>();
+        for (var i = 0; i < numIndices; i++) {
+          indicesPtr[i] = p32[i];
+        }
+      } else {
+        final p64 = ptr.cast<ffi.Int64>();
+        for (var i = 0; i < numIndices; i++) {
+          indicesPtr[i] = p64[i];
+        }
+      }
+    }
+
+    if (a.rank == 1 && a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_reduceat_double(
+            a.pointer.cast(),
+            indicesPtr,
+            numIndices,
+            axisLen,
+            result.pointer.cast(),
+            opCode,
+          );
+          return result;
+        case DType.float32:
+          v_reduceat_float(
+            a.pointer.cast(),
+            indicesPtr,
+            numIndices,
+            axisLen,
+            result.pointer.cast(),
+            opCode,
+          );
+          return result;
+        case DType.int64:
+          v_reduceat_int64(
+            a.pointer.cast(),
+            indicesPtr,
+            numIndices,
+            axisLen,
+            result.pointer.cast(),
+            opCode,
+          );
+          return result;
+        case DType.int32:
+          v_reduceat_int32(
+            a.pointer.cast(),
+            indicesPtr,
+            numIndices,
+            axisLen,
+            result.pointer.cast(),
+            opCode,
+          );
+          return result;
+        case DType.int16:
+          v_reduceat_int16(
+            a.pointer.cast(),
+            indicesPtr,
+            numIndices,
+            axisLen,
+            result.pointer.cast(),
+            opCode,
+          );
+          return result;
+        case DType.uint8:
+        case DType.boolean:
+          v_reduceat_uint8(
+            a.pointer.cast(),
+            indicesPtr,
+            numIndices,
+            axisLen,
+            result.pointer.cast(),
+            opCode,
+          );
+          return result;
+        case DType.complex128:
+          v_reduceat_complex128(
+            a.pointer.cast(),
+            indicesPtr,
+            numIndices,
+            axisLen,
+            result.pointer.cast(),
+            opCode,
+          );
+          return result;
+        case DType.complex64:
+          v_reduceat_complex64(
+            a.pointer.cast(),
+            indicesPtr,
+            numIndices,
+            axisLen,
+            result.pointer.cast(),
+            opCode,
+          );
+          return result;
+      }
+    }
+
+    final rank = a.rank;
+    final cStridesA = ScratchArena.allocate<ffi.Int>(
+      rank * ffi.sizeOf<ffi.Int>(),
+    );
+    final cStridesRes = ScratchArena.allocate<ffi.Int>(
+      rank * ffi.sizeOf<ffi.Int>(),
+    );
+    final cShape = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
+    for (var i = 0; i < rank; i++) {
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+      cShape[i] = a.shape[i];
+    }
+
+    switch (a.dtype) {
+      case DType.float64:
+        s_reduceat_double(
+          a.pointer.cast(),
+          cStridesA,
+          indicesPtr,
+          numIndices,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          normAxis,
+          opCode,
+        );
+        return result;
+      case DType.float32:
+        s_reduceat_float(
+          a.pointer.cast(),
+          cStridesA,
+          indicesPtr,
+          numIndices,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          normAxis,
+          opCode,
+        );
+        return result;
+      case DType.int64:
+        s_reduceat_int64(
+          a.pointer.cast(),
+          cStridesA,
+          indicesPtr,
+          numIndices,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          normAxis,
+          opCode,
+        );
+        return result;
+      case DType.int32:
+        s_reduceat_int32(
+          a.pointer.cast(),
+          cStridesA,
+          indicesPtr,
+          numIndices,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          normAxis,
+          opCode,
+        );
+        return result;
+      case DType.int16:
+        s_reduceat_int16(
+          a.pointer.cast(),
+          cStridesA,
+          indicesPtr,
+          numIndices,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          normAxis,
+          opCode,
+        );
+        return result;
+      case DType.uint8:
+      case DType.boolean:
+        s_reduceat_uint8(
+          a.pointer.cast(),
+          cStridesA,
+          indicesPtr,
+          numIndices,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          normAxis,
+          opCode,
+        );
+        return result;
+      case DType.complex128:
+        s_reduceat_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          indicesPtr,
+          numIndices,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          normAxis,
+          opCode,
+        );
+        return result;
+      case DType.complex64:
+        s_reduceat_complex64(
+          a.pointer.cast(),
+          cStridesA,
+          indicesPtr,
+          numIndices,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          normAxis,
+          opCode,
+        );
+        return result;
+    }
+  }
+
   final idxData = indices.data;
   for (var i = 0; i < numIndices; i++) {
     var start = (idxData[i] as num).toInt();

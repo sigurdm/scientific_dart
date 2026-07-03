@@ -155,6 +155,7 @@ class NotebookServer {
             );
 
             try {
+              final formattedCode = _kernel!.formatCode(code);
               final output = await _kernel!.execute(code);
               List outputsList;
               try {
@@ -166,7 +167,7 @@ class NotebookServer {
               }
               _updateOrAddCell(
                 id: cellId,
-                code: code,
+                code: formattedCode,
                 output: output,
                 isError: false,
                 evaluated: true,
@@ -177,6 +178,7 @@ class NotebookServer {
                   'id': reqId,
                   'output': output,
                   'outputs': outputsList,
+                  'formattedCode': formattedCode,
                   'isError': false,
                 }),
               );

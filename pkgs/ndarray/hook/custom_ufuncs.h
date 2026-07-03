@@ -23,6 +23,47 @@ typedef enum {
     QUANTILE_NEAREST
 } QuantileMethod;
 
+typedef enum {
+    OP_ADD = 0,
+    OP_MULTIPLY,
+    OP_MINIMUM,
+    OP_MAXIMUM,
+    OP_FMIN,
+    OP_FMAX,
+    OP_LOGADDEXP,
+    OP_LOGADDEXP2,
+    OP_GCD,
+    OP_LCM,
+    OP_BITWISE_AND,
+    OP_BITWISE_OR,
+    OP_BITWISE_XOR,
+    OP_LOGICAL_AND,
+    OP_LOGICAL_OR,
+    OP_LOGICAL_XOR,
+    OP_SUBTRACT,
+    OP_DIVIDE,
+    OP_FLOOR_DIVIDE,
+    OP_REMAINDER,
+    OP_FMOD,
+    OP_POWER,
+    OP_FLOAT_POWER,
+    OP_ARCTAN2,
+    OP_HYPOT,
+    OP_COPYSIGN,
+    OP_LEFT_SHIFT,
+    OP_RIGHT_SHIFT,
+    OP_HEAVISIDE,
+    OP_EQUAL,
+    OP_NOT_EQUAL,
+    OP_GREATER,
+    OP_GREATER_EQUAL,
+    OP_LESS,
+    OP_LESS_EQUAL,
+    OP_COUNT
+} BinaryOpCode;
+
+int get_binary_op_enum_val(int index);
+
 
 /* ============================================================================
  * SECTION 1: CORE COMPLEX TYPE DEFINITIONS
@@ -1664,6 +1705,27 @@ void s_at_int16(int16_t *a, const int *stridesA, const int *shapeA, int rankA, c
 void s_at_complex128(cpx_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const cpx_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode);
 void s_at_complex64(cpx_f_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const cpx_f_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode);
 void s_at_boolean(uint8_t *a, const int *stridesA, const int *shapeA, int rankA, const int64_t *indices, int numIndices, int strideIdx, const uint8_t *b, const int *stridesB, const int *shapeB, int rankB, int opCode);
+
+
+void v_reduceat_double(const double *src, int64_t size, const int64_t *indices, int64_t numIndices, double *dest, int opCode);
+void v_reduceat_float(const float *src, int64_t size, const int64_t *indices, int64_t numIndices, float *dest, int opCode);
+void v_reduceat_int64(const int64_t *src, int64_t size, const int64_t *indices, int64_t numIndices, int64_t *dest, int opCode);
+void v_reduceat_int32(const int32_t *src, int64_t size, const int64_t *indices, int64_t numIndices, int32_t *dest, int opCode);
+void v_reduceat_uint8(const uint8_t *src, int64_t size, const int64_t *indices, int64_t numIndices, uint8_t *dest, int opCode);
+void v_reduceat_int16(const int16_t *src, int64_t size, const int64_t *indices, int64_t numIndices, int16_t *dest, int opCode);
+void v_reduceat_complex128(const cpx_t *src, int64_t size, const int64_t *indices, int64_t numIndices, cpx_t *dest, int opCode);
+void v_reduceat_complex64(const cpx_f_t *src, int64_t size, const int64_t *indices, int64_t numIndices, cpx_f_t *dest, int opCode);
+void v_reduceat_boolean(const uint8_t *src, int64_t size, const int64_t *indices, int64_t numIndices, uint8_t *dest, int opCode);
+
+void s_reduceat_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode);
+void s_reduceat_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode);
+void s_reduceat_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode);
+void s_reduceat_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode);
+void s_reduceat_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode);
+void s_reduceat_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode);
+void s_reduceat_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode);
+void s_reduceat_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode);
+void s_reduceat_boolean(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode);
 
 #ifdef __cplusplus
 }

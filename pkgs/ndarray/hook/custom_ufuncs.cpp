@@ -31,6 +31,47 @@
 #define RESTRICT restrict
 #endif
 
+int get_binary_op_enum_val(int index) {
+    switch (index) {
+        case 0: return OP_ADD;
+        case 1: return OP_MULTIPLY;
+        case 2: return OP_MINIMUM;
+        case 3: return OP_MAXIMUM;
+        case 4: return OP_FMIN;
+        case 5: return OP_FMAX;
+        case 6: return OP_LOGADDEXP;
+        case 7: return OP_LOGADDEXP2;
+        case 8: return OP_GCD;
+        case 9: return OP_LCM;
+        case 10: return OP_BITWISE_AND;
+        case 11: return OP_BITWISE_OR;
+        case 12: return OP_BITWISE_XOR;
+        case 13: return OP_LOGICAL_AND;
+        case 14: return OP_LOGICAL_OR;
+        case 15: return OP_LOGICAL_XOR;
+        case 16: return OP_SUBTRACT;
+        case 17: return OP_DIVIDE;
+        case 18: return OP_FLOOR_DIVIDE;
+        case 19: return OP_REMAINDER;
+        case 20: return OP_FMOD;
+        case 21: return OP_POWER;
+        case 22: return OP_FLOAT_POWER;
+        case 23: return OP_ARCTAN2;
+        case 24: return OP_HYPOT;
+        case 25: return OP_COPYSIGN;
+        case 26: return OP_LEFT_SHIFT;
+        case 27: return OP_RIGHT_SHIFT;
+        case 28: return OP_HEAVISIDE;
+        case 29: return OP_EQUAL;
+        case 30: return OP_NOT_EQUAL;
+        case 31: return OP_GREATER;
+        case 32: return OP_GREATER_EQUAL;
+        case 33: return OP_LESS;
+        case 34: return OP_LESS_EQUAL;
+        default: return -1;
+    }
+}
+
 #if (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(__i386__)) && !defined(_WIN32)
 #define VECTORIZED_TARGETS __attribute__((target_clones("avx512f", "avx2", "sse4.2", "default")))
 #else
@@ -10281,3 +10322,316 @@ void s_at_boolean(uint8_t *a, const int *stridesA, const int *shapeA, int rankA,
     s_at_impl(a, stridesA, shapeA, rankA, indices, numIndices, strideIdx, b, stridesB, shapeB, rankB, opCode);
 }
 
+
+
+/* ============================================================================
+ * SECTION 13: OPTIMIZED REDUCEAT SIMD & STRIDED KERNELS
+ * ============================================================================
+ */
+
+template <typename T, typename Op, bool IsScalar = std::is_arithmetic<T>::value>
+struct v_reduceat_unroll_helper {
+    static inline void run(const T *src, int64_t start, int64_t end, T &acc, int opCode, Op op) {
+        int64_t len = end - start;
+        int64_t j = start + 1;
+        if (len > 16) {
+            if (opCode == 0) { // add
+                T acc0 = acc, acc1 = 0, acc2 = 0, acc3 = 0;
+                T acc4 = 0, acc5 = 0, acc6 = 0, acc7 = 0;
+                int64_t rem = (end - j) % 8;
+                int64_t vec_end = end - rem;
+                for (; j < vec_end; j += 8) {
+                    acc0 += src[j];
+                    acc1 += src[j + 1];
+                    acc2 += src[j + 2];
+                    acc3 += src[j + 3];
+                    acc4 += src[j + 4];
+                    acc5 += src[j + 5];
+                    acc6 += src[j + 6];
+                    acc7 += src[j + 7];
+                }
+                acc = ((acc0 + acc1) + (acc2 + acc3)) + ((acc4 + acc5) + (acc6 + acc7));
+            } else if (opCode == 1) { // multiply
+                T acc0 = acc, acc1 = 1, acc2 = 1, acc3 = 1;
+                T acc4 = 1, acc5 = 1, acc6 = 1, acc7 = 1;
+                int64_t rem = (end - j) % 8;
+                int64_t vec_end = end - rem;
+                for (; j < vec_end; j += 8) {
+                    acc0 *= src[j];
+                    acc1 *= src[j + 1];
+                    acc2 *= src[j + 2];
+                    acc3 *= src[j + 3];
+                    acc4 *= src[j + 4];
+                    acc5 *= src[j + 5];
+                    acc6 *= src[j + 6];
+                    acc7 *= src[j + 7];
+                }
+                acc = ((acc0 * acc1) * (acc2 * acc3)) * ((acc4 * acc5) * (acc6 * acc7));
+            } else if (opCode == 4) { // min / fmin
+                T acc0 = acc, acc1 = acc, acc2 = acc, acc3 = acc;
+                T acc4 = acc, acc5 = acc, acc6 = acc, acc7 = acc;
+                int64_t rem = (end - j) % 8;
+                int64_t vec_end = end - rem;
+                for (; j < vec_end; j += 8) {
+                    acc0 = (src[j] < acc0) ? src[j] : acc0;
+                    acc1 = (src[j + 1] < acc1) ? src[j + 1] : acc1;
+                    acc2 = (src[j + 2] < acc2) ? src[j + 2] : acc2;
+                    acc3 = (src[j + 3] < acc3) ? src[j + 3] : acc3;
+                    acc4 = (src[j + 4] < acc4) ? src[j + 4] : acc4;
+                    acc5 = (src[j + 5] < acc5) ? src[j + 5] : acc5;
+                    acc6 = (src[j + 6] < acc6) ? src[j + 6] : acc6;
+                    acc7 = (src[j + 7] < acc7) ? src[j + 7] : acc7;
+                }
+                T m1 = (acc1 < acc0) ? acc1 : acc0;
+                T m2 = (acc3 < acc2) ? acc3 : acc2;
+                T m3 = (acc5 < acc4) ? acc5 : acc4;
+                T m4 = (acc7 < acc6) ? acc7 : acc6;
+                T m5 = (m2 < m1) ? m2 : m1;
+                T m6 = (m4 < m3) ? m4 : m3;
+                acc = (m6 < m5) ? m6 : m5;
+            } else if (opCode == 5) { // max / fmax
+                T acc0 = acc, acc1 = acc, acc2 = acc, acc3 = acc;
+                T acc4 = acc, acc5 = acc, acc6 = acc, acc7 = acc;
+                int64_t rem = (end - j) % 8;
+                int64_t vec_end = end - rem;
+                for (; j < vec_end; j += 8) {
+                    acc0 = (src[j] > acc0) ? src[j] : acc0;
+                    acc1 = (src[j + 1] > acc1) ? src[j + 1] : acc1;
+                    acc2 = (src[j + 2] > acc2) ? src[j + 2] : acc2;
+                    acc3 = (src[j + 3] > acc3) ? src[j + 3] : acc3;
+                    acc4 = (src[j + 4] > acc4) ? src[j + 4] : acc4;
+                    acc5 = (src[j + 5] > acc5) ? src[j + 5] : acc5;
+                    acc6 = (src[j + 6] > acc6) ? src[j + 6] : acc6;
+                    acc7 = (src[j + 7] > acc7) ? src[j + 7] : acc7;
+                }
+                T m1 = (acc1 > acc0) ? acc1 : acc0;
+                T m2 = (acc3 > acc2) ? acc3 : acc2;
+                T m3 = (acc5 > acc4) ? acc5 : acc4;
+                T m4 = (acc7 > acc6) ? acc7 : acc6;
+                T m5 = (m2 > m1) ? m2 : m1;
+                T m6 = (m4 > m3) ? m4 : m3;
+                acc = (m6 > m5) ? m6 : m5;
+            }
+        }
+        #pragma omp simd
+        for (; j < end; j++) {
+            acc = op(acc, src[j]);
+        }
+    }
+};
+
+template <typename T, typename Op>
+struct v_reduceat_unroll_helper<T, Op, false> {
+    static inline void run(const T *src, int64_t start, int64_t end, T &acc, int opCode, Op op) {
+        for (int64_t j = start + 1; j < end; j++) {
+            acc = op(acc, src[j]);
+        }
+    }
+};
+
+template <typename T, typename Op>
+static inline void v_reduceat_op_impl(
+    const T *src, int64_t size,
+    const int64_t *indices, int64_t num_indices,
+    T *dest, Op op, int opCode
+) {
+    if (src == nullptr || indices == nullptr || dest == nullptr || size <= 0 || num_indices <= 0) return;
+
+    for (int64_t i = 0; i < num_indices; i++) {
+        int64_t start = indices[i];
+        if (start < 0) start += size;
+        int64_t end = (i < num_indices - 1) ? indices[i + 1] : size;
+        if (end < 0) end += size;
+
+        if (start < 0) start = 0;
+        if (start >= size) start = size - 1;
+
+        if (start >= end) {
+            dest[i] = src[start];
+        } else {
+            T acc = src[start];
+            v_reduceat_unroll_helper<T, Op>::run(src, start, end, acc, opCode, op);
+            dest[i] = acc;
+        }
+    }
+}
+
+template <typename T, typename Op>
+static inline void s_reduceat_op_impl(
+    const T *src, const int *stridesSrc,
+    T *dest, const int *stridesDest,
+    const int *shape, int rank, int axis,
+    const int64_t *indices, int numIndices,
+    Op op, int opCode
+) {
+    if (src == nullptr || dest == nullptr || shape == nullptr || indices == nullptr || rank <= 0 || axis < 0 || axis >= rank || numIndices <= 0) return;
+
+    int axis_len = shape[axis];
+    int outer_size = 1;
+    for (int d = 0; d < axis; d++) outer_size *= shape[d];
+    int inner_size = 1;
+    for (int d = axis + 1; d < rank; d++) inner_size *= shape[d];
+
+    bool is_inner_contiguous = true;
+    int cur_stride = 1;
+    for (int d = rank - 1; d > axis; d--) {
+        if (stridesSrc[d] != cur_stride || stridesDest[d] != cur_stride) {
+            is_inner_contiguous = false;
+            break;
+        }
+        cur_stride *= shape[d];
+    }
+
+    for (int o = 0; o < outer_size; o++) {
+        int temp_o = o;
+        int src_outer_off = 0;
+        int dest_outer_off = 0;
+        for (int d = axis - 1; d >= 0; d--) {
+            int idx = temp_o % shape[d];
+            temp_o /= shape[d];
+            src_outer_off += idx * stridesSrc[d];
+            dest_outer_off += idx * stridesDest[d];
+        }
+
+        for (int i = 0; i < numIndices; i++) {
+            int64_t start = indices[i];
+            if (start < 0) start += axis_len;
+            int64_t end = (i < numIndices - 1) ? indices[i + 1] : axis_len;
+            if (end < 0) end += axis_len;
+
+            if (start < 0) start = 0;
+            if (start >= axis_len) start = axis_len - 1;
+
+            int dest_axis_off = i * stridesDest[axis];
+            int src_start_off = src_outer_off + start * stridesSrc[axis];
+            int dest_base = dest_outer_off + dest_axis_off;
+
+            if (start >= end) {
+                if (is_inner_contiguous) {
+                    std::memcpy(dest + dest_base, src + src_start_off, inner_size * sizeof(T));
+                } else {
+                    for (int in = 0; in < inner_size; in++) {
+                        int temp_in = in;
+                        int src_in_off = 0;
+                        int dest_in_off = 0;
+                        for (int d = rank - 1; d > axis; d--) {
+                            int idx = temp_in % shape[d];
+                            temp_in /= shape[d];
+                            src_in_off += idx * stridesSrc[d];
+                            dest_in_off += idx * stridesDest[d];
+                        }
+                        dest[dest_base + dest_in_off] = src[src_start_off + src_in_off];
+                    }
+                }
+            } else {
+                if (is_inner_contiguous) {
+                    std::memcpy(dest + dest_base, src + src_start_off, inner_size * sizeof(T));
+
+                    for (int64_t j = start + 1; j < end; j++) {
+                        int src_j_off = src_outer_off + j * stridesSrc[axis];
+                        #pragma omp simd
+                        for (int in = 0; in < inner_size; in++) {
+                            dest[dest_base + in] = op(dest[dest_base + in], src[src_j_off + in]);
+                        }
+                    }
+                } else {
+                    for (int in = 0; in < inner_size; in++) {
+                        int temp_in = in;
+                        int src_in_off = 0;
+                        int dest_in_off = 0;
+                        for (int d = rank - 1; d > axis; d--) {
+                            int idx = temp_in % shape[d];
+                            temp_in /= shape[d];
+                            src_in_off += idx * stridesSrc[d];
+                            dest_in_off += idx * stridesDest[d];
+                        }
+                        dest[dest_base + dest_in_off] = src[src_start_off + src_in_off];
+                    }
+
+                    for (int64_t j = start + 1; j < end; j++) {
+                        int src_j_off = src_outer_off + j * stridesSrc[axis];
+                        for (int in = 0; in < inner_size; in++) {
+                            int temp_in = in;
+                            int src_in_off = 0;
+                            int dest_in_off = 0;
+                            for (int d = rank - 1; d > axis; d--) {
+                                int idx = temp_in % shape[d];
+                                temp_in /= shape[d];
+                                src_in_off += idx * stridesSrc[d];
+                                dest_in_off += idx * stridesDest[d];
+                            }
+                            int d_idx = dest_base + dest_in_off;
+                            dest[d_idx] = op(dest[d_idx], src[src_j_off + src_in_off]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+template <typename T>
+static void v_reduceat_generic(const T *src, int64_t size, const int64_t *indices, int64_t numIndices, T *dest, int opCode) {
+    v_reduceat_op_impl(src, size, indices, numIndices, dest, [opCode](T a, T b) { return apply_at_op(a, b, opCode); }, opCode);
+}
+
+template <typename T>
+static void s_reduceat_generic(const T *src, const int *stridesSrc, T *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode) {
+    s_reduceat_op_impl(src, stridesSrc, dest, stridesDest, shape, rank, axis, indices, numIndices, [opCode](T a, T b) { return apply_at_op(a, b, opCode); }, opCode);
+}
+
+void v_reduceat_double(const double *src, int64_t size, const int64_t *indices, int64_t numIndices, double *dest, int opCode) {
+    v_reduceat_generic(src, size, indices, numIndices, dest, opCode);
+}
+void v_reduceat_float(const float *src, int64_t size, const int64_t *indices, int64_t numIndices, float *dest, int opCode) {
+    v_reduceat_generic(src, size, indices, numIndices, dest, opCode);
+}
+void v_reduceat_int64(const int64_t *src, int64_t size, const int64_t *indices, int64_t numIndices, int64_t *dest, int opCode) {
+    v_reduceat_generic(src, size, indices, numIndices, dest, opCode);
+}
+void v_reduceat_int32(const int32_t *src, int64_t size, const int64_t *indices, int64_t numIndices, int32_t *dest, int opCode) {
+    v_reduceat_generic(src, size, indices, numIndices, dest, opCode);
+}
+void v_reduceat_uint8(const uint8_t *src, int64_t size, const int64_t *indices, int64_t numIndices, uint8_t *dest, int opCode) {
+    v_reduceat_generic(src, size, indices, numIndices, dest, opCode);
+}
+void v_reduceat_int16(const int16_t *src, int64_t size, const int64_t *indices, int64_t numIndices, int16_t *dest, int opCode) {
+    v_reduceat_generic(src, size, indices, numIndices, dest, opCode);
+}
+void v_reduceat_complex128(const cpx_t *src, int64_t size, const int64_t *indices, int64_t numIndices, cpx_t *dest, int opCode) {
+    v_reduceat_generic(src, size, indices, numIndices, dest, opCode);
+}
+void v_reduceat_complex64(const cpx_f_t *src, int64_t size, const int64_t *indices, int64_t numIndices, cpx_f_t *dest, int opCode) {
+    v_reduceat_generic(src, size, indices, numIndices, dest, opCode);
+}
+void v_reduceat_boolean(const uint8_t *src, int64_t size, const int64_t *indices, int64_t numIndices, uint8_t *dest, int opCode) {
+    v_reduceat_generic(src, size, indices, numIndices, dest, opCode);
+}
+
+void s_reduceat_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode) {
+    s_reduceat_generic(src, stridesSrc, dest, stridesDest, shape, rank, axis, indices, numIndices, opCode);
+}
+void s_reduceat_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode) {
+    s_reduceat_generic(src, stridesSrc, dest, stridesDest, shape, rank, axis, indices, numIndices, opCode);
+}
+void s_reduceat_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode) {
+    s_reduceat_generic(src, stridesSrc, dest, stridesDest, shape, rank, axis, indices, numIndices, opCode);
+}
+void s_reduceat_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode) {
+    s_reduceat_generic(src, stridesSrc, dest, stridesDest, shape, rank, axis, indices, numIndices, opCode);
+}
+void s_reduceat_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode) {
+    s_reduceat_generic(src, stridesSrc, dest, stridesDest, shape, rank, axis, indices, numIndices, opCode);
+}
+void s_reduceat_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode) {
+    s_reduceat_generic(src, stridesSrc, dest, stridesDest, shape, rank, axis, indices, numIndices, opCode);
+}
+void s_reduceat_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode) {
+    s_reduceat_generic(src, stridesSrc, dest, stridesDest, shape, rank, axis, indices, numIndices, opCode);
+}
+void s_reduceat_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode) {
+    s_reduceat_generic(src, stridesSrc, dest, stridesDest, shape, rank, axis, indices, numIndices, opCode);
+}
+void s_reduceat_boolean(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode) {
+    s_reduceat_generic(src, stridesSrc, dest, stridesDest, shape, rank, axis, indices, numIndices, opCode);
+}
