@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dart NDArray Notebook</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #1e1e2e;
+      --panel-bg: #181825;
+      --cell-bg: #313244;
+      --text-color: #cdd6f4;
+      --accent-color: #89b4fa;
+      --accent-hover: #b4befe;
+      --success-color: #a6e3a1;
+      --error-color: #f38ba8;
+      --border-color: #45475a;
+      --code-bg: #11111b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      background-color: var(--panel-bg);
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .title-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .title-area h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--accent-color);
+    }
+
+    .status-badge {
+      font-size: 0.8rem;
+      padding: 4px 8px;
+      border-radius: 12px;
+      background-color: var(--border-color);
+      color: var(--text-color);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #f9e2af;
+    }
+
+    .status-badge.connected .status-dot {
+      background-color: var(--success-color);
+    }
+
+    .status-badge.busy .status-dot {
+      background-color: #fab387;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { opacity: 0.4; }
+      to { opacity: 1; }
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      background-color: var(--cell-bg);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    button:hover {
+      background-color: var(--border-color);
+      border-color: var(--accent-color);
+    }
+
+    button.primary {
+      background-color: var(--accent-color);
+      color: var(--panel-bg);
+      border-color: var(--accent-color);
+    }
+
+    button.primary:hover {
+      background-color: var(--accent-hover);
+    }
+
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .notebook-container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .cell {
+      background-color: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: border-color 0.2s ease;
+      position: relative;
+    }
+
+    .cell.focused {
+      border-color: var(--accent-color);
+    }
+
+    .cell.evaluated {
+      border-left: 3px solid var(--accent-color);
+    }
+
+    .cell.evaluated .cell-number::after {
+      content: " ✓";
+      color: var(--accent-color);
+      font-weight: bold;
+    }
+
+    .cell-header {
+      background-color: rgba(255,255,255,0.03);
+      padding: 6px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .cell-number {
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: #7f849c;
+    }
+
+    .cell-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .cell-actions button {
+      padding: 2px 8px;
+      font-size: 0.8rem;
+      border: none;
+      background: transparent;
+    }
+
+    .cell-actions button:hover {
+      background-color: var(--cell-bg);
+    }
+
+    .code-container {
+      position: relative;
+    }
+
+    textarea.code-editor {
+      width: 100%;
+      min-height: 80px;
+      background-color: var(--code-bg);
+      color: #a6adc8;
+      font-family: 'Fira Code', 'Courier New', Courier, monospace;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      padding: 12px;
+      border: none;
+      resize: vertical;
+      box-sizing: border-box;
+      outline: none;
+      overflow-y: auto;
+      display: block;
+    }
+
+    textarea.code-editor::-webkit-resizer {
+      background-color: var(--border-color);
+      border-radius: 3px;
+    }
+
+    textarea.code-editor:focus {
+      color: var(--text-color);
+    }
+
+    .output-container {
+      border-top: 1px solid var(--border-color);
+      background-color: rgba(0,0,0,0.2);
+      padding: 12px;
+      font-family: 'Fira Code', 'Courier New', Courier, monospace;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .output-container.empty {
+      display: none;
+    }
+
+    .output-container.error {
+      color: var(--error-color);
+      background-color: rgba(243, 139, 168, 0.05);
+    }
+
+    .output-container.success {
+      color: var(--text-color);
+    }
+
+    .add-cell-bar {
+      display: flex;
+      justify-content: center;
+      margin-top: 12px;
+      margin-bottom: 48px;
+    }
+
+    /* Autocomplete Popup Styling */
+    .autocomplete-popup {
+      position: fixed;
+      z-index: 10000;
+      background-color: var(--panel-bg);
+      border: 1px solid var(--accent-color);
+      border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      max-height: 220px;
+      width: 340px;
+      overflow-y: auto;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.85rem;
+    }
+
+    .completion-item {
+      padding: 6px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+
+    .completion-item:hover, .completion-item.selected {
+      background-color: var(--cell-bg);
+      color: var(--accent-color);
+    }
+
+    .completion-label {
+      font-weight: 600;
+    }
+
+    .completion-type {
+      font-size: 0.75rem;
+      color: #7f849c;
+      font-style: italic;
+    }
+
+    /* Hover Documentation Popup Styling */
+    .hover-popup {
+      position: fixed;
+      z-index: 10001;
+      background-color: #1e1e2e;
+      border: 1px solid var(--accent-color);
+      border-radius: 6px;
+      padding: 10px 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.7);
+      max-width: 480px;
+      max-height: 280px;
+      overflow-y: auto;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.85rem;
+      color: #cdd6f4;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title-area">
+      <h1>⚡ Dart NDArray Notebook</h1>
+      <div id="statusBadge" class="status-badge">
+        <span class="status-dot"></span>
+        <span id="statusText">Connecting...</span>
+      </div>
+    </div>
+    <div class="toolbar">
+      <button onclick="addCell()">+ Code Cell</button>
+      <button onclick="runAllCells()" class="primary">▶ Run All</button>
+      <button onclick="clearAllOutputs()">Clear Outputs</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="notebook" class="notebook-container"></div>
+    <div class="add-cell-bar">
+      <button onclick="addCell()">+ Add Code Cell</button>
+    </div>
+  </main>
+
+  <script>
+    let ws;
+    let cellCount = 0;
+    const pendingEvaluations = new Map();
+    const pendingCompletions = new Map();
+    const pendingHovers = new Map();
+    let activePopup = null;
+    let activeHoverPopup = null;
+    let hoverTimeout = null;
+    let selectedIndex = 0;
+
+    function initWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        updateStatus('connected', 'Kernel Ready');
+      };
+
+      ws.onclose = () => {
+        updateStatus('disconnected', 'Disconnected (Reconnecting...)');
+        setTimeout(initWebSocket, 2000);
+      };
+
+      ws.onerror = (err) => {
+        console.error('WebSocket error:', err);
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'result') {
+          const callback = pendingEvaluations.get(msg.id);
+          if (callback) {
+            callback(msg.output, msg.isError, msg.outputs);
+            pendingEvaluations.delete(msg.id);
+          }
+          if (pendingEvaluations.size === 0) {
+            updateStatus('connected', 'Kernel Ready');
+          }
+        } else if (msg.type === 'completion') {
+          const callback = pendingCompletions.get(msg.id);
+          if (callback) {
+            callback(msg.completions);
+            pendingCompletions.delete(msg.id);
+          }
+        } else if (msg.type === 'init_session') {
+          if (msg.cells && msg.cells.length > 0) {
+            const notebook = document.getElementById('notebook');
+            notebook.innerHTML = '';
+            cellCount = 0;
+            msg.cells.forEach(c => {
+              addCellWithState(c.code, c.output, c.isError, c.evaluated, c.id);
+            });
+          } else if (document.querySelectorAll('.cell').length === 0) {
+            addCell("// Welcome to Dart NDArray Notebook!\n// Type 'Ctrl+Space' or '.' to test autocompletion.\nvar a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64)");
+            addCell("// Multiply by scalar or matrix:\na * 2");
+          }
+        } else if (msg.type === 'hover') {
+          const callback = pendingHovers.get(msg.id);
+          if (callback) {
+            callback(msg.hover);
+            pendingHovers.delete(msg.id);
+          }
+        }
+      };
+    }
+
+    function autoSaveSession() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const cellsData = [];
+      document.querySelectorAll('.cell').forEach(cell => {
+        const editor = cell.querySelector('.code-editor');
+        const output = cell.querySelector('.output-container');
+        cellsData.push({
+          id: cell.id,
+          code: editor.value,
+          output: output.innerText,
+          isError: output.classList.contains('error'),
+          evaluated: cell.classList.contains('evaluated')
+        });
+      });
+      ws.send(JSON.stringify({
+        type: 'save_session',
+        cells: cellsData
+      }));
+    }
+
+    function updateStatus(state, text) {
+      const badge = document.getElementById('statusBadge');
+      const statusText = document.getElementById('statusText');
+      badge.className = `status-badge ${state}`;
+      statusText.innerText = text;
+    }
+
+    function closeCompletionPopup() {
+      if (activePopup) {
+        activePopup.remove();
+        activePopup = null;
+      }
+    }
+
+    function closeHoverPopup() {
+      if (activeHoverPopup) {
+        activeHoverPopup.remove();
+        activeHoverPopup = null;
+      }
+    }
+
+    function requestHover(editor, e) {
+      const rect = editor.getBoundingClientRect();
+      const x = e.clientX - rect.left - 12 + editor.scrollLeft;
+      const y = e.clientY - rect.top - 12 + editor.scrollTop;
+      if (x < 0 || y < 0) return;
+
+      const lineHeight = 22.5;
+      const charWidth = 9.1;
+      const lineIndex = Math.floor(y / lineHeight);
+      const colIndex = Math.floor(x / charWidth);
+
+      const lines = editor.value.split('\n');
+      if (lineIndex < 0 || lineIndex >= lines.length) return;
+
+      let offset = 0;
+      for (let i = 0; i < lineIndex; i++) {
+        offset += lines[i].length + 1;
+      }
+      offset += Math.min(colIndex, lines[lineIndex].length);
+
+      const reqId = `hover-${Date.now()}`;
+      pendingHovers.set(reqId, (hoverText) => {
+        if (hoverText) {
+          showHoverPopup(e.clientX + 12, e.clientY + 12, hoverText);
+        } else {
+          closeHoverPopup();
+        }
+      });
+
+      ws.send(JSON.stringify({
+        type: 'hover',
+        id: reqId,
+        code: editor.value,
+        offset: offset
+      }));
+    }
+
+    function showHoverPopup(x, y, text) {
+      closeHoverPopup();
+      const popup = document.createElement('div');
+      popup.className = 'hover-popup';
+      popup.style.top = `${y}px`;
+      popup.style.left = `${x}px`;
+      popup.innerText = text;
+      document.body.appendChild(popup);
+      activeHoverPopup = popup;
+    }
+
+    function requestCompletion(editor, cellId) {
+      const code = editor.value;
+      const offset = editor.selectionStart;
+      const reqId = `comp-${Date.now()}`;
+
+      pendingCompletions.set(reqId, (completions) => {
+        showCompletionPopup(editor, completions);
+      });
+
+      ws.send(JSON.stringify({
+        type: 'complete',
+        id: reqId,
+        code: code,
+        offset: offset
+      }));
+    }
+
+    function showCompletionPopup(editor, items) {
+      closeCompletionPopup();
+      if (!items || items.length === 0) return;
+
+      selectedIndex = 0;
+      const popup = document.createElement('div');
+      popup.className = 'autocomplete-popup';
+
+      const rect = editor.getBoundingClientRect();
+      popup.style.top = `${rect.bottom + 4}px`;
+      popup.style.left = `${rect.left + 16}px`;
+
+      items.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = `completion-item ${index === 0 ? 'selected' : ''}`;
+        div.innerHTML = `
+          <span class="completion-label">${item.label}</span>
+          <span class="completion-type">${item.type}</span>
+        `;
+        div.addEventListener('click', () => {
+          applyCompletion(editor, item.label);
+        });
+        popup.appendChild(div);
+      });
+
+      document.body.appendChild(popup);
+      activePopup = popup;
+      activePopup._items = items;
+      activePopup._editor = editor;
+    }
+
+    function applyCompletion(editor, label) {
+      const code = editor.value;
+      const offset = editor.selectionStart;
+      
+      // Find where the word or dot started
+      let start = offset - 1;
+      while (start >= 0 && /[\w\d_$]/.test(code[start])) {
+        start--;
+      }
+      start++;
+
+      const newCode = code.substring(0, start) + label + code.substring(offset);
+      editor.value = newCode;
+      editor.selectionStart = editor.selectionEnd = start + label.length;
+      closeCompletionPopup();
+      editor.focus();
+    }
+
+    function tryRenderKaTeX(element) {
+      if (window.renderMathInElement) {
+        try {
+          renderMathInElement(element, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '\\[', right: '\\]', display: true },
+              { left: '$', right: '$', display: false },
+              { left: '\\(', right: '\\)', display: false }
+            ],
+            throwOnError: false
+          });
+        } catch (e) {
+          console.warn('KaTeX render warning:', e);
+        }
+      }
+    }
+
+    function renderOutputElement(outputElement, text, isError, outputsArray) {
+      outputElement.className = `output-container ${isError ? 'error' : 'success'}`;
+      outputElement.innerHTML = '';
+
+      if (isError) {
+        outputElement.innerText = text || 'Error';
+        return;
+      }
+
+      let items = outputsArray;
+      if (!items || items.length === 0) {
+        if (text && typeof text === 'string' && text.startsWith('[')) {
+          try {
+            items = JSON.parse(text);
+          } catch (_) {}
+        }
+      }
+
+      if (items && Array.isArray(items) && items.length > 0) {
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          const mime = item.mimeType || 'text/plain';
+          const payload = item.data;
+
+          if (i > 0) {
+            const spacer = document.createElement('div');
+            spacer.style.height = '12px';
+            outputElement.appendChild(spacer);
+          }
+
+          if (mime === 'text/html') {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'output-html-wrapper';
+            wrapper.innerHTML = payload;
+            tryRenderKaTeX(wrapper);
+            const scripts = Array.from(wrapper.getElementsByTagName('script'));
+            for (const s of scripts) {
+              if (s.innerText) {
+                try {
+                  new Function(s.innerText)();
+                } catch (e) {
+                  console.warn('Script execution error:', e);
+                }
+              }
+            }
+            outputElement.appendChild(wrapper);
+          } else {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'output-plain-text';
+            wrapper.innerText = payload;
+            outputElement.appendChild(wrapper);
+          }
+        }
+        return;
+      }
+
+      if (!text) {
+        outputElement.innerText = '(No output)';
+        return;
+      }
+
+      let cleaned = text.trim();
+      while ((cleaned.startsWith('"') || cleaned.startsWith("'")) && cleaned.length > 1) {
+        cleaned = cleaned.substring(1).trim();
+      }
+      while ((cleaned.endsWith('"') || cleaned.endsWith("'")) && cleaned.length > 1) {
+        cleaned = cleaned.substring(0, cleaned.length - 1).trim();
+      }
+      cleaned = cleaned.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\'/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+
+      if (cleaned.includes('<') && cleaned.includes('>')) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'output-html-wrapper';
+        wrapper.innerHTML = cleaned;
+        tryRenderKaTeX(wrapper);
+        outputElement.appendChild(wrapper);
+        return;
+      }
+
+      outputElement.innerText = text;
+    }
+
+    function addCellWithState(initialCode = '', outputText = '', isError = false, evaluated = false, existingId = null) {
+      const cellId = addCell(initialCode, existingId);
+      if (outputText) {
+        const output = document.getElementById(`output-${cellId}`);
+        renderOutputElement(output, outputText, isError);
+      }
+      if (evaluated) {
+        const cell = document.getElementById(cellId);
+        if (cell) cell.classList.add('evaluated');
+      }
+      return cellId;
+    }
+
+    function addCell(initialCode = '', existingId = null) {
+      cellCount++;
+      const cellId = existingId || `cell-${Date.now()}-${cellCount}`;
+      const notebook = document.getElementById('notebook');
+
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.id = cellId;
+
+      cell.innerHTML = `
+        <div class="cell-header">
+          <span class="cell-number">[ ${cellCount} ]</span>
+          <div class="cell-actions">
+            <button onclick="runCell('${cellId}')" title="Run (Shift+Enter)">▶ Run</button>
+            <button onclick="runUntilCell('${cellId}')" title="Run all cells up to and including this one">▶▶ Until Here</button>
+            <button onclick="deleteCell('${cellId}')" title="Delete Cell">🗑</button>
+          </div>
+        </div>
+        <div class="code-container">
+          <textarea class="code-editor" id="editor-${cellId}" placeholder="Enter Dart code or expression... (Ctrl+Space for autocompletion)">${initialCode}</textarea>
+        </div>
+        <div class="output-container empty" id="output-${cellId}"></div>
+      `;
+
+      notebook.appendChild(cell);
+
+      const editor = document.getElementById(`editor-${cellId}`);
+      function adjustHeight() {
+        editor.style.height = 'auto';
+        editor.style.height = Math.max(80, editor.scrollHeight) + 'px';
+      }
+
+      editor.addEventListener('focus', () => {
+        document.querySelectorAll('.cell').forEach(c => c.classList.remove('focused'));
+        cell.classList.add('focused');
+      });
+
+      editor.addEventListener('input', (e) => {
+        adjustHeight();
+        if (e.data === '.') {
+          requestCompletion(editor, cellId);
+        }
+        cell.classList.remove('evaluated');
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'update_cell', id: cellId, code: editor.value }));
+        }
+      });
+
+      editor.addEventListener('keydown', (e) => {
+        if (activePopup) {
+          const items = activePopup._items;
+          const popupChildren = activePopup.querySelectorAll('.completion-item');
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedIndex = (selectedIndex + 1) % items.length;
+            popupChildren.forEach((c, i) => c.classList.toggle('selected', i === selectedIndex));
+            return;
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+            popupChildren.forEach((c, i) => c.classList.toggle('selected', i === selectedIndex));
+            return;
+          } else if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            applyCompletion(editor, items[selectedIndex].label);
+            return;
+          } else if (e.key === 'Escape') {
+            closeCompletionPopup();
+            return;
+          }
+        }
+
+        if (e.ctrlKey && e.key === ' ') {
+          e.preventDefault();
+          requestCompletion(editor, cellId);
+        } else if (e.shiftKey && e.key === 'Enter') {
+          e.preventDefault();
+          closeCompletionPopup();
+          runCell(cellId);
+        } else if (e.altKey && e.key === 'Enter') {
+          e.preventDefault();
+          closeCompletionPopup();
+          runCell(cellId);
+          addCell();
+        }
+      });
+
+      editor.addEventListener('mousemove', (e) => {
+        clearTimeout(hoverTimeout);
+        hoverTimeout = setTimeout(() => {
+          requestHover(editor, e);
+        }, 350);
+      });
+
+      editor.addEventListener('mouseleave', () => {
+        clearTimeout(hoverTimeout);
+        closeHoverPopup();
+      });
+
+      if (initialCode) {
+        setTimeout(adjustHeight, 0);
+      } else {
+        editor.focus();
+      }
+      return cellId;
+    }
+
+    function deleteCell(cellId) {
+      const cell = document.getElementById(cellId);
+      if (cell) {
+        cell.remove();
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'delete_cell', id: cellId }));
+        }
+      }
+    }
+
+    function runCell(cellId, onComplete) {
+      const editor = document.getElementById(`editor-${cellId}`);
+      const output = document.getElementById(`output-${cellId}`);
+      const code = editor.value.trim();
+
+      if (!code) {
+        if (onComplete) onComplete();
+        return;
+      }
+
+      const allCells = document.querySelectorAll('.cell');
+      const isLastCell = allCells.length > 0 && allCells[allCells.length - 1].id === cellId;
+
+      updateStatus('busy', 'Executing...');
+      output.className = 'output-container';
+      output.innerText = 'Running...';
+
+      const reqId = `${cellId}-${Date.now()}`;
+      pendingEvaluations.set(reqId, (resultText, isError, outputsArray) => {
+        renderOutputElement(output, resultText, isError, outputsArray);
+        const cell = document.getElementById(cellId);
+        if (cell && !isError) {
+          cell.classList.add('evaluated');
+        }
+        if (onComplete) onComplete();
+      });
+
+      ws.send(JSON.stringify({
+        type: 'execute',
+        id: reqId,
+        cellId: cellId,
+        code: code
+      }));
+
+      if (isLastCell) {
+        addCell();
+      }
+    }
+
+    async function runUntilCell(targetCellId) {
+      const cells = Array.from(document.querySelectorAll('.cell'));
+      const targetIndex = cells.findIndex(c => c.id === targetCellId);
+      if (targetIndex === -1) return;
+
+      for (let i = 0; i <= targetIndex; i++) {
+        const cellId = cells[i].id;
+        await new Promise((resolve) => {
+          runCell(cellId, resolve);
+        });
+      }
+    }
+
+    function runAllCells() {
+      const cells = document.querySelectorAll('.cell');
+      cells.forEach(cell => runCell(cell.id));
+    }
+
+    function clearAllOutputs() {
+      document.querySelectorAll('.output-container').forEach(out => {
+        out.className = 'output-container empty';
+        out.innerText = '';
+      });
+      autoSaveSession();
+    }
+
+    // Initialize default starter cells
+    window.addEventListener('DOMContentLoaded', () => {
+      initWebSocket();
+
+      window.addEventListener('scroll', () => {
+        closeCompletionPopup();
+        closeHoverPopup();
+      }, true);
+
+      document.addEventListener('click', (e) => {
+        if (activePopup && !activePopup.contains(e.target) && !e.target.classList.contains('code-editor')) {
+          closeCompletionPopup();
+        }
+        if (activeHoverPopup && !activeHoverPopup.contains(e.target) && !e.target.classList.contains('code-editor')) {
+          closeHoverPopup();
+        }
+      });
+    });
+  </script>
+</body>
+</html>

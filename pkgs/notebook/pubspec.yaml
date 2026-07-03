@@ -1,0 +1,20 @@
+name: notebook
+description: A notebook and REPL interface for Dart and NDArray.
+version: 0.0.1
+resolution: workspace
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  vm_service: ^14.3.0
+  ndarray: ^0.0.2
+  path: ^1.9.0
+  analyzer: ^13.3.0
+  vector_math: ^2.4.0
+
+dev_dependencies:
+  test: ^1.25.0
+  puppeteer: ^3.0.0
+
+

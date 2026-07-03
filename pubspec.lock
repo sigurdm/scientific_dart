@@ -265,6 +265,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.9.1"
+  petitparser:
+    dependency: transitive
+    description:
+      name: petitparser
+      sha256: "07c8f0b1913bcde1ff0d26e57ace2f3012ccbf2b204e070290dad3bb22797646"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.1.0"
   pool:
     dependency: transitive
     description:
@@ -281,6 +289,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  puppeteer:
+    dependency: transitive
+    description:
+      name: puppeteer
+      sha256: "7a990c68d33882b642214c351f66492d9a738afa4226a098ab70642357337fa2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.16.0"
   quiver:
     dependency: transitive
     description:
