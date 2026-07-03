@@ -5,8 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dart NDArray Notebook</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
   <style>
     :root {
       --bg-color: #1e1e2e;
@@ -197,34 +203,25 @@
       background-color: var(--cell-bg);
     }
 
-    .code-container {
-      position: relative;
-    }
-
-    textarea.code-editor {
-      width: 100%;
-      min-height: 80px;
-      background-color: var(--code-bg);
-      color: #a6adc8;
-      font-family: 'Fira Code', 'Courier New', Courier, monospace;
+    .CodeMirror {
+      font-family: 'Fira Code', 'JetBrains Mono', 'Courier New', Courier, monospace;
       font-size: 0.95rem;
       line-height: 1.5;
-      padding: 12px;
+      height: auto;
+      min-height: 80px;
+      background-color: var(--code-bg) !important;
+      color: var(--text-color) !important;
       border: none;
-      resize: vertical;
-      box-sizing: border-box;
-      outline: none;
-      overflow-y: auto;
-      display: block;
+      padding: 4px 0;
     }
 
-    textarea.code-editor::-webkit-resizer {
-      background-color: var(--border-color);
-      border-radius: 3px;
+    .CodeMirror-gutters {
+      background-color: #181825 !important;
+      border-right: 1px solid var(--border-color);
     }
 
-    textarea.code-editor:focus {
-      color: var(--text-color);
+    .CodeMirror-linenumber {
+      color: #6c7086 !important;
     }
 
     .output-container {
@@ -409,17 +406,17 @@
       };
     }
 
-    function autoSaveSession() {
+     function autoSaveSession() {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
       const cellsData = [];
       document.querySelectorAll('.cell').forEach(cell => {
-        const editor = cell.querySelector('.code-editor');
+        const code = cell._cm ? cell._cm.getValue() : '';
         const output = cell.querySelector('.output-container');
         cellsData.push({
           id: cell.id,
-          code: editor.value,
-          output: output.innerText,
-          isError: output.classList.contains('error'),
+          code: code,
+          output: output ? output.innerText : '',
+          isError: output ? output.classList.contains('error') : false,
           evaluated: cell.classList.contains('evaluated')
         });
       });
@@ -448,6 +445,69 @@
         activeHoverPopup.remove();
         activeHoverPopup = null;
       }
+    }
+
+    function requestCompletionCm(cm, cellId) {
+      const code = cm.getValue();
+      const cursor = cm.getCursor();
+      const offset = cm.indexFromPos(cursor);
+      const reqId = `comp-${Date.now()}`;
+
+      pendingCompletions.set(reqId, (completions) => {
+        showCompletionPopupCm(cm, completions);
+      });
+
+      ws.send(JSON.stringify({
+        type: 'complete',
+        id: reqId,
+        code: code,
+        offset: offset
+      }));
+    }
+
+    function showCompletionPopupCm(cm, items) {
+      closeCompletionPopup();
+      if (!items || items.length === 0) return;
+
+      selectedIndex = 0;
+      const popup = document.createElement('div');
+      popup.className = 'autocomplete-popup';
+
+      const coords = cm.cursorCoords(true, 'page');
+      popup.style.top = `${coords.bottom + 4}px`;
+      popup.style.left = `${coords.left}px`;
+
+      items.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = `completion-item ${index === 0 ? 'selected' : ''}`;
+        div.innerHTML = `
+          <span class="completion-label">${item.label}</span>
+          <span class="completion-type">${item.type}</span>
+        `;
+        div.addEventListener('click', () => {
+          applyCompletionCm(cm, item.label);
+        });
+        popup.appendChild(div);
+      });
+
+      document.body.appendChild(popup);
+      activePopup = popup;
+      activePopup._items = items;
+      activePopup._cm = cm;
+    }
+
+    function applyCompletionCm(cm, label) {
+      const cursor = cm.getCursor();
+      const line = cm.getLine(cursor.line);
+      let start = cursor.ch - 1;
+      while (start >= 0 && /[\w\d_$]/.test(line[start])) {
+        start--;
+      }
+      start++;
+
+      cm.replaceRange(label, { line: cursor.line, ch: start }, { line: cursor.line, ch: cursor.ch });
+      closeCompletionPopup();
+      cm.focus();
     }
 
     function requestHover(editor, e) {
@@ -496,72 +556,6 @@
       popup.innerText = text;
       document.body.appendChild(popup);
       activeHoverPopup = popup;
-    }
-
-    function requestCompletion(editor, cellId) {
-      const code = editor.value;
-      const offset = editor.selectionStart;
-      const reqId = `comp-${Date.now()}`;
-
-      pendingCompletions.set(reqId, (completions) => {
-        showCompletionPopup(editor, completions);
-      });
-
-      ws.send(JSON.stringify({
-        type: 'complete',
-        id: reqId,
-        code: code,
-        offset: offset
-      }));
-    }
-
-    function showCompletionPopup(editor, items) {
-      closeCompletionPopup();
-      if (!items || items.length === 0) return;
-
-      selectedIndex = 0;
-      const popup = document.createElement('div');
-      popup.className = 'autocomplete-popup';
-
-      const rect = editor.getBoundingClientRect();
-      popup.style.top = `${rect.bottom + 4}px`;
-      popup.style.left = `${rect.left + 16}px`;
-
-      items.forEach((item, index) => {
-        const div = document.createElement('div');
-        div.className = `completion-item ${index === 0 ? 'selected' : ''}`;
-        div.innerHTML = `
-          <span class="completion-label">${item.label}</span>
-          <span class="completion-type">${item.type}</span>
-        `;
-        div.addEventListener('click', () => {
-          applyCompletion(editor, item.label);
-        });
-        popup.appendChild(div);
-      });
-
-      document.body.appendChild(popup);
-      activePopup = popup;
-      activePopup._items = items;
-      activePopup._editor = editor;
-    }
-
-    function applyCompletion(editor, label) {
-      const code = editor.value;
-      const offset = editor.selectionStart;
-      
-      // Find where the word or dot started
-      let start = offset - 1;
-      while (start >= 0 && /[\w\d_$]/.test(code[start])) {
-        start--;
-      }
-      start++;
-
-      const newCode = code.substring(0, start) + label + code.substring(offset);
-      editor.value = newCode;
-      editor.selectionStart = editor.selectionEnd = start + label.length;
-      closeCompletionPopup();
-      editor.focus();
     }
 
     function tryRenderKaTeX(element) {
@@ -703,83 +697,47 @@
 
       notebook.appendChild(cell);
 
-      const editor = document.getElementById(`editor-${cellId}`);
-      function adjustHeight() {
-        editor.style.height = 'auto';
-        editor.style.height = Math.max(80, editor.scrollHeight) + 'px';
-      }
+      const textarea = document.getElementById(`editor-${cellId}`);
+      const cm = CodeMirror.fromTextArea(textarea, {
+        mode: 'clike',
+        mime: 'application/x-dart',
+        theme: 'dracula',
+        lineNumbers: true,
+        matchBrackets: true,
+        autoCloseBrackets: true,
+        viewportMargin: Infinity,
+        extraKeys: {
+          'Shift-Enter': function(cm) {
+            closeCompletionPopup();
+            runCell(cellId);
+          },
+          'Ctrl-Space': function(cm) {
+            requestCompletionCm(cm, cellId);
+          },
+          'Cmd-Space': function(cm) {
+            requestCompletionCm(cm, cellId);
+          }
+        }
+      });
+      cell._cm = cm;
 
-      editor.addEventListener('focus', () => {
+      cm.on('change', (instance, changeObj) => {
+        cell.classList.remove('evaluated');
+        if (changeObj.origin === '+insert' && changeObj.text && changeObj.text.includes('.')) {
+          requestCompletionCm(cm, cellId);
+        }
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'update_cell', id: cellId, code: cm.getValue() }));
+        }
+      });
+
+      cm.on('focus', () => {
         document.querySelectorAll('.cell').forEach(c => c.classList.remove('focused'));
         cell.classList.add('focused');
       });
 
-      editor.addEventListener('input', (e) => {
-        adjustHeight();
-        if (e.data === '.') {
-          requestCompletion(editor, cellId);
-        }
-        cell.classList.remove('evaluated');
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'update_cell', id: cellId, code: editor.value }));
-        }
-      });
-
-      editor.addEventListener('keydown', (e) => {
-        if (activePopup) {
-          const items = activePopup._items;
-          const popupChildren = activePopup.querySelectorAll('.completion-item');
-          if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            selectedIndex = (selectedIndex + 1) % items.length;
-            popupChildren.forEach((c, i) => c.classList.toggle('selected', i === selectedIndex));
-            return;
-          } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            selectedIndex = (selectedIndex - 1 + items.length) % items.length;
-            popupChildren.forEach((c, i) => c.classList.toggle('selected', i === selectedIndex));
-            return;
-          } else if (e.key === 'Enter' || e.key === 'Tab') {
-            e.preventDefault();
-            applyCompletion(editor, items[selectedIndex].label);
-            return;
-          } else if (e.key === 'Escape') {
-            closeCompletionPopup();
-            return;
-          }
-        }
-
-        if (e.ctrlKey && e.key === ' ') {
-          e.preventDefault();
-          requestCompletion(editor, cellId);
-        } else if (e.shiftKey && e.key === 'Enter') {
-          e.preventDefault();
-          closeCompletionPopup();
-          runCell(cellId);
-        } else if (e.altKey && e.key === 'Enter') {
-          e.preventDefault();
-          closeCompletionPopup();
-          runCell(cellId);
-          addCell();
-        }
-      });
-
-      editor.addEventListener('mousemove', (e) => {
-        clearTimeout(hoverTimeout);
-        hoverTimeout = setTimeout(() => {
-          requestHover(editor, e);
-        }, 350);
-      });
-
-      editor.addEventListener('mouseleave', () => {
-        clearTimeout(hoverTimeout);
-        closeHoverPopup();
-      });
-
-      if (initialCode) {
-        setTimeout(adjustHeight, 0);
-      } else {
-        editor.focus();
+      if (!initialCode) {
+        cm.focus();
       }
       return cellId;
     }
@@ -795,9 +753,9 @@
     }
 
     function runCell(cellId, onComplete) {
-      const editor = document.getElementById(`editor-${cellId}`);
+      const cell = document.getElementById(cellId);
       const output = document.getElementById(`output-${cellId}`);
-      const code = editor.value.trim();
+      const code = (cell && cell._cm ? cell._cm.getValue() : '').trim();
 
       if (!code) {
         if (onComplete) onComplete();
@@ -814,7 +772,6 @@
       const reqId = `${cellId}-${Date.now()}`;
       pendingEvaluations.set(reqId, (resultText, isError, outputsArray) => {
         renderOutputElement(output, resultText, isError, outputsArray);
-        const cell = document.getElementById(cellId);
         if (cell && !isError) {
           cell.classList.add('evaluated');
         }
