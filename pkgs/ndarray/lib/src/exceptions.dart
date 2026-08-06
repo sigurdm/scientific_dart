@@ -37,11 +37,20 @@ final class NoRealSolutionException extends NdArrayException {
   String toString() => 'NoRealSolutionException: $message';
 }
 
-/// Exception thrown when a numerical solver exceeds its maximum iteration count.
-final class IterationsExceededException extends NdArrayException {
+/// Exception thrown when a numerical solver exceeds its maximum iteration count or fails to converge.
+final class IterationsExceededException extends LinAlgException {
   /// Creates a new [IterationsExceededException] with the given [message].
   const IterationsExceededException(super.message);
 
   @override
   String toString() => 'IterationsExceededException: $message';
+}
+
+/// Exception thrown when a matrix is expected to be positive-definite but is not.
+final class NonPositiveDefiniteException extends LinAlgException {
+  /// Creates a new [NonPositiveDefiniteException] with the given [message].
+  const NonPositiveDefiniteException(super.message);
+
+  @override
+  String toString() => 'NonPositiveDefiniteException: $message';
 }

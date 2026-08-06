@@ -9,6 +9,122 @@ import 'padding.dart';
 import 'manipulation.dart';
 
 /// Helper to allocate a KissFFT plan configuration on the ScratchArena stack.
+
+void _loadSignalToKissInput<T>(
+  NDArray<T> inputA,
+  int srcStart,
+  int copyLen,
+  int targetLen,
+  ffi.Pointer<kiss_fft_cpx> pin,
+) {
+  switch (inputA.dtype) {
+    case DType.complex128:
+      final inPtr = inputA.pointer.cast<kiss_fft_cpx>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i].r;
+        pin[i].i = inPtr[i].i;
+      }
+    case DType.complex64:
+      final inPtr = inputA.pointer.cast<ffi.Float>() + (srcStart * 2);
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[2 * i];
+        pin[i].i = inPtr[2 * i + 1];
+      }
+    case DType.float64:
+      final inPtr = inputA.pointer.cast<ffi.Double>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i];
+        pin[i].i = 0.0;
+      }
+    case DType.float32:
+      final inPtr = inputA.pointer.cast<ffi.Float>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i];
+        pin[i].i = 0.0;
+      }
+    case DType.int64:
+      final inPtr = inputA.pointer.cast<ffi.Int64>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i].toDouble();
+        pin[i].i = 0.0;
+      }
+    case DType.int32:
+      final inPtr = inputA.pointer.cast<ffi.Int32>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i].toDouble();
+        pin[i].i = 0.0;
+      }
+    case DType.int16:
+      final inPtr = inputA.pointer.cast<ffi.Int16>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i].toDouble();
+        pin[i].i = 0.0;
+      }
+    case DType.int8:
+      final inPtr = inputA.pointer.cast<ffi.Int8>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i].toDouble();
+        pin[i].i = 0.0;
+      }
+    case DType.uint64:
+      final inPtr = inputA.pointer.cast<ffi.Uint64>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i].toDouble();
+        pin[i].i = 0.0;
+      }
+    case DType.uint32:
+      final inPtr = inputA.pointer.cast<ffi.Uint32>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i].toDouble();
+        pin[i].i = 0.0;
+      }
+    case DType.uint16:
+      final inPtr = inputA.pointer.cast<ffi.Uint16>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i].toDouble();
+        pin[i].i = 0.0;
+      }
+    case DType.uint8:
+      final inPtr = inputA.pointer.cast<ffi.Uint8>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i].toDouble();
+        pin[i].i = 0.0;
+      }
+    case DType.boolean:
+      final inPtr = inputA.pointer.cast<ffi.Uint8>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i] != 0 ? 1.0 : 0.0;
+        pin[i].i = 0.0;
+      }
+  }
+  for (var i = copyLen; i < targetLen; i++) {
+    pin[i].r = 0.0;
+    pin[i].i = 0.0;
+  }
+}
+
+void _storeKissOutputToResult<R>(
+  NDArray<R> result,
+  int destStart,
+  int targetLen,
+  ffi.Pointer<kiss_fft_cpx> pout, {
+  double scale = 1.0,
+}) {
+  if (result.dtype == DType.complex128) {
+    final outPtr = result.pointer.cast<kiss_fft_cpx>() + destStart;
+    for (var i = 0; i < targetLen; i++) {
+      outPtr[i].r = pout[i].r * scale;
+      outPtr[i].i = pout[i].i * scale;
+    }
+  } else if (result.dtype == DType.complex64) {
+    final outPtr = result.pointer.cast<ffi.Float>() + (destStart * 2);
+    for (var i = 0; i < targetLen; i++) {
+      outPtr[2 * i] = (pout[i].r * scale);
+      outPtr[2 * i + 1] = (pout[i].i * scale);
+    }
+  }
+}
+
 kiss_fft_cfg _allocateKissFFTPlan(int nfft, int inverse_fft) {
   final lenmem = ScratchArena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
   lenmem[0] = 0;
@@ -126,8 +242,11 @@ NDArray<R> fft<T, R extends Complex>(
     } else {
       final transposedResult = fft<T, R>(transposedInput, n: n);
       final finalResult = transposedResult.transpose(axes);
+      final resCopy = finalResult.copy();
+      finalResult.dispose();
+      transposedResult.dispose();
       transposedInput.dispose();
-      return finalResult;
+      return resCopy;
     }
   }
 
@@ -191,39 +310,13 @@ NDArray<R> fft<T, R extends Complex>(
       final srcStart = s * lastAxisDim;
       final destStart = s * targetLen;
 
-      // Populate input buffer, applying zero-padding or truncation if n is specified
-      if (inputA.data is ComplexList) {
-        final compList = inputA.data as ComplexList;
-        for (var i = 0; i < copyLen; i++) {
-          pin[i].r = compList.getReal(srcStart + i);
-          pin[i].i = compList.getImag(srcStart + i);
-        }
-        final zeroPaddingStart = copyLen;
-        for (var i = zeroPaddingStart; i < targetLen; i++) {
-          pin[i].r = 0.0;
-          pin[i].i = 0.0;
-        }
-      } else {
-        for (var i = 0; i < copyLen; i++) {
-          final val = inputA.data[srcStart + i];
-          pin[i].r = (val as num).toDouble();
-          pin[i].i = 0.0;
-        }
-        final zeroPaddingStart = copyLen;
-        for (var i = zeroPaddingStart; i < targetLen; i++) {
-          pin[i].r = 0.0;
-          pin[i].i = 0.0;
-        }
-      }
+      _loadSignalToKissInput(inputA, srcStart, copyLen, targetLen, pin);
 
       // 3. Fire high-speed native FFT on the C heap components
       kiss_fft(cfg, pin, pout);
 
-      // 4. Collect results from pout back into Dart Complex tensor list buffer
-      final compList = result.data as ComplexList;
-      for (var i = 0; i < targetLen; i++) {
-        compList.setRealImag(destStart + i, pout[i].r, pout[i].i);
-      }
+      // 4. Collect results from pout back into result array
+      _storeKissOutputToResult(result, destStart, targetLen, pout);
     }
   } finally {
     ScratchArena.reset(marker);
@@ -334,8 +427,11 @@ NDArray<R> ifft<T, R extends Complex>(
     } else {
       final transposedResult = ifft<T, R>(transposedInput, n: n);
       final finalResult = transposedResult.transpose(axes);
+      final resCopy = finalResult.copy();
+      finalResult.dispose();
+      transposedResult.dispose();
       transposedInput.dispose();
-      return finalResult;
+      return resCopy;
     }
   }
 
@@ -400,48 +496,24 @@ NDArray<R> ifft<T, R extends Complex>(
     );
 
     final copyLen = targetLen < lastAxisDim ? targetLen : lastAxisDim;
+    final scaleFactor = 1.0 / targetLen;
     for (var s = 0; s < signalsCount; s++) {
       final srcStart = s * lastAxisDim;
       final destStart = s * targetLen;
 
-      if (inputA.data is ComplexList) {
-        final compList = inputA.data as ComplexList;
-        for (var i = 0; i < copyLen; i++) {
-          pin[i].r = compList.getReal(srcStart + i);
-          pin[i].i = compList.getImag(srcStart + i);
-        }
-        final zeroPaddingStart = copyLen;
-        for (var i = zeroPaddingStart; i < targetLen; i++) {
-          pin[i].r = 0.0;
-          pin[i].i = 0.0;
-        }
-      } else {
-        for (var i = 0; i < copyLen; i++) {
-          final val = inputA.data[srcStart + i];
-          pin[i].r = (val as num).toDouble();
-          pin[i].i = 0.0;
-        }
-        final zeroPaddingStart = copyLen;
-        for (var i = zeroPaddingStart; i < targetLen; i++) {
-          pin[i].r = 0.0;
-          pin[i].i = 0.0;
-        }
-      }
+      _loadSignalToKissInput(inputA, srcStart, copyLen, targetLen, pin);
 
       // 2. Fire high-speed native inverse transform
       kiss_fft(cfg, pin, pout);
 
       // 3. Apply standard 1/N scaling factor normalization (KissFFT leaves it unscaled)
-      final scaleFactor = 1.0 / targetLen;
-
-      final compList = result.data as ComplexList;
-      for (var i = 0; i < targetLen; i++) {
-        compList.setRealImag(
-          destStart + i,
-          pout[i].r * scaleFactor,
-          pout[i].i * scaleFactor,
-        );
-      }
+      _storeKissOutputToResult(
+        result,
+        destStart,
+        targetLen,
+        pout,
+        scale: scaleFactor,
+      );
     }
   } finally {
     ScratchArena.reset(marker);
@@ -1114,8 +1186,11 @@ NDArray<R> rfft<T, R extends Complex>(
       } else {
         final transposedResult = rfft<T, R>(transposedInput, n: n);
         final finalResult = transposedResult.transpose(axes);
+        final resCopy = finalResult.copy();
+        finalResult.dispose();
+        transposedResult.dispose();
         transposedInput.dispose();
-        return finalResult;
+        return resCopy;
       }
     }
 
@@ -1312,8 +1387,11 @@ NDArray<R> irfft<T, R extends double>(
       } else {
         final transposedResult = irfft<T, R>(transposedInput, n: n);
         final finalResult = transposedResult.transpose(axes);
+        final resCopy = finalResult.copy();
+        finalResult.dispose();
+        transposedResult.dispose();
         transposedInput.dispose();
-        return finalResult;
+        return resCopy;
       }
     }
 

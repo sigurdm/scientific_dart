@@ -232,7 +232,11 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     }
 
     final resShape = [...broadcastStack, m, n];
-    result = NDArray.zeros(resShape, targetDType as DType<R>);
+    final bool canUseOutDirectly =
+        out != null && out.isContiguous && listEquals(out.shape, resShape);
+    result = canUseOutDirectly
+        ? out
+        : NDArray.zeros(resShape, targetDType as DType<R>);
 
     // Stride resolution logic for 100% copy-free BLAS matrix multiplication
     var transA = 111; // CblasNoTrans
@@ -836,24 +840,23 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     }
 
     if (out != null) {
-      if (out.isContiguous && result.isContiguous) {
-        final byteCount = result.data.length * targetDType.byteWidth;
-        ffi.Pointer.fromAddress(out.pointer.address)
-            .cast<ffi.Uint8>()
-            .asTypedList(byteCount)
-            .setAll(
-              0,
-              ffi.Pointer.fromAddress(
-                result.pointer.address,
-              ).cast<ffi.Uint8>().asTypedList(byteCount),
-            );
-      } else {
-        final resFlat = result.toList();
-        for (var i = 0; i < resFlat.length; i++) {
-          out.data[i] = resFlat[i];
+      if (!canUseOutDirectly) {
+        if (out.isContiguous && result.isContiguous) {
+          final byteCount = result.elementCount * targetDType.byteWidth;
+          ffi.Pointer.fromAddress(out.pointer.address)
+              .cast<ffi.Uint8>()
+              .asTypedList(byteCount)
+              .setAll(
+                0,
+                ffi.Pointer.fromAddress(
+                  result.pointer.address,
+                ).cast<ffi.Uint8>().asTypedList(byteCount),
+              );
+        } else {
+          result.copy(out: out);
         }
+        result.dispose();
       }
-      result.dispose();
       success = true;
       return out;
     }
@@ -885,7 +888,9 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     aCopy?.dispose();
     bCopy?.dispose();
     if (!success) {
-      result?.dispose();
+      if (result != null && result != out) {
+        result.dispose();
+      }
     }
   }
 }
@@ -1047,22 +1052,11 @@ NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
       if (i == j) {
         // Return a contiguous copy of arrays[i-1] casted to the correct targetDType
         final src = arrays[i - 1];
-        final copy = NDArray.create(src.shape, targetDType);
-        if (src.isContiguous && src.dtype == targetDType) {
-          if (targetDType.isComplex) {
-            copy.data.setRange(0, src.data.length, src.data as List<Complex>);
-          } else {
-            copy.data.setRange(0, src.data.length, src.data as List<num>);
-          }
+        if (src.dtype == targetDType) {
+          return src.copy();
         } else {
-          final flat = src.toList();
-          if (targetDType.isComplex) {
-            copy.data.setRange(0, flat.length, flat.cast<Complex>());
-          } else {
-            copy.data.setRange(0, flat.length, flat.cast<num>());
-          }
+          return castNDArray(src, targetDType);
         }
-        return copy;
       }
 
       final k = s[i][j];
@@ -1305,31 +1299,6 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
   });
 }
 
-/// Computes the determinant of a square matrix or a stack of square matrices using OpenBLAS.
-///
-/// Transforms the matrix and calculates its determinant natively via LAPACK LU decomposition.
-/// Returns the determinant as a double or a stack of determinants.
-///
-/// **Preconditions:**
-/// - Matrix [a] must be square in its last two dimensions (size $N \times N$) and at least 2-dimensional.
-/// - Data type [a.dtype] must be float32 or float64.
-///
-/// **Throws:**
-/// - [ArgumentError] if [a] is not square or less than 2D.
-/// - [ArgumentError] if [a.dtype] is not a supported floating point data type.
-///
-/// **Performance considerations:**
-/// - Algorithmic complexity is $O(N^3)$ using LAPACK linear algebra solvers.
-///
-/// **Example:**
-/// ```dart
-/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
-/// final d = det(a);
-/// print(d); // -2.0
-/// ```
-///
-/// Refer to the [Determinant Reference](https://en.wikipedia.org/wiki/Determinant)
-/// and [LAPACK LU solver](https://en.wikipedia.org/wiki/LU_decomposition) for additional details.
 /// Computes the determinant of a square matrix or a stack of square matrices using OpenBLAS/LAPACK.
 ///
 /// Transforms the matrix and calculates its determinant natively via LAPACK LU decomposition.
@@ -1353,32 +1322,7 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// ```dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 /// final d = det(a);
-/// print(d); // -2.0
-/// ```
-/// Computes the determinant of a square matrix or a stack of square matrices using OpenBLAS/LAPACK.
-///
-/// Transforms the matrix and calculates its determinant natively via LAPACK LU decomposition.
-/// Supports both real (float32, float64) and complex (complex64, complex128) data types.
-/// Returns the determinant stack as an array of corresponding types (float64 for real inputs,
-/// and complex64/complex128 for complex inputs).
-///
-/// **Preconditions:**
-/// - Matrix [a] must be square in its last two dimensions (size $N \times N$) and at least 2-dimensional.
-/// - Data type [a.dtype] must be float32, float64, complex64, or complex128.
-///
-/// **Throws:**
-/// - [ArgumentError] if [a] is not square or less than 2D.
-/// - [ArgumentError] if [a.dtype] is not a supported data type.
-///
-/// **Performance considerations:**
-/// - Algorithmic complexity is $O(N^3)$ using LAPACK linear algebra solvers.
-/// - Fully vectorized and batched in native C for float64, complex64, and complex128, minimizing FFI transitions.
-///
-/// **Example:**
-/// ```dart
-/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
-/// final d = det(a);
-/// print(d.data); // [-2.0] (0-D array)
+/// print(d.scalar); // -2.0 (0-D array)
 /// ```
 ///
 /// Refer to the [determinant](https://en.wikipedia.org/wiki/Determinant)
@@ -2066,7 +2010,7 @@ NDArray<T> solve<T extends Object>(
               );
             }
             if (info > 0) {
-              throw ArgumentError(
+              throw IterationsExceededException(
                 'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
               );
             }
@@ -2113,7 +2057,7 @@ NDArray<T> solve<T extends Object>(
               );
             }
             if (info > 0) {
-              throw ArgumentError(
+              throw IterationsExceededException(
                 'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
               );
             }
@@ -2162,7 +2106,7 @@ NDArray<T> solve<T extends Object>(
               );
             }
             if (info > 0) {
-              throw ArgumentError(
+              throw IterationsExceededException(
                 'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
               );
             }
@@ -2211,7 +2155,7 @@ NDArray<T> solve<T extends Object>(
               );
             }
             if (info > 0) {
-              throw ArgumentError(
+              throw IterationsExceededException(
                 'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
               );
             }
@@ -2330,212 +2274,210 @@ NDArray<Complex> eigvals<T>(NDArray<T> a, {NDArray<Complex>? out}) {
     final jobvl = 'N'.codeUnitAt(0);
     final jobvr = 'N'.codeUnitAt(0);
 
-    if (a.dtype.isInteger) {
-      throw ArgumentError(
-        'Integer arrays are not supported directly for eigenvalue decomposition. '
-        'Please convert the array to float64 or float32 manually.',
-      );
-    }
-
-    if (a.dtype != DType.complex128 &&
-        a.dtype != DType.complex64 &&
-        a.dtype != DType.float64 &&
-        a.dtype != DType.float32) {
-      throw UnimplementedError('Type ${a.dtype} not supported for eigvals');
-    }
-
-    final NDArray src = a;
-    walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
-      coords,
-    ) {
-      var offsetA = 0;
-      for (var i = 0; i < coords.length; i++) {
-        offsetA += coords[i] * src.strides[i];
+    final bool wasCast = a.dtype.isInteger;
+    final NDArray src = wasCast ? castNDArray(a, DType.float64) : a;
+    try {
+      if (src.dtype != DType.complex128 &&
+          src.dtype != DType.complex64 &&
+          src.dtype != DType.float64 &&
+          src.dtype != DType.float32) {
+        throw UnimplementedError('Type ${src.dtype} not supported for eigvals');
       }
 
-      final sliceView = NDArray.view(
-        src,
-        shape: [n, n],
-        strides: src.strides.sublist(rank - 2),
-        offsetElements: offsetA,
-      );
-      final sliceCopy = sliceView.copy();
+      walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+        coords,
+      ) {
+        var offsetA = 0;
+        for (var i = 0; i < coords.length; i++) {
+          offsetA += coords[i] * src.strides[i];
+        }
 
-      var offsetW = 0;
-      for (var i = 0; i < coords.length; i++) {
-        offsetW += coords[i] * w.strides[i];
+        final sliceView = NDArray.view(
+          src,
+          shape: [n, n],
+          strides: src.strides.sublist(rank - 2),
+          offsetElements: offsetA,
+        );
+        final sliceCopy = sliceView.copy();
+
+        var offsetW = 0;
+        for (var i = 0; i < coords.length; i++) {
+          offsetW += coords[i] * w.strides[i];
+        }
+
+        switch (src.dtype) {
+          case DType.complex128:
+            final w2D = NDArray<Complex>.create([n], DType.complex128);
+
+            final info = LAPACKE_zgeev(
+              101, // ROW_MAJOR
+              jobvl,
+              jobvr,
+              n,
+              sliceCopy.pointer.cast<ffi.Double>(),
+              n,
+              w2D.pointer.cast<ffi.Double>(),
+              ffi.nullptr.cast<ffi.Double>(),
+              1, // ldvl
+              ffi.nullptr.cast<ffi.Double>(),
+              1, // ldvr
+            );
+
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_zgeev: $info',
+              );
+            }
+            if (info > 0) {
+              throw IterationsExceededException(
+                'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+              );
+            }
+
+            final wView = NDArray<Complex>.view(
+              w,
+              shape: [n],
+              strides: w.strides.isEmpty ? [1] : [w.strides.last],
+              offsetElements: offsetW,
+            );
+            w2D.copy(out: wView);
+            w2D.dispose();
+
+          case DType.complex64:
+            final w2D = NDArray<Complex>.create([n], DType.complex64);
+
+            final info = LAPACKE_cgeev(
+              101, // ROW_MAJOR
+              jobvl,
+              jobvr,
+              n,
+              sliceCopy.pointer.cast<ffi.Float>(),
+              n,
+              w2D.pointer.cast<ffi.Float>(),
+              ffi.nullptr.cast<ffi.Float>(),
+              1, // ldvl
+              ffi.nullptr.cast<ffi.Float>(),
+              1, // ldvr
+            );
+
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_cgeev: $info',
+              );
+            }
+            if (info > 0) {
+              throw IterationsExceededException(
+                'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+              );
+            }
+
+            final wView = NDArray<Complex>.view(
+              w,
+              shape: [n],
+              strides: w.strides.isEmpty ? [1] : [w.strides.last],
+              offsetElements: offsetW,
+            );
+            w2D.copy(out: wView);
+            w2D.dispose();
+
+          case DType.float64:
+            final wr = NDArray<double>.zeros([n], DType.float64);
+            final wi = NDArray<double>.zeros([n], DType.float64);
+
+            final info = LAPACKE_dgeev(
+              101,
+              jobvl,
+              jobvr,
+              n,
+              sliceCopy.pointer.cast<ffi.Double>(),
+              n,
+              wr.pointer.cast<ffi.Double>(),
+              wi.pointer.cast<ffi.Double>(),
+              ffi.nullptr.cast<ffi.Double>(),
+              1, // ldvl
+              ffi.nullptr.cast<ffi.Double>(),
+              1, // ldvr
+            );
+
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_dgeev: $info',
+              );
+            }
+            if (info > 0) {
+              throw IterationsExceededException(
+                'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+              );
+            }
+
+            final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
+            assemble_eigenvalues_double(
+              w.pointer.cast<cpx_t>() + offsetW,
+              strideWLast,
+              wr.pointer.cast<ffi.Double>(),
+              wi.pointer.cast<ffi.Double>(),
+              n,
+            );
+
+            wr.dispose();
+            wi.dispose();
+
+          case DType.float32:
+            final wr = NDArray<double>.zeros([n], DType.float32);
+            final wi = NDArray<double>.zeros([n], DType.float32);
+
+            final info = LAPACKE_sgeev(
+              101,
+              jobvl,
+              jobvr,
+              n,
+              sliceCopy.pointer.cast<ffi.Float>(),
+              n,
+              wr.pointer.cast<ffi.Float>(),
+              wi.pointer.cast<ffi.Float>(),
+              ffi.nullptr.cast<ffi.Float>(),
+              1, // ldvl
+              ffi.nullptr.cast<ffi.Float>(),
+              1, // ldvr
+            );
+
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_sgeev: $info',
+              );
+            }
+            if (info > 0) {
+              throw IterationsExceededException(
+                'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+              );
+            }
+
+            final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
+            assemble_eigenvalues_float(
+              w.pointer.cast<cpx_f_t>() + offsetW,
+              strideWLast,
+              wr.pointer.cast<ffi.Float>(),
+              wi.pointer.cast<ffi.Float>(),
+              n,
+            );
+
+            wr.dispose();
+            wi.dispose();
+          default:
+            throw UnimplementedError(
+              'Type ${src.dtype} not supported for eigvals',
+            );
+        }
+        sliceCopy.dispose();
+      });
+
+      if (out == null) {
+        w.detachToParentScope();
       }
-
-      switch (src.dtype) {
-        case DType.complex128:
-          final w2D = NDArray<Complex>.create([n], DType.complex128);
-
-          final info = LAPACKE_zgeev(
-            101, // ROW_MAJOR
-            jobvl,
-            jobvr,
-            n,
-            sliceCopy.pointer.cast<ffi.Double>(),
-            n,
-            w2D.pointer.cast<ffi.Double>(),
-            ffi.nullptr.cast<ffi.Double>(),
-            1, // ldvl
-            ffi.nullptr.cast<ffi.Double>(),
-            1, // ldvr
-          );
-
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_zgeev: $info',
-            );
-          }
-          if (info > 0) {
-            throw ArgumentError(
-              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
-            );
-          }
-
-          final wView = NDArray<Complex>.view(
-            w,
-            shape: [n],
-            strides: w.strides.isEmpty ? [1] : [w.strides.last],
-            offsetElements: offsetW,
-          );
-          w2D.copy(out: wView);
-          w2D.dispose();
-
-        case DType.complex64:
-          final w2D = NDArray<Complex>.create([n], DType.complex64);
-
-          final info = LAPACKE_cgeev(
-            101, // ROW_MAJOR
-            jobvl,
-            jobvr,
-            n,
-            sliceCopy.pointer.cast<ffi.Float>(),
-            n,
-            w2D.pointer.cast<ffi.Float>(),
-            ffi.nullptr.cast<ffi.Float>(),
-            1, // ldvl
-            ffi.nullptr.cast<ffi.Float>(),
-            1, // ldvr
-          );
-
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_cgeev: $info',
-            );
-          }
-          if (info > 0) {
-            throw ArgumentError(
-              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
-            );
-          }
-
-          final wView = NDArray<Complex>.view(
-            w,
-            shape: [n],
-            strides: w.strides.isEmpty ? [1] : [w.strides.last],
-            offsetElements: offsetW,
-          );
-          w2D.copy(out: wView);
-          w2D.dispose();
-
-        case DType.float64:
-          final wr = NDArray<double>.zeros([n], DType.float64);
-          final wi = NDArray<double>.zeros([n], DType.float64);
-
-          final info = LAPACKE_dgeev(
-            101,
-            jobvl,
-            jobvr,
-            n,
-            sliceCopy.pointer.cast<ffi.Double>(),
-            n,
-            wr.pointer.cast<ffi.Double>(),
-            wi.pointer.cast<ffi.Double>(),
-            ffi.nullptr.cast<ffi.Double>(),
-            1, // ldvl
-            ffi.nullptr.cast<ffi.Double>(),
-            1, // ldvr
-          );
-
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_dgeev: $info',
-            );
-          }
-          if (info > 0) {
-            throw ArgumentError(
-              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
-            );
-          }
-
-          final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
-          assemble_eigenvalues_double(
-            w.pointer.cast<cpx_t>() + offsetW,
-            strideWLast,
-            wr.pointer.cast<ffi.Double>(),
-            wi.pointer.cast<ffi.Double>(),
-            n,
-          );
-
-          wr.dispose();
-          wi.dispose();
-
-        case DType.float32:
-          final wr = NDArray<double>.zeros([n], DType.float32);
-          final wi = NDArray<double>.zeros([n], DType.float32);
-
-          final info = LAPACKE_sgeev(
-            101,
-            jobvl,
-            jobvr,
-            n,
-            sliceCopy.pointer.cast<ffi.Float>(),
-            n,
-            wr.pointer.cast<ffi.Float>(),
-            wi.pointer.cast<ffi.Float>(),
-            ffi.nullptr.cast<ffi.Float>(),
-            1, // ldvl
-            ffi.nullptr.cast<ffi.Float>(),
-            1, // ldvr
-          );
-
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_sgeev: $info',
-            );
-          }
-          if (info > 0) {
-            throw ArgumentError(
-              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
-            );
-          }
-
-          final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
-          assemble_eigenvalues_float(
-            w.pointer.cast<cpx_f_t>() + offsetW,
-            strideWLast,
-            wr.pointer.cast<ffi.Float>(),
-            wi.pointer.cast<ffi.Float>(),
-            n,
-          );
-
-          wr.dispose();
-          wi.dispose();
-        default:
-          throw UnimplementedError(
-            'Type ${src.dtype} not supported for eigvals',
-          );
-      }
-      sliceCopy.dispose();
-    });
-
-    if (out == null) {
-      w.detachToParentScope();
+      return w;
+    } finally {
+      if (wasCast) src.dispose();
     }
-    return w;
   });
 }
 
@@ -2590,15 +2532,19 @@ NDArray<T> pinv<T extends Object>(
     final s = svdResult.S;
     final vt = svdResult.Vh;
 
-    final maxSingularVal = s.data[0];
+    final double maxSingularVal = (s.dtype == DType.float32)
+        ? s.pointer.cast<ffi.Float>()[0]
+        : s.pointer.cast<ffi.Double>()[0];
     final epsilon = 2.220446049250313e-16;
     final maxDim = m > n ? m : n;
     final resolvedRcond = rcond ?? (maxDim * epsilon);
     final threshold = resolvedRcond * maxSingularVal;
 
     final sPlus = NDArray.zeros([n, m], a.dtype);
-    for (var i = 0; i < s.data.length; i++) {
-      final sVal = s.data[i];
+    for (var i = 0; i < s.shape[0]; i++) {
+      final double sVal = (s.dtype == DType.float32)
+          ? s.pointer.cast<ffi.Float>()[i]
+          : s.pointer.cast<ffi.Double>()[i];
       if (sVal > threshold) {
         sPlus.setCell([i, i], castValue(1.0 / sVal, a.dtype));
       }
@@ -2746,7 +2692,8 @@ NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
 /// - [ArgumentError] if [a] is not square or not 2D.
 /// - [ArgumentError] if [a] has an unsupported dtype (e.g. integer or boolean).
 /// - [ArgumentError] if the provided [out] buffer has an incompatible shape, dtype, or is not contiguous.
-/// - [ArgumentError] if the matrix is not positive-definite, or if LAPACK returns an error code.
+/// - [NonPositiveDefiniteException] if the matrix is not positive-definite.
+/// - [ArgumentError] if LAPACK returns an error code (illegal value).
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(n^3)$ flops for an $n \times n$ matrix.
@@ -2853,8 +2800,8 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
       );
     }
     if (info > 0) {
-      throw ArgumentError(
-        'Matrix must be positive-definite for Cholesky decomposition',
+      throw NonPositiveDefiniteException(
+        'Matrix must be positive-definite for Cholesky decomposition: the leading minor of order $info is not positive definite.',
       );
     }
 
@@ -3317,7 +3264,13 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 
       return out;
     } else {
-      return (U: uResult, S: sNew, Vh: vhResult);
+      final uCopy = uResult.copy();
+      final vhCopy = vhResult.copy();
+      uNew.dispose();
+      vhNew.dispose();
+      uResult.dispose();
+      vhResult.dispose();
+      return (U: uCopy, S: sNew, Vh: vhCopy);
     }
   }
 
@@ -3521,7 +3474,7 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 /// - [StateError] if the LAPACK call fails.
 ({NDArray<num> eigenvalues, NDArray eigenvectors}) eigh<T>(
   NDArray<T> a, {
-  String uplo = 'L',
+  MatrixTriangle uplo = MatrixTriangle.lower,
   NDArray<num>? outEigenvalues,
   NDArray? outEigenvectors,
 }) {
@@ -3607,11 +3560,7 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
     vMat = _zerosTyped(eigenvectorsShape, targetDType);
   }
 
-  final uploChar = uplo.toUpperCase();
-  if (uploChar != 'L' && uploChar != 'U') {
-    throw ArgumentError("uplo must be 'L' or 'U'.");
-  }
-  final uploVal = uploChar.codeUnitAt(0);
+  final uploVal = uplo == MatrixTriangle.lower ? 76 : 85;
   final jobzVal = 86; // 'V'
 
   final aCopy2D = _createTyped2D(n, n, targetDType);
@@ -3648,7 +3597,16 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
             n,
             w2D.pointer.cast<ffi.Double>(),
           );
-          if (info != 0) throw StateError('LAPACKE_dsyevd failed: $info');
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_dsyevd: $info',
+            );
+          }
+          if (info > 0) {
+            throw IterationsExceededException(
+              'LAPACKE_dsyevd failed to converge: $info',
+            );
+          }
         case DType.float32:
           info = LAPACKE_ssyevd(
             101,
@@ -3659,7 +3617,16 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
             n,
             w2D.pointer.cast<ffi.Float>(),
           );
-          if (info != 0) throw StateError('LAPACKE_ssyevd failed: $info');
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_ssyevd: $info',
+            );
+          }
+          if (info > 0) {
+            throw IterationsExceededException(
+              'LAPACKE_ssyevd failed to converge: $info',
+            );
+          }
         case DType.complex128:
           info = LAPACKE_zheevd(
             101,
@@ -3670,7 +3637,16 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
             n,
             w2D.pointer.cast<ffi.Double>(),
           );
-          if (info != 0) throw StateError('LAPACKE_zheevd failed: $info');
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_zheevd: $info',
+            );
+          }
+          if (info > 0) {
+            throw IterationsExceededException(
+              'LAPACKE_zheevd failed to converge: $info',
+            );
+          }
         case DType.complex64:
           info = LAPACKE_cheevd(
             101,
@@ -3681,7 +3657,16 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
             n,
             w2D.pointer.cast<ffi.Float>(),
           );
-          if (info != 0) throw StateError('LAPACKE_cheevd failed: $info');
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_cheevd: $info',
+            );
+          }
+          if (info > 0) {
+            throw IterationsExceededException(
+              'LAPACKE_cheevd failed to converge: $info',
+            );
+          }
         default:
           throw UnimplementedError();
       }
@@ -3722,7 +3707,11 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 /// - [ArgumentError] if [a] has unsupported dtype.
 /// - [ArgumentError] if [out] is incompatible.
 /// - [StateError] if the LAPACK call fails.
-NDArray<num> eigvalsh<T>(NDArray<T> a, {String uplo = 'L', NDArray<num>? out}) {
+NDArray<num> eigvalsh<T>(
+  NDArray<T> a, {
+  MatrixTriangle uplo = MatrixTriangle.lower,
+  NDArray<num>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot calculate eigvalsh on a disposed array.');
   }
@@ -3781,11 +3770,7 @@ NDArray<num> eigvalsh<T>(NDArray<T> a, {String uplo = 'L', NDArray<num>? out}) {
     wMat = _zerosTyped(eigenvaluesShape, eigenvalueDType) as NDArray<num>;
   }
 
-  final uploChar = uplo.toUpperCase();
-  if (uploChar != 'L' && uploChar != 'U') {
-    throw ArgumentError("uplo must be 'L' or 'U'.");
-  }
-  final uploVal = uploChar.codeUnitAt(0);
+  final uploVal = uplo == MatrixTriangle.lower ? 76 : 85;
   final jobzVal = 78; // 'N'
 
   final aCopy2D = _createTyped2D(n, n, targetDType);
@@ -3822,7 +3807,16 @@ NDArray<num> eigvalsh<T>(NDArray<T> a, {String uplo = 'L', NDArray<num>? out}) {
             n,
             w2D.pointer.cast<ffi.Double>(),
           );
-          if (info != 0) throw StateError('LAPACKE_dsyevd failed: $info');
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_dsyevd: $info',
+            );
+          }
+          if (info > 0) {
+            throw IterationsExceededException(
+              'LAPACKE_dsyevd failed to converge: $info',
+            );
+          }
         case DType.float32:
           info = LAPACKE_ssyevd(
             101,
@@ -3833,7 +3827,16 @@ NDArray<num> eigvalsh<T>(NDArray<T> a, {String uplo = 'L', NDArray<num>? out}) {
             n,
             w2D.pointer.cast<ffi.Float>(),
           );
-          if (info != 0) throw StateError('LAPACKE_ssyevd failed: $info');
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_ssyevd: $info',
+            );
+          }
+          if (info > 0) {
+            throw IterationsExceededException(
+              'LAPACKE_ssyevd failed to converge: $info',
+            );
+          }
         case DType.complex128:
           info = LAPACKE_zheevd(
             101,
@@ -3844,7 +3847,16 @@ NDArray<num> eigvalsh<T>(NDArray<T> a, {String uplo = 'L', NDArray<num>? out}) {
             n,
             w2D.pointer.cast<ffi.Double>(),
           );
-          if (info != 0) throw StateError('LAPACKE_zheevd failed: $info');
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_zheevd: $info',
+            );
+          }
+          if (info > 0) {
+            throw IterationsExceededException(
+              'LAPACKE_zheevd failed to converge: $info',
+            );
+          }
         case DType.complex64:
           info = LAPACKE_cheevd(
             101,
@@ -3855,7 +3867,16 @@ NDArray<num> eigvalsh<T>(NDArray<T> a, {String uplo = 'L', NDArray<num>? out}) {
             n,
             w2D.pointer.cast<ffi.Float>(),
           );
-          if (info != 0) throw StateError('LAPACKE_cheevd failed: $info');
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_cheevd: $info',
+            );
+          }
+          if (info > 0) {
+            throw IterationsExceededException(
+              'LAPACKE_cheevd failed to converge: $info',
+            );
+          }
         default:
           throw UnimplementedError();
       }
@@ -3895,7 +3916,7 @@ NDArray<num> eigvalsh<T>(NDArray<T> a, {String uplo = 'L', NDArray<num>? out}) {
 /// - [StateError] if the LAPACK call fails.
 ({NDArray T, NDArray Z}) schur<T>(
   NDArray<T> a, {
-  String output = 'real',
+  SchurForm output = SchurForm.real,
   NDArray? outT,
   NDArray? outZ,
 }) {
@@ -3911,11 +3932,6 @@ NDArray<num> eigvalsh<T>(NDArray<T> a, {String uplo = 'L', NDArray<num>? out}) {
     throw ArgumentError('Last two dimensions must be square (got $m x $n).');
   }
 
-  final outputLower = output.toLowerCase();
-  if (outputLower != 'real' && outputLower != 'complex') {
-    throw ArgumentError("output must be 'real' or 'complex'.");
-  }
-
   final bool promoted = a.dtype.isInteger;
   DType targetDType = a.dtype;
   if (promoted) {
@@ -3929,7 +3945,7 @@ NDArray<num> eigvalsh<T>(NDArray<T> a, {String uplo = 'L', NDArray<num>? out}) {
     throw ArgumentError('Unsupported dtype: ${a.dtype}');
   }
 
-  if (outputLower == 'complex' && !targetDType.isComplex) {
+  if (output == SchurForm.complex && !targetDType.isComplex) {
     if (targetDType == DType.float64) {
       targetDType = DType.complex128;
     } else {
@@ -4039,7 +4055,21 @@ NDArray<num> eigvalsh<T>(NDArray<T> a, {String uplo = 'L', NDArray<num>? out}) {
             z2D.pointer.cast<ffi.Double>(),
             n,
           );
-          if (info != 0) throw StateError('LAPACKE_dgees failed: $info');
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_dgees: $info',
+            );
+          }
+          if (info > 0 && info <= n) {
+            throw IterationsExceededException(
+              'The QR algorithm failed to compute all eigenvalues in LAPACKE_dgees: $info',
+            );
+          }
+          if (info > n) {
+            throw LinAlgException(
+              'Eigenvalues could not be reordered in LAPACKE_dgees: $info',
+            );
+          }
         case DType.float32:
           info = LAPACKE_sgees(
             101,
@@ -4055,7 +4085,21 @@ NDArray<num> eigvalsh<T>(NDArray<T> a, {String uplo = 'L', NDArray<num>? out}) {
             z2D.pointer.cast<ffi.Float>(),
             n,
           );
-          if (info != 0) throw StateError('LAPACKE_sgees failed: $info');
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_sgees: $info',
+            );
+          }
+          if (info > 0 && info <= n) {
+            throw IterationsExceededException(
+              'The QR algorithm failed to compute all eigenvalues in LAPACKE_sgees: $info',
+            );
+          }
+          if (info > n) {
+            throw LinAlgException(
+              'Eigenvalues could not be reordered in LAPACKE_sgees: $info',
+            );
+          }
         case DType.complex128:
           info = LAPACKE_zgees(
             101,
@@ -4070,7 +4114,21 @@ NDArray<num> eigvalsh<T>(NDArray<T> a, {String uplo = 'L', NDArray<num>? out}) {
             z2D.pointer.cast<ffi.Double>(),
             n,
           );
-          if (info != 0) throw StateError('LAPACKE_zgees failed: $info');
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_zgees: $info',
+            );
+          }
+          if (info > 0 && info <= n) {
+            throw IterationsExceededException(
+              'The QR algorithm failed to compute all eigenvalues in LAPACKE_zgees: $info',
+            );
+          }
+          if (info > n) {
+            throw LinAlgException(
+              'Eigenvalues could not be reordered in LAPACKE_zgees: $info',
+            );
+          }
         case DType.complex64:
           info = LAPACKE_cgees(
             101,
@@ -4085,7 +4143,21 @@ NDArray<num> eigvalsh<T>(NDArray<T> a, {String uplo = 'L', NDArray<num>? out}) {
             z2D.pointer.cast<ffi.Float>(),
             n,
           );
-          if (info != 0) throw StateError('LAPACKE_cgees failed: $info');
+          if (info < 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_cgees: $info',
+            );
+          }
+          if (info > 0 && info <= n) {
+            throw IterationsExceededException(
+              'The QR algorithm failed to compute all eigenvalues in LAPACKE_cgees: $info',
+            );
+          }
+          if (info > n) {
+            throw LinAlgException(
+              'Eigenvalues could not be reordered in LAPACKE_cgees: $info',
+            );
+          }
         default:
           throw UnimplementedError();
       }
@@ -4793,9 +4865,6 @@ NDArray<R> outer<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     if (bCast != flatB) bCast.dispose();
   }
 
-  if (out == null) {
-    result.detachToParentScope();
-  }
   return result;
 }
 
@@ -5126,13 +5195,29 @@ NDArray<R> cross<Ta, Tb, R>(
   if (aCast != a) aCast.dispose();
   if (bCast != b) bCast.dispose();
 
-  if (out == null) {
-    result.detachToParentScope();
-  }
   return result;
 }
 
 /// Supported norm orders and calculation modes for vector and matrix norm computations.
+
+/// Matrix triangle selection for symmetric/Hermitian operations.
+enum MatrixTriangle {
+  /// Lower triangular part.
+  lower,
+
+  /// Upper triangular part.
+  upper,
+}
+
+/// Representation form for Schur decomposition.
+enum SchurForm {
+  /// Real Schur form.
+  real,
+
+  /// Complex Schur form.
+  complex,
+}
+
 enum NormKind { frobenius, nuclear, l1, l2, infinity, negInfinity }
 
 /// Computes a vector or matrix norm.
@@ -5239,13 +5324,18 @@ NDArray<double> norm<T extends Object>(
     // Global norm
     if (isVecNorm) {
       final val = _vectorNorm<T>(a, ord, targetDType);
-      result.data[0] = val;
+      if (targetDType == DType.float32) {
+        result.pointer.cast<ffi.Float>()[0] = val;
+      } else {
+        result.pointer.cast<ffi.Double>()[0] = val;
+      }
     } else {
       final val = _matrixNorm<T>(a, ord, targetDType);
-      result.data[0] = val;
-    }
-    if (out == null) {
-      result.detachToParentScope();
+      if (targetDType == DType.float32) {
+        result.pointer.cast<ffi.Float>()[0] = val;
+      } else {
+        result.pointer.cast<ffi.Double>()[0] = val;
+      }
     }
     return result;
   }
@@ -5325,7 +5415,11 @@ NDArray<double> norm<T extends Object>(
           destOffset += coords[i] * result.strides[i];
         }
       }
-      result.data[destOffset] = val;
+      if (targetDType == DType.float32) {
+        (result.pointer.cast<ffi.Float>() + destOffset).value = val;
+      } else {
+        (result.pointer.cast<ffi.Double>() + destOffset).value = val;
+      }
       return;
     }
 
@@ -5338,9 +5432,6 @@ NDArray<double> norm<T extends Object>(
 
   walkStack(0, List<int>.filled(stackShape.length, 0));
 
-  if (out == null) {
-    result.detachToParentScope();
-  }
   return result;
 }
 
@@ -5531,19 +5622,25 @@ double _matrixNorm<T extends Object>(
     return minRowSum;
   } else if (ord == 2) {
     final svdRes = svd(a);
-    final maxS = svdRes.S.data[0];
+    final maxS = (svdRes.S.dtype == DType.float32)
+        ? svdRes.S.pointer.cast<ffi.Float>()[0]
+        : svdRes.S.pointer.cast<ffi.Double>()[0];
     svdRes.dispose();
     return maxS;
   } else if (ord == -2) {
     final svdRes = svd(a);
-    final minS = svdRes.S.data[svdRes.S.shape[0] - 1];
+    final minS = (svdRes.S.dtype == DType.float32)
+        ? svdRes.S.pointer.cast<ffi.Float>()[svdRes.S.shape[0] - 1]
+        : svdRes.S.pointer.cast<ffi.Double>()[svdRes.S.shape[0] - 1];
     svdRes.dispose();
     return minS;
   } else if (ord == 'nuc') {
     final svdRes = svd(a);
     var sumS = 0.0;
     for (var i = 0; i < svdRes.S.shape[0]; i++) {
-      sumS += svdRes.S.data[i];
+      sumS += (svdRes.S.dtype == DType.float32)
+          ? svdRes.S.pointer.cast<ffi.Float>()[i]
+          : svdRes.S.pointer.cast<ffi.Double>()[i];
     }
     svdRes.dispose();
     return sumS;
@@ -5792,7 +5889,7 @@ LstsqResult<R> lstsq<Ta, Tb, R>(
       throw ArgumentError('Illegal value in call to LAPACKE gelsd: $info');
     }
     if (info > 0) {
-      throw StateError(
+      throw IterationsExceededException(
         'The SVD algorithm in LAPACKE gelsd failed to converge ($info).',
       );
     }
@@ -5867,12 +5964,6 @@ LstsqResult<R> lstsq<Ta, Tb, R>(
     } else {
       residuals = NDArray<double>.zeros([0], sDType as dynamic);
     }
-
-    if (out == null) {
-      x.detachToParentScope();
-    }
-    residuals.detachToParentScope();
-    s.detachToParentScope();
 
     return (x: x, residuals: residuals, rank: rank, s: s);
   } finally {

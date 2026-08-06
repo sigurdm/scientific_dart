@@ -11,7 +11,7 @@ void main() {
           DType.float64,
         );
 
-        final res = schur(a, output: 'real');
+        final res = schur(a, output: SchurForm.real);
         final t = res.T;
         final z = res.Z;
 
@@ -46,7 +46,7 @@ void main() {
           DType.float64,
         );
 
-        final res = schur(a, output: 'complex');
+        final res = schur(a, output: SchurForm.complex);
         final t = res.T;
         final z = res.Z;
 
