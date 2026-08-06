@@ -9,6 +9,7 @@ import 'bitwise.dart';
 import 'logical.dart';
 import 'floating_point.dart';
 import 'trigonometric.dart';
+import '../sorting.dart' show where;
 
 /// Extension methods for generalized ufunc operations on [NDArray].
 extension UfuncNDArrayExtension<T extends Object> on NDArray<T> {
@@ -217,19 +218,9 @@ NDArray<R> _elementwiseMin<T extends Object, R extends Object>(
   NDArray<T> b, {
   NDArray<R>? out,
 }) {
-  final result = (out as NDArray<T>?) ?? NDArray.create(a.shape, a.dtype);
-  a.copy(out: result);
-  final flatIndices = NDArray<int>.fromList(
-    List<int>.generate(a.size, (i) => i),
-    [a.size],
-    DType.int64,
-  );
-  final resRavel = result.ravel();
-  final bRavel = b.ravel();
-  atUfunc(resRavel, flatIndices, bRavel, op: BinaryOp.minimum);
-  resRavel.dispose();
-  bRavel.dispose();
-  flatIndices.dispose();
+  final cond = less(a, b);
+  final result = where(cond, a, b, out as NDArray<T>?);
+  cond.dispose();
   return result as NDArray<R>;
 }
 
@@ -238,19 +229,9 @@ NDArray<R> _elementwiseMax<T extends Object, R extends Object>(
   NDArray<T> b, {
   NDArray<R>? out,
 }) {
-  final result = (out as NDArray<T>?) ?? NDArray.create(a.shape, a.dtype);
-  a.copy(out: result);
-  final flatIndices = NDArray<int>.fromList(
-    List<int>.generate(a.size, (i) => i),
-    [a.size],
-    DType.int64,
-  );
-  final resRavel = result.ravel();
-  final bRavel = b.ravel();
-  atUfunc(resRavel, flatIndices, bRavel, op: BinaryOp.maximum);
-  resRavel.dispose();
-  bRavel.dispose();
-  flatIndices.dispose();
+  final cond = greater(a, b);
+  final result = where(cond, a, b, out as NDArray<T>?);
+  cond.dispose();
   return result as NDArray<R>;
 }
 
@@ -1627,7 +1608,9 @@ NDArray<T> accumulateUfunc<T extends Object>(
       result.rank,
       (d) => d == normAxis ? Index(0) : Slice(),
     );
-    firstSlice.copy(out: result.slice(selRes0));
+    final resSlice0 = result.slice(selRes0);
+    firstSlice.copy(out: resSlice0);
+    resSlice0.dispose();
     firstSlice.dispose();
 
     for (var i = 1; i < axisLen; i++) {
@@ -1646,7 +1629,9 @@ NDArray<T> accumulateUfunc<T extends Object>(
         result.rank,
         (d) => d == normAxis ? Index(i) : Slice(),
       );
-      stepRes.copy(out: result.slice(selResI));
+      final resSliceI = result.slice(selResI);
+      stepRes.copy(out: resSliceI);
+      resSliceI.dispose();
       prev.dispose();
       curr.dispose();
       stepRes.dispose();
@@ -2051,21 +2036,24 @@ void atUfunc<T extends Object>(
   final rankA = a.rank;
   final rankB = b.rank;
   final numIndices = indices.size;
+  final strideIdx = indices.strides.isEmpty ? 1 : indices.strides[0];
 
-  final cBuffer = ScratchArena.getStridedBuffer(rankA * 2 + rankB * 2);
-  final cStridesA = cBuffer;
-  final cShapeA = cBuffer + rankA;
-  final cStridesB = cBuffer + (rankA * 2);
-  final cShapeB = cBuffer + (rankA * 2) + rankB;
+  final marker = ScratchArena.marker;
+  try {
+    final cBuffer = ScratchArena.getStridedBuffer(rankA * 2 + rankB * 2);
+    final cStridesA = cBuffer;
+    final cShapeA = cBuffer + rankA;
+    final cStridesB = cBuffer + (rankA * 2);
+    final cShapeB = cBuffer + (rankA * 2) + rankB;
 
-  for (var i = 0; i < rankA; i++) {
-    cStridesA[i] = a.strides[i];
-    cShapeA[i] = a.shape[i];
-  }
-  for (var i = 0; i < rankB; i++) {
-    cStridesB[i] = b.strides[i];
-    cShapeB[i] = b.shape[i];
-  }
+    for (var i = 0; i < rankA; i++) {
+      cStridesA[i] = a.strides[i];
+      cShapeA[i] = a.shape[i];
+    }
+    for (var i = 0; i < rankB; i++) {
+      cStridesB[i] = b.strides[i];
+      cShapeB[i] = b.shape[i];
+    }
 
   switch (a.dtype) {
     case DType.float64:
@@ -2076,7 +2064,7 @@ void atUfunc<T extends Object>(
         rankA,
         indices.pointer.cast(),
         numIndices,
-        indices.strides[0],
+        strideIdx,
         b.pointer.cast(),
         cStridesB,
         cShapeB,
@@ -2091,7 +2079,7 @@ void atUfunc<T extends Object>(
         rankA,
         indices.pointer.cast(),
         numIndices,
-        indices.strides[0],
+        strideIdx,
         b.pointer.cast(),
         cStridesB,
         cShapeB,
@@ -2106,7 +2094,7 @@ void atUfunc<T extends Object>(
         rankA,
         indices.pointer.cast(),
         numIndices,
-        indices.strides[0],
+        strideIdx,
         b.pointer.cast(),
         cStridesB,
         cShapeB,
@@ -2121,7 +2109,7 @@ void atUfunc<T extends Object>(
         rankA,
         indices.pointer.cast(),
         numIndices,
-        indices.strides[0],
+        strideIdx,
         b.pointer.cast(),
         cStridesB,
         cShapeB,
@@ -2136,7 +2124,7 @@ void atUfunc<T extends Object>(
         rankA,
         indices.pointer.cast(),
         numIndices,
-        indices.strides[0],
+        strideIdx,
         b.pointer.cast(),
         cStridesB,
         cShapeB,
@@ -2151,7 +2139,7 @@ void atUfunc<T extends Object>(
         rankA,
         indices.pointer.cast(),
         numIndices,
-        indices.strides[0],
+        strideIdx,
         b.pointer.cast(),
         cStridesB,
         cShapeB,
@@ -2166,7 +2154,7 @@ void atUfunc<T extends Object>(
         rankA,
         indices.pointer.cast(),
         numIndices,
-        indices.strides[0],
+        strideIdx,
         b.pointer.cast(),
         cStridesB,
         cShapeB,
@@ -2181,7 +2169,7 @@ void atUfunc<T extends Object>(
         rankA,
         indices.pointer.cast(),
         numIndices,
-        indices.strides[0],
+        strideIdx,
         b.pointer.cast(),
         cStridesB,
         cShapeB,
@@ -2196,12 +2184,15 @@ void atUfunc<T extends Object>(
         rankA,
         indices.pointer.cast(),
         numIndices,
-        indices.strides[0],
+        strideIdx,
         b.pointer.cast(),
         cStridesB,
         cShapeB,
         rankB,
         opCode,
       );
+  }
+  } finally {
+    ScratchArena.reset(marker);
   }
 }

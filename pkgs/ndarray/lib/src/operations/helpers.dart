@@ -665,15 +665,15 @@ List<int> broadcast3Shapes(List<int> s1, List<int> s2, List<int> s3) {
     final dim2 = s2.length - 1 - i >= 0 ? s2[s2.length - 1 - i] : 1;
     final dim3 = s3.length - 1 - i >= 0 ? s3[s3.length - 1 - i] : 1;
 
-    final target = math.max(dim1, math.max(dim2, dim3));
-    if (dim1 != target && dim1 != 1) {
-      throw ArgumentError('Incompatible shapes for broadcasting');
-    }
-    if (dim2 != target && dim2 != 1) {
-      throw ArgumentError('Incompatible shapes for broadcasting');
-    }
-    if (dim3 != target && dim3 != 1) {
-      throw ArgumentError('Incompatible shapes for broadcasting');
+    var target = 1;
+    for (final d in [dim1, dim2, dim3]) {
+      if (d != 1) {
+        if (target == 1) {
+          target = d;
+        } else if (target != d) {
+          throw ArgumentError('Incompatible shapes for broadcasting');
+        }
+      }
     }
     common[len - 1 - i] = target;
   }

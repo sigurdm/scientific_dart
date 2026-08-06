@@ -1,4 +1,9 @@
-// ignore_for_file: non_constant_identifier_names
+import os
+
+workspace_root = os.path.dirname(os.path.abspath(__file__)) + "/.."
+path = os.path.join(workspace_root, "lib/src/operations/math/windows.dart")
+
+new_content = """// ignore_for_file: non_constant_identifier_names
 import '../../ndarray.dart';
 import '../../ndarray_bindings.dart';
 import '../helpers.dart';
@@ -7,11 +12,11 @@ import '../helpers.dart';
 ///
 /// The Hanning window is a taper formed by using a weighted cosine:
 ///
-/// $$w[n] = 0.5 - 0.5 \cos\left(\frac{2\pi n}{M - 1}\right), \quad 0 \le n \le M-1$$
+/// $$w[n] = 0.5 - 0.5 \\cos\\left(\\frac{2\\pi n}{M - 1}\\right), \\quad 0 \\le n \\le M-1$$
 ///
 /// Unlike the Hamming window, the Hanning window tapers all the way to exactly
 /// **zero** at the boundaries ($w[0] = w[M-1] = 0.0$). It features a fast side-lobe
-/// roll-off rate of $18 \text{ dB/octave}$, making it highly suitable for general
+/// roll-off rate of $18 \\text{ dB/octave}$, making it highly suitable for general
 /// spectral analysis where suppression of distant side lobes is critical.
 ///
 /// **Preconditions:**
@@ -85,13 +90,13 @@ NDArray<T> hanning<T>(int M, {DType<T>? dtype, NDArray<T>? out}) {
 ///
 /// The Hamming window is a taper formed by using an optimized weighted cosine:
 ///
-/// $$w[n] = 0.54 - 0.46 \cos\left(\frac{2\pi n}{M - 1}\right), \quad 0 \le n \le M-1$$
+/// $$w[n] = 0.54 - 0.46 \\cos\\left(\\frac{2\\pi n}{M - 1}\\right), \\quad 0 \\le n \\le M-1$$
 ///
 /// Unlike the Hanning window, the Hamming window does not taper to zero at the boundaries,
 /// leaving a small pedestal/discontinuity ($w[0] = w[M-1] = 0.08$). It is optimized to
-/// minimize the maximum side-lobe level (achieving a first side lobe of $-43 \text{ dB}$
-/// compared to Hanning's $-32 \text{ dB}$), at the expense of a slower side-lobe roll-off
-/// rate of $6 \text{ dB/octave}$.
+/// minimize the maximum side-lobe level (achieving a first side lobe of $-43 \\text{ dB}$
+/// compared to Hanning's $-32 \\text{ dB}$), at the expense of a slower side-lobe roll-off
+/// rate of $6 \\text{ dB/octave}$.
 ///
 /// **Preconditions:**
 /// - If [out] is provided, it must not be disposed and must have shape `[M]` (or `[0]` if `M < 1`)
@@ -159,3 +164,8 @@ NDArray<T> hamming<T>(int M, {DType<T>? dtype, NDArray<T>? out}) {
     return result;
   }
 }
+"""
+
+with open(path, "w") as f:
+    f.write(new_content)
+print("Updated windows.dart")

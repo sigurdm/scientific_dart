@@ -70,8 +70,7 @@ NDArray<R> real<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     return result;
   } else {
     // This path is taken if out != null and a is not complex.
-    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    result.data.setRange(0, size, a.toList() as List<R>);
+    a.copy(out: result);
     return result;
   }
 }
@@ -119,7 +118,7 @@ NDArray<R> imag<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 
   if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
     if (out != null) {
-      result.data.fillRange(0, result.data.length, 0.0 as R);
+      result.fill(0.0 as R);
       return result;
     }
     return NDArray.zeros(a.shape, targetDType) as NDArray<R>;
