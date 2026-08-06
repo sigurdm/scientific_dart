@@ -14,8 +14,8 @@ void main() {
   addTearDown(() => time.dispose());
   addTearDown(() => pureSignal.dispose());
 
-  final timeData = time.data;
-  final pureData = pureSignal.data;
+  final timeData = time.toList();
+  final pureData = pureSignal.toList();
 
   for (var i = 0; i < numPoints; i++) {
     final t = i / samplingRate;
@@ -54,9 +54,9 @@ void main() {
     final freq = i * samplingRate / numPoints;
     if (freq > 15.0) {
       // Symmetrically zero out positive and corresponding negative high frequency bins!
-      fftCoeffs.data[i] = Complex(0.0, 0.0);
+      fftCoeffs[i] = Complex(0.0, 0.0);
       if (i > 0 && i < halfLen) {
-        fftCoeffs.data[numPoints - i] = Complex(0.0, 0.0);
+        fftCoeffs[numPoints - i] = Complex(0.0, 0.0);
       }
       filteredBinsCount++;
     }
@@ -72,9 +72,9 @@ void main() {
   // Extract real component of the reconstructed signal
   final reconstructed = NDArray.create([numPoints], DType.float64);
   addTearDown(() => reconstructed.dispose());
-  final List<double> reconstructedData = reconstructed.data;
+  final List<double> reconstructedData = reconstructed.toList();
   for (var i = 0; i < numPoints; i++) {
-    reconstructedData[i] = restoredComplex.data[i].real;
+    reconstructedData[i] = restoredComplex[i].real;
   }
   print('5. Executed FFI IFFT to restore signal back to time-domain.');
 
@@ -96,7 +96,7 @@ void main() {
   print('Index | Noisy Signal | Restored Signal | Pure Signal');
   for (var i = 0; i < 5; i++) {
     print(
-      '  $i   |  ${noisySignal.data[i].toStringAsFixed(2).padLeft(11)} |  ${reconstructed.data[i].toStringAsFixed(2).padLeft(14)} |  ${pureSignal.data[i].toStringAsFixed(2).padLeft(10)}',
+      '  $i   |  ${noisySignal[i].toStringAsFixed(2).padLeft(11)} |  ${reconstructed[i].toStringAsFixed(2).padLeft(14)} |  ${pureSignal[i].toStringAsFixed(2).padLeft(10)}',
     );
   }
 }

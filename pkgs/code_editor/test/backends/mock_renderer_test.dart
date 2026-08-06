@@ -83,12 +83,8 @@ void main() {
             height: 20,
           ),
         ],
-        selections: [
-          SelectionRect(left: 0, top: 0, width: 32, height: 20),
-        ],
-        carets: [
-          CaretPosition(x: 32, y: 0, height: 20, line: 0, column: 4),
-        ],
+        selections: [SelectionRect(left: 0, top: 0, width: 32, height: 20)],
+        carets: [CaretPosition(x: 32, y: 0, height: 20, line: 0, column: 4)],
         gutter: RenderGutter(
           width: 40,
           items: [GutterItem(lineIndex: 0, lineNumberText: '1')],

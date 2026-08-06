@@ -7,7 +7,9 @@ void main() {
     2,
     2,
   ], DType.float64);
-  print('Array A:\nShape: ${a.shape}\nStrides: ${a.strides}\nData: ${a.data}');
+  print(
+    'Array A:\nShape: ${a.shape}\nStrides: ${a.strides}\nData: ${a.toList()}',
+  );
 
   print('\n--- Broadcasting Addition ---');
   final b = NDArray.fromList(Float64List.fromList([10, 20]), [
@@ -23,7 +25,7 @@ void main() {
 
   final d = add(b, c);
   print('Result B + C shape: ${d.shape}');
-  print('Result B + C data: ${d.data}');
+  print('Result B + C data: ${d.toList()}');
 
   print('\n--- Matrix Multiplication (OpenBLAS) ---');
   final m1 = NDArray.fromList(Float64List.fromList([1, 2, 3, 4]), [
@@ -37,5 +39,5 @@ void main() {
 
   final m3 = matmul(m1, m2);
   print('Result m1 * m2 shape: ${m3.shape}');
-  print('Result m1 * m2 data: ${m3.data}');
+  print('Result m1 * m2 data: ${m3.toList()}');
 }

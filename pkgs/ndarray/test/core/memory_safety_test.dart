@@ -183,6 +183,67 @@ void main() {
           expect(unmanagedArr.isDisposed, isTrue);
         },
       );
+
+      test(
+        'NDArray.returning() returns result and disposes intermediate arrays',
+        () {
+          late NDArray<Float64> a;
+          late NDArray<Float64> b;
+          late NDArray<Float64> c;
+
+          final result = NDArray.returning<Float64>(() {
+            a = NDArray<Float64>.zeros([10], DType.float64);
+            b = NDArray<Float64>.ones([10], DType.float64);
+            c = add<Float64, Float64, Float64>(a, b);
+            return c;
+          });
+
+          expect(a.isDisposed, isTrue);
+          expect(b.isDisposed, isTrue);
+          expect(result.isDisposed, isFalse);
+          expect(result.toList(), List.filled(10, 1.0));
+
+          result.dispose();
+          expect(result.isDisposed, isTrue);
+        },
+      );
+
+      test('NDArray.returning() promotes to outer scope when nested', () {
+        late NDArray<Float64> innerRes;
+
+        NDArray.scope(() {
+          innerRes = NDArray.returning<Float64>(() {
+            final temp = NDArray<Float64>.zeros([5], DType.float64);
+            final ones = NDArray<Float64>.ones([5], DType.float64);
+            return add<Float64, Float64, Float64>(temp, ones);
+          });
+
+          // Inside outer scope, innerRes is alive because it was promoted to outer scope
+          expect(innerRes.isDisposed, isFalse);
+        });
+
+        // When outer scope exits, innerRes is disposed
+        expect(innerRes.isDisposed, isTrue);
+      });
+
+      test(
+        'NDArray.returning() disposes intermediate allocations on exception',
+        () {
+          late NDArray a;
+          late NDArray b;
+
+          expect(() {
+            NDArray.returning<Float64>(() {
+              a = NDArray.zeros([10], DType.float64);
+              b = NDArray.ones([10], DType.float64);
+              throw StateError('Intentional error inside returning callback');
+            });
+          }, throwsStateError);
+
+          expect(a.isDisposed, isTrue);
+          expect(b.isDisposed, isTrue);
+        },
+      );
     });
 
     group('ScratchArena Tests', () {
@@ -712,6 +773,68 @@ void main() {
         expect(result.stdout, contains('checkNoLeaks: FAILED'));
         expect(result.stdout, contains('trackedCountAfterDispose: 0'));
         expect(result.stdout, contains('checkNoLeaksAfterDispose: OK'));
+      });
+    });
+
+    group('Disposed Array Precondition Tests', () {
+      test('distance operations throw StateError on disposed arrays', () {
+        final x = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+        x.dispose();
+        expect(() => pdist(x), throwsStateError);
+
+        final xa = NDArray.fromList([1.0, 2.0], [1, 2], DType.float64);
+        final xb = NDArray.fromList([3.0, 4.0], [1, 2], DType.float64);
+        xa.dispose();
+        expect(() => cdist(xa, xb), throwsStateError);
+      });
+
+      test('financial operations throw StateError on disposed arrays', () {
+        final rate = NDArray.scalar(Float64(0.05), dtype: DType.float64);
+        final nper = NDArray.scalar(Float64(10.0), dtype: DType.float64);
+        final pmt = NDArray.scalar(Float64(-100.0), dtype: DType.float64);
+        final pvArr = NDArray.scalar(Float64(1000.0), dtype: DType.float64);
+        final values = NDArray.fromList(
+          [-100.0, 39.0, 59.0, 55.0, 20.0],
+          [5],
+          DType.float64,
+        );
+
+        rate.dispose();
+        expect(() => fv(rate, nper, pmt, pvArr), throwsStateError);
+        expect(() => pv(rate, nper, pmt, pvArr), throwsStateError);
+        expect(() => npv(rate, values), throwsStateError);
+
+        values.dispose();
+        expect(() => irr(values), throwsStateError);
+      });
+
+      test('interpolation operation throws StateError on disposed arrays', () {
+        final x = NDArray.fromList([2.5], [1], DType.float64);
+        final xp = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+        final fp = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float64);
+
+        x.dispose();
+        expect(() => interp(x, xp, fp), throwsStateError);
+      });
+
+      test('kron operation throws StateError on disposed arrays', () {
+        final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final b = NDArray.fromList([3.0, 4.0], [2], DType.float64);
+        a.dispose();
+        expect(() => kron(a, b), throwsStateError);
+      });
+
+      test('kron disposes intermediate cast arrays within scope', () {
+        late NDArray result;
+        NDArray.scope(() {
+          final a = NDArray.fromList([1, 2], [2], DType.int32);
+          final b = NDArray.fromList([0.5, 1.5], [2], DType.float64);
+          result = kron(a, b); // a will be cast to float64 internally
+          expect(result.isDisposed, isFalse);
+          expect(result.dtype, DType.float64);
+          expect(result.toList(), [0.5, 1.5, 1.0, 3.0]);
+        });
+        expect(result.isDisposed, isTrue);
       });
     });
   });

@@ -1,5 +1,7 @@
 import '../../events/keybinding_registry.dart';
 
+export '../../events/keybinding_registry.dart';
+
 /// Terminal mouse event decoded from SGR escape sequences (`\x1b[<flags;x;yM`).
 class TerminalMouseEvent {
   final int button;
@@ -154,13 +156,17 @@ class TerminalInputParser {
   }
 
   void _emitKey(KeyCombination combo) {
-    for (final listener in List<void Function(KeyCombination)>.from(_keyListeners)) {
+    for (final listener in List<void Function(KeyCombination)>.from(
+      _keyListeners,
+    )) {
       listener(combo);
     }
   }
 
   void _emitMouse(TerminalMouseEvent mouse) {
-    for (final listener in List<void Function(TerminalMouseEvent)>.from(_mouseListeners)) {
+    for (final listener in List<void Function(TerminalMouseEvent)>.from(
+      _mouseListeners,
+    )) {
       listener(mouse);
     }
   }

@@ -33,7 +33,8 @@ class FoldRegion {
   int get hashCode => Object.hash(startLine, endLine, isCollapsed);
 
   @override
-  String toString() => 'FoldRegion($startLine..$endLine, collapsed: $isCollapsed)';
+  String toString() =>
+      'FoldRegion($startLine..$endLine, collapsed: $isCollapsed)';
 }
 
 class FoldingManager {
@@ -46,9 +47,15 @@ class FoldingManager {
 
     final idx = _regions.indexWhere((r) => r.startLine == startLine);
     if (idx != -1) {
-      _regions[idx] = FoldRegion(startLine: startLine, endLine: endLine, isCollapsed: _regions[idx].isCollapsed);
+      _regions[idx] = FoldRegion(
+        startLine: startLine,
+        endLine: endLine,
+        isCollapsed: _regions[idx].isCollapsed,
+      );
     } else {
-      _regions.add(FoldRegion(startLine: startLine, endLine: endLine, isCollapsed: false));
+      _regions.add(
+        FoldRegion(startLine: startLine, endLine: endLine, isCollapsed: false),
+      );
       _regions.sort((a, b) => a.startLine.compareTo(b.startLine));
     }
   }

@@ -4,6 +4,8 @@
 /// and feature adapters for completions, diagnostics, hover tooltips, symbols, and code actions.
 library code_editor.lsp;
 
+export 'src/lsp/completion_popup_model.dart';
+export 'src/lsp/hover_tooltip_model.dart';
 export 'src/lsp/lsp_code_action_adapter.dart';
 export 'src/lsp/lsp_completion_adapter.dart';
 export 'src/lsp/lsp_coordinate_translator.dart';

@@ -57,7 +57,9 @@ void runRecyclingBitwiseExample() {
     print('Step $step -> left_shift result: ${recycledBuffer.toList()}');
 
     // Prepare next input by copying recycled buffer contents back
-    a.data.setRange(0, a.data.length, recycledBuffer.data);
+    for (var i = 0; i < a.size; i++) {
+      a[i] = recycledBuffer[i];
+    }
   }
 
   recycledBuffer.dispose();

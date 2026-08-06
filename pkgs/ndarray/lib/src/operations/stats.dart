@@ -12,6 +12,18 @@ import 'broadcasting.dart';
 import 'linalg.dart';
 import 'manipulation.dart';
 
+List<int> _reductionTargetShape(List<int> shape, int? axis, bool keepdims) {
+  if (axis == null) {
+    return keepdims ? List<int>.filled(shape.length, 1) : <int>[];
+  }
+  final normAxis = axis < 0 ? shape.length + axis : axis;
+  if (keepdims) {
+    return List<int>.from(shape)..[normAxis] = 1;
+  } else {
+    return List<int>.from(shape)..removeAt(normAxis);
+  }
+}
+
 /// Methods for estimating quantiles/percentiles.
 ///
 /// The descriptions below refer to the taxonomy established by
@@ -117,16 +129,19 @@ enum QuantileMethod {
 /// final s0 = sum(a, axis: 0); // Sum along rows
 /// print(s0.data); // [4.0, 6.0]
 /// ```
-NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+NDArray<T> sum<T extends Object>(
+  NDArray<T> a, {
+  int? axis,
+  bool keepdims = false,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute sum of a disposed array.');
   }
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write sum to a disposed output array.');
   }
-  final targetShape = axis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
@@ -135,6 +150,19 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final result = out ?? NDArray<T>.create(targetShape, a.dtype);
+    if (size == 0) {
+      if (a.dtype.isComplex) {
+        result.data[0] = Complex(0.0, 0.0) as T;
+      } else if (a.dtype.isFloating) {
+        result.data[0] = 0.0 as T;
+      } else if (a.dtype == DType.boolean) {
+        result.data[0] = false as T;
+      } else {
+        result.data[0] = 0 as T;
+      }
+      return result;
+    }
     T? acc;
     if (a.isContiguous) {
       switch (a.dtype) {
@@ -147,31 +175,36 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
       }
     }
     if (acc == null) {
-      final List<T> elements = size == a.data.length ? a.data : a.toList();
+      final List<T> elements = a.isContiguous && size == a.data.length
+          ? a.data
+          : a.toList();
       var current = elements.first;
       for (var i = 1; i < elements.length; i++) {
         current = ((current as dynamic) + elements[i]) as T;
       }
       acc = current;
     }
-    final result = out ?? NDArray<T>.create([], a.dtype);
     result.data[0] = acc;
     return result;
   }
 
-  if (axis < 0 || axis >= a.shape.length) {
+  final rank = a.shape.length;
+  final normAxis = axis < 0 ? rank + axis : axis;
+  if (normAxis < 0 || normAxis >= rank) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = out ?? NDArray<T>.zeros(newShape, a.dtype);
+  final result = out ?? NDArray<T>.zeros(targetShape, a.dtype);
   if (out != null) {
     result.fill(normalizeScalar(0, a.dtype) as T);
   }
 
+  final squeezedDestStrides = keepdims
+      ? (List<int>.from(result.strides)..removeAt(normAxis))
+      : result.strides;
+
   switch (a.dtype) {
     case DType.float64:
-      final rank = a.shape.length;
       final cBuffer = ScratchArena.getStridedBuffer(rank);
       final cShape = cBuffer;
       final cStridesA = cBuffer + rank;
@@ -180,8 +213,8 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
         cShape[i] = a.shape[i];
         cStridesA[i] = a.strides[i];
       }
-      for (var i = 0; i < result.shape.length; i++) {
-        cStridesRes[i] = result.strides[i];
+      for (var i = 0; i < squeezedDestStrides.length; i++) {
+        cStridesRes[i] = squeezedDestStrides[i];
       }
 
       s_sum_double(
@@ -191,11 +224,10 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
         cStridesRes,
         cShape,
         rank,
-        axis,
+        normAxis,
       );
       return result;
     case DType.float32:
-      final rank = a.shape.length;
       final cBuffer = ScratchArena.getStridedBuffer(rank);
       final cShape = cBuffer;
       final cStridesA = cBuffer + rank;
@@ -204,8 +236,8 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
         cShape[i] = a.shape[i];
         cStridesA[i] = a.strides[i];
       }
-      for (var i = 0; i < result.shape.length; i++) {
-        cStridesRes[i] = result.strides[i];
+      for (var i = 0; i < squeezedDestStrides.length; i++) {
+        cStridesRes[i] = squeezedDestStrides[i];
       }
 
       s_sum_float(
@@ -215,7 +247,7 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
         cStridesRes,
         cShape,
         rank,
-        axis,
+        normAxis,
       );
       return result;
     default:
@@ -226,10 +258,11 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     a,
     result,
     List<int>.filled(a.shape.length, 0),
-    List<int>.filled(newShape.length, 0),
-    axis,
+    List<int>.filled(rank - 1, 0),
+    normAxis,
     0,
     (current, val) => ((current as dynamic) + val) as T,
+    destStrides: squeezedDestStrides,
   );
   return result;
 }
@@ -245,16 +278,19 @@ NDArray<T> sum<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 /// final p0 = prod(a, axis: 0); // Product along rows
 /// print(p0.data); // [3.0, 8.0]
 /// ```
-NDArray<T> prod<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+NDArray<T> prod<T extends Object>(
+  NDArray<T> a, {
+  int? axis,
+  bool keepdims = false,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute product of a disposed array.');
   }
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write product to a disposed output array.');
   }
-  final targetShape = axis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
@@ -263,6 +299,19 @@ NDArray<T> prod<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final result = out ?? NDArray<T>.create(targetShape, a.dtype);
+    if (size == 0) {
+      if (a.dtype.isComplex) {
+        result.data[0] = Complex(1.0, 0.0) as T;
+      } else if (a.dtype.isFloating) {
+        result.data[0] = 1.0 as T;
+      } else if (a.dtype == DType.boolean) {
+        result.data[0] = true as T;
+      } else {
+        result.data[0] = 1 as T;
+      }
+      return result;
+    }
     T? acc;
     if (a.isContiguous) {
       switch (a.dtype) {
@@ -275,36 +324,43 @@ NDArray<T> prod<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
       }
     }
     if (acc == null) {
-      final List<T> elements = size == a.data.length ? a.data : a.toList();
+      final List<T> elements = a.isContiguous && size == a.data.length
+          ? a.data
+          : a.toList();
       var current = elements.first;
       for (var i = 1; i < elements.length; i++) {
         current = ((current as dynamic) * elements[i]) as T;
       }
       acc = current;
     }
-    final result = out ?? NDArray<T>.create([], a.dtype);
     result.data[0] = acc;
     return result;
   }
 
-  if (axis < 0 || axis >= a.shape.length) {
+  final rank = a.shape.length;
+  final normAxis = axis < 0 ? rank + axis : axis;
+  if (normAxis < 0 || normAxis >= rank) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = out ?? NDArray<T>.ones(newShape, a.dtype);
+  final result = out ?? NDArray<T>.ones(targetShape, a.dtype);
   if (out != null) {
     result.fill(normalizeScalar(1, a.dtype) as T);
   }
 
+  final squeezedDestStrides = keepdims
+      ? (List<int>.from(result.strides)..removeAt(normAxis))
+      : result.strides;
+
   reduceRecursive<T, T>(
     a,
     result,
-    List<int>.filled(a.shape.length, 0),
-    List<int>.filled(newShape.length, 0),
-    axis,
+    List<int>.filled(rank, 0),
+    List<int>.filled(rank - 1, 0),
+    normAxis,
     0,
     (current, val) => ((current as dynamic) * val) as T,
+    destStrides: squeezedDestStrides,
   );
   return result;
 }
@@ -329,6 +385,7 @@ NDArray<T> prod<T extends Object>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 NDArray<bool> all<T extends Object>(
   NDArray<T> a, {
   int? axis,
+  bool keepdims = false,
   NDArray<bool>? out,
 }) {
   if (a.isDisposed) {
@@ -338,23 +395,18 @@ NDArray<bool> all<T extends Object>(
     throw StateError('Cannot write all() result to a disposed output array.');
   }
 
-  var targetAxis = axis;
-  if (targetAxis != null && targetAxis < 0) {
-    targetAxis = a.shape.length + targetAxis;
-  }
-
-  final targetShape = targetAxis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(targetAxis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != DType.boolean) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
-  if (targetAxis == null) {
+  if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    final List<T> elements = a.isContiguous && size == a.data.length
+        ? a.data
+        : a.toList();
     var allTrue = true;
     for (var i = 0; i < elements.length; i++) {
       if (!isTrueHelper(elements[i])) {
@@ -362,27 +414,33 @@ NDArray<bool> all<T extends Object>(
         break;
       }
     }
-    final result = out ?? NDArray<bool>.create([], DType.boolean);
+    final result = out ?? NDArray<bool>.create(targetShape, DType.boolean);
     result.data[0] = allTrue;
     return result;
   }
 
-  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+  final rank = a.shape.length;
+  final normAxis = axis < 0 ? rank + axis : axis;
+  if (normAxis < 0 || normAxis >= rank) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(targetAxis);
-  final result = out ?? NDArray<bool>.create(newShape, DType.boolean);
+  final result = out ?? NDArray<bool>.create(targetShape, DType.boolean);
   result.fill(true); // Initialize to true everywhere
+
+  final squeezedDestStrides = keepdims
+      ? (List<int>.from(result.strides)..removeAt(normAxis))
+      : result.strides;
 
   reduceRecursive<T, bool>(
     a,
     result,
-    List<int>.filled(a.shape.length, 0),
-    List<int>.filled(newShape.length, 0),
-    targetAxis,
+    List<int>.filled(rank, 0),
+    List<int>.filled(rank - 1, 0),
+    normAxis,
     0,
     (current, val) => current && isTrueHelper(val),
+    destStrides: squeezedDestStrides,
   );
 
   return result;
@@ -408,6 +466,7 @@ NDArray<bool> all<T extends Object>(
 NDArray<bool> any<T extends Object>(
   NDArray<T> a, {
   int? axis,
+  bool keepdims = false,
   NDArray<bool>? out,
 }) {
   if (a.isDisposed) {
@@ -417,23 +476,18 @@ NDArray<bool> any<T extends Object>(
     throw StateError('Cannot write any() result to a disposed output array.');
   }
 
-  var targetAxis = axis;
-  if (targetAxis != null && targetAxis < 0) {
-    targetAxis = a.shape.length + targetAxis;
-  }
-
-  final targetShape = targetAxis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(targetAxis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != DType.boolean) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
-  if (targetAxis == null) {
+  if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final List<T> elements = size == a.data.length ? a.data : a.toList();
+    final List<T> elements = a.isContiguous && size == a.data.length
+        ? a.data
+        : a.toList();
     var anyTrue = false;
     for (var i = 0; i < elements.length; i++) {
       if (isTrueHelper(elements[i])) {
@@ -441,31 +495,40 @@ NDArray<bool> any<T extends Object>(
         break;
       }
     }
-    final result = out ?? NDArray<bool>.create([], DType.boolean);
+    final result = out ?? NDArray<bool>.create(targetShape, DType.boolean);
     result.data[0] = anyTrue;
     return result;
   }
 
-  if (targetAxis < 0 || targetAxis >= a.shape.length) {
+  final rank = a.shape.length;
+  final normAxis = axis < 0 ? rank + axis : axis;
+  if (normAxis < 0 || normAxis >= rank) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(targetAxis);
   final result =
       out ??
-      NDArray<bool>.zeros(newShape, DType.boolean); // Pre-initialized to false
+      NDArray<bool>.zeros(
+        targetShape,
+        DType.boolean,
+      ); // Pre-initialized to false
   if (out != null) {
     result.fill(false);
   }
 
+  final squeezedDestStrides = keepdims
+      ? (List<int>.from(result.strides)..removeAt(normAxis))
+      : result.strides;
+
   reduceRecursive<T, bool>(
     a,
     result,
-    List<int>.filled(a.shape.length, 0),
-    List<int>.filled(newShape.length, 0),
-    targetAxis,
+    List<int>.filled(rank, 0),
+    List<int>.filled(rank - 1, 0),
+    normAxis,
     0,
     (current, val) => current || isTrueHelper(val),
+    destStrides: squeezedDestStrides,
   );
 
   return result;
@@ -491,16 +554,19 @@ NDArray<bool> any<T extends Object>(
 /// ```
 ///
 /// Reference: [Arithmetic Mean](https://en.wikipedia.org/wiki/Arithmetic_mean)
-NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
+NDArray<R> mean<R, T>(
+  NDArray<T> a, {
+  int? axis,
+  bool keepdims = false,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute mean of a disposed array.');
   }
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write mean to a disposed output array.');
   }
-  final targetShape = axis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   final expectedDType = a.dtype.isComplex ? DType.complex128 : DType.float64;
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != expectedDType) {
@@ -513,11 +579,13 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
     if (a.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
-          final res = out ?? NDArray<R>.create([], DType.float64 as DType<R>);
+          final res =
+              out ?? NDArray<R>.create(targetShape, DType.float64 as DType<R>);
           res.data[0] = r_mean_double(a.pointer.cast(), a.size) as R;
           return res;
         case DType.float32:
-          final res = out ?? NDArray<R>.create([], DType.float64 as DType<R>);
+          final res =
+              out ?? NDArray<R>.create(targetShape, DType.float64 as DType<R>);
           res.data[0] = r_mean_float(a.pointer.cast(), a.size) as R;
           return res;
         default:
@@ -532,7 +600,11 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
       promotedA = promoteToDouble(a);
     }
 
-    final s = sum<Object>(promotedA as NDArray<Object>, axis: axis);
+    final s = sum<Object>(
+      promotedA as NDArray<Object>,
+      axis: axis,
+      keepdims: keepdims,
+    );
     if (promotedA != a) {
       promotedA.dispose();
     }
@@ -543,15 +615,24 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
       result = out;
     } else {
       if (targetDType.isComplex) {
-        result = NDArray<Complex>.create([], DType.complex128) as NDArray<R>;
+        result =
+            NDArray<Complex>.create(targetShape, DType.complex128)
+                as NDArray<R>;
       } else {
-        result = NDArray<double>.create([], DType.float64) as NDArray<R>;
+        result =
+            NDArray<double>.create(targetShape, DType.float64) as NDArray<R>;
       }
     }
     result.data[0] = meanVal as R;
     s.dispose();
     return result;
   } else {
+    final rank = a.shape.length;
+    final normAxis = axis < 0 ? rank + axis : axis;
+    if (normAxis < 0 || normAxis >= rank) {
+      throw RangeError.range(normAxis, 0, rank - 1, 'axis');
+    }
+
     final NDArray<R> result;
     if (out != null) {
       result = out;
@@ -566,10 +647,13 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
       }
     }
 
+    final squeezedDestStrides = keepdims
+        ? (List<int>.from(result.strides)..removeAt(normAxis))
+        : result.strides;
+
     // Optimized axis-wise mean
     switch ((a.dtype, targetDType)) {
       case (DType.float64, DType.float64):
-        final rank = a.shape.length;
         final cBuffer = ScratchArena.getStridedBuffer(rank);
         final cShape = cBuffer;
         final cStridesA = cBuffer + rank;
@@ -578,8 +662,8 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
           cShape[i] = a.shape[i];
           cStridesA[i] = a.strides[i];
         }
-        for (var i = 0; i < result.shape.length; i++) {
-          cStridesRes[i] = result.strides[i];
+        for (var i = 0; i < squeezedDestStrides.length; i++) {
+          cStridesRes[i] = squeezedDestStrides[i];
         }
 
         s_mean_double(
@@ -589,33 +673,37 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
         return result;
       case (DType.float32, DType.float64):
-        final rank = a.shape.length;
-        final cBuffer = ScratchArena.getStridedBuffer(rank);
-        final cShape = cBuffer;
-        final cStridesA = cBuffer + rank;
-        final cStridesRes = cBuffer + (rank * 2);
-        for (var i = 0; i < rank; i++) {
-          cShape[i] = a.shape[i];
-          cStridesA[i] = a.strides[i];
-        }
-        for (var i = 0; i < result.shape.length; i++) {
-          cStridesRes[i] = result.strides[i];
-        }
+        final promoted = promoteToDouble(a);
+        try {
+          final cBuffer = ScratchArena.getStridedBuffer(rank);
+          final cShape = cBuffer;
+          final cStridesA = cBuffer + rank;
+          final cStridesRes = cBuffer + (rank * 2);
+          for (var i = 0; i < rank; i++) {
+            cShape[i] = promoted.shape[i];
+            cStridesA[i] = promoted.strides[i];
+          }
+          for (var i = 0; i < squeezedDestStrides.length; i++) {
+            cStridesRes[i] = squeezedDestStrides[i];
+          }
 
-        s_mean_float(
-          a.pointer.cast(),
-          cStridesA,
-          ((result as dynamic) as NDArray<double>).pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          axis,
-        );
-        return result;
+          s_mean_double(
+            promoted.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            normAxis,
+          );
+          return result;
+        } finally {
+          promoted.dispose();
+        }
       default:
         break;
     }
@@ -626,6 +714,7 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
       sum<Complex>(
         promotedA,
         axis: axis,
+        keepdims: keepdims,
         out: (result as dynamic) as NDArray<Complex>,
       );
       if (promotedA != a) promotedA.dispose();
@@ -635,12 +724,13 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
       sum<double>(
         promotedA,
         axis: axis,
+        keepdims: keepdims,
         out: (result as dynamic) as NDArray<double>,
       );
       if (promotedA != a) promotedA.dispose();
     }
 
-    final sizeAxis = a.shape[axis];
+    final sizeAxis = a.shape[normAxis];
     for (var i = 0; i < result.data.length; i++) {
       result.data[i] = ((result.data[i] as dynamic) / sizeAxis) as R;
     }
@@ -673,6 +763,7 @@ NDArray<R> mean<R, T>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
 NDArray<double> std<T extends num>(
   NDArray<T> a, {
   int? axis,
+  bool keepdims = false,
   NDArray<double>? out,
 }) {
   if (a.isDisposed) {
@@ -681,19 +772,17 @@ NDArray<double> std<T extends num>(
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write std to a disposed output array.');
   }
-  final targetShape = axis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
-  final v = variance(a, axis: axis);
+  final v = variance(a, axis: axis, keepdims: keepdims);
   if (axis == null) {
     final stdVal = math.sqrt(v.data[0]);
-    final result = out ?? NDArray<double>.create([], DType.float64);
+    final result = out ?? NDArray<double>.create(targetShape, DType.float64);
     result.data[0] = stdVal;
     v.dispose();
     return result;
@@ -732,6 +821,7 @@ NDArray<double> std<T extends num>(
 NDArray<double> nanvar<T extends num>(
   NDArray<T> a, {
   int? axis,
+  bool keepdims = false,
   NDArray<double>? out,
 }) {
   if (a.isDisposed) {
@@ -740,23 +830,21 @@ NDArray<double> nanvar<T extends num>(
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write nanvar to a disposed output array.');
   }
-  final targetShape = axis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
-  final m = nanmean(a, axis: axis);
+  final m = nanmean(a, axis: axis, keepdims: true);
 
   if (axis == null) {
     var sumSqDiff = 0.0;
     final meanVal = m.data[0] as num;
     m.dispose();
     if (meanVal.toDouble().isNaN) {
-      final result = out ?? NDArray<double>.create([], DType.float64);
+      final result = out ?? NDArray<double>.create(targetShape, DType.float64);
       result.data[0] = double.nan;
       return result;
     }
@@ -774,7 +862,7 @@ NDArray<double> nanvar<T extends num>(
       sumSqDiff += diff * diff;
       count++;
     }
-    final result = out ?? NDArray<double>.create([], DType.float64);
+    final result = out ?? NDArray<double>.create(targetShape, DType.float64);
     if (count == 0) {
       result.data[0] = double.nan;
     } else {
@@ -782,12 +870,7 @@ NDArray<double> nanvar<T extends num>(
     }
     return result;
   } else {
-    // Reshape m to keep dimensions for broadcasting
-    final targetShape = List<int>.from(a.shape);
-    targetShape[axis] = 1;
-    final reshapedM = m.reshape(targetShape);
-
-    final diff = subtract(a, reshapedM);
+    final diff = subtract(a, m);
     final sqDiff = multiply(diff, diff);
 
     // Convert to `NDArray<double>` to avoid truncation in nanmean
@@ -797,11 +880,15 @@ NDArray<double> nanvar<T extends num>(
     }
 
     m.dispose();
-    reshapedM.dispose();
     diff.dispose();
     sqDiff.dispose();
 
-    final res = nanmean(sqDiffDouble, axis: axis, out: out);
+    final res = nanmean<double>(
+      sqDiffDouble,
+      axis: axis,
+      keepdims: keepdims,
+      out: out,
+    );
     if (out != null) {
       sqDiffDouble.dispose();
       return out;
@@ -835,6 +922,7 @@ NDArray<double> nanvar<T extends num>(
 NDArray<double> nanstd<T extends num>(
   NDArray<T> a, {
   int? axis,
+  bool keepdims = false,
   NDArray<double>? out,
 }) {
   if (a.isDisposed) {
@@ -843,19 +931,17 @@ NDArray<double> nanstd<T extends num>(
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write nanstd to a disposed output array.');
   }
-  final targetShape = axis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
-  final v = nanvar(a, axis: axis);
+  final v = nanvar(a, axis: axis, keepdims: keepdims);
   if (axis == null) {
     final stdVal = math.sqrt(v.data[0]);
-    final result = out ?? NDArray<double>.create([], DType.float64);
+    final result = out ?? NDArray<double>.create(targetShape, DType.float64);
     result.data[0] = stdVal;
     v.dispose();
     return result;
@@ -880,7 +966,12 @@ NDArray<double> nanstd<T extends num>(
 /// **Edge cases:**
 /// - Returns a 0-dimensional [NDArray] if [axis] is null, or a new [NDArray] if [axis] is provided.
 /// - Preserves the original data type (DType) of the input array along the reduction axis.
-NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+NDArray<T> min<T extends num>(
+  NDArray<T> a, {
+  int? axis,
+  bool keepdims = false,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute min of a disposed array.');
   }
@@ -891,17 +982,16 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     throw ArgumentError('Cannot compute min of an empty array.');
   }
   if (axis != null) {
-    if (axis < 0 || axis >= a.shape.length) {
+    final normAxis = axis < 0 ? a.shape.length + axis : axis;
+    if (normAxis < 0 || normAxis >= a.shape.length) {
       throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
     }
-    if (a.shape[axis] == 0) {
+    if (a.shape[normAxis] == 0) {
       throw ArgumentError('Cannot compute min along axis $axis of size 0.');
     }
   }
 
-  final targetShape = axis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -935,15 +1025,19 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     if (!identical(temp, a)) {
       temp.dispose();
     }
-    final result = out ?? NDArray<T>.create([], a.dtype);
-    result.setCell([], minVal as T);
+    final result = out ?? NDArray<T>.create(targetShape, a.dtype);
+    result.setCell(List.filled(targetShape.length, 0), minVal as T);
     return result;
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = out ?? NDArray<T>.create(newShape, a.dtype);
-
   final rank = a.shape.length;
+  final normAxis = axis < 0 ? rank + axis : axis;
+  final result = out ?? NDArray<T>.create(targetShape, a.dtype);
+
+  final squeezedDestStrides = keepdims
+      ? (List<int>.from(result.strides)..removeAt(normAxis))
+      : result.strides;
+
   final marker = ScratchArena.marker;
   final cBuffer = ScratchArena.getStridedBuffer(rank);
   final cShape = cBuffer;
@@ -953,8 +1047,8 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     cShape[i] = a.shape[i];
     cStridesA[i] = a.strides[i];
   }
-  for (var i = 0; i < result.shape.length; i++) {
-    cStridesRes[i] = result.strides[i];
+  for (var i = 0; i < squeezedDestStrides.length; i++) {
+    cStridesRes[i] = squeezedDestStrides[i];
   }
 
   try {
@@ -967,7 +1061,7 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.float32:
         s_min_float(
@@ -977,7 +1071,7 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.int64:
         s_min_int64_t(
@@ -987,7 +1081,7 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.int32:
         s_min_int32_t(
@@ -997,7 +1091,7 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.uint8:
         s_min_uint8_t(
@@ -1007,7 +1101,7 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.int16:
         s_min_int16_t(
@@ -1017,7 +1111,7 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
     }
   } finally {
@@ -1048,6 +1142,7 @@ NDArray<T> min<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 NDArray<T> nanmin<T extends Object>(
   NDArray<T> a, {
   int? axis,
+  bool keepdims = false,
   NDArray<T>? out,
 }) {
   if (a.isDisposed) {
@@ -1063,17 +1158,16 @@ NDArray<T> nanmin<T extends Object>(
     throw ArgumentError('Cannot compute nanmin of an empty array.');
   }
   if (axis != null) {
-    if (axis < 0 || axis >= a.shape.length) {
+    final normAxis = axis < 0 ? a.shape.length + axis : axis;
+    if (normAxis < 0 || normAxis >= a.shape.length) {
       throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
     }
-    if (a.shape[axis] == 0) {
+    if (a.shape[normAxis] == 0) {
       throw ArgumentError('Cannot compute nanmin along axis $axis of size 0.');
     }
   }
 
-  final targetShape = axis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -1111,15 +1205,19 @@ NDArray<T> nanmin<T extends Object>(
     if (!identical(temp, a)) {
       temp.dispose();
     }
-    final result = out ?? NDArray<T>.create([], a.dtype);
-    result.setCell([], minVal as T);
+    final result = out ?? NDArray<T>.create(targetShape, a.dtype);
+    result.setCell(List.filled(targetShape.length, 0), minVal as T);
     return result;
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = out ?? NDArray<T>.create(newShape, a.dtype);
-
   final rank = a.shape.length;
+  final normAxis = axis < 0 ? rank + axis : axis;
+  final result = out ?? NDArray<T>.create(targetShape, a.dtype);
+
+  final squeezedDestStrides = keepdims
+      ? (List<int>.from(result.strides)..removeAt(normAxis))
+      : result.strides;
+
   final marker = ScratchArena.marker;
   final cBuffer = ScratchArena.getStridedBuffer(rank);
   final cShape = cBuffer;
@@ -1129,8 +1227,8 @@ NDArray<T> nanmin<T extends Object>(
     cShape[i] = a.shape[i];
     cStridesA[i] = a.strides[i];
   }
-  for (var i = 0; i < result.shape.length; i++) {
-    cStridesRes[i] = result.strides[i];
+  for (var i = 0; i < squeezedDestStrides.length; i++) {
+    cStridesRes[i] = squeezedDestStrides[i];
   }
 
   try {
@@ -1143,7 +1241,7 @@ NDArray<T> nanmin<T extends Object>(
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.float32:
         s_nanmin_float(
@@ -1153,7 +1251,7 @@ NDArray<T> nanmin<T extends Object>(
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.int64:
         s_min_int64_t(
@@ -1163,7 +1261,7 @@ NDArray<T> nanmin<T extends Object>(
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.int32:
         s_min_int32_t(
@@ -1173,7 +1271,7 @@ NDArray<T> nanmin<T extends Object>(
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.uint8:
         s_min_uint8_t(
@@ -1183,7 +1281,7 @@ NDArray<T> nanmin<T extends Object>(
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.int16:
         s_min_int16_t(
@@ -1193,7 +1291,7 @@ NDArray<T> nanmin<T extends Object>(
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.boolean:
         s_min_uint8_t(
@@ -1203,7 +1301,7 @@ NDArray<T> nanmin<T extends Object>(
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       default:
         throw UnsupportedError('Unsupported dtype for nanmin: ${a.dtype}');
@@ -1220,7 +1318,12 @@ NDArray<T> nanmin<T extends Object>(
 /// **Edge cases:**
 /// - Returns a 0-dimensional [NDArray] if [axis] is null, or a new [NDArray] if [axis] is provided.
 /// - Preserves the original data type (DType) of the input array along the reduction axis.
-NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
+NDArray<T> max<T extends num>(
+  NDArray<T> a, {
+  int? axis,
+  bool keepdims = false,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute max of a disposed array.');
   }
@@ -1231,17 +1334,16 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     throw ArgumentError('Cannot compute max of an empty array.');
   }
   if (axis != null) {
-    if (axis < 0 || axis >= a.shape.length) {
+    final normAxis = axis < 0 ? a.shape.length + axis : axis;
+    if (normAxis < 0 || normAxis >= a.shape.length) {
       throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
     }
-    if (a.shape[axis] == 0) {
+    if (a.shape[normAxis] == 0) {
       throw ArgumentError('Cannot compute max along axis $axis of size 0.');
     }
   }
 
-  final targetShape = axis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -1275,15 +1377,19 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     if (!identical(temp, a)) {
       temp.dispose();
     }
-    final result = out ?? NDArray<T>.create([], a.dtype);
-    result.setCell([], maxVal as T);
+    final result = out ?? NDArray<T>.create(targetShape, a.dtype);
+    result.setCell(List.filled(targetShape.length, 0), maxVal as T);
     return result;
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = out ?? NDArray<T>.create(newShape, a.dtype);
-
   final rank = a.shape.length;
+  final normAxis = axis < 0 ? rank + axis : axis;
+  final result = out ?? NDArray<T>.create(targetShape, a.dtype);
+
+  final squeezedDestStrides = keepdims
+      ? (List<int>.from(result.strides)..removeAt(normAxis))
+      : result.strides;
+
   final marker = ScratchArena.marker;
   final cBuffer = ScratchArena.getStridedBuffer(rank);
   final cShape = cBuffer;
@@ -1293,8 +1399,8 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
     cShape[i] = a.shape[i];
     cStridesA[i] = a.strides[i];
   }
-  for (var i = 0; i < result.shape.length; i++) {
-    cStridesRes[i] = result.strides[i];
+  for (var i = 0; i < squeezedDestStrides.length; i++) {
+    cStridesRes[i] = squeezedDestStrides[i];
   }
 
   try {
@@ -1307,7 +1413,7 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.float32:
         s_max_float(
@@ -1317,7 +1423,7 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.int64:
         s_max_int64_t(
@@ -1327,7 +1433,7 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.int32:
         s_max_int32_t(
@@ -1337,7 +1443,7 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.uint8:
         s_max_uint8_t(
@@ -1347,7 +1453,7 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.int16:
         s_max_int16_t(
@@ -1357,7 +1463,7 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
     }
   } finally {
@@ -1388,6 +1494,7 @@ NDArray<T> max<T extends num>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 NDArray<T> nanmax<T extends Object>(
   NDArray<T> a, {
   int? axis,
+  bool keepdims = false,
   NDArray<T>? out,
 }) {
   if (a.isDisposed) {
@@ -1403,17 +1510,16 @@ NDArray<T> nanmax<T extends Object>(
     throw ArgumentError('Cannot compute nanmax of an empty array.');
   }
   if (axis != null) {
-    if (axis < 0 || axis >= a.shape.length) {
+    final normAxis = axis < 0 ? a.shape.length + axis : axis;
+    if (normAxis < 0 || normAxis >= a.shape.length) {
       throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
     }
-    if (a.shape[axis] == 0) {
+    if (a.shape[normAxis] == 0) {
       throw ArgumentError('Cannot compute nanmax along axis $axis of size 0.');
     }
   }
 
-  final targetShape = axis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -1451,15 +1557,19 @@ NDArray<T> nanmax<T extends Object>(
     if (!identical(temp, a)) {
       temp.dispose();
     }
-    final result = out ?? NDArray<T>.create([], a.dtype);
-    result.setCell([], maxVal as T);
+    final result = out ?? NDArray<T>.create(targetShape, a.dtype);
+    result.setCell(List.filled(targetShape.length, 0), maxVal as T);
     return result;
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = out ?? NDArray<T>.create(newShape, a.dtype);
-
   final rank = a.shape.length;
+  final normAxis = axis < 0 ? rank + axis : axis;
+  final result = out ?? NDArray<T>.create(targetShape, a.dtype);
+
+  final squeezedDestStrides = keepdims
+      ? (List<int>.from(result.strides)..removeAt(normAxis))
+      : result.strides;
+
   final marker = ScratchArena.marker;
   final cBuffer = ScratchArena.getStridedBuffer(rank);
   final cShape = cBuffer;
@@ -1469,8 +1579,8 @@ NDArray<T> nanmax<T extends Object>(
     cShape[i] = a.shape[i];
     cStridesA[i] = a.strides[i];
   }
-  for (var i = 0; i < result.shape.length; i++) {
-    cStridesRes[i] = result.strides[i];
+  for (var i = 0; i < squeezedDestStrides.length; i++) {
+    cStridesRes[i] = squeezedDestStrides[i];
   }
 
   try {
@@ -1483,7 +1593,7 @@ NDArray<T> nanmax<T extends Object>(
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.float32:
         s_nanmax_float(
@@ -1493,7 +1603,7 @@ NDArray<T> nanmax<T extends Object>(
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.int64:
         s_max_int64_t(
@@ -1503,7 +1613,7 @@ NDArray<T> nanmax<T extends Object>(
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.int32:
         s_max_int32_t(
@@ -1513,7 +1623,7 @@ NDArray<T> nanmax<T extends Object>(
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.uint8:
         s_max_uint8_t(
@@ -1523,7 +1633,7 @@ NDArray<T> nanmax<T extends Object>(
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.int16:
         s_max_int16_t(
@@ -1533,7 +1643,7 @@ NDArray<T> nanmax<T extends Object>(
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       case DType.boolean:
         s_max_uint8_t(
@@ -1543,7 +1653,7 @@ NDArray<T> nanmax<T extends Object>(
           cStridesRes,
           cShape,
           rank,
-          axis,
+          normAxis,
         );
       default:
         throw UnsupportedError('Unsupported dtype for nanmax: ${a.dtype}');
@@ -1832,6 +1942,7 @@ NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 NDArray<double> variance<T extends num>(
   NDArray<T> a, {
   int? axis,
+  bool keepdims = false,
   NDArray<double>? out,
 }) {
   if (a.isDisposed) {
@@ -1840,16 +1951,14 @@ NDArray<double> variance<T extends num>(
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write variance to a disposed output array.');
   }
-  final targetShape = axis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != DType.float64) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
-  final m = mean(a, axis: axis);
+  final m = mean(a, axis: axis, keepdims: true);
 
   if (axis == null) {
     var sumSqDiff = 0.0;
@@ -1867,16 +1976,11 @@ NDArray<double> variance<T extends num>(
       final diff = val.toDouble() - meanVal.toDouble();
       sumSqDiff += diff * diff;
     }
-    final result = out ?? NDArray<double>.create([], DType.float64);
+    final result = out ?? NDArray<double>.create(targetShape, DType.float64);
     result.data[0] = sumSqDiff / elements.length;
     return result;
   } else {
-    // Reshape m to keep dimensions for broadcasting
-    final targetShape = List<int>.from(a.shape);
-    targetShape[axis] = 1;
-    final reshapedM = m.reshape(targetShape);
-
-    final diff = subtract(a, reshapedM);
+    final diff = subtract(a, m);
     final sqDiff = multiply(diff, diff);
 
     final sqDiffDouble = NDArray<double>.create(sqDiff.shape, DType.float64);
@@ -1885,11 +1989,15 @@ NDArray<double> variance<T extends num>(
     }
 
     m.dispose();
-    reshapedM.dispose();
     diff.dispose();
     sqDiff.dispose();
 
-    final res = mean(sqDiffDouble, axis: axis, out: out);
+    final res = mean<double, double>(
+      sqDiffDouble,
+      axis: axis,
+      keepdims: keepdims,
+      out: out,
+    );
     if (out != null) {
       sqDiffDouble.dispose();
       return out;
@@ -1903,6 +2011,14 @@ NDArray<double> variance<T extends num>(
     return resultVal;
   }
 }
+
+/// Computes the variance of array elements along a specified axis. Alias for [variance].
+NDArray<double> var_<T extends num>(
+  NDArray<T> a, {
+  int? axis,
+  bool keepdims = false,
+  NDArray<double>? out,
+}) => variance<T>(a, axis: axis, keepdims: keepdims, out: out);
 
 /// Computes the arithmetic mean along a specified axis, ignoring NaNs.
 ///
@@ -1921,16 +2037,19 @@ NDArray<double> variance<T extends num>(
 /// final a = NDArray<double>.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], DType.float64);
 /// final m = nanmean(a); // returns 0-D array containing 2.6666666666666665
 /// ```
-NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
+NDArray<R> nanmean<R extends Object>(
+  NDArray a, {
+  int? axis,
+  bool keepdims = false,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot compute nanmean of a disposed array.');
   }
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write nanmean to a disposed output array.');
   }
-  final targetShape = axis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   final expectedDType = a.dtype.isComplex ? DType.complex128 : DType.float64;
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != expectedDType) {
@@ -1971,9 +2090,12 @@ NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
       result = out;
     } else {
       if (targetDType.isComplex) {
-        result = NDArray<Complex>.create([], DType.complex128) as NDArray<R>;
+        result =
+            NDArray<Complex>.create(targetShape, DType.complex128)
+                as NDArray<R>;
       } else {
-        result = NDArray<double>.create([], DType.float64) as NDArray<R>;
+        result =
+            NDArray<double>.create(targetShape, DType.float64) as NDArray<R>;
       }
     }
 
@@ -1987,23 +2109,25 @@ NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
     return result;
   }
 
-  if (axis < 0 || axis >= a.shape.length) {
+  final rank = a.shape.length;
+  final normAxis = axis < 0 ? rank + axis : axis;
+  if (normAxis < 0 || normAxis >= rank) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(axis);
   final NDArray<R> result;
   if (out != null) {
     result = out;
     result.fill(normalizeScalar(0, targetDType) as R);
   } else {
     if (targetDType.isComplex) {
-      result = NDArray<Complex>.zeros(newShape, DType.complex128) as NDArray<R>;
+      result =
+          NDArray<Complex>.zeros(targetShape, DType.complex128) as NDArray<R>;
     } else {
-      result = NDArray<double>.zeros(newShape, DType.float64) as NDArray<R>;
+      result = NDArray<double>.zeros(targetShape, DType.float64) as NDArray<R>;
     }
   }
-  final counts = NDArray<int>.zeros(newShape, DType.int32);
+  final counts = NDArray<int>.zeros(targetShape, DType.int32);
 
   if (targetDType.isComplex) {
     final promotedA =
@@ -2013,9 +2137,10 @@ NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
       (result as dynamic) as NDArray<Complex>,
       counts,
       List<int>.filled(promotedA.shape.length, 0),
-      List<int>.filled(newShape.length, 0),
-      axis,
+      List<int>.filled(targetShape.length, 0),
+      normAxis,
       0,
+      keepdims: keepdims,
     );
     if (promotedA != a) promotedA.dispose();
   } else {
@@ -2026,9 +2151,10 @@ NDArray<R> nanmean<R extends Object>(NDArray a, {int? axis, NDArray<R>? out}) {
       (result as dynamic) as NDArray<double>,
       counts,
       List<int>.filled(promotedA.shape.length, 0),
-      List<int>.filled(newShape.length, 0),
-      axis,
+      List<int>.filled(targetShape.length, 0),
+      normAxis,
       0,
+      keepdims: keepdims,
     );
     if (promotedA != a) promotedA.dispose();
   }
@@ -2941,14 +3067,13 @@ NDArray<Float64> corrcoef<T extends num>(
 NDArray<T> nansum<T extends Object>(
   NDArray<T> a, {
   int? axis,
+  bool keepdims = false,
   NDArray<T>? out,
 }) {
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute nansum() on a disposed array.');
   }
-  final targetShape = axis == null
-      ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+  final targetShape = _reductionTargetShape(a.shape, axis, keepdims);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
@@ -2982,33 +3107,39 @@ NDArray<T> nansum<T extends Object>(
       }
       acc = sumVal as T;
     }
-    final result = out ?? NDArray<T>.create([], a.dtype);
+    final result = out ?? NDArray<T>.create(targetShape, a.dtype);
     result.data[0] = acc;
     return result;
   }
 
-  if (axis < 0 || axis >= a.shape.length) {
+  final rank = a.shape.length;
+  final normAxis = axis < 0 ? rank + axis : axis;
+  if (normAxis < 0 || normAxis >= rank) {
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  final newShape = List<int>.from(a.shape)..removeAt(axis);
-  final result = out ?? NDArray<T>.zeros(newShape, a.dtype);
+  final result = out ?? NDArray<T>.zeros(targetShape, a.dtype);
   if (out != null) {
     result.fill(normalizeScalar(0, a.dtype) as T);
   }
 
+  final squeezedDestStrides = keepdims
+      ? (List<int>.from(result.strides)..removeAt(normAxis))
+      : result.strides;
+
   reduceRecursive<T, T>(
     a,
     result,
-    List<int>.filled(a.shape.length, 0),
-    List<int>.filled(newShape.length, 0),
-    axis,
+    List<int>.filled(rank, 0),
+    List<int>.filled(rank - 1, 0),
+    normAxis,
     0,
     (current, val) {
       if (val is double && val.isNaN) return current;
       if (val is Complex && (val.real.isNaN || val.imag.isNaN)) return current;
       return ((current as dynamic) + val) as T;
     },
+    destStrides: squeezedDestStrides,
   );
   return result;
 }

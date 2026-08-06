@@ -33,7 +33,8 @@ final class BroadcastResult {
 /// - Trailing dimensions comparing from right-to-left must either be equal or one of them must be 1.
 ///
 /// **Throws:**
-/// - [ArgumentError] if matrix shapes are not compatible for broadcasting.
+/// - It is an error if [a] or [b] is disposed.
+/// - It is an error if matrix shapes are not compatible for broadcasting.
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(D)$ where $D$ is the maximum rank dimension length, executing
@@ -41,8 +42,8 @@ final class BroadcastResult {
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<Float64>.fromList([1.0, 2.0], [2, 1], DType.float64);
-/// final b = NDArray<Float64>.fromList([10.0, 20.0, 30.0], [1, 3], DType.float64);
+/// final a = NDArray.fromList([1.0, 2.0], [2, 1], DType.float64);
+/// final b = NDArray.fromList([10.0, 20.0, 30.0], [1, 3], DType.float64);
 /// final result = broadcast(a, b);
 /// print(result.shape); // [2, 3]
 /// ```
@@ -113,9 +114,9 @@ BroadcastResult broadcast(NDArray a, NDArray b) {
 ///   must be compatible (either equal, or the input dimension is 1).
 ///
 /// **Throws:**
-/// - [StateError] if the array [a] has been disposed.
-/// - [ArgumentError] if [targetShape] has fewer dimensions than [a.shape].
-/// - [ArgumentError] if [targetShape] is incompatible with [a.shape] for broadcasting.
+/// - It is an error if the array [a] has been disposed.
+/// - It is an error if [targetShape] has fewer dimensions than [a.shape].
+/// - It is an error if [targetShape] is incompatible with [a.shape] for broadcasting.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(D)$ and space complexity is $O(D)$ where $D$ is the rank of

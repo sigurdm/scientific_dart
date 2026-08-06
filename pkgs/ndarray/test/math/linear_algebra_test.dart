@@ -603,7 +603,7 @@ void main() {
       );
 
       test(
-        'Solve integer matrices system throws ArgumentError',
+        'Solve integer matrices throws ArgumentError',
         () => NDArray.scope(() {
           final a = NDArray.fromList(Int32List.fromList([3, 1, 1, 2]), [
             2,
@@ -791,7 +791,7 @@ void main() {
       );
 
       test(
-        'cholesky() throws ArgumentError on unsupported dtype (int32)',
+        'cholesky() throws ArgumentError on integer matrices (int32)',
         () => NDArray.scope(() {
           final a = NDArray.fromList(Int32List.fromList([4, 2, 2, 2]), [
             2,
@@ -999,11 +999,14 @@ void main() {
         }),
       );
       test(
-        'lstsq with integer matrices throws ArgumentError',
+        'lstsq with integer matrices auto-upcasts to Float64',
         () => NDArray.scope(() {
           final a = NDArray.fromList([1, 1, 1, 2, 1, 3], [3, 2], DType.int32);
           final b = NDArray.fromList([2, 4, 6], [3], DType.int32);
-          expect(() => lstsq(a, b), throwsArgumentError);
+          final res = lstsq(a, b);
+          expect(res.x.dtype, DType.float64);
+          expect(res.x.toList()[0], closeTo(0.0, 1e-9));
+          expect(res.x.toList()[1], closeTo(2.0, 1e-9));
         }),
       );
     });

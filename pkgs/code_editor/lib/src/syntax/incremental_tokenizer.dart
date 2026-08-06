@@ -15,13 +15,11 @@ class IncrementalTokenizer {
   /// Number of lines tokenized in the most recent tokenization / re-tokenization operation.
   int lastTokenizedLineCount = 0;
 
-  IncrementalTokenizer({
-    required this.tokenizer,
-    this.styleCache,
-  });
+  IncrementalTokenizer({required this.tokenizer, this.styleCache});
 
   List<LineState> get cachedLineStates => List.unmodifiable(_lineStates);
-  List<List<SyntaxToken>> get cachedLineTokens => List.unmodifiable(_lineTokens);
+  List<List<SyntaxToken>> get cachedLineTokens =>
+      List.unmodifiable(_lineTokens);
 
   /// Initializes or full re-tokenizes document lines.
   void setDocument(List<String> lines) {
@@ -92,7 +90,8 @@ class IncrementalTokenizer {
   }
 
   LineState getLineState(int lineIndex) {
-    if (lineIndex < 0 || lineIndex >= _lineStates.length) return const EmptyLineState();
+    if (lineIndex < 0 || lineIndex >= _lineStates.length)
+      return const EmptyLineState();
     return _lineStates[lineIndex];
   }
 

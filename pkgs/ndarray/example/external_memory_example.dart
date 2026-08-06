@@ -28,7 +28,7 @@ void runExternallyManagedExample() {
     2,
   ], DType.float64);
 
-  print('Wrapped array data: ${arr.data}'); // [10.0, 20.0, 30.0, 40.0]
+  print('Wrapped array data: ${arr.toList()}'); // [10.0, 20.0, 30.0, 40.0]
 
   // 3. Perform operations/slicing
   final sliced = arr.slice([
@@ -66,7 +66,7 @@ void runCustomFinalizerExample() {
     nativeFinalizer: malloc.nativeFree.cast(),
   );
 
-  print('Custom-finalized array: ${arr.data}');
+  print('Custom-finalized array: ${arr.toList()}');
 
   // Calling dispose() will manually trigger the custom finalizer and free the pointer!
   arr.dispose();

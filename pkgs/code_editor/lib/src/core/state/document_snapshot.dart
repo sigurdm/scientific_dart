@@ -14,8 +14,8 @@ class DocumentSnapshot {
     required this.lineCount,
     required List<Selection> selections,
     DateTime? timestamp,
-  })  : selections = List.unmodifiable(selections),
-        timestamp = timestamp ?? DateTime.now();
+  }) : selections = List.unmodifiable(selections),
+       timestamp = timestamp ?? DateTime.now();
 
   @override
   String toString() =>

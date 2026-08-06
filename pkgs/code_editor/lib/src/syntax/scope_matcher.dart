@@ -1,45 +1,63 @@
 import 'syntax_token.dart';
 
-/// Scope matching utilities for TextMate scope selectors.
-class ScopeMatcher {
+/// Scope matching utilities for TextMate scope selectors with compound backtracking support.
+final class ScopeMatcher {
+  ScopeMatcher._();
+
   /// Computes a specificity score for how well [selector] matches the given [scopes].
   /// Returns 0 if [selector] does not match. Higher score indicates a more specific match.
   static int matchScore(List<StyleScope> scopes, String selector) {
     if (scopes.isEmpty || selector.trim().isEmpty) return 0;
 
+    // Handle comma-separated selectors (e.g. "comment, string.quoted")
+    if (selector.contains(',')) {
+      final subSelectors = selector.split(',');
+      int maxScore = 0;
+      for (final sub in subSelectors) {
+        final score = matchScore(scopes, sub);
+        if (score > maxScore) maxScore = score;
+      }
+      return maxScore;
+    }
+
     final parts = selector.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty) return 0;
 
-    int scopeIdx = scopes.length - 1;
-    int partIdx = parts.length - 1;
-    int totalScore = 0;
+    int maxScore = 0;
+    final targetPart = parts.last;
 
-    // Rightmost part must match the innermost scope (or an ancestor scope)
-    final targetPart = parts[partIdx];
-    int singleScore = 0;
-    bool found = false;
+    // Backtracking search: rightmost selector segment can match any scope from right to left
     for (int i = scopes.length - 1; i >= 0; i--) {
-      singleScore = _matchSingleScope(scopes[i], targetPart);
+      final singleScore = _matchSingleScope(scopes[i], targetPart);
       if (singleScore > 0) {
-        scopeIdx = i;
-        found = true;
-        break;
+        final score = _matchAncestorParts(scopes, parts, i, singleScore);
+        if (score > maxScore) maxScore = score;
       }
     }
-    if (!found) return 0;
 
-    totalScore += singleScore * 10;
-    partIdx--;
-    scopeIdx--;
+    return maxScore;
+  }
 
-    // Match ancestor parts from right to left
+  static int _matchAncestorParts(
+    List<StyleScope> scopes,
+    List<String> parts,
+    int targetScopeIdx,
+    int targetScore,
+  ) {
+    int partIdx = parts.length - 2;
+    int scopeIdx = targetScopeIdx - 1;
+    int totalScore = targetScore * 10;
+
     while (partIdx >= 0 && scopeIdx >= 0) {
       final part = parts[partIdx];
       int score = 0;
       while (scopeIdx >= 0) {
         score = _matchSingleScope(scopes[scopeIdx], part);
+        if (score > 0) {
+          scopeIdx--;
+          break;
+        }
         scopeIdx--;
-        if (score > 0) break;
       }
       if (score == 0) return 0;
       totalScore += score * 2;
@@ -47,7 +65,6 @@ class ScopeMatcher {
     }
 
     if (partIdx >= 0) return 0;
-
     return totalScore + parts.length;
   }
 

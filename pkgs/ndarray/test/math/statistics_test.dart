@@ -1565,6 +1565,29 @@ void main() {
       x.dispose();
       res.dispose();
     });
+
+    test('1D nearest-neighbor interpolation and interpolate alias', () {
+      final x = NDArray.fromList([0.5, 1.4, 1.6, 2.8, 3.5], [5], DType.float64);
+      final xp = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+      final fp = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float64);
+
+      final yNearest = interp(x, xp, fp, method: InterpolationMethod.nearest);
+      expect(yNearest.toList(), [10.0, 10.0, 20.0, 30.0, 30.0]);
+
+      final yAlias = interpolate(
+        x,
+        xp,
+        fp,
+        method: InterpolationMethod.nearest,
+      );
+      expect(yAlias.toList(), [10.0, 10.0, 20.0, 30.0, 30.0]);
+
+      x.dispose();
+      xp.dispose();
+      fp.dispose();
+      yNearest.dispose();
+      yAlias.dispose();
+    });
   });
 
   group('Quantitative Financial ufuncs Tests', () {

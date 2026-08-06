@@ -1,195 +1,362 @@
-import '../buffer/text_buffer.dart';
+import 'dart:math' as math;
 import 'selection.dart';
 import 'text_position.dart';
 
-/// Multi-cursor selection manager with selection transformations, merging,
-/// word & line boundary helpers.
-class SelectionModel {
-  List<Selection> _selections = [
-    const Selection.collapsed(TextPosition(0, 0)),
-  ];
+export 'selection.dart';
+export 'text_position.dart';
 
-  List<Selection> get selections => List.unmodifiable(_selections);
+/// Model managing text selections and semantic selection boundary calculations.
+final class SelectionModel {
+  TextSelection _primarySelection;
+  List<TextSelection> _secondarySelections;
 
-  Selection get primary => _selections.first;
+  /// Creates a [SelectionModel] with an initial [primarySelection].
+  SelectionModel({
+    TextSelection primarySelection = const TextSelection(
+      base: TextPosition(0, 0),
+      extent: TextPosition(0, 0),
+    ),
+    List<TextSelection>? secondarySelections,
+  }) : _primarySelection = primarySelection,
+       _secondarySelections = secondarySelections ?? const [];
 
-  void setSelections(List<Selection> newSelections) {
-    if (newSelections.isEmpty) return;
-    _selections = List.from(newSelections);
-    mergeOverlapping();
+  /// Gets the primary selection.
+  TextSelection get primarySelection => _primarySelection;
+
+  /// Sets the primary selection.
+  set primarySelection(TextSelection selection) {
+    _primarySelection = selection;
   }
 
-  void setSingleCursor(TextPosition position) {
-    _selections = [Selection.collapsed(position)];
+  /// Gets all secondary selections (for multi-caret editing).
+  List<TextSelection> get secondarySelections =>
+      List.unmodifiable(_secondarySelections);
+
+  /// Updates all secondary selections.
+  set secondarySelections(List<TextSelection> selections) {
+    _secondarySelections = List.from(selections);
   }
 
-  void addCursor(TextPosition position) {
-    _selections.add(Selection.collapsed(position));
-    mergeOverlapping();
-  }
-
-  /// Sorts selections and merges overlapping ranges into single unified selections.
-  void mergeOverlapping() {
-    if (_selections.length <= 1) return;
-
-    // Sort by start position
-    _selections.sort((a, b) => a.start.compareTo(b.start));
-
-    final merged = <Selection>[];
-    var current = _selections.first;
-
-    for (var i = 1; i < _selections.length; i++) {
-      final next = _selections[i];
-      if (next.start.compareTo(current.end) <= 0) {
-        // Overlaps or touches
-        final newEnd = (current.end.compareTo(next.end) >= 0) ? current.end : next.end;
-        if (current.isReversed) {
-          current = Selection(newEnd, current.start);
-        } else {
-          current = Selection(current.start, newEnd);
-        }
-      } else {
-        merged.add(current);
-        current = next;
+  /// Sets all primary and secondary selections.
+  void setSelections(List<dynamic> selections) {
+    if (selections.isEmpty) return;
+    final converted = <TextSelection>[];
+    for (final s in selections) {
+      if (s is TextSelection) {
+        converted.add(s);
+      } else if (s != null) {
+        try {
+          final dynamic dyn = s;
+          final TextPosition base =
+              (dyn.base ?? dyn.anchor ?? const TextPosition(0, 0))
+                  as TextPosition;
+          final TextPosition extent =
+              (dyn.extent ?? dyn.position ?? base) as TextPosition;
+          converted.add(TextSelection(base: base, extent: extent));
+        } catch (_) {}
       }
     }
-    merged.add(current);
-    _selections = merged;
+    if (converted.isEmpty) return;
+    _primarySelection = converted.first;
+    _secondarySelections = converted.length > 1
+        ? List.from(converted.sublist(1))
+        : const [];
   }
 
-  /// Selects the word surrounding [pos] in [buffer].
-  Selection selectWordAt(TextBuffer buffer, TextPosition pos) {
-    if (pos.line >= buffer.lineCount) return Selection.collapsed(pos);
-    final lineText = buffer.getLine(pos.line);
+  /// Collapses selection to a single position.
+  void collapseTo(TextPosition position) {
+    _primarySelection = TextSelection.collapsed(position);
+    _secondarySelections = const [];
+  }
 
-    var startCol = pos.column.clamp(0, lineText.length);
-    var endCol = pos.column.clamp(0, lineText.length);
+  /// Gets all selections (primary selection followed by secondary selections).
+  List<TextSelection> get selections => [
+    _primarySelection,
+    ..._secondarySelections,
+  ];
 
-    bool isWordChar(String ch) {
-      if (ch.isEmpty) return false;
-      final code = ch.codeUnitAt(0);
-      return (code >= 65 && code <= 90) ||
-          (code >= 97 && code <= 122) ||
-          (code >= 48 && code <= 57) ||
-          code == 95; // A-Z, a-z, 0-9, _
+  /// Alias for primarySelection.
+  TextSelection get primary => _primarySelection;
+
+  /// Sets single collapsed cursor at [position].
+  void setSingleCursor(TextPosition position) => collapseTo(position);
+
+  /// Shifts selection positions after inserting [length] characters at line/column.
+  void transformOnInsert(int line, int column, int length) {
+    TextPosition updatePos(TextPosition pos) {
+      if (pos.line == line && pos.column >= column) {
+        return TextPosition(pos.line, pos.column + length);
+      }
+      return pos;
     }
 
-    while (startCol > 0 && isWordChar(lineText[startCol - 1])) {
-      startCol--;
-    }
-    while (endCol < lineText.length && isWordChar(lineText[endCol])) {
-      endCol++;
-    }
-
-    return Selection(
-      TextPosition(pos.line, startCol),
-      TextPosition(pos.line, endCol),
+    _primarySelection = TextSelection(
+      base: updatePos(_primarySelection.base),
+      extent: updatePos(_primarySelection.extent),
+      affinity: _primarySelection.affinity,
     );
+    _secondarySelections = _secondarySelections
+        .map(
+          (s) => TextSelection(
+            base: updatePos(s.base),
+            extent: updatePos(s.extent),
+            affinity: s.affinity,
+          ),
+        )
+        .toList();
+  }
+
+  /// Shifts selection positions after deleting [length] characters at line/column.
+  void transformOnDelete(int line, int column, int length) {
+    TextPosition updatePos(TextPosition pos) {
+      if (pos.line == line && pos.column >= column + length) {
+        return TextPosition(pos.line, math.max(column, pos.column - length));
+      } else if (pos.line == line && pos.column > column) {
+        return TextPosition(pos.line, column);
+      }
+      return pos;
+    }
+
+    _primarySelection = TextSelection(
+      base: updatePos(_primarySelection.base),
+      extent: updatePos(_primarySelection.extent),
+      affinity: _primarySelection.affinity,
+    );
+    _secondarySelections = _secondarySelections
+        .map(
+          (s) => TextSelection(
+            base: updatePos(s.base),
+            extent: updatePos(s.extent),
+            affinity: s.affinity,
+          ),
+        )
+        .toList();
+  }
+
+  /// Extends the current selection extent to [newExtent].
+  void extendTo(TextPosition newExtent) {
+    _primarySelection = TextSelection(
+      base: _primarySelection.base,
+      extent: newExtent,
+    );
+  }
+
+  /// Selects the entire document given [lines].
+  void selectAll(List<String> lines) {
+    if (lines.isEmpty) {
+      collapseTo(const TextPosition(0, 0));
+      return;
+    }
+    final lastLine = lines.length - 1;
+    final lastColumn = lines[lastLine].length;
+    _primarySelection = TextSelection(
+      base: const TextPosition(0, 0),
+      extent: TextPosition(lastLine, lastColumn),
+    );
+  }
+
+  /// Selects the word at [position].
+  void selectWordAt(List<String> lines, TextPosition position) {
+    final wordRange = getWordBoundary(lines, position);
+    _primarySelection = wordRange;
   }
 
   /// Selects the entire line at [lineIndex].
-  Selection selectLineAt(TextBuffer buffer, int lineIndex) {
-    final line = lineIndex.clamp(0, buffer.lineCount - 1);
-    final lineLen = buffer.getLineLength(line);
-    return Selection(
-      TextPosition(line, 0),
-      TextPosition(line, lineLen),
+  void selectLineAt(List<String> lines, int lineIndex) {
+    if (lines.isEmpty) return;
+    final safeLine = lineIndex.clamp(0, lines.length - 1);
+    final lineText = lines[safeLine];
+    _primarySelection = TextSelection(
+      base: TextPosition(safeLine, 0),
+      extent: TextPosition(safeLine, lineText.length),
     );
   }
 
-  /// Adjusts selections after an insertion at [insertOffset] of [newText].
-  void transformOnInsert(TextBuffer bufferBeforeInsert, int insertOffset, String newText) {
-    final (insLine, insCol) = bufferBeforeInsert.getLineAndColumnAt(insertOffset);
-
-    int insEndLine = insLine;
-    int insEndCol = insCol;
-    final lines = newText.split('\n');
-    if (lines.length == 1) {
-      insEndCol += lines.first.length;
-    } else {
-      insEndLine += lines.length - 1;
-      insEndCol = lines.last.length;
-    }
-
-    final newSelections = <Selection>[];
-
-    for (final sel in _selections) {
-      final anchor = _shiftPositionOnInsert(sel.anchor, insLine, insCol, insEndLine, insEndCol, newText.length);
-      final pos = _shiftPositionOnInsert(sel.position, insLine, insCol, insEndLine, insEndCol, newText.length);
-      newSelections.add(Selection(anchor, pos));
-    }
-
-    _selections = newSelections;
-    mergeOverlapping();
-  }
-
-  TextPosition _shiftPositionOnInsert(
-    TextPosition p,
-    int insLine,
-    int insCol,
-    int insEndLine,
-    int insEndCol,
-    int insertLen,
+  /// Calculates the word boundary selection range surrounding [position].
+  static TextSelection getWordBoundary(
+    List<String> lines,
+    TextPosition position,
   ) {
-    if (p.line < insLine) return p;
-    if (p.line == insLine) {
-      if (p.column < insCol) return p;
-      // Affected by insert on same line
-      final lineDiff = insEndLine - insLine;
-      if (lineDiff == 0) {
-        return TextPosition(p.line, p.column + insertLen);
-      } else {
-        return TextPosition(insEndLine, insEndCol + (p.column - insCol));
+    if (lines.isEmpty) return TextSelection.collapsed(position);
+    final line = position.line.clamp(0, lines.length - 1);
+    final lineText = lines[line];
+    final col = position.column.clamp(0, lineText.length);
+
+    if (lineText.isEmpty) return TextSelection.collapsed(position);
+
+    int startCol = col;
+    int endCol = col;
+
+    if (col < lineText.length && _isWordCharacter(lineText[col])) {
+      while (startCol > 0 && _isWordCharacter(lineText[startCol - 1])) {
+        startCol--;
+      }
+      while (endCol < lineText.length && _isWordCharacter(lineText[endCol])) {
+        endCol++;
+      }
+    } else if (col > 0 && _isWordCharacter(lineText[col - 1])) {
+      startCol = col - 1;
+      while (startCol > 0 && _isWordCharacter(lineText[startCol - 1])) {
+        startCol--;
+      }
+      endCol = col;
+      while (endCol < lineText.length && _isWordCharacter(lineText[endCol])) {
+        endCol++;
       }
     } else {
-      // Below insertion
-      final lineDiff = insEndLine - insLine;
-      return TextPosition(p.line + lineDiff, p.column);
-    }
-  }
-
-  /// Adjusts selections after deletion at [deleteOffset] of [deleteLen] code units.
-  void transformOnDelete(TextBuffer bufferBeforeDelete, int deleteOffset, int deleteLen) {
-    final (delStartLine, delStartCol) = bufferBeforeDelete.getLineAndColumnAt(deleteOffset);
-    final (delEndLine, delEndCol) = bufferBeforeDelete.getLineAndColumnAt(deleteOffset + deleteLen);
-
-    final newSelections = <Selection>[];
-
-    for (final sel in _selections) {
-      final anchor = _shiftPositionOnDelete(sel.anchor, delStartLine, delStartCol, delEndLine, delEndCol);
-      final pos = _shiftPositionOnDelete(sel.position, delStartLine, delStartCol, delEndLine, delEndCol);
-      newSelections.add(Selection(anchor, pos));
-    }
-
-    _selections = newSelections;
-    mergeOverlapping();
-  }
-
-  TextPosition _shiftPositionOnDelete(
-    TextPosition p,
-    int delStartLine,
-    int delStartCol,
-    int delEndLine,
-    int delEndCol,
-  ) {
-    if (p.line < delStartLine) return p;
-    if (p.line == delStartLine && p.column <= delStartCol) return p;
-
-    if (p.line > delStartLine && p.line < delEndLine) {
-      // Inside deleted line range
-      return TextPosition(delStartLine, delStartCol);
-    }
-
-    if (p.line == delEndLine) {
-      if (p.column <= delEndCol) {
-        return TextPosition(delStartLine, delStartCol);
-      } else {
-        return TextPosition(delStartLine, delStartCol + (p.column - delEndCol));
+      // Non-word symbol or whitespace
+      while (startCol > 0 &&
+          !_isWordCharacter(lineText[startCol - 1]) &&
+          !_isWhitespace(lineText[startCol - 1])) {
+        startCol--;
+      }
+      while (endCol < lineText.length &&
+          !_isWordCharacter(lineText[endCol]) &&
+          !_isWhitespace(lineText[endCol])) {
+        endCol++;
+      }
+      if (startCol == endCol && col < lineText.length) {
+        endCol = math.min(col + 1, lineText.length);
       }
     }
 
-    // Below deleted range
-    final lineDiff = delEndLine - delStartLine;
-    return TextPosition(p.line - lineDiff, p.column);
+    return TextSelection(
+      base: TextPosition(line, startCol),
+      extent: TextPosition(line, endCol),
+    );
+  }
+
+  /// Finds the starting column index when moving left by word from [column].
+  static int getWordStartColumn(String lineText, int column) {
+    if (lineText.isEmpty || column <= 0) return 0;
+    int i = column - 1;
+
+    // Skip whitespace backward
+    while (i > 0 && _isWhitespace(lineText[i])) {
+      i--;
+    }
+
+    if (i >= 0 && _isWordCharacter(lineText[i])) {
+      while (i > 0 && _isWordCharacter(lineText[i - 1])) {
+        i--;
+      }
+    } else if (i >= 0 && !_isWhitespace(lineText[i])) {
+      while (i > 0 &&
+          !_isWordCharacter(lineText[i - 1]) &&
+          !_isWhitespace(lineText[i - 1])) {
+        i--;
+      }
+    }
+    return math.max(0, i);
+  }
+
+  /// Finds the ending column index when moving right by word from [column].
+  static int getWordEndColumn(String lineText, int column) {
+    if (lineText.isEmpty || column >= lineText.length) return lineText.length;
+    int i = column;
+
+    // Skip whitespace forward
+    while (i < lineText.length && _isWhitespace(lineText[i])) {
+      i++;
+    }
+
+    if (i < lineText.length && _isWordCharacter(lineText[i])) {
+      while (i < lineText.length && _isWordCharacter(lineText[i])) {
+        i++;
+      }
+    } else if (i < lineText.length) {
+      while (i < lineText.length &&
+          !_isWordCharacter(lineText[i]) &&
+          !_isWhitespace(lineText[i])) {
+        i++;
+      }
+    }
+    return math.min(lineText.length, i);
+  }
+
+  /// Calculates smart line start position with indentation jumping.
+  static TextPosition getSmartLineStart(
+    String lineText,
+    TextPosition position,
+  ) {
+    int firstNonWhitespace = 0;
+    while (firstNonWhitespace < lineText.length &&
+        _isWhitespace(lineText[firstNonWhitespace])) {
+      firstNonWhitespace++;
+    }
+
+    if (position.column == firstNonWhitespace) {
+      return TextPosition(position.line, 0);
+    } else {
+      return TextPosition(position.line, firstNonWhitespace);
+    }
+  }
+
+  /// Gets the line end position.
+  static TextPosition getLineEnd(String lineText, int lineIndex) {
+    return TextPosition(lineIndex, lineText.length);
+  }
+
+  /// Finds the start position of the paragraph surrounding [position].
+  static TextPosition getParagraphStart(
+    List<String> lines,
+    TextPosition position,
+  ) {
+    if (lines.isEmpty) return const TextPosition(0, 0);
+    int currentLine = position.line.clamp(0, lines.length - 1);
+    if (lines[currentLine].trim().isEmpty) {
+      return TextPosition(currentLine, 0);
+    }
+    while (currentLine > 0 && lines[currentLine - 1].trim().isNotEmpty) {
+      currentLine--;
+    }
+    return TextPosition(currentLine, 0);
+  }
+
+  /// Finds the end position of the paragraph surrounding [position].
+  static TextPosition getParagraphEnd(
+    List<String> lines,
+    TextPosition position,
+  ) {
+    if (lines.isEmpty) return const TextPosition(0, 0);
+    int currentLine = position.line.clamp(0, lines.length - 1);
+    if (lines[currentLine].trim().isEmpty) {
+      return TextPosition(currentLine, lines[currentLine].length);
+    }
+    while (currentLine < lines.length - 1 &&
+        lines[currentLine + 1].trim().isNotEmpty) {
+      currentLine++;
+    }
+    return TextPosition(currentLine, lines[currentLine].length);
+  }
+
+  /// Moves cursor up by [pageSize] lines.
+  static TextPosition movePageUp(TextPosition position, int pageSize) {
+    final targetLine = math.max(0, position.line - pageSize);
+    return TextPosition(targetLine, position.column);
+  }
+
+  /// Moves cursor down by [pageSize] lines given [totalLines].
+  static TextPosition movePageDown(
+    TextPosition position,
+    int totalLines,
+    int pageSize,
+  ) {
+    if (totalLines <= 0) return const TextPosition(0, 0);
+    final targetLine = math.min(totalLines - 1, position.line + pageSize);
+    return TextPosition(targetLine, position.column);
+  }
+
+  static bool _isWordCharacter(String char) {
+    if (char.isEmpty) return false;
+    final code = char.codeUnitAt(0);
+    return (code >= 48 && code <= 57) || // 0-9
+        (code >= 65 && code <= 90) || // A-Z
+        (code >= 97 && code <= 122) || // a-z
+        code == 95; // _
+  }
+
+  static bool _isWhitespace(String char) {
+    return char == ' ' || char == '\t' || char == '\n' || char == '\r';
   }
 }

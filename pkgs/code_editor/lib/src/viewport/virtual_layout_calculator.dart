@@ -1,79 +1,208 @@
-import 'folding_manager.dart';
-import 'line_height_tree.dart';
+import '../core/selection/selection_model.dart';
+import 'line_wrapping_engine.dart';
 
-class VirtualLayoutSlice {
-  final int firstVisibleLine;
-  final int lastVisibleLine;
-  final int firstRenderedLine;
-  final int lastRenderedLine;
-  final double topOffset;
-  final double totalHeight;
-  final List<int> visibleLineIndices;
+/// Information about a single virtual row in the editor viewport layout.
+final class VirtualRowInfo {
+  /// 0-based virtual row index in the layout.
+  final int virtualRowIndex;
 
-  const VirtualLayoutSlice({
-    required this.firstVisibleLine,
-    required this.lastVisibleLine,
-    required this.firstRenderedLine,
-    required this.lastRenderedLine,
-    required this.topOffset,
-    required this.totalHeight,
-    required this.visibleLineIndices,
+  /// Document line index.
+  final int lineIndex;
+
+  /// Slice index within the line.
+  final int sliceIndex;
+
+  /// The wrapped text slice content.
+  final TextLineSlice slice;
+
+  /// Creates a [VirtualRowInfo].
+  const VirtualRowInfo({
+    required this.virtualRowIndex,
+    required this.lineIndex,
+    required this.sliceIndex,
+    required this.slice,
   });
 
-  int get renderedLineCount => visibleLineIndices.length;
+  /// Whether this row represents the first slice of a document line.
+  bool get isFirstSlice => sliceIndex == 0;
+
+  @override
+  String toString() =>
+      'VirtualRowInfo(vRow: $virtualRowIndex, line: $lineIndex, slice: $sliceIndex, text: "${slice.content}")';
 }
 
-class VirtualLayoutCalculator {
-  static VirtualLayoutSlice computeLayout({
-    required double scrollTop,
-    required double viewportHeight,
-    required LineHeightTree lineHeightTree,
-    FoldingManager? foldingManager,
-    int overscan = 3,
-  }) {
-    if (lineHeightTree.length == 0) {
-      return const VirtualLayoutSlice(
-        firstVisibleLine: 0,
-        lastVisibleLine: 0,
-        firstRenderedLine: 0,
-        lastRenderedLine: 0,
-        topOffset: 0.0,
-        totalHeight: 0.0,
-        visibleLineIndices: [],
+/// Virtual position within the editor layout (virtual row and virtual column).
+final class VirtualPosition {
+  /// 0-based virtual row index.
+  final int virtualRow;
+
+  /// 0-based column index within the virtual row slice.
+  final int virtualColumn;
+
+  /// Creates a [VirtualPosition].
+  const VirtualPosition({
+    required this.virtualRow,
+    required this.virtualColumn,
+  });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is VirtualPosition &&
+        other.virtualRow == virtualRow &&
+        other.virtualColumn == virtualColumn;
+  }
+
+  @override
+  int get hashCode => Object.hash(virtualRow, virtualColumn);
+
+  @override
+  String toString() =>
+      'VirtualPosition(vRow: $virtualRow, vCol: $virtualColumn)';
+}
+
+/// Calculator that maps logical document positions to virtual layout rows with soft wrapping support.
+final class VirtualLayoutCalculator {
+  /// Line wrapping engine instance.
+  final LineWrappingEngine lineWrappingEngine;
+
+  final List<VirtualRowInfo> _virtualRows = [];
+  final List<int> _lineToFirstVirtualRow = [];
+  final List<List<TextLineSlice>> _lineSlices = [];
+
+  /// Creates a [VirtualLayoutCalculator].
+  VirtualLayoutCalculator({
+    this.lineWrappingEngine = const LineWrappingEngine(),
+  });
+
+  /// Computes the virtual layout mapping for [documentLines].
+  void computeLayout(List<String> documentLines) {
+    _virtualRows.clear();
+    _lineToFirstVirtualRow.clear();
+    _lineSlices.clear();
+
+    if (documentLines.isEmpty) {
+      final defaultSlice = TextLineSlice(
+        lineIndex: 0,
+        sliceIndex: 0,
+        startColumn: 0,
+        endColumn: 0,
+        content: '',
       );
+      _virtualRows.add(
+        VirtualRowInfo(
+          virtualRowIndex: 0,
+          lineIndex: 0,
+          sliceIndex: 0,
+          slice: defaultSlice,
+        ),
+      );
+      _lineToFirstVirtualRow.add(0);
+      _lineSlices.add([defaultSlice]);
+      return;
     }
 
-    final totalHeight = lineHeightTree.totalHeight;
-    final clampedScrollTop = scrollTop.clamp(0.0, totalHeight > 0 ? totalHeight : 0.0);
-    final bottomY = clampedScrollTop + viewportHeight;
+    int currentVirtualRow = 0;
+    for (int lineIdx = 0; lineIdx < documentLines.length; lineIdx++) {
+      final lineText = documentLines[lineIdx];
+      final slices = lineWrappingEngine.wrapLine(lineText, lineIdx);
 
-    int firstVis = lineHeightTree.lineAtHeight(clampedScrollTop);
-    int lastVis = lineHeightTree.lineAtHeight(bottomY);
+      _lineToFirstVirtualRow.add(currentVirtualRow);
+      _lineSlices.add(slices);
 
-    if (firstVis < 0) firstVis = 0;
-    if (lastVis >= lineHeightTree.length) lastVis = lineHeightTree.length - 1;
-    if (lastVis < firstVis) lastVis = firstVis;
+      for (int sliceIdx = 0; sliceIdx < slices.length; sliceIdx++) {
+        _virtualRows.add(
+          VirtualRowInfo(
+            virtualRowIndex: currentVirtualRow++,
+            lineIndex: lineIdx,
+            sliceIndex: sliceIdx,
+            slice: slices[sliceIdx],
+          ),
+        );
+      }
+    }
+  }
 
-    int firstRendered = (firstVis - overscan).clamp(0, lineHeightTree.length - 1);
-    int lastRendered = (lastVis + overscan).clamp(0, lineHeightTree.length - 1);
+  /// Total number of virtual rows in the layout.
+  int get totalVirtualRows => _virtualRows.length;
 
-    final visibleIndices = <int>[];
-    for (int i = firstRendered; i <= lastRendered; i++) {
-      if (foldingManager == null || !foldingManager.isLineHidden(i)) {
-        visibleIndices.add(i);
+  /// Gets row info for virtual row [virtualRow].
+  VirtualRowInfo getVirtualRowInfo(int virtualRow) {
+    if (_virtualRows.isEmpty) {
+      final defaultSlice = TextLineSlice(
+        lineIndex: 0,
+        sliceIndex: 0,
+        startColumn: 0,
+        endColumn: 0,
+        content: '',
+      );
+      return VirtualRowInfo(
+        virtualRowIndex: 0,
+        lineIndex: 0,
+        sliceIndex: 0,
+        slice: defaultSlice,
+      );
+    }
+    final safeIndex = virtualRow.clamp(0, _virtualRows.length - 1);
+    return _virtualRows[safeIndex];
+  }
+
+  /// Maps a document [TextPosition] to a [VirtualPosition].
+  VirtualPosition documentToVirtualPosition(TextPosition docPosition) {
+    if (_lineToFirstVirtualRow.isEmpty) {
+      return const VirtualPosition(virtualRow: 0, virtualColumn: 0);
+    }
+
+    final safeLine = docPosition.line.clamp(
+      0,
+      _lineToFirstVirtualRow.length - 1,
+    );
+    final firstVRow = _lineToFirstVirtualRow[safeLine];
+    final slices = _lineSlices[safeLine];
+
+    int targetSliceIndex = 0;
+    for (int i = 0; i < slices.length; i++) {
+      final s = slices[i];
+      if (docPosition.column >= s.startColumn &&
+          docPosition.column <= s.endColumn) {
+        if (docPosition.column == s.endColumn && i < slices.length - 1) {
+          targetSliceIndex = i + 1;
+        } else {
+          targetSliceIndex = i;
+        }
+        break;
+      }
+      if (docPosition.column > s.endColumn) {
+        targetSliceIndex = i;
       }
     }
 
-    final topOffset = lineHeightTree.getLineTop(firstRendered);
-
-    return VirtualLayoutSlice(
-      firstVisibleLine: firstVis,
-      lastVisibleLine: lastVis,
-      firstRenderedLine: firstRendered,
-      lastRenderedLine: lastRendered,
-      topOffset: topOffset,
-      totalHeight: totalHeight,
-      visibleLineIndices: visibleIndices,
+    final matchedSlice = slices[targetSliceIndex];
+    final vRow = firstVRow + targetSliceIndex;
+    final vCol = (docPosition.column - matchedSlice.startColumn).clamp(
+      0,
+      matchedSlice.content.length,
     );
+
+    return VirtualPosition(virtualRow: vRow, virtualColumn: vCol);
+  }
+
+  /// Maps a [VirtualPosition] back to a document [TextPosition].
+  TextPosition virtualToDocumentPosition(VirtualPosition virtualPos) {
+    final rowInfo = getVirtualRowInfo(virtualPos.virtualRow);
+    final slice = rowInfo.slice;
+    final docCol = (slice.startColumn + virtualPos.virtualColumn).clamp(
+      slice.startColumn,
+      slice.endColumn,
+    );
+    return TextPosition(rowInfo.lineIndex, docCol);
+  }
+
+  /// Gets all slices generated for document line [lineIndex].
+  List<TextLineSlice> getSlicesForLine(int lineIndex) {
+    if (lineIndex < 0 || lineIndex >= _lineSlices.length) {
+      return const [];
+    }
+    return List.unmodifiable(_lineSlices[lineIndex]);
   }
 }

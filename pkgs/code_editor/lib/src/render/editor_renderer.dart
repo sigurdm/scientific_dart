@@ -1,7 +1,8 @@
 import 'render_viewport.dart';
 
 /// Callback signature for renderer user interaction events (clicks, keypresses, scroll).
-typedef RenderEventListener = void Function(String eventType, Map<String, dynamic> data);
+typedef RenderEventListener =
+    void Function(String eventType, Map<String, dynamic> data);
 
 /// Abstract contract for editor presentation backends.
 abstract class EditorRenderer {

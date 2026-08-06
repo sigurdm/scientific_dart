@@ -31,13 +31,19 @@ class HistoryChangeEvent {
 
 /// Reactive event bus exposing document, selection, and history streams.
 class EditorEventBus {
-  final _documentChangeController = StreamController<DocumentChangeEvent>.broadcast();
-  final _selectionChangeController = StreamController<SelectionChangeEvent>.broadcast();
-  final _historyChangeController = StreamController<HistoryChangeEvent>.broadcast();
+  final _documentChangeController =
+      StreamController<DocumentChangeEvent>.broadcast();
+  final _selectionChangeController =
+      StreamController<SelectionChangeEvent>.broadcast();
+  final _historyChangeController =
+      StreamController<HistoryChangeEvent>.broadcast();
 
-  Stream<DocumentChangeEvent> get onDocumentChange => _documentChangeController.stream;
-  Stream<SelectionChangeEvent> get onSelectionChange => _selectionChangeController.stream;
-  Stream<HistoryChangeEvent> get onHistoryChange => _historyChangeController.stream;
+  Stream<DocumentChangeEvent> get onDocumentChange =>
+      _documentChangeController.stream;
+  Stream<SelectionChangeEvent> get onSelectionChange =>
+      _selectionChangeController.stream;
+  Stream<HistoryChangeEvent> get onHistoryChange =>
+      _historyChangeController.stream;
 
   void emitDocumentChange(DocumentChangeEvent event) {
     _documentChangeController.add(event);

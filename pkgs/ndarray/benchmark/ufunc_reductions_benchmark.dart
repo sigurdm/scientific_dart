@@ -1,4 +1,3 @@
-import 'dart:ffi';
 import 'package:ndarray/ndarray.dart';
 
 void main() {

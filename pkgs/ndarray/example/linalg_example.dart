@@ -21,7 +21,7 @@ void runMatrixInversionExample() {
   // inv() now executes high-performance LAPACK dgetrf + dgetri directly on the heap!
   final aInv = inv(a);
   print(
-    'Inverse Matrix A^-1:\n[${aInv.data.sublist(0, 2)}]\n[${aInv.data.sublist(2, 4)}]',
+    'Inverse Matrix A^-1:\n[${aInv.toList().sublist(0, 2)}]\n[${aInv.toList().sublist(2, 4)}]',
   );
   // Expected approx: [0.6, -0.7] and [-0.2, 0.4]
 }
@@ -51,7 +51,7 @@ void runCholeskyDecompositionExample() {
   final l = cholesky(a);
   print('Cholesky Lower Triangular Factor L:');
   print(
-    '[${l.data.sublist(0, 3)}]\n[${l.data.sublist(3, 6)}]\n[${l.data.sublist(6, 9)}]',
+    '[${l.toList().sublist(0, 3)}]\n[${l.toList().sublist(3, 6)}]\n[${l.toList().sublist(6, 9)}]',
   );
   // Expected: L = [[2, 0, 0], [6, 1, 0], [-8, 5, 3]]
 }
@@ -83,12 +83,12 @@ void runQRDecompositionExample() {
 
   print('Orthogonal Matrix Q:');
   print(
-    '[${q.data.sublist(0, 3)}]\n[${q.data.sublist(3, 6)}]\n[${q.data.sublist(6, 9)}]',
+    '[${q.toList().sublist(0, 3)}]\n[${q.toList().sublist(3, 6)}]\n[${q.toList().sublist(6, 9)}]',
   );
 
   print('Upper Triangular Matrix R:');
   print(
-    '[${r.data.sublist(0, 3)}]\n[${r.data.sublist(3, 6)}]\n[${r.data.sublist(6, 9)}]',
+    '[${r.toList().sublist(0, 3)}]\n[${r.toList().sublist(3, 6)}]\n[${r.toList().sublist(6, 9)}]',
   );
 }
 
@@ -110,14 +110,14 @@ void runSVDDecompositionExample() {
 
   print('Left Singular Vectors U (3x3 matrix):');
   print(
-    '[${u.data.sublist(0, 3)}]\n[${u.data.sublist(3, 6)}]\n[${u.data.sublist(6, 9)}]',
+    '[${u.toList().sublist(0, 3)}]\n[${u.toList().sublist(3, 6)}]\n[${u.toList().sublist(6, 9)}]',
   );
 
   print('Singular Values S (1D vector of length min(m,n)):');
-  print('${s.data}'); // length 2
+  print('${s.toList()}'); // length 2
 
   print('Right Singular Vectors V^T (Vh, 2x2 matrix):');
-  print('[${vh.data.sublist(0, 2)}]\n[${vh.data.sublist(2, 4)}]');
+  print('[${vh.toList().sublist(0, 2)}]\n[${vh.toList().sublist(2, 4)}]');
 
   res.dispose();
   a.dispose();
@@ -154,10 +154,10 @@ void runBatchedMatmulStackExample() {
   );
 
   print('Output Head 0 (Expected all 1.5s and 3.0s):');
-  print('Row 0: [${outputs.data.sublist(0, 2)}]');
-  print('Row 1: [${outputs.data.sublist(2, 4)}]');
+  print('Row 0: [${outputs.toList().sublist(0, 2)}]');
+  print('Row 1: [${outputs.toList().sublist(2, 4)}]');
 
   print('Output Head 1 (Expected all 6.0s and 12.0s):');
-  print('Row 0: [${outputs.data.sublist(4, 6)}]');
-  print('Row 1: [${outputs.data.sublist(6, 8)}]');
+  print('Row 0: [${outputs.toList().sublist(4, 6)}]');
+  print('Row 1: [${outputs.toList().sublist(6, 8)}]');
 }

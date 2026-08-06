@@ -109,7 +109,7 @@ NDArray<R> sqrt<T, R>(
         cStridesRes,
         cShape,
         rank,
-        ffi.nullptr,
+        maskHolder.pointer,
       );
     } else {
       s_sqrt_complex64(
@@ -119,7 +119,7 @@ NDArray<R> sqrt<T, R>(
         cStridesRes,
         cShape,
         rank,
-        ffi.nullptr,
+        maskHolder.pointer,
       );
     }
     return result;
@@ -133,14 +133,18 @@ NDArray<R> sqrt<T, R>(
     final offset = temp.offsetElements;
     final resOffset = result.offsetElements;
     for (var i = 0; i < temp.size; i++) {
-      rData[resOffset + i] = math.sqrt(tempNum.data[offset + i].toDouble());
+      if (maskHolder.pointer == ffi.nullptr || maskHolder.pointer[i] != 0) {
+        rData[resOffset + i] = math.sqrt(tempNum.data[offset + i].toDouble());
+      }
     }
   } else {
-    final tempOut = NDArray.create(result.shape, result.dtype);
+    final tempOut = result.copy();
     final rData = tempOut.data as List<double>;
     final offset = temp.offsetElements;
     for (var i = 0; i < temp.size; i++) {
-      rData[i] = math.sqrt(tempNum.data[offset + i].toDouble());
+      if (maskHolder.pointer == ffi.nullptr || maskHolder.pointer[i] != 0) {
+        rData[i] = math.sqrt(tempNum.data[offset + i].toDouble());
+      }
     }
     tempOut.copy(out: result);
     tempOut.dispose();

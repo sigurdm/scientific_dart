@@ -334,7 +334,8 @@ NDArray<R> tensordot<Ta, Tb, R>(
       res.copy(out: out);
       return out;
     }
-    return _asTyped<R>(res.detachToParentScope());
+    final resCopy = res.copy();
+    return _asTyped<R>(resCopy.detachToParentScope());
   });
 }
 
@@ -1278,7 +1279,8 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             finalRes.copy(out: out);
             return out;
           }
-          return _asTyped<R>(finalRes.detachToParentScope());
+          final resCopy = finalRes.copy();
+          return _asTyped<R>(resCopy.detachToParentScope());
         }
       }
     }

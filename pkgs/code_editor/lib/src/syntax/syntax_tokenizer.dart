@@ -6,10 +6,7 @@ class LineTokenizationResult {
   final List<SyntaxToken> tokens;
   final LineState endState;
 
-  const LineTokenizationResult({
-    required this.tokens,
-    required this.endState,
-  });
+  const LineTokenizationResult({required this.tokens, required this.endState});
 }
 
 /// Abstract line tokenization interface.

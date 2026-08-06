@@ -164,20 +164,21 @@ List<NDArray<double>> ogrid(
     throw ArgumentError('ranges must not be empty.');
   }
 
-  final k = ranges.length;
-  final results = <NDArray<double>>[];
+  return NDArray.scope(() {
+    final k = ranges.length;
+    final results = <NDArray<double>>[];
 
-  for (var i = 0; i < k; i++) {
-    final arr1D = _generate1DCoordinate(ranges[i], dtype);
-    final shape = List<int>.filled(k, 1);
-    shape[i] = arr1D.size;
+    for (var i = 0; i < k; i++) {
+      final arr1D = _generate1DCoordinate(ranges[i], dtype);
+      final shape = List<int>.filled(k, 1);
+      shape[i] = arr1D.size;
 
-    final reshaped = arr1D.reshape(shape);
-    reshaped.detachToParentScope();
-    results.add(reshaped);
-  }
+      final reshaped = arr1D.reshape(shape);
+      results.add(reshaped.copy().detachToParentScope());
+    }
 
-  return results;
+    return results;
+  });
 }
 
 /// Returns a dense multi-dimensional mesh-grid.
@@ -210,53 +211,53 @@ NDArray<double> mgrid(
     throw ArgumentError('ranges must not be empty.');
   }
 
-  final k = ranges.length;
+  return NDArray.scope(() {
+    final k = ranges.length;
 
-  // 1. Generate 1D coordinates to determine shape of the grid
-  final allCoords = <List<double>>[];
-  final gridShape = <int>[];
+    // 1. Generate 1D coordinates to determine shape of the grid
+    final allCoords = <List<double>>[];
+    final gridShape = <int>[];
 
-  for (var i = 0; i < k; i++) {
-    final arr1D = _generate1DCoordinate(ranges[i], dtype);
-    allCoords.add(arr1D.toList());
-    gridShape.add(arr1D.size);
-    arr1D.dispose();
-  }
-
-  // 2. Allocate the dense result array of shape [k, d1, d2, ..., dk]
-  final outputShape = [k, ...gridShape];
-  final result = NDArray<double>.create(outputShape, dtype);
-  final gridStrides = NDArray.computeCStrides(gridShape);
-  final gridSize = gridShape.isEmpty ? 1 : gridShape.reduce((a, b) => a * b);
-
-  // 3. Walk recursively to fill coordinates in-place
-  for (var i = 0; i < k; i++) {
-    final coords = allCoords[i];
-    final gridOffset = i * gridSize;
-
-    void walk(int dim, int currentOffset, double? val) {
-      if (dim == k) {
-        result.data[gridOffset + currentOffset] = val!;
-        return;
-      }
-
-      final size = gridShape[dim];
-      final stride = gridStrides[dim];
-
-      if (dim == i) {
-        for (var c = 0; c < size; c++) {
-          walk(dim + 1, currentOffset + c * stride, coords[c]);
-        }
-      } else {
-        for (var c = 0; c < size; c++) {
-          walk(dim + 1, currentOffset + c * stride, val);
-        }
-      }
+    for (var i = 0; i < k; i++) {
+      final arr1D = _generate1DCoordinate(ranges[i], dtype);
+      allCoords.add(arr1D.toList());
+      gridShape.add(arr1D.size);
     }
 
-    walk(0, 0, null);
-  }
+    // 2. Allocate the dense result array of shape [k, d1, d2, ..., dk]
+    final outputShape = [k, ...gridShape];
+    final result = NDArray<double>.create(outputShape, dtype);
+    final gridStrides = NDArray.computeCStrides(gridShape);
+    final gridSize = gridShape.isEmpty ? 1 : gridShape.reduce((a, b) => a * b);
 
-  result.detachToParentScope();
-  return result;
+    // 3. Walk recursively to fill coordinates in-place
+    for (var i = 0; i < k; i++) {
+      final coords = allCoords[i];
+      final gridOffset = i * gridSize;
+
+      void walk(int dim, int currentOffset, double? val) {
+        if (dim == k) {
+          result.data[gridOffset + currentOffset] = val!;
+          return;
+        }
+
+        final size = gridShape[dim];
+        final stride = gridStrides[dim];
+
+        if (dim == i) {
+          for (var c = 0; c < size; c++) {
+            walk(dim + 1, currentOffset + c * stride, coords[c]);
+          }
+        } else {
+          for (var c = 0; c < size; c++) {
+            walk(dim + 1, currentOffset + c * stride, val);
+          }
+        }
+      }
+
+      walk(0, 0, null);
+    }
+
+    return result.detachToParentScope();
+  });
 }

@@ -1,7 +1,4 @@
-enum BufferType {
-  original,
-  add,
-}
+enum BufferType { original, add }
 
 /// Buffer storage for original text content.
 class OriginalBuffer {

@@ -8,7 +8,7 @@ class PieceTreeTextBuffer implements TextBuffer {
   PieceNode? root;
 
   PieceTreeTextBuffer(String initialContent)
-      : originalBuffer = OriginalBuffer(initialContent) {
+    : originalBuffer = OriginalBuffer(initialContent) {
     if (initialContent.isNotEmpty) {
       final lineStarts = PieceNode.findLineStarts(initialContent);
       root = PieceNode(
@@ -33,6 +33,9 @@ class PieceTreeTextBuffer implements TextBuffer {
     return getTextInRange(0, length);
   }
 
+  /// Returns text content split into document lines.
+  List<String> get lines => text.split('\n');
+
   @override
   String getTextInRange(int startOffset, int reqLength) {
     if (reqLength <= 0 || root == null) return '';
@@ -45,7 +48,12 @@ class PieceTreeTextBuffer implements TextBuffer {
     return sb.toString();
   }
 
-  void _collectText(PieceNode? node, int offset, int remainingLength, StringBuffer sb) {
+  void _collectText(
+    PieceNode? node,
+    int offset,
+    int remainingLength,
+    StringBuffer sb,
+  ) {
     if (node == null || remainingLength <= 0) return;
 
     final leftLength = node.left?.subtreeLength ?? 0;
@@ -93,7 +101,9 @@ class PieceTreeTextBuffer implements TextBuffer {
       throw RangeError.range(lineIndex, 0, lineCount - 1, 'lineIndex');
     }
     final start = getLineOffset(lineIndex);
-    final end = (lineIndex + 1 < lineCount) ? getLineOffset(lineIndex + 1) : length;
+    final end = (lineIndex + 1 < lineCount)
+        ? getLineOffset(lineIndex + 1)
+        : length;
     return getTextInRange(start, end - start);
   }
 
@@ -130,7 +140,9 @@ class PieceTreeTextBuffer implements TextBuffer {
   int getLineLength(int lineIndex) {
     if (lineIndex < 0 || lineIndex >= lineCount) return 0;
     final start = getLineOffset(lineIndex);
-    final end = (lineIndex + 1 < lineCount) ? getLineOffset(lineIndex + 1) : length;
+    final end = (lineIndex + 1 < lineCount)
+        ? getLineOffset(lineIndex + 1)
+        : length;
     return end - start;
   }
 
@@ -168,7 +180,8 @@ class PieceTreeTextBuffer implements TextBuffer {
     }
 
     totalLines += node.lineFeedCount;
-    return totalLines + _countLineFeedsBeforeOffset(node.right, relOffset - node.length);
+    return totalLines +
+        _countLineFeedsBeforeOffset(node.right, relOffset - node.length);
   }
 
   @override
@@ -187,7 +200,10 @@ class PieceTreeTextBuffer implements TextBuffer {
     final codePrev = full.codeUnitAt(offset - 1);
     final codeCurr = full.codeUnitAt(offset);
 
-    if (codePrev >= 0xD800 && codePrev <= 0xDBFF && codeCurr >= 0xDC00 && codeCurr <= 0xDFFF) {
+    if (codePrev >= 0xD800 &&
+        codePrev <= 0xDBFF &&
+        codeCurr >= 0xDC00 &&
+        codeCurr <= 0xDFFF) {
       // Split lands inside surrogate pair, move after low surrogate
       return offset + 1;
     }
@@ -221,7 +237,9 @@ class PieceTreeTextBuffer implements TextBuffer {
   void delete(int offset, int deleteLength) {
     if (deleteLength <= 0 || root == null) return;
     var startOffset = _adjustOffsetForSurrogatePair(offset).clamp(0, length);
-    var endOffset = _adjustOffsetForSurrogatePair(offset + deleteLength).clamp(0, length);
+    var endOffset = _adjustOffsetForSurrogatePair(
+      offset + deleteLength,
+    ).clamp(0, length);
 
     if (endOffset <= startOffset) return;
 
@@ -243,24 +261,28 @@ class PieceTreeTextBuffer implements TextBuffer {
           // Keep left chunk
           final leftLen = startOffset - pStart;
           final chunkText = _getNodeText(p, p.start, leftLen);
-          newPieces.add(PieceNode(
-            bufferType: p.bufferType,
-            start: p.start,
-            length: leftLen,
-            lineStarts: PieceNode.findLineStarts(chunkText),
-          ));
+          newPieces.add(
+            PieceNode(
+              bufferType: p.bufferType,
+              start: p.start,
+              length: leftLen,
+              lineStarts: PieceNode.findLineStarts(chunkText),
+            ),
+          );
         }
         if (endOffset < pEnd) {
           // Keep right chunk
           final rightSkip = endOffset - pStart;
           final rightLen = pEnd - endOffset;
           final chunkText = _getNodeText(p, p.start + rightSkip, rightLen);
-          newPieces.add(PieceNode(
-            bufferType: p.bufferType,
-            start: p.start + rightSkip,
-            length: rightLen,
-            lineStarts: PieceNode.findLineStarts(chunkText),
-          ));
+          newPieces.add(
+            PieceNode(
+              bufferType: p.bufferType,
+              start: p.start + rightSkip,
+              length: rightLen,
+              lineStarts: PieceNode.findLineStarts(chunkText),
+            ),
+          );
         }
       }
       currentOffset = pEnd;
@@ -284,12 +306,14 @@ class PieceTreeTextBuffer implements TextBuffer {
         final leftLen = offset - pStart;
         if (leftLen > 0) {
           final leftText = _getNodeText(p, p.start, leftLen);
-          newPieces.add(PieceNode(
-            bufferType: p.bufferType,
-            start: p.start,
-            length: leftLen,
-            lineStarts: PieceNode.findLineStarts(leftText),
-          ));
+          newPieces.add(
+            PieceNode(
+              bufferType: p.bufferType,
+              start: p.start,
+              length: leftLen,
+              lineStarts: PieceNode.findLineStarts(leftText),
+            ),
+          );
         }
 
         newPieces.add(newNode);
@@ -297,12 +321,14 @@ class PieceTreeTextBuffer implements TextBuffer {
         final rightLen = pEnd - offset;
         if (rightLen > 0) {
           final rightText = _getNodeText(p, p.start + leftLen, rightLen);
-          newPieces.add(PieceNode(
-            bufferType: p.bufferType,
-            start: p.start + leftLen,
-            length: rightLen,
-            lineStarts: PieceNode.findLineStarts(rightText),
-          ));
+          newPieces.add(
+            PieceNode(
+              bufferType: p.bufferType,
+              start: p.start + leftLen,
+              length: rightLen,
+              lineStarts: PieceNode.findLineStarts(rightText),
+            ),
+          );
         }
 
         inserted = true;
@@ -324,14 +350,17 @@ class PieceTreeTextBuffer implements TextBuffer {
     void traverse(PieceNode? node) {
       if (node == null) return;
       traverse(node.left);
-      list.add(PieceNode(
-        bufferType: node.bufferType,
-        start: node.start,
-        length: node.length,
-        lineStarts: node.lineStarts,
-      ));
+      list.add(
+        PieceNode(
+          bufferType: node.bufferType,
+          start: node.start,
+          length: node.length,
+          lineStarts: node.lineStarts,
+        ),
+      );
       traverse(node.right);
     }
+
     traverse(root);
     return list;
   }
@@ -346,7 +375,11 @@ class PieceTreeTextBuffer implements TextBuffer {
       if (current.bufferType == next.bufferType &&
           current.start + current.length == next.start) {
         // Merge contiguous pieces
-        final mergedText = _getNodeText(current, current.start, current.length + next.length);
+        final mergedText = _getNodeText(
+          current,
+          current.start,
+          current.length + next.length,
+        );
         current = PieceNode(
           bufferType: current.bufferType,
           start: current.start,
@@ -368,7 +401,12 @@ class PieceTreeTextBuffer implements TextBuffer {
       return;
     }
 
-    PieceNode buildBalancedTree(List<PieceNode> nodes, int start, int end, PieceNode? parent) {
+    PieceNode buildBalancedTree(
+      List<PieceNode> nodes,
+      int start,
+      int end,
+      PieceNode? parent,
+    ) {
       final mid = (start + end) ~/ 2;
       final node = nodes[mid];
       node.parent = parent;

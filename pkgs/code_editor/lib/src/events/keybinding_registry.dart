@@ -32,7 +32,12 @@ class KeyCombination {
     for (var i = 0; i < parts.length; i++) {
       final part = parts[i];
       final lower = part.toLowerCase();
-      if (i == parts.length - 1 && lower != 'ctrl' && lower != 'alt' && lower != 'shift' && lower != 'cmd' && lower != 'meta') {
+      if (i == parts.length - 1 &&
+          lower != 'ctrl' &&
+          lower != 'alt' &&
+          lower != 'shift' &&
+          lower != 'cmd' &&
+          lower != 'meta') {
         key = part;
       } else {
         switch (lower) {
@@ -59,13 +64,7 @@ class KeyCombination {
       }
     }
 
-    return KeyCombination(
-      key,
-      ctrl: ctrl,
-      alt: alt,
-      shift: shift,
-      meta: meta,
-    );
+    return KeyCombination(key, ctrl: ctrl, alt: alt, shift: shift, meta: meta);
   }
 
   @override
@@ -80,13 +79,7 @@ class KeyCombination {
           meta == other.meta;
 
   @override
-  int get hashCode => Object.hash(
-        key.toLowerCase(),
-        ctrl,
-        alt,
-        shift,
-        meta,
-      );
+  int get hashCode => Object.hash(key.toLowerCase(), ctrl, alt, shift, meta);
 
   @override
   String toString() {
@@ -118,7 +111,11 @@ class KeybindingRegistry {
   final Map<KeyCombination, List<KeyCommandBinding>> _bindings = {};
 
   /// Register a command action for a given key combination.
-  void register(KeyCombination combination, String commandId, void Function() action) {
+  void register(
+    KeyCombination combination,
+    String commandId,
+    void Function() action,
+  ) {
     final binding = KeyCommandBinding(
       combination: combination,
       commandId: commandId,

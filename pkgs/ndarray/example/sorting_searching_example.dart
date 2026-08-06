@@ -27,32 +27,29 @@ void runNativeSortExample() {
   // Bypasses Dart, runs native libc qsort directly on the heap!
   final sortedRows = sort(mat, axis: 1);
   print('Sorted along rows (axis 1):');
-  print('Row 0: ${sortedRows.data.sublist(0, 3)}'); // [1.0, 3.0, 5.0]
-  print('Row 1: ${sortedRows.data.sublist(3, 6)}'); // [2.0, 4.0, 6.0]
+  print('Row 0: ${sortedRows.toList().sublist(0, 3)}'); // [1.0, 3.0, 5.0]
+  print('Row 1: ${sortedRows.toList().sublist(3, 6)}'); // [2.0, 4.0, 6.0]
 
   // Sort along axis 0 (columns across rows)
   // Employs the axis-swapping trick to leverage qsort natively!
   final sortedCols = sort(mat, axis: 0);
   print('Sorted along columns (axis 0):');
-  print('Row 0: ${sortedCols.data.sublist(0, 3)}'); // [2.0, 1.0, 3.0]
-  print('Row 1: ${sortedCols.data.sublist(3, 6)}'); // [5.0, 6.0, 4.0]
+  print('Row 0: ${sortedCols.toList().sublist(0, 3)}'); // [2.0, 1.0, 3.0]
+  print('Row 1: ${sortedCols.toList().sublist(3, 6)}'); // [5.0, 6.0, 4.0]
 }
 
 void runComplexSortExample() {
   print('\n--- NumPy-Compliant Complex Number Lexicographical Sort ---');
   final a = NDArray<Complex>.create([4], DType.complex128);
   // Lexicographical rule: sorted by real part, then by imaginary part if reals match!
-  a.data[0] = Complex(2.0, 5.0);
-  a.data[1] = Complex(1.0, 10.0);
-  a.data[2] = Complex(
-    2.0,
-    1.0,
-  ); // shares real=2.0 with a[0] but has lower imag=1.0
-  a.data[3] = Complex(0.0, 0.0);
-  print('Original complex array: ${a.data}');
+  a[0] = Complex(2.0, 5.0);
+  a[1] = Complex(1.0, 10.0);
+  a[2] = Complex(2.0, 1.0); // shares real=2.0 with a[0] but has lower imag=1.0
+  a[3] = Complex(0.0, 0.0);
+  print('Original complex array: ${a.toList()}');
 
   final b = sort(a);
-  print('Sorted complex array (Real first, then Imag): ${b.data}');
+  print('Sorted complex array (Real first, then Imag): ${b.toList()}');
   // Expected: [Complex(0,0), Complex(1,10), Complex(2,1), Complex(2,5)]
 }
 
@@ -61,18 +58,18 @@ void runArgsortExample() {
   final a = NDArray.fromList(Float64List.fromList([50.0, 10.0, 40.0, 20.0]), [
     4,
   ], DType.float64);
-  print('Array a: ${a.data}');
+  print('Array a: ${a.toList()}');
 
   // argsort returns the indices that would sort the array
   final indices = argsort(a);
   print(
-    'Argsort indices: ${indices.data}',
+    'Argsort indices: ${indices.toList()}',
   ); // [1, 3, 2, 0] -> element 10.0 is smallest, then 20.0, etc.
 
   // We can use take to reconstruct the sorted array via these indices!
-  final sorted = a.take(indices.data.cast<int>());
+  final sorted = a.take(indices.toList().cast<int>());
   print(
-    'Reconstructed sorted array via take: ${sorted.data}',
+    'Reconstructed sorted array via take: ${sorted.toList()}',
   ); // [10.0, 20.0, 40.0, 50.0]
 }
 
@@ -88,11 +85,11 @@ void runWhereTernaryExample() {
 
   // Trigger hardware SIMD blending if supported by native implementation
   final result = where(cond, x, y);
-  print('Condition: ${cond.data}');
-  print('x: ${x.data}');
-  print('y: ${y.data}');
+  print('Condition: ${cond.toList()}');
+  print('x: ${x.toList()}');
+  print('y: ${y.toList()}');
   print(
-    'where(cond, x, y) SIMD result: ${result.data}',
+    'where(cond, x, y) SIMD result: ${result.toList()}',
   ); // [10.0, -2.0, -3.0, 40.0]
 }
 
@@ -110,8 +107,8 @@ void runNonzeroAndCountingExample() {
   // nonzero returns coordinate arrays for each axis
   final nzCoords = nonzero(mat);
   print('nonzero returned ${nzCoords.length} coordinate arrays:');
-  print('Axis 0 (row indices): ${nzCoords[0].data}'); // [0, 1, 1]
-  print('Axis 1 (col indices): ${nzCoords[1].data}'); // [1, 0, 2]
+  print('Axis 0 (row indices): ${nzCoords[0].toList()}'); // [0, 1, 1]
+  print('Axis 1 (col indices): ${nzCoords[1].toList()}'); // [1, 0, 2]
   // The coordinates are: (0,1)=7, (1,0)=3, (1,2)=5!
 }
 
@@ -134,7 +131,7 @@ void runArgMinMaxExample() {
   // Axis reduction argmax
   final axis0Max = argmax(mat, axis: 0); // find max row index for each column
   print(
-    'argmax along axis 0 (columns max): ${axis0Max.data}',
+    'argmax along axis 0 (columns max): ${axis0Max.toList()}',
   ); // [1, 0, 1] -> col0 max row is 1(40.0), col1 row 0(30.0), col2 row 1(60.0)
 }
 

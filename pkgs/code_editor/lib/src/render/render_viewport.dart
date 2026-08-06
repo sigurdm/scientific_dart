@@ -1,5 +1,9 @@
 import 'package:meta/meta.dart';
 
+import '../lsp/completion_popup_model.dart';
+import '../lsp/hover_tooltip_model.dart';
+import '../lsp/lsp_diagnostic_adapter.dart';
+
 /// Style properties for a rendered token.
 @immutable
 class RenderTokenStyle {
@@ -29,7 +33,8 @@ class RenderTokenStyle {
           underline == other.underline;
 
   @override
-  int get hashCode => Object.hash(foreground, background, bold, italic, underline);
+  int get hashCode =>
+      Object.hash(foreground, background, bold, italic, underline);
 }
 
 /// A token representing a styled segment of text within a line.
@@ -68,7 +73,7 @@ class RenderToken {
 enum FoldIndicatorState { none, expanded, collapsed }
 
 /// Diagnostic level indicators in the gutter.
-enum DiagnosticSeverity { none, hint, info, warning, error }
+enum GutterDiagnosticSeverity { none, hint, info, warning, error }
 
 /// Git diff indicators in the gutter.
 enum GitDiffStatus { none, added, modified, deleted }
@@ -79,14 +84,14 @@ class GutterItem {
   final int lineIndex;
   final String lineNumberText;
   final FoldIndicatorState foldState;
-  final DiagnosticSeverity diagnosticSeverity;
+  final GutterDiagnosticSeverity diagnosticSeverity;
   final GitDiffStatus gitDiffStatus;
 
   const GutterItem({
     required this.lineIndex,
     required this.lineNumberText,
     this.foldState = FoldIndicatorState.none,
-    this.diagnosticSeverity = DiagnosticSeverity.none,
+    this.diagnosticSeverity = GutterDiagnosticSeverity.none,
     this.gitDiffStatus = GitDiffStatus.none,
   });
 }
@@ -97,10 +102,7 @@ class RenderGutter {
   final double width;
   final List<GutterItem> items;
 
-  const RenderGutter({
-    required this.width,
-    required this.items,
-  });
+  const RenderGutter({required this.width, required this.items});
 }
 
 /// Render model for a single line of text in the viewport.
@@ -200,6 +202,9 @@ class RenderViewport {
   final RenderGutter gutter;
   final double lineHeight;
   final double charWidth;
+  final List<DiagnosticSquiggle> squiggles;
+  final CompletionPopupModel? completionPopup;
+  final HoverTooltipModel? hoverTooltip;
 
   const RenderViewport({
     required this.width,
@@ -214,5 +219,8 @@ class RenderViewport {
     required this.gutter,
     required this.lineHeight,
     required this.charWidth,
+    this.squiggles = const [],
+    this.completionPopup,
+    this.hoverTooltip,
   });
 }

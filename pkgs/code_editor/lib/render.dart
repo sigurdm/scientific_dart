@@ -1,9 +1,8 @@
-/// Unified rendering abstractions and event bindings.
-///
-/// Defines the abstract [EditorRenderer] interface, immutable [RenderViewport]
-/// snapshot model, and platform-agnostic keybinding registry.
-library code_editor.render;
+/// Renderer backends and viewport snapshot models.
+library;
 
-export 'src/render/render_viewport.dart';
+export 'src/backends/flutter/flutter_renderer.dart';
+export 'src/backends/terminal/terminal_renderer.dart';
+export 'src/backends/terminal/vt100_encoder.dart';
 export 'src/render/editor_renderer.dart';
-export 'src/events/keybinding_registry.dart';
+export 'src/render/render_viewport.dart';

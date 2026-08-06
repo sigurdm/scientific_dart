@@ -29,7 +29,18 @@ pkgs/openblas/third_party/
 
 # Transient Local Test / Benchmark Run Outputs
 scratch/
+scratch_notebook/
+.local-chrome/
 
 # Local pub cache
 pub_cache/
+
+# Web compilation artifacts
+*.wasm
+*.wasm.map
+*.js.deps
+*.js.map
+*.mjs
+*.support.js
+editor_client.js
 

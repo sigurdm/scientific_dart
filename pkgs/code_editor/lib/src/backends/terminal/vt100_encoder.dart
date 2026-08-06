@@ -43,7 +43,9 @@ class Vt100Encoder {
   static (int r, int g, int b) parseHexColor(String hex) {
     var cleaned = hex.replaceAll('#', '').trim();
     if (cleaned.startsWith('rgba(') || cleaned.startsWith('rgb(')) {
-      final numbers = RegExp(r'\d+').allMatches(cleaned).map((m) => int.parse(m.group(0)!)).toList();
+      final numbers = RegExp(
+        r'\d+',
+      ).allMatches(cleaned).map((m) => int.parse(m.group(0)!)).toList();
       if (numbers.length >= 3) {
         return (numbers[0], numbers[1], numbers[2]);
       }

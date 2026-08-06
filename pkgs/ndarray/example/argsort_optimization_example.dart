@@ -13,16 +13,16 @@ void runArgsortSortingByKeysExample() {
   final names = ['Tablet', 'Keyboard', 'Mouse', 'Cable'];
 
   print('Product Names: $names');
-  print('Product Prices: ${prices.data}');
+  print('Product Prices: ${prices.toList()}');
 
   // We want to sort the product names based on their prices!
   // argsort returns indices that would sort the prices array:
   final indices = argsort(prices);
-  print('\nArgsort indices (sorted index mapping): ${indices.data}');
+  print('\nArgsort indices (sorted index mapping): ${indices.toList()}');
 
   // Map the names list according to the sorted indices!
-  final sortedNames = indices.data.map((idx) => names[idx]).toList();
-  final sortedPrices = indices.data.map((idx) => prices.data[idx]).toList();
+  final sortedNames = indices.toList().map((idx) => names[idx]).toList();
+  final sortedPrices = indices.toList().map((idx) => prices[idx]).toList();
 
   print('\n--- Sorted Results (By Price Ascending) ---');
   for (var i = 0; i < 4; i++) {

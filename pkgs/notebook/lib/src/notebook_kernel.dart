@@ -216,11 +216,15 @@ class NotebookKernel {
     final trimmed = code.trim();
     if (trimmed.isEmpty) return trimmed;
     try {
-      final formatter = DartFormatter(languageVersion: DartFormatter.latestLanguageVersion);
+      final formatter = DartFormatter(
+        languageVersion: DartFormatter.latestLanguageVersion,
+      );
       return formatter.format(trimmed).trim();
     } catch (_) {
       try {
-        final formatter = DartFormatter(languageVersion: DartFormatter.latestLanguageVersion);
+        final formatter = DartFormatter(
+          languageVersion: DartFormatter.latestLanguageVersion,
+        );
         return formatter.formatStatement(trimmed).trim();
       } catch (_) {
         return trimmed;

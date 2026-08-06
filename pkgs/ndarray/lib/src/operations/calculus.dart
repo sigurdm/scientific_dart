@@ -51,7 +51,9 @@ bool _listEquals(List a, List b) {
 /// The composite trapezoidal rule approximates the integral of a function by
 /// dividing the area under the curve into trapezoids:
 ///
-///   ∫_a^b f(x) dx ≈ ∑_{i=1}^{N-1} [ (f(x_{i-1}) + f(x_i)) / 2 ] * Δx_i
+/// \[
+/// \int_a^b f(x)\,dx \approx \sum_{i=1}^{N-1} \frac{f(x_{i-1}) + f(x_i)}{2} \Delta x_i
+/// \]
 ///
 /// This approximation is significantly more accurate than simple rectangular integration.
 ///
@@ -71,10 +73,10 @@ bool _listEquals(List a, List b) {
 /// - If [out] is provided, it must match the resolved shape and dtype.
 ///
 /// **Throws:**
-/// - [StateError] if [y] is disposed.
-/// - [ArgumentError] if [y] has an integer or boolean dtype.
-/// - [ArgumentError] if complex spacing is used with a real input array.
-/// - [ArgumentError] if [axis] is out of bounds or coordinate spacing length is mismatched.
+/// - It is an error if [y] or [out] is disposed.
+/// - It is an error if [y] has an integer or boolean dtype.
+/// - It is an error if complex spacing is used with a real input array.
+/// - It is an error if [axis] is out of bounds or coordinate spacing length is mismatched.
 ///
 /// **Example:**
 /// ```dart
@@ -392,13 +394,15 @@ NDArray<T> trapz<T extends Object>(
 /// The gradient is calculated using second-order accurate central differences
 /// for interior points:
 ///
-///   f'(x_i) ≈ [ f(x_{i+1}) - f(x_{i-1}) ] / [ x_{i+1} - x_{i-1} ]
+/// \[
+/// f'(x_i) \approx \frac{f(x_{i+1}) - f(x_{i-1})}{x_{i+1} - x_{i-1}}
+/// \]
 ///
 /// **Boundary accuracy ([edgeOrder]):**
 /// At the edges of the array, central differences cannot be used:
 /// - **`edgeOrder = 1` (First-order one-sided differences):**
-///   - Start boundary: `f'(x_0) ≈ [ f(x_1) - f(x_0) ] / [ x_1 - x_0 ]`
-///   - End boundary: `f'(x_{N-1}) ≈ [ f(x_{N-1}) - f(x_{N-2}) ] / [ x_{N-1} - x_{N-2} ]`
+///   - Start boundary: \(f'(x_0) \approx \frac{f(x_1) - f(x_0)}{x_1 - x_0}\)
+///   - End boundary: \(f'(x_{N-1}) \approx \frac{f(x_{N-1}) - f(x_{N-2})}{x_{N-1} - x_{N-2}}\)
 /// - **`edgeOrder = 2` (Second-order one-sided differences):**
 ///   Provides higher precision at the boundaries by utilizing three neighboring points.
 ///
@@ -418,11 +422,11 @@ NDArray<T> trapz<T extends Object>(
 /// - If [out] is provided, it must match the resolved shape and dtype.
 ///
 /// **Throws:**
-/// - [StateError] if [f] is disposed.
-/// - [ArgumentError] if [f] has an integer or boolean dtype.
-/// - [ArgumentError] if complex spacing is used with a real input array.
-/// - [ArgumentError] if [axis] is out of bounds or spacing is invalid.
-/// - [ArgumentError] if [edgeOrder] is not 1 or 2.
+/// - It is an error if [f] or [out] is disposed.
+/// - It is an error if [f] has an integer or boolean dtype.
+/// - It is an error if complex spacing is used with a real input array.
+/// - It is an error if [axis] is out of bounds or spacing is invalid.
+/// - It is an error if [edgeOrder] is not 1 or 2.
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose]** to prevent native leaks, unless executing inside a managed [NDArray.scope()].
@@ -782,12 +786,12 @@ NDArray<T> gradient<T extends Object>(
 /// - If provided, [spacings] length must match the number of axes being differentiated.
 ///
 /// **Throws:**
-/// - [StateError] if [f] is disposed.
-/// - [ArgumentError] if [f] has an integer or boolean dtype.
-/// - [ArgumentError] if [axis] contains out of bounds or duplicate indices.
-/// - [ArgumentError] if both [spacing] and [spacings] are provided.
-/// - [ArgumentError] if [spacings] length does not match the number of axes.
-/// - [ArgumentError] if [edgeOrder] is not 1 or 2.
+/// - It is an error if [f] is disposed.
+/// - It is an error if [f] has an integer or boolean dtype.
+/// - It is an error if [axis] contains out of bounds or duplicate indices.
+/// - It is an error if both [spacing] and [spacings] are provided.
+/// - It is an error if [spacings] length does not match the number of axes.
+/// - It is an error if [edgeOrder] is not 1 or 2.
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a list of new arrays on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose]** on all returned arrays in the list to prevent native leaks, unless executing inside a managed [NDArray.scope()].

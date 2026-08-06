@@ -36,8 +36,8 @@ void runNonzeroExtractionExample() {
   print('\nMapping coordinates to non-zero element values:');
   final count = rows.shape[0];
   for (var i = 0; i < count; i++) {
-    final r = rows.data[i];
-    final c = cols.data[i];
+    final r = rows[i];
+    final c = cols[i];
 
     // getCell retrieves the element in-place at the coordinates
     final val = grid.getCell([r, c]);

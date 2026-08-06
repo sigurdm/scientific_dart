@@ -66,12 +66,21 @@ enum SearchSide {
   right,
 }
 
-/// Returns [numSamples] (must be non-negative) evenly spaced samples, calculated over the interval `[start, stop]`.
+/// Returns [numSamples] evenly spaced samples, calculated over the interval `[start, stop]`.
 ///
 /// The endpoint of the interval can optionally be excluded.
 /// Supports [Complex] bounds for path generation in the complex plane.
 /// If [endpoint] is true, `stop` is the last sample. Otherwise, it is not included.
 /// If [dtype] is not provided, it defaults to [DType.complex128] if [T] is [Complex], [DType.int64] if [T] is [int], and [DType.float64] otherwise.
+///
+/// **Preconditions:**
+/// - [numSamples] must be non-negative.
+///
+/// **Throws:**
+/// - It is an error if [numSamples] is negative.
+///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
 ///
 /// **Example:**
 /// ```dart
@@ -95,9 +104,18 @@ NDArray<T> linspace<T>(
 
 /// Computes evenly spaced samples over a specified interval and returns them along with the step size.
 ///
-/// Returns a Record `(samples, step)`.
+/// Returns a record `(samples, step)`.
 /// If [endpoint] is true, `stop` is the last sample. Otherwise, it is not included.
 /// If [dtype] is not provided, it defaults to [DType.complex128] if [T] is [Complex], [DType.int64] if [T] is [int], and [DType.float64] otherwise.
+///
+/// **Preconditions:**
+/// - [numSamples] must be non-negative.
+///
+/// **Throws:**
+/// - It is an error if [numSamples] is negative.
+///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
 (NDArray<T>, T) linspaceWithStep<T>(
   T start,
   T stop,
@@ -129,16 +147,17 @@ NDArray<T> linspace<T>(
 /// print(grid.data); // [0.0, 10.0, 0.5, 10.5, 1.0, 11.0]
 /// ```
 ///
-/// **Parameters:**
-/// - [start]: The starting value(s) as an [NDArray].
-/// - [stop]: The end value(s) as an [NDArray].
-/// - [numSamples]: Number of samples to generate. Must be non-negative.
-/// - [endpoint]: If true, `stop` is the last sample. Otherwise, it is not included.
-/// - [axis]: The axis in the result to store the samples. Defaults to 0.
-/// - [dtype]: The type of the output array. If not provided, it defaults to:
-///   - [DType.complex128] if [T] is [Complex].
-///   - [DType.int64] if [T] is [int].
-///   - [DType.float64] otherwise.
+/// **Preconditions:**
+/// - [start] and [stop] must not be disposed.
+/// - [numSamples] must be positive.
+///
+/// **Throws:**
+/// - It is an error if [start] or [stop] is disposed.
+/// - It is an error if [numSamples] is not positive.
+/// - It is an error if [axis] is out of bounds.
+///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
 NDArray<T> linspaceGrid<T>(
   NDArray<T> start,
   NDArray<T> stop,
@@ -172,16 +191,17 @@ NDArray<T> linspaceGrid<T>(
 /// print(step.data); // [0.5, 1.0]
 /// ```
 ///
-/// **Parameters:**
-/// - [start]: The starting value(s) as an [NDArray].
-/// - [stop]: The end value(s) as an [NDArray].
-/// - [numSamples]: Number of samples to generate. Must be non-negative.
-/// - [endpoint]: If true, `stop` is the last sample. Otherwise, it is not included.
-/// - [axis]: The axis in the result to store the samples. Defaults to 0.
-/// - [dtype]: The type of the output array. If not provided, it defaults to:
-///   - [DType.complex128] if [T] is [Complex].
-///   - [DType.int64] if [T] is [int].
-///   - [DType.float64] otherwise.
+/// **Preconditions:**
+/// - [start] and [stop] must not be disposed.
+/// - [numSamples] must be positive.
+///
+/// **Throws:**
+/// - It is an error if [start] or [stop] is disposed.
+/// - It is an error if [numSamples] is not positive.
+/// - It is an error if [axis] is out of bounds.
+///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates new arrays on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
 (NDArray<T>, NDArray<T>) linspaceGridWithStep<T>(
   NDArray<T> start,
   NDArray<T> stop,
@@ -422,16 +442,14 @@ NDArray<T> linspaceGrid<T>(
 ///
 /// In linear space, the sequence starts at `base ** start` and ends with `base ** stop`.
 ///
-/// **Parameters:**
-/// - [start]: The starting value of the sequence.
-/// - [stop]: The end value of the sequence.
-/// - [numSamples]: Number of samples to generate. Must be non-negative.
-/// - [base]: The base of the log space. Defaults to 10.0.
-/// - [endpoint]: If true, `stop` is the last sample. Otherwise, it is not included.
-/// - [dtype]: The type of the output array. If not provided, it defaults to:
-///   - [DType.complex128] if [T] is [Complex].
-///   - [DType.int64] if [T] is [int].
-///   - [DType.float64] otherwise.
+/// **Preconditions:**
+/// - [numSamples] must be positive.
+///
+/// **Throws:**
+/// - It is an error if [numSamples] is not positive.
+///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
 NDArray<T> logspace<T>(
   T start,
   T stop,
@@ -563,15 +581,17 @@ NDArray<T> logspaceGrid<T extends Object>(
 ///
 /// This is similar to [logspace], but with the start and end points specified directly.
 ///
-/// **Parameters:**
-/// - [start]: The starting value of the sequence.
-/// - [stop]: The end value of the sequence.
-/// - [numSamples]: Number of samples to generate. Must be non-negative.
-/// - [endpoint]: If true, `stop` is the last sample. Otherwise, it is not included.
-/// - [dtype]: The type of the output array. If not provided, it defaults to:
-///   - [DType.complex128] if [T] is [Complex].
-///   - [DType.int64] if [T] is [int].
-///   - [DType.float64] otherwise.
+/// **Preconditions:**
+/// - [numSamples] must be positive.
+/// - [start] and [stop] must be non-zero and have the same sign.
+///
+/// **Throws:**
+/// - It is an error if [numSamples] is not positive.
+/// - It is an error if [start] or [stop] is zero.
+/// - It is an error if [start] and [stop] have different signs.
+///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
 NDArray<T> geomspace<T>(
   T start,
   T stop,

@@ -8,9 +8,9 @@ class LineHeightTree {
   int _length;
 
   LineHeightTree(int lineCount, {double defaultHeight = 20.0})
-      : _length = lineCount,
-        _heights = Float64List(lineCount),
-        _tree = Float64List(lineCount + 1) {
+    : _length = lineCount,
+      _heights = Float64List(lineCount),
+      _tree = Float64List(lineCount + 1) {
     if (lineCount > 0) {
       for (int i = 0; i < lineCount; i++) {
         _heights[i] = defaultHeight;

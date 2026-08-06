@@ -4,18 +4,27 @@ import '../scratch_arena.dart';
 import '../ndarray_bindings.dart' as bindings;
 
 /// Supported padding modes.
-enum PaddingMode {
+enum PadMode {
   constant,
   edge,
   reflect,
   symmetric,
   wrap,
   linearRamp,
-  maximum,
   mean,
   median,
-  minimum,
+  min,
+  max;
+
+  /// Alias for [min].
+  static const PadMode minimum = PadMode.min;
+
+  /// Alias for [max].
+  static const PadMode maximum = PadMode.max;
 }
+
+/// Backwards compatibility alias for [PadMode].
+typedef PaddingMode = PadMode;
 
 /// Represents padding widths before and after for each axis.
 final class PadWidth {
@@ -31,6 +40,9 @@ final class PadWidth {
   /// **Preconditions:**
   /// - [before] must be non-negative.
   /// - [after] must be non-negative if specified.
+  ///
+  /// **Throws:**
+  /// - It is an error if [before] or [after] is negative.
   factory PadWidth.all(int before, [int? after]) {
     RangeError.checkNotNegative(before, 'before');
     if (after != null) {
@@ -43,6 +55,9 @@ final class PadWidth {
   ///
   /// **Preconditions:**
   /// - All before and after widths must be non-negative.
+  ///
+  /// **Throws:**
+  /// - It is an error if any width in [widths] is negative.
   factory PadWidth.axes(List<(int before, int after)> widths) {
     for (final (before, after) in widths) {
       RangeError.checkNotNegative(before, 'before');
@@ -122,6 +137,9 @@ final class StatLength {
   /// **Preconditions:**
   /// - [before] must be positive.
   /// - [after] must be positive if specified.
+  ///
+  /// **Throws:**
+  /// - It is an error if [before] or [after] is not positive.
   factory StatLength.all(int before, [int? after]) {
     if (before <= 0) {
       throw ArgumentError.value(before, 'before', 'Must be positive');
@@ -136,6 +154,9 @@ final class StatLength {
   ///
   /// **Preconditions:**
   /// - All before and after lengths must be positive.
+  ///
+  /// **Throws:**
+  /// - It is an error if any length in [lengths] is not positive.
   factory StatLength.axes(List<(int before, int after)> lengths) {
     for (final (before, after) in lengths) {
       if (before <= 0) {
@@ -203,9 +224,9 @@ Object _getDefaultValue(DType dtype) {
 ///   must match the rank of the [array] when specified per-axis.
 ///
 /// **Throws:**
-/// - Throws [StateError] if [array] or [out] is disposed.
-/// - Throws [ArgumentError] if [array] is 0-dimensional, or if parameter
-///   dimensions mismatch.
+/// - It is an error if [array] or [out] is disposed.
+/// - It is an error if [array] is 0-dimensional.
+/// - It is an error if parameter dimensions mismatch.
 ///
 /// **Performance considerations:**
 /// - The operation performs padding sequentially axis-by-axis.
@@ -221,7 +242,7 @@ Object _getDefaultValue(DType dtype) {
 NDArray<T> pad<T extends Object>(
   NDArray<T> array,
   PadWidth padWidth, {
-  PaddingMode mode = PaddingMode.constant,
+  PadMode mode = PadMode.constant,
   PadValues<T>? constantValues,
   PadValues<T>? endValues,
   StatLength? statLength,
@@ -361,7 +382,7 @@ void _padAxis<T extends Object>(
   int axis,
   int padBefore,
   int padAfter,
-  PaddingMode mode,
+  PadMode mode,
   T constantBefore,
   T constantAfter,
   T endBefore,
@@ -375,7 +396,18 @@ void _padAxis<T extends Object>(
     final stridesSrcPtr = ScratchArena.copyInts(src.strides);
     final shapeDestPtr = ScratchArena.copyInts(dest.shape);
     final rank = src.rank;
-    final modeInt = mode.index;
+    final modeInt = switch (mode) {
+      PadMode.constant => 0,
+      PadMode.edge => 1,
+      PadMode.reflect => 2,
+      PadMode.symmetric => 3,
+      PadMode.wrap => 4,
+      PadMode.linearRamp => 5,
+      PadMode.max => 6,
+      PadMode.mean => 7,
+      PadMode.median => 8,
+      PadMode.min => 9,
+    };
 
     switch (src.dtype) {
       case DType.float64:
@@ -437,6 +469,25 @@ void _padAxis<T extends Object>(
         );
       case DType.int32:
         bindings.pad_axis_int32(
+          src.pointer.cast(),
+          shapeSrcPtr,
+          stridesSrcPtr,
+          dest.pointer.cast(),
+          shapeDestPtr,
+          rank,
+          axis,
+          padBefore,
+          padAfter,
+          modeInt,
+          constantBefore as int,
+          constantAfter as int,
+          endBefore as int,
+          endAfter as int,
+          statLengthBefore,
+          statLengthAfter,
+        );
+      case DType.int16:
+        bindings.pad_axis_int16(
           src.pointer.cast(),
           shapeSrcPtr,
           stridesSrcPtr,
@@ -581,8 +632,6 @@ void _padAxis<T extends Object>(
           statLengthBefore,
           statLengthAfter,
         );
-      default:
-        throw UnsupportedError('Unsupported dtype for padding: ${src.dtype}');
     }
   } finally {
     ScratchArena.reset(marker);

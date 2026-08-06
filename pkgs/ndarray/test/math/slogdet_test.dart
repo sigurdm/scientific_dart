@@ -13,7 +13,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final (sign, logdet) = slogdet(a);
+          final (:sign, logabsdet: logdet) = slogdet(a);
 
           expect(sign.shape, <int>[]);
           expect(logdet.shape, <int>[]);
@@ -29,7 +29,7 @@ void main() {
             [2, 2],
             DType.float32,
           );
-          final (sign, logdet) = slogdet(a);
+          final (:sign, logabsdet: logdet) = slogdet(a);
 
           expect(sign.shape, <int>[]);
           expect(logdet.shape, <int>[]);
@@ -45,7 +45,7 @@ void main() {
             [2, 2],
             DType.float64,
           );
-          final (sign, logdet) = slogdet(a);
+          final (:sign, logabsdet: logdet) = slogdet(a);
 
           expect(sign.scalar, 0.0);
           expect(logdet.scalar, double.negativeInfinity);
@@ -66,7 +66,7 @@ void main() {
             [2, 2],
             DType.complex128,
           );
-          final (sign, logdet) = slogdet<Complex, double>(a);
+          final (:sign, logabsdet: logdet) = slogdet<Complex, double>(a);
 
           expect(sign.shape, <int>[]);
           expect(logdet.shape, <int>[]);
@@ -97,7 +97,7 @@ void main() {
             [2, 2],
             DType.complex64,
           );
-          final (sign, logdet) = slogdet<Complex, double>(a);
+          final (:sign, logabsdet: logdet) = slogdet<Complex, double>(a);
 
           expect(sign.shape, <int>[]);
           expect(logdet.shape, <int>[]);
@@ -127,7 +127,7 @@ void main() {
             [2, 2],
             DType.complex128,
           );
-          final (sign, logdet) = slogdet<Complex, double>(a);
+          final (:sign, logabsdet: logdet) = slogdet<Complex, double>(a);
 
           expect(sign.scalar.real, 0.0);
           expect(sign.scalar.imag, 0.0);
@@ -155,7 +155,7 @@ void main() {
             DType.float64,
           );
 
-          final (sign, logdet) = slogdet(a);
+          final (:sign, logabsdet: logdet) = slogdet(a);
 
           expect(sign.shape, [3]);
           expect(logdet.shape, [3]);
@@ -189,7 +189,7 @@ void main() {
             DType.complex128,
           );
 
-          final (sign, logdet) = slogdet<Complex, double>(a);
+          final (:sign, logabsdet: logdet) = slogdet<Complex, double>(a);
 
           expect(sign.shape, [2]);
           expect(logdet.shape, [2]);
@@ -230,7 +230,7 @@ void main() {
           final outSign = NDArray<double>.zeros([2], DType.float64);
           final outLogdet = NDArray<double>.zeros([2], DType.float64);
 
-          final (sign, logdet) = slogdet(
+          final (:sign, logabsdet: logdet) = slogdet(
             a,
             outSign: outSign,
             outLogdet: outLogdet,

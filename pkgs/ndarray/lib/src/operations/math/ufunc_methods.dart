@@ -1720,9 +1720,9 @@ NDArray<T> reduceatUfunc<T extends Object>(
         case DType.float64:
           v_reduceat_double(
             a.pointer.cast(),
+            axisLen,
             indicesPtr,
             numIndices,
-            axisLen,
             result.pointer.cast(),
             opCode,
           );
@@ -1730,9 +1730,9 @@ NDArray<T> reduceatUfunc<T extends Object>(
         case DType.float32:
           v_reduceat_float(
             a.pointer.cast(),
+            axisLen,
             indicesPtr,
             numIndices,
-            axisLen,
             result.pointer.cast(),
             opCode,
           );
@@ -1740,9 +1740,9 @@ NDArray<T> reduceatUfunc<T extends Object>(
         case DType.int64:
           v_reduceat_int64(
             a.pointer.cast(),
+            axisLen,
             indicesPtr,
             numIndices,
-            axisLen,
             result.pointer.cast(),
             opCode,
           );
@@ -1750,9 +1750,9 @@ NDArray<T> reduceatUfunc<T extends Object>(
         case DType.int32:
           v_reduceat_int32(
             a.pointer.cast(),
+            axisLen,
             indicesPtr,
             numIndices,
-            axisLen,
             result.pointer.cast(),
             opCode,
           );
@@ -1760,9 +1760,9 @@ NDArray<T> reduceatUfunc<T extends Object>(
         case DType.int16:
           v_reduceat_int16(
             a.pointer.cast(),
+            axisLen,
             indicesPtr,
             numIndices,
-            axisLen,
             result.pointer.cast(),
             opCode,
           );
@@ -1771,9 +1771,9 @@ NDArray<T> reduceatUfunc<T extends Object>(
         case DType.boolean:
           v_reduceat_uint8(
             a.pointer.cast(),
+            axisLen,
             indicesPtr,
             numIndices,
-            axisLen,
             result.pointer.cast(),
             opCode,
           );
@@ -1781,9 +1781,9 @@ NDArray<T> reduceatUfunc<T extends Object>(
         case DType.complex128:
           v_reduceat_complex128(
             a.pointer.cast(),
+            axisLen,
             indicesPtr,
             numIndices,
-            axisLen,
             result.pointer.cast(),
             opCode,
           );
@@ -1791,9 +1791,9 @@ NDArray<T> reduceatUfunc<T extends Object>(
         case DType.complex64:
           v_reduceat_complex64(
             a.pointer.cast(),
+            axisLen,
             indicesPtr,
             numIndices,
-            axisLen,
             result.pointer.cast(),
             opCode,
           );

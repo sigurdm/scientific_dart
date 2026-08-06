@@ -42,7 +42,8 @@ class UndoManager {
     if (_undoStack.isNotEmpty) {
       final lastTx = _undoStack.last;
       if (_canCoalesce(lastTx, tx)) {
-        final mergedOps = List<EditOperation>.from(lastTx.operations)..addAll(tx.operations);
+        final mergedOps = List<EditOperation>.from(lastTx.operations)
+          ..addAll(tx.operations);
         _undoStack[_undoStack.length - 1] = EditorTransaction(
           operations: mergedOps,
           selectionsBefore: lastTx.selectionsBefore,
@@ -69,7 +70,9 @@ class UndoManager {
 
       if (op1 is InsertOperation && op2 is InsertOperation) {
         // Coalesce sequential single-character insertions (avoid whitespace splitting or large multi-character inserts)
-        if (op1.text.length == 1 && op2.text.length == 1 && op2.offset == op1.offset + op1.text.length) {
+        if (op1.text.length == 1 &&
+            op2.text.length == 1 &&
+            op2.offset == op1.offset + op1.text.length) {
           return op1.text != '\n' && op2.text != '\n';
         }
       }

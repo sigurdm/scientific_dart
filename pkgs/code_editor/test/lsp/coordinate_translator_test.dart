@@ -15,7 +15,10 @@ void main() {
       final lspPos = LspCoordinateTranslator.toLspPosition(buffer, editorPos);
       expect(lspPos, equals(const LspPosition(1, 4)));
 
-      final convertedBack = LspCoordinateTranslator.toTextPosition(buffer, lspPos);
+      final convertedBack = LspCoordinateTranslator.toTextPosition(
+        buffer,
+        lspPos,
+      );
       expect(convertedBack, equals(editorPos));
     });
 
@@ -35,13 +38,31 @@ void main() {
       // Rune offsets: 0 ('A'), 1 ('😀'), 2 ('B')
       // Code unit offsets: 0 ('A'), 1 ('😀' high), 3 ('B')
 
-      expect(LspCoordinateTranslator.runeOffsetToCodeUnitOffset(textWithEmoji, 0), equals(0));
-      expect(LspCoordinateTranslator.runeOffsetToCodeUnitOffset(textWithEmoji, 1), equals(1));
-      expect(LspCoordinateTranslator.runeOffsetToCodeUnitOffset(textWithEmoji, 2), equals(3));
+      expect(
+        LspCoordinateTranslator.runeOffsetToCodeUnitOffset(textWithEmoji, 0),
+        equals(0),
+      );
+      expect(
+        LspCoordinateTranslator.runeOffsetToCodeUnitOffset(textWithEmoji, 1),
+        equals(1),
+      );
+      expect(
+        LspCoordinateTranslator.runeOffsetToCodeUnitOffset(textWithEmoji, 2),
+        equals(3),
+      );
 
-      expect(LspCoordinateTranslator.codeUnitOffsetToRuneOffset(textWithEmoji, 0), equals(0));
-      expect(LspCoordinateTranslator.codeUnitOffsetToRuneOffset(textWithEmoji, 1), equals(1));
-      expect(LspCoordinateTranslator.codeUnitOffsetToRuneOffset(textWithEmoji, 3), equals(2));
+      expect(
+        LspCoordinateTranslator.codeUnitOffsetToRuneOffset(textWithEmoji, 0),
+        equals(0),
+      );
+      expect(
+        LspCoordinateTranslator.codeUnitOffsetToRuneOffset(textWithEmoji, 1),
+        equals(1),
+      );
+      expect(
+        LspCoordinateTranslator.codeUnitOffsetToRuneOffset(textWithEmoji, 3),
+        equals(2),
+      );
     });
   });
 }

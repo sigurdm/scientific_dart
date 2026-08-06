@@ -38,7 +38,7 @@ void main() {
   final halfLen = numPoints ~/ 2;
 
   for (var i = 0; i <= halfLen; i++) {
-    final Complex c = coefficients.data[i];
+    final Complex c = coefficients[i];
     // Magnitude = sqrt(real^2 + imag^2)
     final magnitude = math.sqrt(c.real * c.real + c.imag * c.imag);
     final frequency = i * samplingRate / numPoints;
@@ -59,7 +59,7 @@ void main() {
   // Verify first few elements against original time data inputs
   print('Original vs Restored Values check:');
   for (var i = 0; i < 4; i++) {
-    final Complex c = restoredSignal.data[i];
+    final Complex c = restoredSignal[i];
     print(
       'Index $i -> Original Real: ${timeData[i].toStringAsFixed(4)} | Restored Real: ${c.real.toStringAsFixed(4)} (Imag: ${c.imag.toStringAsFixed(4)})',
     );

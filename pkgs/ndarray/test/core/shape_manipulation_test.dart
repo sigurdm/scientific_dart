@@ -2064,5 +2064,38 @@ void main() {
         ); // axes count mismatch
       },
     );
+    group('Workstream 4: Manipulation & Meshes Memory and Ergonomics', () {
+      test(
+        '1D hstack stacks along axis 0',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+          final b = NDArray.fromList([3.0, 4.0], [2], DType.float64);
+          final res = hstack([a, b]);
+          expect(res.shape, [4]);
+          expect(res.toList(), [1.0, 2.0, 3.0, 4.0]);
+        }),
+      );
+
+      test('roll returns an owning array that can be disposed', () {
+        final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+        final r = roll(a, 1);
+        expect(r.toList(), [4.0, 1.0, 2.0, 3.0]);
+        r.dispose(); // Should not throw and properly free memory
+        a.dispose();
+      });
+
+      test('ogrid and mgrid scope detachment and dispose', () {
+        final ogridRes = ogrid([GridRange(0, 3), GridRange(0, 4)]);
+        expect(ogridRes.length, 2);
+        expect(ogridRes[0].shape, [3, 1]);
+        expect(ogridRes[1].shape, [1, 4]);
+        ogridRes[0].dispose();
+        ogridRes[1].dispose();
+
+        final mgridRes = mgrid([GridRange(0, 2), GridRange(0, 3)]);
+        expect(mgridRes.shape, [2, 2, 3]);
+        mgridRes.dispose();
+      });
+    });
   });
 }

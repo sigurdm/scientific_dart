@@ -23,7 +23,7 @@ import '../helpers.dart';
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Exponential Function](https://en.wikipedia.org/wiki/Exponential_function)
-NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
+NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
@@ -159,6 +159,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
     a.offsetElements,
     result.offsetElements,
     (x) => math.exp((x as num).toDouble()) as R,
+    maskHolder.pointer,
   );
   return result;
 }
@@ -180,7 +181,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
 /// {@example /example/transcendental_example.dart lang=dart}
 ///
 /// Reference: [Natural Logarithm](https://en.wikipedia.org/wiki/Natural_logarithm)
-NDArray<R> log<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
+NDArray<R> log<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
@@ -315,6 +316,7 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
     a.offsetElements,
     result.offsetElements,
     (x) => math.log((x as num).toDouble()) as R,
+    maskHolder.pointer,
   );
   return result;
 }
@@ -329,7 +331,11 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/easy_ufuncs_example.dart lang=dart}
-NDArray<R> log2<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
+NDArray<R> log2<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
@@ -466,6 +472,7 @@ NDArray<R> log2<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
       }
       return (math.log((x as num).toDouble()) / math.log(2.0)) as R;
     },
+    maskHolder.pointer,
   );
   return result;
 }
@@ -480,7 +487,11 @@ NDArray<R> log2<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
 ///
 /// **Example:**
 /// {@example /example/easy_ufuncs_example.dart lang=dart}
-NDArray<R> log10<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
+NDArray<R> log10<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
@@ -617,6 +628,7 @@ NDArray<R> log10<T, R>(NDArray<T> a, {NDArray<Uint8>? where, NDArray<R>? out}) {
       }
       return (math.log((x as num).toDouble()) / math.log(10.0)) as R;
     },
+    maskHolder.pointer,
   );
   return result;
 }

@@ -6,7 +6,10 @@ void main() {
   group('LspDocumentSyncManager', () {
     test('incremental change events generation for insertion and deletion', () {
       final buffer = PieceTreeTextBuffer('hello world');
-      final syncManager = LspDocumentSyncManager(uri: 'file:///test.dart', version: 1);
+      final syncManager = LspDocumentSyncManager(
+        uri: 'file:///test.dart',
+        version: 1,
+      );
 
       final insertOp = InsertOperation(5, ' my');
       final tx1 = EditorTransaction(
@@ -18,7 +21,10 @@ void main() {
       final events1 = syncManager.createChangeEvents(buffer, tx1);
       expect(events1.length, equals(1));
       expect(events1.first.text, equals(' my'));
-      expect(events1.first.range, equals(const LspRange(LspPosition(0, 5), LspPosition(0, 5))));
+      expect(
+        events1.first.range,
+        equals(const LspRange(LspPosition(0, 5), LspPosition(0, 5))),
+      );
       expect(syncManager.version, equals(2));
 
       insertOp.apply(buffer); // Buffer is now "hello my world"
@@ -33,7 +39,10 @@ void main() {
       final events2 = syncManager.createChangeEvents(buffer, tx2);
       expect(events2.length, equals(1));
       expect(events2.first.text, equals(''));
-      expect(events2.first.range, equals(const LspRange(LspPosition(0, 5), LspPosition(0, 8))));
+      expect(
+        events2.first.range,
+        equals(const LspRange(LspPosition(0, 5), LspPosition(0, 8))),
+      );
       expect(syncManager.version, equals(3));
     });
   });

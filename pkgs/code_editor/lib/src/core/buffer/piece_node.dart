@@ -24,16 +24,17 @@ class PieceNode {
     required this.length,
     required this.lineStarts,
     this.color = NodeColor.red,
-  })  : lineFeedCount = lineStarts.length,
-        subtreeLength = length,
-        subtreeLineCount = lineStarts.length;
+  }) : lineFeedCount = lineStarts.length,
+       subtreeLength = length,
+       subtreeLineCount = lineStarts.length;
 
   /// Helper to calculate newline relative offsets (`\n`) within a given string [text].
   static Int32List findLineStarts(String text, {int offset = 0, int? length}) {
     final len = length ?? text.length;
     final starts = <int>[];
     for (var i = 0; i < len; i++) {
-      if (text.codeUnitAt(offset + i) == 10) { // '\n' = 10
+      if (text.codeUnitAt(offset + i) == 10) {
+        // '\n' = 10
         starts.add(i);
       }
     }

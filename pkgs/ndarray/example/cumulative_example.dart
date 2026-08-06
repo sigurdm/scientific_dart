@@ -9,11 +9,11 @@ void main() {
     // 1. Flat sequence cumulative sum
     final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
     print('Original flat array:');
-    print(' [ ${a.data.join(", ")} ]');
+    print(' [ ${a.toList().join(", ")} ]');
 
     final csFlat = cumsum(a);
     print('\nFlat cumulative sum (cumsum):');
-    print(' [ ${csFlat.data.join(", ")} ]');
+    print(' [ ${csFlat.toList().join(", ")} ]');
 
     // 2. Multi-dimensional cumulative sum along axes
     final mat = NDArray.fromList(
@@ -54,7 +54,7 @@ void _printMatrix(NDArray a) {
   for (var r = 0; r < rows; r++) {
     final rowStr = [];
     for (var c = 0; c < cols; c++) {
-      rowStr.add(a.data[r * cols + c].toStringAsFixed(1).padLeft(5));
+      rowStr.add(a[r * cols + c].toStringAsFixed(1).padLeft(5));
     }
     print(' [ ${rowStr.join(", ")} ]');
   }

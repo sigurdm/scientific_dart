@@ -1,5 +1,4 @@
 // ignore_for_file: non_constant_identifier_names
-import 'dart:typed_data';
 import 'dart:math' as math;
 import '../ndarray.dart';
 import 'package:openblas/openblas.dart';
@@ -57,20 +56,23 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
           );
         }
       }
+      final incA = aCast.strides[0];
+      final incB = bCast.strides[0];
       switch (targetDType) {
         case DType.float64:
           final scalarRes = cblas_ddot(
             n,
             aCast.pointer.cast<ffi.Double>(),
-            1,
+            incA,
             bCast.pointer.cast<ffi.Double>(),
-            1,
+            incB,
           );
-          result =
-              out ??
-              (NDArray.scalar(scalarRes, dtype: DType.float64) as NDArray<R>);
           if (out != null) {
-            out.data[0] = scalarRes as R;
+            out.pointer.cast<ffi.Double>()[0] = scalarRes;
+            result = out;
+          } else {
+            result =
+                (NDArray.scalar(scalarRes, dtype: DType.float64) as NDArray<R>);
           }
           success = true;
           return result;
@@ -78,15 +80,66 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
           final scalarRes = cblas_sdot(
             n,
             aCast.pointer.cast<ffi.Float>(),
-            1,
+            incA,
             bCast.pointer.cast<ffi.Float>(),
-            1,
+            incB,
           );
-          result =
-              out ??
-              (NDArray.scalar(scalarRes, dtype: DType.float32) as NDArray<R>);
           if (out != null) {
-            out.data[0] = scalarRes as R;
+            out.pointer.cast<ffi.Float>()[0] = scalarRes;
+            result = out;
+          } else {
+            result =
+                (NDArray.scalar(scalarRes, dtype: DType.float32) as NDArray<R>);
+          }
+          success = true;
+          return result;
+        case DType.complex128:
+          final aPtr = aCast.pointer.cast<ffi.Double>();
+          final bPtr = bCast.pointer.cast<ffi.Double>();
+          var realSum = 0.0;
+          var imagSum = 0.0;
+          for (var i = 0; i < n; i++) {
+            final ar = aPtr[i * incA * 2];
+            final ai = aPtr[i * incA * 2 + 1];
+            final br = bPtr[i * incB * 2];
+            final bi = bPtr[i * incB * 2 + 1];
+            realSum += ar * br - ai * bi;
+            imagSum += ar * bi + ai * br;
+          }
+          final resVal = Complex(realSum, imagSum);
+          if (out != null) {
+            final outPtr = out.pointer.cast<ffi.Double>();
+            outPtr[0] = realSum;
+            outPtr[1] = imagSum;
+            result = out;
+          } else {
+            result =
+                (NDArray.scalar(resVal, dtype: DType.complex128) as NDArray<R>);
+          }
+          success = true;
+          return result;
+        case DType.complex64:
+          final aPtr = aCast.pointer.cast<ffi.Float>();
+          final bPtr = bCast.pointer.cast<ffi.Float>();
+          var realSum = 0.0;
+          var imagSum = 0.0;
+          for (var i = 0; i < n; i++) {
+            final ar = aPtr[i * incA * 2];
+            final ai = aPtr[i * incA * 2 + 1];
+            final br = bPtr[i * incB * 2];
+            final bi = bPtr[i * incB * 2 + 1];
+            realSum += ar * br - ai * bi;
+            imagSum += ar * bi + ai * br;
+          }
+          final resVal = Complex(realSum, imagSum);
+          if (out != null) {
+            final outPtr = out.pointer.cast<ffi.Float>();
+            outPtr[0] = realSum;
+            outPtr[1] = imagSum;
+            result = out;
+          } else {
+            result =
+                (NDArray.scalar(resVal, dtype: DType.complex64) as NDArray<R>);
           }
           success = true;
           return result;
@@ -278,73 +331,405 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
         if (dim == lenResult) {
           switch (targetDType) {
             case DType.float64:
-              cblas_dgemm(
-                101, // CblasRowMajor
-                transA,
-                transB,
-                m,
-                n,
-                kA,
-                1.0,
-                aView.pointer.cast<ffi.Double>() + offsetA,
-                lda,
-                bView.pointer.cast<ffi.Double>() + offsetB,
-                ldb,
-                0.0,
-                result!.pointer.cast<ffi.Double>() + offsetRes,
-                n, // ldc (result is always contiguous row-major)
-              );
+              if (aPromoted && bPromoted) {
+                final incA = aView.strides[rankA - 1];
+                final incB = bView.strides[rankB - 2];
+                final dot = cblas_ddot(
+                  kA,
+                  aView.pointer.cast<ffi.Double>() + offsetA,
+                  incA,
+                  bView.pointer.cast<ffi.Double>() + offsetB,
+                  incB,
+                );
+                result!.pointer.cast<ffi.Double>()[offsetRes] = dot;
+              } else if (bPromoted) {
+                final incB = bView.strides[rankB - 2];
+                if (transA == 111) {
+                  cblas_dgemv(
+                    101, // CblasRowMajor
+                    111, // CblasNoTrans
+                    m,
+                    kA,
+                    1.0,
+                    aView.pointer.cast<ffi.Double>() + offsetA,
+                    lda,
+                    bView.pointer.cast<ffi.Double>() + offsetB,
+                    incB,
+                    0.0,
+                    result!.pointer.cast<ffi.Double>() + offsetRes,
+                    1,
+                  );
+                } else {
+                  cblas_dgemv(
+                    101, // CblasRowMajor
+                    112, // CblasTrans
+                    kA,
+                    m,
+                    1.0,
+                    aView.pointer.cast<ffi.Double>() + offsetA,
+                    lda,
+                    bView.pointer.cast<ffi.Double>() + offsetB,
+                    incB,
+                    0.0,
+                    result!.pointer.cast<ffi.Double>() + offsetRes,
+                    1,
+                  );
+                }
+              } else if (aPromoted) {
+                final incA = aView.strides[rankA - 1];
+                if (transB == 111) {
+                  cblas_dgemv(
+                    101, // CblasRowMajor
+                    112, // CblasTrans (y = a B = B^T a)
+                    kB,
+                    n,
+                    1.0,
+                    bView.pointer.cast<ffi.Double>() + offsetB,
+                    ldb,
+                    aView.pointer.cast<ffi.Double>() + offsetA,
+                    incA,
+                    0.0,
+                    result!.pointer.cast<ffi.Double>() + offsetRes,
+                    1,
+                  );
+                } else {
+                  cblas_dgemv(
+                    101, // CblasRowMajor
+                    111, // CblasNoTrans (y = a B_mem^T = B_mem a)
+                    n,
+                    kB,
+                    1.0,
+                    bView.pointer.cast<ffi.Double>() + offsetB,
+                    ldb,
+                    aView.pointer.cast<ffi.Double>() + offsetA,
+                    incA,
+                    0.0,
+                    result!.pointer.cast<ffi.Double>() + offsetRes,
+                    1,
+                  );
+                }
+              } else {
+                cblas_dgemm(
+                  101, // CblasRowMajor
+                  transA,
+                  transB,
+                  m,
+                  n,
+                  kA,
+                  1.0,
+                  aView.pointer.cast<ffi.Double>() + offsetA,
+                  lda,
+                  bView.pointer.cast<ffi.Double>() + offsetB,
+                  ldb,
+                  0.0,
+                  result!.pointer.cast<ffi.Double>() + offsetRes,
+                  n, // ldc (result is always contiguous row-major)
+                );
+              }
             case DType.float32:
-              cblas_sgemm(
-                101, // CblasRowMajor
-                transA,
-                transB,
-                m,
-                n,
-                kA,
-                1.0,
-                aView.pointer.cast<ffi.Float>() + offsetA,
-                lda,
-                bView.pointer.cast<ffi.Float>() + offsetB,
-                ldb,
-                0.0,
-                result!.pointer.cast<ffi.Float>() + offsetRes,
-                n, // ldc (result is always contiguous row-major)
-              );
+              if (aPromoted && bPromoted) {
+                final incA = aView.strides[rankA - 1];
+                final incB = bView.strides[rankB - 2];
+                final dot = cblas_sdot(
+                  kA,
+                  aView.pointer.cast<ffi.Float>() + offsetA,
+                  incA,
+                  bView.pointer.cast<ffi.Float>() + offsetB,
+                  incB,
+                );
+                result!.pointer.cast<ffi.Float>()[offsetRes] = dot;
+              } else if (bPromoted) {
+                final incB = bView.strides[rankB - 2];
+                if (transA == 111) {
+                  cblas_sgemv(
+                    101,
+                    111,
+                    m,
+                    kA,
+                    1.0,
+                    aView.pointer.cast<ffi.Float>() + offsetA,
+                    lda,
+                    bView.pointer.cast<ffi.Float>() + offsetB,
+                    incB,
+                    0.0,
+                    result!.pointer.cast<ffi.Float>() + offsetRes,
+                    1,
+                  );
+                } else {
+                  cblas_sgemv(
+                    101,
+                    112,
+                    kA,
+                    m,
+                    1.0,
+                    aView.pointer.cast<ffi.Float>() + offsetA,
+                    lda,
+                    bView.pointer.cast<ffi.Float>() + offsetB,
+                    incB,
+                    0.0,
+                    result!.pointer.cast<ffi.Float>() + offsetRes,
+                    1,
+                  );
+                }
+              } else if (aPromoted) {
+                final incA = aView.strides[rankA - 1];
+                if (transB == 111) {
+                  cblas_sgemv(
+                    101,
+                    112,
+                    kB,
+                    n,
+                    1.0,
+                    bView.pointer.cast<ffi.Float>() + offsetB,
+                    ldb,
+                    aView.pointer.cast<ffi.Float>() + offsetA,
+                    incA,
+                    0.0,
+                    result!.pointer.cast<ffi.Float>() + offsetRes,
+                    1,
+                  );
+                } else {
+                  cblas_sgemv(
+                    101,
+                    111,
+                    n,
+                    kB,
+                    1.0,
+                    bView.pointer.cast<ffi.Float>() + offsetB,
+                    ldb,
+                    aView.pointer.cast<ffi.Float>() + offsetA,
+                    incA,
+                    0.0,
+                    result!.pointer.cast<ffi.Float>() + offsetRes,
+                    1,
+                  );
+                }
+              } else {
+                cblas_sgemm(
+                  101, // CblasRowMajor
+                  transA,
+                  transB,
+                  m,
+                  n,
+                  kA,
+                  1.0,
+                  aView.pointer.cast<ffi.Float>() + offsetA,
+                  lda,
+                  bView.pointer.cast<ffi.Float>() + offsetB,
+                  ldb,
+                  0.0,
+                  result!.pointer.cast<ffi.Float>() + offsetRes,
+                  n, // ldc (result is always contiguous row-major)
+                );
+              }
             case DType.complex128:
-              cblas_zgemm(
-                101,
-                transA,
-                transB,
-                m,
-                n,
-                kA,
-                alphaZ,
-                aView.pointer.cast<ffi.Double>() + (offsetA * 2),
-                lda,
-                bView.pointer.cast<ffi.Double>() + (offsetB * 2),
-                ldb,
-                betaZ,
-                result!.pointer.cast<ffi.Double>() + (offsetRes * 2),
-                n,
-              );
+              if (aPromoted && bPromoted) {
+                final incA = aView.strides[rankA - 1];
+                final incB = bView.strides[rankB - 2];
+                final aPtr = aView.pointer.cast<ffi.Double>() + (offsetA * 2);
+                final bPtr = bView.pointer.cast<ffi.Double>() + (offsetB * 2);
+                final resPtr =
+                    result!.pointer.cast<ffi.Double>() + (offsetRes * 2);
+                var realSum = 0.0;
+                var imagSum = 0.0;
+                for (var i = 0; i < kA; i++) {
+                  final ar = aPtr[i * incA * 2];
+                  final ai = aPtr[i * incA * 2 + 1];
+                  final br = bPtr[i * incB * 2];
+                  final bi = bPtr[i * incB * 2 + 1];
+                  realSum += ar * br - ai * bi;
+                  imagSum += ar * bi + ai * br;
+                }
+                resPtr[0] = realSum;
+                resPtr[1] = imagSum;
+              } else if (bPromoted) {
+                final incB = bView.strides[rankB - 2];
+                if (transA == 111) {
+                  cblas_zgemv(
+                    101,
+                    111,
+                    m,
+                    kA,
+                    alphaZ,
+                    aView.pointer.cast<ffi.Double>() + (offsetA * 2),
+                    lda,
+                    bView.pointer.cast<ffi.Double>() + (offsetB * 2),
+                    incB,
+                    betaZ,
+                    result!.pointer.cast<ffi.Double>() + (offsetRes * 2),
+                    1,
+                  );
+                } else {
+                  cblas_zgemv(
+                    101,
+                    112,
+                    kA,
+                    m,
+                    alphaZ,
+                    aView.pointer.cast<ffi.Double>() + (offsetA * 2),
+                    lda,
+                    bView.pointer.cast<ffi.Double>() + (offsetB * 2),
+                    incB,
+                    betaZ,
+                    result!.pointer.cast<ffi.Double>() + (offsetRes * 2),
+                    1,
+                  );
+                }
+              } else if (aPromoted) {
+                final incA = aView.strides[rankA - 1];
+                if (transB == 111) {
+                  cblas_zgemv(
+                    101,
+                    112,
+                    kB,
+                    n,
+                    alphaZ,
+                    bView.pointer.cast<ffi.Double>() + (offsetB * 2),
+                    ldb,
+                    aView.pointer.cast<ffi.Double>() + (offsetA * 2),
+                    incA,
+                    betaZ,
+                    result!.pointer.cast<ffi.Double>() + (offsetRes * 2),
+                    1,
+                  );
+                } else {
+                  cblas_zgemv(
+                    101,
+                    111,
+                    n,
+                    kB,
+                    alphaZ,
+                    bView.pointer.cast<ffi.Double>() + (offsetB * 2),
+                    ldb,
+                    aView.pointer.cast<ffi.Double>() + (offsetA * 2),
+                    incA,
+                    betaZ,
+                    result!.pointer.cast<ffi.Double>() + (offsetRes * 2),
+                    1,
+                  );
+                }
+              } else {
+                cblas_zgemm(
+                  101,
+                  transA,
+                  transB,
+                  m,
+                  n,
+                  kA,
+                  alphaZ,
+                  aView.pointer.cast<ffi.Double>() + (offsetA * 2),
+                  lda,
+                  bView.pointer.cast<ffi.Double>() + (offsetB * 2),
+                  ldb,
+                  betaZ,
+                  result!.pointer.cast<ffi.Double>() + (offsetRes * 2),
+                  n,
+                );
+              }
             case DType.complex64:
-              cblas_cgemm(
-                101,
-                transA,
-                transB,
-                m,
-                n,
-                kA,
-                alphaC,
-                aView.pointer.cast<ffi.Float>() + (offsetA * 2),
-                lda,
-                bView.pointer.cast<ffi.Float>() + (offsetB * 2),
-                ldb,
-                betaC,
-                result!.pointer.cast<ffi.Float>() + (offsetRes * 2),
-                n,
-              );
+              if (aPromoted && bPromoted) {
+                final incA = aView.strides[rankA - 1];
+                final incB = bView.strides[rankB - 2];
+                final aPtr = aView.pointer.cast<ffi.Float>() + (offsetA * 2);
+                final bPtr = bView.pointer.cast<ffi.Float>() + (offsetB * 2);
+                final resPtr =
+                    result!.pointer.cast<ffi.Float>() + (offsetRes * 2);
+                var realSum = 0.0;
+                var imagSum = 0.0;
+                for (var i = 0; i < kA; i++) {
+                  final ar = aPtr[i * incA * 2];
+                  final ai = aPtr[i * incA * 2 + 1];
+                  final br = bPtr[i * incB * 2];
+                  final bi = bPtr[i * incB * 2 + 1];
+                  realSum += ar * br - ai * bi;
+                  imagSum += ar * bi + ai * br;
+                }
+                resPtr[0] = realSum;
+                resPtr[1] = imagSum;
+              } else if (bPromoted) {
+                final incB = bView.strides[rankB - 2];
+                if (transA == 111) {
+                  cblas_cgemv(
+                    101,
+                    111,
+                    m,
+                    kA,
+                    alphaC,
+                    aView.pointer.cast<ffi.Float>() + (offsetA * 2),
+                    lda,
+                    bView.pointer.cast<ffi.Float>() + (offsetB * 2),
+                    incB,
+                    betaC,
+                    result!.pointer.cast<ffi.Float>() + (offsetRes * 2),
+                    1,
+                  );
+                } else {
+                  cblas_cgemv(
+                    101,
+                    112,
+                    kA,
+                    m,
+                    alphaC,
+                    aView.pointer.cast<ffi.Float>() + (offsetA * 2),
+                    lda,
+                    bView.pointer.cast<ffi.Float>() + (offsetB * 2),
+                    incB,
+                    betaC,
+                    result!.pointer.cast<ffi.Float>() + (offsetRes * 2),
+                    1,
+                  );
+                }
+              } else if (aPromoted) {
+                final incA = aView.strides[rankA - 1];
+                if (transB == 111) {
+                  cblas_cgemv(
+                    101,
+                    112,
+                    kB,
+                    n,
+                    alphaC,
+                    bView.pointer.cast<ffi.Float>() + (offsetB * 2),
+                    ldb,
+                    aView.pointer.cast<ffi.Float>() + (offsetA * 2),
+                    incA,
+                    betaC,
+                    result!.pointer.cast<ffi.Float>() + (offsetRes * 2),
+                    1,
+                  );
+                } else {
+                  cblas_cgemv(
+                    101,
+                    111,
+                    n,
+                    kB,
+                    alphaC,
+                    bView.pointer.cast<ffi.Float>() + (offsetB * 2),
+                    ldb,
+                    aView.pointer.cast<ffi.Float>() + (offsetA * 2),
+                    incA,
+                    betaC,
+                    result!.pointer.cast<ffi.Float>() + (offsetRes * 2),
+                    1,
+                  );
+                }
+              } else {
+                cblas_cgemm(
+                  101,
+                  transA,
+                  transB,
+                  m,
+                  n,
+                  kA,
+                  alphaC,
+                  aView.pointer.cast<ffi.Float>() + (offsetA * 2),
+                  lda,
+                  bView.pointer.cast<ffi.Float>() + (offsetB * 2),
+                  ldb,
+                  betaC,
+                  result!.pointer.cast<ffi.Float>() + (offsetRes * 2),
+                  n,
+                );
+              }
             case DType.int64:
             case DType.int32:
             case DType.int16:
@@ -1199,7 +1584,7 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// - A record `(sign, logdet)` of two NDArrays, representing the sign (or phase) and log of the absolute determinant.
 ///
 /// Reference: [NumPy linalg.slogdet](https://numpy.org/doc/stable/reference/generated/numpy.linalg.slogdet.html)
-(NDArray<T> sign, NDArray<R> logdet) slogdet<T, R extends num>(
+({NDArray<T> sign, NDArray<R> logabsdet}) slogdet<T, R extends num>(
   NDArray<T> a, {
   NDArray<T>? outSign,
   NDArray<R>? outLogdet,
@@ -1363,7 +1748,7 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
       logdetResult.detachToParentScope();
     }
 
-    return (signResult, logdetResult);
+    return (sign: signResult, logabsdet: logdetResult);
   });
 }
 
@@ -1391,7 +1776,11 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// final x = solve(a, b);
 /// print(x.toList()); // [2.0, 3.0]
 /// ```
-NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
+NDArray<T> solve<T extends Object>(
+  NDArray<T> a,
+  NDArray<T> b, {
+  NDArray<T>? out,
+}) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot execute solve() on a disposed array.');
   }
@@ -1624,244 +2013,237 @@ NDArray<T> solve<T>(NDArray<T> a, NDArray<T> b, {NDArray<T>? out}) {
     final jobvl = 'N'.codeUnitAt(0);
     final jobvr = 'V'.codeUnitAt(0);
 
-    if (a.dtype.isInteger) {
-      throw ArgumentError(
-        'Integer arrays are not supported directly for eigenvalue decomposition. '
-        'Please convert the array to float64 or float32 manually.',
-      );
+    final bool wasCast = a.dtype.isInteger;
+    final NDArray src = wasCast ? castNDArray(a, DType.float64) : a;
+    try {
+      walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+        coords,
+      ) {
+        var offsetA = 0;
+        for (var i = 0; i < coords.length; i++) {
+          offsetA += coords[i] * src.strides[i];
+        }
+
+        final sliceView = NDArray.view(
+          src,
+          shape: [n, n],
+          strides: src.strides.sublist(rank - 2),
+          offsetElements: offsetA,
+        );
+        final sliceCopy = sliceView.copy();
+
+        var offsetW = 0;
+        for (var i = 0; i < coords.length; i++) {
+          offsetW += coords[i] * w.strides[i];
+        }
+        var offsetVR = 0;
+        for (var i = 0; i < coords.length; i++) {
+          offsetVR += coords[i] * vr.strides[i];
+        }
+
+        switch (src.dtype) {
+          case DType.complex128:
+            final w2D = NDArray<Complex>.create([n], DType.complex128);
+            final vr2D = NDArray<Complex>.create([n, n], DType.complex128);
+
+            final info = LAPACKE_zgeev(
+              101, // ROW_MAJOR
+              jobvl,
+              jobvr,
+              n,
+              sliceCopy.pointer.cast<ffi.Double>(),
+              n,
+              w2D.pointer.cast<ffi.Double>(),
+              ffi.nullptr.cast<ffi.Double>(),
+              n,
+              vr2D.pointer.cast<ffi.Double>(),
+              n,
+            );
+
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_zgeev: $info',
+              );
+            }
+            if (info > 0) {
+              throw ArgumentError(
+                'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+              );
+            }
+
+            final wView = NDArray<Complex>.view(
+              w,
+              shape: [n],
+              strides: w.strides.isEmpty ? [1] : [w.strides.last],
+              offsetElements: offsetW,
+            );
+            w2D.copy(out: wView);
+
+            final vrView = NDArray<Complex>.view(
+              vr,
+              shape: [n, n],
+              strides: vr.strides.sublist(rank - 2),
+              offsetElements: offsetVR,
+            );
+            vr2D.copy(out: vrView);
+
+            w2D.dispose();
+            vr2D.dispose();
+          case DType.complex64:
+            final w2D = NDArray<Complex>.create([n], DType.complex64);
+            final vr2D = NDArray<Complex>.create([n, n], DType.complex64);
+
+            final info = LAPACKE_cgeev(
+              101, // ROW_MAJOR
+              jobvl,
+              jobvr,
+              n,
+              sliceCopy.pointer.cast<ffi.Float>(),
+              n,
+              w2D.pointer.cast<ffi.Float>(),
+              ffi.nullptr.cast<ffi.Float>(),
+              n,
+              vr2D.pointer.cast<ffi.Float>(),
+              n,
+            );
+
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_cgeev: $info',
+              );
+            }
+            if (info > 0) {
+              throw ArgumentError(
+                'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+              );
+            }
+
+            final wView = NDArray<Complex>.view(
+              w,
+              shape: [n],
+              strides: w.strides.isEmpty ? [1] : [w.strides.last],
+              offsetElements: offsetW,
+            );
+            w2D.copy(out: wView);
+
+            final vrView = NDArray<Complex>.view(
+              vr,
+              shape: [n, n],
+              strides: vr.strides.sublist(rank - 2),
+              offsetElements: offsetVR,
+            );
+            vr2D.copy(out: vrView);
+
+            w2D.dispose();
+            vr2D.dispose();
+          case DType.float64:
+            final wr = NDArray<double>.zeros([n], DType.float64);
+            final wi = NDArray<double>.zeros([n], DType.float64);
+            final vrReal = NDArray<double>.create([n, n], DType.float64);
+
+            final info = LAPACKE_dgeev(
+              101,
+              jobvl,
+              jobvr,
+              n,
+              sliceCopy.pointer.cast<ffi.Double>(),
+              n,
+              wr.pointer.cast<ffi.Double>(),
+              wi.pointer.cast<ffi.Double>(),
+              ffi.nullptr.cast<ffi.Double>(),
+              n,
+              vrReal.pointer.cast<ffi.Double>(),
+              n,
+            );
+
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_dgeev: $info',
+              );
+            }
+            if (info > 0) {
+              throw ArgumentError(
+                'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+              );
+            }
+
+            final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
+            final strideVR1 = vr.strides[rank - 2];
+            final strideVR2 = vr.strides[rank - 1];
+            assemble_eigenvectors_double(
+              w.pointer.cast<cpx_t>() + offsetW,
+              strideWLast,
+              vr.pointer.cast<cpx_t>() + offsetVR,
+              strideVR1,
+              strideVR2,
+              wr.pointer.cast<ffi.Double>(),
+              wi.pointer.cast<ffi.Double>(),
+              vrReal.pointer.cast<ffi.Double>(),
+              n,
+            );
+
+            wr.dispose();
+            wi.dispose();
+            vrReal.dispose();
+          case DType.float32:
+            final wr = NDArray<double>.zeros([n], DType.float32);
+            final wi = NDArray<double>.zeros([n], DType.float32);
+            final vrReal = NDArray<double>.create([n, n], DType.float32);
+
+            final info = LAPACKE_sgeev(
+              101,
+              jobvl,
+              jobvr,
+              n,
+              sliceCopy.pointer.cast<ffi.Float>(),
+              n,
+              wr.pointer.cast<ffi.Float>(),
+              wi.pointer.cast<ffi.Float>(),
+              ffi.nullptr.cast<ffi.Float>(),
+              n,
+              vrReal.pointer.cast<ffi.Float>(),
+              n,
+            );
+
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_sgeev: $info',
+              );
+            }
+            if (info > 0) {
+              throw ArgumentError(
+                'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
+              );
+            }
+
+            final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
+            final strideVR1 = vr.strides[rank - 2];
+            final strideVR2 = vr.strides[rank - 1];
+            assemble_eigenvectors_float(
+              w.pointer.cast<cpx_f_t>() + offsetW,
+              strideWLast,
+              vr.pointer.cast<cpx_f_t>() + offsetVR,
+              strideVR1,
+              strideVR2,
+              wr.pointer.cast<ffi.Float>(),
+              wi.pointer.cast<ffi.Float>(),
+              vrReal.pointer.cast<ffi.Float>(),
+              n,
+            );
+
+            wr.dispose();
+            wi.dispose();
+            vrReal.dispose();
+          default:
+            throw UnimplementedError('Type ${src.dtype} not supported for eig');
+        }
+        sliceCopy.dispose();
+      });
+    } finally {
+      if (wasCast) {
+        src.dispose();
+      }
     }
-
-    if (a.dtype != DType.complex128 &&
-        a.dtype != DType.complex64 &&
-        a.dtype != DType.float64 &&
-        a.dtype != DType.float32) {
-      throw UnimplementedError('Type ${a.dtype} not supported for eig');
-    }
-
-    final NDArray src = a;
-    walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
-      coords,
-    ) {
-      var offsetA = 0;
-      for (var i = 0; i < coords.length; i++) {
-        offsetA += coords[i] * src.strides[i];
-      }
-
-      final sliceView = NDArray.view(
-        src,
-        shape: [n, n],
-        strides: src.strides.sublist(rank - 2),
-        offsetElements: offsetA,
-      );
-      final sliceCopy = sliceView.copy();
-
-      var offsetW = 0;
-      for (var i = 0; i < coords.length; i++) {
-        offsetW += coords[i] * w.strides[i];
-      }
-      var offsetVR = 0;
-      for (var i = 0; i < coords.length; i++) {
-        offsetVR += coords[i] * vr.strides[i];
-      }
-
-      switch (src.dtype) {
-        case DType.complex128:
-          final w2D = NDArray<Complex>.create([n], DType.complex128);
-          final vr2D = NDArray<Complex>.create([n, n], DType.complex128);
-
-          final info = LAPACKE_zgeev(
-            101, // ROW_MAJOR
-            jobvl,
-            jobvr,
-            n,
-            sliceCopy.pointer.cast<ffi.Double>(),
-            n,
-            w2D.pointer.cast<ffi.Double>(),
-            ffi.nullptr.cast<ffi.Double>(),
-            n,
-            vr2D.pointer.cast<ffi.Double>(),
-            n,
-          );
-
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_zgeev: $info',
-            );
-          }
-          if (info > 0) {
-            throw ArgumentError(
-              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
-            );
-          }
-
-          final wView = NDArray<Complex>.view(
-            w,
-            shape: [n],
-            strides: w.strides.isEmpty ? [1] : [w.strides.last],
-            offsetElements: offsetW,
-          );
-          w2D.copy(out: wView);
-
-          final vrView = NDArray<Complex>.view(
-            vr,
-            shape: [n, n],
-            strides: vr.strides.sublist(rank - 2),
-            offsetElements: offsetVR,
-          );
-          vr2D.copy(out: vrView);
-
-          w2D.dispose();
-          vr2D.dispose();
-        case DType.complex64:
-          final w2D = NDArray<Complex>.create([n], DType.complex64);
-          final vr2D = NDArray<Complex>.create([n, n], DType.complex64);
-
-          final info = LAPACKE_cgeev(
-            101, // ROW_MAJOR
-            jobvl,
-            jobvr,
-            n,
-            sliceCopy.pointer.cast<ffi.Float>(),
-            n,
-            w2D.pointer.cast<ffi.Float>(),
-            ffi.nullptr.cast<ffi.Float>(),
-            n,
-            vr2D.pointer.cast<ffi.Float>(),
-            n,
-          );
-
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_cgeev: $info',
-            );
-          }
-          if (info > 0) {
-            throw ArgumentError(
-              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
-            );
-          }
-
-          final wView = NDArray<Complex>.view(
-            w,
-            shape: [n],
-            strides: w.strides.isEmpty ? [1] : [w.strides.last],
-            offsetElements: offsetW,
-          );
-          w2D.copy(out: wView);
-
-          final vrView = NDArray<Complex>.view(
-            vr,
-            shape: [n, n],
-            strides: vr.strides.sublist(rank - 2),
-            offsetElements: offsetVR,
-          );
-          vr2D.copy(out: vrView);
-
-          w2D.dispose();
-          vr2D.dispose();
-        case DType.float64:
-          final wr = NDArray<double>.zeros([n], DType.float64);
-          final wi = NDArray<double>.zeros([n], DType.float64);
-          final vrReal = NDArray<double>.create([n, n], DType.float64);
-
-          final info = LAPACKE_dgeev(
-            101,
-            jobvl,
-            jobvr,
-            n,
-            sliceCopy.pointer.cast<ffi.Double>(),
-            n,
-            wr.pointer.cast<ffi.Double>(),
-            wi.pointer.cast<ffi.Double>(),
-            ffi.nullptr.cast<ffi.Double>(),
-            n,
-            vrReal.pointer.cast<ffi.Double>(),
-            n,
-          );
-
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_dgeev: $info',
-            );
-          }
-          if (info > 0) {
-            throw ArgumentError(
-              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
-            );
-          }
-
-          final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
-          final strideVR1 = vr.strides[rank - 2];
-          final strideVR2 = vr.strides[rank - 1];
-          assemble_eigenvectors_double(
-            w.pointer.cast<cpx_t>() + offsetW,
-            strideWLast,
-            vr.pointer.cast<cpx_t>() + offsetVR,
-            strideVR1,
-            strideVR2,
-            wr.pointer.cast<ffi.Double>(),
-            wi.pointer.cast<ffi.Double>(),
-            vrReal.pointer.cast<ffi.Double>(),
-            n,
-          );
-
-          wr.dispose();
-          wi.dispose();
-          vrReal.dispose();
-        case DType.float32:
-          final wr = NDArray<double>.zeros([n], DType.float32);
-          final wi = NDArray<double>.zeros([n], DType.float32);
-          final vrReal = NDArray<double>.create([n, n], DType.float32);
-
-          final info = LAPACKE_sgeev(
-            101,
-            jobvl,
-            jobvr,
-            n,
-            sliceCopy.pointer.cast<ffi.Float>(),
-            n,
-            wr.pointer.cast<ffi.Float>(),
-            wi.pointer.cast<ffi.Float>(),
-            ffi.nullptr.cast<ffi.Float>(),
-            n,
-            vrReal.pointer.cast<ffi.Float>(),
-            n,
-          );
-
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_sgeev: $info',
-            );
-          }
-          if (info > 0) {
-            throw ArgumentError(
-              'The LAPACK QR algorithm failed to converge; only eigenvalues from 1-based index ${info + 1} to $n successfully converged.',
-            );
-          }
-
-          final strideWLast = w.strides.isEmpty ? 1 : w.strides.last;
-          final strideVR1 = vr.strides[rank - 2];
-          final strideVR2 = vr.strides[rank - 1];
-          assemble_eigenvectors_float(
-            w.pointer.cast<cpx_f_t>() + offsetW,
-            strideWLast,
-            vr.pointer.cast<cpx_f_t>() + offsetVR,
-            strideVR1,
-            strideVR2,
-            wr.pointer.cast<ffi.Float>(),
-            wi.pointer.cast<ffi.Float>(),
-            vrReal.pointer.cast<ffi.Float>(),
-            n,
-          );
-
-          wr.dispose();
-          wi.dispose();
-          vrReal.dispose();
-        default:
-          throw UnimplementedError('Type ${src.dtype} not supported for eig');
-      }
-      sliceCopy.dispose();
-    });
 
     if (out == null) {
       w.detachToParentScope();
@@ -2173,7 +2555,11 @@ NDArray<Complex> eigvals<T>(NDArray<T> a, {NDArray<Complex>? out}) {
 ///
 /// **Example:**
 /// {@example /example/linalg_premium_example.dart lang=dart}
-NDArray<R> pinv<T, R>(NDArray<T> a, {double? rcond, NDArray<R>? out}) {
+NDArray<T> pinv<T extends Object>(
+  NDArray<T> a, {
+  double? rcond,
+  NDArray<T>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute pinv() on a disposed array.');
   }
@@ -2189,7 +2575,7 @@ NDArray<R> pinv<T, R>(NDArray<T> a, {double? rcond, NDArray<R>? out}) {
   final n = a.shape[1];
 
   final targetShape = [n, m];
-  final result = out ?? (NDArray.create(targetShape, a.dtype) as NDArray<R>);
+  final result = out ?? NDArray<T>.create(targetShape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -2371,7 +2757,7 @@ NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
 /// {@example /example/linalg_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.cholesky](https://numpy.org/doc/stable/reference/generated/numpy.linalg.cholesky.html)
-NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
+NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
   if (a.isDisposed) {
     throw StateError('Cannot execute cholesky() on a disposed array.');
   }
@@ -2506,7 +2892,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// final q = res.Q;
 /// final r = res.R;
 /// ```
-({NDArray<T> Q, NDArray<T> R}) qr<T>(
+({NDArray<T> Q, NDArray<T> R}) qr<T extends Object>(
   NDArray<T> a, {
   ({NDArray<T> Q, NDArray<T> R})? out,
 }) {
@@ -2527,18 +2913,16 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
   final k = m < n ? m : n;
   final stackShape = a.shape.sublist(0, rank - 2);
 
-  final DType<double> targetDType = a.dtype == DType.float32
-      ? DType.float32 as DType<double>
-      : DType.float64 as DType<double>;
+  final DType<T> targetDType = a.dtype;
 
   final qShape = [...stackShape, m, k];
   final rShape = [...stackShape, k, n];
 
-  final NDArray<double> qMat;
-  final NDArray<double> rMat;
+  final NDArray<T> qMat;
+  final NDArray<T> rMat;
   if (out != null) {
-    qMat = out.Q as NDArray<double>;
-    rMat = out.R as NDArray<double>;
+    qMat = out.Q;
+    rMat = out.R;
     if (!listEquals(qMat.shape, qShape) || qMat.dtype != targetDType) {
       throw ArgumentError(
         'Provided out Q buffer has incompatible shape or dtype.',
@@ -2556,27 +2940,34 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
       throw ArgumentError('Provided out R buffer must be contiguous.');
     }
   } else {
-    qMat = NDArray<double>.zeros(qShape, targetDType);
-    rMat = NDArray<double>.zeros(rShape, targetDType);
+    qMat = NDArray<T>.zeros(qShape, targetDType);
+    rMat = NDArray<T>.zeros(rShape, targetDType);
   }
-
-  final NDArray<T> aCast =
-      (a.dtype == targetDType ? a : castNDArray(a, targetDType)) as NDArray<T>;
-  final bool wasCast = a.dtype != targetDType;
 
   final aCopy = NDArray.create([m, n], targetDType);
   final marker = ScratchArena.marker;
 
   try {
     final ffi.Pointer<ffi.Void> tau;
-    if (targetDType == DType.float64) {
-      tau = ScratchArena.allocate<ffi.Double>(
-        k * ffi.sizeOf<ffi.Double>(),
-      ).cast<ffi.Void>();
-    } else {
-      tau = ScratchArena.allocate<ffi.Float>(
-        k * ffi.sizeOf<ffi.Float>(),
-      ).cast<ffi.Void>();
+    switch (targetDType) {
+      case DType.float64:
+        tau = ScratchArena.allocate<ffi.Double>(
+          k * ffi.sizeOf<ffi.Double>(),
+        ).cast<ffi.Void>();
+      case DType.float32:
+        tau = ScratchArena.allocate<ffi.Float>(
+          k * ffi.sizeOf<ffi.Float>(),
+        ).cast<ffi.Void>();
+      case DType.complex128:
+        tau = ScratchArena.allocate<ffi.Double>(
+          2 * k * ffi.sizeOf<ffi.Double>(),
+        ).cast<ffi.Void>();
+      case DType.complex64:
+        tau = ScratchArena.allocate<ffi.Float>(
+          2 * k * ffi.sizeOf<ffi.Float>(),
+        ).cast<ffi.Void>();
+      default:
+        throw UnimplementedError('Unsupported DType for QR: $targetDType');
     }
 
     walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
@@ -2584,109 +2975,192 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
     ) {
       var offsetA = 0;
       for (var i = 0; i < coords.length; i++) {
-        offsetA += coords[i] * aCast.strides[i];
+        offsetA += coords[i] * a.strides[i];
       }
 
       final sliceView = NDArray.view(
-        aCast,
+        a,
         shape: [m, n],
-        strides: aCast.strides.sublist(rank - 2),
+        strides: a.strides.sublist(rank - 2),
         offsetElements: offsetA,
       );
-      sliceView.copy(out: aCopy as NDArray<T>);
+      sliceView.copy(out: aCopy);
       sliceView.dispose();
 
-      final r2D = targetDType == DType.float32
-          ? NDArray<Float32>.zeros([k, n], DType.float32)
-          : NDArray<Float64>.zeros([k, n], DType.float64);
-      final q2D = targetDType == DType.float32
-          ? NDArray<Float32>.zeros([m, k], DType.float32)
-          : NDArray<Float64>.zeros([m, k], DType.float64);
+      final NDArray r2D = NDArray.zeros([k, n], targetDType);
+      final NDArray q2D = NDArray.zeros([m, k], targetDType);
 
-      if (targetDType == DType.float64) {
-        final info = LAPACKE_dgeqrf(
-          101, // ROW_MAJOR
-          m,
-          n,
-          aCopy.pointer.cast<ffi.Double>(),
-          n,
-          tau.cast<ffi.Double>(),
-        );
-        if (info != 0) {
-          throw ArgumentError('Illegal value in call to LAPACKE_dgeqrf: $info');
-        }
-
-        final r2DData = r2D.data as Float64List;
-        final aCopyData = aCopy.data as Float64List;
-        for (var i = 0; i < k; i++) {
-          for (var j = i; j < n; j++) {
-            r2DData[i * n + j] = aCopyData[i * n + j];
-          }
-        }
-
-        final q2DData = q2D.data as Float64List;
-        for (var i = 0; i < m; i++) {
-          for (var j = 0; j < k; j++) {
-            q2DData[i * k + j] = aCopyData[i * n + j];
-          }
-        }
-
-        final infoOrg = LAPACKE_dorgqr(
-          101, // ROW_MAJOR
-          m,
-          k,
-          k,
-          q2D.pointer.cast<ffi.Double>(),
-          k,
-          tau.cast<ffi.Double>(),
-        );
-        if (infoOrg != 0) {
-          throw ArgumentError(
-            'Illegal value in call to LAPACKE_dorgqr: $infoOrg',
+      switch (targetDType) {
+        case DType.float64:
+          final info = LAPACKE_dgeqrf(
+            101, // ROW_MAJOR
+            m,
+            n,
+            aCopy.pointer.cast<ffi.Double>(),
+            n,
+            tau.cast<ffi.Double>(),
           );
-        }
-      } else {
-        final info = LAPACKE_sgeqrf(
-          101, // ROW_MAJOR
-          m,
-          n,
-          aCopy.pointer.cast<ffi.Float>(),
-          n,
-          tau.cast<ffi.Float>(),
-        );
-        if (info != 0) {
-          throw ArgumentError('Illegal value in call to LAPACKE_sgeqrf: $info');
-        }
-
-        final r2DData = r2D.data as Float32List;
-        final aCopyData = aCopy.data as Float32List;
-        for (var i = 0; i < k; i++) {
-          for (var j = i; j < n; j++) {
-            r2DData[i * n + j] = aCopyData[i * n + j];
+          if (info != 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_dgeqrf: $info',
+            );
           }
-        }
-
-        final q2DData = q2D.data as Float32List;
-        for (var i = 0; i < m; i++) {
-          for (var j = 0; j < k; j++) {
-            q2DData[i * k + j] = aCopyData[i * n + j];
+          final rPtr = r2D.pointer.cast<ffi.Double>();
+          final aPtr = aCopy.pointer.cast<ffi.Double>();
+          for (var i = 0; i < k; i++) {
+            for (var j = i; j < n; j++) {
+              rPtr[i * n + j] = aPtr[i * n + j];
+            }
           }
-        }
-
-        final infoOrg = LAPACKE_sorgqr(
-          101, // ROW_MAJOR
-          m,
-          k,
-          k,
-          q2D.pointer.cast<ffi.Float>(),
-          k,
-          tau.cast<ffi.Float>(),
-        );
-        if (infoOrg != 0) {
-          throw ArgumentError(
-            'Illegal value in call to LAPACKE_sorgqr: $infoOrg',
+          final qPtr = q2D.pointer.cast<ffi.Double>();
+          for (var i = 0; i < m; i++) {
+            for (var j = 0; j < k; j++) {
+              qPtr[i * k + j] = aPtr[i * n + j];
+            }
+          }
+          final infoOrg = LAPACKE_dorgqr(
+            101, // ROW_MAJOR
+            m,
+            k,
+            k,
+            q2D.pointer.cast<ffi.Double>(),
+            k,
+            tau.cast<ffi.Double>(),
           );
-        }
+          if (infoOrg != 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_dorgqr: $infoOrg',
+            );
+          }
+        case DType.float32:
+          final info = LAPACKE_sgeqrf(
+            101, // ROW_MAJOR
+            m,
+            n,
+            aCopy.pointer.cast<ffi.Float>(),
+            n,
+            tau.cast<ffi.Float>(),
+          );
+          if (info != 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_sgeqrf: $info',
+            );
+          }
+          final rPtr = r2D.pointer.cast<ffi.Float>();
+          final aPtr = aCopy.pointer.cast<ffi.Float>();
+          for (var i = 0; i < k; i++) {
+            for (var j = i; j < n; j++) {
+              rPtr[i * n + j] = aPtr[i * n + j];
+            }
+          }
+          final qPtr = q2D.pointer.cast<ffi.Float>();
+          for (var i = 0; i < m; i++) {
+            for (var j = 0; j < k; j++) {
+              qPtr[i * k + j] = aPtr[i * n + j];
+            }
+          }
+          final infoOrg = LAPACKE_sorgqr(
+            101, // ROW_MAJOR
+            m,
+            k,
+            k,
+            q2D.pointer.cast<ffi.Float>(),
+            k,
+            tau.cast<ffi.Float>(),
+          );
+          if (infoOrg != 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_sorgqr: $infoOrg',
+            );
+          }
+        case DType.complex128:
+          final info = LAPACKE_zgeqrf(
+            101, // ROW_MAJOR
+            m,
+            n,
+            aCopy.pointer.cast<ffi.Double>(),
+            n,
+            tau.cast<ffi.Double>(),
+          );
+          if (info != 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_zgeqrf: $info',
+            );
+          }
+          final rPtr = r2D.pointer.cast<ffi.Double>();
+          final aPtr = aCopy.pointer.cast<ffi.Double>();
+          for (var i = 0; i < k; i++) {
+            for (var j = i; j < n; j++) {
+              rPtr[(i * n + j) * 2] = aPtr[(i * n + j) * 2];
+              rPtr[(i * n + j) * 2 + 1] = aPtr[(i * n + j) * 2 + 1];
+            }
+          }
+          final qPtr = q2D.pointer.cast<ffi.Double>();
+          for (var i = 0; i < m; i++) {
+            for (var j = 0; j < k; j++) {
+              qPtr[(i * k + j) * 2] = aPtr[(i * n + j) * 2];
+              qPtr[(i * k + j) * 2 + 1] = aPtr[(i * n + j) * 2 + 1];
+            }
+          }
+          final infoOrg = LAPACKE_zungqr(
+            101, // ROW_MAJOR
+            m,
+            k,
+            k,
+            q2D.pointer.cast<ffi.Double>(),
+            k,
+            tau.cast<ffi.Double>(),
+          );
+          if (infoOrg != 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_zungqr: $infoOrg',
+            );
+          }
+        case DType.complex64:
+          final info = LAPACKE_cgeqrf(
+            101, // ROW_MAJOR
+            m,
+            n,
+            aCopy.pointer.cast<ffi.Float>(),
+            n,
+            tau.cast<ffi.Float>(),
+          );
+          if (info != 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_cgeqrf: $info',
+            );
+          }
+          final rPtr = r2D.pointer.cast<ffi.Float>();
+          final aPtr = aCopy.pointer.cast<ffi.Float>();
+          for (var i = 0; i < k; i++) {
+            for (var j = i; j < n; j++) {
+              rPtr[(i * n + j) * 2] = aPtr[(i * n + j) * 2];
+              rPtr[(i * n + j) * 2 + 1] = aPtr[(i * n + j) * 2 + 1];
+            }
+          }
+          final qPtr = q2D.pointer.cast<ffi.Float>();
+          for (var i = 0; i < m; i++) {
+            for (var j = 0; j < k; j++) {
+              qPtr[(i * k + j) * 2] = aPtr[(i * n + j) * 2];
+              qPtr[(i * k + j) * 2 + 1] = aPtr[(i * n + j) * 2 + 1];
+            }
+          }
+          final infoOrg = LAPACKE_cungqr(
+            101, // ROW_MAJOR
+            m,
+            k,
+            k,
+            q2D.pointer.cast<ffi.Float>(),
+            k,
+            tau.cast<ffi.Float>(),
+          );
+          if (infoOrg != 0) {
+            throw ArgumentError(
+              'Illegal value in call to LAPACKE_cungqr: $infoOrg',
+            );
+          }
+        default:
+          break;
       }
 
       var offsetQ = 0;
@@ -2698,7 +3172,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
         offsetR += coords[i] * rMat.strides[i];
       }
 
-      final qSlice = NDArray<double>.view(
+      final qSlice = NDArray<T>.view(
         qMat,
         shape: [m, k],
         strides: qMat.strides.sublist(rank - 2),
@@ -2707,7 +3181,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
       q2D.copy(out: qSlice);
       qSlice.dispose();
 
-      final rSlice = NDArray<double>.view(
+      final rSlice = NDArray<T>.view(
         rMat,
         shape: [k, n],
         strides: rMat.strides.sublist(rank - 2),
@@ -2722,12 +3196,9 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
   } finally {
     ScratchArena.reset(marker);
     aCopy.dispose();
-    if (wasCast) {
-      aCast.dispose();
-    }
   }
 
-  return (Q: qMat as NDArray<T>, R: rMat as NDArray<T>);
+  return (Q: qMat, R: rMat);
 }
 
 /// Computes the Singular Value Decomposition (SVD) of a matrix or a stack of matrices $A = U S V^h$.
@@ -2751,7 +3222,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
 /// final s = res.S;
 /// final vh = res.Vh;
 /// ```
-({NDArray<T> U, NDArray<double> S, NDArray<T> Vh}) svd<T>(
+({NDArray<T> U, NDArray<double> S, NDArray<T> Vh}) svd<T extends Object>(
   NDArray<T> a, {
   ({NDArray<T> U, NDArray<double> S, NDArray<T> Vh})? out,
 }) {
@@ -2805,10 +3276,10 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
     }
   }
 
-  return _svd(a, out: out);
+  return _svd<T>(a, out: out);
 }
 
-({NDArray<T> U, NDArray<double> S, NDArray<T> Vh}) _svd<T>(
+({NDArray<T> U, NDArray<double> S, NDArray<T> Vh}) _svd<T extends Object>(
   NDArray<T> a, {
   ({NDArray<T> U, NDArray<double> S, NDArray<T> Vh})? out,
 }) {
@@ -2825,7 +3296,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
     final aT = a.transpose(axes);
 
     // Do NOT pass out to recursive call, let it allocate contiguous buffers.
-    final resT = _svd(aT);
+    final resT = _svd<T>(aT);
     final uNew = resT.U;
     final sNew = resT.S;
     final vhNew = resT.Vh;
@@ -2900,9 +3371,8 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
           (a.dtype == DType.float32 || a.dtype == DType.complex64)
           ? NDArray<Float32>.zeros([n], DType.float32)
           : NDArray<Float64>.zeros([n], DType.float64);
-
-      final NDArray<T> u2D = NDArray<T>.zeros([m, m], a.dtype);
-      final NDArray<T> vt2D = NDArray<T>.zeros([n, n], a.dtype);
+      final NDArray u2D = NDArray.zeros([m, m], a.dtype);
+      final NDArray vt2D = NDArray.zeros([n, n], a.dtype);
 
       switch (a.dtype) {
         case DType.float64:
@@ -2977,7 +3447,7 @@ NDArray<T> cholesky<T>(NDArray<T> a, {NDArray<T>? out}) {
           );
           if (info != 0) throw ArgumentError('LAPACKE_cgesvd failed: $info');
         default:
-          throw UnimplementedError();
+          throw ArgumentError('Unsupported dtype for SVD: ${a.dtype}');
       }
 
       var offsetU = 0;
@@ -4154,9 +4624,6 @@ NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     if (bCast != b) bCast.dispose();
   }
 
-  if (out == null) {
-    result.detachToParentScope();
-  }
   return result;
 }
 
@@ -4665,6 +5132,9 @@ NDArray<R> cross<Ta, Tb, R>(
   return result;
 }
 
+/// Supported norm orders and calculation modes for vector and matrix norm computations.
+enum NormKind { frobenius, nuclear, l1, l2, infinity, negInfinity }
+
 /// Computes a vector or matrix norm.
 ///
 /// Computes one of the standard vector or matrix norms (magnitude) along the specified axis/axes.
@@ -4686,7 +5156,7 @@ NDArray<R> cross<Ta, Tb, R>(
 /// {@example /example/linalg_advanced_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.norm](https://numpy.org/doc/stable/reference/generated/numpy.linalg.norm.html)
-NDArray<double> norm<T>(
+NDArray<double> norm<T extends Object>(
   NDArray<T> a, {
   dynamic ord,
   dynamic axis,
@@ -4875,6 +5345,17 @@ NDArray<double> norm<T>(
 }
 
 double _vectorNorm<T>(NDArray<T> a, dynamic ord, DType targetDType) {
+  if (ord is NormKind) {
+    ord = switch (ord) {
+      NormKind.l1 => 1,
+      NormKind.l2 => 2,
+      NormKind.infinity => double.infinity,
+      NormKind.negInfinity => double.negativeInfinity,
+      NormKind.frobenius || NormKind.nuclear => throw ArgumentError(
+        'NormKind.${ord.name} is not valid for vectors',
+      ),
+    };
+  }
   final needsCast = a.dtype != targetDType;
   final castedA = needsCast ? castNDArray(a, targetDType) : a;
 
@@ -4969,7 +5450,21 @@ double _vectorNorm<T>(NDArray<T> a, dynamic ord, DType targetDType) {
   }
 }
 
-double _matrixNorm<T>(NDArray<T> a, dynamic ord, DType targetDType) {
+double _matrixNorm<T extends Object>(
+  NDArray<T> a,
+  dynamic ord,
+  DType targetDType,
+) {
+  if (ord is NormKind) {
+    ord = switch (ord) {
+      NormKind.frobenius => 'fro',
+      NormKind.nuclear => 'nuc',
+      NormKind.l1 => 1,
+      NormKind.l2 => 2,
+      NormKind.infinity => double.infinity,
+      NormKind.negInfinity => double.negativeInfinity,
+    };
+  }
   final rows = a.shape[0];
   final cols = a.shape[1];
 
@@ -4985,27 +5480,27 @@ double _matrixNorm<T>(NDArray<T> a, dynamic ord, DType targetDType) {
         a,
         shape: [rows],
         strides: [a.strides[0]],
-        offsetElements: c * a.strides[1],
+        offsetElements: a.offsetElements + c * a.strides[1],
       );
-      final sum = _vectorNorm(colSlice, 1, targetDType);
-      if (sum > maxColSum) maxColSum = sum;
+      final colSum = _vectorNorm(colSlice, 1, targetDType);
       colSlice.dispose();
+      if (colSum > maxColSum) maxColSum = colSum;
     }
     return maxColSum;
   } else if (ord == -1) {
-    double? minColSum;
+    var minColSum = double.infinity;
     for (var c = 0; c < cols; c++) {
       final colSlice = NDArray.view(
         a,
         shape: [rows],
         strides: [a.strides[0]],
-        offsetElements: c * a.strides[1],
+        offsetElements: a.offsetElements + c * a.strides[1],
       );
-      final sum = _vectorNorm(colSlice, 1, targetDType);
-      if (minColSum == null || sum < minColSum) minColSum = sum;
+      final colSum = _vectorNorm(colSlice, 1, targetDType);
       colSlice.dispose();
+      if (colSum < minColSum) minColSum = colSum;
     }
-    return minColSum ?? 0.0;
+    return minColSum;
   } else if (ord == double.infinity) {
     var maxRowSum = 0.0;
     for (var r = 0; r < rows; r++) {
@@ -5013,56 +5508,45 @@ double _matrixNorm<T>(NDArray<T> a, dynamic ord, DType targetDType) {
         a,
         shape: [cols],
         strides: [a.strides[1]],
-        offsetElements: r * a.strides[0],
+        offsetElements: a.offsetElements + r * a.strides[0],
       );
-      final sum = _vectorNorm(rowSlice, 1, targetDType);
-      if (sum > maxRowSum) maxRowSum = sum;
+      final rowSum = _vectorNorm(rowSlice, 1, targetDType);
       rowSlice.dispose();
+      if (rowSum > maxRowSum) maxRowSum = rowSum;
     }
     return maxRowSum;
   } else if (ord == double.negativeInfinity) {
-    double? minRowSum;
+    var minRowSum = double.infinity;
     for (var r = 0; r < rows; r++) {
       final rowSlice = NDArray.view(
         a,
         shape: [cols],
         strides: [a.strides[1]],
-        offsetElements: r * a.strides[0],
+        offsetElements: a.offsetElements + r * a.strides[0],
       );
-      final sum = _vectorNorm(rowSlice, 1, targetDType);
-      if (minRowSum == null || sum < minRowSum) minRowSum = sum;
+      final rowSum = _vectorNorm(rowSlice, 1, targetDType);
       rowSlice.dispose();
+      if (rowSum < minRowSum) minRowSum = rowSum;
     }
-    return minRowSum ?? 0.0;
-  } else if (ord == 2 || ord == -2) {
-    final castedA =
-        (a.dtype == DType.float64 ||
-            a.dtype == DType.float32 ||
-            a.dtype.isComplex)
-        ? a
-        : castNDArray(a, DType.float64);
-    try {
-      switch (castedA.dtype) {
-        case DType.complex128:
-        case DType.complex64:
-          final svdRes = svd(castedA as NDArray<Complex>);
-          final s = svdRes.S;
-          final val = ord == 2 ? s.data[0] : s.data[s.data.length - 1];
-          svdRes.dispose();
-          return val;
-        case DType.float64:
-        case DType.float32:
-          final svdRes = svd(castedA as NDArray<double>);
-          final s = svdRes.S;
-          final val = ord == 2 ? s.data[0] : s.data[s.data.length - 1];
-          svdRes.dispose();
-          return (val as num).toDouble();
-        default:
-          throw UnimplementedError();
-      }
-    } finally {
-      if (castedA != a) castedA.dispose();
+    return minRowSum;
+  } else if (ord == 2) {
+    final svdRes = svd(a);
+    final maxS = svdRes.S.data[0];
+    svdRes.dispose();
+    return maxS;
+  } else if (ord == -2) {
+    final svdRes = svd(a);
+    final minS = svdRes.S.data[svdRes.S.shape[0] - 1];
+    svdRes.dispose();
+    return minS;
+  } else if (ord == 'nuc') {
+    final svdRes = svd(a);
+    var sumS = 0.0;
+    for (var i = 0; i < svdRes.S.shape[0]; i++) {
+      sumS += svdRes.S.data[i];
     }
+    svdRes.dispose();
+    return sumS;
   } else {
     throw ArgumentError('Invalid matrix norm order: $ord');
   }
@@ -5083,44 +5567,13 @@ extension SVDRecordDispose on ({NDArray U, NDArray S, NDArray Vh}) {
   }
 }
 
-/// Result of a least-squares solver [lstsq].
-///
-/// Reference: [NumPy linalg.lstsq](https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html)
-final class LstsqResult<T> {
-  /// Least-squares solution.
-  ///
-  /// If the input [b] is 1-dimensional, [x] has shape `[N]`.
-  /// If [b] is 2-dimensional, [x] has shape `[N, K]`.
-  final NDArray<T> x;
-
-  /// Sums of squared residuals.
-  ///
-  /// Squared Euclidean 2-norm for each column in $b - a x$.
-  /// If the input [b] is 1-dimensional, [residuals] has shape `[1]`.
-  /// If [b] is 2-dimensional, [residuals] has shape `[K]`.
-  ///
-  /// **Note:** Residuals are only computed if the first dimension of the input matrix $a$
-  /// is strictly greater than its second dimension ($M > N$) and the effective rank is $N$.
-  /// Otherwise, it is returned as an empty array of shape `[0]`.
-  final NDArray<double> residuals;
-
-  /// Effective rank of the input matrix $a$.
-  final int rank;
-
-  /// Singular values of the input matrix $a$.
-  ///
-  /// Stored in descending order of magnitude.
-  /// Shape is `[min(M, N)]`.
-  final NDArray<double> s;
-
-  /// Creates a new [LstsqResult] instance.
-  LstsqResult({
-    required this.x,
-    required this.residuals,
-    required this.rank,
-    required this.s,
-  });
-}
+/// Result record of a least-squares linear system solution from [lstsq].
+typedef LstsqResult<T> = ({
+  NDArray<T> x,
+  NDArray<double> residuals,
+  int rank,
+  NDArray<double> s,
+});
 
 /// Computes the least-squares solution to a linear matrix equation $a x = b$.
 ///
@@ -5142,15 +5595,9 @@ final class LstsqResult<T> {
 /// - Input matrix [a] must be 2-dimensional of shape `[M, N]`.
 /// - Input array [b] must be 1-dimensional of shape `[M]` or 2-dimensional of shape `[M, K]`.
 /// - The first dimension of [b] must exactly match the first dimension of [a] ($M$).
-/// - Input arrays [a] and [b] must have the matching floating-point or complex [DType]. Integers or boolean
-///   arrays are not supported.
-/// - If provided, the recycler [out] must have the shape `[N]` (if [b] is 1D) or `[N, K]` (if [b] is 2D),
-///   and its dtype must exactly match the dtype of [a] and [b].
 ///
 /// **Throws:**
 /// - [StateError] if [a] or [b] is disposed.
-/// - [ArgumentError] if [a] or [b] does not have a floating-point or complex DType.
-/// - [ArgumentError] if [b]'s DType does not match [a]'s DType.
 /// - [ArgumentError] if [a] is not 2D, or [b] is not 1D or 2D.
 /// - [ArgumentError] if [b]'s first dimension does not match [a]'s first dimension.
 /// - [StateError] if [out] is provided but disposed.
@@ -5164,77 +5611,95 @@ final class LstsqResult<T> {
 /// {@example /example/linalg_lstsq_example.dart lang=dart}
 ///
 /// Reference: [NumPy linalg.lstsq](https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html)
-LstsqResult<T> lstsq<T>(
-  NDArray<T> a,
-  NDArray<T> b, {
+LstsqResult<R> lstsq<Ta, Tb, R>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
   double? rcond,
-  NDArray<T>? out,
+  NDArray<R>? out,
 }) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot execute lstsq() on a disposed array.');
   }
-  if (!a.dtype.isFloating && !a.dtype.isComplex) {
-    throw ArgumentError(
-      'Input array a must have a floating-point or complex DType (was ${a.dtype}).',
-    );
+
+  final targetDType = (a.dtype.isInteger && b.dtype.isInteger)
+      ? DType.float64
+      : (a.dtype.isInteger
+            ? (b.dtype == DType.float32 ? DType.float32 : DType.float64)
+            : (b.dtype.isInteger
+                  ? (a.dtype == DType.float32 ? DType.float32 : DType.float64)
+                  : resolveDType(a.dtype, b.dtype)));
+
+  if (!targetDType.isFloating && !targetDType.isComplex) {
+    throw ArgumentError('lstsq requires floating-point or complex inputs.');
   }
-  if (a.dtype != b.dtype) {
-    throw ArgumentError(
-      'Input array b must have the matching DType as a (expected ${a.dtype}, was ${b.dtype}).',
-    );
-  }
-  if (a.shape.length != 2) {
+
+  final aUse = a.dtype == targetDType ? a : castNDArray(a, targetDType);
+  final bUse = b.dtype == targetDType ? b : castNDArray(b, targetDType);
+  final wasACast = aUse != a;
+  final wasBCast = bUse != b;
+
+  if (aUse.shape.length != 2) {
+    if (wasACast) aUse.dispose();
+    if (wasBCast) bUse.dispose();
     throw ArgumentError(
       'Input matrix a must be 2-dimensional (was shape ${a.shape}).',
     );
   }
-  if (b.shape.length != 1 && b.shape.length != 2) {
+  if (bUse.shape.length != 1 && bUse.shape.length != 2) {
+    if (wasACast) aUse.dispose();
+    if (wasBCast) bUse.dispose();
     throw ArgumentError(
       'Input right-hand side b must be 1D or 2D (was shape ${b.shape}).',
     );
   }
-  final m = a.shape[0];
-  final n = a.shape[1];
-  if (b.shape[0] != m) {
+  final m = aUse.shape[0];
+  final n = aUse.shape[1];
+  if (bUse.shape[0] != m) {
+    if (wasACast) aUse.dispose();
+    if (wasBCast) bUse.dispose();
     throw ArgumentError(
-      'First dimension of b (${b.shape[0]}) must match first dimension of a ($m).',
+      'First dimension of b (${bUse.shape[0]}) must match first dimension of a ($m).',
     );
   }
 
-  final nrhs = b.shape.length > 1 ? b.shape[1] : 1;
+  final nrhs = bUse.shape.length > 1 ? bUse.shape[1] : 1;
 
   if (out != null) {
     if (out.isDisposed) {
+      if (wasACast) aUse.dispose();
+      if (wasBCast) bUse.dispose();
       throw StateError('Cannot write to a disposed out buffer.');
     }
-    final expectedXShape = b.shape.length > 1 ? [n, nrhs] : [n];
-    if (!listEquals(out.shape, expectedXShape) || out.dtype != a.dtype) {
+    final expectedXShape = bUse.shape.length > 1 ? [n, nrhs] : [n];
+    if (!listEquals(out.shape, expectedXShape) || out.dtype != targetDType) {
+      if (wasACast) aUse.dispose();
+      if (wasBCast) bUse.dispose();
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
-  // Create a contiguous copy of `a` (overwrite-safe)
-  final aCopy = a.copy();
+  // Create a contiguous copy of a (overwrite-safe)
+  final aCopy = aUse.copy();
 
   // Row-major LAPACKE_gelsd requires b array size to be max(m, n) * nrhs
   final maxMN = m > n ? m : n;
-  final bCopyShape = b.shape.length > 1 ? [maxMN, nrhs] : [maxMN];
-  final bCopy = NDArray<T>.zeros(bCopyShape, a.dtype);
+  final bCopyShape = bUse.shape.length > 1 ? [maxMN, nrhs] : [maxMN];
+  final bCopy = NDArray.zeros(bCopyShape, targetDType);
 
   // Copy b into bCopy
-  final byteCount = b.data.length * a.dtype.byteWidth;
-  if (b.isContiguous) {
+  final byteCount = bUse.size * targetDType.byteWidth;
+  if (bUse.isContiguous) {
     ffi.Pointer.fromAddress(bCopy.pointer.address)
         .cast<ffi.Uint8>()
         .asTypedList(byteCount)
         .setAll(
           0,
           ffi.Pointer.fromAddress(
-            b.pointer.address,
+            bUse.pointer.address,
           ).cast<ffi.Uint8>().asTypedList(byteCount),
         );
   } else {
-    final bContig = b.copy();
+    final bContig = bUse.copy();
     ffi.Pointer.fromAddress(bCopy.pointer.address)
         .cast<ffi.Uint8>()
         .asTypedList(byteCount)
@@ -5249,18 +5714,18 @@ LstsqResult<T> lstsq<T>(
 
   final minMN = m < n ? m : n;
   // Singular values s is always real
-  final sDType = (a.dtype == DType.complex64 || a.dtype == DType.float32)
+  final sDType =
+      (targetDType == DType.complex64 || targetDType == DType.float32)
       ? DType.float32
       : DType.float64;
   final s = NDArray<double>.zeros([minMN], sDType as dynamic);
-
   final marker = ScratchArena.marker;
-  final rankPtr = ScratchArena.allocate<ffi.Int>(4);
-  final resolvedRcond = rcond ?? -1.0; // negative rcond uses machine precision
+  final rankPtr = ScratchArena.allocate<ffi.Int>(ffi.sizeOf<ffi.Int>());
+  final rcondVal = rcond ?? -1.0;
 
   try {
     int info;
-    switch (a.dtype) {
+    switch (targetDType) {
       case DType.float64:
         info = LAPACKE_dgelsd(
           101, // ROW_MAJOR
@@ -5272,12 +5737,12 @@ LstsqResult<T> lstsq<T>(
           bCopy.pointer.cast<ffi.Double>(),
           nrhs,
           s.pointer.cast<ffi.Double>(),
-          resolvedRcond,
+          rcondVal,
           rankPtr,
         );
       case DType.float32:
         info = LAPACKE_sgelsd(
-          101,
+          101, // ROW_MAJOR
           m,
           n,
           nrhs,
@@ -5286,12 +5751,12 @@ LstsqResult<T> lstsq<T>(
           bCopy.pointer.cast<ffi.Float>(),
           nrhs,
           s.pointer.cast<ffi.Float>(),
-          resolvedRcond,
+          rcondVal,
           rankPtr,
         );
       case DType.complex128:
         info = LAPACKE_zgelsd(
-          101,
+          101, // ROW_MAJOR
           m,
           n,
           nrhs,
@@ -5300,12 +5765,12 @@ LstsqResult<T> lstsq<T>(
           bCopy.pointer.cast<ffi.Double>(),
           nrhs,
           s.pointer.cast<ffi.Double>(),
-          resolvedRcond,
+          rcondVal,
           rankPtr,
         );
       case DType.complex64:
         info = LAPACKE_cgelsd(
-          101,
+          101, // ROW_MAJOR
           m,
           n,
           nrhs,
@@ -5314,12 +5779,12 @@ LstsqResult<T> lstsq<T>(
           bCopy.pointer.cast<ffi.Float>(),
           nrhs,
           s.pointer.cast<ffi.Float>(),
-          resolvedRcond,
+          rcondVal,
           rankPtr,
         );
       default:
         throw UnimplementedError(
-          'Unsupported target DType for lstsq: ${a.dtype}',
+          'Unsupported target DType for lstsq: $targetDType',
         );
     }
 
@@ -5332,55 +5797,89 @@ LstsqResult<T> lstsq<T>(
       );
     }
 
-    final rank = rankPtr.value;
+    final rank = rankPtr[0];
 
     // Extract solution x: first n rows of bCopy
-    final xShape = b.shape.length > 1 ? [n, nrhs] : [n];
-    final x = out ?? NDArray<T>.zeros(xShape, a.dtype);
-    final elementsToCopy = n * nrhs;
-    x.data.setRange(0, elementsToCopy, bCopy.data.sublist(0, elementsToCopy));
+    final xShape = bUse.shape.length > 1 ? [n, nrhs] : [n];
+    final NDArray<R> x =
+        (out ?? NDArray<R>.zeros(xShape, targetDType as DType<R>));
+    final bCopySlice = NDArray.view(
+      bCopy,
+      shape: xShape,
+      strides: bCopy.strides.sublist(bCopy.shape.length - xShape.length),
+      offsetElements: 0,
+    );
+    bCopySlice.copy(out: x);
+    bCopySlice.dispose();
 
     // Extract residuals: sum of squares of elements from row n to m-1 for each column
     final NDArray<double> residuals;
     if (m > n && rank == n) {
-      final resShape = b.shape.length > 1 ? [nrhs] : [1];
+      final resShape = bUse.shape.length > 1 ? [nrhs] : [1];
       residuals = NDArray<double>.zeros(resShape, sDType as dynamic);
-      if (a.dtype.isComplex) {
+      if (targetDType == DType.complex128) {
+        final bPtr = bCopy.pointer.cast<ffi.Double>();
+        final resPtr = residuals.pointer.cast<ffi.Double>();
         for (var j = 0; j < nrhs; j++) {
           var sum = 0.0;
           for (var i = n; i < m; i++) {
-            final complexVal = bCopy.data[i * nrhs + j] as Complex;
-            sum +=
-                complexVal.real * complexVal.real +
-                complexVal.imag * complexVal.imag;
+            final real = bPtr[(i * nrhs + j) * 2];
+            final imag = bPtr[(i * nrhs + j) * 2 + 1];
+            sum += real * real + imag * imag;
           }
-          residuals.data[j] = sum;
+          resPtr[j] = sum;
         }
-      } else {
+      } else if (targetDType == DType.complex64) {
+        final bPtr = bCopy.pointer.cast<ffi.Float>();
+        final resPtr = residuals.pointer.cast<ffi.Float>();
         for (var j = 0; j < nrhs; j++) {
           var sum = 0.0;
           for (var i = n; i < m; i++) {
-            final val = bCopy.data[i * nrhs + j] as num;
+            final real = bPtr[(i * nrhs + j) * 2];
+            final imag = bPtr[(i * nrhs + j) * 2 + 1];
+            sum += real * real + imag * imag;
+          }
+          resPtr[j] = sum;
+        }
+      } else if (targetDType == DType.float32) {
+        final bPtr = bCopy.pointer.cast<ffi.Float>();
+        final resPtr = residuals.pointer.cast<ffi.Float>();
+        for (var j = 0; j < nrhs; j++) {
+          var sum = 0.0;
+          for (var i = n; i < m; i++) {
+            final val = bPtr[i * nrhs + j];
             sum += val * val;
           }
-          residuals.data[j] = sum;
+          resPtr[j] = sum;
+        }
+      } else {
+        final bPtr = bCopy.pointer.cast<ffi.Double>();
+        final resPtr = residuals.pointer.cast<ffi.Double>();
+        for (var j = 0; j < nrhs; j++) {
+          var sum = 0.0;
+          for (var i = n; i < m; i++) {
+            final val = bPtr[i * nrhs + j];
+            sum += val * val;
+          }
+          resPtr[j] = sum;
         }
       }
     } else {
       residuals = NDArray<double>.zeros([0], sDType as dynamic);
     }
 
-    // Attach to scope or return
     if (out == null) {
       x.detachToParentScope();
     }
     residuals.detachToParentScope();
     s.detachToParentScope();
 
-    return LstsqResult<T>(x: x, residuals: residuals, rank: rank, s: s);
+    return (x: x, residuals: residuals, rank: rank, s: s);
   } finally {
     ScratchArena.reset(marker);
     aCopy.dispose();
     bCopy.dispose();
+    if (wasACast) aUse.dispose();
+    if (wasBCast) bUse.dispose();
   }
 }

@@ -18,7 +18,9 @@ class OutlineNode {
 
 /// Adapter building document outline trees and breadcrumbs from LSP symbols.
 class LspSymbolAdapter {
-  static List<OutlineNode> adaptDocumentSymbols(List<LspDocumentSymbol> symbols) {
+  static List<OutlineNode> adaptDocumentSymbols(
+    List<LspDocumentSymbol> symbols,
+  ) {
     return symbols.map(_convertSymbol).toList();
   }
 

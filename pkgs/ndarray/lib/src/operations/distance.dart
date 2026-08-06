@@ -41,7 +41,7 @@ enum DistanceMetric {
 /// Helper to promote an NDArray to Float64 if it is not already.
 NDArray<Float64> _promoteToFloat64(NDArray a) {
   if (a.isDisposed) {
-    throw StateError('Cannot execute promoteToFloat64 on a disposed array.');
+    throw StateError('Cannot perform operation on a disposed array.');
   }
   if (a.dtype == DType.float64) {
     return a as NDArray<Float64>;
@@ -103,8 +103,8 @@ NDArray<Float64> pdist<T extends Object>(
   DistanceMetric metric = DistanceMetric.euclidean,
   NDArray<Float64>? out,
 }) {
-  if (x.isDisposed) {
-    throw StateError('Cannot execute pdist() on a disposed array.');
+  if (x.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot perform operation on a disposed array.');
   }
   if (x.shape.length != 2) {
     throw ArgumentError('Input array x must be 2-dimensional.');
@@ -206,8 +206,8 @@ NDArray<Float64> cdist<Ta extends Object, Tb extends Object>(
   DistanceMetric metric = DistanceMetric.euclidean,
   NDArray<Float64>? out,
 }) {
-  if (xa.isDisposed || xb.isDisposed) {
-    throw StateError('Cannot execute cdist() on disposed arrays.');
+  if (xa.isDisposed || xb.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot perform operation on a disposed array.');
   }
   if (xa.shape.length != 2 || xb.shape.length != 2) {
     throw ArgumentError('Input arrays must be 2-dimensional.');

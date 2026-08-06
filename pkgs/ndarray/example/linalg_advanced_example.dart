@@ -25,15 +25,15 @@ void main() {
   // 4. Vector and Matrix Norms
   final x = NDArray.fromList([1.0, -2.0, 3.0, -4.0], [4], DType.float64);
   final l1 = norm(x, ord: 1);
-  print('Vector L1 Norm: ${l1.data[0]}'); // 10.0
+  print('Vector L1 Norm: ${l1[0]}'); // 10.0
   l1.dispose();
 
   final l2 = norm(x, ord: 2);
-  print('Vector L2 Norm: ${l2.data[0]}'); // sqrt(30)
+  print('Vector L2 Norm: ${l2[0]}'); // sqrt(30)
   l2.dispose();
 
   final m = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
   final fro = norm(m, ord: 'fro');
-  print('Matrix Frobenius Norm: ${fro.data[0]}'); // sqrt(30)
+  print('Matrix Frobenius Norm: ${fro[0]}'); // sqrt(30)
   fro.dispose();
 }

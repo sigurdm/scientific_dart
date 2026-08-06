@@ -12,8 +12,8 @@ void runBasicComparisonsExample() {
   final a = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float64);
   final b = NDArray.fromList([10.0, 99.0, 30.0], [3], DType.float64);
 
-  print('Array A: ${a.data}');
-  print('Array B: ${b.data}');
+  print('Array A: ${a.toList()}');
+  print('Array B: ${b.toList()}');
 
   // equal
   final eq = equal(a, b);
@@ -41,8 +41,8 @@ void runMaskRecyclingExample() {
     DType.float64,
   );
 
-  print('Dataset: ${dataset.data}');
-  print('Threshold bounds: ${threshold.data}');
+  print('Dataset: ${dataset.toList()}');
+  print('Threshold bounds: ${threshold.toList()}');
 
   // Pre-allocate a boolean mask result buffer once!
   final recycledMask = NDArray<bool>.create([5], DType.boolean);

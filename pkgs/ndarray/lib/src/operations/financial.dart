@@ -38,6 +38,14 @@ NDArray<Float64> fv(
   dynamic when = 0,
   NDArray<Float64>? out,
 }) {
+  if (rate.isDisposed ||
+      nper.isDisposed ||
+      pmt.isDisposed ||
+      pv.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (when is NDArray && when.isDisposed)) {
+    throw StateError('Cannot perform operation on a disposed array.');
+  }
   return NDArray.scope(() {
     final whenArr = _parseWhen(when);
 
@@ -86,6 +94,14 @@ NDArray<Float64> pv(
   dynamic when = 0,
   NDArray<Float64>? out,
 }) {
+  if (rate.isDisposed ||
+      nper.isDisposed ||
+      pmt.isDisposed ||
+      fv.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (when is NDArray && when.isDisposed)) {
+    throw StateError('Cannot perform operation on a disposed array.');
+  }
   return NDArray.scope(() {
     final whenArr = _parseWhen(when);
 
@@ -108,9 +124,8 @@ NDArray<Float64> pv(
     final NDArray<Float64> factor = divide(pmtRateWhenPlusOne, rate);
     final NDArray<Float64> tempMinusOne = subtract(temp, one);
     final NDArray<Float64> term2 = multiply(factor, tempMinusOne);
-    final NDArray<Float64> numerator = add(fv, term2);
-    final NDArray<Float64> negNumerator = negative(numerator);
-    final NDArray<Float64> pvNonzero = divide(negNumerator, temp);
+    final NDArray<Float64> pvNonzeroInner = divide(add(fv, term2), temp);
+    final NDArray<Float64> pvNonzero = negative(pvNonzeroInner);
 
     final cond = equal(rate, zero);
     final NDArray<Float64> result = where(cond, pvZero, pvNonzero, out);
@@ -132,6 +147,9 @@ NDArray<Float64> npv(
   NDArray<Float64> values, {
   NDArray<Float64>? out,
 }) {
+  if (rate.isDisposed || values.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot perform operation on a disposed array.');
+  }
   if (values.rank < 1) {
     throw ArgumentError('values must be at least 1D');
   }
@@ -182,6 +200,9 @@ NDArray<Float64> irr(
   bool raiseExceptions = false,
   NDArray<Float64>? out,
 }) {
+  if (values.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot perform operation on a disposed array.');
+  }
   if (values.rank != 1) {
     throw ArgumentError('values must be a 1D array');
   }

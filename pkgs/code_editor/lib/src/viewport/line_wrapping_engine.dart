@@ -1,120 +1,139 @@
-import 'font_metrics.dart';
+/// Slice/subrange of a single text line created by line wrapping.
+final class TextLineSlice {
+  /// The index of the document line this slice belongs to.
+  final int lineIndex;
 
-/// Represents a 2D coordinate on a wrapped line.
-class DisplayPosition {
-  final int subLineIndex;
-  final int subLineColumn;
+  /// The 0-based slice index within the wrapped line.
+  final int sliceIndex;
 
-  const DisplayPosition(this.subLineIndex, this.subLineColumn);
+  /// The starting character column (inclusive).
+  final int startColumn;
+
+  /// The ending character column (exclusive).
+  final int endColumn;
+
+  /// The text content of this slice.
+  final String content;
+
+  /// Creates a [TextLineSlice].
+  const TextLineSlice({
+    required this.lineIndex,
+    required this.sliceIndex,
+    required this.startColumn,
+    required this.endColumn,
+    required this.content,
+  });
+
+  /// Length of text in this slice.
+  int get length => content.length;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is DisplayPosition &&
-          runtimeType == other.runtimeType &&
-          subLineIndex == other.subLineIndex &&
-          subLineColumn == other.subLineColumn;
-
-  @override
-  int get hashCode => Object.hash(subLineIndex, subLineColumn);
-
-  @override
-  String toString() => 'DisplayPosition(subLine: $subLineIndex, col: $subLineColumn)';
-}
-
-/// Result of line wrapping computation.
-class LineWrapResult {
-  /// Offsets in character string where soft wraps occur.
-  final List<int> breakOffsets;
-
-  const LineWrapResult(this.breakOffsets);
-
-  int get subLineCount => breakOffsets.length + 1;
-
-  /// Maps a document column (character offset in line) to (subLineIndex, subLineColumn).
-  DisplayPosition documentColumnToDisplay(int docColumn) {
-    if (breakOffsets.isEmpty || docColumn <= 0) {
-      return DisplayPosition(0, docColumn);
-    }
-
-    int subLineIdx = 0;
-    int prevOffset = 0;
-
-    for (int i = 0; i < breakOffsets.length; i++) {
-      final brk = breakOffsets[i];
-      if (docColumn < brk) {
-        return DisplayPosition(subLineIdx, docColumn - prevOffset);
-      }
-      prevOffset = brk;
-      subLineIdx++;
-    }
-
-    return DisplayPosition(subLineIdx, docColumn - prevOffset);
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is TextLineSlice &&
+        other.lineIndex == lineIndex &&
+        other.sliceIndex == sliceIndex &&
+        other.startColumn == startColumn &&
+        other.endColumn == endColumn &&
+        other.content == content;
   }
 
-  /// Maps a (subLineIndex, subLineColumn) to document column offset.
-  int displayColumnToDocument(int subLineIndex, int subLineColumn) {
-    if (breakOffsets.isEmpty || subLineIndex <= 0) {
-      return subLineColumn;
-    }
+  @override
+  int get hashCode =>
+      Object.hash(lineIndex, sliceIndex, startColumn, endColumn, content);
 
-    if (subLineIndex > breakOffsets.length) {
-      subLineIndex = breakOffsets.length;
-    }
-
-    int startOffset = subLineIndex == 0 ? 0 : breakOffsets[subLineIndex - 1];
-    return startOffset + subLineColumn;
-  }
+  @override
+  String toString() =>
+      'TextLineSlice(line: $lineIndex, slice: $sliceIndex, range: $startColumn..$endColumn, text: "$content")';
 }
 
-class LineWrappingEngine {
-  /// Computes line wrap breaks for [text] fitting within [viewportWidth].
-  static LineWrapResult computeWrap(
-    String text,
-    double viewportWidth,
-    TextMeasurer measurer, {
-    bool wordWrap = true,
-  }) {
-    if (text.isEmpty || viewportWidth <= 0.0) {
-      return const LineWrapResult([]);
+/// Engine that performs soft line wrapping based on word boundaries and max width constraints.
+final class LineWrappingEngine {
+  /// Maximum number of character columns allowed per slice line.
+  final int maxColumns;
+
+  /// Whether soft wrapping is enabled.
+  final bool enabled;
+
+  /// Creates a [LineWrappingEngine].
+  const LineWrappingEngine({this.maxColumns = 80, this.enabled = true});
+
+  /// Wraps [lineText] into one or more [TextLineSlice] instances.
+  List<TextLineSlice> wrapLine(String lineText, int lineIndex) {
+    if (!enabled || maxColumns <= 0 || lineText.length <= maxColumns) {
+      return [
+        TextLineSlice(
+          lineIndex: lineIndex,
+          sliceIndex: 0,
+          startColumn: 0,
+          endColumn: lineText.length,
+          content: lineText,
+        ),
+      ];
     }
 
-    final totalWidth = measurer.measureWidth(text);
-    if (totalWidth <= viewportWidth) {
-      return const LineWrapResult([]);
-    }
+    final slices = <TextLineSlice>[];
+    int startCol = 0;
+    int sliceIndex = 0;
 
-    final breakOffsets = <int>[];
-    int lineStart = 0;
-    int lastWordBoundary = -1;
-    int idx = 0;
-
-    while (idx < text.length) {
-      final substr = text.substring(lineStart, idx + 1);
-      final width = measurer.measureWidth(substr);
-
-      final char = text[idx];
-      if (wordWrap && (char == ' ' || char == '\t' || char == '-' || char == '_' || char == '.' || char == '/')) {
-        lastWordBoundary = idx + 1;
+    while (startCol < lineText.length) {
+      final remaining = lineText.length - startCol;
+      if (remaining <= maxColumns) {
+        slices.add(
+          TextLineSlice(
+            lineIndex: lineIndex,
+            sliceIndex: sliceIndex++,
+            startColumn: startCol,
+            endColumn: lineText.length,
+            content: lineText.substring(startCol),
+          ),
+        );
+        break;
       }
 
-      if (width > viewportWidth) {
-        int breakAt;
-        if (wordWrap && lastWordBoundary > lineStart && lastWordBoundary <= idx) {
-          breakAt = lastWordBoundary;
-        } else {
-          breakAt = idx > lineStart ? idx : idx + 1;
-        }
+      int candidateEnd = startCol + maxColumns;
+      int breakCol = _findWordBoundary(lineText, startCol, candidateEnd);
 
-        breakOffsets.add(breakAt);
-        lineStart = breakAt;
-        idx = breakAt;
-        lastWordBoundary = -1;
-      } else {
-        idx++;
+      if (breakCol <= startCol) {
+        // No word boundary found, hard break at maxColumns
+        breakCol = candidateEnd;
       }
+
+      slices.add(
+        TextLineSlice(
+          lineIndex: lineIndex,
+          sliceIndex: sliceIndex++,
+          startColumn: startCol,
+          endColumn: breakCol,
+          content: lineText.substring(startCol, breakCol),
+        ),
+      );
+
+      startCol = breakCol;
     }
 
-    return LineWrapResult(breakOffsets);
+    return slices.isEmpty
+        ? [
+            TextLineSlice(
+              lineIndex: lineIndex,
+              sliceIndex: 0,
+              startColumn: 0,
+              endColumn: 0,
+              content: '',
+            ),
+          ]
+        : slices;
+  }
+
+  static int _findWordBoundary(String text, int start, int targetEnd) {
+    for (int i = targetEnd; i > start; i--) {
+      if (i < text.length && (text[i] == ' ' || text[i] == '\t')) {
+        return i + 1 <= targetEnd ? i + 1 : targetEnd;
+      }
+      if (i - 1 >= start && (text[i - 1] == ' ' || text[i - 1] == '\t')) {
+        return i <= targetEnd ? i : targetEnd;
+      }
+    }
+    return start;
   }
 }

@@ -288,6 +288,29 @@ final class NDArray<T> implements ffi.Finalizable {
     }, zoneValues: {_scopeKey: scope});
   }
 
+  /// Executes [callback] within an automatic resource management scope, automatically
+  /// detaching and returning the resulting [NDArray] to the parent scope (if any).
+  ///
+  /// Any intermediate arrays created inside [callback] will be automatically disposed,
+  /// while the returned [NDArray] survives the inner scope and is promoted to the caller's outer scope.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final result = NDArray.returning(() {
+  ///   final a = NDArray.zeros([100], DType.float64);
+  ///   final b = NDArray.ones([100], DType.float64);
+  ///   return add(a, b); // Intermediate arrays "a" and "b" disposed, result returned.
+  /// });
+  /// ```
+  static NDArray<T> returning<T extends Object>(
+    NDArray<T> Function() callback,
+  ) {
+    return scope(() {
+      final res = callback();
+      return res.detachToParentScope();
+    });
+  }
+
   /// Executes [callback] within an unmanaged context, preventing any created
   /// [NDArray]s from being registered in or disposed of by any active outer scopes.
   ///
@@ -673,6 +696,10 @@ final class NDArray<T> implements ffi.Finalizable {
       final val = start + i * step;
       if (resolvedDType.isComplex) {
         arr.data[i] = Complex(val, 0.0) as T;
+      } else if (resolvedDType.isInteger) {
+        arr.data[i] = val.toInt() as T;
+      } else if (resolvedDType == DType.boolean) {
+        arr.data[i] = (val != 0.0) as T;
       } else {
         arr.data[i] = val as T;
       }
@@ -731,16 +758,20 @@ final class NDArray<T> implements ffi.Finalizable {
         (childLogicalPointer.address - root._pointer.address) ~/
         parent.dtype.byteWidth;
 
+    final bool isEmpty = shape.contains(0);
+
     // Calculate min and max relative offsets
     var minRelativeOffset = 0;
     var maxRelativeOffset = 0;
-    for (var d = 0; d < shape.length; d++) {
-      final stride = strides[d];
-      final size = shape[d];
-      if (stride > 0) {
-        maxRelativeOffset += (size - 1) * stride;
-      } else {
-        minRelativeOffset += (size - 1) * stride;
+    if (!isEmpty) {
+      for (var d = 0; d < shape.length; d++) {
+        final stride = strides[d];
+        final size = shape[d];
+        if (stride > 0) {
+          maxRelativeOffset += (size - 1) * stride;
+        } else if (stride < 0) {
+          minRelativeOffset += (size - 1) * stride;
+        }
       }
     }
 
@@ -752,7 +783,9 @@ final class NDArray<T> implements ffi.Finalizable {
       minPhysicalOffset,
       parent.dtype,
     );
-    final int viewSize = maxPhysicalOffset - minPhysicalOffset + 1;
+    final int viewSize = isEmpty
+        ? 0
+        : (maxPhysicalOffset - minPhysicalOffset + 1);
     final List<T> data;
 
     switch (parent.dtype) {
@@ -796,7 +829,7 @@ final class NDArray<T> implements ffi.Finalizable {
                 as List<T>;
     }
 
-    final viewOffsetElements = -minRelativeOffset;
+    final viewOffsetElements = isEmpty ? 0 : -minRelativeOffset;
 
     return NDArray._(
       childLogicalPointer,
@@ -2446,27 +2479,51 @@ final class NDArray<T> implements ffi.Finalizable {
         // Rank reduction: don't add to newShape or newStrides
       } else if (selector is Slice) {
         final step = selector.step;
-        final int startIdx;
-        if (selector.start == null) {
-          startIdx = step > 0 ? 0 : shape[i] - 1;
+        if (step == 0) {
+          throw ArgumentError('Slice step cannot be zero.');
+        }
+        final start = selector.start;
+        final stop = selector.stop;
+        final length = shape[i];
+
+        final int realStart;
+        final int realStop;
+        final int dimSize;
+
+        if (step > 0) {
+          if (start == null) {
+            realStart = 0;
+          } else {
+            final s = start < 0 ? length + start : start;
+            realStart = s.clamp(0, length);
+          }
+          if (stop == null) {
+            realStop = length;
+          } else {
+            final s = stop < 0 ? length + stop : stop;
+            realStop = s.clamp(0, length);
+          }
+          dimSize = realStop > realStart
+              ? ((realStop - realStart + step - 1) ~/ step)
+              : 0;
         } else {
-          final s = selector.start!;
-          startIdx = s < 0 ? shape[i] + s : s;
+          if (start == null) {
+            realStart = length - 1;
+          } else {
+            final s = start < 0 ? length + start : start;
+            realStart = s.clamp(-1, length - 1);
+          }
+          if (stop == null) {
+            realStop = -1;
+          } else {
+            final s = stop < 0 ? length + stop : stop;
+            realStop = s.clamp(-1, length - 1);
+          }
+          dimSize = realStart > realStop
+              ? ((realStart - realStop - step - 1) ~/ -step)
+              : 0;
         }
 
-        final int stopIdx;
-        if (selector.stop == null) {
-          stopIdx = step > 0 ? shape[i] : -1;
-        } else {
-          final s = selector.stop!;
-          stopIdx = s < 0 ? shape[i] + s : s;
-        }
-
-        // Bound checks
-        final realStart = startIdx.clamp(0, shape[i] - 1);
-        final realStop = stopIdx.clamp(-1, shape[i]);
-
-        final dimSize = ((realStop - realStart) / step).ceil();
         if (dimSize <= 0) {
           newShape.add(0);
           newStrides.add(0);
@@ -3110,64 +3167,79 @@ final class NDArray<T> implements ffi.Finalizable {
     try {
       final cShape = ScratchArena.copyInts(shape);
       final cStrides = ScratchArena.copyInts(strides);
-      if (dtype == DType.float64) {
-        elementsHash = s_hash_double(
-          pointer.cast(),
-          cStrides,
-          cShape,
-          shape.length,
-          isContiguous ? 1 : 0,
-        );
-      } else if (dtype == DType.float32) {
-        elementsHash = s_hash_float(
-          pointer.cast(),
-          cStrides,
-          cShape,
-          shape.length,
-          isContiguous ? 1 : 0,
-        );
-      } else if (dtype == DType.int64) {
-        elementsHash = s_hash_int64(
-          pointer.cast(),
-          cStrides,
-          cShape,
-          shape.length,
-          isContiguous ? 1 : 0,
-        );
-      } else if (dtype == DType.int32) {
-        elementsHash = s_hash_int32(
-          pointer.cast(),
-          cStrides,
-          cShape,
-          shape.length,
-          isContiguous ? 1 : 0,
-        );
-      } else if (dtype == DType.complex128) {
-        elementsHash = s_hash_complex128(
-          pointer.cast(),
-          cStrides,
-          cShape,
-          shape.length,
-          isContiguous ? 1 : 0,
-        );
-      } else if (dtype == DType.complex64) {
-        elementsHash = s_hash_complex64(
-          pointer.cast(),
-          cStrides,
-          cShape,
-          shape.length,
-          isContiguous ? 1 : 0,
-        );
-      } else if (dtype == DType.boolean) {
-        elementsHash = s_hash_boolean(
-          pointer.cast(),
-          cStrides,
-          cShape,
-          shape.length,
-          isContiguous ? 1 : 0,
-        );
-      } else {
-        throw UnimplementedError('Type $dtype not supported yet');
+      switch (dtype) {
+        case DType.float64:
+          elementsHash = s_hash_double(
+            pointer.cast(),
+            cStrides,
+            cShape,
+            shape.length,
+            isContiguous ? 1 : 0,
+          );
+        case DType.float32:
+          elementsHash = s_hash_float(
+            pointer.cast(),
+            cStrides,
+            cShape,
+            shape.length,
+            isContiguous ? 1 : 0,
+          );
+        case DType.int64:
+          elementsHash = s_hash_int64(
+            pointer.cast(),
+            cStrides,
+            cShape,
+            shape.length,
+            isContiguous ? 1 : 0,
+          );
+        case DType.int32:
+          elementsHash = s_hash_int32(
+            pointer.cast(),
+            cStrides,
+            cShape,
+            shape.length,
+            isContiguous ? 1 : 0,
+          );
+        case DType.int16:
+          elementsHash = s_hash_int16(
+            pointer.cast(),
+            cStrides,
+            cShape,
+            shape.length,
+            isContiguous ? 1 : 0,
+          );
+        case DType.uint8:
+          elementsHash = s_hash_uint8(
+            pointer.cast(),
+            cStrides,
+            cShape,
+            shape.length,
+            isContiguous ? 1 : 0,
+          );
+        case DType.complex128:
+          elementsHash = s_hash_complex128(
+            pointer.cast(),
+            cStrides,
+            cShape,
+            shape.length,
+            isContiguous ? 1 : 0,
+          );
+        case DType.complex64:
+          elementsHash = s_hash_complex64(
+            pointer.cast(),
+            cStrides,
+            cShape,
+            shape.length,
+            isContiguous ? 1 : 0,
+          );
+        case DType.boolean:
+          elementsHash = s_hash_boolean(
+            pointer.cast(),
+            cStrides,
+            cShape,
+            shape.length,
+            isContiguous ? 1 : 0,
+          );
       }
     } finally {
       ScratchArena.reset(marker);

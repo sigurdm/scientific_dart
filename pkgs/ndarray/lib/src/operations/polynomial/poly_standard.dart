@@ -236,7 +236,7 @@ NDArray<R> polyfit<Tx, Ty, Tw, R>(
       rhs = rhsW;
     }
 
-    final lstsqRes = lstsq(lhs, rhs, rcond: rcond);
+    final lstsqRes = lstsq<R, R, R>(lhs, rhs, rcond: rcond);
     final coeffs = lstsqRes.x;
 
     if (out != null) {

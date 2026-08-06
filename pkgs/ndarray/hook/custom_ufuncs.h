@@ -23,45 +23,52 @@ typedef enum {
     QUANTILE_NEAREST
 } QuantileMethod;
 
+#define FOR_EACH_BINARY_OP(X) \
+    X(OP_ADD, "add") \
+    X(OP_MULTIPLY, "multiply") \
+    X(OP_MINIMUM, "minimum") \
+    X(OP_MAXIMUM, "maximum") \
+    X(OP_FMIN, "fmin") \
+    X(OP_FMAX, "fmax") \
+    X(OP_LOGADDEXP, "logaddexp") \
+    X(OP_LOGADDEXP2, "logaddexp2") \
+    X(OP_GCD, "gcd") \
+    X(OP_LCM, "lcm") \
+    X(OP_BITWISE_AND, "bitwiseAnd") \
+    X(OP_BITWISE_OR, "bitwiseOr") \
+    X(OP_BITWISE_XOR, "bitwiseXor") \
+    X(OP_LOGICAL_AND, "logicalAnd") \
+    X(OP_LOGICAL_OR, "logicalOr") \
+    X(OP_LOGICAL_XOR, "logicalXor") \
+    X(OP_SUBTRACT, "subtract") \
+    X(OP_DIVIDE, "divide") \
+    X(OP_FLOOR_DIVIDE, "floorDivide") \
+    X(OP_REMAINDER, "remainder") \
+    X(OP_FMOD, "fmod") \
+    X(OP_POWER, "power") \
+    X(OP_FLOAT_POWER, "floatPower") \
+    X(OP_ARCTAN2, "arctan2") \
+    X(OP_HYPOT, "hypot") \
+    X(OP_COPYSIGN, "copysign") \
+    X(OP_LEFT_SHIFT, "leftShift") \
+    X(OP_RIGHT_SHIFT, "rightShift") \
+    X(OP_HEAVISIDE, "heaviside") \
+    X(OP_EQUAL, "equal") \
+    X(OP_NOT_EQUAL, "notEqual") \
+    X(OP_GREATER, "greater") \
+    X(OP_GREATER_EQUAL, "greaterEqual") \
+    X(OP_LESS, "less") \
+    X(OP_LESS_EQUAL, "lessEqual")
+
+#define MAKE_BINARY_OP_ENUM(code, name) code,
 typedef enum {
-    OP_ADD = 0,
-    OP_MULTIPLY,
-    OP_MINIMUM,
-    OP_MAXIMUM,
-    OP_FMIN,
-    OP_FMAX,
-    OP_LOGADDEXP,
-    OP_LOGADDEXP2,
-    OP_GCD,
-    OP_LCM,
-    OP_BITWISE_AND,
-    OP_BITWISE_OR,
-    OP_BITWISE_XOR,
-    OP_LOGICAL_AND,
-    OP_LOGICAL_OR,
-    OP_LOGICAL_XOR,
-    OP_SUBTRACT,
-    OP_DIVIDE,
-    OP_FLOOR_DIVIDE,
-    OP_REMAINDER,
-    OP_FMOD,
-    OP_POWER,
-    OP_FLOAT_POWER,
-    OP_ARCTAN2,
-    OP_HYPOT,
-    OP_COPYSIGN,
-    OP_LEFT_SHIFT,
-    OP_RIGHT_SHIFT,
-    OP_HEAVISIDE,
-    OP_EQUAL,
-    OP_NOT_EQUAL,
-    OP_GREATER,
-    OP_GREATER_EQUAL,
-    OP_LESS,
-    OP_LESS_EQUAL,
+    FOR_EACH_BINARY_OP(MAKE_BINARY_OP_ENUM)
     OP_COUNT
 } BinaryOpCode;
+#undef MAKE_BINARY_OP_ENUM
 
+const char* get_binary_op_name(int index);
+int get_binary_op_count(void);
 int get_binary_op_enum_val(int index);
 
 
@@ -678,6 +685,8 @@ uint32_t s_hash_double(const double *a, const int *strides, const int *shape, in
 uint32_t s_hash_float(const float *a, const int *strides, const int *shape, int rank, int is_contiguous);
 uint32_t s_hash_int64(const int64_t *a, const int *strides, const int *shape, int rank, int is_contiguous);
 uint32_t s_hash_int32(const int32_t *a, const int *strides, const int *shape, int rank, int is_contiguous);
+uint32_t s_hash_int16(const int16_t *a, const int *strides, const int *shape, int rank, int is_contiguous);
+uint32_t s_hash_uint8(const uint8_t *a, const int *strides, const int *shape, int rank, int is_contiguous);
 uint32_t s_hash_complex128(const double *a, const int *strides, const int *shape, int rank, int is_contiguous);
 uint32_t s_hash_complex64(const float *a, const int *strides, const int *shape, int rank, int is_contiguous);
 uint32_t s_hash_boolean(const uint8_t *a, const int *strides, const int *shape, int rank, int is_contiguous);
@@ -1331,6 +1340,17 @@ void pad_axis_int32(
     int statLengthBefore, int statLengthAfter
 );
 
+void pad_axis_int16(
+    const int16_t *src, const int *shapeSrc, const int *stridesSrc,
+    int16_t *dest, const int *shapeDest,
+    int rank, int axis,
+    int padBefore, int padAfter,
+    int mode,
+    int16_t constantBefore, int16_t constantAfter,
+    int16_t endBefore, int16_t endAfter,
+    int statLengthBefore, int statLengthAfter
+);
+
 void pad_axis_uint8(
     const uint8_t *src, const int *shapeSrc, const int *stridesSrc,
     uint8_t *dest, const int *shapeDest,
@@ -1380,6 +1400,7 @@ double r_median_double(const double *src, int size);
 float r_median_float(const float *src, int size);
 int64_t r_median_int64(const int64_t *src, int size);
 int32_t r_median_int32(const int32_t *src, int size);
+int16_t r_median_int16(const int16_t *src, int size);
 uint8_t r_median_uint8(const uint8_t *src, int size);
 cpx_t r_median_complex128(const cpx_t *src, int size);
 cpx_f_t r_median_complex64(const cpx_f_t *src, int size);
@@ -1389,6 +1410,7 @@ void s_median_double(const double *src, const int *stridesSrc, double *dest, con
 void s_median_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_median_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_median_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_median_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_median_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_median_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_median_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
@@ -1398,6 +1420,7 @@ double r_quantile_double(const double *src, int size, double q, int method);
 double r_quantile_float(const float *src, int size, double q, int method);
 double r_quantile_int64(const int64_t *src, int size, double q, int method);
 double r_quantile_int32(const int32_t *src, int size, double q, int method);
+double r_quantile_int16(const int16_t *src, int size, double q, int method);
 double r_quantile_uint8(const uint8_t *src, int size, double q, int method);
 
 /* Quantile axis reductions (strided) */
@@ -1405,6 +1428,7 @@ void s_quantile_double(const double *src, const int *stridesSrc, double *dest, c
 void s_quantile_float(const float *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q, int method);
 void s_quantile_int64(const int64_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q, int method);
 void s_quantile_int32(const int32_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q, int method);
+void s_quantile_int16(const int16_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q, int method);
 void s_quantile_uint8(const uint8_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, double q, int method);
 
 /* ============================================================================

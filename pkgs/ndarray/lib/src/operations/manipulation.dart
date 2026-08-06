@@ -8,6 +8,17 @@ import '../scratch_arena.dart';
 import 'helpers.dart';
 
 /// Concatenates a list of arrays along a specified axis.
+///
+/// **Preconditions:**
+/// - [arrays] must not be empty.
+/// - All arrays in [arrays] must not be disposed.
+/// - All arrays in [arrays] must have identical dtypes and compatible shapes.
+///
+/// **Throws:**
+/// - It is an error if [arrays] is empty.
+/// - It is an error if any array in [arrays] is disposed.
+/// - It is an error if [axis] is out of bounds.
+/// - It is an error if arrays have mismatched dtypes or shapes.
 NDArray<T> concatenate<T>(List<NDArray<T>> arrays, {int axis = 0}) {
   if (arrays.isEmpty) {
     throw ArgumentError('List of arrays must not be empty');
@@ -96,9 +107,10 @@ NDArray<T> concatenate<T>(List<NDArray<T>> arrays, {int axis = 0}) {
 /// - All arrays in [arrays] must share identical shapes and DTypes.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [arrays] is empty, or shape/DType mismatches occur.
-/// - [RangeError] if [axis] is out of bounds.
-/// - [StateError] if any array is disposed.
+/// - It is an error if [arrays] is empty.
+/// - It is an error if any array in [arrays] is disposed.
+/// - It is an error if [axis] is out of bounds.
+/// - It is an error if shapes or DTypes mismatch.
 ///
 /// **Example:**
 /// ```dart
@@ -161,7 +173,8 @@ NDArray<T> stack<T extends Object>(List<NDArray<T>> arrays, {int axis = 0}) {
 /// - [axis] normalized value must be between `0` and the rank of [a] inclusive.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
 ///
 /// **Performance considerations:**
 /// - This is a zero-copy view manipulation executing in absolute $O(1)$ time complexity.
@@ -212,7 +225,8 @@ NDArray<T> expand_dims<T extends Object>(NDArray<T> a, int axis) {
 /// - Specified [axis] entries must indeed correspond to dimensions of size 1.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [axis] is out of bounds or targets a dimension whose size is not 1.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds or targets a dimension whose size is not 1.
 ///
 /// **Performance considerations:**
 /// - This is a zero-copy view manipulation executing in absolute $O(1)$ time complexity.
@@ -295,7 +309,8 @@ NDArray<T> squeeze<T extends Object>(NDArray<T> a, {List<int>? axis}) {
 /// - Each window dimension must be strictly positive and less than or equal to the corresponding axis size.
 ///
 /// **Throws:**
-/// - [ArgumentError] if axes are out of range, shapes mismatch, or window dimensions exceed axis sizes.
+/// - It is an error if [a] is disposed.
+/// - It is an error if axes are out of range, shapes mismatch, or window dimensions exceed axis sizes.
 ///
 /// **Example:**
 /// ```dart
@@ -388,9 +403,9 @@ NDArray<T> slidingWindowView<T extends Object>(
 /// - Each axis must be a valid axis index for [a] (within `[-rank, rank - 1]`).
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [RangeError] if any axis is out of bounds.
-/// - [ArgumentError] if [axis] contains duplicate indices.
+/// - It is an error if [a] is disposed.
+/// - It is an error if any axis is out of bounds.
+/// - It is an error if [axis] contains duplicate indices.
 ///
 /// **Performance considerations:**
 /// - Algorithmic Time Complexity is $O(1)$ because it returns a zero-copy strided view.
@@ -464,12 +479,16 @@ NDArray<T> flip<T extends Object>(NDArray<T> a, {dynamic axis}) {
 /// - [a] must have a rank of at least 2.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if [a] rank is less than 2.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [a] rank is less than 2.
 ///
 /// **Performance considerations:**
 /// - Algorithmic Time Complexity is $O(1)$ because it returns a zero-copy strided view.
 /// - Space Complexity is $O(1)$ as no new array data is allocated.
+///
+/// **Memory Ownership & Lifetime View Warning:**
+/// > [!WARNING]
+/// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view.
 ///
 /// **Reference:**
 /// Refer to [NumPy fliplr documentation](https://numpy.org/doc/stable/reference/generated/numpy.fliplr.html).
@@ -494,12 +513,16 @@ NDArray<T> fliplr<T extends Object>(NDArray<T> a) {
 /// - [a] must have a rank of at least 1.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if [a] rank is less than 1.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [a] rank is less than 1.
 ///
 /// **Performance considerations:**
 /// - Algorithmic Time Complexity is $O(1)$ because it returns a zero-copy strided view.
 /// - Space Complexity is $O(1)$ as no new array data is allocated.
+///
+/// **Memory Ownership & Lifetime View Warning:**
+/// > [!WARNING]
+/// > This operation returns a **zero-copy metadata view** sharing the underlying unmanaged C heap memory page with the input array. Mutating elements inside the returned view will **silently mutate the original array**. Disposing of the parent array [a] will invalidate the returned view.
 ///
 /// **Reference:**
 /// Refer to [NumPy flipud documentation](https://numpy.org/doc/stable/reference/generated/numpy.flipud.html).
@@ -516,12 +539,25 @@ NDArray<T> flipud<T extends Object>(NDArray<T> a) {
 }
 
 /// Stacks arrays in sequence vertically (row wise).
+///
+/// It is an error if [arrays] is empty, any array is disposed, or array shapes/dtypes mismatch.
 NDArray<T> vstack<T extends Object>(List<NDArray<T>> arrays) {
   return concatenate(arrays, axis: 0);
 }
 
 /// Stacks arrays in sequence horizontally (column wise).
+///
+/// This is equivalent to concatenation along the second axis (axis 1),
+/// except for 1-D arrays where it concatenates along the first axis (axis 0).
+///
+/// It is an error if [arrays] is empty, any array is disposed, or array shapes/dtypes mismatch.
 NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
+  if (arrays.isEmpty) {
+    throw ArgumentError('arrays cannot be empty');
+  }
+  if (arrays.first.rank == 1) {
+    return concatenate(arrays, axis: 0);
+  }
   return concatenate(arrays, axis: 1);
 }
 
@@ -535,7 +571,7 @@ NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
 /// This function corresponds to NumPy's `copy` function.
 ///
 /// **Throws:**
-/// - [StateError] if the array [a] is already disposed.
+/// - It is an error if the array [a] is already disposed.
 ///
 /// **Example:**
 /// ```dart
@@ -653,9 +689,9 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
 /// - If provided, the [out] recycler must have matching shape and dtype.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if [a] has rank < 2.
-/// - [ArgumentError] if [out] has mismatched shape or dtype.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [a] has rank < 2.
+/// - It is an error if [out] has mismatched shape or dtype.
 ///
 /// **Example:**
 /// {@example /example/triangular_example.dart lang=dart}
@@ -732,9 +768,9 @@ NDArray<T> tril<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
 /// - If provided, the [out] recycler must have matching shape and dtype.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if [a] has rank < 2.
-/// - [ArgumentError] if [out] has mismatched shape or dtype.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [a] has rank < 2.
+/// - It is an error if [out] has mismatched shape or dtype.
 ///
 /// **Example:**
 /// {@example /example/triangular_example.dart lang=dart}
@@ -804,7 +840,17 @@ NDArray<T> triu<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
   return result;
 }
 
-/// Calculate the n-th discrete difference along the given axis.
+/// Calculates the n-th discrete difference along the given axis.
+///
+/// **Preconditions:**
+/// - [a] must not be disposed.
+/// - [n] must be non-negative.
+/// - If provided, [out] must match the calculated shape and dtype.
+///
+/// **Throws:**
+/// - It is an error if [a] is disposed.
+/// - It is an error if [n] is negative.
+/// - It is an error if [axis] is out of bounds.
 ///
 /// **Example:**
 /// ```dart
@@ -981,8 +1027,8 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
 /// - [axis] must be null, an integer, or a list of integers.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if the shift/axis arguments are invalid or mismatched.
+/// - It is an error if [a] is disposed.
+/// - It is an error if the shift/axis arguments are invalid or mismatched.
 ///
 /// **Performance considerations:**
 /// - Algorithmic Time Complexity is $O(N)$ where $N$ is the total number of elements,

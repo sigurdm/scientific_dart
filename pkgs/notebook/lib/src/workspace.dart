@@ -4,3 +4,6 @@ import 'package:notebook/src/kernel_helper.dart';
 import 'package:ndarray/ndarray.dart';
 import 'dart:math' as math;
 
+dynamic grid;
+
+dynamic z;

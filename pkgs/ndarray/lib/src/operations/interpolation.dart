@@ -5,9 +5,18 @@ import '../ndarray_bindings.dart';
 import '../scratch_arena.dart';
 import 'helpers.dart';
 
+/// Supported interpolation methods for one-dimensional interpolation.
+enum InterpolationMethod {
+  /// Piecewise linear interpolation.
+  linear,
+
+  /// Nearest-neighbor interpolation.
+  nearest,
+}
+
 /// Validates that [xp] is strictly increasing.
 ///
-/// Throws [ArgumentError] if [xp] is not strictly increasing.
+/// It is an error if [xp] is not strictly increasing.
 void _validateSorted(NDArray<double> xp) {
   final size = xp.shape[0];
   if (size <= 1) return;
@@ -22,9 +31,9 @@ void _validateSorted(NDArray<double> xp) {
   }
 }
 
-/// Computes one-dimensional linear interpolation.
+/// Computes one-dimensional interpolation.
 ///
-/// Returns the one-dimensional piecewise linear interpolant to a function with
+/// Returns the one-dimensional piecewise interpolant to a function with
 /// given discrete data points ([xp], [fp]), evaluated at [x].
 /// The [xp] array must be strictly increasing and have the same length as [fp].
 /// Optional [left] and [right] specify values to return for `x < xp[0]` and `x > xp[xp.length-1]` respectively, defaulting to `fp[0]` and `fp[fp.length-1]`.
@@ -36,11 +45,12 @@ void _validateSorted(NDArray<double> xp) {
 /// - [xp] must be strictly increasing.
 ///
 /// **Throws:**
-/// - [StateError] if any input array is disposed.
-/// - [ArgumentError] if [xp] or [fp] is not 1D, or if their lengths mismatch.
-/// - [ArgumentError] if [xp] is empty.
-/// - [ArgumentError] if [xp] is not strictly increasing.
+/// - It is an error if any input array is disposed.
+/// - It is an error if [xp] or [fp] is not 1-dimensional, or if their lengths mismatch.
+/// - It is an error if [xp] is empty.
+/// - It is an error if [xp] is not strictly increasing.
 ///
+/// **Example:**
 /// {@example /example/interpolation_example.dart}
 NDArray<double> interp(
   NDArray<num> x,
@@ -48,6 +58,7 @@ NDArray<double> interp(
   NDArray<num> fp, {
   double? left,
   double? right,
+  InterpolationMethod method = InterpolationMethod.linear,
 }) {
   if (x.isDisposed || xp.isDisposed || fp.isDisposed) {
     throw StateError('Cannot execute interp() with disposed arrays.');
@@ -88,69 +99,115 @@ NDArray<double> interp(
 
   final marker = ScratchArena.marker;
   try {
-    // Prepare left/right pointers.
-    ffi.Pointer<ffi.Double> pLeft = ffi.nullptr;
-    if (left != null) {
-      pLeft = ScratchArena.allocate<ffi.Double>(ffi.sizeOf<ffi.Double>());
-      pLeft.value = left;
-    }
-    ffi.Pointer<ffi.Double> pRight = ffi.nullptr;
-    if (right != null) {
-      pRight = ScratchArena.allocate<ffi.Double>(ffi.sizeOf<ffi.Double>());
-      pRight.value = right;
-    }
+    if (method == InterpolationMethod.nearest) {
+      final size = xDouble.size;
+      final xpSize = xpDouble.shape[0];
+      final xpList = xpDouble.isContiguous ? xpDouble.data : xpDouble.toList();
+      final fpList = fpDouble.isContiguous ? fpDouble.data : fpDouble.toList();
+      final xList = xDouble.isContiguous ? xDouble.data : xDouble.toList();
 
-    final isContiguous =
-        xDouble.isContiguous &&
-        xpDouble.isContiguous &&
-        fpDouble.isContiguous &&
-        res.isContiguous;
+      final xpMin = xpList[0];
+      final xpMax = xpList[xpSize - 1];
+      final defaultLeft = left ?? fpList[0];
+      final defaultRight = right ?? fpList[xpSize - 1];
 
-    if (isContiguous) {
-      v_interp_double(
-        xDouble.pointer.cast(),
-        xDouble.shape.isEmpty ? 1 : xDouble.shape.reduce((a, b) => a * b),
-        xpDouble.pointer.cast(),
-        xpDouble.shape[0],
-        fpDouble.pointer.cast(),
-        res.pointer.cast(),
-        pLeft,
-        pRight,
-      );
-    } else {
-      // Strided version.
-      var ndim = xDouble.shape.length;
-      final cBuffer = ScratchArena.getStridedBuffer(ndim == 0 ? 1 : ndim);
-      final cShape = cBuffer;
-      final cStridesX = ScratchArena.copyInts(
-        ndim == 0 ? [0] : xDouble.strides,
-      );
-      final cStridesRes = ScratchArena.copyInts(ndim == 0 ? [0] : res.strides);
-
-      if (ndim == 0) {
-        cShape[0] = 1;
-        ndim = 1;
-      } else {
-        for (var i = 0; i < ndim; i++) {
-          cShape[i] = xDouble.shape[i];
+      for (var i = 0; i < size; i++) {
+        final xv = xList[i];
+        if (xv < xpMin) {
+          res.data[i] = defaultLeft;
+        } else if (xv > xpMax) {
+          res.data[i] = defaultRight;
+        } else if (xpSize == 1) {
+          res.data[i] = fpList[0];
+        } else {
+          var low = 0;
+          var high = xpSize - 1;
+          while (low < high - 1) {
+            final mid = (low + high) ~/ 2;
+            if (xpList[mid] <= xv) {
+              low = mid;
+            } else {
+              high = mid;
+            }
+          }
+          final x0 = xpList[low];
+          final x1 = xpList[low + 1];
+          final y0 = fpList[low];
+          final y1 = fpList[low + 1];
+          if ((xv - x0).abs() <= (x1 - xv).abs()) {
+            res.data[i] = y0;
+          } else {
+            res.data[i] = y1;
+          }
         }
       }
+    } else {
+      // Prepare left/right pointers.
+      ffi.Pointer<ffi.Double> pLeft = ffi.nullptr;
+      if (left != null) {
+        pLeft = ScratchArena.allocate<ffi.Double>(ffi.sizeOf<ffi.Double>());
+        pLeft.value = left;
+      }
+      ffi.Pointer<ffi.Double> pRight = ffi.nullptr;
+      if (right != null) {
+        pRight = ScratchArena.allocate<ffi.Double>(ffi.sizeOf<ffi.Double>());
+        pRight.value = right;
+      }
 
-      s_interp_double(
-        xDouble.pointer.cast(),
-        cStridesX,
-        xpDouble.pointer.cast(),
-        xpDouble.strides[0],
-        xpDouble.shape[0],
-        fpDouble.pointer.cast(),
-        fpDouble.strides[0],
-        res.pointer.cast(),
-        cStridesRes,
-        cShape,
-        ndim,
-        pLeft,
-        pRight,
-      );
+      final isContiguous =
+          xDouble.isContiguous &&
+          xpDouble.isContiguous &&
+          fpDouble.isContiguous &&
+          res.isContiguous;
+
+      if (isContiguous) {
+        v_interp_double(
+          xDouble.pointer.cast(),
+          xDouble.shape.isEmpty ? 1 : xDouble.shape.reduce((a, b) => a * b),
+          xpDouble.pointer.cast(),
+          xpDouble.shape[0],
+          fpDouble.pointer.cast(),
+          res.pointer.cast(),
+          pLeft,
+          pRight,
+        );
+      } else {
+        // Strided version.
+        var ndim = xDouble.shape.length;
+        final cBuffer = ScratchArena.getStridedBuffer(ndim == 0 ? 1 : ndim);
+        final cShape = cBuffer;
+        final cStridesX = ScratchArena.copyInts(
+          ndim == 0 ? [0] : xDouble.strides,
+        );
+        final cStridesRes = ScratchArena.copyInts(
+          ndim == 0 ? [0] : res.strides,
+        );
+
+        if (ndim == 0) {
+          cShape[0] = 1;
+          ndim = 1;
+        } else {
+          for (var i = 0; i < ndim; i++) {
+            cShape[i] = xDouble.shape[i];
+          }
+        }
+
+        s_interp_double(
+          xDouble.pointer.cast(),
+          cStridesX,
+          xpDouble.pointer.cast(),
+          xpDouble.strides[0],
+          xpDouble.shape[0],
+          fpDouble.pointer.cast(),
+          fpDouble.strides[0],
+          res.pointer.cast(),
+          cStridesRes,
+          cShape,
+          ndim,
+          pLeft,
+          pRight,
+        );
+      }
     }
   } finally {
     ScratchArena.reset(marker);
@@ -162,3 +219,15 @@ NDArray<double> interp(
 
   return res;
 }
+
+/// Computes one-dimensional interpolation.
+///
+/// Alias for [interp].
+NDArray<double> interpolate(
+  NDArray<num> x,
+  NDArray<num> xp,
+  NDArray<num> fp, {
+  double? left,
+  double? right,
+  InterpolationMethod method = InterpolationMethod.linear,
+}) => interp(x, xp, fp, left: left, right: right, method: method);

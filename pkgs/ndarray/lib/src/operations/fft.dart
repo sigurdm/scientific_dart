@@ -27,7 +27,9 @@ kiss_fft_cfg _allocateKissFFTPlan(int nfft, int inverse_fft) {
 /// Transforms discrete sequences from the time/space domain into frequency coefficients
 /// using the standard Discrete Fourier Transform (DFT) formula:
 ///
-///   X_k = ∑_{n=0}^{N-1} x_n * e^(-i * 2 * π * k * n / N)
+/// \[
+/// X_k = \sum_{n=0}^{N-1} x_n e^{-i \frac{2\pi}{N} k n}
+/// \]
 ///
 /// The resulting array is **always complex** (DType.complex128 or DType.complex64 depending on precision).
 ///
@@ -40,10 +42,13 @@ kiss_fft_cfg _allocateKissFFTPlan(int nfft, int inverse_fft) {
 /// - If provided, the target length [n] must be greater than 0.
 ///
 /// **Throws:**
-/// - [ArgumentError] if the input array shape is empty (scalar 0D).
-/// - [RangeError] if the specified [axis] is out of bounds.
-/// - [ArgumentError] if [n] is provided but is less than or equal to 0.
-/// - [StateError] if native FFI memory allocations or KissFFT plan allocation (`kiss_fft_alloc`) fail.
+/// - It is an error if [a] or [out] is disposed.
+/// - It is an error if the input array shape is empty (scalar 0D).
+/// - It is an error if the specified [axis] is out of bounds.
+/// - It is an error if [n] is provided but is less than or equal to 0.
+///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N \log N)$ where $N$ is the transform length, scaling linearly even for prime lengths.
@@ -235,7 +240,9 @@ NDArray<R> fft<T, R extends Complex>(
 /// Transforms frequency domain coefficients back into complex time/space domain signals, applying
 /// standard `1 / N` normalization scaling automatically:
 ///
-///   x_n = (1 / N) * ∑_{k=0}^{N-1} X_k * e^(i * 2 * π * k * n / N)
+/// \[
+/// x_n = \frac{1}{N} \sum_{k=0}^{N-1} X_k e^{i \frac{2\pi}{N} k n}
+/// \]
 ///
 /// The resulting array is **always complex** (DType.complex128 or DType.complex64 depending on precision).
 ///
@@ -245,10 +252,13 @@ NDArray<R> fft<T, R extends Complex>(
 /// - If provided, the target length [n] must be greater than 0.
 ///
 /// **Throws:**
-/// - [ArgumentError] if the input array shape is empty (scalar 0D).
-/// - [RangeError] if the specified [axis] is out of bounds.
-/// - [ArgumentError] if [n] is provided but is less than or equal to 0.
-/// - [StateError] if native FFI memory allocations or KissFFT plan allocation (`kiss_fft_alloc`) fail.
+/// - It is an error if [a] or [out] is disposed.
+/// - It is an error if the input array shape is empty (scalar 0D).
+/// - It is an error if the specified [axis] is out of bounds.
+/// - It is an error if [n] is provided but is less than or equal to 0.
+///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N \log N)$ where $N$ is the transform length.
@@ -454,9 +464,12 @@ NDArray<R> ifft<T, R extends Complex>(
 /// - If [axes] is a list of integers, all elements must be unique and within valid range `[-a.rank, a.rank - 1]`.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if [axes] contains duplicate indices or invalid types.
-/// - [RangeError] if any axis index is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axes] contains duplicate indices or invalid types.
+/// - It is an error if any axis index is out of bounds.
+///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
 ///
 /// **Performance considerations:**
 /// - Algorithmic Time Complexity is $O(N)$ where $N$ is the total number of elements.
@@ -466,14 +479,18 @@ NDArray<R> ifft<T, R extends Complex>(
 /// {@example /example/fftshift_example.dart lang=dart}
 ///
 /// Reference: [NumPy fftshift](https://numpy.org/doc/stable/reference/generated/numpy.fft.fftshift.html)
-NDArray<T> fftshift<T extends Object>(NDArray<T> a, {dynamic axes}) {
-  if (a.isDisposed) {
+NDArray<T> fftshift<T extends Object>(
+  NDArray<T> a, {
+  dynamic axes,
+  NDArray<T>? out,
+}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot shift a disposed array.');
   }
 
   final rank = a.rank;
   if (rank == 0) {
-    return a.copy();
+    return a.copy(out: out);
   }
 
   // Resolve axes
@@ -511,7 +528,11 @@ NDArray<T> fftshift<T extends Object>(NDArray<T> a, {dynamic axes}) {
       final shift = dimSize ~/ 2;
       current = roll(current, shift, axis: axis);
     }
-    return current.copy().detachToParentScope();
+    final result = current.copy(out: out);
+    if (out == null) {
+      result.detachToParentScope();
+    }
+    return result;
   });
 }
 
@@ -524,9 +545,12 @@ NDArray<T> fftshift<T extends Object>(NDArray<T> a, {dynamic axes}) {
 /// - If [axes] is a list of integers, all elements must be unique and within valid range `[-a.rank, a.rank - 1]`.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if [axes] contains duplicate indices or invalid types.
-/// - [RangeError] if any axis index is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axes] contains duplicate indices or invalid types.
+/// - It is an error if any axis index is out of bounds.
+///
+/// **Memory Ownership & Lifetime:**
+/// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
 ///
 /// **Performance considerations:**
 /// - Algorithmic Time Complexity is $O(N)$ where $N$ is the total number of elements.
@@ -536,14 +560,18 @@ NDArray<T> fftshift<T extends Object>(NDArray<T> a, {dynamic axes}) {
 /// {@example /example/fftshift_example.dart lang=dart}
 ///
 /// Reference: [NumPy ifftshift](https://numpy.org/doc/stable/reference/generated/numpy.fft.ifftshift.html)
-NDArray<T> ifftshift<T extends Object>(NDArray<T> a, {dynamic axes}) {
-  if (a.isDisposed) {
+NDArray<T> ifftshift<T extends Object>(
+  NDArray<T> a, {
+  dynamic axes,
+  NDArray<T>? out,
+}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot shift a disposed array.');
   }
 
   final rank = a.rank;
   if (rank == 0) {
-    return a.copy();
+    return a.copy(out: out);
   }
 
   // Resolve axes
@@ -581,7 +609,11 @@ NDArray<T> ifftshift<T extends Object>(NDArray<T> a, {dynamic axes}) {
       final shift = (dimSize + 1) ~/ 2;
       current = roll(current, shift, axis: axis);
     }
-    return current.copy().detachToParentScope();
+    final result = current.copy(out: out);
+    if (out == null) {
+      result.detachToParentScope();
+    }
+    return result;
   });
 }
 

@@ -39,7 +39,10 @@ class LspRange {
 
   const LspRange(this.start, this.end);
 
-  Map<String, dynamic> toJson() => {'start': start.toJson(), 'end': end.toJson()};
+  Map<String, dynamic> toJson() => {
+    'start': start.toJson(),
+    'end': end.toJson(),
+  };
 
   factory LspRange.fromJson(Map<String, dynamic> json) {
     return LspRange(
@@ -72,7 +75,8 @@ class LspTextDocumentIdentifier {
 
 class LspVersionedTextDocumentIdentifier extends LspTextDocumentIdentifier {
   final int version;
-  const LspVersionedTextDocumentIdentifier(String uri, this.version) : super(uri);
+  const LspVersionedTextDocumentIdentifier(String uri, this.version)
+    : super(uri);
 
   @override
   Map<String, dynamic> toJson() => {'uri': uri, 'version': version};
@@ -142,7 +146,10 @@ class LspTextEdit {
 
   const LspTextEdit(this.range, this.newText);
 
-  Map<String, dynamic> toJson() => {'range': range.toJson(), 'newText': newText};
+  Map<String, dynamic> toJson() => {
+    'range': range.toJson(),
+    'newText': newText,
+  };
 }
 
 class LspDocumentSymbol {

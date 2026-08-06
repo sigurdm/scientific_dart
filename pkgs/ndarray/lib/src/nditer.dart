@@ -19,8 +19,8 @@ import 'ndarray.dart';
 ///   If they are incompatible, an [ArgumentError] is thrown upon construction.
 ///
 /// **Throws:**
-/// - [StateError] if any array passed to the iterator has been disposed.
-/// - [ArgumentError] if list of arrays is empty, or if shapes are incompatible.
+/// - It is an error if any array passed to the iterator has been disposed.
+/// - It is an error if the list of arrays is empty, or if shapes are incompatible.
 ///
 /// **Example:**
 /// ```dart
@@ -218,7 +218,7 @@ final class NDIter {
 /// in standard lexicographical (C-contiguous) order.
 ///
 /// **Throws:**
-/// - [StateError] if the array has been disposed.
+/// - It is an error if the array has been disposed.
 ///
 /// **Example:**
 /// ```dart

@@ -1,4 +1,5 @@
 import 'dart:ffi' as ffi;
+import 'dart:math' show min;
 import 'package:ffi/ffi.dart';
 import 'ndarray.dart' show Complex, ComplexList;
 
@@ -13,9 +14,6 @@ final class ScratchArena {
   static const int _baseCapacity = 256 * 1024; // 256KB base capacity for page 0
   static int _currentPageIndex = 0;
   static int _offset = 0;
-
-  static ffi.Pointer<ffi.Int>? _stridedBuffer;
-  static int _stridedCapacity = 0;
 
   static void _init() {
     if (_pages.isEmpty) {
@@ -52,7 +50,10 @@ final class ScratchArena {
 
       if (_currentPageIndex >= _pages.length) {
         // Geometrically scale capacities: Page 0 (256KB), Page 1 (512KB), Page 2 (1MB) etc.
-        final scaledCap = _baseCapacity << _currentPageIndex;
+        final scaledCap = min(
+          1 << 30,
+          _baseCapacity << min(_currentPageIndex, 20),
+        );
         final targetCap = alignedBytes > scaledCap ? alignedBytes : scaledCap;
         _pages.add(malloc<ffi.Uint8>(targetCap));
         _pageCapacities.add(targetCap);
@@ -113,7 +114,7 @@ final class ScratchArena {
     for (var i = 0; i < _pages.length; i++) {
       final isEmpty = i > pageIndex || (i == pageIndex && offset == 0);
       if (isEmpty) {
-        final isCustom = _pageCapacities[i] > (_baseCapacity << i);
+        final isCustom = _pageCapacities[i] > (_baseCapacity << min(i, 20));
         final isExcess = i >= 2;
         if (isCustom || isExcess) {
           pruneFromIndex = i;
@@ -309,28 +310,23 @@ final class ScratchArena {
     return ptr;
   }
 
-  /// Gets or grows a persistent thread-local static buffer for leaf strided operations.
+  /// Allocates transient memory from the arena for strided operations.
   ///
-  /// Designed for synchronous leaf operations that do not make nested calls.
+  /// Allocations are bump-allocated on the [ScratchArena] stack, making them
+  /// safe for reentrant and nested operations when callers use [marker] and [reset].
   ///
   /// [ndim] is the number of dimensions.
   /// [segments] is the number of segments of size [ndim] needed in the buffer.
   /// Defaults to 4.
   static ffi.Pointer<ffi.Int> getStridedBuffer(int ndim, [int segments = 4]) {
-    final requiredSize = ndim * segments;
-    if (_stridedBuffer == null || _stridedCapacity < requiredSize) {
-      if (_stridedBuffer != null) {
-        malloc.free(_stridedBuffer!);
-      }
-      _stridedBuffer = malloc<ffi.Int>(requiredSize);
-      _stridedCapacity = requiredSize;
-    }
-    return _stridedBuffer!;
+    final count = ndim * segments;
+    final requiredSize = count > 0 ? count : 1;
+    return allocate<ffi.Int>(requiredSize * ffi.sizeOf<ffi.Int>());
   }
 
   /// Releases all persistent resources held by the [ScratchArena].
   ///
-  /// This frees all pre-allocated pages and the static strided buffer.
+  /// This frees all pre-allocated pages.
   /// Clients should call this when they are done using the arena to free
   /// native memory.
   static void cleanup() {
@@ -341,12 +337,6 @@ final class ScratchArena {
     _pageCapacities.clear();
     _currentPageIndex = 0;
     _offset = 0;
-
-    if (_stridedBuffer != null) {
-      malloc.free(_stridedBuffer!);
-      _stridedBuffer = null;
-      _stridedCapacity = 0;
-    }
   }
 }
 

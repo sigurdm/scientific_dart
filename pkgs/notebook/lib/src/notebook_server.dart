@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:notebook/src/notebook_kernel.dart';
+import 'package:markdown/markdown.dart' as md;
 
 class NotebookServer {
   final String workspaceDir;
@@ -102,19 +103,38 @@ class NotebookServer {
           request.response.statusCode = HttpStatus.badRequest;
           request.response.close();
         }
-      } else if (request.uri.path == '/' || request.uri.path == '/index.html') {
-        final htmlFile = File(p.join(workspaceDir, 'web', 'index.html'));
-        if (await htmlFile.exists()) {
-          request.response.headers.contentType = ContentType.html;
-          await request.response.addStream(htmlFile.openRead());
+      } else {
+        var requestedPath = request.uri.path;
+        if (requestedPath == '/') requestedPath = '/index.html';
+        final relativePath = requestedPath.startsWith('/')
+            ? requestedPath.substring(1)
+            : requestedPath;
+        final targetFile = File(p.join(workspaceDir, 'web', relativePath));
+
+        if (await targetFile.exists()) {
+          final ext = p.extension(targetFile.path).toLowerCase();
+          switch (ext) {
+            case '.wasm':
+              request.response.headers.set('content-type', 'application/wasm');
+              break;
+            case '.mjs':
+            case '.js':
+              request.response.headers.set('content-type', 'text/javascript');
+              break;
+            case '.html':
+              request.response.headers.contentType = ContentType.html;
+              break;
+            case '.css':
+              request.response.headers.set('content-type', 'text/css');
+              break;
+            default:
+              request.response.headers.contentType = ContentType.binary;
+          }
+          await request.response.addStream(targetFile.openRead());
         } else {
           request.response.statusCode = HttpStatus.notFound;
           request.response.write('404 Not Found');
         }
-        await request.response.close();
-      } else {
-        request.response.statusCode = HttpStatus.notFound;
-        request.response.write('404 Not Found');
         await request.response.close();
       }
     });
@@ -222,8 +242,19 @@ class NotebookServer {
             final offset = (msg['offset'] as num?)?.toInt() ?? code.length;
 
             final hoverInfo = await _kernel!.getHover(code, offset);
+            final hoverHtml = hoverInfo != null
+                ? md.markdownToHtml(
+                    hoverInfo,
+                    extensionSet: md.ExtensionSet.gitHubFlavored,
+                  )
+                : null;
             socket.add(
-              jsonEncode({'type': 'hover', 'id': reqId, 'hover': hoverInfo}),
+              jsonEncode({
+                'type': 'hover',
+                'id': reqId,
+                'hover': hoverInfo,
+                'hoverHtml': hoverHtml,
+              }),
             );
           }
         } catch (e) {

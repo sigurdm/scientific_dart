@@ -30,7 +30,7 @@ void runFFTStridedCorrectnessExample() {
   // Now, it automatically duplicates and processes transposed coordinates perfectly!
   final freqTransposed = fft(transposed);
   print('Transposed FFT results DType: ${freqTransposed.dtype}');
-  print('Transposed FFT results flat data: ${freqTransposed.data}');
+  print('Transposed FFT results flat data: ${freqTransposed.toList()}');
 
   print('\n--- 4. Comparing against Contiguous Equivalent Array ---');
   // Standard contiguous equivalent array [[1, 3], [2, 4]]
@@ -40,15 +40,13 @@ void runFFTStridedCorrectnessExample() {
     DType.float64,
   );
   final freqContig = fft(contiguous);
-  print('Contiguous equivalent FFT flat data: ${freqContig.data}');
+  print('Contiguous equivalent FFT flat data: ${freqContig.toList()}');
 
   // Let's check mathematical parity!
   var match = true;
   for (var i = 0; i < 4; i++) {
-    final diffReal = (freqTransposed.data[i].real - freqContig.data[i].real)
-        .abs();
-    final diffImag = (freqTransposed.data[i].imag - freqContig.data[i].imag)
-        .abs();
+    final diffReal = (freqTransposed[i].real - freqContig[i].real).abs();
+    final diffImag = (freqTransposed[i].imag - freqContig[i].imag).abs();
     if (diffReal > 1e-5 || diffImag > 1e-5) {
       match = false;
     }

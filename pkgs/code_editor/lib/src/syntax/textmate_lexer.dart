@@ -42,7 +42,10 @@ class TextMateLexer implements SyntaxTokenizer {
   }
 
   @override
-  LineTokenizationResult tokenizeLine(String lineText, LineState previousState) {
+  LineTokenizationResult tokenizeLine(
+    String lineText,
+    LineState previousState,
+  ) {
     final stack = <String>[];
     if (previousState is StackLineState) {
       stack.addAll(previousState.stack);
@@ -66,13 +69,15 @@ class TextMateLexer implements SyntaxTokenizer {
               .map((s) => StyleScope(s))
               .toList();
 
-          tokens.add(SyntaxToken(
-            offset: offset,
-            length: matchedText.length,
-            type: activeRule.type,
-            scopes: scopes,
-            text: matchedText,
-          ));
+          tokens.add(
+            SyntaxToken(
+              offset: offset,
+              length: matchedText.length,
+              type: activeRule.type,
+              scopes: scopes,
+              text: matchedText,
+            ),
+          );
 
           offset += matchedText.length;
           stack.removeLast();
@@ -82,7 +87,8 @@ class TextMateLexer implements SyntaxTokenizer {
       }
 
       // 2. Check rules available in current scope (nested rules or root rules)
-      final availableRules = activeRule != null && activeRule.patterns.isNotEmpty
+      final availableRules =
+          activeRule != null && activeRule.patterns.isNotEmpty
           ? activeRule.patterns
           : rootRules;
 
@@ -98,13 +104,15 @@ class TextMateLexer implements SyntaxTokenizer {
                 .map((s) => StyleScope(s))
                 .toList();
 
-            tokens.add(SyntaxToken(
-              offset: offset,
-              length: matchedText.length,
-              type: rule.type,
-              scopes: scopes,
-              text: matchedText,
-            ));
+            tokens.add(
+              SyntaxToken(
+                offset: offset,
+                length: matchedText.length,
+                type: rule.type,
+                scopes: scopes,
+                text: matchedText,
+              ),
+            );
 
             offset += matchedText.length;
             matched = true;
@@ -122,13 +130,15 @@ class TextMateLexer implements SyntaxTokenizer {
               if (rule.name != null) StyleScope(rule.name!),
             ];
 
-            tokens.add(SyntaxToken(
-              offset: offset,
-              length: matchedText.length,
-              type: rule.type,
-              scopes: scopes,
-              text: matchedText,
-            ));
+            tokens.add(
+              SyntaxToken(
+                offset: offset,
+                length: matchedText.length,
+                type: rule.type,
+                scopes: scopes,
+                text: matchedText,
+              ),
+            );
 
             offset += matchedText.length;
             matched = true;
@@ -146,13 +156,15 @@ class TextMateLexer implements SyntaxTokenizer {
           .map((s) => StyleScope(s))
           .toList();
 
-      tokens.add(SyntaxToken(
-        offset: offset,
-        length: 1,
-        type: TokenType.unknown,
-        scopes: scopes,
-        text: lineText[offset],
-      ));
+      tokens.add(
+        SyntaxToken(
+          offset: offset,
+          length: 1,
+          type: TokenType.unknown,
+          scopes: scopes,
+          text: lineText[offset],
+        ),
+      );
       offset++;
     }
 

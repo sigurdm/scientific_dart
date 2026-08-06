@@ -44,17 +44,19 @@ void main() {
     const samplingRate = 128.0;
     const numPoints = 128;
 
-    final time = NDArray.create([numPoints], DType.float64);
-    final pureSignal = NDArray.create([numPoints], DType.float64);
-
-    final timeData = time.data;
-    final pureData = pureSignal.data;
-
-    for (var i = 0; i < numPoints; i++) {
-      final t = i / samplingRate;
-      timeData[i] = t;
-      pureData[i] = 5.0 * math.sin(2.0 * math.pi * 10.0 * t); // 10Hz sine wave, amplitude 5
-    }
+    final time = NDArray.fromList(
+      List.generate(numPoints, (i) => i / samplingRate),
+      [numPoints],
+      DType.float64,
+    );
+    final pureSignal = NDArray.fromList(
+      List.generate(
+        numPoints,
+        (i) => 5.0 * math.sin(2.0 * math.pi * 10.0 * (i / samplingRate)),
+      ),
+      [numPoints],
+      DType.float64,
+    );
     print('1. Generated pure 10 Hz sine wave signal.');
 
     // 2. Inject RNG Gaussian Noise to simulate measurement sensors
@@ -76,9 +78,9 @@ void main() {
       final freq = i * samplingRate / numPoints;
       if (freq > 15.0) {
         // Symmetrically zero out positive and corresponding negative high frequency bins!
-        fftCoeffs.data[i] = Complex(0.0, 0.0);
+        fftCoeffs[i] = Complex(0.0, 0.0);
         if (i > 0 && i < halfLen) {
-          fftCoeffs.data[numPoints - i] = Complex(0.0, 0.0);
+          fftCoeffs[numPoints - i] = Complex(0.0, 0.0);
         }
         filteredBinsCount++;
       }
@@ -89,11 +91,11 @@ void main() {
     final restoredComplex = ifft(fftCoeffs);
 
     // Extract real component of the reconstructed signal
-    final reconstructed = NDArray.create([numPoints], DType.float64);
-    final reconstructedData = reconstructed.data;
-    for (var i = 0; i < numPoints; i++) {
-      reconstructedData[i] = restoredComplex.data[i].real;
-    }
+    final reconstructed = NDArray.fromList(
+      restoredComplex.toList().map((c) => c.real).toList(),
+      [numPoints],
+      DType.float64,
+    );
     print('5. Executed FFI IFFT to restore signal back to time-domain.');
 
     // 6. Compare reconstructed signal against original pure signal!

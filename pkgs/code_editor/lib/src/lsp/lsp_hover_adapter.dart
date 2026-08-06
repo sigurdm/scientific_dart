@@ -4,10 +4,7 @@ class HoverTooltipViewModel {
   final String markdownContent;
   final LspRange? range;
 
-  HoverTooltipViewModel({
-    required this.markdownContent,
-    this.range,
-  });
+  HoverTooltipViewModel({required this.markdownContent, this.range});
 }
 
 /// Adapter presenting LSP hover information as Markdown tooltip view models.

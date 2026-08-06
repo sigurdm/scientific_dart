@@ -7,15 +7,15 @@ void main() {
     // 1. Flat sequence difference
     final a = NDArray.fromList([1, 2, 4, 7, 0], [5], DType.int64);
     print('Original flat array:');
-    print(' [ ${a.data.join(", ")} ]');
+    print(' [ ${a.toList().join(", ")} ]');
 
     final d1 = diff(a);
     print('\n1st Difference (diff, n=1):');
-    print(' [ ${d1.data.join(", ")} ]');
+    print(' [ ${d1.toList().join(", ")} ]');
 
     final d2 = diff(a, n: 2);
     print('\n2nd Difference (diff, n=2):');
-    print(' [ ${d2.data.join(", ")} ]');
+    print(' [ ${d2.toList().join(", ")} ]');
 
     // 2. 2D Matrix difference along specified axes
     final mat = NDArray.fromList(
@@ -42,11 +42,11 @@ void main() {
       DType.complex128,
     );
     print('\nOriginal Complex array:');
-    print(' [ ${aComp.data.join(", ")} ]');
+    print(' [ ${aComp.toList().join(", ")} ]');
 
     final dComp = diff(aComp);
     print('\nComplex array difference:');
-    print(' [ ${dComp.data.join(", ")} ]');
+    print(' [ ${dComp.toList().join(", ")} ]');
   });
 }
 
@@ -56,7 +56,7 @@ void _printMatrix(NDArray a) {
   for (var r = 0; r < rows; r++) {
     final rowStr = [];
     for (var c = 0; c < cols; c++) {
-      rowStr.add(a.data[r * cols + c].toStringAsFixed(1).padLeft(5));
+      rowStr.add(a[r * cols + c].toStringAsFixed(1).padLeft(5));
     }
     print(' [ ${rowStr.join(", ")} ]');
   }

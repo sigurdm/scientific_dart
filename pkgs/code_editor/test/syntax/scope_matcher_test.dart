@@ -20,10 +20,16 @@ void main() {
       expect(score3, greaterThan(score2));
       expect(score4, equals(0));
 
-      final scoreAncestor = ScopeMatcher.matchScore(scopes, 'source.dart string.quoted.double');
+      final scoreAncestor = ScopeMatcher.matchScore(
+        scopes,
+        'source.dart string.quoted.double',
+      );
       expect(scoreAncestor, greaterThan(score3));
 
-      final scoreMismatchAncestor = ScopeMatcher.matchScore(scopes, 'source.python string.quoted.double');
+      final scoreMismatchAncestor = ScopeMatcher.matchScore(
+        scopes,
+        'source.python string.quoted.double',
+      );
       expect(scoreMismatchAncestor, equals(0));
     });
 

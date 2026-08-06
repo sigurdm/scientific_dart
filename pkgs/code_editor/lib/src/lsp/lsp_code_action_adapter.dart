@@ -21,7 +21,9 @@ class CodeActionMenuItem {
 
 /// Adapter converting LSP code actions into menu items and core editor transactions.
 class LspCodeActionAdapter {
-  static List<CodeActionMenuItem> adaptCodeActions(List<LspCodeAction> actions) {
+  static List<CodeActionMenuItem> adaptCodeActions(
+    List<LspCodeAction> actions,
+  ) {
     return actions.map((action) {
       return CodeActionMenuItem(
         title: action.title,
@@ -45,15 +47,23 @@ class LspCodeActionAdapter {
     sortedEdits.sort((a, b) => b.range.start.compareTo(a.range.start));
 
     for (final edit in sortedEdits) {
-      final startPos = LspCoordinateTranslator.toTextPosition(buffer, edit.range.start);
-      final endPos = LspCoordinateTranslator.toTextPosition(buffer, edit.range.end);
+      final startPos = LspCoordinateTranslator.toTextPosition(
+        buffer,
+        edit.range.start,
+      );
+      final endPos = LspCoordinateTranslator.toTextPosition(
+        buffer,
+        edit.range.end,
+      );
       final startOffset = buffer.getOffsetAt(startPos.line, startPos.column);
       final endOffset = buffer.getOffsetAt(endPos.line, endPos.column);
       final deleteLen = endOffset - startOffset;
 
       if (deleteLen > 0) {
         final deletedText = buffer.getTextInRange(startOffset, deleteLen);
-        ops.add(DeleteOperation(startOffset, deleteLen, deletedText: deletedText));
+        ops.add(
+          DeleteOperation(startOffset, deleteLen, deletedText: deletedText),
+        );
       }
       if (edit.newText.isNotEmpty) {
         ops.add(InsertOperation(startOffset, edit.newText));

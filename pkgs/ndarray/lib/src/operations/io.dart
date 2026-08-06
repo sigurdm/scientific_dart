@@ -48,8 +48,8 @@ DType<dynamic> _descrToDType(String descr) {
 /// - [a] must not be a disposed [NDArray] instance.
 ///
 /// **Throws:**
-/// - [FileSystemException] if the parent directories cannot be created or the file cannot be written to.
-/// - [StateError] if the array [a] is disposed.
+/// - It is an error if [a] is disposed.
+/// - It is an error if the parent directories cannot be created or the file cannot be written to.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ where $N$ is the total number of elements in the array.
@@ -134,10 +134,10 @@ void save<T>(String filepath, NDArray<T> a) {
 /// - [filepath] must point to an existing, readable file on the file system.
 ///
 /// **Throws:**
-/// - [FileSystemException] if the file does not exist or cannot be read.
-/// - [FormatException] if the file lacks a valid `.npy` magic prefix, version header,
-///   or contains corrupted ASCII headers/shapes.
-/// - [UnsupportedError] if the file uses Big-Endian byte order or contains an unsupported
+/// - It is an error if the file does not exist or cannot be read.
+/// - It is an error if the file lacks a valid `.npy` magic prefix, version header,
+///   or contains corrupted ASCII headers or shapes.
+/// - It is an error if the file uses Big-Endian byte order or contains an unsupported
 ///   NumPy data type descriptor (e.g., f16, u2, etc.).
 ///
 /// **Performance considerations:**
@@ -148,7 +148,7 @@ void save<T>(String filepath, NDArray<T> a) {
 ///   and configures column-major strides directly, without reshaping data.
 ///
 /// **Memory Ownership & Lifetime:**
-/// - Allocates a new array on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose]** to prevent native leaks, unless executing inside a managed [NDArray.scope()].
+/// - Allocates a new array on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose]** to prevent native leaks, unless executing inside a managed [NDArray.scope].
 ///
 /// **Example:**
 /// {@example /example/numpy_interop_example.dart lang=dart}
@@ -405,9 +405,9 @@ NDArray _deserializeNpyBytes(Uint8List bytes) {
 /// - [arrays] map must not be empty, and all [NDArray] values must not be disposed.
 ///
 /// **Throws:**
-/// - [FileSystemException] if the parent directories cannot be created or the archive file cannot be written.
-/// - [StateError] if any array in [arrays] is disposed.
-/// - [FormatException] if the ZIP archive encoding fails.
+/// - It is an error if any array in [arrays] is disposed.
+/// - It is an error if the parent directories cannot be created or the archive file cannot be written.
+/// - It is an error if the ZIP archive encoding fails.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ where $N$ is the total number of elements across all packed arrays.
@@ -468,8 +468,8 @@ void savez(
 /// - [filepath] must point to an existing, readable `.npz` ZIP archive file on the filesystem.
 ///
 /// **Throws:**
-/// - [FileSystemException] if the file does not exist or cannot be read.
-/// - [FormatException] if the file is not a valid ZIP archive or contains corrupted inner `.npy` byte streams.
+/// - It is an error if the file does not exist or cannot be read.
+/// - It is an error if the file is not a valid ZIP archive or contains corrupted inner `.npy` byte streams.
 ///
 /// **Performance considerations:**
 /// - **Memory overhead:** During `.npz` deserialization, this method reads the
@@ -481,7 +481,7 @@ void savez(
 ///   free memory pages to prevent Out-Of-Memory (OOM) isolate VM kills.
 ///
 /// **Memory Ownership & Lifetime:**
-/// - Allocates new arrays on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose]** on all returned arrays in the map to prevent native leaks, unless executing inside a managed [NDArray.scope()].
+/// - Allocates new arrays on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose]** on all returned arrays in the map to prevent native leaks, unless executing inside a managed [NDArray.scope].
 ///
 /// **Example:**
 /// {@example /example/numpy_interop_example.dart lang=dart}

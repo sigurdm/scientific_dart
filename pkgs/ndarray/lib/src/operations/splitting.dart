@@ -22,9 +22,9 @@ NDArray<T> _sliceAlongAxis<T>(NDArray<T> a, int axis, int start, int stop) {
 /// - [axis] must be within bounds `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if [sections] is less than or equal to 0.
-/// - [RangeError] if [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [sections] is less than or equal to 0.
+/// - It is an error if [axis] is out of bounds.
 ///
 /// **Memory Safety & zero-copy View Warning:**
 /// > [!WARNING]
@@ -77,8 +77,8 @@ List<NDArray<T>> array_split<T>(NDArray<T> a, int sections, {int axis = 0}) {
 /// - [axis] must be within bounds `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [RangeError] if [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
 ///
 /// **Memory Safety & zero-copy View Warning:**
 /// > [!WARNING]
@@ -136,8 +136,8 @@ List<NDArray<T>> array_split_at<T>(
 /// - The dimension size along [axis] must be divisible by [sections].
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [RangeError] if [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
 /// - [ArgumentError] if [sections] is less than or equal to 0.
 /// - [ArgumentError] if division is not equal.
 ///
@@ -182,8 +182,8 @@ List<NDArray<T>> split<T>(NDArray<T> a, int sections, {int axis = 0}) {
 /// - [axis] must be within bounds `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [RangeError] if [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
 ///
 /// **Memory Safety & zero-copy View Warning:**
 /// > [!WARNING]
@@ -207,8 +207,8 @@ List<NDArray<T>> split_at<T>(NDArray<T> a, List<int> indices, {int axis = 0}) {
 /// - [a] must not be disposed.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if the split is invalid or rank is $< 1$.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [a] is 0-dimensional or if the split is invalid.
 ///
 /// **Memory Safety & zero-copy View Warning:**
 /// > [!WARNING]
@@ -239,8 +239,8 @@ List<NDArray<T>> hsplit<T>(NDArray<T> a, int sections) {
 /// - [a] must not be disposed.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if the split is invalid or rank is $< 1$.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [a] is 0-dimensional or if the split is invalid.
 ///
 /// **Memory Safety & zero-copy View Warning:**
 /// > [!WARNING]
@@ -271,8 +271,8 @@ List<NDArray<T>> hsplit_at<T>(NDArray<T> a, List<int> indices) {
 /// - [a] must have rank $\ge 2$.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if [a] has rank $< 2$.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [a] has rank $< 2$.
 ///
 /// **Memory Safety & zero-copy View Warning:**
 /// > [!WARNING]
@@ -302,8 +302,8 @@ List<NDArray<T>> vsplit<T>(NDArray<T> a, int sections) {
 /// - [a] must have rank $\ge 2$.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if [a] has rank $< 2$.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [a] has rank $< 2$.
 ///
 /// **Memory Safety & zero-copy View Warning:**
 /// > [!WARNING]
@@ -335,10 +335,10 @@ List<NDArray<T>> vsplit_at<T>(NDArray<T> a, List<int> indices) {
 /// - The dimension size along axis 2 must be divisible by [sections].
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if [a] has rank $< 3$.
-/// - [ArgumentError] if [sections] is less than or equal to 0.
-/// - [ArgumentError] if division is not equal.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [a] has rank $< 3$.
+/// - It is an error if [sections] is less than or equal to 0.
+/// - It is an error if the split does not result in an equal division.
 ///
 /// **Memory Safety & zero-copy View Warning:**
 /// > [!WARNING]
@@ -368,8 +368,8 @@ List<NDArray<T>> dsplit<T>(NDArray<T> a, int sections) {
 /// - [a] must have rank $\ge 3$.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if [a] has rank $< 3$.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [a] has rank $< 3$.
 ///
 /// **Memory Safety & zero-copy View Warning:**
 /// > [!WARNING]

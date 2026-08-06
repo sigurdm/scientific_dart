@@ -58,7 +58,7 @@ void calculate() {
 }
 ```
 
-### Returning Values with `attachToParentScope()`
+### Returning Values with `detachToParentScope()`
 
 If you need a specific array to survive beyond the scope (e.g., as a return value), use `attachToParentScope()`. This "unregisters" the array from the current scope.
 
@@ -69,7 +69,7 @@ NDArray computeResult() {
     final b = a * 2;
     
     // 'a' will be disposed, but 'b' will be returned attached to the scope created by the caller (if any).
-    return b.attachToParentScope();
+    return b.detachToParentScope();
   });
 }
 ```
@@ -91,11 +91,11 @@ Future<void> processDataAsync() async {
 }
 ```
 
-### Avoiding repeated allocations with `into:`
+### Avoiding repeated allocations with `out:`
 
 While `NDArray.scope` cleans up intermediate allocations automatically, allocating new arrays inside high-frequency hot loops still incurs heap allocation and garbage collection overhead. 
 
-Instead it is often better to pre-allocate a fixed destination array once and pass it to the `into:` named parameter in subsequent operations. This completely avoids repeated allocations by writing the result directly into the pre-allocated memory:
+Instead it is often better to pre-allocate a fixed destination array once and pass it to the `out:` named parameter in subsequent operations. This completely avoids repeated allocations by writing the result directly into the pre-allocated memory:
 
 ```dart
 void processInLoop(NDArray<Float64> input) {
@@ -104,7 +104,7 @@ void processInLoop(NDArray<Float64> input) {
 
   for (var i = 0; i < 10000; i++) {
     // 2. Zero new allocations! The ufunc writes directly into the buffer.
-    input.multiply(Float64(2.0), into: outputBuffer);
+    multiply(input, Float64(2.0), out: outputBuffer);
     
     // Use the outputBuffer results...
   }

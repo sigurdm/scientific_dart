@@ -1,7 +1,4 @@
-enum TextAffinity {
-  upstream,
-  downstream,
-}
+enum TextAffinity { upstream, downstream }
 
 /// Represents an immutable 0-indexed position within a text document.
 class TextPosition implements Comparable<TextPosition> {
@@ -23,11 +20,19 @@ class TextPosition implements Comparable<TextPosition> {
     return column.compareTo(other.column);
   }
 
-  TextPosition copyWith({
-    int? line,
-    int? column,
-    TextAffinity? affinity,
-  }) {
+  /// Returns `true` if this position comes before [other].
+  bool operator <(TextPosition other) => compareTo(other) < 0;
+
+  /// Returns `true` if this position comes before or at [other].
+  bool operator <=(TextPosition other) => compareTo(other) <= 0;
+
+  /// Returns `true` if this position comes after [other].
+  bool operator >(TextPosition other) => compareTo(other) > 0;
+
+  /// Returns `true` if this position comes after or at [other].
+  bool operator >=(TextPosition other) => compareTo(other) >= 0;
+
+  TextPosition copyWith({int? line, int? column, TextAffinity? affinity}) {
     return TextPosition(
       line ?? this.line,
       column ?? this.column,

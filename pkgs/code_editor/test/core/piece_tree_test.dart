@@ -97,7 +97,10 @@ void main() {
           }
           final textToInsert = sb.toString();
 
-          reference = reference.substring(0, offset) + textToInsert + reference.substring(offset);
+          reference =
+              reference.substring(0, offset) +
+              textToInsert +
+              reference.substring(offset);
           buffer.insert(offset, textToInsert);
         } else {
           final offset = random.nextInt(reference.length);
@@ -105,12 +108,18 @@ void main() {
           if (maxLen > 0) {
             final deleteLen = random.nextInt(maxLen) + 1;
 
-            reference = reference.substring(0, offset) + reference.substring(offset + deleteLen);
+            reference =
+                reference.substring(0, offset) +
+                reference.substring(offset + deleteLen);
             buffer.delete(offset, deleteLen);
           }
         }
 
-        expect(buffer.text, equals(reference), reason: 'Mismatch at iteration $i');
+        expect(
+          buffer.text,
+          equals(reference),
+          reason: 'Mismatch at iteration $i',
+        );
         expect(buffer.length, equals(reference.length));
       }
     });

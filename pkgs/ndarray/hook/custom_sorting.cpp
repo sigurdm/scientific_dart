@@ -5,8 +5,10 @@
 #include <string.h>
 #include <algorithm>
 #include <cmath>
+#define VQSORT_ENABLED 1
 #include "hwy/contrib/sort/vqsort.h"
 #include "hwy/highway.h"
+#include <vector>
 
 // ----------------------------------------------------------------------------
 // Struct definitions for Complex number representations
@@ -26,12 +28,12 @@ typedef struct {
 // Thread-Local globals for Argsort (Indirect Sorting) data tracking
 // ----------------------------------------------------------------------------
 
-
-
 static thread_local const double *global_double_data = nullptr;
 static thread_local const float *global_float_data = nullptr;
 static thread_local const long long *global_int64_data = nullptr;
 static thread_local const int *global_int32_data = nullptr;
+static thread_local const int16_t *global_int16_data = nullptr;
+static thread_local const uint8_t *global_uint8_data = nullptr;
 
 // ----------------------------------------------------------------------------
 // Inlined Comparators for Direct Sorters
@@ -78,6 +80,12 @@ static inline int compare_int64_inline(long long a, long long b) {
 }
 
 static inline int compare_int32_inline(int a, int b) {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+}
+
+static inline int compare_int16_inline(int16_t a, int16_t b) {
     if (a < b) return -1;
     if (a > b) return 1;
     return 0;
@@ -175,6 +183,14 @@ static inline int compare_complex64_inline(complex64_t ca, complex64_t cb) {
 #undef SORT_TYPE
 #undef SORT_CMP
 
+#define SORT_NAME tim_int16
+#define SORT_TYPE int16_t
+#define SORT_CMP(x, y) compare_int16_inline(x, y)
+#include "third_party/timsort/timsort.h"
+#undef SORT_NAME
+#undef SORT_TYPE
+#undef SORT_CMP
+
 #define SORT_NAME tim_uint8
 #define SORT_TYPE uint8_t
 #define SORT_CMP(x, y) compare_uint8_inline(x, y)
@@ -261,6 +277,26 @@ static inline int compare_indices_int32_timsort(int idx_a, int idx_b) {
     return 0;
 }
 
+static inline int compare_indices_int16_timsort(int idx_a, int idx_b) {
+    int16_t val_a = global_int16_data[idx_a];
+    int16_t val_b = global_int16_data[idx_b];
+    if (val_a < val_b) return -1;
+    if (val_a > val_b) return 1;
+    if (idx_a < idx_b) return -1;
+    if (idx_a > idx_b) return 1;
+    return 0;
+}
+
+static inline int compare_indices_uint8_timsort(int idx_a, int idx_b) {
+    uint8_t val_a = global_uint8_data[idx_a];
+    uint8_t val_b = global_uint8_data[idx_b];
+    if (val_a < val_b) return -1;
+    if (val_a > val_b) return 1;
+    if (idx_a < idx_b) return -1;
+    if (idx_a > idx_b) return 1;
+    return 0;
+}
+
 // ----------------------------------------------------------------------------
 // Instantiations of Christopher Swenson's TimSort for Argsort
 // ----------------------------------------------------------------------------
@@ -292,6 +328,22 @@ static inline int compare_indices_int32_timsort(int idx_a, int idx_b) {
 #define SORT_NAME tim_indices_int32
 #define SORT_TYPE int
 #define SORT_CMP(x, y) compare_indices_int32_timsort(x, y)
+#include "third_party/timsort/timsort.h"
+#undef SORT_NAME
+#undef SORT_TYPE
+#undef SORT_CMP
+
+#define SORT_NAME tim_indices_int16
+#define SORT_TYPE int
+#define SORT_CMP(x, y) compare_indices_int16_timsort(x, y)
+#include "third_party/timsort/timsort.h"
+#undef SORT_NAME
+#undef SORT_TYPE
+#undef SORT_CMP
+
+#define SORT_NAME tim_indices_uint8
+#define SORT_TYPE int
+#define SORT_CMP(x, y) compare_indices_uint8_timsort(x, y)
 #include "third_party/timsort/timsort.h"
 #undef SORT_NAME
 #undef SORT_TYPE
@@ -500,6 +552,7 @@ template <typename T, typename Compare>
 static void argpartition(const T *arr, int *indices, int size, const int *k_list, int k_size, Compare cmp) {
     if (arr == nullptr || indices == nullptr || size <= 0 || k_list == nullptr || k_size <= 0) return;
     for (int i = 0; i < size; i++) indices[i] = i;
+    if (size <= 1) return;
     arg_quickselect_multi(arr, indices, 0, size - 1, k_list, 0, k_size - 1, cmp);
 }
 
@@ -530,8 +583,9 @@ static void ind_quicksort_rec(const T *arr, int *indices, int left, int right, C
 
 template <typename T, typename Compare>
 static void ind_quicksort(const T *arr, int *indices, int size, Compare cmp) {
-    if (arr == nullptr || indices == nullptr || size <= 1) return;
+    if (arr == nullptr || indices == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) indices[i] = i;
+    if (size <= 1) return;
     ind_quicksort_rec(arr, indices, 0, size - 1, cmp);
 }
 
@@ -552,8 +606,9 @@ static void ind_heapify(const T *arr, int *indices, int n, int i, Compare cmp) {
 
 template <typename T, typename Compare>
 static void ind_heapsort(const T *arr, int *indices, int size, Compare cmp) {
-    if (arr == nullptr || indices == nullptr || size <= 1) return;
+    if (arr == nullptr || indices == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) indices[i] = i;
+    if (size <= 1) return;
     for (int i = size / 2 - 1; i >= 0; i--)
         ind_heapify(arr, indices, size, i, cmp);
     for (int i = size - 1; i > 0; i--) {
@@ -611,7 +666,13 @@ static void to_bool_mask(
         return;
     }
     if (shape == nullptr || strides == nullptr || rank <= 0) return;
-    int coord[32] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offset = 0;
     for (int i = 0; i < size; i++) {
         dest[i] = is_nonzero(src[offset]) ? 1 : 0;
@@ -665,9 +726,21 @@ static void argminmax(
     for (int d = 0; d < rank; d++) {
         if (d != axis) dest_size *= shape[d];
     }
-    int coord_dest[32] = {0};
-    int strides_dest_clean[32] = {0};
-    int shape_dest_clean[32] = {0};
+    std::vector<int> coord_dest_vec, strides_dest_vec, shape_dest_vec;
+    int coord_dest_stack[32] = {0};
+    int strides_dest_stack[32] = {0};
+    int shape_dest_stack[32] = {0};
+    int *coord_dest = coord_dest_stack;
+    int *strides_dest_clean = strides_dest_stack;
+    int *shape_dest_clean = shape_dest_stack;
+    if (rank > 32) {
+        coord_dest_vec.assign(rank, 0);
+        strides_dest_vec.assign(rank, 0);
+        shape_dest_vec.assign(rank, 0);
+        coord_dest = coord_dest_vec.data();
+        strides_dest_clean = strides_dest_vec.data();
+        shape_dest_clean = shape_dest_vec.data();
+    }
     int rank_dest = 0;
     for (int d = 0; d < rank; d++) {
         if (d != axis) {
@@ -741,9 +814,21 @@ static void count_nonzero(
     for (int d = 0; d < rank; d++) {
         if (d != axis) dest_size *= shape[d];
     }
-    int coord_dest[32] = {0};
-    int strides_dest_clean[32] = {0};
-    int shape_dest_clean[32] = {0};
+    std::vector<int> coord_dest_vec, strides_dest_vec, shape_dest_vec;
+    int coord_dest_stack[32] = {0};
+    int strides_dest_stack[32] = {0};
+    int shape_dest_stack[32] = {0};
+    int *coord_dest = coord_dest_stack;
+    int *strides_dest_clean = strides_dest_stack;
+    int *shape_dest_clean = shape_dest_stack;
+    if (rank > 32) {
+        coord_dest_vec.assign(rank, 0);
+        strides_dest_vec.assign(rank, 0);
+        shape_dest_vec.assign(rank, 0);
+        coord_dest = coord_dest_vec.data();
+        strides_dest_clean = strides_dest_vec.data();
+        shape_dest_clean = shape_dest_vec.data();
+    }
     int rank_dest = 0;
     for (int d = 0; d < rank; d++) {
         if (d != axis) {
@@ -796,17 +881,11 @@ extern "C" void native_sort_double(double *array, int size, int kind) {
 
     if (non_nan_size <= 1) return;
 
-    if (kind == 0 || kind == 2) {
-#if VQSORT_ENABLED
+    if (kind == 0) {
         hwy::VQSort(array, non_nan_size, hwy::SortAscending());
-#else
-        if (kind == 0) {
-            std::sort(array, array + non_nan_size);
-        } else {
-            std::make_heap(array, array + non_nan_size);
-            std::sort_heap(array, array + non_nan_size);
-        }
-#endif
+    } else if (kind == 2) {
+        std::make_heap(array, array + non_nan_size);
+        std::sort_heap(array, array + non_nan_size);
     } else {
         tim_fast_double_tim_sort(array, non_nan_size);
     }
@@ -823,17 +902,11 @@ extern "C" void native_sort_float(float *array, int size, int kind) {
 
     if (non_nan_size <= 1) return;
 
-    if (kind == 0 || kind == 2) {
-#if VQSORT_ENABLED
+    if (kind == 0) {
         hwy::VQSort(array, non_nan_size, hwy::SortAscending());
-#else
-        if (kind == 0) {
-            std::sort(array, array + non_nan_size);
-        } else {
-            std::make_heap(array, array + non_nan_size);
-            std::sort_heap(array, array + non_nan_size);
-        }
-#endif
+    } else if (kind == 2) {
+        std::make_heap(array, array + non_nan_size);
+        std::sort_heap(array, array + non_nan_size);
     } else {
         tim_fast_float_tim_sort(array, non_nan_size);
     }
@@ -842,7 +915,7 @@ extern "C" void native_sort_float(float *array, int size, int kind) {
 extern "C" void native_sort_int64(long long *array, int size, int kind) {
     if (array == nullptr || size <= 1) return;
     if (kind == 0) {
-        quicksort(array, size, compare_int64_inline);
+        hwy::VQSort((int64_t *)array, size, hwy::SortAscending());
     } else if (kind == 2) {
         heapsort(array, size, compare_int64_inline);
     } else {
@@ -853,7 +926,7 @@ extern "C" void native_sort_int64(long long *array, int size, int kind) {
 extern "C" void native_sort_int32(int *array, int size, int kind) {
     if (array == nullptr || size <= 1) return;
     if (kind == 0) {
-        quicksort(array, size, compare_int32_inline);
+        hwy::VQSort((int32_t *)array, size, hwy::SortAscending());
     } else if (kind == 2) {
         heapsort(array, size, compare_int32_inline);
     } else {
@@ -861,10 +934,36 @@ extern "C" void native_sort_int32(int *array, int size, int kind) {
     }
 }
 
+extern "C" void native_sort_int16(int16_t *array, int size, int kind) {
+    if (array == nullptr || size <= 1) return;
+    if (kind == 0) {
+        hwy::VQSort(array, size, hwy::SortAscending());
+    } else if (kind == 2) {
+        heapsort(array, size, compare_int16_inline);
+    } else {
+        tim_int16_tim_sort(array, size);
+    }
+}
+
 extern "C" void native_sort_uint8(uint8_t *array, int size, int kind) {
     if (array == nullptr || size <= 1) return;
     if (kind == 0) {
-        quicksort(array, size, compare_uint8_inline);
+        if (size > 32) {
+            int counts[256] = {0};
+            for (int i = 0; i < size; i++) {
+                counts[array[i]]++;
+            }
+            int idx = 0;
+            for (int val = 0; val < 256; val++) {
+                int c = counts[val];
+                if (c > 0) {
+                    memset(array + idx, val, c);
+                    idx += c;
+                }
+            }
+        } else {
+            std::sort(array, array + size);
+        }
     } else if (kind == 2) {
         heapsort(array, size, compare_uint8_inline);
     } else {
@@ -900,6 +999,7 @@ extern "C" void native_sort_complex64(float *array, int size, int kind) {
 
 extern "C" void native_argsort_double(const double *data, int *indices, int size, int kind) {
     if (data == nullptr || indices == nullptr || size <= 0) return;
+    if (size == 1) { indices[0] = 0; return; }
     if (kind == 0) {
         ind_quicksort(data, indices, size, compare_double_inline);
     } else if (kind == 2) {
@@ -916,6 +1016,7 @@ extern "C" void native_argsort_double(const double *data, int *indices, int size
 
 extern "C" void native_argsort_float(const float *data, int *indices, int size, int kind) {
     if (data == nullptr || indices == nullptr || size <= 0) return;
+    if (size == 1) { indices[0] = 0; return; }
     if (kind == 0) {
         ind_quicksort(data, indices, size, compare_float_inline);
     } else if (kind == 2) {
@@ -932,6 +1033,7 @@ extern "C" void native_argsort_float(const float *data, int *indices, int size, 
 
 extern "C" void native_argsort_int64(const long long *data, int *indices, int size, int kind) {
     if (data == nullptr || indices == nullptr || size <= 0) return;
+    if (size == 1) { indices[0] = 0; return; }
     if (kind == 0) {
         ind_quicksort(data, indices, size, compare_int64_inline);
     } else if (kind == 2) {
@@ -948,6 +1050,7 @@ extern "C" void native_argsort_int64(const long long *data, int *indices, int si
 
 extern "C" void native_argsort_int32(const int *data, int *indices, int size, int kind) {
     if (data == nullptr || indices == nullptr || size <= 0) return;
+    if (size == 1) { indices[0] = 0; return; }
     if (kind == 0) {
         ind_quicksort(data, indices, size, compare_int32_inline);
     } else if (kind == 2) {
@@ -959,6 +1062,40 @@ extern "C" void native_argsort_int32(const int *data, int *indices, int size, in
         global_int32_data = data;
         tim_indices_int32_tim_sort(indices, size);
         global_int32_data = nullptr;
+    }
+}
+
+extern "C" void native_argsort_int16(const int16_t *data, int *indices, int size, int kind) {
+    if (data == nullptr || indices == nullptr || size <= 0) return;
+    if (size == 1) { indices[0] = 0; return; }
+    if (kind == 0) {
+        ind_quicksort(data, indices, size, compare_int16_inline);
+    } else if (kind == 2) {
+        ind_heapsort(data, indices, size, compare_int16_inline);
+    } else {
+        for (int i = 0; i < size; i++) {
+            indices[i] = i;
+        }
+        global_int16_data = data;
+        tim_indices_int16_tim_sort(indices, size);
+        global_int16_data = nullptr;
+    }
+}
+
+extern "C" void native_argsort_uint8(const uint8_t *data, int *indices, int size, int kind) {
+    if (data == nullptr || indices == nullptr || size <= 0) return;
+    if (size == 1) { indices[0] = 0; return; }
+    if (kind == 0) {
+        ind_quicksort(data, indices, size, compare_uint8_inline);
+    } else if (kind == 2) {
+        ind_heapsort(data, indices, size, compare_uint8_inline);
+    } else {
+        for (int i = 0; i < size; i++) {
+            indices[i] = i;
+        }
+        global_uint8_data = data;
+        tim_indices_uint8_tim_sort(indices, size);
+        global_uint8_data = nullptr;
     }
 }
 
@@ -980,6 +1117,14 @@ extern "C" void native_partition_int64(long long *array, int size, const int *k_
 
 extern "C" void native_partition_int32(int *array, int size, const int *k_list, int k_size) {
     partition(array, size, k_list, k_size, compare_int32_inline);
+}
+
+extern "C" void native_partition_int16(int16_t *array, int size, const int *k_list, int k_size) {
+    partition(array, size, k_list, k_size, compare_int16_inline);
+}
+
+extern "C" void native_partition_uint8(uint8_t *array, int size, const int *k_list, int k_size) {
+    partition(array, size, k_list, k_size, compare_uint8_inline);
 }
 
 extern "C" void native_partition_complex128(double *array, int size, const int *k_list, int k_size) {
@@ -1010,6 +1155,14 @@ extern "C" void native_argpartition_int32(const int *data, int *indices, int siz
     argpartition(data, indices, size, k_list, k_size, compare_int32_inline);
 }
 
+extern "C" void native_argpartition_int16(const int16_t *data, int *indices, int size, const int *k_list, int k_size) {
+    argpartition(data, indices, size, k_list, k_size, compare_int16_inline);
+}
+
+extern "C" void native_argpartition_uint8(const uint8_t *data, int *indices, int size, const int *k_list, int k_size) {
+    argpartition(data, indices, size, k_list, k_size, compare_uint8_inline);
+}
+
 extern "C" void native_argpartition_complex128(const double *data, int *indices, int size, const int *k_list, int k_size) {
     argpartition((const complex128_t *)data, indices, size, k_list, k_size, compare_complex128_inline);
 }
@@ -1036,6 +1189,10 @@ extern "C" void native_searchsorted_int64(const long long *array, int size, cons
 
 extern "C" void native_searchsorted_int32(const int *array, int size, const int *values, int *out_indices, int num_values, int side_left, const int *sorter) {
     searchsorted(array, size, values, out_indices, num_values, side_left, sorter, compare_int32_inline);
+}
+
+extern "C" void native_searchsorted_int16(const int16_t *array, int size, const int16_t *values, int *out_indices, int num_values, int side_left, const int *sorter) {
+    searchsorted(array, size, values, out_indices, num_values, side_left, sorter, compare_int16_inline);
 }
 
 extern "C" void native_searchsorted_uint8(const uint8_t *array, int size, const uint8_t *values, int *out_indices, int num_values, int side_left, const int *sorter) {
@@ -1078,7 +1235,13 @@ extern "C" void native_collect_nonzero_coords(
     int **out_coords
 ) {
     if (cond == nullptr || shape == nullptr || strides == nullptr || out_coords == nullptr || total_size <= 0 || rank <= 0) return;
-    int coord[32] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offset = 0;
     int write_idx = 0;
 
@@ -1112,7 +1275,13 @@ extern "C" void native_collect_nonzero_coords_grouped(
     int *out_coords
 ) {
     if (cond == nullptr || shape == nullptr || strides == nullptr || out_coords == nullptr || total_size <= 0 || rank <= 0) return;
-    int coord[32] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offset = 0;
     int write_idx = 0;
 

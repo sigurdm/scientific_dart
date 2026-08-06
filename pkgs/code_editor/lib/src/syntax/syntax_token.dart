@@ -27,7 +27,9 @@ class StyleScope {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is StyleScope && runtimeType == other.runtimeType && raw == other.raw;
+      other is StyleScope &&
+          runtimeType == other.runtimeType &&
+          raw == other.raw;
 
   @override
   int get hashCode => raw.hashCode;
@@ -92,7 +94,14 @@ class ResolvedTokenStyle {
           strikethrough == other.strikethrough;
 
   @override
-  int get hashCode => Object.hash(foreground, background, bold, italic, underline, strikethrough);
+  int get hashCode => Object.hash(
+    foreground,
+    background,
+    bold,
+    italic,
+    underline,
+    strikethrough,
+  );
 
   @override
   String toString() =>

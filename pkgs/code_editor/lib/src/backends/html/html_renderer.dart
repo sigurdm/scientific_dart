@@ -12,7 +12,7 @@ class HtmlRenderer implements EditorRenderer {
   RenderViewport? _lastViewport;
 
   HtmlRenderer({DomNodePool? nodePool})
-      : nodePool = nodePool ?? DomNodePool(extraBuffer: 10);
+    : nodePool = nodePool ?? DomNodePool(extraBuffer: 10);
 
   @override
   bool get isAttached => _isAttached;
@@ -136,7 +136,8 @@ class HtmlRenderer implements EditorRenderer {
     linesContainer.style['position'] = 'absolute';
     linesContainer.style['left'] = '${viewport.gutter.width + 8}px';
     linesContainer.style['top'] = '0px';
-    linesContainer.style['width'] = '${viewport.width - viewport.gutter.width}px';
+    linesContainer.style['width'] =
+        '${viewport.width - viewport.gutter.width}px';
 
     linesContainer.children.addAll(_renderedLineNodes);
     rootNode.children.add(linesContainer);
@@ -173,7 +174,9 @@ class HtmlRenderer implements EditorRenderer {
       caretNode.style['top'] = '${caret.y}px';
       caretNode.style['width'] = '2px';
       caretNode.style['height'] = '${caret.height}px';
-      caretNode.style['background-color'] = caret.isPrimary ? '#ffffff' : '#aaaaaa';
+      caretNode.style['background-color'] = caret.isPrimary
+          ? '#ffffff'
+          : '#aaaaaa';
       caretNode.style['animation'] = 'editor-blink 1s step-end infinite';
       caretsContainer.children.add(caretNode);
     }

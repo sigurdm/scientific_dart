@@ -341,8 +341,9 @@ void nanReduceRecursive<T>(
   List<int> coordA,
   List<int> coordRes,
   int axis,
-  int dim,
-) {
+  int dim, {
+  bool keepdims = false,
+}) {
   if (dim == a.shape.length) {
     final val = a.getCell(coordA);
     if (val is double && val.isNaN) return;
@@ -353,16 +354,35 @@ void nanReduceRecursive<T>(
     return;
   }
   if (dim == axis) {
+    if (keepdims) coordRes[axis] = 0;
     for (var i = 0; i < a.shape[axis]; i++) {
       coordA[dim] = i;
-      nanReduceRecursive<T>(a, result, counts, coordA, coordRes, axis, dim + 1);
+      nanReduceRecursive<T>(
+        a,
+        result,
+        counts,
+        coordA,
+        coordRes,
+        axis,
+        dim + 1,
+        keepdims: keepdims,
+      );
     }
   } else {
-    final resDim = dim < axis ? dim : dim - 1;
+    final resDim = keepdims ? dim : (dim < axis ? dim : dim - 1);
     for (var i = 0; i < a.shape[dim]; i++) {
       coordA[dim] = i;
       coordRes[resDim] = i;
-      nanReduceRecursive<T>(a, result, counts, coordA, coordRes, axis, dim + 1);
+      nanReduceRecursive<T>(
+        a,
+        result,
+        counts,
+        coordA,
+        coordRes,
+        axis,
+        dim + 1,
+        keepdims: keepdims,
+      );
     }
   }
 }
@@ -395,8 +415,9 @@ void reduceRecursive<S extends Object, D extends Object>(
   List<int> destPos,
   int targetAxis,
   int currentDim,
-  D Function(D acc, S val) op,
-) {
+  D Function(D acc, S val) op, {
+  List<int>? destStrides,
+}) {
   if (currentDim == src.shape.length) {
     // Calculate flat index for src
     var srcOffset = src.offsetElements;
@@ -406,8 +427,9 @@ void reduceRecursive<S extends Object, D extends Object>(
 
     // Calculate flat index for dest
     var destOffset = dest.offsetElements;
-    for (var i = 0; i < dest.shape.length; i++) {
-      destOffset += destPos[i] * dest.strides[i];
+    final strides = destStrides ?? dest.strides;
+    for (var i = 0; i < destPos.length; i++) {
+      destOffset += destPos[i] * strides[i];
     }
 
     dest.data[destOffset] = op(dest.data[destOffset], src.data[srcOffset]);
@@ -429,6 +451,7 @@ void reduceRecursive<S extends Object, D extends Object>(
       targetAxis,
       currentDim + 1,
       op,
+      destStrides: destStrides,
     );
   }
 }
@@ -505,13 +528,23 @@ void unaryOp<Ta, Tr>(
   int dim,
   int offsetA,
   int offsetResult,
-  Tr Function(Ta) op,
-) {
+  Tr Function(Ta) op, [
+  ffi.Pointer<ffi.Uint8>? whereMask,
+  int flatIndex = 0,
+]) {
   if (dim == shape.length) {
-    result[offsetResult] = op(a[offsetA]);
+    if (whereMask == null ||
+        whereMask == ffi.nullptr ||
+        whereMask[flatIndex] != 0) {
+      result[offsetResult] = op(a[offsetA]);
+    }
     return;
   }
 
+  var currentFlat = flatIndex;
+  final strideNext = dim + 1 < shape.length
+      ? shape.sublist(dim + 1).reduce((x, y) => x * y)
+      : 1;
   for (var i = 0; i < shape[dim]; i++) {
     unaryOp<Ta, Tr>(
       result,
@@ -523,7 +556,10 @@ void unaryOp<Ta, Tr>(
       offsetA + i * stridesA[dim],
       offsetResult + i * stridesResult[dim],
       op,
+      whereMask,
+      currentFlat,
     );
+    currentFlat += strideNext;
   }
 }
 

@@ -20,8 +20,8 @@ void main() {
       final op = InsertOperation(11, '!');
       final tx = EditorTransaction(
         operations: [op],
-        selectionsBefore: selectionModel.selections,
-        selectionsAfter: [const Selection.collapsed(TextPosition(0, 12))],
+        selectionsBefore: [selectionModel.primarySelection],
+        selectionsAfter: const [TextSelection.collapsed(TextPosition(0, 12))],
       );
 
       op.apply(buffer);
@@ -43,9 +43,11 @@ void main() {
         final op = InsertOperation(buffer.length, ' $i');
         final tx = EditorTransaction(
           operations: [op],
-          selectionsBefore: selectionModel.selections,
-          selectionsAfter: selectionModel.selections,
-          timestamp: DateTime.now().add(Duration(seconds: i + 1)), // Avoid window coalescing
+          selectionsBefore: [selectionModel.primarySelection],
+          selectionsAfter: [selectionModel.primarySelection],
+          timestamp: DateTime.now().add(
+            Duration(seconds: i + 1),
+          ), // Avoid window coalescing
         );
         op.apply(buffer);
         undoManager.commitTransaction(tx);
@@ -67,8 +69,8 @@ void main() {
       final op = InsertOperation(0, 'A');
       final tx = EditorTransaction(
         operations: [op],
-        selectionsBefore: selectionModel.selections,
-        selectionsAfter: selectionModel.selections,
+        selectionsBefore: [selectionModel.primarySelection],
+        selectionsAfter: [selectionModel.primarySelection],
       );
       op.apply(buffer);
       undoManager.commitTransaction(tx);

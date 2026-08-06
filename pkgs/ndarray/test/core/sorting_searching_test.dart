@@ -1281,5 +1281,128 @@ void main() {
         }),
       );
     });
+    group('Workstream 4: Sorting & Searching Enhancements', () {
+      test(
+        'sort, argsort, partition, argpartition with out parameter',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([3.0, 1.0, 2.0], [3], DType.float64);
+          final outSort = NDArray<double>.zeros([3], DType.float64);
+          final resSort = sort(a, out: outSort);
+          expect(identical(resSort, outSort), isTrue);
+          expect(outSort.toList(), [1.0, 2.0, 3.0]);
+
+          final outArgSort = NDArray<int>.zeros([3], DType.int64);
+          final resArgSort = argsort(a, out: outArgSort);
+          expect(identical(resArgSort, outArgSort), isTrue);
+          expect(outArgSort.toList(), [1, 2, 0]);
+
+          final outPart = NDArray<double>.zeros([3], DType.float64);
+          final resPart = partition(a, 1, out: outPart);
+          expect(identical(resPart, outPart), isTrue);
+          expect(outPart.toList()[1], 2.0);
+
+          final outArgPart = NDArray<int>.zeros([3], DType.int64);
+          final resArgPart = argpartition(a, 1, out: outArgPart);
+          expect(identical(resArgPart, outArgPart), isTrue);
+        }),
+      );
+
+      test(
+        'searchsorted with SearchSide enum and out parameter',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0],
+            [5],
+            DType.float64,
+          );
+          final v = NDArray.fromList([2.0, 3.5], [2], DType.float64);
+          final outLeft = NDArray<int>.zeros([2], DType.int64);
+          final resLeft = searchsorted(
+            a,
+            v,
+            side: SearchSide.left,
+            out: outLeft,
+          );
+          expect(identical(resLeft, outLeft), isTrue);
+          expect(outLeft.toList(), [1, 3]);
+
+          final outRight = NDArray<int>.zeros([2], DType.int64);
+          final resRight = searchsorted(
+            a,
+            v,
+            side: SearchSide.right,
+            out: outRight,
+          );
+          expect(identical(resRight, outRight), isTrue);
+          expect(outRight.toList(), [2, 3]);
+        }),
+      );
+
+      test(
+        'argmax and argmin with keepdims: true',
+        () => NDArray.scope(() {
+          final mat = NDArray.fromList(
+            [1.0, 5.0, 2.0, 4.0, 0.0, 3.0],
+            [2, 3],
+            DType.float64,
+          );
+          final max0 = argmax(mat, axis: 0, keepdims: true);
+          expect(max0.shape, [1, 3]);
+          expect(max0.toList(), [1, 0, 1]);
+
+          final min1 = argmin(mat, axis: 1, keepdims: true);
+          expect(min1.shape, [2, 1]);
+          expect(min1.toList(), [0, 1]);
+
+          final maxFlat = argmax(mat, keepdims: true);
+          expect(maxFlat.shape, [1, 1]);
+          expect(maxFlat.toList(), [1]);
+        }),
+      );
+
+      test(
+        'Set operations with out parameter and non-contiguous inputs',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1, 2, 2, 3, 4], [5], DType.int64);
+          final b = NDArray.fromList([2, 4, 6], [3], DType.int64);
+
+          // unique
+          final outU = NDArray<int>.zeros([4], DType.int64);
+          final resU = unique(a, out: outU) as NDArray<int>;
+          expect(identical(resU, outU), isTrue);
+          expect(outU.toList(), [1, 2, 3, 4]);
+
+          // intersect1d
+          final outInter = NDArray<int>.zeros([2], DType.int64);
+          final resInter = intersect1d(a, b, out: outInter);
+          expect(identical(resInter, outInter), isTrue);
+          expect(outInter.toList(), [2, 4]);
+
+          // setdiff1d
+          final outDiff = NDArray<int>.zeros([2], DType.int64);
+          final resDiff = setdiff1d(a, b, out: outDiff);
+          expect(identical(resDiff, outDiff), isTrue);
+          expect(outDiff.toList(), [1, 3]);
+
+          // setxor1d
+          final outXor = NDArray<int>.zeros([3], DType.int64);
+          final resXor = setxor1d(a, b, out: outXor);
+          expect(identical(resXor, outXor), isTrue);
+          expect(outXor.toList(), [1, 3, 6]);
+
+          // union1d
+          final outUnion = NDArray<int>.zeros([5], DType.int64);
+          final resUnion = union1d(a, b, out: outUnion);
+          expect(identical(resUnion, outUnion), isTrue);
+          expect(outUnion.toList(), [1, 2, 3, 4, 6]);
+
+          // isin
+          final outIsin = NDArray<bool>.zeros([5], DType.boolean);
+          final resIsin = isin(a, b, out: outIsin);
+          expect(identical(resIsin, outIsin), isTrue);
+          expect(outIsin.toList(), [false, true, true, false, true]);
+        }),
+      );
+    });
   });
 }

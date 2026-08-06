@@ -1,50 +1,180 @@
-import 'lsp_primitives.dart';
+/// LSP 3.17 Diagnostic Severity enumeration and visual Squiggle geometry model.
+library;
 
-class DiagnosticSquiggle {
-  final LspRange range;
-  final String message;
-  final int severity; // 1: Error, 2: Warning, 3: Info, 4: Hint
-  final String? source;
+/// Diagnostic severity levels corresponding to LSP 3.17 diagnostic severity numbers (1-4).
+enum DiagnosticSeverity {
+  /// Error diagnostic severity (1).
+  error,
 
-  DiagnosticSquiggle({
-    required this.range,
-    required this.message,
-    required this.severity,
-    this.source,
-  });
+  /// Warning diagnostic severity (2).
+  warning,
+
+  /// Information diagnostic severity (3).
+  info,
+
+  /// Hint diagnostic severity (4).
+  hint,
 }
 
-/// Store for LSP diagnostic squiggles and gutter indicators.
-class LspDiagnosticAdapter {
-  final List<LspDiagnostic> _diagnostics = [];
+/// Visual color representations associated with diagnostic squiggles.
+enum SquiggleColor {
+  /// Red color for error squiggles.
+  red,
 
-  List<LspDiagnostic> get diagnostics => List.unmodifiable(_diagnostics);
+  /// Yellow color for warning squiggles.
+  yellow,
 
-  void updateDiagnostics(List<LspDiagnostic> diagnostics) {
-    _diagnostics.clear();
-    _diagnostics.addAll(diagnostics);
+  /// Blue color for info squiggles.
+  blue,
+
+  /// Gray color for hint squiggles.
+  gray,
+}
+
+/// Represents the visual rendering geometry and severity of an LSP diagnostic squiggle.
+final class DiagnosticSquiggle {
+  /// Zero-indexed line number where the diagnostic squiggle starts.
+  final int line;
+
+  /// Zero-indexed starting column index on [line].
+  final int startColumn;
+
+  /// Zero-indexed ending column index on [line].
+  final int endColumn;
+
+  /// Severity level of the diagnostic.
+  final DiagnosticSeverity severity;
+
+  /// Description message of the diagnostic.
+  final String message;
+
+  /// Optional source identifier (e.g. 'dart', 'eslint').
+  final String? source;
+
+  /// Optional rule or error code identifier.
+  final String? code;
+
+  /// Creates a new [DiagnosticSquiggle] geometry model.
+  const DiagnosticSquiggle({
+    required this.line,
+    required this.startColumn,
+    required this.endColumn,
+    required this.severity,
+    required this.message,
+    this.source,
+    this.code,
+  });
+
+  /// The visual color associated with this diagnostic's severity level.
+  SquiggleColor get color {
+    switch (severity) {
+      case DiagnosticSeverity.error:
+        return SquiggleColor.red;
+      case DiagnosticSeverity.warning:
+        return SquiggleColor.yellow;
+      case DiagnosticSeverity.info:
+        return SquiggleColor.blue;
+      case DiagnosticSeverity.hint:
+        return SquiggleColor.gray;
+    }
   }
 
-  void clear() {
-    _diagnostics.clear();
+  /// Hex color string corresponding to the severity color representation.
+  String get colorHex {
+    switch (severity) {
+      case DiagnosticSeverity.error:
+        return '#FF0000';
+      case DiagnosticSeverity.warning:
+        return '#FFFF00';
+      case DiagnosticSeverity.info:
+        return '#0000FF';
+      case DiagnosticSeverity.hint:
+        return '#808080';
+    }
   }
 
-  /// Returns diagnostics that overlap with [lineIndex].
-  List<LspDiagnostic> getDiagnosticsForLine(int lineIndex) {
-    return _diagnostics.where((d) {
-      return lineIndex >= d.range.start.line && lineIndex <= d.range.end.line;
-    }).toList();
-  }
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DiagnosticSquiggle &&
+          runtimeType == other.runtimeType &&
+          line == other.line &&
+          startColumn == other.startColumn &&
+          endColumn == other.endColumn &&
+          severity == other.severity &&
+          message == other.message &&
+          source == other.source &&
+          code == other.code;
 
-  /// Returns diagnostic squiggles formatted for renderer consumption.
-  List<DiagnosticSquiggle> getSquigglesForLine(int lineIndex) {
-    return getDiagnosticsForLine(lineIndex).map((d) {
-      return DiagnosticSquiggle(
-        range: d.range,
-        message: d.message,
-        severity: d.severity ?? 1,
-        source: d.source,
-      );
-    }).toList();
+  @override
+  int get hashCode => Object.hash(
+    line,
+    startColumn,
+    endColumn,
+    severity,
+    message,
+    source,
+    code,
+  );
+}
+
+/// Adapter utility to translate raw LSP diagnostic maps into [DiagnosticSquiggle] objects.
+final class LspDiagnosticAdapter {
+  /// Converts raw LSP `Diagnostic` maps into [DiagnosticSquiggle] geometries.
+  static List<DiagnosticSquiggle> fromLspDiagnostics(
+    List<dynamic> diagnostics, {
+    List<String>? documentLines,
+  }) {
+    final squiggles = <DiagnosticSquiggle>[];
+
+    for (final rawDiag in diagnostics) {
+      if (rawDiag is! Map) continue;
+      final Map<String, dynamic> diag = Map<String, dynamic>.from(rawDiag);
+      final range = diag['range'] as Map?;
+      if (range == null) continue;
+
+      final start = range['start'] as Map?;
+      final end = range['end'] as Map?;
+      if (start == null || end == null) continue;
+
+      final startLine = (start['line'] as num?)?.toInt() ?? 0;
+      final startCol = (start['character'] as num?)?.toInt() ?? 0;
+      final endLine = (end['line'] as num?)?.toInt() ?? startLine;
+      final endCol = (end['character'] as num?)?.toInt() ?? startCol;
+
+      final severityInt = (diag['severity'] as num?)?.toInt() ?? 1;
+      final severity = switch (severityInt) {
+        1 => DiagnosticSeverity.error,
+        2 => DiagnosticSeverity.warning,
+        3 => DiagnosticSeverity.info,
+        4 => DiagnosticSeverity.hint,
+        _ => DiagnosticSeverity.error,
+      };
+
+      final message = diag['message'] as String? ?? '';
+      final source = diag['source'] as String?;
+      final code = diag['code']?.toString();
+
+      for (var l = startLine; l <= endLine; l++) {
+        final colStart = (l == startLine) ? startCol : 0;
+        final maxLineLen = (documentLines != null && l < documentLines.length)
+            ? documentLines[l].length
+            : 999;
+        final colEnd = (l == endLine) ? endCol : maxLineLen;
+
+        squiggles.add(
+          DiagnosticSquiggle(
+            line: l,
+            startColumn: colStart,
+            endColumn: colEnd,
+            severity: severity,
+            message: message,
+            source: source,
+            code: code,
+          ),
+        );
+      }
+    }
+    return squiggles;
   }
 }

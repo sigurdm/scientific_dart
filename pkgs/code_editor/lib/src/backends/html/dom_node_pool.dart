@@ -21,7 +21,9 @@ class DomElementNode {
         .map((e) => '${_escapeHtml(e.key)}:${_escapeHtml(e.value)}')
         .join(';');
     final styleAttr = style.isEmpty ? '' : ' style="$styleStr"';
-    final classAttr = className.isEmpty ? '' : ' class="${_escapeHtml(className)}"';
+    final classAttr = className.isEmpty
+        ? ''
+        : ' class="${_escapeHtml(className)}"';
     final escapedText = _escapeHtml(textContent);
 
     if (children.isEmpty) {

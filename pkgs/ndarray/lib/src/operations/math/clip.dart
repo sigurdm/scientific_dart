@@ -17,9 +17,9 @@ import '../broadcasting.dart';
 /// - If provided, [out] must have the exact shape and matching [DType] of [a].
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [UnsupportedError] if [a] has a complex [DType] (complex values cannot be ordered).
-/// - [ArgumentError] if [out] has an incompatible shape or [DType].
+/// - It is an error if [a], [out], or [where] is disposed.
+/// - It is an error if [a] has a complex [DType] (complex values cannot be ordered).
+/// - It is an error if [out] has an incompatible shape or [DType].
 ///
 /// **Performance considerations:**
 /// - Time complexity is $O(N)$ where $N$ is the total number of elements in [a].
@@ -134,10 +134,10 @@ NDArray<T> clip<T>(
 /// - If provided, [out] must have the exact broadcasted shape and matching [DType] of [a].
 ///
 /// **Throws:**
-/// - [StateError] if [a], [min], or [max] is disposed.
-/// - [UnsupportedError] if [a] has a complex [DType] (complex values cannot be ordered).
-/// - [ArgumentError] if [min] or [max] is complex or boolean.
-/// - [ArgumentError] if shapes are incompatible for broadcasting, or if [out] has an incompatible shape or [DType].
+/// - It is an error if [a], [min], [max], [where], or [out] is disposed.
+/// - It is an error if [a] has a complex [DType] (complex values cannot be ordered).
+/// - It is an error if [min] or [max] has a complex or boolean DType.
+/// - It is an error if shapes are incompatible for broadcasting, or if [out] has an incompatible shape or [DType].
 ///
 /// **Performance considerations:**
 /// - Time complexity is $O(N)$ where $N$ is the total number of elements in the broadcasted shape.

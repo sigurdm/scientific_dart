@@ -1,105 +1,105 @@
-import 'folding_manager.dart';
-import 'font_metrics.dart';
+import 'dart:math' as math;
+import 'virtual_layout_calculator.dart';
 
-enum GitDiffState { none, added, modified, deleted }
+/// Metrics and info for rendering line numbers in the editor gutter.
+final class GutterLineInfo {
+  /// Virtual row index.
+  final int virtualRowIndex;
 
-enum DiagnosticSeverity { error, warning, info, hint }
-
-enum FoldControlState { none, expanded, collapsed }
-
-class GutterLineMetadata {
+  /// Document line index (0-based).
   final int lineIndex;
-  final int lineNumber;
-  final FoldControlState foldState;
-  final GitDiffState gitDiff;
-  final List<DiagnosticSeverity> diagnostics;
 
-  const GutterLineMetadata({
+  /// 1-based display line number string (empty if wrapped continuation slice).
+  final String lineNumberText;
+
+  /// Whether this row displays a line number.
+  final bool isDisplayed;
+
+  /// Vertical Y pixel offset.
+  final double yOffset;
+
+  /// Creates a [GutterLineInfo].
+  const GutterLineInfo({
+    required this.virtualRowIndex,
     required this.lineIndex,
-    required this.lineNumber,
-    this.foldState = FoldControlState.none,
-    this.gitDiff = GitDiffState.none,
-    this.diagnostics = const [],
+    required this.lineNumberText,
+    required this.isDisplayed,
+    required this.yOffset,
   });
+
+  @override
+  String toString() =>
+      'GutterLineInfo(vRow: $virtualRowIndex, line: $lineIndex, text: "$lineNumberText", y: $yOffset)';
 }
 
-class GutterManager {
-  final Map<int, GitDiffState> _gitDiffs = {};
-  final Map<int, List<DiagnosticSeverity>> _diagnostics = {};
+/// Manager responsible for gutter dimensions, dynamic line number padding, and layout alignment.
+final class GutterManager {
+  /// Font size for line numbers.
+  final double fontSize;
 
-  bool showLineNumbers;
-  bool showFoldControls;
-  bool showGitDiff;
-  bool showDiagnostics;
-  double extraPadding;
+  /// Width of a single character digit in pixels.
+  final double charWidth;
 
-  GutterManager({
+  /// Height of a line in pixels.
+  final double lineHeight;
+
+  /// Left padding in pixels inside the gutter.
+  final double paddingLeft;
+
+  /// Right padding in pixels inside the gutter.
+  final double paddingRight;
+
+  /// Whether line numbers are enabled and visible.
+  final bool showLineNumbers;
+
+  /// Creates a [GutterManager].
+  const GutterManager({
+    this.fontSize = 13.0,
+    this.charWidth = 8.0,
+    this.lineHeight = 20.0,
+    this.paddingLeft = 12.0,
+    this.paddingRight = 12.0,
     this.showLineNumbers = true,
-    this.showFoldControls = true,
-    this.showGitDiff = true,
-    this.showDiagnostics = true,
-    this.extraPadding = 12.0,
   });
 
-  void setGitDiff(int lineIndex, GitDiffState state) {
-    if (state == GitDiffState.none) {
-      _gitDiffs.remove(lineIndex);
-    } else {
-      _gitDiffs[lineIndex] = state;
-    }
+  /// Calculates digits required to display [totalLines] (minimum 2 digits).
+  int getDigitsCount(int totalLines) {
+    if (totalLines <= 0) return 2;
+    return math.max(2, totalLines.toString().length);
   }
 
-  void setDiagnostics(int lineIndex, List<DiagnosticSeverity> list) {
-    if (list.isEmpty) {
-      _diagnostics.remove(lineIndex);
-    } else {
-      _diagnostics[lineIndex] = list;
-    }
+  /// Calculates dynamic width of the gutter in pixels for [totalLines].
+  double calculateGutterWidth(int totalLines) {
+    if (!showLineNumbers) return 0.0;
+    final digits = getDigitsCount(totalLines);
+    return (digits * charWidth) + paddingLeft + paddingRight;
   }
 
-  void clearGitDiffs() => _gitDiffs.clear();
-  void clearDiagnostics() => _diagnostics.clear();
-
-  double computeGutterWidth(int totalLines, FontMetrics fontMetrics) {
-    double width = extraPadding;
-
-    if (showLineNumbers) {
-      final digits = totalLines.toString().length;
-      width += digits * fontMetrics.characterWidth;
-    }
-
-    if (showFoldControls) {
-      width += 16.0;
-    }
-
-    if (showGitDiff) {
-      width += 4.0;
-    }
-
-    if (showDiagnostics) {
-      width += 16.0;
-    }
-
-    return width;
+  /// Calculates top Y pixel coordinate for virtual row [virtualRowIndex].
+  double getLineYOffset(int virtualRowIndex) {
+    return virtualRowIndex * lineHeight;
   }
 
-  GutterLineMetadata getGutterMetadata(int lineIndex, FoldingManager foldingManager) {
-    FoldControlState foldState = FoldControlState.none;
-    if (showFoldControls) {
-      final region = foldingManager.getRegionAt(lineIndex);
-      if (region != null) {
-        foldState = region.isCollapsed
-            ? FoldControlState.collapsed
-            : FoldControlState.expanded;
-      }
+  /// Generates gutter rendering info for [rowInfo].
+  GutterLineInfo getGutterLineInfo(VirtualRowInfo rowInfo) {
+    final yOffset = getLineYOffset(rowInfo.virtualRowIndex);
+    if (!rowInfo.isFirstSlice || !showLineNumbers) {
+      return GutterLineInfo(
+        virtualRowIndex: rowInfo.virtualRowIndex,
+        lineIndex: rowInfo.lineIndex,
+        lineNumberText: '',
+        isDisplayed: false,
+        yOffset: yOffset,
+      );
     }
 
-    return GutterLineMetadata(
-      lineIndex: lineIndex,
-      lineNumber: lineIndex + 1,
-      foldState: foldState,
-      gitDiff: _gitDiffs[lineIndex] ?? GitDiffState.none,
-      diagnostics: _diagnostics[lineIndex] ?? const [],
+    final displayNum = (rowInfo.lineIndex + 1).toString();
+    return GutterLineInfo(
+      virtualRowIndex: rowInfo.virtualRowIndex,
+      lineIndex: rowInfo.lineIndex,
+      lineNumberText: displayNum,
+      isDisplayed: true,
+      yOffset: yOffset,
     );
   }
 }

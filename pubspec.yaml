@@ -8,6 +8,7 @@ workspace:
   - pkgs/guitar_tuner
   - pkgs/ndarray_ma
   - pkgs/notebook
+  - pkgs/code_editor
 dependencies:
   http: ^1.6.0
 

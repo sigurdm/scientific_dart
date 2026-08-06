@@ -77,7 +77,8 @@ class TextMeasurer {
 
     for (final char in text.characters) {
       final charWidth = (char == '\t')
-          ? (metrics.tabSize - (colIdx % metrics.tabSize)) * metrics.characterWidth
+          ? (metrics.tabSize - (colIdx % metrics.tabSize)) *
+                metrics.characterWidth
           : metrics.characterWidth;
 
       if (currentX + charWidth / 2.0 >= x) {
@@ -85,7 +86,9 @@ class TextMeasurer {
       }
       currentX += charWidth;
       charIdx += char.length;
-      colIdx += (char == '\t') ? (metrics.tabSize - (colIdx % metrics.tabSize)) : 1;
+      colIdx += (char == '\t')
+          ? (metrics.tabSize - (colIdx % metrics.tabSize))
+          : 1;
     }
 
     return text.length;

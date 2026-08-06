@@ -13,6 +13,21 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+  <script type="module">
+    import { compileStreaming } from './editor_client.mjs';
+    async function initWasm() {
+      try {
+        const compiledApp = await compileStreaming(fetch('editor_client.wasm'));
+        const instantiatedApp = await compiledApp.instantiate({});
+        instantiatedApp.invokeMain();
+        console.log('Dart CodeEditor WebAssembly module loaded successfully.');
+      } catch (e) {
+        console.warn('Wasm initialization error:', e);
+      }
+    }
+    initWasm();
+  </script>
+  <script src="editor_client.js"></script>
   <style>
     :root {
       --bg-color: #1e1e2e;
@@ -299,19 +314,56 @@
     .hover-popup {
       position: fixed;
       z-index: 10001;
-      background-color: #1e1e2e;
+      background-color: #181825;
       border: 1px solid var(--accent-color);
-      border-radius: 6px;
-      padding: 10px 14px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.7);
-      max-width: 480px;
-      max-height: 280px;
+      border-radius: 8px;
+      padding: 12px 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+      max-width: 580px;
+      max-height: 340px;
       overflow-y: auto;
-      font-family: 'Fira Code', monospace;
-      font-size: 0.85rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 0.88rem;
+      line-height: 1.5;
       color: #cdd6f4;
-      white-space: pre-wrap;
-      word-break: break-word;
+    }
+
+    .hover-popup h1, .hover-popup h2, .hover-popup h3, .hover-popup h4 {
+      margin: 6px 0 4px 0;
+      color: var(--accent-color);
+      font-weight: 600;
+    }
+
+    .hover-popup p {
+      margin: 4px 0 6px 0;
+    }
+
+    .hover-popup code {
+      font-family: 'Fira Code', monospace;
+      background-color: #313244;
+      color: #f9e2af;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 0.82rem;
+    }
+
+    .hover-popup pre {
+      background-color: #11111b;
+      padding: 8px 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 6px 0;
+    }
+
+    .hover-popup pre code {
+      background-color: transparent;
+      padding: 0;
+      color: #a6e3a1;
+    }
+
+    .hover-popup ul, .hover-popup ol {
+      margin: 4px 0 6px 18px;
+      padding: 0;
     }
   </style>
 </head>
@@ -325,6 +377,11 @@
       </div>
     </div>
     <div class="toolbar">
+      <label for="editorEngineSelect" style="font-size: 13px; color: #a6adc8; margin-right: 4px;">Editor Engine:</label>
+      <select id="editorEngineSelect" onchange="switchEditorEngine(this.value)" style="background: #313244; color: #cdd6f4; border: 1px solid #45475a; padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; margin-right: 12px;">
+        <option value="codemirror" selected>CodeMirror 5</option>
+        <option value="dart_editor">Dart CodeEditor (Custom / Wasm)</option>
+      </select>
       <button onclick="addCell()">+ Code Cell</button>
       <button onclick="runAllCells()" class="primary">▶ Run All</button>
       <button onclick="clearAllOutputs()">Clear Outputs</button>
@@ -399,7 +456,7 @@
         } else if (msg.type === 'hover') {
           const callback = pendingHovers.get(msg.id);
           if (callback) {
-            callback(msg.hover);
+            callback(msg.hover, msg.hoverHtml);
             pendingHovers.delete(msg.id);
           }
         }
@@ -524,9 +581,9 @@
       const code = cm.getValue();
       const reqId = `hover-${Date.now()}`;
 
-      pendingHovers.set(reqId, (hoverText) => {
-        if (hoverText) {
-          showHoverPopup(x + 12, y + 16, hoverText);
+      pendingHovers.set(reqId, (hoverText, hoverHtml) => {
+        if (hoverHtml || hoverText) {
+          showHoverPopup(x + 12, y + 16, hoverText, hoverHtml);
         } else {
           scheduleCloseHoverPopup(300);
         }
@@ -540,16 +597,23 @@
       }));
     }
 
-    function showHoverPopup(x, y, text) {
+    function showHoverPopup(x, y, text, html) {
       clearTimeout(hoverHideTimeout);
       closeHoverPopup();
-      if (!text || !text.trim()) return;
+      if ((!text || !text.trim()) && (!html || !html.trim())) return;
 
       const popup = document.createElement('div');
       popup.className = 'hover-popup';
       popup.style.top = `${y}px`;
       popup.style.left = `${x}px`;
-      popup.innerText = text;
+
+      if (html) {
+        popup.innerHTML = html;
+      } else {
+        popup.innerText = text;
+      }
+
+      tryRenderKaTeX(popup);
 
       popup.addEventListener('mouseenter', () => {
         clearTimeout(hoverHideTimeout);
@@ -703,76 +767,115 @@
       notebook.appendChild(cell);
 
       const textarea = document.getElementById(`editor-${cellId}`);
-      const cm = CodeMirror.fromTextArea(textarea, {
-        mode: 'clike',
-        mime: 'application/x-dart',
-        theme: 'dracula',
-        lineNumbers: true,
-        matchBrackets: true,
-        autoCloseBrackets: true,
-        viewportMargin: Infinity,
-        extraKeys: {
-          'Shift-Enter': function(cm) {
-            closeCompletionPopup();
-            runCell(cellId);
-          },
-          'Ctrl-Space': function(cm) {
-            requestCompletionCm(cm, cellId);
-          },
-          'Cmd-Space': function(cm) {
-            requestCompletionCm(cm, cellId);
-          }
-        }
-      });
-      cell._cm = cm;
-
-      cm.on('change', (instance, changeObj) => {
-        cell.classList.remove('evaluated');
-        if (changeObj.origin === '+insert' && changeObj.text && changeObj.text.includes('.')) {
-          requestCompletionCm(cm, cellId);
-        }
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'update_cell', id: cellId, code: cm.getValue() }));
-        }
-      });
-
-      cm.on('focus', () => {
-        document.querySelectorAll('.cell').forEach(c => c.classList.remove('focused'));
-        cell.classList.add('focused');
-      });
-
-      let hoverTimeout = null;
-      cm.getWrapperElement().addEventListener('mousemove', (e) => {
-        if (activeHoverPopup && (activeHoverPopup === e.target || activeHoverPopup.contains(e.target))) {
-          clearTimeout(hoverHideTimeout);
-          return;
-        }
-        clearTimeout(hoverTimeout);
-        hoverTimeout = setTimeout(() => {
-          const pos = cm.coordsChar({ left: e.clientX, top: e.clientY });
-          const token = cm.getTokenAt(pos);
-          if (token && token.string && token.string.trim().length > 0) {
-            const offset = cm.indexFromPos(pos);
-            requestHoverCm(cm, cellId, offset, e.clientX, e.clientY);
-          } else {
-            scheduleCloseHoverPopup(400);
-          }
-        }, 300);
-      });
-
-      cm.getWrapperElement().addEventListener('mouseleave', (e) => {
-        clearTimeout(hoverTimeout);
-        if (activeHoverPopup && (activeHoverPopup === e.relatedTarget || activeHoverPopup.contains(e.relatedTarget))) {
-          clearTimeout(hoverHideTimeout);
-          return;
-        }
-        scheduleCloseHoverPopup(500);
-      });
-
-      if (!initialCode) {
-        cm.focus();
-      }
+      setupEditorForCell(cell, textarea, cellId, initialCode);
       return cellId;
+    }
+
+    let currentEditorEngine = localStorage.getItem('notebook_editor_engine') || 'codemirror';
+
+    function switchEditorEngine(engine) {
+      currentEditorEngine = engine;
+      localStorage.setItem('notebook_editor_engine', engine);
+
+      document.querySelectorAll('.cell').forEach(cell => {
+        const code = cell._cm ? cell._cm.getValue() : '';
+        const container = cell.querySelector('.code-container');
+        container.innerHTML = `<textarea class="code-editor" id="editor-${cell.id}" placeholder="Enter Dart code or expression... (Ctrl+Space for autocompletion)">${code}</textarea>`;
+        const textarea = document.getElementById(`editor-${cell.id}`);
+        setupEditorForCell(cell, textarea, cell.id, code);
+      });
+    }
+
+    function setupEditorForCell(cell, textarea, cellId, initialCode) {
+      let cm = null;
+
+      if (currentEditorEngine === 'dart_editor' && typeof window.DartEditor === 'function') {
+        try {
+          cm = window.DartEditor(textarea);
+        } catch (e) {
+          console.warn('DartEditor initialization warning:', e);
+        }
+      }
+
+      if (!cm || typeof cm.getValue !== 'function') {
+        cm = CodeMirror.fromTextArea(textarea, {
+          mode: 'clike',
+          mime: 'application/x-dart',
+          theme: 'dracula',
+          lineNumbers: true,
+          matchBrackets: true,
+          autoCloseBrackets: true,
+          viewportMargin: Infinity,
+          extraKeys: {
+            'Shift-Enter': function(cm) {
+              closeCompletionPopup();
+              runCell(cellId);
+            },
+            'Ctrl-Space': function(cm) {
+              requestCompletionCm(cm, cellId);
+            },
+            'Cmd-Space': function(cm) {
+              requestCompletionCm(cm, cellId);
+            }
+          }
+        });
+
+        cm.on('change', (instance, changeObj) => {
+          cell.classList.remove('evaluated');
+          if (changeObj.origin === '+insert' && changeObj.text && changeObj.text.includes('.')) {
+            requestCompletionCm(cm, cellId);
+          }
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'update_cell', id: cellId, code: cm.getValue() }));
+          }
+        });
+
+        cm.on('focus', () => {
+          document.querySelectorAll('.cell').forEach(c => c.classList.remove('focused'));
+          cell.classList.add('focused');
+        });
+
+        let hoverTimeout = null;
+        if (cm.getWrapperElement) {
+          cm.getWrapperElement().addEventListener('mousemove', (e) => {
+            if (activeHoverPopup && (activeHoverPopup === e.target || activeHoverPopup.contains(e.target))) {
+              clearTimeout(hoverHideTimeout);
+              return;
+            }
+            clearTimeout(hoverTimeout);
+            hoverTimeout = setTimeout(() => {
+              const pos = cm.coordsChar({ left: e.clientX, top: e.clientY });
+              const token = cm.getTokenAt(pos);
+              if (token && token.string && token.string.trim().length > 0) {
+                const offset = cm.indexFromPos(pos);
+                requestHoverCm(cm, cellId, offset, e.clientX, e.clientY);
+              } else {
+                scheduleCloseHoverPopup(400);
+              }
+            }, 300);
+          });
+
+          cm.getWrapperElement().addEventListener('mouseleave', (e) => {
+            clearTimeout(hoverTimeout);
+            if (activeHoverPopup && (activeHoverPopup === e.relatedTarget || activeHoverPopup.contains(e.relatedTarget))) {
+              clearTimeout(hoverHideTimeout);
+              return;
+            }
+            scheduleCloseHoverPopup(500);
+          });
+        }
+      } else {
+        if (!cm.getCursor) cm.getCursor = () => ({ line: 0, ch: 0 });
+        if (!cm.setCursor) cm.setCursor = () => {};
+        if (!cm.indexFromPos) cm.indexFromPos = () => 0;
+        if (!cm.getLine) cm.getLine = () => '';
+        if (!cm.replaceRange) cm.replaceRange = () => {};
+        if (!cm.focus) cm.focus = () => textarea.focus();
+        if (!cm.on) cm.on = () => {};
+      }
+
+      cell._cm = cm;
+      if (!initialCode && cm.focus) cm.focus();
     }
 
     function deleteCell(cellId) {
@@ -854,8 +957,15 @@
       autoSaveSession();
     }
 
+    window.runCell = runCell;
+    window.runUntilCell = runUntilCell;
+    window.deleteCell = deleteCell;
+    window.switchEditorEngine = switchEditorEngine;
+
     // Initialize default starter cells
     window.addEventListener('DOMContentLoaded', () => {
+      const select = document.getElementById('editorEngineSelect');
+      if (select) select.value = currentEditorEngine;
       initWebSocket();
 
       window.addEventListener('scroll', () => {

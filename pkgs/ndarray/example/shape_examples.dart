@@ -28,7 +28,7 @@ void runExpandDimsExample() {
   // Insert a new dimension at axis 0
   final b = a.expandDims(0);
   print('Expanded axis 0 shape: ${b.shape}'); // [1, 2, 2]
-  print('Expanded axis 0 data: ${b.data}');
+  print('Expanded axis 0 data: ${b.toList()}');
 
   // Insert a new dimension at the end (axis 2 or -1)
   final c = a.expandDims(-1);
@@ -79,12 +79,12 @@ void runMoveaxisExample() {
 void runTileExample() {
   print('\n--- tile Example ---');
   final a = NDArray.fromList(Float64List.fromList([1, 2]), [2], DType.float64);
-  print('Original array: ${a.data} with shape ${a.shape}');
+  print('Original array: ${a.toList()} with shape ${a.shape}');
 
   // Tile 3 times along the single axis
   final b = tile(a, rep(3));
   print('Tiled 3 times shape: ${b.shape}'); // [6]
-  print('Tiled 3 times data: ${b.data}'); // [1.0, 2.0, 1.0, 2.0, 1.0, 2.0]
+  print('Tiled 3 times data: ${b.toList()}'); // [1.0, 2.0, 1.0, 2.0, 1.0, 2.0]
 
   // Tile a 2D block reps
   final c = tile(a, rep([2, 2]));
@@ -97,12 +97,12 @@ void runRepeatExample() {
     2,
     2,
   ], DType.float64);
-  print('Original array:\n${a.data} shape ${a.shape}');
+  print('Original array:\n${a.toList()} shape ${a.shape}');
 
   // Repeat elements 2 times along axis 0
   final b = repeat(a, rep(2), axis: 0);
   print('Repeated 2x axis 0 shape: ${b.shape}'); // [4, 2]
-  print('Repeated 2x axis 0 data: ${b.data}');
+  print('Repeated 2x axis 0 data: ${b.toList()}');
 
   // Repeat with a custom list per element along axis 1
   final c = repeat(a, rep([1, 3]), axis: 1);

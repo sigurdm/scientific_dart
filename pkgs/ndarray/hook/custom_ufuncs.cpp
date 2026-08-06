@@ -22,6 +22,7 @@
 #include <complex>
 #include <stdio.h>
 #include "custom_sorting.h"
+#include <vector>
 
 #if defined(_MSC_VER)
 #define RESTRICT __restrict
@@ -31,45 +32,24 @@
 #define RESTRICT restrict
 #endif
 
+#define MAKE_BINARY_OP_NAME(code, name) name,
+static const char* BINARY_OP_NAMES[] = {
+    FOR_EACH_BINARY_OP(MAKE_BINARY_OP_NAME)
+};
+#undef MAKE_BINARY_OP_NAME
+
+const char* get_binary_op_name(int index) {
+    if (index < 0 || index >= OP_COUNT) return nullptr;
+    return BINARY_OP_NAMES[index];
+}
+
+int get_binary_op_count(void) {
+    return (int)OP_COUNT;
+}
+
 int get_binary_op_enum_val(int index) {
-    switch (index) {
-        case 0: return OP_ADD;
-        case 1: return OP_MULTIPLY;
-        case 2: return OP_MINIMUM;
-        case 3: return OP_MAXIMUM;
-        case 4: return OP_FMIN;
-        case 5: return OP_FMAX;
-        case 6: return OP_LOGADDEXP;
-        case 7: return OP_LOGADDEXP2;
-        case 8: return OP_GCD;
-        case 9: return OP_LCM;
-        case 10: return OP_BITWISE_AND;
-        case 11: return OP_BITWISE_OR;
-        case 12: return OP_BITWISE_XOR;
-        case 13: return OP_LOGICAL_AND;
-        case 14: return OP_LOGICAL_OR;
-        case 15: return OP_LOGICAL_XOR;
-        case 16: return OP_SUBTRACT;
-        case 17: return OP_DIVIDE;
-        case 18: return OP_FLOOR_DIVIDE;
-        case 19: return OP_REMAINDER;
-        case 20: return OP_FMOD;
-        case 21: return OP_POWER;
-        case 22: return OP_FLOAT_POWER;
-        case 23: return OP_ARCTAN2;
-        case 24: return OP_HYPOT;
-        case 25: return OP_COPYSIGN;
-        case 26: return OP_LEFT_SHIFT;
-        case 27: return OP_RIGHT_SHIFT;
-        case 28: return OP_HEAVISIDE;
-        case 29: return OP_EQUAL;
-        case 30: return OP_NOT_EQUAL;
-        case 31: return OP_GREATER;
-        case 32: return OP_GREATER_EQUAL;
-        case 33: return OP_LESS;
-        case 34: return OP_LESS_EQUAL;
-        default: return -1;
-    }
+    if (index < 0 || index >= (int)OP_COUNT) return -1;
+    return index;
 }
 
 #if (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(__i386__)) && !defined(_WIN32)
@@ -989,7 +969,7 @@ double r_prod_double(const double *src, int size) {
 }
 
 double r_mean_double(const double *src, int size) {
-    if (src == nullptr || size <= 0) return 0.0;
+    if (src == nullptr || size <= 0) return NAN;
     return r_sum_double(src, size) / (double)size;
 }
 
@@ -1687,7 +1667,7 @@ float r_prod_float(const float *src, int size) {
 }
 
 float r_mean_float(const float *src, int size) {
-    if (src == nullptr || size <= 0) return 0.0f;
+    if (src == nullptr || size <= 0) return NAN;
     return r_sum_float(src, size) / (float)size;
 }
 
@@ -2204,6 +2184,19 @@ static inline void hash_int32(uint32_t *hash, int32_t val) {
     }
 }
 
+static inline void hash_int16(uint32_t *hash, int16_t val) {
+    const uint8_t *bytes = (const uint8_t*)&val;
+    for (int i = 0; i < 2; i++) {
+        *hash ^= bytes[i];
+        *hash *= 16777619U;
+    }
+}
+
+static inline void hash_uint8(uint32_t *hash, uint8_t val) {
+    *hash ^= val;
+    *hash *= 16777619U;
+}
+
 static inline void hash_boolean(uint32_t *hash, uint8_t val) {
     uint8_t b = val ? 1 : 0;
     *hash ^= b;
@@ -2215,14 +2208,20 @@ static inline void hash_boolean(uint32_t *hash, uint8_t val) {
 // ============================================================================
 
 void s_flatten_double(const double *src, const int *stridesSrc, double *dest, const int *shape, int rank) {
-    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
         dest[0] = src[0];
         return;
     }
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         dest[el] = src[offsetSrc];
@@ -2239,14 +2238,20 @@ void s_flatten_double(const double *src, const int *stridesSrc, double *dest, co
 }
 
 void s_flatten_float(const float *src, const int *stridesSrc, float *dest, const int *shape, int rank) {
-    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
         dest[0] = src[0];
         return;
     }
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         dest[el] = src[offsetSrc];
@@ -2263,14 +2268,20 @@ void s_flatten_float(const float *src, const int *stridesSrc, float *dest, const
 }
 
 void s_flatten_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const int *shape, int rank) {
-    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
         dest[0] = src[0];
         return;
     }
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         dest[el] = src[offsetSrc];
@@ -2287,14 +2298,20 @@ void s_flatten_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, c
 }
 
 void s_flatten_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *shape, int rank) {
-    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
         dest[0] = src[0];
         return;
     }
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         dest[el] = src[offsetSrc];
@@ -2311,7 +2328,7 @@ void s_flatten_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, c
 }
 
 void s_flatten_complex128(const double *src, const int *stridesSrc, double *dest, const int *shape, int rank) {
-    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
@@ -2321,7 +2338,13 @@ void s_flatten_complex128(const double *src, const int *stridesSrc, double *dest
     }
     const cpx_t *c_src = (const cpx_t*)src;
     cpx_t *c_dest = (cpx_t*)dest;
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         c_dest[el] = c_src[offsetSrc];
@@ -2338,7 +2361,7 @@ void s_flatten_complex128(const double *src, const int *stridesSrc, double *dest
 }
 
 void s_flatten_complex64(const float *src, const int *stridesSrc, float *dest, const int *shape, int rank) {
-    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
@@ -2348,7 +2371,13 @@ void s_flatten_complex64(const float *src, const int *stridesSrc, float *dest, c
     }
     const cpx_f_t *c_src = (const cpx_f_t*)src;
     cpx_f_t *c_dest = (cpx_f_t*)dest;
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         c_dest[el] = c_src[offsetSrc];
@@ -2365,14 +2394,20 @@ void s_flatten_complex64(const float *src, const int *stridesSrc, float *dest, c
 }
 
 void s_flatten_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *shape, int rank) {
-    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
         dest[0] = src[0];
         return;
     }
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         dest[el] = src[offsetSrc];
@@ -2389,14 +2424,20 @@ void s_flatten_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, c
 }
 
 void s_flatten_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *shape, int rank) {
-    if (src == nullptr || dest == nullptr || rank < 0 || rank > 8) return;
+    if (src == nullptr || dest == nullptr || rank < 0) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (rank == 0) {
         dest[0] = src[0];
         return;
     }
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         dest[el] = src[offsetSrc];
@@ -2411,7 +2452,6 @@ void s_flatten_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, c
         }
     }
 }
-
 
 // ============================================================================
 // 8. NATIVE C HIGH-SPEED ELEMENTS HASHING KERNELS
@@ -2428,13 +2468,19 @@ uint32_t s_hash_double(const double *a, const int *strides, const int *shape, in
         }
         return hash;
     }
-    if (rank <= 0 || rank > 8) {
+    if (rank <= 0) {
         if (rank == 0) {
             hash_double(&hash, a[0]);
         }
         return hash;
     }
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_double(&hash, a[offset]);
@@ -2462,13 +2508,19 @@ uint32_t s_hash_float(const float *a, const int *strides, const int *shape, int 
         }
         return hash;
     }
-    if (rank <= 0 || rank > 8) {
+    if (rank <= 0) {
         if (rank == 0) {
             hash_float(&hash, a[0]);
         }
         return hash;
     }
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_float(&hash, a[offset]);
@@ -2496,13 +2548,19 @@ uint32_t s_hash_int64(const int64_t *a, const int *strides, const int *shape, in
         }
         return hash;
     }
-    if (rank <= 0 || rank > 8) {
+    if (rank <= 0) {
         if (rank == 0) {
             hash_int64(&hash, a[0]);
         }
         return hash;
     }
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_int64(&hash, a[offset]);
@@ -2530,16 +2588,102 @@ uint32_t s_hash_int32(const int32_t *a, const int *strides, const int *shape, in
         }
         return hash;
     }
-    if (rank <= 0 || rank > 8) {
+    if (rank <= 0) {
         if (rank == 0) {
             hash_int32(&hash, a[0]);
         }
         return hash;
     }
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_int32(&hash, a[offset]);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offset += strides[d];
+                break;
+            }
+            coord[d] = 0;
+            offset -= (shape[d] - 1) * strides[d];
+        }
+    }
+    return hash;
+}
+
+uint32_t s_hash_int16(const int16_t *a, const int *strides, const int *shape, int rank, int is_contiguous) {
+    if (a == nullptr) return 0;
+    uint32_t hash = 2166136261U;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (is_contiguous) {
+        for (int i = 0; i < total_elements; i++) {
+            hash_int16(&hash, a[i]);
+        }
+        return hash;
+    }
+    if (rank <= 0) {
+        if (rank == 0) {
+            hash_int16(&hash, a[0]);
+        }
+        return hash;
+    }
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
+    int offset = 0;
+    for (int el = 0; el < total_elements; el++) {
+        hash_int16(&hash, a[offset]);
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offset += strides[d];
+                break;
+            }
+            coord[d] = 0;
+            offset -= (shape[d] - 1) * strides[d];
+        }
+    }
+    return hash;
+}
+
+uint32_t s_hash_uint8(const uint8_t *a, const int *strides, const int *shape, int rank, int is_contiguous) {
+    if (a == nullptr) return 0;
+    uint32_t hash = 2166136261U;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (is_contiguous) {
+        for (int i = 0; i < total_elements; i++) {
+            hash_uint8(&hash, a[i]);
+        }
+        return hash;
+    }
+    if (rank <= 0) {
+        if (rank == 0) {
+            hash_uint8(&hash, a[0]);
+        }
+        return hash;
+    }
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
+    int offset = 0;
+    for (int el = 0; el < total_elements; el++) {
+        hash_uint8(&hash, a[offset]);
         for (int d = rank - 1; d >= 0; d--) {
             coord[d]++;
             if (coord[d] < shape[d]) {
@@ -2566,14 +2710,20 @@ uint32_t s_hash_complex128(const double *a, const int *strides, const int *shape
         }
         return hash;
     }
-    if (rank <= 0 || rank > 8) {
+    if (rank <= 0) {
         if (rank == 0) {
             hash_double(&hash, c_a[0].r);
             hash_double(&hash, c_a[0].i);
         }
         return hash;
     }
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_double(&hash, c_a[offset].r);
@@ -2604,14 +2754,20 @@ uint32_t s_hash_complex64(const float *a, const int *strides, const int *shape, 
         }
         return hash;
     }
-    if (rank <= 0 || rank > 8) {
+    if (rank <= 0) {
         if (rank == 0) {
             hash_float(&hash, c_a[0].r);
             hash_float(&hash, c_a[0].i);
         }
         return hash;
     }
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_float(&hash, c_a[offset].r);
@@ -2640,13 +2796,19 @@ uint32_t s_hash_boolean(const uint8_t *a, const int *strides, const int *shape, 
         }
         return hash;
     }
-    if (rank <= 0 || rank > 8) {
+    if (rank <= 0) {
         if (rank == 0) {
             hash_boolean(&hash, a[0]);
         }
         return hash;
     }
-    int coord[8] = {0};
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
     int offset = 0;
     for (int el = 0; el < total_elements; el++) {
         hash_boolean(&hash, a[offset]);
@@ -7002,6 +7164,11 @@ static inline int32_t interpolate_int32(int32_t start, int32_t end, int step, in
     double val = (double)start + ((double)end - (double)start) * (double)step / total_steps;
     return (int32_t)round(val);
 }
+static inline int16_t interpolate_int16(int16_t start, int16_t end, int step, int total_steps) {
+    if (total_steps <= 0) return end;
+    double val = (double)start + ((double)end - (double)start) * (double)step / total_steps;
+    return (int16_t)round(val);
+}
 static inline uint8_t interpolate_uint8(uint8_t start, uint8_t end, int step, int total_steps) {
     if (total_steps <= 0) return end;
     double val = (double)start + ((double)end - (double)start) * (double)step / total_steps;
@@ -7068,6 +7235,7 @@ DEFINE_NUMERIC_STATS(double, double, native_sort_double, double*)
 DEFINE_NUMERIC_STATS(float, float, native_sort_float, float*)
 DEFINE_NUMERIC_STATS(int64_t, int64, native_sort_int64, long long*)
 DEFINE_NUMERIC_STATS(int32_t, int32, native_sort_int32, int*)
+DEFINE_NUMERIC_STATS(int16_t, int16, native_sort_int16, int16_t*)
 DEFINE_NUMERIC_STATS(uint8_t, uint8, insertion_sort_uint8, uint8_t*)
 
 
@@ -7191,10 +7359,16 @@ void pad_axis_##TYPE_NAME( \
     T endBefore, T endAfter, \
     int statLengthBefore, int statLengthAfter \
 ) { \
-    if (src == nullptr || dest == nullptr || shapeSrc == nullptr || shapeDest == nullptr || stridesSrc == nullptr || rank <= 0 || rank > 8) return; \
+    if (src == nullptr || dest == nullptr || shapeSrc == nullptr || shapeDest == nullptr || stridesSrc == nullptr || rank <= 0) return; \
     int total_elements_dest = 1; \
     for (int i = 0; i < rank; i++) total_elements_dest *= shapeDest[i]; \
-    int coordDest[8] = {0}; \
+    std::vector<int> coordDest_vec; \
+    int coordDest_stack[32] = {0}; \
+    int *coordDest = coordDest_stack; \
+    if (rank > 32) { \
+        coordDest_vec.assign(rank, 0); \
+        coordDest = coordDest_vec.data(); \
+    } \
     int offsetSrcSlice = 0; \
     T cached_stat_before = (T)0; \
     T cached_stat_after = (T)0; \
@@ -7243,20 +7417,20 @@ void pad_axis_##TYPE_NAME( \
                     if (!stats_cached) { \
                         switch(mode) { \
                             case 6: \
-                                cached_stat_before = STATS_MAX(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MAX(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MAX(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                             case 7: \
+                                cached_stat_after = STATS_MEAN(src_vector_base + (N - statLengthAfter) * statLengthAfter, src_stride, statLengthAfter); \
                                 cached_stat_before = STATS_MEAN(src_vector_base, src_stride, statLengthBefore); \
-                                cached_stat_after = STATS_MEAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
                                 break; \
                             case 8: \
-                                cached_stat_before = STATS_MEDIAN(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MEDIAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MEDIAN(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                             case 9: \
-                                cached_stat_before = STATS_MIN(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MIN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MIN(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                         } \
                         stats_cached = 1; \
@@ -7302,20 +7476,20 @@ void pad_axis_##TYPE_NAME( \
                     if (!stats_cached) { \
                         switch(mode) { \
                             case 6: \
-                                cached_stat_before = STATS_MAX(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MAX(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MAX(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                             case 7: \
-                                cached_stat_before = STATS_MEAN(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MEAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MEAN(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                             case 8: \
-                                cached_stat_before = STATS_MEDIAN(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MEDIAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MEDIAN(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                             case 9: \
-                                cached_stat_before = STATS_MIN(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MIN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MIN(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                         } \
                         stats_cached = 1; \
@@ -7347,11 +7521,12 @@ void pad_axis_##TYPE_NAME( \
     } \
 }
 
-// Instantiate DEFINE_PAD_AXIS for double, float, int64, int32, uint8
+// Instantiate DEFINE_PAD_AXIS for double, float, int64, int32, int16, uint8
 DEFINE_PAD_AXIS(double, double, stats_min_double, stats_max_double, stats_mean_double, stats_median_double, interpolate_double)
 DEFINE_PAD_AXIS(float, float, stats_min_float, stats_max_float, stats_mean_float, stats_median_float, interpolate_float)
 DEFINE_PAD_AXIS(int64, int64_t, stats_min_int64, stats_max_int64, stats_mean_int64, stats_median_int64, interpolate_int64)
 DEFINE_PAD_AXIS(int32, int32_t, stats_min_int32, stats_max_int32, stats_mean_int32, stats_median_int32, interpolate_int32)
+DEFINE_PAD_AXIS(int16, int16_t, stats_min_int16, stats_max_int16, stats_mean_int16, stats_median_int16, interpolate_int16)
 DEFINE_PAD_AXIS(uint8, uint8_t, stats_min_uint8, stats_max_uint8, stats_mean_uint8, stats_median_uint8, interpolate_uint8)
 
 // Complex pad axis implementation (needs separate macro because cpx_t has zeroInit {0,0} and different stats/interpolation signatures)
@@ -7366,10 +7541,16 @@ void pad_axis_##TYPE_NAME( \
     T endBefore, T endAfter, \
     int statLengthBefore, int statLengthAfter \
 ) { \
-    if (src == nullptr || dest == nullptr || shapeSrc == nullptr || shapeDest == nullptr || stridesSrc == nullptr || rank <= 0 || rank > 8) return; \
+    if (src == nullptr || dest == nullptr || shapeSrc == nullptr || shapeDest == nullptr || stridesSrc == nullptr || rank <= 0) return; \
     int total_elements_dest = 1; \
     for (int i = 0; i < rank; i++) total_elements_dest *= shapeDest[i]; \
-    int coordDest[8] = {0}; \
+    std::vector<int> coordDest_vec; \
+    int coordDest_stack[32] = {0}; \
+    int *coordDest = coordDest_stack; \
+    if (rank > 32) { \
+        coordDest_vec.assign(rank, 0); \
+        coordDest = coordDest_vec.data(); \
+    } \
     int offsetSrcSlice = 0; \
     T cached_stat_before = {0, 0}; \
     T cached_stat_after = {0, 0}; \
@@ -7418,20 +7599,20 @@ void pad_axis_##TYPE_NAME( \
                     if (!stats_cached) { \
                         switch(mode) { \
                             case 6: \
-                                cached_stat_before = STATS_MAX(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MAX(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MAX(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                             case 7: \
-                                cached_stat_before = STATS_MEAN(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MEAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MEAN(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                             case 8: \
-                                cached_stat_before = STATS_MEDIAN(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MEDIAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MEDIAN(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                             case 9: \
-                                cached_stat_before = STATS_MIN(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MIN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MIN(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                         } \
                         stats_cached = 1; \
@@ -7477,20 +7658,20 @@ void pad_axis_##TYPE_NAME( \
                     if (!stats_cached) { \
                         switch(mode) { \
                             case 6: \
-                                cached_stat_before = STATS_MAX(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MAX(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MAX(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                             case 7: \
-                                cached_stat_before = STATS_MEAN(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MEAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MEAN(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                             case 8: \
-                                cached_stat_before = STATS_MEDIAN(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MEDIAN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MEDIAN(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                             case 9: \
-                                cached_stat_before = STATS_MIN(src_vector_base, src_stride, statLengthBefore); \
                                 cached_stat_after = STATS_MIN(src_vector_base + (N - statLengthAfter) * src_stride, src_stride, statLengthAfter); \
+                                cached_stat_before = STATS_MIN(src_vector_base, src_stride, statLengthBefore); \
                                 break; \
                         } \
                         stats_cached = 1; \
@@ -7806,6 +7987,7 @@ void s_median_float(const float *src, const int *stridesSrc,
 
 IMPLEMENT_MEDIAN_REDUCTION(s_median_int64, int64_t, native_sort_int64, long long *)
 IMPLEMENT_MEDIAN_REDUCTION(s_median_int32, int32_t, native_sort_int32, int *)
+IMPLEMENT_MEDIAN_REDUCTION(s_median_int16, int16_t, native_sort_int16, int16_t *)
 IMPLEMENT_MEDIAN_REDUCTION(s_median_uint8, uint8_t, insertion_sort_uint8, uint8_t *)
 
 void s_median_complex128(const cpx_t *src, const int *stridesSrc,
@@ -7941,6 +8123,7 @@ double r_median_double(const double *src, int size) { return stats_median_double
 float r_median_float(const float *src, int size) { return stats_median_float(src, 1, size); }
 int64_t r_median_int64(const int64_t *src, int size) { return stats_median_int64(src, 1, size); }
 int32_t r_median_int32(const int32_t *src, int size) { return stats_median_int32(src, 1, size); }
+int16_t r_median_int16(const int16_t *src, int size) { return stats_median_int16(src, 1, size); }
 uint8_t r_median_uint8(const uint8_t *src, int size) { return stats_median_uint8(src, 1, size); }
 cpx_t r_median_complex128(const cpx_t *src, int size) { return stats_median_complex128(src, 1, size); }
 cpx_f_t r_median_complex64(const cpx_f_t *src, int size) { return stats_median_complex64(src, 1, size); }
@@ -8076,6 +8259,7 @@ DEFINE_NUMERIC_QUANTILE(double, double, native_sort_double, double*)
 DEFINE_NUMERIC_QUANTILE(float, float, native_sort_float, float*)
 DEFINE_NUMERIC_QUANTILE(int64_t, int64, native_sort_int64, long long*)
 DEFINE_NUMERIC_QUANTILE(int32_t, int32, native_sort_int32, int*)
+DEFINE_NUMERIC_QUANTILE(int16_t, int16, native_sort_int16, int16_t*)
 DEFINE_NUMERIC_QUANTILE(uint8_t, uint8, insertion_sort_uint8, uint8_t*)
 
 // Global reductions for quantile (contiguous)
@@ -8083,6 +8267,7 @@ double r_quantile_double(const double *src, int size, double q, int method) { re
 double r_quantile_float(const float *src, int size, double q, int method) { return stats_quantile_float(src, 1, size, q, method); }
 double r_quantile_int64(const int64_t *src, int size, double q, int method) { return stats_quantile_int64(src, 1, size, q, method); }
 double r_quantile_int32(const int32_t *src, int size, double q, int method) { return stats_quantile_int32(src, 1, size, q, method); }
+double r_quantile_int16(const int16_t *src, int size, double q, int method) { return stats_quantile_int16(src, 1, size, q, method); }
 double r_quantile_uint8(const uint8_t *src, int size, double q, int method) { return stats_quantile_uint8(src, 1, size, q, method); }
 
 // Helper macro for quantile reduction.
@@ -8136,6 +8321,7 @@ IMPLEMENT_QUANTILE_REDUCTION(s_quantile_double, double, native_sort_double, doub
 IMPLEMENT_QUANTILE_REDUCTION(s_quantile_float, float, native_sort_float, float *)
 IMPLEMENT_QUANTILE_REDUCTION(s_quantile_int64, int64_t, native_sort_int64, long long *)
 IMPLEMENT_QUANTILE_REDUCTION(s_quantile_int32, int32_t, native_sort_int32, int *)
+IMPLEMENT_QUANTILE_REDUCTION(s_quantile_int16, int16_t, native_sort_int16, int16_t *)
 IMPLEMENT_QUANTILE_REDUCTION(s_quantile_uint8, uint8_t, insertion_sort_uint8, uint8_t *)
 /* ============================================================================
  * SECTION 11: INTERPOLATION KERNELS
@@ -10271,7 +10457,13 @@ static void s_at_impl(T *a, const int *stridesA, const int *shapeA, int rankA,
         if (sliceSize == 1) {
             a[offsetA] = apply_at_op(a[offsetA], b[offsetB], opCode);
         } else {
-            int coord[32] = {0};
+            std::vector<int> coord_vec;
+            int coord_stack[32] = {0};
+            int *coord = coord_stack;
+            if (rankA > 33) {
+                coord_vec.assign(rankA, 0);
+                coord = coord_vec.data();
+            }
             for (int s = 0; s < sliceSize; s++) {
                 int offA = offsetA;
                 int offB = offsetB;

@@ -73,6 +73,13 @@ external void native_sort_int64(
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int>, ffi.Int, ffi.Int)>()
 external void native_sort_int32(ffi.Pointer<ffi.Int> array, int size, int kind);
 
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int16>, ffi.Int, ffi.Int)>()
+external void native_sort_int16(
+  ffi.Pointer<ffi.Int16> array,
+  int size,
+  int kind,
+);
+
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Uint8>, ffi.Int, ffi.Int)>()
 external void native_sort_uint8(
   ffi.Pointer<ffi.Uint8> array,
@@ -157,6 +164,36 @@ external void native_argsort_int32(
   int kind,
 );
 
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void native_argsort_int16(
+  ffi.Pointer<ffi.Int16> data,
+  ffi.Pointer<ffi.Int> indices,
+  int size,
+  int kind,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void native_argsort_uint8(
+  ffi.Pointer<ffi.Uint8> data,
+  ffi.Pointer<ffi.Int> indices,
+  int size,
+  int kind,
+);
+
 /// ----------------------------------------------------------------------------
 /// Public Partition Sorters
 /// ----------------------------------------------------------------------------
@@ -215,6 +252,36 @@ external void native_partition_int64(
 >()
 external void native_partition_int32(
   ffi.Pointer<ffi.Int> array,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_partition_int16(
+  ffi.Pointer<ffi.Int16> array,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_partition_uint8(
+  ffi.Pointer<ffi.Uint8> array,
   int size,
   ffi.Pointer<ffi.Int> k_list,
   int k_size,
@@ -315,6 +382,40 @@ external void native_argpartition_int64(
 >()
 external void native_argpartition_int32(
   ffi.Pointer<ffi.Int> data,
+  ffi.Pointer<ffi.Int> indices,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_argpartition_int16(
+  ffi.Pointer<ffi.Int16> data,
+  ffi.Pointer<ffi.Int> indices,
+  int size,
+  ffi.Pointer<ffi.Int> k_list,
+  int k_size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void native_argpartition_uint8(
+  ffi.Pointer<ffi.Uint8> data,
   ffi.Pointer<ffi.Int> indices,
   int size,
   ffi.Pointer<ffi.Int> k_list,
@@ -436,6 +537,27 @@ external void native_searchsorted_int32(
   ffi.Pointer<ffi.Int> array,
   int size,
   ffi.Pointer<ffi.Int> values,
+  ffi.Pointer<ffi.Int> out_indices,
+  int num_values,
+  int side_left,
+  ffi.Pointer<ffi.Int> sorter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int>,
+  )
+>()
+external void native_searchsorted_int16(
+  ffi.Pointer<ffi.Int16> array,
+  int size,
+  ffi.Pointer<ffi.Int16> values,
   ffi.Pointer<ffi.Int> out_indices,
   int num_values,
   int side_left,
@@ -9074,6 +9196,40 @@ external int s_hash_int64(
 >()
 external int s_hash_int32(
   ffi.Pointer<ffi.Int32> a,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int is_contiguous,
+);
+
+@ffi.Native<
+  ffi.Uint32 Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external int s_hash_int16(
+  ffi.Pointer<ffi.Int16> a,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int is_contiguous,
+);
+
+@ffi.Native<
+  ffi.Uint32 Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external int s_hash_uint8(
+  ffi.Pointer<ffi.Uint8> a,
   ffi.Pointer<ffi.Int> strides,
   ffi.Pointer<ffi.Int> shape,
   int rank,
@@ -20463,8 +20619,11 @@ external void s_linspace_grid_uint8(
 @ffi.Native<ffi.Int Function()>()
 external int get_and_reset_division_error();
 
-@ffi.Native<ffi.Int Function(ffi.Int)>()
-external int get_binary_op_enum_val(int index);
+@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.Int)>()
+external ffi.Pointer<ffi.Char> get_binary_op_name(int index);
+
+@ffi.Native<ffi.Int Function()>()
+external int get_binary_op_count();
 
 /// Decoupled LAPACK-Dispatched Determinants
 @ffi.Native<
@@ -21065,6 +21224,45 @@ external void pad_axis_int32(
 
 @ffi.Native<
   ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int16,
+    ffi.Int16,
+    ffi.Int16,
+    ffi.Int16,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void pad_axis_int16(
+  ffi.Pointer<ffi.Int16> src,
+  ffi.Pointer<ffi.Int> shapeSrc,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int16> dest,
+  ffi.Pointer<ffi.Int> shapeDest,
+  int rank,
+  int axis,
+  int padBefore,
+  int padAfter,
+  int mode,
+  int constantBefore,
+  int constantAfter,
+  int endBefore,
+  int endAfter,
+  int statLengthBefore,
+  int statLengthAfter,
+);
+
+@ffi.Native<
+  ffi.Void Function(
     ffi.Pointer<ffi.Uint8>,
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<ffi.Int>,
@@ -21314,6 +21512,9 @@ external int r_median_int64(ffi.Pointer<ffi.Int64> src, int size);
 @ffi.Native<ffi.Int32 Function(ffi.Pointer<ffi.Int32>, ffi.Int)>()
 external int r_median_int32(ffi.Pointer<ffi.Int32> src, int size);
 
+@ffi.Native<ffi.Int16 Function(ffi.Pointer<ffi.Int16>, ffi.Int)>()
+external int r_median_int16(ffi.Pointer<ffi.Int16> src, int size);
+
 @ffi.Native<ffi.Uint8 Function(ffi.Pointer<ffi.Uint8>, ffi.Int)>()
 external int r_median_uint8(ffi.Pointer<ffi.Uint8> src, int size);
 
@@ -21402,6 +21603,27 @@ external void s_median_int32(
   ffi.Pointer<ffi.Int32> src,
   ffi.Pointer<ffi.Int> stridesSrc,
   ffi.Pointer<ffi.Int32> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_median_int16(
+  ffi.Pointer<ffi.Int16> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int16> dest,
   ffi.Pointer<ffi.Int> stridesDest,
   ffi.Pointer<ffi.Int> shape,
   int rank,
@@ -21513,6 +21735,16 @@ external double r_quantile_int32(
 );
 
 @ffi.Native<
+  ffi.Double Function(ffi.Pointer<ffi.Int16>, ffi.Int, ffi.Double, ffi.Int)
+>()
+external double r_quantile_int16(
+  ffi.Pointer<ffi.Int16> src,
+  int size,
+  double q,
+  int method,
+);
+
+@ffi.Native<
   ffi.Double Function(ffi.Pointer<ffi.Uint8>, ffi.Int, ffi.Double, ffi.Int)
 >()
 external double r_quantile_uint8(
@@ -21613,6 +21845,31 @@ external void s_quantile_int64(
 >()
 external void s_quantile_int32(
   ffi.Pointer<ffi.Int32> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  double q,
+  int method,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Double,
+    ffi.Int,
+  )
+>()
+external void s_quantile_int16(
+  ffi.Pointer<ffi.Int16> src,
   ffi.Pointer<ffi.Int> stridesSrc,
   ffi.Pointer<ffi.Double> dest,
   ffi.Pointer<ffi.Int> stridesDest,
@@ -24613,18 +24870,18 @@ external void s_at_boolean(
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Double>,
+    ffi.Int64,
     ffi.Pointer<ffi.Int64>,
-    ffi.Int,
-    ffi.Int,
+    ffi.Int64,
     ffi.Pointer<ffi.Double>,
     ffi.Int,
   )
 >()
 external void v_reduceat_double(
   ffi.Pointer<ffi.Double> src,
+  int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  int axisLen,
   ffi.Pointer<ffi.Double> res,
   int opCode,
 );
@@ -24632,18 +24889,18 @@ external void v_reduceat_double(
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Float>,
+    ffi.Int64,
     ffi.Pointer<ffi.Int64>,
-    ffi.Int,
-    ffi.Int,
+    ffi.Int64,
     ffi.Pointer<ffi.Float>,
     ffi.Int,
   )
 >()
 external void v_reduceat_float(
   ffi.Pointer<ffi.Float> src,
+  int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  int axisLen,
   ffi.Pointer<ffi.Float> res,
   int opCode,
 );
@@ -24651,18 +24908,18 @@ external void v_reduceat_float(
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int64>,
+    ffi.Int64,
     ffi.Pointer<ffi.Int64>,
-    ffi.Int,
-    ffi.Int,
+    ffi.Int64,
     ffi.Pointer<ffi.Int64>,
     ffi.Int,
   )
 >()
 external void v_reduceat_int64(
   ffi.Pointer<ffi.Int64> src,
+  int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  int axisLen,
   ffi.Pointer<ffi.Int64> res,
   int opCode,
 );
@@ -24670,18 +24927,18 @@ external void v_reduceat_int64(
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int32>,
+    ffi.Int64,
     ffi.Pointer<ffi.Int64>,
-    ffi.Int,
-    ffi.Int,
+    ffi.Int64,
     ffi.Pointer<ffi.Int32>,
     ffi.Int,
   )
 >()
 external void v_reduceat_int32(
   ffi.Pointer<ffi.Int32> src,
+  int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  int axisLen,
   ffi.Pointer<ffi.Int32> res,
   int opCode,
 );
@@ -24689,18 +24946,18 @@ external void v_reduceat_int32(
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int16>,
+    ffi.Int64,
     ffi.Pointer<ffi.Int64>,
-    ffi.Int,
-    ffi.Int,
+    ffi.Int64,
     ffi.Pointer<ffi.Int16>,
     ffi.Int,
   )
 >()
 external void v_reduceat_int16(
   ffi.Pointer<ffi.Int16> src,
+  int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  int axisLen,
   ffi.Pointer<ffi.Int16> res,
   int opCode,
 );
@@ -24708,18 +24965,18 @@ external void v_reduceat_int16(
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Uint8>,
+    ffi.Int64,
     ffi.Pointer<ffi.Int64>,
-    ffi.Int,
-    ffi.Int,
+    ffi.Int64,
     ffi.Pointer<ffi.Uint8>,
     ffi.Int,
   )
 >()
 external void v_reduceat_uint8(
   ffi.Pointer<ffi.Uint8> src,
+  int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  int axisLen,
   ffi.Pointer<ffi.Uint8> res,
   int opCode,
 );
@@ -24727,18 +24984,18 @@ external void v_reduceat_uint8(
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<cpx_t>,
+    ffi.Int64,
     ffi.Pointer<ffi.Int64>,
-    ffi.Int,
-    ffi.Int,
+    ffi.Int64,
     ffi.Pointer<cpx_t>,
     ffi.Int,
   )
 >()
 external void v_reduceat_complex128(
   ffi.Pointer<cpx_t> src,
+  int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  int axisLen,
   ffi.Pointer<cpx_t> res,
   int opCode,
 );
@@ -24746,18 +25003,18 @@ external void v_reduceat_complex128(
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<cpx_f_t>,
+    ffi.Int64,
     ffi.Pointer<ffi.Int64>,
-    ffi.Int,
-    ffi.Int,
+    ffi.Int64,
     ffi.Pointer<cpx_f_t>,
     ffi.Int,
   )
 >()
 external void v_reduceat_complex64(
   ffi.Pointer<cpx_f_t> src,
+  int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  int axisLen,
   ffi.Pointer<cpx_f_t> res,
   int opCode,
 );
@@ -25468,3 +25725,6 @@ const int CMP_OP_LE = 3;
 const int CMP_OP_GT = 4;
 
 const int CMP_OP_GE = 5;
+
+@ffi.Native<ffi.Int Function(ffi.Int)>()
+external int get_binary_op_enum_val(int index);

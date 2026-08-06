@@ -4,17 +4,26 @@ import 'package:test/test.dart';
 
 void main() {
   group('DomNodePool & DomElementNode Tests', () {
-    test('DomElementNode escapes text and attributes against XSS injection', () {
-      final node = DomElementNode('div');
-      node.className = 'test-class" onclick="alert(1)';
-      node.style['color'] = 'red"; font-size: 12px';
-      node.textContent = '<script>alert("xss")</script>';
+    test(
+      'DomElementNode escapes text and attributes against XSS injection',
+      () {
+        final node = DomElementNode('div');
+        node.className = 'test-class" onclick="alert(1)';
+        node.style['color'] = 'red"; font-size: 12px';
+        node.textContent = '<script>alert("xss")</script>';
 
-      final html = node.toHtmlString();
-      expect(html, contains('class="test-class&quot; onclick=&quot;alert(1)"'));
-      expect(html, contains('style="color:red&quot;; font-size: 12px"'));
-      expect(html, contains('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'));
-    });
+        final html = node.toHtmlString();
+        expect(
+          html,
+          contains('class="test-class&quot; onclick=&quot;alert(1)"'),
+        );
+        expect(html, contains('style="color:red&quot;; font-size: 12px"'));
+        expect(
+          html,
+          contains('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'),
+        );
+      },
+    );
 
     test('DomNodePool acquires and recycles line div and token span nodes', () {
       final pool = DomNodePool(extraBuffer: 2);
@@ -48,55 +57,61 @@ void main() {
       renderer = HtmlRenderer();
     });
 
-    test('render builds line divs and token spans using nodePool recycling', () {
-      const viewport = RenderViewport(
-        width: 200,
-        height: 100,
-        scrollX: 0,
-        scrollY: 0,
-        firstVisibleLine: 0,
-        lastVisibleLine: 1,
-        lines: [
-          RenderLine(
-            lineIndex: 0,
-            text: 'const x = 1;',
-            tokens: [
-              RenderToken(
-                text: 'const',
-                startColumn: 0,
-                endColumn: 5,
-                style: RenderTokenStyle(foreground: '#569CD6', bold: true),
-              ),
-              RenderToken(
-                text: ' x = 1;',
-                startColumn: 5,
-                endColumn: 12,
-                style: RenderTokenStyle(foreground: '#9CDCFFE'),
-              ),
-            ],
-            top: 0,
-            height: 20,
+    test(
+      'render builds line divs and token spans using nodePool recycling',
+      () {
+        const viewport = RenderViewport(
+          width: 200,
+          height: 100,
+          scrollX: 0,
+          scrollY: 0,
+          firstVisibleLine: 0,
+          lastVisibleLine: 1,
+          lines: [
+            RenderLine(
+              lineIndex: 0,
+              text: 'const x = 1;',
+              tokens: [
+                RenderToken(
+                  text: 'const',
+                  startColumn: 0,
+                  endColumn: 5,
+                  style: RenderTokenStyle(foreground: '#569CD6', bold: true),
+                ),
+                RenderToken(
+                  text: ' x = 1;',
+                  startColumn: 5,
+                  endColumn: 12,
+                  style: RenderTokenStyle(foreground: '#9CDCFFE'),
+                ),
+              ],
+              top: 0,
+              height: 20,
+            ),
+          ],
+          selections: <SelectionRect>[],
+          carets: <CaretPosition>[],
+          gutter: RenderGutter(
+            width: 30,
+            items: [GutterItem(lineIndex: 0, lineNumberText: '1')],
           ),
-        ],
-        selections: <SelectionRect>[],
-        carets: <CaretPosition>[],
-        gutter: RenderGutter(
-          width: 30,
-          items: [GutterItem(lineIndex: 0, lineNumberText: '1')],
-        ),
-        lineHeight: 20,
-        charWidth: 8,
-      );
+          lineHeight: 20,
+          charWidth: 8,
+        );
 
-      renderer.render(viewport);
-      expect(renderer.renderedLineNodes.length, equals(1));
-      expect(renderer.nodePool.activeCount, equals(3)); // 1 line div + 2 token spans
+        renderer.render(viewport);
+        expect(renderer.renderedLineNodes.length, equals(1));
+        expect(
+          renderer.nodePool.activeCount,
+          equals(3),
+        ); // 1 line div + 2 token spans
 
-      final htmlStr = renderer.renderToHtmlString(viewport);
-      expect(htmlStr, contains('<div class="code-editor-viewport"'));
-      expect(htmlStr, contains('font-weight:bold'));
-      expect(htmlStr, contains('const'));
-      expect(htmlStr, contains(' x = 1;'));
-    });
+        final htmlStr = renderer.renderToHtmlString(viewport);
+        expect(htmlStr, contains('<div class="code-editor-viewport"'));
+        expect(htmlStr, contains('font-weight:bold'));
+        expect(htmlStr, contains('const'));
+        expect(htmlStr, contains(' x = 1;'));
+      },
+    );
   });
 }
