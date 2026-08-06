@@ -475,6 +475,9 @@ final class NDArray<T> implements ffi.Finalizable {
     bool zeroInit = false,
     @internal List<int>? strides,
   }) {
+    if (shape.any((dim) => dim < 0)) {
+      throw ArgumentError('Shape dimensions cannot be negative: $shape');
+    }
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     final finalStrides = strides ?? computeCStrides(shape);
 
@@ -555,8 +558,12 @@ final class NDArray<T> implements ffi.Finalizable {
     }
     final arr = NDArray<T>.create(shape, dtype);
     final List eagerList = switch (dtype) {
-      DType.float64 => Float64List.fromList(list.cast<double>()),
-      DType.float32 => Float32List.fromList(list.cast<double>()),
+      DType.float64 => Float64List.fromList(
+        list.map((e) => (e as num).toDouble()).toList(),
+      ),
+      DType.float32 => Float32List.fromList(
+        list.map((e) => (e as num).toDouble()).toList(),
+      ),
       DType.int64 => Int64List.fromList(
         list.map((e) => (e as num).toInt()).toList(),
       ),
@@ -748,6 +755,9 @@ final class NDArray<T> implements ffi.Finalizable {
     required List<int> strides,
     int offsetElements = 0,
   }) {
+    if (shape.any((dim) => dim < 0)) {
+      throw ArgumentError('Shape dimensions cannot be negative: $shape');
+    }
     final root = parent._rootParent;
     final childLogicalPointer = _offsetPointer(
       parent.pointer,
@@ -876,6 +886,9 @@ final class NDArray<T> implements ffi.Finalizable {
     nativeFinalizer,
     List<int>? strides,
   }) {
+    if (shape.any((dim) => dim < 0)) {
+      throw ArgumentError('Shape dimensions cannot be negative: $shape');
+    }
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
     final finalStrides = strides ?? computeCStrides(shape);
 
@@ -1959,12 +1972,19 @@ final class NDArray<T> implements ffi.Finalizable {
           return take(intIndices);
         }
       } else if (spec.every((e) => e is int)) {
-        if (spec.length != shape.length) {
-          throw ArgumentError(
-            "Number of coordinate indices (${spec.length}) must match array rank (${shape.length})",
-          );
+        if (shape.length == 1 && spec.length > 1) {
+          return take(spec.cast<int>());
         }
-        return getCell(spec.cast<int>());
+        if (spec.length == shape.length) {
+          return getCell(spec.cast<int>());
+        }
+        if (spec.length < shape.length) {
+          final selectors = spec.map((e) => Index(e as int)).toList();
+          return slice(selectors);
+        }
+        throw ArgumentError(
+          "Number of coordinate indices (${spec.length}) exceeds array rank (${shape.length})",
+        );
       }
       final selectors = spec
           .map((e) => _toSelector(e))
@@ -2075,13 +2095,31 @@ final class NDArray<T> implements ffi.Finalizable {
         }
       }
       if (spec.every((e) => e is int)) {
-        if (spec.length != shape.length) {
-          throw ArgumentError(
-            "Number of coordinate indices (${spec.length}) must match array rank (${shape.length})",
-          );
+        if (shape.length == 1 && spec.length > 1) {
+          final intIndices = spec.cast<int>();
+          final indices = NDArray<int>.fromList(intIndices, [
+            intIndices.length,
+          ], DType.int32);
+          if (value is NDArray) {
+            setIndices(indices, value);
+          } else {
+            setIndicesScalar(indices, _coerceScalar(value));
+          }
+          return;
         }
-        final intCoords = spec.cast<int>();
-        setCell(intCoords, _coerceScalar(value));
+        if (spec.length == shape.length) {
+          final intCoords = spec.cast<int>();
+          setCell(intCoords, _coerceScalar(value));
+          return;
+        }
+        if (spec.length < shape.length) {
+          final selectors = spec.map((e) => Index(e as int)).toList();
+          _sliceAssign(selectors, value);
+          return;
+        }
+        throw ArgumentError(
+          "Number of coordinate indices (${spec.length}) exceeds array rank (${shape.length})",
+        );
       } else {
         final selectors = spec
             .map((e) => _toSelector(e))
@@ -2604,8 +2642,13 @@ final class NDArray<T> implements ffi.Finalizable {
               stopIdx = s < 0 ? shape[i] + s : s;
             }
 
-            pSliceStarts[i] = startIdx.clamp(0, shape[i] - 1);
-            pSliceStops[i] = stopIdx.clamp(-1, shape[i]);
+            if (shape[i] == 0) {
+              pSliceStarts[i] = 0;
+              pSliceStops[i] = 0;
+            } else {
+              pSliceStarts[i] = startIdx.clamp(0, shape[i] - 1);
+              pSliceStops[i] = stopIdx.clamp(-1, shape[i]);
+            }
             pSliceSteps[i] = step;
             pIndicesPtrs[i] = ffi.Pointer.fromAddress(0);
             pIndicesLens[i] = 0;
@@ -2680,11 +2723,12 @@ final class NDArray<T> implements ffi.Finalizable {
   /// final b = a.take([0, 1], axis: 1); // Select columns 0 and 1
   /// ```
   NDArray<T> take(List<int> indices, {int axis = 0}) {
-    if (axis < 0 || axis >= shape.length) {
+    final normalizedAxis = axis < 0 ? shape.length + axis : axis;
+    if (normalizedAxis < 0 || normalizedAxis >= shape.length) {
       throw RangeError.index(axis, shape, 'axis out of range');
     }
     final selectors = List<Selector>.filled(shape.length, Slice.all());
-    selectors[axis] = Indices(indices);
+    selectors[normalizedAxis] = Indices(indices);
     return slice(selectors);
   }
 
