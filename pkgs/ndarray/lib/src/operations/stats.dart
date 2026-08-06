@@ -873,22 +873,16 @@ NDArray<double> nanvar<T extends num>(
     final diff = subtract(a, m);
     final sqDiff = multiply(diff, diff);
 
-    // Convert to `NDArray<double>` to avoid truncation in nanmean
-    final sqDiffDouble = castNDArray(sqDiff, DType.float64);
-
     m.dispose();
     diff.dispose();
-    if (!identical(sqDiffDouble, sqDiff)) {
-      sqDiff.dispose();
-    }
 
-    final res = nanmean<double>(
-      sqDiffDouble,
+    final res = nanmean<Float64>(
+      sqDiff,
       axis: axis,
       keepdims: keepdims,
-      out: out,
+      out: out as NDArray<Float64>?,
     );
-    sqDiffDouble.dispose();
+    sqDiff.dispose();
     if (out != null) {
       return out;
     }
@@ -1981,21 +1975,16 @@ NDArray<double> variance<T extends num>(
     final diff = subtract(a, m);
     final sqDiff = multiply(diff, diff);
 
-    final sqDiffDouble = castNDArray(sqDiff, DType.float64);
-
     m.dispose();
     diff.dispose();
-    if (!identical(sqDiffDouble, sqDiff)) {
-      sqDiff.dispose();
-    }
 
-    final res = mean<double, double>(
-      sqDiffDouble,
+    final res = mean<Float64, dynamic>(
+      sqDiff,
       axis: axis,
       keepdims: keepdims,
-      out: out,
+      out: out as NDArray<Float64>?,
     );
-    sqDiffDouble.dispose();
+    sqDiff.dispose();
     if (out != null) {
       return out;
     }
@@ -2126,11 +2115,10 @@ NDArray<R> nanmean<R extends Object>(
   final counts = NDArray<int>.zeros(targetShape, DType.int32);
 
   if (targetDType.isComplex) {
-    final promotedA =
-        (a.dtype.isComplex ? a : promoteToComplex(a)) as NDArray<Complex>;
-    nanReduceRecursive<Complex>(
+    final promotedA = a.dtype.isComplex ? a : promoteToComplex(a);
+    nanReduceRecursive<dynamic>(
       promotedA,
-      (result as dynamic) as NDArray<Complex>,
+      result,
       counts,
       List<int>.filled(promotedA.shape.length, 0),
       List<int>.filled(targetShape.length, 0),
@@ -2140,11 +2128,10 @@ NDArray<R> nanmean<R extends Object>(
     );
     if (promotedA != a) promotedA.dispose();
   } else {
-    final promotedA =
-        (a.dtype.isFloating ? a : promoteToDouble(a)) as NDArray<double>;
-    nanReduceRecursive<double>(
+    final promotedA = a.dtype.isFloating ? a : promoteToDouble(a);
+    nanReduceRecursive<dynamic>(
       promotedA,
-      (result as dynamic) as NDArray<double>,
+      result,
       counts,
       List<int>.filled(promotedA.shape.length, 0),
       List<int>.filled(targetShape.length, 0),
