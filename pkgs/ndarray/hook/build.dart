@@ -130,6 +130,8 @@ void main(List<String> args) async {
       'Compiling ndarray custom C++ extensions using compiler: $cppCompilerPath',
     );
 
+    final isX64 = input.config.code.targetArchitecture == Architecture.x64;
+
     if (isMSVC) {
       final ufuncsObj = outputDir.uri.resolve('custom_ufuncs.obj').toFilePath();
       final sortingObj = outputDir.uri
@@ -139,7 +141,7 @@ void main(List<String> args) async {
       var res = await Process.run(cppCompilerPath, [
         '/c',
         '/O2',
-        '/arch:AVX2',
+        if (isX64) '/arch:AVX2',
         '/MD',
         '/EHsc',
         '/D_USE_MATH_DEFINES',
@@ -158,7 +160,7 @@ void main(List<String> args) async {
       res = await Process.run(cppCompilerPath, [
         '/c',
         '/O2',
-        '/arch:AVX2',
+        if (isX64) '/arch:AVX2',
         '/MD',
         '/EHsc',
         '/D_USE_MATH_DEFINES',
@@ -216,8 +218,10 @@ void main(List<String> args) async {
         '-c',
         '-fPIC',
         '-O3',
-        '-mavx2',
-        '-mfma',
+        if (isX64) ...[
+          '-mavx2',
+          '-mfma',
+        ],
         '-fno-math-errno',
         '-I${input.packageRoot.toFilePath()}',
         input.packageRoot.resolve('hook/custom_ufuncs.cpp').toFilePath(),
@@ -233,8 +237,10 @@ void main(List<String> args) async {
         '-c',
         '-fPIC',
         '-O3',
-        '-mavx2',
-        '-mfma',
+        if (isX64) ...[
+          '-mavx2',
+          '-mfma',
+        ],
         '-fno-math-errno',
         '-I${input.packageRoot.toFilePath()}',
         '-I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',

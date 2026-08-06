@@ -24,6 +24,8 @@
 #include "custom_sorting.h"
 #include <vector>
 
+constexpr int STACK_RANK_LIMIT = 32;
+
 #if defined(_MSC_VER)
 #define RESTRICT __restrict
 #elif defined(__GNUC__) || defined(__clang__)
@@ -3360,7 +3362,7 @@ static inline cpx_t cpx_asin(cpx_t z) {
     if (v < -1.0) v = -1.0;
     if (v > 1.0) v = 1.0;
     double r = asin(v);
-    double s = (z.i >= 0 ? 1.0 : -1.0) * log(u + sqrt(u*u - 1.0));
+    double s = (!std::signbit(z.i) ? 1.0 : -1.0) * log(u + sqrt(u*u - 1.0));
     return (cpx_t){r, s};
 }
 
@@ -3372,7 +3374,7 @@ static inline cpx_f_t cpx_asin_f(cpx_f_t z) {
     if (v < -1.0f) v = -1.0f;
     if (v > 1.0f) v = 1.0f;
     float r = asinf(v);
-    float s = (z.i >= 0.0f ? 1.0f : -1.0f) * logf(u + sqrtf(u*u - 1.0f));
+    float s = (!std::signbit(z.i) ? 1.0f : -1.0f) * logf(u + sqrtf(u*u - 1.0f));
     return (cpx_f_t){r, s};
 }
 
@@ -3387,15 +3389,15 @@ static inline cpx_f_t cpx_acos_f(cpx_f_t z) {
 }
 
 static inline cpx_t cpx_atan(cpx_t z) {
-    double r = 0.5 * atan2(2.0 * z.r, 1.0 - z.r*z.r - z.i*z.i);
-    double s = 0.25 * log((z.r*z.r + (z.i + 1.0)*(z.i + 1.0)) / (z.r*z.r + (z.i - 1.0)*(z.i - 1.0)));
-    return (cpx_t){r, s};
+    std::complex<double> cz(z.r, z.i);
+    std::complex<double> res = std::atan(cz);
+    return (cpx_t){res.real(), res.imag()};
 }
 
 static inline cpx_f_t cpx_atan_f(cpx_f_t z) {
-    float r = 0.5f * atan2f(2.0f * z.r, 1.0f - z.r*z.r - z.i*z.i);
-    float s = 0.25f * logf((z.r*z.r + (z.i + 1.0f)*(z.i + 1.0f)) / (z.r*z.r + (z.i - 1.0f)*(z.i - 1.0f)));
-    return (cpx_f_t){r, s};
+    std::complex<float> cz(z.r, z.i);
+    std::complex<float> res = std::atan(cz);
+    return (cpx_f_t){res.real(), res.imag()};
 }
 
 static inline cpx_t cpx_sinh(cpx_t z) {
@@ -3868,15 +3870,15 @@ DEFINE_STRIDED_UNARY_OP(s_atanh_double, double, OP_ATANH_D)
 DEFINE_STRIDED_UNARY_OP(s_atanh_float, float, OP_ATANH_F)
 
 static inline cpx_t cpx_atanh(cpx_t z) {
-    double r = 0.25 * log(((1.0 + z.r)*(1.0 + z.r) + z.i*z.i) / ((1.0 - z.r)*(1.0 - z.r) + z.i*z.i));
-    double s = 0.5 * atan2(2.0 * z.i, 1.0 - z.r*z.r - z.i*z.i);
-    return (cpx_t){r, s};
+    std::complex<double> cz(z.r, z.i);
+    std::complex<double> res = std::atanh(cz);
+    return (cpx_t){res.real(), res.imag()};
 }
 
 static inline cpx_f_t cpx_atanh_f(cpx_f_t z) {
-    float r = 0.25f * logf(((1.0f + z.r)*(1.0f + z.r) + z.i*z.i) / ((1.0f - z.r)*(1.0f - z.r) + z.i*z.i));
-    float s = 0.5f * atan2f(2.0f * z.i, 1.0f - z.r*z.r - z.i*z.i);
-    return (cpx_f_t){r, s};
+    std::complex<float> cz(z.r, z.i);
+    std::complex<float> res = std::atanh(cz);
+    return (cpx_f_t){res.real(), res.imag()};
 }
 
 DEFINE_COMPLEX_UNARY_VEC(v_atanh_complex128, cpx_t, cpx_atanh)
@@ -10637,6 +10639,7 @@ static inline void v_reduceat_op_impl(
 
         if (start < 0) start = 0;
         if (start >= size) start = size - 1;
+        end = std::min(end, size);
 
         if (start >= end) {
             dest[i] = src[start];
