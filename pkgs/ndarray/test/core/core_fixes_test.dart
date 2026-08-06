@@ -290,8 +290,11 @@ void main() {
           expect(a[[0, 1]], 1);
           expect(a[[2, 3]], 11);
 
-          // Row selection with length < rank: a[[1]] extracts row 1 as 1D array
-          final row1 = a[[1]] as NDArray<int>;
+          // Coordinate length mismatch throws ArgumentError
+          expect(() => a[[1]], throwsArgumentError);
+
+          // Row selection with integer: a[1] extracts row 1 as 1D array
+          final row1 = a[1] as NDArray<int>;
           expect(row1.shape, [4]);
           expect(row1.toList(), [4, 5, 6, 7]);
 
@@ -318,13 +321,8 @@ void main() {
           // Full coordinate matching rank 3
           expect(a[[0, 1, 2]], 6);
 
-          // 2-level coordinate selection -> 1D array
-          final sub1D = a[[0, 1]] as NDArray<int>;
-          expect(sub1D.shape, [4]);
-          expect(sub1D.toList(), [4, 5, 6, 7]);
-
-          // 1-level selection -> 2D array
-          final sub2D = a[[0]] as NDArray<int>;
+          // Subarray selection via slice / integer index
+          final sub2D = a[0] as NDArray<int>;
           expect(sub2D.shape, [3, 4]);
         }),
       );
@@ -344,9 +342,9 @@ void main() {
           b[[0, 1]] = 100;
           expect(b.getCell([0, 1]), 100);
 
-          // Row slice assignment
-          b[[1]] = NDArray.fromList([40, 50, 60, 70], [4], DType.int32);
-          expect(b[[1]].toList(), [40, 50, 60, 70]);
+          // Row slice assignment via a[1]
+          b[1] = NDArray.fromList([40, 50, 60, 70], [4], DType.int32);
+          expect(b[1].toList(), [40, 50, 60, 70]);
         }),
       );
     });

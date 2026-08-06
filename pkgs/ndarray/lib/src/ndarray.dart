@@ -1975,16 +1975,12 @@ final class NDArray<T> implements ffi.Finalizable {
         if (shape.length == 1 && spec.length > 1) {
           return take(spec.cast<int>());
         }
-        if (spec.length == shape.length) {
-          return getCell(spec.cast<int>());
+        if (spec.length != shape.length) {
+          throw ArgumentError(
+            "Number of coordinate indices (${spec.length}) must match array rank (${shape.length})",
+          );
         }
-        if (spec.length < shape.length) {
-          final selectors = spec.map((e) => Index(e as int)).toList();
-          return slice(selectors);
-        }
-        throw ArgumentError(
-          "Number of coordinate indices (${spec.length}) exceeds array rank (${shape.length})",
-        );
+        return getCell(spec.cast<int>());
       }
       final selectors = spec
           .map((e) => _toSelector(e))
@@ -2107,19 +2103,14 @@ final class NDArray<T> implements ffi.Finalizable {
           }
           return;
         }
-        if (spec.length == shape.length) {
-          final intCoords = spec.cast<int>();
-          setCell(intCoords, _coerceScalar(value));
-          return;
+        if (spec.length != shape.length) {
+          throw ArgumentError(
+            "Number of coordinate indices (${spec.length}) must match array rank (${shape.length})",
+          );
         }
-        if (spec.length < shape.length) {
-          final selectors = spec.map((e) => Index(e as int)).toList();
-          _sliceAssign(selectors, value);
-          return;
-        }
-        throw ArgumentError(
-          "Number of coordinate indices (${spec.length}) exceeds array rank (${shape.length})",
-        );
+        final intCoords = spec.cast<int>();
+        setCell(intCoords, _coerceScalar(value));
+        return;
       } else {
         final selectors = spec
             .map((e) => _toSelector(e))

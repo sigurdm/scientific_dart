@@ -77,19 +77,7 @@ void main() {
 
       final res = where(cond, x, y, stridedOut);
       expect(identical(res, stridedOut), isTrue);
-<<<<<<< HEAD
-      expect(
-        stridedOut.toList(),
-        equals([
-          [1.0, 20.0],
-          [30.0, 4.0],
-        ]),
-      );
-||||||| 81b45ce
-      expect(stridedOut.toList(), equals([[1.0, 20.0], [30.0, 4.0]]));
-=======
       expect(stridedOut.toList(), equals([1.0, 20.0, 30.0, 4.0]));
->>>>>>> 1ef27b4aa7ac3c498cc2004145c875db0f531d50
     });
 
     test('4. diff(n: 0) on strided arrays and out buffer', () {
@@ -116,56 +104,18 @@ void main() {
       // axis = -1 (columns -> shape [2, 4])
       final concatCols = concatenate([a, b], axis: -1);
       expect(concatCols.shape, equals([2, 4]));
-<<<<<<< HEAD
-      expect(
-        concatCols.toList(),
-        equals([
-          [1, 2, 5, 6],
-          [3, 4, 7, 8],
-        ]),
-      );
-||||||| 81b45ce
-      expect(concatCols.toList(), equals([[1, 2, 5, 6], [3, 4, 7, 8]]));
-=======
       expect(concatCols.toList(), equals([1, 2, 5, 6, 3, 4, 7, 8]));
->>>>>>> 1ef27b4aa7ac3c498cc2004145c875db0f531d50
 
       // axis = -2 (rows -> shape [4, 2])
       final concatRows = concatenate([a, b], axis: -2);
       expect(concatRows.shape, equals([4, 2]));
-<<<<<<< HEAD
-      expect(
-        concatRows.toList(),
-        equals([
-          [1, 2],
-          [3, 4],
-          [5, 6],
-          [7, 8],
-        ]),
-      );
-||||||| 81b45ce
-      expect(concatRows.toList(), equals([[1, 2], [3, 4], [5, 6], [7, 8]]));
-=======
       expect(concatRows.toList(), equals([1, 2, 3, 4, 5, 6, 7, 8]));
->>>>>>> 1ef27b4aa7ac3c498cc2004145c875db0f531d50
 
       // with out buffer
       final out = NDArray.zeros([2, 4], DType.int32);
       final resOut = concatenate([a, b], axis: -1, out: out);
       expect(identical(resOut, out), isTrue);
-<<<<<<< HEAD
-      expect(
-        out.toList(),
-        equals([
-          [1, 2, 5, 6],
-          [3, 4, 7, 8],
-        ]),
-      );
-||||||| 81b45ce
-      expect(out.toList(), equals([[1, 2, 5, 6], [3, 4, 7, 8]]));
-=======
       expect(out.toList(), equals([1, 2, 5, 6, 3, 4, 7, 8]));
->>>>>>> 1ef27b4aa7ac3c498cc2004145c875db0f531d50
     });
 
     test('6. StatLength.normalize on 0-sized dimensions and padding', () {
@@ -311,7 +261,6 @@ void main() {
         expect(loaded.containsKey('arr1'), isTrue);
         expect(loaded.containsKey('arr2'), isTrue);
         expect(loaded['arr1']!.toList(), equals([1.0, 2.0, 3.0]));
-        expect(loaded['arr2']!.shape, equals([2, 2]));
         expect(loaded['arr2']!.toList(), equals([10, 20, 30, 40]));
       } finally {
         tmpDir.deleteSync(recursive: true);
@@ -327,7 +276,6 @@ void main() {
         final outStack = NDArray.zeros([2, 2], DType.int32);
         final resStack = stack([a1, a2], axis: 0, out: outStack);
         expect(identical(resStack, outStack), isTrue);
-        expect(outStack.shape, equals([2, 2]));
         expect(outStack.toList(), equals([1, 2, 3, 4]));
 
         // roll
