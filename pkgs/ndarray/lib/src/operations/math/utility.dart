@@ -57,12 +57,12 @@ Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
   final totalSize = shape.isEmpty ? 1 : shape.reduce((x, y) => x * y);
 
   if (shape.isEmpty) {
-    yield ([], a.data[0]);
+    yield ([], a.data[a.offsetElements]);
     return;
   }
 
   final coord = List<int>.filled(shape.length, 0);
-  int offset = 0;
+  int offset = a.offsetElements;
 
   for (int el = 0; el < totalSize; el++) {
     // Yield a copy of the coordinate list so that users don't receive the same mutated buffer!
@@ -168,7 +168,7 @@ NDArray nan_to_num(
   final coord = List<int>.filled(a.shape.length, 0);
 
   for (var i = 0; i < size; i++) {
-    var offsetRes = 0;
+    var offsetRes = resultCopy.offsetElements;
     for (var d = 0; d < a.shape.length; d++) {
       offsetRes += coord[d] * resStrides[d];
     }
@@ -194,11 +194,14 @@ List<int> broadcastShapes(List<int> s1, List<int> s2) {
     final dim1 = s1.length - 1 - i >= 0 ? s1[s1.length - 1 - i] : 1;
     final dim2 = s2.length - 1 - i >= 0 ? s2[s2.length - 1 - i] : 1;
 
-    final target = math.max(dim1, dim2);
-    if (dim1 != target && dim1 != 1) {
-      throw ArgumentError('Incompatible shapes for broadcasting');
-    }
-    if (dim2 != target && dim2 != 1) {
+    final int target;
+    if (dim1 == dim2) {
+      target = dim1;
+    } else if (dim1 == 1) {
+      target = dim2;
+    } else if (dim2 == 1) {
+      target = dim1;
+    } else {
       throw ArgumentError('Incompatible shapes for broadcasting');
     }
     common[len - 1 - i] = target;

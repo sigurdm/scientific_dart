@@ -95,70 +95,75 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
       }
     } else {
       final rank = prep.commonShape.length;
-      final cBuffer = ScratchArena.getStridedBuffer(rank);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + rank;
-      final cStridesB = cBuffer + (rank * 2);
-      final cStridesRes = cBuffer + (rank * 3);
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesB = cBuffer + (rank * 2);
+        final cStridesRes = cBuffer + (rank * 3);
 
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = prep.commonShape[i];
-        cStridesA[i] = prep.stridesA[i];
-        cStridesB[i] = prep.stridesB[i];
-        cStridesRes[i] = prep.result.strides[i];
-      }
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = prep.commonShape[i];
+          cStridesA[i] = prep.stridesA[i];
+          cStridesB[i] = prep.stridesB[i];
+          cStridesRes[i] = prep.result.strides[i];
+        }
 
-      switch (result.dtype) {
-        case DType.int32:
-          s_bitwise_and_int32(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.int64:
-          s_bitwise_and_int64(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.uint8:
-          s_bitwise_and_uint8(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.int16:
-          s_bitwise_and_int16(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        default:
-          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+        switch (result.dtype) {
+          case DType.int32:
+            s_bitwise_and_int32(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.int64:
+            s_bitwise_and_int64(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.uint8:
+            s_bitwise_and_uint8(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.int16:
+            s_bitwise_and_int16(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          default:
+            throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+        }
+      } finally {
+        ScratchArena.reset(marker);
       }
     }
   } finally {
@@ -262,70 +267,75 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
       }
     } else {
       final rank = prep.commonShape.length;
-      final cBuffer = ScratchArena.getStridedBuffer(rank);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + rank;
-      final cStridesB = cBuffer + (rank * 2);
-      final cStridesRes = cBuffer + (rank * 3);
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesB = cBuffer + (rank * 2);
+        final cStridesRes = cBuffer + (rank * 3);
 
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = prep.commonShape[i];
-        cStridesA[i] = prep.stridesA[i];
-        cStridesB[i] = prep.stridesB[i];
-        cStridesRes[i] = prep.result.strides[i];
-      }
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = prep.commonShape[i];
+          cStridesA[i] = prep.stridesA[i];
+          cStridesB[i] = prep.stridesB[i];
+          cStridesRes[i] = prep.result.strides[i];
+        }
 
-      switch (result.dtype) {
-        case DType.int32:
-          s_bitwise_or_int32(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.int64:
-          s_bitwise_or_int64(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.uint8:
-          s_bitwise_or_uint8(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.int16:
-          s_bitwise_or_int16(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        default:
-          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+        switch (result.dtype) {
+          case DType.int32:
+            s_bitwise_or_int32(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.int64:
+            s_bitwise_or_int64(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.uint8:
+            s_bitwise_or_uint8(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.int16:
+            s_bitwise_or_int16(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          default:
+            throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+        }
+      } finally {
+        ScratchArena.reset(marker);
       }
     }
   } finally {
@@ -429,70 +439,75 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
       }
     } else {
       final rank = prep.commonShape.length;
-      final cBuffer = ScratchArena.getStridedBuffer(rank);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + rank;
-      final cStridesB = cBuffer + (rank * 2);
-      final cStridesRes = cBuffer + (rank * 3);
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesB = cBuffer + (rank * 2);
+        final cStridesRes = cBuffer + (rank * 3);
 
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = prep.commonShape[i];
-        cStridesA[i] = prep.stridesA[i];
-        cStridesB[i] = prep.stridesB[i];
-        cStridesRes[i] = prep.result.strides[i];
-      }
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = prep.commonShape[i];
+          cStridesA[i] = prep.stridesA[i];
+          cStridesB[i] = prep.stridesB[i];
+          cStridesRes[i] = prep.result.strides[i];
+        }
 
-      switch (result.dtype) {
-        case DType.int32:
-          s_bitwise_xor_int32(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.int64:
-          s_bitwise_xor_int64(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.uint8:
-          s_bitwise_xor_uint8(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.int16:
-          s_bitwise_xor_int16(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        default:
-          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+        switch (result.dtype) {
+          case DType.int32:
+            s_bitwise_xor_int32(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.int64:
+            s_bitwise_xor_int64(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.uint8:
+            s_bitwise_xor_uint8(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.int16:
+            s_bitwise_xor_int16(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          default:
+            throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+        }
+      } finally {
+        ScratchArena.reset(marker);
       }
     }
   } finally {
@@ -596,70 +611,75 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
       }
     } else {
       final rank = prep.commonShape.length;
-      final cBuffer = ScratchArena.getStridedBuffer(rank);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + rank;
-      final cStridesB = cBuffer + (rank * 2);
-      final cStridesRes = cBuffer + (rank * 3);
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesB = cBuffer + (rank * 2);
+        final cStridesRes = cBuffer + (rank * 3);
 
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = prep.commonShape[i];
-        cStridesA[i] = prep.stridesA[i];
-        cStridesB[i] = prep.stridesB[i];
-        cStridesRes[i] = prep.result.strides[i];
-      }
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = prep.commonShape[i];
+          cStridesA[i] = prep.stridesA[i];
+          cStridesB[i] = prep.stridesB[i];
+          cStridesRes[i] = prep.result.strides[i];
+        }
 
-      switch (result.dtype) {
-        case DType.int32:
-          s_left_shift_int32(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.int64:
-          s_left_shift_int64(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.uint8:
-          s_left_shift_uint8(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.int16:
-          s_left_shift_int16(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        default:
-          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+        switch (result.dtype) {
+          case DType.int32:
+            s_left_shift_int32(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.int64:
+            s_left_shift_int64(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.uint8:
+            s_left_shift_uint8(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.int16:
+            s_left_shift_int16(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          default:
+            throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+        }
+      } finally {
+        ScratchArena.reset(marker);
       }
     }
   } finally {
@@ -763,70 +783,75 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
       }
     } else {
       final rank = prep.commonShape.length;
-      final cBuffer = ScratchArena.getStridedBuffer(rank);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + rank;
-      final cStridesB = cBuffer + (rank * 2);
-      final cStridesRes = cBuffer + (rank * 3);
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesB = cBuffer + (rank * 2);
+        final cStridesRes = cBuffer + (rank * 3);
 
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = prep.commonShape[i];
-        cStridesA[i] = prep.stridesA[i];
-        cStridesB[i] = prep.stridesB[i];
-        cStridesRes[i] = prep.result.strides[i];
-      }
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = prep.commonShape[i];
+          cStridesA[i] = prep.stridesA[i];
+          cStridesB[i] = prep.stridesB[i];
+          cStridesRes[i] = prep.result.strides[i];
+        }
 
-      switch (result.dtype) {
-        case DType.int32:
-          s_right_shift_int32(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.int64:
-          s_right_shift_int64(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.uint8:
-          s_right_shift_uint8(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        case DType.int16:
-          s_right_shift_int16(
-            aCast.pointer.cast(),
-            cStridesA,
-            bCast.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        default:
-          throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+        switch (result.dtype) {
+          case DType.int32:
+            s_right_shift_int32(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.int64:
+            s_right_shift_int64(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.uint8:
+            s_right_shift_uint8(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.int16:
+            s_right_shift_int16(
+              aCast.pointer.cast(),
+              cStridesA,
+              bCast.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          default:
+            throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+        }
+      } finally {
+        ScratchArena.reset(marker);
       }
     }
   } finally {
@@ -929,60 +954,65 @@ NDArray<Tr> invert<Ta, Tr>(
     }
   } else {
     final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesSrc = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
+    final marker = ScratchArena.marker;
+    try {
+      final cBuffer = ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesSrc = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
 
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesSrc[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-    }
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesSrc[i] = a.strides[i];
+        cStridesRes[i] = result.strides[i];
+      }
 
-    switch (a.dtype) {
-      case DType.int32:
-        s_invert_int32(
-          a.pointer.cast(),
-          cStridesSrc,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-      case DType.int64:
-        s_invert_int64(
-          a.pointer.cast(),
-          cStridesSrc,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-      case DType.uint8:
-        s_invert_uint8(
-          a.pointer.cast(),
-          cStridesSrc,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-      case DType.int16:
-        s_invert_int16(
-          a.pointer.cast(),
-          cStridesSrc,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-      default:
-        throw UnsupportedError('Unsupported integer DType: ${a.dtype}');
+      switch (a.dtype) {
+        case DType.int32:
+          s_invert_int32(
+            a.pointer.cast(),
+            cStridesSrc,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+        case DType.int64:
+          s_invert_int64(
+            a.pointer.cast(),
+            cStridesSrc,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+        case DType.uint8:
+          s_invert_uint8(
+            a.pointer.cast(),
+            cStridesSrc,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+        case DType.int16:
+          s_invert_int16(
+            a.pointer.cast(),
+            cStridesSrc,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+        default:
+          throw UnsupportedError('Unsupported integer DType: ${a.dtype}');
+      }
+    } finally {
+      ScratchArena.reset(marker);
     }
   }
 
@@ -1019,15 +1049,8 @@ _prepareBinaryBitwise<Ta, Tb, Tr>(
   final DType targetDType = resolveDType(a.dtype, b.dtype);
 
   // Upcast inputs if they do not match the resolved target integer type
-  NDArray aCast = a;
-  if (a.dtype != targetDType) {
-    aCast = NDArray.fromList(a.toList(), a.shape, targetDType);
-  }
-
-  NDArray bCast = b;
-  if (b.dtype != targetDType) {
-    bCast = NDArray.fromList(b.toList(), b.shape, targetDType);
-  }
+  final NDArray aCast = a.dtype != targetDType ? castNDArray(a, targetDType) : a;
+  final NDArray bCast = b.dtype != targetDType ? castNDArray(b, targetDType) : b;
 
   final broadcastResult = broadcast(aCast, bCast);
   final commonShape = broadcastResult.shape;
