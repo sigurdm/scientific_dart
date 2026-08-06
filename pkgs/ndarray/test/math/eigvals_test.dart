@@ -213,13 +213,18 @@ void main() {
     );
 
     test(
-      'eigvals() throws ArgumentError on integer matrix',
+      'eigvals() auto-promotes integer matrix to float64',
       () => NDArray.scope(() {
         final a = NDArray.fromList(Int32List.fromList([1, 2, 3, 4]), [
           2,
           2,
         ], DType.int32);
-        expect(() => eigvals(a), throwsArgumentError);
+        final w = eigvals(a);
+        final (eigenvalues: expectedW, eigenvectors: _) = eig(a);
+        expect(w.dtype, equals(expectedW.dtype));
+        expect(w.shape, equals([2]));
+        expect(w.toList()[0].real, closeTo(expectedW.toList()[0].real, 1e-9));
+        expect(w.toList()[1].real, closeTo(expectedW.toList()[1].real, 1e-9));
       }),
     );
   });

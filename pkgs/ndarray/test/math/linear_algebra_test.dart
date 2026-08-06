@@ -779,14 +779,17 @@ void main() {
       );
 
       test(
-        'cholesky() throws ArgumentError on non positive-definite matrix',
+        'cholesky() throws NonPositiveDefiniteException on non positive-definite matrix',
         () => NDArray.scope(() {
           final a = NDArray.fromList(
             Float64List.fromList([-1.0, 0.0, 0.0, -1.0]),
             [2, 2],
             DType.float64,
           );
-          expect(() => cholesky(a), throwsArgumentError);
+          expect(
+            () => cholesky(a),
+            throwsA(isA<NonPositiveDefiniteException>()),
+          );
         }),
       );
 

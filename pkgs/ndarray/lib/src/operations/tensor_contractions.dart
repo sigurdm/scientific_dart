@@ -379,10 +379,22 @@ final class EinsumSubscripts {
 
     var containsEllipsis = false;
     for (final op in inputIndices) {
+      if (op.where((idx) => idx == -1).length > 1) {
+        throw ArgumentError(
+          'Operand indices cannot contain more than one ellipsis (-1).',
+        );
+      }
       if (op.contains(-1)) containsEllipsis = true;
     }
-    if (outputIndices != null && outputIndices.contains(-1)) {
-      containsEllipsis = true;
+    if (outputIndices != null) {
+      if (outputIndices.where((idx) => idx == -1).length > 1) {
+        throw ArgumentError(
+          'Output indices cannot contain more than one ellipsis (-1).',
+        );
+      }
+      if (outputIndices.contains(-1)) {
+        containsEllipsis = true;
+      }
     }
 
     final copyInputs = inputIndices
@@ -447,11 +459,21 @@ final class EinsumSubscripts {
 
     final distinctLabelsSet = <String>{};
     for (final list in inputLabels) {
+      if (list.where((lbl) => lbl == '...').length > 1) {
+        throw ArgumentError(
+          'Operand subscript cannot contain more than one ellipsis ("...").',
+        );
+      }
       for (final lbl in list) {
         if (lbl != '...') distinctLabelsSet.add(lbl);
       }
     }
     if (outputLabels != null) {
+      if (outputLabels.where((lbl) => lbl == '...').length > 1) {
+        throw ArgumentError(
+          'Output subscript cannot contain more than one ellipsis ("...").',
+        );
+      }
       for (final lbl in outputLabels) {
         if (lbl != '...') distinctLabelsSet.add(lbl);
       }
@@ -479,8 +501,15 @@ final class EinsumSubscripts {
 
   static List<String> _tokenizeTerm(String term) {
     final tokens = <String>[];
+    var ellipsisCount = 0;
     for (var i = 0; i < term.length; i++) {
       if (i + 2 < term.length && term.substring(i, i + 3) == '...') {
+        ellipsisCount++;
+        if (ellipsisCount > 1) {
+          throw ArgumentError(
+            'Invalid einsum subscript: operand or output term cannot contain more than one ellipsis ("..."). Term: "$term"',
+          );
+        }
         tokens.add('...');
         i += 2;
       } else {
@@ -1457,5 +1486,116 @@ NDArray<R> einsum<T extends Object, R extends Object>(
       return out;
     }
     return _asTyped<R>(combined.detachToParentScope());
+  });
+}
+
+/// Computes the inner product of two arrays.
+///
+/// Ordinary inner product of vectors for 1-D arrays (without complex conjugation),
+/// in higher dimensions a sum product over the last axes.
+///
+/// **Preconditions:**
+/// - Neither [a] nor [b] may be disposed.
+/// - If both [a] and [b] have rank $\\ge 1$, the size of their last dimension must match: `a.shape.last == b.shape.last`.
+/// - If [out] is provided, it must not be disposed, and its shape and dtype must match the expected result.
+///
+/// **Throws:**
+/// - [StateError] if [a], [b], or [out] is disposed.
+/// - [ArgumentError] if the last dimensions of [a] and [b] do not match (for rank $\\ge 1$).
+/// - [ArgumentError] if [out] has incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - When [a] and [b] are 1-D vectors, delegates to BLAS dot product ($O(N)$ flops).
+/// - When [a] and [b] are 2-D or higher tensors, delegates to [tensordot] contracting over the last axes ($O(N^3)$ flops).
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+/// final b = NDArray.fromList([4.0, 5.0, 6.0], [3], DType.float64);
+/// final res = inner(a, b);
+/// print(res.scalar); // 32.0
+/// ```
+///
+/// Reference: [NumPy inner](https://numpy.org/doc/stable/reference/generated/numpy.inner.html)
+NDArray<R> inner<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
+  if (a.isDisposed || b.isDisposed) {
+    throw StateError("Cannot execute inner() on a disposed array.");
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError("Cannot write inner result to a disposed output array.");
+  }
+
+  if (a.rank == 0 || b.rank == 0) {
+    return multiply<Ta, Tb, R>(a, b, out: out);
+  }
+
+  if (a.shape.last != b.shape.last) {
+    throw ArgumentError(
+      "Cannot compute inner: last dimension of operand A (${a.shape.last}) "
+      "does not match last dimension of operand B (${b.shape.last}). Shapes: ${a.shape} and ${b.shape}",
+    );
+  }
+
+  return tensordot<Ta, Tb, R>(
+    a,
+    b,
+    axes: TensordotAxes.explicit([a.rank - 1], [b.rank - 1]),
+    out: out,
+  );
+}
+
+/// Computes the dot product of two vectors (handling complex conjugates).
+///
+/// The [vdot] function flattens multidimensional array arguments to 1-D vectors first.
+/// If the first argument [a] is complex, its complex conjugate is used for the dot product ($\\sum_i \\bar{a}_i b_i$).
+///
+/// **Preconditions:**
+/// - Neither [a] nor [b] may be disposed.
+/// - Operands [a] and [b] must have the exact same total number of elements: `a.size == b.size`.
+/// - If [out] is provided, it must not be disposed, and its shape must be 0-D (`[]`) with matching dtype.
+///
+/// **Throws:**
+/// - [StateError] if [a], [b], or [out] is disposed.
+/// - [ArgumentError] if `a.size != b.size`.
+/// - [ArgumentError] if [out] has incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Flattens without memory copying via [reshape].
+/// - Evaluates with high-performance BLAS level 1 dot product routines ($O(N)$ flops).
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([Complex(1, 2), Complex(3, 4)], [2], DType.complex128);
+/// final b = NDArray.fromList([Complex(1, -2), Complex(3, -4)], [2], DType.complex128);
+/// final res = vdot(a, b);
+/// ```
+///
+/// Reference: [NumPy vdot](https://numpy.org/doc/stable/reference/generated/numpy.vdot.html)
+NDArray<R> vdot<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
+  if (a.isDisposed || b.isDisposed) {
+    throw StateError("Cannot execute vdot() on a disposed array.");
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError("Cannot write vdot result to a disposed output array.");
+  }
+  if (a.size != b.size) {
+    throw ArgumentError(
+      "Cannot compute vdot: operands must have the same total number of elements (${a.size} != ${b.size}).",
+    );
+  }
+
+  return NDArray.scope(() {
+    final flatA = a.reshape([a.size]);
+    final flatB = b.reshape([b.size]);
+    final conjA = a.dtype.isComplex ? conjugate(flatA) : flatA;
+    final res = matmul<Object, Object, R>(
+      conjA as NDArray<Object>,
+      flatB as NDArray<Object>,
+      out: out,
+    );
+    if (out == null) {
+      res.detachToParentScope();
+    }
+    return res;
   });
 }
