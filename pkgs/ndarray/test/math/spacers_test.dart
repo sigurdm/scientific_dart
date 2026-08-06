@@ -505,21 +505,21 @@ void main() {
       );
 
       test(
-        'linspaceGrid and linspaceGridWithStep with numSamples <= 0 throw ArgumentError',
+        'linspaceGrid and linspaceGridWithStep with numSamples < 0 throw ArgumentError, numSamples == 0 is empty',
         () => NDArray.scope(() {
           final start = NDArray.fromList([0.0], [1], DType.float64);
           final stop = NDArray.fromList([10.0], [1], DType.float64);
 
-          expect(() => linspaceGrid(start, stop, 0), throwsArgumentError);
           expect(() => linspaceGrid(start, stop, -5), throwsArgumentError);
-          expect(
-            () => linspaceGridWithStep(start, stop, 0),
-            throwsArgumentError,
-          );
           expect(
             () => linspaceGridWithStep(start, stop, -5),
             throwsArgumentError,
           );
+          final g0 = linspaceGrid(start, stop, 0);
+          expect(g0.shape, [0, 1]);
+          final (g0Step, step0) = linspaceGridWithStep(start, stop, 0);
+          expect(g0Step.shape, [0, 1]);
+          expect(step0.getCell([0]).isNaN, isTrue);
         }),
       );
 

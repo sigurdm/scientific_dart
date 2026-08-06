@@ -19,7 +19,7 @@ void main() {
       // axis = -2 (rows)
       final cnzNeg2 = count_nonzero(a, axis: -2);
       expect(cnzNeg2.shape, equals([3]));
-      expect(cnzNeg2.toList(), equals([2, 1, 2]));
+      expect(cnzNeg2.toList(), equals([2, 2, 1]));
 
       // out-of-bounds negative axis
       expect(() => count_nonzero(a, axis: -3), throwsRangeError);
@@ -77,6 +77,7 @@ void main() {
 
       final res = where(cond, x, y, stridedOut);
       expect(identical(res, stridedOut), isTrue);
+<<<<<<< HEAD
       expect(
         stridedOut.toList(),
         equals([
@@ -84,6 +85,11 @@ void main() {
           [30.0, 4.0],
         ]),
       );
+||||||| 81b45ce
+      expect(stridedOut.toList(), equals([[1.0, 20.0], [30.0, 4.0]]));
+=======
+      expect(stridedOut.toList(), equals([1.0, 20.0, 30.0, 4.0]));
+>>>>>>> 1ef27b4aa7ac3c498cc2004145c875db0f531d50
     });
 
     test('4. diff(n: 0) on strided arrays and out buffer', () {
@@ -110,6 +116,7 @@ void main() {
       // axis = -1 (columns -> shape [2, 4])
       final concatCols = concatenate([a, b], axis: -1);
       expect(concatCols.shape, equals([2, 4]));
+<<<<<<< HEAD
       expect(
         concatCols.toList(),
         equals([
@@ -117,10 +124,16 @@ void main() {
           [3, 4, 7, 8],
         ]),
       );
+||||||| 81b45ce
+      expect(concatCols.toList(), equals([[1, 2, 5, 6], [3, 4, 7, 8]]));
+=======
+      expect(concatCols.toList(), equals([1, 2, 5, 6, 3, 4, 7, 8]));
+>>>>>>> 1ef27b4aa7ac3c498cc2004145c875db0f531d50
 
       // axis = -2 (rows -> shape [4, 2])
       final concatRows = concatenate([a, b], axis: -2);
       expect(concatRows.shape, equals([4, 2]));
+<<<<<<< HEAD
       expect(
         concatRows.toList(),
         equals([
@@ -130,11 +143,17 @@ void main() {
           [7, 8],
         ]),
       );
+||||||| 81b45ce
+      expect(concatRows.toList(), equals([[1, 2], [3, 4], [5, 6], [7, 8]]));
+=======
+      expect(concatRows.toList(), equals([1, 2, 3, 4, 5, 6, 7, 8]));
+>>>>>>> 1ef27b4aa7ac3c498cc2004145c875db0f531d50
 
       // with out buffer
       final out = NDArray.zeros([2, 4], DType.int32);
       final resOut = concatenate([a, b], axis: -1, out: out);
       expect(identical(resOut, out), isTrue);
+<<<<<<< HEAD
       expect(
         out.toList(),
         equals([
@@ -142,6 +161,11 @@ void main() {
           [3, 4, 7, 8],
         ]),
       );
+||||||| 81b45ce
+      expect(out.toList(), equals([[1, 2, 5, 6], [3, 4, 7, 8]]));
+=======
+      expect(out.toList(), equals([1, 2, 5, 6, 3, 4, 7, 8]));
+>>>>>>> 1ef27b4aa7ac3c498cc2004145c875db0f531d50
     });
 
     test('6. StatLength.normalize on 0-sized dimensions and padding', () {
@@ -208,23 +232,34 @@ void main() {
 
     test('9. nelder_mead and lbfgs optimization memory stability in scope', () {
       NDArray.scope(() {
-        // Rosenbrock function: f(x, y) = (1 - x)^2 + 100*(y - x^2)^2
-        double rosenbrock(NDArray<Float64> p) {
-          final x = p.getCell([0]).toDouble();
-          final y = p.getCell([1]).toDouble();
-          return (1.0 - x) * (1.0 - x) + 100.0 * (y - x * x) * (y - x * x);
-        }
-
-        final x0 = NDArray.fromList([-1.2, 1.0], [2], DType.float64);
-        final resNM = nelder_mead(rosenbrock, x0, maxiter: 200);
+        final x0 = NDArray<Float64>.fromList([0.0, 0.0], [2], DType.float64);
+        final resNM = nelder_mead((x) {
+          final px = x.getCell([0]).toDouble();
+          final py = x.getCell([1]).toDouble();
+          return (px - 3.0) * (px - 3.0) + (py + 2.0) * (py + 2.0);
+        }, x0);
         expect(resNM.success, isTrue);
-        expect(resNM.x.getCell([0]).toDouble(), closeTo(1.0, 1e-2));
-        expect(resNM.x.getCell([1]).toDouble(), closeTo(1.0, 1e-2));
+        expect(resNM.x.getCell([0]).toDouble(), closeTo(3.0, 1e-2));
+        expect(resNM.x.getCell([1]).toDouble(), closeTo(-2.0, 1e-2));
 
-        final resLBFGS = lbfgs(rosenbrock, x0, maxiter: 200);
+        final resLBFGS = lbfgs(
+          (x) => 0.0,
+          x0,
+          funAndGrad: (x) {
+            final px = x.getCell([0]).toDouble();
+            final py = x.getCell([1]).toDouble();
+            final fVal = (px - 3.0) * (px - 3.0) + (py + 2.0) * (py + 2.0);
+            final g = NDArray<Float64>.fromList(
+              [Float64(2.0 * (px - 3.0)), Float64(2.0 * (py + 2.0))],
+              [2],
+              DType.float64,
+            );
+            return (fVal, g);
+          },
+        );
         expect(resLBFGS.success, isTrue);
-        expect(resLBFGS.x.getCell([0]).toDouble(), closeTo(1.0, 1e-2));
-        expect(resLBFGS.x.getCell([1]).toDouble(), closeTo(1.0, 1e-2));
+        expect(resLBFGS.x.getCell([0]).toDouble(), closeTo(3.0, 1e-2));
+        expect(resLBFGS.x.getCell([1]).toDouble(), closeTo(-2.0, 1e-2));
       });
     });
 

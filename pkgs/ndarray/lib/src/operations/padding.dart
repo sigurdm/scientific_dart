@@ -272,11 +272,8 @@ NDArray<T> pad<T extends Object>(
     defaultValue,
   );
   final normStatLengths =
-      (statLength ??
-              StatLength.axes(
-                List.generate(rank, (i) => (array.shape[i], array.shape[i])),
-              ))
-          .normalize(array.shape);
+      statLength?.normalize(array.shape) ??
+      List.generate(rank, (i) => (array.shape[i], array.shape[i]));
 
   // Calculate expected output shape
   final finalShape = List<int>.generate(rank, (i) {
