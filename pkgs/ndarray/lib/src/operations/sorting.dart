@@ -1323,7 +1323,7 @@ dynamic where<T extends Object>(
   final stridesY = broadcastStrides(yCast, commonShape);
 
   final result = out ?? NDArray.create(commonShape, targetDType as DType<T>);
-  final resultStrides = NDArray.computeCStrides(commonShape);
+  final resultStrides = result.strides;
 
   if (commonShape.length > 8) {
     throw UnsupportedError('where() only supports arrays up to rank 8');
@@ -1921,9 +1921,19 @@ NDArray<int> count_nonzero<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
 
   final rank = a.shape.length;
 
-  final targetShape = axis == null
+  final int? normAxis;
+  if (axis != null) {
+    normAxis = axis < 0 ? rank + axis : axis;
+    if (normAxis < 0 || normAxis >= rank) {
+      throw RangeError.range(normAxis, 0, rank - 1, 'axis');
+    }
+  } else {
+    normAxis = null;
+  }
+
+  final targetShape = normAxis == null
       ? <int>[]
-      : (List<int>.from(a.shape)..removeAt(axis));
+      : (List<int>.from(a.shape)..removeAt(normAxis));
 
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != DType.int32) {
@@ -1931,7 +1941,7 @@ NDArray<int> count_nonzero<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
     }
   }
 
-  if (axis == null) {
+  if (normAxis == null) {
     // Global flat reduction
     final isContig = a.isContiguous;
     final NDArray<T> src;
@@ -1969,10 +1979,7 @@ NDArray<int> count_nonzero<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
   }
 
   // Axis reduction
-  final targetAxis = axis < 0 ? rank + axis : axis;
-  if (targetAxis < 0 || targetAxis >= rank) {
-    throw RangeError.range(targetAxis, 0, rank - 1, 'axis');
-  }
+  final targetAxis = normAxis;
 
   final result = out ?? NDArray<int>.create(targetShape, DType.int32);
 
@@ -2132,12 +2139,21 @@ NDArray<int> _argminmaxFFI<T>(
   final rank = a.shape.length;
   final isMaxVal = isMax ? 1 : 0;
 
-  final targetShape = axis == null
+  final int? normAxis;
+  if (axis != null) {
+    normAxis = axis < 0 ? rank + axis : axis;
+    if (normAxis < 0 || normAxis >= rank) {
+      throw RangeError.range(normAxis, 0, rank - 1, 'axis');
+    }
+  } else {
+    normAxis = null;
+  }
+
+  final targetShape = normAxis == null
       ? (keepdims ? List<int>.filled(rank, 1) : <int>[])
       : (keepdims
-            ? (List<int>.from(a.shape)..[axis < 0 ? rank + axis : axis] = 1)
-            : (List<int>.from(a.shape)
-                ..removeAt(axis < 0 ? rank + axis : axis)));
+          ? (List<int>.from(a.shape)..[normAxis] = 1)
+          : (List<int>.from(a.shape)..removeAt(normAxis)));
 
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != DType.int32) {
@@ -2145,7 +2161,7 @@ NDArray<int> _argminmaxFFI<T>(
     }
   }
 
-  if (axis == null) {
+  if (normAxis == null) {
     // Global flat reduction
     final isContig = a.isContiguous;
     final NDArray<T> src;
@@ -2184,10 +2200,7 @@ NDArray<int> _argminmaxFFI<T>(
   }
 
   // Axis reduction
-  final targetAxis = axis < 0 ? rank + axis : axis;
-  if (targetAxis < 0 || targetAxis >= rank) {
-    throw RangeError.range(targetAxis, 0, rank - 1, 'axis');
-  }
+  final targetAxis = normAxis;
 
   final result = out ?? NDArray<int>.create(targetShape, DType.int32);
 

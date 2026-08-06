@@ -21,6 +21,15 @@ import 'stats.dart';
 import 'linalg.dart';
 import 'sorting.dart';
 
+/// Specifies when payments are due within a period in financial calculations.
+enum PaymentDue {
+  /// Payments are due at the end of each period (default).
+  end,
+
+  /// Payments are due at the beginning of each period.
+  begin,
+}
+
 /// Future Value function.
 ///
 /// Replicates the behavior of `numpy_financial.fv` exactly.
@@ -279,6 +288,10 @@ NDArray<Float64> irr(
 }
 
 NDArray<Float64> _parseWhen(dynamic when) {
+  if (when is PaymentDue) {
+    final val = when == PaymentDue.begin ? 1.0 : 0.0;
+    return NDArray<Float64>.scalar(Float64(val), dtype: DType.float64);
+  }
   if (when is NDArray) {
     if (when.dtype != DType.float64) {
       throw ArgumentError('when NDArray must be of type DType.float64');

@@ -149,11 +149,11 @@ NDArray<T> linspace<T>(
 ///
 /// **Preconditions:**
 /// - [start] and [stop] must not be disposed.
-/// - [numSamples] must be positive.
+/// - [numSamples] must be non-negative.
 ///
 /// **Throws:**
 /// - It is an error if [start] or [stop] is disposed.
-/// - It is an error if [numSamples] is not positive.
+/// - It is an error if [numSamples] is negative.
 /// - It is an error if [axis] is out of bounds.
 ///
 /// **Memory Ownership & Lifetime:**
@@ -193,11 +193,11 @@ NDArray<T> linspaceGrid<T>(
 ///
 /// **Preconditions:**
 /// - [start] and [stop] must not be disposed.
-/// - [numSamples] must be positive.
+/// - [numSamples] must be non-negative.
 ///
 /// **Throws:**
 /// - It is an error if [start] or [stop] is disposed.
-/// - It is an error if [numSamples] is not positive.
+/// - It is an error if [numSamples] is negative.
 /// - It is an error if [axis] is out of bounds.
 ///
 /// **Memory Ownership & Lifetime:**
@@ -233,7 +233,7 @@ NDArray<T> linspaceGrid<T>(
   int axis = 0,
   DType<T>? dtype,
 }) {
-  if (numSamples <= 0) throw ArgumentError('numSamples must be positive');
+  if (numSamples < 0) throw ArgumentError('numSamples must be non-negative');
 
   final resolvedDType = dtype ?? defaultDType<T>();
 
@@ -251,6 +251,14 @@ NDArray<T> linspaceGrid<T>(
 
     final resultShape = List<int>.from(commonShape);
     resultShape.insert(actualAxis, numSamples);
+
+    if (numSamples == 0) {
+      final res = NDArray<T>.create(resultShape, resolvedDType);
+      final step = NDArray<T>.create(commonShape, resolvedDType);
+      final nanVal = normalizeScalar(double.nan, resolvedDType) as T;
+      step.fill(nanVal);
+      return (res.detachToParentScope(), step.detachToParentScope());
+    }
 
     final startBroadcasted = broadcastTo(startArr, commonShape);
     final stopBroadcasted = broadcastTo(stopArr, commonShape);
@@ -443,10 +451,10 @@ NDArray<T> linspaceGrid<T>(
 /// In linear space, the sequence starts at `base ** start` and ends with `base ** stop`.
 ///
 /// **Preconditions:**
-/// - [numSamples] must be positive.
+/// - [numSamples] must be non-negative.
 ///
 /// **Throws:**
-/// - It is an error if [numSamples] is not positive.
+/// - It is an error if [numSamples] is negative.
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
@@ -582,11 +590,11 @@ NDArray<T> logspaceGrid<T extends Object>(
 /// This is similar to [logspace], but with the start and end points specified directly.
 ///
 /// **Preconditions:**
-/// - [numSamples] must be positive.
+/// - [numSamples] must be non-negative.
 /// - [start] and [stop] must be non-zero and have the same sign.
 ///
 /// **Throws:**
-/// - It is an error if [numSamples] is not positive.
+/// - It is an error if [numSamples] is negative.
 /// - It is an error if [start] or [stop] is zero.
 /// - It is an error if [start] and [stop] have different signs.
 ///

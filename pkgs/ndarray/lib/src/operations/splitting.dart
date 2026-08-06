@@ -35,9 +35,19 @@ NDArray<T> _sliceAlongAxis<T>(NDArray<T> a, int axis, int start, int stop) {
 ///
 /// Refer to the [NumPy array_split reference](https://numpy.org/doc/stable/reference/generated/numpy.array_split.html)
 /// for details.
-List<NDArray<T>> array_split<T>(NDArray<T> a, int sections, {int axis = 0}) {
+List<NDArray<T>> array_split<T>(
+  NDArray<T> a,
+  int sections, {
+  int axis = 0,
+  List<NDArray<T>>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
+  }
+  if (out != null && out.length != sections) {
+    throw ArgumentError(
+      'Length of out (${out.length}) must match sections ($sections).',
+    );
   }
   if (sections <= 0) {
     throw ArgumentError('Number of sections must be positive.');
@@ -63,8 +73,22 @@ List<NDArray<T>> array_split<T>(NDArray<T> a, int sections, {int axis = 0}) {
     currentIdx = stop;
 
     final sub = _sliceAlongAxis(a, normAxis, start, stop);
-    sub.detachToParentScope();
-    results.add(sub);
+    if (out != null) {
+      final outSub = out[i];
+      if (outSub.isDisposed) {
+        throw StateError('Cannot write to a disposed out array.');
+      }
+      if (!listEquals(outSub.shape, sub.shape) || outSub.dtype != sub.dtype) {
+        throw ArgumentError(
+          'Incompatible out buffer shape or dtype for split item $i.',
+        );
+      }
+      sub.copy(out: outSub);
+      results.add(outSub);
+    } else {
+      sub.detachToParentScope();
+      results.add(sub);
+    }
   }
 
   return results;
@@ -150,7 +174,12 @@ List<NDArray<T>> array_split_at<T>(
 ///
 /// Refer to the [NumPy split reference](https://numpy.org/doc/stable/reference/generated/numpy.split.html)
 /// for details.
-List<NDArray<T>> split<T>(NDArray<T> a, int sections, {int axis = 0}) {
+List<NDArray<T>> split<T>(
+  NDArray<T> a,
+  int sections, {
+  int axis = 0,
+  List<NDArray<T>>? out,
+}) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -172,7 +201,7 @@ List<NDArray<T>> split<T>(NDArray<T> a, int sections, {int axis = 0}) {
     );
   }
 
-  return array_split(a, sections, axis: normAxis);
+  return array_split(a, sections, axis: normAxis, out: out);
 }
 
 /// Splits an array along [axis] at the coordinate points specified in [indices].

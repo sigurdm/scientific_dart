@@ -874,14 +874,13 @@ NDArray<double> nanvar<T extends num>(
     final sqDiff = multiply(diff, diff);
 
     // Convert to `NDArray<double>` to avoid truncation in nanmean
-    final sqDiffDouble = NDArray<double>.create(sqDiff.shape, DType.float64);
-    for (var i = 0; i < sqDiff.data.length; i++) {
-      sqDiffDouble.data[i] = sqDiff.data[i].toDouble();
-    }
+    final sqDiffDouble = castNDArray(sqDiff, DType.float64);
 
     m.dispose();
     diff.dispose();
-    sqDiff.dispose();
+    if (!identical(sqDiffDouble, sqDiff)) {
+      sqDiff.dispose();
+    }
 
     final res = nanmean<double>(
       sqDiffDouble,
@@ -889,8 +888,8 @@ NDArray<double> nanvar<T extends num>(
       keepdims: keepdims,
       out: out,
     );
+    sqDiffDouble.dispose();
     if (out != null) {
-      sqDiffDouble.dispose();
       return out;
     }
     final resultVal = NDArray<double>.view(
@@ -898,7 +897,6 @@ NDArray<double> nanvar<T extends num>(
       shape: res.shape,
       strides: res.strides,
     );
-    sqDiffDouble.dispose();
     return resultVal;
   }
 }
@@ -1983,14 +1981,13 @@ NDArray<double> variance<T extends num>(
     final diff = subtract(a, m);
     final sqDiff = multiply(diff, diff);
 
-    final sqDiffDouble = NDArray<double>.create(sqDiff.shape, DType.float64);
-    for (var i = 0; i < sqDiff.data.length; i++) {
-      sqDiffDouble.data[i] = sqDiff.data[i].toDouble();
-    }
+    final sqDiffDouble = castNDArray(sqDiff, DType.float64);
 
     m.dispose();
     diff.dispose();
-    sqDiff.dispose();
+    if (!identical(sqDiffDouble, sqDiff)) {
+      sqDiff.dispose();
+    }
 
     final res = mean<double, double>(
       sqDiffDouble,
@@ -1998,8 +1995,8 @@ NDArray<double> variance<T extends num>(
       keepdims: keepdims,
       out: out,
     );
+    sqDiffDouble.dispose();
     if (out != null) {
-      sqDiffDouble.dispose();
       return out;
     }
     final resultVal = NDArray<double>.view(
@@ -2007,7 +2004,6 @@ NDArray<double> variance<T extends num>(
       shape: res.shape,
       strides: res.strides,
     );
-    sqDiffDouble.dispose();
     return resultVal;
   }
 }
