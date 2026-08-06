@@ -175,6 +175,7 @@ final class StatLength {
     final uniform = _uniform;
     if (uniform != null) {
       return List.generate(rank, (i) {
+        if (shape[i] == 0) return (0, 0);
         final b = uniform.$1.clamp(1, shape[i]);
         final a = uniform.$2.clamp(1, shape[i]);
         return (b, a);
@@ -188,6 +189,7 @@ final class StatLength {
         );
       }
       return List.generate(rank, (i) {
+        if (shape[i] == 0) return (0, 0);
         final b = axes[i].$1.clamp(1, shape[i]);
         final a = axes[i].$2.clamp(1, shape[i]);
         return (b, a);

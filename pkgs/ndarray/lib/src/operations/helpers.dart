@@ -102,9 +102,15 @@ NDArray<T> toNDArray<T>(Object o, DType<T> dtype) {
   bool endpoint = true,
   DType<T>? dtype,
 }) {
-  if (numSamples <= 0) throw ArgumentError('numSamples must be positive');
+  if (numSamples < 0) throw ArgumentError('numSamples must be non-negative');
 
   final resolvedDType = dtype ?? defaultDType<T>();
+
+  if (numSamples == 0) {
+    final arr = NDArray<T>.create([0], resolvedDType);
+    final step = normalizeScalar(double.nan, resolvedDType) as T;
+    return (arr, step);
+  }
 
   final div = endpoint ? (numSamples - 1) : numSamples;
   final arr = NDArray<T>.create([numSamples], resolvedDType);

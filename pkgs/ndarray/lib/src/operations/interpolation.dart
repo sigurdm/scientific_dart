@@ -59,9 +59,19 @@ NDArray<double> interp(
   double? left,
   double? right,
   InterpolationMethod method = InterpolationMethod.linear,
+  NDArray<double>? out,
 }) {
-  if (x.isDisposed || xp.isDisposed || fp.isDisposed) {
+  if (x.isDisposed ||
+      xp.isDisposed ||
+      fp.isDisposed ||
+      (out != null && out.isDisposed)) {
     throw StateError('Cannot execute interp() with disposed arrays.');
+  }
+
+  if (out != null) {
+    if (!listEquals(out.shape, x.shape) || out.dtype != DType.float64) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
   }
 
   if (xp.shape.length != 1 || fp.shape.length != 1) {
@@ -95,7 +105,7 @@ NDArray<double> interp(
     rethrow;
   }
 
-  final res = NDArray<double>.create(x.shape, DType.float64);
+  final res = out ?? NDArray<double>.create(x.shape, DType.float64);
 
   final marker = ScratchArena.marker;
   try {
@@ -111,14 +121,15 @@ NDArray<double> interp(
       final defaultLeft = left ?? fpList[0];
       final defaultRight = right ?? fpList[xpSize - 1];
 
+      final tempRes = res.isContiguous ? res : NDArray<double>.create(x.shape, DType.float64);
       for (var i = 0; i < size; i++) {
         final xv = xList[i];
         if (xv < xpMin) {
-          res.data[i] = defaultLeft;
+          tempRes.data[i] = defaultLeft;
         } else if (xv > xpMax) {
-          res.data[i] = defaultRight;
+          tempRes.data[i] = defaultRight;
         } else if (xpSize == 1) {
-          res.data[i] = fpList[0];
+          tempRes.data[i] = fpList[0];
         } else {
           var low = 0;
           var high = xpSize - 1;
@@ -135,11 +146,15 @@ NDArray<double> interp(
           final y0 = fpList[low];
           final y1 = fpList[low + 1];
           if ((xv - x0).abs() <= (x1 - xv).abs()) {
-            res.data[i] = y0;
+            tempRes.data[i] = y0;
           } else {
-            res.data[i] = y1;
+            tempRes.data[i] = y1;
           }
         }
+      }
+      if (!identical(tempRes, res)) {
+        tempRes.copy(out: res);
+        tempRes.dispose();
       }
     } else {
       // Prepare left/right pointers.
@@ -230,4 +245,5 @@ NDArray<double> interpolate(
   double? left,
   double? right,
   InterpolationMethod method = InterpolationMethod.linear,
-}) => interp(x, xp, fp, left: left, right: right, method: method);
+  NDArray<double>? out,
+}) => interp(x, xp, fp, left: left, right: right, method: method, out: out);

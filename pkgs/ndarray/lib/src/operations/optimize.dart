@@ -452,9 +452,10 @@ OptimizeResult nelder_mead(
       }
 
       int nfev = 0;
+      final pArr = NDArray<Float64>.create([n], DType.float64);
+      final pArrPtr = pArr.pointer.cast<ffi.Double>();
       double evalPoint(ffi.Pointer<ffi.Double> ptr) {
-        final pArr = NDArray<Float64>.create([n], DType.float64);
-        cblas_dcopy(n, ptr, 1, pArr.pointer.cast<ffi.Double>(), 1);
+        cblas_dcopy(n, ptr, 1, pArrPtr, 1);
         final val = fun(pArr);
         nfev++;
         return val;
@@ -660,13 +661,18 @@ OptimizeResult lbfgs(
       final pXTemp = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
 
       int nfev = 0;
+      final xArr = NDArray<Float64>.create([n], DType.float64);
+      final xArrPtr = xArr.pointer.cast<ffi.Double>();
+      final xPlus = NDArray<Float64>.create([n], DType.float64);
+      final xPlusPtr = xPlus.pointer.cast<ffi.Double>();
+      final xMinus = NDArray<Float64>.create([n], DType.float64);
+      final xMinusPtr = xMinus.pointer.cast<ffi.Double>();
 
       (double, ffi.Pointer<ffi.Double>) evalFunAndGrad(
         ffi.Pointer<ffi.Double> pX,
         ffi.Pointer<ffi.Double> pGOut,
       ) {
-        final xArr = NDArray<Float64>.create([n], DType.float64);
-        cblas_dcopy(n, pX, 1, xArr.pointer.cast<ffi.Double>(), 1);
+        cblas_dcopy(n, pX, 1, xArrPtr, 1);
 
         if (funAndGrad != null) {
           final (fVal, gArr) = funAndGrad(xArr);
@@ -686,13 +692,11 @@ OptimizeResult lbfgs(
           for (int i = 0; i < n; i++) {
             cblas_dcopy(n, pX, 1, pXTemp, 1);
             pXTemp[i] += h;
-            final xPlus = NDArray<Float64>.create([n], DType.float64);
-            cblas_dcopy(n, pXTemp, 1, xPlus.pointer.cast<ffi.Double>(), 1);
+            cblas_dcopy(n, pXTemp, 1, xPlusPtr, 1);
             final fPlus = fun(xPlus);
 
             pXTemp[i] = pX[i] - h;
-            final xMinus = NDArray<Float64>.create([n], DType.float64);
-            cblas_dcopy(n, pXTemp, 1, xMinus.pointer.cast<ffi.Double>(), 1);
+            cblas_dcopy(n, pXTemp, 1, xMinusPtr, 1);
             final fMinus = fun(xMinus);
 
             pGOut[i] = (fPlus - fMinus) / (2.0 * h);

@@ -19,7 +19,11 @@ import 'helpers.dart';
 /// - It is an error if any array in [arrays] is disposed.
 /// - It is an error if [axis] is out of bounds.
 /// - It is an error if arrays have mismatched dtypes or shapes.
-NDArray<T> concatenate<T>(List<NDArray<T>> arrays, {int axis = 0}) {
+NDArray<T> concatenate<T>(
+  List<NDArray<T>> arrays, {
+  int axis = 0,
+  NDArray<T>? out,
+}) {
   if (arrays.isEmpty) {
     throw ArgumentError('List of arrays must not be empty');
   }
@@ -34,7 +38,8 @@ NDArray<T> concatenate<T>(List<NDArray<T>> arrays, {int axis = 0}) {
   final rank = first.shape.length;
   final dtype = first.dtype;
 
-  if (axis < 0 || axis >= rank) {
+  final normAxis = axis < 0 ? rank + axis : axis;
+  if (normAxis < 0 || normAxis >= rank) {
     throw RangeError.index(axis, first.shape, 'axis out of range');
   }
 
@@ -47,8 +52,8 @@ NDArray<T> concatenate<T>(List<NDArray<T>> arrays, {int axis = 0}) {
       throw ArgumentError('All arrays must have the same rank');
     }
     for (var j = 0; j < rank; j++) {
-      if (j != axis && arr.shape[j] != first.shape[j]) {
-        throw ArgumentError('Shapes must match except in dimension $axis');
+      if (j != normAxis && arr.shape[j] != first.shape[j]) {
+        throw ArgumentError('Shapes must match except in dimension ');
       }
     }
   }
@@ -56,11 +61,20 @@ NDArray<T> concatenate<T>(List<NDArray<T>> arrays, {int axis = 0}) {
   final targetShape = List<int>.from(first.shape);
   var totalAxisSize = 0;
   for (final arr in arrays) {
-    totalAxisSize += arr.shape[axis];
+    totalAxisSize += arr.shape[normAxis];
   }
-  targetShape[axis] = totalAxisSize;
+  targetShape[normAxis] = totalAxisSize;
 
-  final result = NDArray<T>.create(targetShape, dtype);
+  if (out != null) {
+    if (out.isDisposed) {
+      throw StateError('Cannot concatenate into a disposed out array.');
+    }
+    if (!listEquals(out.shape, targetShape) || out.dtype != dtype) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  final result = out ?? NDArray<T>.create(targetShape, dtype);
 
   var allContiguous = true;
   for (final arr in arrays) {
@@ -70,7 +84,7 @@ NDArray<T> concatenate<T>(List<NDArray<T>> arrays, {int axis = 0}) {
     }
   }
 
-  if (allContiguous && axis == 0) {
+  if (allContiguous && normAxis == 0 && result.isContiguous) {
     var destOffset = 0;
     for (final arr in arrays) {
       final size = arr.shape.isEmpty ? 1 : arr.shape.reduce((a, b) => a * b);
@@ -85,18 +99,19 @@ NDArray<T> concatenate<T>(List<NDArray<T>> arrays, {int axis = 0}) {
     copyConcatenateRecursive(
       arr,
       result,
-      axis,
+      normAxis,
       axisOffset,
       List<int>.filled(rank, 0),
       0,
     );
-    axisOffset += arr.shape[axis];
+    axisOffset += arr.shape[normAxis];
   }
 
   return result;
 }
 
 /// Join a sequence of arrays along a new axis.
+
 ///
 /// Stacks the input [arrays] along a new dimension at [axis]. All arrays in the
 /// list must have the exact same shape and `DType.`
@@ -118,7 +133,11 @@ NDArray<T> concatenate<T>(List<NDArray<T>> arrays, {int axis = 0}) {
 /// final b = NDArray.fromList([3, 4], [2], DType.int32);
 /// final s = stack([a, b], axis: 0); // shape [2, 2], values [[1, 2], [3, 4]]
 /// ```
-NDArray<T> stack<T extends Object>(List<NDArray<T>> arrays, {int axis = 0}) {
+NDArray<T> stack<T extends Object>(
+  List<NDArray<T>> arrays, {
+  int axis = 0,
+  NDArray<T>? out,
+}) {
   if (arrays.isEmpty) {
     throw ArgumentError('List of arrays to stack must not be empty.');
   }
@@ -154,7 +173,16 @@ NDArray<T> stack<T extends Object>(List<NDArray<T>> arrays, {int axis = 0}) {
   final stackedShape = List<int>.from(first.shape);
   stackedShape.insert(targetAxis, arrays.length);
 
-  final result = NDArray.zeros(stackedShape, dtype);
+  if (out != null) {
+    if (out.isDisposed) {
+      throw StateError('Cannot execute stack() with a disposed out array.');
+    }
+    if (!listEquals(out.shape, stackedShape) || out.dtype != dtype) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
+  final result = out ?? NDArray.zeros(stackedShape, dtype);
 
   for (var i = 0; i < arrays.length; i++) {
     final currentIndices = List<int>.filled(first.shape.length, 0);
@@ -865,13 +893,7 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
     throw ArgumentError('Order of difference n must be >= 0 (was $n).');
   }
   if (n == 0) {
-    final result = out ?? a.copy();
-    if (out != null) {
-      for (var i = 0; i < result.data.length; i++) {
-        result.data[i] = a.data[i];
-      }
-    }
-    return result;
+    return a.copy(out: out);
   }
 
   var targetAxis = axis;
@@ -1039,8 +1061,13 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
 /// Refer to [NumPy roll documentation](https://numpy.org/doc/stable/reference/generated/numpy.roll.html).
 ///
 /// {@example /example/rearranging_example.dart lang=dart}
-NDArray<T> roll<T extends Object>(NDArray<T> a, dynamic shift, {dynamic axis}) {
-  if (a.isDisposed) {
+NDArray<T> roll<T extends Object>(
+  NDArray<T> a,
+  dynamic shift, {
+  dynamic axis,
+  NDArray<T>? out,
+}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute roll() on a disposed array.');
   }
 
@@ -1095,25 +1122,33 @@ NDArray<T> roll<T extends Object>(NDArray<T> a, dynamic shift, {dynamic axis}) {
     throw ArgumentError('axis must be null, an integer, or a list of integers');
   }
 
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
   if (a.rank == 0) {
-    return a.copy();
+    return a.copy(out: out);
   }
 
   return NDArray.scope(() {
     NDArray<T> current = a;
 
+    final NDArray<T> res;
     if (axes == null) {
       final flat = current.ravel();
       final s = shifts[0];
       final rolledFlat = _rollSingle1D(flat, s);
-      final result = rolledFlat.reshape(a.shape);
-      return result.detachToParentScope();
+      res = rolledFlat.reshape(a.shape);
     } else {
       for (var i = 0; i < axes.length; i++) {
         current = _rollSingle(current, shifts[i], axes[i]);
       }
-      return current.copy().detachToParentScope();
+      res = current;
     }
+    final finalRes = res.copy(out: out);
+    return finalRes.detachToParentScope();
   });
 }
 
