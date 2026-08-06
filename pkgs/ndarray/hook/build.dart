@@ -218,10 +218,7 @@ void main(List<String> args) async {
         '-c',
         '-fPIC',
         '-O3',
-        if (isX64) ...[
-          '-mavx2',
-          '-mfma',
-        ],
+        if (isX64) ...['-mavx2', '-mfma'],
         '-fno-math-errno',
         '-I${input.packageRoot.toFilePath()}',
         input.packageRoot.resolve('hook/custom_ufuncs.cpp').toFilePath(),
@@ -237,10 +234,7 @@ void main(List<String> args) async {
         '-c',
         '-fPIC',
         '-O3',
-        if (isX64) ...[
-          '-mavx2',
-          '-mfma',
-        ],
+        if (isX64) ...['-mavx2', '-mfma'],
         '-fno-math-errno',
         '-I${input.packageRoot.toFilePath()}',
         '-I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',

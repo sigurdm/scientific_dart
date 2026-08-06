@@ -199,7 +199,7 @@ static void s_cast_generic_impl(
         dest[0] = caster<DestType, SrcType>::cast(src[0]);
         return;
     }
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetSrc = 0;
     for (int el = 0; el < total_elements; el++) {
         dest[el] = caster<DestType, SrcType>::cast(src[offsetSrc]);
@@ -394,7 +394,7 @@ static void strided_cum_op_impl(
     const int *shape, int rank, int axis, Op op
 ) {
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -431,7 +431,7 @@ static void strided_unwrap_op_impl(
     const int *shape, int rank, int axis, T discont
 ) {
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -490,7 +490,7 @@ static void strided_diff_op_impl(
     const int *shape, int rank, int axis, Op op
 ) {
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -526,7 +526,7 @@ static inline void strided_unary_op_loop(
     const int *shape, int rank,
     const uint8_t *mask, Op op
 ) {
-    int coord[8] = {0};
+    int coord[32] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
     for (int i = 0; i < total_size; i++) {
@@ -592,7 +592,7 @@ static inline void strided_unary_cast_loop(
     const int *shape, int rank,
     const uint8_t *mask, Op op
 ) {
-    int coord[8] = {0};
+    int coord[32] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
     for (int i = 0; i < total_size; i++) {
@@ -690,7 +690,7 @@ static inline void strided_binary_op_loop(
 ) {
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
         if (!HAS_MASK || mask[el]) {
@@ -720,7 +720,7 @@ static void strided_binary_op_impl(
     const int *shape, int rank,
     const uint8_t *mask, Op op
 ) {
-    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 32) return;
     if (mask != nullptr) {
         strided_binary_op_loop<true>(a, stridesA, b, stridesB, res, stridesRes, shape, rank, mask, op);
     } else {
@@ -759,7 +759,7 @@ static void s_where_impl(
     T *res, const int *stridesRes,
     const int *shape, int rank
 ) {
-    if (cond == nullptr || x == nullptr || y == nullptr || res == nullptr || rank < 0 || rank > 8) return;
+    if (cond == nullptr || x == nullptr || y == nullptr || res == nullptr || rank < 0 || rank > 32) return;
     if (rank == 0) {
         res[0] = cond[0] ? x[0] : y[0];
         return;
@@ -784,7 +784,7 @@ static void s_where_impl(
         }
         return;
     }
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetCond = 0, offsetX = 0, offsetY = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
         res[offsetRes] = cond[offsetCond] ? x[offsetX] : y[offsetY];
@@ -980,7 +980,7 @@ void s_sum_double(const double *src, const int *stridesSrc,
                   const int *shape, int rank, int axis) {
     if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int size_axis = shape[axis];
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -1022,7 +1022,7 @@ void s_mean_double(const double *src, const int *stridesSrc,
     int size_axis = shape[axis];
     if (size_axis <= 0) return;
     
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -1073,7 +1073,7 @@ void s_add_double(const double *a, const int *stridesA,
                   const double *b, const int *stridesB,
                   double *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 32) return;
     
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -1110,7 +1110,7 @@ void s_add_double(const double *a, const int *stridesA,
         }
     }
 
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
         res[offsetRes] = a[offsetA] + b[offsetB];
@@ -1135,7 +1135,7 @@ void s_sub_double(const double *a, const int *stridesA,
                   const double *b, const int *stridesB,
                   double *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 32) return;
     
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -1172,7 +1172,7 @@ void s_sub_double(const double *a, const int *stridesA,
         }
     }
 
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
         res[offsetRes] = a[offsetA] - b[offsetB];
@@ -1197,7 +1197,7 @@ void s_mul_double(const double *a, const int *stridesA,
                   const double *b, const int *stridesB,
                   double *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 32) return;
     
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -1234,7 +1234,7 @@ void s_mul_double(const double *a, const int *stridesA,
         }
     }
 
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
         res[offsetRes] = a[offsetA] * b[offsetB];
@@ -1259,7 +1259,7 @@ void s_div_double(const double *a, const int *stridesA,
                   const double *b, const int *stridesB,
                   double *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 32) return;
     
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
@@ -1296,7 +1296,7 @@ void s_div_double(const double *a, const int *stridesA,
         }
     }
 
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
         res[offsetRes] = a[offsetA] / b[offsetB];
@@ -1369,11 +1369,11 @@ void s_add_complex(const cpx_t *a, const int *stridesA,
                   const cpx_t *b, const int *stridesB,
                   cpx_t *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 32) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
         res[offsetRes].r = a[offsetA].r + b[offsetB].r;
@@ -1399,11 +1399,11 @@ void s_sub_complex(const cpx_t *a, const int *stridesA,
                   const cpx_t *b, const int *stridesB,
                   cpx_t *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 32) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
         res[offsetRes].r = a[offsetA].r - b[offsetB].r;
@@ -1429,11 +1429,11 @@ void s_mul_complex(const cpx_t *a, const int *stridesA,
                   const cpx_t *b, const int *stridesB,
                   cpx_t *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 32) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
         double r1 = a[offsetA].r, i1 = a[offsetA].i;
@@ -1461,11 +1461,11 @@ void s_div_complex(const cpx_t *a, const int *stridesA,
                   const cpx_t *b, const int *stridesB,
                   cpx_t *res, const int *stridesRes,
                   const int *shape, int rank) {
-    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 32) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
         double r1 = a[offsetA].r, i1 = a[offsetA].i;
@@ -1678,7 +1678,7 @@ void s_sum_float(const float *src, const int *stridesSrc,
                  const int *shape, int rank, int axis) {
     if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     int size_axis = shape[axis];
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -1720,7 +1720,7 @@ void s_mean_float(const float *src, const int *stridesSrc,
     int size_axis = shape[axis];
     if (size_axis <= 0) return;
     
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -3685,7 +3685,7 @@ void s_abs_complex128(const cpx_t *src, const int *stridesSrc,
                       double *res, const int *stridesRes,
                       const int *shape, int rank, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
     for (int i = 0; i < total_size; i++) {
@@ -3711,7 +3711,7 @@ void s_abs_complex64(const cpx_f_t *src, const int *stridesSrc,
                      float *res, const int *stridesRes,
                      const int *shape, int rank, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
     for (int i = 0; i < total_size; i++) {
@@ -3773,11 +3773,11 @@ void s_atan2_double(const double *y, const int *stridesY,
                    const double *x, const int *stridesX,
                    double *res, const int *stridesRes,
                    const int *shape, int rank, const uint8_t *mask) {
-    if (y == nullptr || x == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
+    if (y == nullptr || x == nullptr || res == nullptr || rank <= 0 || rank > 32) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetY = 0, offsetX = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
         res[offsetRes] = atan2(y[offsetY], x[offsetX]);
@@ -3802,11 +3802,11 @@ void s_atan2_float(const float *y, const int *stridesY,
                   const float *x, const int *stridesX,
                   float *res, const int *stridesRes,
                   const int *shape, int rank, const uint8_t *mask) {
-    if (y == nullptr || x == nullptr || res == nullptr || rank <= 0 || rank > 8) return;
+    if (y == nullptr || x == nullptr || res == nullptr || rank <= 0 || rank > 32) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetY = 0, offsetX = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
         res[offsetRes] = atan2f(y[offsetY], x[offsetX]);
@@ -3902,7 +3902,7 @@ void v_hypot_complex64(const cpx_f_t *x1, const cpx_f_t *x2, float *res,int size
 
 void s_hypot_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape,int rank, const uint8_t *mask) {
     if (x1 == nullptr || x2 == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
     for (int i = 0; i < total_size; i++) {
@@ -3923,7 +3923,7 @@ void s_hypot_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, 
 
 void s_hypot_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape,int rank, const uint8_t *mask) {
     if (x1 == nullptr || x2 == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
     for (int i = 0; i < total_size; i++) {
@@ -3983,7 +3983,7 @@ void v_pow_complex64(const cpx_f_t *x1, const cpx_f_t *x2, cpx_f_t *res,int size
 
 void s_pow_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, const int *stridesX2, cpx_t *res, const int *stridesRes, const int *shape,int rank, const uint8_t *mask) {
     if (x1 == nullptr || x2 == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
     for (int i = 0; i < total_size; i++) {
@@ -4004,7 +4004,7 @@ void s_pow_complex128(const cpx_t *x1, const int *stridesX1, const cpx_t *x2, co
 
 void s_pow_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2, const int *stridesX2, cpx_f_t *res, const int *stridesRes, const int *shape,int rank, const uint8_t *mask) {
     if (x1 == nullptr || x2 == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
     for (int i = 0; i < total_size; i++) {
@@ -4041,7 +4041,7 @@ void v_conj_complex64(const cpx_f_t *src, cpx_f_t *res,int size, const uint8_t *
 
 void s_conj_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape,int rank, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
     for (int i = 0; i < total_size; i++) {
@@ -4062,7 +4062,7 @@ void s_conj_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, cons
 
 void s_conj_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape,int rank, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int total_size = 1;
     for (int d = 0; d < rank; d++) total_size *= shape[d];
     for (int i = 0; i < total_size; i++) {
@@ -4190,10 +4190,10 @@ void cast_double_to_int16(const double *src, int16_t *dst, int size) {
 }
 
 void s_cast_uint8_to_double(const uint8_t *src, const int *stridesSrc, double *dst, const int *stridesDst, const int *shape, int rank) {
-    if (src == nullptr || dst == nullptr || rank <= 0 || rank > 8) return;
+    if (src == nullptr || dst == nullptr || rank <= 0 || rank > 32) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetSrc = 0, offsetDst = 0;
     for (int el = 0; el < total_elements; el++) {
         dst[offsetDst] = (double)src[offsetSrc];
@@ -4212,10 +4212,10 @@ void s_cast_uint8_to_double(const uint8_t *src, const int *stridesSrc, double *d
 }
 
 void s_cast_int16_to_double(const int16_t *src, const int *stridesSrc, double *dst, const int *stridesDst, const int *shape, int rank) {
-    if (src == nullptr || dst == nullptr || rank <= 0 || rank > 8) return;
+    if (src == nullptr || dst == nullptr || rank <= 0 || rank > 32) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetSrc = 0, offsetDst = 0;
     for (int el = 0; el < total_elements; el++) {
         dst[offsetDst] = (double)src[offsetSrc];
@@ -4234,10 +4234,10 @@ void s_cast_int16_to_double(const int16_t *src, const int *stridesSrc, double *d
 }
 
 void s_cast_double_to_uint8(const double *src, const int *stridesSrc, uint8_t *dst, const int *stridesDst, const int *shape, int rank) {
-    if (src == nullptr || dst == nullptr || rank <= 0 || rank > 8) return;
+    if (src == nullptr || dst == nullptr || rank <= 0 || rank > 32) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetSrc = 0, offsetDst = 0;
     for (int el = 0; el < total_elements; el++) {
         dst[offsetDst] = (uint8_t)src[offsetSrc];
@@ -4256,10 +4256,10 @@ void s_cast_double_to_uint8(const double *src, const int *stridesSrc, uint8_t *d
 }
 
 void s_cast_double_to_int16(const double *src, const int *stridesSrc, int16_t *dst, const int *stridesDst, const int *shape, int rank) {
-    if (src == nullptr || dst == nullptr || rank <= 0 || rank > 8) return;
+    if (src == nullptr || dst == nullptr || rank <= 0 || rank > 32) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetSrc = 0, offsetDst = 0;
     for (int el = 0; el < total_elements; el++) {
         dst[offsetDst] = (int16_t)src[offsetSrc];
@@ -4300,12 +4300,12 @@ void copy_and_cast_strided(
     int src_type, const void *src_ptr, const int *strides_src,
     int dest_type, void *dest_ptr, const int *shape, int rank) {
     
-    if (src_ptr == nullptr || dest_ptr == nullptr || rank < 0 || rank > 8) return;
+    if (src_ptr == nullptr || dest_ptr == nullptr || rank < 0 || rank > 32) return;
 
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetSrc = 0;
 
     for (int el = 0; el < total_elements; el++) {
@@ -4942,10 +4942,10 @@ DEFINE_STRIDED_UNARY_IMPL(s_invert_int16, int16_t, int16_t, (int16_t)(~x))
 void name(const type *a, const int *stridesA, const int *shapeA, \
           const type *b, const int *stridesB, const int *shapeB, \
           type *res, const int *stridesRes, const int *shapeRes, int rank) { \
-    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 8) return; \
+    if (a == nullptr || b == nullptr || res == nullptr || rank <= 0 || rank > 32) return; \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shapeRes[i]; \
-    int coord[8] = {0}; \
+    int coord[32] = {0}; \
     for (int el = 0; el < total_elements; el++) { \
         int offsetA = 0; \
         int offsetB = 0; \
@@ -5287,7 +5287,7 @@ void s_clip_##TYPE_NAME(const TYPE *a, const int *stridesA, \
                         const TYPE *max_val, const int *stridesMax, \
                         TYPE *res, const int *stridesRes, \
                         const int *shape, int rank, const uint8_t *mask) { \
-    if (a == nullptr || min_val == nullptr || max_val == nullptr || res == nullptr || rank < 0 || rank > 8) return; \
+    if (a == nullptr || min_val == nullptr || max_val == nullptr || res == nullptr || rank < 0 || rank > 32) return; \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
     if (rank == 0) { \
@@ -5318,7 +5318,7 @@ void s_clip_##TYPE_NAME(const TYPE *a, const int *stridesA, \
         } \
         return; \
     } \
-    int coord[8] = {0}; \
+    int coord[32] = {0}; \
     int offsetA = 0, offsetMin = 0, offsetMax = 0, offsetRes = 0; \
     for (int el = 0; el < total_elements; el++) { \
         TYPE val = a[offsetA]; \
@@ -5359,7 +5359,7 @@ void s_trapz_double(const double *y, const int *stridesY,
                     double *res, const int *stridesRes,
                     const int *shape, int rank, int axis) {
     if (y == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -5408,7 +5408,7 @@ void s_trapz_float(const float *y, const int *stridesY,
                    float *res, const int *stridesRes,
                    const int *shape, int rank, int axis) {
     if (y == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -5457,7 +5457,7 @@ void s_trapz_complex128(const cpx_t *y, const int *stridesY,
                         cpx_t *res, const int *stridesRes,
                         const int *shape, int rank, int axis) {
     if (y == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -5507,7 +5507,7 @@ void s_trapz_complex64(const cpx_f_t *y, const int *stridesY,
                    cpx_f_t *res, const int *stridesRes,
                    const int *shape, int rank, int axis) {
     if (y == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -5557,7 +5557,7 @@ void s_trapz_complex128_all(const cpx_t *y, const int *stridesY,
                             cpx_t *res, const int *stridesRes,
                             const int *shape, int rank, int axis) {
     if (y == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -5615,7 +5615,7 @@ void s_gradient_double(const double *src, const int *stridesSrc,
     
     int N = shape[axis];
     
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -5731,7 +5731,7 @@ void s_gradient_float(const float *src, const int *stridesSrc,
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     
     int N = shape[axis];
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -5846,7 +5846,7 @@ void s_gradient_complex128(const cpx_t *src, const int *stridesSrc,
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     
     int N = shape[axis];
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -5977,7 +5977,7 @@ void s_gradient_complex64(const cpx_f_t *src, const int *stridesSrc,
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     
     int N = shape[axis];
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -6125,7 +6125,7 @@ void s_gradient_complex128_all(const cpx_t *src, const int *stridesSrc,
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     
     int N = shape[axis];
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -6292,7 +6292,7 @@ void s_trapz_complex64_all(const cpx_f_t *y, const int *stridesY,
                            cpx_f_t *res, const int *stridesRes,
                            const int *shape, int rank, int axis) {
     if (y == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -6364,7 +6364,7 @@ void s_gradient_complex64_all(const cpx_f_t *src, const int *stridesSrc,
     if (src == nullptr || res == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return;
     
     int N = shape[axis];
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -6524,11 +6524,11 @@ void name(const type *start, const int *stridesStart, \
           type *res, const int *stridesRes, \
           type *step, const int *stridesStep, \
           const int *shape, int rank, int axis, int numSamples, int endpoint) { \
-    if (start == nullptr || stop == nullptr || res == nullptr || rank <= 0 || rank > 8) return; \
+    if (start == nullptr || stop == nullptr || res == nullptr || rank <= 0 || rank > 32) return; \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
     double div = endpoint ? (double)(numSamples - 1) : (double)numSamples; \
-    int coord[8] = {0}; \
+    int coord[32] = {0}; \
     int offsetStart = 0, offsetStop = 0, offsetRes = 0, offsetStep = 0; \
     for (int el = 0; el < total_elements; el++) { \
         int i = coord[axis]; \
@@ -6629,11 +6629,11 @@ void name(const type *a, const int *stridesA, \
           const int *shape, int rank, \
           type *aCopy, int *ipiv, \
           int (*lapack_getrf)(int, int, int, void *, int, int *)) { \
-    if (a == nullptr || res == nullptr || aCopy == nullptr || ipiv == nullptr || lapack_getrf == nullptr || rank < 2 || rank > 8) return; \
+    if (a == nullptr || res == nullptr || aCopy == nullptr || ipiv == nullptr || lapack_getrf == nullptr || rank < 2 || rank > 32) return; \
     int n = shape[rank - 1]; \
     int stack_elements = 1; \
     for (int i = 0; i < rank - 2; i++) stack_elements *= shape[i]; \
-    int coord[8] = {0}; \
+    int coord[32] = {0}; \
     int offsetA = 0, offsetRes = 0; \
     for (int el = 0; el < stack_elements; el++) { \
         for (int i = 0; i < n; i++) { \
@@ -6678,11 +6678,11 @@ void name(const type *a, const int *stridesA, \
           const int *shape, int rank, \
           type *aCopy, int *ipiv, \
           int (*lapack_getrf)(int, int, int, void *, int, int *)) { \
-    if (a == nullptr || res == nullptr || aCopy == nullptr || ipiv == nullptr || lapack_getrf == nullptr || rank < 2 || rank > 8) return; \
+    if (a == nullptr || res == nullptr || aCopy == nullptr || ipiv == nullptr || lapack_getrf == nullptr || rank < 2 || rank > 32) return; \
     int n = shape[rank - 1]; \
     int stack_elements = 1; \
     for (int i = 0; i < rank - 2; i++) stack_elements *= shape[i]; \
-    int coord[8] = {0}; \
+    int coord[32] = {0}; \
     int offsetA = 0, offsetRes = 0; \
     for (int el = 0; el < stack_elements; el++) { \
         for (int i = 0; i < n; i++) { \
@@ -6931,7 +6931,7 @@ void s_cast_generic(
     void *dest_ptr, int dtypeDst,
     const int *shape, int rank
 ) {
-    if (src_ptr == nullptr || dest_ptr == nullptr || rank < 0 || rank > 8) return;
+    if (src_ptr == nullptr || dest_ptr == nullptr || rank < 0 || rank > 32) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
 
@@ -7853,7 +7853,7 @@ void NAME(const TYPE *src, const int *stridesSrc, \
     if (size_axis <= 0) return; \
     TYPE *tmp_buf = (TYPE *)malloc(size_axis * sizeof(TYPE)); \
     if (tmp_buf == nullptr) return; \
-    int coord[8] = {0}; \
+    int coord[32] = {0}; \
     int outer_size = 1; \
     for (int d = 0; d < rank; d++) { \
         if (d != axis) outer_size *= shape[d]; \
@@ -7901,7 +7901,7 @@ void s_median_double(const double *src, const int *stridesSrc,
     if (size_axis <= 0) return;
     double *tmp_buf = (double *)malloc(size_axis * sizeof(double));
     if (tmp_buf == nullptr) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -7948,7 +7948,7 @@ void s_median_float(const float *src, const int *stridesSrc,
     if (size_axis <= 0) return;
     float *tmp_buf = (float *)malloc(size_axis * sizeof(float));
     if (tmp_buf == nullptr) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -8000,7 +8000,7 @@ void s_median_complex128(const cpx_t *src, const int *stridesSrc,
     if (size_axis <= 0) return;
     double *tmp_buf = (double *)malloc(size_axis * sizeof(double));
     if (tmp_buf == nullptr) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -8064,7 +8064,7 @@ void s_median_complex64(const cpx_f_t *src, const int *stridesSrc,
     if (size_axis <= 0) return;
     float *tmp_buf = (float *)malloc(size_axis * sizeof(float));
     if (tmp_buf == nullptr) return;
-    int coord[8] = {0};
+    int coord[32] = {0};
     int outer_size = 1;
     for (int d = 0; d < rank; d++) {
         if (d != axis) outer_size *= shape[d];
@@ -8284,7 +8284,7 @@ void NAME(const TYPE *src, const int *stridesSrc, \
     if (q < 0.0 || q > 1.0) return; \
     TYPE *tmp_buf = (TYPE *)malloc(size_axis * sizeof(TYPE)); \
     if (tmp_buf == nullptr) return; \
-    int coord[8] = {0}; \
+    int coord[32] = {0}; \
     int outer_size = 1; \
     for (int d = 0; d < rank; d++) { \
         if (d != axis) outer_size *= shape[d]; \
@@ -8408,7 +8408,7 @@ void s_interp_double(const double *x, const int *stridesX,
                      double *res, const int *stridesRes,
                      const int *shape, int rank,
                      const double *left, const double *right) {
-    if (x == nullptr || xp == nullptr || fp == nullptr || res == nullptr || rank <= 0 || rank > 8 || xp_size <= 0) {
+    if (x == nullptr || xp == nullptr || fp == nullptr || res == nullptr || rank <= 0 || rank > 32 || xp_size <= 0) {
         return;
     }
 
@@ -8417,7 +8417,7 @@ void s_interp_double(const double *x, const int *stridesX,
         double xp0 = xp[0];
         int total_elements = 1;
         for (int i = 0; i < rank; i++) total_elements *= shape[i];
-        int coord[8] = {0};
+        int coord[32] = {0};
         int offsetX = 0, offsetRes = 0;
         for (int el = 0; el < total_elements; el++) {
             double xv = x[offsetX];
@@ -8448,7 +8448,7 @@ void s_interp_double(const double *x, const int *stridesX,
 
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetX = 0, offsetRes = 0;
 
     for (int el = 0; el < total_elements; el++) {
@@ -8552,7 +8552,7 @@ void s_interp_float(const float *x, const int *stridesX,
                     float *res, const int *stridesRes,
                     const int *shape, int rank,
                     const float *left, const float *right) {
-    if (x == nullptr || xp == nullptr || fp == nullptr || res == nullptr || rank <= 0 || rank > 8 || xp_size <= 0) {
+    if (x == nullptr || xp == nullptr || fp == nullptr || res == nullptr || rank <= 0 || rank > 32 || xp_size <= 0) {
         return;
     }
 
@@ -8561,7 +8561,7 @@ void s_interp_float(const float *x, const int *stridesX,
         float xp0 = xp[0];
         int total_elements = 1;
         for (int i = 0; i < rank; i++) total_elements *= shape[i];
-        int coord[8] = {0};
+        int coord[32] = {0};
         int offsetX = 0, offsetRes = 0;
         for (int el = 0; el < total_elements; el++) {
             float xv = x[offsetX];
@@ -8592,7 +8592,7 @@ void s_interp_float(const float *x, const int *stridesX,
 
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetX = 0, offsetRes = 0;
 
     for (int el = 0; el < total_elements; el++) {
@@ -8682,7 +8682,7 @@ void s_compare_impl(const T1 *a, const int *stridesA,
                     const T2 *b, const int *stridesB,
                     uint8_t *res, const int *stridesRes,
                     const int *shape, int rank) {
-    if (a == nullptr || b == nullptr || res == nullptr || rank < 0 || rank > 8) return;
+    if (a == nullptr || b == nullptr || res == nullptr || rank < 0 || rank > 32) return;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     int is_a_contig = 1, is_b_contig = 1, is_res_contig = 1;
@@ -8720,7 +8720,7 @@ void s_compare_impl(const T1 *a, const int *stridesA,
             return;
         }
     }
-    int coord[8] = {0};
+    int coord[32] = {0};
     int offsetA = 0, offsetB = 0, offsetRes = 0;
     for (int el = 0; el < total_elements; el++) {
         res[offsetRes] = (Op::apply(a[offsetA], b[offsetB])) ? 1 : 0;
@@ -8833,11 +8833,11 @@ extern "C" void ndarray_compare(
 int NAME(const TYPE *a, const int *stridesA, \
          const TYPE *b, const int *stridesB, \
          const int *shape, int rank, const uint8_t *mask) { \
-    if (a == nullptr || b == nullptr || rank < 0 || rank > 8) return 0; \
+    if (a == nullptr || b == nullptr || rank < 0 || rank > 32) return 0; \
     if (rank == 0) return EXPR(a[0], b[0]) ? 1 : 0; \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
-    int coord[8] = {0}; \
+    int coord[32] = {0}; \
     int offsetA = 0, offsetB = 0; \
     for (int el = 0; el < total_elements; el++) { \
         if (!(EXPR(a[offsetA], b[offsetB]))) return 0; \
@@ -8924,7 +8924,7 @@ void s_##NAME##_##TYPE(const TYPE *src, const int *stridesSrc, \
     if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return; \
     int size_axis = shape[axis]; \
     if (size_axis <= 0) return; \
-    int coord[8] = {0}; \
+    int coord[32] = {0}; \
     int outer_size = 1; \
     for (int d = 0; d < rank; d++) { \
         if (d != axis) outer_size *= shape[d]; \
@@ -9011,7 +9011,7 @@ void s_##NAME##_##TYPE(const TYPE *src, const int *stridesSrc, \
     if (src == nullptr || dest == nullptr || shape == nullptr || rank <= 0 || axis < 0 || axis >= rank) return; \
     int size_axis = shape[axis]; \
     if (size_axis <= 0) return; \
-    int coord[8] = {0}; \
+    int coord[32] = {0}; \
     int outer_size = 1; \
     for (int d = 0; d < rank; d++) { \
         if (d != axis) outer_size *= shape[d]; \
@@ -9070,7 +9070,7 @@ int s_find_index_##NAME(const TYPE *a, const int *stridesA, \
                         int op, TYPE target, \
                         const int *startCoords, const int *directions, \
                         int *matchCoords) { \
-    if (a == nullptr || rank < 0 || rank > 8) return 0; \
+    if (a == nullptr || rank < 0 || rank > 32) return 0; \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
     if (total_elements <= 0) return 0; \
@@ -9088,7 +9088,7 @@ int s_find_index_##NAME(const TYPE *a, const int *stridesA, \
         } \
         return match ? 1 : 0; \
     } \
-    int coord[8]; \
+    int coord[32] = {0}; \
     for (int i = 0; i < rank; i++) { \
         if (startCoords[i] < 0 || startCoords[i] >= shape[i]) return 0; \
         coord[i] = startCoords[i]; \
@@ -9163,7 +9163,7 @@ int s_find_index_complex128(const cpx_t *a, const int *stridesA,
                              int op, cpx_t target,
                              const int *startCoords, const int *directions,
                              int *matchCoords) {
-    if (a == nullptr || rank < 0 || rank > 8) return 0;
+    if (a == nullptr || rank < 0 || rank > 32) return 0;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (total_elements <= 0) return 0;
@@ -9178,7 +9178,7 @@ int s_find_index_complex128(const cpx_t *a, const int *stridesA,
         }
         return match ? 1 : 0;
     }
-    int coord[8];
+    int coord[32] = {0};
     for (int i = 0; i < rank; i++) {
         if (startCoords[i] < 0 || startCoords[i] >= shape[i]) return 0;
         coord[i] = startCoords[i];
@@ -9242,7 +9242,7 @@ int s_find_index_complex64(const cpx_f_t *a, const int *stridesA,
                             int op, cpx_f_t target,
                             const int *startCoords, const int *directions,
                             int *matchCoords) {
-    if (a == nullptr || rank < 0 || rank > 8) return 0;
+    if (a == nullptr || rank < 0 || rank > 32) return 0;
     int total_elements = 1;
     for (int i = 0; i < rank; i++) total_elements *= shape[i];
     if (total_elements <= 0) return 0;
@@ -9257,7 +9257,7 @@ int s_find_index_complex64(const cpx_f_t *a, const int *stridesA,
         }
         return match ? 1 : 0;
     }
-    int coord[8];
+    int coord[32] = {0};
     for (int i = 0; i < rank; i++) {
         if (startCoords[i] < 0 || startCoords[i] >= shape[i]) return 0;
         coord[i] = startCoords[i];
@@ -9672,11 +9672,11 @@ void name(const type *a, const int *stridesA, \
           const int *shape, int rank, \
           type *aCopy, int *ipiv, \
           int (*lapack_getrf)(int, int, int, void *, int, int *)) { \
-    if (a == nullptr || sign == nullptr || logdet == nullptr || aCopy == nullptr || ipiv == nullptr || lapack_getrf == nullptr || rank < 2 || rank > 8) return; \
+    if (a == nullptr || sign == nullptr || logdet == nullptr || aCopy == nullptr || ipiv == nullptr || lapack_getrf == nullptr || rank < 2 || rank > 32) return; \
     int n = shape[rank - 1]; \
     int stack_elements = 1; \
     for (int i = 0; i < rank - 2; i++) stack_elements *= shape[i]; \
-    int coord[8] = {0}; \
+    int coord[32] = {0}; \
     int offsetA = 0, offsetSign = 0, offsetLogdet = 0; \
     for (int el = 0; el < stack_elements; el++) { \
         for (int i = 0; i < n; i++) { \
@@ -9737,11 +9737,11 @@ void name(const cpx_type *a, const int *stridesA, \
           const int *shape, int rank, \
           cpx_type *aCopy, int *ipiv, \
           int (*lapack_getrf)(int, int, int, void *, int, int *)) { \
-    if (a == nullptr || sign == nullptr || logdet == nullptr || aCopy == nullptr || ipiv == nullptr || lapack_getrf == nullptr || rank < 2 || rank > 8) return; \
+    if (a == nullptr || sign == nullptr || logdet == nullptr || aCopy == nullptr || ipiv == nullptr || lapack_getrf == nullptr || rank < 2 || rank > 32) return; \
     int n = shape[rank - 1]; \
     int stack_elements = 1; \
     for (int i = 0; i < rank - 2; i++) stack_elements *= shape[i]; \
-    int coord[8] = {0}; \
+    int coord[32] = {0}; \
     int offsetA = 0, offsetSign = 0, offsetLogdet = 0; \
     for (int el = 0; el < stack_elements; el++) { \
         for (int i = 0; i < n; i++) { \

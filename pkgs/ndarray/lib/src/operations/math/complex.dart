@@ -70,7 +70,7 @@ NDArray<R> real<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     return result;
   } else {
     // This path is taken if out != null and a is not complex.
-    a.copy(out: result);
+    a.copy(out: result as dynamic);
     return result;
   }
 }

@@ -2152,8 +2152,8 @@ NDArray<int> _argminmaxFFI<T>(
   final targetShape = normAxis == null
       ? (keepdims ? List<int>.filled(rank, 1) : <int>[])
       : (keepdims
-          ? (List<int>.from(a.shape)..[normAxis] = 1)
-          : (List<int>.from(a.shape)..removeAt(normAxis)));
+            ? (List<int>.from(a.shape)..[normAxis] = 1)
+            : (List<int>.from(a.shape)..removeAt(normAxis)));
 
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != DType.int32) {

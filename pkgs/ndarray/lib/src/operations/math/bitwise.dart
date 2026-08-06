@@ -160,7 +160,9 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           default:
-            throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+            throw UnsupportedError(
+              'Unsupported integer DType: ${result.dtype}',
+            );
         }
       } finally {
         ScratchArena.reset(marker);
@@ -332,7 +334,9 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           default:
-            throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+            throw UnsupportedError(
+              'Unsupported integer DType: ${result.dtype}',
+            );
         }
       } finally {
         ScratchArena.reset(marker);
@@ -504,7 +508,9 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           default:
-            throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+            throw UnsupportedError(
+              'Unsupported integer DType: ${result.dtype}',
+            );
         }
       } finally {
         ScratchArena.reset(marker);
@@ -676,7 +682,9 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           default:
-            throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+            throw UnsupportedError(
+              'Unsupported integer DType: ${result.dtype}',
+            );
         }
       } finally {
         ScratchArena.reset(marker);
@@ -848,7 +856,9 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
               maskHolder.pointer,
             );
           default:
-            throw UnsupportedError('Unsupported integer DType: ${result.dtype}');
+            throw UnsupportedError(
+              'Unsupported integer DType: ${result.dtype}',
+            );
         }
       } finally {
         ScratchArena.reset(marker);
@@ -1049,8 +1059,12 @@ _prepareBinaryBitwise<Ta, Tb, Tr>(
   final DType targetDType = resolveDType(a.dtype, b.dtype);
 
   // Upcast inputs if they do not match the resolved target integer type
-  final NDArray aCast = a.dtype != targetDType ? castNDArray(a, targetDType) : a;
-  final NDArray bCast = b.dtype != targetDType ? castNDArray(b, targetDType) : b;
+  final NDArray aCast = a.dtype != targetDType
+      ? castNDArray(a, targetDType)
+      : a;
+  final NDArray bCast = b.dtype != targetDType
+      ? castNDArray(b, targetDType)
+      : b;
 
   final broadcastResult = broadcast(aCast, bCast);
   final commonShape = broadcastResult.shape;

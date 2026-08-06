@@ -121,7 +121,9 @@ NDArray<double> interp(
       final defaultLeft = left ?? fpList[0];
       final defaultRight = right ?? fpList[xpSize - 1];
 
-      final tempRes = res.isContiguous ? res : NDArray<double>.create(x.shape, DType.float64);
+      final tempRes = res.isContiguous
+          ? res
+          : NDArray<double>.create(x.shape, DType.float64);
       for (var i = 0; i < size; i++) {
         final xv = xList[i];
         if (xv < xpMin) {

@@ -882,11 +882,11 @@ NDArray<double> nanvar<T extends num>(
       sqDiff.dispose();
     }
 
-    final res = nanmean<double>(
+    final res = nanmean<Object>(
       sqDiffDouble,
       axis: axis,
       keepdims: keepdims,
-      out: out,
+      out: out as NDArray<Object>?,
     );
     sqDiffDouble.dispose();
     if (out != null) {
@@ -1989,11 +1989,11 @@ NDArray<double> variance<T extends num>(
       sqDiff.dispose();
     }
 
-    final res = mean<double, double>(
-      sqDiffDouble,
+    final res = mean<Object, Object>(
+      sqDiffDouble as NDArray<Object>,
       axis: axis,
       keepdims: keepdims,
-      out: out,
+      out: out as NDArray<Object>?,
     );
     sqDiffDouble.dispose();
     if (out != null) {

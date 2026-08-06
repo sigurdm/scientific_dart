@@ -60,30 +60,6 @@ void _loadSignalToKissInput<T>(
         pin[i].r = inPtr[i].toDouble();
         pin[i].i = 0.0;
       }
-    case DType.int8:
-      final inPtr = inputA.pointer.cast<ffi.Int8>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i].toDouble();
-        pin[i].i = 0.0;
-      }
-    case DType.uint64:
-      final inPtr = inputA.pointer.cast<ffi.Uint64>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i].toDouble();
-        pin[i].i = 0.0;
-      }
-    case DType.uint32:
-      final inPtr = inputA.pointer.cast<ffi.Uint32>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i].toDouble();
-        pin[i].i = 0.0;
-      }
-    case DType.uint16:
-      final inPtr = inputA.pointer.cast<ffi.Uint16>() + srcStart;
-      for (var i = 0; i < copyLen; i++) {
-        pin[i].r = inPtr[i].toDouble();
-        pin[i].i = 0.0;
-      }
     case DType.uint8:
       final inPtr = inputA.pointer.cast<ffi.Uint8>() + srcStart;
       for (var i = 0; i < copyLen; i++) {

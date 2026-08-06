@@ -842,7 +842,7 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     if (out != null) {
       if (!canUseOutDirectly) {
         if (out.isContiguous && result.isContiguous) {
-          final byteCount = result.elementCount * targetDType.byteWidth;
+          final byteCount = result.size * targetDType.byteWidth;
           ffi.Pointer.fromAddress(out.pointer.address)
               .cast<ffi.Uint8>()
               .asTypedList(byteCount)
