@@ -129,37 +129,39 @@ NDArray nan_to_num(
 
   final cleanList = <dynamic>[];
 
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    final complexList = aList.cast<Complex>();
-    for (var i = 0; i < size; i++) {
-      var r = complexList[i].real;
-      var img = complexList[i].imag;
+  switch (a.dtype) {
+    case DType.complex128:
+    case DType.complex64:
+      final complexList = aList.cast<Complex>();
+      for (var i = 0; i < size; i++) {
+        var r = complexList[i].real;
+        var img = complexList[i].imag;
 
-      if (r.isNaN) r = nan;
-      if (r == double.infinity) r = targetPosInf;
-      if (r == double.negativeInfinity) r = targetNegInf;
+        if (r.isNaN) r = nan;
+        if (r == double.infinity) r = targetPosInf;
+        if (r == double.negativeInfinity) r = targetNegInf;
 
-      if (img.isNaN) img = nan;
-      if (img == double.infinity) img = targetPosInf;
-      if (img == double.negativeInfinity) img = targetNegInf;
+        if (img.isNaN) img = nan;
+        if (img == double.infinity) img = targetPosInf;
+        if (img == double.negativeInfinity) img = targetNegInf;
 
-      cleanList.add(Complex(r, img));
-    }
-  } else {
-    final numList = aList.cast<num>();
-    for (var i = 0; i < size; i++) {
-      var val = numList[i].toDouble();
-
-      if (val.isNaN) {
-        val = nan;
-      } else if (val == double.infinity) {
-        val = targetPosInf;
-      } else if (val == double.negativeInfinity) {
-        val = targetNegInf;
+        cleanList.add(Complex(r, img));
       }
+    case _:
+      final numList = aList.cast<num>();
+      for (var i = 0; i < size; i++) {
+        var val = numList[i].toDouble();
 
-      cleanList.add(val);
-    }
+        if (val.isNaN) {
+          val = nan;
+        } else if (val == double.infinity) {
+          val = targetPosInf;
+        } else if (val == double.negativeInfinity) {
+          val = targetNegInf;
+        }
+
+        cleanList.add(val);
+      }
   }
 
   // View-Safe Strided Odometer Write Back!
@@ -186,7 +188,24 @@ NDArray nan_to_num(
   return resultCopy;
 }
 
-/// Computes the broadcasted shape list of two shapes.
+/// Computes the common broadcasted shape resulting from broadcasting shapes [s1] and [s2].
+///
+/// Follows standard NumPy broadcasting rules: shapes are aligned from the trailing
+/// dimension backwards. For each dimension, the dimensions are compatible if they are
+/// equal, or if one of them is 1.
+///
+/// **Preconditions:**
+/// - It is an error if [s1] and [s2] have incompatible dimensions for broadcasting.
+///
+/// **Throws:**
+/// - [ArgumentError] if [s1] and [s2] cannot be broadcast together.
+///
+/// **Example:**
+/// ```dart
+/// final common = broadcastShapes([2, 1, 4], [3, 4]); // [2, 3, 4]
+/// ```
+///
+/// Reference: [NumPy broadcast_shapes](https://numpy.org/doc/stable/reference/generated/numpy.broadcast_shapes.html)
 List<int> broadcastShapes(List<int> s1, List<int> s2) {
   final len = math.max(s1.length, s2.length);
   final common = List<int>.filled(len, 1);

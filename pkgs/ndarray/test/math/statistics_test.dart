@@ -2097,7 +2097,7 @@ void main() {
           DType.int32,
         );
 
-        final (u, index: idx, inverse: inv, counts: cnt) = unique(
+        final (values: u, index: idx, inverse: inv, counts: cnt) = unique(
           a,
           returnIndex: true,
           returnInverse: true,
@@ -2131,7 +2131,7 @@ void main() {
           DType.float64,
         );
 
-        final (u, index: idx, inverse: inv, counts: cnt) = unique(
+        final (values: u, index: idx, inverse: inv, counts: cnt) = unique(
           a,
           returnIndex: true,
           returnInverse: true,
@@ -2171,7 +2171,7 @@ void main() {
 
       test('empty 1D array with optional returns', () {
         final a = NDArray<int>.create([0], DType.int32);
-        final (u, index: idx, inverse: inv, counts: cnt) = unique(
+        final (values: u, index: idx, inverse: inv, counts: cnt) = unique(
           a,
           returnIndex: true,
           returnInverse: true,
@@ -3478,12 +3478,12 @@ void main() {
             DType.float64,
           );
 
-          final outFlat = NDArray<double>.zeros([], DType.float64);
+          final outFlat = NDArray<Float64>.zeros([], DType.float64);
           final resFlat = variance(a, out: outFlat);
           expect(identical(resFlat, outFlat), true);
           expect(outFlat.scalar, 1.25);
 
-          final outAxis = NDArray<double>.zeros([2], DType.float64);
+          final outAxis = NDArray<Float64>.zeros([2], DType.float64);
           final resAxis = variance(a, axis: 1, out: outAxis);
           expect(identical(resAxis, outAxis), true);
           expect(outAxis.toList(), [0.25, 0.25]);
@@ -3504,12 +3504,12 @@ void main() {
             DType.float64,
           );
 
-          final outFlat = NDArray<double>.zeros([], DType.float64);
+          final outFlat = NDArray<Float64>.zeros([], DType.float64);
           final resFlat = std(a, out: outFlat);
           expect(identical(resFlat, outFlat), true);
           expect(outFlat.scalar, math.sqrt(1.25));
 
-          final outAxis = NDArray<double>.zeros([2], DType.float64);
+          final outAxis = NDArray<Float64>.zeros([2], DType.float64);
           final resAxis = std(a, axis: 1, out: outAxis);
           expect(identical(resAxis, outAxis), true);
           expect(outAxis.toList(), [0.5, 0.5]);
@@ -3524,7 +3524,7 @@ void main() {
             [2],
             DType.float64,
           );
-          final out = NDArray<double>.zeros([], DType.float64);
+          final out = NDArray<Float64>.zeros([], DType.float64);
           out.dispose();
 
           expect(() => mean(a, out: out), throwsStateError);
@@ -3542,7 +3542,7 @@ void main() {
             DType.float64,
           );
 
-          final outShape = NDArray<double>.zeros([2], DType.float64);
+          final outShape = NDArray<Float64>.zeros([2], DType.float64);
           expect(() => mean(a, out: outShape), throwsArgumentError);
           expect(() => variance(a, out: outShape), throwsArgumentError);
           expect(() => std(a, out: outShape), throwsArgumentError);
@@ -3593,7 +3593,7 @@ void main() {
             DType.float64,
           );
 
-          final parent = NDArray<double>.zeros([2, 2], DType.float64);
+          final parent = NDArray<Float64>.zeros([2, 2], DType.float64);
           final nonContiguousOut = parent.slice([Slice.all(), Index(0)]);
           expect(nonContiguousOut.isContiguous, false);
 
@@ -3602,13 +3602,13 @@ void main() {
           expect(nonContiguousOut.toList(), [1.5, 3.5]);
           expect(parent.toList(), [1.5, 0.0, 3.5, 0.0]);
 
-          parent.fill(0.0);
+          parent.fill(Float64(0.0));
           final resVar = variance(a, axis: 1, out: nonContiguousOut);
           expect(identical(resVar, nonContiguousOut), true);
           expect(nonContiguousOut.toList(), [0.25, 0.25]);
           expect(parent.toList(), [0.25, 0.0, 0.25, 0.0]);
 
-          parent.fill(0.0);
+          parent.fill(Float64(0.0));
           final resStd = std(a, axis: 1, out: nonContiguousOut);
           expect(identical(resStd, nonContiguousOut), true);
           expect(nonContiguousOut.toList(), [0.5, 0.5]);
@@ -4500,7 +4500,7 @@ void main() {
   });
 
   group("Precondition & State Validations", () {
-    NDArray<double> getDisposed() {
+    NDArray<Float64> getDisposed() {
       final a = NDArray<Float64>.fromList(
         ([1.0, 2.0]).map((e) => Float64((e as num).toDouble())).toList(),
         [2],
@@ -4566,7 +4566,7 @@ void main() {
           [2],
           DType.float64,
         );
-        final invalidOut = NDArray<double>.zeros([2], DType.float64);
+        final invalidOut = NDArray<Float64>.zeros([2], DType.float64);
 
         expect(() => mean(a, out: invalidOut), throwsArgumentError);
         expect(() => variance(a, out: invalidOut), throwsArgumentError);

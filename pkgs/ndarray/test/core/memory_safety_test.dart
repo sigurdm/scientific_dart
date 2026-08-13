@@ -653,12 +653,12 @@ void main() {
     });
 
     group('Code Safety Preconditions Tests', () {
-      test('spacers numSamples strictly positive check', () {
+      test('spacers numSamples non-negative check', () {
         NDArray.scope(() {
-          // logspace and geomspace must throw ArgumentError for non-positive numSamples
-          expect(() => logspace(0.0, 3.0, 0), throwsArgumentError);
+          // logspace and geomspace return empty for numSamples == 0 and throw for negative
+          expect(logspace(0.0, 3.0, 0).size, equals(0));
           expect(() => logspace(0.0, 3.0, -5), throwsArgumentError);
-          expect(() => geomspace(1.0, 100.0, 0), throwsArgumentError);
+          expect(geomspace(1.0, 100.0, 0).size, equals(0));
           expect(() => geomspace(1.0, 100.0, -3), throwsArgumentError);
         });
       });
@@ -703,9 +703,13 @@ void main() {
 
     group('Allocation Tracking Integration Tests', () {
       late File tempFile;
+      late String workingDir;
 
       setUp(() {
-        tempFile = File('test/core/temp_tracker_helper.dart');
+        final inRoot = Directory('pkgs/ndarray').existsSync();
+        workingDir = inRoot ? 'pkgs/ndarray' : '.';
+        final dirPath = inRoot ? 'pkgs/ndarray/test/core' : 'test/core';
+        tempFile = File('$dirPath/temp_tracker_helper.dart');
         tempFile.writeAsStringSync('''
 import 'package:ndarray/ndarray.dart';
 
@@ -748,8 +752,8 @@ void main() {
 
       test('Verifies tracking is disabled by default', () async {
         final result = await Process.run(Platform.resolvedExecutable, [
-          tempFile.path,
-        ]);
+          tempFile.absolute.path,
+        ], workingDirectory: workingDir);
 
         expect(result.exitCode, 0);
         expect(result.stdout, contains('trackAllocations: false'));
@@ -763,8 +767,8 @@ void main() {
       test('Verifies tracking works when enabled via define', () async {
         final result = await Process.run(Platform.resolvedExecutable, [
           '--define=TRACK_NDARRAY_ALLOCATIONS=true',
-          tempFile.path,
-        ]);
+          tempFile.absolute.path,
+        ], workingDirectory: workingDir);
 
         expect(result.exitCode, 0);
         expect(result.stdout, contains('trackAllocations: true'));

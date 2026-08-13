@@ -13,8 +13,8 @@ import 'spacers.dart';
 /// - If [numPoints] is specified, it must be strictly positive ($\ge 1$).
 ///
 /// **Throws:**
-/// - [ArgumentError] if [step] is 0.
-/// - [ArgumentError] if [numPoints] is negative or 0.
+/// - It is an error if [step] is 0.
+/// - It is an error if [numPoints] is negative or 0.
 ///
 /// **Example:**
 /// {@example /example/shaping_example.dart lang=dart}
@@ -100,8 +100,8 @@ NDArray<double> _generate1DCoordinate(GridRange range, DType<double> dtype) {
 /// - If [strides] is provided, its length must match the length of [shape].
 ///
 /// **Throws:**
-/// - [StateError] if [x] has been disposed.
-/// - [ArgumentError] if [shape] and [strides] lengths do not match.
+/// - It is an error if [x] has been disposed.
+/// - It is an error if [shape] and [strides] lengths do not match.
 ///
 /// **Memory Ownership & Lifetime View Warning:**
 /// > [!WARNING]
@@ -149,7 +149,7 @@ NDArray<T> asStrided<T>(NDArray<T> x, {List<int>? shape, List<int>? strides}) {
 /// - [ranges] must not be empty.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [ranges] is empty.
+/// - It is an error if [ranges] is empty.
 ///
 /// **Example:**
 /// {@example /example/shaping_example.dart lang=dart}
@@ -196,7 +196,7 @@ List<NDArray<double>> ogrid(
 /// - [ranges] must not be empty.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [ranges] is empty.
+/// - It is an error if [ranges] is empty.
 ///
 /// **Example:**
 /// {@example /example/shaping_example.dart lang=dart}

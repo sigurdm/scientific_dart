@@ -99,8 +99,8 @@ enum DType<T> {
 /// **Example Usage:**
 /// ```dart
 /// // Create a 2x3 array filled with ones
-/// final a = NDArray<double>.ones([2, 3], DType.float64);
-/// print(a.data); // [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+/// final a = NDArray<Float64>.ones([2, 3], DType.float64);
+/// print(a.toList()); // [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
 ///
 /// // Explicitly free memory when done
 /// a.dispose();
@@ -234,7 +234,7 @@ final class NDArray<T> implements ffi.Finalizable {
 
   /// Checks that all tracked [NDArray]s have been disposed.
   ///
-  /// Throws a [StateError] if there are undisposed arrays.
+  /// It is an error if there are undisposed arrays.
   static void checkNoLeaks() {
     if (_trackedAllocations.isNotEmpty) {
       final leaks = _trackedAllocations.toList();
@@ -449,9 +449,8 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Preconditions:**
   /// - All dimensions in [shape] must be strictly non-negative ($\ge 0$).
   ///
-  /// **Throws:**
-  /// - [ArgumentError] if any dimension in [shape] is negative.
-  /// - [UnimplementedError] if the provided [dtype] is unsupported.
+  /// - It is an error if any dimension in [shape] is negative.
+  /// - It is an error if the provided [dtype] is unsupported.
   ///
   /// **Performance considerations:**
   /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$ where $N$ is the total
@@ -460,7 +459,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray<double>.create([2, 2], DType.float64, zeroInit: true);
+  /// final a = NDArray<Float64>.create([2, 2], DType.float64, zeroInit: true);
   /// print(a.toList()); // [0.0, 0.0, 0.0, 0.0]
   /// ```
   ///
@@ -542,8 +541,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// The [list] is flattened and copied into the newly allocated array memory.
   /// The total size of the [shape] must match the number of elements in [list].
   ///
-  /// **Throws:**
-  /// - [ArgumentError] if the total size of [shape] does not match the length of [list].
+  /// It is an error if the total size of [shape] does not match the length of [list].
   ///
   /// **Example:**
   /// ```dart
@@ -619,9 +617,8 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Preconditions:**
   /// - All dimensions in [shape] must be strictly non-negative ($\ge 0$).
   ///
-  /// **Throws:**
-  /// - [ArgumentError] if any dimension in [shape] is negative.
-  /// - [UnimplementedError] if the provided [dtype] is unsupported.
+  /// - It is an error if any dimension in [shape] is negative.
+  /// - It is an error if the provided [dtype] is unsupported.
   ///
   /// **Performance considerations:**
   /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$ where $N$ is the total
@@ -630,7 +627,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray<double>.zeros([2, 2], DType.float64);
+  /// final a = NDArray<Float64>.zeros([2, 2], DType.float64);
   /// print(a.toList()); // [0.0, 0.0, 0.0, 0.0]
   /// ```
   ///
@@ -644,8 +641,8 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray<double>.ones([2, 2], DType.float64);
-  /// print(a.data); // [1.0, 1.0, 1.0, 1.0]
+  /// final a = NDArray<Float64>.ones([2, 2], DType.float64);
+  /// print(a.toList()); // [[1.0, 1.0], [1.0, 1.0]]
   /// ```
   factory NDArray.ones(List<int> shape, DType<T> dtype) {
     final arr = NDArray<T>.create(shape, dtype);
@@ -665,7 +662,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray<double>.full([2, 2], 0.5, dtype: DType.float64);
+  /// final a = NDArray<Float64>.full([2, 2], 0.5, dtype: DType.float64);
   /// print(a.toList()); // [0.5, 0.5, 0.5, 0.5]
   /// ```
   ///
@@ -681,8 +678,8 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray<double>.arange(0.0, 5.0, step: 1.0, dtype: DType.float64);
-  /// print(a.data); // [0.0, 1.0, 2.0, 3.0, 4.0]
+  /// final a = NDArray<Float64>.arange(0.0, 5.0, step: 1.0, dtype: DType.float64);
+  /// print(a.toList()); // [0.0, 1.0, 2.0, 3.0, 4.0]
   /// ```
   factory NDArray.arange(
     double start,
@@ -718,8 +715,8 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray<double>.eye(3, DType.float64);
-  /// print(a.data); // [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+  /// final a = NDArray<Float64>.eye(3, DType.float64);
+  /// print(a.toList()); // [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
   /// ```
   ///
   /// **Edge cases:**
@@ -869,8 +866,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///   [NativeFinalizer] to automatically deallocate the backing C pointer when this array is garbage collected,
   ///   or when [dispose] is called.
   ///
-  /// **Throws:**
-  /// - [ArgumentError] if any dimension in [shape] is negative.
+  /// It is an error if any dimension in [shape] is negative.
   ///
   /// **Performance Considerations:**
   /// - This is an $O(1)$ operation that performs zero copies, constructing a direct list view over
@@ -989,9 +985,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Preconditions:**
   /// - The total size (product of dimensions) of the [newShape] must exactly match the current size.
   ///
-  /// **Throws:**
-  /// - [StateError] if the array has been disposed.
-  /// - [ArgumentError] if the total size of [newShape] does not match the original size.
+  /// It is an error if the array has been disposed, or if the total size of [newShape] does not match the original size.
   ///
   /// **Performance considerations:**
   /// - If the array [isContiguous], this is a $O(1)$ operation, returning a zero-allocation view sharing backing memory.
@@ -1043,7 +1037,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray<double>.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+  /// final a = NDArray<Float64>.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
   /// final flat = a.flatten();
   /// print(flat.shape); // [4]
   /// print(flat.toList()); // [1.0, 2.0, 3.0, 4.0]
@@ -1071,15 +1065,14 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - For C-contiguous layouts, copies elements directly using memmove/memcpy.
   /// - For strided non-contiguous views, uses native C intrinsics to copy into the contiguous destination array.
   ///
-  /// **Throws:**
-  /// - [StateError] if the array is already disposed.
+  /// It is an error if the array is already disposed.
   ///
   /// **Example:**
   /// ```dart
   /// final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
   /// final b = a.copy();
-  /// b.data[0] = 99;
-  /// print(a.data[0]); // 1 (decoupled memory!)
+  /// b.setCell([0, 0], 99);
+  /// print(a.getCell([0, 0])); // 1 (decoupled memory!)
   /// ```
   NDArray<T> copy({NDArray<T>? out}) {
     if (isDisposed) {
@@ -1235,8 +1228,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Preconditions:**
   /// - The array must not be disposed.
   ///
-  /// **Throws:**
-  /// - [StateError] if the array has been disposed.
+  /// It is an error if the array has been disposed.
   ///
   /// **View vs. Copy Behavior:**
   /// - **Returns a VIEW** when the array is **C-contiguous** (`isContiguous` is `true`).
@@ -1282,7 +1274,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Example:**
   /// ```dart
-  /// final a = NDArray<double>.create([100], DType.float64);
+  /// final a = NDArray<Float64>.create([100], DType.float64);
   /// a.fill(42.0);
   /// ```
   void fill(T value) {
@@ -1358,11 +1350,8 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - Every axis value must be a valid dimension index (within `[-rank, rank - 1]`).
   /// - [axes] must contain unique, non-duplicate indices.
   ///
-  /// **Throws:**
-  /// - [StateError] if the array has been disposed.
-  /// - [ArgumentError] if [axes] length does not match the rank of the array.
-  /// - [RangeError] if any axis index is out of bounds.
-  /// - [ArgumentError] if [axes] contains duplicate indices.
+  /// It is an error if the array has been disposed, if [axes] length does not match the rank of the array,
+  /// if any axis index is out of bounds, or if [axes] contains duplicate indices.
   ///
   /// **Performance considerations:**
   /// - This is a zero-allocation, copy-free view manipulation ($O(1)$ complexity). Strides are
@@ -1447,8 +1436,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Preconditions:**
   /// - The array must be 0-dimensional (empty [shape]).
   ///
-  /// **Throws:**
-  /// - [StateError] if the array has dimensions.
+  /// It is an error if the array has dimensions.
   ///
   /// **Example:**
   /// ```dart
@@ -1472,9 +1460,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Preconditions:**
   /// - [coords] length must match the rank of the array.
   ///
-  /// **Throws:**
-  /// - [ArgumentError] if `coords.length` doesn't match array rank.
-  /// - [RangeError] if any coordinate is out of bounds for its dimension.
+  /// It is an error if coords.length does not match the array rank, or if any coordinate is out of bounds for its dimension.
   T getCell(List<int> coords) {
     if (coords.length != shape.length) {
       throw ArgumentError(
@@ -1505,9 +1491,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Preconditions:**
   /// - [coords] length must match the rank of the array.
   ///
-  /// **Throws:**
-  /// - [ArgumentError] if `coords.length` doesn't match array rank.
-  /// - [RangeError] if any coordinate is out of bounds for its dimension.
+  /// It is an error if coords.length does not match the array rank, or if any coordinate is out of bounds for its dimension.
   ///
   /// **Example:**
   /// ```dart
@@ -1545,9 +1529,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Preconditions:**
   /// - [mask] must share identical dimensions ([shape]) with this array.
   ///
-  /// **Throws:**
-  /// - [ArgumentError] if [mask] shape does not match this array's shape.
-  /// - [ArgumentError] if [values] has fewer elements than the number of `true` targets in [mask].
+  /// It is an error if [mask] shape does not match this array's shape, or if [values] has fewer elements than the number of true targets in [mask].
   void setByMask(NDArray<bool> mask, NDArray<T> values) {
     if (mask.shape.length != shape.length) {
       throw ArgumentError(
@@ -1947,9 +1929,8 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - The array must not be disposed.
   /// - [spec] must be a supported indexing / slicing object type or list of selector objects.
   ///
-  /// **Throws:**
-  /// - [StateError] if this array has been explicitly disposed.
-  /// - [ArgumentError] if [spec] is an unsupported type or contains dimension mismatch.
+  /// - It is an error if this array has been explicitly disposed.
+  /// - It is an error if [spec] is an unsupported type or contains dimension mismatch.
   dynamic operator [](dynamic spec) {
     if (isDisposed) {
       throw StateError(
@@ -2052,9 +2033,8 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - [spec] must be a supported selection specification object.
   /// - [value] must match elements or broadcast to the selected shape.
   ///
-  /// **Throws:**
-  /// - [StateError] if this array has been explicitly disposed.
-  /// - [ArgumentError] if [spec] or [value] is unsupported or has dimension mismatch.
+  /// - It is an error if this array has been explicitly disposed.
+  /// - It is an error if [spec] or [value] is unsupported or has dimension mismatch.
   void operator []=(dynamic spec, dynamic value) {
     if (isDisposed) {
       throw StateError(
@@ -2243,7 +2223,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Element-wise floor division with full broadcasting support.
   ///
   /// **Division by Zero:**
-  /// - **Integer arrays**: Throws [UnsupportedError] if divisor contains any `0` elements.
+  /// - **Integer arrays**: It is an error if divisor contains any `0` elements.
   ///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
   /// - **Floating-point arrays**: Returns `double.nan` silently without throwing exceptions.
   NDArray operator ~/(dynamic other) {
@@ -2254,7 +2234,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Element-wise remainder with full broadcasting support.
   ///
   /// **Division by Zero:**
-  /// - **Integer divisor**: Throws [UnsupportedError] if divisor contains any `0` elements.
+  /// - **Integer divisor**: It is an error if divisor contains any `0` elements.
   ///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
   /// - **Floating-point divisor**: Returns `double.nan` silently without throwing exceptions.
   NDArray operator %(dynamic other) {
@@ -2311,9 +2291,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - The shape of [other] (or this array) must be broadcast-compatible with the other.
   /// - Both arrays must be numeric (non-complex).
   ///
-  /// **Exceptions:**
-  /// - Throws [UnsupportedError] if either array has a complex data type ([DType.complex64] or [DType.complex128]).
-  /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
+  /// It is an error if either array has a complex data type ([DType.complex64] or [DType.complex128]), or if the shapes are not broadcast-compatible.
   ///
   /// **Performance:**
   /// - Uses native C++ SIMD vectorization.
@@ -2338,9 +2316,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - The shape of [other] (or this array) must be broadcast-compatible with the other.
   /// - Both arrays must be numeric (non-complex).
   ///
-  /// **Exceptions:**
-  /// - Throws [UnsupportedError] if either array has a complex data type ([DType.complex64] or [DType.complex128]).
-  /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
+  /// It is an error if either array has a complex data type ([DType.complex64] or [DType.complex128]), or if the shapes are not broadcast-compatible.
   ///
   /// **Performance:**
   /// - Uses native C++ SIMD vectorization.
@@ -2364,9 +2340,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - The shape of [other] (or this array) must be broadcast-compatible with the other.
   /// - Both arrays must be numeric (non-complex).
   ///
-  /// **Exceptions:**
-  /// - Throws [UnsupportedError] if either array has a complex data type ([DType.complex64] or [DType.complex128]).
-  /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
+  /// It is an error if either array has a complex data type ([DType.complex64] or [DType.complex128]), or if the shapes are not broadcast-compatible.
   ///
   /// **Performance:**
   /// - Uses native C++ SIMD vectorization.
@@ -2390,9 +2364,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - The shape of [other] (or this array) must be broadcast-compatible with the other.
   /// - Both arrays must be numeric (non-complex).
   ///
-  /// **Exceptions:**
-  /// - Throws [UnsupportedError] if either array has a complex data type ([DType.complex64] or [DType.complex128]).
-  /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
+  /// It is an error if either array has a complex data type ([DType.complex64] or [DType.complex128]), or if the shapes are not broadcast-compatible.
   ///
   /// **Performance:**
   /// - Uses native C++ SIMD vectorization.
@@ -2421,8 +2393,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - The shape of [other] (or this array) must be broadcast-compatible with the other.
   /// - Supports complex types (checks real and imaginary parts).
   ///
-  /// **Exceptions:**
-  /// - Throws [ArgumentError] if the shapes are not broadcast-compatible.
+  /// It is an error if the shapes are not broadcast-compatible.
   ///
   /// **Performance:**
   /// - Uses native C++ SIMD vectorization.
@@ -2708,6 +2679,8 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// This method corresponds to NumPy's `take` function.
   ///
+  /// It is an error if [axis] is out of bounds for the array rank.
+  ///
   /// **Example:**
   /// ```dart
   /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
@@ -2727,6 +2700,8 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// The [mask] array must have elements with value true or false.
   /// Returns a 1D array containing the elements where the mask is true.
+  ///
+  /// It is an error if [mask] shape does not match the target shape.
   NDArray<T> applyMask(NDArray<bool> mask) {
     if (shape.length == 1 &&
         mask.shape.length == 1 &&
@@ -2750,103 +2725,6 @@ final class NDArray<T> implements ffi.Finalizable {
       return result;
     }
     return slice([Mask(BooleanMask(mask))]);
-  }
-
-  void _copyAdvancedRecursive(
-    NDArray<T> src,
-    NDArray<T> dest,
-    List<Selector> selectors,
-    List<int> srcIndices,
-    List<int> destIndices,
-    int srcDim,
-    int destDim,
-  ) {
-    if (srcDim == src.shape.length) {
-      dest.setCell(destIndices, src.getCell(srcIndices));
-      return;
-    }
-
-    final selector = srcDim < selectors.length
-        ? selectors[srcDim]
-        : Slice.all();
-
-    if (selector is Index) {
-      final idx = selector.value < 0
-          ? src.shape[srcDim] + selector.value
-          : selector.value;
-      srcIndices[srcDim] = idx;
-      _copyAdvancedRecursive(
-        src,
-        dest,
-        selectors,
-        srcIndices,
-        destIndices,
-        srcDim + 1,
-        destDim,
-      );
-    } else if (selector is Slice) {
-      final step = selector.step;
-      final int startIdx;
-      if (selector.start == null) {
-        startIdx = step > 0 ? 0 : src.shape[srcDim] - 1;
-      } else {
-        final s = selector.start!;
-        startIdx = s < 0 ? src.shape[srcDim] + s : s;
-      }
-
-      final int stopIdx;
-      if (selector.stop == null) {
-        stopIdx = step > 0 ? src.shape[srcDim] : -1;
-      } else {
-        final s = selector.stop!;
-        stopIdx = s < 0 ? src.shape[srcDim] + s : s;
-      }
-
-      final realStart = startIdx.clamp(0, src.shape[srcDim] - 1);
-
-      var destIdx = 0;
-      for (
-        var idx = realStart;
-        selector.step > 0 ? idx < stopIdx : idx > stopIdx;
-        idx += step
-      ) {
-        srcIndices[srcDim] = idx;
-        destIndices[destDim] = destIdx;
-        _copyAdvancedRecursive(
-          src,
-          dest,
-          selectors,
-          srcIndices,
-          destIndices,
-          srcDim + 1,
-          destDim + 1,
-        );
-        destIdx++;
-      }
-    } else if (selector is Indices) {
-      for (var i = 0; i < selector.values.length; i++) {
-        final idx = selector.values[i];
-        final realIdx = idx < 0 ? src.shape[srcDim] + idx : idx;
-        if (realIdx < 0 || realIdx >= src.shape[srcDim]) {
-          throw RangeError.index(
-            realIdx,
-            src.shape,
-            'index out of range for dimension $srcDim',
-          );
-        }
-        srcIndices[srcDim] = realIdx;
-        destIndices[destDim] = i;
-        _copyAdvancedRecursive(
-          src,
-          dest,
-          selectors,
-          srcIndices,
-          destIndices,
-          srcDim + 1,
-          destDim + 1,
-        );
-      }
-    }
   }
 
   /// Returns a flat Dart list containing a copy of the elements in this array,
@@ -2888,8 +2766,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - [axis] must be within the range `[-rank - 1, rank]`, where `rank` is the rank
   ///   (number of dimensions) of this array.
   ///
-  /// **Throws:**
-  /// - [RangeError] if [axis] is out of bounds.
+  /// It is an error if [axis] is out of bounds.
   ///
   /// **Example:**
   /// {@example /example/shape_examples.dart lang=dart}
@@ -2933,9 +2810,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - If an [axis] is specified, the target dimension(s) must have size equal to 1.
   /// - [axis] (or components of it) must be within `[-rank, rank - 1]`.
   ///
-  /// **Throws:**
-  /// - [RangeError] if any specified axis is out of range.
-  /// - [ArgumentError] if a specified axis has a size greater than 1.
+  /// It is an error if any specified axis is out of range, or if a specified axis has a size greater than 1.
   ///
   /// **Example:**
   /// {@example /example/shape_examples.dart lang=dart}
@@ -2997,8 +2872,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Preconditions:**
   /// - Both [axis1] and [axis2] must be within `[-rank, rank - 1]`.
   ///
-  /// **Throws:**
-  /// - [RangeError] if either axis is out of bounds.
+  /// It is an error if either axis is out of bounds.
   ///
   /// **Example:**
   /// {@example /example/shape_examples.dart lang=dart}
@@ -3040,9 +2914,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - All axis indices must be within `[-rank, rank - 1]`.
   /// - No duplicate axes can be specified in [source] or [destination].
   ///
-  /// **Throws:**
-  /// - [RangeError] if an axis index is out of range.
-  /// - [ArgumentError] if inputs have mismatched lengths or contain duplicates.
+  /// It is an error if an axis index is out of range, or if inputs have mismatched lengths or contain duplicates.
   ///
   /// **Example:**
   /// {@example /example/shape_examples.dart lang=dart}
@@ -3510,8 +3382,7 @@ sealed class Selector {
 /// **Preconditions:**
 /// - The [value] index must be within `[-dimSize, dimSize - 1]` where `dimSize` is the size of the targeted dimension.
 ///
-/// **Throws:**
-/// - [RangeError] during slicing if [value] is out of bounds.
+/// - It is an error if [value] is out of bounds during slicing.
 ///
 /// **Example:**
 /// ```dart
@@ -3534,8 +3405,7 @@ final class Index extends Selector {
 /// - [step] must be strictly non-zero.
 /// - [start] and [stop], if provided, represent inclusive start and exclusive stop bounds.
 ///
-/// **Throws:**
-/// - [AssertionError] if [step] is zero.
+/// - It is an error if [step] is zero.
 ///
 /// **Example:**
 /// ```dart

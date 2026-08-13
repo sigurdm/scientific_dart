@@ -53,7 +53,7 @@ NDArray<T> concatenate<T>(
     }
     for (var j = 0; j < rank; j++) {
       if (j != normAxis && arr.shape[j] != first.shape[j]) {
-        throw ArgumentError('Shapes must match except in dimension ');
+        throw ArgumentError('Shapes must match except in dimension $normAxis');
       }
     }
   }
@@ -605,8 +605,8 @@ NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
 /// ```dart
 /// final a = NDArray.fromList([1, 2], [2], DType.int32);
 /// final b = copy(a);
-/// b.data[0] = 99;
-/// print(a.data[0]); // 1 (decoupled memory!)
+/// b[0] = 99;
+/// print(a[0]); // 1 (decoupled memory!)
 /// ```
 NDArray<T> copy<T extends Object>(NDArray<T> a) {
   if (a.isDisposed) {
@@ -678,9 +678,7 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
           'Provided out buffer has incompatible shape or dtype.',
         );
       }
-      for (var i = 0; i < result.data.length; i++) {
-        result.data[i] = castValue(0, v.dtype) as T;
-      }
+      result.fill(castValue(0, v.dtype) as T);
     }
 
     int startRow;
@@ -694,14 +692,8 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
       startCol = 0;
     }
 
-    final vList = v.toList();
-    final resData = result.data;
-    final resStrides = result.strides;
-
     for (var i = 0; i < n; i++) {
-      final targetIdx =
-          (startRow + i) * resStrides[0] + (startCol + i) * resStrides[1];
-      resData[targetIdx] = vList[i];
+      result.setCell([startRow + i, startCol + i], v.getCell([i]));
     }
 
     return result;
@@ -773,19 +765,31 @@ NDArray<T> tril<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
     }
   }
 
-  final aList = a.isContiguous ? a.data : a.toList();
-  final resData = result.data;
-  final matrixSize = rows * cols;
+  final zeroVal = castValue(0, a.dtype) as T;
+  final coords = List<int>.filled(rank, 0);
 
-  for (var b = 0; b < batchCount; b++) {
-    final offset = b * matrixSize;
-    for (var r = 0; r < rows; r++) {
-      for (var c = 0; c < cols; c++) {
-        final idx = offset + r * cols + c;
-        resData[idx] = (c <= r + k) ? aList[idx] : castValue(0, a.dtype) as T;
+  void walk(int dim) {
+    if (dim == rank - 2) {
+      for (var r = 0; r < rows; r++) {
+        coords[rank - 2] = r;
+        for (var c = 0; c < cols; c++) {
+          coords[rank - 1] = c;
+          if (c <= r + k) {
+            result.setCell(coords, a.getCell(coords));
+          } else {
+            result.setCell(coords, zeroVal);
+          }
+        }
       }
+      return;
+    }
+    for (var i = 0; i < a.shape[dim]; i++) {
+      coords[dim] = i;
+      walk(dim + 1);
     }
   }
+
+  walk(0);
   return result;
 }
 
@@ -852,19 +856,31 @@ NDArray<T> triu<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
     }
   }
 
-  final aList = a.isContiguous ? a.data : a.toList();
-  final resData = result.data;
-  final matrixSize = rows * cols;
+  final zeroVal = castValue(0, a.dtype) as T;
+  final coords = List<int>.filled(rank, 0);
 
-  for (var b = 0; b < batchCount; b++) {
-    final offset = b * matrixSize;
-    for (var r = 0; r < rows; r++) {
-      for (var c = 0; c < cols; c++) {
-        final idx = offset + r * cols + c;
-        resData[idx] = (c >= r + k) ? aList[idx] : castValue(0, a.dtype) as T;
+  void walk(int dim) {
+    if (dim == rank - 2) {
+      for (var r = 0; r < rows; r++) {
+        coords[rank - 2] = r;
+        for (var c = 0; c < cols; c++) {
+          coords[rank - 1] = c;
+          if (c >= r + k) {
+            result.setCell(coords, a.getCell(coords));
+          } else {
+            result.setCell(coords, zeroVal);
+          }
+        }
       }
+      return;
+    }
+    for (var i = 0; i < a.shape[dim]; i++) {
+      coords[dim] = i;
+      walk(dim + 1);
     }
   }
+
+  walk(0);
   return result;
 }
 
@@ -907,7 +923,13 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
   if (n >= a.shape[targetAxis]) {
     final emptyShape = List<int>.from(a.shape);
     emptyShape[targetAxis] = 0;
-    return out ?? NDArray<T>.create(emptyShape, a.dtype);
+    if (out != null) {
+      if (!listEquals(out.shape, emptyShape) || out.dtype != a.dtype) {
+        throw ArgumentError('Incompatible out buffer shape or dtype for diff.');
+      }
+      return out;
+    }
+    return NDArray<T>.create(emptyShape, a.dtype);
   }
 
   if (n > 1) {
@@ -1000,18 +1022,7 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
       case DType.uint8:
       case DType.int16:
       case DType.boolean:
-        final doubleA = NDArray<double>.create(a.shape, DType.float64);
-        unaryOp<dynamic, double>(
-          doubleA.data,
-          a.data,
-          a.shape,
-          a.strides,
-          doubleA.strides,
-          0,
-          a.offsetElements,
-          doubleA.offsetElements,
-          (x) => (x as num).toDouble(),
-        );
+        final doubleA = castNDArray(a, DType.float64);
         final doubleRes = NDArray<double>.create(targetShape, DType.float64);
         final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
         final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
@@ -1026,9 +1037,9 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
           targetAxis,
         );
 
-        for (var i = 0; i < result.data.length; i++) {
-          result.data[i] = castValue(doubleRes.data[i], a.dtype) as T;
-        }
+        final castedRes = castNDArray(doubleRes, a.dtype);
+        castedRes.copy(out: result);
+        castedRes.dispose();
         doubleA.dispose();
         doubleRes.dispose();
     }

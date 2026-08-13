@@ -445,7 +445,7 @@ void main() {
     test('Uniform bins (int)', () {
       NDArray.scope(() {
         final x = NDArray.fromList([1.0, 2.0, 1.0], [3], DType.float64);
-        final (hist, binEdges) = histogram(x, bins: 2);
+        final (:hist, :binEdges) = histogram(x, bins: 2);
         expect(hist.dtype, DType.int64);
         expect(hist.toList(), [2, 1]);
         expect(binEdges.toList(), [1.0, 1.5, 2.0]);
@@ -464,7 +464,7 @@ void main() {
           [5],
           DType.float64,
         );
-        final (hist, binEdges) = histogram(x, bins: bins);
+        final (:hist, :binEdges) = histogram(x, bins: bins);
         expect(hist.toList(), [2, 1, 1, 1]);
         expect(binEdges.toList(), [0.0, 1.0, 2.0, 3.0, 4.0]);
       });
@@ -473,7 +473,7 @@ void main() {
     test('Range parameter', () {
       NDArray.scope(() {
         final x = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
-        final (hist, binEdges) = histogram(x, bins: 2, range: (1.5, 3.5));
+        final (:hist, :binEdges) = histogram(x, bins: 2, range: (1.5, 3.5));
         expect(hist.toList(), [1, 1]);
         expect(binEdges.toList(), [1.5, 2.5, 3.5]);
       });
@@ -482,7 +482,7 @@ void main() {
     test('Density normalization', () {
       NDArray.scope(() {
         final x = NDArray.fromList([1.0, 2.0, 1.0], [3], DType.float64);
-        final (hist, binEdges) = histogram(x, bins: 2, density: true);
+        final (:hist, :binEdges) = histogram(x, bins: 2, density: true);
         expect(hist.dtype, DType.float64);
         final histList = hist
             .toList()
@@ -496,7 +496,7 @@ void main() {
       NDArray.scope(() {
         final x = NDArray.fromList([1.0, 2.0, 1.0], [3], DType.float64);
         final weights = NDArray.fromList([0.5, 1.0, 2.0], [3], DType.float64);
-        final (hist, binEdges) = histogram(x, bins: 2, weights: weights);
+        final (:hist, :binEdges) = histogram(x, bins: 2, weights: weights);
         expect(hist.dtype, DType.float64);
         expect(hist.toList(), [2.5, 1.0]);
       });
@@ -505,7 +505,7 @@ void main() {
     test('Empty input', () {
       NDArray.scope(() {
         final x = NDArray<double>.zeros([0], DType.float64);
-        final (hist, binEdges) = histogram(x, bins: 3);
+        final (:hist, :binEdges) = histogram(x, bins: 3);
         expect(hist.toList(), [0, 0, 0]);
         expect(binEdges.toList(), [
           0.0,
@@ -519,7 +519,7 @@ void main() {
     test('Constant input', () {
       NDArray.scope(() {
         final x = NDArray.fromList([1.0, 1.0, 1.0], [3], DType.float64);
-        final (hist, binEdges) = histogram(x, bins: 2);
+        final (:hist, :binEdges) = histogram(x, bins: 2);
         expect(binEdges.toList(), [0.5, 1.0, 1.5]);
         expect(hist.toList(), [0, 3]);
       });
@@ -529,7 +529,7 @@ void main() {
       NDArray.scope(() {
         final x = NDArray.fromList([0.5, 1.5, 2.5], [3], DType.float64);
         final bins = NDArray.fromList([0, 1, 2, 3], [4], DType.int32);
-        final (hist, binEdges) = histogram(x, bins: bins);
+        final (:hist, :binEdges) = histogram(x, bins: bins);
         expect(hist.toList(), [1, 1, 1]);
         expect(binEdges.toList(), [0.0, 1.0, 2.0, 3.0]);
       });
@@ -539,7 +539,7 @@ void main() {
       NDArray.scope(() {
         final x = NDArray.fromList([0.5, 1.5, 2.5], [3], DType.float64);
         final bins = NDArray.fromList([0.0, 1.0, 2.0, 3.0], [4], DType.float32);
-        final (hist, binEdges) = histogram(x, bins: bins);
+        final (:hist, :binEdges) = histogram(x, bins: bins);
         expect(hist.toList(), [1, 1, 1]);
         expect(binEdges.dtype, DType.float64);
         expect(binEdges.toList(), [0.0, 1.0, 2.0, 3.0]);

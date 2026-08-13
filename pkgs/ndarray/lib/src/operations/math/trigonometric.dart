@@ -51,128 +51,140 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_sin_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_sin_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_sin_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_sin_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
+  try {
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_sin_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_sin_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          v_sin_complex128(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          v_sin_complex64(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
+      }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
+
+        switch (a.dtype) {
+          case DType.float64:
+            s_sin_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_sin_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_sin_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_sin_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
     }
 
-    if (a.dtype == DType.float64) {
-      s_sin_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
+    if (a.dtype.isInteger) {
+      unaryOp<num, double>(
+        result.data as List<double>,
+        a.data as List<num>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => math.sin(x),
       );
-      return result;
-    } else if (a.dtype == DType.float32) {
-      s_sin_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
+    } else {
+      unaryOp<double, double>(
+        result.data as List<double>,
+        a.data as List<double>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => math.sin(x.toDouble()),
       );
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      s_sin_complex128(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      s_sin_complex64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
     }
+    return result;
+  } finally {
+    maskHolder.dispose();
   }
-
-  if (a.dtype.isInteger) {
-    unaryOp<num, double>(
-      result.data as List<double>,
-      a.data as List<num>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => math.sin(x),
-    );
-  } else {
-    unaryOp<double, double>(
-      result.data as List<double>,
-      a.data as List<double>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => math.sin(x.toDouble()),
-    );
-  }
-  return result;
 }
 
 /// Computes the element-wise sinc of the array.
@@ -198,12 +210,18 @@ NDArray<R> sinc<T, R>(
     throw StateError('Cannot execute sinc() on a disposed array.');
   }
 
-  // Handle integer types by promoting to float64 (double)
   if (a.dtype.isInteger) {
     final promoted = promoteToDouble(a);
-    final res = sinc<double, double>(promoted, out: out as NDArray<double>?);
-    promoted.dispose();
-    return res as NDArray<R>;
+    try {
+      final res = sinc<double, double>(
+        promoted,
+        where: where,
+        out: out as NDArray<double>?,
+      );
+      return res as NDArray<R>;
+    } finally {
+      promoted.dispose();
+    }
   }
 
   final DType<dynamic> targetDType;
@@ -368,131 +386,140 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_cos_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_cos_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_cos_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_cos_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
+  try {
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_cos_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_cos_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          v_cos_complex128(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          v_cos_complex64(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
+      }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
+
+        switch (a.dtype) {
+          case DType.float64:
+            s_cos_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_cos_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_cos_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_cos_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
     }
 
-    switch (a.dtype) {
-      case DType.float64:
-        s_cos_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        s_cos_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        s_cos_complex128(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        s_cos_complex64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
+    if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+      unaryOp<int, double>(
+        result.data as List<double>,
+        a.data as List<int>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => math.cos(x.toDouble()),
+      );
+    } else {
+      unaryOp<double, double>(
+        result.data as List<double>,
+        a.data as List<double>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => math.cos(x.toDouble()),
+      );
     }
+    return result;
+  } finally {
+    maskHolder.dispose();
   }
-
-  if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    unaryOp<int, double>(
-      result.data as List<double>,
-      a.data as List<int>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => math.cos(x.toDouble()),
-    );
-  } else {
-    unaryOp<double, double>(
-      result.data as List<double>,
-      a.data as List<double>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => math.cos(x.toDouble()),
-    );
-  }
-  return result;
 }
 
 /// Computes the element-wise tangent of the array.
@@ -525,128 +552,140 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_tan_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_tan_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_tan_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_tan_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
+  try {
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_tan_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_tan_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          v_tan_complex128(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          v_tan_complex64(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
+      }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
+
+        switch (a.dtype) {
+          case DType.float64:
+            s_tan_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_tan_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_tan_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_tan_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
     }
 
-    if (a.dtype == DType.float64) {
-      s_tan_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
+    if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+      unaryOp<int, double>(
+        result.data as List<double>,
+        a.data as List<int>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => math.tan(x.toDouble()),
       );
-      return result;
-    } else if (a.dtype == DType.float32) {
-      s_tan_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
+    } else {
+      unaryOp<double, double>(
+        result.data as List<double>,
+        a.data as List<double>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => math.tan(x.toDouble()),
       );
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      s_tan_complex128(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      s_tan_complex64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
     }
+    return result;
+  } finally {
+    maskHolder.dispose();
   }
-
-  if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    unaryOp<int, double>(
-      result.data as List<double>,
-      a.data as List<int>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => math.tan(x.toDouble()),
-    );
-  } else {
-    unaryOp<double, double>(
-      result.data as List<double>,
-      a.data as List<double>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => math.tan(x.toDouble()),
-    );
-  }
-  return result;
 }
 
 /// Computes the element-wise arc sine (inverse sine) of the array.
@@ -692,127 +731,140 @@ NDArray<R> asin<T, R>(
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_asin_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_asin_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_asin_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_asin_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-    }
-    if (a.dtype == DType.float64) {
-      s_asin_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.float32) {
-      s_asin_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      s_asin_complex128(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      s_asin_complex64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    }
-  }
+  try {
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_asin_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_asin_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          v_asin_complex128(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          v_asin_complex64(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
+      }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
 
-  if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    unaryOp<int, double>(
-      result.data as List<double>,
-      a.data as List<int>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => math.asin(x.toDouble()),
-    );
-  } else {
-    unaryOp<double, double>(
-      result.data as List<double>,
-      a.data as List<double>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => math.asin(x),
-    );
+        switch (a.dtype) {
+          case DType.float64:
+            s_asin_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_asin_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_asin_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_asin_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+      unaryOp<int, double>(
+        result.data as List<double>,
+        a.data as List<int>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => math.asin(x.toDouble()),
+      );
+    } else {
+      unaryOp<double, double>(
+        result.data as List<double>,
+        a.data as List<double>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => math.asin(x),
+      );
+    }
+    return result;
+  } finally {
+    maskHolder.dispose();
   }
-  return result;
 }
 
 /// Computes the element-wise arc cosine (inverse cosine) of the array.
@@ -858,127 +910,140 @@ NDArray<R> acos<T, R>(
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_acos_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_acos_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_acos_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_acos_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-    }
-    if (a.dtype == DType.float64) {
-      s_acos_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.float32) {
-      s_acos_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      s_acos_complex128(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      s_acos_complex64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    }
-  }
+  try {
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_acos_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_acos_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          v_acos_complex128(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          v_acos_complex64(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
+      }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
 
-  if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    unaryOp<int, double>(
-      result.data as List<double>,
-      a.data as List<int>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => math.acos(x.toDouble()),
-    );
-  } else {
-    unaryOp<double, double>(
-      result.data as List<double>,
-      a.data as List<double>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => math.acos(x),
-    );
+        switch (a.dtype) {
+          case DType.float64:
+            s_acos_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_acos_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_acos_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_acos_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+      unaryOp<int, double>(
+        result.data as List<double>,
+        a.data as List<int>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => math.acos(x.toDouble()),
+      );
+    } else {
+      unaryOp<double, double>(
+        result.data as List<double>,
+        a.data as List<double>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => math.acos(x),
+      );
+    }
+    return result;
+  } finally {
+    maskHolder.dispose();
   }
-  return result;
 }
 
 /// Computes the element-wise arc tangent (inverse tangent) of the array.
@@ -1024,127 +1089,140 @@ NDArray<R> atan<T, R>(
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_atan_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_atan_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_atan_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_atan_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-    }
-    if (a.dtype == DType.float64) {
-      s_atan_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.float32) {
-      s_atan_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      s_atan_complex128(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      s_atan_complex64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    }
-  }
+  try {
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_atan_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_atan_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          v_atan_complex128(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          v_atan_complex64(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
+      }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
 
-  if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-    unaryOp<int, double>(
-      result.data as List<double>,
-      a.data as List<int>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => math.atan(x.toDouble()),
-    );
-  } else {
-    unaryOp<double, double>(
-      result.data as List<double>,
-      a.data as List<double>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => math.atan(x),
-    );
+        switch (a.dtype) {
+          case DType.float64:
+            s_atan_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_atan_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_atan_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_atan_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    if (a.dtype == DType.int32 || a.dtype == DType.int64) {
+      unaryOp<int, double>(
+        result.data as List<double>,
+        a.data as List<int>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => math.atan(x.toDouble()),
+      );
+    } else {
+      unaryOp<double, double>(
+        result.data as List<double>,
+        a.data as List<double>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => math.atan(x),
+      );
+    }
+    return result;
+  } finally {
+    maskHolder.dispose();
   }
-  return result;
 }
 
 /// Computes the element-wise hyperbolic sine of the array.
@@ -1188,116 +1266,129 @@ NDArray<R> sinh<T, R>(
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_sinh_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_sinh_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_sinh_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_sinh_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-    }
-    if (a.dtype == DType.float64) {
-      s_sinh_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.float32) {
-      s_sinh_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      s_sinh_complex128(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      s_sinh_complex64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    }
-  }
+  try {
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_sinh_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_sinh_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          v_sinh_complex128(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          v_sinh_complex64(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
+      }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
 
-  unaryOp<T, R>(
-    result.data,
-    a.data,
-    a.shape,
-    a.strides,
-    result.strides,
-    0,
-    a.offsetElements,
-    result.offsetElements,
-    (x) {
-      final val = (x as num).toDouble();
-      return (math.exp(val) - math.exp(-val)) / 2.0 as R;
-    },
-  );
-  return result;
+        switch (a.dtype) {
+          case DType.float64:
+            s_sinh_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_sinh_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_sinh_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_sinh_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    unaryOp<T, R>(
+      result.data,
+      a.data,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) {
+        final val = (x as num).toDouble();
+        return (math.exp(val) - math.exp(-val)) / 2.0 as R;
+      },
+    );
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
 }
 
 /// Computes the element-wise hyperbolic cosine of the array.
@@ -1341,116 +1432,129 @@ NDArray<R> cosh<T, R>(
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_cosh_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_cosh_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_cosh_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_cosh_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-    }
-    if (a.dtype == DType.float64) {
-      s_cosh_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.float32) {
-      s_cosh_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      s_cosh_complex128(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      s_cosh_complex64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    }
-  }
+  try {
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_cosh_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_cosh_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          v_cosh_complex128(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          v_cosh_complex64(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
+      }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
 
-  unaryOp<T, R>(
-    result.data,
-    a.data,
-    a.shape,
-    a.strides,
-    result.strides,
-    0,
-    a.offsetElements,
-    result.offsetElements,
-    (x) {
-      final val = (x as num).toDouble();
-      return (math.exp(val) + math.exp(-val)) / 2.0 as R;
-    },
-  );
-  return result;
+        switch (a.dtype) {
+          case DType.float64:
+            s_cosh_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_cosh_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_cosh_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_cosh_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    unaryOp<T, R>(
+      result.data,
+      a.data,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) {
+        final val = (x as num).toDouble();
+        return (math.exp(val) + math.exp(-val)) / 2.0 as R;
+      },
+    );
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
 }
 
 /// Computes the element-wise hyperbolic tangent of the array.
@@ -1494,117 +1598,130 @@ NDArray<R> tanh<T, R>(
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_tanh_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_tanh_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_tanh_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_tanh_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-    }
-    if (a.dtype == DType.float64) {
-      s_tanh_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.float32) {
-      s_tanh_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      s_tanh_complex128(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      s_tanh_complex64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    }
-  }
+  try {
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_tanh_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_tanh_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          v_tanh_complex128(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          v_tanh_complex64(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
+      }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
 
-  unaryOp<T, R>(
-    result.data,
-    a.data,
-    a.shape,
-    a.strides,
-    result.strides,
-    0,
-    a.offsetElements,
-    result.offsetElements,
-    (x) {
-      final val = (x as num).toDouble();
-      final exp2val = math.exp(2.0 * val);
-      return (exp2val - 1.0) / (exp2val + 1.0) as R;
-    },
-  );
-  return result;
+        switch (a.dtype) {
+          case DType.float64:
+            s_tanh_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_tanh_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_tanh_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_tanh_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    unaryOp<T, R>(
+      result.data,
+      a.data,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) {
+        final val = (x as num).toDouble();
+        final exp2val = math.exp(2.0 * val);
+        return (exp2val - 1.0) / (exp2val + 1.0) as R;
+      },
+    );
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
 }
 
 /// Computes the element-wise inverse hyperbolic sine of the array.
@@ -1648,116 +1765,129 @@ NDArray<R> asinh<T, R>(
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_asinh_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_asinh_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_asinh_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_asinh_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-    }
-    if (a.dtype == DType.float64) {
-      s_asinh_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.float32) {
-      s_asinh_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      s_asinh_complex128(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      s_asinh_complex64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    }
-  }
+  try {
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_asinh_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_asinh_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          v_asinh_complex128(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          v_asinh_complex64(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
+      }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
 
-  unaryOp<T, R>(
-    result.data,
-    a.data,
-    a.shape,
-    a.strides,
-    result.strides,
-    0,
-    a.offsetElements,
-    result.offsetElements,
-    (x) {
-      final val = (x as num).toDouble();
-      return math.log(val + math.sqrt(val * val + 1.0)) as R;
-    },
-  );
-  return result;
+        switch (a.dtype) {
+          case DType.float64:
+            s_asinh_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_asinh_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_asinh_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_asinh_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    unaryOp<T, R>(
+      result.data,
+      a.data,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) {
+        final val = (x as num).toDouble();
+        return math.log(val + math.sqrt(val * val + 1.0)) as R;
+      },
+    );
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
 }
 
 /// Computes the element-wise inverse hyperbolic cosine of the array.
@@ -1781,12 +1911,11 @@ NDArray<R> acosh<T, R>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute acosh() on a disposed array.');
   }
-  final DType<R> targetDType;
+  final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype as DType<R>;
+    targetDType = a.dtype;
   } else {
-    targetDType =
-        (a.dtype == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
+    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   }
 
   final NDArray<R> result;
@@ -1798,122 +1927,133 @@ NDArray<R> acosh<T, R>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType);
+    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_acosh_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_acosh_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_acosh_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_acosh_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final marker = ScratchArena.marker;
-    final cShape = ScratchArena.copyInts(a.shape);
-    final cStridesA = ScratchArena.copyInts(a.strides);
-    final cStridesRes = ScratchArena.copyInts(result.strides);
-    try {
+  try {
+    if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
-          s_acosh_double(
+          v_acosh_double(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         case DType.float32:
-          s_acosh_float(
+          v_acosh_float(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         case DType.complex128:
-          s_acosh_complex128(
+          v_acosh_complex128(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         case DType.complex64:
-          s_acosh_complex64(
+          v_acosh_complex64(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         default:
           break;
       }
-    } finally {
-      ScratchArena.reset(marker);
-    }
-  }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
 
-  unaryOp<T, R>(
-    result.data,
-    a.data,
-    a.shape,
-    a.strides,
-    result.strides,
-    0,
-    a.offsetElements,
-    result.offsetElements,
-    (x) {
-      final val = (x as num).toDouble();
-      return math.log(val + math.sqrt(val * val - 1.0)) as R;
-    },
-  );
-  return result;
+        switch (a.dtype) {
+          case DType.float64:
+            s_acosh_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_acosh_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_acosh_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_acosh_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    unaryOp<T, R>(
+      result.data,
+      a.data,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) {
+        final val = (x as num).toDouble();
+        return math.log(val + math.sqrt(val * val - 1.0)) as R;
+      },
+    );
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
 }
 
 /// Computes the element-wise inverse hyperbolic tangent of the array.
@@ -1957,116 +2097,129 @@ NDArray<R> atanh<T, R>(
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_atanh_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_atanh_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_atanh_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_atanh_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-    }
-    if (a.dtype == DType.float64) {
-      s_atanh_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.float32) {
-      s_atanh_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      s_atanh_complex128(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      s_atanh_complex64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    }
-  }
+  try {
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_atanh_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_atanh_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          v_atanh_complex128(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          v_atanh_complex64(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
+      }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
 
-  unaryOp<T, R>(
-    result.data,
-    a.data,
-    a.shape,
-    a.strides,
-    result.strides,
-    0,
-    a.offsetElements,
-    result.offsetElements,
-    (x) {
-      final val = (x as num).toDouble();
-      return 0.5 * math.log((1.0 + val) / (1.0 - val)) as R;
-    },
-  );
-  return result;
+        switch (a.dtype) {
+          case DType.float64:
+            s_atanh_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_atanh_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_atanh_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_atanh_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    unaryOp<T, R>(
+      result.data,
+      a.data,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) {
+        final val = (x as num).toDouble();
+        return 0.5 * math.log((1.0 + val) / (1.0 - val)) as R;
+      },
+    );
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
 }
 
 /// Computes the element-wise arc tangent of [y] / [x] with full broadcasting support.
@@ -2450,7 +2603,7 @@ NDArray<R> deg2rad<T, R>(
     }
   }
 
-  final factor = NDArray.fromList([0.017453292519943295], [1], targetDType);
+  final factor = NDArray.fromList([0.017453292519943295], [], targetDType);
   return multiply<T, dynamic, R>(a, factor, out: out);
 }
 
@@ -2493,18 +2646,6 @@ NDArray<R> rad2deg<T, R>(
     }
   }
 
-  final factor = NDArray.fromList([57.29577951308232], [1], targetDType);
+  final factor = NDArray.fromList([57.29577951308232], [], targetDType);
   return multiply<T, dynamic, R>(a, factor, out: out);
 }
-
-/// Returns an element-wise boolean mask indicating which elements of the array are NaN (Not-a-Number).
-///
-/// **Preconditions:**
-/// - The array must not be disposed.
-///
-/// **Throws:**
-/// - [StateError] if the array has been disposed.
-///
-/// **Example:**
-/// ```dart
-/// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);

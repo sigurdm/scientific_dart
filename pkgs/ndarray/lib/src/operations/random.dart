@@ -293,6 +293,9 @@ NDArray<T> exponential<T extends num>(
   }
   final resolvedDType = dtype ?? (out?.dtype ?? DType.float64 as DType<T>);
   if (out != null) {
+    if (!out.isContiguous) {
+      throw ArgumentError('out buffer must be contiguous.');
+    }
     if (!listEquals(out.shape, shape) || out.dtype != resolvedDType) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
@@ -669,12 +672,14 @@ NDArray<T> multinomial<T extends num>(
   }
 
   final k = pvals.shape[0];
-  final rand = secure ? Random.secure() : Random();
+  final rand = secure
+      ? Random.secure()
+      : (seed != null ? Random(seed) : Random());
 
   final cdf = List<double>.filled(k, 0.0);
   var sumP = 0.0;
   for (var i = 0; i < k; i++) {
-    final p = (pvals.data[i] as num).toDouble();
+    final p = (pvals.getCell([i]) as num).toDouble();
     if (p < 0.0) {
       throw ArgumentError(
         'pvals must contain non-negative probabilities (was $p at index $i)',
@@ -710,19 +715,61 @@ NDArray<T> multinomial<T extends num>(
     result.fill(0 as T);
   }
 
-  for (var s = 0; s < sampleCount; s++) {
-    final offset = s * k;
-    for (var t = 0; t < n; t++) {
-      final u = rand.nextDouble();
-      var outcome = k - 1;
-      for (var j = 0; j < k; j++) {
-        if (u <= cdf[j]) {
-          outcome = j;
-          break;
+  if (result.isContiguous) {
+    if (resolvedDType == DType.int32) {
+      final ptr = result.pointer.cast<ffi.Int32>();
+      for (var s = 0; s < sampleCount; s++) {
+        final offset = s * k;
+        for (var t = 0; t < n; t++) {
+          final u = rand.nextDouble();
+          var outcome = k - 1;
+          for (var j = 0; j < k; j++) {
+            if (u <= cdf[j]) {
+              outcome = j;
+              break;
+            }
+          }
+          ptr[offset + outcome]++;
         }
       }
-      result.data[offset + outcome] =
-          ((result.data[offset + outcome] as num) + 1) as T;
+    } else {
+      final ptr = result.pointer.cast<ffi.Int64>();
+      for (var s = 0; s < sampleCount; s++) {
+        final offset = s * k;
+        for (var t = 0; t < n; t++) {
+          final u = rand.nextDouble();
+          var outcome = k - 1;
+          for (var j = 0; j < k; j++) {
+            if (u <= cdf[j]) {
+              outcome = j;
+              break;
+            }
+          }
+          ptr[offset + outcome]++;
+        }
+      }
+    }
+  } else {
+    for (var s = 0; s < sampleCount; s++) {
+      for (var t = 0; t < n; t++) {
+        final u = rand.nextDouble();
+        var outcome = k - 1;
+        for (var j = 0; j < k; j++) {
+          if (u <= cdf[j]) {
+            outcome = j;
+            break;
+          }
+        }
+        final coords = <int>[];
+        var rem = s;
+        for (var d = sampleShape.length - 1; d >= 0; d--) {
+          coords.insert(0, rem % sampleShape[d]);
+          rem ~/= sampleShape[d];
+        }
+        coords.add(outcome);
+        final currentVal = result.getCell(coords) as num;
+        result.setCell(coords, (currentVal + 1) as T);
+      }
     }
   }
 
@@ -791,7 +838,7 @@ NDArray<T> choice<T>(
   final rand = secure
       ? Random.secure()
       : Random(seed ?? Random().nextInt(4294967296));
-  final result = NDArray<T>.create(sampleShape, a.dtype);
+  final result1D = NDArray<T>.create([sampleCount], a.dtype);
 
   // Pre-calculate CDF if probability array p is specified
   List<double>? cdf;
@@ -839,7 +886,7 @@ NDArray<T> choice<T>(
         // Uniform draw
         index = rand.nextInt(a.size);
       }
-      result.data[i] = data[aOffset + index * aStride];
+      result1D.data[i] = data[aOffset + index * aStride];
     }
   } else {
     // Draw without replacement
@@ -853,7 +900,7 @@ NDArray<T> choice<T>(
       }
       for (var i = 0; i < sampleCount; i++) {
         final idx = indices[a.size - 1 - i];
-        result.data[i] = data[aOffset + idx * aStride];
+        result1D.data[i] = data[aOffset + idx * aStride];
       }
     } else {
       final nonNullP = p!;
@@ -883,12 +930,16 @@ NDArray<T> choice<T>(
         }
 
         drawn[index] = true;
-        result.data[draw] = data[aOffset + index * aStride];
+        result1D.data[draw] = data[aOffset + index * aStride];
       }
     }
   }
 
-  return result;
+  return sampleShape.isEmpty
+      ? result1D.reshape([])
+      : (sampleShape.length == 1 && sampleShape[0] == sampleCount
+            ? result1D
+            : result1D.reshape(sampleShape));
 }
 
 /// Shuffles the array in-place along the first axis.

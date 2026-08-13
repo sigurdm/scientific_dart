@@ -112,6 +112,8 @@ void native_count_nonzero_int16(const void *src, const int *stridesSrc, int *des
 void native_count_nonzero_complex128(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
 void native_count_nonzero_complex64(const void *src, const int *stridesSrc, int *dest, const int *stridesDest, const int *shape, int rank, int axis, int is_contiguous);
 
+int ndarray_unique(const void *src, void *dest, int size, int dtype, int64_t *out_index, int64_t *out_inverse, int64_t *out_counts);
+
 
 #ifdef __cplusplus
 }

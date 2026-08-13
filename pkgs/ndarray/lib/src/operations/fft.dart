@@ -138,6 +138,7 @@ kiss_fft_cfg _allocateKissFFTPlan(int nfft, int inverse_fft) {
 /// - It is an error if the input array shape is empty (scalar 0D).
 /// - It is an error if the specified [axis] is out of bounds.
 /// - It is an error if [n] is provided but is less than or equal to 0.
+/// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
@@ -186,13 +187,25 @@ NDArray<R> fft<T, R extends Complex>(
   final outShape = List<int>.from(a.shape);
   outShape[normAxis] = targetLen;
 
-  final targetDType =
-      out?.dtype ??
-      ((a.dtype == DType.float32 || a.dtype == DType.complex64)
-          ? DType.complex64
-          : DType.complex128);
+  final isFloatOrComplex = a.dtype.isFloating || a.dtype.isComplex;
+  final expectedDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+      ? DType.complex64
+      : DType.complex128;
+  final targetDType = out?.dtype ?? expectedDType;
 
   if (out != null) {
+    if (isFloatOrComplex && out.dtype != expectedDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible dtype (expected $expectedDType, got ${out.dtype}).',
+      );
+    }
+    if (!isFloatOrComplex &&
+        out.dtype != DType.complex64 &&
+        out.dtype != DType.complex128) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible dtype (expected complex64 or complex128, got ${out.dtype}).',
+      );
+    }
     if (!listEquals(out.shape, outShape)) {
       throw ArgumentError('Provided out buffer has incompatible shape.');
     }
@@ -325,6 +338,7 @@ NDArray<R> fft<T, R extends Complex>(
 /// - It is an error if the input array shape is empty (scalar 0D).
 /// - It is an error if the specified [axis] is out of bounds.
 /// - It is an error if [n] is provided but is less than or equal to 0.
+/// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
@@ -371,13 +385,25 @@ NDArray<R> ifft<T, R extends Complex>(
   final outShape = List<int>.from(a.shape);
   outShape[normAxis] = targetLen;
 
-  final targetDType =
-      out?.dtype ??
-      ((a.dtype == DType.float32 || a.dtype == DType.complex64)
-          ? DType.complex64
-          : DType.complex128);
+  final isFloatOrComplex = a.dtype.isFloating || a.dtype.isComplex;
+  final expectedDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+      ? DType.complex64
+      : DType.complex128;
+  final targetDType = out?.dtype ?? expectedDType;
 
   if (out != null) {
+    if (isFloatOrComplex && out.dtype != expectedDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible dtype (expected $expectedDType, got ${out.dtype}).',
+      );
+    }
+    if (!isFloatOrComplex &&
+        out.dtype != DType.complex64 &&
+        out.dtype != DType.complex128) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible dtype (expected complex64 or complex128, got ${out.dtype}).',
+      );
+    }
     if (!listEquals(out.shape, outShape)) {
       throw ArgumentError('Provided out buffer has incompatible shape.');
     }
@@ -1018,6 +1044,12 @@ NDArray<R> _padOrTruncate<T, R extends Complex>(
 ///
 /// Reference: [DFT sample frequencies](https://numpy.org/doc/stable/reference/generated/numpy.fft.fftfreq.html)
 NDArray<Float64> fftfreq(int n, {double d = 1.0}) {
+  if (n <= 0) {
+    throw ArgumentError('n must be strictly positive (was $n)');
+  }
+  if (d == 0.0) {
+    throw ArgumentError('sample spacing d must be non-zero');
+  }
   final val = 1.0 / (d * n);
   final list = List<Float64>.filled(n, Float64(0.0));
   if (n % 2 == 0) {
@@ -1062,6 +1094,12 @@ NDArray<Float64> fftfreq(int n, {double d = 1.0}) {
 ///
 /// Reference: [Real DFT sample frequencies](https://numpy.org/doc/stable/reference/generated/numpy.fft.rfftfreq.html)
 NDArray<Float64> rfftfreq(int n, {double d = 1.0}) {
+  if (n <= 0) {
+    throw ArgumentError('n must be strictly positive (was $n)');
+  }
+  if (d == 0.0) {
+    throw ArgumentError('sample spacing d must be non-zero');
+  }
   final val = 1.0 / (d * n);
   final limit = n ~/ 2 + 1;
   final list = List<Float64>.generate(limit, (i) => Float64(i * val));
@@ -1128,13 +1166,25 @@ NDArray<R> rfft<T, R extends Complex>(
   final outShape = List<int>.from(a.shape);
   outShape[normAxis] = targetLen ~/ 2 + 1;
 
-  final targetDType =
-      out?.dtype ??
-      ((a.dtype == DType.float32 || a.dtype == DType.complex64)
-          ? DType.complex64
-          : DType.complex128);
+  final isFloatOrComplex = a.dtype.isFloating || a.dtype.isComplex;
+  final expectedDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+      ? DType.complex64
+      : DType.complex128;
+  final targetDType = out?.dtype ?? expectedDType;
 
   if (out != null) {
+    if (isFloatOrComplex && out.dtype != expectedDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible dtype (expected $expectedDType, got ${out.dtype}).',
+      );
+    }
+    if (!isFloatOrComplex &&
+        out.dtype != DType.complex64 &&
+        out.dtype != DType.complex128) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible dtype (expected complex64 or complex128, got ${out.dtype}).',
+      );
+    }
     if (!listEquals(out.shape, outShape)) {
       throw ArgumentError('Provided out buffer has incompatible shape.');
     }
@@ -1327,13 +1377,25 @@ NDArray<R> irfft<T, R extends double>(
   final outShape = List<int>.from(a.shape);
   outShape[normAxis] = targetLen;
 
-  final targetDType =
-      out?.dtype ??
-      ((a.dtype == DType.complex64 || a.dtype == DType.float32)
-          ? DType.float32
-          : DType.float64);
+  final isFloatOrComplex = a.dtype.isFloating || a.dtype.isComplex;
+  final expectedDType = (a.dtype == DType.complex64 || a.dtype == DType.float32)
+      ? DType.float32
+      : DType.float64;
+  final targetDType = out?.dtype ?? expectedDType;
 
   if (out != null) {
+    if (isFloatOrComplex && out.dtype != expectedDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible dtype (expected $expectedDType, got ${out.dtype}).',
+      );
+    }
+    if (!isFloatOrComplex &&
+        out.dtype != DType.float32 &&
+        out.dtype != DType.float64) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible dtype (expected float32 or float64, got ${out.dtype}).',
+      );
+    }
     if (!listEquals(out.shape, outShape)) {
       throw ArgumentError('Provided out buffer has incompatible shape.');
     }
@@ -1628,11 +1690,11 @@ NDArray<R> _fftnND<T, R extends Complex>(
     }
   }
 
-  final targetDType =
-      out?.dtype ??
-      ((a.dtype == DType.float32 || a.dtype == DType.complex64)
-          ? DType.complex64
-          : DType.complex128);
+  final isFloatOrComplex = a.dtype.isFloating || a.dtype.isComplex;
+  final expectedDType = (a.dtype == DType.float32 || a.dtype == DType.complex64)
+      ? DType.complex64
+      : DType.complex128;
+  final targetDType = out?.dtype ?? expectedDType;
 
   final outShape = List<int>.from(a.shape);
   for (var i = 0; i < axesResolved.length; i++) {
@@ -1640,6 +1702,18 @@ NDArray<R> _fftnND<T, R extends Complex>(
   }
 
   if (out != null) {
+    if (isFloatOrComplex && out.dtype != expectedDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible dtype (expected $expectedDType, got ${out.dtype}).',
+      );
+    }
+    if (!isFloatOrComplex &&
+        out.dtype != DType.complex64 &&
+        out.dtype != DType.complex128) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible dtype (expected complex64 or complex128, got ${out.dtype}).',
+      );
+    }
     if (!listEquals(out.shape, outShape)) {
       throw ArgumentError('Provided out buffer has incompatible shape.');
     }

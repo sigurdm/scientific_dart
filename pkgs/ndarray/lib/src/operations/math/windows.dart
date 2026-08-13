@@ -50,34 +50,47 @@ NDArray<T> hanning<T>(int M, {DType<T>? dtype, NDArray<T>? out}) {
     return result;
   }
 
-  if (resolvedDType == DType.float32) {
-    if (result.isContiguous) {
-      v_hanning_float(result.pointer.cast(), M);
-    } else {
-      final temp = NDArray<Float32>.create([M], DType.float32);
-      v_hanning_float(temp.pointer.cast(), M);
-      temp.copy(out: result as NDArray<Float32>);
-      temp.dispose();
-    }
-    return result;
-  } else if (resolvedDType == DType.float64) {
-    if (result.isContiguous) {
-      v_hanning_double(result.pointer.cast(), M);
-    } else {
+  switch (resolvedDType) {
+    case DType.float32:
+      if (result.isContiguous) {
+        v_hanning_float(result.pointer.cast(), M);
+      } else {
+        final temp = NDArray<Float32>.create([M], DType.float32);
+        try {
+          v_hanning_float(temp.pointer.cast(), M);
+          temp.copy(out: result as NDArray<Float32>);
+        } finally {
+          temp.dispose();
+        }
+      }
+      return result;
+    case DType.float64:
+      if (result.isContiguous) {
+        v_hanning_double(result.pointer.cast(), M);
+      } else {
+        final temp = NDArray<Float64>.create([M], DType.float64);
+        try {
+          v_hanning_double(temp.pointer.cast(), M);
+          temp.copy(out: result as NDArray<Float64>);
+        } finally {
+          temp.dispose();
+        }
+      }
+      return result;
+    default:
       final temp = NDArray<Float64>.create([M], DType.float64);
-      v_hanning_double(temp.pointer.cast(), M);
-      temp.copy(out: result as NDArray<Float64>);
-      temp.dispose();
-    }
-    return result;
-  } else {
-    final temp = NDArray<Float64>.create([M], DType.float64);
-    v_hanning_double(temp.pointer.cast(), M);
-    final casted = castNDArray(temp, resolvedDType);
-    casted.copy(out: result);
-    temp.dispose();
-    casted.dispose();
-    return result;
+      try {
+        v_hanning_double(temp.pointer.cast(), M);
+        final casted = castNDArray(temp, resolvedDType);
+        try {
+          casted.copy(out: result);
+        } finally {
+          casted.dispose();
+        }
+      } finally {
+        temp.dispose();
+      }
+      return result;
   }
 }
 
@@ -129,33 +142,46 @@ NDArray<T> hamming<T>(int M, {DType<T>? dtype, NDArray<T>? out}) {
     return result;
   }
 
-  if (resolvedDType == DType.float32) {
-    if (result.isContiguous) {
-      v_hamming_float(result.pointer.cast(), M);
-    } else {
-      final temp = NDArray<Float32>.create([M], DType.float32);
-      v_hamming_float(temp.pointer.cast(), M);
-      temp.copy(out: result as NDArray<Float32>);
-      temp.dispose();
-    }
-    return result;
-  } else if (resolvedDType == DType.float64) {
-    if (result.isContiguous) {
-      v_hamming_double(result.pointer.cast(), M);
-    } else {
+  switch (resolvedDType) {
+    case DType.float32:
+      if (result.isContiguous) {
+        v_hamming_float(result.pointer.cast(), M);
+      } else {
+        final temp = NDArray<Float32>.create([M], DType.float32);
+        try {
+          v_hamming_float(temp.pointer.cast(), M);
+          temp.copy(out: result as NDArray<Float32>);
+        } finally {
+          temp.dispose();
+        }
+      }
+      return result;
+    case DType.float64:
+      if (result.isContiguous) {
+        v_hamming_double(result.pointer.cast(), M);
+      } else {
+        final temp = NDArray<Float64>.create([M], DType.float64);
+        try {
+          v_hamming_double(temp.pointer.cast(), M);
+          temp.copy(out: result as NDArray<Float64>);
+        } finally {
+          temp.dispose();
+        }
+      }
+      return result;
+    default:
       final temp = NDArray<Float64>.create([M], DType.float64);
-      v_hamming_double(temp.pointer.cast(), M);
-      temp.copy(out: result as NDArray<Float64>);
-      temp.dispose();
-    }
-    return result;
-  } else {
-    final temp = NDArray<Float64>.create([M], DType.float64);
-    v_hamming_double(temp.pointer.cast(), M);
-    final casted = castNDArray(temp, resolvedDType);
-    casted.copy(out: result);
-    temp.dispose();
-    casted.dispose();
-    return result;
+      try {
+        v_hamming_double(temp.pointer.cast(), M);
+        final casted = castNDArray(temp, resolvedDType);
+        try {
+          casted.copy(out: result);
+        } finally {
+          casted.dispose();
+        }
+      } finally {
+        temp.dispose();
+      }
+      return result;
   }
 }

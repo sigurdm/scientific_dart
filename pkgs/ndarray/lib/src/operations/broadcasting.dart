@@ -24,38 +24,23 @@ final class BroadcastResult {
   BroadcastResult(this.shape, this.stridesA, this.stridesB);
 }
 
-/// Calculates the broadcasted shape and strides for two matrices.
-///
-/// Compares dimensions starting from the trailing dimensions and working forward
-/// according to standard NumPy shape broadcasting guidelines.
+/// Calculates the broadcasted shape and strides for two arrays given their shapes and strides.
 ///
 /// **Preconditions:**
 /// - Trailing dimensions comparing from right-to-left must either be equal or one of them must be 1.
 ///
 /// **Throws:**
-/// - It is an error if [a] or [b] is disposed.
-/// - It is an error if matrix shapes are not compatible for broadcasting.
+/// - It is an error if shapes are not compatible for broadcasting.
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(D)$ where $D$ is the maximum rank dimension length, executing
 ///   in zero unmanaged heap allocations.
-///
-/// **Example:**
-/// ```dart
-/// final a = NDArray.fromList([1.0, 2.0], [2, 1], DType.float64);
-/// final b = NDArray.fromList([10.0, 20.0, 30.0], [1, 3], DType.float64);
-/// final result = broadcast(a, b);
-/// print(result.shape); // [2, 3]
-/// ```
-BroadcastResult broadcast(NDArray a, NDArray b) {
-  if (a.isDisposed || b.isDisposed) {
-    throw StateError('Cannot execute broadcast() on a disposed array.');
-  }
-  final shapeA = a.shape;
-  final shapeB = b.shape;
-  final stridesA = a.strides;
-  final stridesB = b.strides;
-
+BroadcastResult broadcastBinaryStrides(
+  List<int> shapeA,
+  List<int> stridesA,
+  List<int> shapeB,
+  List<int> stridesB,
+) {
   if (listEquals(shapeA, shapeB)) {
     return BroadcastResult(shapeA, stridesA, stridesB);
   }
@@ -98,6 +83,36 @@ BroadcastResult broadcast(NDArray a, NDArray b) {
   }
 
   return BroadcastResult(commonShape, newStridesA, newStridesB);
+}
+
+/// Calculates the broadcasted shape and strides for two arrays.
+///
+/// Compares dimensions starting from the trailing dimensions and working forward
+/// according to standard NumPy shape broadcasting guidelines.
+///
+/// **Preconditions:**
+/// - Trailing dimensions comparing from right-to-left must either be equal or one of them must be 1.
+///
+/// **Throws:**
+/// - It is an error if [a] or [b] is disposed.
+/// - It is an error if array shapes are not compatible for broadcasting.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(D)$ where $D$ is the maximum rank dimension length, executing
+///   in zero unmanaged heap allocations.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0], [2, 1], DType.float64);
+/// final b = NDArray.fromList([10.0, 20.0, 30.0], [1, 3], DType.float64);
+/// final result = broadcast(a, b);
+/// print(result.shape); // [2, 3]
+/// ```
+BroadcastResult broadcast<Ta, Tb>(NDArray<Ta> a, NDArray<Tb> b) {
+  if (a.isDisposed || b.isDisposed) {
+    throw StateError('Cannot execute broadcast() on a disposed array.');
+  }
+  return broadcastBinaryStrides(a.shape, a.strides, b.shape, b.strides);
 }
 
 /// Broadcasts an array [a] to a new target shape [targetShape].

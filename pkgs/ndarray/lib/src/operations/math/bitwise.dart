@@ -169,6 +169,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
       }
     }
   } finally {
+    prep.maskHolder.dispose();
     if (aCast != a) {
       aCast.dispose();
     }
@@ -343,6 +344,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
       }
     }
   } finally {
+    prep.maskHolder.dispose();
     if (aCast != a) {
       aCast.dispose();
     }
@@ -517,6 +519,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
       }
     }
   } finally {
+    prep.maskHolder.dispose();
     if (aCast != a) {
       aCast.dispose();
     }
@@ -691,6 +694,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
       }
     }
   } finally {
+    prep.maskHolder.dispose();
     if (aCast != a) {
       aCast.dispose();
     }
@@ -865,6 +869,7 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
       }
     }
   } finally {
+    prep.maskHolder.dispose();
     if (aCast != a) {
       aCast.dispose();
     }
@@ -927,103 +932,106 @@ NDArray<Tr> invert<Ta, Tr>(
     result = NDArray<Tr>.create(a.shape, a.dtype as DType<Tr>);
   }
   final maskHolder = prepareMask(where, result.shape);
-
-  if (a.isContiguous && result.isContiguous) {
-    final size = a.size;
-    switch (a.dtype) {
-      case DType.int32:
-        v_invert_int32(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          size,
-          maskHolder.pointer,
-        );
-      case DType.int64:
-        v_invert_int64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          size,
-          maskHolder.pointer,
-        );
-      case DType.uint8:
-        v_invert_uint8(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          size,
-          maskHolder.pointer,
-        );
-      case DType.int16:
-        v_invert_int16(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          size,
-          maskHolder.pointer,
-        );
-      default:
-        throw UnsupportedError('Unsupported integer DType: ${a.dtype}');
-    }
-  } else {
-    final rank = a.shape.length;
-    final marker = ScratchArena.marker;
-    try {
-      final cBuffer = ScratchArena.getStridedBuffer(rank);
-      final cShape = cBuffer;
-      final cStridesSrc = cBuffer + rank;
-      final cStridesRes = cBuffer + (rank * 2);
-
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = a.shape[i];
-        cStridesSrc[i] = a.strides[i];
-        cStridesRes[i] = result.strides[i];
-      }
-
+  try {
+    if (a.isContiguous && result.isContiguous) {
+      final size = a.size;
       switch (a.dtype) {
         case DType.int32:
-          s_invert_int32(
+          v_invert_int32(
             a.pointer.cast(),
-            cStridesSrc,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            size,
             maskHolder.pointer,
           );
         case DType.int64:
-          s_invert_int64(
+          v_invert_int64(
             a.pointer.cast(),
-            cStridesSrc,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            size,
             maskHolder.pointer,
           );
         case DType.uint8:
-          s_invert_uint8(
+          v_invert_uint8(
             a.pointer.cast(),
-            cStridesSrc,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            size,
             maskHolder.pointer,
           );
         case DType.int16:
-          s_invert_int16(
+          v_invert_int16(
             a.pointer.cast(),
-            cStridesSrc,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            size,
             maskHolder.pointer,
           );
         default:
           throw UnsupportedError('Unsupported integer DType: ${a.dtype}');
       }
-    } finally {
-      ScratchArena.reset(marker);
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesSrc = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesSrc[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
+
+        switch (a.dtype) {
+          case DType.int32:
+            s_invert_int32(
+              a.pointer.cast(),
+              cStridesSrc,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.int64:
+            s_invert_int64(
+              a.pointer.cast(),
+              cStridesSrc,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.uint8:
+            s_invert_uint8(
+              a.pointer.cast(),
+              cStridesSrc,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.int16:
+            s_invert_int16(
+              a.pointer.cast(),
+              cStridesSrc,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          default:
+            throw UnsupportedError('Unsupported integer DType: ${a.dtype}');
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
     }
+  } finally {
+    maskHolder.dispose();
   }
 
   return result;

@@ -1,5 +1,4 @@
 import 'dart:ffi' as ffi;
-import 'dart:typed_data';
 import '../ndarray.dart';
 import '../ndarray_bindings.dart' as bindings;
 import '../scratch_arena.dart';
@@ -88,10 +87,10 @@ NDArray<Float64> _promoteToFloat64(NDArray a) {
 /// - If [out] is provided, it must have shape `[M * (M - 1) / 2]` and type [Float64].
 ///
 /// **Throws:**
-/// - [StateError] if [x] or [out] is disposed.
-/// - [ArgumentError] if [x] is not a 2D array.
-/// - [ArgumentError] if [x] has a complex data type.
-/// - [ArgumentError] if [out] shape does not match `[M * (M - 1) / 2]`.
+/// - It is an error if [x] or [out] is disposed.
+/// - It is an error if [x] is not a 2D array.
+/// - It is an error if [x] has a complex data type.
+/// - It is an error if [out] shape does not match `[M * (M - 1) / 2]`.
 ///
 /// **Performance considerations:**
 /// - Time complexity is $O(M^2 N)$ where $M$ is the number of observations and $N$ is the number of features.
@@ -189,11 +188,11 @@ NDArray<Float64> pdist<T extends Object>(
 /// - If [out] is provided, it must have shape `[M, K]` and type [Float64].
 ///
 /// **Throws:**
-/// - [StateError] if [xa], [xb], or [out] is disposed.
-/// - [ArgumentError] if [xa] or [xb] is not a 2D array.
-/// - [ArgumentError] if [xa] and [xb] have different column dimensions.
-/// - [ArgumentError] if [xa] or [xb] has a complex data type.
-/// - [ArgumentError] if [out] shape does not match `[M, K]`.
+/// - It is an error if [xa], [xb], or [out] is disposed.
+/// - It is an error if [xa] or [xb] is not a 2D array.
+/// - It is an error if [xa] and [xb] have different column dimensions.
+/// - It is an error if [xa] or [xb] has a complex data type.
+/// - It is an error if [out] shape does not match `[M, K]`.
 ///
 /// **Performance considerations:**
 /// - Time complexity is $O(M K N)$.
@@ -328,13 +327,13 @@ NDArray<Float64> _pdistCosine<T extends Object>(
     final one = NDArray<Float64>.fromList([Float64(1.0)], [1], DType.float64);
     final NDArray<Float64> cosDistMatrix = subtract(one, div);
 
-    final flatData = cosDistMatrix.data as Float64List;
-    final resData = result.data as Float64List;
+    final flatPtr = cosDistMatrix.pointer.cast<ffi.Double>();
+    final resPtr = result.pointer.cast<ffi.Double>();
     var idx = 0;
     for (var i = 0; i < m; i++) {
       final rowOffset = i * m;
       for (var j = i + 1; j < m; j++) {
-        resData[idx++] = flatData[rowOffset + j];
+        resPtr[idx++] = flatPtr[rowOffset + j];
       }
     }
 

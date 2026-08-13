@@ -99,7 +99,7 @@ NDArray<T> linspace<T>(
     numSamples,
     endpoint: endpoint,
     dtype: dtype,
-  ).$1;
+  ).samples;
 }
 
 /// Computes evenly spaced samples over a specified interval and returns them along with the step size.
@@ -116,7 +116,7 @@ NDArray<T> linspace<T>(
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
-(NDArray<T>, T) linspaceWithStep<T>(
+({NDArray<T> samples, T step}) linspaceWithStep<T>(
   T start,
   T stop,
   int numSamples, {
@@ -144,7 +144,7 @@ NDArray<T> linspace<T>(
 /// // Row 0: [0.0, 10.0]
 /// // Row 1: [0.5, 10.5]
 /// // Row 2: [1.0, 11.0]
-/// print(grid.data); // [0.0, 10.0, 0.5, 10.5, 1.0, 11.0]
+/// print(grid.toList()); // [0.0, 10.0, 0.5, 10.5, 1.0, 11.0]
 /// ```
 ///
 /// **Preconditions:**
@@ -176,7 +176,7 @@ NDArray<T> linspaceGrid<T>(
     endpoint: endpoint,
     axis: axis,
     dtype: dtype,
-  ).$1;
+  ).samples;
 }
 
 /// Similar to [linspaceGrid], but also returns the calculated step size as an [NDArray].
@@ -188,7 +188,7 @@ NDArray<T> linspaceGrid<T>(
 /// final start = NDArray.fromList([0.0, 10.0], [2], DType.float64);
 /// final stop  = NDArray.fromList([1.0, 12.0], [2], DType.float64);
 /// final (grid, step) = linspaceGridWithStep(start, stop, 3);
-/// print(step.data); // [0.5, 1.0]
+/// print(step.toList()); // [0.5, 1.0]
 /// ```
 ///
 /// **Preconditions:**
@@ -202,7 +202,7 @@ NDArray<T> linspaceGrid<T>(
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates new arrays on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
-(NDArray<T>, NDArray<T>) linspaceGridWithStep<T>(
+({NDArray<T> samples, NDArray<T> step}) linspaceGridWithStep<T>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -225,7 +225,7 @@ NDArray<T> linspaceGrid<T>(
   );
 }
 
-(NDArray<T>, NDArray<T>) _linspaceGridInternal<T>(
+({NDArray<T> samples, NDArray<T> step}) _linspaceGridInternal<T>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
@@ -257,7 +257,10 @@ NDArray<T> linspaceGrid<T>(
       final step = NDArray<T>.create(commonShape, resolvedDType);
       final nanVal = normalizeScalar(double.nan, resolvedDType) as T;
       step.fill(nanVal);
-      return (res.detachToParentScope(), step.detachToParentScope());
+      return (
+        samples: res.detachToParentScope(),
+        step: step.detachToParentScope(),
+      );
     }
 
     final startBroadcasted = broadcastTo(startArr, commonShape);
@@ -442,7 +445,7 @@ NDArray<T> linspaceGrid<T>(
 
     res.detachToParentScope();
     step.detachToParentScope();
-    return (res, step);
+    return (samples: res, step: step);
   });
 }
 
@@ -466,8 +469,13 @@ NDArray<T> logspace<T>(
   bool endpoint = true,
   DType<T>? dtype,
 }) {
-  if (numSamples <= 0) throw ArgumentError('numSamples must be positive');
+  if (numSamples < 0) {
+    throw ArgumentError('numSamples must be non-negative (was $numSamples)');
+  }
   final resolvedDType = dtype ?? defaultDType<T>();
+  if (numSamples == 0) {
+    return NDArray<T>.create([0], resolvedDType);
+  }
 
   final arr = NDArray<T>.create([numSamples], resolvedDType);
   final div = endpoint ? (numSamples - 1) : numSamples;
@@ -534,7 +542,7 @@ NDArray<T> logspace<T>(
 /// // Row 0: [10^0, 10^1] = [1, 10]
 /// // Row 1: [10^1, 10^2] = [10, 100]
 /// // Row 2: [10^2, 10^3] = [100, 1000]
-/// print(grid.data); // [1.0, 10.0, 10.0, 100.0, 100.0, 1000.0]
+/// print(grid.toList()); // [1.0, 10.0, 10.0, 100.0, 100.0, 1000.0]
 /// ```
 ///
 /// **Parameters:**
@@ -552,7 +560,7 @@ NDArray<T> logspaceGrid<T extends Object>(
   NDArray<T> start,
   NDArray<T> stop,
   int numSamples, {
-  NDArray<double>? base,
+  NDArray<Float64>? base,
   bool endpoint = true,
   int axis = 0,
   DType<T>? dtype,
@@ -607,8 +615,13 @@ NDArray<T> geomspace<T>(
   bool endpoint = true,
   DType<T>? dtype,
 }) {
-  if (numSamples <= 0) throw ArgumentError('numSamples must be positive');
+  if (numSamples < 0) {
+    throw ArgumentError('numSamples must be non-negative (was $numSamples)');
+  }
   final resolvedDType = dtype ?? defaultDType<T>();
+  if (numSamples == 0) {
+    return NDArray<T>.create([0], resolvedDType);
+  }
 
   switch (resolvedDType) {
     case DType.float64:
@@ -692,7 +705,7 @@ NDArray<T> geomspace<T>(
 /// // Row 0: [1, 10]
 /// // Row 1: [10, 100]
 /// // Row 2: [100, 1000]
-/// print(grid.data); // [1.0, 10.0, 10.0, 100.0, 100.0, 1000.0]
+/// print(grid.toList()); // [1.0, 10.0, 10.0, 100.0, 100.0, 1000.0]
 /// ```
 ///
 /// **Parameters:**

@@ -8,11 +8,30 @@ import '../scratch_arena.dart';
 
 /// Computes the element-wise phase/argument of complex numbers.
 ///
-/// Returns an array of double/float (matching the precision of the complex
+/// Returns an array of float or double (matching the precision of the complex
 /// input, i.e., Float64 for Complex128, Float32 for Complex64) with values
 /// in $[-\pi, \pi]$.
 ///
-/// Throws [ArgumentError] if the input array is not complex.
+/// **Preconditions:**
+/// - Input array [a] must not be disposed and must have a complex dtype (`complex64` or `complex128`).
+/// - If provided, [out] must match the shape of [a] and the corresponding floating-point dtype.
+///
+/// **Throws:**
+/// - It is an error if [a] or [out] is disposed.
+/// - It is an error if [a] dtype is not complex.
+/// - It is an error if [out] has incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Uses native vectorized C `v_angle` for contiguous arrays and `s_angle` for strided layouts.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([Complex(1.0, 1.0)], [1], DType.complex128);
+/// final p = angle(a);
+/// print(p.toList()); // [0.7853981633974483]
+/// ```
+///
+/// Reference: [NumPy angle](https://numpy.org/doc/stable/reference/generated/numpy.angle.html)
 NDArray<R> angle<T extends Complex, R extends double>(
   NDArray<T> a, {
   NDArray<R>? out,
@@ -107,7 +126,27 @@ NDArray<R> angle<T extends Complex, R extends double>(
 /// Unwraps radian phase angles by changing absolute jumps greater than [discont]
 /// to their $2\pi$ complement along the given [axis].
 ///
-/// Throws [ArgumentError] if the input array is not float32 or float64.
+/// **Preconditions:**
+/// - Input array [a] must not be disposed and must have a floating-point dtype (`float32` or `float64`).
+/// - The specified [axis] must be within valid rank bounds `[-a.rank, a.rank - 1]`.
+/// - If provided, [out] must match the shape and dtype of [a].
+///
+/// **Throws:**
+/// - It is an error if [a] or [out] is disposed.
+/// - It is an error if [a] dtype is not floating-point (`float32` or `float64`).
+/// - It is an error if [axis] is out of bounds.
+/// - It is an error if [out] has incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Uses native C strided routines (`s_unwrap_double` / `s_unwrap_float`) to efficiently unwrap along any axis.
+///
+/// **Example:**
+/// ```dart
+/// final phase = NDArray.fromList([0.0, math.pi + 0.1, -(math.pi + 0.1)], [3], DType.float64);
+/// final unwrapped = unwrap(phase);
+/// ```
+///
+/// Reference: [NumPy unwrap](https://numpy.org/doc/stable/reference/generated/numpy.unwrap.html)
 NDArray<T> unwrap<T extends double>(
   NDArray<T> a, {
   double discont = math.pi,
@@ -400,6 +439,7 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
           mode: PaddingMode.constant,
         );
         final res = _correlateValid<T, K, R>(padded1, in2, out: out);
+        if (out != null) return out;
         return res.detachToParentScope();
       });
     case ConvMode.same:
@@ -470,6 +510,7 @@ NDArray<R> convolve<T extends Object, K extends Object, R extends Object>(
         ? flippedKernel
         : flippedKernel.copy();
     final res = correlate<T, K, R>(in1, contiguousKernel, mode: mode, out: out);
+    if (out != null) return out;
     return res.detachToParentScope();
   });
 }

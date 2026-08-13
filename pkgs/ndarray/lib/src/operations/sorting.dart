@@ -23,7 +23,7 @@ import 'helpers.dart';
 /// - [axis] must be within `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [RangeError] if [axis] is out of bounds.
+/// - It is an error if [axis] is out of bounds.
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
@@ -63,15 +63,20 @@ NDArray<T> sort<T extends Object>(
 
   if (targetAxis != rank - 1) {
     final swappedView = a.swapaxes(targetAxis, rank - 1);
-    final swappedOut = out?.swapaxes(targetAxis, rank - 1);
     final sortedView = sort(
       swappedView,
       axis: rank - 1,
       kind: kind,
-      out: swappedOut,
     );
-    if (out != null) return out;
-    return sortedView.swapaxes(targetAxis, rank - 1);
+    final resultSwapped = sortedView.swapaxes(targetAxis, rank - 1);
+    if (out != null) {
+      resultSwapped.copy(out: out);
+      sortedView.dispose();
+      return out;
+    }
+    final res = resultSwapped.copy();
+    sortedView.dispose();
+    return res;
   }
   NDArray<T> src = a;
   final bool needsDisposeSrc = !a.isContiguous;
@@ -224,7 +229,7 @@ NDArray<T> sort<T extends Object>(
 /// - [axis] must be within `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [RangeError] if [axis] is out of bounds.
+/// - It is an error if [axis] is out of bounds.
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
@@ -265,15 +270,20 @@ NDArray<int> argsort(
 
   if (targetAxis != rank - 1) {
     final swappedView = a.swapaxes(targetAxis, rank - 1);
-    final swappedOut = out?.swapaxes(targetAxis, rank - 1);
     final sortedIndicesView = argsort(
       swappedView,
       axis: rank - 1,
       kind: kind,
-      out: swappedOut,
     );
-    if (out != null) return out;
-    return sortedIndicesView.swapaxes(targetAxis, rank - 1);
+    final resultSwapped = sortedIndicesView.swapaxes(targetAxis, rank - 1);
+    if (out != null) {
+      resultSwapped.copy(out: out);
+      sortedIndicesView.dispose();
+      return out;
+    }
+    final res = resultSwapped.copy();
+    sortedIndicesView.dispose();
+    return res;
   }
 
   NDArray src = a;
@@ -283,6 +293,7 @@ NDArray<int> argsort(
     needsDispose = true;
   }
 
+  ScratchMarker? marker;
   try {
     final n = src.shape.last;
     final totalSize = src.shape.isEmpty ? 1 : src.shape.reduce((x, y) => x * y);
@@ -292,7 +303,6 @@ NDArray<int> argsort(
     final nativeKind = mapSortKind(kind);
 
     final is64 = result.dtype == DType.int64;
-    final ScratchMarker? marker;
     final ffi.Pointer<ffi.Int> resPtr;
     if (is64) {
       marker = ScratchArena.marker;
@@ -300,7 +310,6 @@ NDArray<int> argsort(
         totalSize * ffi.sizeOf<ffi.Int>(),
       );
     } else {
-      marker = null;
       resPtr = result.pointer.cast<ffi.Int>();
     }
 
@@ -314,7 +323,6 @@ NDArray<int> argsort(
         for (var i = 0; i < totalSize; i++) {
           outData[i] = resPtr[i];
         }
-        ScratchArena.reset(marker!);
       }
       return result;
     } else if (src.dtype == DType.float32) {
@@ -327,7 +335,6 @@ NDArray<int> argsort(
         for (var i = 0; i < totalSize; i++) {
           outData[i] = resPtr[i];
         }
-        ScratchArena.reset(marker!);
       }
       return result;
     } else if (src.dtype == DType.int64) {
@@ -340,7 +347,6 @@ NDArray<int> argsort(
         for (var i = 0; i < totalSize; i++) {
           outData[i] = resPtr[i];
         }
-        ScratchArena.reset(marker!);
       }
       return result;
     } else if (src.dtype == DType.int32) {
@@ -353,7 +359,6 @@ NDArray<int> argsort(
         for (var i = 0; i < totalSize; i++) {
           outData[i] = resPtr[i];
         }
-        ScratchArena.reset(marker!);
       }
       return result;
     } else if (src.dtype == DType.int16) {
@@ -366,7 +371,6 @@ NDArray<int> argsort(
         for (var i = 0; i < totalSize; i++) {
           outData[i] = resPtr[i];
         }
-        ScratchArena.reset(marker!);
       }
       return result;
     } else if (src.dtype == DType.uint8) {
@@ -379,7 +383,6 @@ NDArray<int> argsort(
         for (var i = 0; i < totalSize; i++) {
           outData[i] = resPtr[i];
         }
-        ScratchArena.reset(marker!);
       }
       return result;
     }
@@ -415,6 +418,9 @@ NDArray<int> argsort(
 
     return result;
   } finally {
+    if (marker != null) {
+      ScratchArena.reset(marker);
+    }
     if (needsDispose) {
       src.dispose();
     }
@@ -432,8 +438,8 @@ NDArray<int> argsort(
 /// - [kth] must be an `int` or `List<int>` containing indices within `[0, axis_size - 1]`.
 ///
 /// **Throws:**
-/// - [RangeError] if [axis] is out of bounds.
-/// - [ArgumentError] if [kth] is invalid.
+/// - It is an error if [axis] is out of bounds.
+/// - It is an error if [kth] is invalid.
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
@@ -496,15 +502,20 @@ NDArray<T> partition<T extends Object>(
 
   if (targetAxis != rank - 1) {
     final swappedView = a.swapaxes(targetAxis, rank - 1);
-    final swappedOut = out?.swapaxes(targetAxis, rank - 1);
     final partitionedView = partition(
       swappedView,
       uniqueK,
       axis: rank - 1,
-      out: swappedOut,
     );
-    if (out != null) return out;
-    return partitionedView.swapaxes(targetAxis, rank - 1);
+    final resultSwapped = partitionedView.swapaxes(targetAxis, rank - 1);
+    if (out != null) {
+      resultSwapped.copy(out: out);
+      partitionedView.dispose();
+      return out;
+    }
+    final res = resultSwapped.copy();
+    partitionedView.dispose();
+    return res;
   }
 
   NDArray<T> src = a;
@@ -697,8 +708,8 @@ NDArray<T> partition<T extends Object>(
 /// - [kth] must be an `int` or `List<int>` containing indices within `[0, axis_size - 1]`.
 ///
 /// **Throws:**
-/// - [RangeError] if [axis] is out of bounds.
-/// - [ArgumentError] if [kth] is invalid.
+/// - It is an error if [axis] is out of bounds.
+/// - It is an error if [kth] is invalid.
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
@@ -762,15 +773,20 @@ NDArray<int> argpartition(
 
   if (targetAxis != rank - 1) {
     final swappedView = a.swapaxes(targetAxis, rank - 1);
-    final swappedOut = out?.swapaxes(targetAxis, rank - 1);
     final partitionedIndicesView = argpartition(
       swappedView,
       uniqueK,
       axis: rank - 1,
-      out: swappedOut,
     );
-    if (out != null) return out;
-    return partitionedIndicesView.swapaxes(targetAxis, rank - 1);
+    final resultSwapped = partitionedIndicesView.swapaxes(targetAxis, rank - 1);
+    if (out != null) {
+      resultSwapped.copy(out: out);
+      partitionedIndicesView.dispose();
+      return out;
+    }
+    final res = resultSwapped.copy();
+    partitionedIndicesView.dispose();
+    return res;
   }
 
   NDArray src = a;
@@ -953,8 +969,8 @@ NDArray<int> argpartition(
 ///   is performed indirectly using the sorter indices, completely copy-free.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [a] is not 1-D, [sorter] shape/size is invalid, or if data types mismatch.
-/// - [StateError] if any input array is already disposed.
+/// - It is an error if [a] is not 1-D, [sorter] shape/size is invalid, or if data types mismatch.
+/// - It is an error if any input array is already disposed.
 ///
 /// **Performance considerations:**
 /// - **Time Complexity**: $O(M \log N)$ where $N$ is the size of [a] and $M$ is the size of [v].
@@ -1241,10 +1257,10 @@ NDArray<int> searchsorted(
 /// - If provided, [condition], [x], and [y] shapes must be mutually broadcast-compatible.
 ///
 /// **Throws:**
-/// - [ArgumentError] if only one of [x] or [y] is provided.
-/// - [ArgumentError] if [out] is specified when [x] and [y] are omitted.
-/// - [ArgumentError] if the shapes are not broadcast-compatible.
-/// - [ArgumentError] if the [out] recycler has incompatible shape or dtype.
+/// - It is an error if only one of [x] or [y] is provided.
+/// - It is an error if [out] is specified when [x] and [y] are omitted.
+/// - It is an error if the shapes are not broadcast-compatible.
+/// - It is an error if the [out] recycler has incompatible shape or dtype.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ where $N$ is the broadcasted result size.
@@ -2321,11 +2337,11 @@ enum CompareOp {
 ///   contain `1` (forward search) or `-1` (backward search) for each dimension.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if the length of [startCoords] or [directions] does not match the rank of [a].
-/// - [ArgumentError] if [directions] contains any values other than `1` or `-1`.
-/// - [RangeError] if any coordinate in [startCoords] is out of bounds for the array's shape.
-/// - [UnsupportedError] if [a] has a complex data type and [op] is an inequality operator (e.g., [CompareOp.less]).
+/// - It is an error if [a] is disposed.
+/// - It is an error if the length of [startCoords] or [directions] does not match the rank of [a].
+/// - It is an error if [directions] contains any values other than `1` or `-1`.
+/// - It is an error if any coordinate in [startCoords] is out of bounds for the array's shape.
+/// - It is an error if [a] has a complex data type and [op] is an inequality operator (e.g., [CompareOp.less]).
 ///
 /// **Performance considerations:**
 /// - Complexity is $O(N)$ in the worst case where $N$ is the number of elements in [a].

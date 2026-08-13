@@ -50,123 +50,127 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_exp_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_exp_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_exp_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_exp_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final marker = ScratchArena.marker;
-    try {
-      final cBuffer = ScratchArena.getStridedBuffer(rank);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + rank;
-      final cStridesRes = cBuffer + (rank * 2);
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = a.shape[i];
-        cStridesA[i] = a.strides[i];
-        cStridesRes[i] = result.strides[i];
-      }
-
+  try {
+    if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
-          s_exp_double(
+          v_exp_double(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         case DType.float32:
-          s_exp_float(
+          v_exp_float(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         case DType.complex128:
-          s_exp_complex128(
+          v_exp_complex128(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         case DType.complex64:
-          s_exp_complex64(
+          v_exp_complex64(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         default:
           break;
       }
-    } finally {
-      ScratchArena.reset(marker);
-    }
-  }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
 
-  unaryOp<T, R>(
-    result.data,
-    a.data,
-    a.shape,
-    a.strides,
-    result.strides,
-    0,
-    a.offsetElements,
-    result.offsetElements,
-    (x) => math.exp((x as num).toDouble()) as R,
-    maskHolder.pointer,
-  );
-  return result;
+        switch (a.dtype) {
+          case DType.float64:
+            s_exp_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_exp_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_exp_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_exp_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    unaryOp<T, R>(
+      result.data,
+      a.data,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) => math.exp((x as num).toDouble()) as R,
+      maskHolder.pointer,
+    );
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
 }
 
 /// Computes the element-wise natural logarithm of the array.
@@ -213,122 +217,126 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_log_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_log_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_log_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_log_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final marker = ScratchArena.marker;
-    try {
-      final cBuffer = ScratchArena.getStridedBuffer(rank);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + rank;
-      final cStridesRes = cBuffer + (rank * 2);
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = a.shape[i];
-        cStridesA[i] = a.strides[i];
-        cStridesRes[i] = result.strides[i];
-      }
+  try {
+    if (a.isContiguous && result.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
-          s_log_double(
+          v_log_double(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         case DType.float32:
-          s_log_float(
+          v_log_float(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         case DType.complex128:
-          s_log_complex128(
+          v_log_complex128(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         case DType.complex64:
-          s_log_complex64(
+          v_log_complex64(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            a.size,
             maskHolder.pointer,
           );
           return result;
         default:
           break;
       }
-    } finally {
-      ScratchArena.reset(marker);
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
+        switch (a.dtype) {
+          case DType.float64:
+            s_log_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_log_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_log_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_log_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
     }
-  }
 
-  unaryOp<T, R>(
-    result.data,
-    a.data,
-    a.shape,
-    a.strides,
-    result.strides,
-    0,
-    a.offsetElements,
-    result.offsetElements,
-    (x) => math.log((x as num).toDouble()) as R,
-    maskHolder.pointer,
-  );
-  return result;
+    unaryOp<T, R>(
+      result.data,
+      a.data,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) => math.log((x as num).toDouble()) as R,
+      maskHolder.pointer,
+    );
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
 }
 
 /// Computes the base-2 logarithm of each element in [a].
@@ -371,125 +379,129 @@ NDArray<R> log2<T, R>(
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_log2_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_log2_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_log2_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_log2_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final marker = ScratchArena.marker;
-    try {
-      final cBuffer = ScratchArena.getStridedBuffer(rank);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + rank;
-      final cStridesRes = cBuffer + (rank * 2);
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = a.shape[i];
-        cStridesA[i] = a.strides[i];
-        cStridesRes[i] = result.strides[i];
+  try {
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_log2_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_log2_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          v_log2_complex128(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          v_log2_complex64(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
       }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
 
-      if (a.dtype == DType.float64) {
-        s_log2_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      } else if (a.dtype == DType.float32) {
-        s_log2_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      } else if (a.dtype == DType.complex128) {
-        s_log2_complex128(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      } else if (a.dtype == DType.complex64) {
-        s_log2_complex64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
+        if (a.dtype == DType.float64) {
+          s_log2_double(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        } else if (a.dtype == DType.float32) {
+          s_log2_float(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        } else if (a.dtype == DType.complex128) {
+          s_log2_complex128(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        } else if (a.dtype == DType.complex64) {
+          s_log2_complex64(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        }
+      } finally {
+        ScratchArena.reset(marker);
       }
-    } finally {
-      ScratchArena.reset(marker);
     }
+
+    unaryOp<T, R>(
+      result.data,
+      a.data,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) {
+        if (x is Complex) {
+          return (x.log() / math.log(2.0)) as R;
+        }
+        return (math.log((x as num).toDouble()) / math.log(2.0)) as R;
+      },
+      maskHolder.pointer,
+    );
+    return result;
+  } finally {
+    maskHolder.dispose();
   }
-
-  unaryOp<T, R>(
-    result.data,
-    a.data,
-    a.shape,
-    a.strides,
-    result.strides,
-    0,
-    a.offsetElements,
-    result.offsetElements,
-    (x) {
-      if (x is Complex) {
-        return (x.log() / math.log(2.0)) as R;
-      }
-      return (math.log((x as num).toDouble()) / math.log(2.0)) as R;
-    },
-    maskHolder.pointer,
-  );
-  return result;
 }
 
 /// Computes the base-10 logarithm of each element in [a].
@@ -532,123 +544,127 @@ NDArray<R> log10<T, R>(
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (a.isContiguous && result.isContiguous) {
-    switch (a.dtype) {
-      case DType.float64:
-        v_log10_double(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        v_log10_float(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        v_log10_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        v_log10_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  } else {
-    final rank = a.shape.length;
-    final marker = ScratchArena.marker;
-    try {
-      final cBuffer = ScratchArena.getStridedBuffer(rank);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + rank;
-      final cStridesRes = cBuffer + (rank * 2);
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = a.shape[i];
-        cStridesA[i] = a.strides[i];
-        cStridesRes[i] = result.strides[i];
+  try {
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_log10_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_log10_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          v_log10_complex128(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          v_log10_complex64(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            a.size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
       }
+    } else {
+      final rank = a.shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + rank;
+        final cStridesRes = cBuffer + (rank * 2);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = a.shape[i];
+          cStridesA[i] = a.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
 
-      if (a.dtype == DType.float64) {
-        s_log10_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      } else if (a.dtype == DType.float32) {
-        s_log10_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      } else if (a.dtype == DType.complex128) {
-        s_log10_complex128(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      } else if (a.dtype == DType.complex64) {
-        s_log10_complex64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
+        if (a.dtype == DType.float64) {
+          s_log10_double(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        } else if (a.dtype == DType.float32) {
+          s_log10_float(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        } else if (a.dtype == DType.complex128) {
+          s_log10_complex128(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        } else if (a.dtype == DType.complex64) {
+          s_log10_complex64(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        }
+      } finally {
+        ScratchArena.reset(marker);
       }
-    } finally {
-      ScratchArena.reset(marker);
     }
+
+    unaryOp<T, R>(
+      result.data,
+      a.data,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) {
+        if (x is Complex) {
+          return (x.log() / math.log(10.0)) as R;
+        }
+        return (math.log((x as num).toDouble()) / math.log(10.0)) as R;
+      },
+      maskHolder.pointer,
+    );
+    return result;
+  } finally {
+    maskHolder.dispose();
   }
-
-  unaryOp<T, R>(
-    result.data,
-    a.data,
-    a.shape,
-    a.strides,
-    result.strides,
-    0,
-    a.offsetElements,
-    result.offsetElements,
-    (x) {
-      if (x is Complex) {
-        return (x.log() / math.log(10.0)) as R;
-      }
-      return (math.log((x as num).toDouble()) / math.log(10.0)) as R;
-    },
-    maskHolder.pointer,
-  );
-  return result;
 }

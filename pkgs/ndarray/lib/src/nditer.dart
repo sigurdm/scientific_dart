@@ -16,11 +16,9 @@ import 'ndarray.dart';
 ///
 /// **Preconditions:**
 /// - When broadcasting multiple arrays, all shapes must be compatible for broadcasting.
-///   If they are incompatible, an [ArgumentError] is thrown upon construction.
 ///
-/// **Throws:**
-/// - It is an error if any array passed to the iterator has been disposed.
-/// - It is an error if the list of arrays is empty, or if shapes are incompatible.
+/// It is an error if any array passed to the iterator has been disposed.
+/// It is an error if the list of arrays is empty, or if shapes are incompatible.
 ///
 /// **Example:**
 /// ```dart
@@ -151,8 +149,7 @@ final class NDIter {
   /// **Preconditions:**
   /// - [arrayIndex] must be greater than or equal to 0 and less than the number of arrays being iterated.
   ///
-  /// **Throws:**
-  /// - [RangeError] if [arrayIndex] is out of bounds.
+  /// It is an error if [arrayIndex] is out of bounds.
   int getIndex(int arrayIndex) {
     if (arrayIndex < 0 || arrayIndex >= _numArrays) {
       throw RangeError.range(arrayIndex, 0, _numArrays - 1, 'arrayIndex');
@@ -217,8 +214,7 @@ final class NDIter {
 /// Yields multi-dimensional coordinates and cell values of an [NDArray]
 /// in standard lexicographical (C-contiguous) order.
 ///
-/// **Throws:**
-/// - It is an error if the array has been disposed.
+/// It is an error if the array has been disposed.
 ///
 /// **Example:**
 /// ```dart

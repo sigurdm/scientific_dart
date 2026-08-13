@@ -25,7 +25,9 @@ final class ScratchArena {
   /// Allocates [bytes] of memory from the arena stack, aligned to 8 bytes.
   ///
   /// **Preconditions:**
-  /// - [bytes] must be greater than 0.
+  /// - [bytes] must be non-negative.
+  ///
+  /// It is an error if [bytes] is negative.
   ///
   /// **Performance considerations:**
   /// - Amortized $O(1)$ complexity. If the current page has enough space,
@@ -36,6 +38,9 @@ final class ScratchArena {
   /// **Example:**
   /// {@example /example/scratch_arena_example.dart}
   static ffi.Pointer<T> allocate<T extends ffi.NativeType>(int bytes) {
+    if (bytes < 0) {
+      throw ArgumentError('bytes must be non-negative.');
+    }
     _init();
 
     // Ensure 8-byte alignment for native FFI alignment requirements
@@ -318,6 +323,16 @@ final class ScratchArena {
   /// [ndim] is the number of dimensions.
   /// [segments] is the number of segments of size [ndim] needed in the buffer.
   /// Defaults to 4.
+  ///
+  /// **Preconditions:**
+  /// - [ndim] must be non-negative.
+  /// - [segments] must be non-negative.
+  ///
+  /// **Performance considerations:**
+  /// - Time complexity is $O(1)$ amortized allocation on the bump stack.
+  ///
+  /// **Example:**
+  /// {@example /example/scratch_arena_example.dart}
   static ffi.Pointer<ffi.Int> getStridedBuffer(int ndim, [int segments = 4]) {
     final count = ndim * segments;
     final requiredSize = count > 0 ? count : 1;

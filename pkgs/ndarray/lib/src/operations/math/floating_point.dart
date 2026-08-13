@@ -551,111 +551,117 @@ NDArray<T> copysign<T extends Object>(
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  if (x1.isContiguous &&
-      x2.isContiguous &&
-      listEquals(x1.shape, x2.shape) &&
-      result.isContiguous) {
-    if (targetDType == DType.float64) {
-      v_copysign_double(
-        x1.pointer.cast(),
-        x2.pointer.cast(),
-        result.pointer.cast(),
-        x1.data.length,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (targetDType == DType.float32) {
-      v_copysign_float(
-        x1.pointer.cast(),
-        x2.pointer.cast(),
-        result.pointer.cast(),
-        x1.data.length,
-        maskHolder.pointer,
-      );
-      return result;
+  try {
+    if (x1.dtype == targetDType &&
+        x2.dtype == targetDType &&
+        x1.isContiguous &&
+        x2.isContiguous &&
+        listEquals(x1.shape, x2.shape) &&
+        result.isContiguous) {
+      if (targetDType == DType.float64) {
+        v_copysign_double(
+          x1.pointer.cast(),
+          x2.pointer.cast(),
+          result.pointer.cast(),
+          x1.size,
+          maskHolder.pointer,
+        );
+        return result;
+      } else if (targetDType == DType.float32) {
+        v_copysign_float(
+          x1.pointer.cast(),
+          x2.pointer.cast(),
+          result.pointer.cast(),
+          x1.size,
+          maskHolder.pointer,
+        );
+        return result;
+      }
+    } else if (x1.dtype == targetDType &&
+        x2.dtype == targetDType &&
+        shape.length <= 8) {
+      final rank = shape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cShape = ScratchArena.copyInts(shape);
+        final cStridesA = ScratchArena.copyInts(stridesA);
+        final cStridesB = ScratchArena.copyInts(stridesB);
+        final cStridesRes = ScratchArena.copyInts(result.strides);
+        if (targetDType == DType.float64) {
+          s_copysign_double(
+            x1.pointer.cast(),
+            cStridesA,
+            x2.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        } else if (targetDType == DType.float32) {
+          s_copysign_float(
+            x1.pointer.cast(),
+            cStridesA,
+            x2.pointer.cast(),
+            cStridesB,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
     }
-  } else if (shape.length <= 8) {
-    final rank = shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesB = cBuffer + (rank * 2);
-    final cStridesRes = cBuffer + (rank * 3);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = shape[i];
-      cStridesA[i] = stridesA[i];
-      cStridesB[i] = stridesB[i];
-      cStridesRes[i] = result.strides[i];
-    }
-    if (targetDType == DType.float64) {
-      s_copysign_double(
-        x1.pointer.cast(),
-        cStridesA,
-        x2.pointer.cast(),
-        cStridesB,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (targetDType == DType.float32) {
-      s_copysign_float(
-        x1.pointer.cast(),
-        cStridesA,
-        x2.pointer.cast(),
-        cStridesB,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    }
-  }
 
-  double copysignOp(double a, double b) {
-    if (b == 0.0) {
-      return b.isNegative ? -a.abs() : a.abs();
+    double copysignOp(double a, double b) {
+      if (b == 0.0) {
+        return b.isNegative ? -a.abs() : a.abs();
+      }
+      return b < 0.0 ? -a.abs() : a.abs();
     }
-    return b < 0.0 ? -a.abs() : a.abs();
-  }
 
-  if (targetDType == DType.float64 || targetDType == DType.float32) {
-    elementWiseOp<double, double, double>(
-      result.data as List<double>,
-      x1.data as List<double>,
-      x2.data as List<double>,
-      shape,
-      stridesA,
-      stridesB,
-      result.strides,
-      0,
-      x1.offsetElements,
-      x2.offsetElements,
-      result.offsetElements,
-      (x, y) => copysignOp(x, y),
-    );
-  } else {
-    elementWiseOp<num, num, int>(
-      result.data as List<int>,
-      x1.data as List<num>,
-      x2.data as List<num>,
-      shape,
-      stridesA,
-      stridesB,
-      result.strides,
-      0,
-      x1.offsetElements,
-      x2.offsetElements,
-      result.offsetElements,
-      (x, y) => copysignOp(x.toDouble(), y.toDouble()).toInt(),
-    );
-  }
+    if (targetDType == DType.float64 || targetDType == DType.float32) {
+      elementWiseOp<double, double, double>(
+        result.data as List<double>,
+        x1.data as List<double>,
+        x2.data as List<double>,
+        shape,
+        stridesA,
+        stridesB,
+        result.strides,
+        0,
+        x1.offsetElements,
+        x2.offsetElements,
+        result.offsetElements,
+        (x, y) => copysignOp(x, y),
+      );
+    } else {
+      elementWiseOp<num, num, int>(
+        result.data as List<int>,
+        x1.data as List<num>,
+        x2.data as List<num>,
+        shape,
+        stridesA,
+        stridesB,
+        result.strides,
+        0,
+        x1.offsetElements,
+        x2.offsetElements,
+        result.offsetElements,
+        (x, y) => copysignOp(x.toDouble(), y.toDouble()).toInt(),
+      );
+    }
 
-  return result;
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
 }
 
 /// Returns a boolean [NDArray] where two arrays are element-wise equal within a tolerance.

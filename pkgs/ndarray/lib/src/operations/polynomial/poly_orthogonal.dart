@@ -80,8 +80,8 @@ void _copyInto<R>(NDArray src, NDArray<R> out) {
 /// - Coefficient array must be 1-dimensional and non-empty.
 ///
 /// **Throws:**
-/// - [StateError] if any input or [out] buffer is disposed.
-/// - [ArgumentError] if coefficient array is invalid or [out] buffer mismatches.
+/// - It is an error if any input or [out] buffer is disposed.
+/// - It is an error if coefficient array is invalid or [out] buffer mismatches.
 ///
 /// Reference: [NumPy chebval](https://numpy.org/doc/stable/reference/generated/numpy.polynomial.chebyshev.chebval.html)
 NDArray<R> chebval<T1, T2, R>(

@@ -19,11 +19,8 @@ extension UfuncNDArrayExtension<T extends Object> on NDArray<T> {
   /// - It is an error if [op] is not reducible ([op.isReducible] is false).
   /// - It is an error if this array or [out] (if provided) is disposed.
   /// - It is an error if [axis] is not within `[-rank, rank - 1]`.
-  ///
-  /// **Throws:**
-  /// - Throws [ArgumentError] if [op] is not reducible or [a] is empty without [initial].
-  /// - Throws [StateError] if this array or [out] is disposed.
-  /// - Throws [RangeError] if [axis] is out of bounds.
+  /// - It is an error if this array is empty without [initial].
+  /// - It is an error if [out] (if provided) has incompatible shape or dtype.
   NDArray<T> reduce({
     required BinaryOp op,
     int? axis,
@@ -45,11 +42,7 @@ extension UfuncNDArrayExtension<T extends Object> on NDArray<T> {
   /// - It is an error if [op] is not reducible ([op.isReducible] is false).
   /// - It is an error if this array or [out] (if provided) is disposed.
   /// - It is an error if [axis] is not within `[-rank, rank - 1]`.
-  ///
-  /// **Throws:**
-  /// - Throws [ArgumentError] if [op] is not reducible.
-  /// - Throws [StateError] if this array or [out] is disposed.
-  /// - Throws [RangeError] if [axis] is out of bounds.
+  /// - It is an error if [out] (if provided) has incompatible shape or dtype.
   NDArray<T> accumulate({
     required BinaryOp op,
     int axis = 0,
@@ -62,11 +55,7 @@ extension UfuncNDArrayExtension<T extends Object> on NDArray<T> {
   /// - It is an error if [op] is not reducible ([op.isReducible] is false).
   /// - It is an error if this array, [indices], or [out] is disposed.
   /// - It is an error if [axis] is not within `[-rank, rank - 1]`.
-  ///
-  /// **Throws:**
-  /// - Throws [ArgumentError] if [op] is not reducible.
-  /// - Throws [StateError] if this array, [indices], or [out] is disposed.
-  /// - Throws [RangeError] if [axis] is out of bounds.
+  /// - It is an error if [out] (if provided) has incompatible shape or dtype.
   NDArray<T> reduceat(
     NDArray<int> indices, {
     required BinaryOp op,
@@ -78,9 +67,7 @@ extension UfuncNDArrayExtension<T extends Object> on NDArray<T> {
   ///
   /// **Preconditions:**
   /// - It is an error if this array, [b], or [out] is disposed.
-  ///
-  /// **Throws:**
-  /// - Throws [StateError] if this array, [b], or [out] is disposed.
+  /// - It is an error if [out] (if provided) has incompatible shape or dtype.
   NDArray<T> outer(
     NDArray<T> b, {
     BinaryOp op = BinaryOp.multiply,
@@ -91,9 +78,6 @@ extension UfuncNDArrayExtension<T extends Object> on NDArray<T> {
   ///
   /// **Preconditions:**
   /// - It is an error if this array, [indices], or [b] is disposed.
-  ///
-  /// **Throws:**
-  /// - Throws [StateError] if this array, [indices], or [b] is disposed.
   void at(NDArray<int> indices, NDArray<T> b, {required BinaryOp op}) =>
       atUfunc(this, indices, b, op: op);
 }
@@ -241,11 +225,8 @@ NDArray<R> _elementwiseMax<T extends Object, R extends Object>(
 /// - It is an error if [op] is not reducible ([op.isReducible] is false).
 /// - It is an error if [a] or [out] (if provided) is disposed.
 /// - It is an error if [axis] is not within `[-rank, rank - 1]`.
-///
-/// **Throws:**
-/// - Throws [ArgumentError] if [op] is not reducible or [a] is empty without [initial].
-/// - Throws [StateError] if [a] or [out] is disposed.
-/// - Throws [RangeError] if [axis] is out of bounds.
+/// - It is an error if [a] is empty without [initial].
+/// - It is an error if [out] (if provided) has incompatible shape or dtype.
 NDArray<T> reduce<T extends Object>(
   NDArray<T> a, {
   required BinaryOp op,
@@ -268,11 +249,7 @@ NDArray<T> reduce<T extends Object>(
 /// - It is an error if [op] is not reducible ([op.isReducible] is false).
 /// - It is an error if [a] or [out] (if provided) is disposed.
 /// - It is an error if [axis] is not within `[-rank, rank - 1]`.
-///
-/// **Throws:**
-/// - Throws [ArgumentError] if [op] is not reducible.
-/// - Throws [StateError] if [a] or [out] is disposed.
-/// - Throws [RangeError] if [axis] is out of bounds.
+/// - It is an error if [out] (if provided) has incompatible shape or dtype.
 NDArray<T> accumulate<T extends Object>(
   NDArray<T> a, {
   required BinaryOp op,
@@ -286,11 +263,7 @@ NDArray<T> accumulate<T extends Object>(
 /// - It is an error if [op] is not reducible ([op.isReducible] is false).
 /// - It is an error if [a], [indices], or [out] is disposed.
 /// - It is an error if [axis] is not within `[-rank, rank - 1]`.
-///
-/// **Throws:**
-/// - Throws [ArgumentError] if [op] is not reducible.
-/// - Throws [StateError] if [a], [indices], or [out] is disposed.
-/// - Throws [RangeError] if [axis] is out of bounds.
+/// - It is an error if [out] (if provided) has incompatible shape or dtype.
 NDArray<T> reduceat<T extends Object>(
   NDArray<T> a,
   NDArray<int> indices, {
@@ -303,9 +276,6 @@ NDArray<T> reduceat<T extends Object>(
 ///
 /// **Preconditions:**
 /// - It is an error if [a], [indices], or [b] is disposed.
-///
-/// **Throws:**
-/// - Throws [StateError] if [a], [indices], or [b] is disposed.
 void at<T extends Object>(
   NDArray<T> a,
   NDArray<int> indices,
@@ -565,99 +535,482 @@ NDArray<T> reduceUfunc<T extends Object>(
     );
   }
 
-  final rank = a.rank;
-  final cBuffer = ScratchArena.getStridedBuffer(rank * 2 + 1);
-  final cShape = cBuffer;
-  final cStridesA = cBuffer + rank;
-  final cStridesRes = cBuffer + (rank * 2);
-  for (var i = 0; i < rank; i++) {
-    cShape[i] = a.shape[i];
-    cStridesA[i] = a.strides[i];
-  }
-  if (rank > 1) {
-    for (var i = 0; i < rank - 1; i++) {
-      cStridesRes[i] = result.strides[i];
-    }
-  }
-
   bool handled = false;
   if (initial == null) {
-    switch (op) {
-      case BinaryOp.add:
-        switch (a.dtype) {
-          case DType.float64:
-            s_sum_double(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.float32:
-            s_sum_float(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int64:
-            s_sum_int64(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int32:
-            s_sum_int32(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.uint8:
-            s_sum_uint8(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int16:
-            s_sum_int16(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          default:
-            break;
+    final marker = ScratchArena.marker;
+    try {
+      final rank = a.rank;
+      final cBuffer = ScratchArena.getStridedBuffer(rank * 2 + 1);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+      }
+      if (rank > 1) {
+        for (var i = 0; i < rank - 1; i++) {
+          cStridesRes[i] = result.strides[i];
         }
-      case BinaryOp.multiply:
-        switch (a.dtype) {
-          case DType.float64:
-            s_prod_double(
+      }
+
+      switch (op) {
+        case BinaryOp.add:
+          switch (a.dtype) {
+            case DType.float64:
+              s_sum_double(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.float32:
+              s_sum_float(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int64:
+              s_sum_int64(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int32:
+              s_sum_int32(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.uint8:
+              s_sum_uint8(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int16:
+              s_sum_int16(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            default:
+              break;
+          }
+        case BinaryOp.multiply:
+          switch (a.dtype) {
+            case DType.float64:
+              s_prod_double(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.float32:
+              s_prod_float(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int64:
+              s_prod_int64(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int32:
+              s_prod_int32(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.uint8:
+              s_prod_uint8(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int16:
+              s_prod_int16(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.complex128:
+              s_prod_complex128(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.complex64:
+              s_prod_complex64(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            default:
+              break;
+          }
+        case BinaryOp.minimum:
+          switch (a.dtype) {
+            case DType.float64:
+              s_min_double(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.float32:
+              s_min_float(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int64:
+              s_min_int64_t(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int32:
+              s_min_int32_t(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.uint8:
+              s_min_uint8_t(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int16:
+              s_min_int16_t(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            default:
+              break;
+          }
+        case BinaryOp.maximum:
+          switch (a.dtype) {
+            case DType.float64:
+              s_max_double(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.float32:
+              s_max_float(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int64:
+              s_max_int64_t(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int32:
+              s_max_int32_t(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.uint8:
+              s_max_uint8_t(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int16:
+              s_max_int16_t(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            default:
+              break;
+          }
+        case BinaryOp.bitwiseAnd:
+          switch (a.dtype) {
+            case DType.int64:
+              s_bitwise_and_red_int64(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int32:
+              s_bitwise_and_red_int32(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.uint8:
+              s_bitwise_and_red_uint8(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int16:
+              s_bitwise_and_red_int16(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            default:
+              break;
+          }
+        case BinaryOp.bitwiseOr:
+          switch (a.dtype) {
+            case DType.int64:
+              s_bitwise_or_red_int64(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int32:
+              s_bitwise_or_red_int32(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.uint8:
+              s_bitwise_or_red_uint8(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int16:
+              s_bitwise_or_red_int16(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            default:
+              break;
+          }
+        case BinaryOp.bitwiseXor:
+          switch (a.dtype) {
+            case DType.int64:
+              s_bitwise_xor_red_int64(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int32:
+              s_bitwise_xor_red_int32(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.uint8:
+              s_bitwise_xor_red_uint8(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            case DType.int16:
+              s_bitwise_xor_red_int16(
+                a.pointer.cast(),
+                cStridesA,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                normAxis,
+              );
+              handled = true;
+            default:
+              break;
+          }
+        case BinaryOp.logicalAnd:
+          if (a.dtype == DType.boolean) {
+            s_logical_and_red(
               a.pointer.cast(),
               cStridesA,
               result.pointer.cast(),
@@ -667,8 +1020,10 @@ NDArray<T> reduceUfunc<T extends Object>(
               normAxis,
             );
             handled = true;
-          case DType.float32:
-            s_prod_float(
+          }
+        case BinaryOp.logicalOr:
+          if (a.dtype == DType.boolean) {
+            s_logical_or_red(
               a.pointer.cast(),
               cStridesA,
               result.pointer.cast(),
@@ -678,8 +1033,10 @@ NDArray<T> reduceUfunc<T extends Object>(
               normAxis,
             );
             handled = true;
-          case DType.int64:
-            s_prod_int64(
+          }
+        case BinaryOp.logicalXor:
+          if (a.dtype == DType.boolean) {
+            s_logical_xor_red(
               a.pointer.cast(),
               cStridesA,
               result.pointer.cast(),
@@ -689,394 +1046,12 @@ NDArray<T> reduceUfunc<T extends Object>(
               normAxis,
             );
             handled = true;
-          case DType.int32:
-            s_prod_int32(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.uint8:
-            s_prod_uint8(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int16:
-            s_prod_int16(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.complex128:
-            s_prod_complex128(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.complex64:
-            s_prod_complex64(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          default:
-            break;
-        }
-      case BinaryOp.minimum:
-        switch (a.dtype) {
-          case DType.float64:
-            s_min_double(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.float32:
-            s_min_float(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int64:
-            s_min_int64_t(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int32:
-            s_min_int32_t(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.uint8:
-            s_min_uint8_t(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int16:
-            s_min_int16_t(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          default:
-            break;
-        }
-      case BinaryOp.maximum:
-        switch (a.dtype) {
-          case DType.float64:
-            s_max_double(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.float32:
-            s_max_float(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int64:
-            s_max_int64_t(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int32:
-            s_max_int32_t(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.uint8:
-            s_max_uint8_t(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int16:
-            s_max_int16_t(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          default:
-            break;
-        }
-      case BinaryOp.bitwiseAnd:
-        switch (a.dtype) {
-          case DType.int64:
-            s_bitwise_and_red_int64(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int32:
-            s_bitwise_and_red_int32(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.uint8:
-            s_bitwise_and_red_uint8(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int16:
-            s_bitwise_and_red_int16(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          default:
-            break;
-        }
-      case BinaryOp.bitwiseOr:
-        switch (a.dtype) {
-          case DType.int64:
-            s_bitwise_or_red_int64(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int32:
-            s_bitwise_or_red_int32(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.uint8:
-            s_bitwise_or_red_uint8(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int16:
-            s_bitwise_or_red_int16(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          default:
-            break;
-        }
-      case BinaryOp.bitwiseXor:
-        switch (a.dtype) {
-          case DType.int64:
-            s_bitwise_xor_red_int64(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int32:
-            s_bitwise_xor_red_int32(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.uint8:
-            s_bitwise_xor_red_uint8(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          case DType.int16:
-            s_bitwise_xor_red_int16(
-              a.pointer.cast(),
-              cStridesA,
-              result.pointer.cast(),
-              cStridesRes,
-              cShape,
-              rank,
-              normAxis,
-            );
-            handled = true;
-          default:
-            break;
-        }
-      case BinaryOp.logicalAnd:
-        if (a.dtype == DType.boolean) {
-          s_logical_and_red(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        }
-      case BinaryOp.logicalOr:
-        if (a.dtype == DType.boolean) {
-          s_logical_or_red(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        }
-      case BinaryOp.logicalXor:
-        if (a.dtype == DType.boolean) {
-          s_logical_xor_red(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        }
-      default:
-        break;
+          }
+        default:
+          break;
+      }
+    } finally {
+      ScratchArena.reset(marker);
     }
   }
 
@@ -1151,23 +1126,411 @@ NDArray<T> accumulateUfunc<T extends Object>(
     result = NDArray.create(a.shape, a.dtype);
   }
 
-  final rank = a.rank;
-  final cBuffer = ScratchArena.getStridedBuffer(rank * 2 + 1);
-  final cShape = cBuffer;
-  final cStridesA = cBuffer + rank;
-  final cStridesRes = cBuffer + (rank * 2);
-  for (var i = 0; i < rank; i++) {
-    cShape[i] = a.shape[i];
-    cStridesA[i] = a.strides[i];
-    cStridesRes[i] = result.strides[i];
-  }
-
+  final marker = ScratchArena.marker;
   bool handled = false;
-  switch (op) {
-    case BinaryOp.add:
-      switch (a.dtype) {
-        case DType.float64:
-          s_cumsum_double(
+  try {
+    final rank = a.rank;
+    final cBuffer = ScratchArena.getStridedBuffer(rank * 2 + 1);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
+
+    switch (op) {
+      case BinaryOp.add:
+        switch (a.dtype) {
+          case DType.float64:
+            s_cumsum_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.float32:
+            s_cumsum_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.int64:
+            s_cumsum_int64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.int32:
+            s_cumsum_int32(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.complex128:
+            s_cumsum_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.complex64:
+            s_cumsum_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          default:
+            break;
+        }
+      case BinaryOp.multiply:
+        switch (a.dtype) {
+          case DType.float64:
+            s_cumprod_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.float32:
+            s_cumprod_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.int64:
+            s_cumprod_int64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.int32:
+            s_cumprod_int32(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.complex128:
+            s_cumprod_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.complex64:
+            s_cumprod_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          default:
+            break;
+        }
+      case BinaryOp.minimum:
+        switch (a.dtype) {
+          case DType.float64:
+            s_cummin_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.float32:
+            s_cummin_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.int64:
+            s_cummin_int64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.int32:
+            s_cummin_int32(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          default:
+            break;
+        }
+      case BinaryOp.maximum:
+        switch (a.dtype) {
+          case DType.float64:
+            s_cummax_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.float32:
+            s_cummax_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.int64:
+            s_cummax_int64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.int32:
+            s_cummax_int32(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          default:
+            break;
+        }
+      case BinaryOp.bitwiseAnd:
+        switch (a.dtype) {
+          case DType.int64:
+            s_cumbitwise_and_int64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.int32:
+            s_cumbitwise_and_int32(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.uint8:
+            s_cumbitwise_and_uint8(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.int16:
+            s_cumbitwise_and_int16(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          default:
+            break;
+        }
+      case BinaryOp.bitwiseOr:
+        switch (a.dtype) {
+          case DType.int64:
+            s_cumbitwise_or_int64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.int32:
+            s_cumbitwise_or_int32(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.uint8:
+            s_cumbitwise_or_uint8(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.int16:
+            s_cumbitwise_or_int16(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          default:
+            break;
+        }
+      case BinaryOp.bitwiseXor:
+        switch (a.dtype) {
+          case DType.int64:
+            s_cumbitwise_xor_int64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.int32:
+            s_cumbitwise_xor_int32(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.uint8:
+            s_cumbitwise_xor_uint8(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          case DType.int16:
+            s_cumbitwise_xor_int16(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              normAxis,
+            );
+            handled = true;
+          default:
+            break;
+        }
+      case BinaryOp.logicalAnd:
+        if (a.dtype == DType.boolean) {
+          s_cumlogical_and(
             a.pointer.cast(),
             cStridesA,
             result.pointer.cast(),
@@ -1177,8 +1540,10 @@ NDArray<T> accumulateUfunc<T extends Object>(
             normAxis,
           );
           handled = true;
-        case DType.float32:
-          s_cumsum_float(
+        }
+      case BinaryOp.logicalOr:
+        if (a.dtype == DType.boolean) {
+          s_cumlogical_or(
             a.pointer.cast(),
             cStridesA,
             result.pointer.cast(),
@@ -1188,8 +1553,10 @@ NDArray<T> accumulateUfunc<T extends Object>(
             normAxis,
           );
           handled = true;
-        case DType.int64:
-          s_cumsum_int64(
+        }
+      case BinaryOp.logicalXor:
+        if (a.dtype == DType.boolean) {
+          s_cumlogical_xor(
             a.pointer.cast(),
             cStridesA,
             result.pointer.cast(),
@@ -1199,399 +1566,12 @@ NDArray<T> accumulateUfunc<T extends Object>(
             normAxis,
           );
           handled = true;
-        case DType.int32:
-          s_cumsum_int32(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.complex128:
-          s_cumsum_complex128(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.complex64:
-          s_cumsum_complex64(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        default:
-          break;
-      }
-    case BinaryOp.multiply:
-      switch (a.dtype) {
-        case DType.float64:
-          s_cumprod_double(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.float32:
-          s_cumprod_float(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.int64:
-          s_cumprod_int64(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.int32:
-          s_cumprod_int32(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.complex128:
-          s_cumprod_complex128(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.complex64:
-          s_cumprod_complex64(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        default:
-          break;
-      }
-    case BinaryOp.minimum:
-      switch (a.dtype) {
-        case DType.float64:
-          s_cummin_double(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.float32:
-          s_cummin_float(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.int64:
-          s_cummin_int64(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.int32:
-          s_cummin_int32(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        default:
-          break;
-      }
-    case BinaryOp.maximum:
-      switch (a.dtype) {
-        case DType.float64:
-          s_cummax_double(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.float32:
-          s_cummax_float(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.int64:
-          s_cummax_int64(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.int32:
-          s_cummax_int32(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        default:
-          break;
-      }
-    case BinaryOp.bitwiseAnd:
-      switch (a.dtype) {
-        case DType.int64:
-          s_cumbitwise_and_int64(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.int32:
-          s_cumbitwise_and_int32(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.uint8:
-          s_cumbitwise_and_uint8(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.int16:
-          s_cumbitwise_and_int16(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        default:
-          break;
-      }
-    case BinaryOp.bitwiseOr:
-      switch (a.dtype) {
-        case DType.int64:
-          s_cumbitwise_or_int64(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.int32:
-          s_cumbitwise_or_int32(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.uint8:
-          s_cumbitwise_or_uint8(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.int16:
-          s_cumbitwise_or_int16(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        default:
-          break;
-      }
-    case BinaryOp.bitwiseXor:
-      switch (a.dtype) {
-        case DType.int64:
-          s_cumbitwise_xor_int64(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.int32:
-          s_cumbitwise_xor_int32(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.uint8:
-          s_cumbitwise_xor_uint8(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        case DType.int16:
-          s_cumbitwise_xor_int16(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            normAxis,
-          );
-          handled = true;
-        default:
-          break;
-      }
-    case BinaryOp.logicalAnd:
-      if (a.dtype == DType.boolean) {
-        s_cumlogical_and(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          normAxis,
-        );
-        handled = true;
-      }
-    case BinaryOp.logicalOr:
-      if (a.dtype == DType.boolean) {
-        s_cumlogical_or(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          normAxis,
-        );
-        handled = true;
-      }
-    case BinaryOp.logicalXor:
-      if (a.dtype == DType.boolean) {
-        s_cumlogical_xor(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          normAxis,
-        );
-        handled = true;
-      }
-    default:
-      break;
+        }
+      default:
+        break;
+    }
+  } finally {
+    ScratchArena.reset(marker);
   }
 
   if (handled) return result;
@@ -1679,241 +1659,248 @@ NDArray<T> reduceatUfunc<T extends Object>(
 
   final opCode = op.index;
   if (numIndices > 0) {
-    final ffi.Pointer<ffi.Int64> indicesPtr;
-    if (indices.isContiguous && indices.dtype == DType.int64) {
-      indicesPtr = indices.pointer.cast<ffi.Int64>();
-    } else {
-      indicesPtr = ScratchArena.allocate<ffi.Int64>(
-        numIndices * ffi.sizeOf<ffi.Int64>(),
-      );
-      final ptr = indices.pointer;
-      if (indices.dtype == DType.int32) {
-        final p32 = ptr.cast<ffi.Int32>();
-        for (var i = 0; i < numIndices; i++) {
-          indicesPtr[i] = p32[i];
-        }
+    final marker = ScratchArena.marker;
+    try {
+      final ffi.Pointer<ffi.Int64> indicesPtr;
+      if (indices.isContiguous && indices.dtype == DType.int64) {
+        indicesPtr = indices.pointer.cast<ffi.Int64>();
       } else {
-        final p64 = ptr.cast<ffi.Int64>();
-        for (var i = 0; i < numIndices; i++) {
-          indicesPtr[i] = p64[i];
+        indicesPtr = ScratchArena.allocate<ffi.Int64>(
+          numIndices * ffi.sizeOf<ffi.Int64>(),
+        );
+        final ptr = indices.pointer;
+        if (indices.dtype == DType.int32) {
+          final p32 = ptr.cast<ffi.Int32>();
+          for (var i = 0; i < numIndices; i++) {
+            indicesPtr[i] = p32[i];
+          }
+        } else {
+          final p64 = ptr.cast<ffi.Int64>();
+          for (var i = 0; i < numIndices; i++) {
+            indicesPtr[i] = p64[i];
+          }
         }
       }
-    }
 
-    if (a.rank == 1 && a.isContiguous && result.isContiguous) {
+      if (a.rank == 1 && a.isContiguous && result.isContiguous) {
+        switch (a.dtype) {
+          case DType.float64:
+            v_reduceat_double(
+              a.pointer.cast(),
+              axisLen,
+              indicesPtr,
+              numIndices,
+              result.pointer.cast(),
+              opCode,
+            );
+            return result;
+          case DType.float32:
+            v_reduceat_float(
+              a.pointer.cast(),
+              axisLen,
+              indicesPtr,
+              numIndices,
+              result.pointer.cast(),
+              opCode,
+            );
+            return result;
+          case DType.int64:
+            v_reduceat_int64(
+              a.pointer.cast(),
+              axisLen,
+              indicesPtr,
+              numIndices,
+              result.pointer.cast(),
+              opCode,
+            );
+            return result;
+          case DType.int32:
+            v_reduceat_int32(
+              a.pointer.cast(),
+              axisLen,
+              indicesPtr,
+              numIndices,
+              result.pointer.cast(),
+              opCode,
+            );
+            return result;
+          case DType.int16:
+            v_reduceat_int16(
+              a.pointer.cast(),
+              axisLen,
+              indicesPtr,
+              numIndices,
+              result.pointer.cast(),
+              opCode,
+            );
+            return result;
+          case DType.uint8:
+          case DType.boolean:
+            v_reduceat_uint8(
+              a.pointer.cast(),
+              axisLen,
+              indicesPtr,
+              numIndices,
+              result.pointer.cast(),
+              opCode,
+            );
+            return result;
+          case DType.complex128:
+            v_reduceat_complex128(
+              a.pointer.cast(),
+              axisLen,
+              indicesPtr,
+              numIndices,
+              result.pointer.cast(),
+              opCode,
+            );
+            return result;
+          case DType.complex64:
+            v_reduceat_complex64(
+              a.pointer.cast(),
+              axisLen,
+              indicesPtr,
+              numIndices,
+              result.pointer.cast(),
+              opCode,
+            );
+            return result;
+        }
+      }
+
+      final rank = a.rank;
+      final cStridesA = ScratchArena.allocate<ffi.Int>(
+        rank * ffi.sizeOf<ffi.Int>(),
+      );
+      final cStridesRes = ScratchArena.allocate<ffi.Int>(
+        rank * ffi.sizeOf<ffi.Int>(),
+      );
+      final cShape = ScratchArena.allocate<ffi.Int>(
+        rank * ffi.sizeOf<ffi.Int>(),
+      );
+      for (var i = 0; i < rank; i++) {
+        cStridesA[i] = a.strides[i];
+        cStridesRes[i] = result.strides[i];
+        cShape[i] = a.shape[i];
+      }
+
       switch (a.dtype) {
         case DType.float64:
-          v_reduceat_double(
+          s_reduceat_double(
             a.pointer.cast(),
-            axisLen,
+            cStridesA,
             indicesPtr,
             numIndices,
             result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            normAxis,
             opCode,
           );
           return result;
         case DType.float32:
-          v_reduceat_float(
+          s_reduceat_float(
             a.pointer.cast(),
-            axisLen,
+            cStridesA,
             indicesPtr,
             numIndices,
             result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            normAxis,
             opCode,
           );
           return result;
         case DType.int64:
-          v_reduceat_int64(
+          s_reduceat_int64(
             a.pointer.cast(),
-            axisLen,
+            cStridesA,
             indicesPtr,
             numIndices,
             result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            normAxis,
             opCode,
           );
           return result;
         case DType.int32:
-          v_reduceat_int32(
+          s_reduceat_int32(
             a.pointer.cast(),
-            axisLen,
+            cStridesA,
             indicesPtr,
             numIndices,
             result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            normAxis,
             opCode,
           );
           return result;
         case DType.int16:
-          v_reduceat_int16(
+          s_reduceat_int16(
             a.pointer.cast(),
-            axisLen,
+            cStridesA,
             indicesPtr,
             numIndices,
             result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            normAxis,
             opCode,
           );
           return result;
         case DType.uint8:
         case DType.boolean:
-          v_reduceat_uint8(
+          s_reduceat_uint8(
             a.pointer.cast(),
-            axisLen,
+            cStridesA,
             indicesPtr,
             numIndices,
             result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            normAxis,
             opCode,
           );
           return result;
         case DType.complex128:
-          v_reduceat_complex128(
+          s_reduceat_complex128(
             a.pointer.cast(),
-            axisLen,
+            cStridesA,
             indicesPtr,
             numIndices,
             result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            normAxis,
             opCode,
           );
           return result;
         case DType.complex64:
-          v_reduceat_complex64(
+          s_reduceat_complex64(
             a.pointer.cast(),
-            axisLen,
+            cStridesA,
             indicesPtr,
             numIndices,
             result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            normAxis,
             opCode,
           );
           return result;
       }
-    }
-
-    final rank = a.rank;
-    final cStridesA = ScratchArena.allocate<ffi.Int>(
-      rank * ffi.sizeOf<ffi.Int>(),
-    );
-    final cStridesRes = ScratchArena.allocate<ffi.Int>(
-      rank * ffi.sizeOf<ffi.Int>(),
-    );
-    final cShape = ScratchArena.allocate<ffi.Int>(rank * ffi.sizeOf<ffi.Int>());
-    for (var i = 0; i < rank; i++) {
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-      cShape[i] = a.shape[i];
-    }
-
-    switch (a.dtype) {
-      case DType.float64:
-        s_reduceat_double(
-          a.pointer.cast(),
-          cStridesA,
-          indicesPtr,
-          numIndices,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          normAxis,
-          opCode,
-        );
-        return result;
-      case DType.float32:
-        s_reduceat_float(
-          a.pointer.cast(),
-          cStridesA,
-          indicesPtr,
-          numIndices,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          normAxis,
-          opCode,
-        );
-        return result;
-      case DType.int64:
-        s_reduceat_int64(
-          a.pointer.cast(),
-          cStridesA,
-          indicesPtr,
-          numIndices,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          normAxis,
-          opCode,
-        );
-        return result;
-      case DType.int32:
-        s_reduceat_int32(
-          a.pointer.cast(),
-          cStridesA,
-          indicesPtr,
-          numIndices,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          normAxis,
-          opCode,
-        );
-        return result;
-      case DType.int16:
-        s_reduceat_int16(
-          a.pointer.cast(),
-          cStridesA,
-          indicesPtr,
-          numIndices,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          normAxis,
-          opCode,
-        );
-        return result;
-      case DType.uint8:
-      case DType.boolean:
-        s_reduceat_uint8(
-          a.pointer.cast(),
-          cStridesA,
-          indicesPtr,
-          numIndices,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          normAxis,
-          opCode,
-        );
-        return result;
-      case DType.complex128:
-        s_reduceat_complex128(
-          a.pointer.cast(),
-          cStridesA,
-          indicesPtr,
-          numIndices,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          normAxis,
-          opCode,
-        );
-        return result;
-      case DType.complex64:
-        s_reduceat_complex64(
-          a.pointer.cast(),
-          cStridesA,
-          indicesPtr,
-          numIndices,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          normAxis,
-          opCode,
-        );
-        return result;
+    } finally {
+      ScratchArena.reset(marker);
     }
   }
 
@@ -2054,6 +2041,19 @@ void atUfunc<T extends Object>(
       cStridesB[i] = b.strides[i];
       cShapeB[i] = b.shape[i];
     }
+    final ffi.Pointer<ffi.Int64> idxPtr;
+    final int effectiveStrideIdx;
+    if (indices.isContiguous && indices.dtype == DType.int64) {
+      idxPtr = indices.pointer.cast<ffi.Int64>();
+      effectiveStrideIdx = strideIdx;
+    } else {
+      idxPtr = ScratchArena.allocate<ffi.Int64>(numIndices);
+      for (var i = 0; i < numIndices; i++) {
+        final val = indices.getCell([i]) as num;
+        idxPtr[i] = val.toInt();
+      }
+      effectiveStrideIdx = 1;
+    }
 
     switch (a.dtype) {
       case DType.float64:
@@ -2062,9 +2062,9 @@ void atUfunc<T extends Object>(
           cStridesA,
           cShapeA,
           rankA,
-          indices.pointer.cast(),
+          idxPtr,
           numIndices,
-          strideIdx,
+          effectiveStrideIdx,
           b.pointer.cast(),
           cStridesB,
           cShapeB,
@@ -2077,9 +2077,9 @@ void atUfunc<T extends Object>(
           cStridesA,
           cShapeA,
           rankA,
-          indices.pointer.cast(),
+          idxPtr,
           numIndices,
-          strideIdx,
+          effectiveStrideIdx,
           b.pointer.cast(),
           cStridesB,
           cShapeB,
@@ -2092,9 +2092,9 @@ void atUfunc<T extends Object>(
           cStridesA,
           cShapeA,
           rankA,
-          indices.pointer.cast(),
+          idxPtr,
           numIndices,
-          strideIdx,
+          effectiveStrideIdx,
           b.pointer.cast(),
           cStridesB,
           cShapeB,
@@ -2107,9 +2107,9 @@ void atUfunc<T extends Object>(
           cStridesA,
           cShapeA,
           rankA,
-          indices.pointer.cast(),
+          idxPtr,
           numIndices,
-          strideIdx,
+          effectiveStrideIdx,
           b.pointer.cast(),
           cStridesB,
           cShapeB,
@@ -2122,9 +2122,9 @@ void atUfunc<T extends Object>(
           cStridesA,
           cShapeA,
           rankA,
-          indices.pointer.cast(),
+          idxPtr,
           numIndices,
-          strideIdx,
+          effectiveStrideIdx,
           b.pointer.cast(),
           cStridesB,
           cShapeB,
@@ -2137,9 +2137,9 @@ void atUfunc<T extends Object>(
           cStridesA,
           cShapeA,
           rankA,
-          indices.pointer.cast(),
+          idxPtr,
           numIndices,
-          strideIdx,
+          effectiveStrideIdx,
           b.pointer.cast(),
           cStridesB,
           cShapeB,

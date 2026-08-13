@@ -36,7 +36,7 @@ import '../helpers.dart';
 /// ```dart
 /// final a = NDArray.fromList([0.0, 1.0, 2.0], [3], DType.float64);
 /// final b = i0(a);
-/// print(b.data); // [1.0, ~1.266066, ~2.279585]
+/// print(b.toList()); // [1.0, ~1.266066, ~2.279585]
 /// ```
 NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (a.isDisposed || (out != null && out.isDisposed)) {

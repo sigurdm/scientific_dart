@@ -909,11 +909,12 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 /// - If provided, the recycler [out] must have matching shape and dtype.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [arrays] has fewer than 2 elements.
-/// - [ArgumentError] if any intermediate array is not 2-dimensional.
-/// - [ArgumentError] if first or last array has rank > 2 or rank < 1.
-/// - [ArgumentError] if inner dimensions of adjacent matrices are incompatible.
-/// - [ArgumentError] if [out] shape or dtype is incompatible.
+/// - It is an error if any input array in [arrays] or [out] is disposed.
+/// - It is an error if [arrays] has fewer than 2 elements.
+/// - It is an error if any intermediate array is not 2-dimensional.
+/// - It is an error if first or last array has rank > 2 or rank < 1.
+/// - It is an error if inner dimensions of adjacent matrices are incompatible.
+/// - It is an error if [out] shape or dtype is incompatible.
 ///
 /// **Performance considerations:**
 /// - Automatically optimizes the order of operations to minimize total scalar multiplications.
@@ -1079,6 +1080,7 @@ NDArray<T> multi_dot<T>(List<NDArray<Object>> arrays, {NDArray<T>? out}) {
     left.dispose();
     right.dispose();
 
+    if (out != null) return out;
     return finalResult.detachToParentScope();
   });
 }
@@ -1119,8 +1121,11 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write inverse to a disposed output array.');
   }
-  if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
-    throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
+  final rank = a.shape.length;
+  if (rank < 2 || a.shape[rank - 2] != a.shape[rank - 1]) {
+    throw ArgumentError(
+      'Matrix must be square in the last 2 dimensions and rank >= 2 (was ${a.shape})',
+    );
   }
 
   if (a.dtype != DType.float32 &&
@@ -1131,7 +1136,8 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
       'Matrix inversion only supports float or complex dtypes (got ${a.dtype}).',
     );
   }
-  final n = a.shape[0];
+  final n = a.shape[rank - 1];
+  final stackShape = a.shape.sublist(0, rank - 2);
   final DType<T> targetDType = a.dtype;
 
   if (out != null) {
@@ -1158,136 +1164,152 @@ NDArray<T> inv<T>(NDArray<T> a, {NDArray<T>? out}) {
     final ipiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
 
     try {
-      switch (targetDType) {
-        case DType.float32:
-          final info = LAPACKE_sgetrf(
-            101,
-            n,
-            n,
-            result.pointer.cast<ffi.Float>(),
-            n,
-            ipiv,
-          );
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_sgetrf: $info',
+      walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+        coords,
+      ) {
+        var offsetRes = 0;
+        for (var i = 0; i < coords.length; i++) {
+          offsetRes += coords[i] * result.strides[i];
+        }
+        final sliceRes = NDArray<T>.view(
+          result,
+          shape: [n, n],
+          strides: result.strides.sublist(rank - 2),
+          offsetElements: offsetRes,
+        );
+
+        switch (targetDType) {
+          case DType.float32:
+            final info = LAPACKE_sgetrf(
+              101,
+              n,
+              n,
+              sliceRes.pointer.cast<ffi.Float>(),
+              n,
+              ipiv,
             );
-          }
-          if (info > 0) {
-            throw SingularMatrixException(
-              'Matrix is singular and cannot be inverted',
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_sgetrf: $info',
+              );
+            }
+            if (info > 0) {
+              throw SingularMatrixException(
+                'Matrix is singular and cannot be inverted',
+              );
+            }
+            final infoTri = LAPACKE_sgetri(
+              101,
+              n,
+              sliceRes.pointer.cast<ffi.Float>(),
+              n,
+              ipiv,
             );
-          }
-          final infoTri = LAPACKE_sgetri(
-            101,
-            n,
-            result.pointer.cast<ffi.Float>(),
-            n,
-            ipiv,
-          );
-          if (infoTri < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_sgetri: $infoTri',
+            if (infoTri < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_sgetri: $infoTri',
+              );
+            }
+          case DType.float64:
+            final info = LAPACKE_dgetrf(
+              101,
+              n,
+              n,
+              sliceRes.pointer.cast<ffi.Double>(),
+              n,
+              ipiv,
             );
-          }
-        case DType.float64:
-          final info = LAPACKE_dgetrf(
-            101,
-            n,
-            n,
-            result.pointer.cast<ffi.Double>(),
-            n,
-            ipiv,
-          );
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_dgetrf: $info',
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_dgetrf: $info',
+              );
+            }
+            if (info > 0) {
+              throw SingularMatrixException(
+                'Matrix is singular and cannot be inverted',
+              );
+            }
+            final infoTri = LAPACKE_dgetri(
+              101,
+              n,
+              sliceRes.pointer.cast<ffi.Double>(),
+              n,
+              ipiv,
             );
-          }
-          if (info > 0) {
-            throw SingularMatrixException(
-              'Matrix is singular and cannot be inverted',
+            if (infoTri < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_dgetri: $infoTri',
+              );
+            }
+          case DType.complex64:
+            final info = LAPACKE_cgetrf(
+              101,
+              n,
+              n,
+              sliceRes.pointer.cast<ffi.Float>(),
+              n,
+              ipiv,
             );
-          }
-          final infoTri = LAPACKE_dgetri(
-            101,
-            n,
-            result.pointer.cast<ffi.Double>(),
-            n,
-            ipiv,
-          );
-          if (infoTri < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_dgetri: $infoTri',
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_cgetrf: $info',
+              );
+            }
+            if (info > 0) {
+              throw SingularMatrixException(
+                'Matrix is singular and cannot be inverted',
+              );
+            }
+            final infoTri = LAPACKE_cgetri(
+              101,
+              n,
+              sliceRes.pointer.cast<ffi.Float>(),
+              n,
+              ipiv,
             );
-          }
-        case DType.complex64:
-          final info = LAPACKE_cgetrf(
-            101,
-            n,
-            n,
-            result.pointer.cast<ffi.Float>(),
-            n,
-            ipiv,
-          );
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_cgetrf: $info',
+            if (infoTri < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_cgetri: $infoTri',
+              );
+            }
+          case DType.complex128:
+            final info = LAPACKE_zgetrf(
+              101,
+              n,
+              n,
+              sliceRes.pointer.cast<ffi.Double>(),
+              n,
+              ipiv,
             );
-          }
-          if (info > 0) {
-            throw SingularMatrixException(
-              'Matrix is singular and cannot be inverted',
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_zgetrf: $info',
+              );
+            }
+            if (info > 0) {
+              throw SingularMatrixException(
+                'Matrix is singular and cannot be inverted',
+              );
+            }
+            final infoTri = LAPACKE_zgetri(
+              101,
+              n,
+              sliceRes.pointer.cast<ffi.Double>(),
+              n,
+              ipiv,
             );
-          }
-          final infoTri = LAPACKE_cgetri(
-            101,
-            n,
-            result.pointer.cast<ffi.Float>(),
-            n,
-            ipiv,
-          );
-          if (infoTri < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_cgetri: $infoTri',
+            if (infoTri < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_zgetri: $infoTri',
+              );
+            }
+          default:
+            throw UnsupportedError(
+              'Unsupported type for matrix inversion: $targetDType',
             );
-          }
-        case DType.complex128:
-          final info = LAPACKE_zgetrf(
-            101,
-            n,
-            n,
-            result.pointer.cast<ffi.Double>(),
-            n,
-            ipiv,
-          );
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_zgetrf: $info',
-            );
-          }
-          if (info > 0) {
-            throw SingularMatrixException(
-              'Matrix is singular and cannot be inverted',
-            );
-          }
-          final infoTri = LAPACKE_zgetri(
-            101,
-            n,
-            result.pointer.cast<ffi.Double>(),
-            n,
-            ipiv,
-          );
-          if (infoTri < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_zgetri: $infoTri',
-            );
-          }
-        default:
-          throw UnsupportedError(
-            'Unsupported type for matrix inversion: $targetDType',
-          );
-      }
+        }
+        sliceRes.dispose();
+      });
 
       if (out == null) {
         result.detachToParentScope();
@@ -1731,14 +1753,33 @@ NDArray<T> solve<T extends Object>(
   if (out != null && out.isDisposed) {
     throw StateError('Cannot write solve result to a disposed output array.');
   }
-  if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
-    throw ArgumentError('Matrix a must be square and 2D (was ${a.shape})');
-  }
-  final n = a.shape[0];
-
-  if (b.shape.isEmpty || b.shape[0] != n) {
+  final rankA = a.shape.length;
+  if (rankA < 2 || a.shape[rankA - 2] != a.shape[rankA - 1]) {
     throw ArgumentError(
-      'Dimensions of b must match dimensions of a (expected first dimension $n, was ${b.shape.isEmpty ? 0 : b.shape[0]})',
+      'Matrix a must be square in the last 2 dimensions and rank >= 2 (was ${a.shape})',
+    );
+  }
+  final n = a.shape[rankA - 1];
+  final stackShapeA = a.shape.sublist(0, rankA - 2);
+  final rankB = b.shape.length;
+
+  if (rankB == rankA - 1) {
+    if (!listEquals(b.shape.sublist(0, rankA - 2), stackShapeA) ||
+        b.shape[rankB - 1] != n) {
+      throw ArgumentError(
+        'Dimensions of b (${b.shape}) must match stack shape $stackShapeA and matrix dimension $n of a (${a.shape})',
+      );
+    }
+  } else if (rankB == rankA) {
+    if (!listEquals(b.shape.sublist(0, rankA - 2), stackShapeA) ||
+        b.shape[rankB - 2] != n) {
+      throw ArgumentError(
+        'Dimensions of b (${b.shape}) must match stack shape $stackShapeA and matrix dimension $n of a (${a.shape})',
+      );
+    }
+  } else {
+    throw ArgumentError(
+      'Dimensions of b (${b.shape}) are incompatible with a (${a.shape}). Expected rank ${rankA - 1} or $rankA.',
     );
   }
 
@@ -1769,112 +1810,139 @@ NDArray<T> solve<T extends Object>(
   }
 
   return NDArray.scope(() {
-    final nrhs = b.shape.length > 1 ? b.shape[1] : 1;
+    final nrhs = rankB == rankA ? b.shape[rankB - 1] : 1;
     final marker = ScratchArena.marker;
     final ipiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
+    final aCopy = NDArray.create([n, n], a.dtype);
+
+    final NDArray<T> bCopy;
+    if (out != null) {
+      bCopy = out;
+      b.copy(out: bCopy);
+    } else {
+      bCopy = b.copy();
+    }
 
     try {
-      // Prepare a copy of a because LAPACKE_*gesv mutates a
-      final aCopy = a.copy();
+      walkStackCoords(stackShapeA, List<int>.filled(stackShapeA.length, 0), 0, (
+        coords,
+      ) {
+        var offsetA = 0;
+        for (var i = 0; i < coords.length; i++) {
+          offsetA += coords[i] * a.strides[i];
+        }
+        final sliceA = NDArray.view(
+          a,
+          shape: [n, n],
+          strides: a.strides.sublist(rankA - 2),
+          offsetElements: offsetA,
+        );
+        sliceA.copy(out: aCopy);
+        sliceA.dispose();
 
-      // Prepare bCopy: if out is provided, copy b into it and use it as bCopy;
-      // otherwise create a new copy.
-      final NDArray<T> bCopy;
-      if (out != null) {
-        bCopy = out;
-        b.copy(out: bCopy);
-      } else {
-        bCopy = b.copy();
-      }
+        var offsetB = 0;
+        for (var i = 0; i < coords.length; i++) {
+          offsetB += coords[i] * bCopy.strides[i];
+        }
+        final bSliceShape = rankB == rankA ? [n, nrhs] : [n];
+        final bSliceStrides = bCopy.strides.sublist(coords.length);
+        final sliceB = NDArray<T>.view(
+          bCopy,
+          shape: bSliceShape,
+          strides: bSliceStrides,
+          offsetElements: offsetB,
+        );
 
-      switch (a.dtype) {
-        case DType.float64:
-          final info = LAPACKE_dgesv(
-            101,
-            n,
-            nrhs,
-            aCopy.pointer.cast<ffi.Double>(),
-            n,
-            ipiv,
-            bCopy.pointer.cast<ffi.Double>(),
-            nrhs,
-          );
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_dgesv: $info',
+        switch (a.dtype) {
+          case DType.float64:
+            final info = LAPACKE_dgesv(
+              101,
+              n,
+              nrhs,
+              aCopy.pointer.cast<ffi.Double>(),
+              n,
+              ipiv,
+              sliceB.pointer.cast<ffi.Double>(),
+              nrhs,
             );
-          }
-          if (info > 0) {
-            throw SingularMatrixException(
-              'Matrix is singular and cannot be solved',
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_dgesv: $info',
+              );
+            }
+            if (info > 0) {
+              throw SingularMatrixException(
+                'Matrix is singular and cannot be solved',
+              );
+            }
+          case DType.float32:
+            final info = LAPACKE_sgesv(
+              101,
+              n,
+              nrhs,
+              aCopy.pointer.cast<ffi.Float>(),
+              n,
+              ipiv,
+              sliceB.pointer.cast<ffi.Float>(),
+              nrhs,
             );
-          }
-        case DType.float32:
-          final info = LAPACKE_sgesv(
-            101,
-            n,
-            nrhs,
-            aCopy.pointer.cast<ffi.Float>(),
-            n,
-            ipiv,
-            bCopy.pointer.cast<ffi.Float>(),
-            nrhs,
-          );
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_sgesv: $info',
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_sgesv: $info',
+              );
+            }
+            if (info > 0) {
+              throw SingularMatrixException(
+                'Matrix is singular and cannot be solved',
+              );
+            }
+          case DType.complex128:
+            final info = LAPACKE_zgesv(
+              101,
+              n,
+              nrhs,
+              aCopy.pointer.cast<ffi.Double>(),
+              n,
+              ipiv,
+              sliceB.pointer.cast<ffi.Double>(),
+              nrhs,
             );
-          }
-          if (info > 0) {
-            throw SingularMatrixException(
-              'Matrix is singular and cannot be solved',
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_zgesv: $info',
+              );
+            }
+            if (info > 0) {
+              throw SingularMatrixException(
+                'Matrix is singular and cannot be solved',
+              );
+            }
+          case DType.complex64:
+            final info = LAPACKE_cgesv(
+              101,
+              n,
+              nrhs,
+              aCopy.pointer.cast<ffi.Float>(),
+              n,
+              ipiv,
+              sliceB.pointer.cast<ffi.Float>(),
+              nrhs,
             );
-          }
-        case DType.complex128:
-          final info = LAPACKE_zgesv(
-            101,
-            n,
-            nrhs,
-            aCopy.pointer.cast<ffi.Double>(),
-            n,
-            ipiv,
-            bCopy.pointer.cast<ffi.Double>(),
-            nrhs,
-          );
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_zgesv: $info',
-            );
-          }
-          if (info > 0) {
-            throw SingularMatrixException(
-              'Matrix is singular and cannot be solved',
-            );
-          }
-        case DType.complex64:
-          final info = LAPACKE_cgesv(
-            101,
-            n,
-            nrhs,
-            aCopy.pointer.cast<ffi.Float>(),
-            n,
-            ipiv,
-            bCopy.pointer.cast<ffi.Float>(),
-            nrhs,
-          );
-          if (info < 0) {
-            throw ArgumentError(
-              'Illegal value in call to LAPACKE_cgesv: $info',
-            );
-          }
-          if (info > 0) {
-            throw SingularMatrixException(
-              'Matrix is singular and cannot be solved',
-            );
-          }
-        default:
-          throw UnimplementedError('Type ${a.dtype} not supported for solve');
-      }
+            if (info < 0) {
+              throw ArgumentError(
+                'Illegal value in call to LAPACKE_cgesv: $info',
+              );
+            }
+            if (info > 0) {
+              throw SingularMatrixException(
+                'Matrix is singular and cannot be solved',
+              );
+            }
+          default:
+            throw UnsupportedError('Unsupported type for solve: ${a.dtype}');
+        }
+        sliceB.dispose();
+      });
 
       if (out == null) {
         bCopy.detachToParentScope();
@@ -1882,6 +1950,7 @@ NDArray<T> solve<T extends Object>(
       return bCopy;
     } finally {
       ScratchArena.reset(marker);
+      aCopy.dispose();
     }
   });
 }
@@ -2671,32 +2740,28 @@ NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
   });
 }
 
-/// Computes the Cholesky decomposition of a square, positive-definite 2D matrix.
+/// Computes the Cholesky decomposition of a square symmetric/Hermitian positive-definite matrix or stack of matrices.
 ///
-/// Factorizes a symmetric (or Hermitian for complex), positive-definite matrix [a] into
-/// $A = L L^*$ (or $A = L L^T$ for real matrices), where $L$ is a lower triangular matrix
-/// factor and $L^*$ is the conjugate transpose of $L$.
-///
+/// Returns the lower triangular factor $L$ such that $A = L L^*$ (or $A = L L^T$).
 /// Natively offloads to LAPACK solvers (`dpotrf`, `spotrf`, `cpotrf`, `zpotrf`) depending on precision and complexity.
 ///
 /// **Preconditions:**
 /// - The input matrix [a] must not be disposed.
-/// - The input matrix [a] must be 2D (shape length exactly 2).
-/// - The input matrix [a] must be square (`shape[0] == shape[1]`).
+/// - The input matrix [a] must have rank $\\ge 2$ and square trailing dimensions (`a.shape[a.rank - 2] == a.shape[a.rank - 1]`).
 /// - The input matrix [a] must have a floating-point or complex data type (`float32`, `float64`, `complex64`, or `complex128`).
-/// - The input matrix [a] must be symmetric/Hermitian positive-definite.
+/// - Each matrix slice in [a] must be symmetric/Hermitian positive-definite.
 /// - If provided, the [out] destination matrix must have the same shape and dtype as [a], and must be contiguous.
 ///
 /// **Throws:**
-/// - [StateError] if the input matrix [a] is disposed.
-/// - [ArgumentError] if [a] is not square or not 2D.
-/// - [ArgumentError] if [a] has an unsupported dtype (e.g. integer or boolean).
-/// - [ArgumentError] if the provided [out] buffer has an incompatible shape, dtype, or is not contiguous.
-/// - [NonPositiveDefiniteException] if the matrix is not positive-definite.
-/// - [ArgumentError] if LAPACK returns an error code (illegal value).
+/// - It is an error if [a] or [out] is disposed.
+/// - It is an error if [a] has rank < 2 or trailing dimensions are not square.
+/// - It is an error if [a] has an unsupported dtype (e.g. integer or boolean).
+/// - It is an error if the provided [out] buffer has an incompatible shape, dtype, or is not contiguous.
+/// - It is an error if LAPACK returns an error code (illegal value).
+/// - Throws [NonPositiveDefiniteException] if any matrix slice is not positive-definite.
 ///
 /// **Performance considerations:**
-/// - Algorithmic complexity is $O(n^3)$ flops for an $n \times n$ matrix.
+/// - Algorithmic complexity is $O(B \\times n^3)$ flops for $B$ batches of $n \times n$ matrices.
 /// - Uses LAPACK solvers.
 /// - Performs zero memory allocations if a pre-allocated [out] buffer is provided and the input [a] is contiguous.
 ///
@@ -2713,110 +2778,122 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
       'Cannot write cholesky result to a disposed output array.',
     );
   }
-  if (a.shape.length != 2 || a.shape[0] != a.shape[1]) {
-    throw ArgumentError('Matrix must be square and 2D (was ${a.shape})');
+  final rank = a.shape.length;
+  if (rank < 2 || a.shape[rank - 2] != a.shape[rank - 1]) {
+    throw ArgumentError(
+      'Matrix must be square in the last 2 dimensions and rank >= 2 (was ${a.shape})',
+    );
   }
   if (!a.dtype.isFloating && !a.dtype.isComplex) {
     throw ArgumentError(
       'Cholesky decomposition is only supported for float and complex dtypes (was ${a.dtype})',
     );
   }
-  final n = a.shape[0];
+  final n = a.shape[rank - 1];
+  final stackShape = a.shape.sublist(0, rank - 2);
   final targetDType = a.dtype;
 
-  final NDArray<T> src;
-  final bool wasCopied;
-  if (!a.isContiguous) {
-    src = a.copy();
-    wasCopied = true;
-  } else {
-    src = a;
-    wasCopied = false;
-  }
-
-  final NDArray<T> lMat;
   if (out != null) {
-    lMat = out;
-    if (!listEquals(lMat.shape, a.shape) || lMat.dtype != a.dtype) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out L buffer has incompatible shape or dtype.',
       );
     }
-    if (!lMat.isContiguous) {
+    if (!out.isContiguous) {
       throw ArgumentError('Provided out L buffer must be contiguous.');
     }
-    src.copy(out: lMat);
-  } else {
-    lMat = src.copy();
   }
 
-  try {
+  return NDArray.scope(() {
+    final NDArray<T> lMat;
+    if (out != null) {
+      lMat = out;
+      a.copy(out: lMat);
+    } else {
+      lMat = a.copy();
+    }
+
     // Char 'L' in ASCII is 76
     const uploL = 76;
 
-    final int info;
-    switch (targetDType) {
-      case DType.float64:
-        info = LAPACKE_dpotrf(
-          101, // ROW_MAJOR
-          uploL,
-          n,
-          lMat.pointer.cast<ffi.Double>(),
-          n,
-        );
-      case DType.float32:
-        info = LAPACKE_spotrf(
-          101, // ROW_MAJOR
-          uploL,
-          n,
-          lMat.pointer.cast<ffi.Float>(),
-          n,
-        );
-      case DType.complex128:
-        info = LAPACKE_zpotrf(
-          101, // ROW_MAJOR
-          uploL,
-          n,
-          lMat.pointer.cast<ffi.Double>(),
-          n,
-        );
-      case DType.complex64:
-        info = LAPACKE_cpotrf(
-          101, // ROW_MAJOR
-          uploL,
-          n,
-          lMat.pointer.cast<ffi.Float>(),
-          n,
-        );
-      default:
-        throw UnimplementedError(
-          'Unsupported dtype for Cholesky: $targetDType',
-        );
-    }
-
-    if (info < 0) {
-      throw ArgumentError(
-        'Illegal value in call to LAPACKE Cholesky solver: $info',
+    walkStackCoords(stackShape, List<int>.filled(stackShape.length, 0), 0, (
+      coords,
+    ) {
+      var offsetL = 0;
+      for (var i = 0; i < coords.length; i++) {
+        offsetL += coords[i] * lMat.strides[i];
+      }
+      final lSlice = NDArray<T>.view(
+        lMat,
+        shape: [n, n],
+        strides: lMat.strides.sublist(rank - 2),
+        offsetElements: offsetL,
       );
-    }
-    if (info > 0) {
-      throw NonPositiveDefiniteException(
-        'Matrix must be positive-definite for Cholesky decomposition: the leading minor of order $info is not positive definite.',
+
+      final int info;
+      switch (targetDType) {
+        case DType.float64:
+          info = LAPACKE_dpotrf(
+            101, // ROW_MAJOR
+            uploL,
+            n,
+            lSlice.pointer.cast<ffi.Double>(),
+            n,
+          );
+        case DType.float32:
+          info = LAPACKE_spotrf(
+            101, // ROW_MAJOR
+            uploL,
+            n,
+            lSlice.pointer.cast<ffi.Float>(),
+            n,
+          );
+        case DType.complex128:
+          info = LAPACKE_zpotrf(
+            101, // ROW_MAJOR
+            uploL,
+            n,
+            lSlice.pointer.cast<ffi.Double>(),
+            n,
+          );
+        case DType.complex64:
+          info = LAPACKE_cpotrf(
+            101, // ROW_MAJOR
+            uploL,
+            n,
+            lSlice.pointer.cast<ffi.Float>(),
+            n,
+          );
+        default:
+          throw UnimplementedError(
+            'Unsupported dtype for Cholesky: $targetDType',
+          );
+      }
+
+      if (info < 0) {
+        throw ArgumentError(
+          'Illegal value in call to LAPACKE Cholesky solver: $info',
+        );
+      }
+      if (info > 0) {
+        throw NonPositiveDefiniteException(
+          'Matrix must be positive-definite for Cholesky decomposition: the leading minor of order $info is not positive definite.',
+        );
+      }
+
+      v_zero_upper_triangular(
+        lSlice.pointer.cast<ffi.Void>(),
+        n,
+        encodeDType(targetDType),
       );
-    }
+      lSlice.dispose();
+    });
 
-    v_zero_upper_triangular(
-      lMat.pointer.cast<ffi.Void>(),
-      n,
-      encodeDType(targetDType),
-    );
-  } finally {
-    if (wasCopied) {
-      src.dispose();
+    if (out == null) {
+      lMat.detachToParentScope();
     }
-  }
-
-  return lMat;
+    return lMat;
+  });
 }
 
 /// Computes the QR decomposition of a matrix or a stack of matrices $A = Q R$.
@@ -2829,8 +2906,9 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 /// - Input matrix [a] must be at least 2-dimensional.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [a] rank is less than 2.
-/// - [StateError] if native FFI memory allocation or LAPACK solver initialization fails.
+/// - It is an error if [a] or [out] is disposed.
+/// - It is an error if [a] rank is less than 2.
+/// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
 ///
 /// **Example:**
 /// ```dart
@@ -3158,8 +3236,10 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 /// - Input matrix [a] must be at least 2-dimensional.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [a] rank is less than 2.
-/// - [StateError] if native FFI memory allocation or LAPACK solver initialization fails.
+/// - It is an error if [a] or any buffer in [out] is disposed.
+/// - It is an error if [a] rank is less than 2.
+/// - It is an error if [a] has an unsupported dtype (e.g. integer or boolean).
+/// - It is an error if any buffer in [out] has incompatible shape, dtype, or is not contiguous.
 ///
 /// **Example:**
 /// ```dart
@@ -3241,36 +3321,39 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
     axes[rank - 1] = rank - 2;
 
     final aT = a.transpose(axes);
+    try {
+      // Do NOT pass out to recursive call, let it allocate contiguous buffers.
+      final resT = _svd<T>(aT);
+      final uNew = resT.U;
+      final sNew = resT.S;
+      final vhNew = resT.Vh;
 
-    // Do NOT pass out to recursive call, let it allocate contiguous buffers.
-    final resT = _svd<T>(aT);
-    final uNew = resT.U;
-    final sNew = resT.S;
-    final vhNew = resT.Vh;
+      final uResult = vhNew.transpose(axes);
+      final vhResult = uNew.transpose(axes);
 
-    final uResult = vhNew.transpose(axes);
-    final vhResult = uNew.transpose(axes);
+      if (out != null) {
+        uResult.copy(out: out.U);
+        sNew.copy(out: out.S);
+        vhResult.copy(out: out.Vh);
 
-    if (out != null) {
-      uResult.copy(out: out.U);
-      sNew.copy(out: out.S);
-      vhResult.copy(out: out.Vh);
+        uNew.dispose();
+        sNew.dispose();
+        vhNew.dispose();
+        uResult.dispose();
+        vhResult.dispose();
 
-      uNew.dispose();
-      sNew.dispose();
-      vhNew.dispose();
-      uResult.dispose();
-      vhResult.dispose();
-
-      return out;
-    } else {
-      final uCopy = uResult.copy();
-      final vhCopy = vhResult.copy();
-      uNew.dispose();
-      vhNew.dispose();
-      uResult.dispose();
-      vhResult.dispose();
-      return (U: uCopy, S: sNew, Vh: vhCopy);
+        return out;
+      } else {
+        final uCopy = uResult.copy();
+        final vhCopy = vhResult.copy();
+        uNew.dispose();
+        vhNew.dispose();
+        uResult.dispose();
+        vhResult.dispose();
+        return (U: uCopy, S: sNew, Vh: vhCopy);
+      }
+    } finally {
+      aT.dispose();
     }
   }
 
@@ -3910,15 +3993,16 @@ NDArray<num> eigvalsh<T>(
 /// - If provided, [outT] and [outZ] must have compatible shapes and dtypes.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [a] is not square or has rank < 2.
-/// - [ArgumentError] if [output] is invalid.
-/// - [ArgumentError] if [outT] or [outZ] are incompatible.
-/// - [StateError] if the LAPACK call fails.
-({NDArray T, NDArray Z}) schur<T>(
+/// - It is an error if [a] or [outT] or [outZ] is disposed.
+/// - It is an error if [a] has rank < 2 or the last two dimensions are not square.
+/// - It is an error if [a] has an unsupported dtype.
+/// - It is an error if [outT] or [outZ] have incompatible shapes, dtypes, or are not contiguous.
+/// - Throws [LinAlgException] if the QR algorithm fails to compute eigenvalues or if eigenvalues cannot be reordered.
+({NDArray<R> t, NDArray<R> z}) schur<T extends Object, R extends Object>(
   NDArray<T> a, {
   SchurForm output = SchurForm.real,
-  NDArray? outT,
-  NDArray? outZ,
+  NDArray<R>? outT,
+  NDArray<R>? outZ,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot calculate schur on a disposed array.');
@@ -4184,7 +4268,7 @@ NDArray<num> eigvalsh<T>(
     z2D.dispose();
   }
 
-  return (T: tMat, Z: zMat);
+  return (t: tMat as NDArray<R>, z: zMat as NDArray<R>);
 }
 
 /// Computes the Hessenberg decomposition of a matrix.
@@ -4495,6 +4579,20 @@ NDArray _zerosTyped(List<int> shape, DType dtype) {
 
 /// Computes the Kronecker product of two arrays.
 ///
+/// Computes the block matrix formed by multiplying each element of [a] by the entire array [b].
+/// If [a] and [b] have different ranks, the smaller array is padded with 1s on the left.
+///
+/// **Preconditions:**
+/// - Both arrays [a] and [b] must not be disposed.
+/// - If provided, the [out] recycler must have the expected broadcast shape and matching dtype.
+///
+/// **Throws:**
+/// - It is an error if [a], [b], or [out] is disposed.
+/// - It is an error if [out] has incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Algorithmic complexity is $O(\\text{size}(a) \\times \\text{size}(b))$ using optimized strided copies.
+///
 /// **Example:**
 /// {@example /example/linalg_advanced_example.dart lang=dart}
 ///
@@ -4710,8 +4808,8 @@ NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 /// - If provided, the [out] recycler must have shape `[size(a), size(b)]` and the correct dtype.
 ///
 /// **Throws:**
-/// - [StateError] if [a] or [b] is disposed.
-/// - [ArgumentError] if [out] has incompatible shape or dtype.
+/// - It is an error if [a], [b], or [out] is disposed.
+/// - It is an error if [out] has incompatible shape or dtype.
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N_a \times N_b)$ using highly optimized native strided loops.
@@ -4879,9 +4977,9 @@ NDArray<R> outer<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 /// - If provided, the recycler [out] must have the correct shape and dtype.
 ///
 /// **Throws:**
-/// - [StateError] if [a] or [b] is disposed.
-/// - [ArgumentError] if axes sizes are not 2 or 3, or are mismatched.
-/// - [ArgumentError] if [out] has incompatible shape or dtype.
+/// - It is an error if [a], [b], or [out] is disposed.
+/// - It is an error if axes sizes are not 2 or 3, or are mismatched.
+/// - It is an error if [out] has incompatible shape or dtype.
 ///
 /// **Performance considerations:**
 /// - Uses native C vector cross loops.
@@ -5231,8 +5329,9 @@ enum NormKind { frobenius, nuclear, l1, l2, infinity, negInfinity }
 /// - If provided, [axis] must be within bounds.
 ///
 /// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if [axis] or [ord] combinations are invalid.
+/// - It is an error if [a] or [out] is disposed.
+/// - It is an error if [axis] or [ord] combinations are invalid.
+/// - It is an error if [out] has incompatible shape or dtype.
 ///
 /// **Performance considerations:**
 /// - Uses native vector reductions for Chebyshev, L1, and L2 vector calculations.
@@ -5516,6 +5615,18 @@ double _vectorNorm<T>(NDArray<T> a, dynamic ord, DType targetDType) {
           return r_norm_neg_inf_double(castedA.pointer.cast(), stride, size);
         }
       }
+    } else if (ord == 0) {
+      var count = 0;
+      for (var i = 0; i < size; i++) {
+        final val = castedA.getCell([i]);
+        if (castedA.dtype.isComplex) {
+          final c = val as Complex;
+          if (c.real != 0.0 || c.imag != 0.0) count++;
+        } else {
+          if ((val as num) != 0) count++;
+        }
+      }
+      return count.toDouble();
     } else if (ord is num) {
       double sum;
       final p = ord.toDouble();
@@ -5661,6 +5772,20 @@ extension SVDRecordDispose on ({NDArray U, NDArray S, NDArray Vh}) {
     U.dispose();
     S.dispose();
     Vh.dispose();
+  }
+}
+
+extension SchurRecordDispose on ({NDArray t, NDArray z}) {
+  void dispose() {
+    t.dispose();
+    z.dispose();
+  }
+}
+
+extension HessenbergRecordDispose on ({NDArray H, NDArray Q}) {
+  void dispose() {
+    H.dispose();
+    Q.dispose();
   }
 }
 

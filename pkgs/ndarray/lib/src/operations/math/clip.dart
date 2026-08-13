@@ -46,7 +46,6 @@ NDArray<T> clip<T>(
     throw UnsupportedError('Complex numbers are not supported for clip');
   }
   final result = out ?? NDArray<T>.create(a.shape, a.dtype);
-  final maskHolder = prepareMask(where, result.shape);
   if (out != null) {
     if (!listEquals(out.shape, a.shape)) {
       throw ArgumentError(
@@ -59,66 +58,74 @@ NDArray<T> clip<T>(
       );
     }
   }
+  final maskHolder = prepareMask(where, result.shape);
 
-  final resolvedMin = min ?? _getMinLimit(a.dtype);
-  final resolvedMax = max ?? _getMaxLimit(a.dtype);
+  try {
+    final resolvedMin = min ?? _getMinLimit(a.dtype);
+    final resolvedMax = max ?? _getMaxLimit(a.dtype);
 
-  final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
 
-  if (a.isContiguous && result.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_clip_double(
-        a.pointer.cast(),
-        result.pointer.cast(),
-        resolvedMin.toDouble(),
-        resolvedMax.toDouble(),
-        size,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_clip_float(
-        a.pointer.cast(),
-        result.pointer.cast(),
-        resolvedMin.toDouble(),
-        resolvedMax.toDouble(),
-        size,
-        maskHolder.pointer,
-      );
-      return result;
+    if (a.isContiguous && result.isContiguous) {
+      switch (a.dtype) {
+        case DType.float64:
+          v_clip_double(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            resolvedMin.toDouble(),
+            resolvedMax.toDouble(),
+            size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_clip_float(
+            a.pointer.cast(),
+            result.pointer.cast(),
+            resolvedMin.toDouble(),
+            resolvedMax.toDouble(),
+            size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
+      }
     }
-  }
 
-  if (a.dtype.isInteger) {
-    final mn = resolvedMin.toInt();
-    final mx = resolvedMax.toInt();
-    unaryOp<int, int>(
-      result.data as List<int>,
-      a.data as List<int>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => x.clamp(mn, mx),
-    );
-  } else {
-    final mn = resolvedMin.toDouble();
-    final mx = resolvedMax.toDouble();
-    unaryOp<double, double>(
-      result.data as List<double>,
-      a.data as List<double>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => x.clamp(mn, mx),
-    );
+    if (a.dtype.isInteger) {
+      final mn = resolvedMin.toInt();
+      final mx = resolvedMax.toInt();
+      unaryOp<int, int>(
+        result.data as List<int>,
+        a.data as List<int>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => x.clamp(mn, mx),
+      );
+    } else {
+      final mn = resolvedMin.toDouble();
+      final mx = resolvedMax.toDouble();
+      unaryOp<double, double>(
+        result.data as List<double>,
+        a.data as List<double>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => x.clamp(mn, mx),
+      );
+    }
+    return result;
+  } finally {
+    maskHolder.dispose();
   }
-  return result;
 }
 
 /// Clip (limit) the values in an array using array bounds that broadcast natively against the input array.
@@ -202,7 +209,6 @@ NDArray<T> clipArray<T>(
     }
 
     final result = out ?? NDArray<T>.create(commonShape, a.dtype);
-    final maskHolder = prepareMask(where, result.shape);
     if (out != null) {
       if (!listEquals(out.shape, commonShape)) {
         throw ArgumentError(
@@ -215,204 +221,207 @@ NDArray<T> clipArray<T>(
         );
       }
     }
-
-    final broadcastA = broadcastTo(a, commonShape);
-    final broadcastMin = broadcastTo(minArr, commonShape);
-    final broadcastMax = broadcastTo(maxArr, commonShape);
-
-    final marker = ScratchArena.marker;
+    final maskHolder = prepareMask(where, result.shape);
     try {
-      final ndim = commonShape.length;
-      final cBuffer = ScratchArena.getStridedBuffer(ndim, 5);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + ndim;
-      final cStridesMin = cBuffer + (ndim * 2);
-      final cStridesMax = cBuffer + (ndim * 3);
-      final cStridesRes = cBuffer + (ndim * 4);
+      final broadcastA = broadcastTo(a, commonShape);
+      final broadcastMin = broadcastTo(minArr, commonShape);
+      final broadcastMax = broadcastTo(maxArr, commonShape);
 
-      for (var i = 0; i < ndim; i++) {
-        cShape[i] = commonShape[i];
-        cStridesA[i] = broadcastA.strides[i];
-        cStridesMin[i] = broadcastMin.strides[i];
-        cStridesMax[i] = broadcastMax.strides[i];
-        cStridesRes[i] = result.strides[i];
+      final marker = ScratchArena.marker;
+      try {
+        final ndim = commonShape.length;
+        final cBuffer = ScratchArena.getStridedBuffer(ndim, 5);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + ndim;
+        final cStridesMin = cBuffer + (ndim * 2);
+        final cStridesMax = cBuffer + (ndim * 3);
+        final cStridesRes = cBuffer + (ndim * 4);
+
+        for (var i = 0; i < ndim; i++) {
+          cShape[i] = commonShape[i];
+          cStridesA[i] = broadcastA.strides[i];
+          cStridesMin[i] = broadcastMin.strides[i];
+          cStridesMax[i] = broadcastMax.strides[i];
+          cStridesRes[i] = result.strides[i];
+        }
+
+        switch (a.dtype) {
+          case DType.float64:
+            s_clip_double(
+              (broadcastA.pointer.cast<ffi.Double>() +
+                      broadcastA.offsetElements)
+                  .cast(),
+              cStridesA,
+              (broadcastMin.pointer.cast<ffi.Double>() +
+                      broadcastMin.offsetElements)
+                  .cast(),
+              cStridesMin,
+              (broadcastMax.pointer.cast<ffi.Double>() +
+                      broadcastMax.offsetElements)
+                  .cast(),
+              cStridesMax,
+              (result.pointer.cast<ffi.Double>() + result.offsetElements)
+                  .cast(),
+              cStridesRes,
+              cShape,
+              ndim,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_clip_float(
+              (broadcastA.pointer.cast<ffi.Float>() + broadcastA.offsetElements)
+                  .cast(),
+              cStridesA,
+              (broadcastMin.pointer.cast<ffi.Float>() +
+                      broadcastMin.offsetElements)
+                  .cast(),
+              cStridesMin,
+              (broadcastMax.pointer.cast<ffi.Float>() +
+                      broadcastMax.offsetElements)
+                  .cast(),
+              cStridesMax,
+              (result.pointer.cast<ffi.Float>() + result.offsetElements).cast(),
+              cStridesRes,
+              cShape,
+              ndim,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.int64:
+            s_clip_int64(
+              (broadcastA.pointer.cast<ffi.Int64>() + broadcastA.offsetElements)
+                  .cast(),
+              cStridesA,
+              (broadcastMin.pointer.cast<ffi.Int64>() +
+                      broadcastMin.offsetElements)
+                  .cast(),
+              cStridesMin,
+              (broadcastMax.pointer.cast<ffi.Int64>() +
+                      broadcastMax.offsetElements)
+                  .cast(),
+              cStridesMax,
+              (result.pointer.cast<ffi.Int64>() + result.offsetElements).cast(),
+              cStridesRes,
+              cShape,
+              ndim,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.int32:
+            s_clip_int32(
+              (broadcastA.pointer.cast<ffi.Int32>() + broadcastA.offsetElements)
+                  .cast(),
+              cStridesA,
+              (broadcastMin.pointer.cast<ffi.Int32>() +
+                      broadcastMin.offsetElements)
+                  .cast(),
+              cStridesMin,
+              (broadcastMax.pointer.cast<ffi.Int32>() +
+                      broadcastMax.offsetElements)
+                  .cast(),
+              cStridesMax,
+              (result.pointer.cast<ffi.Int32>() + result.offsetElements).cast(),
+              cStridesRes,
+              cShape,
+              ndim,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.uint8:
+            s_clip_uint8(
+              (broadcastA.pointer.cast<ffi.Uint8>() + broadcastA.offsetElements)
+                  .cast(),
+              cStridesA,
+              (broadcastMin.pointer.cast<ffi.Uint8>() +
+                      broadcastMin.offsetElements)
+                  .cast(),
+              cStridesMin,
+              (broadcastMax.pointer.cast<ffi.Uint8>() +
+                      broadcastMax.offsetElements)
+                  .cast(),
+              cStridesMax,
+              (result.pointer.cast<ffi.Uint8>() + result.offsetElements).cast(),
+              cStridesRes,
+              cShape,
+              ndim,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.int16:
+            s_clip_int16(
+              (broadcastA.pointer.cast<ffi.Int16>() + broadcastA.offsetElements)
+                  .cast(),
+              cStridesA,
+              (broadcastMin.pointer.cast<ffi.Int16>() +
+                      broadcastMin.offsetElements)
+                  .cast(),
+              cStridesMin,
+              (broadcastMax.pointer.cast<ffi.Int16>() +
+                      broadcastMax.offsetElements)
+                  .cast(),
+              cStridesMax,
+              (result.pointer.cast<ffi.Int16>() + result.offsetElements).cast(),
+              cStridesRes,
+              cShape,
+              ndim,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
       }
 
-      switch (a.dtype) {
-        case DType.float64:
-          s_clip_double(
-            (broadcastA.pointer.cast<ffi.Double>() + broadcastA.offsetElements)
-                .cast(),
-            cStridesA,
-            (broadcastMin.pointer.cast<ffi.Double>() +
-                    broadcastMin.offsetElements)
-                .cast(),
-            cStridesMin,
-            (broadcastMax.pointer.cast<ffi.Double>() +
-                    broadcastMax.offsetElements)
-                .cast(),
-            cStridesMax,
-            (result.pointer.cast<ffi.Double>() + result.offsetElements).cast(),
-            cStridesRes,
-            cShape,
-            ndim,
-            maskHolder.pointer,
-          );
-          return result;
-        case DType.float32:
-          s_clip_float(
-            (broadcastA.pointer.cast<ffi.Float>() + broadcastA.offsetElements)
-                .cast(),
-            cStridesA,
-            (broadcastMin.pointer.cast<ffi.Float>() +
-                    broadcastMin.offsetElements)
-                .cast(),
-            cStridesMin,
-            (broadcastMax.pointer.cast<ffi.Float>() +
-                    broadcastMax.offsetElements)
-                .cast(),
-            cStridesMax,
-            (result.pointer.cast<ffi.Float>() + result.offsetElements).cast(),
-            cStridesRes,
-            cShape,
-            ndim,
-            maskHolder.pointer,
-          );
-          return result;
-        case DType.int64:
-          s_clip_int64(
-            (broadcastA.pointer.cast<ffi.Int64>() + broadcastA.offsetElements)
-                .cast(),
-            cStridesA,
-            (broadcastMin.pointer.cast<ffi.Int64>() +
-                    broadcastMin.offsetElements)
-                .cast(),
-            cStridesMin,
-            (broadcastMax.pointer.cast<ffi.Int64>() +
-                    broadcastMax.offsetElements)
-                .cast(),
-            cStridesMax,
-            (result.pointer.cast<ffi.Int64>() + result.offsetElements).cast(),
-            cStridesRes,
-            cShape,
-            ndim,
-            maskHolder.pointer,
-          );
-          return result;
-        case DType.int32:
-          s_clip_int32(
-            (broadcastA.pointer.cast<ffi.Int32>() + broadcastA.offsetElements)
-                .cast(),
-            cStridesA,
-            (broadcastMin.pointer.cast<ffi.Int32>() +
-                    broadcastMin.offsetElements)
-                .cast(),
-            cStridesMin,
-            (broadcastMax.pointer.cast<ffi.Int32>() +
-                    broadcastMax.offsetElements)
-                .cast(),
-            cStridesMax,
-            (result.pointer.cast<ffi.Int32>() + result.offsetElements).cast(),
-            cStridesRes,
-            cShape,
-            ndim,
-            maskHolder.pointer,
-          );
-          return result;
-        case DType.uint8:
-          s_clip_uint8(
-            (broadcastA.pointer.cast<ffi.Uint8>() + broadcastA.offsetElements)
-                .cast(),
-            cStridesA,
-            (broadcastMin.pointer.cast<ffi.Uint8>() +
-                    broadcastMin.offsetElements)
-                .cast(),
-            cStridesMin,
-            (broadcastMax.pointer.cast<ffi.Uint8>() +
-                    broadcastMax.offsetElements)
-                .cast(),
-            cStridesMax,
-            (result.pointer.cast<ffi.Uint8>() + result.offsetElements).cast(),
-            cStridesRes,
-            cShape,
-            ndim,
-            maskHolder.pointer,
-          );
-          return result;
-        case DType.int16:
-          s_clip_int16(
-            (broadcastA.pointer.cast<ffi.Int16>() + broadcastA.offsetElements)
-                .cast(),
-            cStridesA,
-            (broadcastMin.pointer.cast<ffi.Int16>() +
-                    broadcastMin.offsetElements)
-                .cast(),
-            cStridesMin,
-            (broadcastMax.pointer.cast<ffi.Int16>() +
-                    broadcastMax.offsetElements)
-                .cast(),
-            cStridesMax,
-            (result.pointer.cast<ffi.Int16>() + result.offsetElements).cast(),
-            cStridesRes,
-            cShape,
-            ndim,
-            maskHolder.pointer,
-          );
-          return result;
-        default:
-          break;
+      if (a.dtype.isInteger) {
+        ternaryOp<int, int, int, int>(
+          result.data as List<int>,
+          broadcastA.data as List<int>,
+          broadcastMin.data as List<int>,
+          broadcastMax.data as List<int>,
+          commonShape,
+          broadcastA.strides,
+          broadcastMin.strides,
+          broadcastMax.strides,
+          result.strides,
+          0,
+          broadcastA.offsetElements,
+          broadcastMin.offsetElements,
+          broadcastMax.offsetElements,
+          result.offsetElements,
+          (x, mn, mx) => x.clamp(mn, mx),
+        );
+      } else {
+        ternaryOp<double, double, double, double>(
+          result.data as List<double>,
+          broadcastA.data as List<double>,
+          broadcastMin.data as List<double>,
+          broadcastMax.data as List<double>,
+          commonShape,
+          broadcastA.strides,
+          broadcastMin.strides,
+          broadcastMax.strides,
+          result.strides,
+          0,
+          broadcastA.offsetElements,
+          broadcastMin.offsetElements,
+          broadcastMax.offsetElements,
+          result.offsetElements,
+          (x, mn, mx) => x.clamp(mn, mx),
+        );
       }
+
+      return result;
     } finally {
-      ScratchArena.reset(marker);
+      maskHolder.dispose();
     }
-
-    if (a.dtype.isInteger) {
-      ternaryOp<int, int, int, int>(
-        result.data as List<int>,
-        broadcastA.data as List<int>,
-        broadcastMin.data as List<int>,
-        broadcastMax.data as List<int>,
-        commonShape,
-        broadcastA.strides,
-        broadcastMin.strides,
-        broadcastMax.strides,
-        result.strides,
-        0,
-        broadcastA.offsetElements,
-        broadcastMin.offsetElements,
-        broadcastMax.offsetElements,
-        result.offsetElements,
-        (x, mn, mx) => x.clamp(mn, mx),
-      );
-    } else {
-      ternaryOp<double, double, double, double>(
-        result.data as List<double>,
-        broadcastA.data as List<double>,
-        broadcastMin.data as List<double>,
-        broadcastMax.data as List<double>,
-        commonShape,
-        broadcastA.strides,
-        broadcastMin.strides,
-        broadcastMax.strides,
-        result.strides,
-        0,
-        broadcastA.offsetElements,
-        broadcastMin.offsetElements,
-        broadcastMax.offsetElements,
-        result.offsetElements,
-        (x, mn, mx) => x.clamp(mn, mx),
-      );
-    }
-
-    return result;
   } finally {
     if (ownsMin) minArr.dispose();
     if (ownsMax) maxArr.dispose();
   }
 }
-
-/// Computes the element-wise truth value of NOT [a].
-///
 
 num _getMinLimit(DType dtype) {
   switch (dtype) {

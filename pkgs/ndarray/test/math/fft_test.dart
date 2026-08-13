@@ -1096,12 +1096,31 @@ void main() {
       );
 
       test(
-        'float64 input FFT with complex64 out buffer works (demotion)',
+        'incompatible out buffer dtype throws ArgumentError across FFT functions',
         () => NDArray.scope(() {
-          final a = NDArray.zeros([8], DType.float64);
-          final out = NDArray<Complex64>.zeros([8], DType.complex64);
-          final freq = fft(a, out: out);
-          expect(freq.dtype, DType.complex64);
+          final a64 = NDArray.zeros([8], DType.float64);
+          final outC64 = NDArray<Complex64>.zeros([8], DType.complex64);
+          expect(() => fft(a64, out: outC64), throwsArgumentError);
+
+          final aC128 = NDArray<Complex128>.zeros([8], DType.complex128);
+          expect(() => ifft(aC128, out: outC64), throwsArgumentError);
+
+          final outRfftWrong = NDArray<Complex64>.zeros([5], DType.complex64);
+          expect(() => rfft(a64, out: outRfftWrong), throwsArgumentError);
+
+          final outIrfftWrong = NDArray<double>.zeros([8], DType.float32);
+          final rfftIn = NDArray<Complex128>.zeros([5], DType.complex128);
+          expect(
+            () => irfft(rfftIn, n: 8, out: outIrfftWrong),
+            throwsArgumentError,
+          );
+
+          final outFftnWrong = NDArray<Complex64>.zeros([
+            2,
+            2,
+          ], DType.complex64);
+          final a2D = NDArray.zeros([2, 2], DType.float64);
+          expect(() => fftn(a2D, out: outFftnWrong), throwsArgumentError);
         }),
       );
     });

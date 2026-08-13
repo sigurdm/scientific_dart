@@ -12,8 +12,8 @@ void main() {
         );
 
         final res = schur(a, output: SchurForm.real);
-        final t = res.T;
-        final z = res.Z;
+        final t = res.t;
+        final z = res.z;
 
         expect(t.shape, equals([2, 2]));
         expect(z.shape, equals([2, 2]));
@@ -47,8 +47,8 @@ void main() {
         );
 
         final res = schur(a, output: SchurForm.complex);
-        final t = res.T;
-        final z = res.Z;
+        final t = res.t;
+        final z = res.z;
 
         expect(t.shape, equals([2, 2]));
         expect(z.shape, equals([2, 2]));
@@ -87,8 +87,8 @@ void main() {
         );
 
         final res = schur(a);
-        final t = res.T;
-        final z = res.Z;
+        final t = res.t;
+        final z = res.z;
 
         expect(t.dtype, equals(DType.complex128));
         expect(z.dtype, equals(DType.complex128));
@@ -148,13 +148,13 @@ void main() {
         );
 
         final res = schur(a);
-        expect(res.T.shape, equals([2, 2, 2]));
-        expect(res.Z.shape, equals([2, 2, 2]));
+        expect(res.t.shape, equals([2, 2, 2]));
+        expect(res.z.shape, equals([2, 2, 2]));
 
         // Check first matrix in batch
-        expect(res.T[[0, 1, 0]], closeTo(0.0, 1e-10));
+        expect(res.t[[0, 1, 0]], closeTo(0.0, 1e-10));
         // Check second matrix in batch
-        expect(res.T[[1, 1, 0]], closeTo(0.0, 1e-10));
+        expect(res.t[[1, 1, 0]], closeTo(0.0, 1e-10));
       });
     });
   });

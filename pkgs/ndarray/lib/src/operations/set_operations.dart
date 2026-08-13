@@ -12,7 +12,7 @@ import 'sorting.dart';
 ///
 /// It is an error if [ar] has an unsupported dtype.
 ///
-/// Throws [StateError] if [ar] is disposed.
+/// It is an error if [ar] is disposed.
 dynamic unique<T extends Object>(
   NDArray<T> ar, {
   bool returnIndex = false,
@@ -77,7 +77,7 @@ dynamic unique<T extends Object>(
 
       if (returnIndex || returnInverse || returnCounts) {
         return (
-          empty,
+          values: empty,
           index: returnIndex ? NDArray<int>.create([0], DType.int64) : null,
           inverse: returnInverse ? NDArray<int>.create([0], DType.int64) : null,
           counts: returnCounts ? NDArray<int>.create([0], DType.int64) : null,
@@ -125,7 +125,7 @@ dynamic unique<T extends Object>(
 
     if (returnIndex || returnInverse || returnCounts) {
       return (
-        result,
+        values: result,
         index: indexResult,
         inverse: inverseResult,
         counts: countsResult,
@@ -148,7 +148,7 @@ dynamic unique<T extends Object>(
 ///
 /// Returns the sorted, unique values that are in both of the input arrays.
 ///
-/// Throws [StateError] if [ar1] or [ar2] is disposed.
+/// It is an error if [ar1] or [ar2] is disposed.
 NDArray<T> intersect1d<T extends Object>(
   NDArray<T> ar1,
   NDArray<T> ar2, {
@@ -241,7 +241,7 @@ NDArray<T> intersect1d<T extends Object>(
 ///
 /// Returns the unique values in [ar1] that are not in [ar2].
 ///
-/// Throws [StateError] if [ar1] or [ar2] is disposed.
+/// It is an error if [ar1] or [ar2] is disposed.
 NDArray<T> setdiff1d<T extends Object>(
   NDArray<T> ar1,
   NDArray<T> ar2, {
@@ -334,7 +334,7 @@ NDArray<T> setdiff1d<T extends Object>(
 ///
 /// Returns the sorted, unique values that are in only one (not both) of the input arrays.
 ///
-/// Throws [StateError] if [ar1] or [ar2] is disposed.
+/// It is an error if [ar1] or [ar2] is disposed.
 NDArray<T> setxor1d<T extends Object>(
   NDArray<T> ar1,
   NDArray<T> ar2, {
@@ -427,7 +427,7 @@ NDArray<T> setxor1d<T extends Object>(
 ///
 /// Returns the unique, sorted array of values that are in either of the two input arrays.
 ///
-/// Throws [StateError] if [ar1] or [ar2] is disposed.
+/// It is an error if [ar1] or [ar2] is disposed.
 NDArray<T> union1d<T extends Object>(
   NDArray<T> ar1,
   NDArray<T> ar2, {
@@ -512,7 +512,7 @@ NDArray<T> union1d<T extends Object>(
 ///
 /// Returns a boolean array of the same shape as [element] that is `true` where an element of [element] is in [testElements] and `false` otherwise.
 ///
-/// Throws [StateError] if [element] or [testElements] is disposed.
+/// It is an error if [element] or [testElements] is disposed.
 NDArray<bool> isin<T extends Object>(
   NDArray<T> element,
   NDArray<T> testElements, {

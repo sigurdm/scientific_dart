@@ -31,12 +31,13 @@ NDArray<R> real<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   }
 
   final DType<dynamic> targetDType;
-  if (a.dtype == DType.complex64) {
-    targetDType = DType.float32;
-  } else if (a.dtype == DType.complex128) {
-    targetDType = DType.float64;
-  } else {
-    targetDType = a.dtype;
+  switch (a.dtype) {
+    case DType.complex64:
+      targetDType = DType.float32;
+    case DType.complex128:
+      targetDType = DType.float64;
+    default:
+      targetDType = a.dtype;
   }
 
   final NDArray<R> result;
@@ -55,23 +56,25 @@ NDArray<R> real<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    unaryOp<Complex, R>(
-      result.data,
-      a.data as List<Complex>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => x.real as R,
-    );
-    return result;
-  } else {
-    // This path is taken if out != null and a is not complex.
-    a.copy(out: result as dynamic);
-    return result;
+  switch (a.dtype) {
+    case DType.complex128:
+    case DType.complex64:
+      unaryOp<Complex, R>(
+        result.data,
+        a.data as List<Complex>,
+        a.shape,
+        a.strides,
+        result.strides,
+        0,
+        a.offsetElements,
+        result.offsetElements,
+        (x) => x.real as R,
+      );
+      return result;
+    default:
+      // This path is taken if out != null and a is not complex.
+      a.copy(out: result as dynamic);
+      return result;
   }
 }
 
@@ -117,11 +120,8 @@ NDArray<R> imag<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   }
 
   if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
-    if (out != null) {
-      result.fill(0.0 as R);
-      return result;
-    }
-    return NDArray.zeros(a.shape, targetDType) as NDArray<R>;
+    result.fill(0.0 as R);
+    return result;
   }
   unaryOp<Complex, R>(
     result.data,

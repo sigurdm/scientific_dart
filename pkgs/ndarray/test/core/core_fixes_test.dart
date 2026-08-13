@@ -1,6 +1,7 @@
 import "dart:ffi" as ffi;
 import "package:ffi/ffi.dart";
 import "package:ndarray/ndarray.dart";
+import "package:ndarray/src/scratch_arena.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -345,6 +346,74 @@ void main() {
           // Row slice assignment via a[1]
           b[1] = NDArray.fromList([40, 50, 60, 70], [4], DType.int32);
           expect(b[1].toList(), [40, 50, 60, 70]);
+        }),
+      );
+    });
+
+    group("Stream 1 Core and Native fixes", () {
+      test(
+        "unique with int16 dtype",
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([3, 1, 2, 1, 3, 4], [6], DType.int16);
+          final u = unique(a);
+          expect(u.dtype, DType.int16);
+          expect(u.toList(), [1, 2, 3, 4]);
+
+          final multi = NDArray.fromList(
+            [5, 5, 2, 2, 9, 1],
+            [2, 3],
+            DType.int16,
+          );
+          final uMulti = unique(multi);
+          expect(uMulti.dtype, DType.int16);
+          expect(uMulti.toList(), [1, 2, 5, 9]);
+        }),
+      );
+
+      test(
+        "contiguity check ignores strides when shape[i] <= 1",
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1, 2, 3, 4, 5], [1, 5], DType.float64);
+          expect(a.isContiguous, isTrue);
+
+          final b = NDArray.fromList([1, 2, 3, 4, 5], [5, 1], DType.float64);
+          expect(b.isContiguous, isTrue);
+        }),
+      );
+
+      test("ScratchArena.allocate rejects negative bytes", () {
+        expect(() => ScratchArena.allocate(-1), throwsArgumentError);
+        expect(() => ScratchArena.allocate(-100), throwsArgumentError);
+      });
+
+      test(
+        "ScratchArena.copyBools handles BoolList and standard List<bool>",
+        () {
+          final bools = [true, false, true, true, false];
+          final ptr1 = ScratchArena.copyBools(bools);
+          final list1 = ptr1.asTypedList(bools.length);
+          expect(list1, [1, 0, 1, 1, 0]);
+
+          final arr = NDArray.fromList(bools, [5], DType.boolean);
+          final ptr2 = ScratchArena.copyBools(arr.data);
+          final list2 = ptr2.asTypedList(bools.length);
+          expect(list2, [1, 0, 1, 1, 0]);
+        },
+      );
+
+      test(
+        "cumsum into non-contiguous strided result",
+        () => NDArray.scope(() {
+          final src = NDArray.fromList([1, 2, 3, 4, 5, 6], [2, 3], DType.int16);
+          final dest = NDArray<int>.zeros([4, 3], DType.int16);
+          final stridedDest = dest.slice([
+            Slice(start: 0, stop: 4, step: 2),
+            Slice.all(),
+          ]);
+          expect(stridedDest.isContiguous, isFalse);
+
+          cumsum(src, axis: 1, out: stridedDest);
+          expect(stridedDest.toList(), [1, 3, 6, 4, 9, 15]);
         }),
       );
     });

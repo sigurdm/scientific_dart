@@ -143,7 +143,7 @@ void main() {
       expect(ls0.shape, equals([0]));
       expect(ls0.toList(), equals([]));
 
-      final (lsStepArr, step) = linspaceWithStep(0.0, 10.0, 0);
+      final (samples: lsStepArr, step: step) = linspaceWithStep(0.0, 10.0, 0);
       expect(lsStepArr.shape, equals([0]));
       expect(step.isNaN, isTrue);
 
@@ -152,7 +152,11 @@ void main() {
       final grid0 = linspaceGrid(start, stop, 0);
       expect(grid0.shape, equals([0, 2]));
 
-      final (gridWithStep, gridStep) = linspaceGridWithStep(start, stop, 0);
+      final (samples: gridWithStep, step: gridStep) = linspaceGridWithStep(
+        start,
+        stop,
+        0,
+      );
       expect(gridWithStep.shape, equals([0, 2]));
       expect(gridStep.shape, equals([2]));
       expect(gridStep.getCell([0]).isNaN, isTrue);
@@ -213,35 +217,14 @@ void main() {
       });
     });
 
-    test('10. financial.dart PaymentDue enum and legacy string support', () {
+    test('10. financial.dart PaymentDue enum support', () {
       final rate = NDArray.fromList([0.05], [1], DType.float64);
       final nper = NDArray.fromList([10.0], [1], DType.float64);
       final pmt = NDArray.fromList([-100.0], [1], DType.float64);
       final pvVal = NDArray.fromList([0.0], [1], DType.float64);
 
       final fvEndEnum = fv(rate, nper, pmt, pvVal, when: PaymentDue.end);
-      final fvEndStr = fv(rate, nper, pmt, pvVal, when: 'end');
-      final fvEndNum = fv(rate, nper, pmt, pvVal, when: 0);
-      expect(
-        fvEndEnum.getCell([0]).toDouble(),
-        closeTo(fvEndStr.getCell([0]).toDouble(), 1e-6),
-      );
-      expect(
-        fvEndEnum.getCell([0]).toDouble(),
-        closeTo(fvEndNum.getCell([0]).toDouble(), 1e-6),
-      );
-
       final fvBeginEnum = fv(rate, nper, pmt, pvVal, when: PaymentDue.begin);
-      final fvBeginStr = fv(rate, nper, pmt, pvVal, when: 'begin');
-      final fvBeginNum = fv(rate, nper, pmt, pvVal, when: 1);
-      expect(
-        fvBeginEnum.getCell([0]).toDouble(),
-        closeTo(fvBeginStr.getCell([0]).toDouble(), 1e-6),
-      );
-      expect(
-        fvBeginEnum.getCell([0]).toDouble(),
-        closeTo(fvBeginNum.getCell([0]).toDouble(), 1e-6),
-      );
 
       expect(
         fvBeginEnum.getCell([0]).toDouble(),

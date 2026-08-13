@@ -55,6 +55,28 @@ void _fastCopyAndCast(NDArray src, NDArray dest) {
 }
 
 /// Computes the frequency of each value in an array of non-negative ints.
+///
+/// **Preconditions:**
+/// - [x] must not be disposed.
+/// - [x] must be a 1-D array containing non-negative integers.
+/// - If [weights] is provided, it must not be disposed and must have the same shape as [x].
+/// - [minlength] must be non-negative ($\ge 0$).
+///
+/// **Throws:**
+/// - It is an error if [x] or [weights] is disposed.
+/// - It is an error if [x] is not 1-D or contains negative values.
+/// - It is an error if [weights] shape does not match [x] shape.
+/// - It is an error if [minlength] is negative.
+/// - It is an error if [out] has incompatible shape or dtype.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray<int>.fromList([0, 1, 1, 3, 2, 1, 7], [7], DType.int32);
+/// final counts = bincount(a);
+/// ```
+///
+/// Refer to the [NumPy bincount reference](https://numpy.org/doc/stable/reference/generated/numpy.bincount.html)
+/// for details.
 NDArray<T> bincount<T extends num>(
   NDArray<int> x, {
   NDArray<T>? weights,
@@ -316,6 +338,29 @@ NDArray<T> bincount<T extends num>(
 }
 
 /// Return the indices of the bins to which each value in input array belongs.
+///
+/// **Preconditions:**
+/// - [x] and [bins] must not be disposed.
+/// - [bins] must be a 1-D monotonic array.
+/// - [bins] must not be empty.
+/// - [x] and [bins] must not have complex data types.
+///
+/// **Throws:**
+/// - It is an error if [x] or [bins] is disposed.
+/// - It is an error if [bins] is not 1-D or is empty.
+/// - It is an error if [bins] is not monotonic.
+/// - It is an error if [x] or [bins] contains complex numbers.
+/// - It is an error if [out] has incompatible shape or dtype.
+///
+/// **Example:**
+/// ```dart
+/// final x = NDArray<double>.fromList([0.2, 6.4, 3.0, 1.6], [4], DType.float64);
+/// final bins = NDArray<double>.fromList([0.0, 1.0, 2.5, 4.0, 10.0], [5], DType.float64);
+/// final inds = digitize(x, bins);
+/// ```
+///
+/// Refer to the [NumPy digitize reference](https://numpy.org/doc/stable/reference/generated/numpy.digitize.html)
+/// for details.
 NDArray<int> digitize(
   NDArray<num> x,
   NDArray<num> bins, {
@@ -354,14 +399,23 @@ NDArray<int> digitize(
       throw ArgumentError('bins must be monotonic.');
     }
 
+    final commonDType =
+        resolveDType(bins.dtype, x.dtype) as DType<Object>;
+    final commonBins = bins.dtype == commonDType
+        ? bins as NDArray<Object>
+        : castNDArray<Object>(bins, commonDType);
+    final commonX = x.dtype == commonDType
+        ? x as NDArray<Object>
+        : castNDArray<Object>(x, commonDType);
+
     final side = right ? SearchSide.left : SearchSide.right;
     NDArray<int> res;
 
     if (increasing) {
-      res = searchsorted(bins, x, side: side);
+      res = searchsorted(commonBins, commonX, side: side);
     } else {
-      final flippedBins = flip(bins);
-      final j = searchsorted(flippedBins, x, side: side);
+      final flippedBins = flip(commonBins);
+      final j = searchsorted(flippedBins, commonX, side: side);
       final nArr = NDArray<int>.scalar(bins.size, dtype: DType.int32);
       res = subtract<int, int, int>(nArr, j);
     }
@@ -379,7 +433,28 @@ NDArray<int> digitize(
 }
 
 /// Computes the histogram of a set of data.
-(NDArray<num> hist, NDArray<Float64> binEdges) histogram(
+///
+/// **Preconditions:**
+/// - [x] must not be disposed.
+/// - If [weights] is provided, it must not be disposed and must match the shape of [x].
+/// - If [bins] is an integer, it must be strictly positive ($\ge 1$).
+/// - If [bins] is an array, it must be 1-D and monotonically increasing with at least 2 edges.
+///
+/// **Throws:**
+/// - It is an error if [x] or [weights] is disposed.
+/// - It is an error if [weights] shape does not match [x] shape.
+/// - It is an error if [bins] is non-positive or not a 1-D monotonically increasing array.
+/// - It is an error if [bins] has fewer than 2 edges.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray<double>.fromList([1, 2, 1], [3], DType.float64);
+/// final (:hist, :binEdges) = histogram(a, bins: 2, range: (0.0, 2.0));
+/// ```
+///
+/// Refer to the [NumPy histogram reference](https://numpy.org/doc/stable/reference/generated/numpy.histogram.html)
+/// for details.
+({NDArray<num> hist, NDArray<Float64> binEdges}) histogram(
   NDArray<num> x, {
   dynamic bins = 10,
   (double, double)? range,
@@ -416,36 +491,23 @@ NDArray<int> digitize(
           minX = 0.0;
           maxX = 1.0;
         } else {
-          final xDouble = promoteToDouble(flatX);
-          minX = min(xDouble).scalar;
-          maxX = max(xDouble).scalar;
+          final minRes = min<num>(flatX).scalar;
+          final maxRes = max<num>(flatX).scalar;
+          minX = minRes.toDouble();
+          maxX = maxRes.toDouble();
+          if (minX == maxX) {
+            minX -= 0.5;
+            maxX += 0.5;
+          }
         }
       }
-
-      var start = minX;
-      var stop = maxX;
-      if (start == stop) {
-        start -= 0.5;
-        stop += 0.5;
-      }
-
       resolvedBinEdges = linspace<Float64>(
-        Float64(start),
-        Float64(stop),
+        Float64(minX),
+        Float64(maxX),
         bins + 1,
         dtype: DType.float64,
       );
     } else if (bins is NDArray) {
-      if (bins.shape.length != 1) {
-        throw ArgumentError('bins must be a 1-D array.');
-      }
-      // Validate monotonicity (must be increasing for histogram bin edges)
-      final binsList = bins.toList();
-      for (var i = 1; i < binsList.length; i++) {
-        if ((binsList[i] as num) < (binsList[i - 1] as num)) {
-          throw ArgumentError('bins array must be monotonically increasing.');
-        }
-      }
 
       resolvedBinEdges = bins.dtype == DType.float64
           ? bins as NDArray<Float64>
@@ -502,8 +564,8 @@ NDArray<int> digitize(
     }
 
     return (
-      finalHist.detachToParentScope(),
-      resolvedBinEdges.detachToParentScope(),
+      hist: finalHist.detachToParentScope(),
+      binEdges: resolvedBinEdges.detachToParentScope(),
     );
   });
 }

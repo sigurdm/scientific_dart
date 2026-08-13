@@ -116,7 +116,7 @@ RootScalarResult brentq(
     );
   }
 
-  if (fa * fb > 0) {
+  if (fa.isNaN || fb.isNaN || fa * fb > 0) {
     throw ArgumentError(
       'f(a) and f(b) must have different signs. Got f(a)=$fa, f(b)=$fb.',
     );

@@ -71,6 +71,57 @@ void main() {
           expect(() => inv(a), throwsA(isA<SingularMatrixException>()));
         }),
       );
+
+      test(
+        'Batched 3D inv for Float64 and Float32',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Float64List.fromList([4.0, 7.0, 2.0, 6.0, 1.0, 2.0, 3.0, 4.0]),
+            [2, 2, 2],
+            DType.float64,
+          );
+
+          final aInv = inv(a);
+          expect(aInv.shape, [2, 2, 2]);
+          expect(aInv.dtype, DType.float64);
+
+          expect(aInv.toList()[0], closeTo(0.6, 1e-6));
+          expect(aInv.toList()[1], closeTo(-0.7, 1e-6));
+          expect(aInv.toList()[2], closeTo(-0.2, 1e-6));
+          expect(aInv.toList()[3], closeTo(0.4, 1e-6));
+
+          expect(aInv.toList()[4], closeTo(-2.0, 1e-6));
+          expect(aInv.toList()[5], closeTo(1.0, 1e-6));
+          expect(aInv.toList()[6], closeTo(1.5, 1e-6));
+          expect(aInv.toList()[7], closeTo(-0.5, 1e-6));
+
+          final out = NDArray<double>.zeros([2, 2, 2], DType.float64);
+          final res = inv(a, out: out);
+          expect(identical(res, out), true);
+          expect(out.toList()[0], closeTo(0.6, 1e-6));
+          expect(out.toList()[4], closeTo(-2.0, 1e-6));
+        }),
+      );
+
+      test(
+        'Batched 4D inv Complex128',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            [
+              Complex(1.0, 0.0),
+              Complex(0.0, 0.0),
+              Complex(0.0, 0.0),
+              Complex(1.0, 0.0),
+            ],
+            [1, 1, 2, 2],
+            DType.complex128,
+          );
+          final aInv = inv(a);
+          expect(aInv.shape, [1, 1, 2, 2]);
+          expect(aInv.toList()[0], Complex(1.0, 0.0));
+          expect(aInv.toList()[3], Complex(1.0, 0.0));
+        }),
+      );
     });
 
     group('Cholesky Decomposition tests', () {
@@ -228,6 +279,35 @@ void main() {
           expect(outL.toList()[6], closeTo(-8.0, 1e-6));
           expect(outL.toList()[7], closeTo(5.0, 1e-6));
           expect(outL.toList()[8], closeTo(3.0, 1e-6));
+        }),
+      );
+
+      test(
+        'Batched 3D Cholesky decomposition',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Float64List.fromList([4.0, 2.0, 2.0, 2.0, 4.0, 2.0, 2.0, 2.0]),
+            [2, 2, 2],
+            DType.float64,
+          );
+
+          final l = cholesky(a);
+          expect(l.shape, [2, 2, 2]);
+          expect(l.toList()[0], closeTo(2.0, 1e-6));
+          expect(l.toList()[1], 0.0);
+          expect(l.toList()[2], closeTo(1.0, 1e-6));
+          expect(l.toList()[3], closeTo(1.0, 1e-6));
+
+          expect(l.toList()[4], closeTo(2.0, 1e-6));
+          expect(l.toList()[5], 0.0);
+          expect(l.toList()[6], closeTo(1.0, 1e-6));
+          expect(l.toList()[7], closeTo(1.0, 1e-6));
+
+          final out = NDArray<double>.zeros([2, 2, 2], DType.float64);
+          final res = cholesky(a, out: out);
+          expect(identical(res, out), true);
+          expect(out.toList()[1], 0.0);
+          expect(out.toList()[5], 0.0);
         }),
       );
     });
@@ -662,6 +742,54 @@ void main() {
           expect(x.dtype, DType.complex64);
           expect(x.toList()[0].real, closeTo(2.0, 1e-5));
           expect(x.toList()[1].real, closeTo(3.0, 1e-5));
+        }),
+      );
+
+      test(
+        'Batched 3D solve with 2D vector RHS',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Float64List.fromList([3.0, 1.0, 1.0, 2.0, 3.0, 1.0, 1.0, 2.0]),
+            [2, 2, 2],
+            DType.float64,
+          );
+          final b = NDArray.fromList(
+            Float64List.fromList([9.0, 8.0, 9.0, 8.0]),
+            [2, 2],
+            DType.float64,
+          );
+
+          final x = solve(a, b);
+          expect(x.shape, [2, 2]);
+          expect(x.toList()[0], closeTo(2.0, 1e-9));
+          expect(x.toList()[1], closeTo(3.0, 1e-9));
+          expect(x.toList()[2], closeTo(2.0, 1e-9));
+          expect(x.toList()[3], closeTo(3.0, 1e-9));
+        }),
+      );
+
+      test(
+        'Batched 3D solve with 3D matrix RHS',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList(
+            Float64List.fromList([3.0, 1.0, 1.0, 2.0, 3.0, 1.0, 1.0, 2.0]),
+            [2, 2, 2],
+            DType.float64,
+          );
+          final b = NDArray.fromList(
+            Float64List.fromList([9.0, 8.0, 9.0, 8.0]),
+            [2, 2, 1],
+            DType.float64,
+          );
+
+          final out = NDArray<double>.zeros([2, 2, 1], DType.float64);
+          final x = solve(a, b, out: out);
+          expect(identical(x, out), true);
+          expect(x.shape, [2, 2, 1]);
+          expect(x.toList()[0], closeTo(2.0, 1e-9));
+          expect(x.toList()[1], closeTo(3.0, 1e-9));
+          expect(x.toList()[2], closeTo(2.0, 1e-9));
+          expect(x.toList()[3], closeTo(3.0, 1e-9));
         }),
       );
     });

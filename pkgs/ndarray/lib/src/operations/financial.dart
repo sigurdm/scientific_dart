@@ -38,6 +38,13 @@ enum PaymentDue {
 /// `Decimal` is not supported because `ndarray` uses double-precision floats
 /// for quantitative simulations, which allow vectorization.
 ///
+/// **Preconditions:**
+/// - All input arrays must not be disposed.
+///
+/// **Throws:**
+/// - It is an error if any input array is disposed.
+/// - It is an error if [out] has incompatible shape or dtype.
+///
 /// {@example /example/financial_example.dart lang=dart}
 NDArray<Float64> fv(
   NDArray<Float64> rate,
@@ -93,6 +100,13 @@ NDArray<Float64> fv(
 /// **Decimal Support:**
 /// `Decimal` is not supported because `ndarray` uses double-precision floats
 /// for quantitative simulations, which allow vectorization.
+///
+/// **Preconditions:**
+/// - All input arrays must not be disposed.
+///
+/// **Throws:**
+/// - It is an error if any input array is disposed.
+/// - It is an error if [out] has incompatible shape or dtype.
 ///
 /// {@example /example/financial_example.dart lang=dart}
 NDArray<Float64> pv(
@@ -150,6 +164,15 @@ NDArray<Float64> pv(
 /// `Decimal` is not supported because `ndarray` uses double-precision floats
 /// for quantitative simulations, which allow vectorization.
 ///
+/// **Preconditions:**
+/// - [rate] and [values] must not be disposed.
+/// - [values] must have rank $\ge 1$.
+///
+/// **Throws:**
+/// - It is an error if any input array is disposed.
+/// - It is an error if [values] rank is less than 1.
+/// - It is an error if [out] has incompatible shape or dtype.
+///
 /// {@example /example/financial_example.dart lang=dart}
 NDArray<Float64> npv(
   NDArray<Float64> rate,
@@ -202,6 +225,14 @@ NDArray<Float64> npv(
 /// **Decimal Support:**
 /// `Decimal` is not supported because `ndarray` uses double-precision floats
 /// for quantitative simulations, which allow vectorization.
+///
+/// **Preconditions:**
+/// - [values] must not be disposed and must be a 1-D array.
+///
+/// **Throws:**
+/// - It is an error if [values] or [out] is disposed.
+/// - It is an error if [values] is not a 1-D array.
+/// - Throws [NoRealSolutionException] if [raiseExceptions] is `true` and no real solution exists.
 ///
 /// {@example /example/financial_example.dart lang=dart}
 NDArray<Float64> irr(

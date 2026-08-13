@@ -68,9 +68,9 @@ void _mapCoordInPlace(
 /// - It is an error if [out] is provided and its shape does not match the target broadcast shape or its dtype does not match [arr.dtype].
 ///
 /// **Throws:**
-/// - Throws [StateError] if [arr], [indices], or [out] is disposed.
-/// - Throws [ArgumentError] if ranks don't match, shapes are incompatible, or [out] shape/dtype is invalid.
-/// - Throws [RangeError] if [axis] or an index value in [indices] is out of bounds.
+/// - It is an error if [arr], [indices], or [out] is disposed.
+/// - It is an error if ranks don't match, shapes are incompatible, or [out] shape/dtype is invalid.
+/// - It is an error if [axis] or an index value in [indices] is out of bounds.
 ///
 /// **Example:**
 /// ```dart
@@ -130,45 +130,47 @@ NDArray<T> take_along_axis<T extends Object>(
   return NDArray.scope(() {
     final result = out ?? NDArray<T>.create(targetShape, arr.dtype);
     final marker = ScratchArena.marker;
-    final idxCoord = List<int>.filled(rank, 0);
-    final arrCoord = List<int>.filled(rank, 0);
-    final axisSize = arr.shape[normAxis];
+    try {
+      final idxCoord = List<int>.filled(rank, 0);
+      final arrCoord = List<int>.filled(rank, 0);
+      final axisSize = arr.shape[normAxis];
 
-    switch (arr.dtype) {
-      case DType.float64:
-      case DType.float32:
-      case DType.int64:
-      case DType.int32:
-      case DType.int16:
-      case DType.uint8:
-      case DType.boolean:
-      case DType.complex128:
-      case DType.complex64:
-        final iter = NDIter(result);
-        while (iter.moveNext()) {
-          final coords = iter.coords;
-          _mapCoordInPlace(coords, indices.shape, idxCoord);
-          final idxVal = indices.getCell(idxCoord);
-          var targetIdx = idxVal < 0 ? idxVal + axisSize : idxVal;
-          if (targetIdx < 0 || targetIdx >= axisSize) {
-            ScratchArena.reset(marker);
-            throw RangeError.range(
-              targetIdx,
-              0,
-              axisSize - 1,
-              'index along axis $normAxis',
-            );
+      switch (arr.dtype) {
+        case DType.float64:
+        case DType.float32:
+        case DType.int64:
+        case DType.int32:
+        case DType.int16:
+        case DType.uint8:
+        case DType.boolean:
+        case DType.complex128:
+        case DType.complex64:
+          final iter = NDIter(result);
+          while (iter.moveNext()) {
+            final coords = iter.coords;
+            _mapCoordInPlace(coords, indices.shape, idxCoord);
+            final idxVal = indices.getCell(idxCoord);
+            var targetIdx = idxVal < 0 ? idxVal + axisSize : idxVal;
+            if (targetIdx < 0 || targetIdx >= axisSize) {
+              throw RangeError.range(
+                targetIdx,
+                0,
+                axisSize - 1,
+                'index along axis $normAxis',
+              );
+            }
+            _mapCoordInPlace(coords, arr.shape, arrCoord);
+            arrCoord[normAxis] = targetIdx;
+            final val = arr.getCell(arrCoord);
+            result.setCell(coords, val);
           }
-          _mapCoordInPlace(coords, arr.shape, arrCoord);
-          arrCoord[normAxis] = targetIdx;
-          final val = arr.getCell(arrCoord);
-          result.setCell(coords, val);
-        }
-        break;
-    }
+          break;
+      }
 
-    ScratchArena.reset(marker);
-    return result.detachToParentScope();
+      return result.detachToParentScope();
+    } finally {
+      ScratchArena.reset(marker);
+    }
   });
 }
 
@@ -240,45 +242,47 @@ NDArray<T> put_along_axis<T extends Object>(
     }
 
     final marker = ScratchArena.marker;
-    final valCoord = List<int>.filled(valuesArr.shape.length, 0);
-    final targetCoord = List<int>.filled(target.shape.length, 0);
-    final axisSize = target.shape[normAxis];
+    try {
+      final valCoord = List<int>.filled(valuesArr.shape.length, 0);
+      final targetCoord = List<int>.filled(target.shape.length, 0);
+      final axisSize = target.shape[normAxis];
 
-    switch (arr.dtype) {
-      case DType.float64:
-      case DType.float32:
-      case DType.int64:
-      case DType.int32:
-      case DType.int16:
-      case DType.uint8:
-      case DType.boolean:
-      case DType.complex128:
-      case DType.complex64:
-        final iter = NDIter(indices);
-        while (iter.moveNext()) {
-          final coords = iter.coords;
-          final idxVal = indices.getCell(coords);
-          var targetIdx = idxVal < 0 ? idxVal + axisSize : idxVal;
-          if (targetIdx < 0 || targetIdx >= axisSize) {
-            ScratchArena.reset(marker);
-            throw RangeError.range(
-              targetIdx,
-              0,
-              axisSize - 1,
-              'index along axis $normAxis',
-            );
+      switch (arr.dtype) {
+        case DType.float64:
+        case DType.float32:
+        case DType.int64:
+        case DType.int32:
+        case DType.int16:
+        case DType.uint8:
+        case DType.boolean:
+        case DType.complex128:
+        case DType.complex64:
+          final iter = NDIter(indices);
+          while (iter.moveNext()) {
+            final coords = iter.coords;
+            final idxVal = indices.getCell(coords);
+            var targetIdx = idxVal < 0 ? idxVal + axisSize : idxVal;
+            if (targetIdx < 0 || targetIdx >= axisSize) {
+              throw RangeError.range(
+                targetIdx,
+                0,
+                axisSize - 1,
+                'index along axis $normAxis',
+              );
+            }
+            _mapCoordInPlace(coords, valuesArr.shape, valCoord);
+            final val = valuesArr.getCell(valCoord);
+            _mapCoordInPlace(coords, target.shape, targetCoord);
+            targetCoord[normAxis] = targetIdx;
+            target.setCell(targetCoord, val);
           }
-          _mapCoordInPlace(coords, valuesArr.shape, valCoord);
-          final val = valuesArr.getCell(valCoord);
-          _mapCoordInPlace(coords, target.shape, targetCoord);
-          targetCoord[normAxis] = targetIdx;
-          target.setCell(targetCoord, val);
-        }
-        break;
-    }
+          break;
+      }
 
-    ScratchArena.reset(marker);
-    return target.detachToParentScope();
+      return target.detachToParentScope();
+    } finally {
+      ScratchArena.reset(marker);
+    }
   });
 }
 
@@ -294,9 +298,9 @@ NDArray<T> put_along_axis<T extends Object>(
 /// - It is an error if [out] is provided and its shape does not match the broadcast shape or its dtype does not match resolved choices dtype.
 ///
 /// **Throws:**
-/// - Throws [StateError] if any input array is disposed.
-/// - Throws [ArgumentError] if [choices] is empty or shapes cannot be broadcast.
-/// - Throws [RangeError] if index values in [a] are out of bounds and [mode] is [ChooseMode.raise].
+/// - It is an error if any input array is disposed.
+/// - It is an error if [choices] is empty or shapes cannot be broadcast.
+/// - It is an error if index values in [a] are out of bounds and [mode] is [ChooseMode.raise].
 ///
 /// **Example:**
 /// ```dart
@@ -367,58 +371,65 @@ NDArray<T> choose<T extends Object>(
     final result = out ?? NDArray<T>.create(targetShape, resolvedDType);
     final nChoices = choiceArrays.length;
     final marker = ScratchArena.marker;
-    final aCoord = List<int>.filled(a.shape.length, 0);
-    final choiceCoords = choiceArrays
-        .map((c) => List<int>.filled(c.shape.length, 0))
-        .toList();
+    try {
+      final aCoord = List<int>.filled(a.shape.length, 0);
+      final choiceCoords = choiceArrays
+          .map((c) => List<int>.filled(c.shape.length, 0))
+          .toList();
 
-    switch (resolvedDType) {
-      case DType.float64:
-      case DType.float32:
-      case DType.int64:
-      case DType.int32:
-      case DType.int16:
-      case DType.uint8:
-      case DType.boolean:
-      case DType.complex128:
-      case DType.complex64:
-        final iter = NDIter(result);
-        while (iter.moveNext()) {
-          final coords = iter.coords;
-          _mapCoordInPlace(coords, a.shape, aCoord);
-          var idxVal = a.getCell(aCoord);
+      switch (resolvedDType) {
+        case DType.float64:
+        case DType.float32:
+        case DType.int64:
+        case DType.int32:
+        case DType.int16:
+        case DType.uint8:
+        case DType.boolean:
+        case DType.complex128:
+        case DType.complex64:
+          final iter = NDIter(result);
+          while (iter.moveNext()) {
+            final coords = iter.coords;
+            _mapCoordInPlace(coords, a.shape, aCoord);
+            var idxVal = a.getCell(aCoord);
 
-          switch (mode) {
-            case ChooseMode.raise:
-              if (idxVal < 0 || idxVal >= nChoices) {
-                ScratchArena.reset(marker);
-                throw RangeError.range(idxVal, 0, nChoices - 1, 'choice index');
-              }
-              break;
-            case ChooseMode.wrap:
-              idxVal = idxVal % nChoices;
-              if (idxVal < 0) idxVal += nChoices;
-              break;
-            case ChooseMode.clip:
-              if (idxVal < 0) {
-                idxVal = 0;
-              } else if (idxVal >= nChoices) {
-                idxVal = nChoices - 1;
-              }
-              break;
+            switch (mode) {
+              case ChooseMode.raise:
+                if (idxVal < 0 || idxVal >= nChoices) {
+                  throw RangeError.range(
+                    idxVal,
+                    0,
+                    nChoices - 1,
+                    'choice index',
+                  );
+                }
+                break;
+              case ChooseMode.wrap:
+                idxVal = idxVal % nChoices;
+                if (idxVal < 0) idxVal += nChoices;
+                break;
+              case ChooseMode.clip:
+                if (idxVal < 0) {
+                  idxVal = 0;
+                } else if (idxVal >= nChoices) {
+                  idxVal = nChoices - 1;
+                }
+                break;
+            }
+
+            final choiceArr = choiceArrays[idxVal];
+            final choiceCoord = choiceCoords[idxVal];
+            _mapCoordInPlace(coords, choiceArr.shape, choiceCoord);
+            final val = choiceArr.getCell(choiceCoord);
+            result.setCell(coords, val);
           }
+          break;
+      }
 
-          final choiceArr = choiceArrays[idxVal];
-          final choiceCoord = choiceCoords[idxVal];
-          _mapCoordInPlace(coords, choiceArr.shape, choiceCoord);
-          final val = choiceArr.getCell(choiceCoord);
-          result.setCell(coords, val);
-        }
-        break;
+      return result.detachToParentScope();
+    } finally {
+      ScratchArena.reset(marker);
     }
-
-    ScratchArena.reset(marker);
-    return result.detachToParentScope();
   });
 }
 
@@ -433,8 +444,8 @@ NDArray<T> choose<T extends Object>(
 /// - It is an error if [out] is provided and its shape does not match the broadcast shape or its dtype does not match resolved dtype.
 ///
 /// **Throws:**
-/// - Throws [StateError] if any input array is disposed.
-/// - Throws [ArgumentError] if list lengths don't match, lists are empty, or shapes/dtypes are incompatible.
+/// - It is an error if any input array is disposed.
+/// - It is an error if list lengths don't match, lists are empty, or shapes/dtypes are incompatible.
 ///
 /// **Example:**
 /// ```dart
@@ -533,54 +544,57 @@ NDArray<T> select<T extends Object>(
     final result = out ?? NDArray<T>.create(targetShape, resolvedDType);
     final nConds = condlist.length;
     final marker = ScratchArena.marker;
-    final condCoords = condlist
-        .map((c) => List<int>.filled(c.shape.length, 0))
-        .toList();
-    final choiceCoords = choiceArrays
-        .map((c) => List<int>.filled(c.shape.length, 0))
-        .toList();
-    final defaultCoord = List<int>.filled(defaultArr.shape.length, 0);
+    try {
+      final condCoords = condlist
+          .map((c) => List<int>.filled(c.shape.length, 0))
+          .toList();
+      final choiceCoords = choiceArrays
+          .map((c) => List<int>.filled(c.shape.length, 0))
+          .toList();
+      final defaultCoord = List<int>.filled(defaultArr.shape.length, 0);
 
-    switch (resolvedDType) {
-      case DType.float64:
-      case DType.float32:
-      case DType.int64:
-      case DType.int32:
-      case DType.int16:
-      case DType.uint8:
-      case DType.boolean:
-      case DType.complex128:
-      case DType.complex64:
-        final iter = NDIter(result);
-        while (iter.moveNext()) {
-          final coords = iter.coords;
-          var selectedIdx = -1;
-          for (var i = 0; i < nConds; i++) {
-            final condArr = condlist[i];
-            final condCoord = condCoords[i];
-            _mapCoordInPlace(coords, condArr.shape, condCoord);
-            if (condArr.getCell(condCoord)) {
-              selectedIdx = i;
-              break;
+      switch (resolvedDType) {
+        case DType.float64:
+        case DType.float32:
+        case DType.int64:
+        case DType.int32:
+        case DType.int16:
+        case DType.uint8:
+        case DType.boolean:
+        case DType.complex128:
+        case DType.complex64:
+          final iter = NDIter(result);
+          while (iter.moveNext()) {
+            final coords = iter.coords;
+            var selectedIdx = -1;
+            for (var i = 0; i < nConds; i++) {
+              final condArr = condlist[i];
+              final condCoord = condCoords[i];
+              _mapCoordInPlace(coords, condArr.shape, condCoord);
+              if (condArr.getCell(condCoord)) {
+                selectedIdx = i;
+                break;
+              }
+            }
+
+            if (selectedIdx != -1) {
+              final choiceArr = choiceArrays[selectedIdx];
+              final choiceCoord = choiceCoords[selectedIdx];
+              _mapCoordInPlace(coords, choiceArr.shape, choiceCoord);
+              final val = choiceArr.getCell(choiceCoord);
+              result.setCell(coords, castValue(val, result.dtype));
+            } else {
+              _mapCoordInPlace(coords, defaultArr.shape, defaultCoord);
+              final val = defaultArr.getCell(defaultCoord);
+              result.setCell(coords, castValue(val, result.dtype));
             }
           }
+          break;
+      }
 
-          if (selectedIdx != -1) {
-            final choiceArr = choiceArrays[selectedIdx];
-            final choiceCoord = choiceCoords[selectedIdx];
-            _mapCoordInPlace(coords, choiceArr.shape, choiceCoord);
-            final val = choiceArr.getCell(choiceCoord);
-            result.setCell(coords, castValue(val, result.dtype));
-          } else {
-            _mapCoordInPlace(coords, defaultArr.shape, defaultCoord);
-            final val = defaultArr.getCell(defaultCoord);
-            result.setCell(coords, castValue(val, result.dtype));
-          }
-        }
-        break;
+      return result.detachToParentScope();
+    } finally {
+      ScratchArena.reset(marker);
     }
-
-    ScratchArena.reset(marker);
-    return result.detachToParentScope();
   });
 }

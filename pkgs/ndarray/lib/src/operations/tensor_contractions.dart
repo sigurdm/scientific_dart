@@ -168,11 +168,31 @@ final class TensordotAxes {
 /// - A `(List<int>, List<int>)` record or `List<List<int>>` (e.g., `([1], [0])`): Contracts explicit lists of axes.
 /// - A [TensordotAxes] object: Pre-constructed axes specification.
 ///
-/// It is an error if any input or output array is disposed, if axes specifications are invalid,
-/// if axis dimensions mismatch, or if a specified axis index is out of bounds.
+/// **Preconditions:**
+/// - Both arrays [a] and [b] must not be disposed.
+/// - Contracted axis lengths must match between [a] and [b].
+/// - Specified axes must be within bounds for [a] and [b].
+/// - If provided, the [out] destination array must have the expected output shape and dtype.
 ///
-/// ### References & Further Reading
-/// - [NumPy tensordot Documentation](https://numpy.org/doc/stable/reference/generated/numpy.tensordot.html)
+/// **Throws:**
+/// - It is an error if [a], [b], or [out] is disposed.
+/// - It is an error if axes specifications are invalid or out of bounds.
+/// - It is an error if contracted axis dimensions mismatch.
+/// - It is an error if [out] has incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Converted to an optimized matrix multiplication (`matmul` / BLAS GEMM) via axis transposition and reshaping.
+/// - Outer product (`axes == 0`) uses optimized elementwise broadcasting.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.arange(60.0).reshape([3, 4, 5]);
+/// final b = NDArray.arange(24.0).reshape([4, 3, 2]);
+/// final c = tensordot(a, b, axes: ([1, 0], [0, 1]));
+/// print(c.shape); // [5, 2]
+/// ```
+///
+/// Reference: [NumPy tensordot](https://numpy.org/doc/stable/reference/generated/numpy.tensordot.html)
 NDArray<R> tensordot<Ta, Tb, R>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
@@ -225,18 +245,23 @@ NDArray<R> tensordot<Ta, Tb, R>(
       }
     }
 
-    final aShapeExpanded = [...a.shape, ...List.filled(b.shape.length, 1)];
-    final bShapeExpanded = [...List.filled(a.shape.length, 1), ...b.shape];
+    return NDArray.scope(() {
+      final aShapeExpanded = [...a.shape, ...List.filled(b.shape.length, 1)];
+      final bShapeExpanded = [...List.filled(a.shape.length, 1), ...b.shape];
 
-    final aView = a.reshape(aShapeExpanded);
-    final bView = b.reshape(bShapeExpanded);
+      final aView = a.reshape(aShapeExpanded);
+      final bView = b.reshape(bShapeExpanded);
 
-    final res = multiply<Object, Object, R>(
-      aView as NDArray<Object>,
-      bView as NDArray<Object>,
-      out: out,
-    );
-    return _asTyped<R>(res);
+      final res = multiply<Object, Object, R>(
+        aView as NDArray<Object>,
+        bView as NDArray<Object>,
+        out: out,
+      );
+      if (out == null) {
+        res.detachToParentScope();
+      }
+      return _asTyped<R>(res);
+    });
   }
 
   final freeA = List.generate(
@@ -531,10 +556,33 @@ final class EinsumSubscripts {
 /// - [EinsumSubscripts.parse]: Parses a standard notation string (e.g. `EinsumSubscripts.parse('ij,jk->ik')`).
 /// - [EinsumSubscripts.fromLabels]: Construct using string label lists.
 ///
-/// It is an error if operands is empty, if any operand or [out] is disposed, or if subscript syntax or shapes are invalid.
+/// **Preconditions:**
+/// - [operands] must not be empty.
+/// - All arrays in [operands] and [out] must not be disposed.
+/// - Subscript terms count must match the number of operands.
+/// - Dimension lengths for shared subscript labels must match across operands.
+/// - If provided, [out] must match the shape and resolved dtype of the einsum result.
 ///
-/// ### References & Further Reading
-/// - [NumPy einsum Documentation](https://numpy.org/doc/stable/reference/generated/numpy.einsum.html)
+/// **Throws:**
+/// - It is an error if [operands] is empty.
+/// - It is an error if any operand or [out] is disposed.
+/// - It is an error if subscript terms count does not match operands count.
+/// - It is an error if subscript format or dimension lengths are invalid or mismatched.
+/// - It is an error if [out] has incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Optimized contraction paths (matrix multiplications, inner products, traces, diagonal reductions)
+///   are automatically selected to leverage BLAS GEMM where possible.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
+/// final b = NDArray.fromList([5.0, 6.0, 7.0, 8.0], [2, 2], DType.float64);
+/// final c = einsum(EinsumSubscripts.parse('ij,jk->ik'), [a, b]);
+/// print(c.toList()); // [19.0, 22.0, 43.0, 50.0]
+/// ```
+///
+/// Reference: [NumPy einsum](https://numpy.org/doc/stable/reference/generated/numpy.einsum.html)
 
 NDArray<R> einsum<T extends Object, R extends Object>(
   EinsumSubscripts subscripts,
@@ -772,68 +820,70 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             final k = opA.shape[1];
             final n = opB.shape[1];
             final targetDType = resolveDType(opA.dtype, opB.dtype);
-            if (targetDType == DType.float64) {
-              final NDArray<R> res;
-              if (out != null) {
-                if (!listEquals(out.shape, [m, n]) ||
-                    out.dtype != targetDType) {
-                  throw ArgumentError(
-                    "Provided out buffer has incompatible shape or dtype (expected shape [$m, $n] and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
-                  );
+            if (opA.dtype == targetDType && opB.dtype == targetDType) {
+              if (targetDType == DType.float64) {
+                final NDArray<R> res;
+                if (out != null) {
+                  if (!listEquals(out.shape, [m, n]) ||
+                      out.dtype != targetDType) {
+                    throw ArgumentError(
+                      "Provided out buffer has incompatible shape or dtype (expected shape [$m, $n] and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
+                    );
+                  }
+                  res = out;
+                } else {
+                  res = NDArray<R>.create([m, n], DType.float64 as DType<R>);
                 }
-                res = out;
-              } else {
-                res = NDArray<R>.create([m, n], DType.float64 as DType<R>);
-              }
-              cblas_dgemm(
-                101,
-                111,
-                111,
-                m,
-                n,
-                k,
-                1.0,
-                opA.pointer.cast<ffi.Double>(),
-                k,
-                opB.pointer.cast<ffi.Double>(),
-                n,
-                0.0,
-                res.pointer.cast<ffi.Double>(),
-                n,
-              );
-              if (out != null) return out;
-              return _asTyped<R>(res.detachToParentScope());
-            } else if (targetDType == DType.float32) {
-              final NDArray<R> res;
-              if (out != null) {
-                if (!listEquals(out.shape, [m, n]) ||
-                    out.dtype != targetDType) {
-                  throw ArgumentError(
-                    "Provided out buffer has incompatible shape or dtype (expected shape [$m, $n] and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
-                  );
+                cblas_dgemm(
+                  101,
+                  111,
+                  111,
+                  m,
+                  n,
+                  k,
+                  1.0,
+                  opA.pointer.cast<ffi.Double>(),
+                  k,
+                  opB.pointer.cast<ffi.Double>(),
+                  n,
+                  0.0,
+                  res.pointer.cast<ffi.Double>(),
+                  n,
+                );
+                if (out != null) return out;
+                return _asTyped<R>(res.detachToParentScope());
+              } else if (targetDType == DType.float32) {
+                final NDArray<R> res;
+                if (out != null) {
+                  if (!listEquals(out.shape, [m, n]) ||
+                      out.dtype != targetDType) {
+                    throw ArgumentError(
+                      "Provided out buffer has incompatible shape or dtype (expected shape [$m, $n] and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
+                    );
+                  }
+                  res = out;
+                } else {
+                  res = NDArray<R>.create([m, n], DType.float32 as DType<R>);
                 }
-                res = out;
-              } else {
-                res = NDArray<R>.create([m, n], DType.float32 as DType<R>);
+                cblas_sgemm(
+                  101,
+                  111,
+                  111,
+                  m,
+                  n,
+                  k,
+                  1.0,
+                  opA.pointer.cast<ffi.Float>(),
+                  k,
+                  opB.pointer.cast<ffi.Float>(),
+                  n,
+                  0.0,
+                  res.pointer.cast<ffi.Float>(),
+                  n,
+                );
+                if (out != null) return out;
+                return _asTyped<R>(res.detachToParentScope());
               }
-              cblas_sgemm(
-                101,
-                111,
-                111,
-                m,
-                n,
-                k,
-                1.0,
-                opA.pointer.cast<ffi.Float>(),
-                k,
-                opB.pointer.cast<ffi.Float>(),
-                n,
-                0.0,
-                res.pointer.cast<ffi.Float>(),
-                n,
-              );
-              if (out != null) return out;
-              return _asTyped<R>(res.detachToParentScope());
             }
           }
           final res = matmul<Object, Object, R>(

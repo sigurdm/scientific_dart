@@ -203,8 +203,9 @@ NDArray<T> sum<T extends Object>(
       ? (List<int>.from(result.strides)..removeAt(normAxis))
       : result.strides;
 
-  switch (a.dtype) {
-    case DType.float64:
+  if (a.dtype == DType.float64 || a.dtype == DType.float32) {
+    final marker = ScratchArena.marker;
+    try {
       final cBuffer = ScratchArena.getStridedBuffer(rank);
       final cShape = cBuffer;
       final cStridesA = cBuffer + rank;
@@ -217,41 +218,31 @@ NDArray<T> sum<T extends Object>(
         cStridesRes[i] = squeezedDestStrides[i];
       }
 
-      s_sum_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        normAxis,
-      );
-      return result;
-    case DType.float32:
-      final cBuffer = ScratchArena.getStridedBuffer(rank);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + rank;
-      final cStridesRes = cBuffer + (rank * 2);
-      for (var i = 0; i < rank; i++) {
-        cShape[i] = a.shape[i];
-        cStridesA[i] = a.strides[i];
+      if (a.dtype == DType.float64) {
+        s_sum_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          normAxis,
+        );
+      } else {
+        s_sum_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          normAxis,
+        );
       }
-      for (var i = 0; i < squeezedDestStrides.length; i++) {
-        cStridesRes[i] = squeezedDestStrides[i];
-      }
-
-      s_sum_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        normAxis,
-      );
       return result;
-    default:
-      break;
+    } finally {
+      ScratchArena.reset(marker);
+    }
   }
 
   reduceRecursive<T, T>(
@@ -374,8 +365,8 @@ NDArray<T> prod<T extends Object>(
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [StateError] if the array has been disposed.
-/// - [ArgumentError] if [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
 ///
 /// **Example:**
 /// ```dart
@@ -455,8 +446,8 @@ NDArray<bool> all<T extends Object>(
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [StateError] if the array has been disposed.
-/// - [ArgumentError] if [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
 ///
 /// **Example:**
 /// ```dart
@@ -541,7 +532,8 @@ NDArray<bool> any<T extends Object>(
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [RangeError] if [axis] is out of range.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of range.
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
@@ -654,30 +646,36 @@ NDArray<R> mean<R, T>(
     // Optimized axis-wise mean
     switch ((a.dtype, targetDType)) {
       case (DType.float64, DType.float64):
-        final cBuffer = ScratchArena.getStridedBuffer(rank);
-        final cShape = cBuffer;
-        final cStridesA = cBuffer + rank;
-        final cStridesRes = cBuffer + (rank * 2);
-        for (var i = 0; i < rank; i++) {
-          cShape[i] = a.shape[i];
-          cStridesA[i] = a.strides[i];
-        }
-        for (var i = 0; i < squeezedDestStrides.length; i++) {
-          cStridesRes[i] = squeezedDestStrides[i];
-        }
+        final marker = ScratchArena.marker;
+        try {
+          final cBuffer = ScratchArena.getStridedBuffer(rank);
+          final cShape = cBuffer;
+          final cStridesA = cBuffer + rank;
+          final cStridesRes = cBuffer + (rank * 2);
+          for (var i = 0; i < rank; i++) {
+            cShape[i] = a.shape[i];
+            cStridesA[i] = a.strides[i];
+          }
+          for (var i = 0; i < squeezedDestStrides.length; i++) {
+            cStridesRes[i] = squeezedDestStrides[i];
+          }
 
-        s_mean_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          normAxis,
-        );
-        return result;
+          s_mean_double(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            normAxis,
+          );
+          return result;
+        } finally {
+          ScratchArena.reset(marker);
+        }
       case (DType.float32, DType.float64):
         final promoted = promoteToDouble(a);
+        final marker = ScratchArena.marker;
         try {
           final cBuffer = ScratchArena.getStridedBuffer(rank);
           final cShape = cBuffer;
@@ -702,6 +700,7 @@ NDArray<R> mean<R, T>(
           );
           return result;
         } finally {
+          ScratchArena.reset(marker);
           promoted.dispose();
         }
       default:
@@ -748,7 +747,8 @@ NDArray<R> mean<R, T>(
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [RangeError] if [axis] is out of range.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of range.
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
@@ -760,11 +760,11 @@ NDArray<R> mean<R, T>(
 /// ```
 ///
 /// Reference: [Standard Deviation](https://en.wikipedia.org/wiki/Standard_deviation)
-NDArray<double> std<T extends num>(
+NDArray<Float64> std<T extends num>(
   NDArray<T> a, {
   int? axis,
   bool keepdims = false,
-  NDArray<double>? out,
+  NDArray<Float64>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute std of a disposed array.');
@@ -782,8 +782,8 @@ NDArray<double> std<T extends num>(
   final v = variance(a, axis: axis, keepdims: keepdims);
   if (axis == null) {
     final stdVal = math.sqrt(v.data[0]);
-    final result = out ?? NDArray<double>.create(targetShape, DType.float64);
-    result.data[0] = stdVal;
+    final result = out ?? NDArray<Float64>.create(targetShape, DType.float64);
+    result.data[0] = Float64(stdVal);
     v.dispose();
     return result;
   } else {
@@ -792,7 +792,7 @@ NDArray<double> std<T extends num>(
       v.dispose();
       return out;
     }
-    final resultVal = NDArray<double>.view(
+    final resultVal = NDArray<Float64>.view(
       res,
       shape: res.shape,
       strides: res.strides,
@@ -808,7 +808,8 @@ NDArray<double> std<T extends num>(
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total elements count.
@@ -818,11 +819,11 @@ NDArray<double> std<T extends num>(
 /// final a = NDArray<double>.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
 /// final v = nanvar(a); // returns 0-D array containing 0.6666666666666666
 /// ```
-NDArray<double> nanvar<T extends num>(
+NDArray<Float64> nanvar<T extends num>(
   NDArray<T> a, {
   int? axis,
   bool keepdims = false,
-  NDArray<double>? out,
+  NDArray<Float64>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute nanvar of a disposed array.');
@@ -844,8 +845,8 @@ NDArray<double> nanvar<T extends num>(
     final meanVal = m.data[0] as num;
     m.dispose();
     if (meanVal.toDouble().isNaN) {
-      final result = out ?? NDArray<double>.create(targetShape, DType.float64);
-      result.data[0] = double.nan;
+      final result = out ?? NDArray<Float64>.create(targetShape, DType.float64);
+      result.data[0] = Float64(double.nan);
       return result;
     }
 
@@ -862,11 +863,11 @@ NDArray<double> nanvar<T extends num>(
       sumSqDiff += diff * diff;
       count++;
     }
-    final result = out ?? NDArray<double>.create(targetShape, DType.float64);
+    final result = out ?? NDArray<Float64>.create(targetShape, DType.float64);
     if (count == 0) {
-      result.data[0] = double.nan;
+      result.data[0] = Float64(double.nan);
     } else {
-      result.data[0] = sumSqDiff / count;
+      result.data[0] = Float64(sumSqDiff / count);
     }
     return result;
   } else {
@@ -880,13 +881,13 @@ NDArray<double> nanvar<T extends num>(
       sqDiff,
       axis: axis,
       keepdims: keepdims,
-      out: out as NDArray<Float64>?,
+      out: out,
     );
     sqDiff.dispose();
     if (out != null) {
       return out;
     }
-    final resultVal = NDArray<double>.view(
+    final resultVal = NDArray<Float64>.view(
       res,
       shape: res.shape,
       strides: res.strides,
@@ -901,7 +902,8 @@ NDArray<double> nanvar<T extends num>(
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total elements count.
@@ -911,11 +913,11 @@ NDArray<double> nanvar<T extends num>(
 /// final a = NDArray<double>.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
 /// final s = nanstd(a); // returns 0-D array containing sqrt(0.6666666666666666)
 /// ```
-NDArray<double> nanstd<T extends num>(
+NDArray<Float64> nanstd<T extends num>(
   NDArray<T> a, {
   int? axis,
   bool keepdims = false,
-  NDArray<double>? out,
+  NDArray<Float64>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute nanstd of a disposed array.');
@@ -933,8 +935,8 @@ NDArray<double> nanstd<T extends num>(
   final v = nanvar(a, axis: axis, keepdims: keepdims);
   if (axis == null) {
     final stdVal = math.sqrt(v.data[0]);
-    final result = out ?? NDArray<double>.create(targetShape, DType.float64);
-    result.data[0] = stdVal;
+    final result = out ?? NDArray<Float64>.create(targetShape, DType.float64);
+    result.data[0] = Float64(stdVal);
     v.dispose();
     return result;
   } else {
@@ -943,7 +945,7 @@ NDArray<double> nanstd<T extends num>(
       v.dispose();
       return out;
     }
-    final resultVal = NDArray<double>.view(
+    final resultVal = NDArray<Float64>.view(
       res,
       shape: res.shape,
       strides: res.strides,
@@ -1123,7 +1125,8 @@ NDArray<T> min<T extends num>(
 /// - [axis], if provided, must be a valid axis index within `[0, rank - 1]`.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
 /// - [UnsupportedError] if the array contains Complex numbers.
 ///
 /// **Example:**
@@ -1475,7 +1478,8 @@ NDArray<T> max<T extends num>(
 /// - [axis], if provided, must be a valid axis index within `[0, rank - 1]`.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
 /// - [UnsupportedError] if the array contains Complex numbers.
 ///
 /// **Example:**
@@ -1664,9 +1668,9 @@ NDArray<T> nanmax<T extends Object>(
 /// - If provided, the [out] recycler must have compatible shape and dtype.
 ///
 /// **Throws:**
-/// - [StateError] if the array is disposed.
-/// - [ArgumentError] if [axis] is out of bounds.
-/// - [ArgumentError] if [out] recycler shape or dtype is incompatible.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
+/// - It is an error if [out] recycler shape or dtype is incompatible.
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
@@ -1731,9 +1735,9 @@ NDArray<R> cumsum<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
 /// - If provided, the [out] recycler must have compatible shape and dtype.
 ///
 /// **Throws:**
-/// - [StateError] if the array is disposed.
-/// - [ArgumentError] if [axis] is out of bounds.
-/// - [ArgumentError] if [out] recycler shape or dtype is incompatible.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
+/// - It is an error if [out] recycler shape or dtype is incompatible.
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
@@ -1798,9 +1802,9 @@ NDArray<R> cumprod<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
 /// - If provided, the [out] recycler must have compatible shape and dtype.
 ///
 /// **Throws:**
-/// - [StateError] if the array is disposed.
-/// - [ArgumentError] if [axis] is out of bounds.
-/// - [ArgumentError] if [out] recycler shape or dtype is incompatible.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
+/// - It is an error if [out] recycler shape or dtype is incompatible.
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
@@ -1857,9 +1861,9 @@ NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 /// - If provided, the [out] recycler must have compatible shape and dtype.
 ///
 /// **Throws:**
-/// - [StateError] if the array is disposed.
-/// - [ArgumentError] if [axis] is out of bounds.
-/// - [ArgumentError] if [out] recycler shape or dtype is incompatible.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
+/// - It is an error if [out] recycler shape or dtype is incompatible.
 ///
 /// **Example:**
 /// {@example /example/cumulative_example.dart lang=dart}
@@ -1919,7 +1923,8 @@ NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [RangeError] if [axis] is out of range.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of range.
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
@@ -1931,11 +1936,11 @@ NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 /// ```
 ///
 /// Reference: [Variance](https://en.wikipedia.org/wiki/Variance)
-NDArray<double> variance<T extends num>(
+NDArray<Float64> variance<T extends num>(
   NDArray<T> a, {
   int? axis,
   bool keepdims = false,
-  NDArray<double>? out,
+  NDArray<Float64>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute variance of a disposed array.');
@@ -1968,8 +1973,8 @@ NDArray<double> variance<T extends num>(
       final diff = val.toDouble() - meanVal.toDouble();
       sumSqDiff += diff * diff;
     }
-    final result = out ?? NDArray<double>.create(targetShape, DType.float64);
-    result.data[0] = sumSqDiff / elements.length;
+    final result = out ?? NDArray<Float64>.create(targetShape, DType.float64);
+    result.data[0] = Float64(sumSqDiff / elements.length);
     return result;
   } else {
     final diff = subtract(a, m);
@@ -1982,13 +1987,13 @@ NDArray<double> variance<T extends num>(
       sqDiff,
       axis: axis,
       keepdims: keepdims,
-      out: out as NDArray<Float64>?,
+      out: out,
     );
     sqDiff.dispose();
     if (out != null) {
       return out;
     }
-    final resultVal = NDArray<double>.view(
+    final resultVal = NDArray<Float64>.view(
       res,
       shape: res.shape,
       strides: res.strides,
@@ -1998,11 +2003,11 @@ NDArray<double> variance<T extends num>(
 }
 
 /// Computes the variance of array elements along a specified axis. Alias for [variance].
-NDArray<double> var_<T extends num>(
+NDArray<Float64> var_<T extends num>(
   NDArray<T> a, {
   int? axis,
   bool keepdims = false,
-  NDArray<double>? out,
+  NDArray<Float64>? out,
 }) => variance<T>(a, axis: axis, keepdims: keepdims, out: out);
 
 /// Computes the arithmetic mean along a specified axis, ignoring NaNs.
@@ -2011,7 +2016,8 @@ NDArray<double> var_<T extends num>(
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [ArgumentError] if [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total elements count, walking
@@ -2166,8 +2172,8 @@ NDArray<R> nanmean<R extends Object>(
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [StateError] if the array is disposed.
-/// - [ArgumentError] if [q] is out of bounds or [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [q] is out of bounds or [axis] is out of bounds.
 NDArray<double> quantile<T extends Object>(
   NDArray<T> a,
   double q, {
@@ -2266,82 +2272,87 @@ NDArray<double> quantile<T extends Object>(
   final result = out ?? NDArray<double>.zeros(targetShape, DType.float64);
 
   final rank = a.shape.length;
-  final cBuffer = ScratchArena.getStridedBuffer(rank);
-  final cShape = cBuffer;
-  final cStridesA = cBuffer + rank;
-  final cStridesRes = cBuffer + (rank * 2);
-  for (var i = 0; i < rank; i++) {
-    cShape[i] = a.shape[i];
-    cStridesA[i] = a.strides[i];
-  }
-  for (var i = 0; i < result.shape.length; i++) {
-    cStridesRes[i] = result.strides[i];
-  }
+  final marker = ScratchArena.marker;
+  try {
+    final cBuffer = ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+    }
+    for (var i = 0; i < result.shape.length; i++) {
+      cStridesRes[i] = result.strides[i];
+    }
 
-  switch (a.dtype) {
-    case DType.float64:
-      s_quantile_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-        q,
-        method.index,
-      );
-    case DType.float32:
-      s_quantile_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-        q,
-        method.index,
-      );
-    case DType.int64:
-      s_quantile_int64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-        q,
-        method.index,
-      );
-    case DType.int32:
-      s_quantile_int32(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-        q,
-        method.index,
-      );
-    case DType.uint8:
-      s_quantile_uint8(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-        q,
-        method.index,
-      );
-    default:
-      result.dispose();
-      throw ArgumentError('Unsupported dtype for quantile: ${a.dtype}');
+    switch (a.dtype) {
+      case DType.float64:
+        s_quantile_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+          q,
+          method.index,
+        );
+      case DType.float32:
+        s_quantile_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+          q,
+          method.index,
+        );
+      case DType.int64:
+        s_quantile_int64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+          q,
+          method.index,
+        );
+      case DType.int32:
+        s_quantile_int32(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+          q,
+          method.index,
+        );
+      case DType.uint8:
+        s_quantile_uint8(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+          q,
+          method.index,
+        );
+      default:
+        result.dispose();
+        throw ArgumentError('Unsupported dtype for quantile: ${a.dtype}');
+    }
+  } finally {
+    ScratchArena.reset(marker);
   }
 
   return result;
@@ -2374,8 +2385,8 @@ double r_quantile_helper(NDArray a, int size, double q, int method) {
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [StateError] if the array is disposed.
-/// - [ArgumentError] if [q] is out of bounds or [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [q] is out of bounds or [axis] is out of bounds.
 NDArray<double> percentile<T extends Object>(
   NDArray<T> a,
   double q, {
@@ -2396,8 +2407,8 @@ NDArray<double> percentile<T extends Object>(
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
 /// **Throws:**
-/// - [StateError] if the array is disposed.
-/// - [ArgumentError] if [axis] is out of bounds.
+/// - It is an error if [a] is disposed.
+/// - It is an error if [axis] is out of bounds.
 NDArray<T> median<T extends Object>(
   NDArray<T> a, {
   int? axis,
@@ -2474,92 +2485,97 @@ NDArray<T> median<T extends Object>(
   final result = out ?? NDArray<T>.zeros(targetShape, a.dtype);
 
   final rank = a.shape.length;
-  final cBuffer = ScratchArena.getStridedBuffer(rank);
-  final cShape = cBuffer;
-  final cStridesA = cBuffer + rank;
-  final cStridesRes = cBuffer + (rank * 2);
-  for (var i = 0; i < rank; i++) {
-    cShape[i] = a.shape[i];
-    cStridesA[i] = a.strides[i];
-  }
-  for (var i = 0; i < result.shape.length; i++) {
-    cStridesRes[i] = result.strides[i];
-  }
+  final marker = ScratchArena.marker;
+  try {
+    final cBuffer = ScratchArena.getStridedBuffer(rank);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rank;
+    final cStridesRes = cBuffer + (rank * 2);
+    for (var i = 0; i < rank; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+    }
+    for (var i = 0; i < result.shape.length; i++) {
+      cStridesRes[i] = result.strides[i];
+    }
 
-  switch (a.dtype) {
-    case DType.float64:
-      s_median_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    case DType.float32:
-      s_median_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    case DType.int64:
-      s_median_int64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    case DType.int32:
-      s_median_int32(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    case DType.uint8:
-      s_median_uint8(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    case DType.complex128:
-      s_median_complex128(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    case DType.complex64:
-      s_median_complex64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        targetAxis,
-      );
-    default:
-      result.dispose();
-      throw ArgumentError('Unsupported dtype for median: ${a.dtype}');
+    switch (a.dtype) {
+      case DType.float64:
+        s_median_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      case DType.float32:
+        s_median_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      case DType.int64:
+        s_median_int64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      case DType.int32:
+        s_median_int32(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      case DType.uint8:
+        s_median_uint8(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      case DType.complex128:
+        s_median_complex128(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      case DType.complex64:
+        s_median_complex64(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rank,
+          targetAxis,
+        );
+      default:
+        result.dispose();
+        throw ArgumentError('Unsupported dtype for median: ${a.dtype}');
+    }
+  } finally {
+    ScratchArena.reset(marker);
   }
 
   return result;
@@ -2828,6 +2844,12 @@ NDArray<Float64> cov<T extends num>(
   }
   if (aweights != null && aweights.isDisposed) {
     throw StateError('aweights is disposed.');
+  }
+  if (m.size == 0) {
+    throw ArgumentError('m must not be empty.');
+  }
+  if (y != null && y.size == 0) {
+    throw ArgumentError('y must not be empty.');
   }
 
   return NDArray.scope(() {

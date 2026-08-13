@@ -95,7 +95,7 @@ NDArray<T> toNDArray<T>(Object o, DType<T> dtype) {
   return NDArray<T>.scalar(normalized as T, dtype: dtype);
 }
 
-(NDArray<T>, T) linspaceInternal<T>(
+({NDArray<T> samples, T step}) linspaceInternal<T>(
   T start,
   T stop,
   int numSamples, {
@@ -109,7 +109,7 @@ NDArray<T> toNDArray<T>(Object o, DType<T> dtype) {
   if (numSamples == 0) {
     final arr = NDArray<T>.create([0], resolvedDType);
     final step = normalizeScalar(double.nan, resolvedDType) as T;
-    return (arr, step);
+    return (samples: arr, step: step);
   }
 
   final div = endpoint ? (numSamples - 1) : numSamples;
@@ -183,7 +183,7 @@ NDArray<T> toNDArray<T>(Object o, DType<T> dtype) {
       throw UnsupportedError('linspace not supported for boolean arrays');
   }
 
-  return (arr, step);
+  return (samples: arr, step: step);
 }
 
 void elementWiseOp<Ta, Tb, Tr>(
@@ -686,67 +686,6 @@ List<int> broadcast3Shapes(List<int> s1, List<int> s2, List<int> s3) {
   return common;
 }
 
-void selectRecursive(
-  NDArray result,
-  List<NDArray<bool>> condlist,
-  List<NDArray> choicelist,
-  List<List<int>> stridesCond,
-  List<List<int>> stridesChoice,
-  List<int> resultStrides,
-  List<int> currentPos,
-  int dim,
-  List<int> offsetsCond,
-  List<int> offsetsChoice,
-  int offsetRes,
-  dynamic defaultValue,
-) {
-  final rank = result.shape.length;
-  if (dim == rank) {
-    var chosen = false;
-    for (var j = 0; j < condlist.length; j++) {
-      if (condlist[j].data[offsetsCond[j]]) {
-        result.data[offsetRes] = castValue(
-          choicelist[j].data[offsetsChoice[j]],
-          result.dtype,
-        );
-        chosen = true;
-        break;
-      }
-    }
-    if (!chosen) {
-      result.data[offsetRes] = castValue(defaultValue, result.dtype);
-    }
-    return;
-  }
-
-  final limit = result.shape[dim];
-  for (var i = 0; i < limit; i++) {
-    final nextOffsetsCond = List<int>.generate(
-      condlist.length,
-      (j) => offsetsCond[j] + i * stridesCond[j][dim],
-    );
-    final nextOffsetsChoice = List<int>.generate(
-      choicelist.length,
-      (j) => offsetsChoice[j] + i * stridesChoice[j][dim],
-    );
-    currentPos[dim] = i;
-    selectRecursive(
-      result,
-      condlist,
-      choicelist,
-      stridesCond,
-      stridesChoice,
-      resultStrides,
-      currentPos,
-      dim + 1,
-      nextOffsetsCond,
-      nextOffsetsChoice,
-      offsetRes + i * resultStrides[dim],
-      defaultValue,
-    );
-  }
-}
-
 dynamic castValue(dynamic val, DType dtype) {
   if (dtype == DType.complex128 || dtype == DType.complex64) {
     if (val is Complex) return val;
@@ -1091,40 +1030,31 @@ void _cumOpFallbackHelper<T, R>(
   )
   ffiFunc,
 ) {
-  final temp = a.isContiguous ? a : a.copy();
-  final doubleA = NDArray<double>.create(temp.shape, DType.float64);
-  final offset = temp.offsetElements;
-  for (var i = 0; i < temp.size; i++) {
-    final val = temp.data[offset + i];
-    doubleA.data[i] = (val is bool)
-        ? (val ? 1.0 : 0.0)
-        : (val as num).toDouble();
-  }
-  final doubleRes = NDArray<double>.create(temp.shape, DType.float64);
-  final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
-  final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
-  final cShape = ScratchArena.copyInts(temp.shape);
+  NDArray.scope(() {
+    final doubleA = castNDArray(a, DType.float64);
+    final doubleRes = NDArray<Float64>.create(doubleA.shape, DType.float64);
+    final marker = ScratchArena.marker;
+    try {
+      final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
+      final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
+      final cShape = ScratchArena.copyInts(doubleA.shape);
 
-  ffiFunc(
-    doubleA.pointer.cast(),
-    cStridesDoubleA,
-    doubleRes.pointer.cast(),
-    cStridesDoubleRes,
-    cShape,
-    temp.shape.length,
-    axis,
-  );
+      ffiFunc(
+        doubleA.pointer.cast(),
+        cStridesDoubleA,
+        doubleRes.pointer.cast(),
+        cStridesDoubleRes,
+        cShape,
+        doubleA.shape.length,
+        axis,
+      );
+    } finally {
+      ScratchArena.reset(marker);
+    }
 
-  final resOffset = result.offsetElements;
-  for (var i = 0; i < result.size; i++) {
-    result.data[resOffset + i] =
-        castValue(doubleRes.data[i], result.dtype) as R;
-  }
-  doubleA.dispose();
-  doubleRes.dispose();
-  if (!identical(temp, a)) {
-    temp.dispose();
-  }
+    final convertedRes = castNDArray<R>(doubleRes, result.dtype);
+    convertedRes.copy(out: result);
+  });
 }
 
 /// A holder for a mask FFI pointer and any transient allocated arrays.
@@ -1152,13 +1082,12 @@ final class MaskHolder {
 /// Validates that [where] is not disposed, has boolean or uint8 data type, and
 /// broadcasts [where] to [targetShape] if necessary.
 ///
-/// It is an error if [where] does not have [DType.boolean] or [DType.uint8].
-///
-/// Throws [StateError] if [where] is disposed.
+/// - It is an error if [where] does not have [DType.boolean] or [DType.uint8].
+/// - It is an error if [where] is disposed.
 ///
 /// Returns a [MaskHolder] containing the native pointer and any transient allocations.
-/// Time complexity is (1)$ for contiguous masks of matching shape, or (N)$
-/// where $ is the element count when broadcasting or copying strided masks.
+/// Time complexity is $O(1)$ for contiguous masks of matching shape, or $O(N)$
+/// where $N$ is the element count when broadcasting or copying strided masks.
 MaskHolder prepareMask(NDArray<dynamic>? where, List<int> targetShape) {
   if (where == null) {
     return MaskHolder(ffi.nullptr);

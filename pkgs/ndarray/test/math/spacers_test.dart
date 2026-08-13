@@ -185,7 +185,7 @@ void main() {
         () => NDArray.scope(() {
           final start = NDArray.fromList([0.0, 10.0], [2], DType.float64);
           final stop = NDArray.fromList([1.0, 12.0], [2], DType.float64);
-          final (a, step) = linspaceGridWithStep(start, stop, 3);
+          final (samples: a, step: step) = linspaceGridWithStep(start, stop, 3);
           expect(a.shape, [3, 2]);
           expect(step.shape, [2]);
           expect(step.toList(), [0.5, 1.0]);
@@ -197,7 +197,7 @@ void main() {
       test(
         'linspaceWithStep',
         () => NDArray.scope(() {
-          final (a, step) = linspaceWithStep(0.0, 10.0, 5);
+          final (samples: a, step: step) = linspaceWithStep(0.0, 10.0, 5);
           expect(step, 2.5);
           expect(a.toList(), [0.0, 2.5, 5.0, 7.5, 10.0]);
         }),
@@ -223,7 +223,7 @@ void main() {
             expect(grid.shape, [3, 2]);
             expect(grid.toList(), expectedGridList);
 
-            final (grid2, step) = linspaceGridWithStep(
+            final (samples: grid2, step: step) = linspaceGridWithStep(
               start,
               stop,
               3,
@@ -517,7 +517,11 @@ void main() {
           );
           final g0 = linspaceGrid(start, stop, 0);
           expect(g0.shape, [0, 1]);
-          final (g0Step, step0) = linspaceGridWithStep(start, stop, 0);
+          final (samples: g0Step, step: step0) = linspaceGridWithStep(
+            start,
+            stop,
+            0,
+          );
           expect(g0Step.shape, [0, 1]);
           expect(step0.getCell([0]).isNaN, isTrue);
         }),

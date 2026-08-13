@@ -1690,6 +1690,12 @@ int ndarray_unique(const void *src, void *dest, int size, int dtype,
                 out_index, out_inverse, out_counts,
                 std::less<int64_t>(), std::equal_to<int64_t>()
             );
+        case DTYPE_INT16:
+            return unique_template<int16_t>(
+                (const int16_t *)src, (int16_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                std::less<int16_t>(), std::equal_to<int16_t>()
+            );
         case DTYPE_UINT8:
         case DTYPE_BOOLEAN:
             return unique_template<uint8_t>(

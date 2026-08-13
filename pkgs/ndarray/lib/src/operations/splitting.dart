@@ -162,8 +162,8 @@ List<NDArray<T>> array_split_at<T>(
 /// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
-/// - [ArgumentError] if [sections] is less than or equal to 0.
-/// - [ArgumentError] if division is not equal.
+/// - It is an error if [sections] is less than or equal to 0.
+/// - It is an error if division is not equal.
 ///
 /// **Memory Safety & zero-copy View Warning:**
 /// > [!WARNING]

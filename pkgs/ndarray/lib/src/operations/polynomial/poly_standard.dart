@@ -70,9 +70,9 @@ void _copyInto<R>(NDArray src, NDArray<R> out) {
 /// - [c] must not be empty.
 ///
 /// **Throws:**
-/// - [StateError] if any input array or [out] buffer is disposed.
-/// - [ArgumentError] if [c] is not 1-dimensional, or if [c] is empty.
-/// - [ArgumentError] if [out] shape or dtype is incompatible with [x].
+/// - It is an error if any input array or [out] buffer is disposed.
+/// - It is an error if [c] is not 1-dimensional, or if [c] is empty.
+/// - It is an error if [out] shape or dtype is incompatible with [x].
 ///
 /// Reference: [NumPy polyval](https://numpy.org/doc/stable/reference/generated/numpy.polyval.html)
 NDArray<R> polyval<Tc, Tx, R>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
@@ -138,9 +138,9 @@ NDArray<R> polyval<Tc, Tx, R>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
 /// - Degree [deg] must be non-negative.
 ///
 /// **Throws:**
-/// - [StateError] if any input array or [out] buffer is disposed.
-/// - [ArgumentError] if input arrays are not 1D, mismatch lengths, or if [deg] is invalid.
-/// - [ArgumentError] if [out] shape or dtype is incompatible.
+/// - It is an error if any input array or [out] buffer is disposed.
+/// - It is an error if input arrays are not 1D, mismatch lengths, or if [deg] is invalid.
+/// - It is an error if [out] shape or dtype is incompatible.
 ///
 /// Reference: [NumPy polyfit](https://numpy.org/doc/stable/reference/generated/numpy.polyfit.html)
 NDArray<R> polyfit<Tx, Ty, Tw, R>(
@@ -257,8 +257,8 @@ NDArray<R> polyfit<Tx, Ty, Tw, R>(
 /// - [p] must be a 1-dimensional array.
 ///
 /// **Throws:**
-/// - [StateError] if [p] or [out] buffer is disposed.
-/// - [ArgumentError] if [p] is not 1-dimensional.
+/// - It is an error if [p] or [out] buffer is disposed.
+/// - It is an error if [p] is not 1-dimensional.
 ///
 /// Reference: [NumPy roots](https://numpy.org/doc/stable/reference/generated/numpy.roots.html)
 NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {

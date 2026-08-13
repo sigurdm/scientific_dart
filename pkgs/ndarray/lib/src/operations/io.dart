@@ -72,9 +72,14 @@ void save<T>(String filepath, NDArray<T> a) {
   }
 
   // Re-orient to contiguous array if a is a strided view to ensure binary file sequentiality
-  Uint8List? serializedBytes;
+  final NDArray<T> effectiveArray;
+  final bool needsDisposeEffective;
   if (!a.isContiguous) {
-    serializedBytes = _serializeDataContiguous(a.toList(), a.dtype);
+    effectiveArray = a.copy();
+    needsDisposeEffective = true;
+  } else {
+    effectiveArray = a;
+    needsDisposeEffective = false;
   }
 
   final descr = a.dtype.npyDescriptor;
@@ -113,18 +118,19 @@ void save<T>(String filepath, NDArray<T> a) {
     raf.writeFromSync(headerBytes);
 
     // 5. Zero-Copy Raw C-Heap Bytes block dump!
-    if (serializedBytes != null) {
-      raf.writeFromSync(serializedBytes);
-    } else {
-      final elementCount = a.shape.isEmpty
-          ? 1
-          : a.shape.reduce((x, y) => x * y);
-      final byteSize = elementCount * a.dtype.byteWidth;
-      final byteView = a.pointer.cast<ffi.Uint8>().asTypedList(byteSize);
-      raf.writeFromSync(byteView);
-    }
+    final elementCount = effectiveArray.shape.isEmpty
+        ? 1
+        : effectiveArray.shape.reduce((x, y) => x * y);
+    final byteSize = elementCount * effectiveArray.dtype.byteWidth;
+    final byteView = effectiveArray.pointer.cast<ffi.Uint8>().asTypedList(
+      byteSize,
+    );
+    raf.writeFromSync(byteView);
   } finally {
     raf.closeSync();
+    if (needsDisposeEffective) {
+      effectiveArray.dispose();
+    }
   }
 }
 
@@ -264,60 +270,76 @@ NDArray<dynamic> load(String filepath) {
 
 /// Serialize an [NDArray] directly into in-memory `.npy` bytes (internal utility for .npz).
 Uint8List _serializeNpyBytes(NDArray a) {
-  Uint8List? serializedBytes;
+  final NDArray effectiveArray;
+  final bool needsDisposeEffective;
   if (!a.isContiguous) {
-    serializedBytes = _serializeDataContiguous(a.toList(), a.dtype);
+    effectiveArray = a.copy();
+    needsDisposeEffective = true;
+  } else {
+    effectiveArray = a;
+    needsDisposeEffective = false;
   }
 
-  final descr = a.dtype.npyDescriptor;
-  final shapeStr = a.shape.length == 1 ? '${a.shape[0]},' : a.shape.join(', ');
-  final headerStr =
-      "{'descr': '$descr', 'fortran_order': False, 'shape': ($shapeStr)}";
+  try {
+    final descr = effectiveArray.dtype.npyDescriptor;
+    final shapeStr = effectiveArray.shape.length == 1
+        ? '${effectiveArray.shape[0]},'
+        : effectiveArray.shape.join(', ');
+    final headerStr =
+        "{'descr': '$descr', 'fortran_order': False, 'shape': ($shapeStr)}";
 
-  final prefixLen = 6 + 2 + 2;
-  var paddedHeaderLen =
-      ((prefixLen + headerStr.length + 1) + 63) ~/ 64 * 64 - prefixLen;
-  final padCount = paddedHeaderLen - headerStr.length - 1;
-  final paddedHeader = '$headerStr${' ' * padCount}\n';
+    final prefixLen = 6 + 2 + 2;
+    var paddedHeaderLen =
+        ((prefixLen + headerStr.length + 1) + 63) ~/ 64 * 64 - prefixLen;
+    final padCount = paddedHeaderLen - headerStr.length - 1;
+    final paddedHeader = '$headerStr${' ' * padCount}\n';
 
-  final headerBytes = Uint8List.fromList(paddedHeader.codeUnits);
-  final lenBytes = Uint8List(2);
-  ByteData.view(
-    lenBytes.buffer,
-  ).setUint16(0, headerBytes.length, Endian.little);
+    final headerBytes = Uint8List.fromList(paddedHeader.codeUnits);
+    final lenBytes = Uint8List(2);
+    ByteData.view(
+      lenBytes.buffer,
+    ).setUint16(0, headerBytes.length, Endian.little);
 
-  final elementCount = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-  final dataByteSize = elementCount * a.dtype.byteWidth;
-  final Uint8List rawDataView =
-      serializedBytes ?? a.pointer.cast<ffi.Uint8>().asTypedList(dataByteSize);
+    final elementCount = effectiveArray.shape.isEmpty
+        ? 1
+        : effectiveArray.shape.reduce((x, y) => x * y);
+    final dataByteSize = elementCount * effectiveArray.dtype.byteWidth;
+    final Uint8List rawDataView = effectiveArray.pointer
+        .cast<ffi.Uint8>()
+        .asTypedList(dataByteSize);
 
-  final totalBytesSize = 6 + 2 + 2 + headerBytes.length + rawDataView.length;
-  final resultList = Uint8List(totalBytesSize);
+    final totalBytesSize = 6 + 2 + 2 + headerBytes.length + rawDataView.length;
+    final resultList = Uint8List(totalBytesSize);
 
-  var offset = 0;
-  // Magic
-  resultList.setRange(offset, offset + 6, const [
-    0x93,
-    0x4e,
-    0x55,
-    0x4d,
-    0x50,
-    0x59,
-  ]);
-  offset += 6;
-  // Version
-  resultList.setRange(offset, offset + 2, const [0x01, 0x00]);
-  offset += 2;
-  // Header Len
-  resultList.setRange(offset, offset + 2, lenBytes);
-  offset += 2;
-  // Header ASCII
-  resultList.setRange(offset, offset + headerBytes.length, headerBytes);
-  offset += headerBytes.length;
-  // Data block copy
-  resultList.setRange(offset, offset + rawDataView.length, rawDataView);
+    var offset = 0;
+    // Magic
+    resultList.setRange(offset, offset + 6, const [
+      0x93,
+      0x4e,
+      0x55,
+      0x4d,
+      0x50,
+      0x59,
+    ]);
+    offset += 6;
+    // Version
+    resultList.setRange(offset, offset + 2, const [0x01, 0x00]);
+    offset += 2;
+    // Header Len
+    resultList.setRange(offset, offset + 2, lenBytes);
+    offset += 2;
+    // Header ASCII
+    resultList.setRange(offset, offset + headerBytes.length, headerBytes);
+    offset += headerBytes.length;
+    // Data block copy
+    resultList.setRange(offset, offset + rawDataView.length, rawDataView);
 
-  return resultList;
+    return resultList;
+  } finally {
+    if (needsDisposeEffective) {
+      effectiveArray.dispose();
+    }
+  }
 }
 
 /// Deserializes an [NDArray] directly from in-memory `.npy` bytes (internal utility for .npz).
@@ -516,57 +538,4 @@ Map<String, NDArray<dynamic>> loadz(String filepath) {
   }
 
   return results;
-}
-
-/// Serializes data elements of a non-contiguous array to a contiguous standard list view
-/// to avoid allocating a transient unmanaged [NDArray] structure on the C-heap.
-Uint8List _serializeDataContiguous(List flatList, DType dtype) {
-  switch (dtype) {
-    case DType.float64:
-      final list = Float64List.fromList(flatList.cast<double>());
-      return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case DType.float32:
-      final list = Float32List.fromList(flatList.cast<double>());
-      return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case DType.int64:
-      final list = Int64List.fromList(flatList.cast<int>());
-      return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case DType.int32:
-      final list = Int32List.fromList(flatList.cast<int>());
-      return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case DType.uint8:
-      final list = Uint8List.fromList(flatList.cast<int>());
-      return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case DType.int16:
-      final list = Int16List.fromList(flatList.cast<int>());
-      return list.buffer.asUint8List(list.offsetInBytes, list.lengthInBytes);
-    case DType.boolean:
-      final bytes = Uint8List(flatList.length);
-      for (var i = 0; i < flatList.length; i++) {
-        bytes[i] = (flatList[i] as bool) ? 1 : 0;
-      }
-      return bytes;
-    case DType.complex128:
-      final doubleList = Float64List(flatList.length * 2);
-      for (var i = 0; i < flatList.length; i++) {
-        final c = flatList[i] as Complex;
-        doubleList[i * 2] = c.real;
-        doubleList[i * 2 + 1] = c.imag;
-      }
-      return doubleList.buffer.asUint8List(
-        doubleList.offsetInBytes,
-        doubleList.lengthInBytes,
-      );
-    case DType.complex64:
-      final floatList = Float32List(flatList.length * 2);
-      for (var i = 0; i < flatList.length; i++) {
-        final c = flatList[i] as Complex;
-        floatList[i * 2] = c.real;
-        floatList[i * 2 + 1] = c.imag;
-      }
-      return floatList.buffer.asUint8List(
-        floatList.offsetInBytes,
-        floatList.lengthInBytes,
-      );
-  }
 }
