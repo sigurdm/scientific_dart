@@ -2077,7 +2077,9 @@ void atUfunc<T extends Object>(
     case BinaryOp.logicalXor:
       opCode = 14;
     default:
-      opCode = 0;
+      throw UnsupportedError(
+        'Binary operation ${op.name} is not supported in atUfunc.',
+      );
   }
 
   final rankA = a.rank;

@@ -603,12 +603,12 @@ void ternaryOp<Ta, Tb, Tc, Tr>(
     if (whereMask == null ||
         whereMask == ffi.nullptr ||
         whereMask[flatIndex] != 0) {
-      result.setCellFlat(
+      result.setCellRaw(
         offsetResult,
         op(
-          a.getCellFlat(offsetA),
-          b.getCellFlat(offsetB),
-          c.getCellFlat(offsetC),
+          a.getCellRaw(offsetA),
+          b.getCellRaw(offsetB),
+          c.getCellRaw(offsetC),
         ),
       );
     }

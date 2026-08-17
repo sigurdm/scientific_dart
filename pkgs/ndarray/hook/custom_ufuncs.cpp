@@ -10613,6 +10613,9 @@ static inline T apply_at_op(T a, T b, int opCode) {
         case 3: return a / b;
         case 4: return (a < b) ? a : b;
         case 5: return (a > b) ? a : b;
+        case 6: return std::floor(a / b);
+        case 7: return std::fmod(a, b);
+        case 8: return std::pow(a, b);
         default: return a + b;
     }
 }
@@ -10628,6 +10631,7 @@ inline int64_t apply_at_op<int64_t>(int64_t a, int64_t b, int opCode) {
         case 5: return (a > b) ? a : b;
         case 6: return (b != 0) ? (a / b) : 0;
         case 7: return (b != 0) ? (a % b) : 0;
+        case 8: return (int64_t)std::pow((double)a, (double)b);
         case 9: return a & b;
         case 10: return a | b;
         case 11: return a ^ b;
@@ -10646,6 +10650,7 @@ inline int32_t apply_at_op<int32_t>(int32_t a, int32_t b, int opCode) {
         case 5: return (a > b) ? a : b;
         case 6: return (b != 0) ? (a / b) : 0;
         case 7: return (b != 0) ? (a % b) : 0;
+        case 8: return (int32_t)std::pow((double)a, (double)b);
         case 9: return a & b;
         case 10: return a | b;
         case 11: return a ^ b;
@@ -10664,6 +10669,7 @@ inline uint8_t apply_at_op<uint8_t>(uint8_t a, uint8_t b, int opCode) {
         case 5: return (a > b) ? a : b;
         case 6: return (b != 0) ? (uint8_t)(a / b) : 0;
         case 7: return (b != 0) ? (uint8_t)(a % b) : 0;
+        case 8: return (uint8_t)std::pow((double)a, (double)b);
         case 9: return (uint8_t)(a & b);
         case 10: return (uint8_t)(a | b);
         case 11: return (uint8_t)(a ^ b);
@@ -10685,6 +10691,7 @@ inline int16_t apply_at_op<int16_t>(int16_t a, int16_t b, int opCode) {
         case 5: return (a > b) ? a : b;
         case 6: return (b != 0) ? (int16_t)(a / b) : 0;
         case 7: return (b != 0) ? (int16_t)(a % b) : 0;
+        case 8: return (int16_t)std::pow((double)a, (double)b);
         case 9: return (int16_t)(a & b);
         case 10: return (int16_t)(a | b);
         case 11: return (int16_t)(a ^ b);

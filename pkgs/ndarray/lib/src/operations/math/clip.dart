@@ -192,12 +192,12 @@ NDArray<T> clipArray<T>(
   final bool ownsMin = min == null;
   final minArr =
       min ??
-      (NDArray<T>.create([], a.dtype)..data[0] = _getMinLimit(a.dtype) as T);
+      (NDArray<T>.create([], a.dtype)..setCellRaw(0, _getMinLimit(a.dtype) as T));
 
   final bool ownsMax = max == null;
   final maxArr =
       max ??
-      (NDArray<T>.create([], a.dtype)..data[0] = _getMaxLimit(a.dtype) as T);
+      (NDArray<T>.create([], a.dtype)..setCellRaw(0, _getMaxLimit(a.dtype) as T));
 
   try {
     NDArray? dummy;

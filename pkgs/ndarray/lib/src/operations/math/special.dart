@@ -271,20 +271,23 @@ NDArray<R> gamma<T, R>(
   final maskHolder = prepareMask(where, result.shape);
   try {
     void dispatchContiguous(NDArray src, NDArray dest) {
-      if (src.dtype == DType.float64) {
-        v_gamma_double(
-          src.pointer.cast(),
-          dest.pointer.cast(),
-          src.size,
-          maskHolder.pointer,
-        );
-      } else {
-        v_gamma_float(
-          src.pointer.cast(),
-          dest.pointer.cast(),
-          src.size,
-          maskHolder.pointer,
-        );
+      switch (src.dtype) {
+        case DType.float64:
+          v_gamma_double(
+            src.pointer.cast(),
+            dest.pointer.cast(),
+            src.size,
+            maskHolder.pointer,
+          );
+        case DType.float32:
+          v_gamma_float(
+            src.pointer.cast(),
+            dest.pointer.cast(),
+            src.size,
+            maskHolder.pointer,
+          );
+        default:
+          throw UnsupportedError('Unsupported dtype: ${src.dtype}');
       }
     }
 
@@ -295,26 +298,29 @@ NDArray<R> gamma<T, R>(
       final cStridesSrc = ScratchArena.copyInts(src.strides);
       final cStridesDest = ScratchArena.copyInts(dest.strides);
       try {
-        if (src.dtype == DType.float64) {
-          s_gamma_double(
-            src.pointer.cast(),
-            cStridesSrc,
-            dest.pointer.cast(),
-            cStridesDest,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        } else {
-          s_gamma_float(
-            src.pointer.cast(),
-            cStridesSrc,
-            dest.pointer.cast(),
-            cStridesDest,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
+        switch (src.dtype) {
+          case DType.float64:
+            s_gamma_double(
+              src.pointer.cast(),
+              cStridesSrc,
+              dest.pointer.cast(),
+              cStridesDest,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.float32:
+            s_gamma_float(
+              src.pointer.cast(),
+              cStridesSrc,
+              dest.pointer.cast(),
+              cStridesDest,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          default:
+            throw UnsupportedError('Unsupported dtype: ${src.dtype}');
         }
       } finally {
         ScratchArena.reset(marker);
@@ -409,20 +415,23 @@ NDArray<R> erf<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
   final maskHolder = prepareMask(where, result.shape);
   try {
     void dispatchContiguous(NDArray src, NDArray dest) {
-      if (src.dtype == DType.float64) {
-        v_erf_double(
-          src.pointer.cast(),
-          dest.pointer.cast(),
-          src.size,
-          maskHolder.pointer,
-        );
-      } else {
-        v_erf_float(
-          src.pointer.cast(),
-          dest.pointer.cast(),
-          src.size,
-          maskHolder.pointer,
-        );
+      switch (src.dtype) {
+        case DType.float64:
+          v_erf_double(
+            src.pointer.cast(),
+            dest.pointer.cast(),
+            src.size,
+            maskHolder.pointer,
+          );
+        case DType.float32:
+          v_erf_float(
+            src.pointer.cast(),
+            dest.pointer.cast(),
+            src.size,
+            maskHolder.pointer,
+          );
+        default:
+          throw UnsupportedError('Unsupported dtype: ${src.dtype}');
       }
     }
 
@@ -433,26 +442,29 @@ NDArray<R> erf<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       final cStridesSrc = ScratchArena.copyInts(src.strides);
       final cStridesDest = ScratchArena.copyInts(dest.strides);
       try {
-        if (src.dtype == DType.float64) {
-          s_erf_double(
-            src.pointer.cast(),
-            cStridesSrc,
-            dest.pointer.cast(),
-            cStridesDest,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-        } else {
-          s_erf_float(
-            src.pointer.cast(),
-            cStridesSrc,
-            dest.pointer.cast(),
-            cStridesDest,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
+        switch (src.dtype) {
+          case DType.float64:
+            s_erf_double(
+              src.pointer.cast(),
+              cStridesSrc,
+              dest.pointer.cast(),
+              cStridesDest,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          case DType.float32:
+            s_erf_float(
+              src.pointer.cast(),
+              cStridesSrc,
+              dest.pointer.cast(),
+              cStridesDest,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+          default:
+            throw UnsupportedError('Unsupported dtype: ${src.dtype}');
         }
       } finally {
         ScratchArena.reset(marker);
