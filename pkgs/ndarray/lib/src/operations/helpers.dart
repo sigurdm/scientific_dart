@@ -605,11 +605,7 @@ void ternaryOp<Ta, Tb, Tc, Tr>(
         whereMask[flatIndex] != 0) {
       result.setCellRaw(
         offsetResult,
-        op(
-          a.getCellRaw(offsetA),
-          b.getCellRaw(offsetB),
-          c.getCellRaw(offsetC),
-        ),
+        op(a.getCellRaw(offsetA), b.getCellRaw(offsetB), c.getCellRaw(offsetC)),
       );
     }
     return;

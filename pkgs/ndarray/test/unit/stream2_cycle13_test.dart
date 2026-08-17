@@ -5,15 +5,26 @@ void main() {
   group('Stream 2 Cycle 13 Remediation Tests', () {
     test('1. ternaryOp Physical vs Logical Offset Indexing', () {
       NDArray.scope(() {
-        final a = NDArray<Float64>.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [6], DType.float64);
-        final b = NDArray<Float64>.fromList([10.0, 20.0, 30.0, 40.0, 50.0, 60.0], [6], DType.float64);
-        final c = NDArray<Float64>.fromList([100.0, 200.0, 300.0, 400.0, 500.0, 600.0], [6], DType.float64);
-        final cond = NDArray<bool>.fromList([true, true, false, false, true, true], [6], DType.boolean);
+        final a = NDArray<Float64>.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [6],
+          DType.float64,
+        );
+        final b = NDArray<Float64>.fromList(
+          [10.0, 20.0, 30.0, 40.0, 50.0, 60.0],
+          [6],
+          DType.float64,
+        );
+        final cond = NDArray<bool>.fromList(
+          [true, true, false, false, true, true],
+          [6],
+          DType.boolean,
+        );
 
         // Slice with stride 2
-        final aSlice = a.slice([const Slice(start: 0, stop: 6, step: 2)]) as NDArray<Float64>;
-        final bSlice = b.slice([const Slice(start: 0, stop: 6, step: 2)]) as NDArray<Float64>;
-        final condSlice = cond.slice([const Slice(start: 0, stop: 6, step: 2)]) as NDArray<bool>;
+        final aSlice = a.slice([const Slice(start: 0, stop: 6, step: 2)]);
+        final bSlice = b.slice([const Slice(start: 0, stop: 6, step: 2)]);
+        final condSlice = cond.slice([const Slice(start: 0, stop: 6, step: 2)]);
 
         final res = where(condSlice, aSlice, bSlice);
         expect(res.toList(), equals([1.0, 30.0, 5.0]));
@@ -22,7 +33,11 @@ void main() {
 
     test('2. clipArray without scalar bound data[0] write', () {
       NDArray.scope(() {
-        final a = NDArray<Float64>.fromList([-10.0, 0.0, 10.0], [3], DType.float64);
+        final a = NDArray<Float64>.fromList(
+          [-10.0, 0.0, 10.0],
+          [3],
+          DType.float64,
+        );
         final clippedMinOnly = clip(a, min: 0.0);
         expect(clippedMinOnly.toList(), equals([0.0, 0.0, 10.0]));
 
@@ -31,45 +46,64 @@ void main() {
       });
     });
 
-    test('3. atUfunc missing C cases (floorDivide, remainder, power) & unsupported op', () {
-      NDArray.scope(() {
-        final aInt = NDArray<int>.fromList([10, 20, 30], [3], DType.int32);
-        final idx = NDArray<int>.fromList([0, 1, 2], [3], DType.int64);
-        final bInt = NDArray<int>.fromList([3, 3, 2], [3], DType.int32);
+    test(
+      '3. atUfunc missing C cases (floorDivide, remainder, power) & unsupported op',
+      () {
+        NDArray.scope(() {
+          final aInt = NDArray<int>.fromList([10, 20, 30], [3], DType.int32);
+          final idx = NDArray<int>.fromList([0, 1, 2], [3], DType.int64);
+          final bInt = NDArray<int>.fromList([3, 3, 2], [3], DType.int32);
 
-        atUfunc(aInt, idx, bInt, op: BinaryOp.floorDivide);
-        expect(aInt.toList(), equals([3, 6, 15]));
+          atUfunc(aInt, idx, bInt, op: BinaryOp.floorDivide);
+          expect(aInt.toList(), equals([3, 6, 15]));
 
-        final aIntMod = NDArray<int>.fromList([10, 20, 30], [3], DType.int32);
-        atUfunc(aIntMod, idx, bInt, op: BinaryOp.remainder);
-        expect(aIntMod.toList(), equals([1, 2, 0]));
+          final aIntMod = NDArray<int>.fromList([10, 20, 30], [3], DType.int32);
+          atUfunc(aIntMod, idx, bInt, op: BinaryOp.remainder);
+          expect(aIntMod.toList(), equals([1, 2, 0]));
 
-        final aIntPow = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
-        final bPow = NDArray<int>.fromList([3, 2, 1], [3], DType.int32);
-        atUfunc(aIntPow, idx, bPow, op: BinaryOp.power);
-        expect(aIntPow.toList(), equals([8, 9, 4]));
+          final aIntPow = NDArray<int>.fromList([2, 3, 4], [3], DType.int32);
+          final bPow = NDArray<int>.fromList([3, 2, 1], [3], DType.int32);
+          atUfunc(aIntPow, idx, bPow, op: BinaryOp.power);
+          expect(aIntPow.toList(), equals([8, 9, 4]));
 
-        // Float cases
-        final aFloat = NDArray<Float64>.fromList([10.5, 20.5, 30.5], [3], DType.float64);
-        final bFloat = NDArray<Float64>.fromList([3.0, 4.0, 5.0], [3], DType.float64);
-        atUfunc(aFloat, idx, bFloat, op: BinaryOp.floorDivide);
-        expect(aFloat.toList(), equals([3.0, 5.0, 6.0]));
+          // Float cases
+          final aFloat = NDArray<Float64>.fromList(
+            [10.5, 20.5, 30.5],
+            [3],
+            DType.float64,
+          );
+          final bFloat = NDArray<Float64>.fromList(
+            [3.0, 4.0, 5.0],
+            [3],
+            DType.float64,
+          );
+          atUfunc(aFloat, idx, bFloat, op: BinaryOp.floorDivide);
+          expect(aFloat.toList(), equals([3.0, 5.0, 6.0]));
 
-        // Unsupported binary op
-        expect(
-          () => atUfunc(aFloat, idx, bFloat, op: BinaryOp.gcd),
-          throwsA(isA<UnsupportedError>()),
-        );
-      });
-    });
+          // Unsupported binary op
+          expect(
+            () => atUfunc(aFloat, idx, bFloat, op: BinaryOp.gcd),
+            throwsA(isA<UnsupportedError>()),
+          );
+        });
+      },
+    );
 
     test('4. gamma and erf switch DType fast paths', () {
       NDArray.scope(() {
-        final aDouble = NDArray<Float64>.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+        final aDouble = NDArray<Float64>.fromList(
+          [1.0, 2.0, 3.0],
+          [3],
+          DType.float64,
+        );
         final gDouble = gamma(aDouble);
         expect(gDouble.dtype, equals(DType.float64));
 
-        final aFloat = NDArray<Float32>.fromList([1.0, 2.0, 3.0], [3], DType.float32);
+        final aFloat = NDArray<Float32>.fromList(
+          [1.0, 2.0, 3.0],
+          [3],
+          DType.float32,
+        );
         final gFloat = gamma(aFloat);
         expect(gFloat.dtype, equals(DType.float32));
 
