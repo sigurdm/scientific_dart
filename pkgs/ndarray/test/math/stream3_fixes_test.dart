@@ -217,19 +217,19 @@ void main() {
         );
 
         final res = qr<Float64>(a);
-        expect(res.Q.shape, equals([3, 2, 2]));
-        expect(res.R.shape, equals([3, 2, 2]));
+        expect(res.q.shape, equals([3, 2, 2]));
+        expect(res.r.shape, equals([3, 2, 2]));
 
         // Check Q * R = A for each batch
         for (var b = 0; b < 3; b++) {
-          final qSlice = res.Q
+          final qSlice = res.q
               .slice([
                 Slice(start: b, stop: b + 1),
                 const Slice(),
                 const Slice(),
               ])
               .reshape([2, 2]);
-          final rSlice = res.R
+          final rSlice = res.r
               .slice([
                 Slice(start: b, stop: b + 1),
                 const Slice(),
@@ -312,5 +312,73 @@ void main() {
         expect(resIrfft[[0]], closeTo(1.0, 1e-6));
       });
     });
+    test('Cycle 11 Task 1: eigh named record return and EighRecordDispose', () {
+      final a = NDArray<Float64>.fromList(
+        [2.0, 1.0, 1.0, 2.0],
+        [2, 2],
+        DType.float64,
+      );
+      final res = eigh(a);
+      expect(res.eigenvalues.shape, equals([2]));
+      expect(res.eigenvectors.shape, equals([2, 2]));
+      expect(res.eigenvalues[[0]], closeTo(1.0, 1e-9));
+      expect(res.eigenvalues[[1]], closeTo(3.0, 1e-9));
+      expect(res.eigenvalues.isDisposed, isFalse);
+      expect(res.eigenvectors.isDisposed, isFalse);
+      res.dispose();
+      expect(res.eigenvalues.isDisposed, isTrue);
+      expect(res.eigenvectors.isDisposed, isTrue);
+      a.dispose();
+    });
+
+    test(
+      'Cycle 11 Task 2: Standardized lowercase fields and generic RecordDispose extensions',
+      () {
+        NDArray.scope(() {
+          final a = NDArray<Float64>.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          final qrRes = qr<Float64>(a);
+          expect(qrRes.q.shape, equals([2, 2]));
+          expect(qrRes.r.shape, equals([2, 2]));
+          qrRes.dispose();
+          expect(qrRes.q.isDisposed, isTrue);
+          expect(qrRes.r.isDisposed, isTrue);
+
+          final svdRes = svd<Float64>(a);
+          expect(svdRes.u.shape, equals([2, 2]));
+          expect(svdRes.s.shape, equals([2]));
+          expect(svdRes.vh.shape, equals([2, 2]));
+          svdRes.dispose();
+          expect(svdRes.u.isDisposed, isTrue);
+          expect(svdRes.s.isDisposed, isTrue);
+          expect(svdRes.vh.isDisposed, isTrue);
+
+          final hessRes = hessenberg<Float64>(a);
+          expect(hessRes.h.shape, equals([2, 2]));
+          expect(hessRes.q.shape, equals([2, 2]));
+          hessRes.dispose();
+          expect(hessRes.h.isDisposed, isTrue);
+          expect(hessRes.q.isDisposed, isTrue);
+        });
+      },
+    );
+
+    test(
+      'Cycle 11 Task 3: fftn out of bounds axis check order when s is null',
+      () {
+        NDArray.scope(() {
+          final a = NDArray<Float64>.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+          expect(() => fftn(a, axes: [5]), throwsRangeError);
+          expect(() => fftn(a, axes: [-5]), throwsRangeError);
+        });
+      },
+    );
   });
 }

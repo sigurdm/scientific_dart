@@ -336,16 +336,16 @@ void main() {
           DType.float64,
         );
         final res = svd(a);
-        expect(res.U.shape, equals([3, 3]));
-        expect(res.S.shape, equals([2]));
-        expect(res.Vh.shape, equals([2, 2]));
+        expect(res.u.shape, equals([3, 3]));
+        expect(res.s.shape, equals([2]));
+        expect(res.vh.shape, equals([2, 2]));
 
         // Reconstruct A = U[:, :2] * S * Vh
-        final uTrunc = res.U.slice([Slice.all(), Slice(start: 0, stop: 2)]);
+        final uTrunc = res.u.slice([Slice.all(), Slice(start: 0, stop: 2)]);
         final sDiag = NDArray<Float64>.zeros([2, 2], DType.float64);
-        sDiag[[0, 0]] = res.S[[0]];
-        sDiag[[1, 1]] = res.S[[1]];
-        final recon = matmul(matmul(uTrunc, sDiag), res.Vh);
+        sDiag[[0, 0]] = res.s[[0]];
+        sDiag[[1, 1]] = res.s[[1]];
+        final recon = matmul(matmul(uTrunc, sDiag), res.vh);
 
         for (var r = 0; r < 3; r++) {
           for (var c = 0; c < 2; c++) {

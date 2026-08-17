@@ -278,8 +278,8 @@ class QrDecompositionBenchmark extends NdarrayBenchmarkBase {
   @override
   void run() {
     final res = qr(a);
-    res.Q.dispose();
-    res.R.dispose();
+    res.q.dispose();
+    res.r.dispose();
   }
 
   @override

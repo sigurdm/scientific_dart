@@ -400,13 +400,13 @@ void main() {
         );
 
         final svdRes = svd(a);
-        expect(svdRes.U.dtype, DType.complex128);
-        expect(svdRes.S.dtype, DType.float64);
-        expect(svdRes.Vh.dtype, DType.complex128);
+        expect(svdRes.u.dtype, DType.complex128);
+        expect(svdRes.s.dtype, DType.float64);
+        expect(svdRes.vh.dtype, DType.complex128);
 
-        final sDiag = diag(svdRes.S);
-        final NDArray<Complex> uS = matmul(svdRes.U, sDiag);
-        final reconstructed = matmul(uS, svdRes.Vh);
+        final sDiag = diag(svdRes.s);
+        final NDArray<Complex> uS = matmul(svdRes.u, sDiag);
+        final reconstructed = matmul(uS, svdRes.vh);
 
         expect(allClose(reconstructed, a, rtol: 1e-5, atol: 1e-5), isTrue);
 
@@ -418,13 +418,13 @@ void main() {
         );
 
         final svdRes64 = svd(a64);
-        expect(svdRes64.U.dtype, DType.complex64);
-        expect(svdRes64.S.dtype, DType.float32);
-        expect(svdRes64.Vh.dtype, DType.complex64);
+        expect(svdRes64.u.dtype, DType.complex64);
+        expect(svdRes64.s.dtype, DType.float32);
+        expect(svdRes64.vh.dtype, DType.complex64);
 
-        final sDiag64 = diag(svdRes64.S);
-        final NDArray<Complex> uS64 = matmul(svdRes64.U, sDiag64);
-        final reconstructed64 = matmul(uS64, svdRes64.Vh);
+        final sDiag64 = diag(svdRes64.s);
+        final NDArray<Complex> uS64 = matmul(svdRes64.u, sDiag64);
+        final reconstructed64 = matmul(uS64, svdRes64.vh);
         expect(
           allClose(reconstructed64, a64, rtol: 1e-3, atol: 1e-3),
           isTrue,
@@ -618,9 +618,9 @@ void main() {
         final outVh = NDArray<Float64>.zeros([2, 2], DType.float64);
 
         final res = svd(a, out: (U: outU, S: outS, Vh: outVh));
-        expect(identical(res.U, outU), true);
-        expect(identical(res.S, outS), true);
-        expect(identical(res.Vh, outVh), true);
+        expect(identical(res.u, outU), true);
+        expect(identical(res.s, outS), true);
+        expect(identical(res.vh, outVh), true);
 
         // SVD values should be populated
         expect(outS.toList()[0], greaterThan(0.0));
@@ -641,9 +641,9 @@ void main() {
         final outVh = NDArray<Float64>.zeros([3, 3], DType.float64);
 
         final res = svd(a, out: (U: outU, S: outS, Vh: outVh));
-        expect(identical(res.U, outU), true);
-        expect(identical(res.S, outS), true);
-        expect(identical(res.Vh, outVh), true);
+        expect(identical(res.u, outU), true);
+        expect(identical(res.s, outS), true);
+        expect(identical(res.vh, outVh), true);
 
         expect(outS.toList()[0], greaterThan(0.0));
         expect(outS.toList()[1], greaterThan(0.0));

@@ -2604,9 +2604,9 @@ NDArray<T> pinv<T extends Object>(
   return NDArray.scope(() {
     final result = out ?? NDArray<T>.create(targetShape, a.dtype);
     final svdResult = svd(a);
-    final u = svdResult.U;
-    final s = svdResult.S;
-    final vt = svdResult.Vh;
+    final u = svdResult.u;
+    final s = svdResult.s;
+    final vt = svdResult.vh;
 
     final double maxSingularVal = (s.dtype == DType.float32)
         ? s.pointer.cast<ffi.Float>()[0]
@@ -2921,12 +2921,12 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 /// ```dart
 /// final a = NDArray<double>.fromList([12.0, -51.0, 4.0, 6.0, 167.0, -68.0, -4.0, 24.0, -41.0], [3, 3], DType.float64);
 /// final res = qr(a);
-/// final q = res.Q;
-/// final r = res.R;
+/// final q = res.q;
+/// final r = res.r;
 /// ```
-({NDArray<T> Q, NDArray<T> R}) qr<T extends Object>(
+({NDArray<T> q, NDArray<T> r}) qr<T extends Object>(
   NDArray<T> a, {
-  ({NDArray<T> Q, NDArray<T> R})? out,
+  ({NDArray<T> q, NDArray<T> r})? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute qr() on a disposed array.');
@@ -2953,8 +2953,8 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
   final NDArray<T> qMat;
   final NDArray<T> rMat;
   if (out != null) {
-    qMat = out.Q;
-    rMat = out.R;
+    qMat = out.q;
+    rMat = out.r;
     if (!listEquals(qMat.shape, qShape) || qMat.dtype != targetDType) {
       throw ArgumentError(
         'Provided out Q buffer has incompatible shape or dtype.',
@@ -3230,7 +3230,7 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
     aCopy.dispose();
   }
 
-  return (Q: qMat, R: rMat);
+  return (q: qMat, r: rMat);
 }
 
 /// Computes the Singular Value Decomposition (SVD) of a matrix or a stack of matrices $A = U S V^h$.
@@ -3252,19 +3252,19 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 /// ```dart
 /// final a = NDArray<double>.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], DType.float64);
 /// final res = svd(a);
-/// final u = res.U;
-/// final s = res.S;
-/// final vh = res.Vh;
+/// final u = res.u;
+/// final s = res.s;
+/// final vh = res.vh;
 /// ```
-({NDArray<T> U, NDArray<double> S, NDArray<T> Vh}) svd<T extends Object>(
+({NDArray<T> u, NDArray<double> s, NDArray<T> vh}) svd<T extends Object>(
   NDArray<T> a, {
-  ({NDArray<T> U, NDArray<double> S, NDArray<T> Vh})? out,
+  ({NDArray<T> u, NDArray<double> s, NDArray<T> vh})? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute svd() on a disposed array.');
   }
   if (out != null) {
-    if (out.U.isDisposed || out.S.isDisposed || out.Vh.isDisposed) {
+    if (out.u.isDisposed || out.s.isDisposed || out.vh.isDisposed) {
       throw StateError('Cannot write SVD result to a disposed output array.');
     }
   }
@@ -3290,20 +3290,20 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
   final vtShape = [...stackShape, n, n];
 
   if (out != null) {
-    if (!out.U.isContiguous || !out.S.isContiguous || !out.Vh.isContiguous) {
+    if (!out.u.isContiguous || !out.s.isContiguous || !out.vh.isContiguous) {
       throw ArgumentError('Provided out buffers must be contiguous.');
     }
-    if (!listEquals(out.U.shape, uShape) || out.U.dtype != a.dtype) {
+    if (!listEquals(out.u.shape, uShape) || out.u.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out U buffer has incompatible shape or dtype.',
       );
     }
-    if (!listEquals(out.S.shape, sShape) || out.S.dtype != dtypeS) {
+    if (!listEquals(out.s.shape, sShape) || out.s.dtype != dtypeS) {
       throw ArgumentError(
         'Provided out S buffer has incompatible shape or dtype.',
       );
     }
-    if (!listEquals(out.Vh.shape, vtShape) || out.Vh.dtype != a.dtype) {
+    if (!listEquals(out.vh.shape, vtShape) || out.vh.dtype != a.dtype) {
       throw ArgumentError(
         'Provided out Vh buffer has incompatible shape or dtype.',
       );
@@ -3313,9 +3313,9 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
   return _svd<T>(a, out: out);
 }
 
-({NDArray<T> U, NDArray<double> S, NDArray<T> Vh}) _svd<T extends Object>(
+({NDArray<T> u, NDArray<double> s, NDArray<T> vh}) _svd<T extends Object>(
   NDArray<T> a, {
-  ({NDArray<T> U, NDArray<double> S, NDArray<T> Vh})? out,
+  ({NDArray<T> u, NDArray<double> s, NDArray<T> vh})? out,
 }) {
   final rank = a.shape.length;
   final m = a.shape[rank - 2];
@@ -3331,17 +3331,17 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
     try {
       // Do NOT pass out to recursive call, let it allocate contiguous buffers.
       final resT = _svd<T>(aT);
-      final uNew = resT.U;
-      final sNew = resT.S;
-      final vhNew = resT.Vh;
+      final uNew = resT.u;
+      final sNew = resT.s;
+      final vhNew = resT.vh;
 
       final uResult = vhNew.transpose(axes);
       final vhResult = uNew.transpose(axes);
 
       if (out != null) {
-        uResult.copy(out: out.U);
-        sNew.copy(out: out.S);
-        vhResult.copy(out: out.Vh);
+        uResult.copy(out: out.u);
+        sNew.copy(out: out.s);
+        vhResult.copy(out: out.vh);
 
         uNew.dispose();
         sNew.dispose();
@@ -3357,7 +3357,7 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
         vhNew.dispose();
         uResult.dispose();
         vhResult.dispose();
-        return (U: uCopy, S: sNew, Vh: vhCopy);
+        return (u: uCopy, s: sNew, vh: vhCopy);
       }
     } finally {
       aT.dispose();
@@ -3372,10 +3372,10 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
   final sShape = [...stackShape, n];
   final vtShape = [...stackShape, n, n];
 
-  final NDArray<T> uMat = out?.U ?? NDArray<T>.zeros(uShape, a.dtype);
+  final NDArray<T> uMat = out?.u ?? NDArray<T>.zeros(uShape, a.dtype);
   final NDArray<double> sMat =
-      out?.S ?? NDArray<double>.zeros(sShape, dtypeS as DType<double>);
-  final NDArray<T> vtMat = out?.Vh ?? NDArray<T>.zeros(vtShape, a.dtype);
+      out?.s ?? NDArray<double>.zeros(sShape, dtypeS as DType<double>);
+  final NDArray<T> vtMat = out?.vh ?? NDArray<T>.zeros(vtShape, a.dtype);
 
   final aCopy = NDArray<T>.create([m, n], a.dtype);
   final marker = ScratchArena.marker;
@@ -3542,7 +3542,7 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
     aCopy.dispose();
   }
 
-  return (U: uMat, S: sMat, Vh: vtMat);
+  return (u: uMat, s: sMat, vh: vtMat);
 }
 
 /// Computes the eigenvalues and eigenvectors of a complex Hermitian (conjugate symmetric) or a real symmetric matrix.
@@ -3780,6 +3780,17 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
   }
 
   return (eigenvalues: wMat, eigenvectors: vMat);
+}
+
+/// Extension on [eigh] result record type to support easy disposal of both arrays.
+extension EighRecordDispose
+    on ({NDArray<num> eigenvalues, NDArray eigenvectors}) {
+  /// Disposes both [eigenvalues] and [eigenvectors] simultaneously,
+  /// freeing their underlying unmanaged C memory.
+  void dispose() {
+    this.eigenvalues.dispose();
+    this.eigenvectors.dispose();
+  }
 }
 
 /// Computes the eigenvalues of a complex Hermitian or real symmetric matrix.
@@ -4283,8 +4294,8 @@ NDArray<num> eigvalsh<T>(
 /// A = Q * H * Q^H
 ///
 /// Returns a record containing:
-/// - [H]: The Hessenberg matrix (zero below the first subdiagonal).
-/// - [Q]: The unitary matrix.
+/// - [h]: The Hessenberg matrix (zero below the first subdiagonal).
+/// - [q]: The unitary matrix.
 ///
 /// **Preconditions:**
 /// - [a] must be a square 2D matrix, or a stack of square 2D matrices.
@@ -4295,7 +4306,7 @@ NDArray<num> eigvalsh<T>(
 /// - [ArgumentError] if [a] is not square or has rank < 2.
 /// - [ArgumentError] if [outH] or [outQ] are incompatible.
 /// - [StateError] if the LAPACK call fails.
-({NDArray H, NDArray Q}) hessenberg<T>(
+({NDArray h, NDArray q}) hessenberg<T>(
   NDArray<T> a, {
   NDArray? outH,
   NDArray? outQ,
@@ -4544,15 +4555,8 @@ NDArray<num> eigvalsh<T>(
     q2D.dispose();
   }
 
-  return (H: hMat, Q: qMat);
+  return (h: hMat, q: qMat);
 }
-
-/// Alias for [hessenberg] matching alternative spelling.
-({NDArray H, NDArray Q}) heessenberg<T>(
-  NDArray<T> a, {
-  NDArray? outH,
-  NDArray? outQ,
-}) => hessenberg(a, outH: outH, outQ: outQ);
 
 NDArray _createTyped2D(int rows, int cols, DType dtype) {
   switch (dtype) {
@@ -5740,25 +5744,25 @@ double _matrixNorm<T extends Object>(
     return minRowSum;
   } else if (ord == 2) {
     final svdRes = svd(a);
-    final maxS = (svdRes.S.dtype == DType.float32)
-        ? svdRes.S.pointer.cast<ffi.Float>()[0]
-        : svdRes.S.pointer.cast<ffi.Double>()[0];
+    final maxS = (svdRes.s.dtype == DType.float32)
+        ? svdRes.s.pointer.cast<ffi.Float>()[0]
+        : svdRes.s.pointer.cast<ffi.Double>()[0];
     svdRes.dispose();
     return maxS;
   } else if (ord == -2) {
     final svdRes = svd(a);
-    final minS = (svdRes.S.dtype == DType.float32)
-        ? svdRes.S.pointer.cast<ffi.Float>()[svdRes.S.shape[0] - 1]
-        : svdRes.S.pointer.cast<ffi.Double>()[svdRes.S.shape[0] - 1];
+    final minS = (svdRes.s.dtype == DType.float32)
+        ? svdRes.s.pointer.cast<ffi.Float>()[svdRes.s.shape[0] - 1]
+        : svdRes.s.pointer.cast<ffi.Double>()[svdRes.s.shape[0] - 1];
     svdRes.dispose();
     return minS;
   } else if (ord == NormKind.nuclear) {
     final svdRes = svd(a);
     var sumS = 0.0;
-    for (var i = 0; i < svdRes.S.shape[0]; i++) {
-      sumS += (svdRes.S.dtype == DType.float32)
-          ? svdRes.S.pointer.cast<ffi.Float>()[i]
-          : svdRes.S.pointer.cast<ffi.Double>()[i];
+    for (var i = 0; i < svdRes.s.shape[0]; i++) {
+      sumS += (svdRes.s.dtype == DType.float32)
+          ? svdRes.s.pointer.cast<ffi.Float>()[i]
+          : svdRes.s.pointer.cast<ffi.Double>()[i];
     }
     svdRes.dispose();
     return sumS;
@@ -5767,18 +5771,22 @@ double _matrixNorm<T extends Object>(
   }
 }
 
-extension QRRecordDispose on ({NDArray Q, NDArray R}) {
+extension QRRecordDispose<T> on ({NDArray<T> q, NDArray<T> r}) {
   void dispose() {
-    this.Q.dispose();
-    this.R.dispose();
+    this.q.dispose();
+    this.r.dispose();
   }
 }
 
-extension SVDRecordDispose on ({NDArray U, NDArray S, NDArray Vh}) {
+extension SVDRecordDispose<T> on ({
+  NDArray<T> u,
+  NDArray<double> s,
+  NDArray<T> vh,
+}) {
   void dispose() {
-    this.U.dispose();
-    this.S.dispose();
-    this.Vh.dispose();
+    this.u.dispose();
+    this.s.dispose();
+    this.vh.dispose();
   }
 }
 
@@ -5789,10 +5797,20 @@ extension SchurRecordDispose on ({NDArray t, NDArray z}) {
   }
 }
 
-extension HessenbergRecordDispose on ({NDArray H, NDArray Q}) {
+extension HessenbergRecordDispose<T> on ({NDArray<T> h, NDArray<T> q}) {
   void dispose() {
-    this.H.dispose();
-    this.Q.dispose();
+    this.h.dispose();
+    this.q.dispose();
+  }
+}
+
+extension EighRecordDispose<T> on ({
+  NDArray<num> eigenvalues,
+  NDArray<T> eigenvectors,
+}) {
+  void dispose() {
+    this.eigenvalues.dispose();
+    this.eigenvectors.dispose();
   }
 }
 

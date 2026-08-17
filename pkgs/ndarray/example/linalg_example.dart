@@ -78,8 +78,8 @@ void runQRDecompositionExample() {
 
   // Factorizes A = Q * R. Q is an orthogonal/unitary matrix, R is upper triangular.
   final res = qr(a);
-  final q = res.Q;
-  final r = res.R;
+  final q = res.q;
+  final r = res.r;
 
   print('Orthogonal Matrix Q:');
   print(
@@ -104,9 +104,9 @@ void runSVDDecompositionExample() {
 
   // Computes A = U * S * Vh, where S is 1D vector of singular values
   final res = svd(a);
-  final u = res.U;
-  final s = res.S;
-  final vh = res.Vh;
+  final u = res.u;
+  final s = res.s;
+  final vh = res.vh;
 
   print('Left Singular Vectors U (3x3 matrix):');
   print(

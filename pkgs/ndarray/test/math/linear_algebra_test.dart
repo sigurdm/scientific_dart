@@ -333,8 +333,8 @@ void main() {
           );
 
           final res = qr(a);
-          final q = res.Q;
-          final r = res.R;
+          final q = res.q;
+          final r = res.r;
 
           expect(q.shape, [3, 3]);
           expect(r.shape, [3, 3]);
@@ -382,9 +382,9 @@ void main() {
             DType.float32,
           );
           final res = qr(a);
-          expect(res.Q.dtype, DType.float32);
-          expect(res.R.dtype, DType.float32);
-          expect(res.R.toList()[3], 0.0);
+          expect(res.q.dtype, DType.float32);
+          expect(res.r.dtype, DType.float32);
+          expect(res.r.toList()[3], 0.0);
         }),
       );
 
@@ -409,9 +409,9 @@ void main() {
           final view = parent.transpose();
           expect(view.isContiguous, false);
           final res = qr(view);
-          expect(res.Q.shape, [3, 3]);
-          expect(res.R.shape, [3, 3]);
-          expect(res.R.toList()[3], 0.0);
+          expect(res.q.shape, [3, 3]);
+          expect(res.r.shape, [3, 3]);
+          expect(res.r.toList()[3], 0.0);
         }),
       );
 
@@ -437,15 +437,15 @@ void main() {
           final qBuffer = NDArray<double>.zeros([3, 3], DType.float64);
           final rBuffer = NDArray<double>.zeros([3, 3], DType.float64);
 
-          final res = qr(a, out: (Q: qBuffer, R: rBuffer));
+          final res = qr(a, out: (q: qBuffer, r: rBuffer));
 
-          expect(identical(res.Q, qBuffer), true);
-          expect(identical(res.R, rBuffer), true);
+          expect(identical(res.q, qBuffer), true);
+          expect(identical(res.r, rBuffer), true);
 
           // Verify correctness of QR values in the recycled buffers
-          expect(res.R.toList()[3], 0.0);
-          expect(res.R.toList()[6], 0.0);
-          expect(res.R.toList()[7], 0.0);
+          expect(res.r.toList()[3], 0.0);
+          expect(res.r.toList()[6], 0.0);
+          expect(res.r.toList()[7], 0.0);
         }),
       );
 
@@ -469,12 +469,12 @@ void main() {
             DType.float64,
           );
           final res2 = qr(a2);
-          expect(res2.Q.isDisposed, false);
-          expect(res2.R.isDisposed, false);
+          expect(res2.q.isDisposed, false);
+          expect(res2.r.isDisposed, false);
 
           res2.dispose();
-          expect(res2.Q.isDisposed, true);
-          expect(res2.R.isDisposed, true);
+          expect(res2.q.isDisposed, true);
+          expect(res2.r.isDisposed, true);
         }),
       );
 
@@ -490,7 +490,7 @@ void main() {
           ], DType.float64);
           final rBuffer = NDArray<double>.zeros([3, 3], DType.float64);
           expect(
-            () => qr(a, out: (Q: qBufferWrongShape, R: rBuffer)),
+            () => qr(a, out: (q: qBufferWrongShape, r: rBuffer)),
             throwsArgumentError,
           );
 
@@ -501,7 +501,7 @@ void main() {
             2,
           ], DType.float64);
           expect(
-            () => qr(a, out: (Q: qBuffer, R: rBufferWrongShape)),
+            () => qr(a, out: (q: qBuffer, r: rBufferWrongShape)),
             throwsArgumentError,
           );
         }),
@@ -519,9 +519,9 @@ void main() {
           );
 
           final res = svd(a);
-          final u = res.U;
-          final s = res.S;
-          final vh = res.Vh;
+          final u = res.u;
+          final s = res.s;
+          final vh = res.vh;
 
           expect(u.shape, [3, 3]); // full matrix
           expect(s.shape, [2]); // min(3, 2) vector
@@ -542,10 +542,10 @@ void main() {
             DType.float32,
           );
           final res = svd(a);
-          expect(res.U.dtype, DType.float32);
-          expect(res.S.dtype, DType.float32);
-          expect(res.Vh.dtype, DType.float32);
-          expect(res.U.shape, [3, 3]);
+          expect(res.u.dtype, DType.float32);
+          expect(res.s.dtype, DType.float32);
+          expect(res.vh.dtype, DType.float32);
+          expect(res.u.shape, [3, 3]);
         }),
       );
 
@@ -560,8 +560,8 @@ void main() {
           final view = parent.transpose();
           expect(view.isContiguous, false);
           final res = svd(view);
-          expect(res.U.shape, [3, 3]);
-          expect(res.S.shape, [2]);
+          expect(res.u.shape, [3, 3]);
+          expect(res.s.shape, [2]);
         }),
       );
     });
@@ -1340,8 +1340,8 @@ void main() {
           );
 
           final res = qr(a);
-          final q = res.Q;
-          final r = res.R;
+          final q = res.q;
+          final r = res.r;
 
           expect(q.shape, [2, 3, 3]);
           expect(r.shape, [2, 3, 3]);
@@ -1385,9 +1385,9 @@ void main() {
           );
 
           final resTall = svd(aTall);
-          final uT = resTall.U;
-          final sT = resTall.S;
-          final vhT = resTall.Vh;
+          final uT = resTall.u;
+          final sT = resTall.s;
+          final vhT = resTall.vh;
 
           expect(uT.shape, [2, 3, 3]);
           expect(sT.shape, [2, 2]);
@@ -1403,9 +1403,9 @@ void main() {
           );
 
           final resWide = svd(aWide);
-          final uW = resWide.U;
-          final sW = resWide.S;
-          final vhW = resWide.Vh;
+          final uW = resWide.u;
+          final sW = resWide.s;
+          final vhW = resWide.vh;
 
           expect(uW.shape, [2, 2, 2]);
           expect(sW.shape, [2, 2]);

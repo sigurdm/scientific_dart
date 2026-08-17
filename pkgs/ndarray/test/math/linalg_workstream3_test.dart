@@ -127,8 +127,8 @@ void main() {
           );
 
           final res = qr(a);
-          final q = res.Q;
-          final r = res.R;
+          final q = res.q;
+          final r = res.r;
 
           expect(q.dtype, DType.complex128);
           expect(r.dtype, DType.complex128);
@@ -187,10 +187,10 @@ void main() {
           );
 
           final res = qr(a);
-          expect(res.Q.dtype, DType.complex64);
-          expect(res.R.dtype, DType.complex64);
+          expect(res.q.dtype, DType.complex64);
+          expect(res.r.dtype, DType.complex64);
 
-          final qrProd = matmul(res.Q, res.R);
+          final qrProd = matmul(res.q, res.r);
           for (var i = 0; i < 2; i++) {
             for (var j = 0; j < 2; j++) {
               final prodVal = qrProd.getCell([i, j]) as Complex;
@@ -218,10 +218,10 @@ void main() {
           );
 
           final res = qr(a);
-          expect(res.Q.shape, [3, 2]);
-          expect(res.R.shape, [2, 2]);
+          expect(res.q.shape, [3, 2]);
+          expect(res.r.shape, [2, 2]);
 
-          final qrProd = matmul(res.Q, res.R);
+          final qrProd = matmul(res.q, res.r);
           for (var i = 0; i < 3; i++) {
             for (var j = 0; j < 2; j++) {
               final prodVal = qrProd.getCell([i, j]) as Complex;
@@ -251,10 +251,10 @@ void main() {
           );
 
           final res = qr(a);
-          expect(res.Q.shape, [2, 2, 2]);
-          expect(res.R.shape, [2, 2, 2]);
+          expect(res.q.shape, [2, 2, 2]);
+          expect(res.r.shape, [2, 2, 2]);
 
-          final qrProd = matmul(res.Q, res.R);
+          final qrProd = matmul(res.q, res.r);
           for (var b = 0; b < 2; b++) {
             for (var i = 0; i < 2; i++) {
               for (var j = 0; j < 2; j++) {
@@ -365,7 +365,7 @@ void main() {
           final svdRes = svd(a);
           expect(
             norm(a, ord: NormKind.l2).scalar,
-            closeTo(svdRes.S.toList()[0], 1e-9),
+            closeTo(svdRes.s.toList()[0], 1e-9),
           );
         });
       });

@@ -1671,6 +1671,15 @@ NDArray<R> _fftnND<T, R extends Complex>(
     axesResolved = axes.map((ax) => ax < 0 ? rank + ax : ax).toList();
   }
 
+  for (final ax in axesResolved) {
+    if (ax < 0 || ax >= rank) {
+      throw RangeError.range(ax, 0, rank - 1, 'axis');
+    }
+  }
+  if (axesResolved.toSet().length != axesResolved.length) {
+    throw ArgumentError('axes must be unique');
+  }
+
   final List<int> sResolved;
   if (s == null) {
     sResolved = axesResolved.map((ax) => a.shape[ax]).toList();
@@ -1680,14 +1689,6 @@ NDArray<R> _fftnND<T, R extends Complex>(
 
   if (axesResolved.length != sResolved.length) {
     throw ArgumentError('axes and s must have the same length');
-  }
-  for (final ax in axesResolved) {
-    if (ax < 0 || ax >= rank) {
-      throw RangeError.range(ax, 0, rank - 1, 'axis');
-    }
-  }
-  if (axesResolved.toSet().length != axesResolved.length) {
-    throw ArgumentError('axes must be unique');
   }
   for (final sz in sResolved) {
     if (sz <= 0) {

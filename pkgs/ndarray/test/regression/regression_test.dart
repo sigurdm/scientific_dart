@@ -324,9 +324,9 @@ void main() {
       );
 
       final res = svd(a);
-      expect(res.S.dtype, DType.float64);
-      expect(res.S.toList()[0], closeTo(math.sqrt(10), 1e-5));
-      expect(res.S.toList()[1], closeTo(math.sqrt(5), 1e-5));
+      expect(res.s.dtype, DType.float64);
+      expect(res.s.toList()[0], closeTo(math.sqrt(10), 1e-5));
+      expect(res.s.toList()[1], closeTo(math.sqrt(5), 1e-5));
     });
 
     test('complex pinv (complex128)', () {

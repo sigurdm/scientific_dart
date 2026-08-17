@@ -12,8 +12,8 @@ void main() {
         );
 
         final res = hessenberg(a);
-        final h = res.H;
-        final q = res.Q;
+        final h = res.h;
+        final q = res.q;
 
         expect(h.shape, equals([3, 3]));
         expect(q.shape, equals([3, 3]));
@@ -56,8 +56,8 @@ void main() {
         );
 
         final res = hessenberg(a);
-        final h = res.H;
-        final q = res.Q;
+        final h = res.h;
+        final q = res.q;
 
         expect(h.shape, equals([3, 3]));
         expect(q.shape, equals([3, 3]));
@@ -122,13 +122,13 @@ void main() {
         );
 
         final res = hessenberg(a);
-        expect(res.H.shape, equals([2, 3, 3]));
-        expect(res.Q.shape, equals([2, 3, 3]));
+        expect(res.h.shape, equals([2, 3, 3]));
+        expect(res.q.shape, equals([2, 3, 3]));
 
         // Check H[0, 2, 0] == 0
-        expect(res.H[[0, 2, 0]], closeTo(0.0, 1e-10));
+        expect(res.h[[0, 2, 0]], closeTo(0.0, 1e-10));
         // Check H[1, 2, 0] == 0
-        expect(res.H[[1, 2, 0]], closeTo(0.0, 1e-10));
+        expect(res.h[[1, 2, 0]], closeTo(0.0, 1e-10));
       });
     });
   });
