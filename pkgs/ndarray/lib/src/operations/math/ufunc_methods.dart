@@ -95,15 +95,20 @@ NDArray<R> binaryUfunc<T extends Object, R extends Object>(
     case BinaryOp.add:
       return add(a, b, where: where, out: out as NDArray<T>?) as NDArray<R>;
     case BinaryOp.subtract:
-      return subtract(a, b, where: where, out: out as NDArray<T>?) as NDArray<R>;
+      return subtract(a, b, where: where, out: out as NDArray<T>?)
+          as NDArray<R>;
     case BinaryOp.multiply:
-      return multiply(a, b, where: where, out: out as NDArray<T>?) as NDArray<R>;
+      return multiply(a, b, where: where, out: out as NDArray<T>?)
+          as NDArray<R>;
     case BinaryOp.divide:
-      return divide(a, b, where: where, out: out as NDArray<double>?) as NDArray<R>;
+      return divide(a, b, where: where, out: out as NDArray<double>?)
+          as NDArray<R>;
     case BinaryOp.floorDivide:
-      return floor_divide(a, b, where: where, out: out as NDArray<T>?) as NDArray<R>;
+      return floor_divide(a, b, where: where, out: out as NDArray<T>?)
+          as NDArray<R>;
     case BinaryOp.remainder:
-      return remainder(a, b, where: where, out: out as NDArray<T>?) as NDArray<R>;
+      return remainder(a, b, where: where, out: out as NDArray<T>?)
+          as NDArray<R>;
     case BinaryOp.fmod:
       return fmod(a, b, where: where, out: out as NDArray<T>?) as NDArray<R>;
     case BinaryOp.gcd:
@@ -111,11 +116,13 @@ NDArray<R> binaryUfunc<T extends Object, R extends Object>(
     case BinaryOp.lcm:
       return lcm(a, b, where: where, out: out as NDArray<T>?) as NDArray<R>;
     case BinaryOp.heaviside:
-      return heaviside(a, b, where: where, out: out as NDArray<T>?) as NDArray<R>;
+      return heaviside(a, b, where: where, out: out as NDArray<T>?)
+          as NDArray<R>;
     case BinaryOp.power:
       return power(a, b, where: where, out: out as NDArray<T>?) as NDArray<R>;
     case BinaryOp.floatPower:
-      return power(a, b, where: where, out: out as NDArray<double>?) as NDArray<R>;
+      return power(a, b, where: where, out: out as NDArray<double>?)
+          as NDArray<R>;
     case BinaryOp.logaddexp:
       return logaddexp(
             a as NDArray<num>,
@@ -197,11 +204,14 @@ NDArray<R> binaryUfunc<T extends Object, R extends Object>(
           )
           as NDArray<R>;
     case BinaryOp.logicalAnd:
-      return logical_and(a, b, where: where, out: out as NDArray<bool>?) as NDArray<R>;
+      return logical_and(a, b, where: where, out: out as NDArray<bool>?)
+          as NDArray<R>;
     case BinaryOp.logicalOr:
-      return logical_or(a, b, where: where, out: out as NDArray<bool>?) as NDArray<R>;
+      return logical_or(a, b, where: where, out: out as NDArray<bool>?)
+          as NDArray<R>;
     case BinaryOp.logicalXor:
-      return logical_xor(a, b, where: where, out: out as NDArray<bool>?) as NDArray<R>;
+      return logical_xor(a, b, where: where, out: out as NDArray<bool>?)
+          as NDArray<R>;
     case BinaryOp.minimum:
     case BinaryOp.fmin:
       return _elementwiseMin(a, b, whereMask: where, out: out);
@@ -1995,14 +2005,23 @@ NDArray<T> outerUfunc<T extends Object>(
   NDArray<dynamic>? where,
   NDArray<T>? out,
 }) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed) || (where != null && where.isDisposed)) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute outer on a disposed array.');
   }
 
   final aReshaped = a.reshape([...a.shape, ...List.filled(b.rank, 1)]);
   final bReshaped = b.reshape([...List.filled(a.rank, 1), ...b.shape]);
 
-  final result = binaryUfunc(aReshaped, bReshaped, op: op, where: where, out: out);
+  final result = binaryUfunc(
+    aReshaped,
+    bReshaped,
+    op: op,
+    where: where,
+    out: out,
+  );
 
   aReshaped.dispose();
   bReshaped.dispose();

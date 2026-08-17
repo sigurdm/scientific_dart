@@ -1379,7 +1379,7 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
 
   return NDArray.scope(() {
     if (a.shape[rank - 1] == 0) {
-      final result = out ?? (NDArray.zeros(stackShape, a.dtype) as NDArray<T>);
+      final result = out ?? NDArray.zeros(stackShape, a.dtype);
       result.fill(
         castValue(a.dtype.isComplex ? Complex(1.0, 0.0) : 1.0, a.dtype),
       );
@@ -3640,7 +3640,8 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 /// - [ArgumentError] if [a] has unsupported dtype.
 /// - [ArgumentError] if [outEigenvalues] or [outEigenvectors] are incompatible.
 /// - [StateError] if the LAPACK call fails.
-({NDArray<num> eigenvalues, NDArray<R> eigenvectors}) eigh<T extends Object, R extends Object>(
+({NDArray<num> eigenvalues, NDArray<R> eigenvectors})
+eigh<T extends Object, R extends Object>(
   NDArray<T> a, {
   MatrixTriangle uplo = MatrixTriangle.lower,
   NDArray<num>? outEigenvalues,

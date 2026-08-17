@@ -209,7 +209,6 @@ NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
   }
 }
 
-
 /// Computes the gamma function, $\Gamma(x)$, element-wise.
 ///
 /// Supports float32 and float64. Integer and boolean types are promoted to float64.
@@ -255,7 +254,8 @@ NDArray<R> gamma<T, R>(
     return res as NDArray<R>;
   }
 
-  final targetDType = (a.dtype == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
+  final targetDType =
+      (a.dtype == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
   final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
@@ -371,11 +371,7 @@ NDArray<R> gamma<T, R>(
 /// final b = erf(a);
 /// print(b.toList()); // [0.0, ~0.8427]
 /// ```
-NDArray<R> erf<T, R>(
-  NDArray<T> a, {
-  NDArray<dynamic>? where,
-  NDArray<R>? out,
-}) {
+NDArray<R> erf<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
   if (a.isDisposed ||
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
@@ -396,7 +392,8 @@ NDArray<R> erf<T, R>(
     return res as NDArray<R>;
   }
 
-  final targetDType = (a.dtype == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
+  final targetDType =
+      (a.dtype == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
   final NDArray<R> result;
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
@@ -491,4 +488,3 @@ NDArray<R> erf<T, R>(
     maskHolder.dispose();
   }
 }
-

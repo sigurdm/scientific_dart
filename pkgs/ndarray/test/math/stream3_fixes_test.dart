@@ -428,7 +428,6 @@ void main() {
           expect(qr03.r.shape, equals([0, 3]));
 
           // lstsq
-          final b0 = NDArray<Float64>.zeros([0], DType.float64);
           final lstsq20 = lstsq(
             mat20,
             NDArray<Float64>.zeros([2], DType.float64),
