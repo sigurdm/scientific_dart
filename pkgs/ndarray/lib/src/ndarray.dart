@@ -580,7 +580,9 @@ final class NDArray<T> implements ffi.Finalizable {
       DType.boolean => List<bool>.from(list),
       DType.complex128 || DType.complex64 => List<Complex>.from(list),
     };
-    arr.data.setRange(0, eagerList.length, eagerList as dynamic);
+    for (var i = 0; i < eagerList.length; i++) {
+      arr.setCellRaw(i, eagerList[i] as T);
+    }
     return arr;
   }
 
@@ -702,13 +704,13 @@ final class NDArray<T> implements ffi.Finalizable {
     for (var i = 0; i < length; i++) {
       final val = start + i * step;
       if (resolvedDType.isComplex) {
-        arr.data[i] = Complex(val, 0.0) as T;
+        arr.setCellRaw(i, Complex(val, 0.0) as T);
       } else if (resolvedDType.isInteger) {
-        arr.data[i] = val.toInt() as T;
+        arr.setCellRaw(i, val.toInt() as T);
       } else if (resolvedDType == DType.boolean) {
-        arr.data[i] = (val != 0.0) as T;
+        arr.setCellRaw(i, (val != 0.0) as T);
       } else {
-        arr.data[i] = val as T;
+        arr.setCellRaw(i, val as T);
       }
     }
     return arr;
@@ -728,11 +730,11 @@ final class NDArray<T> implements ffi.Finalizable {
     final arr = NDArray<T>.zeros([n, n], dtype);
     for (var i = 0; i < n; i++) {
       if (dtype == DType.float32 || dtype == DType.float64) {
-        arr.data[i * n + i] = 1.0 as T;
+        arr.setCellRaw(i * n + i, 1.0 as T);
       } else if (dtype.isComplex) {
-        arr.data[i * n + i] = Complex(1.0, 0.0) as T;
+        arr.setCellRaw(i * n + i, Complex(1.0, 0.0) as T);
       } else {
-        arr.data[i * n + i] = 1 as T;
+        arr.setCellRaw(i * n + i, 1 as T);
       }
     }
     return arr;
@@ -1657,7 +1659,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Modifies entire sub-matrix rows or slices along the specified [axis] targeted by a 1D list of [indices], setting them all to a single [value].
   ///
   /// **Polymorphic Equivalence:**
-  /// When [axis] is `0`, equivalent to calling `this[ [indices.data] ] = value` (advanced row stack scalar mutation).
+  /// When [axis] is `0`, equivalent to calling `this[ [indices] ] = value` (advanced row stack scalar mutation).
   ///
   void setIndicesScalar(NDArray<int> indices, T value, {int axis = 0}) {
     if (axis < 0 || axis >= shape.length) {
@@ -1695,7 +1697,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Modifies entire sub-matrix rows or slices along the specified [axis] targeted by a 1D list of [indices], overwriting them with sequential values from [values].
   ///
   /// **Polymorphic Equivalence:**
-  /// When [axis] is `0`, equivalent to calling `this[ [indices.data] ] = values` (advanced row stack array assignment).
+  /// When [axis] is `0`, equivalent to calling `this[ [indices] ] = values` (advanced row stack array assignment).
   ///
   void setIndices(NDArray<int> indices, NDArray values, {int axis = 0}) {
     if (axis < 0 || axis >= shape.length) {

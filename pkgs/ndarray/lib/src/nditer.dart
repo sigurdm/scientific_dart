@@ -152,7 +152,7 @@ final class NDIter {
 
   /// The current flat index in the underlying array's data buffer.
   ///
-  /// This is the absolute index in the [NDArray.data] list for the first array.
+  /// This is the absolute physical storage index in the underlying buffer for the first array.
   int get index => _absoluteOffsets[0] + _offsets[0];
 
   /// Returns the current flat index in the underlying data buffer for the array at [arrayIndex].
