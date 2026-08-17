@@ -1092,12 +1092,11 @@ NDArray<Float64> rfftfreq(int n, {double d = 1.0}) {
 /// length `n // 2 + 1` along the transformed axis.
 ///
 /// **Preconditions:**
-/// - Input [a] must have rank $\ge 1$ (not empty or 0-dimensional).
-/// - The specified [axis] must be within valid rank boundaries `[-a.rank, a.rank - 1]`.
-/// - If provided, the target length [n] must be greater than 0.
-/// - If provided, the [out] buffer must have shape matching the output shape and target DType.
-///   Output shape is same as [a], but along [axis] it is `(n ?? a.shape[axis]) // 2 + 1`.
-///   Target DType is `complex64` if input is `float32`, and `complex128` otherwise.
+/// - It is an error if [a] or [out] is disposed.
+/// - It is an error if the input array [a] shape is empty (scalar 0D, rank < 1).
+/// - It is an error if the specified [axis] is out of bounds `[-a.rank, a.rank - 1]`.
+/// - It is an error if target length [n] is provided but is less than or equal to 0.
+/// - It is an error if [out] is provided and has incompatible shape (`(n ?? a.shape[axis]) // 2 + 1` along [axis]), incompatible dtype (`complex64` if input is `float32`, `complex128` otherwise), or is not contiguous.
 ///
 /// **Throws:**
 /// - [ArgumentError] if the input array shape is empty (scalar 0D).
@@ -1306,12 +1305,11 @@ NDArray<R> rfft<T, R extends Complex>(
 /// it defaults to `2 * (a.shape[axis] - 1)`.
 ///
 /// **Preconditions:**
-/// - Input [a] must have rank $\ge 1$ (not empty or 0-dimensional).
-/// - The specified [axis] must be within valid rank boundaries `[-a.rank, a.rank - 1]`.
-/// - If provided, the target length [n] must be greater than 0.
-/// - If provided, the [out] buffer must have shape matching the output shape and target DType.
-///   Output shape is same as [a], but along [axis] it is [n].
-///   Target DType is `float32` if input is `complex64` or `float32`, and `float64` otherwise.
+/// - It is an error if [a] or [out] is disposed.
+/// - It is an error if the input array [a] shape is empty (scalar 0D, rank < 1).
+/// - It is an error if the specified [axis] is out of bounds `[-a.rank, a.rank - 1]`.
+/// - It is an error if target length [n] is provided but is less than or equal to 0.
+/// - It is an error if [out] is provided and has incompatible shape ([n] along [axis]), incompatible dtype (`float32` if input is `complex64` or `float32`, `float64` otherwise), or is not contiguous.
 ///
 /// **Throws:**
 /// - [ArgumentError] if the input array shape is empty (scalar 0D).
@@ -1847,6 +1845,15 @@ NDArray<R> ifftn<T, R extends Complex>(
 ///
 /// Equivalent to calling [fftn] with [axes] defaulting to the last two axes `[-2, -1]`.
 ///
+/// **Preconditions:**
+/// - It is an error if input array [a] or [out] is disposed.
+/// - It is an error if input array [a] has rank < 2.
+/// - It is an error if [axes] is provided and does not have length 2.
+/// - It is an error if [s] is provided and does not have length 2.
+/// - It is an error if any axis index in [axes] is out of bounds `[-a.rank, a.rank - 1]` or contains duplicates.
+/// - It is an error if any dimension in [s] is $\le 0$.
+/// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
+///
 /// Reference: [2-dimensional FFT](https://numpy.org/doc/stable/reference/generated/numpy.fft.fft2.html)
 NDArray<R> fft2<T, R extends Complex>(
   NDArray<T> a, {
@@ -1864,6 +1871,15 @@ NDArray<R> fft2<T, R extends Complex>(
 /// Computes the 2-dimensional inverse discrete Fourier Transform.
 ///
 /// Equivalent to calling [ifftn] with [axes] defaulting to the last two axes `[-2, -1]`.
+///
+/// **Preconditions:**
+/// - It is an error if input array [a] or [out] is disposed.
+/// - It is an error if input array [a] has rank < 2.
+/// - It is an error if [axes] is provided and does not have length 2.
+/// - It is an error if [s] is provided and does not have length 2.
+/// - It is an error if any axis index in [axes] is out of bounds `[-a.rank, a.rank - 1]` or contains duplicates.
+/// - It is an error if any dimension in [s] is $\le 0$.
+/// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
 ///
 /// Reference: [Inverse 2-dimensional FFT](https://numpy.org/doc/stable/reference/generated/numpy.fft.ifft2.html)
 NDArray<R> ifft2<T, R extends Complex>(

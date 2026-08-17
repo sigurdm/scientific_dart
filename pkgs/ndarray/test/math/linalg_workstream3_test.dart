@@ -542,6 +542,95 @@ void main() {
         res.dispose();
         a.dispose();
       });
+      group(
+        '8. Zero-Sized Matrix (n == 0) Fast Paths & Consistent Scope Protection',
+        () {
+          test('solve on n == 0 matrix returns bCopy without LAPACK call', () {
+            final a = NDArray<double>.zeros([0, 0], DType.float64);
+            final b1 = NDArray<double>.zeros([0], DType.float64);
+            final x1 = solve(a, b1);
+            expect(x1.shape, [0]);
+            expect(x1.isDisposed, false);
+            x1.dispose();
+
+            final b2 = NDArray<double>.zeros([0, 3], DType.float64);
+            final x2 = solve(a, b2);
+            expect(x2.shape, [0, 3]);
+            expect(x2.isDisposed, false);
+            x2.dispose();
+
+            a.dispose();
+            b1.dispose();
+            b2.dispose();
+          });
+
+          test(
+            'eig, eigvals, eigvalsh, eigh on n == 0 matrix return empty arrays',
+            () {
+              final a = NDArray<double>.zeros([0, 0], DType.float64);
+
+              final resEig = eig(a);
+              expect(resEig.eigenvalues.shape, [0]);
+              expect(resEig.eigenvectors.shape, [0, 0]);
+              expect(resEig.eigenvalues.isDisposed, false);
+              expect(resEig.eigenvectors.isDisposed, false);
+              resEig.dispose();
+
+              final resEigvals = eigvals(a);
+              expect(resEigvals.shape, [0]);
+              expect(resEigvals.isDisposed, false);
+              resEigvals.dispose();
+
+              final resEigvalsh = eigvalsh(a);
+              expect(resEigvalsh.shape, [0]);
+              expect(resEigvalsh.isDisposed, false);
+              resEigvalsh.dispose();
+
+              final resEigh = eigh(a);
+              expect(resEigh.eigenvalues.shape, [0]);
+              expect(resEigh.eigenvectors.shape, [0, 0]);
+              expect(resEigh.eigenvalues.isDisposed, false);
+              expect(resEigh.eigenvectors.isDisposed, false);
+              resEigh.dispose();
+
+              a.dispose();
+            },
+          );
+
+          test('hessenberg, qr, svd on n == 0 matrix and scope safety', () {
+            final a = NDArray<double>.zeros([0, 0], DType.float64);
+
+            final resHess = hessenberg(a);
+            expect(resHess.h.shape, [0, 0]);
+            expect(resHess.q.shape, [0, 0]);
+            expect(resHess.h.isDisposed, false);
+            expect(resHess.q.isDisposed, false);
+            resHess.h.dispose();
+            resHess.q.dispose();
+
+            final resQR = qr(a);
+            expect(resQR.q.shape, [0, 0]);
+            expect(resQR.r.shape, [0, 0]);
+            expect(resQR.q.isDisposed, false);
+            expect(resQR.r.isDisposed, false);
+            resQR.q.dispose();
+            resQR.r.dispose();
+
+            final resSVD = svd(a);
+            expect(resSVD.u.shape, [0, 0]);
+            expect(resSVD.s.shape, [0]);
+            expect(resSVD.vh.shape, [0, 0]);
+            expect(resSVD.u.isDisposed, false);
+            expect(resSVD.s.isDisposed, false);
+            expect(resSVD.vh.isDisposed, false);
+            resSVD.u.dispose();
+            resSVD.s.dispose();
+            resSVD.vh.dispose();
+
+            a.dispose();
+          });
+        },
+      );
     });
   });
 }
