@@ -1592,7 +1592,7 @@ final class NDArray<T> implements ffi.Finalizable {
 
     void walk(int dim, int currentOffset, int maskOffset) {
       if (dim == shape.length) {
-        if (mask.data[maskOffset]) {
+        if (mask.getCellRaw(maskOffset)) {
           if (valueIndex >= values.size) {
             throw ArgumentError(
               'Source values array contains fewer elements than the mask targets',
@@ -1636,7 +1636,7 @@ final class NDArray<T> implements ffi.Finalizable {
 
     void walk(int dim, int currentOffset, int maskOffset) {
       if (dim == shape.length) {
-        if (mask.data[maskOffset]) {
+        if (mask.getCellRaw(maskOffset)) {
           data[currentOffset] = value;
         }
         return;
