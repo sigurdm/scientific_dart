@@ -65,7 +65,7 @@ Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
 
   for (int el = 0; el < totalSize; el++) {
     // Yield a copy of the coordinate list so that users don't receive the same mutated buffer!
-    yield (List<int>.from(coord), a.getCellFlat(offset));
+    yield (List<int>.from(coord), a.data[offset]);
 
     // Advance odometer multidimensional coordinate odometer walk!
     for (int d = shape.length - 1; d >= 0; d--) {
@@ -127,7 +127,7 @@ NDArray nan_to_num(
   while (iter.moveNext()) {
     final idxRes = iter.getIndex(0);
     final idxA = iter.getIndex(1);
-    final val = a.getCellFlat(idxA);
+    final val = a.data[idxA];
 
     if (val is Complex) {
       var r = val.real;
@@ -141,7 +141,7 @@ NDArray nan_to_num(
       if (img == double.infinity) img = targetPosInf;
       if (img == double.negativeInfinity) img = targetNegInf;
 
-      resultCopy.setCellFlat(idxRes, Complex(r, img));
+      resultCopy.data[idxRes] = Complex(r, img);
     } else {
       var dVal = (val as num).toDouble();
 
@@ -153,7 +153,7 @@ NDArray nan_to_num(
         dVal = targetNegInf;
       }
 
-      resultCopy.setCellFlat(idxRes, dVal);
+      resultCopy.data[idxRes] = dVal;
     }
   }
 

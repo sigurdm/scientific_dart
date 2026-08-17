@@ -331,7 +331,7 @@ final class NDArray<T> implements ffi.Finalizable {
     final cStrides = computeCStrides(shape);
     if (strides.length != cStrides.length) return false;
     for (var i = 0; i < strides.length; i++) {
-      if (strides[i] != cStrides[i]) return false;
+      if (shape[i] > 1 && strides[i] != cStrides[i]) return false;
     }
     return true;
   }
@@ -424,11 +424,14 @@ final class NDArray<T> implements ffi.Finalizable {
   NDArray<T> detachToParentScope() {
     final root = _rootParent;
     final scope = Zone.current[_scopeKey] as _NDArrayScope?;
-    if (scope != null) {
-      scope._untrack(root);
-      if (scope._parentScope != null) {
-        scope._parentScope._track(root);
-      }
+    if (scope == null) {
+      throw StateError(
+        'detachToParentScope() is only valid inside an active NDArray scope.',
+      );
+    }
+    scope._untrack(root);
+    if (scope._parentScope != null) {
+      scope._parentScope._track(root);
     }
     return this;
   }
@@ -1211,8 +1214,8 @@ final class NDArray<T> implements ffi.Finalizable {
 
   void _copyStrided(NDArray<T> dest) {
     helpers.unaryOp<dynamic, dynamic>(
-      dest.data,
-      data,
+      dest,
+      this,
       shape,
       strides,
       dest.strides,

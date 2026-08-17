@@ -617,7 +617,7 @@ void main() {
         final outS = NDArray<Float64>.zeros([2], DType.float64);
         final outVh = NDArray<Float64>.zeros([2, 2], DType.float64);
 
-        final res = svd(a, out: (U: outU, S: outS, Vh: outVh));
+        final res = svd(a, out: (u: outU, s: outS, vh: outVh));
         expect(identical(res.u, outU), true);
         expect(identical(res.s, outS), true);
         expect(identical(res.vh, outVh), true);
@@ -640,7 +640,7 @@ void main() {
         final outS = NDArray<Float64>.zeros([2], DType.float64);
         final outVh = NDArray<Float64>.zeros([3, 3], DType.float64);
 
-        final res = svd(a, out: (U: outU, S: outS, Vh: outVh));
+        final res = svd(a, out: (u: outU, s: outS, vh: outVh));
         expect(identical(res.u, outU), true);
         expect(identical(res.s, outS), true);
         expect(identical(res.vh, outVh), true);

@@ -256,5 +256,5 @@ final class NDEnumerate<T> {
   List<int> get coords => _iter.coords;
 
   /// The current element value.
-  T get value => _array.getCellFlat(_iter.index);
+  T get value => _array.data[_iter.index];
 }

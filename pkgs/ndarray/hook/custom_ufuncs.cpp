@@ -3359,21 +3359,29 @@ DEFINE_STRIDED_CUM_OP(s_cumsum_double, double, OP_ADD)
 DEFINE_STRIDED_CUM_OP(s_cumsum_float, float, OP_ADD)
 DEFINE_STRIDED_CUM_OP(s_cumsum_int64, int64_t, OP_ADD)
 DEFINE_STRIDED_CUM_OP(s_cumsum_int32, int32_t, OP_ADD)
+DEFINE_STRIDED_CUM_OP(s_cumsum_int16, int16_t, OP_ADD)
+DEFINE_STRIDED_CUM_OP(s_cumsum_uint8, uint8_t, OP_ADD)
 
 DEFINE_STRIDED_CUM_OP(s_cumprod_double, double, OP_MUL)
 DEFINE_STRIDED_CUM_OP(s_cumprod_float, float, OP_MUL)
 DEFINE_STRIDED_CUM_OP(s_cumprod_int64, int64_t, OP_MUL)
 DEFINE_STRIDED_CUM_OP(s_cumprod_int32, int32_t, OP_MUL)
+DEFINE_STRIDED_CUM_OP(s_cumprod_int16, int16_t, OP_MUL)
+DEFINE_STRIDED_CUM_OP(s_cumprod_uint8, uint8_t, OP_MUL)
 
 DEFINE_STRIDED_CUM_OP(s_cummin_double, double, OP_MIN)
 DEFINE_STRIDED_CUM_OP(s_cummin_float, float, OP_MIN)
 DEFINE_STRIDED_CUM_OP(s_cummin_int64, int64_t, OP_MIN)
 DEFINE_STRIDED_CUM_OP(s_cummin_int32, int32_t, OP_MIN)
+DEFINE_STRIDED_CUM_OP(s_cummin_int16, int16_t, OP_MIN)
+DEFINE_STRIDED_CUM_OP(s_cummin_uint8, uint8_t, OP_MIN)
 
 DEFINE_STRIDED_CUM_OP(s_cummax_double, double, OP_MAX)
 DEFINE_STRIDED_CUM_OP(s_cummax_float, float, OP_MAX)
 DEFINE_STRIDED_CUM_OP(s_cummax_int64, int64_t, OP_MAX)
 DEFINE_STRIDED_CUM_OP(s_cummax_int32, int32_t, OP_MAX)
+DEFINE_STRIDED_CUM_OP(s_cummax_int16, int16_t, OP_MAX)
+DEFINE_STRIDED_CUM_OP(s_cummax_uint8, uint8_t, OP_MAX)
 
 // custom complex ops
 static inline cpx_t cpx_add(cpx_t a, cpx_t b) {

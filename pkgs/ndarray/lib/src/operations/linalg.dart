@@ -3783,8 +3783,8 @@ NDArray<T> cholesky<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
 }
 
 /// Extension on [eigh] result record type to support easy disposal of both arrays.
-extension EighRecordDispose
-    on ({NDArray<num> eigenvalues, NDArray eigenvectors}) {
+extension EighRecordDispose<T>
+    on ({NDArray<num> eigenvalues, NDArray<T> eigenvectors}) {
   /// Disposes both [eigenvalues] and [eigenvectors] simultaneously,
   /// freeing their underlying unmanaged C memory.
   void dispose() {
@@ -5778,11 +5778,8 @@ extension QRRecordDispose<T> on ({NDArray<T> q, NDArray<T> r}) {
   }
 }
 
-extension SVDRecordDispose<T> on ({
-  NDArray<T> u,
-  NDArray<double> s,
-  NDArray<T> vh,
-}) {
+extension SVDRecordDispose<T>
+    on ({NDArray<T> u, NDArray<double> s, NDArray<T> vh}) {
   void dispose() {
     this.u.dispose();
     this.s.dispose();
@@ -5801,16 +5798,6 @@ extension HessenbergRecordDispose<T> on ({NDArray<T> h, NDArray<T> q}) {
   void dispose() {
     this.h.dispose();
     this.q.dispose();
-  }
-}
-
-extension EighRecordDispose<T> on ({
-  NDArray<num> eigenvalues,
-  NDArray<T> eigenvectors,
-}) {
-  void dispose() {
-    this.eigenvalues.dispose();
-    this.eigenvectors.dispose();
   }
 }
 

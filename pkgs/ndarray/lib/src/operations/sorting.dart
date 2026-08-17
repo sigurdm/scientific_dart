@@ -1904,9 +1904,6 @@ NDArray<int> count_nonzero<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
     ScratchArena.reset(marker);
   }
 
-  if (out == null) {
-    result.detachToParentScope();
-  }
   return result;
 }
 
@@ -2129,9 +2126,6 @@ NDArray<int> _argminmaxFFI<T>(
     ScratchArena.reset(marker);
   }
 
-  if (out == null) {
-    result.detachToParentScope();
-  }
   return result;
 }
 
