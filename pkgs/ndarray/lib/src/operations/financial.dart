@@ -271,19 +271,19 @@ NDArray<Float64> irr(
 
     final companion = NDArray<Float64>.zeros([n, n], DType.float64);
     for (var j = 0; j < n; j++) {
-      companion.setCell([
-        0,
+      companion.setCellFlat(
         j,
-      ], Float64(-coeffs.getCell([j + 1]) / coeffs.getCell([0])));
+        Float64(-coeffs.getCellFlat(j + 1) / coeffs.getCellFlat(0)),
+      );
     }
     for (var i = 1; i < n; i++) {
-      companion.setCell([i, i - 1], Float64(1.0));
+      companion.setCellFlat(i * n + i - 1, Float64(1.0));
     }
 
     final eigResult = eig(companion);
     final List<double> eirr = [];
     for (var i = 0; i < n; i++) {
-      final root = eigResult.eigenvalues.getCell([i]);
+      final root = eigResult.eigenvalues.getCellFlat(i);
       if (root.imag.abs() < 1e-12) {
         final r = root.real - 1.0;
         if (r >= -1.0) {

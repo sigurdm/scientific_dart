@@ -338,37 +338,37 @@ NDArray<Complex> _orthoRoots<T>(
         cMat = NDArray<Complex>.zeros([n, n], c.dtype as DType<Complex>);
         break;
       default:
-        cMat = NDArray<double>.zeros([n, n], DType.float64);
+        cMat = NDArray<Float64>.zeros([n, n], DType.float64);
         break;
     }
     final targetMatDType = cMat.dtype;
 
     switch (kind) {
       case _OrthoKind.chebyshev:
-        cMat.setCell([
-          1,
-          0,
-        ], castValue(isComp ? Complex(1.0, 0.0) : 1.0, targetMatDType));
+        cMat.setCellFlat(
+          1 * n + 0,
+          castValue(isComp ? Complex(1.0, 0.0) : 1.0, targetMatDType),
+        );
         for (var i = 1; i < n - 1; i++) {
-          cMat.setCell([
-            i + 1,
-            i,
-          ], castValue(isComp ? Complex(0.5, 0.0) : 0.5, targetMatDType));
+          cMat.setCellFlat(
+            (i + 1) * n + i,
+            castValue(isComp ? Complex(0.5, 0.0) : 0.5, targetMatDType),
+          );
         }
         for (var i = 0; i < n - 1; i++) {
-          cMat.setCell([
-            i,
-            i + 1,
-          ], castValue(isComp ? Complex(0.5, 0.0) : 0.5, targetMatDType));
+          cMat.setCellFlat(
+            i * n + i + 1,
+            castValue(isComp ? Complex(0.5, 0.0) : 0.5, targetMatDType),
+          );
         }
         for (var i = 0; i < n; i++) {
           final ci = c.getCellFlat(i) as Object;
           final factor = (i == n - 1) ? 1.0 : 2.0;
           final denom = _mulScalar(cn, factor);
           final norm = _divScalar(ci, denom);
-          final cur = cMat.getCell([i, n - 1]) as Object;
+          final cur = cMat.getCellFlat(i * n + n - 1) as Object;
           final updated = _subScalar(cur, norm);
-          cMat.setCell([i, n - 1], castValue(updated, targetMatDType));
+          cMat.setCellFlat(i * n + n - 1, castValue(updated, targetMatDType));
         }
         break;
 
@@ -376,34 +376,34 @@ NDArray<Complex> _orthoRoots<T>(
         for (var i = 0; i < n - 1; i++) {
           final sub = (i + 1) / (2 * i + 3);
           final sup = (i + 1) / (2 * i + 1);
-          cMat.setCell([
-            i + 1,
-            i,
-          ], castValue(isComp ? Complex(sub, 0.0) : sub, targetMatDType));
-          cMat.setCell([
-            i,
-            i + 1,
-          ], castValue(isComp ? Complex(sup, 0.0) : sup, targetMatDType));
+          cMat.setCellFlat(
+            (i + 1) * n + i,
+            castValue(isComp ? Complex(sub, 0.0) : sub, targetMatDType),
+          );
+          cMat.setCellFlat(
+            i * n + i + 1,
+            castValue(isComp ? Complex(sup, 0.0) : sup, targetMatDType),
+          );
         }
         final factor = (2 * n + 1) / n;
         for (var i = 0; i < n; i++) {
           final ci = c.getCellFlat(i) as Object;
           final denom = _mulScalar(cn, factor);
           final norm = _divScalar(ci, denom);
-          final cur = cMat.getCell([i, n - 1]) as Object;
+          final cur = cMat.getCellFlat(i * n + n - 1) as Object;
           final updated = _subScalar(cur, norm);
-          cMat.setCell([i, n - 1], castValue(updated, targetMatDType));
+          cMat.setCellFlat(i * n + n - 1, castValue(updated, targetMatDType));
         }
         break;
 
       case _OrthoKind.hermite:
         for (var i = 0; i < n - 1; i++) {
-          cMat.setCell([
-            i + 1,
-            i,
-          ], castValue(isComp ? Complex(0.5, 0.0) : 0.5, targetMatDType));
-          cMat.setCell(
-            [i, i + 1],
+          cMat.setCellFlat(
+            (i + 1) * n + i,
+            castValue(isComp ? Complex(0.5, 0.0) : 0.5, targetMatDType),
+          );
+          cMat.setCellFlat(
+            i * n + i + 1,
             castValue(
               isComp ? Complex((i + 1).toDouble(), 0.0) : (i + 1).toDouble(),
               targetMatDType,
@@ -414,13 +414,12 @@ NDArray<Complex> _orthoRoots<T>(
           final ci = c.getCellFlat(i) as Object;
           final denom = _mulScalar(cn, 2.0);
           final norm = _divScalar(ci, denom);
-          final cur = cMat.getCell([i, n - 1]) as Object;
+          final cur = cMat.getCellFlat(i * n + n - 1) as Object;
           final updated = _subScalar(cur, norm);
-          cMat.setCell([i, n - 1], castValue(updated, targetMatDType));
+          cMat.setCellFlat(i * n + n - 1, castValue(updated, targetMatDType));
         }
         break;
     }
-
     final res = eigvals(cMat, out: out);
     if (out != null) return out;
     return res.detachToParentScope();

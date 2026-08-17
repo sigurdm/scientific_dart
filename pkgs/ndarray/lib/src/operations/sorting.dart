@@ -234,108 +234,111 @@ NDArray<int> argsort<T extends Object>(
       resPtr = result.pointer.cast<ffi.Int>();
     }
 
-    if (src.dtype == DType.float64) {
-      final dataPtr = src.pointer.cast<ffi.Double>();
-      for (var r = 0; r < numRows; r++) {
-        native_argsort_double(dataPtr + r * n, resPtr + r * n, n, nativeKind);
-      }
-      if (is64) {
-        final outPtr = result.pointer.cast<ffi.LongLong>();
-        for (var i = 0; i < totalSize; i++) {
-          outPtr[i] = resPtr[i];
+    switch (src.dtype) {
+      case DType.float64:
+        final dataPtr = src.pointer.cast<ffi.Double>();
+        for (var r = 0; r < numRows; r++) {
+          native_argsort_double(dataPtr + r * n, resPtr + r * n, n, nativeKind);
         }
-      }
-      return result;
-    } else if (src.dtype == DType.float32) {
-      final dataPtr = src.pointer.cast<ffi.Float>();
-      for (var r = 0; r < numRows; r++) {
-        native_argsort_float(dataPtr + r * n, resPtr + r * n, n, nativeKind);
-      }
-      if (is64) {
-        final outPtr = result.pointer.cast<ffi.LongLong>();
-        for (var i = 0; i < totalSize; i++) {
-          outPtr[i] = resPtr[i];
+        if (is64) {
+          final outPtr = result.pointer.cast<ffi.LongLong>();
+          for (var i = 0; i < totalSize; i++) {
+            outPtr[i] = resPtr[i];
+          }
         }
-      }
-      return result;
-    } else if (src.dtype == DType.int64) {
-      final dataPtr = src.pointer.cast<ffi.LongLong>();
-      for (var r = 0; r < numRows; r++) {
-        native_argsort_int64(dataPtr + r * n, resPtr + r * n, n, nativeKind);
-      }
-      if (is64) {
-        final outPtr = result.pointer.cast<ffi.LongLong>();
-        for (var i = 0; i < totalSize; i++) {
-          outPtr[i] = resPtr[i];
+        return result;
+      case DType.float32:
+        final dataPtr = src.pointer.cast<ffi.Float>();
+        for (var r = 0; r < numRows; r++) {
+          native_argsort_float(dataPtr + r * n, resPtr + r * n, n, nativeKind);
         }
-      }
-      return result;
-    } else if (src.dtype == DType.int32) {
-      final dataPtr = src.pointer.cast<ffi.Int>();
-      for (var r = 0; r < numRows; r++) {
-        native_argsort_int32(dataPtr + r * n, resPtr + r * n, n, nativeKind);
-      }
-      if (is64) {
-        final outPtr = result.pointer.cast<ffi.LongLong>();
-        for (var i = 0; i < totalSize; i++) {
-          outPtr[i] = resPtr[i];
+        if (is64) {
+          final outPtr = result.pointer.cast<ffi.LongLong>();
+          for (var i = 0; i < totalSize; i++) {
+            outPtr[i] = resPtr[i];
+          }
         }
-      }
-      return result;
-    } else if (src.dtype == DType.int16) {
-      final dataPtr = src.pointer.cast<ffi.Int16>();
-      for (var r = 0; r < numRows; r++) {
-        native_argsort_int16(dataPtr + r * n, resPtr + r * n, n, nativeKind);
-      }
-      if (is64) {
-        final outPtr = result.pointer.cast<ffi.LongLong>();
-        for (var i = 0; i < totalSize; i++) {
-          outPtr[i] = resPtr[i];
+        return result;
+      case DType.int64:
+        final dataPtr = src.pointer.cast<ffi.LongLong>();
+        for (var r = 0; r < numRows; r++) {
+          native_argsort_int64(dataPtr + r * n, resPtr + r * n, n, nativeKind);
         }
-      }
-      return result;
-    } else if (src.dtype == DType.uint8) {
-      final dataPtr = src.pointer.cast<ffi.Uint8>();
-      for (var r = 0; r < numRows; r++) {
-        native_argsort_uint8(dataPtr + r * n, resPtr + r * n, n, nativeKind);
-      }
-      if (is64) {
-        final outPtr = result.pointer.cast<ffi.LongLong>();
-        for (var i = 0; i < totalSize; i++) {
-          outPtr[i] = resPtr[i];
+        if (is64) {
+          final outPtr = result.pointer.cast<ffi.LongLong>();
+          for (var i = 0; i < totalSize; i++) {
+            outPtr[i] = resPtr[i];
+          }
         }
-      }
-      return result;
+        return result;
+      case DType.int32:
+        final dataPtr = src.pointer.cast<ffi.Int>();
+        for (var r = 0; r < numRows; r++) {
+          native_argsort_int32(dataPtr + r * n, resPtr + r * n, n, nativeKind);
+        }
+        if (is64) {
+          final outPtr = result.pointer.cast<ffi.LongLong>();
+          for (var i = 0; i < totalSize; i++) {
+            outPtr[i] = resPtr[i];
+          }
+        }
+        return result;
+      case DType.int16:
+        final dataPtr = src.pointer.cast<ffi.Int16>();
+        for (var r = 0; r < numRows; r++) {
+          native_argsort_int16(dataPtr + r * n, resPtr + r * n, n, nativeKind);
+        }
+        if (is64) {
+          final outPtr = result.pointer.cast<ffi.LongLong>();
+          for (var i = 0; i < totalSize; i++) {
+            outPtr[i] = resPtr[i];
+          }
+        }
+        return result;
+      case DType.uint8:
+        final dataPtr = src.pointer.cast<ffi.Uint8>();
+        for (var r = 0; r < numRows; r++) {
+          native_argsort_uint8(dataPtr + r * n, resPtr + r * n, n, nativeKind);
+        }
+        if (is64) {
+          final outPtr = result.pointer.cast<ffi.LongLong>();
+          for (var i = 0; i < totalSize; i++) {
+            outPtr[i] = resPtr[i];
+          }
+        }
+        return result;
+      case DType.complex128:
+      case DType.complex64:
+        for (var r = 0; r < numRows; r++) {
+          final rowStart = r * n;
+          final indices = List<int>.generate(n, (i) => i);
+          indices.sort((i, j) {
+            final cA = src.getCellFlat(rowStart + i) as Complex;
+            final cB = src.getCellFlat(rowStart + j) as Complex;
+            if (cA.real != cB.real) return cA.real.compareTo(cB.real);
+            return cA.imag.compareTo(cB.imag);
+          });
+          for (var i = 0; i < n; i++) {
+            result.setCellFlat(rowStart + i, indices[i]);
+          }
+        }
+        return result;
+      case DType.boolean:
+        for (var r = 0; r < numRows; r++) {
+          final rowStart = r * n;
+          final indices = List<int>.generate(n, (i) => i);
+          indices.sort((i, j) {
+            final bA = src.getCellFlat(rowStart + i) as bool;
+            final bB = src.getCellFlat(rowStart + j) as bool;
+            if (bA == bB) return 0;
+            return bA ? 1 : -1;
+          });
+          for (var i = 0; i < n; i++) {
+            result.setCellFlat(rowStart + i, indices[i]);
+          }
+        }
+        return result;
     }
-
-    for (var r = 0; r < numRows; r++) {
-      final rowStart = r * n;
-      final indices = List<int>.generate(n, (i) => i);
-
-      if (src.dtype == DType.complex128 || src.dtype == DType.complex64) {
-        indices.sort((i, j) {
-          final cA = src.getCellFlat(rowStart + i) as Complex;
-          final cB = src.getCellFlat(rowStart + j) as Complex;
-          if (cA.real != cB.real) return cA.real.compareTo(cB.real);
-          return cA.imag.compareTo(cB.imag);
-        });
-      } else if (src.dtype == DType.boolean) {
-        indices.sort((i, j) {
-          final bA = src.getCellFlat(rowStart + i) as bool;
-          final bB = src.getCellFlat(rowStart + j) as bool;
-          if (bA == bB) return 0;
-          return bA ? 1 : -1;
-        });
-      } else {
-        throw UnimplementedError('Unsupported dtype for argsort: ${src.dtype}');
-      }
-
-      for (var i = 0; i < n; i++) {
-        result.setCellFlat(rowStart + i, indices[i]);
-      }
-    }
-
-    return result;
   } finally {
     if (marker != null) {
       ScratchArena.reset(marker);
@@ -1114,7 +1117,7 @@ NDArray<int> searchsorted<T extends Object>(
 /// final cond = NDArray.fromList([true, false, true], [3], DType.boolean);
 /// final x = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
 /// final y = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float64);
-/// final result = where(cond, x, y) as NDArray<double>;
+/// final result = where(cond, x, y) as NDArray<Float64>;
 /// print(result.toList()); // [1.0, 20.0, 3.0]
 /// result.dispose();
 /// ```

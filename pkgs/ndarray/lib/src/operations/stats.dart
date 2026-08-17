@@ -3105,31 +3105,34 @@ NDArray<T> nansum<T extends Object>(
 
   if (axis == null) {
     T acc;
-    if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-      var sumVal = 0;
-      final en = NDEnumerate<T>(a);
-      while (en.moveNext()) {
-        sumVal += en.value as int;
-      }
-      acc = sumVal as T;
-    } else if (a.dtype == DType.complex64 || a.dtype == DType.complex128) {
-      var sumVal = Complex(0.0, 0.0);
-      final en = NDEnumerate<T>(a);
-      while (en.moveNext()) {
-        final val = en.value as Complex;
-        if (val.real.isNaN || val.imag.isNaN) continue;
-        sumVal += val;
-      }
-      acc = sumVal as T;
-    } else {
-      var sumVal = 0.0;
-      final en = NDEnumerate<T>(a);
-      while (en.moveNext()) {
-        final val = en.value as double;
-        if (val.isNaN) continue;
-        sumVal += val;
-      }
-      acc = sumVal as T;
+    switch (a.dtype) {
+      case DType.int32:
+      case DType.int64:
+        var sumVal = 0;
+        final en = NDEnumerate<T>(a);
+        while (en.moveNext()) {
+          sumVal += en.value as int;
+        }
+        acc = sumVal as T;
+      case DType.complex64:
+      case DType.complex128:
+        var sumVal = Complex(0.0, 0.0);
+        final en = NDEnumerate<T>(a);
+        while (en.moveNext()) {
+          final val = en.value as Complex;
+          if (val.real.isNaN || val.imag.isNaN) continue;
+          sumVal += val;
+        }
+        acc = sumVal as T;
+      default:
+        var sumVal = 0.0;
+        final en = NDEnumerate<T>(a);
+        while (en.moveNext()) {
+          final val = en.value as double;
+          if (val.isNaN) continue;
+          sumVal += val;
+        }
+        acc = sumVal as T;
     }
     final result = out ?? NDArray<T>.create(targetShape, a.dtype);
     result.setCell(List.filled(targetShape.length, 0), acc);

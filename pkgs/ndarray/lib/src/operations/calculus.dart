@@ -306,14 +306,13 @@ NDArray<T> trapz<T extends Object>(
               throw ArgumentError('Unsupported DType for trapz: ${y.dtype}');
           }
         } else {
-          final doubleValues = values
-              .map((e) => (e as num).toDouble())
-              .toList();
           NDArray<Float64>? spacingArray;
           try {
-            spacingArray = NDArray<Float64>.fromList(doubleValues, [
-              N,
-            ], DType.float64);
+            spacingArray = NDArray<Float64>.create([N], DType.float64);
+            var i = 0;
+            for (final val in values) {
+              spacingArray.setCellFlat(i++, Float64((val as num).toDouble()));
+            }
 
             final dtype = y.dtype;
             switch (dtype) {
@@ -677,14 +676,13 @@ NDArray<T> gradient<T extends Object>(
               throw ArgumentError('Unsupported DType for gradient: ${f.dtype}');
           }
         } else {
-          final doubleValues = values
-              .map((e) => (e as num).toDouble())
-              .toList();
           NDArray<Float64>? spacingArray;
           try {
-            spacingArray = NDArray<Float64>.fromList(doubleValues, [
-              N,
-            ], DType.float64);
+            spacingArray = NDArray<Float64>.create([N], DType.float64);
+            var i = 0;
+            for (final val in values) {
+              spacingArray.setCellFlat(i++, Float64((val as num).toDouble()));
+            }
             final dtype = f.dtype;
             switch (dtype) {
               case DType.float64:

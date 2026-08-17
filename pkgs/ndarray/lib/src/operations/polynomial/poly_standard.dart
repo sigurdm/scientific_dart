@@ -328,7 +328,7 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
         aMat = NDArray<Complex>.zeros([deg, deg], p.dtype as DType<Complex>);
         break;
       default:
-        aMat = NDArray<double>.zeros([deg, deg], DType.float64);
+        aMat = NDArray<Float64>.zeros([deg, deg], DType.float64);
         break;
     }
 
@@ -338,11 +338,11 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
     for (var j = 0; j < deg; j++) {
       final cj = p.getCellFlat(firstNonZero + j + 1) as Object;
       final val = _divScalar(_negScalar(cj), c0);
-      aMat.setCell([0, j], castValue(val, targetMatDType));
+      aMat.setCellFlat(j, castValue(val, targetMatDType));
     }
     for (var i = 1; i < deg; i++) {
       final one = isComp ? Complex(1.0, 0.0) : 1.0;
-      aMat.setCell([i, i - 1], castValue(one, targetMatDType));
+      aMat.setCellFlat(i * deg + i - 1, castValue(one, targetMatDType));
     }
 
     final res = eigvals(aMat, out: out);
