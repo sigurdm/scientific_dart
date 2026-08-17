@@ -12,17 +12,17 @@ import "../helpers.dart";
 ///
 /// **Preconditions:**
 /// - The input array [a] must not be disposed.
-/// - If provided, the output recycler [out] must match the expected target shape and float `DType.`
+/// - If provided, the output recycler [out] must match the expected target shape and float [DType].
 ///
 /// It is an error if the array has been disposed (throws [StateError]), or if
 /// [out] is provided with incompatible shape or dtype (throws [ArgumentError]).
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<Complex>.create([2], `DType.complex128);`
+/// final a = NDArray<Complex>.create([2], DType.complex128);
 /// a.setCell([0], Complex(3.0, 4.0));
 /// a.setCell([1], Complex(-1.0, 0.0));
-/// final r = real(a); // [3.0, -1.0] (`DType.float64)`
+/// final r = real(a); // [3.0, -1.0] (DType.float64)
 /// ```
 NDArray<R> real<T, R>(
   NDArray<T> a, {
@@ -114,21 +114,21 @@ NDArray<R> real<T, R>(
 /// Returns the imaginary part of a complex array element-wise.
 ///
 /// If the input array [a] is already real, returns a zero-filled array of matching shape
-/// and target float `DType.`
+/// and target float [DType].
 ///
 /// **Preconditions:**
 /// - The input array [a] must not be disposed.
-/// - If provided, the output recycler [out] must match the expected target shape and float `DType.`
+/// - If provided, the output recycler [out] must match the expected target shape and float [DType].
 ///
 /// It is an error if the array has been disposed (throws [StateError]), or if
 /// [out] is provided with incompatible shape or dtype (throws [ArgumentError]).
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<Complex>.create([2], `DType.complex128);`
+/// final a = NDArray<Complex>.create([2], DType.complex128);
 /// a.setCell([0], Complex(3.0, 4.0));
 /// a.setCell([1], Complex(-1.0, 0.0));
-/// final im = imag(a); // [4.0, 0.0] (`DType.float64)`
+/// final im = imag(a); // [4.0, 0.0] (DType.float64)
 /// ```
 NDArray<R> imag<T, R>(
   NDArray<T> a, {

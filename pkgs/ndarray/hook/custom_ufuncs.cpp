@@ -218,6 +218,7 @@ static void s_cast_generic_impl(
 
 template <typename T>
 static inline T real_sinc(T x) {
+    if (std::isinf(x)) return (T)0.0;
     const T pi = (T)3.14159265358979323846;
     T abs_x = std::abs(x);
     if (abs_x < (T)1e-4) {
@@ -231,6 +232,9 @@ static inline T real_sinc(T x) {
 
 template <typename T>
 static inline std::complex<T> complex_sinc_impl(std::complex<T> cz) {
+    if (std::isinf(std::abs(cz)) || std::isinf(cz.real()) || std::isinf(cz.imag())) {
+        return std::complex<T>((T)0.0, (T)0.0);
+    }
     const T pi = (T)3.14159265358979323846;
     T abs_z = std::abs(cz);
     if (abs_z < (T)1e-4) {
@@ -4745,6 +4749,58 @@ static inline int32_t int32_remainder(int32_t x, int32_t y) {
     return rem;
 }
 
+static inline int64_t int64_fmod(int64_t x, int64_t y) {
+    if (y == 0) {
+        division_error_flag = 1;
+        return 0;
+    }
+    if (x == INT64_MIN && y == -1) {
+        division_error_flag = 2;
+        return 0;
+    }
+    return x % y;
+}
+static inline int32_t int32_fmod(int32_t x, int32_t y) {
+    if (y == 0) {
+        division_error_flag = 1;
+        return 0;
+    }
+    if (x == INT32_MIN && y == -1) {
+        division_error_flag = 2;
+        return 0;
+    }
+    return x % y;
+}
+
+template <typename T>
+static inline T gcd_impl(T a, T b) {
+    uint64_t u = (a < 0) ? -static_cast<uint64_t>(a) : static_cast<uint64_t>(a);
+    uint64_t v = (b < 0) ? -static_cast<uint64_t>(b) : static_cast<uint64_t>(b);
+    while (v != 0) {
+        uint64_t t = v;
+        v = u % v;
+        u = t;
+    }
+    return static_cast<T>(u);
+}
+
+template <typename T>
+static inline T lcm_impl(T a, T b) {
+    if (a == 0 || b == 0) return 0;
+    T g = gcd_impl(a, b);
+    uint64_t u = (a < 0) ? -static_cast<uint64_t>(a) : static_cast<uint64_t>(a);
+    uint64_t v = (b < 0) ? -static_cast<uint64_t>(b) : static_cast<uint64_t>(b);
+    return static_cast<T>((u / static_cast<uint64_t>(g)) * v);
+}
+
+template <typename T>
+static inline T heaviside_impl(T x, T h0) {
+    if (std::isnan(x)) return x;
+    if (x < (T)0) return (T)0;
+    if (x > (T)0) return (T)1;
+    return h0;
+}
+
 static inline cpx_t cpx_square(cpx_t z) {
     return (cpx_t){z.r * z.r - z.i * z.i, 2.0 * z.r * z.i};
 }
@@ -4815,6 +4871,21 @@ DEFINE_CONTIGUOUS_BINARY_IMPL(v_remainder_double, double, double, double, double
 DEFINE_CONTIGUOUS_BINARY_IMPL(v_remainder_float, float, float, float, float_remainder(x, y))
 DEFINE_CONTIGUOUS_BINARY_IMPL(v_remainder_int64, int64_t, int64_t, int64_t, int64_remainder(x, y))
 DEFINE_CONTIGUOUS_BINARY_IMPL(v_remainder_int32, int32_t, int32_t, int32_t, int32_remainder(x, y))
+
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_fmod_double, double, double, double, std::fmod(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_fmod_float, float, float, float, std::fmod(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_fmod_int64, int64_t, int64_t, int64_t, int64_fmod(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_fmod_int32, int32_t, int32_t, int32_t, int32_fmod(x, y))
+
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_gcd_int64, int64_t, int64_t, int64_t, gcd_impl<int64_t>(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_gcd_int32, int32_t, int32_t, int32_t, gcd_impl<int32_t>(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_lcm_int64, int64_t, int64_t, int64_t, lcm_impl<int64_t>(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_lcm_int32, int32_t, int32_t, int32_t, lcm_impl<int32_t>(x, y))
+
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_heaviside_double, double, double, double, heaviside_impl<double>(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_heaviside_float, float, float, float, heaviside_impl<float>(x, y))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_heaviside_int64, int64_t, int64_t, int64_t, (x < 0 ? 0 : (x > 0 ? 1 : y)))
+DEFINE_CONTIGUOUS_BINARY_IMPL(v_heaviside_int32, int32_t, int32_t, int32_t, (x < 0 ? 0 : (x > 0 ? 1 : y)))
 
 DEFINE_CONTIGUOUS_UNARY_IMPL(v_isnan_double, double, uint8_t, isnan(x) ? 1 : 0)
 DEFINE_CONTIGUOUS_UNARY_IMPL(v_isnan_float, float, uint8_t, isnan(x) ? 1 : 0)
@@ -4904,6 +4975,21 @@ DEFINE_STRIDED_BINARY_IMPL(s_remainder_double, double, double, double, double_re
 DEFINE_STRIDED_BINARY_IMPL(s_remainder_float, float, float, float, float_remainder(x, y))
 DEFINE_STRIDED_BINARY_IMPL(s_remainder_int64, int64_t, int64_t, int64_t, int64_remainder(x, y))
 DEFINE_STRIDED_BINARY_IMPL(s_remainder_int32, int32_t, int32_t, int32_t, int32_remainder(x, y))
+
+DEFINE_STRIDED_BINARY_IMPL(s_fmod_double, double, double, double, std::fmod(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_fmod_float, float, float, float, std::fmod(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_fmod_int64, int64_t, int64_t, int64_t, int64_fmod(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_fmod_int32, int32_t, int32_t, int32_t, int32_fmod(x, y))
+
+DEFINE_STRIDED_BINARY_IMPL(s_gcd_int64, int64_t, int64_t, int64_t, gcd_impl<int64_t>(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_gcd_int32, int32_t, int32_t, int32_t, gcd_impl<int32_t>(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_lcm_int64, int64_t, int64_t, int64_t, lcm_impl<int64_t>(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_lcm_int32, int32_t, int32_t, int32_t, lcm_impl<int32_t>(x, y))
+
+DEFINE_STRIDED_BINARY_IMPL(s_heaviside_double, double, double, double, heaviside_impl<double>(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_heaviside_float, float, float, float, heaviside_impl<float>(x, y))
+DEFINE_STRIDED_BINARY_IMPL(s_heaviside_int64, int64_t, int64_t, int64_t, (x < 0 ? 0 : (x > 0 ? 1 : y)))
+DEFINE_STRIDED_BINARY_IMPL(s_heaviside_int32, int32_t, int32_t, int32_t, (x < 0 ? 0 : (x > 0 ? 1 : y)))
 
 DEFINE_STRIDED_BINARY_IMPL(s_copysign_double, double, double, double, copysign(x, y))
 DEFINE_STRIDED_BINARY_IMPL(s_copysign_float, float, float, float, copysignf(x, y))
@@ -10032,6 +10118,7 @@ const double NDARRAY_PI = 3.14159265358979323846;
 
 template <typename T>
 static inline T i0_real_impl(T x) {
+    if (std::isinf(x)) return std::abs(x);
     T abs_x = std::abs(x);
     if (abs_x <= (T)3.75) {
         T t = x / (T)3.75;
@@ -10129,6 +10216,16 @@ DEFINE_STRIDED_UNARY_IMPL(s_i0_complex64, cpx_f_t, cpx_f_t, cpx_i0_f(x))
 
 DEFINE_CONTIGUOUS_UNARY_IMPL(v_i0_complex128, cpx_t, cpx_t, cpx_i0(x))
 DEFINE_STRIDED_UNARY_IMPL(s_i0_complex128, cpx_t, cpx_t, cpx_i0(x))
+
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_gamma_float, float, float, std::tgamma(x))
+DEFINE_STRIDED_UNARY_IMPL(s_gamma_float, float, float, std::tgamma(x))
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_gamma_double, double, double, std::tgamma(x))
+DEFINE_STRIDED_UNARY_IMPL(s_gamma_double, double, double, std::tgamma(x))
+
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_erf_float, float, float, std::erf(x))
+DEFINE_STRIDED_UNARY_IMPL(s_erf_float, float, float, std::erf(x))
+DEFINE_CONTIGUOUS_UNARY_IMPL(v_erf_double, double, double, std::erf(x))
+DEFINE_STRIDED_UNARY_IMPL(s_erf_double, double, double, std::erf(x))
 
 }
 

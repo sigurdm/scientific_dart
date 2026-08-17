@@ -2361,9 +2361,18 @@ NDArray<T> negative<T>(
 /// Corresponds to Dart's `~/` operator.
 ///
 /// **Division by Zero:**
-/// - **Integer arrays**: It is an error if divisor contains any `0` elements (throws [UnsupportedError]).
-///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
+/// - **Integer arrays**: Division by zero is an error.
 /// - **Floating-point arrays**: Returns `double.nan` silently without throwing exceptions.
+///
+/// **Preconditions:**
+/// - The input arrays [x1] and [x2] must not be disposed.
+/// - If [out] is provided, it must not be disposed and must have compatible shape and dtype.
+/// - For integer arrays, the divisor [x2] must not contain any `0` elements.
+///
+/// It is an error if:
+/// - [x1], [x2], or [out] is disposed (throws [StateError]).
+/// - [out] has incompatible shape or dtype (throws [ArgumentError]).
+/// - for integer arrays, the divisor [x2] contains any `0` elements (throws [UnsupportedError]).
 ///
 /// **Example:**
 /// ```dart
@@ -2613,6 +2622,24 @@ NDArray<T> floor_divide<T extends Object>(
   }
 }
 
+/// Computes the element-wise remainder of division of two arrays (`x1 - floor_divide(x1, x2) * x2`).
+///
+/// The sign of the result matches the divisor [x2]. For C-style remainder where
+/// the sign matches the dividend [x1], use [fmod].
+///
+/// **Division by Zero:**
+/// - **Integer arrays**: Division by zero is an error.
+/// - **Floating-point arrays**: Returns `double.nan` silently.
+///
+/// **Preconditions:**
+/// - The input arrays [x1] and [x2] must not be disposed.
+/// - If [out] is provided, it must not be disposed and must have compatible shape and dtype.
+/// - For integer arrays, the divisor [x2] must not contain any `0` elements.
+///
+/// It is an error if:
+/// - [x1], [x2], or [out] is disposed (throws [StateError]).
+/// - [out] has incompatible shape or dtype (throws [ArgumentError]).
+/// - for integer arrays, the divisor [x2] contains any `0` elements (throws [UnsupportedError]).
 NDArray<T> remainder<T extends Object>(
   NDArray<T> x1,
   NDArray<T> x2, {
@@ -2860,6 +2887,21 @@ NDArray<T> remainder<T extends Object>(
   }
 }
 
+/// Alias for [remainder].
+///
+/// **Division by Zero:**
+/// - **Integer arrays**: Division by zero is an error.
+/// - **Floating-point arrays**: Returns `double.nan` silently.
+///
+/// **Preconditions:**
+/// - The input arrays [x1] and [x2] must not be disposed.
+/// - If [out] is provided, it must not be disposed and must have compatible shape and dtype.
+/// - For integer arrays, the divisor [x2] must not contain any `0` elements.
+///
+/// It is an error if:
+/// - [x1], [x2], or [out] is disposed (throws [StateError]).
+/// - [out] has incompatible shape or dtype (throws [ArgumentError]).
+/// - for integer arrays, the divisor [x2] contains any `0` elements (throws [UnsupportedError]).
 NDArray<T> mod<T extends Object>(
   NDArray<T> x1,
   NDArray<T> x2, {
@@ -2867,11 +2909,823 @@ NDArray<T> mod<T extends Object>(
   NDArray<T>? out,
 }) => remainder<T>(x1, x2, where: where, out: out);
 
+/// Element-wise floor division and remainder simultaneously (`floor_divide(x1, x2)`, `remainder(x1, x2)`).
+///
+/// **Division by Zero:**
+/// - **Integer arrays**: Division by zero is an error.
+/// - **Floating-point arrays**: Returns `double.nan` silently.
+///
+/// **Preconditions:**
+/// - The input arrays [x1] and [x2] must not be disposed.
+/// - For integer arrays, the divisor [x2] must not contain any `0` elements.
+///
+/// It is an error if:
+/// - [x1] or [x2] is disposed (throws [StateError]).
+/// - for integer arrays, the divisor [x2] contains any `0` elements (throws [UnsupportedError]).
 (NDArray<T> div, NDArray<T> mod) divmod<T extends Object>(
   NDArray<T> x1,
   NDArray<T> x2,
 ) {
   return (floor_divide<T>(x1, x2), remainder<T>(x1, x2));
+}
+
+/// Element-wise C-style modulo / remainder of division (`x1 % x2`).
+///
+/// Unlike [remainder] / [mod], the sign of the result matches the dividend [x1].
+///
+/// **Division by Zero:**
+/// - **Integer arrays**: Division by zero is an error.
+/// - **Floating-point arrays**: Returns `double.nan` silently.
+///
+/// **Preconditions:**
+/// - The input arrays [x1] and [x2] must not be disposed.
+/// - If [out] is provided, it must not be disposed and must have compatible shape and dtype.
+/// - For integer arrays, the divisor [x2] must not contain any `0` elements.
+///
+/// It is an error if:
+/// - [x1], [x2], or [out] is disposed (throws [StateError]).
+/// - [out] has incompatible shape or dtype (throws [ArgumentError]).
+/// - for integer arrays, the divisor [x2] contains any `0` elements (throws [UnsupportedError]).
+NDArray<T> fmod<T extends Object>(
+  NDArray<T> x1,
+  NDArray<T> x2, {
+  NDArray<dynamic>? where,
+  NDArray<T>? out,
+}) {
+  if (x1.isDisposed ||
+      x2.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
+    throw StateError('Cannot execute fmod() on a disposed array.');
+  }
+  final broadcastResult = broadcast(x1, x2);
+  final commonShape = broadcastResult.shape;
+  final stridesA = broadcastResult.stridesA;
+  final stridesB = broadcastResult.stridesB;
+
+  final DType<T> targetDType = resolveDType(x1.dtype, x2.dtype) as DType<T>;
+  if (targetDType.isComplex) {
+    throw UnsupportedError('Complex numbers do not support fmod');
+  }
+
+  final NDArray<T> result;
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for fmod.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray<T>.create(commonShape, targetDType);
+  }
+
+  final maskHolder = prepareMask(where, result.shape);
+  try {
+    if (x1.isContiguous &&
+        x2.isContiguous &&
+        listEquals(x1.shape, x2.shape) &&
+        result.isContiguous) {
+      switch (targetDType) {
+        case DType.float64:
+          if (x1.dtype == DType.float64 && x2.dtype == DType.float64) {
+            v_fmod_double(
+              x1.pointer.cast(),
+              x2.pointer.cast(),
+              result.pointer.cast(),
+              x1.size,
+              maskHolder.pointer,
+            );
+            return result;
+          }
+        case DType.float32:
+          if (x1.dtype == DType.float32 && x2.dtype == DType.float32) {
+            v_fmod_float(
+              x1.pointer.cast(),
+              x2.pointer.cast(),
+              result.pointer.cast(),
+              x1.size,
+              maskHolder.pointer,
+            );
+            return result;
+          }
+        case DType.int64:
+          if (x1.dtype == DType.int64 && x2.dtype == DType.int64) {
+            v_fmod_int64(
+              x1.pointer.cast(),
+              x2.pointer.cast(),
+              result.pointer.cast(),
+              x1.size,
+              maskHolder.pointer,
+            );
+            final err = get_and_reset_division_error();
+            if (err == 1) {
+              throw UnsupportedError('Integer division by zero');
+            }
+            return result;
+          }
+        case DType.int32:
+          if (x1.dtype == DType.int32 && x2.dtype == DType.int32) {
+            v_fmod_int32(
+              x1.pointer.cast(),
+              x2.pointer.cast(),
+              result.pointer.cast(),
+              x1.size,
+              maskHolder.pointer,
+            );
+            final err = get_and_reset_division_error();
+            if (err == 1) {
+              throw UnsupportedError('Integer division by zero');
+            }
+            return result;
+          }
+        default:
+          break;
+      }
+    } else if (commonShape.length <= 8) {
+      final rank = commonShape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank * 3);
+        final cShape = cBuffer;
+        final cStridesX1 = cBuffer + rank;
+        final cStridesX2 = cBuffer + (rank * 2);
+        final cStridesRes = ScratchArena.copyInts(result.strides);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = commonShape[i];
+          cStridesX1[i] = stridesA[i];
+          cStridesX2[i] = stridesB[i];
+        }
+        switch (targetDType) {
+          case DType.float64:
+            if (x1.dtype == DType.float64 && x2.dtype == DType.float64) {
+              s_fmod_double(
+                x1.pointer.cast(),
+                cStridesX1,
+                x2.pointer.cast(),
+                cStridesX2,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                maskHolder.pointer,
+              );
+              return result;
+            }
+          case DType.float32:
+            if (x1.dtype == DType.float32 && x2.dtype == DType.float32) {
+              s_fmod_float(
+                x1.pointer.cast(),
+                cStridesX1,
+                x2.pointer.cast(),
+                cStridesX2,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                maskHolder.pointer,
+              );
+              return result;
+            }
+          case DType.int64:
+            if (x1.dtype == DType.int64 && x2.dtype == DType.int64) {
+              s_fmod_int64(
+                x1.pointer.cast(),
+                cStridesX1,
+                x2.pointer.cast(),
+                cStridesX2,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                maskHolder.pointer,
+              );
+              final err = get_and_reset_division_error();
+              if (err == 1) {
+                throw UnsupportedError('Integer division by zero');
+              }
+              return result;
+            }
+          case DType.int32:
+            if (x1.dtype == DType.int32 && x2.dtype == DType.int32) {
+              s_fmod_int32(
+                x1.pointer.cast(),
+                cStridesX1,
+                x2.pointer.cast(),
+                cStridesX2,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                maskHolder.pointer,
+              );
+              final err = get_and_reset_division_error();
+              if (err == 1) {
+                throw UnsupportedError('Integer division by zero');
+              }
+              return result;
+            }
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    if (targetDType == DType.float64 || targetDType == DType.float32) {
+      elementWiseOp<dynamic, dynamic, dynamic>(
+        result,
+        x1,
+        x2,
+        commonShape,
+        stridesA,
+        stridesB,
+        result.strides,
+        0,
+        x1.offsetElements,
+        x2.offsetElements,
+        result.offsetElements,
+        (x, y) {
+          final dy = (y as num).toDouble();
+          return dy == 0.0 ? double.nan : (x as num).remainder(dy);
+        },
+        maskHolder.pointer,
+      );
+    } else {
+      elementWiseOp<dynamic, dynamic, dynamic>(
+        result,
+        x1,
+        x2,
+        commonShape,
+        stridesA,
+        stridesB,
+        result.strides,
+        0,
+        x1.offsetElements,
+        x2.offsetElements,
+        result.offsetElements,
+        (x, y) {
+          final iy = (y as num).toInt();
+          if (iy == 0) throw UnsupportedError('Integer division by zero');
+          return (x as num).remainder(iy);
+        },
+        maskHolder.pointer,
+      );
+    }
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
+}
+
+/// Element-wise greatest common divisor (`gcd(x1, x2)`).
+///
+/// Operates on integer arrays. Always returns a non-negative greatest common divisor.
+///
+/// **Preconditions:**
+/// - The input arrays [x1] and [x2] must not be disposed and must have integer dtypes.
+/// - If [out] is provided, it must not be disposed and must have compatible shape and integer dtype.
+///
+/// It is an error if:
+/// - [x1], [x2], or [out] is disposed (throws [StateError]).
+/// - [x1] or [x2] has a non-integer dtype (throws [UnsupportedError]).
+/// - [out] has incompatible shape or dtype (throws [ArgumentError]).
+NDArray<T> gcd<T extends Object>(
+  NDArray<T> x1,
+  NDArray<T> x2, {
+  NDArray<dynamic>? where,
+  NDArray<T>? out,
+}) {
+  if (x1.isDisposed ||
+      x2.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
+    throw StateError('Cannot execute gcd() on a disposed array.');
+  }
+  if (!x1.dtype.isInteger || !x2.dtype.isInteger) {
+    throw UnsupportedError('gcd only supports integer arrays.');
+  }
+  final broadcastResult = broadcast(x1, x2);
+  final commonShape = broadcastResult.shape;
+  final stridesA = broadcastResult.stridesA;
+  final stridesB = broadcastResult.stridesB;
+
+  final DType<T> targetDType = resolveDType(x1.dtype, x2.dtype) as DType<T>;
+  final NDArray<T> result;
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for gcd.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray<T>.create(commonShape, targetDType);
+  }
+
+  final maskHolder = prepareMask(where, result.shape);
+  try {
+    if (x1.isContiguous &&
+        x2.isContiguous &&
+        listEquals(x1.shape, x2.shape) &&
+        result.isContiguous) {
+      switch (targetDType) {
+        case DType.int64:
+          if (x1.dtype == DType.int64 && x2.dtype == DType.int64) {
+            v_gcd_int64(
+              x1.pointer.cast(),
+              x2.pointer.cast(),
+              result.pointer.cast(),
+              x1.size,
+              maskHolder.pointer,
+            );
+            return result;
+          }
+        case DType.int32:
+          if (x1.dtype == DType.int32 && x2.dtype == DType.int32) {
+            v_gcd_int32(
+              x1.pointer.cast(),
+              x2.pointer.cast(),
+              result.pointer.cast(),
+              x1.size,
+              maskHolder.pointer,
+            );
+            return result;
+          }
+        default:
+          break;
+      }
+    } else if (commonShape.length <= 8) {
+      final rank = commonShape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank * 3);
+        final cShape = cBuffer;
+        final cStridesX1 = cBuffer + rank;
+        final cStridesX2 = cBuffer + (rank * 2);
+        final cStridesRes = ScratchArena.copyInts(result.strides);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = commonShape[i];
+          cStridesX1[i] = stridesA[i];
+          cStridesX2[i] = stridesB[i];
+        }
+        switch (targetDType) {
+          case DType.int64:
+            if (x1.dtype == DType.int64 && x2.dtype == DType.int64) {
+              s_gcd_int64(
+                x1.pointer.cast(),
+                cStridesX1,
+                x2.pointer.cast(),
+                cStridesX2,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                maskHolder.pointer,
+              );
+              return result;
+            }
+          case DType.int32:
+            if (x1.dtype == DType.int32 && x2.dtype == DType.int32) {
+              s_gcd_int32(
+                x1.pointer.cast(),
+                cStridesX1,
+                x2.pointer.cast(),
+                cStridesX2,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                maskHolder.pointer,
+              );
+              return result;
+            }
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    int calcGcd(int a, int b) {
+      var u = a.abs();
+      var v = b.abs();
+      while (v != 0) {
+        final t = v;
+        v = u % v;
+        u = t;
+      }
+      return u;
+    }
+
+    elementWiseOp<dynamic, dynamic, dynamic>(
+      result,
+      x1,
+      x2,
+      commonShape,
+      stridesA,
+      stridesB,
+      result.strides,
+      0,
+      x1.offsetElements,
+      x2.offsetElements,
+      result.offsetElements,
+      (x, y) => calcGcd((x as num).toInt(), (y as num).toInt()),
+      maskHolder.pointer,
+    );
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
+}
+
+/// Element-wise least common multiple (`lcm(x1, x2)`).
+///
+/// Operates on integer arrays. Always returns a non-negative least common multiple.
+///
+/// **Preconditions:**
+/// - The input arrays [x1] and [x2] must not be disposed and must have integer dtypes.
+/// - If [out] is provided, it must not be disposed and must have compatible shape and integer dtype.
+///
+/// It is an error if:
+/// - [x1], [x2], or [out] is disposed (throws [StateError]).
+/// - [x1] or [x2] has a non-integer dtype (throws [UnsupportedError]).
+/// - [out] has incompatible shape or dtype (throws [ArgumentError]).
+NDArray<T> lcm<T extends Object>(
+  NDArray<T> x1,
+  NDArray<T> x2, {
+  NDArray<dynamic>? where,
+  NDArray<T>? out,
+}) {
+  if (x1.isDisposed ||
+      x2.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
+    throw StateError('Cannot execute lcm() on a disposed array.');
+  }
+  if (!x1.dtype.isInteger || !x2.dtype.isInteger) {
+    throw UnsupportedError('lcm only supports integer arrays.');
+  }
+  final broadcastResult = broadcast(x1, x2);
+  final commonShape = broadcastResult.shape;
+  final stridesA = broadcastResult.stridesA;
+  final stridesB = broadcastResult.stridesB;
+
+  final DType<T> targetDType = resolveDType(x1.dtype, x2.dtype) as DType<T>;
+  final NDArray<T> result;
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for lcm.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray<T>.create(commonShape, targetDType);
+  }
+
+  final maskHolder = prepareMask(where, result.shape);
+  try {
+    if (x1.isContiguous &&
+        x2.isContiguous &&
+        listEquals(x1.shape, x2.shape) &&
+        result.isContiguous) {
+      switch (targetDType) {
+        case DType.int64:
+          if (x1.dtype == DType.int64 && x2.dtype == DType.int64) {
+            v_lcm_int64(
+              x1.pointer.cast(),
+              x2.pointer.cast(),
+              result.pointer.cast(),
+              x1.size,
+              maskHolder.pointer,
+            );
+            return result;
+          }
+        case DType.int32:
+          if (x1.dtype == DType.int32 && x2.dtype == DType.int32) {
+            v_lcm_int32(
+              x1.pointer.cast(),
+              x2.pointer.cast(),
+              result.pointer.cast(),
+              x1.size,
+              maskHolder.pointer,
+            );
+            return result;
+          }
+        default:
+          break;
+      }
+    } else if (commonShape.length <= 8) {
+      final rank = commonShape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank * 3);
+        final cShape = cBuffer;
+        final cStridesX1 = cBuffer + rank;
+        final cStridesX2 = cBuffer + (rank * 2);
+        final cStridesRes = ScratchArena.copyInts(result.strides);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = commonShape[i];
+          cStridesX1[i] = stridesA[i];
+          cStridesX2[i] = stridesB[i];
+        }
+        switch (targetDType) {
+          case DType.int64:
+            if (x1.dtype == DType.int64 && x2.dtype == DType.int64) {
+              s_lcm_int64(
+                x1.pointer.cast(),
+                cStridesX1,
+                x2.pointer.cast(),
+                cStridesX2,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                maskHolder.pointer,
+              );
+              return result;
+            }
+          case DType.int32:
+            if (x1.dtype == DType.int32 && x2.dtype == DType.int32) {
+              s_lcm_int32(
+                x1.pointer.cast(),
+                cStridesX1,
+                x2.pointer.cast(),
+                cStridesX2,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                maskHolder.pointer,
+              );
+              return result;
+            }
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    int calcGcd(int a, int b) {
+      var u = a.abs();
+      var v = b.abs();
+      while (v != 0) {
+        final t = v;
+        v = u % v;
+        u = t;
+      }
+      return u;
+    }
+
+    elementWiseOp<dynamic, dynamic, dynamic>(
+      result,
+      x1,
+      x2,
+      commonShape,
+      stridesA,
+      stridesB,
+      result.strides,
+      0,
+      x1.offsetElements,
+      x2.offsetElements,
+      result.offsetElements,
+      (x, y) {
+        final a = (x as num).toInt();
+        final b = (y as num).toInt();
+        if (a == 0 || b == 0) return 0;
+        return (a.abs() ~/ calcGcd(a, b)) * b.abs();
+      },
+      maskHolder.pointer,
+    );
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
+}
+
+/// Element-wise Heaviside step function (`heaviside(x1, x2)`).
+///
+/// Computes:
+/// - `0` if `x1 < 0`
+/// - `x2` if `x1 == 0`
+/// - `1` if `x1 > 0`
+///
+/// **Preconditions:**
+/// - The input arrays [x1] and [x2] must not be disposed.
+/// - If [out] is provided, it must not be disposed and must have compatible shape and dtype.
+///
+/// It is an error if:
+/// - [x1], [x2], or [out] is disposed (throws [StateError]).
+/// - [x1] or [x2] has a complex dtype (throws [UnsupportedError]).
+/// - [out] has incompatible shape or dtype (throws [ArgumentError]).
+NDArray<T> heaviside<T extends Object>(
+  NDArray<T> x1,
+  NDArray<T> x2, {
+  NDArray<dynamic>? where,
+  NDArray<T>? out,
+}) {
+  if (x1.isDisposed ||
+      x2.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
+    throw StateError('Cannot execute heaviside() on a disposed array.');
+  }
+  final broadcastResult = broadcast(x1, x2);
+  final commonShape = broadcastResult.shape;
+  final stridesA = broadcastResult.stridesA;
+  final stridesB = broadcastResult.stridesB;
+
+  final DType<T> targetDType = resolveDType(x1.dtype, x2.dtype) as DType<T>;
+  if (targetDType.isComplex) {
+    throw UnsupportedError('Complex numbers do not support heaviside');
+  }
+
+  final NDArray<T> result;
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for heaviside.',
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray<T>.create(commonShape, targetDType);
+  }
+
+  final maskHolder = prepareMask(where, result.shape);
+  try {
+    if (x1.isContiguous &&
+        x2.isContiguous &&
+        listEquals(x1.shape, x2.shape) &&
+        result.isContiguous) {
+      switch (targetDType) {
+        case DType.float64:
+          if (x1.dtype == DType.float64 && x2.dtype == DType.float64) {
+            v_heaviside_double(
+              x1.pointer.cast(),
+              x2.pointer.cast(),
+              result.pointer.cast(),
+              x1.size,
+              maskHolder.pointer,
+            );
+            return result;
+          }
+        case DType.float32:
+          if (x1.dtype == DType.float32 && x2.dtype == DType.float32) {
+            v_heaviside_float(
+              x1.pointer.cast(),
+              x2.pointer.cast(),
+              result.pointer.cast(),
+              x1.size,
+              maskHolder.pointer,
+            );
+            return result;
+          }
+        case DType.int64:
+          if (x1.dtype == DType.int64 && x2.dtype == DType.int64) {
+            v_heaviside_int64(
+              x1.pointer.cast(),
+              x2.pointer.cast(),
+              result.pointer.cast(),
+              x1.size,
+              maskHolder.pointer,
+            );
+            return result;
+          }
+        case DType.int32:
+          if (x1.dtype == DType.int32 && x2.dtype == DType.int32) {
+            v_heaviside_int32(
+              x1.pointer.cast(),
+              x2.pointer.cast(),
+              result.pointer.cast(),
+              x1.size,
+              maskHolder.pointer,
+            );
+            return result;
+          }
+        default:
+          break;
+      }
+    } else if (commonShape.length <= 8) {
+      final rank = commonShape.length;
+      final marker = ScratchArena.marker;
+      try {
+        final cBuffer = ScratchArena.getStridedBuffer(rank * 3);
+        final cShape = cBuffer;
+        final cStridesX1 = cBuffer + rank;
+        final cStridesX2 = cBuffer + (rank * 2);
+        final cStridesRes = ScratchArena.copyInts(result.strides);
+        for (var i = 0; i < rank; i++) {
+          cShape[i] = commonShape[i];
+          cStridesX1[i] = stridesA[i];
+          cStridesX2[i] = stridesB[i];
+        }
+        switch (targetDType) {
+          case DType.float64:
+            if (x1.dtype == DType.float64 && x2.dtype == DType.float64) {
+              s_heaviside_double(
+                x1.pointer.cast(),
+                cStridesX1,
+                x2.pointer.cast(),
+                cStridesX2,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                maskHolder.pointer,
+              );
+              return result;
+            }
+          case DType.float32:
+            if (x1.dtype == DType.float32 && x2.dtype == DType.float32) {
+              s_heaviside_float(
+                x1.pointer.cast(),
+                cStridesX1,
+                x2.pointer.cast(),
+                cStridesX2,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                maskHolder.pointer,
+              );
+              return result;
+            }
+          case DType.int64:
+            if (x1.dtype == DType.int64 && x2.dtype == DType.int64) {
+              s_heaviside_int64(
+                x1.pointer.cast(),
+                cStridesX1,
+                x2.pointer.cast(),
+                cStridesX2,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                maskHolder.pointer,
+              );
+              return result;
+            }
+          case DType.int32:
+            if (x1.dtype == DType.int32 && x2.dtype == DType.int32) {
+              s_heaviside_int32(
+                x1.pointer.cast(),
+                cStridesX1,
+                x2.pointer.cast(),
+                cStridesX2,
+                result.pointer.cast(),
+                cStridesRes,
+                cShape,
+                rank,
+                maskHolder.pointer,
+              );
+              return result;
+            }
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    elementWiseOp<dynamic, dynamic, dynamic>(
+      result,
+      x1,
+      x2,
+      commonShape,
+      stridesA,
+      stridesB,
+      result.strides,
+      0,
+      x1.offsetElements,
+      x2.offsetElements,
+      result.offsetElements,
+      (x, y) {
+        if (targetDType == DType.float64 || targetDType == DType.float32) {
+          final dx = (x as num).toDouble();
+          if (dx.isNaN) return dx;
+          if (dx < 0.0) return 0.0;
+          if (dx > 0.0) return 1.0;
+          return (y as num).toDouble();
+        } else {
+          final ix = (x as num).toInt();
+          if (ix < 0) return 0;
+          if (ix > 0) return 1;
+          return (y as num).toInt();
+        }
+      },
+      maskHolder.pointer,
+    );
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
 }
 
 NDArray<R> abs<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
@@ -8006,7 +8860,14 @@ NDArray<R> multiply<Ta, Tb, R>(
 /// Division by zero is handled silently under IEEE 754 floating-point rules:
 /// - Dividing a non-zero value by zero results in `double.infinity` or `double.negativeInfinity`.
 /// - Dividing zero by zero results in `double.nan`.
-/// No exception is thrown.
+///
+/// **Preconditions:**
+/// - The input arrays [a] and [b] must not be disposed.
+/// - If [out] is provided, it must not be disposed and must have compatible shape and dtype.
+///
+/// It is an error if:
+/// - [a], [b], or [out] is disposed (throws [StateError]).
+/// - [out] has incompatible shape or dtype (throws [ArgumentError]).
 NDArray<R> divide<Ta, Tb, R>(
   NDArray<Ta> a,
   NDArray<Tb> b, {

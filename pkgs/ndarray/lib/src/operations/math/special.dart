@@ -208,3 +208,287 @@ NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
     maskHolder.dispose();
   }
 }
+
+
+/// Computes the gamma function, $\Gamma(x)$, element-wise.
+///
+/// Supports float32 and float64. Integer and boolean types are promoted to float64.
+///
+/// **Preconditions:**
+/// - The input array [a] must not be disposed.
+/// - If [out] is provided, it must not be disposed and must have the same shape
+///   and compatible dtype as the result.
+///
+/// It is an error if:
+/// - [a] or [out] is disposed (throws [StateError]).
+/// - [out] has incompatible shape or dtype (throws [ArgumentError]).
+/// - [a] has a complex dtype (throws [UnsupportedError]).
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+/// final b = gamma(a);
+/// print(b.toList()); // [1.0, 1.0, 2.0, 6.0]
+/// ```
+NDArray<R> gamma<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
+    throw StateError("Cannot execute gamma() on a disposed array.");
+  }
+  if (a.dtype.isComplex) {
+    throw UnsupportedError("Complex numbers are not supported for gamma.");
+  }
+
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+    final promoted = promoteToDouble(a);
+    final res = gamma<double, double>(
+      promoted,
+      where: where,
+      out: out as NDArray<double>?,
+    );
+    promoted.dispose();
+    return res as NDArray<R>;
+  }
+
+  final targetDType = (a.dtype == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
+  final NDArray<R> result;
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        "Provided out buffer has incompatible shape or dtype for gamma.",
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray.create(a.shape, targetDType);
+  }
+
+  final maskHolder = prepareMask(where, result.shape);
+  try {
+    void dispatchContiguous(NDArray src, NDArray dest) {
+      if (src.dtype == DType.float64) {
+        v_gamma_double(
+          src.pointer.cast(),
+          dest.pointer.cast(),
+          src.size,
+          maskHolder.pointer,
+        );
+      } else {
+        v_gamma_float(
+          src.pointer.cast(),
+          dest.pointer.cast(),
+          src.size,
+          maskHolder.pointer,
+        );
+      }
+    }
+
+    void dispatchStrided(NDArray src, NDArray dest) {
+      final rank = src.shape.length;
+      final marker = ScratchArena.marker;
+      final cShape = ScratchArena.copyInts(src.shape);
+      final cStridesSrc = ScratchArena.copyInts(src.strides);
+      final cStridesDest = ScratchArena.copyInts(dest.strides);
+      try {
+        if (src.dtype == DType.float64) {
+          s_gamma_double(
+            src.pointer.cast(),
+            cStridesSrc,
+            dest.pointer.cast(),
+            cStridesDest,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+        } else {
+          s_gamma_float(
+            src.pointer.cast(),
+            cStridesSrc,
+            dest.pointer.cast(),
+            cStridesDest,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    if (a.isContiguous && result.isContiguous) {
+      dispatchContiguous(a, result);
+    } else {
+      final rank = a.shape.length;
+      if (rank <= 8) {
+        dispatchStrided(a, result);
+      } else {
+        final tempA = a.isContiguous ? a : a.copy();
+        final tempResult = result.isContiguous
+            ? result
+            : NDArray.create(result.shape, result.dtype);
+
+        dispatchContiguous(tempA, tempResult);
+
+        if (!identical(tempResult, result)) {
+          tempResult.copy(out: result);
+          tempResult.dispose();
+        }
+        if (!identical(tempA, a)) {
+          tempA.dispose();
+        }
+      }
+    }
+
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
+}
+
+/// Computes the error function, $\text{erf}(x)$, element-wise.
+///
+/// Supports float32 and float64. Integer and boolean types are promoted to float64.
+///
+/// **Preconditions:**
+/// - The input array [a] must not be disposed.
+/// - If [out] is provided, it must not be disposed and must have the same shape
+///   and compatible dtype as the result.
+///
+/// It is an error if:
+/// - [a] or [out] is disposed (throws [StateError]).
+/// - [out] has incompatible shape or dtype (throws [ArgumentError]).
+/// - [a] has a complex dtype (throws [UnsupportedError]).
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([0.0, 1.0], [2], DType.float64);
+/// final b = erf(a);
+/// print(b.toList()); // [0.0, ~0.8427]
+/// ```
+NDArray<R> erf<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
+    throw StateError("Cannot execute erf() on a disposed array.");
+  }
+  if (a.dtype.isComplex) {
+    throw UnsupportedError("Complex numbers are not supported for erf.");
+  }
+
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+    final promoted = promoteToDouble(a);
+    final res = erf<double, double>(
+      promoted,
+      where: where,
+      out: out as NDArray<double>?,
+    );
+    promoted.dispose();
+    return res as NDArray<R>;
+  }
+
+  final targetDType = (a.dtype == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
+  final NDArray<R> result;
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
+      throw ArgumentError(
+        "Provided out buffer has incompatible shape or dtype for erf.",
+      );
+    }
+    result = out;
+  } else {
+    result = NDArray.create(a.shape, targetDType);
+  }
+
+  final maskHolder = prepareMask(where, result.shape);
+  try {
+    void dispatchContiguous(NDArray src, NDArray dest) {
+      if (src.dtype == DType.float64) {
+        v_erf_double(
+          src.pointer.cast(),
+          dest.pointer.cast(),
+          src.size,
+          maskHolder.pointer,
+        );
+      } else {
+        v_erf_float(
+          src.pointer.cast(),
+          dest.pointer.cast(),
+          src.size,
+          maskHolder.pointer,
+        );
+      }
+    }
+
+    void dispatchStrided(NDArray src, NDArray dest) {
+      final rank = src.shape.length;
+      final marker = ScratchArena.marker;
+      final cShape = ScratchArena.copyInts(src.shape);
+      final cStridesSrc = ScratchArena.copyInts(src.strides);
+      final cStridesDest = ScratchArena.copyInts(dest.strides);
+      try {
+        if (src.dtype == DType.float64) {
+          s_erf_double(
+            src.pointer.cast(),
+            cStridesSrc,
+            dest.pointer.cast(),
+            cStridesDest,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+        } else {
+          s_erf_float(
+            src.pointer.cast(),
+            cStridesSrc,
+            dest.pointer.cast(),
+            cStridesDest,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    if (a.isContiguous && result.isContiguous) {
+      dispatchContiguous(a, result);
+    } else {
+      final rank = a.shape.length;
+      if (rank <= 8) {
+        dispatchStrided(a, result);
+      } else {
+        final tempA = a.isContiguous ? a : a.copy();
+        final tempResult = result.isContiguous
+            ? result
+            : NDArray.create(result.shape, result.dtype);
+
+        dispatchContiguous(tempA, tempResult);
+
+        if (!identical(tempResult, result)) {
+          tempResult.copy(out: result);
+          tempResult.dispose();
+        }
+        if (!identical(tempA, a)) {
+          tempA.dispose();
+        }
+      }
+    }
+
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
+}
+

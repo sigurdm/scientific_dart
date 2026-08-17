@@ -34,7 +34,7 @@ NDArray<T> clip<T>(
   NDArray<T> a, {
   num? min,
   num? max,
-  NDArray<Uint8>? where,
+  NDArray<dynamic>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||

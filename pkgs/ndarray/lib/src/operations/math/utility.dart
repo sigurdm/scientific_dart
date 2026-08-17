@@ -2,7 +2,9 @@
 import 'dart:math' as math;
 import 'package:openblas/openblas.dart';
 import '../../ndarray.dart';
+import 'dart:ffi' as ffi;
 import '../../nditer.dart';
+import '../helpers.dart';
 
 /// Configure the number of parallel execution threads used by OpenBLAS at runtime.
 ///
@@ -65,7 +67,7 @@ Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
 
   for (int el = 0; el < totalSize; el++) {
     // Yield a copy of the coordinate list so that users don't receive the same mutated buffer!
-    yield (List<int>.from(coord), a.data[offset]);
+    yield (List<int>.from(coord), a.getCellRaw(offset));
 
     // Advance odometer multidimensional coordinate odometer walk!
     for (int d = shape.length - 1; d >= 0; d--) {
@@ -100,9 +102,12 @@ NDArray nan_to_num(
   double nan = 0.0,
   double? posinf,
   double? neginf,
+  NDArray<dynamic>? where,
   NDArray? out,
 }) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute nan_to_num() on a disposed array.');
   }
   if (out != null) {
@@ -123,41 +128,53 @@ NDArray nan_to_num(
   final targetPosInf = posinf ?? maxLimit;
   final targetNegInf = neginf ?? minLimit;
 
-  final iter = NDIter.broadcast2(resultCopy, a);
-  while (iter.moveNext()) {
-    final idxRes = iter.getIndex(0);
-    final idxA = iter.getIndex(1);
-    final val = a.data[idxA];
+  final maskHolder = prepareMask(where, resultCopy.shape);
+  try {
+    final iter = NDIter.broadcast2(resultCopy, a);
+    final maskPtr = maskHolder.pointer;
+    var flatIdx = 0;
+    while (iter.moveNext()) {
+      final idxRes = iter.getIndex(0);
+      final idxA = iter.getIndex(1);
+      if (maskPtr == ffi.nullptr || maskPtr[flatIdx] != 0) {
+        final val = a.getCellRaw(idxA);
 
-    if (val is Complex) {
-      var r = val.real;
-      var img = val.imag;
+        if (val is Complex) {
+          var r = val.real;
+          var img = val.imag;
 
-      if (r.isNaN) r = nan;
-      if (r == double.infinity) r = targetPosInf;
-      if (r == double.negativeInfinity) r = targetNegInf;
+          if (r.isNaN) r = nan;
+          if (r == double.infinity) r = targetPosInf;
+          if (r == double.negativeInfinity) r = targetNegInf;
 
-      if (img.isNaN) img = nan;
-      if (img == double.infinity) img = targetPosInf;
-      if (img == double.negativeInfinity) img = targetNegInf;
+          if (img.isNaN) img = nan;
+          if (img == double.infinity) img = targetPosInf;
+          if (img == double.negativeInfinity) img = targetNegInf;
 
-      resultCopy.data[idxRes] = Complex(r, img);
-    } else {
-      var dVal = (val as num).toDouble();
+          resultCopy.setCellRaw(idxRes, Complex(r, img));
+        } else {
+          var dVal = (val as num).toDouble();
 
-      if (dVal.isNaN) {
-        dVal = nan;
-      } else if (dVal == double.infinity) {
-        dVal = targetPosInf;
-      } else if (dVal == double.negativeInfinity) {
-        dVal = targetNegInf;
+          if (dVal.isNaN) {
+            dVal = nan;
+          } else if (dVal == double.infinity) {
+            dVal = targetPosInf;
+          } else if (dVal == double.negativeInfinity) {
+            dVal = targetNegInf;
+          }
+
+          resultCopy.setCellRaw(idxRes, castValue(dVal, resultCopy.dtype));
+        }
+      } else if (out == null) {
+        resultCopy.setCellRaw(idxRes, a.getCellRaw(idxA));
       }
-
-      resultCopy.data[idxRes] = dVal;
+      flatIdx++;
     }
-  }
 
-  return resultCopy;
+    return resultCopy;
+  } finally {
+    maskHolder.dispose();
+  }
 }
 
 /// Computes the common broadcasted shape resulting from broadcasting shapes [s1] and [s2].

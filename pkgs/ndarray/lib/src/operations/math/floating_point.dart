@@ -22,7 +22,7 @@ import '../../nditer.dart';
 /// ```
 NDArray<bool> isnan<T>(
   NDArray<T> a, {
-  NDArray<Uint8>? where,
+  NDArray<dynamic>? where,
   NDArray<bool>? out,
 }) {
   if (a.isDisposed ||
@@ -184,7 +184,7 @@ NDArray<bool> isnan<T>(
 /// ```
 NDArray<bool> isinf<T>(
   NDArray<T> a, {
-  NDArray<Uint8>? where,
+  NDArray<dynamic>? where,
   NDArray<bool>? out,
 }) {
   if (a.isDisposed ||
@@ -346,7 +346,7 @@ NDArray<bool> isinf<T>(
 /// ```
 NDArray<bool> isfinite<T extends Object>(
   NDArray<T> a, {
-  NDArray<Uint8>? where,
+  NDArray<dynamic>? where,
   NDArray<bool>? out,
 }) {
   if (a.isDisposed ||
@@ -502,7 +502,7 @@ NDArray<bool> isfinite<T extends Object>(
 NDArray<T> copysign<T extends Object>(
   NDArray<T> x1,
   NDArray<T> x2, {
-  NDArray<Uint8>? where,
+  NDArray<dynamic>? where,
   NDArray<T>? out,
 }) {
   if (x1.isDisposed ||
@@ -675,14 +675,26 @@ NDArray<bool> isClose<Ta, Tb>(
   double rtol = 1e-05,
   double atol = 1e-08,
   bool equalNan = false,
+  NDArray<dynamic>? where,
+  NDArray<bool>? out,
 }) {
-  if (a.isDisposed || b.isDisposed) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute isClose() on a disposed array.');
   }
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
 
-  final result = NDArray<bool>.zeros(commonShape, DType.boolean);
+  final result = out ?? NDArray<bool>.zeros(commonShape, DType.boolean);
+  if (out != null) {
+    if (!listEquals(out.shape, commonShape) || out.dtype != DType.boolean) {
+      throw ArgumentError(
+        'Provided out buffer has incompatible shape or dtype for isClose.',
+      );
+    }
+  }
 
   bool isNan(Object? v) =>
       (v is num && v.isNaN) || (v is Complex && (v.real.isNaN || v.imag.isNaN));
@@ -703,29 +715,39 @@ NDArray<bool> isClose<Ta, Tb>(
     return 0.0;
   }
 
-  final iter = NDIter.broadcast3(result, a, b);
-  while (iter.moveNext()) {
-    final idxRes = iter.getIndex(0);
-    final idxA = iter.getIndex(1);
-    final idxB = iter.getIndex(2);
-    final valA = a.getCellFlat(idxA);
-    final valB = b.getCellFlat(idxB);
+  final maskHolder = prepareMask(where, commonShape);
+  try {
+    final iter = NDIter.broadcast3(result, a, b);
+    final maskPtr = maskHolder.pointer;
+    var flatIdx = 0;
+    while (iter.moveNext()) {
+      if (maskPtr == ffi.nullptr || maskPtr[flatIdx] != 0) {
+        final idxRes = iter.getIndex(0);
+        final idxA = iter.getIndex(1);
+        final idxB = iter.getIndex(2);
+        final valA = a.getCellFlat(idxA);
+        final valB = b.getCellFlat(idxB);
 
-    var match = false;
-    if (equalNan && isNan(valA) && isNan(valB)) {
-      match = true;
-    } else if (isInf(valA) || isInf(valB)) {
-      match = valA == valB;
-    } else {
-      final d = diff(valA, valB);
-      final limit = atol + rtol * abs(valB);
-      match = d <= limit;
+        var match = false;
+        if (equalNan && isNan(valA) && isNan(valB)) {
+          match = true;
+        } else if (isInf(valA) || isInf(valB)) {
+          match = valA == valB;
+        } else {
+          final d = diff(valA, valB);
+          final limit = atol + rtol * abs(valB);
+          match = d <= limit;
+        }
+
+        result.setCellFlat(idxRes, match);
+      }
+      flatIdx++;
     }
 
-    result.setCellFlat(idxRes, match);
+    return result;
+  } finally {
+    maskHolder.dispose();
   }
-
-  return result;
 }
 
 /// Returns true if two arrays are element-wise equal within a tolerance.

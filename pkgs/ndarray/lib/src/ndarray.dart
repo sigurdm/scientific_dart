@@ -1524,6 +1524,16 @@ final class NDArray<T> implements ffi.Finalizable {
   }
 
   /// Internal helper to read the element at a flat index [flatIndex].
+  /// Internal helper to read at raw physical storage index [rawOffset].
+  @internal
+  T getCellRaw(int rawOffset) => data[rawOffset];
+
+  /// Internal helper to write at raw physical storage index [rawOffset].
+  @internal
+  void setCellRaw(int rawOffset, T value) {
+    data[rawOffset] = value;
+  }
+
   @internal
   T getCellFlat(int flatIndex) {
     if (isContiguous) {

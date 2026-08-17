@@ -287,6 +287,21 @@ void v_remainder_float(const float *x1, const float *x2, float *res, int size, c
 void v_remainder_int64(const int64_t *x1, const int64_t *x2, int64_t *res, int size, const uint8_t *mask);
 void v_remainder_int32(const int32_t *x1, const int32_t *x2, int32_t *res, int size, const uint8_t *mask);
 
+void v_fmod_double(const double *x1, const double *x2, double *res, int size, const uint8_t *mask);
+void v_fmod_float(const float *x1, const float *x2, float *res, int size, const uint8_t *mask);
+void v_fmod_int64(const int64_t *x1, const int64_t *x2, int64_t *res, int size, const uint8_t *mask);
+void v_fmod_int32(const int32_t *x1, const int32_t *x2, int32_t *res, int size, const uint8_t *mask);
+
+void v_gcd_int64(const int64_t *x1, const int64_t *x2, int64_t *res, int size, const uint8_t *mask);
+void v_gcd_int32(const int32_t *x1, const int32_t *x2, int32_t *res, int size, const uint8_t *mask);
+void v_lcm_int64(const int64_t *x1, const int64_t *x2, int64_t *res, int size, const uint8_t *mask);
+void v_lcm_int32(const int32_t *x1, const int32_t *x2, int32_t *res, int size, const uint8_t *mask);
+
+void v_heaviside_double(const double *x1, const double *x2, double *res, int size, const uint8_t *mask);
+void v_heaviside_float(const float *x1, const float *x2, float *res, int size, const uint8_t *mask);
+void v_heaviside_int64(const int64_t *x1, const int64_t *x2, int64_t *res, int size, const uint8_t *mask);
+void v_heaviside_int32(const int32_t *x1, const int32_t *x2, int32_t *res, int size, const uint8_t *mask);
+
 void v_isnan_double(const double *src, uint8_t *res, int size, const uint8_t *mask);
 void v_isnan_float(const float *src, uint8_t *res, int size, const uint8_t *mask);
 void v_isnan_complex128(const cpx_t *src, uint8_t *res, int size, const uint8_t *mask);
@@ -616,6 +631,21 @@ void s_remainder_double(const double *x1, const int *stridesX1, const double *x2
 void s_remainder_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 void s_remainder_int64(const int64_t *x1, const int *stridesX1, const int64_t *x2, const int *stridesX2, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 void s_remainder_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, const int *stridesX2, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+
+void s_fmod_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_fmod_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_fmod_int64(const int64_t *x1, const int *stridesX1, const int64_t *x2, const int *stridesX2, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_fmod_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, const int *stridesX2, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+
+void s_gcd_int64(const int64_t *x1, const int *stridesX1, const int64_t *x2, const int *stridesX2, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_gcd_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, const int *stridesX2, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_lcm_int64(const int64_t *x1, const int *stridesX1, const int64_t *x2, const int *stridesX2, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_lcm_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, const int *stridesX2, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+
+void s_heaviside_double(const double *x1, const int *stridesX1, const double *x2, const int *stridesX2, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_heaviside_float(const float *x1, const int *stridesX1, const float *x2, const int *stridesX2, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_heaviside_int64(const int64_t *x1, const int *stridesX1, const int64_t *x2, const int *stridesX2, int64_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void s_heaviside_int32(const int32_t *x1, const int *stridesX1, const int32_t *x2, const int *stridesX2, int32_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
 void s_isnan_double(const double *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 void s_isnan_float(const float *src, const int *stridesSrc, uint8_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
@@ -1650,6 +1680,16 @@ void v_i0_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t *m
 void s_i0_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 void v_i0_complex128(const cpx_t *src, cpx_t *res, int size, const uint8_t *mask);
 void s_i0_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+
+void v_gamma_float(const float *src, float *res, int size, const uint8_t *mask);
+void s_gamma_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void v_gamma_double(const double *src, double *res, int size, const uint8_t *mask);
+void s_gamma_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+
+void v_erf_float(const float *src, float *res, int size, const uint8_t *mask);
+void s_erf_float(const float *src, const int *stridesSrc, float *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
+void v_erf_double(const double *src, double *res, int size, const uint8_t *mask);
+void s_erf_double(const double *src, const int *stridesSrc, double *res, const int *stridesRes, const int *shape, int rank, const uint8_t *mask);
 
 
 /* Spatial N-D Correlation */

@@ -213,7 +213,7 @@ void elementWiseOp<Ta, Tb, Tr>(
     if (whereMask == null ||
         whereMask == ffi.nullptr ||
         whereMask[flatIndex] != 0) {
-      result.data[offsetResult] = op(a.data[offsetA], b.data[offsetB]);
+      result.setCellRaw(offsetResult, op(a.getCellRaw(offsetA), b.getCellRaw(offsetB)));
     }
     return;
   }
@@ -443,7 +443,7 @@ void reduceRecursive<S extends Object, D extends Object>(
       destOffset += destPos[i] * strides[i];
     }
 
-    dest.data[destOffset] = op(dest.data[destOffset], src.data[srcOffset]);
+    dest.setCellRaw(destOffset, op(dest.getCellRaw(destOffset), src.getCellRaw(srcOffset)));
     return;
   }
 
@@ -547,7 +547,7 @@ void unaryOp<Ta, Tr>(
     if (whereMask == null ||
         whereMask == ffi.nullptr ||
         whereMask[flatIndex] != 0) {
-      result.data[offsetResult] = op(a.data[offsetA]);
+      result.setCellRaw(offsetResult, op(a.getCellRaw(offsetA)));
     }
     return;
   }
