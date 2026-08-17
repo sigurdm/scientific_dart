@@ -35,6 +35,14 @@ enum DistanceMetric {
   ///
   /// For 0-dimensional space (N=0), the distance is NaN.
   hamming,
+
+  /// Chebyshev Distance ($L_\infty$ distance):
+  ///
+  /// Math:
+  /// \[
+  /// d(u, v) = \max_{i=1}^N |u_i - v_i|
+  /// \]
+  chebyshev,
 }
 
 /// Helper to promote an NDArray to Float64 if it is not already.

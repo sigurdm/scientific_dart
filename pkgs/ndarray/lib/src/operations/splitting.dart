@@ -21,7 +21,6 @@ NDArray<T> _sliceAlongAxis<T>(NDArray<T> a, int axis, int start, int stop) {
 /// - [sections] must be strictly positive ($\ge 1$).
 /// - [axis] must be within bounds `[-rank, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [sections] is less than or equal to 0.
 /// - It is an error if [axis] is out of bounds.
@@ -99,7 +98,6 @@ List<NDArray<T>> array_split<T>(
 /// - [a] must not be disposed.
 /// - [axis] must be within bounds `[-rank, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 ///
@@ -178,7 +176,6 @@ List<NDArray<T>> array_split_at<T>(
 /// - [axis] must be within bounds `[-rank, rank - 1]`.
 /// - The dimension size along [axis] must be divisible by [sections].
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 /// - It is an error if [sections] is less than or equal to 0.
@@ -229,7 +226,6 @@ List<NDArray<T>> split<T>(
 /// - [a] must not be disposed.
 /// - [axis] must be within bounds `[-rank, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 ///
@@ -259,7 +255,6 @@ List<NDArray<T>> split_at<T>(
 /// **Preconditions:**
 /// - [a] must not be disposed.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] is 0-dimensional or if the split is invalid.
 ///
@@ -295,7 +290,6 @@ List<NDArray<T>> hsplit<T>(
 /// **Preconditions:**
 /// - [a] must not be disposed.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] is 0-dimensional or if the split is invalid.
 ///
@@ -331,7 +325,6 @@ List<NDArray<T>> hsplit_at<T>(
 /// - [a] must not be disposed.
 /// - [a] must have rank $\ge 2$.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] has rank $< 2$.
 ///
@@ -366,7 +359,6 @@ List<NDArray<T>> vsplit<T>(
 /// - [a] must not be disposed.
 /// - [a] must have rank $\ge 2$.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] has rank $< 2$.
 ///
@@ -403,7 +395,6 @@ List<NDArray<T>> vsplit_at<T>(
 /// - [sections] must be strictly positive ($\ge 1$).
 /// - The dimension size along axis 2 must be divisible by [sections].
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] has rank $< 3$.
 /// - It is an error if [sections] is less than or equal to 0.
@@ -440,7 +431,6 @@ List<NDArray<T>> dsplit<T>(
 /// - [a] must not be disposed.
 /// - [a] must have rank $\ge 3$.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] has rank $< 3$.
 ///

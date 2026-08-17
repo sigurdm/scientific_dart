@@ -1572,7 +1572,8 @@ int ndarray_find_index(
 typedef enum {
     METRIC_EUCLIDEAN = 0,
     METRIC_COSINE,
-    METRIC_HAMMING
+    METRIC_HAMMING,
+    METRIC_CHEBYSHEV
 } DistanceMetric;
 
 void ndarray_pdist(

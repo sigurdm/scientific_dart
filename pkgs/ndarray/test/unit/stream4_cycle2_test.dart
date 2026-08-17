@@ -177,5 +177,115 @@ void main() {
         });
       },
     );
+    test('distance: chebyshev metric & NaN propagation', () {
+      NDArray.scope(() {
+        final x = NDArray.fromList(
+          [1.0, 2.0, 5.0, 0.0, 1.0, double.nan],
+          [3, 2],
+          DType.float64,
+        );
+        final d = pdist(x, metric: DistanceMetric.chebyshev);
+        expect(d.shape, equals([3]));
+        // max(|1-5|, |2-0|) = 4.0
+        expect(d.getCell([0]), equals(4.0));
+        // max(|1-1|, |2-NaN|) = NaN
+        expect(d.getCell([1]).isNaN, isTrue);
+        // max(|5-1|, |0-NaN|) = NaN
+        expect(d.getCell([2]).isNaN, isTrue);
+
+        // 0-dimensional space N=0
+        final x0 = NDArray<double>.create([2, 0], DType.float64);
+        final d0 = pdist(x0, metric: DistanceMetric.chebyshev);
+        expect(d0.getCell([0]), equals(0.0));
+      });
+    });
+
+    test('interpolation: interp NaN propagation when xp_size == 1', () {
+      NDArray.scope(() {
+        final x = NDArray.fromList([0.0, double.nan, 2.0], [3], DType.float64);
+        final xp = NDArray.fromList([1.0], [1], DType.float64);
+        final fp = NDArray.fromList([42.0], [1], DType.float64);
+
+        final res = interp(x, xp, fp);
+        expect(res.getCell([0]), equals(42.0));
+        expect(res.getCell([1]).isNaN, isTrue);
+        expect(res.getCell([2]), equals(42.0));
+      });
+    });
+
+    test('polynomial: degree-0 constant polynomial NaN propagation', () {
+      NDArray.scope(() {
+        final x = NDArray.fromList(
+          [10.0, double.nan, 20.0],
+          [3],
+          DType.float64,
+        );
+        final c0 = NDArray.fromList([5.0], [1], DType.float64);
+
+        final resPoly = polyval(c0, x);
+        expect(resPoly.getCell([0]), equals(5.0));
+        expect(resPoly.getCell([1]).isNaN, isTrue);
+        expect(resPoly.getCell([2]), equals(5.0));
+
+        final resCheb = chebval(c0, x);
+        expect(resCheb.getCell([0]), equals(5.0));
+        expect(resCheb.getCell([1]).isNaN, isTrue);
+        expect(resCheb.getCell([2]), equals(5.0));
+      });
+    });
+
+    test(
+      'spacers, manipulation, random, shaping_meshes: optional out buffers and validation',
+      () {
+        NDArray.scope(() {
+          // geomspaceGrid with out
+          final start = NDArray.fromList([1.0], [1], DType.float64);
+          final stop = NDArray.fromList([100.0], [1], DType.float64);
+          final outGeom = NDArray<double>.create([3, 1], DType.float64);
+          final resGeom = geomspaceGrid(start, stop, 3, out: outGeom);
+          expect(identical(resGeom, outGeom), isTrue);
+          expect(resGeom.getCell([0, 0]), closeTo(1.0, 1e-6));
+          expect(resGeom.getCell([2, 0]), closeTo(100.0, 1e-6));
+
+          // vstack / hstack / copy with out
+          final a = NDArray.fromList([1.0, 2.0], [1, 2], DType.float64);
+          final b = NDArray.fromList([3.0, 4.0], [1, 2], DType.float64);
+          final outVstack = NDArray<double>.create([2, 2], DType.float64);
+          final resV = vstack([a, b], out: outVstack);
+          expect(identical(resV, outVstack), isTrue);
+
+          final outHstack = NDArray<double>.create([1, 4], DType.float64);
+          final resH = hstack([a, b], out: outHstack);
+          expect(identical(resH, outHstack), isTrue);
+
+          final outCopy = NDArray<double>.create([1, 2], DType.float64);
+          final resCopy = copy(a, out: outCopy);
+          expect(identical(resCopy, outCopy), isTrue);
+
+          // permutation with out
+          final pOut = NDArray<double>.create([1, 2], DType.float64);
+          final resPerm = permutation(a, out: pOut);
+          expect(identical(resPerm, pOut), isTrue);
+
+          // ogrid with out
+          final r = GridRange(0.0, 2.0, numPoints: 3);
+          final outOgrid = [
+            NDArray<double>.create([3], DType.float64),
+          ];
+          final resOgrid = ogrid([r], out: outOgrid);
+          expect(identical(resOgrid[0], outOgrid[0]), isTrue);
+
+          // ogrid validation
+          final badShape = [
+            NDArray<double>.create([5], DType.float64),
+          ];
+          expect(() => ogrid([r], out: badShape), throwsArgumentError);
+
+          final disposedOut = NDArray<double>.create([3], DType.float64)
+            ..dispose();
+          expect(() => ogrid([r], out: [disposedOut]), throwsStateError);
+        });
+      },
+    );
   });
 }

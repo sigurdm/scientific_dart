@@ -553,8 +553,11 @@ NDArray<T> flipud<T extends Object>(NDArray<T> a) {
 /// Stacks arrays in sequence vertically (row wise).
 ///
 /// It is an error if [arrays] is empty, any array is disposed, or array shapes/dtypes mismatch.
-NDArray<T> vstack<T extends Object>(List<NDArray<T>> arrays) {
-  return concatenate(arrays, axis: 0);
+NDArray<T> vstack<T extends Object>(
+  List<NDArray<T>> arrays, {
+  NDArray<T>? out,
+}) {
+  return concatenate(arrays, axis: 0, out: out);
 }
 
 /// Stacks arrays in sequence horizontally (column wise).
@@ -563,14 +566,17 @@ NDArray<T> vstack<T extends Object>(List<NDArray<T>> arrays) {
 /// except for 1-D arrays where it concatenates along the first axis (axis 0).
 ///
 /// It is an error if [arrays] is empty, any array is disposed, or array shapes/dtypes mismatch.
-NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
+NDArray<T> hstack<T extends Object>(
+  List<NDArray<T>> arrays, {
+  NDArray<T>? out,
+}) {
   if (arrays.isEmpty) {
     throw ArgumentError('arrays cannot be empty');
   }
   if (arrays.first.rank == 1) {
-    return concatenate(arrays, axis: 0);
+    return concatenate(arrays, axis: 0, out: out);
   }
-  return concatenate(arrays, axis: 1);
+  return concatenate(arrays, axis: 1, out: out);
 }
 
 /// Returns a deep, C-contiguous copy of the given array.
@@ -592,11 +598,11 @@ NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
 /// b[0] = 99;
 /// print(a[0]); // 1 (decoupled memory!)
 /// ```
-NDArray<T> copy<T extends Object>(NDArray<T> a) {
-  if (a.isDisposed) {
+NDArray<T> copy<T extends Object>(NDArray<T> a, {NDArray<T>? out}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute copy() on a disposed array.');
   }
-  return a.copy();
+  return a.copy(out: out);
 }
 
 /// Extracts a diagonal or constructs a diagonal array.

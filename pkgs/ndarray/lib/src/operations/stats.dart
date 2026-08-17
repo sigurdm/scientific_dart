@@ -363,7 +363,6 @@ NDArray<T> prod<T extends Object>(
 /// - The array [a] must not be disposed.
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 ///
@@ -441,7 +440,6 @@ NDArray<bool> all<T extends Object>(
 /// - The array [a] must not be disposed.
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 ///
@@ -524,7 +522,6 @@ NDArray<bool> any<T extends Object>(
 /// - Input array [a] elements must be numeric (`T extends num` or Complex).
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of range.
 ///
@@ -748,7 +745,6 @@ NDArray<R> mean<R, T>(
 /// - Input array [a] elements must be numeric (`T extends num`).
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of range.
 ///
@@ -809,7 +805,6 @@ NDArray<Float64> std<T extends num>(
 /// **Preconditions:**
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 ///
@@ -902,7 +897,6 @@ NDArray<Float64> nanvar<T extends num>(
 /// **Preconditions:**
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 ///
@@ -1122,7 +1116,6 @@ NDArray<T> min<T extends num>(
 /// **Preconditions:**
 /// - [axis], if provided, must be a valid axis index within `[0, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 /// - [UnsupportedError] if the array contains Complex numbers.
@@ -1469,7 +1462,6 @@ NDArray<T> max<T extends num>(
 /// **Preconditions:**
 /// - [axis], if provided, must be a valid axis index within `[0, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 /// - [UnsupportedError] if the array contains Complex numbers.
@@ -1656,7 +1648,6 @@ NDArray<T> nanmax<T extends Object>(
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
 /// - If provided, the [out] recycler must have compatible shape and dtype.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 /// - It is an error if [out] recycler shape or dtype is incompatible.
@@ -1728,7 +1719,6 @@ NDArray<R> cumsum<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
 /// - If provided, the [out] recycler must have compatible shape and dtype.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 /// - It is an error if [out] recycler shape or dtype is incompatible.
@@ -1800,7 +1790,6 @@ NDArray<R> cumprod<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
 /// - If provided, the [out] recycler must have compatible shape and dtype.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 /// - It is an error if [out] recycler shape or dtype is incompatible.
@@ -1859,7 +1848,6 @@ NDArray<T> cummin<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 /// - If provided, [axis] must be within bounds `[-rank, rank - 1]`.
 /// - If provided, the [out] recycler must have compatible shape and dtype.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 /// - It is an error if [out] recycler shape or dtype is incompatible.
@@ -1921,7 +1909,6 @@ NDArray<T> cummax<T>(NDArray<T> a, {int? axis, NDArray<T>? out}) {
 /// - Input array [a] elements must be numeric (`T extends num`).
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of range.
 ///
@@ -2013,7 +2000,6 @@ NDArray<Float64> var_<T extends num>(
 /// **Preconditions:**
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 ///
@@ -2169,7 +2155,6 @@ NDArray<R> nanmean<R extends Object>(
 /// - [q] must be within `[0.0, 1.0]`.
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [q] is out of bounds or [axis] is out of bounds.
 NDArray<double> quantile<T extends Object>(
@@ -2374,7 +2359,6 @@ double r_quantile_helper(NDArray a, int size, double q, int method) {
 /// - [q] must be within `[0.0, 100.0]`.
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [q] is out of bounds or [axis] is out of bounds.
 NDArray<double> percentile<T extends Object>(
@@ -2404,7 +2388,6 @@ NDArray<double> percentile<T extends Object>(
 /// - Input array [a] elements must be numeric (`T extends num` or Complex).
 /// - If provided, [axis] must be within `[-rank, rank - 1]`.
 ///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 NDArray<T> median<T extends Object>(

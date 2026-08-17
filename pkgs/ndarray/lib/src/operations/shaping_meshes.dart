@@ -12,7 +12,6 @@ import 'spacers.dart';
 /// - [step] must be non-zero.
 /// - If [numPoints] is specified, it must be strictly positive ($\ge 1$).
 ///
-/// **Throws:**
 /// - It is an error if [step] is 0.
 /// - It is an error if [numPoints] is negative or 0.
 ///
@@ -99,7 +98,6 @@ NDArray<double> _generate1DCoordinate(GridRange range, DType<double> dtype) {
 /// - If [shape] is provided, all its dimensions must be positive.
 /// - If [strides] is provided, its length must match the length of [shape].
 ///
-/// **Throws:**
 /// - It is an error if [x] has been disposed.
 /// - It is an error if [shape] and [strides] lengths do not match.
 ///
@@ -148,7 +146,6 @@ NDArray<T> asStrided<T>(NDArray<T> x, {List<int>? shape, List<int>? strides}) {
 /// **Preconditions:**
 /// - [ranges] must not be empty.
 ///
-/// **Throws:**
 /// - It is an error if [ranges] is empty.
 ///
 /// **Example:**
@@ -164,10 +161,19 @@ List<NDArray<double>> ogrid(
   if (ranges.isEmpty) {
     throw ArgumentError('ranges must not be empty.');
   }
-  if (out != null && out.length != ranges.length) {
-    throw ArgumentError(
-      'Length of out (${out.length}) must match length of ranges (${ranges.length}).',
-    );
+  if (out != null) {
+    if (out.length != ranges.length) {
+      throw ArgumentError(
+        'Length of out (${out.length}) must match length of ranges (${ranges.length}).',
+      );
+    }
+    for (var i = 0; i < ranges.length; i++) {
+      if (out[i].isDisposed) {
+        throw StateError(
+          'Cannot write ogrid result to a disposed output array.',
+        );
+      }
+    }
   }
 
   return NDArray.scope(() {
@@ -179,11 +185,16 @@ List<NDArray<double>> ogrid(
       final shape = List<int>.filled(k, 1);
       shape[i] = arr1D.size;
 
-      final reshaped = arr1D.reshape(shape);
       if (out != null) {
-        reshaped.copy(out: out[i]);
-        results.add(out[i]);
+        final targetOut = out[i];
+        if (!listEquals(targetOut.shape, shape) || targetOut.dtype != dtype) {
+          throw ArgumentError('Incompatible out buffer shape or dtype.');
+        }
+        final reshaped = arr1D.reshape(shape);
+        reshaped.copy(out: targetOut);
+        results.add(targetOut);
       } else {
+        final reshaped = arr1D.reshape(shape);
         results.add(reshaped.copy().detachToParentScope());
       }
     }
@@ -206,7 +217,6 @@ List<NDArray<double>> ogrid(
 /// **Preconditions:**
 /// - [ranges] must not be empty.
 ///
-/// **Throws:**
 /// - It is an error if [ranges] is empty.
 /// - It is an error if [out] is provided with incompatible shape or dtype.
 ///

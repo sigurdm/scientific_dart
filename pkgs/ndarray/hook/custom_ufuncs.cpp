@@ -8524,9 +8524,12 @@ void v_interp_double(const double *x, int x_size,
     if (xp_size == 1) {
         double val = fp[0];
         for (int i = 0; i < x_size; i++) {
-            if (x[i] < xp[0]) {
+            double xv = x[i];
+            if (std::isnan(xv)) {
+                res[i] = NAN;
+            } else if (xv < xp[0]) {
                 res[i] = (left != nullptr) ? *left : val;
-            } else if (x[i] > xp[0]) {
+            } else if (xv > xp[0]) {
                 res[i] = (right != nullptr) ? *right : val;
             } else {
                 res[i] = val;
@@ -8578,7 +8581,9 @@ void s_interp_double(const double *x, const int *stridesX,
         int offsetX = 0, offsetRes = 0;
         for (int el = 0; el < total_elements; el++) {
             double xv = x[offsetX];
-            if (xv < xp0) {
+            if (std::isnan(xv)) {
+                res[offsetRes] = NAN;
+            } else if (xv < xp0) {
                 res[offsetRes] = (left != nullptr) ? *left : val;
             } else if (xv > xp0) {
                 res[offsetRes] = (right != nullptr) ? *right : val;
@@ -9545,11 +9550,27 @@ int ndarray_find_index(
     } \
 } while(0)
 
+#define COMPUTE_CHEBYSHEV(type, u, strideU, v, strideV, N, result) do { \
+    double max_diff = 0.0; \
+    for (int i = 0; i < N; i++) { \
+        double diff = std::abs((double)((const type*)u)[i * strideU] - (double)((const type*)v)[i * strideV]); \
+        if (std::isnan(diff)) { \
+            max_diff = NAN; \
+            break; \
+        } \
+        if (diff > max_diff) { \
+            max_diff = diff; \
+        } \
+    } \
+    result = max_diff; \
+} while(0)
+
 #define COMPUTE_DIST(type, u, strideU, v, strideV, N, metric, result) do { \
     switch(metric) { \
         case METRIC_EUCLIDEAN: COMPUTE_EUCLIDEAN(type, u, strideU, v, strideV, N, result); break; \
         case METRIC_COSINE: COMPUTE_COSINE(type, u, strideU, v, strideV, N, result); break; \
         case METRIC_HAMMING: COMPUTE_HAMMING(type, u, strideU, v, strideV, N, result); break; \
+        case METRIC_CHEBYSHEV: COMPUTE_CHEBYSHEV(type, u, strideU, v, strideV, N, result); break; \
         default: result = NAN; break; \
     } \
 } while(0)

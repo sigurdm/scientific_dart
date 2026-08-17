@@ -25677,7 +25677,8 @@ final class cpx_f_t extends ffi.Struct {
 enum DistanceMetric {
   METRIC_EUCLIDEAN(0),
   METRIC_COSINE(1),
-  METRIC_HAMMING(2);
+  METRIC_HAMMING(2),
+  METRIC_CHEBYSHEV(3);
 
   final int value;
   const DistanceMetric(this.value);
@@ -25686,6 +25687,7 @@ enum DistanceMetric {
     0 => METRIC_EUCLIDEAN,
     1 => METRIC_COSINE,
     2 => METRIC_HAMMING,
+    3 => METRIC_CHEBYSHEV,
     _ => throw ArgumentError('Unknown value for DistanceMetric: $value'),
   };
 }

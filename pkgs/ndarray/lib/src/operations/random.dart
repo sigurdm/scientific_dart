@@ -14,8 +14,7 @@ import 'linalg.dart';
 /// **Preconditions:**
 /// - [dtype] must be a floating point type (DType.float32 or DType.float64).
 ///
-/// **Throws:**
-/// - [ArgumentError] if the provided [dtype] is not a supported floating point type.
+/// - It is an error if the provided [dtype] is not a supported floating point type.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
@@ -82,10 +81,9 @@ NDArray<T> uniform<T extends num>(
 /// - [dtype] must be a supported integer type (`int64`, `int32`, `int16`, or `uint8`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype.
 ///
-/// **Throws:**
-/// - [ArgumentError] if [low] is greater than or equal to [high].
-/// - [ArgumentError] if [dtype] is not a supported integer DType.
-/// - [ArgumentError] if [out] has mismatched shape or dtype.
+/// - It is an error if [low] is greater than or equal to [high].
+/// - It is an error if [dtype] is not a supported integer DType.
+/// - It is an error if [out] has mismatched shape or dtype.
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ in both time and space, where $N$ is the total size of the generated array.
@@ -177,9 +175,8 @@ NDArray<T> randint<T extends num>(
 /// - [scale] (standard deviation) must be strictly positive.
 /// - [dtype] must be a floating point type (`float32` or `float64`).
 ///
-/// **Throws:**
-/// - [ArgumentError] if [dtype] is not a supported floating point type.
-/// - [ArgumentError] if [scale] is less than or equal to 0.0.
+/// - It is an error if [dtype] is not a supported floating point type.
+/// - It is an error if [scale] is less than or equal to 0.0.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
@@ -257,9 +254,8 @@ NDArray<T> normal<T extends num>(
 /// - [scale] (the inverse of the rate parameter lambda, i.e., 1/lambda) must be strictly positive.
 /// - [dtype] must be a floating point type (`float32` or `float64`).
 ///
-/// **Throws:**
-/// - [ArgumentError] if [dtype] is not a supported floating point type.
-/// - [ArgumentError] if [scale] (or 1 / lam) is non-positive.
+/// - It is an error if [dtype] is not a supported floating point type.
+/// - It is an error if [scale] (or 1 / lam) is non-positive.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
@@ -350,9 +346,8 @@ NDArray<T> exponential<T extends num>(
 /// - [lam] (lambda, the rate/mean) must be strictly positive.
 /// - [dtype] must be an integer type (`int32` or `int64`).
 ///
-/// **Throws:**
-/// - [ArgumentError] if [dtype] is not a supported integer type.
-/// - [ArgumentError] if [lam] is less than or equal to 0.0.
+/// - It is an error if [dtype] is not a supported integer type.
+/// - It is an error if [lam] is less than or equal to 0.0.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
@@ -421,10 +416,9 @@ NDArray<T> poisson<T extends num>(
 /// - [p] (success probability) must be in the interval `[0.0, 1.0]`.
 /// - [dtype] must be an integer type (`int32` or `int64`).
 ///
-/// **Throws:**
-/// - [ArgumentError] if [dtype] is not a supported integer type.
-/// - [ArgumentError] if [n] is negative.
-/// - [ArgumentError] if [p] is less than 0.0 or greater than 1.0.
+/// - It is an error if [dtype] is not a supported integer type.
+/// - It is an error if [n] is negative.
+/// - It is an error if [p] is less than 0.0 or greater than 1.0.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
@@ -507,10 +501,9 @@ NDArray<T> binomial<T extends num>(
 /// - [cov] must be a square 2-dimensional symmetric, positive-definite covariance matrix of size $D \times D$.
 /// - If provided, [size] must be a valid shape list (e.g. `[N]`).
 ///
-/// **Throws:**
-/// - [ArgumentError] if [mean] is not 1D or [cov] is not 2D and square.
-/// - [ArgumentError] if [mean] first dimension does not match [cov] dimensions.
-/// - [ArgumentError] if [cov] is not symmetric positive-definite.
+/// - It is an error if [mean] is not 1D or [cov] is not 2D and square.
+/// - It is an error if [mean] first dimension does not match [cov] dimensions.
+/// - It is an error if [cov] is not symmetric positive-definite.
 ///
 /// **Performance considerations:**
 /// - Uses LAPACK Cholesky solver and CBLAS matrix multiplication.
@@ -626,9 +619,8 @@ NDArray<T> multivariateNormal<T extends num>(
 /// - [pvals] must be a 1-dimensional vector of probabilities. The probabilities must sum to approximately 1.0.
 /// - If provided, [size] must be a valid shape list.
 ///
-/// **Throws:**
-/// - [ArgumentError] if [n] is negative, or if [pvals] is not a 1D vector.
-/// - [ArgumentError] if [pvals] contains negative probabilities, or if their sum exceeds 1.0 by a significant tolerance.
+/// - It is an error if [n] is negative, or if [pvals] is not a 1D vector.
+/// - It is an error if [pvals] contains negative probabilities, or if their sum exceeds 1.0 by a significant tolerance.
 ///
 /// **Example:**
 /// ```dart
@@ -785,11 +777,10 @@ NDArray<T> multinomial<T extends num>(
 ///   - It must be a 1-D array of the same size as [a].
 ///   - Its values must be non-negative probabilities summing to approximately 1.0.
 ///
-/// **Throws:**
-/// - [StateError] if [a] or [p] is disposed.
-/// - [ArgumentError] if [a] is not 1-D.
-/// - [ArgumentError] if [replace] is false and sample size exceeds [a.size].
-/// - [ArgumentError] if [p] size is mismatched, negative, or does not sum to 1.0.
+/// - It is an error if [a] or [p] is disposed.
+/// - It is an error if [a] is not 1-D.
+/// - It is an error if [replace] is false and sample size exceeds [a.size].
+/// - It is an error if [p] size is mismatched, negative, or does not sum to 1.0.
 ///
 /// **Example:**
 /// ```dart
@@ -954,8 +945,7 @@ NDArray<T> choice<T>(
 /// **Preconditions:**
 /// - The array [a] must not be disposed.
 ///
-/// **Throws:**
-/// - [StateError] if [a] is disposed.
+/// - It is an error if [a] is disposed.
 ///
 /// **Performance considerations:**
 /// - Uses Fisher-Yates shuffle, performing $O(D_0)$ swaps where $D_0$ is the size of the first dimension.
@@ -1048,8 +1038,7 @@ void shuffle(NDArray a, {int? seed, bool secure = false}) {
 /// **Preconditions:**
 /// - The array [a] must not be disposed.
 ///
-/// **Throws:**
-/// - [StateError] if [a] is disposed.
+/// - It is an error if [a] is disposed.
 ///
 /// **Performance considerations:**
 /// - Returns a brand new contiguous deep copy of the array permuted along axis 0.
@@ -1060,11 +1049,16 @@ void shuffle(NDArray a, {int? seed, bool secure = false}) {
 /// final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
 /// final perm = permutation(a); // perm is a permuted copy, a remains unchanged
 /// ```
-NDArray<T> permutation<T>(NDArray<T> a, {int? seed, bool secure = false}) {
-  if (a.isDisposed) {
+NDArray<T> permutation<T>(
+  NDArray<T> a, {
+  int? seed,
+  bool secure = false,
+  NDArray<T>? out,
+}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot permute a disposed array.');
   }
-  final copyArr = a.copy();
+  final copyArr = a.copy(out: out);
   shuffle(copyArr, seed: seed, secure: secure);
   return copyArr;
 }

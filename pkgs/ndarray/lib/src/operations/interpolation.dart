@@ -44,7 +44,6 @@ void _validateSorted(NDArray<Float64> xp) {
 /// - [xp] and [fp] must have the same length.
 /// - [xp] must be strictly increasing.
 ///
-/// **Throws:**
 /// - It is an error if any input array is disposed.
 /// - It is an error if [xp] or [fp] is not 1-dimensional, or if their lengths mismatch.
 /// - It is an error if [xp] is empty.

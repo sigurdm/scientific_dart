@@ -98,7 +98,14 @@ NDArray<R> polyval<Tc, Tx, R>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
 
     if (n == 1) {
       final c0 = c.getCell([0]) as Object;
-      final res = _filledArray(x.shape, c0, targetDType);
+      var res = _filledArray(x.shape, c0, targetDType);
+      final xCast = _ensureDType(x, targetDType);
+      if (xCast.dtype.isFloating || xCast.dtype.isComplex) {
+        res.setByMaskScalar(
+          isnan(xCast),
+          normalizeScalar(double.nan, targetDType) as R,
+        );
+      }
       if (out != null) {
         _copyInto(res, out);
         return out;

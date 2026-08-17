@@ -76,7 +76,6 @@ enum SearchSide {
 /// **Preconditions:**
 /// - [numSamples] must be non-negative.
 ///
-/// **Throws:**
 /// - It is an error if [numSamples] is negative.
 ///
 /// **Memory Ownership & Lifetime:**
@@ -113,7 +112,6 @@ NDArray<T> linspace<T>(
 /// **Preconditions:**
 /// - [numSamples] must be non-negative.
 ///
-/// **Throws:**
 /// - It is an error if [numSamples] is negative.
 ///
 /// **Memory Ownership & Lifetime:**
@@ -155,7 +153,6 @@ NDArray<T> linspace<T>(
 /// - [start] and [stop] must not be disposed.
 /// - [numSamples] must be non-negative.
 ///
-/// **Throws:**
 /// - It is an error if [start] or [stop] is disposed.
 /// - It is an error if [numSamples] is negative.
 /// - It is an error if [axis] is out of bounds.
@@ -201,7 +198,6 @@ NDArray<T> linspaceGrid<T>(
 /// - [start] and [stop] must not be disposed.
 /// - [numSamples] must be non-negative.
 ///
-/// **Throws:**
 /// - It is an error if [start] or [stop] is disposed.
 /// - It is an error if [numSamples] is negative.
 /// - It is an error if [axis] is out of bounds.
@@ -470,7 +466,6 @@ NDArray<T> linspaceGrid<T>(
 /// **Preconditions:**
 /// - [numSamples] must be non-negative.
 ///
-/// **Throws:**
 /// - It is an error if [numSamples] is negative.
 ///
 /// **Memory Ownership & Lifetime:**
@@ -626,7 +621,6 @@ NDArray<T> logspaceGrid<T extends Object>(
 /// - [numSamples] must be non-negative.
 /// - [start] and [stop] must be non-zero and have the same sign.
 ///
-/// **Throws:**
 /// - It is an error if [numSamples] is negative.
 /// - It is an error if [start] or [stop] is zero.
 /// - It is an error if [start] and [stop] have different signs.
@@ -756,8 +750,9 @@ NDArray<T> geomspaceGrid<T extends Object>(
   bool endpoint = true,
   int axis = 0,
   DType<T>? dtype,
+  NDArray<T>? out,
 }) {
-  if (start.isDisposed || stop.isDisposed) {
+  if (start.isDisposed || stop.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute geomspaceGrid() on a disposed array.');
   }
   final resolvedDType = dtype ?? defaultDType<T>();
@@ -807,6 +802,10 @@ NDArray<T> geomspaceGrid<T extends Object>(
       dtype: resolvedDType,
     );
     final res = power<T>(toNDArray<T>(10.0, resolvedDType), y);
+    if (out != null) {
+      res.copy(out: out);
+      return out;
+    }
     res.detachToParentScope();
     return res;
   });
