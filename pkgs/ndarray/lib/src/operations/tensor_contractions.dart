@@ -169,12 +169,6 @@ final class TensordotAxes {
 /// - A [TensordotAxes] object: Pre-constructed axes specification.
 ///
 /// **Preconditions:**
-/// - Both arrays [a] and [b] must not be disposed.
-/// - Contracted axis lengths must match between [a] and [b].
-/// - Specified axes must be within bounds for [a] and [b].
-/// - If provided, the [out] destination array must have the expected output shape and dtype.
-///
-/// **Throws:**
 /// - It is an error if [a], [b], or [out] is disposed.
 /// - It is an error if axes specifications are invalid or out of bounds.
 /// - It is an error if contracted axis dimensions mismatch.
@@ -557,13 +551,6 @@ final class EinsumSubscripts {
 /// - [EinsumSubscripts.fromLabels]: Construct using string label lists.
 ///
 /// **Preconditions:**
-/// - [operands] must not be empty.
-/// - All arrays in [operands] and [out] must not be disposed.
-/// - Subscript terms count must match the number of operands.
-/// - Dimension lengths for shared subscript labels must match across operands.
-/// - If provided, [out] must match the shape and resolved dtype of the einsum result.
-///
-/// **Throws:**
 /// - It is an error if [operands] is empty.
 /// - It is an error if any operand or [out] is disposed.
 /// - It is an error if subscript terms count does not match operands count.
@@ -1617,14 +1604,9 @@ NDArray<R> inner<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 /// If the first argument [a] is complex, its complex conjugate is used for the dot product ($\\sum_i \\bar{a}_i b_i$).
 ///
 /// **Preconditions:**
-/// - Neither [a] nor [b] may be disposed.
-/// - Operands [a] and [b] must have the exact same total number of elements: `a.size == b.size`.
-/// - If [out] is provided, it must not be disposed, and its shape must be 0-D (`[]`) with matching dtype.
-///
-/// **Throws:**
-/// - [StateError] if [a], [b], or [out] is disposed.
-/// - [ArgumentError] if `a.size != b.size`.
-/// - [ArgumentError] if [out] has incompatible shape or dtype.
+/// - It is an error if [a], [b], or [out] is disposed.
+/// - It is an error if operands [a] and [b] do not have the exact same total number of elements (`a.size != b.size`).
+/// - It is an error if [out] has incompatible shape or dtype (must be 0-D `[]` with matching dtype).
 ///
 /// **Performance considerations:**
 /// - Flattens without memory copying via [reshape].

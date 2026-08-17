@@ -129,15 +129,10 @@ kiss_fft_cfg _allocateKissFFTPlan(int nfft, int inverse_fft) {
 /// arbitrary non-power-of-two sequence lengths.
 ///
 /// **Preconditions:**
-/// - Input [a] must have rank $\ge 1$ (not empty or 0-dimensional).
-/// - The specified [axis] must be within valid rank boundaries `[-a.rank, a.rank - 1]`.
-/// - If provided, the target length [n] must be greater than 0.
-///
-/// **Throws:**
 /// - It is an error if [a] or [out] is disposed.
-/// - It is an error if the input array shape is empty (scalar 0D).
-/// - It is an error if the specified [axis] is out of bounds.
-/// - It is an error if [n] is provided but is less than or equal to 0.
+/// - It is an error if the input array [a] shape is empty (scalar 0D, rank < 1).
+/// - It is an error if the specified [axis] is out of bounds `[-a.rank, a.rank - 1]`.
+/// - It is an error if target length [n] is provided but is less than or equal to 0.
 /// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
 ///
 /// **Memory Ownership & Lifetime:**
@@ -329,15 +324,10 @@ NDArray<R> fft<T, R extends Complex>(
 /// The resulting array is **always complex** (DType.complex128 or DType.complex64 depending on precision).
 ///
 /// **Preconditions:**
-/// - Input [a] must have rank $\ge 1$ (not empty or 0-dimensional).
-/// - The specified [axis] must be within valid rank boundaries `[-a.rank, a.rank - 1]`.
-/// - If provided, the target length [n] must be greater than 0.
-///
-/// **Throws:**
 /// - It is an error if [a] or [out] is disposed.
-/// - It is an error if the input array shape is empty (scalar 0D).
-/// - It is an error if the specified [axis] is out of bounds.
-/// - It is an error if [n] is provided but is less than or equal to 0.
+/// - It is an error if the input array [a] shape is empty (scalar 0D, rank < 1).
+/// - It is an error if the specified [axis] is out of bounds `[-a.rank, a.rank - 1]`.
+/// - It is an error if target length [n] is provided but is less than or equal to 0.
 /// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
 ///
 /// **Memory Ownership & Lifetime:**
@@ -534,13 +524,9 @@ NDArray<R> ifft<T, R extends Complex>(
 /// component is centered in the middle of the grid/spectrum.
 ///
 /// **Preconditions:**
-/// - Input [a] must not be disposed.
-/// - If [axes] is a list of integers, all elements must be unique and within valid range `[-a.rank, a.rank - 1]`.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axes] contains duplicate indices or invalid types.
-/// - It is an error if any axis index is out of bounds.
+/// - It is an error if any axis index in [axes] is out of bounds `[-a.rank, a.rank - 1].
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
@@ -615,13 +601,9 @@ NDArray<T> fftshift<T extends Object>(
 /// Shifts the zero-frequency component back to the beginning of the spectrum.
 ///
 /// **Preconditions:**
-/// - Input [a] must not be disposed.
-/// - If [axes] is a list of integers, all elements must be unique and within valid range `[-a.rank, a.rank - 1]`.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axes] contains duplicate indices or invalid types.
-/// - It is an error if any axis index is out of bounds.
+/// - It is an error if any axis index in [axes] is out of bounds `[-a.rank, a.rank - 1].
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates a new array on the unmanaged C heap. The caller takes full ownership of this memory and must explicitly call [dispose] to prevent native leaks, unless executing inside a managed [NDArray.scope].
@@ -1034,10 +1016,8 @@ NDArray<R> _padOrTruncate<T, R extends Complex>(
 ///   f = [0, 1, ..., (n-1)/2, -(n-1)/2, ..., -1] / (d*n)   if n is odd
 ///
 /// **Preconditions:**
-/// - [n] must be greater than 0.
-///
-/// **Throws:**
-/// - [ArgumentError] if [n] is less than or equal to 0.
+/// - It is an error if window length [n] is less than or equal to 0.
+/// - It is an error if sample spacing [d] is 0.0.
 ///
 /// **Performance considerations:**
 /// - $O(n)$ time complexity and space complexity.
@@ -1084,10 +1064,8 @@ NDArray<Float64> fftfreq(int n, {double d = 1.0}) {
 ///   f = [0, 1, ..., n//2] / (d*n)
 ///
 /// **Preconditions:**
-/// - [n] must be greater than 0.
-///
-/// **Throws:**
-/// - [ArgumentError] if [n] is less than or equal to 0.
+/// - It is an error if window length [n] is less than or equal to 0.
+/// - It is an error if sample spacing [d] is 0.0.
 ///
 /// **Performance considerations:**
 /// - $O(n)$ time complexity and space complexity.
@@ -1828,18 +1806,12 @@ NDArray<R> _fftnND<T, R extends Complex>(
 /// multidimensional array.
 ///
 /// **Preconditions:**
-/// - Input [a] must have rank $\ge 1$.
-/// - [axes] if provided must contain unique valid axes indices. Defaults to last `len(s)` axes, or all axes if `s` is null.
-/// - [s] if provided must have same length as [axes] and contain positive dimensions. Defaults to shape along [axes].
-/// - If provided, the [out] buffer must have shape matching the output shape and target DType.
-///
-/// **Throws:**
-/// - [ArgumentError] if input array is 0-dimensional.
-/// - [ArgumentError] if [axes] and [s] length mismatch.
-/// - [RangeError] if any axis index in [axes] is out of bounds.
-/// - [ArgumentError] if [axes] contains duplicates.
-/// - [ArgumentError] if any value in [s] is $\le 0$.
-/// - [ArgumentError] if [out] shape or dtype is incompatible.
+/// - It is an error if input array [a] or [out] is disposed.
+/// - It is an error if input array [a] is 0-dimensional (rank < 1).
+/// - It is an error if [axes] and [s] length mismatch.
+/// - It is an error if any axis index in [axes] is out of bounds `[-a.rank, a.rank - 1]` or contains duplicates.
+/// - It is an error if any dimension in [s] is $\le 0$.
+/// - It is an error if [out] has incompatible shape, dtype, or is not contiguous.
 ///
 /// **Performance considerations:**
 /// - Uses `kiss_fftnd` plan which is optimized for multi-dimensional transforms.
@@ -1858,9 +1830,6 @@ NDArray<R> fftn<T, R extends Complex>(
 /// Computes the inverse of [fftn].
 ///
 /// **Preconditions:**
-/// - Same as [fftn].
-///
-/// **Throws:**
 /// - Same as [fftn].
 ///
 /// **Performance considerations:**

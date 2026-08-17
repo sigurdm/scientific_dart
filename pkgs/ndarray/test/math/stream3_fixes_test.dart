@@ -380,5 +380,132 @@ void main() {
         });
       },
     );
+    test(
+      'Cycle 12 Stream 3 Task 1: Zero-Sized Matrix (M=0 or N=0) Fast Paths',
+      () {
+        NDArray.scope(() {
+          final mat00 = NDArray<Float64>.zeros([0, 0], DType.float64);
+          final mat20 = NDArray<Float64>.zeros([2, 0], DType.float64);
+          final mat03 = NDArray<Float64>.zeros([0, 3], DType.float64);
+
+          // inv
+          final inv00 = inv(mat00);
+          expect(inv00.shape, equals([0, 0]));
+
+          // det
+          final det00 = det(mat00);
+          expect(det00.scalar, equals(1.0));
+
+          // slogdet
+          final slog00 = slogdet(mat00);
+          expect(slog00.sign.scalar, equals(1.0));
+          expect(slog00.logabsdet.scalar, equals(0.0));
+
+          // cholesky
+          final chol00 = cholesky(mat00);
+          expect(chol00.shape, equals([0, 0]));
+
+          // schur
+          final schur00 = schur(mat00);
+          expect(schur00.t.shape, equals([0, 0]));
+          expect(schur00.z.shape, equals([0, 0]));
+
+          // pinv
+          final pinv20 = pinv(mat20);
+          expect(pinv20.shape, equals([0, 2]));
+
+          // svd
+          final svd20 = svd(mat20);
+          expect(svd20.u.shape, equals([2, 2]));
+          expect(svd20.s.shape, equals([0]));
+          expect(svd20.vh.shape, equals([0, 0]));
+          expect(svd20.u[[0, 0]], equals(1.0));
+          expect(svd20.u[[0, 1]], equals(0.0));
+
+          // qr
+          final qr03 = qr(mat03);
+          expect(qr03.q.shape, equals([0, 0]));
+          expect(qr03.r.shape, equals([0, 3]));
+
+          // lstsq
+          final b0 = NDArray<Float64>.zeros([0], DType.float64);
+          final lstsq20 = lstsq(
+            mat20,
+            NDArray<Float64>.zeros([2], DType.float64),
+          );
+          expect(lstsq20.x.shape, equals([0]));
+          expect(lstsq20.residuals.shape, equals([0]));
+          expect(lstsq20.rank, equals(0));
+
+          // eigh
+          final eigh00 = eigh(mat00);
+          expect(eigh00.eigenvalues.shape, equals([0]));
+          expect(eigh00.eigenvectors.shape, equals([0, 0]));
+
+          // hessenberg
+          final hess00 = hessenberg(mat00);
+          expect(hess00.h.shape, equals([0, 0]));
+          expect(hess00.q.shape, equals([0, 0]));
+        });
+      },
+    );
+
+    test(
+      'Cycle 12 Stream 3 Task 2: Generic <T> Alignment on Records & Dispose Extensions',
+      () {
+        NDArray.scope(() {
+          final mat = NDArray<Float64>.fromList(
+            [2.0, 1.0, 1.0, 2.0],
+            [2, 2],
+            DType.float64,
+          );
+
+          // eigh return generic <T> check
+          ({NDArray<num> eigenvalues, NDArray<Float64> eigenvectors}) resEigh =
+              eigh<Float64, Float64>(mat);
+          expect(resEigh.eigenvectors.dtype, equals(DType.float64));
+
+          // hessenberg return generic <T> check
+          ({NDArray<Float64> h, NDArray<Float64> q}) resHess =
+              hessenberg<Float64>(mat);
+          expect(resHess.h.dtype, equals(DType.float64));
+          expect(resHess.q.dtype, equals(DType.float64));
+
+          // SchurRecordDispose<T> generic check
+          ({NDArray<Float64> t, NDArray<Float64> z}) resSchur =
+              schur<Float64, Float64>(mat);
+          resSchur.dispose();
+          expect(resSchur.t.isDisposed, isTrue);
+          expect(resSchur.z.isDisposed, isTrue);
+        });
+      },
+    );
+
+    test(
+      'Cycle 12 Stream 3 Task 3: Scoping Invariants in Factorizations (schur & lstsq)',
+      () {
+        NDArray.scope(() {
+          final mat = NDArray<Float64>.fromList(
+            [4.0, -1.0, 1.0, 2.0],
+            [2, 2],
+            DType.float64,
+          );
+          final vec = NDArray<Float64>.fromList([5.0, 3.0], [2], DType.float64);
+
+          final res = schur<Float64, Float64>(mat);
+          // Ensure t and z survive schur's internal NDArray.scope
+          expect(res.t.isDisposed, isFalse);
+          expect(res.z.isDisposed, isFalse);
+          expect(res.t.shape, equals([2, 2]));
+
+          final lstsqRes = lstsq<Float64, Float64, Float64>(mat, vec);
+          // Ensure x, residuals, and s survive lstsq's internal NDArray.scope
+          expect(lstsqRes.x.isDisposed, isFalse);
+          expect(lstsqRes.residuals.isDisposed, isFalse);
+          expect(lstsqRes.s.isDisposed, isFalse);
+          expect(lstsqRes.x.shape, equals([2]));
+        });
+      },
+    );
   });
 }
