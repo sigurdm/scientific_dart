@@ -71,8 +71,6 @@ bool _listEquals(List a, List b) {
 /// - If [spacing] is [CoordinateSpacing], its length must match `y.shape[axis]`.
 /// - If [spacing] is complex, input [y] must also be complex.
 /// - If [out] is provided, it must match the resolved shape and dtype.
-///
-/// **Throws:**
 /// - It is an error if [y] or [out] is disposed.
 /// - It is an error if [y] has an integer or boolean dtype.
 /// - It is an error if complex spacing is used with a real input array.
@@ -311,9 +309,13 @@ NDArray<T> trapz<T extends Object>(
           final doubleValues = values
               .map((e) => (e as num).toDouble())
               .toList();
-          NDArray? spacingArray;
+          NDArray<double>? spacingArray;
           try {
-            spacingArray = NDArray.fromList(doubleValues, [N], y.dtype);
+            spacingArray = NDArray<double>.fromList(
+              doubleValues,
+              [N],
+              y.dtype.isFloating ? y.dtype as DType<double> : DType.float64,
+            );
 
             final dtype = y.dtype;
             switch (dtype) {
@@ -419,8 +421,6 @@ NDArray<T> trapz<T extends Object>(
 /// - If [spacing] is [CoordinateSpacing], its length must match `f.shape[axis]`.
 /// - If [spacing] is complex, input [f] must also be complex.
 /// - If [out] is provided, it must match the resolved shape and dtype.
-///
-/// **Throws:**
 /// - It is an error if [f] or [out] is disposed.
 /// - It is an error if [f] has an integer or boolean dtype.
 /// - It is an error if complex spacing is used with a real input array.
@@ -477,6 +477,12 @@ NDArray<T> gradient<T extends Object>(
   }
 
   final N = f.shape[targetAxis];
+  final minSize = edgeOrder == 2 ? 3 : 2;
+  if (N < minSize) {
+    throw ArgumentError(
+      'Dimension size $N along axis $targetAxis is too small for edgeOrder=$edgeOrder (requires at least $minSize).',
+    );
+  }
   if (spacing is CoordinateSpacing) {
     if (spacing.values.length != N) {
       throw ArgumentError(
@@ -676,9 +682,13 @@ NDArray<T> gradient<T extends Object>(
           final doubleValues = values
               .map((e) => (e as num).toDouble())
               .toList();
-          NDArray? spacingArray;
+          NDArray<double>? spacingArray;
           try {
-            spacingArray = NDArray.fromList(doubleValues, [N], f.dtype);
+            spacingArray = NDArray<double>.fromList(
+              doubleValues,
+              [N],
+              f.dtype.isFloating ? f.dtype as DType<double> : DType.float64,
+            );
             final dtype = f.dtype;
             switch (dtype) {
               case DType.float64:
@@ -782,8 +792,6 @@ NDArray<T> gradient<T extends Object>(
 /// - If provided, [axis] elements must be unique and within bounds `[-f.rank, f.rank - 1]`.
 /// - [spacing] and [spacings] are mutually exclusive.
 /// - If provided, [spacings] length must match the number of axes being differentiated.
-///
-/// **Throws:**
 /// - It is an error if [f] is disposed.
 /// - It is an error if [f] has an integer or boolean dtype.
 /// - It is an error if [axis] contains out of bounds or duplicate indices.
@@ -845,6 +853,15 @@ List<NDArray<T>> gradientArray<T extends Object>(
         throw ArgumentError('axis index $ax specified multiple times.');
       }
       targetAxes.add(resolvedAx);
+    }
+  }
+
+  final minSize = edgeOrder == 2 ? 3 : 2;
+  for (final ax in targetAxes) {
+    if (f.shape[ax] < minSize) {
+      throw ArgumentError(
+        'Dimension size ${f.shape[ax]} along axis $ax is too small for edgeOrder=$edgeOrder (requires at least $minSize).',
+      );
     }
   }
 

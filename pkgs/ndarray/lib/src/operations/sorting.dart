@@ -1,5 +1,4 @@
 // ignore_for_file: non_constant_identifier_names
-import 'dart:typed_data';
 import '../ndarray.dart';
 import 'dart:ffi' as ffi;
 import '../ndarray_bindings.dart';
@@ -21,8 +20,6 @@ import 'helpers.dart';
 ///
 /// **Preconditions:**
 /// - [axis] must be within `[-rank, rank - 1]`.
-///
-/// **Throws:**
 /// - It is an error if [axis] is out of bounds.
 ///
 /// **Example:**
@@ -50,7 +47,7 @@ NDArray<T> sort<T extends Object>(
   final rank = a.shape.length;
   if (rank == 0) {
     if (out != null) {
-      out.setCell([], a.scalar);
+      out.setCellFlat(0, a.scalar);
       return out;
     }
     return NDArray<T>.scalar(a.scalar, dtype: a.dtype);
@@ -94,17 +91,15 @@ NDArray<T> sort<T extends Object>(
       // Sort boolean rows in $O(N)$
       for (var r = 0; r < numRows; r++) {
         final rowStart = r * n;
-        final rowEnd = rowStart + n;
-        final resBacking = (result.data as BoolList).backingList;
         var falses = 0;
-        for (var i = rowStart; i < rowEnd; i++) {
-          if (resBacking[i] == 0) falses++;
+        for (var i = 0; i < n; i++) {
+          if (!(result.getCellFlat(rowStart + i) as bool)) falses++;
         }
-        for (var i = rowStart; i < rowStart + falses; i++) {
-          resBacking[i] = 0;
+        for (var i = 0; i < falses; i++) {
+          result.setCellFlat(rowStart + i, false as T);
         }
-        for (var i = rowStart + falses; i < rowEnd; i++) {
-          resBacking[i] = 1;
+        for (var i = falses; i < n; i++) {
+          result.setCellFlat(rowStart + i, true as T);
         }
       }
       return result;
@@ -174,8 +169,6 @@ NDArray<T> sort<T extends Object>(
 ///
 /// **Preconditions:**
 /// - [axis] must be within `[-rank, rank - 1]`.
-///
-/// **Throws:**
 /// - It is an error if [axis] is out of bounds.
 ///
 /// **Example:**
@@ -204,7 +197,7 @@ NDArray<int> argsort(
   final rank = a.shape.length;
   if (rank == 0) {
     if (out != null) {
-      out.setCell([], 0);
+      out.setCellFlat(0, 0);
       return out;
     }
     return NDArray.scalar(0, dtype: DType.int32);
@@ -262,9 +255,9 @@ NDArray<int> argsort(
         native_argsort_double(dataPtr + r * n, resPtr + r * n, n, nativeKind);
       }
       if (is64) {
-        final outData = result.data as Int64List;
+        final outPtr = result.pointer.cast<ffi.LongLong>();
         for (var i = 0; i < totalSize; i++) {
-          outData[i] = resPtr[i];
+          outPtr[i] = resPtr[i];
         }
       }
       return result;
@@ -274,9 +267,9 @@ NDArray<int> argsort(
         native_argsort_float(dataPtr + r * n, resPtr + r * n, n, nativeKind);
       }
       if (is64) {
-        final outData = result.data as Int64List;
+        final outPtr = result.pointer.cast<ffi.LongLong>();
         for (var i = 0; i < totalSize; i++) {
-          outData[i] = resPtr[i];
+          outPtr[i] = resPtr[i];
         }
       }
       return result;
@@ -286,9 +279,9 @@ NDArray<int> argsort(
         native_argsort_int64(dataPtr + r * n, resPtr + r * n, n, nativeKind);
       }
       if (is64) {
-        final outData = result.data as Int64List;
+        final outPtr = result.pointer.cast<ffi.LongLong>();
         for (var i = 0; i < totalSize; i++) {
-          outData[i] = resPtr[i];
+          outPtr[i] = resPtr[i];
         }
       }
       return result;
@@ -298,9 +291,9 @@ NDArray<int> argsort(
         native_argsort_int32(dataPtr + r * n, resPtr + r * n, n, nativeKind);
       }
       if (is64) {
-        final outData = result.data as Int64List;
+        final outPtr = result.pointer.cast<ffi.LongLong>();
         for (var i = 0; i < totalSize; i++) {
-          outData[i] = resPtr[i];
+          outPtr[i] = resPtr[i];
         }
       }
       return result;
@@ -310,9 +303,9 @@ NDArray<int> argsort(
         native_argsort_int16(dataPtr + r * n, resPtr + r * n, n, nativeKind);
       }
       if (is64) {
-        final outData = result.data as Int64List;
+        final outPtr = result.pointer.cast<ffi.LongLong>();
         for (var i = 0; i < totalSize; i++) {
-          outData[i] = resPtr[i];
+          outPtr[i] = resPtr[i];
         }
       }
       return result;
@@ -322,9 +315,9 @@ NDArray<int> argsort(
         native_argsort_uint8(dataPtr + r * n, resPtr + r * n, n, nativeKind);
       }
       if (is64) {
-        final outData = result.data as Int64List;
+        final outPtr = result.pointer.cast<ffi.LongLong>();
         for (var i = 0; i < totalSize; i++) {
-          outData[i] = resPtr[i];
+          outPtr[i] = resPtr[i];
         }
       }
       return result;
@@ -335,18 +328,16 @@ NDArray<int> argsort(
       final indices = List<int>.generate(n, (i) => i);
 
       if (src.dtype == DType.complex128 || src.dtype == DType.complex64) {
-        final dataList = src.data as List<Complex>;
         indices.sort((i, j) {
-          final cA = dataList[rowStart + i];
-          final cB = dataList[rowStart + j];
+          final cA = src.getCellFlat(rowStart + i) as Complex;
+          final cB = src.getCellFlat(rowStart + j) as Complex;
           if (cA.real != cB.real) return cA.real.compareTo(cB.real);
           return cA.imag.compareTo(cB.imag);
         });
       } else if (src.dtype == DType.boolean) {
-        final dataList = src.data as List<bool>;
         indices.sort((i, j) {
-          final bA = dataList[rowStart + i];
-          final bB = dataList[rowStart + j];
+          final bA = src.getCellFlat(rowStart + i) as bool;
+          final bB = src.getCellFlat(rowStart + j) as bool;
           if (bA == bB) return 0;
           return bA ? 1 : -1;
         });
@@ -355,7 +346,7 @@ NDArray<int> argsort(
       }
 
       for (var i = 0; i < n; i++) {
-        result.data[rowStart + i] = indices[i];
+        result.setCellFlat(rowStart + i, indices[i]);
       }
     }
 
@@ -379,8 +370,6 @@ NDArray<int> argsort(
 /// **Preconditions:**
 /// - [axis] must be within `[-rank, rank - 1]`.
 /// - [kth] must be an `int` or `List<int>` containing indices within `[0, axis_size - 1]`.
-///
-/// **Throws:**
 /// - It is an error if [axis] is out of bounds.
 /// - It is an error if [kth] is invalid.
 ///
@@ -408,7 +397,7 @@ NDArray<T> partition<T extends Object>(
   final rank = a.shape.length;
   if (rank == 0) {
     if (out != null) {
-      out.setCell([], a.scalar);
+      out.setCellFlat(0, a.scalar);
       return out;
     }
     return NDArray<T>.scalar(a.scalar, dtype: a.dtype);
@@ -595,8 +584,6 @@ NDArray<T> partition<T extends Object>(
 /// **Preconditions:**
 /// - [axis] must be within `[-rank, rank - 1]`.
 /// - [kth] must be an `int` or `List<int>` containing indices within `[0, axis_size - 1]`.
-///
-/// **Throws:**
 /// - It is an error if [axis] is out of bounds.
 /// - It is an error if [kth] is invalid.
 ///
@@ -625,7 +612,7 @@ NDArray<int> argpartition(
   final rank = a.shape.length;
   if (rank == 0) {
     if (out != null) {
-      out.setCell([], 0);
+      out.setCellFlat(0, 0);
       return out;
     }
     return NDArray.scalar(0, dtype: DType.int32);
@@ -692,16 +679,8 @@ NDArray<int> argpartition(
     final result = out ?? NDArray<int>.create(src.shape, DType.int32);
 
     if (uniqueK.isEmpty) {
-      if (result.dtype == DType.int64) {
-        final ptr = result.pointer.cast<ffi.LongLong>();
-        for (var i = 0; i < totalSize; i++) {
-          ptr[i] = i % n;
-        }
-      } else {
-        final ptr = result.pointer.cast<ffi.Int>();
-        for (var i = 0; i < totalSize; i++) {
-          ptr[i] = i % n;
-        }
+      for (var i = 0; i < totalSize; i++) {
+        result.setCellFlat(i, i % n);
       }
       return result;
     }
@@ -810,17 +789,17 @@ NDArray<int> argpartition(
           );
         }
       } else if (src.dtype == DType.boolean) {
-        final ptr = src.pointer.cast<ffi.Uint8>();
         for (var r = 0; r < numRows; r++) {
           final rowStart = r * n;
           final indices = List<int>.generate(n, (i) => i);
           indices.sort((i, j) {
-            final bA = ptr[rowStart + i];
-            final bB = ptr[rowStart + j];
-            return bA.compareTo(bB);
+            final bA = src.getCellFlat(rowStart + i) as bool;
+            final bB = src.getCellFlat(rowStart + j) as bool;
+            if (bA == bB) return 0;
+            return bA ? 1 : -1;
           });
           for (var i = 0; i < n; i++) {
-            resPtr[rowStart + i] = indices[i];
+            result.setCellFlat(rowStart + i, indices[i]);
           }
         }
       } else {
@@ -829,10 +808,10 @@ NDArray<int> argpartition(
         );
       }
 
-      if (is64) {
-        final outData = result.data as Int64List;
+      if (is64 && src.dtype != DType.boolean) {
+        final outPtr = result.pointer.cast<ffi.LongLong>();
         for (var i = 0; i < totalSize; i++) {
-          outData[i] = resPtr[i];
+          outPtr[i] = resPtr[i];
         }
       }
       return result;
@@ -861,12 +840,10 @@ NDArray<int> argpartition(
 /// - [a] must be a 1-D array. If [sorter] is `null`, [a] must be sorted in ascending order.
 /// - [v] must have a matching data type to [a].
 /// - [sorter] (optional) must be a 1-D integer array of the same size as [a]
-///   containing indices that sort [a] into ascending order. If provided, binary search
-///   is performed indirectly using the sorter indices, completely copy-free.
-///
-/// **Throws:**
 /// - It is an error if [a] is not 1-D, [sorter] shape/size is invalid, or if data types mismatch.
 /// - It is an error if any input array is already disposed.
+///   containing indices that sort [a] into ascending order. If provided, binary search
+///   is performed indirectly using the sorter indices, completely copy-free.
 ///
 /// **Performance considerations:**
 /// - **Time Complexity**: $O(M \log N)$ where $N$ is the size of [a] and $M$ is the size of [v].
@@ -1079,36 +1056,28 @@ NDArray<int> searchsorted(
           cSorter,
         );
       case DType.boolean:
-        final ptrA = srcA.pointer.cast<ffi.Uint8>();
-        final ptrV = srcV.pointer.cast<ffi.Uint8>();
-        final sorterPtr32 = srcSorter?.dtype == DType.int32
-            ? srcSorter!.pointer.cast<ffi.Int>()
-            : null;
-        final sorterPtr64 = srcSorter?.dtype == DType.int64
-            ? srcSorter!.pointer.cast<ffi.LongLong>()
-            : null;
+        final sortedIndices = srcSorter?.toList();
 
-        int getElement(int idx) {
-          int actualIdx = idx;
-          if (sorterPtr32 != null) {
-            actualIdx = sorterPtr32[idx];
-          } else if (sorterPtr64 != null) {
-            actualIdx = sorterPtr64[idx];
-          } else if (srcSorter != null) {
-            actualIdx = srcSorter.getCell([idx]);
-          }
-          return ptrA[actualIdx];
+        bool getElement(int idx) {
+          return sortedIndices != null
+              ? srcA.getCellFlat(sortedIndices[idx]) as bool
+              : srcA.getCellFlat(idx) as bool;
         }
 
         for (var vIdx = 0; vIdx < numValues; vIdx++) {
-          final val = ptrV[vIdx];
+          final val = srcV.getCellFlat(vIdx) as bool;
           var low = 0;
           var high = size;
           while (low < high) {
             final mid = low + ((high - low) >> 1);
             final midVal = getElement(mid);
 
-            final comp = midVal.compareTo(val);
+            int comp;
+            if (midVal == val) {
+              comp = 0;
+            } else {
+              comp = midVal ? 1 : -1; // false < true
+            }
 
             if (side == SearchSide.left) {
               if (comp < 0) {
@@ -1124,13 +1093,13 @@ NDArray<int> searchsorted(
               }
             }
           }
-          resPtr[vIdx] = low;
+          result.setCellFlat(vIdx, low);
         }
     }
-    if (is64) {
-      final outData = result.data as Int64List;
+    if (is64 && srcA.dtype != DType.boolean) {
+      final outPtr = result.pointer.cast<ffi.LongLong>();
       for (var i = 0; i < numValues; i++) {
-        outData[i] = resPtr[i];
+        outPtr[i] = resPtr[i];
       }
     }
   } finally {
@@ -1159,8 +1128,6 @@ NDArray<int> searchsorted(
 /// - [condition] must be a boolean array (`condition.dtype == DType.boolean`).
 /// - Either both or neither of [x] and [y] must be provided.
 /// - If provided, [condition], [x], and [y] shapes must be mutually broadcast-compatible.
-///
-/// **Throws:**
 /// - It is an error if only one of [x] or [y] is provided.
 /// - It is an error if [out] is specified when [x] and [y] are omitted.
 /// - It is an error if the shapes are not broadcast-compatible.
@@ -2162,6 +2129,9 @@ NDArray<int> _argminmaxFFI<T>(
     ScratchArena.reset(marker);
   }
 
+  if (out == null) {
+    result.detachToParentScope();
+  }
   return result;
 }
 
@@ -2230,19 +2200,17 @@ enum CompareOp {
 /// **Preconditions:**
 /// - The array [a] must not be disposed.
 /// - [target] must match the Dart representation of the [DType] of [a] (e.g., [double] for [DType.float64],
+/// - It is an error if [a] is disposed.
+/// - It is an error if the length of [startCoords] or [directions] does not match the rank of [a].
+/// - It is an error if [directions] contains any values other than `1` or `-1`.
+/// - It is an error if any coordinate in [startCoords] is out of bounds for the array's shape.
+/// - It is an error if [a] has a complex data type and [op] is an inequality operator (e.g., [CompareOp.less]).
 ///   [int] for integer types, [Complex] for complex types).
 /// - Complex types only support [CompareOp.equal] and [CompareOp.notEqual].
 /// - If [startCoords] is provided, its length must match [a.shape.length] (the rank of the array),
 ///   and each coordinate `startCoords[i]` must satisfy `0 <= startCoords[i] < a.shape[i]`.
 /// - If [directions] is provided, its length must match [a.shape.length], and it must only
 ///   contain `1` (forward search) or `-1` (backward search) for each dimension.
-///
-/// **Throws:**
-/// - It is an error if [a] is disposed.
-/// - It is an error if the length of [startCoords] or [directions] does not match the rank of [a].
-/// - It is an error if [directions] contains any values other than `1` or `-1`.
-/// - It is an error if any coordinate in [startCoords] is out of bounds for the array's shape.
-/// - It is an error if [a] has a complex data type and [op] is an inequality operator (e.g., [CompareOp.less]).
 ///
 /// **Performance considerations:**
 /// - Complexity is $O(N)$ in the worst case where $N$ is the number of elements in [a].

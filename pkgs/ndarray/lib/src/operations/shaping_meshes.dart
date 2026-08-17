@@ -11,8 +11,6 @@ import 'spacers.dart';
 /// **Preconditions:**
 /// - [step] must be non-zero.
 /// - If [numPoints] is specified, it must be strictly positive ($\ge 1$).
-///
-/// **Throws:**
 /// - It is an error if [step] is 0.
 /// - It is an error if [numPoints] is negative or 0.
 ///
@@ -98,8 +96,6 @@ NDArray<double> _generate1DCoordinate(GridRange range, DType<double> dtype) {
 /// - [x] must not be disposed.
 /// - If [shape] is provided, all its dimensions must be positive.
 /// - If [strides] is provided, its length must match the length of [shape].
-///
-/// **Throws:**
 /// - It is an error if [x] has been disposed.
 /// - It is an error if [shape] and [strides] lengths do not match.
 ///
@@ -147,8 +143,6 @@ NDArray<T> asStrided<T>(NDArray<T> x, {List<int>? shape, List<int>? strides}) {
 ///
 /// **Preconditions:**
 /// - [ranges] must not be empty.
-///
-/// **Throws:**
 /// - It is an error if [ranges] is empty.
 ///
 /// **Example:**
@@ -159,15 +153,9 @@ NDArray<T> asStrided<T>(NDArray<T> x, {List<int>? shape, List<int>? strides}) {
 List<NDArray<double>> ogrid(
   List<GridRange> ranges, {
   DType<double> dtype = DType.float64,
-  List<NDArray<double>>? out,
 }) {
   if (ranges.isEmpty) {
     throw ArgumentError('ranges must not be empty.');
-  }
-  if (out != null && out.length != ranges.length) {
-    throw ArgumentError(
-      'Length of out (${out.length}) must match length of ranges (${ranges.length}).',
-    );
   }
 
   return NDArray.scope(() {
@@ -180,12 +168,7 @@ List<NDArray<double>> ogrid(
       shape[i] = arr1D.size;
 
       final reshaped = arr1D.reshape(shape);
-      if (out != null) {
-        reshaped.copy(out: out[i]);
-        results.add(out[i]);
-      } else {
-        results.add(reshaped.copy().detachToParentScope());
-      }
+      results.add(reshaped.copy().detachToParentScope());
     }
 
     return results;
@@ -205,87 +188,68 @@ List<NDArray<double>> ogrid(
 ///
 /// **Preconditions:**
 /// - [ranges] must not be empty.
-///
-/// **Throws:**
 /// - It is an error if [ranges] is empty.
-/// - It is an error if [out] is provided with incompatible shape or dtype.
-///
-/// **Performance considerations:**
-/// - Materializes full dense coordinates in memory with time and space complexity $O(k \prod d_i)$.
-/// - For memory-efficient operations without materializing dense arrays, consider [ogrid].
 ///
 /// **Example:**
 /// {@example /example/shaping_example.dart lang=dart}
 ///
 /// Refer to the [NumPy mgrid reference](https://numpy.org/doc/stable/reference/generated/numpy.mgrid.html)
 /// for details.
-/// If [out] is provided, writes the resulting grid array into it.
 NDArray<double> mgrid(
   List<GridRange> ranges, {
   DType<double> dtype = DType.float64,
-  NDArray<double>? out,
 }) {
   if (ranges.isEmpty) {
     throw ArgumentError('ranges must not be empty.');
-  }
-  if (out != null && out.isDisposed) {
-    throw StateError('Cannot write mgrid result to a disposed output array.');
   }
 
   return NDArray.scope(() {
     final k = ranges.length;
 
     // 1. Generate 1D coordinates to determine shape of the grid
-    final allCoords = <NDArray<double>>[];
+    final allCoords = <List<double>>[];
     final gridShape = <int>[];
 
     for (var i = 0; i < k; i++) {
       final arr1D = _generate1DCoordinate(ranges[i], dtype);
-      allCoords.add(arr1D);
+      allCoords.add(arr1D.toList());
       gridShape.add(arr1D.size);
     }
 
     // 2. Allocate the dense result array of shape [k, d1, d2, ..., dk]
     final outputShape = [k, ...gridShape];
-    if (out != null) {
-      if (!listEquals(out.shape, outputShape) || out.dtype != dtype) {
-        throw ArgumentError('Incompatible out buffer shape or dtype.');
-      }
-    }
-    final result = out ?? NDArray<double>.create(outputShape, dtype);
+    final result = NDArray<double>.create(outputShape, dtype);
+    final gridStrides = NDArray.computeCStrides(gridShape);
+    final gridSize = gridShape.isEmpty ? 1 : gridShape.reduce((a, b) => a * b);
+
     // 3. Walk recursively to fill coordinates in-place
     for (var i = 0; i < k; i++) {
       final coords = allCoords[i];
-      final currentIndices = List<int>.filled(k + 1, 0);
-      currentIndices[0] = i;
+      final gridOffset = i * gridSize;
 
-      void walk(int dim, double? val) {
+      void walk(int dim, int currentOffset, double? val) {
         if (dim == k) {
-          result.setCell(currentIndices, val!);
+          result.data[gridOffset + currentOffset] = val!;
           return;
         }
 
         final size = gridShape[dim];
+        final stride = gridStrides[dim];
 
         if (dim == i) {
           for (var c = 0; c < size; c++) {
-            currentIndices[dim + 1] = c;
-            walk(dim + 1, coords.getCellFlat(c));
+            walk(dim + 1, currentOffset + c * stride, coords[c]);
           }
         } else {
           for (var c = 0; c < size; c++) {
-            currentIndices[dim + 1] = c;
-            walk(dim + 1, val);
+            walk(dim + 1, currentOffset + c * stride, val);
           }
         }
       }
 
-      walk(0, null);
+      walk(0, 0, null);
     }
 
-    if (out != null) {
-      return out;
-    }
     return result.detachToParentScope();
   });
 }

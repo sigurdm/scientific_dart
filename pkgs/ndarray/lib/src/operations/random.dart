@@ -1,4 +1,5 @@
 // ignore_for_file: non_constant_identifier_names
+import 'dart:typed_data';
 import 'dart:math' as math;
 import 'dart:math' show Random;
 import '../ndarray.dart';
@@ -13,9 +14,7 @@ import 'linalg.dart';
 ///
 /// **Preconditions:**
 /// - [dtype] must be a floating point type (DType.float32 or DType.float64).
-///
-/// **Throws:**
-/// - [ArgumentError] if the provided [dtype] is not a supported floating point type.
+/// - It is an error if the provided [dtype] is not a supported floating point type.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
@@ -81,11 +80,9 @@ NDArray<T> uniform<T extends num>(
 /// - [low] must be strictly less than [high].
 /// - [dtype] must be a supported integer type (`int64`, `int32`, `int16`, or `uint8`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype.
-///
-/// **Throws:**
-/// - [ArgumentError] if [low] is greater than or equal to [high].
-/// - [ArgumentError] if [dtype] is not a supported integer DType.
-/// - [ArgumentError] if [out] has mismatched shape or dtype.
+/// - It is an error if [low] is greater than or equal to [high].
+/// - It is an error if [dtype] is not a supported integer DType.
+/// - It is an error if [out] has mismatched shape or dtype.
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ in both time and space, where $N$ is the total size of the generated array.
@@ -176,10 +173,8 @@ NDArray<T> randint<T extends num>(
 /// **Preconditions:**
 /// - [scale] (standard deviation) must be strictly positive.
 /// - [dtype] must be a floating point type (`float32` or `float64`).
-///
-/// **Throws:**
-/// - [ArgumentError] if [dtype] is not a supported floating point type.
-/// - [ArgumentError] if [scale] is less than or equal to 0.0.
+/// - It is an error if [dtype] is not a supported floating point type.
+/// - It is an error if [scale] is less than or equal to 0.0.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
@@ -256,10 +251,8 @@ NDArray<T> normal<T extends num>(
 /// **Preconditions:**
 /// - [scale] (the inverse of the rate parameter lambda, i.e., 1/lambda) must be strictly positive.
 /// - [dtype] must be a floating point type (`float32` or `float64`).
-///
-/// **Throws:**
-/// - [ArgumentError] if [dtype] is not a supported floating point type.
-/// - [ArgumentError] if [scale] (or 1 / lam) is non-positive.
+/// - It is an error if [dtype] is not a supported floating point type.
+/// - It is an error if [scale] (or 1 / lam) is non-positive.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
@@ -310,11 +303,11 @@ NDArray<T> exponential<T extends num>(
       } else {
         v_uniform_double(arr.pointer.cast<ffi.Double>(), len, seedVal);
       }
-      final ptr = arr.pointer.cast<ffi.Double>();
+      final data = arr.data as Float64List;
       for (var i = 0; i < len; i++) {
-        var u = ptr[i];
+        var u = data[i];
         if (u >= 1.0) u = 0.9999999999999999;
-        ptr[i] = -targetScale * math.log(1.0 - u);
+        data[i] = -targetScale * math.log(1.0 - u);
       }
     case DType.float32:
       if (secure) {
@@ -322,11 +315,11 @@ NDArray<T> exponential<T extends num>(
       } else {
         v_uniform_float(arr.pointer.cast<ffi.Float>(), len, seedVal);
       }
-      final ptr = arr.pointer.cast<ffi.Float>();
+      final data = arr.data as Float32List;
       for (var i = 0; i < len; i++) {
-        var u = ptr[i];
+        var u = data[i];
         if (u >= 1.0) u = 0.999999;
-        ptr[i] = -targetScale * math.log(1.0 - u);
+        data[i] = -targetScale * math.log(1.0 - u);
       }
     default:
       throw ArgumentError(
@@ -349,10 +342,8 @@ NDArray<T> exponential<T extends num>(
 /// **Preconditions:**
 /// - [lam] (lambda, the rate/mean) must be strictly positive.
 /// - [dtype] must be an integer type (`int32` or `int64`).
-///
-/// **Throws:**
-/// - [ArgumentError] if [dtype] is not a supported integer type.
-/// - [ArgumentError] if [lam] is less than or equal to 0.0.
+/// - It is an error if [dtype] is not a supported integer type.
+/// - It is an error if [lam] is less than or equal to 0.0.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
@@ -420,11 +411,9 @@ NDArray<T> poisson<T extends num>(
 /// - [n] (number of trials) must be non-negative.
 /// - [p] (success probability) must be in the interval `[0.0, 1.0]`.
 /// - [dtype] must be an integer type (`int32` or `int64`).
-///
-/// **Throws:**
-/// - [ArgumentError] if [dtype] is not a supported integer type.
-/// - [ArgumentError] if [n] is negative.
-/// - [ArgumentError] if [p] is less than 0.0 or greater than 1.0.
+/// - It is an error if [dtype] is not a supported integer type.
+/// - It is an error if [n] is negative.
+/// - It is an error if [p] is less than 0.0 or greater than 1.0.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ and space complexity is $O(N)$, where $N$ is the total size of
@@ -469,7 +458,7 @@ NDArray<T> binomial<T extends num>(
     }
   }
   final arr = out ?? NDArray<T>.create(shape, resolvedDType);
-  final len = arr.data.length;
+  final len = arr.size;
   final seedVal = secure
       ? Random.secure().nextInt(4294967296)
       : (seed ?? Random().nextInt(4294967296));
@@ -506,11 +495,9 @@ NDArray<T> binomial<T extends num>(
 /// - [mean] must be a 1-dimensional vector of size $D$.
 /// - [cov] must be a square 2-dimensional symmetric, positive-definite covariance matrix of size $D \times D$.
 /// - If provided, [size] must be a valid shape list (e.g. `[N]`).
-///
-/// **Throws:**
-/// - [ArgumentError] if [mean] is not 1D or [cov] is not 2D and square.
-/// - [ArgumentError] if [mean] first dimension does not match [cov] dimensions.
-/// - [ArgumentError] if [cov] is not symmetric positive-definite.
+/// - It is an error if [mean] is not 1D or [cov] is not 2D and square.
+/// - It is an error if [mean] first dimension does not match [cov] dimensions.
+/// - It is an error if [cov] is not symmetric positive-definite.
 ///
 /// **Performance considerations:**
 /// - Uses LAPACK Cholesky solver and CBLAS matrix multiplication.
@@ -625,10 +612,8 @@ NDArray<T> multivariateNormal<T extends num>(
 /// - [n] must be strictly non-negative ($\ge 0$).
 /// - [pvals] must be a 1-dimensional vector of probabilities. The probabilities must sum to approximately 1.0.
 /// - If provided, [size] must be a valid shape list.
-///
-/// **Throws:**
-/// - [ArgumentError] if [n] is negative, or if [pvals] is not a 1D vector.
-/// - [ArgumentError] if [pvals] contains negative probabilities, or if their sum exceeds 1.0 by a significant tolerance.
+/// - It is an error if [n] is negative, or if [pvals] is not a 1D vector.
+/// - It is an error if [pvals] contains negative probabilities, or if their sum exceeds 1.0 by a significant tolerance.
 ///
 /// **Example:**
 /// ```dart
@@ -782,14 +767,12 @@ NDArray<T> multinomial<T extends num>(
 /// - [size] if specified must be a valid shape list.
 /// - If [replace] is false, the total sample count must be $\le$ [a.size].
 /// - If [p] is specified:
+/// - It is an error if [a] or [p] is disposed.
+/// - It is an error if [a] is not 1-D.
+/// - It is an error if [replace] is false and sample size exceeds [a.size].
+/// - It is an error if [p] size is mismatched, negative, or does not sum to 1.0.
 ///   - It must be a 1-D array of the same size as [a].
 ///   - Its values must be non-negative probabilities summing to approximately 1.0.
-///
-/// **Throws:**
-/// - [StateError] if [a] or [p] is disposed.
-/// - [ArgumentError] if [a] is not 1-D.
-/// - [ArgumentError] if [replace] is false and sample size exceeds [a.size].
-/// - [ArgumentError] if [p] size is mismatched, negative, or does not sum to 1.0.
 ///
 /// **Example:**
 /// ```dart
@@ -805,7 +788,6 @@ NDArray<T> choice<T>(
   NDArray<double>? p,
   int? seed,
   bool secure = false,
-  NDArray<T>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute choice on a disposed array.');
@@ -835,18 +817,10 @@ NDArray<T> choice<T>(
     );
   }
 
-  if (out != null) {
-    if (!listEquals(out.shape, sampleShape) || out.dtype != a.dtype) {
-      throw ArgumentError('Incompatible out buffer shape or dtype.');
-    }
-  }
-
   final rand = secure
       ? Random.secure()
       : Random(seed ?? Random().nextInt(4294967296));
-  final result1D = out != null
-      ? out.reshape([sampleCount])
-      : NDArray<T>.create([sampleCount], a.dtype);
+  final result1D = NDArray<T>.create([sampleCount], a.dtype);
 
   // Pre-calculate CDF if probability array p is specified
   List<double>? cdf;
@@ -855,7 +829,8 @@ NDArray<T> choice<T>(
     cdf = List<double>.filled(a.size, 0.0);
     var sumP = 0.0;
     for (var i = 0; i < a.size; i++) {
-      final prob = nonNullP.getCell([i]);
+      final prob =
+          nonNullP.data[nonNullP.offsetElements + i * nonNullP.strides[0]];
       if (prob < 0.0) {
         throw ArgumentError(
           'pvals must contain non-negative probabilities (was $prob at index $i)',
@@ -870,6 +845,10 @@ NDArray<T> choice<T>(
       }
     }
   }
+
+  final aOffset = a.offsetElements;
+  final aStride = a.strides[0];
+  final data = a.data;
 
   if (replace) {
     // Draw with replacement
@@ -889,7 +868,7 @@ NDArray<T> choice<T>(
         // Uniform draw
         index = rand.nextInt(a.size);
       }
-      result1D.setCellFlat(i, a.getCell([index]));
+      result1D.data[i] = data[aOffset + index * aStride];
     }
   } else {
     // Draw without replacement
@@ -903,13 +882,13 @@ NDArray<T> choice<T>(
       }
       for (var i = 0; i < sampleCount; i++) {
         final idx = indices[a.size - 1 - i];
-        result1D.setCellFlat(i, a.getCell([idx]));
+        result1D.data[i] = data[aOffset + idx * aStride];
       }
     } else {
       final nonNullP = p!;
       final tempProbs = List<double>.generate(
         a.size,
-        (i) => nonNullP.getCell([i]),
+        (i) => nonNullP.data[nonNullP.offsetElements + i * nonNullP.strides[0]],
       );
       final drawn = List<bool>.filled(a.size, false);
 
@@ -933,12 +912,11 @@ NDArray<T> choice<T>(
         }
 
         drawn[index] = true;
-        result1D.setCellFlat(draw, a.getCell([index]));
+        result1D.data[draw] = data[aOffset + index * aStride];
       }
     }
   }
 
-  if (out != null) return out;
   return sampleShape.isEmpty
       ? result1D.reshape([])
       : (sampleShape.length == 1 && sampleShape[0] == sampleCount
@@ -953,9 +931,7 @@ NDArray<T> choice<T>(
 ///
 /// **Preconditions:**
 /// - The array [a] must not be disposed.
-///
-/// **Throws:**
-/// - [StateError] if [a] is disposed.
+/// - It is an error if [a] is disposed.
 ///
 /// **Performance considerations:**
 /// - Uses Fisher-Yates shuffle, performing $O(D_0)$ swaps where $D_0$ is the size of the first dimension.
@@ -977,69 +953,18 @@ void shuffle(NDArray a, {int? seed, bool secure = false}) {
   final d0 = a.shape.isEmpty ? 1 : a.shape[0];
   if (d0 <= 1) return;
 
-  if (a.shape.length == 1) {
-    final data = a.data;
-    final offset = a.offsetElements;
-    final stride = a.strides[0];
-    for (var i = d0 - 1; i > 0; i--) {
-      final j = rand.nextInt(i + 1);
-      if (i != j) {
-        final temp = data[offset + i * stride];
-        data[offset + i * stride] = data[offset + j * stride];
-        data[offset + j * stride] = temp;
+  final sliceSize = a.size ~/ d0;
+  for (var i = d0 - 1; i > 0; i--) {
+    final j = rand.nextInt(i + 1);
+    if (i != j) {
+      final offsetI = i * sliceSize;
+      final offsetJ = j * sliceSize;
+      for (var k = 0; k < sliceSize; k++) {
+        final temp = a.getCellFlat(offsetI + k);
+        a.setCellFlat(offsetI + k, a.getCellFlat(offsetJ + k));
+        a.setCellFlat(offsetJ + k, temp);
       }
     }
-    return;
-  }
-
-  final sliceShape = a.shape.sublist(1);
-  final sliceStrides = a.strides.sublist(1);
-
-  final tempSlice = NDArray.create(sliceShape, a.dtype);
-  try {
-    final stepStride = a.strides[0];
-    final data = a.data;
-
-    for (var i = d0 - 1; i > 0; i--) {
-      final j = rand.nextInt(i + 1);
-      if (i != j) {
-        final offsetI = a.offsetElements + i * stepStride;
-        final offsetJ = a.offsetElements + j * stepStride;
-
-        _copySlice(
-          data,
-          offsetI,
-          tempSlice.data,
-          0,
-          sliceShape,
-          sliceStrides,
-          tempSlice.strides,
-          0,
-        );
-        _copySlice(
-          data,
-          offsetJ,
-          data,
-          offsetI,
-          sliceShape,
-          sliceStrides,
-          sliceStrides,
-          0,
-        );
-        _copySlice(
-          tempSlice.data,
-          0,
-          data,
-          offsetJ,
-          sliceShape,
-          tempSlice.strides,
-          sliceStrides,
-          0,
-        );
-      }
-    }
-  } finally {
-    tempSlice.dispose();
   }
 }
 
@@ -1047,9 +972,7 @@ void shuffle(NDArray a, {int? seed, bool secure = false}) {
 ///
 /// **Preconditions:**
 /// - The array [a] must not be disposed.
-///
-/// **Throws:**
-/// - [StateError] if [a] is disposed.
+/// - It is an error if [a] is disposed.
 ///
 /// **Performance considerations:**
 /// - Returns a brand new contiguous deep copy of the array permuted along axis 0.
@@ -1067,44 +990,4 @@ NDArray<T> permutation<T>(NDArray<T> a, {int? seed, bool secure = false}) {
   final copyArr = a.copy();
   shuffle(copyArr, seed: seed, secure: secure);
   return copyArr;
-}
-
-void _copySlice(
-  List src,
-  int srcOffset,
-  List dest,
-  int destOffset,
-  List<int> shape,
-  List<int> stridesSrc,
-  List<int> stridesDest,
-  int dim,
-) {
-  if (shape.isEmpty) {
-    dest[destOffset] = src[srcOffset];
-    return;
-  }
-  if (dim == shape.length - 1) {
-    final limit = shape[dim];
-    final strideSrc = stridesSrc[dim];
-    final strideDest = stridesDest[dim];
-    for (var i = 0; i < limit; i++) {
-      dest[destOffset + i * strideDest] = src[srcOffset + i * strideSrc];
-    }
-    return;
-  }
-  final limit = shape[dim];
-  final strideSrc = stridesSrc[dim];
-  final strideDest = stridesDest[dim];
-  for (var i = 0; i < limit; i++) {
-    _copySlice(
-      src,
-      srcOffset + i * strideSrc,
-      dest,
-      destOffset + i * strideDest,
-      shape,
-      stridesSrc,
-      stridesDest,
-      dim + 1,
-    );
-  }
 }

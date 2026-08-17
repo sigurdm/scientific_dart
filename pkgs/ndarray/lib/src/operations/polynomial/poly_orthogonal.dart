@@ -78,8 +78,6 @@ void _copyInto<R>(NDArray src, NDArray<R> out) {
 /// **Preconditions:**
 /// - Input arrays must not be disposed.
 /// - Coefficient array must be 1-dimensional and non-empty.
-///
-/// **Throws:**
 /// - It is an error if any input or [out] buffer is disposed.
 /// - It is an error if coefficient array is invalid or [out] buffer mismatches.
 ///
@@ -333,7 +331,7 @@ NDArray<Complex> _orthoRoots<T>(
         cMat = NDArray<Complex>.zeros([n, n], c.dtype as DType<Complex>);
         break;
       default:
-        cMat = NDArray<Float64>.zeros([n, n], DType.float64);
+        cMat = NDArray<double>.zeros([n, n], DType.float64);
         break;
     }
     final targetMatDType = cMat.dtype;

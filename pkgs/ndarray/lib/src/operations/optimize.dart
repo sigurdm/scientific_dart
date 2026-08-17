@@ -1,6 +1,7 @@
 // ignore_for_file: non_constant_identifier_names
+import 'dart:math' as math;
 import 'dart:ffi' as ffi;
-import 'package:openblas/openblas.dart';
+
 import '../ndarray.dart';
 import '../scratch_arena.dart';
 
@@ -17,6 +18,46 @@ enum RootMethod {
 }
 
 /// Method selection for multivariate scalar function minimization ([minimize]).
+
+void _dcopy(int n, ffi.Pointer<ffi.Double> src, ffi.Pointer<ffi.Double> dest) {
+  for (var i = 0; i < n; i++) {
+    dest[i] = src[i];
+  }
+}
+
+double _ddot(int n, ffi.Pointer<ffi.Double> x, ffi.Pointer<ffi.Double> y) {
+  var sum = 0.0;
+  for (var i = 0; i < n; i++) {
+    sum += x[i] * y[i];
+  }
+  return sum;
+}
+
+void _daxpy(
+  int n,
+  double alpha,
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Double> y,
+) {
+  for (var i = 0; i < n; i++) {
+    y[i] += alpha * x[i];
+  }
+}
+
+void _dscal(int n, double alpha, ffi.Pointer<ffi.Double> x) {
+  for (var i = 0; i < n; i++) {
+    x[i] *= alpha;
+  }
+}
+
+double _dnrm2(int n, ffi.Pointer<ffi.Double> x) {
+  var sumSq = 0.0;
+  for (var i = 0; i < n; i++) {
+    sumSq += x[i] * x[i];
+  }
+  return math.sqrt(sumSq);
+}
+
 enum MinimizeMethod {
   /// Nelder-Mead simplex algorithm (derivative-free).
   nelderMead,
@@ -415,6 +456,9 @@ OptimizeResult nelder_mead(
   if (x0.shape.length != 1) {
     throw ArgumentError('x0 must be a 1D vector for nelder_mead.');
   }
+  if (x0.size == 0) {
+    throw ArgumentError('Initial vector x0 must not be empty.');
+  }
   if (xatol < 0 || fatol < 0) {
     throw ArgumentError('Tolerances xatol and fatol must be non-negative.');
   }
@@ -443,10 +487,10 @@ OptimizeResult nelder_mead(
       final pXC = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
 
       final x0Ptr = x0.pointer.cast<ffi.Double>();
-      cblas_dcopy(n, x0Ptr, x0.strides[0], pSim[0], 1);
+      _dcopy(n, x0Ptr, pSim[0]);
 
       for (int i = 0; i < n; i++) {
-        cblas_dcopy(n, pSim[0], 1, pSim[i + 1], 1);
+        _dcopy(n, pSim[0], pSim[i + 1]);
         final val = pSim[i + 1][i];
         pSim[i + 1][i] = val != 0.0 ? val * 1.05 : 0.00025;
       }
@@ -455,7 +499,7 @@ OptimizeResult nelder_mead(
       final pArr = NDArray<Float64>.create([n], DType.float64);
       final pArrPtr = pArr.pointer.cast<ffi.Double>();
       double evalPoint(ffi.Pointer<ffi.Double> ptr) {
-        cblas_dcopy(n, ptr, 1, pArrPtr, 1);
+        _dcopy(n, ptr, pArrPtr);
         final val = fun(pArr);
         nfev++;
         return val;
@@ -493,9 +537,9 @@ OptimizeResult nelder_mead(
 
         double maxDiffX = 0.0;
         for (int i = 1; i <= n; i++) {
-          cblas_dcopy(n, pSim[i], 1, pXR, 1);
-          cblas_daxpy(n, -1.0, pSim[0], 1, pXR, 1);
-          final norm = cblas_dnrm2(n, pXR, 1);
+          _dcopy(n, pSim[i], pXR);
+          _daxpy(n, -1.0, pSim[0], pXR);
+          final norm = _dnrm2(n, pXR);
           if (norm > maxDiffX) maxDiffX = norm;
         }
 
@@ -510,50 +554,50 @@ OptimizeResult nelder_mead(
           u8Ptr[b] = 0;
         }
         for (int i = 0; i < n; i++) {
-          cblas_daxpy(n, 1.0, pSim[i], 1, pXBar, 1);
+          _daxpy(n, 1.0, pSim[i], pXBar);
         }
-        cblas_dscal(n, 1.0 / n, pXBar, 1);
+        _dscal(n, 1.0 / n, pXBar);
 
-        cblas_dcopy(n, pXBar, 1, pXR, 1);
-        cblas_dscal(n, 1.0 + alpha, pXR, 1);
-        cblas_daxpy(n, -alpha, pSim[n], 1, pXR, 1);
+        _dcopy(n, pXBar, pXR);
+        _dscal(n, 1.0 + alpha, pXR);
+        _daxpy(n, -alpha, pSim[n], pXR);
         final fxr = evalPoint(pXR);
 
         bool doshrink = false;
         if (fxr < pFSim[0]) {
-          cblas_dcopy(n, pXBar, 1, pXE, 1);
-          cblas_dscal(n, 1.0 - gamma, pXE, 1);
-          cblas_daxpy(n, gamma, pXR, 1, pXE, 1);
+          _dcopy(n, pXBar, pXE);
+          _dscal(n, 1.0 - gamma, pXE);
+          _daxpy(n, gamma, pXR, pXE);
           final fxe = evalPoint(pXE);
           if (fxe < fxr) {
-            cblas_dcopy(n, pXE, 1, pSim[n], 1);
+            _dcopy(n, pXE, pSim[n]);
             pFSim[n] = fxe;
           } else {
-            cblas_dcopy(n, pXR, 1, pSim[n], 1);
+            _dcopy(n, pXR, pSim[n]);
             pFSim[n] = fxr;
           }
         } else if (fxr < pFSim[n - 1]) {
-          cblas_dcopy(n, pXR, 1, pSim[n], 1);
+          _dcopy(n, pXR, pSim[n]);
           pFSim[n] = fxr;
         } else {
           if (fxr < pFSim[n]) {
-            cblas_dcopy(n, pXBar, 1, pXC, 1);
-            cblas_dscal(n, 1.0 - beta, pXC, 1);
-            cblas_daxpy(n, beta, pXR, 1, pXC, 1);
+            _dcopy(n, pXBar, pXC);
+            _dscal(n, 1.0 - beta, pXC);
+            _daxpy(n, beta, pXR, pXC);
             final fxc = evalPoint(pXC);
             if (fxc <= fxr) {
-              cblas_dcopy(n, pXC, 1, pSim[n], 1);
+              _dcopy(n, pXC, pSim[n]);
               pFSim[n] = fxc;
             } else {
               doshrink = true;
             }
           } else {
-            cblas_dcopy(n, pXBar, 1, pXC, 1);
-            cblas_dscal(n, 1.0 - beta, pXC, 1);
-            cblas_daxpy(n, beta, pSim[n], 1, pXC, 1);
+            _dcopy(n, pXBar, pXC);
+            _dscal(n, 1.0 - beta, pXC);
+            _daxpy(n, beta, pSim[n], pXC);
             final fxc = evalPoint(pXC);
             if (fxc < pFSim[n]) {
-              cblas_dcopy(n, pXC, 1, pSim[n], 1);
+              _dcopy(n, pXC, pSim[n]);
               pFSim[n] = fxc;
             } else {
               doshrink = true;
@@ -563,15 +607,15 @@ OptimizeResult nelder_mead(
 
         if (doshrink) {
           for (int i = 1; i <= n; i++) {
-            cblas_dscal(n, sigma, pSim[i], 1);
-            cblas_daxpy(n, 1.0 - sigma, pSim[0], 1, pSim[i], 1);
+            _dscal(n, sigma, pSim[i]);
+            _daxpy(n, 1.0 - sigma, pSim[0], pSim[i]);
             pFSim[i] = evalPoint(pSim[i]);
           }
         }
       }
 
       final resArr = NDArray<Float64>.create([n], DType.float64);
-      cblas_dcopy(n, pSim[0], 1, resArr.pointer.cast<ffi.Double>(), 1);
+      _dcopy(n, pSim[0], resArr.pointer.cast<ffi.Double>());
 
       return (
         x: resArr.detachToParentScope(),
@@ -636,6 +680,9 @@ OptimizeResult lbfgs(
   if (x0.shape.length != 1) {
     throw ArgumentError('x0 must be a 1D vector for lbfgs.');
   }
+  if (x0.size == 0) {
+    throw ArgumentError('Initial vector x0 must not be empty.');
+  }
   if (m <= 0) {
     throw ArgumentError('m must be strictly positive.');
   }
@@ -672,31 +719,31 @@ OptimizeResult lbfgs(
         ffi.Pointer<ffi.Double> pX,
         ffi.Pointer<ffi.Double> pGOut,
       ) {
-        cblas_dcopy(n, pX, 1, xArrPtr, 1);
+        _dcopy(n, pX, xArrPtr);
 
         if (funAndGrad != null) {
           final (fVal, gArr) = funAndGrad(xArr);
           nfev++;
-          cblas_dcopy(n, gArr.pointer.cast<ffi.Double>(), 1, pGOut, 1);
+          _dcopy(n, gArr.pointer.cast<ffi.Double>(), pGOut);
           return (fVal, pGOut);
         } else if (jac != null) {
           final fVal = fun(xArr);
           nfev++;
           final gArr = jac(xArr);
-          cblas_dcopy(n, gArr.pointer.cast<ffi.Double>(), 1, pGOut, 1);
+          _dcopy(n, gArr.pointer.cast<ffi.Double>(), pGOut);
           return (fVal, pGOut);
         } else {
           final fVal = fun(xArr);
           nfev++;
           final h = 1e-8;
           for (int i = 0; i < n; i++) {
-            cblas_dcopy(n, pX, 1, pXTemp, 1);
+            _dcopy(n, pX, pXTemp);
             pXTemp[i] += h;
-            cblas_dcopy(n, pXTemp, 1, xPlusPtr, 1);
+            _dcopy(n, pXTemp, xPlusPtr);
             final fPlus = fun(xPlus);
 
             pXTemp[i] = pX[i] - h;
-            cblas_dcopy(n, pXTemp, 1, xMinusPtr, 1);
+            _dcopy(n, pXTemp, xMinusPtr);
             final fMinus = fun(xMinus);
 
             pGOut[i] = (fPlus - fMinus) / (2.0 * h);
@@ -706,7 +753,7 @@ OptimizeResult lbfgs(
         }
       }
 
-      cblas_dcopy(n, x0.pointer.cast<ffi.Double>(), x0.strides[0], pXCurr, 1);
+      _dcopy(n, x0.pointer.cast<ffi.Double>(), pXCurr);
       var (fCurr, _) = evalFunAndGrad(pXCurr, pGCurr);
 
       final pSHist = <ffi.Pointer<ffi.Double>>[];
@@ -731,45 +778,45 @@ OptimizeResult lbfgs(
           break;
         }
 
-        cblas_dcopy(n, pGCurr, 1, pQ, 1);
+        _dcopy(n, pGCurr, pQ);
         final k = pSHist.length;
         final alphaArr = List<double>.filled(k, 0.0);
 
         for (int i = k - 1; i >= 0; i--) {
-          final sq = cblas_ddot(n, pSHist[i], 1, pQ, 1);
+          final sq = _ddot(n, pSHist[i], pQ);
           alphaArr[i] = rhoHist[i] * sq;
-          cblas_daxpy(n, -alphaArr[i], pYHist[i], 1, pQ, 1);
+          _daxpy(n, -alphaArr[i], pYHist[i], pQ);
         }
 
         double gamma = 1.0;
         if (k > 0) {
-          final sy = cblas_ddot(n, pSHist[k - 1], 1, pYHist[k - 1], 1);
-          final yy = cblas_ddot(n, pYHist[k - 1], 1, pYHist[k - 1], 1);
+          final sy = _ddot(n, pSHist[k - 1], pYHist[k - 1]);
+          final yy = _ddot(n, pYHist[k - 1], pYHist[k - 1]);
           if (yy > 0) gamma = sy / yy;
         }
 
-        cblas_dcopy(n, pQ, 1, pR, 1);
-        cblas_dscal(n, gamma, pR, 1);
+        _dcopy(n, pQ, pR);
+        _dscal(n, gamma, pR);
 
         for (int i = 0; i < k; i++) {
-          final yr = cblas_ddot(n, pYHist[i], 1, pR, 1);
+          final yr = _ddot(n, pYHist[i], pR);
           final beta = rhoHist[i] * yr;
-          cblas_daxpy(n, alphaArr[i] - beta, pSHist[i], 1, pR, 1);
+          _daxpy(n, alphaArr[i] - beta, pSHist[i], pR);
         }
 
-        cblas_dcopy(n, pR, 1, pP, 1);
-        cblas_dscal(n, -1.0, pP, 1);
+        _dcopy(n, pR, pP);
+        _dscal(n, -1.0, pP);
 
         double alphaStep = 1.0;
         double c1 = 1e-4;
-        final dg = cblas_ddot(n, pGCurr, 1, pP, 1);
+        final dg = _ddot(n, pGCurr, pP);
 
         double fNext = fCurr;
         bool lineSearchSuccess = false;
 
         for (int ls = 0; ls < 25; ls++) {
-          cblas_dcopy(n, pXCurr, 1, pXNext, 1);
-          cblas_daxpy(n, alphaStep, pP, 1, pXNext, 1);
+          _dcopy(n, pXCurr, pXNext);
+          _daxpy(n, alphaStep, pP, pXNext);
 
           final (fTry, _) = evalFunAndGrad(pXNext, pGNext);
 
@@ -786,13 +833,13 @@ OptimizeResult lbfgs(
           break;
         }
 
-        cblas_dcopy(n, pXNext, 1, pS, 1);
-        cblas_daxpy(n, -1.0, pXCurr, 1, pS, 1);
+        _dcopy(n, pXNext, pS);
+        _daxpy(n, -1.0, pXCurr, pS);
 
-        cblas_dcopy(n, pGNext, 1, pY, 1);
-        cblas_daxpy(n, -1.0, pGCurr, 1, pY, 1);
+        _dcopy(n, pGNext, pY);
+        _daxpy(n, -1.0, pGCurr, pY);
 
-        final ys = cblas_ddot(n, pY, 1, pS, 1);
+        final ys = _ddot(n, pY, pS);
 
         if (ys > 1e-10) {
           if (pSHist.length >= m) {
@@ -802,22 +849,22 @@ OptimizeResult lbfgs(
           }
           final newS = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
           final newY = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
-          cblas_dcopy(n, pS, 1, newS, 1);
-          cblas_dcopy(n, pY, 1, newY, 1);
+          _dcopy(n, pS, newS);
+          _dcopy(n, pY, newY);
           pSHist.add(newS);
           pYHist.add(newY);
           rhoHist.add(1.0 / ys);
         }
 
-        cblas_dcopy(n, pXNext, 1, pXCurr, 1);
-        cblas_dcopy(n, pGNext, 1, pGCurr, 1);
+        _dcopy(n, pXNext, pXCurr);
+        _dcopy(n, pGNext, pGCurr);
         fCurr = fNext;
       }
 
       final resX = NDArray<Float64>.create([n], DType.float64);
       final resJac = NDArray<Float64>.create([n], DType.float64);
-      cblas_dcopy(n, pXCurr, 1, resX.pointer.cast<ffi.Double>(), 1);
-      cblas_dcopy(n, pGCurr, 1, resJac.pointer.cast<ffi.Double>(), 1);
+      _dcopy(n, pXCurr, resX.pointer.cast<ffi.Double>());
+      _dcopy(n, pGCurr, resJac.pointer.cast<ffi.Double>());
 
       return (
         x: resX.detachToParentScope(),

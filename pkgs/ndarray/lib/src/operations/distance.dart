@@ -85,8 +85,6 @@ NDArray<Float64> _promoteToFloat64(NDArray a) {
 /// - [x] must not have a complex data type.
 /// - If [out] is provided, it must not be disposed.
 /// - If [out] is provided, it must have shape `[M * (M - 1) / 2]` and type [Float64].
-///
-/// **Throws:**
 /// - It is an error if [x] or [out] is disposed.
 /// - It is an error if [x] is not a 2D array.
 /// - It is an error if [x] has a complex data type.
@@ -186,8 +184,6 @@ NDArray<Float64> pdist<T extends Object>(
 /// - [xa] and [xb] must not have complex data types.
 /// - If [out] is provided, it must not be disposed.
 /// - If [out] is provided, it must have shape `[M, K]` and type [Float64].
-///
-/// **Throws:**
 /// - It is an error if [xa], [xb], or [out] is disposed.
 /// - It is an error if [xa] or [xb] is not a 2D array.
 /// - It is an error if [xa] and [xb] have different column dimensions.
@@ -324,16 +320,19 @@ NDArray<Float64> _pdistCosine<T extends Object>(
     );
 
     final NDArray<Float64> div = divide(dot, denom);
-    final one = NDArray<Float64>.scalar(Float64(1.0), dtype: DType.float64);
+    final one = NDArray<Float64>.fromList([Float64(1.0)], [1], DType.float64);
     final NDArray<Float64> cosDistMatrix = subtract(one, div);
 
     final flatPtr = cosDistMatrix.pointer.cast<ffi.Double>();
+    final resPtr = result.pointer.cast<ffi.Double>();
     var idx = 0;
     for (var i = 0; i < m; i++) {
+      final rowOffset = i * m;
       for (var j = i + 1; j < m; j++) {
-        result.setCellFlat(idx++, Float64(flatPtr[i * m + j]));
+        resPtr[idx++] = flatPtr[rowOffset + j];
       }
     }
+
     if (out != null) {
       return result;
     } else {

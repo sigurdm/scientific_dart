@@ -68,8 +68,6 @@ void _copyInto<R>(NDArray src, NDArray<R> out) {
 /// - [c] and [x] must not be disposed.
 /// - [c] must be a 1-dimensional array.
 /// - [c] must not be empty.
-///
-/// **Throws:**
 /// - It is an error if any input array or [out] buffer is disposed.
 /// - It is an error if [c] is not 1-dimensional, or if [c] is empty.
 /// - It is an error if [out] shape or dtype is incompatible with [x].
@@ -136,8 +134,6 @@ NDArray<R> polyval<Tc, Tx, R>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
 /// - [x] and [y] must be 1-dimensional arrays of identical length.
 /// - Length of [x] must be greater than [deg].
 /// - Degree [deg] must be non-negative.
-///
-/// **Throws:**
 /// - It is an error if any input array or [out] buffer is disposed.
 /// - It is an error if input arrays are not 1D, mismatch lengths, or if [deg] is invalid.
 /// - It is an error if [out] shape or dtype is incompatible.
@@ -255,8 +251,6 @@ NDArray<R> polyfit<Tx, Ty, Tw, R>(
 /// **Preconditions:**
 /// - [p] and optional [out] must not be disposed.
 /// - [p] must be a 1-dimensional array.
-///
-/// **Throws:**
 /// - It is an error if [p] or [out] buffer is disposed.
 /// - It is an error if [p] is not 1-dimensional.
 ///
@@ -327,7 +321,7 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
         aMat = NDArray<Complex>.zeros([deg, deg], p.dtype as DType<Complex>);
         break;
       default:
-        aMat = NDArray<Float64>.zeros([deg, deg], DType.float64);
+        aMat = NDArray<double>.zeros([deg, deg], DType.float64);
         break;
     }
 

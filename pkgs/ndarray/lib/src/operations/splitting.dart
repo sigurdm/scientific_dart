@@ -20,8 +20,6 @@ NDArray<T> _sliceAlongAxis<T>(NDArray<T> a, int axis, int start, int stop) {
 /// - [a] must not be disposed.
 /// - [sections] must be strictly positive ($\ge 1$).
 /// - [axis] must be within bounds `[-rank, rank - 1]`.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [sections] is less than or equal to 0.
 /// - It is an error if [axis] is out of bounds.
@@ -86,6 +84,7 @@ List<NDArray<T>> array_split<T>(
       sub.copy(out: outSub);
       results.add(outSub);
     } else {
+      sub.detachToParentScope();
       results.add(sub);
     }
   }
@@ -98,8 +97,6 @@ List<NDArray<T>> array_split<T>(
 /// **Preconditions:**
 /// - [a] must not be disposed.
 /// - [axis] must be within bounds `[-rank, rank - 1]`.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 ///
@@ -116,7 +113,6 @@ List<NDArray<T>> array_split_at<T>(
   NDArray<T> a,
   List<int> indices, {
   int axis = 0,
-  List<NDArray<T>>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
@@ -129,39 +125,20 @@ List<NDArray<T>> array_split_at<T>(
   final normAxis = axis < 0 ? rank + axis : axis;
   final L = a.shape[normAxis];
 
+  final List<NDArray<T>> results = [];
+
   final boundaries = <int>[0];
   for (var p in indices) {
     boundaries.add(p.clamp(0, L));
   }
   boundaries.add(L);
 
-  if (out != null && out.length != boundaries.length - 1) {
-    throw ArgumentError(
-      'Length of out (${out.length}) must match split sections count (${boundaries.length - 1}).',
-    );
-  }
-
-  final List<NDArray<T>> results = [];
-
   for (var i = 0; i < boundaries.length - 1; i++) {
     final start = boundaries[i];
     final stop = boundaries[i + 1];
     final sub = _sliceAlongAxis(a, normAxis, start, stop);
-    if (out != null) {
-      final outSub = out[i];
-      if (outSub.isDisposed) {
-        throw StateError('Cannot write to a disposed out array.');
-      }
-      if (!listEquals(outSub.shape, sub.shape) || outSub.dtype != sub.dtype) {
-        throw ArgumentError(
-          'Incompatible out buffer shape or dtype for split item $i.',
-        );
-      }
-      sub.copy(out: outSub);
-      results.add(outSub);
-    } else {
-      results.add(sub);
-    }
+    sub.detachToParentScope();
+    results.add(sub);
   }
 
   return results;
@@ -177,8 +154,6 @@ List<NDArray<T>> array_split_at<T>(
 /// - [sections] must be strictly positive ($\ge 1$).
 /// - [axis] must be within bounds `[-rank, rank - 1]`.
 /// - The dimension size along [axis] must be divisible by [sections].
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 /// - It is an error if [sections] is less than or equal to 0.
@@ -228,8 +203,6 @@ List<NDArray<T>> split<T>(
 /// **Preconditions:**
 /// - [a] must not be disposed.
 /// - [axis] must be within bounds `[-rank, rank - 1]`.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 ///
@@ -242,13 +215,8 @@ List<NDArray<T>> split<T>(
 ///
 /// Refer to the [NumPy split reference](https://numpy.org/doc/stable/reference/generated/numpy.split.html)
 /// for details.
-List<NDArray<T>> split_at<T>(
-  NDArray<T> a,
-  List<int> indices, {
-  int axis = 0,
-  List<NDArray<T>>? out,
-}) {
-  return array_split_at(a, indices, axis: axis, out: out);
+List<NDArray<T>> split_at<T>(NDArray<T> a, List<int> indices, {int axis = 0}) {
+  return array_split_at(a, indices, axis: axis);
 }
 
 /// Splits an array horizontally (column-wise) into [sections] equal sub-arrays.
@@ -258,8 +226,6 @@ List<NDArray<T>> split_at<T>(
 ///
 /// **Preconditions:**
 /// - [a] must not be disposed.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] is 0-dimensional or if the split is invalid.
 ///
@@ -272,11 +238,7 @@ List<NDArray<T>> split_at<T>(
 ///
 /// Refer to the [NumPy hsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.hsplit.html)
 /// for details.
-List<NDArray<T>> hsplit<T>(
-  NDArray<T> a,
-  int sections, {
-  List<NDArray<T>>? out,
-}) {
+List<NDArray<T>> hsplit<T>(NDArray<T> a, int sections) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -284,7 +246,7 @@ List<NDArray<T>> hsplit<T>(
     throw ArgumentError('Cannot hsplit a 0D array.');
   }
   final axis = a.rank == 1 ? 0 : 1;
-  return split(a, sections, axis: axis, out: out);
+  return split(a, sections, axis: axis);
 }
 
 /// Splits an array horizontally (column-wise) at the coordinate points specified in [indices].
@@ -294,8 +256,6 @@ List<NDArray<T>> hsplit<T>(
 ///
 /// **Preconditions:**
 /// - [a] must not be disposed.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] is 0-dimensional or if the split is invalid.
 ///
@@ -308,11 +268,7 @@ List<NDArray<T>> hsplit<T>(
 ///
 /// Refer to the [NumPy hsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.hsplit.html)
 /// for details.
-List<NDArray<T>> hsplit_at<T>(
-  NDArray<T> a,
-  List<int> indices, {
-  List<NDArray<T>>? out,
-}) {
+List<NDArray<T>> hsplit_at<T>(NDArray<T> a, List<int> indices) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
@@ -320,7 +276,7 @@ List<NDArray<T>> hsplit_at<T>(
     throw ArgumentError('Cannot hsplit a 0D array.');
   }
   final axis = a.rank == 1 ? 0 : 1;
-  return split_at(a, indices, axis: axis, out: out);
+  return split_at(a, indices, axis: axis);
 }
 
 /// Splits an array vertically (row-wise) into [sections] equal sub-arrays.
@@ -330,8 +286,6 @@ List<NDArray<T>> hsplit_at<T>(
 /// **Preconditions:**
 /// - [a] must not be disposed.
 /// - [a] must have rank $\ge 2$.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] has rank $< 2$.
 ///
@@ -344,18 +298,14 @@ List<NDArray<T>> hsplit_at<T>(
 ///
 /// Refer to the [NumPy vsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.vsplit.html)
 /// for details.
-List<NDArray<T>> vsplit<T>(
-  NDArray<T> a,
-  int sections, {
-  List<NDArray<T>>? out,
-}) {
+List<NDArray<T>> vsplit<T>(NDArray<T> a, int sections) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
   if (a.rank < 2) {
     throw ArgumentError('vsplit only supports arrays of rank >= 2.');
   }
-  return split(a, sections, axis: 0, out: out);
+  return split(a, sections, axis: 0);
 }
 
 /// Splits an array vertically (row-wise) at the coordinate points specified in [indices].
@@ -365,8 +315,6 @@ List<NDArray<T>> vsplit<T>(
 /// **Preconditions:**
 /// - [a] must not be disposed.
 /// - [a] must have rank $\ge 2$.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] has rank $< 2$.
 ///
@@ -379,18 +327,14 @@ List<NDArray<T>> vsplit<T>(
 ///
 /// Refer to the [NumPy vsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.vsplit.html)
 /// for details.
-List<NDArray<T>> vsplit_at<T>(
-  NDArray<T> a,
-  List<int> indices, {
-  List<NDArray<T>>? out,
-}) {
+List<NDArray<T>> vsplit_at<T>(NDArray<T> a, List<int> indices) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
   if (a.rank < 2) {
     throw ArgumentError('vsplit only supports arrays of rank >= 2.');
   }
-  return split_at(a, indices, axis: 0, out: out);
+  return split_at(a, indices, axis: 0);
 }
 
 /// Splits an array into multiple sub-arrays of strictly equal size along the 3rd axis (axis 2).
@@ -402,8 +346,6 @@ List<NDArray<T>> vsplit_at<T>(
 /// - [a] must have rank $\ge 3$.
 /// - [sections] must be strictly positive ($\ge 1$).
 /// - The dimension size along axis 2 must be divisible by [sections].
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] has rank $< 3$.
 /// - It is an error if [sections] is less than or equal to 0.
@@ -418,18 +360,14 @@ List<NDArray<T>> vsplit_at<T>(
 ///
 /// Refer to the [NumPy dsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.dsplit.html)
 /// for details.
-List<NDArray<T>> dsplit<T>(
-  NDArray<T> a,
-  int sections, {
-  List<NDArray<T>>? out,
-}) {
+List<NDArray<T>> dsplit<T>(NDArray<T> a, int sections) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
   if (a.rank < 3) {
     throw ArgumentError('dsplit only supports arrays of rank >= 3.');
   }
-  return split(a, sections, axis: 2, out: out);
+  return split(a, sections, axis: 2);
 }
 
 /// Splits an array along the 3rd axis (axis 2) at the coordinate points specified in [indices].
@@ -439,8 +377,6 @@ List<NDArray<T>> dsplit<T>(
 /// **Preconditions:**
 /// - [a] must not be disposed.
 /// - [a] must have rank $\ge 3$.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] has rank $< 3$.
 ///
@@ -453,16 +389,12 @@ List<NDArray<T>> dsplit<T>(
 ///
 /// Refer to the [NumPy dsplit reference](https://numpy.org/doc/stable/reference/generated/numpy.dsplit.html)
 /// for details.
-List<NDArray<T>> dsplit_at<T>(
-  NDArray<T> a,
-  List<int> indices, {
-  List<NDArray<T>>? out,
-}) {
+List<NDArray<T>> dsplit_at<T>(NDArray<T> a, List<int> indices) {
   if (a.isDisposed) {
     throw StateError('Cannot access a disposed NDArray.');
   }
   if (a.rank < 3) {
     throw ArgumentError('dsplit_at only supports arrays of rank >= 3.');
   }
-  return split_at(a, indices, axis: 2, out: out);
+  return split_at(a, indices, axis: 2);
 }

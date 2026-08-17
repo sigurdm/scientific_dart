@@ -11,7 +11,6 @@ import 'package:openblas/openblas.dart' show openblas_set_num_threads;
 
 import 'operations.dart' as ops;
 import 'operations/helpers.dart' as helpers;
-import 'nditer.dart';
 
 /// Supported data types for the elements of an [NDArray].
 extension type const Float64(double value) implements double {}
@@ -85,7 +84,7 @@ enum DType<T> {
 ///   - **Floor Division (`~/` or `floor_divide`) & Remainder (`%` or `remainder`)**:
 ///     - **For Floating-Point Types**: Behaves identically to true division, returning `double.nan`
 ///       on division by zero without throwing exceptions.
-///     - **For Integer Types**: It is an error if any element of the divisor is `0`.
+///     - **For Integer Types**: Throws an [UnsupportedError] if any element of the divisor is `0`.
 ///       This upfront safety check in Dart prevents native C integer division by zero, which is
 ///       undefined behavior in C and would crash the entire Dart VM process with a `SIGFPE` signal.
 /// - **Overflow**:
@@ -124,26 +123,6 @@ final class NDArray<T> implements ffi.Finalizable {
       throw StateError('Cannot access a disposed NDArray.');
     }
     return _data;
-  }
-
-  /// Gets a scalar element directly at the flat underlying storage offset [flatIndex].
-  /// Intended for internal use by views, iterators, and FFI kernels.
-  @internal
-  T getCellFlat(int flatIndex) {
-    if (isDisposed) {
-      throw StateError('Cannot access a disposed NDArray.');
-    }
-    return _data[flatIndex];
-  }
-
-  /// Sets a scalar element directly at the flat underlying storage offset [flatIndex] to [value].
-  /// Intended for internal use by views, iterators, and FFI kernels.
-  @internal
-  void setCellFlat(int flatIndex, T value) {
-    if (isDisposed) {
-      throw StateError('Cannot access a disposed NDArray.');
-    }
-    _data[flatIndex] = value;
   }
 
   /// The dimensions of the n-dimensional array.
@@ -352,7 +331,7 @@ final class NDArray<T> implements ffi.Finalizable {
     final cStrides = computeCStrides(shape);
     if (strides.length != cStrides.length) return false;
     for (var i = 0; i < strides.length; i++) {
-      if (shape[i] > 1 && strides[i] != cStrides[i]) return false;
+      if (strides[i] != cStrides[i]) return false;
     }
     return true;
   }
@@ -445,13 +424,11 @@ final class NDArray<T> implements ffi.Finalizable {
   NDArray<T> detachToParentScope() {
     final root = _rootParent;
     final scope = Zone.current[_scopeKey] as _NDArrayScope?;
-    if (scope == null) {
-      throw StateError(
-          'detachToParentScope() is only valid inside an active NDArray scope.');
-    }
-    scope._untrack(root);
-    if (scope._parentScope != null) {
-      scope._parentScope._track(root);
+    if (scope != null) {
+      scope._untrack(root);
+      if (scope._parentScope != null) {
+        scope._parentScope._track(root);
+      }
     }
     return this;
   }
@@ -600,9 +577,7 @@ final class NDArray<T> implements ffi.Finalizable {
       DType.boolean => List<bool>.from(list),
       DType.complex128 || DType.complex64 => List<Complex>.from(list),
     };
-    for (var i = 0; i < eagerList.length; i++) {
-      arr.setCellFlat(i, eagerList[i] as T);
-    }
+    arr.data.setRange(0, eagerList.length, eagerList as dynamic);
     return arr;
   }
 
@@ -724,13 +699,13 @@ final class NDArray<T> implements ffi.Finalizable {
     for (var i = 0; i < length; i++) {
       final val = start + i * step;
       if (resolvedDType.isComplex) {
-        arr.setCellFlat(i, Complex(val, 0.0) as T);
+        arr.data[i] = Complex(val, 0.0) as T;
       } else if (resolvedDType.isInteger) {
-        arr.setCellFlat(i, val.toInt() as T);
+        arr.data[i] = val.toInt() as T;
       } else if (resolvedDType == DType.boolean) {
-        arr.setCellFlat(i, (val != 0.0) as T);
+        arr.data[i] = (val != 0.0) as T;
       } else {
-        arr.setCellFlat(i, val as T);
+        arr.data[i] = val as T;
       }
     }
     return arr;
@@ -750,11 +725,11 @@ final class NDArray<T> implements ffi.Finalizable {
     final arr = NDArray<T>.zeros([n, n], dtype);
     for (var i = 0; i < n; i++) {
       if (dtype == DType.float32 || dtype == DType.float64) {
-        arr.setCellFlat(i * n + i, 1.0 as T);
+        arr.data[i * n + i] = 1.0 as T;
       } else if (dtype.isComplex) {
-        arr.setCellFlat(i * n + i, Complex(1.0, 0.0) as T);
+        arr.data[i * n + i] = Complex(1.0, 0.0) as T;
       } else {
-        arr.setCellFlat(i * n + i, 1 as T);
+        arr.data[i * n + i] = 1 as T;
       }
     }
     return arr;
@@ -1090,7 +1065,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// - For C-contiguous layouts, copies elements directly using memmove/memcpy.
   /// - For strided non-contiguous views, uses native C intrinsics to copy into the contiguous destination array.
   ///
-  /// It is an error if the array is already disposed, or if [out] is disposed, or if [out] does not match this array's shape and dtype.
+  /// It is an error if the array is already disposed.
   ///
   /// **Example:**
   /// ```dart
@@ -1235,10 +1210,17 @@ final class NDArray<T> implements ffi.Finalizable {
   }
 
   void _copyStrided(NDArray<T> dest) {
-    final iter = NDIter.broadcast2(dest, this);
-    while (iter.moveNext()) {
-      dest.setCellFlat(iter.getIndex(0), getCellFlat(iter.getIndex(1)));
-    }
+    helpers.unaryOp<dynamic, dynamic>(
+      dest.data,
+      data,
+      shape,
+      strides,
+      dest.strides,
+      0,
+      offsetElements,
+      dest.offsetElements,
+      (x) => x,
+    );
   }
 
   /// Returns a flattened one-dimensional view or copy of this array.
@@ -1301,135 +1283,47 @@ final class NDArray<T> implements ffi.Finalizable {
     }
     final size = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
 
-    final targetValue = _coerceScalar(value);
     if (isContiguous) {
       switch (dtype) {
         case DType.float64:
-          v_fill_double(_pointer.cast(), targetValue as double, size);
-          return;
+          if (value is num) {
+            v_fill_double(_pointer.cast(), value.toDouble(), size);
+            return;
+          }
         case DType.float32:
-          v_fill_float(_pointer.cast(), targetValue as double, size);
-          return;
+          if (value is num) {
+            v_fill_float(_pointer.cast(), value.toDouble(), size);
+            return;
+          }
         case DType.int64:
-          v_fill_int64(_pointer.cast(), targetValue as int, size);
-          return;
+          if (value is int) {
+            v_fill_int64(_pointer.cast(), value, size);
+            return;
+          }
         case DType.int32:
-          v_fill_int32(_pointer.cast(), targetValue as int, size);
-          return;
-        case DType.int16:
-          v_fill_int16(_pointer.cast(), targetValue as int, size);
-          return;
-        case DType.uint8:
-          v_fill_uint8(_pointer.cast(), targetValue as int, size);
-          return;
-        case DType.complex128:
-          final c = targetValue as Complex;
-          v_fill_complex128(_pointer.cast(), c.real, c.imag, size);
-          return;
-        case DType.complex64:
-          final c = targetValue as Complex;
-          v_fill_complex64(_pointer.cast(), c.real, c.imag, size);
-          return;
-        case DType.boolean:
-          v_fill_boolean(_pointer.cast(), (targetValue as bool) ? 1 : 0, size);
-          return;
+          if (value is int) {
+            v_fill_int32(_pointer.cast(), value, size);
+            return;
+          }
+        default:
+          break;
       }
     }
 
-    final marker = ScratchArena.marker;
-    try {
-      final cShape = ScratchArena.copyInts(shape);
-      final cStrides = ScratchArena.copyInts(strides);
-      switch (dtype) {
-        case DType.float64:
-          s_fill_double(
-            _pointer.cast(),
-            cStrides,
-            cShape,
-            shape.length,
-            targetValue as double,
-          );
-          return;
-        case DType.float32:
-          s_fill_float(
-            _pointer.cast(),
-            cStrides,
-            cShape,
-            shape.length,
-            targetValue as double,
-          );
-          return;
-        case DType.int64:
-          s_fill_int64(
-            _pointer.cast(),
-            cStrides,
-            cShape,
-            shape.length,
-            targetValue as int,
-          );
-          return;
-        case DType.int32:
-          s_fill_int32(
-            _pointer.cast(),
-            cStrides,
-            cShape,
-            shape.length,
-            targetValue as int,
-          );
-          return;
-        case DType.int16:
-          s_fill_int16(
-            _pointer.cast(),
-            cStrides,
-            cShape,
-            shape.length,
-            targetValue as int,
-          );
-          return;
-        case DType.uint8:
-          s_fill_uint8(
-            _pointer.cast(),
-            cStrides,
-            cShape,
-            shape.length,
-            targetValue as int,
-          );
-          return;
-        case DType.complex128:
-          final c = targetValue as Complex;
-          s_fill_complex128(
-            _pointer.cast(),
-            cStrides,
-            cShape,
-            shape.length,
-            c.real,
-            c.imag,
-          );
-          return;
-        case DType.complex64:
-          final c = targetValue as Complex;
-          s_fill_complex64(
-            _pointer.cast(),
-            cStrides,
-            cShape,
-            shape.length,
-            c.real,
-            c.imag,
-          );
-          return;
-        case DType.boolean:
-          s_fill_boolean(
-            _pointer.cast(),
-            cStrides,
-            cShape,
-            shape.length,
-            (targetValue as bool) ? 1 : 0,
-          );
-          return;
+    // Fallback JIT loop for complex, boolean, or non-contiguous views
+    final targetValue = value;
+
+    void fillWalk(int dim, int currentOffset) {
+      if (dim == shape.length) {
+        data[currentOffset] = targetValue;
+        return;
       }
-    } finally {
-      ScratchArena.reset(marker);
+      for (var i = 0; i < shape[dim]; i++) {
+        fillWalk(dim + 1, currentOffset + i * strides[dim]);
+      }
     }
+
+    fillWalk(0, offsetElements);
   }
 
   /// Transposes the dimensions of this array.
@@ -1555,7 +1449,7 @@ final class NDArray<T> implements ffi.Finalizable {
         'scalar can only be called on 0-dimensional arrays (has shape $shape)',
       );
     }
-    return getCellFlat(offsetElements);
+    return data[0];
   }
 
   /// Fetches the single scalar element at the specified multi-dimensional [coords].
@@ -1586,7 +1480,7 @@ final class NDArray<T> implements ffi.Finalizable {
       }
       offset += idx * strides[i];
     }
-    return getCellFlat(offsetElements + offset);
+    return data[offsetElements + offset];
   }
 
   /// Sets the single scalar element at the specified multi-dimensional [coords] to [value].
@@ -1623,7 +1517,38 @@ final class NDArray<T> implements ffi.Finalizable {
       }
       offset += idx * strides[i];
     }
-    setCellFlat(offsetElements + offset, value);
+    data[offsetElements + offset] = value;
+  }
+
+  /// Internal helper to read the element at a flat index [flatIndex].
+  @internal
+  T getCellFlat(int flatIndex) {
+    if (isContiguous) {
+      return data[offsetElements + flatIndex];
+    }
+    var offset = offsetElements;
+    var rem = flatIndex;
+    for (var i = shape.length - 1; i >= 0; i--) {
+      offset += (rem % shape[i]) * strides[i];
+      rem ~/= shape[i];
+    }
+    return data[offset];
+  }
+
+  /// Internal helper to write [value] to the element at a flat index [flatIndex].
+  @internal
+  void setCellFlat(int flatIndex, T value) {
+    if (isContiguous) {
+      data[offsetElements + flatIndex] = value;
+      return;
+    }
+    var offset = offsetElements;
+    var rem = flatIndex;
+    for (var i = shape.length - 1; i >= 0; i--) {
+      offset += (rem % shape[i]) * strides[i];
+      rem ~/= shape[i];
+    }
+    data[offset] = value;
   }
 
   /// Modifies elements where the provided boolean [mask] contains `true`,
@@ -1651,16 +1576,17 @@ final class NDArray<T> implements ffi.Finalizable {
     }
 
     var valueIndex = 0;
+    final valData = values.data;
 
     void walk(int dim, int currentOffset, int maskOffset) {
       if (dim == shape.length) {
-        if (mask.getCellFlat(maskOffset)) {
-          if (valueIndex >= values.size) {
+        if (mask.data[maskOffset]) {
+          if (valueIndex >= valData.length) {
             throw ArgumentError(
               'Source values array contains fewer elements than the mask targets',
             );
           }
-          setCellFlat(currentOffset, values.getCellFlat(valueIndex++));
+          data[currentOffset] = valData[valueIndex++];
         }
         return;
       }
@@ -1682,8 +1608,6 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// **Preconditions:**
   /// - [mask] must share identical dimensions ([shape]) with this array.
-  ///
-  /// It is an error if [mask] shape does not match this array's shape.
   void setByMaskScalar(NDArray<bool> mask, T value) {
     if (mask.shape.length != shape.length) {
       throw ArgumentError(
@@ -1700,8 +1624,8 @@ final class NDArray<T> implements ffi.Finalizable {
 
     void walk(int dim, int currentOffset, int maskOffset) {
       if (dim == shape.length) {
-        if (mask.getCellFlat(maskOffset)) {
-          setCellFlat(currentOffset, value);
+        if (mask.data[maskOffset]) {
+          data[currentOffset] = value;
         }
         return;
       }
@@ -1723,17 +1647,17 @@ final class NDArray<T> implements ffi.Finalizable {
   /// **Polymorphic Equivalence:**
   /// When [axis] is `0`, equivalent to calling `this[ [indices.data] ] = value` (advanced row stack scalar mutation).
   ///
-  /// It is an error if [axis] is out of bounds for the array rank, or if any entry in [indices] is out of bounds for the specified axis.
   void setIndicesScalar(NDArray<int> indices, T value, {int axis = 0}) {
     if (axis < 0 || axis >= shape.length) {
       throw RangeError.range(axis, 0, shape.length - 1, 'axis');
     }
 
+    final idxData = indices.data;
     final sliceShape = List<int>.from(shape)..removeAt(axis);
     final sliceStrides = List<int>.from(strides)..removeAt(axis);
 
-    for (var idx = 0; idx < indices.size; idx++) {
-      final targetIdx = indices.getCellFlat(idx);
+    for (var idx = 0; idx < idxData.length; idx++) {
+      final targetIdx = idxData[idx];
       if (targetIdx < 0 || targetIdx >= shape[axis]) {
         throw RangeError.range(
           targetIdx,
@@ -1745,7 +1669,7 @@ final class NDArray<T> implements ffi.Finalizable {
 
       void overwriteSlice(int dim, int currentOffset) {
         if (dim == sliceShape.length) {
-          setCellFlat(currentOffset, value);
+          data[currentOffset] = value;
           return;
         }
         for (var i = 0; i < sliceShape[dim]; i++) {
@@ -1767,13 +1691,15 @@ final class NDArray<T> implements ffi.Finalizable {
       throw RangeError.range(axis, 0, shape.length - 1, 'axis');
     }
 
+    final idxData = indices.data;
     final sliceShape = List<int>.from(shape)..removeAt(axis);
     final sliceStrides = List<int>.from(strides)..removeAt(axis);
 
+    final valData = values.data;
     var valOffset = 0;
 
-    for (var idx = 0; idx < indices.size; idx++) {
-      final targetIdx = indices.getCellFlat(idx);
+    for (var idx = 0; idx < idxData.length; idx++) {
+      final targetIdx = idxData[idx];
       if (targetIdx < 0 || targetIdx >= shape[axis]) {
         throw RangeError.range(
           targetIdx,
@@ -1785,12 +1711,12 @@ final class NDArray<T> implements ffi.Finalizable {
 
       void writeSlice(int dim, int currentOffset) {
         if (dim == sliceShape.length) {
-          if (valOffset >= values.size) {
+          if (valOffset >= valData.length) {
             throw ArgumentError(
               'Source values array contains fewer elements than required for the advanced index allocation',
             );
           }
-          setCellFlat(currentOffset, values.getCellFlat(valOffset++) as T);
+          data[currentOffset] = valData[valOffset++] as T;
           return;
         }
         for (var i = 0; i < sliceShape[dim]; i++) {
@@ -1805,7 +1731,7 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Accesses elements of the array polymorphically based on the runtime type of [spec].
   /// Safely coercing scalar inputs to matching array element type [T].
   T _coerceScalar(dynamic value) {
-    if (value is NDArray && (value.shape.isEmpty || value.size == 1)) {
+    if (value is NDArray && (value.shape.isEmpty || value.data.length == 1)) {
       value = value.scalar;
     }
     if (value is T) return value;
@@ -1867,7 +1793,7 @@ final class NDArray<T> implements ffi.Finalizable {
       );
     }
 
-    if (value is NDArray && (value.shape.isEmpty || value.size == 1)) {
+    if (value is NDArray && (value.shape.isEmpty || value.data.length == 1)) {
       value = value.scalar;
     }
 
@@ -2784,7 +2710,7 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// This method corresponds to NumPy's `take` function.
   ///
-  /// It is an error if [axis] is out of bounds for the array rank, or if any index in [indices] is out of bounds for the specified axis.
+  /// It is an error if [axis] is out of bounds for the array rank.
   ///
   /// **Example:**
   /// ```dart
@@ -2834,8 +2760,6 @@ final class NDArray<T> implements ffi.Finalizable {
 
   /// Returns a flat Dart list containing a copy of the elements in this array,
   /// traversed in the logical order defined by its shape and strides.
-  ///
-  /// It is an error if the array has been disposed.
   List<T> toList() {
     if (isDisposed) {
       throw StateError(
@@ -3368,8 +3292,6 @@ final class Complex {
   /// Returns this complex number raised to the power of [exponent].
   ///
   /// Supports [num] and [Complex] exponents.
-  ///
-  /// It is an error if [exponent] is neither a [num] nor a [Complex].
   Complex pow(dynamic exponent) {
     if (exponent is num) {
       if (exponent == 0) return Complex(1.0, 0.0);

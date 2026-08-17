@@ -1,7 +1,6 @@
 // ignore_for_file: non_constant_identifier_names
 import 'dart:math' as math;
 import '../ndarray.dart';
-import '../nditer.dart';
 import '../ndarray_bindings.dart';
 import '../scratch_arena.dart';
 
@@ -14,8 +13,6 @@ import 'helpers.dart';
 /// - [arrays] must not be empty.
 /// - All arrays in [arrays] must not be disposed.
 /// - All arrays in [arrays] must have identical dtypes and compatible shapes.
-///
-/// **Throws:**
 /// - It is an error if [arrays] is empty.
 /// - It is an error if any array in [arrays] is disposed.
 /// - It is an error if [axis] is out of bounds.
@@ -121,8 +118,6 @@ NDArray<T> concatenate<T>(
 /// - Input list [arrays] must be non-empty.
 /// - All arrays in [arrays] must not be disposed.
 /// - All arrays in [arrays] must share identical shapes and DTypes.
-///
-/// **Throws:**
 /// - It is an error if [arrays] is empty.
 /// - It is an error if any array in [arrays] is disposed.
 /// - It is an error if [axis] is out of bounds.
@@ -200,8 +195,6 @@ NDArray<T> stack<T extends Object>(
 ///
 /// **Preconditions:**
 /// - [axis] normalized value must be between `0` and the rank of [a] inclusive.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds.
 ///
@@ -252,8 +245,6 @@ NDArray<T> expand_dims<T extends Object>(NDArray<T> a, int axis) {
 ///
 /// **Preconditions:**
 /// - Specified [axis] entries must indeed correspond to dimensions of size 1.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [axis] is out of bounds or targets a dimension whose size is not 1.
 ///
@@ -336,8 +327,6 @@ NDArray<T> squeeze<T extends Object>(NDArray<T> a, {List<int>? axis}) {
 /// **Preconditions:**
 /// - [windowShape] length must match [axis] length.
 /// - Each window dimension must be strictly positive and less than or equal to the corresponding axis size.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if axes are out of range, shapes mismatch, or window dimensions exceed axis sizes.
 ///
@@ -430,8 +419,6 @@ NDArray<T> slidingWindowView<T extends Object>(
 /// - [a] must not be disposed.
 /// - If [axis] is a list, all elements must be unique.
 /// - Each axis must be a valid axis index for [a] (within `[-rank, rank - 1]`).
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if any axis is out of bounds.
 /// - It is an error if [axis] contains duplicate indices.
@@ -506,8 +493,6 @@ NDArray<T> flip<T extends Object>(NDArray<T> a, {dynamic axis}) {
 /// **Preconditions:**
 /// - [a] must not be disposed.
 /// - [a] must have a rank of at least 2.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] rank is less than 2.
 ///
@@ -540,8 +525,6 @@ NDArray<T> fliplr<T extends Object>(NDArray<T> a) {
 /// **Preconditions:**
 /// - [a] must not be disposed.
 /// - [a] must have a rank of at least 1.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] rank is less than 1.
 ///
@@ -570,11 +553,8 @@ NDArray<T> flipud<T extends Object>(NDArray<T> a) {
 /// Stacks arrays in sequence vertically (row wise).
 ///
 /// It is an error if [arrays] is empty, any array is disposed, or array shapes/dtypes mismatch.
-NDArray<T> vstack<T extends Object>(
-  List<NDArray<T>> arrays, {
-  NDArray<T>? out,
-}) {
-  return concatenate(arrays, axis: 0, out: out);
+NDArray<T> vstack<T extends Object>(List<NDArray<T>> arrays) {
+  return concatenate(arrays, axis: 0);
 }
 
 /// Stacks arrays in sequence horizontally (column wise).
@@ -583,17 +563,14 @@ NDArray<T> vstack<T extends Object>(
 /// except for 1-D arrays where it concatenates along the first axis (axis 0).
 ///
 /// It is an error if [arrays] is empty, any array is disposed, or array shapes/dtypes mismatch.
-NDArray<T> hstack<T extends Object>(
-  List<NDArray<T>> arrays, {
-  NDArray<T>? out,
-}) {
+NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
   if (arrays.isEmpty) {
     throw ArgumentError('arrays cannot be empty');
   }
   if (arrays.first.rank == 1) {
-    return concatenate(arrays, axis: 0, out: out);
+    return concatenate(arrays, axis: 0);
   }
-  return concatenate(arrays, axis: 1, out: out);
+  return concatenate(arrays, axis: 1);
 }
 
 /// Returns a deep, C-contiguous copy of the given array.
@@ -604,16 +581,16 @@ NDArray<T> hstack<T extends Object>(
 /// strides).
 ///
 /// This function corresponds to NumPy's `copy` function.
-///
-/// **Throws:**
+/// **Preconditions:**
 /// - It is an error if the array [a] is already disposed.
+///
 ///
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([1, 2], [2], DType.int32);
 /// final b = copy(a);
-/// b.setCell([0], 99);
-/// print(a.getCell([0])); // 1 (decoupled memory!)
+/// b[0] = 99;
+/// print(a[0]); // 1 (decoupled memory!)
 /// ```
 NDArray<T> copy<T extends Object>(NDArray<T> a) {
   if (a.isDisposed) {
@@ -648,35 +625,31 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
       startRow = 0;
       startCol = k;
       if (startCol >= n) {
-        return out ?? NDArray<T>.create([0], v.dtype);
+        return NDArray<T>.create([0], v.dtype);
       }
       len = math.min(m, n - k);
     } else {
       startRow = -k;
       startCol = 0;
       if (startRow >= m) {
-        return out ?? NDArray<T>.create([0], v.dtype);
+        return NDArray<T>.create([0], v.dtype);
       }
       len = math.min(m + k, n);
     }
 
     if (len <= 0) {
-      return out ?? NDArray<T>.create([0], v.dtype);
+      return NDArray<T>.create([0], v.dtype);
     }
 
     final offsetElements = startRow * v.strides[0] + startCol * v.strides[1];
     final diagStride = v.strides[0] + v.strides[1];
 
-    final view = NDArray<T>.view(
+    return NDArray<T>.view(
       v,
       shape: [len],
       strides: [diagStride],
       offsetElements: offsetElements,
     );
-    if (out != null) {
-      return view.copy(out: out);
-    }
-    return view;
   } else if (v.shape.length == 1) {
     final n = v.shape[0];
     final size = n + k.abs();
@@ -718,8 +691,6 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
 /// **Preconditions:**
 /// - Input [a] must be an array with rank >= 2.
 /// - If provided, the [out] recycler must have matching shape and dtype.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] has rank < 2.
 /// - It is an error if [out] has mismatched shape or dtype.
@@ -777,17 +748,30 @@ NDArray<T> tril<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
   }
 
   final zeroVal = castValue(0, a.dtype) as T;
-  final iter = NDIter(result);
-  while (iter.moveNext()) {
-    final coords = iter.coords;
-    final r = coords[rank - 2];
-    final c = coords[rank - 1];
-    if (c <= r + k) {
-      result.setCell(coords, a.getCell(coords));
-    } else {
-      result.setCell(coords, zeroVal);
+  final coords = List<int>.filled(rank, 0);
+
+  void walk(int dim) {
+    if (dim == rank - 2) {
+      for (var r = 0; r < rows; r++) {
+        coords[rank - 2] = r;
+        for (var c = 0; c < cols; c++) {
+          coords[rank - 1] = c;
+          if (c <= r + k) {
+            result.setCell(coords, a.getCell(coords));
+          } else {
+            result.setCell(coords, zeroVal);
+          }
+        }
+      }
+      return;
+    }
+    for (var i = 0; i < a.shape[dim]; i++) {
+      coords[dim] = i;
+      walk(dim + 1);
     }
   }
+
+  walk(0);
   return result;
 }
 
@@ -796,8 +780,6 @@ NDArray<T> tril<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
 /// **Preconditions:**
 /// - Input [a] must be an array with rank >= 2.
 /// - If provided, the [out] recycler must have matching shape and dtype.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [a] has rank < 2.
 /// - It is an error if [out] has mismatched shape or dtype.
@@ -855,17 +837,30 @@ NDArray<T> triu<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
   }
 
   final zeroVal = castValue(0, a.dtype) as T;
-  final iter = NDIter(result);
-  while (iter.moveNext()) {
-    final coords = iter.coords;
-    final r = coords[rank - 2];
-    final c = coords[rank - 1];
-    if (c >= r + k) {
-      result.setCell(coords, a.getCell(coords));
-    } else {
-      result.setCell(coords, zeroVal);
+  final coords = List<int>.filled(rank, 0);
+
+  void walk(int dim) {
+    if (dim == rank - 2) {
+      for (var r = 0; r < rows; r++) {
+        coords[rank - 2] = r;
+        for (var c = 0; c < cols; c++) {
+          coords[rank - 1] = c;
+          if (c >= r + k) {
+            result.setCell(coords, a.getCell(coords));
+          } else {
+            result.setCell(coords, zeroVal);
+          }
+        }
+      }
+      return;
+    }
+    for (var i = 0; i < a.shape[dim]; i++) {
+      coords[dim] = i;
+      walk(dim + 1);
     }
   }
+
+  walk(0);
   return result;
 }
 
@@ -875,8 +870,6 @@ NDArray<T> triu<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
 /// - [a] must not be disposed.
 /// - [n] must be non-negative.
 /// - If provided, [out] must match the calculated shape and dtype.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if [n] is negative.
 /// - It is an error if [axis] is out of bounds.
@@ -910,9 +903,7 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
     emptyShape[targetAxis] = 0;
     if (out != null) {
       if (!listEquals(out.shape, emptyShape) || out.dtype != a.dtype) {
-        throw ArgumentError(
-          'Provided out buffer has incompatible shape or dtype.',
-        );
+        throw ArgumentError('Incompatible out buffer shape or dtype for diff.');
       }
       return out;
     }
@@ -1009,8 +1000,8 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
       case DType.uint8:
       case DType.int16:
       case DType.boolean:
-        final doubleA = promoteToDouble(a);
-        final doubleRes = NDArray<Float64>.create(targetShape, DType.float64);
+        final doubleA = castNDArray(a, DType.float64);
+        final doubleRes = NDArray<double>.create(targetShape, DType.float64);
         final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
         final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
 
@@ -1024,9 +1015,9 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
           targetAxis,
         );
 
-        final casted = castNDArray(doubleRes, a.dtype);
-        casted.copy(out: result);
-        casted.dispose();
+        final castedRes = castNDArray(doubleRes, a.dtype);
+        castedRes.copy(out: result);
+        castedRes.dispose();
         doubleA.dispose();
         doubleRes.dispose();
     }
@@ -1045,8 +1036,6 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
 /// - The array [a] must not be disposed.
 /// - [shift] must be an integer, or a list of integers if [axis] is a list of integers.
 /// - [axis] must be null, an integer, or a list of integers.
-///
-/// **Throws:**
 /// - It is an error if [a] is disposed.
 /// - It is an error if the shift/axis arguments are invalid or mismatched.
 ///
