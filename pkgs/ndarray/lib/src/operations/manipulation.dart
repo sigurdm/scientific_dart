@@ -646,7 +646,9 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
     if (len <= 0) {
       if (out != null) {
         if (!listEquals(out.shape, [0]) || out.dtype != v.dtype) {
-          throw ArgumentError('Provided out buffer has incompatible shape or dtype.');
+          throw ArgumentError(
+            'Provided out buffer has incompatible shape or dtype.',
+          );
         }
         return out;
       }
