@@ -324,19 +324,16 @@ NDArray<Float64> _pdistCosine<T extends Object>(
     );
 
     final NDArray<Float64> div = divide(dot, denom);
-    final one = NDArray<Float64>.fromList([Float64(1.0)], [1], DType.float64);
+    final one = NDArray<Float64>.scalar(Float64(1.0), dtype: DType.float64);
     final NDArray<Float64> cosDistMatrix = subtract(one, div);
 
     final flatPtr = cosDistMatrix.pointer.cast<ffi.Double>();
-    final resPtr = result.pointer.cast<ffi.Double>();
     var idx = 0;
     for (var i = 0; i < m; i++) {
-      final rowOffset = i * m;
       for (var j = i + 1; j < m; j++) {
-        resPtr[idx++] = flatPtr[rowOffset + j];
+        result.setCellFlat(idx++, Float64(flatPtr[i * m + j]));
       }
     }
-
     if (out != null) {
       return result;
     } else {

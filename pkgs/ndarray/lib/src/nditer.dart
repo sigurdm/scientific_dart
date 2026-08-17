@@ -81,6 +81,17 @@ final class NDIter {
   NDIter.broadcast2(NDArray a, NDArray b)
     : this._internal([a, b], NDIter._broadcastShapes(a.shape, b.shape));
 
+  /// Creates an iterator that iterates over three arrays simultaneously,
+  /// broadcasting their shapes to a common compatible shape.
+  NDIter.broadcast3(NDArray a, NDArray b, NDArray c)
+    : this._internal(
+        [a, b, c],
+        NDIter._broadcastShapes(
+          NDIter._broadcastShapes(a.shape, b.shape),
+          c.shape,
+        ),
+      );
+
   /// Creates an iterator that iterates over a list of [arrays] simultaneously,
   /// broadcasting their shapes to a common compatible shape.
   ///
@@ -245,5 +256,5 @@ final class NDEnumerate<T> {
   List<int> get coords => _iter.coords;
 
   /// The current element value.
-  T get value => _array.data[_iter.index];
+  T get value => _array.getCellFlat(_iter.index);
 }

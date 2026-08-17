@@ -253,5 +253,64 @@ void main() {
         }
       });
     });
+
+    test(
+      "Task 11: matmul with non-contiguous 1D out buffers and shape demotion copy",
+      () {
+        NDArray.scope(() {
+          // Matrix (2x3) * Vector (3) -> Vector (2), using a non-contiguous 1D out buffer
+          final mat = NDArray<Float64>.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            [2, 3],
+            DType.float64,
+          );
+          final vec = NDArray<Float64>.fromList(
+            [1.0, 1.0, 1.0],
+            [3],
+            DType.float64,
+          );
+
+          final largerBuf = NDArray<Float64>.zeros([4], DType.float64);
+          final nonContigOut = largerBuf.slice([
+            Slice(start: 0, stop: 4, step: 2),
+          ]);
+          expect(nonContigOut.isContiguous, isFalse);
+          expect(nonContigOut.shape, equals([2]));
+
+          final res = matmul(mat, vec, out: nonContigOut);
+          expect(identical(res, nonContigOut), isTrue);
+          expect(res[[0]], closeTo(6.0, 1e-9));
+          expect(res[[1]], closeTo(15.0, 1e-9));
+          expect(largerBuf[[0]], closeTo(6.0, 1e-9));
+          expect(largerBuf[[2]], closeTo(15.0, 1e-9));
+
+          // Vector dot product (1D * 1D -> 0D scalar) with 0D out buffer
+          final out0D = NDArray<Float64>.zeros([], DType.float64);
+          final dotRes = matmul(vec, vec, out: out0D);
+          expect(identical(dotRes, out0D), isTrue);
+          expect(dotRes.scalar, closeTo(3.0, 1e-9));
+        });
+      },
+    );
+
+    test("Task 12: rfft and irfft odd-length fallback with out buffer", () {
+      NDArray.scope(() {
+        final input = NDArray<Float64>.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0],
+          [5],
+          DType.float64,
+        );
+        final outRfft = NDArray<Complex>.zeros([3], DType.complex128);
+        final resRfft = rfft(input, n: 5, out: outRfft);
+        expect(identical(resRfft, outRfft), isTrue);
+        expect(resRfft.isDisposed, isFalse);
+
+        final outIrfft = NDArray<Float64>.zeros([5], DType.float64);
+        final resIrfft = irfft(resRfft, n: 5, out: outIrfft);
+        expect(identical(resIrfft, outIrfft), isTrue);
+        expect(resIrfft.isDisposed, isFalse);
+        expect(resIrfft[[0]], closeTo(1.0, 1e-6));
+      });
+    });
   });
 }

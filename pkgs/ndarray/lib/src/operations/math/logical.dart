@@ -4,6 +4,7 @@ import '../../ndarray.dart';
 import '../../ndarray_bindings.dart';
 import '../../scratch_arena.dart';
 import '../broadcasting.dart';
+import '../helpers.dart';
 
 /// Returns a boolean array of the same shape as [a] containing the element-wise logical negation.
 ///
@@ -23,8 +24,14 @@ import '../broadcasting.dart';
 /// {@example /example/ufuncs_example.dart lang=dart}
 ///
 /// Reference: [NumPy logical_not](https://numpy.org/doc/stable/reference/generated/numpy.logical_not.html)
-NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<bool> logical_not<T>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<bool>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute logical_not() on a disposed array.');
   }
   final NDArray<bool> result;
@@ -40,170 +47,180 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
   }
   final marker = ScratchArena.marker;
   try {
-    final ffi.Pointer<ffi.Uint8> aBoolPtr;
-    final List<int> aBoolStrides;
-    if (a.dtype == DType.boolean) {
-      aBoolPtr = a.pointer.cast();
-      aBoolStrides = a.strides;
-    } else {
-      aBoolPtr = ScratchArena.allocate<ffi.Uint8>(a.size);
-      aBoolStrides = NDArray.computeCStrides(a.shape);
-      if (a.isContiguous) {
-        switch (a.dtype) {
-          case DType.float64:
-            v_to_bool_double(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
-          case DType.float32:
-            v_to_bool_float(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
-          case DType.int64:
-            v_to_bool_int64(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
-          case DType.int32:
-            v_to_bool_int32(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
-          case DType.uint8:
-            v_to_bool_uint8(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
-          case DType.int16:
-            v_to_bool_int16(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
-          case DType.complex128:
-            v_to_bool_complex128(
-              a.pointer.cast(),
-              aBoolPtr,
-              a.size,
-              ffi.nullptr,
-            );
-          case DType.complex64:
-            v_to_bool_complex64(
-              a.pointer.cast(),
-              aBoolPtr,
-              a.size,
-              ffi.nullptr,
-            );
-          case DType.boolean:
-            break;
+    final maskHolder = prepareMask(where, result.shape);
+    try {
+      final ffi.Pointer<ffi.Uint8> aBoolPtr;
+      final List<int> aBoolStrides;
+      if (a.dtype == DType.boolean) {
+        aBoolPtr = a.pointer.cast();
+        aBoolStrides = a.strides;
+      } else {
+        aBoolPtr = ScratchArena.allocate<ffi.Uint8>(a.size);
+        aBoolStrides = NDArray.computeCStrides(a.shape);
+        if (a.isContiguous) {
+          switch (a.dtype) {
+            case DType.float64:
+              v_to_bool_double(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
+            case DType.float32:
+              v_to_bool_float(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
+            case DType.int64:
+              v_to_bool_int64(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
+            case DType.int32:
+              v_to_bool_int32(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
+            case DType.uint8:
+              v_to_bool_uint8(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
+            case DType.int16:
+              v_to_bool_int16(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
+            case DType.complex128:
+              v_to_bool_complex128(
+                a.pointer.cast(),
+                aBoolPtr,
+                a.size,
+                ffi.nullptr,
+              );
+            case DType.complex64:
+              v_to_bool_complex64(
+                a.pointer.cast(),
+                aBoolPtr,
+                a.size,
+                ffi.nullptr,
+              );
+            case DType.boolean:
+              break;
+          }
+        } else {
+          final ndim = a.shape.length;
+          final cBuffer = ScratchArena.getStridedBuffer(ndim * 3);
+          final cShape = cBuffer;
+          final cStridesA = cBuffer + ndim;
+          final cStridesTemp = cBuffer + (ndim * 2);
+          for (var i = 0; i < ndim; i++) {
+            cShape[i] = a.shape[i];
+            cStridesA[i] = a.strides[i];
+            cStridesTemp[i] = aBoolStrides[i];
+          }
+          switch (a.dtype) {
+            case DType.float64:
+              s_to_bool_double(
+                a.pointer.cast(),
+                cStridesA,
+                aBoolPtr,
+                cStridesTemp,
+                cShape,
+                ndim,
+                ffi.nullptr,
+              );
+            case DType.float32:
+              s_to_bool_float(
+                a.pointer.cast(),
+                cStridesA,
+                aBoolPtr,
+                cStridesTemp,
+                cShape,
+                ndim,
+                ffi.nullptr,
+              );
+            case DType.int64:
+              s_to_bool_int64(
+                a.pointer.cast(),
+                cStridesA,
+                aBoolPtr,
+                cStridesTemp,
+                cShape,
+                ndim,
+                ffi.nullptr,
+              );
+            case DType.int32:
+              s_to_bool_int32(
+                a.pointer.cast(),
+                cStridesA,
+                aBoolPtr,
+                cStridesTemp,
+                cShape,
+                ndim,
+                ffi.nullptr,
+              );
+            case DType.uint8:
+              s_to_bool_uint8(
+                a.pointer.cast(),
+                cStridesA,
+                aBoolPtr,
+                cStridesTemp,
+                cShape,
+                ndim,
+                ffi.nullptr,
+              );
+            case DType.int16:
+              s_to_bool_int16(
+                a.pointer.cast(),
+                cStridesA,
+                aBoolPtr,
+                cStridesTemp,
+                cShape,
+                ndim,
+                ffi.nullptr,
+              );
+            case DType.complex128:
+              s_to_bool_complex128(
+                a.pointer.cast(),
+                cStridesA,
+                aBoolPtr,
+                cStridesTemp,
+                cShape,
+                ndim,
+                ffi.nullptr,
+              );
+            case DType.complex64:
+              s_to_bool_complex64(
+                a.pointer.cast(),
+                cStridesA,
+                aBoolPtr,
+                cStridesTemp,
+                cShape,
+                ndim,
+                ffi.nullptr,
+              );
+            case DType.boolean:
+              break;
+          }
         }
+      }
+
+      if (a.isContiguous && result.isContiguous) {
+        v_logical_not(
+          aBoolPtr,
+          result.pointer.cast(),
+          a.size,
+          maskHolder.pointer,
+        );
       } else {
         final ndim = a.shape.length;
         final cBuffer = ScratchArena.getStridedBuffer(ndim);
         final cShape = cBuffer;
         final cStridesA = cBuffer + ndim;
-        final cStridesTemp = cBuffer + (ndim * 2);
+        final cStridesRes = cBuffer + (ndim * 2);
+
         for (var i = 0; i < ndim; i++) {
           cShape[i] = a.shape[i];
-          cStridesA[i] = a.strides[i];
-          cStridesTemp[i] = aBoolStrides[i];
+          cStridesA[i] = aBoolStrides[i];
+          cStridesRes[i] = result.strides[i];
         }
-        switch (a.dtype) {
-          case DType.float64:
-            s_to_bool_double(
-              a.pointer.cast(),
-              cStridesA,
-              aBoolPtr,
-              cStridesTemp,
-              cShape,
-              ndim,
-              ffi.nullptr,
-            );
-          case DType.float32:
-            s_to_bool_float(
-              a.pointer.cast(),
-              cStridesA,
-              aBoolPtr,
-              cStridesTemp,
-              cShape,
-              ndim,
-              ffi.nullptr,
-            );
-          case DType.int64:
-            s_to_bool_int64(
-              a.pointer.cast(),
-              cStridesA,
-              aBoolPtr,
-              cStridesTemp,
-              cShape,
-              ndim,
-              ffi.nullptr,
-            );
-          case DType.int32:
-            s_to_bool_int32(
-              a.pointer.cast(),
-              cStridesA,
-              aBoolPtr,
-              cStridesTemp,
-              cShape,
-              ndim,
-              ffi.nullptr,
-            );
-          case DType.uint8:
-            s_to_bool_uint8(
-              a.pointer.cast(),
-              cStridesA,
-              aBoolPtr,
-              cStridesTemp,
-              cShape,
-              ndim,
-              ffi.nullptr,
-            );
-          case DType.int16:
-            s_to_bool_int16(
-              a.pointer.cast(),
-              cStridesA,
-              aBoolPtr,
-              cStridesTemp,
-              cShape,
-              ndim,
-              ffi.nullptr,
-            );
-          case DType.complex128:
-            s_to_bool_complex128(
-              a.pointer.cast(),
-              cStridesA,
-              aBoolPtr,
-              cStridesTemp,
-              cShape,
-              ndim,
-              ffi.nullptr,
-            );
-          case DType.complex64:
-            s_to_bool_complex64(
-              a.pointer.cast(),
-              cStridesA,
-              aBoolPtr,
-              cStridesTemp,
-              cShape,
-              ndim,
-              ffi.nullptr,
-            );
-          case DType.boolean:
-            break;
-        }
-      }
-    }
 
-    if (a.isContiguous && result.isContiguous) {
-      v_logical_not(aBoolPtr, result.pointer.cast(), a.size, ffi.nullptr);
-    } else {
-      final ndim = a.shape.length;
-      final cBuffer = ScratchArena.getStridedBuffer(ndim);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + ndim;
-      final cStridesRes = cBuffer + (ndim * 2);
-
-      for (var i = 0; i < ndim; i++) {
-        cShape[i] = a.shape[i];
-        cStridesA[i] = aBoolStrides[i];
-        cStridesRes[i] = result.strides[i];
+        s_logical_not(
+          aBoolPtr,
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          ndim,
+          maskHolder.pointer,
+        );
       }
 
-      s_logical_not(
-        aBoolPtr,
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        ndim,
-        ffi.nullptr,
-      );
+      return result;
+    } finally {
+      maskHolder.dispose();
     }
-
-    return result;
   } finally {
     ScratchArena.reset(marker);
   }
@@ -227,9 +244,13 @@ NDArray<bool> logical_not<T>(NDArray<T> a, {NDArray<bool>? out}) {
 NDArray<bool> equal<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<dynamic>? where,
   NDArray<bool>? out,
 }) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError("Cannot execute equal() on a disposed array.");
   }
   final broadcastResult = broadcast(a, b);
@@ -252,6 +273,7 @@ NDArray<bool> equal<Ta, Tb>(
     broadcastResult.stridesA,
     broadcastResult.stridesB,
     CMP_OP_EQ,
+    where: where,
   );
   return result;
 }
@@ -274,9 +296,13 @@ NDArray<bool> equal<Ta, Tb>(
 NDArray<bool> notEqual<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<dynamic>? where,
   NDArray<bool>? out,
 }) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError("Cannot execute notEqual() on a disposed array.");
   }
   final broadcastResult = broadcast(a, b);
@@ -299,6 +325,7 @@ NDArray<bool> notEqual<Ta, Tb>(
     broadcastResult.stridesA,
     broadcastResult.stridesB,
     CMP_OP_NE,
+    where: where,
   );
   return result;
 }
@@ -323,9 +350,13 @@ NDArray<bool> notEqual<Ta, Tb>(
 NDArray<bool> greater<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<dynamic>? where,
   NDArray<bool>? out,
 }) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError("Cannot execute greater() on a disposed array.");
   }
   if (a.dtype.isComplex || b.dtype.isComplex) {
@@ -353,6 +384,7 @@ NDArray<bool> greater<Ta, Tb>(
     broadcastResult.stridesA,
     broadcastResult.stridesB,
     CMP_OP_GT,
+    where: where,
   );
   return result;
 }
@@ -377,9 +409,13 @@ NDArray<bool> greater<Ta, Tb>(
 NDArray<bool> greaterEqual<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<dynamic>? where,
   NDArray<bool>? out,
 }) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError("Cannot execute greaterEqual() on a disposed array.");
   }
   if (a.dtype.isComplex || b.dtype.isComplex) {
@@ -407,6 +443,7 @@ NDArray<bool> greaterEqual<Ta, Tb>(
     broadcastResult.stridesA,
     broadcastResult.stridesB,
     CMP_OP_GE,
+    where: where,
   );
   return result;
 }
@@ -428,8 +465,16 @@ NDArray<bool> greaterEqual<Ta, Tb>(
 /// ```
 ///
 /// Reference: [NumPy less](https://numpy.org/doc/stable/reference/generated/numpy.less.html)
-NDArray<bool> less<Ta, Tb>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<bool>? out}) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+NDArray<bool> less<Ta, Tb>(
+  NDArray<Ta> a,
+  NDArray<Tb> b, {
+  NDArray<dynamic>? where,
+  NDArray<bool>? out,
+}) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError("Cannot execute less() on a disposed array.");
   }
   if (a.dtype.isComplex || b.dtype.isComplex) {
@@ -457,6 +502,7 @@ NDArray<bool> less<Ta, Tb>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<bool>? out}) {
     broadcastResult.stridesA,
     broadcastResult.stridesB,
     CMP_OP_LT,
+    where: where,
   );
   return result;
 }
@@ -481,9 +527,13 @@ NDArray<bool> less<Ta, Tb>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<bool>? out}) {
 NDArray<bool> lessEqual<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<dynamic>? where,
   NDArray<bool>? out,
 }) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError("Cannot execute lessEqual() on a disposed array.");
   }
   if (a.dtype.isComplex || b.dtype.isComplex) {
@@ -511,6 +561,7 @@ NDArray<bool> lessEqual<Ta, Tb>(
     broadcastResult.stridesA,
     broadcastResult.stridesB,
     CMP_OP_LE,
+    where: where,
   );
   return result;
 }
@@ -521,8 +572,9 @@ void _compareHelper(
   NDArray<bool> result,
   List<int> stridesA,
   List<int> stridesB,
-  int op,
-) {
+  int op, {
+  NDArray<dynamic>? where,
+}) {
   final rank = result.shape.length;
   final marker = ScratchArena.marker;
   final cShape = result.shape.isEmpty
@@ -539,19 +591,55 @@ void _compareHelper(
       : ScratchArena.copyInts(result.strides);
 
   try {
-    ndarray_compare(
-      op,
-      a.dtype.index,
-      b.dtype.index,
-      a.pointer.cast(),
-      cStridesA,
-      b.pointer.cast(),
-      cStridesB,
-      result.pointer.cast(),
-      cStridesRes,
-      cShape,
-      rank,
-    );
+    if (where == null) {
+      ndarray_compare(
+        op,
+        a.dtype.index,
+        b.dtype.index,
+        a.pointer.cast(),
+        cStridesA,
+        b.pointer.cast(),
+        cStridesB,
+        result.pointer.cast(),
+        cStridesRes,
+        cShape,
+        rank,
+      );
+    } else {
+      final maskHolder = prepareMask(where, result.shape);
+      try {
+        final tempRes = NDArray<bool>.create(result.shape, DType.boolean);
+        ndarray_compare(
+          op,
+          a.dtype.index,
+          b.dtype.index,
+          a.pointer.cast(),
+          cStridesA,
+          b.pointer.cast(),
+          cStridesB,
+          tempRes.pointer.cast(),
+          tempRes.strides.isEmpty
+              ? ffi.nullptr
+              : ScratchArena.copyInts(tempRes.strides),
+          cShape,
+          rank,
+        );
+        unaryOp<bool, bool>(
+          result,
+          tempRes,
+          result.shape,
+          tempRes.strides,
+          result.strides,
+          0,
+          tempRes.offsetElements,
+          result.offsetElements,
+          (x) => x,
+          maskHolder.pointer,
+        );
+      } finally {
+        maskHolder.dispose();
+      }
+    }
   } finally {
     ScratchArena.reset(marker);
   }
@@ -581,14 +669,19 @@ void _compareHelper(
 NDArray<bool> logical_and<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<dynamic>? where,
   NDArray<bool>? out,
 }) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute logical_and() on a disposed array.');
   }
   return _runBinaryLogical(
     a,
     b,
+    where,
     out,
     v_logical_and,
     s_logical_and,
@@ -620,12 +713,24 @@ NDArray<bool> logical_and<Ta, Tb>(
 NDArray<bool> logical_or<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<dynamic>? where,
   NDArray<bool>? out,
 }) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute logical_or() on a disposed array.');
   }
-  return _runBinaryLogical(a, b, out, v_logical_or, s_logical_or, 'logical_or');
+  return _runBinaryLogical(
+    a,
+    b,
+    where,
+    out,
+    v_logical_or,
+    s_logical_or,
+    'logical_or',
+  );
 }
 
 /// Computes the element-wise truth value of [a] XOR [b] with broadcasting support.
@@ -652,14 +757,19 @@ NDArray<bool> logical_or<Ta, Tb>(
 NDArray<bool> logical_xor<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
+  NDArray<dynamic>? where,
   NDArray<bool>? out,
 }) {
-  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+  if (a.isDisposed ||
+      b.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute logical_xor() on a disposed array.');
   }
   return _runBinaryLogical(
     a,
     b,
+    where,
     out,
     v_logical_xor,
     s_logical_xor,
@@ -840,6 +950,7 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
 NDArray<bool> _runBinaryLogical<Ta, Tb>(
   NDArray<Ta> a,
   NDArray<Tb> b,
+  NDArray<dynamic>? where,
   NDArray<bool>? out,
   void Function(
     ffi.Pointer<ffi.Uint8>,
@@ -913,49 +1024,54 @@ NDArray<bool> _runBinaryLogical<Ta, Tb>(
       result = NDArray<bool>.create(commonShape, DType.boolean);
     }
 
-    final isContig =
-        a.isContiguous &&
-        b.isContiguous &&
-        result.isContiguous &&
-        listEquals(a.shape, b.shape);
+    final maskHolder = prepareMask(where, result.shape);
+    try {
+      final isContig =
+          a.isContiguous &&
+          b.isContiguous &&
+          result.isContiguous &&
+          listEquals(a.shape, b.shape);
 
-    if (isContig) {
-      contiguousFn(
-        aBoolPtr,
-        bBoolPtr,
-        result.pointer.cast(),
-        result.size,
-        ffi.nullptr,
-      );
-    } else {
-      final ndim = commonShape.length;
-      final cBuffer = ScratchArena.getStridedBuffer(ndim);
-      final cShape = cBuffer;
-      final cStridesA = cBuffer + ndim;
-      final cStridesB = cBuffer + (ndim * 2);
-      final cStridesRes = cBuffer + (ndim * 3);
+      if (isContig) {
+        contiguousFn(
+          aBoolPtr,
+          bBoolPtr,
+          result.pointer.cast(),
+          result.size,
+          maskHolder.pointer,
+        );
+      } else {
+        final ndim = commonShape.length;
+        final cBuffer = ScratchArena.getStridedBuffer(ndim);
+        final cShape = cBuffer;
+        final cStridesA = cBuffer + ndim;
+        final cStridesB = cBuffer + (ndim * 2);
+        final cStridesRes = cBuffer + (ndim * 3);
 
-      for (var i = 0; i < ndim; i++) {
-        cShape[i] = commonShape[i];
-        cStridesA[i] = stridesA[i];
-        cStridesB[i] = stridesB[i];
-        cStridesRes[i] = result.strides[i];
+        for (var i = 0; i < ndim; i++) {
+          cShape[i] = commonShape[i];
+          cStridesA[i] = stridesA[i];
+          cStridesB[i] = stridesB[i];
+          cStridesRes[i] = result.strides[i];
+        }
+
+        stridedFn(
+          aBoolPtr,
+          cStridesA,
+          bBoolPtr,
+          cStridesB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          ndim,
+          maskHolder.pointer,
+        );
       }
 
-      stridedFn(
-        aBoolPtr,
-        cStridesA,
-        bBoolPtr,
-        cStridesB,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        ndim,
-        ffi.nullptr,
-      );
+      return result;
+    } finally {
+      maskHolder.dispose();
     }
-
-    return result;
   } finally {
     ScratchArena.reset(marker);
   }

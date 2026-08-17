@@ -1,4 +1,3 @@
-import 'dart:ffi' as ffi;
 // ignore_for_file: non_constant_identifier_names
 import '../../ndarray.dart';
 import '../../ndarray_bindings.dart';
@@ -27,10 +26,10 @@ import '../helpers.dart';
 /// - If [out] is provided, it must not be disposed and must have the same shape
 ///   and compatible dtype as the result.
 ///
-/// **Throws:**
-/// - [StateError] if [a] or [out] is disposed.
-/// - [ArgumentError] if [out] has incompatible shape or dtype.
-/// - [ArgumentError] if the dtype of [a] is not supported.
+/// It is an error if:
+/// - [a] or [out] is disposed (throws [StateError]).
+/// - [out] has incompatible shape or dtype (throws [ArgumentError]).
+/// - the dtype of [a] is not supported (throws [ArgumentError]).
 ///
 /// **Example:**
 /// ```dart
@@ -38,27 +37,30 @@ import '../helpers.dart';
 /// final b = i0(a);
 /// print(b.toList()); // [1.0, ~1.266066, ~2.279585]
 /// ```
-NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
+NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute i0() on a disposed array.');
   }
 
   // Handle integer and boolean types by promoting to float64 (double)
   if (a.dtype.isInteger || a.dtype == DType.boolean) {
     final promoted = promoteToDouble(a);
-    final res = i0<double, double>(promoted, out: out as NDArray<double>?);
+    final res = i0<double, double>(
+      promoted,
+      where: where,
+      out: out as NDArray<double>?,
+    );
     promoted.dispose();
     return res as NDArray<R>;
   }
 
-  final DType<R> targetDType;
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype as DType<R>;
-  } else if (a.dtype == DType.float32) {
-    targetDType = DType.float32 as DType<R>;
-  } else {
-    targetDType = DType.float64 as DType<R>;
-  }
+  final DType<R> targetDType = switch (a.dtype) {
+    DType.complex128 || DType.complex64 => a.dtype as DType<R>,
+    DType.float32 => DType.float32 as DType<R>,
+    _ => DType.float64 as DType<R>,
+  };
 
   final NDArray<R> result;
   if (out != null) {
@@ -72,132 +74,137 @@ NDArray<R> i0<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     result = NDArray.create(a.shape, targetDType);
   }
 
-  void dispatchContiguous(NDArray src, NDArray dest) {
-    switch (src.dtype) {
-      case DType.float64:
-        v_i0_double(
-          src.pointer.cast(),
-          dest.pointer.cast(),
-          src.size,
-          ffi.nullptr,
-        );
-        break;
-      case DType.float32:
-        v_i0_float(
-          src.pointer.cast(),
-          dest.pointer.cast(),
-          src.size,
-          ffi.nullptr,
-        );
-        break;
-      case DType.complex128:
-        v_i0_complex128(
-          src.pointer.cast(),
-          dest.pointer.cast(),
-          src.size,
-          ffi.nullptr,
-        );
-        break;
-      case DType.complex64:
-        v_i0_complex64(
-          src.pointer.cast(),
-          dest.pointer.cast(),
-          src.size,
-          ffi.nullptr,
-        );
-        break;
-      default:
-        throw UnsupportedError(
-          'Unsupported dtype for i0 contiguous dispatch: ${src.dtype}',
-        );
-    }
-  }
-
-  void dispatchStrided(NDArray src, NDArray dest) {
-    final rank = src.shape.length;
-    final marker = ScratchArena.marker;
-    final cShape = ScratchArena.copyInts(src.shape);
-    final cStridesSrc = ScratchArena.copyInts(src.strides);
-    final cStridesDest = ScratchArena.copyInts(dest.strides);
-    try {
+  final maskHolder = prepareMask(where, result.shape);
+  try {
+    void dispatchContiguous(NDArray src, NDArray dest) {
       switch (src.dtype) {
         case DType.float64:
-          s_i0_double(
+          v_i0_double(
             src.pointer.cast(),
-            cStridesSrc,
             dest.pointer.cast(),
-            cStridesDest,
-            cShape,
-            rank,
-            ffi.nullptr,
+            src.size,
+            maskHolder.pointer,
           );
           break;
         case DType.float32:
-          s_i0_float(
+          v_i0_float(
             src.pointer.cast(),
-            cStridesSrc,
             dest.pointer.cast(),
-            cStridesDest,
-            cShape,
-            rank,
-            ffi.nullptr,
+            src.size,
+            maskHolder.pointer,
           );
           break;
         case DType.complex128:
-          s_i0_complex128(
+          v_i0_complex128(
             src.pointer.cast(),
-            cStridesSrc,
             dest.pointer.cast(),
-            cStridesDest,
-            cShape,
-            rank,
-            ffi.nullptr,
+            src.size,
+            maskHolder.pointer,
           );
           break;
         case DType.complex64:
-          s_i0_complex64(
+          v_i0_complex64(
             src.pointer.cast(),
-            cStridesSrc,
             dest.pointer.cast(),
-            cStridesDest,
-            cShape,
-            rank,
-            ffi.nullptr,
+            src.size,
+            maskHolder.pointer,
           );
           break;
         default:
           throw UnsupportedError(
-            'Unsupported dtype for i0 strided dispatch: ${src.dtype}',
+            'Unsupported dtype for i0 contiguous dispatch: ${src.dtype}',
           );
       }
-    } finally {
-      ScratchArena.reset(marker);
     }
-  }
 
-  if (a.isContiguous && result.isContiguous) {
-    dispatchContiguous(a, result);
-  } else {
-    final rank = a.shape.length;
-    if (rank <= 8) {
-      dispatchStrided(a, result);
+    void dispatchStrided(NDArray src, NDArray dest) {
+      final rank = src.shape.length;
+      final marker = ScratchArena.marker;
+      final cShape = ScratchArena.copyInts(src.shape);
+      final cStridesSrc = ScratchArena.copyInts(src.strides);
+      final cStridesDest = ScratchArena.copyInts(dest.strides);
+      try {
+        switch (src.dtype) {
+          case DType.float64:
+            s_i0_double(
+              src.pointer.cast(),
+              cStridesSrc,
+              dest.pointer.cast(),
+              cStridesDest,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            break;
+          case DType.float32:
+            s_i0_float(
+              src.pointer.cast(),
+              cStridesSrc,
+              dest.pointer.cast(),
+              cStridesDest,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            break;
+          case DType.complex128:
+            s_i0_complex128(
+              src.pointer.cast(),
+              cStridesSrc,
+              dest.pointer.cast(),
+              cStridesDest,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            break;
+          case DType.complex64:
+            s_i0_complex64(
+              src.pointer.cast(),
+              cStridesSrc,
+              dest.pointer.cast(),
+              cStridesDest,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            break;
+          default:
+            throw UnsupportedError(
+              'Unsupported dtype for i0 strided dispatch: ${src.dtype}',
+            );
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+
+    if (a.isContiguous && result.isContiguous) {
+      dispatchContiguous(a, result);
     } else {
-      final tempA = a.isContiguous ? a : a.copy();
-      final tempResult = result.isContiguous
-          ? result
-          : NDArray.create(result.shape, result.dtype);
+      final rank = a.shape.length;
+      if (rank <= 8) {
+        dispatchStrided(a, result);
+      } else {
+        final tempA = a.isContiguous ? a : a.copy();
+        final tempResult = result.isContiguous
+            ? result
+            : NDArray.create(result.shape, result.dtype);
 
-      dispatchContiguous(tempA, tempResult);
+        dispatchContiguous(tempA, tempResult);
 
-      if (!identical(tempResult, result)) {
-        tempResult.copy(out: result);
-        tempResult.dispose();
-      }
-      if (!identical(tempA, a)) {
-        tempA.dispose();
+        if (!identical(tempResult, result)) {
+          tempResult.copy(out: result);
+          tempResult.dispose();
+        }
+        if (!identical(tempA, a)) {
+          tempA.dispose();
+        }
       }
     }
-  }
 
-  return result;
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
 }

@@ -1310,7 +1310,10 @@ NDArray<R> rfft<T, R extends Complex>(
       final finalResult =
           out ?? NDArray<R>.zeros(outShape, targetDType as DType<R>);
       sliced.copy(out: finalResult);
-      return finalResult.detachToParentScope();
+      if (out == null) {
+        finalResult.detachToParentScope();
+      }
+      return finalResult;
     });
   }
 }
@@ -1630,7 +1633,9 @@ NDArray<R> irfft<T, R extends double>(
       if (!complexIFFT.isContiguous) {
         contiguousIFFT.dispose();
       }
-      finalResult.detachToParentScope();
+      if (out == null) {
+        finalResult.detachToParentScope();
+      }
       return finalResult;
     });
   }
@@ -1809,8 +1814,9 @@ NDArray<R> _fftnND<T, R extends Complex>(
       result.copy(out: out);
       return out;
     } else {
-      result.detachToParentScope();
-      return result;
+      return result.isContiguous
+          ? result.detachToParentScope()
+          : result.copy().detachToParentScope();
     }
   });
 }

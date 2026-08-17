@@ -97,8 +97,8 @@ NDArray<T> clip<T>(
       final mn = resolvedMin.toInt();
       final mx = resolvedMax.toInt();
       unaryOp<int, int>(
-        result.data as List<int>,
-        a.data as List<int>,
+        result as NDArray<int>,
+        a as NDArray<int>,
         a.shape,
         a.strides,
         result.strides,
@@ -106,13 +106,14 @@ NDArray<T> clip<T>(
         a.offsetElements,
         result.offsetElements,
         (x) => x.clamp(mn, mx),
+        maskHolder.pointer,
       );
     } else {
       final mn = resolvedMin.toDouble();
       final mx = resolvedMax.toDouble();
       unaryOp<double, double>(
-        result.data as List<double>,
-        a.data as List<double>,
+        result as NDArray<double>,
+        a as NDArray<double>,
         a.shape,
         a.strides,
         result.strides,
@@ -120,6 +121,7 @@ NDArray<T> clip<T>(
         a.offsetElements,
         result.offsetElements,
         (x) => x.clamp(mn, mx),
+        maskHolder.pointer,
       );
     }
     return result;
@@ -163,13 +165,14 @@ NDArray<T> clipArray<T>(
   NDArray<T> a, {
   NDArray<T>? min,
   NDArray<T>? max,
-  NDArray<Uint8>? where,
+  NDArray<dynamic>? where,
   NDArray<T>? out,
 }) {
   if (a.isDisposed ||
       (min != null && min.isDisposed) ||
       (max != null && max.isDisposed) ||
-      (out != null && out.isDisposed)) {
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
     throw StateError('Cannot execute clipArray() on a disposed array.');
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
@@ -377,10 +380,10 @@ NDArray<T> clipArray<T>(
 
       if (a.dtype.isInteger) {
         ternaryOp<int, int, int, int>(
-          result.data as List<int>,
-          broadcastA.data as List<int>,
-          broadcastMin.data as List<int>,
-          broadcastMax.data as List<int>,
+          result as NDArray<int>,
+          broadcastA as NDArray<int>,
+          broadcastMin as NDArray<int>,
+          broadcastMax as NDArray<int>,
           commonShape,
           broadcastA.strides,
           broadcastMin.strides,
@@ -392,13 +395,14 @@ NDArray<T> clipArray<T>(
           broadcastMax.offsetElements,
           result.offsetElements,
           (x, mn, mx) => x.clamp(mn, mx),
+          maskHolder.pointer,
         );
       } else {
         ternaryOp<double, double, double, double>(
-          result.data as List<double>,
-          broadcastA.data as List<double>,
-          broadcastMin.data as List<double>,
-          broadcastMax.data as List<double>,
+          result as NDArray<double>,
+          broadcastA as NDArray<double>,
+          broadcastMin as NDArray<double>,
+          broadcastMax as NDArray<double>,
           commonShape,
           broadcastA.strides,
           broadcastMin.strides,
@@ -410,6 +414,7 @@ NDArray<T> clipArray<T>(
           broadcastMax.offsetElements,
           result.offsetElements,
           (x, mn, mx) => x.clamp(mn, mx),
+          maskHolder.pointer,
         );
       }
 

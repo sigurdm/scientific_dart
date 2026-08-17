@@ -18,9 +18,8 @@ import '../helpers.dart';
 /// - If [out] is provided, it must not be disposed and must have shape `[M]` (or `[0]` if `M < 1`)
 ///   and matching [DType].
 ///
-/// **Throws:**
-/// - It is an error if [out] is disposed.
-/// - It is an error if [out] has incompatible shape or [DType].
+/// - It is an error if [out] is disposed (throws [StateError]).
+/// - It is an error if [out] has incompatible shape or [DType] (throws [ArgumentError]).
 ///
 /// **Example:**
 /// ```dart
@@ -110,9 +109,8 @@ NDArray<T> hanning<T>(int M, {DType<T>? dtype, NDArray<T>? out}) {
 /// - If [out] is provided, it must not be disposed and must have shape `[M]` (or `[0]` if `M < 1`)
 ///   and matching [DType].
 ///
-/// **Throws:**
-/// - It is an error if [out] is disposed.
-/// - It is an error if [out] has incompatible shape or [DType].
+/// - It is an error if [out] is disposed (throws [StateError]).
+/// - It is an error if [out] has incompatible shape or [DType] (throws [ArgumentError]).
 ///
 /// **Example:**
 /// ```dart

@@ -329,9 +329,6 @@ void main() {
           );
           final nucNorm = norm(a, ord: NormKind.nuclear);
           expect(nucNorm.scalar, closeTo(3.0, 1e-9));
-
-          final nucNormStr = norm(a, ord: 'nuc');
-          expect(nucNormStr.scalar, closeTo(3.0, 1e-9));
         });
       });
 

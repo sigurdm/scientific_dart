@@ -12,8 +12,7 @@ import '../helpers.dart';
 /// - Input array [a] elements must be numeric (`T extends num`).
 /// - If provided, the [out] recycler array must exactly match the shape and compatible dtype of [a].
 ///
-/// **Throws:**
-/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+/// It is an error if the provided [out] buffer has an incompatible shape (throws [ArgumentError]).
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
@@ -156,8 +155,8 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
     }
 
     unaryOp<T, R>(
-      result.data,
-      a.data,
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
@@ -179,8 +178,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
 /// - Input array [a] elements must be numeric (`T extends num`).
 /// - If provided, the [out] recycler array must exactly match the shape and the resolved floating-point dtype (Float32 if [a] is Float32, Float64 otherwise).
 ///
-/// **Throws:**
-/// - [ArgumentError] if the provided [out] buffer has an incompatible shape or dtype.
+/// It is an error if the provided [out] buffer has an incompatible shape or dtype (throws [ArgumentError]).
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
@@ -322,8 +320,8 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
     }
 
     unaryOp<T, R>(
-      result.data,
-      a.data,
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
@@ -431,50 +429,53 @@ NDArray<R> log2<T, R>(
           cStridesRes[i] = result.strides[i];
         }
 
-        if (a.dtype == DType.float64) {
-          s_log2_double(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-          return result;
-        } else if (a.dtype == DType.float32) {
-          s_log2_float(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-          return result;
-        } else if (a.dtype == DType.complex128) {
-          s_log2_complex128(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-          return result;
-        } else if (a.dtype == DType.complex64) {
-          s_log2_complex64(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-          return result;
+        switch (a.dtype) {
+          case DType.float64:
+            s_log2_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_log2_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_log2_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_log2_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
         }
       } finally {
         ScratchArena.reset(marker);
@@ -482,8 +483,8 @@ NDArray<R> log2<T, R>(
     }
 
     unaryOp<T, R>(
-      result.data,
-      a.data,
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
@@ -596,50 +597,53 @@ NDArray<R> log10<T, R>(
           cStridesRes[i] = result.strides[i];
         }
 
-        if (a.dtype == DType.float64) {
-          s_log10_double(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-          return result;
-        } else if (a.dtype == DType.float32) {
-          s_log10_float(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-          return result;
-        } else if (a.dtype == DType.complex128) {
-          s_log10_complex128(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-          return result;
-        } else if (a.dtype == DType.complex64) {
-          s_log10_complex64(
-            a.pointer.cast(),
-            cStridesA,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-          return result;
+        switch (a.dtype) {
+          case DType.float64:
+            s_log10_double(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_log10_float(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex128:
+            s_log10_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.complex64:
+            s_log10_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
         }
       } finally {
         ScratchArena.reset(marker);
@@ -647,8 +651,8 @@ NDArray<R> log10<T, R>(
     }
 
     unaryOp<T, R>(
-      result.data,
-      a.data,
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,

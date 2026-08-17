@@ -1694,8 +1694,8 @@ void main() {
             dtype: DType.float64,
           );
 
-          final resEnd = fv(rate, nper, pmt, pvVal, when: 'end');
-          final resBegin = fv(rate, nper, pmt, pvVal, when: 'begin');
+          final resEnd = fv(rate, nper, pmt, pvVal, when: PaymentDue.end);
+          final resBegin = fv(rate, nper, pmt, pvVal, when: PaymentDue.begin);
 
           expect(resEnd.scalar, closeTo(15692.92889433575, 1e-5));
           // with when=1, payments are at beginning, so more interest
@@ -3417,19 +3417,19 @@ void main() {
           [3],
           DType.float64,
         );
-        final outPercentile = NDArray<double>.zeros([], DType.float64);
+        final outPercentile = NDArray<Float64>.zeros([], DType.float64);
 
         final resP = percentile(a, 50.0, out: outPercentile);
         expect(identical(resP, outPercentile), true);
         expect(outPercentile.scalar, 20.0);
 
-        final outQuantile = NDArray<double>.zeros([], DType.float64);
+        final outQuantile = NDArray<Float64>.zeros([], DType.float64);
         final resQ = quantile(a, 0.5, out: outQuantile);
         expect(identical(resQ, outQuantile), true);
         expect(outQuantile.scalar, 20.0);
 
         // Incompatible shape throws ArgumentError
-        final badOut = NDArray<double>.zeros([2], DType.float64);
+        final badOut = NDArray<Float64>.zeros([2], DType.float64);
         expect(() => percentile(a, 50.0, out: badOut), throwsArgumentError);
         expect(() => quantile(a, 0.5, out: badOut), throwsArgumentError);
       }),
@@ -3901,7 +3901,7 @@ void main() {
               [2],
               DType.float64,
             );
-            final out = NDArray<double>.zeros([], DType.float64);
+            final out = NDArray<Float64>.zeros([], DType.float64);
             out.dispose();
 
             expect(() => median(a, out: out), throwsStateError);
@@ -3919,7 +3919,7 @@ void main() {
               DType.float64,
             );
 
-            final outShape = NDArray<double>.zeros([2], DType.float64);
+            final outShape = NDArray<Float64>.zeros([2], DType.float64);
             expect(() => median(a, out: outShape), throwsArgumentError);
             expect(() => quantile(a, 0.5, out: outShape), throwsArgumentError);
             expect(

@@ -5,6 +5,7 @@ import '../../ndarray_bindings.dart';
 import '../../scratch_arena.dart';
 import '../helpers.dart';
 import '../broadcasting.dart';
+import '../../nditer.dart';
 
 /// Returns an element-wise boolean mask indicating which elements of the array are NaN.
 ///
@@ -12,9 +13,7 @@ import '../broadcasting.dart';
 /// - Input array [a] must not be disposed.
 /// - If provided, the [out] recycler array must match the shape and have boolean dtype.
 ///
-/// **Throws:**
-/// - [StateError] if the array has been disposed.
-/// - [ArgumentError] if [out] has incompatible shape or dtype.
+/// It is an error if the array has been disposed (throws [StateError]), or if [out] has incompatible shape or dtype (throws [ArgumentError]).
 ///
 /// **Example:**
 /// ```dart
@@ -82,104 +81,91 @@ NDArray<bool> isnan<T>(
       case DType.int64:
       case DType.int16:
       case DType.uint8:
-        result.fill(false);
+        final maskPtr = maskHolder.pointer;
+        for (var i = 0; i < result.size; i++) {
+          if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
+            result.setCellFlat(i, false);
+          }
+        }
         return result;
       default:
         break;
     }
   } else {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
+    final rank = a.rank;
+    final marker = ScratchArena.marker;
+    try {
+      final cBuffer = ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+        cStridesRes[i] = result.strides[i];
+      }
+      switch (a.dtype) {
+        case DType.float64:
+          s_isnan_double(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          s_isnan_float(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          s_isnan_complex128(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          s_isnan_complex64(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.int32:
+        case DType.int64:
+        case DType.int16:
+        case DType.uint8:
+          final maskPtr = maskHolder.pointer;
+          for (var i = 0; i < result.size; i++) {
+            if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
+              result.setCellFlat(i, false);
+            }
+          }
+          return result;
+        default:
+          break;
+      }
+    } finally {
+      ScratchArena.reset(marker);
     }
-    switch (a.dtype) {
-      case DType.float64:
-        s_isnan_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        s_isnan_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        s_isnan_complex128(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        s_isnan_complex64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.int32:
-      case DType.int64:
-      case DType.int16:
-      case DType.uint8:
-        result.fill(false);
-        return result;
-      default:
-        break;
-    }
-  }
-
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    unaryOp<Complex, bool>(
-      result.data,
-      a.data as List<Complex>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => x.real.isNaN || x.imag.isNaN,
-    );
-  } else if (a.dtype.isInteger) {
-    result.fill(false);
-  } else {
-    unaryOp<double, bool>(
-      result.data,
-      a.data as List<double>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => x.isNaN,
-    );
   }
   return result;
 }
@@ -189,8 +175,7 @@ NDArray<bool> isnan<T>(
 /// **Preconditions:**
 /// - The array must not be disposed.
 ///
-/// **Throws:**
-/// - [StateError] if the array has been disposed.
+/// It is an error if the array has been disposed (throws [StateError]).
 ///
 /// **Example:**
 /// ```dart
@@ -258,104 +243,91 @@ NDArray<bool> isinf<T>(
       case DType.int64:
       case DType.int16:
       case DType.uint8:
-        result.fill(false);
+        final maskPtr = maskHolder.pointer;
+        for (var i = 0; i < result.size; i++) {
+          if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
+            result.setCellFlat(i, false);
+          }
+        }
         return result;
       default:
         break;
     }
   } else {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
+    final rank = a.rank;
+    final marker = ScratchArena.marker;
+    try {
+      final cBuffer = ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+        cStridesRes[i] = result.strides[i];
+      }
+      switch (a.dtype) {
+        case DType.float64:
+          s_isinf_double(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          s_isinf_float(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          s_isinf_complex128(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          s_isinf_complex64(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.int32:
+        case DType.int64:
+        case DType.int16:
+        case DType.uint8:
+          final maskPtr = maskHolder.pointer;
+          for (var i = 0; i < result.size; i++) {
+            if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
+              result.setCellFlat(i, false);
+            }
+          }
+          return result;
+        default:
+          break;
+      }
+    } finally {
+      ScratchArena.reset(marker);
     }
-    switch (a.dtype) {
-      case DType.float64:
-        s_isinf_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        s_isinf_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        s_isinf_complex128(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        s_isinf_complex64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.int32:
-      case DType.int64:
-      case DType.int16:
-      case DType.uint8:
-        result.fill(false);
-        return result;
-      default:
-        break;
-    }
-  }
-
-  if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    unaryOp<Complex, bool>(
-      result.data,
-      a.data as List<Complex>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => x.real.isInfinite || x.imag.isInfinite,
-    );
-  } else if (a.dtype.isInteger) {
-    result.fill(false);
-  } else {
-    unaryOp<double, bool>(
-      result.data,
-      a.data as List<double>,
-      a.shape,
-      a.strides,
-      result.strides,
-      0,
-      a.offsetElements,
-      result.offsetElements,
-      (x) => x.isInfinite,
-    );
   }
   return result;
 }
@@ -365,8 +337,7 @@ NDArray<bool> isinf<T>(
 /// **Preconditions:**
 /// - The array must not be disposed.
 ///
-/// **Throws:**
-/// - [StateError] if the array has been disposed.
+/// It is an error if the array has been disposed (throws [StateError]).
 ///
 /// **Example:**
 /// ```dart
@@ -435,81 +406,94 @@ NDArray<bool> isfinite<T extends Object>(
       case DType.int16:
       case DType.uint8:
       case DType.boolean:
-        result.fill(true);
-        return result;
+        final maskPtr = maskHolder.pointer;
+        for (var i = 0; i < result.size; i++) {
+          if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
+            result.setCellFlat(i, true);
+          }
+        }
     }
   } else {
-    final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-    }
-    switch (a.dtype) {
-      case DType.float64:
-        s_isfinite_double(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.float32:
-        s_isfinite_float(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex128:
-        s_isfinite_complex128(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.complex64:
-        s_isfinite_complex64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          maskHolder.pointer,
-        );
-        return result;
-      case DType.int32:
-      case DType.int64:
-      case DType.int16:
-      case DType.uint8:
-      case DType.boolean:
-        result.fill(true);
-        return result;
+    final rank = a.rank;
+    final marker = ScratchArena.marker;
+    try {
+      final cBuffer = ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+        cStridesRes[i] = result.strides[i];
+      }
+      switch (a.dtype) {
+        case DType.float64:
+          s_isfinite_double(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          s_isfinite_float(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          s_isfinite_complex128(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          s_isfinite_complex64(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.int32:
+        case DType.int64:
+        case DType.int16:
+        case DType.uint8:
+        case DType.boolean:
+          final maskPtr = maskHolder.pointer;
+          for (var i = 0; i < result.size; i++) {
+            if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
+              result.setCellFlat(i, true);
+            }
+          }
+          return result;
+      }
+    } finally {
+      ScratchArena.reset(marker);
     }
   }
+  return result;
 }
 
 /// Returns first element-wise argument with the sign of the second element-wise argument.
 ///
-/// **Throws:**
-/// - [StateError] if either array has been disposed.
-/// - [UnsupportedError] if either array is complex (copysign is not defined for complex numbers).
+/// It is an error if either array has been disposed (throws [StateError]), or if either array is complex (throws [UnsupportedError]).
 ///
 /// **Example:**
 /// ```dart
@@ -558,24 +542,27 @@ NDArray<T> copysign<T extends Object>(
         x2.isContiguous &&
         listEquals(x1.shape, x2.shape) &&
         result.isContiguous) {
-      if (targetDType == DType.float64) {
-        v_copysign_double(
-          x1.pointer.cast(),
-          x2.pointer.cast(),
-          result.pointer.cast(),
-          x1.size,
-          maskHolder.pointer,
-        );
-        return result;
-      } else if (targetDType == DType.float32) {
-        v_copysign_float(
-          x1.pointer.cast(),
-          x2.pointer.cast(),
-          result.pointer.cast(),
-          x1.size,
-          maskHolder.pointer,
-        );
-        return result;
+      switch (targetDType) {
+        case DType.float64:
+          v_copysign_double(
+            x1.pointer.cast(),
+            x2.pointer.cast(),
+            result.pointer.cast(),
+            x1.size,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          v_copysign_float(
+            x1.pointer.cast(),
+            x2.pointer.cast(),
+            result.pointer.cast(),
+            x1.size,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
       }
     } else if (x1.dtype == targetDType &&
         x2.dtype == targetDType &&
@@ -587,32 +574,35 @@ NDArray<T> copysign<T extends Object>(
         final cStridesA = ScratchArena.copyInts(stridesA);
         final cStridesB = ScratchArena.copyInts(stridesB);
         final cStridesRes = ScratchArena.copyInts(result.strides);
-        if (targetDType == DType.float64) {
-          s_copysign_double(
-            x1.pointer.cast(),
-            cStridesA,
-            x2.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-          return result;
-        } else if (targetDType == DType.float32) {
-          s_copysign_float(
-            x1.pointer.cast(),
-            cStridesA,
-            x2.pointer.cast(),
-            cStridesB,
-            result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            maskHolder.pointer,
-          );
-          return result;
+        switch (targetDType) {
+          case DType.float64:
+            s_copysign_double(
+              x1.pointer.cast(),
+              cStridesA,
+              x2.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          case DType.float32:
+            s_copysign_float(
+              x1.pointer.cast(),
+              cStridesA,
+              x2.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
         }
       } finally {
         ScratchArena.reset(marker);
@@ -628,9 +618,9 @@ NDArray<T> copysign<T extends Object>(
 
     if (targetDType == DType.float64 || targetDType == DType.float32) {
       elementWiseOp<double, double, double>(
-        result.data as List<double>,
-        x1.data as List<double>,
-        x2.data as List<double>,
+        result as NDArray<double>,
+        x1 as NDArray<double>,
+        x2 as NDArray<double>,
         shape,
         stridesA,
         stridesB,
@@ -640,12 +630,13 @@ NDArray<T> copysign<T extends Object>(
         x2.offsetElements,
         result.offsetElements,
         (x, y) => copysignOp(x, y),
+        maskHolder.pointer,
       );
     } else {
       elementWiseOp<num, num, int>(
-        result.data as List<int>,
-        x1.data as List<num>,
-        x2.data as List<num>,
+        result as NDArray<int>,
+        x1 as NDArray<num>,
+        x2 as NDArray<num>,
         shape,
         stridesA,
         stridesB,
@@ -655,6 +646,7 @@ NDArray<T> copysign<T extends Object>(
         x2.offsetElements,
         result.offsetElements,
         (x, y) => copysignOp(x.toDouble(), y.toDouble()).toInt(),
+        maskHolder.pointer,
       );
     }
 
@@ -690,80 +682,47 @@ NDArray<bool> isClose<Ta, Tb>(
   final broadcastResult = broadcast(a, b);
   final commonShape = broadcastResult.shape;
 
-  final size = commonShape.isEmpty ? 1 : commonShape.reduce((x, y) => x * y);
   final result = NDArray<bool>.zeros(commonShape, DType.boolean);
 
-  final aList = a.toList();
-  final bList = b.toList();
-  final resData = result.data;
-
-  final broadcastResultRes = broadcast(a, b);
-  final stridesA = broadcastResultRes.stridesA;
-  final stridesB = broadcastResultRes.stridesB;
-
-  final coord = List<int>.filled(commonShape.length, 0);
-
-  bool isNaNVal(dynamic val) {
-    if (val is Complex) return val.real.isNaN || val.imag.isNaN;
-    if (val is num) return val.isNaN;
-    return false;
-  }
-
-  bool isInfiniteVal(dynamic val) {
-    if (val is Complex) return val.real.isInfinite || val.imag.isInfinite;
-    if (val is num) return val.isInfinite;
-    return false;
-  }
-
-  double absVal(dynamic val) {
-    if (val is Complex) return val.abs;
-    if (val is num) return val.abs().toDouble();
+  bool isNan(Object? v) =>
+      (v is num && v.isNaN) || (v is Complex && (v.real.isNaN || v.imag.isNaN));
+  bool isInf(Object? v) =>
+      (v is num && v.isInfinite) ||
+      (v is Complex && (v.real.isInfinite || v.imag.isInfinite));
+  double abs(Object? v) =>
+      v is num ? v.abs().toDouble() : (v is Complex ? v.abs : 0.0);
+  double diff(Object? v1, Object? v2) {
+    if (v1 is num && v2 is num) return (v1 - v2).abs().toDouble();
+    if (v1 is Complex && v2 is Complex) return (v1 - v2).abs;
+    if (v1 is num && v2 is Complex) {
+      return (Complex(v1.toDouble(), 0.0) - v2).abs;
+    }
+    if (v1 is Complex && v2 is num) {
+      return (v1 - Complex(v2.toDouble(), 0.0)).abs;
+    }
     return 0.0;
   }
 
-  dynamic diffVal(dynamic a, dynamic b) {
-    if (a is Complex) {
-      if (b is Complex) return a - b;
-      return a - (b as num);
-    }
-    if (b is Complex) {
-      return Complex((a as num).toDouble(), 0.0) - b;
-    }
-    return (a as num) - (b as num);
-  }
-
-  for (var el = 0; el < size; el++) {
-    var offsetA = 0;
-    var offsetB = 0;
-    var offsetRes = 0;
-    for (var d = 0; d < commonShape.length; d++) {
-      offsetA += coord[d] * stridesA[d];
-      offsetB += coord[d] * stridesB[d];
-      offsetRes += coord[d] * result.strides[d];
-    }
-
-    final valA = aList[offsetA];
-    final valB = bList[offsetB];
+  final iter = NDIter.broadcast3(result, a, b);
+  while (iter.moveNext()) {
+    final idxRes = iter.getIndex(0);
+    final idxA = iter.getIndex(1);
+    final idxB = iter.getIndex(2);
+    final valA = a.getCellFlat(idxA);
+    final valB = b.getCellFlat(idxB);
 
     var match = false;
-    if (equalNan && isNaNVal(valA) && isNaNVal(valB)) {
+    if (equalNan && isNan(valA) && isNan(valB)) {
       match = true;
-    } else if (isInfiniteVal(valA) || isInfiniteVal(valB)) {
+    } else if (isInf(valA) || isInf(valB)) {
       match = valA == valB;
     } else {
-      final diff = absVal(diffVal(valA, valB));
-      final limit = atol + rtol * absVal(valB);
-      match = diff <= limit;
+      final d = diff(valA, valB);
+      final limit = atol + rtol * abs(valB);
+      match = d <= limit;
     }
 
-    resData[offsetRes] = match;
-
-    // Advance coord odometer
-    for (var d = commonShape.length - 1; d >= 0; d--) {
-      coord[d]++;
-      if (coord[d] < commonShape[d]) break;
-      coord[d] = 0;
-    }
+    result.setCellFlat(idxRes, match);
   }
 
   return result;
@@ -790,10 +749,12 @@ bool allClose<Ta, Tb>(
   bool equalNan = false,
 }) {
   final closeMask = isClose(a, b, rtol: rtol, atol: atol, equalNan: equalNan);
-  final maskList = closeMask.toList();
-  closeMask.dispose();
-  for (final val in maskList) {
-    if (!val) return false;
+  try {
+    for (var i = 0; i < closeMask.size; i++) {
+      if (!closeMask.getCellFlat(i)) return false;
+    }
+    return true;
+  } finally {
+    closeMask.dispose();
   }
-  return true;
 }

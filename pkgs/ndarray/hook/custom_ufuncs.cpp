@@ -662,6 +662,37 @@ static void v_fill_impl(T * RESTRICT res, T value, int size) {
     }
 }
 
+template <typename T>
+static void s_fill_impl(T * RESTRICT res, const int * RESTRICT strides, const int * RESTRICT shape, int rank, T value) {
+    if (res == nullptr || strides == nullptr || shape == nullptr || rank < 0) return;
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    if (rank == 0) {
+        res[0] = value;
+        return;
+    }
+    std::vector<int> coord_vec;
+    int coord_stack[32] = {0};
+    int *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
+    int offset = 0;
+    for (int el = 0; el < total_elements; el++) {
+        res[offset] = value;
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offset += strides[d];
+                break;
+            }
+            coord[d] = 0;
+            offset -= (shape[d] - 1) * strides[d];
+        }
+    }
+}
+
 template <typename T, typename BoundsType, typename RangeType>
 static void v_randint_impl(T *res, int size, BoundsType low, BoundsType high, unsigned long long seed) {
     if (res == nullptr || size <= 0 || low >= high) return;
@@ -1328,43 +1359,51 @@ void s_div_double(const double *a, const int *stridesA,
 void v_add_complex(const cpx_t *a, const cpx_t *b, cpx_t *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i].r = a[i].r + b[i].r;
-        res[i].i = a[i].i + b[i].i;
+        if (!mask || mask[i]) {
+            res[i].r = a[i].r + b[i].r;
+            res[i].i = a[i].i + b[i].i;
+        }
     }
 }
 
 void v_sub_complex(const cpx_t *a, const cpx_t *b, cpx_t *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i].r = a[i].r - b[i].r;
-        res[i].i = a[i].i - b[i].i;
+        if (!mask || mask[i]) {
+            res[i].r = a[i].r - b[i].r;
+            res[i].i = a[i].i - b[i].i;
+        }
     }
 }
 
 void v_mul_complex(const cpx_t *a, const cpx_t *b, cpx_t *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        double r1 = a[i].r, i1 = a[i].i;
-        double r2 = b[i].r, i2 = b[i].i;
-        // Foil complex multiplication: (r1+i1*i)*(r2+i2*i) = (r1*r2 - i1*i2) + i*(r1*i2 + i1*r2)
-        res[i].r = r1 * r2 - i1 * i2;
-        res[i].i = r1 * i2 + i1 * r2;
+        if (!mask || mask[i]) {
+            double r1 = a[i].r, i1 = a[i].i;
+            double r2 = b[i].r, i2 = b[i].i;
+            // Foil complex multiplication: (r1+i1*i)*(r2+i2*i) = (r1*r2 - i1*i2) + i*(r1*i2 + i1*r2)
+            res[i].r = r1 * r2 - i1 * i2;
+            res[i].i = r1 * i2 + i1 * r2;
+        }
     }
 }
 
 void v_div_complex(const cpx_t *a, const cpx_t *b, cpx_t *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        double r1 = a[i].r, i1 = a[i].i;
-        double r2 = b[i].r, i2 = b[i].i;
-        // Complex division rationalization:
-        double denom = r2 * r2 + i2 * i2;
-        if (denom == 0.0) {
-            res[i].r = NAN;
-            res[i].i = NAN;
-        } else {
-            res[i].r = (r1 * r2 + i1 * i2) / denom;
-            res[i].i = (i1 * r2 - r1 * i2) / denom;
+        if (!mask || mask[i]) {
+            double r1 = a[i].r, i1 = a[i].i;
+            double r2 = b[i].r, i2 = b[i].i;
+            // Complex division rationalization:
+            double denom = r2 * r2 + i2 * i2;
+            if (denom == 0.0) {
+                res[i].r = NAN;
+                res[i].i = NAN;
+            } else {
+                res[i].r = (r1 * r2 + i1 * i2) / denom;
+                res[i].i = (i1 * r2 - r1 * i2) / denom;
+            }
         }
     }
 }
@@ -1506,133 +1545,171 @@ void s_div_complex(const cpx_t *a, const int *stridesA,
 void v_add_float(const float *a, const float *b, float *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = a[i] + b[i];
+        if (!mask || mask[i]) {
+            res[i] = a[i] + b[i];
+        }
     }
 }
 
 void v_sub_float(const float *a, const float *b, float *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = a[i] - b[i];
+        if (!mask || mask[i]) {
+            res[i] = a[i] - b[i];
+        }
     }
 }
 
 void v_mul_float(const float *a, const float *b, float *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = a[i] * b[i];
+        if (!mask || mask[i]) {
+            res[i] = a[i] * b[i];
+        }
     }
 }
 
 void v_div_float(const float *a, const float *b, float *res,int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = a[i] / b[i];
+        if (!mask || mask[i]) {
+            res[i] = a[i] / b[i];
+        }
     }
 }
 
 void v_sin_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = sinf(src[i]);
+        if (!mask || mask[i]) {
+            res[i] = sinf(src[i]);
+        }
     }
 }
 
 void v_sinc_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = real_sinc<float>(src[i]);
+        if (!mask || mask[i]) {
+            res[i] = real_sinc<float>(src[i]);
+        }
     }
 }
 
 void v_cos_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = cosf(src[i]);
+        if (!mask || mask[i]) {
+            res[i] = cosf(src[i]);
+        }
     }
 }
 
 void v_exp_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = expf(src[i]);
+        if (!mask || mask[i]) {
+            res[i] = expf(src[i]);
+        }
     }
 }
 
 void v_log_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = logf(src[i]);
+        if (!mask || mask[i]) {
+            res[i] = logf(src[i]);
+        }
     }
 }
 
 void v_sinh_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = sinhf(src[i]);
+        if (!mask || mask[i]) {
+            res[i] = sinhf(src[i]);
+        }
     }
 }
 
 void v_cosh_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = coshf(src[i]);
+        if (!mask || mask[i]) {
+            res[i] = coshf(src[i]);
+        }
     }
 }
 
 void v_tanh_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = tanhf(src[i]);
+        if (!mask || mask[i]) {
+            res[i] = tanhf(src[i]);
+        }
     }
 }
 
 void v_asinh_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = asinhf(src[i]);
+        if (!mask || mask[i]) {
+            res[i] = asinhf(src[i]);
+        }
     }
 }
 
 void v_acosh_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = acoshf(src[i]);
+        if (!mask || mask[i]) {
+            res[i] = acoshf(src[i]);
+        }
     }
 }
 
 void v_atanh_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = atanhf(src[i]);
+        if (!mask || mask[i]) {
+            res[i] = atanhf(src[i]);
+        }
     }
 }
 
 void v_asin_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = asinf(src[i]);
+        if (!mask || mask[i]) {
+            res[i] = asinf(src[i]);
+        }
     }
 }
 
 void v_acos_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = acosf(src[i]);
+        if (!mask || mask[i]) {
+            res[i] = acosf(src[i]);
+        }
     }
 }
 
 void v_atan_float(const float *src, float *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = atanf(src[i]);
+        if (!mask || mask[i]) {
+            res[i] = atanf(src[i]);
+        }
     }
 }
 
 void v_atan2_float(const float *y, const float *x, float *res,int size, const uint8_t *mask) {
     if (y == nullptr || x == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i] = atan2f(y[i], x[i]);
+        if (!mask || mask[i]) {
+            res[i] = atan2f(y[i], x[i]);
+        }
     }
 }
 
@@ -2000,10 +2077,54 @@ void v_fill_##TYPE_NAME(TYPE * RESTRICT res, TYPE value, int size) { \
     v_fill_impl(res, value, size); \
 }
 
+#define IMPLEMENT_S_FILL(TYPE_NAME, TYPE) \
+void s_fill_##TYPE_NAME(TYPE * RESTRICT res, const int * RESTRICT strides, const int * RESTRICT shape, int rank, TYPE value) { \
+    s_fill_impl<TYPE>(res, strides, shape, rank, value); \
+}
+
+extern "C" {
 IMPLEMENT_V_FILL(double, double)
 IMPLEMENT_V_FILL(float, float)
 IMPLEMENT_V_FILL(int64, int64_t)
 IMPLEMENT_V_FILL(int32, int32_t)
+IMPLEMENT_V_FILL(int16, int16_t)
+IMPLEMENT_V_FILL(uint8, uint8_t)
+IMPLEMENT_V_FILL(boolean, uint8_t)
+
+IMPLEMENT_S_FILL(double, double)
+IMPLEMENT_S_FILL(float, float)
+IMPLEMENT_S_FILL(int64, int64_t)
+IMPLEMENT_S_FILL(int32, int32_t)
+IMPLEMENT_S_FILL(int16, int16_t)
+IMPLEMENT_S_FILL(uint8, uint8_t)
+IMPLEMENT_S_FILL(boolean, uint8_t)
+
+void v_fill_complex128(cpx_t * RESTRICT res, double valR, double valI, int size) {
+    if (res == nullptr || size <= 0) return;
+    cpx_t val = {valR, valI};
+    for (int i = 0; i < size; i++) {
+        res[i] = val;
+    }
+}
+
+void v_fill_complex64(cpx_f_t * RESTRICT res, float valR, float valI, int size) {
+    if (res == nullptr || size <= 0) return;
+    cpx_f_t val = {valR, valI};
+    for (int i = 0; i < size; i++) {
+        res[i] = val;
+    }
+}
+
+void s_fill_complex128(cpx_t * RESTRICT res, const int * RESTRICT strides, const int * RESTRICT shape, int rank, double valR, double valI) {
+    cpx_t val = {valR, valI};
+    s_fill_impl<cpx_t>(res, strides, shape, rank, val);
+}
+
+void s_fill_complex64(cpx_f_t * RESTRICT res, const int * RESTRICT strides, const int * RESTRICT shape, int rank, float valR, float valI) {
+    cpx_f_t val = {valR, valI};
+    s_fill_impl<cpx_f_t>(res, strides, shape, rank, val);
+}
+}
 
 void v_linspace_double(double *res, double start, double step, int size) {
     if (res == nullptr || size <= 0) return;
@@ -4030,16 +4151,20 @@ void s_pow_complex64(const cpx_f_t *x1, const int *stridesX1, const cpx_f_t *x2,
 void v_conj_complex128(const cpx_t *src, cpx_t *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i].r = src[i].r;
-        res[i].i = -src[i].i;
+        if (mask == nullptr || mask[i] != 0) {
+            res[i].r = src[i].r;
+            res[i].i = -src[i].i;
+        }
     }
 }
 
 void v_conj_complex64(const cpx_f_t *src, cpx_f_t *res,int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
     for (int i = 0; i < size; i++) {
-        res[i].r = src[i].r;
-        res[i].i = -src[i].i;
+        if (mask == nullptr || mask[i] != 0) {
+            res[i].r = src[i].r;
+            res[i].i = -src[i].i;
+        }
     }
 }
 
@@ -4054,8 +4179,10 @@ void s_conj_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *res, cons
             offsetSrc += coord[d] * stridesSrc[d];
             offsetRes += coord[d] * stridesRes[d];
         }
-        res[offsetRes].r = src[offsetSrc].r;
-        res[offsetRes].i = -src[offsetSrc].i;
+        if (mask == nullptr || mask[i] != 0) {
+            res[offsetRes].r = src[offsetSrc].r;
+            res[offsetRes].i = -src[offsetSrc].i;
+        }
         for (int d = rank - 1; d >= 0; d--) {
             coord[d]++;
             if (coord[d] < shape[d]) break;
@@ -4075,8 +4202,10 @@ void s_conj_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *res, c
             offsetSrc += coord[d] * stridesSrc[d];
             offsetRes += coord[d] * stridesRes[d];
         }
-        res[offsetRes].r = src[offsetSrc].r;
-        res[offsetRes].i = -src[offsetSrc].i;
+        if (mask == nullptr || mask[i] != 0) {
+            res[offsetRes].r = src[offsetSrc].r;
+            res[offsetRes].i = -src[offsetSrc].i;
+        }
         for (int d = rank - 1; d >= 0; d--) {
             coord[d]++;
             if (coord[d] < shape[d]) break;
@@ -5307,6 +5436,7 @@ void s_clip_##TYPE_NAME(const TYPE *a, const int *stridesA, \
     int total_elements = 1; \
     for (int i = 0; i < rank; i++) total_elements *= shape[i]; \
     if (rank == 0) { \
+        if (mask != nullptr && mask[0] == 0) return; \
         TYPE val = a[0]; \
         if (val < min_val[0]) val = min_val[0]; \
         if (val > max_val[0]) val = max_val[0]; \
@@ -5327,6 +5457,7 @@ void s_clip_##TYPE_NAME(const TYPE *a, const int *stridesA, \
     } \
     if (is_contiguous) { \
         for (int i = 0; i < total_elements; i++) { \
+            if (mask != nullptr && mask[i] == 0) continue; \
             TYPE val = a[i]; \
             if (val < min_val[i]) val = min_val[i]; \
             if (val > max_val[i]) val = max_val[i]; \
@@ -5337,10 +5468,12 @@ void s_clip_##TYPE_NAME(const TYPE *a, const int *stridesA, \
     int coord[32] = {0}; \
     int offsetA = 0, offsetMin = 0, offsetMax = 0, offsetRes = 0; \
     for (int el = 0; el < total_elements; el++) { \
-        TYPE val = a[offsetA]; \
-        if (val < min_val[offsetMin]) val = min_val[offsetMin]; \
-        if (val > max_val[offsetMax]) val = max_val[offsetMax]; \
-        res[offsetRes] = val; \
+        if (mask == nullptr || mask[el] != 0) { \
+            TYPE val = a[offsetA]; \
+            if (val < min_val[offsetMin]) val = min_val[offsetMin]; \
+            if (val > max_val[offsetMax]) val = max_val[offsetMax]; \
+            res[offsetRes] = val; \
+        } \
         for (int d = rank - 1; d >= 0; d--) { \
             coord[d]++; \
             if (coord[d] < shape[d]) { \

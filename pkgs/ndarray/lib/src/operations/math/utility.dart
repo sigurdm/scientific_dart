@@ -2,14 +2,14 @@
 import 'dart:math' as math;
 import 'package:openblas/openblas.dart';
 import '../../ndarray.dart';
+import '../../nditer.dart';
 
 /// Configure the number of parallel execution threads used by OpenBLAS at runtime.
 ///
 /// **Preconditions:**
 /// - [numThreads] must be greater than or equal to 1.
 ///
-/// **Throws:**
-/// - [ArgumentError] if [numThreads] is less than 1.
+/// It is an error if [numThreads] is less than 1 (throws [ArgumentError]).
 ///
 /// **Example:**
 /// ```dart
@@ -32,8 +32,7 @@ void setNumThreads(int numThreads) {
 /// **Preconditions:**
 /// - The input array [a] must not be disposed.
 ///
-/// **Throws:**
-/// - [StateError] if [a] has been disposed.
+/// It is an error if [a] has been disposed (throws [StateError]).
 ///
 /// **Example:**
 /// ```dart
@@ -57,7 +56,7 @@ Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
   final totalSize = shape.isEmpty ? 1 : shape.reduce((x, y) => x * y);
 
   if (shape.isEmpty) {
-    yield ([], a.data[a.offsetElements]);
+    yield ([], a.getCellFlat(a.offsetElements));
     return;
   }
 
@@ -66,7 +65,7 @@ Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
 
   for (int el = 0; el < totalSize; el++) {
     // Yield a copy of the coordinate list so that users don't receive the same mutated buffer!
-    yield (List<int>.from(coord), a.data[offset]);
+    yield (List<int>.from(coord), a.getCellFlat(offset));
 
     // Advance odometer multidimensional coordinate odometer walk!
     for (int d = shape.length - 1; d >= 0; d--) {
@@ -90,8 +89,7 @@ Iterable<(List<int> coordinate, T value)> ndenumerate<T>(NDArray<T> a) sync* {
 /// **Preconditions:**
 /// - Input [a] must be a numeric array.
 ///
-/// **Throws:**
-/// - [ArgumentError] if the provided [out] buffer has an incompatible shape.
+/// It is an error if the provided [out] buffer has an incompatible shape (throws [ArgumentError]).
 ///
 /// **Example:**
 /// {@example /example/nan_to_num_example.dart lang=dart}
@@ -115,8 +113,6 @@ NDArray nan_to_num(
     }
   }
 
-  final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-  final aList = a.toList();
   final resultCopy = out ?? NDArray.create(a.shape, a.dtype);
 
   final maxLimit = a.dtype == DType.float32
@@ -127,61 +123,37 @@ NDArray nan_to_num(
   final targetPosInf = posinf ?? maxLimit;
   final targetNegInf = neginf ?? minLimit;
 
-  final cleanList = <dynamic>[];
+  final iter = NDIter.broadcast2(resultCopy, a);
+  while (iter.moveNext()) {
+    final idxRes = iter.getIndex(0);
+    final idxA = iter.getIndex(1);
+    final val = a.getCellFlat(idxA);
 
-  switch (a.dtype) {
-    case DType.complex128:
-    case DType.complex64:
-      final complexList = aList.cast<Complex>();
-      for (var i = 0; i < size; i++) {
-        var r = complexList[i].real;
-        var img = complexList[i].imag;
+    if (val is Complex) {
+      var r = val.real;
+      var img = val.imag;
 
-        if (r.isNaN) r = nan;
-        if (r == double.infinity) r = targetPosInf;
-        if (r == double.negativeInfinity) r = targetNegInf;
+      if (r.isNaN) r = nan;
+      if (r == double.infinity) r = targetPosInf;
+      if (r == double.negativeInfinity) r = targetNegInf;
 
-        if (img.isNaN) img = nan;
-        if (img == double.infinity) img = targetPosInf;
-        if (img == double.negativeInfinity) img = targetNegInf;
+      if (img.isNaN) img = nan;
+      if (img == double.infinity) img = targetPosInf;
+      if (img == double.negativeInfinity) img = targetNegInf;
 
-        cleanList.add(Complex(r, img));
+      resultCopy.setCellFlat(idxRes, Complex(r, img));
+    } else {
+      var dVal = (val as num).toDouble();
+
+      if (dVal.isNaN) {
+        dVal = nan;
+      } else if (dVal == double.infinity) {
+        dVal = targetPosInf;
+      } else if (dVal == double.negativeInfinity) {
+        dVal = targetNegInf;
       }
-    case _:
-      final numList = aList.cast<num>();
-      for (var i = 0; i < size; i++) {
-        var val = numList[i].toDouble();
 
-        if (val.isNaN) {
-          val = nan;
-        } else if (val == double.infinity) {
-          val = targetPosInf;
-        } else if (val == double.negativeInfinity) {
-          val = targetNegInf;
-        }
-
-        cleanList.add(val);
-      }
-  }
-
-  // View-Safe Strided Odometer Write Back!
-  final resData = resultCopy.data;
-  final resStrides = resultCopy.strides;
-  final coord = List<int>.filled(a.shape.length, 0);
-
-  for (var i = 0; i < size; i++) {
-    var offsetRes = resultCopy.offsetElements;
-    for (var d = 0; d < a.shape.length; d++) {
-      offsetRes += coord[d] * resStrides[d];
-    }
-
-    resData[offsetRes] = cleanList[i];
-
-    // Advance odometer
-    for (var d = a.shape.length - 1; d >= 0; d--) {
-      coord[d]++;
-      if (coord[d] < a.shape[d]) break;
-      coord[d] = 0;
+      resultCopy.setCellFlat(idxRes, dVal);
     }
   }
 
@@ -197,8 +169,7 @@ NDArray nan_to_num(
 /// **Preconditions:**
 /// - It is an error if [s1] and [s2] have incompatible dimensions for broadcasting.
 ///
-/// **Throws:**
-/// - [ArgumentError] if [s1] and [s2] cannot be broadcast together.
+/// It is an error if [s1] and [s2] cannot be broadcast together (throws [ArgumentError]).
 ///
 /// **Example:**
 /// ```dart

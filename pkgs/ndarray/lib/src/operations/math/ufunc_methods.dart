@@ -1904,11 +1904,13 @@ NDArray<T> reduceatUfunc<T extends Object>(
     }
   }
 
-  final idxData = indices.data;
+  final idxView = indices.reshape([indices.size]);
   for (var i = 0; i < numIndices; i++) {
-    var start = (idxData[i] as num).toInt();
+    var start = (idxView.getCell([i]) as num).toInt();
     if (start < 0) start += axisLen;
-    var end = (i < numIndices - 1) ? (idxData[i + 1] as num).toInt() : axisLen;
+    var end = (i < numIndices - 1)
+        ? (idxView.getCell([i + 1]) as num).toInt()
+        : axisLen;
     if (end < 0) end += axisLen;
 
     final destSelectors = List<Selector>.generate(
@@ -2152,9 +2154,9 @@ void atUfunc<T extends Object>(
           cStridesA,
           cShapeA,
           rankA,
-          indices.pointer.cast(),
+          idxPtr,
           numIndices,
-          strideIdx,
+          effectiveStrideIdx,
           b.pointer.cast(),
           cStridesB,
           cShapeB,
@@ -2167,9 +2169,9 @@ void atUfunc<T extends Object>(
           cStridesA,
           cShapeA,
           rankA,
-          indices.pointer.cast(),
+          idxPtr,
           numIndices,
-          strideIdx,
+          effectiveStrideIdx,
           b.pointer.cast(),
           cStridesB,
           cShapeB,
@@ -2182,9 +2184,9 @@ void atUfunc<T extends Object>(
           cStridesA,
           cShapeA,
           rankA,
-          indices.pointer.cast(),
+          idxPtr,
           numIndices,
-          strideIdx,
+          effectiveStrideIdx,
           b.pointer.cast(),
           cStridesB,
           cShapeB,

@@ -1590,7 +1590,7 @@ void main() {
             DType.float64,
           );
           expect(
-            norm(m, ord: 'fro').toList()[0],
+            norm(m, ord: NormKind.frobenius).toList()[0],
             closeTo(math.sqrt(30.0), 1e-9),
           );
           expect(norm(m, ord: 1).toList()[0], 6.0); // max of col sums ([4, 6])

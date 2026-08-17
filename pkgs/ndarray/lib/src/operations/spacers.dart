@@ -92,6 +92,7 @@ NDArray<T> linspace<T>(
   int numSamples, {
   bool endpoint = true,
   DType<T>? dtype,
+  NDArray<T>? out,
 }) {
   return linspaceInternal<T>(
     start,
@@ -99,6 +100,7 @@ NDArray<T> linspace<T>(
     numSamples,
     endpoint: endpoint,
     dtype: dtype,
+    out: out,
   ).samples;
 }
 
@@ -122,6 +124,7 @@ NDArray<T> linspace<T>(
   int numSamples, {
   bool endpoint = true,
   DType<T>? dtype,
+  NDArray<T>? out,
 }) {
   return linspaceInternal<T>(
     start,
@@ -129,6 +132,7 @@ NDArray<T> linspace<T>(
     numSamples,
     endpoint: endpoint,
     dtype: dtype,
+    out: out,
   );
 }
 
@@ -165,6 +169,7 @@ NDArray<T> linspaceGrid<T>(
   bool endpoint = true,
   int axis = 0,
   DType<T>? dtype,
+  NDArray<T>? out,
 }) {
   if (start.isDisposed || stop.isDisposed) {
     throw StateError('Cannot execute linspaceGrid() on a disposed array.');
@@ -176,6 +181,7 @@ NDArray<T> linspaceGrid<T>(
     endpoint: endpoint,
     axis: axis,
     dtype: dtype,
+    out: out,
   ).samples;
 }
 
@@ -209,6 +215,7 @@ NDArray<T> linspaceGrid<T>(
   bool endpoint = true,
   int axis = 0,
   DType<T>? dtype,
+  NDArray<T>? out,
 }) {
   if (start.isDisposed || stop.isDisposed) {
     throw StateError(
@@ -222,6 +229,7 @@ NDArray<T> linspaceGrid<T>(
     endpoint: endpoint,
     axis: axis,
     dtype: dtype,
+    out: out,
   );
 }
 
@@ -232,6 +240,7 @@ NDArray<T> linspaceGrid<T>(
   bool endpoint = true,
   int axis = 0,
   DType<T>? dtype,
+  NDArray<T>? out,
 }) {
   if (numSamples < 0) throw ArgumentError('numSamples must be non-negative');
 
@@ -252,8 +261,13 @@ NDArray<T> linspaceGrid<T>(
     final resultShape = List<int>.from(commonShape);
     resultShape.insert(actualAxis, numSamples);
 
+    if (out != null) {
+      if (!listEquals(out.shape, resultShape) || out.dtype != resolvedDType) {
+        throw ArgumentError('Incompatible out buffer shape or dtype.');
+      }
+    }
     if (numSamples == 0) {
-      final res = NDArray<T>.create(resultShape, resolvedDType);
+      final res = out ?? NDArray<T>.create(resultShape, resolvedDType);
       final step = NDArray<T>.create(commonShape, resolvedDType);
       final nanVal = normalizeScalar(double.nan, resolvedDType) as T;
       step.fill(nanVal);
@@ -272,7 +286,7 @@ NDArray<T> linspaceGrid<T>(
     final stridesStop = List<int>.from(stopBroadcasted.strides);
     stridesStop.insert(actualAxis, 0);
 
-    final res = NDArray<T>.create(resultShape, resolvedDType);
+    final res = out ?? NDArray<T>.create(resultShape, resolvedDType);
     final stridesRes = res.strides;
 
     final step = NDArray<T>.create(commonShape, resolvedDType);
@@ -443,7 +457,7 @@ NDArray<T> linspaceGrid<T>(
       ScratchArena.reset(marker);
     }
 
-    res.detachToParentScope();
+    if (out == null) res.detachToParentScope();
     step.detachToParentScope();
     return (samples: res, step: step);
   });
@@ -468,16 +482,22 @@ NDArray<T> logspace<T>(
   double base = 10.0,
   bool endpoint = true,
   DType<T>? dtype,
+  NDArray<T>? out,
 }) {
   if (numSamples < 0) {
     throw ArgumentError('numSamples must be non-negative (was $numSamples)');
   }
   final resolvedDType = dtype ?? defaultDType<T>();
+  if (out != null) {
+    if (!listEquals(out.shape, [numSamples]) || out.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
   if (numSamples == 0) {
-    return NDArray<T>.create([0], resolvedDType);
+    return out ?? NDArray<T>.create([0], resolvedDType);
   }
 
-  final arr = NDArray<T>.create([numSamples], resolvedDType);
+  final arr = out ?? NDArray<T>.create([numSamples], resolvedDType);
   final div = endpoint ? (numSamples - 1) : numSamples;
 
   switch (resolvedDType) {
@@ -564,8 +584,9 @@ NDArray<T> logspaceGrid<T extends Object>(
   bool endpoint = true,
   int axis = 0,
   DType<T>? dtype,
+  NDArray<T>? out,
 }) {
-  if (start.isDisposed || stop.isDisposed) {
+  if (start.isDisposed || stop.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot execute logspaceGrid() on a disposed array.');
   }
   if (base != null && base.isDisposed) {
@@ -588,6 +609,10 @@ NDArray<T> logspaceGrid<T extends Object>(
       dtype: resolvedDType,
     );
     final res = power<T>(actualBase, y);
+    if (out != null) {
+      res.copy(out: out);
+      return out;
+    }
     res.detachToParentScope();
     return res;
   });
@@ -614,13 +639,19 @@ NDArray<T> geomspace<T>(
   int numSamples, {
   bool endpoint = true,
   DType<T>? dtype,
+  NDArray<T>? out,
 }) {
   if (numSamples < 0) {
     throw ArgumentError('numSamples must be non-negative (was $numSamples)');
   }
   final resolvedDType = dtype ?? defaultDType<T>();
+  if (out != null) {
+    if (!listEquals(out.shape, [numSamples]) || out.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
   if (numSamples == 0) {
-    return NDArray<T>.create([0], resolvedDType);
+    return out ?? NDArray<T>.create([0], resolvedDType);
   }
 
   switch (resolvedDType) {
@@ -643,7 +674,7 @@ NDArray<T> geomspace<T>(
       final div = endpoint ? (numSamples - 1) : numSamples;
       final stp = numSamples <= 1 ? 0.0 : (logStop - logStart) / div;
 
-      final arr = NDArray<T>.create([numSamples], resolvedDType);
+      final arr = out ?? NDArray<T>.create([numSamples], resolvedDType);
       if (resolvedDType == DType.float64) {
         v_geomspace_double(arr.pointer.cast(), logStart, stp, sign, numSamples);
       } else {
@@ -665,7 +696,7 @@ NDArray<T> geomspace<T>(
           ? Complex(0.0, 0.0)
           : (logStop - logStart) / div;
 
-      final arr = NDArray<T>.create([numSamples], resolvedDType);
+      final arr = out ?? NDArray<T>.create([numSamples], resolvedDType);
       if (resolvedDType == DType.complex128) {
         v_geomspace_complex128(
           arr.pointer.cast(),

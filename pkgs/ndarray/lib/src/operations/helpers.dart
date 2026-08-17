@@ -101,6 +101,7 @@ NDArray<T> toNDArray<T>(Object o, DType<T> dtype) {
   int numSamples, {
   bool endpoint = true,
   DType<T>? dtype,
+  NDArray<T>? out,
 }) {
   if (numSamples < 0) throw ArgumentError('numSamples must be non-negative');
 
@@ -113,7 +114,13 @@ NDArray<T> toNDArray<T>(Object o, DType<T> dtype) {
   }
 
   final div = endpoint ? (numSamples - 1) : numSamples;
-  final arr = NDArray<T>.create([numSamples], resolvedDType);
+  if (out != null) {
+    if (out.isDisposed) throw StateError('Cannot write to disposed out array');
+    if (!listEquals(out.shape, [numSamples]) || out.dtype != resolvedDType) {
+      throw ArgumentError('Incompatible out array shape or dtype');
+    }
+  }
+  final arr = out ?? NDArray<T>.create([numSamples], resolvedDType);
   T step;
 
   switch (resolvedDType) {
@@ -187,9 +194,9 @@ NDArray<T> toNDArray<T>(Object o, DType<T> dtype) {
 }
 
 void elementWiseOp<Ta, Tb, Tr>(
-  List<Tr> result,
-  List<Ta> a,
-  List<Tb> b,
+  NDArray<Tr> result,
+  NDArray<Ta> a,
+  NDArray<Tb> b,
   List<int> shape,
   List<int> stridesA,
   List<int> stridesB,
@@ -198,28 +205,26 @@ void elementWiseOp<Ta, Tb, Tr>(
   int offsetA,
   int offsetB,
   int offsetResult,
-  Tr Function(Ta, Tb) op,
-) {
-  if (shape.isEmpty) {
-    result[offsetResult] = op(a[offsetA], b[offsetB]);
-    return;
-  }
-
-  if (dim == shape.length - 1) {
-    final limit = shape[dim];
-    final strideA = stridesA[dim];
-    final strideB = stridesB[dim];
-    final strideResult = stridesResult[dim];
-
-    for (var i = 0; i < limit; i++) {
-      result[offsetResult + i * strideResult] = op(
-        a[offsetA + i * strideA],
-        b[offsetB + i * strideB],
+  Tr Function(Ta, Tb) op, [
+  ffi.Pointer<ffi.Uint8>? whereMask,
+  int flatIndex = 0,
+]) {
+  if (dim == shape.length) {
+    if (whereMask == null ||
+        whereMask == ffi.nullptr ||
+        whereMask[flatIndex] != 0) {
+      result.setCellFlat(
+        offsetResult,
+        op(a.getCellFlat(offsetA), b.getCellFlat(offsetB)),
       );
     }
     return;
   }
 
+  var currentFlat = flatIndex;
+  final strideNext = dim + 1 < shape.length
+      ? shape.sublist(dim + 1).reduce((x, y) => x * y)
+      : 1;
   final limit = shape[dim];
   final strideA = stridesA[dim];
   final strideB = stridesB[dim];
@@ -239,7 +244,10 @@ void elementWiseOp<Ta, Tb, Tr>(
       offsetB + i * strideB,
       offsetResult + i * strideResult,
       op,
+      whereMask,
+      currentFlat,
     );
+    currentFlat += strideNext;
   }
 }
 
@@ -438,7 +446,10 @@ void reduceRecursive<S extends Object, D extends Object>(
       destOffset += destPos[i] * strides[i];
     }
 
-    dest.data[destOffset] = op(dest.data[destOffset], src.data[srcOffset]);
+    dest.setCellFlat(
+      destOffset,
+      op(dest.getCellFlat(destOffset), src.getCellFlat(srcOffset)),
+    );
     return;
   }
 
@@ -526,8 +537,8 @@ void copyStackRecursive(
 }
 
 void unaryOp<Ta, Tr>(
-  List<Tr> result,
-  List<Ta> a,
+  NDArray<Tr> result,
+  NDArray<Ta> a,
   List<int> shape,
   List<int> stridesA,
   List<int> stridesResult,
@@ -542,7 +553,7 @@ void unaryOp<Ta, Tr>(
     if (whereMask == null ||
         whereMask == ffi.nullptr ||
         whereMask[flatIndex] != 0) {
-      result[offsetResult] = op(a[offsetA]);
+      result.setCellFlat(offsetResult, op(a.getCellFlat(offsetA)));
     }
     return;
   }
@@ -570,10 +581,10 @@ void unaryOp<Ta, Tr>(
 }
 
 void ternaryOp<Ta, Tb, Tc, Tr>(
-  List<Tr> result,
-  List<Ta> a,
-  List<Tb> b,
-  List<Tc> c,
+  NDArray<Tr> result,
+  NDArray<Ta> a,
+  NDArray<Tb> b,
+  NDArray<Tc> c,
   List<int> shape,
   List<int> stridesA,
   List<int> stridesB,
@@ -584,30 +595,30 @@ void ternaryOp<Ta, Tb, Tc, Tr>(
   int offsetB,
   int offsetC,
   int offsetResult,
-  Tr Function(Ta, Tb, Tc) op,
-) {
-  if (shape.isEmpty) {
-    result[offsetResult] = op(a[offsetA], b[offsetB], c[offsetC]);
-    return;
-  }
-
-  if (dim == shape.length - 1) {
-    final limit = shape[dim];
-    final strideA = stridesA[dim];
-    final strideB = stridesB[dim];
-    final strideC = stridesC[dim];
-    final strideResult = stridesResult[dim];
-
-    for (var i = 0; i < limit; i++) {
-      result[offsetResult + i * strideResult] = op(
-        a[offsetA + i * strideA],
-        b[offsetB + i * strideB],
-        c[offsetC + i * strideC],
+  Tr Function(Ta, Tb, Tc) op, [
+  ffi.Pointer<ffi.Uint8>? whereMask,
+  int flatIndex = 0,
+]) {
+  if (dim == shape.length) {
+    if (whereMask == null ||
+        whereMask == ffi.nullptr ||
+        whereMask[flatIndex] != 0) {
+      result.setCellFlat(
+        offsetResult,
+        op(
+          a.getCellFlat(offsetA),
+          b.getCellFlat(offsetB),
+          c.getCellFlat(offsetC),
+        ),
       );
     }
     return;
   }
 
+  var currentFlat = flatIndex;
+  final strideNext = dim + 1 < shape.length
+      ? shape.sublist(dim + 1).reduce((x, y) => x * y)
+      : 1;
   final limit = shape[dim];
   final strideA = stridesA[dim];
   final strideB = stridesB[dim];
@@ -631,7 +642,10 @@ void ternaryOp<Ta, Tb, Tc, Tr>(
       offsetC + i * strideC,
       offsetResult + i * strideResult,
       op,
+      whereMask,
+      currentFlat,
     );
+    currentFlat += strideNext;
   }
 }
 
@@ -687,33 +701,32 @@ List<int> broadcast3Shapes(List<int> s1, List<int> s2, List<int> s3) {
 }
 
 dynamic castValue(dynamic val, DType dtype) {
-  if (dtype == DType.complex128 || dtype == DType.complex64) {
-    if (val is Complex) return val;
-    if (val is num) return Complex(val.toDouble(), 0.0);
-    return Complex(0.0, 0.0);
+  switch (dtype) {
+    case DType.complex128:
+    case DType.complex64:
+      if (val is Complex) return val;
+      if (val is num) return Complex(val.toDouble(), 0.0);
+      return Complex(0.0, 0.0);
+    case DType.float64:
+    case DType.float32:
+      if (val is num) return val.toDouble();
+      if (val is Complex) return val.real;
+      if (val is bool) return val ? 1.0 : 0.0;
+      return 0.0;
+    case DType.int64:
+    case DType.int32:
+    case DType.int16:
+    case DType.uint8:
+      if (val is num) return val.toInt();
+      if (val is Complex) return val.real.toInt();
+      if (val is bool) return val ? 1 : 0;
+      return 0;
+    case DType.boolean:
+      if (val is bool) return val;
+      if (val is num) return val != 0;
+      if (val is Complex) return val.real != 0.0 || val.imag != 0.0;
+      return false;
   }
-  if (dtype == DType.float64 || dtype == DType.float32) {
-    if (val is num) return val.toDouble();
-    if (val is Complex) return val.real;
-    if (val is bool) return val ? 1.0 : 0.0;
-    return 0.0;
-  }
-  if (dtype == DType.int64 ||
-      dtype == DType.int32 ||
-      dtype == DType.uint8 ||
-      dtype == DType.int16) {
-    if (val is num) return val.toInt();
-    if (val is Complex) return val.real.toInt();
-    if (val is bool) return val ? 1 : 0;
-    return 0;
-  }
-  if (dtype == DType.boolean) {
-    if (val is bool) return val;
-    if (val is num) return val != 0;
-    if (val is Complex) return val.real != 0.0 || val.imag != 0.0;
-    return false;
-  }
-  return val;
 }
 
 enum CumOpType { sum, prod, min, max }

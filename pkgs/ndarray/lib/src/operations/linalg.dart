@@ -220,9 +220,6 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     }
 
     if (out != null) {
-      if (!out.isContiguous) {
-        throw ArgumentError('out buffer must be contiguous.');
-      }
       if (!listEquals(out.shape, expectedFinalShape) ||
           out.dtype != targetDType) {
         throw ArgumentError(
@@ -853,7 +850,7 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
                 ).cast<ffi.Uint8>().asTypedList(byteCount),
               );
         } else {
-          result.copy(out: out);
+          result.reshape(out.shape).copy(out: out);
         }
         result.dispose();
       }
@@ -1718,6 +1715,16 @@ NDArray<T> det<T>(NDArray<T> a, {NDArray<T>? out}) {
   });
 }
 
+/// Extension on [slogdet] result record type to support easy disposal of both arrays.
+extension SlogdetRecordDispose<T, R>
+    on ({NDArray<T> sign, NDArray<R> logabsdet}) {
+  /// Disposes both [sign] and [logabsdet] arrays simultaneously.
+  void dispose() {
+    this.sign.dispose();
+    this.logabsdet.dispose();
+  }
+}
+
 /// Solve a linear matrix equation, or system of linear scalar equations.
 ///
 /// Computes the "exact" solution, `x`, of the linear equation `a * x = b`.
@@ -2274,8 +2281,8 @@ extension EigRecordDispose
   ///
   /// Call this method when both matrices are no longer needed to avoid native memory leaks.
   void dispose() {
-    eigenvalues.dispose();
-    eigenvectors.dispose();
+    this.eigenvalues.dispose();
+    this.eigenvectors.dispose();
   }
 }
 
@@ -2285,7 +2292,7 @@ extension EigRecordDispose
 ///
 /// **Preconditions:**
 /// - Input matrix [a] must be square and at least 2-dimensional (was shape stack x N x N).
-/// - Matrix [a] cannot have integer data type (throws [ArgumentError]; cast to float manually).
+/// - Integer input matrices [a] are automatically promoted to [DType.float64].
 /// - If provided, the [out] buffer must be contiguous, match the expected shape of the eigenvalues stack,
 ///   and have the correct complex dtype ([DType.complex64] for Float32/Complex64 inputs, or [DType.complex128] for Float64/Complex128 inputs).
 ///
@@ -2586,7 +2593,6 @@ NDArray<T> pinv<T extends Object>(
   final n = a.shape[1];
 
   final targetShape = [n, m];
-  final result = out ?? NDArray<T>.create(targetShape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, targetShape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -2596,6 +2602,7 @@ NDArray<T> pinv<T extends Object>(
   }
 
   return NDArray.scope(() {
+    final result = out ?? NDArray<T>.create(targetShape, a.dtype);
     final svdResult = svd(a);
     final u = svdResult.U;
     final s = svdResult.S;
@@ -2670,7 +2677,6 @@ NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
   }
 
   final size = a.shape[0];
-  final result = out ?? NDArray<T>.create(a.shape, a.dtype);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
       throw ArgumentError(
@@ -2680,6 +2686,7 @@ NDArray<T> matrix_power<T>(NDArray<T> a, int n, {NDArray<T>? out}) {
   }
 
   return NDArray.scope(() {
+    final result = out ?? NDArray<T>.create(a.shape, a.dtype);
     if (n == 0) {
       final eye = NDArray.eye(size, a.dtype);
       result.fill(normalizeScalar(0, a.dtype) as T);
@@ -3982,14 +3989,14 @@ NDArray<num> eigvalsh<T>(
 /// A = Z * T * Z^H
 ///
 /// Returns a record containing:
-/// - [T]: The Schur form. For real input and `output = 'real'`, it is quasi-upper triangular.
-///   For `output = 'complex'`, it is upper triangular.
+/// - [T]: The Schur form. For real input and `output = SchurForm.real`, it is quasi-upper triangular.
+///   For `output = SchurForm.complex`, it is upper triangular.
 /// - [Z]: The unitary matrix of Schur vectors.
 ///
 /// **Preconditions:**
 /// - [a] must be a square 2D matrix, or a stack of square 2D matrices.
 /// - [a] must have a floating-point or complex dtype. Integer types are promoted to `Float64`.
-/// - [output] must be 'real' or 'complex'.
+/// - [output] must be [SchurForm.real] or [SchurForm.complex].
 /// - If provided, [outT] and [outZ] must have compatible shapes and dtypes.
 ///
 /// **Throws:**
@@ -5659,8 +5666,8 @@ double _matrixNorm<T extends Object>(
 ) {
   if (ord is NormKind) {
     ord = switch (ord) {
-      NormKind.frobenius => 'fro',
-      NormKind.nuclear => 'nuc',
+      NormKind.frobenius => NormKind.frobenius,
+      NormKind.nuclear => NormKind.nuclear,
       NormKind.l1 => 1,
       NormKind.l2 => 2,
       NormKind.infinity => double.infinity,
@@ -5670,7 +5677,7 @@ double _matrixNorm<T extends Object>(
   final rows = a.shape[0];
   final cols = a.shape[1];
 
-  if (ord == null || ord == 'fro') {
+  if (ord == null || ord == NormKind.frobenius) {
     final flat = a.ravel();
     final res = _vectorNorm(flat, 2, targetDType);
     flat.dispose();
@@ -5745,7 +5752,7 @@ double _matrixNorm<T extends Object>(
         : svdRes.S.pointer.cast<ffi.Double>()[svdRes.S.shape[0] - 1];
     svdRes.dispose();
     return minS;
-  } else if (ord == 'nuc') {
+  } else if (ord == NormKind.nuclear) {
     final svdRes = svd(a);
     var sumS = 0.0;
     for (var i = 0; i < svdRes.S.shape[0]; i++) {
@@ -5762,30 +5769,30 @@ double _matrixNorm<T extends Object>(
 
 extension QRRecordDispose on ({NDArray Q, NDArray R}) {
   void dispose() {
-    Q.dispose();
-    R.dispose();
+    this.Q.dispose();
+    this.R.dispose();
   }
 }
 
 extension SVDRecordDispose on ({NDArray U, NDArray S, NDArray Vh}) {
   void dispose() {
-    U.dispose();
-    S.dispose();
-    Vh.dispose();
+    this.U.dispose();
+    this.S.dispose();
+    this.Vh.dispose();
   }
 }
 
 extension SchurRecordDispose on ({NDArray t, NDArray z}) {
   void dispose() {
-    t.dispose();
-    z.dispose();
+    this.t.dispose();
+    this.z.dispose();
   }
 }
 
 extension HessenbergRecordDispose on ({NDArray H, NDArray Q}) {
   void dispose() {
-    H.dispose();
-    Q.dispose();
+    this.H.dispose();
+    this.Q.dispose();
   }
 }
 
@@ -5796,6 +5803,16 @@ typedef LstsqResult<T> = ({
   int rank,
   NDArray<double> s,
 });
+
+/// Extension on [LstsqResult] to support easy disposal of all returned unmanaged buffers.
+extension LstsqResultDispose<T> on LstsqResult<T> {
+  /// Disposes [x], [residuals], and [s] arrays simultaneously.
+  void dispose() {
+    this.x.dispose();
+    this.residuals.dispose();
+    this.s.dispose();
+  }
+}
 
 /// Computes the least-squares solution to a linear matrix equation $a x = b$.
 ///

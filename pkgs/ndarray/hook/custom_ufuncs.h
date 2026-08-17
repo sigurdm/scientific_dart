@@ -711,6 +711,21 @@ void v_fill_double(double *res, double value, int size);
 void v_fill_float(float *res, float value, int size);
 void v_fill_int64(int64_t *res, int64_t value, int size);
 void v_fill_int32(int32_t *res, int32_t value, int size);
+void v_fill_int16(int16_t *res, int16_t value, int size);
+void v_fill_uint8(uint8_t *res, uint8_t value, int size);
+void v_fill_complex128(cpx_t *res, double valR, double valI, int size);
+void v_fill_complex64(cpx_f_t *res, float valR, float valI, int size);
+void v_fill_boolean(uint8_t *res, uint8_t value, int size);
+
+void s_fill_double(double *res, const int *strides, const int *shape, int rank, double value);
+void s_fill_float(float *res, const int *strides, const int *shape, int rank, float value);
+void s_fill_int64(int64_t *res, const int *strides, const int *shape, int rank, int64_t value);
+void s_fill_int32(int32_t *res, const int *strides, const int *shape, int rank, int32_t value);
+void s_fill_int16(int16_t *res, const int *strides, const int *shape, int rank, int16_t value);
+void s_fill_uint8(uint8_t *res, const int *strides, const int *shape, int rank, uint8_t value);
+void s_fill_complex128(cpx_t *res, const int *strides, const int *shape, int rank, double valR, double valI);
+void s_fill_complex64(cpx_f_t *res, const int *strides, const int *shape, int rank, float valR, float valI);
+void s_fill_boolean(uint8_t *res, const int *strides, const int *shape, int rank, uint8_t value);
 
 void v_linspace_double(double *res, double start, double step, int size);
 void v_linspace_float(float *res, float start, float step, int size);

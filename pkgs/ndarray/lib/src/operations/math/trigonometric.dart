@@ -31,6 +31,15 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute sin() on a disposed array.');
   }
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+    final promoted = promoteToDouble(a);
+    try {
+      final res = sin<Float64, R>(promoted, where: where, out: out);
+      return res;
+    } finally {
+      promoted.dispose();
+    }
+  }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     targetDType = a.dtype;
@@ -156,31 +165,18 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       }
     }
 
-    if (a.dtype.isInteger) {
-      unaryOp<num, double>(
-        result.data as List<double>,
-        a.data as List<num>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => math.sin(x),
-      );
-    } else {
-      unaryOp<double, double>(
-        result.data as List<double>,
-        a.data as List<double>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => math.sin(x.toDouble()),
-      );
-    }
+    unaryOp<double, double>(
+      result as NDArray<double>,
+      a as NDArray<double>,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) => math.sin(x),
+      maskHolder.pointer,
+    );
     return result;
   } finally {
     maskHolder.dispose();
@@ -210,15 +206,11 @@ NDArray<R> sinc<T, R>(
     throw StateError('Cannot execute sinc() on a disposed array.');
   }
 
-  if (a.dtype.isInteger) {
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
     final promoted = promoteToDouble(a);
     try {
-      final res = sinc<double, double>(
-        promoted,
-        where: where,
-        out: out as NDArray<double>?,
-      );
-      return res as NDArray<R>;
+      final res = sinc<Float64, R>(promoted, where: where, out: out);
+      return res;
     } finally {
       promoted.dispose();
     }
@@ -283,60 +275,68 @@ NDArray<R> sinc<T, R>(
     }
   } else {
     final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-    }
+    final marker = ScratchArena.marker;
+    try {
+      final cBuffer = ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+        cStridesRes[i] = result.strides[i];
+      }
 
-    if (a.dtype == DType.float64) {
-      s_sinc_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.float32) {
-      s_sinc_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex128) {
-      s_sinc_complex128(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
-    } else if (a.dtype == DType.complex64) {
-      s_sinc_complex64(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rank,
-        maskHolder.pointer,
-      );
-      return result;
+      switch (a.dtype) {
+        case DType.float64:
+          s_sinc_double(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.float32:
+          s_sinc_float(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex128:
+          s_sinc_complex128(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        case DType.complex64:
+          s_sinc_complex64(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            maskHolder.pointer,
+          );
+          return result;
+        default:
+          break;
+      }
+    } finally {
+      ScratchArena.reset(marker);
     }
   }
 
@@ -365,6 +365,15 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute cos() on a disposed array.');
+  }
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+    final promoted = promoteToDouble(a);
+    try {
+      final res = cos<Float64, R>(promoted, where: where, out: out);
+      return res;
+    } finally {
+      promoted.dispose();
+    }
   }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
@@ -491,31 +500,18 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       }
     }
 
-    if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-      unaryOp<int, double>(
-        result.data as List<double>,
-        a.data as List<int>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => math.cos(x.toDouble()),
-      );
-    } else {
-      unaryOp<double, double>(
-        result.data as List<double>,
-        a.data as List<double>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => math.cos(x.toDouble()),
-      );
-    }
+    unaryOp<double, double>(
+      result as NDArray<double>,
+      a as NDArray<double>,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) => math.cos(x),
+      maskHolder.pointer,
+    );
     return result;
   } finally {
     maskHolder.dispose();
@@ -531,6 +527,15 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute tan() on a disposed array.');
+  }
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+    final promoted = promoteToDouble(a);
+    try {
+      final res = tan<Float64, R>(promoted, where: where, out: out);
+      return res;
+    } finally {
+      promoted.dispose();
+    }
   }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
@@ -657,31 +662,18 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       }
     }
 
-    if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-      unaryOp<int, double>(
-        result.data as List<double>,
-        a.data as List<int>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => math.tan(x.toDouble()),
-      );
-    } else {
-      unaryOp<double, double>(
-        result.data as List<double>,
-        a.data as List<double>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => math.tan(x.toDouble()),
-      );
-    }
+    unaryOp<double, double>(
+      result as NDArray<double>,
+      a as NDArray<double>,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) => math.tan(x),
+      maskHolder.pointer,
+    );
     return result;
   } finally {
     maskHolder.dispose();
@@ -710,6 +702,15 @@ NDArray<R> asin<T, R>(
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute asin() on a disposed array.');
+  }
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+    final promoted = promoteToDouble(a);
+    try {
+      final res = asin<Float64, R>(promoted, where: where, out: out);
+      return res;
+    } finally {
+      promoted.dispose();
+    }
   }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
@@ -836,31 +837,18 @@ NDArray<R> asin<T, R>(
       }
     }
 
-    if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-      unaryOp<int, double>(
-        result.data as List<double>,
-        a.data as List<int>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => math.asin(x.toDouble()),
-      );
-    } else {
-      unaryOp<double, double>(
-        result.data as List<double>,
-        a.data as List<double>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => math.asin(x),
-      );
-    }
+    unaryOp<double, double>(
+      result as NDArray<double>,
+      a as NDArray<double>,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) => math.asin(x),
+      maskHolder.pointer,
+    );
     return result;
   } finally {
     maskHolder.dispose();
@@ -889,6 +877,15 @@ NDArray<R> acos<T, R>(
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute acos() on a disposed array.');
+  }
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+    final promoted = promoteToDouble(a);
+    try {
+      final res = acos<Float64, R>(promoted, where: where, out: out);
+      return res;
+    } finally {
+      promoted.dispose();
+    }
   }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
@@ -1015,31 +1012,18 @@ NDArray<R> acos<T, R>(
       }
     }
 
-    if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-      unaryOp<int, double>(
-        result.data as List<double>,
-        a.data as List<int>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => math.acos(x.toDouble()),
-      );
-    } else {
-      unaryOp<double, double>(
-        result.data as List<double>,
-        a.data as List<double>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => math.acos(x),
-      );
-    }
+    unaryOp<double, double>(
+      result as NDArray<double>,
+      a as NDArray<double>,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) => math.acos(x),
+      maskHolder.pointer,
+    );
     return result;
   } finally {
     maskHolder.dispose();
@@ -1068,6 +1052,15 @@ NDArray<R> atan<T, R>(
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute atan() on a disposed array.');
+  }
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+    final promoted = promoteToDouble(a);
+    try {
+      final res = atan<Float64, R>(promoted, where: where, out: out);
+      return res;
+    } finally {
+      promoted.dispose();
+    }
   }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
@@ -1194,31 +1187,18 @@ NDArray<R> atan<T, R>(
       }
     }
 
-    if (a.dtype == DType.int32 || a.dtype == DType.int64) {
-      unaryOp<int, double>(
-        result.data as List<double>,
-        a.data as List<int>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => math.atan(x.toDouble()),
-      );
-    } else {
-      unaryOp<double, double>(
-        result.data as List<double>,
-        a.data as List<double>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => math.atan(x),
-      );
-    }
+    unaryOp<double, double>(
+      result as NDArray<double>,
+      a as NDArray<double>,
+      a.shape,
+      a.strides,
+      result.strides,
+      0,
+      a.offsetElements,
+      result.offsetElements,
+      (x) => math.atan(x),
+      maskHolder.pointer,
+    );
     return result;
   } finally {
     maskHolder.dispose();
@@ -1245,6 +1225,15 @@ NDArray<R> sinh<T, R>(
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute sinh() on a disposed array.');
+  }
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+    final promoted = promoteToDouble(a);
+    try {
+      final res = sinh<Float64, R>(promoted, where: where, out: out);
+      return res;
+    } finally {
+      promoted.dispose();
+    }
   }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
@@ -1372,8 +1361,8 @@ NDArray<R> sinh<T, R>(
     }
 
     unaryOp<T, R>(
-      result.data,
-      a.data,
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
@@ -1384,6 +1373,7 @@ NDArray<R> sinh<T, R>(
         final val = (x as num).toDouble();
         return (math.exp(val) - math.exp(-val)) / 2.0 as R;
       },
+      maskHolder.pointer,
     );
     return result;
   } finally {
@@ -1411,6 +1401,15 @@ NDArray<R> cosh<T, R>(
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute cosh() on a disposed array.');
+  }
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+    final promoted = promoteToDouble(a);
+    try {
+      final res = cosh<Float64, R>(promoted, where: where, out: out);
+      return res;
+    } finally {
+      promoted.dispose();
+    }
   }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
@@ -1538,8 +1537,8 @@ NDArray<R> cosh<T, R>(
     }
 
     unaryOp<T, R>(
-      result.data,
-      a.data,
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
@@ -1550,6 +1549,7 @@ NDArray<R> cosh<T, R>(
         final val = (x as num).toDouble();
         return (math.exp(val) + math.exp(-val)) / 2.0 as R;
       },
+      maskHolder.pointer,
     );
     return result;
   } finally {
@@ -1577,6 +1577,15 @@ NDArray<R> tanh<T, R>(
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute tanh() on a disposed array.');
+  }
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+    final promoted = promoteToDouble(a);
+    try {
+      final res = tanh<Float64, R>(promoted, where: where, out: out);
+      return res;
+    } finally {
+      promoted.dispose();
+    }
   }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
@@ -1704,8 +1713,8 @@ NDArray<R> tanh<T, R>(
     }
 
     unaryOp<T, R>(
-      result.data,
-      a.data,
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
@@ -1717,6 +1726,7 @@ NDArray<R> tanh<T, R>(
         final exp2val = math.exp(2.0 * val);
         return (exp2val - 1.0) / (exp2val + 1.0) as R;
       },
+      maskHolder.pointer,
     );
     return result;
   } finally {
@@ -1744,6 +1754,15 @@ NDArray<R> asinh<T, R>(
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute asinh() on a disposed array.');
+  }
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+    final promoted = promoteToDouble(a);
+    try {
+      final res = asinh<Float64, R>(promoted, where: where, out: out);
+      return res;
+    } finally {
+      promoted.dispose();
+    }
   }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
@@ -1871,8 +1890,8 @@ NDArray<R> asinh<T, R>(
     }
 
     unaryOp<T, R>(
-      result.data,
-      a.data,
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
@@ -1883,6 +1902,7 @@ NDArray<R> asinh<T, R>(
         final val = (x as num).toDouble();
         return math.log(val + math.sqrt(val * val + 1.0)) as R;
       },
+      maskHolder.pointer,
     );
     return result;
   } finally {
@@ -1910,6 +1930,15 @@ NDArray<R> acosh<T, R>(
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute acosh() on a disposed array.');
+  }
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+    final promoted = promoteToDouble(a);
+    try {
+      final res = acosh<Float64, R>(promoted, where: where, out: out);
+      return res;
+    } finally {
+      promoted.dispose();
+    }
   }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
@@ -2037,8 +2066,8 @@ NDArray<R> acosh<T, R>(
     }
 
     unaryOp<T, R>(
-      result.data,
-      a.data,
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
@@ -2049,6 +2078,7 @@ NDArray<R> acosh<T, R>(
         final val = (x as num).toDouble();
         return math.log(val + math.sqrt(val * val - 1.0)) as R;
       },
+      maskHolder.pointer,
     );
     return result;
   } finally {
@@ -2076,6 +2106,15 @@ NDArray<R> atanh<T, R>(
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute atanh() on a disposed array.');
+  }
+  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+    final promoted = promoteToDouble(a);
+    try {
+      final res = atanh<Float64, R>(promoted, where: where, out: out);
+      return res;
+    } finally {
+      promoted.dispose();
+    }
   }
   final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
@@ -2203,8 +2242,8 @@ NDArray<R> atanh<T, R>(
     }
 
     unaryOp<T, R>(
-      result.data,
-      a.data,
+      result,
+      a,
       a.shape,
       a.strides,
       result.strides,
@@ -2215,6 +2254,7 @@ NDArray<R> atanh<T, R>(
         final val = (x as num).toDouble();
         return 0.5 * math.log((1.0 + val) / (1.0 - val)) as R;
       },
+      maskHolder.pointer,
     );
     return result;
   } finally {
@@ -2237,6 +2277,29 @@ NDArray<double> atan2<Ty, Tx>(
       (out != null && out.isDisposed) ||
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute atan2() on a disposed array.');
+  }
+  if (y.dtype.isInteger ||
+      y.dtype == DType.boolean ||
+      x.dtype.isInteger ||
+      x.dtype == DType.boolean) {
+    final yPromoted = (y.dtype.isInteger || y.dtype == DType.boolean)
+        ? promoteToDouble(y)
+        : y;
+    final xPromoted = (x.dtype.isInteger || x.dtype == DType.boolean)
+        ? promoteToDouble(x)
+        : x;
+    try {
+      final res = atan2<dynamic, dynamic>(
+        yPromoted,
+        xPromoted,
+        where: where,
+        out: out,
+      );
+      return res;
+    } finally {
+      if (!identical(yPromoted, y)) yPromoted.dispose();
+      if (!identical(xPromoted, x)) xPromoted.dispose();
+    }
   }
   if (y.dtype == DType.complex128 ||
       y.dtype == DType.complex64 ||
@@ -2264,150 +2327,100 @@ NDArray<double> atan2<Ty, Tx>(
   }
   final maskHolder = prepareMask(where, result.shape);
 
-  // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
-  if (y.isContiguous &&
-      x.isContiguous &&
-      result.isContiguous &&
-      listEquals(y.shape, x.shape)) {
-    switch ((y.dtype, x.dtype)) {
-      case (DType.float64, DType.float64):
-        v_atan2_double(
-          y.pointer.cast(),
-          x.pointer.cast(),
-          result.pointer.cast(),
-          y.size,
-          maskHolder.pointer,
-        );
-        return result;
-      case (DType.float32, DType.float32):
-        v_atan2_float(
-          y.pointer.cast(),
-          x.pointer.cast(),
-          result.pointer.cast(),
-          y.size,
-          maskHolder.pointer,
-        );
-        return result;
-      default:
-        break;
-    }
-  }
-  final stridesY = broadcastResult.stridesA;
-  final stridesX = broadcastResult.stridesB;
-
-  // 0C. General Multidimensional Strided Broadcasting Engine in C (Rank <= 8)
-  if (shape.length <= 8) {
-    final marker = ScratchArena.marker;
-    final cShape = ScratchArena.copyInts(shape);
-    final cStridesY = ScratchArena.copyInts(stridesY);
-    final cStridesX = ScratchArena.copyInts(stridesX);
-    final cStridesRes = ScratchArena.copyInts(result.strides);
-    try {
-      switch ((targetDType, y.dtype, x.dtype)) {
-        case (DType.float64, DType.float64, DType.float64):
-          s_atan2_double(
+  try {
+    // 0. Native C Vector Extension Fast-Path Gate for Contiguous Same-Shape arrays
+    if (y.isContiguous &&
+        x.isContiguous &&
+        result.isContiguous &&
+        listEquals(y.shape, x.shape)) {
+      switch ((y.dtype, x.dtype)) {
+        case (DType.float64, DType.float64):
+          v_atan2_double(
             y.pointer.cast(),
-            cStridesY,
             x.pointer.cast(),
-            cStridesX,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            shape.length,
+            y.size,
             maskHolder.pointer,
           );
           return result;
-        case (DType.float32, DType.float32, DType.float32):
-          s_atan2_float(
+        case (DType.float32, DType.float32):
+          v_atan2_float(
             y.pointer.cast(),
-            cStridesY,
             x.pointer.cast(),
-            cStridesX,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            shape.length,
+            y.size,
             maskHolder.pointer,
           );
           return result;
         default:
           break;
       }
-    } finally {
-      ScratchArena.reset(marker);
     }
-  }
+    final stridesY = broadcastResult.stridesA;
+    final stridesX = broadcastResult.stridesB;
 
-  final rData = result.data;
+    // 0C. General Multidimensional Strided Broadcasting Engine in C (Rank <= 8)
+    if (shape.length <= 8) {
+      final marker = ScratchArena.marker;
+      final cShape = ScratchArena.copyInts(shape);
+      final cStridesY = ScratchArena.copyInts(stridesY);
+      final cStridesX = ScratchArena.copyInts(stridesX);
+      final cStridesRes = ScratchArena.copyInts(result.strides);
+      try {
+        switch ((targetDType, y.dtype, x.dtype)) {
+          case (DType.float64, DType.float64, DType.float64):
+            s_atan2_double(
+              y.pointer.cast(),
+              cStridesY,
+              x.pointer.cast(),
+              cStridesX,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              shape.length,
+              maskHolder.pointer,
+            );
+            return result;
+          case (DType.float32, DType.float32, DType.float32):
+            s_atan2_float(
+              y.pointer.cast(),
+              cStridesY,
+              x.pointer.cast(),
+              cStridesX,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              shape.length,
+              maskHolder.pointer,
+            );
+            return result;
+          default:
+            break;
+        }
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
 
-  if (y.dtype == DType.float64 || y.dtype == DType.float32) {
-    final yData = y.data as List<double>;
-    if (x.dtype == DType.float64 || x.dtype == DType.float32) {
-      elementWiseOp<double, double, double>(
-        rData,
-        yData,
-        x.data as List<double>,
-        shape,
-        broadcastResult.stridesA,
-        broadcastResult.stridesB,
-        result.strides,
-        0,
-        y.offsetElements,
-        x.offsetElements,
-        result.offsetElements,
-        (a, b) => math.atan2(a, b),
-      );
-    } else {
-      elementWiseOp<double, int, double>(
-        rData,
-        yData,
-        x.data as List<int>,
-        shape,
-        broadcastResult.stridesA,
-        broadcastResult.stridesB,
-        result.strides,
-        0,
-        y.offsetElements,
-        x.offsetElements,
-        result.offsetElements,
-        (a, b) => math.atan2(a, b.toDouble()),
-      );
-    }
-  } else {
-    final yData = y.data as List<int>;
-    if (x.dtype == DType.float64 || x.dtype == DType.float32) {
-      elementWiseOp<int, double, double>(
-        rData,
-        yData,
-        x.data as List<double>,
-        shape,
-        broadcastResult.stridesA,
-        broadcastResult.stridesB,
-        result.strides,
-        0,
-        y.offsetElements,
-        x.offsetElements,
-        result.offsetElements,
-        (a, b) => math.atan2(a.toDouble(), b),
-      );
-    } else {
-      elementWiseOp<int, int, double>(
-        rData,
-        yData,
-        x.data as List<int>,
-        shape,
-        broadcastResult.stridesA,
-        broadcastResult.stridesB,
-        result.strides,
-        0,
-        y.offsetElements,
-        x.offsetElements,
-        result.offsetElements,
-        (a, b) => math.atan2(a.toDouble(), b.toDouble()),
-      );
-    }
+    elementWiseOp<double, double, double>(
+      result,
+      y as NDArray<double>,
+      x as NDArray<double>,
+      shape,
+      broadcastResult.stridesA,
+      broadcastResult.stridesB,
+      result.strides,
+      0,
+      y.offsetElements,
+      x.offsetElements,
+      result.offsetElements,
+      (a, b) => math.atan2(a, b),
+      maskHolder.pointer,
+    );
+    return result;
+  } finally {
+    maskHolder.dispose();
   }
-  return result;
 }
 
 /// Computes the element-wise hypotenuse `sqrt(x1**2 + x2**2)` with broadcasting support.
@@ -2448,120 +2461,120 @@ NDArray<R> hypot<Ta, Tb, R>(
     result = NDArray<R>.create(shape, targetDType);
   }
   final maskHolder = prepareMask(where, result.shape);
+  NDArray<Complex>? aCpx;
+  NDArray<Complex>? bCpx;
 
-  if (a.dtype == DType.complex128 ||
-      b.dtype == DType.complex128 ||
-      a.dtype == DType.complex64 ||
-      b.dtype == DType.complex64) {
-    final aCpx = (a.dtype == DType.complex128 || a.dtype == DType.complex64)
-        ? a as NDArray<Complex>
-        : NDArray<Complex>.fromList(
-            a.data.map((e) => Complex((e as num).toDouble(), 0.0)).toList(),
-            a.shape,
-            DType.complex128,
-          );
-    final bCpx = (b.dtype == DType.complex128 || b.dtype == DType.complex64)
-        ? b as NDArray<Complex>
-        : NDArray<Complex>.fromList(
-            b.data.map((e) => Complex((e as num).toDouble(), 0.0)).toList(),
-            b.shape,
-            DType.complex128,
-          );
-    if (listEquals(a.shape, b.shape) &&
-        a.isContiguous &&
-        b.isContiguous &&
-        result.isContiguous) {
-      if (aCpx.dtype == DType.complex128) {
-        v_hypot_complex128(
-          aCpx.pointer.cast(),
-          bCpx.pointer.cast(),
-          result.pointer.cast(),
-          aCpx.size,
-          maskHolder.pointer,
-        );
-        return result;
-      } else {
-        v_hypot_complex64(
-          aCpx.pointer.cast(),
-          bCpx.pointer.cast(),
-          result.pointer.cast(),
-          aCpx.size,
-          maskHolder.pointer,
-        );
-        return result;
-      }
-    } else {
-      final rank = shape.length;
-      final marker = ScratchArena.marker;
-      final cShape = ScratchArena.copyInts(shape);
-      final cStridesA = ScratchArena.copyInts(broadcastResult.stridesA);
-      final cStridesB = ScratchArena.copyInts(broadcastResult.stridesB);
-      final cStridesRes = ScratchArena.copyInts(result.strides);
-      try {
+  try {
+    if (a.dtype == DType.complex128 ||
+        b.dtype == DType.complex128 ||
+        a.dtype == DType.complex64 ||
+        b.dtype == DType.complex64) {
+      aCpx = (a.dtype == DType.complex128 || a.dtype == DType.complex64)
+          ? a as NDArray<Complex>
+          : promoteToComplex(a);
+      bCpx = (b.dtype == DType.complex128 || b.dtype == DType.complex64)
+          ? b as NDArray<Complex>
+          : promoteToComplex(b);
+      if (listEquals(a.shape, b.shape) &&
+          a.isContiguous &&
+          b.isContiguous &&
+          result.isContiguous) {
         if (aCpx.dtype == DType.complex128) {
-          s_hypot_complex128(
+          v_hypot_complex128(
             aCpx.pointer.cast(),
-            cStridesA,
             bCpx.pointer.cast(),
-            cStridesB,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            aCpx.size,
             maskHolder.pointer,
           );
           return result;
         } else {
-          s_hypot_complex64(
+          v_hypot_complex64(
             aCpx.pointer.cast(),
-            cStridesA,
             bCpx.pointer.cast(),
-            cStridesB,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
+            aCpx.size,
             maskHolder.pointer,
           );
           return result;
         }
-      } finally {
-        ScratchArena.reset(marker);
+      } else {
+        final rank = shape.length;
+        final marker = ScratchArena.marker;
+        final cShape = ScratchArena.copyInts(shape);
+        final cStridesA = ScratchArena.copyInts(broadcastResult.stridesA);
+        final cStridesB = ScratchArena.copyInts(broadcastResult.stridesB);
+        final cStridesRes = ScratchArena.copyInts(result.strides);
+        try {
+          if (aCpx.dtype == DType.complex128) {
+            s_hypot_complex128(
+              aCpx.pointer.cast(),
+              cStridesA,
+              bCpx.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          } else {
+            s_hypot_complex64(
+              aCpx.pointer.cast(),
+              cStridesA,
+              bCpx.pointer.cast(),
+              cStridesB,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          }
+        } finally {
+          ScratchArena.reset(marker);
+        }
       }
     }
-  }
 
-  final rData = result.data;
-
-  double hypotOp(double x, double y) {
-    x = x.abs();
-    y = y.abs();
-    if (x < y) {
-      final temp = x;
-      x = y;
-      y = temp;
+    double hypotOp(double x, double y) {
+      if (x.isInfinite || y.isInfinite) return double.infinity;
+      x = x.abs();
+      y = y.abs();
+      if (x < y) {
+        final temp = x;
+        x = y;
+        y = temp;
+      }
+      if (x == 0) return 0.0;
+      final t = y / x;
+      return x * math.sqrt(1.0 + t * t);
     }
-    if (x == 0) return 0.0;
-    final t = y / x;
-    return x * math.sqrt(1.0 + t * t);
+
+    elementWiseOp<num, num, R>(
+      result,
+      a as NDArray<num>,
+      b as NDArray<num>,
+      shape,
+      broadcastResult.stridesA,
+      broadcastResult.stridesB,
+      result.strides,
+      0,
+      a.offsetElements,
+      b.offsetElements,
+      result.offsetElements,
+      (valA, valB) => hypotOp(valA.toDouble(), valB.toDouble()) as R,
+      maskHolder.pointer,
+    );
+
+    return result;
+  } finally {
+    if (aCpx != null && !identical(aCpx, a)) aCpx.dispose();
+    if (bCpx != null && !identical(bCpx, b)) bCpx.dispose();
+    maskHolder.dispose();
   }
-
-  elementWiseOp<num, num, R>(
-    rData,
-    a.data as List<num>,
-    b.data as List<num>,
-    shape,
-    broadcastResult.stridesA,
-    broadcastResult.stridesB,
-    result.strides,
-    0,
-    a.offsetElements,
-    b.offsetElements,
-    result.offsetElements,
-    (valA, valB) => hypotOp(valA.toDouble(), valB.toDouble()) as R,
-  );
-
-  return result;
 }
 
 /// Converts angles from degrees to radians element-wise.
@@ -2604,7 +2617,11 @@ NDArray<R> deg2rad<T, R>(
   }
 
   final factor = NDArray.fromList([0.017453292519943295], [], targetDType);
-  return multiply<T, dynamic, R>(a, factor, out: out);
+  try {
+    return multiply<T, dynamic, R>(a, factor, where: where, out: out);
+  } finally {
+    factor.dispose();
+  }
 }
 
 /// Converts angles from radians to degrees element-wise.
@@ -2647,5 +2664,9 @@ NDArray<R> rad2deg<T, R>(
   }
 
   final factor = NDArray.fromList([57.29577951308232], [], targetDType);
-  return multiply<T, dynamic, R>(a, factor, out: out);
+  try {
+    return multiply<T, dynamic, R>(a, factor, where: where, out: out);
+  } finally {
+    factor.dispose();
+  }
 }

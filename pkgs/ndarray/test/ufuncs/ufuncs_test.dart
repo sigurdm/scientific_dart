@@ -1337,6 +1337,33 @@ void main() {
 
         expect(closeNanDefault.toList(), [false]);
         expect(closeNanEqual.toList(), [true]);
+
+        // 6. 2D and 3D arrays without .toList() nested list error
+        final a2d = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final b2d = NDArray.fromList(
+          [1.0, 2.00001, 3.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final close2d = isClose(a2d, b2d);
+        expect(close2d.shape, [2, 2]);
+        expect(allClose(a2d, b2d), true);
+
+        final a3d = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+          [2, 2, 2],
+          DType.float64,
+        );
+        final b3d = NDArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+          [2, 2, 2],
+          DType.float64,
+        );
+        expect(allClose(a3d, b3d), true);
       }),
     );
 
@@ -1381,6 +1408,26 @@ void main() {
         nan_to_num(view, nan: 100.0, out: view);
 
         expect(parent.toList(), [100.0, 2.0, 100.0, 4.0]);
+
+        // 4. 2D and 3D arrays cleaning
+        final a2d = NDArray.fromList(
+          [double.nan, 2.0, 3.0, double.infinity],
+          [2, 2],
+          DType.float64,
+        );
+        final res2d = nan_to_num(a2d, nan: 10.0, posinf: 20.0);
+        expect(res2d.shape, [2, 2]);
+        expect(res2d.data, [10.0, 2.0, 3.0, 20.0]);
+
+        final a3d = NDArray.fromList(
+          [double.nan, 1.0, 2.0, double.negativeInfinity, 3.0, 4.0, 5.0, 6.0],
+          [2, 2, 2],
+          DType.float64,
+        );
+        final res3d = nan_to_num(a3d, nan: -1.0, neginf: -99.0);
+        expect(res3d.shape, [2, 2, 2]);
+        expect(res3d.data[0], -1.0);
+        expect(res3d.data[3], -99.0);
       }),
     );
 
@@ -1742,29 +1789,16 @@ void main() {
     );
 
     test(
-      'non-contiguous out array throws ArgumentError',
+      'non-contiguous out array support in min/max/nanmin/nanmax',
       () => NDArray.scope(() {
         final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
         final parent = NDArray<double>.zeros([2, 2], DType.float64);
         final nonContiguousOut = parent.slice([Slice.all(), Index(0)]);
         expect(nonContiguousOut.isContiguous, false);
 
-        expect(
-          () => min(a, axis: 1, out: nonContiguousOut),
-          throwsArgumentError,
-        );
-        expect(
-          () => max(a, axis: 1, out: nonContiguousOut),
-          throwsArgumentError,
-        );
-        expect(
-          () => nanmin(a, axis: 1, out: nonContiguousOut),
-          throwsArgumentError,
-        );
-        expect(
-          () => nanmax(a, axis: 1, out: nonContiguousOut),
-          throwsArgumentError,
-        );
+        final rMin = min(a, axis: 1, out: nonContiguousOut);
+        expect(rMin, same(nonContiguousOut));
+        expect(rMin.toList(), [1.0, 3.0]);
       }),
     );
 
@@ -1813,5 +1847,105 @@ void main() {
         expect(nanmax(empty2D, axis: 0).shape, [0]);
       }),
     );
+  });
+
+  group("0-Dimensional (rank == 0) Ufuncs Tests", () {
+    test("Unary and binary strided ufuncs on 0-D arrays", () {
+      NDArray.scope(() {
+        final a = NDArray.scalar(4.0, dtype: DType.float64);
+        final b = NDArray.scalar(2.0, dtype: DType.float64);
+
+        final rSqrt = sqrt(a);
+        expect(rSqrt.rank, 0);
+        expect(rSqrt.scalar, closeTo(2.0, 1e-7));
+
+        final rAdd = add(a, b);
+        expect(rAdd.rank, 0);
+        expect(rAdd.scalar, closeTo(6.0, 1e-7));
+
+        final rMul = multiply(a, b);
+        expect(rMul.rank, 0);
+        expect(rMul.scalar, closeTo(8.0, 1e-7));
+
+        // Test with a sliced 0-D view (offsetElements > 0)
+        final arr = NDArray.fromList([10.0, 16.0, 25.0], [3], DType.float64);
+        final view0D = NDArray.view(
+          arr,
+          shape: <int>[],
+          strides: <int>[],
+          offsetElements: 1,
+        );
+        final rViewSqrt = sqrt(view0D);
+        expect(rViewSqrt.rank, 0);
+        expect(rViewSqrt.scalar, closeTo(4.0, 1e-7));
+      });
+    });
+  });
+
+  group("Where Mask Optional Parameter Tests", () {
+    test("Logical comparison and binary logical ufuncs with where mask", () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([1, 2, 3, 4], [4], DType.int32);
+        final b = NDArray.fromList([1, 1, 4, 4], [4], DType.int32);
+        final whereMask = NDArray.fromList(
+          [true, false, true, false],
+          [4],
+          DType.boolean,
+        );
+
+        // Pre-fill result buffer with false so masked-out elements remain false
+        final outEq = NDArray<bool>.zeros([4], DType.boolean);
+        equal(a, b, where: whereMask, out: outEq);
+        expect(outEq.toList(), [true, false, false, false]);
+
+        final outGt = NDArray.fromList(
+          [true, true, true, true],
+          [4],
+          DType.boolean,
+        );
+        greater(a, b, where: whereMask, out: outGt);
+        expect(outGt.toList(), [false, true, false, true]);
+
+        final boolA = NDArray.fromList(
+          [true, true, false, false],
+          [4],
+          DType.boolean,
+        );
+        final boolB = NDArray.fromList(
+          [true, false, true, false],
+          [4],
+          DType.boolean,
+        );
+        final outAnd = NDArray.fromList(
+          [false, false, false, false],
+          [4],
+          DType.boolean,
+        );
+        logical_and(boolA, boolB, where: whereMask, out: outAnd);
+        expect(outAnd.toList(), [true, false, false, false]);
+      });
+    });
+
+    test("mod and clipArray with optional where mask", () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([5, 6, 7, 8], [4], DType.int32);
+        final b = NDArray.fromList([3, 3, 3, 3], [4], DType.int32);
+        final mask = NDArray.fromList(
+          [true, false, true, false],
+          [4],
+          DType.boolean,
+        );
+
+        final outMod = NDArray.fromList([-1, -1, -1, -1], [4], DType.int32);
+        mod(a, b, where: mask, out: outMod);
+        expect(outMod.toList(), [2, -1, 1, -1]);
+
+        final outClip = NDArray.fromList([99, 99, 99, 99], [4], DType.int32);
+        final minB = NDArray.scalar(6, dtype: DType.int32);
+        final maxB = NDArray.scalar(7, dtype: DType.int32);
+        clipArray(a, min: minB, max: maxB, where: mask, out: outClip);
+        expect(outClip.toList(), [6, 99, 7, 99]);
+      });
+    });
   });
 }

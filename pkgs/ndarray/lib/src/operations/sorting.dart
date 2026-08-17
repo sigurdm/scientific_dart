@@ -50,7 +50,7 @@ NDArray<T> sort<T extends Object>(
   final rank = a.shape.length;
   if (rank == 0) {
     if (out != null) {
-      out.data[0] = a.scalar;
+      out.setCell([], a.scalar);
       return out;
     }
     return NDArray<T>.scalar(a.scalar, dtype: a.dtype);
@@ -63,11 +63,7 @@ NDArray<T> sort<T extends Object>(
 
   if (targetAxis != rank - 1) {
     final swappedView = a.swapaxes(targetAxis, rank - 1);
-    final sortedView = sort(
-      swappedView,
-      axis: rank - 1,
-      kind: kind,
-    );
+    final sortedView = sort(swappedView, axis: rank - 1, kind: kind);
     final resultSwapped = sortedView.swapaxes(targetAxis, rank - 1);
     if (out != null) {
       resultSwapped.copy(out: out);
@@ -87,56 +83,7 @@ NDArray<T> sort<T extends Object>(
   try {
     final result = out ?? NDArray<T>.create(src.shape, src.dtype);
     if (result != src) {
-      switch (src.dtype) {
-        case DType.float64:
-          (result.data as Float64List).setRange(
-            0,
-            src.data.length,
-            src.data as Float64List,
-          );
-        case DType.float32:
-          (result.data as Float32List).setRange(
-            0,
-            src.data.length,
-            src.data as Float32List,
-          );
-        case DType.int64:
-          (result.data as Int64List).setRange(
-            0,
-            src.data.length,
-            src.data as Int64List,
-          );
-        case DType.int32:
-          (result.data as Int32List).setRange(
-            0,
-            src.data.length,
-            src.data as Int32List,
-          );
-        case DType.int16:
-          (result.data as Int16List).setRange(
-            0,
-            src.data.length,
-            src.data as Int16List,
-          );
-        case DType.uint8:
-          (result.data as Uint8List).setRange(
-            0,
-            src.data.length,
-            src.data as Uint8List,
-          );
-        case DType.complex128 || DType.complex64:
-          final srcBacking = (src.data as ComplexList).backingList;
-          final resBacking = (result.data as ComplexList).backingList;
-          if (srcBacking is Float64List && resBacking is Float64List) {
-            resBacking.setRange(0, srcBacking.length, srcBacking);
-          } else if (srcBacking is Float32List && resBacking is Float32List) {
-            resBacking.setRange(0, srcBacking.length, srcBacking);
-          }
-        case DType.boolean:
-          final srcBacking = (src.data as BoolList).backingList;
-          final resBacking = (result.data as BoolList).backingList;
-          resBacking.setRange(0, srcBacking.length, srcBacking);
-      }
+      src.copy(out: result);
     }
 
     final n = src.shape.last;
@@ -257,7 +204,7 @@ NDArray<int> argsort(
   final rank = a.shape.length;
   if (rank == 0) {
     if (out != null) {
-      out.data[0] = 0;
+      out.setCell([], 0);
       return out;
     }
     return NDArray.scalar(0, dtype: DType.int32);
@@ -270,11 +217,7 @@ NDArray<int> argsort(
 
   if (targetAxis != rank - 1) {
     final swappedView = a.swapaxes(targetAxis, rank - 1);
-    final sortedIndicesView = argsort(
-      swappedView,
-      axis: rank - 1,
-      kind: kind,
-    );
+    final sortedIndicesView = argsort(swappedView, axis: rank - 1, kind: kind);
     final resultSwapped = sortedIndicesView.swapaxes(targetAxis, rank - 1);
     if (out != null) {
       resultSwapped.copy(out: out);
@@ -465,7 +408,7 @@ NDArray<T> partition<T extends Object>(
   final rank = a.shape.length;
   if (rank == 0) {
     if (out != null) {
-      out.data[0] = a.scalar;
+      out.setCell([], a.scalar);
       return out;
     }
     return NDArray<T>.scalar(a.scalar, dtype: a.dtype);
@@ -502,11 +445,7 @@ NDArray<T> partition<T extends Object>(
 
   if (targetAxis != rank - 1) {
     final swappedView = a.swapaxes(targetAxis, rank - 1);
-    final partitionedView = partition(
-      swappedView,
-      uniqueK,
-      axis: rank - 1,
-    );
+    final partitionedView = partition(swappedView, uniqueK, axis: rank - 1);
     final resultSwapped = partitionedView.swapaxes(targetAxis, rank - 1);
     if (out != null) {
       resultSwapped.copy(out: out);
@@ -529,57 +468,7 @@ NDArray<T> partition<T extends Object>(
     final result = out ?? NDArray<T>.create(src.shape, src.dtype);
 
     if (result != src) {
-      // Copy data to result
-      switch (src.dtype) {
-        case DType.float64:
-          (result.data as Float64List).setRange(
-            0,
-            src.data.length,
-            src.data as Float64List,
-          );
-        case DType.float32:
-          (result.data as Float32List).setRange(
-            0,
-            src.data.length,
-            src.data as Float32List,
-          );
-        case DType.int64:
-          (result.data as Int64List).setRange(
-            0,
-            src.data.length,
-            src.data as Int64List,
-          );
-        case DType.int32:
-          (result.data as Int32List).setRange(
-            0,
-            src.data.length,
-            src.data as Int32List,
-          );
-        case DType.int16:
-          (result.data as Int16List).setRange(
-            0,
-            src.data.length,
-            src.data as Int16List,
-          );
-        case DType.uint8:
-          (result.data as Uint8List).setRange(
-            0,
-            src.data.length,
-            src.data as Uint8List,
-          );
-        case DType.complex128 || DType.complex64:
-          final srcBacking = (src.data as ComplexList).backingList;
-          final resBacking = (result.data as ComplexList).backingList;
-          if (srcBacking is Float64List && resBacking is Float64List) {
-            resBacking.setRange(0, srcBacking.length, srcBacking);
-          } else if (srcBacking is Float32List && resBacking is Float32List) {
-            resBacking.setRange(0, srcBacking.length, srcBacking);
-          }
-        case DType.boolean:
-          final srcBacking = (src.data as BoolList).backingList;
-          final resBacking = (result.data as BoolList).backingList;
-          resBacking.setRange(0, srcBacking.length, srcBacking);
-      }
+      src.copy(out: result);
     }
 
     if (uniqueK.isEmpty) {
@@ -736,7 +625,7 @@ NDArray<int> argpartition(
   final rank = a.shape.length;
   if (rank == 0) {
     if (out != null) {
-      out.data[0] = 0;
+      out.setCell([], 0);
       return out;
     }
     return NDArray.scalar(0, dtype: DType.int32);
@@ -803,8 +692,16 @@ NDArray<int> argpartition(
     final result = out ?? NDArray<int>.create(src.shape, DType.int32);
 
     if (uniqueK.isEmpty) {
-      for (var i = 0; i < result.data.length; i++) {
-        result.data[i] = i % n;
+      if (result.dtype == DType.int64) {
+        final ptr = result.pointer.cast<ffi.LongLong>();
+        for (var i = 0; i < totalSize; i++) {
+          ptr[i] = i % n;
+        }
+      } else {
+        final ptr = result.pointer.cast<ffi.Int>();
+        for (var i = 0; i < totalSize; i++) {
+          ptr[i] = i % n;
+        }
       }
       return result;
     }
@@ -913,18 +810,17 @@ NDArray<int> argpartition(
           );
         }
       } else if (src.dtype == DType.boolean) {
+        final ptr = src.pointer.cast<ffi.Uint8>();
         for (var r = 0; r < numRows; r++) {
           final rowStart = r * n;
           final indices = List<int>.generate(n, (i) => i);
-          final dataList = src.data as List<bool>;
           indices.sort((i, j) {
-            final bA = dataList[rowStart + i];
-            final bB = dataList[rowStart + j];
-            if (bA == bB) return 0;
-            return bA ? 1 : -1;
+            final bA = ptr[rowStart + i];
+            final bB = ptr[rowStart + j];
+            return bA.compareTo(bB);
           });
           for (var i = 0; i < n; i++) {
-            result.data[rowStart + i] = indices[i];
+            resPtr[rowStart + i] = indices[i];
           }
         }
       } else {
@@ -933,7 +829,7 @@ NDArray<int> argpartition(
         );
       }
 
-      if (is64 && src.dtype != DType.boolean) {
+      if (is64) {
         final outData = result.data as Int64List;
         for (var i = 0; i < totalSize; i++) {
           outData[i] = resPtr[i];
@@ -1183,28 +1079,36 @@ NDArray<int> searchsorted(
           cSorter,
         );
       case DType.boolean:
-        final dataA = srcA.data as List<bool>;
-        final dataV = srcV.data as List<bool>;
-        final sortedIndices = srcSorter?.toList();
+        final ptrA = srcA.pointer.cast<ffi.Uint8>();
+        final ptrV = srcV.pointer.cast<ffi.Uint8>();
+        final sorterPtr32 = srcSorter?.dtype == DType.int32
+            ? srcSorter!.pointer.cast<ffi.Int>()
+            : null;
+        final sorterPtr64 = srcSorter?.dtype == DType.int64
+            ? srcSorter!.pointer.cast<ffi.LongLong>()
+            : null;
 
-        bool getElement(int idx) {
-          return sortedIndices != null ? dataA[sortedIndices[idx]] : dataA[idx];
+        int getElement(int idx) {
+          int actualIdx = idx;
+          if (sorterPtr32 != null) {
+            actualIdx = sorterPtr32[idx];
+          } else if (sorterPtr64 != null) {
+            actualIdx = sorterPtr64[idx];
+          } else if (srcSorter != null) {
+            actualIdx = srcSorter.getCell([idx]);
+          }
+          return ptrA[actualIdx];
         }
 
         for (var vIdx = 0; vIdx < numValues; vIdx++) {
-          final val = dataV[vIdx];
+          final val = ptrV[vIdx];
           var low = 0;
           var high = size;
           while (low < high) {
             final mid = low + ((high - low) >> 1);
             final midVal = getElement(mid);
 
-            int comp;
-            if (midVal == val) {
-              comp = 0;
-            } else {
-              comp = midVal ? 1 : -1; // false < true
-            }
+            final comp = midVal.compareTo(val);
 
             if (side == SearchSide.left) {
               if (comp < 0) {
@@ -1220,10 +1124,10 @@ NDArray<int> searchsorted(
               }
             }
           }
-          result.data[vIdx] = low;
+          resPtr[vIdx] = low;
         }
     }
-    if (is64 && srcA.dtype != DType.boolean) {
+    if (is64) {
       final outData = result.data as Int64List;
       for (var i = 0; i < numValues; i++) {
         outData[i] = resPtr[i];
@@ -2258,9 +2162,6 @@ NDArray<int> _argminmaxFFI<T>(
     ScratchArena.reset(marker);
   }
 
-  if (out == null) {
-    result.detachToParentScope();
-  }
   return result;
 }
 

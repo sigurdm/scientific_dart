@@ -21,32 +21,34 @@ void _validateSorted(NDArray<Float64> xp) {
   final size = xp.shape[0];
   if (size <= 1) return;
 
-  final marker = ScratchArena.marker;
-  try {
-    final ptr = xp.pointer.cast<ffi.Double>();
-    final stride = xp.strides[0];
-    for (var i = 1; i < size; i++) {
-      final prev = xp.isContiguous ? ptr[i - 1] : ptr[(i - 1) * stride];
-      final curr = xp.isContiguous ? ptr[i] : ptr[i * stride];
-      if (curr <= prev) {
-        throw ArgumentError('xp must be strictly increasing.');
-      }
-    }
-  } finally {
-    ScratchArena.reset(marker);
+  final res = is_strictly_increasing_double(
+    xp.pointer.cast(),
+    size,
+    xp.strides[0],
+  );
+  if (res == 0) {
+    throw ArgumentError('xp must be strictly increasing.');
   }
 }
 
-/// One-dimensional linear interpolation for monotonically increasing sample points.
+/// Computes one-dimensional interpolation.
+///
+/// Returns the one-dimensional piecewise interpolant to a function with
+/// given discrete data points ([xp], [fp]), evaluated at [x].
+/// The [xp] array must be strictly increasing and have the same length as [fp].
+/// Optional [left] and [right] specify values to return for `x < xp[0]` and `x > xp[xp.length-1]` respectively, defaulting to `fp[0]` and `fp[fp.length-1]`.
 ///
 /// **Preconditions:**
-/// - Input arrays [x], [xp], and [fp] must not be disposed.
-/// - [xp] and [fp] must be 1D arrays of equal length.
-/// - [xp] must be monotonically increasing.
-/// - If provided, [out] must have shape matching [x] and float64 dtype.
+/// - [x], [xp], [fp] must not be disposed.
+/// - [xp] and [fp] must be 1D arrays.
+/// - [xp] and [fp] must have the same length.
+/// - [xp] must be strictly increasing.
 ///
-/// It is an error if [x], [xp], or [fp] is disposed, if [xp] or [fp] is not 1D,
-/// if [xp] and [fp] lengths mismatch, if [xp] is not strictly increasing, or if [out] has an incompatible shape or dtype.
+/// **Throws:**
+/// - It is an error if any input array is disposed.
+/// - It is an error if [xp] or [fp] is not 1-dimensional, or if their lengths mismatch.
+/// - It is an error if [xp] is empty.
+/// - It is an error if [xp] is not strictly increasing.
 ///
 /// **Example:**
 /// {@example /example/interpolation_example.dart}
@@ -110,71 +112,62 @@ NDArray<Float64> interp(
     if (method == InterpolationMethod.nearest) {
       final size = xDouble.size;
       final xpSize = xpDouble.shape[0];
-      final xpPtr = xpDouble.pointer.cast<ffi.Double>();
-      final fpPtr = fpDouble.pointer.cast<ffi.Double>();
-      final xpStride = xpDouble.strides[0];
-      final fpStride = fpDouble.strides[0];
-      final xpIsContiguous = xpDouble.isContiguous;
-      final fpIsContiguous = fpDouble.isContiguous;
+      final xpContig = xpDouble.isContiguous ? xpDouble : xpDouble.copy();
+      final fpContig = fpDouble.isContiguous ? fpDouble : fpDouble.copy();
+      final xContig = xDouble.isContiguous ? xDouble : xDouble.copy();
 
-      double getXp(int idx) =>
-          xpIsContiguous ? xpPtr[idx] : xpPtr[idx * xpStride];
-      double getFp(int idx) =>
-          fpIsContiguous ? fpPtr[idx] : fpPtr[idx * fpStride];
+      final xpPtr = xpContig.pointer.cast<ffi.Double>();
+      final fpPtr = fpContig.pointer.cast<ffi.Double>();
+      final xPtr = xContig.pointer.cast<ffi.Double>();
 
-      final xpMin = getXp(0);
-      final xpMax = getXp(xpSize - 1);
-      final defaultLeft = left ?? getFp(0);
-      final defaultRight = right ?? getFp(xpSize - 1);
+      final xpMin = xpPtr[0];
+      final xpMax = xpPtr[xpSize - 1];
+      final defaultLeft = left ?? fpPtr[0];
+      final defaultRight = right ?? fpPtr[xpSize - 1];
 
       final tempRes = res.isContiguous
           ? res
-          : NDArray<double>.create(x.shape, DType.float64);
+          : NDArray<Float64>.create(x.shape, DType.float64);
       final tempResPtr = tempRes.pointer.cast<ffi.Double>();
-
-      final xDoubleContig = xDouble.isContiguous ? xDouble : xDouble.copy();
-      final xPtr = xDoubleContig.pointer.cast<ffi.Double>();
-
-      try {
-        for (var i = 0; i < size; i++) {
-          final xv = xPtr[i];
-          if (xv < xpMin) {
-            tempResPtr[i] = defaultLeft;
-          } else if (xv > xpMax) {
-            tempResPtr[i] = defaultRight;
-          } else if (xpSize == 1) {
-            tempResPtr[i] = getFp(0);
-          } else {
-            var low = 0;
-            var high = xpSize - 1;
-            while (low < high - 1) {
-              final mid = (low + high) ~/ 2;
-              if (getXp(mid) <= xv) {
-                low = mid;
-              } else {
-                high = mid;
-              }
-            }
-            final x0 = getXp(low);
-            final x1 = getXp(low + 1);
-            final y0 = getFp(low);
-            final y1 = getFp(low + 1);
-            if ((xv - x0).abs() <= (x1 - xv).abs()) {
-              tempResPtr[i] = y0;
+      for (var i = 0; i < size; i++) {
+        final xv = xPtr[i];
+        if (xv.isNaN) {
+          tempResPtr[i] = double.nan;
+        } else if (xv < xpMin) {
+          tempResPtr[i] = defaultLeft;
+        } else if (xv > xpMax) {
+          tempResPtr[i] = defaultRight;
+        } else if (xpSize == 1) {
+          tempResPtr[i] = fpPtr[0];
+        } else {
+          var low = 0;
+          var high = xpSize - 1;
+          while (low < high - 1) {
+            final mid = (low + high) ~/ 2;
+            if (xpPtr[mid] <= xv) {
+              low = mid;
             } else {
-              tempResPtr[i] = y1;
+              high = mid;
             }
           }
-        }
-      } finally {
-        if (!identical(xDoubleContig, xDouble)) {
-          xDoubleContig.dispose();
+          final x0 = xpPtr[low];
+          final x1 = xpPtr[low + 1];
+          final y0 = fpPtr[low];
+          final y1 = fpPtr[low + 1];
+          if ((xv - x0).abs() <= (x1 - xv).abs()) {
+            tempResPtr[i] = y0;
+          } else {
+            tempResPtr[i] = y1;
+          }
         }
       }
       if (!identical(tempRes, res)) {
         tempRes.copy(out: res);
         tempRes.dispose();
       }
+      if (!identical(xpContig, xpDouble)) xpContig.dispose();
+      if (!identical(fpContig, fpDouble)) fpContig.dispose();
+      if (!identical(xContig, xDouble)) xContig.dispose();
     } else {
       // Prepare left/right pointers.
       ffi.Pointer<ffi.Double> pLeft = ffi.nullptr;

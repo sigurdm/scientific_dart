@@ -177,5 +177,26 @@ void main() {
         expect(interpRes.getCell([0]).toDouble(), equals(25.0));
       });
     });
+    test(
+      '10. Spacers linspace, logspace, geomspace out: parameter support',
+      () {
+        NDArray.scope(() {
+          final outLin = NDArray<Float64>.zeros([5], DType.float64);
+          final resLin = linspace(0.0, 10.0, 5, out: outLin);
+          expect(identical(resLin, outLin), isTrue);
+          expect(outLin.toList(), equals([0.0, 2.5, 5.0, 7.5, 10.0]));
+
+          final outLog = NDArray<Float64>.zeros([3], DType.float64);
+          final resLog = logspace(0.0, 2.0, 3, out: outLog);
+          expect(identical(resLog, outLog), isTrue);
+          expect(outLog.toList(), equals([1.0, 10.0, 100.0]));
+
+          final outGeom = NDArray<Float64>.zeros([3], DType.float64);
+          final resGeom = geomspace(1.0, 100.0, 3, out: outGeom);
+          expect(identical(resGeom, outGeom), isTrue);
+          expect(outGeom.toList(), equals([1.0, 10.0, 100.0]));
+        });
+      },
+    );
   });
 }

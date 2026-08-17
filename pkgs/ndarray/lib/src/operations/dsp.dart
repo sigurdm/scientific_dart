@@ -87,38 +87,43 @@ NDArray<R> angle<T extends Complex, R extends double>(
     }
   } else {
     final rank = a.shape.length;
-    final cBuffer = ScratchArena.getStridedBuffer(rank);
-    final cShape = cBuffer;
-    final cStridesA = cBuffer + rank;
-    final cStridesRes = cBuffer + (rank * 2);
-    for (var i = 0; i < rank; i++) {
-      cShape[i] = a.shape[i];
-      cStridesA[i] = a.strides[i];
-      cStridesRes[i] = result.strides[i];
-    }
-    switch (a.dtype) {
-      case DType.complex128:
-        bindings.s_angle_complex128(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          ffi.nullptr,
-        );
-        return result;
-      case DType.complex64:
-        bindings.s_angle_complex64(
-          a.pointer.cast(),
-          cStridesA,
-          result.pointer.cast(),
-          cStridesRes,
-          cShape,
-          rank,
-          ffi.nullptr,
-        );
-        return result;
+    final marker = ScratchArena.marker;
+    try {
+      final cBuffer = ScratchArena.getStridedBuffer(rank);
+      final cShape = cBuffer;
+      final cStridesA = cBuffer + rank;
+      final cStridesRes = cBuffer + (rank * 2);
+      for (var i = 0; i < rank; i++) {
+        cShape[i] = a.shape[i];
+        cStridesA[i] = a.strides[i];
+        cStridesRes[i] = result.strides[i];
+      }
+      switch (a.dtype) {
+        case DType.complex128:
+          bindings.s_angle_complex128(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            ffi.nullptr,
+          );
+          return result;
+        case DType.complex64:
+          bindings.s_angle_complex64(
+            a.pointer.cast(),
+            cStridesA,
+            result.pointer.cast(),
+            cStridesRes,
+            cShape,
+            rank,
+            ffi.nullptr,
+          );
+          return result;
+      }
+    } finally {
+      ScratchArena.reset(marker);
     }
   }
 }
@@ -179,42 +184,47 @@ NDArray<T> unwrap<T extends double>(
     result = NDArray.create(a.shape, a.dtype);
   }
 
-  final rankForBuffer = a.shape.length;
-  final cBuffer = ScratchArena.getStridedBuffer(rankForBuffer);
-  final cShape = cBuffer;
-  final cStridesA = cBuffer + rankForBuffer;
-  final cStridesRes = cBuffer + (rankForBuffer * 2);
-  for (var i = 0; i < rankForBuffer; i++) {
-    cShape[i] = a.shape[i];
-    cStridesA[i] = a.strides[i];
-    cStridesRes[i] = result.strides[i];
-  }
+  final marker = ScratchArena.marker;
+  try {
+    final rankForBuffer = a.shape.length;
+    final cBuffer = ScratchArena.getStridedBuffer(rankForBuffer);
+    final cShape = cBuffer;
+    final cStridesA = cBuffer + rankForBuffer;
+    final cStridesRes = cBuffer + (rankForBuffer * 2);
+    for (var i = 0; i < rankForBuffer; i++) {
+      cShape[i] = a.shape[i];
+      cStridesA[i] = a.strides[i];
+      cStridesRes[i] = result.strides[i];
+    }
 
-  switch (a.dtype) {
-    case DType.float64:
-      bindings.s_unwrap_double(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rankForBuffer,
-        resolvedAxis,
-        discont,
-      );
-      return result;
-    case DType.float32:
-      bindings.s_unwrap_float(
-        a.pointer.cast(),
-        cStridesA,
-        result.pointer.cast(),
-        cStridesRes,
-        cShape,
-        rankForBuffer,
-        resolvedAxis,
-        discont,
-      );
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        bindings.s_unwrap_double(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rankForBuffer,
+          resolvedAxis,
+          discont,
+        );
+        return result;
+      case DType.float32:
+        bindings.s_unwrap_float(
+          a.pointer.cast(),
+          cStridesA,
+          result.pointer.cast(),
+          cStridesRes,
+          cShape,
+          rankForBuffer,
+          resolvedAxis,
+          discont,
+        );
+        return result;
+    }
+  } finally {
+    ScratchArena.reset(marker);
   }
 }
 
@@ -230,8 +240,12 @@ NDArray<R> _correlateValid<
     (i) => in1.shape[i] - in2.shape[i] + 1,
   );
 
+  if (out != null && out.dtype != in1.dtype) {
+    throw ArgumentError(
+      'Provided out buffer dtype (${out.dtype}) must match in1 dtype (${in1.dtype}).',
+    );
+  }
   final DType<R> targetDType = out?.dtype ?? (in1.dtype as DType<R>);
-
   final result = out ?? NDArray<R>.zeros(outShape, targetDType);
 
   final marker = ScratchArena.marker;
@@ -457,7 +471,7 @@ NDArray<R> correlate<T extends Object, K extends Object, R extends Object>(
           sliced.copy(out: out);
           return out;
         }
-        return sliced.detachToParentScope();
+        return sliced.copy().detachToParentScope();
       });
   }
 }

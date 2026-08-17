@@ -51,15 +51,14 @@ NDArray<Float64> fv(
   NDArray<Float64> nper,
   NDArray<Float64> pmt,
   NDArray<Float64> pv, {
-  dynamic when = 0,
+  PaymentDue when = PaymentDue.end,
   NDArray<Float64>? out,
 }) {
   if (rate.isDisposed ||
       nper.isDisposed ||
       pmt.isDisposed ||
       pv.isDisposed ||
-      (out != null && out.isDisposed) ||
-      (when is NDArray && when.isDisposed)) {
+      (out != null && out.isDisposed)) {
     throw StateError('Cannot perform operation on a disposed array.');
   }
   return NDArray.scope(() {
@@ -114,15 +113,14 @@ NDArray<Float64> pv(
   NDArray<Float64> nper,
   NDArray<Float64> pmt,
   NDArray<Float64> fv, {
-  dynamic when = 0,
+  PaymentDue when = PaymentDue.end,
   NDArray<Float64>? out,
 }) {
   if (rate.isDisposed ||
       nper.isDisposed ||
       pmt.isDisposed ||
       fv.isDisposed ||
-      (out != null && out.isDisposed) ||
-      (when is NDArray && when.isDisposed)) {
+      (out != null && out.isDisposed)) {
     throw StateError('Cannot perform operation on a disposed array.');
   }
   return NDArray.scope(() {
@@ -318,35 +316,8 @@ NDArray<Float64> irr(
   });
 }
 
-NDArray<Float64> _parseWhen(dynamic when) {
-  if (when is PaymentDue) {
-    final val = when == PaymentDue.begin ? 1.0 : 0.0;
-    return NDArray<Float64>.scalar(Float64(val), dtype: DType.float64);
-  }
-  if (when is NDArray) {
-    if (when.dtype != DType.float64) {
-      throw ArgumentError('when NDArray must be of type DType.float64');
-    }
-    return when as NDArray<Float64>;
-  }
-  double val;
-  if (when is String) {
-    final lower = when.toLowerCase();
-    if (lower == 'begin' ||
-        lower == 'beginning' ||
-        lower == '1' ||
-        lower == 'start') {
-      val = 1.0;
-    } else if (lower == 'end' || lower == '0' || lower == 'finish') {
-      val = 0.0;
-    } else {
-      throw ArgumentError('Invalid when value: $when');
-    }
-  } else if (when is num) {
-    val = when.toDouble();
-  } else {
-    throw ArgumentError('Invalid when type: ${when.runtimeType}');
-  }
+NDArray<Float64> _parseWhen(PaymentDue when) {
+  final val = when == PaymentDue.begin ? 1.0 : 0.0;
   return NDArray<Float64>.scalar(Float64(val), dtype: DType.float64);
 }
 

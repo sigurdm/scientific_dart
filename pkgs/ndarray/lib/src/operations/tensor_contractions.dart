@@ -825,9 +825,10 @@ NDArray<R> einsum<T extends Object, R extends Object>(
                 final NDArray<R> res;
                 if (out != null) {
                   if (!listEquals(out.shape, [m, n]) ||
-                      out.dtype != targetDType) {
+                      out.dtype != targetDType ||
+                      !out.isContiguous) {
                     throw ArgumentError(
-                      "Provided out buffer has incompatible shape or dtype (expected shape [$m, $n] and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
+                      "Provided out buffer has incompatible shape, dtype, or is not contiguous.",
                     );
                   }
                   res = out;
@@ -856,9 +857,10 @@ NDArray<R> einsum<T extends Object, R extends Object>(
                 final NDArray<R> res;
                 if (out != null) {
                   if (!listEquals(out.shape, [m, n]) ||
-                      out.dtype != targetDType) {
+                      out.dtype != targetDType ||
+                      !out.isContiguous) {
                     throw ArgumentError(
-                      "Provided out buffer has incompatible shape or dtype (expected shape [$m, $n] and dtype $targetDType, got shape ${out.shape} and dtype ${out.dtype}).",
+                      "Provided out buffer has incompatible shape, dtype, or is not contiguous.",
                     );
                   }
                   res = out;
@@ -891,6 +893,7 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             operands[1] as NDArray<Object>,
             out: out,
           );
+          if (out != null) return out;
           return _asTyped<R>(res.detachToParentScope());
         }
 
@@ -913,6 +916,13 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             if (targetDType == DType.float64) {
               final NDArray<R> res;
               if (out != null) {
+                if (!listEquals(out.shape, [bCount, m, n]) ||
+                    out.dtype != targetDType ||
+                    !out.isContiguous) {
+                  throw ArgumentError(
+                    "Provided out buffer has incompatible shape, dtype, or is not contiguous.",
+                  );
+                }
                 res = out;
               } else {
                 res = NDArray<R>.create([
@@ -928,7 +938,7 @@ NDArray<R> einsum<T extends Object, R extends Object>(
               final strideB = k * n;
               final strideRes = m * n;
 
-              for (var bIdx = 0; bIdx < bCount; bIdx++) {
+              for (var b = 0; b < bCount; b++) {
                 cblas_dgemm(
                   101,
                   111,
@@ -937,12 +947,12 @@ NDArray<R> einsum<T extends Object, R extends Object>(
                   n,
                   k,
                   1.0,
-                  ptrA + bIdx * strideA,
+                  ptrA + b * strideA,
                   k,
-                  ptrB + bIdx * strideB,
+                  ptrB + b * strideB,
                   n,
                   0.0,
-                  ptrRes + bIdx * strideRes,
+                  ptrRes + b * strideRes,
                   n,
                 );
               }
@@ -951,6 +961,13 @@ NDArray<R> einsum<T extends Object, R extends Object>(
             } else if (targetDType == DType.float32) {
               final NDArray<R> res;
               if (out != null) {
+                if (!listEquals(out.shape, [bCount, m, n]) ||
+                    out.dtype != targetDType ||
+                    !out.isContiguous) {
+                  throw ArgumentError(
+                    "Provided out buffer has incompatible shape, dtype, or is not contiguous.",
+                  );
+                }
                 res = out;
               } else {
                 res = NDArray<R>.create([

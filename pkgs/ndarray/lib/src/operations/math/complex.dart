@@ -1,33 +1,38 @@
-import 'dart:ffi' as ffi;
+import "dart:ffi" as ffi;
 // ignore_for_file: non_constant_identifier_names
-import '../../ndarray.dart';
-import '../../ndarray_bindings.dart';
-import '../../scratch_arena.dart';
-import '../helpers.dart';
+import "../../ndarray.dart";
+import "../../ndarray_bindings.dart";
+import "../../scratch_arena.dart";
+import "../helpers.dart";
 
 /// Returns the real part of a complex array element-wise.
 ///
 /// If the input array [a] is already real (integer or float), returns a zero-copy
-/// view of the array [a].
+/// view of the array [a] (when no [out] or [where] mask is provided).
 ///
 /// **Preconditions:**
 /// - The input array [a] must not be disposed.
 /// - If provided, the output recycler [out] must match the expected target shape and float `DType.`
 ///
-/// **Throws:**
-/// - [StateError] if the array has been disposed.
-/// - [ArgumentError] if [out] is provided but has a shape or DType mismatch.
+/// It is an error if the array has been disposed (throws [StateError]), or if
+/// [out] is provided with incompatible shape or dtype (throws [ArgumentError]).
 ///
 /// **Example:**
 /// ```dart
 /// final a = NDArray<Complex>.create([2], `DType.complex128);`
-/// a.data[0] = Complex(3.0, 4.0);
-/// a.data[1] = Complex(-1.0, 0.0);
+/// a.setCell([0], Complex(3.0, 4.0));
+/// a.setCell([1], Complex(-1.0, 0.0));
 /// final r = real(a); // [3.0, -1.0] (`DType.float64)`
 /// ```
-NDArray<R> real<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
-    throw StateError('Cannot execute real() on a disposed array.');
+NDArray<R> real<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
+    throw StateError("Cannot execute real() on a disposed array.");
   }
 
   final DType<dynamic> targetDType;
@@ -44,37 +49,65 @@ NDArray<R> real<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
-        'Provided out buffer has incompatible shape or dtype for real.',
+        "Provided out buffer has incompatible shape or dtype for real.",
       );
     }
     result = out;
   } else {
-    if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
+    if (where == null &&
+        a.dtype != DType.complex128 &&
+        a.dtype != DType.complex64) {
       return NDArray.view(a, shape: a.shape, strides: a.strides)
           as NDArray<R>; // Zero-copy view for already real arrays!
     }
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
-  switch (a.dtype) {
-    case DType.complex128:
-    case DType.complex64:
-      unaryOp<Complex, R>(
-        result.data,
-        a.data as List<Complex>,
-        a.shape,
-        a.strides,
-        result.strides,
-        0,
-        a.offsetElements,
-        result.offsetElements,
-        (x) => x.real as R,
-      );
-      return result;
-    default:
-      // This path is taken if out != null and a is not complex.
-      a.copy(out: result as dynamic);
-      return result;
+  final maskHolder = prepareMask(where, result.shape);
+  try {
+    switch (a.dtype) {
+      case DType.complex128:
+      case DType.complex64:
+        final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+        final coord = List<int>.filled(a.shape.length, 0);
+        final maskPtr = maskHolder.pointer;
+
+        for (var i = 0; i < size; i++) {
+          if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
+            final c = a.getCell(coord) as Complex;
+            result.setCell(coord, c.real as R);
+          }
+          for (var d = a.shape.length - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < a.shape[d]) break;
+            coord[d] = 0;
+          }
+        }
+        return result;
+      default:
+        // This path is taken if out != null or where != null and a is not complex.
+        if (where == null) {
+          a.copy(out: result as dynamic);
+        } else {
+          final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+          final coord = List<int>.filled(a.shape.length, 0);
+          final maskPtr = maskHolder.pointer;
+
+          for (var i = 0; i < size; i++) {
+            if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
+              result.setCell(coord, a.getCell(coord) as R);
+            }
+            for (var d = a.shape.length - 1; d >= 0; d--) {
+              coord[d]++;
+              if (coord[d] < a.shape[d]) break;
+              coord[d] = 0;
+            }
+          }
+        }
+        return result;
+    }
+  } finally {
+    maskHolder.dispose();
   }
 }
 
@@ -87,20 +120,25 @@ NDArray<R> real<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// - The input array [a] must not be disposed.
 /// - If provided, the output recycler [out] must match the expected target shape and float `DType.`
 ///
-/// **Throws:**
-/// - [StateError] if the array has been disposed.
-/// - [ArgumentError] if [out] is provided but has a shape or DType mismatch.
+/// It is an error if the array has been disposed (throws [StateError]), or if
+/// [out] is provided with incompatible shape or dtype (throws [ArgumentError]).
 ///
 /// **Example:**
 /// ```dart
 /// final a = NDArray<Complex>.create([2], `DType.complex128);`
-/// a.data[0] = Complex(3.0, 4.0);
-/// a.data[1] = Complex(-1.0, 0.0);
+/// a.setCell([0], Complex(3.0, 4.0));
+/// a.setCell([1], Complex(-1.0, 0.0));
 /// final im = imag(a); // [4.0, 0.0] (`DType.float64)`
 /// ```
-NDArray<R> imag<T, R>(NDArray<T> a, {NDArray<R>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
-    throw StateError('Cannot execute imag() on a disposed array.');
+NDArray<R> imag<T, R>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<R>? out,
+}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
+    throw StateError("Cannot execute imag() on a disposed array.");
   }
 
   final DType<dynamic> targetDType = a.dtype == DType.complex64
@@ -111,7 +149,7 @@ NDArray<R> imag<T, R>(NDArray<T> a, {NDArray<R>? out}) {
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
-        'Provided out buffer has incompatible shape or dtype for imag.',
+        "Provided out buffer has incompatible shape or dtype for imag.",
       );
     }
     result = out;
@@ -119,23 +157,51 @@ NDArray<R> imag<T, R>(NDArray<T> a, {NDArray<R>? out}) {
     result = NDArray.create(a.shape, targetDType) as NDArray<R>;
   }
 
-  if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
-    result.fill(0.0 as R);
-    return result;
-  }
-  unaryOp<Complex, R>(
-    result.data,
-    a.data as List<Complex>,
-    a.shape,
-    a.strides,
-    result.strides,
-    0,
-    a.offsetElements,
-    result.offsetElements,
-    (x) => x.imag as R,
-  );
+  final maskHolder = prepareMask(where, result.shape);
+  try {
+    if (a.dtype != DType.complex128 && a.dtype != DType.complex64) {
+      if (where == null) {
+        result.fill(0.0 as R);
+      } else {
+        final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+        final coord = List<int>.filled(a.shape.length, 0);
+        final maskPtr = maskHolder.pointer;
+        final zeroVal = 0.0 as R;
 
-  return result;
+        for (var i = 0; i < size; i++) {
+          if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
+            result.setCell(coord, zeroVal);
+          }
+          for (var d = a.shape.length - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < a.shape[d]) break;
+            coord[d] = 0;
+          }
+        }
+      }
+      return result;
+    }
+
+    final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+    final coord = List<int>.filled(a.shape.length, 0);
+    final maskPtr = maskHolder.pointer;
+
+    for (var i = 0; i < size; i++) {
+      if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
+        final c = a.getCell(coord) as Complex;
+        result.setCell(coord, c.imag as R);
+      }
+      for (var d = a.shape.length - 1; d >= 0; d--) {
+        coord[d]++;
+        if (coord[d] < a.shape[d]) break;
+        coord[d] = 0;
+      }
+    }
+
+    return result;
+  } finally {
+    maskHolder.dispose();
+  }
 }
 
 /// Computes the element-wise complex conjugate of the array elements.
@@ -143,101 +209,123 @@ NDArray<R> imag<T, R>(NDArray<T> a, {NDArray<R>? out}) {
 /// **Preconditions:**
 /// - The array must not be disposed.
 ///
-/// **Throws:**
-/// - [StateError] if the array has been disposed.
+/// It is an error if the array has been disposed (throws [StateError]), or if
+/// [out] is provided with incompatible shape or dtype (throws [ArgumentError]).
 ///
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([Complex(1.0, 2.0)], [1], DType.complex128);
 /// final c = conj(a); // [Complex(1.0, -2.0)]
 /// ```
-NDArray<T> conj<T>(NDArray<T> a, {NDArray<T>? out}) {
-  if (a.isDisposed || (out != null && out.isDisposed)) {
-    throw StateError('Cannot execute conj() on a disposed array.');
+NDArray<T> conj<T>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<T>? out}) {
+  if (a.isDisposed ||
+      (out != null && out.isDisposed) ||
+      (where != null && where.isDisposed)) {
+    throw StateError("Cannot execute conj() on a disposed array.");
   }
   final targetDType = a.dtype;
   final result = out ?? NDArray<T>.create(a.shape, targetDType);
   if (out != null) {
     if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
-        'Provided out buffer has incompatible shape or dtype for conj.',
+        "Provided out buffer has incompatible shape or dtype for conj.",
       );
     }
   }
 
-  switch (targetDType) {
-    case DType.complex128:
-      if (a.isContiguous && result.isContiguous) {
-        v_conj_complex128(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          ffi.nullptr,
-        );
-        return result;
-      } else {
-        final rank = a.shape.length;
-        final marker = ScratchArena.marker;
-        final cShape = ScratchArena.copyInts(a.shape);
-        final cStridesA = ScratchArena.copyInts(a.strides);
-        final cStridesRes = ScratchArena.copyInts(result.strides);
-        try {
-          s_conj_complex128(
+  final maskHolder = prepareMask(where, result.shape);
+  try {
+    switch (targetDType) {
+      case DType.complex128:
+        if (a.isContiguous && result.isContiguous) {
+          v_conj_complex128(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            ffi.nullptr,
+            a.size,
+            maskHolder.pointer,
           );
           return result;
-        } finally {
-          ScratchArena.reset(marker);
+        } else {
+          final rank = a.shape.length;
+          final marker = ScratchArena.marker;
+          final cShape = ScratchArena.copyInts(a.shape);
+          final cStridesA = ScratchArena.copyInts(a.strides);
+          final cStridesRes = ScratchArena.copyInts(result.strides);
+          try {
+            s_conj_complex128(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          } finally {
+            ScratchArena.reset(marker);
+          }
         }
-      }
-    case DType.complex64:
-      if (a.isContiguous && result.isContiguous) {
-        v_conj_complex64(
-          a.pointer.cast(),
-          result.pointer.cast(),
-          a.size,
-          ffi.nullptr,
-        );
-        return result;
-      } else {
-        final rank = a.shape.length;
-        final marker = ScratchArena.marker;
-        final cShape = ScratchArena.copyInts(a.shape);
-        final cStridesA = ScratchArena.copyInts(a.strides);
-        final cStridesRes = ScratchArena.copyInts(result.strides);
-        try {
-          s_conj_complex64(
+      case DType.complex64:
+        if (a.isContiguous && result.isContiguous) {
+          v_conj_complex64(
             a.pointer.cast(),
-            cStridesA,
             result.pointer.cast(),
-            cStridesRes,
-            cShape,
-            rank,
-            ffi.nullptr,
+            a.size,
+            maskHolder.pointer,
           );
           return result;
-        } finally {
-          ScratchArena.reset(marker);
+        } else {
+          final rank = a.shape.length;
+          final marker = ScratchArena.marker;
+          final cShape = ScratchArena.copyInts(a.shape);
+          final cStridesA = ScratchArena.copyInts(a.strides);
+          final cStridesRes = ScratchArena.copyInts(result.strides);
+          try {
+            s_conj_complex64(
+              a.pointer.cast(),
+              cStridesA,
+              result.pointer.cast(),
+              cStridesRes,
+              cShape,
+              rank,
+              maskHolder.pointer,
+            );
+            return result;
+          } finally {
+            ScratchArena.reset(marker);
+          }
         }
-      }
-    case DType.float64:
-    case DType.float32:
-    case DType.int64:
-    case DType.int32:
-    case DType.uint8:
-    case DType.int16:
-    case DType.boolean:
-      // Real/boolean numbers are their own complex conjugates!
-      a.copy(out: result);
-      return result;
+      default:
+        // Real/boolean numbers are their own complex conjugates!
+        if (where == null) {
+          a.copy(out: result);
+        } else {
+          final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
+          final coord = List<int>.filled(a.shape.length, 0);
+          final maskPtr = maskHolder.pointer;
+
+          for (var i = 0; i < size; i++) {
+            if (maskPtr == ffi.nullptr || maskPtr[i] != 0) {
+              result.setCell(coord, a.getCell(coord));
+            }
+            for (var d = a.shape.length - 1; d >= 0; d--) {
+              coord[d]++;
+              if (coord[d] < a.shape[d]) break;
+              coord[d] = 0;
+            }
+          }
+        }
+        return result;
+    }
+  } finally {
+    maskHolder.dispose();
   }
 }
 
 /// Alias for [conj].
-NDArray<T> conjugate<T>(NDArray<T> a, {NDArray<T>? out}) => conj(a, out: out);
+NDArray<T> conjugate<T>(
+  NDArray<T> a, {
+  NDArray<dynamic>? where,
+  NDArray<T>? out,
+}) => conj(a, where: where, out: out);

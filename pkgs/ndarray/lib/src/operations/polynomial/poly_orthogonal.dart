@@ -333,7 +333,7 @@ NDArray<Complex> _orthoRoots<T>(
         cMat = NDArray<Complex>.zeros([n, n], c.dtype as DType<Complex>);
         break;
       default:
-        cMat = NDArray<double>.zeros([n, n], DType.float64);
+        cMat = NDArray<Float64>.zeros([n, n], DType.float64);
         break;
     }
     final targetMatDType = cMat.dtype;

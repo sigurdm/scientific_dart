@@ -1,6 +1,7 @@
 // ignore_for_file: non_constant_identifier_names
 import 'dart:math' as math;
 import '../ndarray.dart';
+import '../nditer.dart';
 import '../ndarray_bindings.dart';
 import '../scratch_arena.dart';
 
@@ -569,8 +570,11 @@ NDArray<T> flipud<T extends Object>(NDArray<T> a) {
 /// Stacks arrays in sequence vertically (row wise).
 ///
 /// It is an error if [arrays] is empty, any array is disposed, or array shapes/dtypes mismatch.
-NDArray<T> vstack<T extends Object>(List<NDArray<T>> arrays) {
-  return concatenate(arrays, axis: 0);
+NDArray<T> vstack<T extends Object>(
+  List<NDArray<T>> arrays, {
+  NDArray<T>? out,
+}) {
+  return concatenate(arrays, axis: 0, out: out);
 }
 
 /// Stacks arrays in sequence horizontally (column wise).
@@ -579,14 +583,17 @@ NDArray<T> vstack<T extends Object>(List<NDArray<T>> arrays) {
 /// except for 1-D arrays where it concatenates along the first axis (axis 0).
 ///
 /// It is an error if [arrays] is empty, any array is disposed, or array shapes/dtypes mismatch.
-NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
+NDArray<T> hstack<T extends Object>(
+  List<NDArray<T>> arrays, {
+  NDArray<T>? out,
+}) {
   if (arrays.isEmpty) {
     throw ArgumentError('arrays cannot be empty');
   }
   if (arrays.first.rank == 1) {
-    return concatenate(arrays, axis: 0);
+    return concatenate(arrays, axis: 0, out: out);
   }
-  return concatenate(arrays, axis: 1);
+  return concatenate(arrays, axis: 1, out: out);
 }
 
 /// Returns a deep, C-contiguous copy of the given array.
@@ -605,8 +612,8 @@ NDArray<T> hstack<T extends Object>(List<NDArray<T>> arrays) {
 /// ```dart
 /// final a = NDArray.fromList([1, 2], [2], DType.int32);
 /// final b = copy(a);
-/// b[0] = 99;
-/// print(a[0]); // 1 (decoupled memory!)
+/// b.setCell([0], 99);
+/// print(a.getCell([0])); // 1 (decoupled memory!)
 /// ```
 NDArray<T> copy<T extends Object>(NDArray<T> a) {
   if (a.isDisposed) {
@@ -641,31 +648,35 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
       startRow = 0;
       startCol = k;
       if (startCol >= n) {
-        return NDArray<T>.create([0], v.dtype);
+        return out ?? NDArray<T>.create([0], v.dtype);
       }
       len = math.min(m, n - k);
     } else {
       startRow = -k;
       startCol = 0;
       if (startRow >= m) {
-        return NDArray<T>.create([0], v.dtype);
+        return out ?? NDArray<T>.create([0], v.dtype);
       }
       len = math.min(m + k, n);
     }
 
     if (len <= 0) {
-      return NDArray<T>.create([0], v.dtype);
+      return out ?? NDArray<T>.create([0], v.dtype);
     }
 
     final offsetElements = startRow * v.strides[0] + startCol * v.strides[1];
     final diagStride = v.strides[0] + v.strides[1];
 
-    return NDArray<T>.view(
+    final view = NDArray<T>.view(
       v,
       shape: [len],
       strides: [diagStride],
       offsetElements: offsetElements,
     );
+    if (out != null) {
+      return view.copy(out: out);
+    }
+    return view;
   } else if (v.shape.length == 1) {
     final n = v.shape[0];
     final size = n + k.abs();
@@ -766,30 +777,17 @@ NDArray<T> tril<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
   }
 
   final zeroVal = castValue(0, a.dtype) as T;
-  final coords = List<int>.filled(rank, 0);
-
-  void walk(int dim) {
-    if (dim == rank - 2) {
-      for (var r = 0; r < rows; r++) {
-        coords[rank - 2] = r;
-        for (var c = 0; c < cols; c++) {
-          coords[rank - 1] = c;
-          if (c <= r + k) {
-            result.setCell(coords, a.getCell(coords));
-          } else {
-            result.setCell(coords, zeroVal);
-          }
-        }
-      }
-      return;
-    }
-    for (var i = 0; i < a.shape[dim]; i++) {
-      coords[dim] = i;
-      walk(dim + 1);
+  final iter = NDIter(result);
+  while (iter.moveNext()) {
+    final coords = iter.coords;
+    final r = coords[rank - 2];
+    final c = coords[rank - 1];
+    if (c <= r + k) {
+      result.setCell(coords, a.getCell(coords));
+    } else {
+      result.setCell(coords, zeroVal);
     }
   }
-
-  walk(0);
   return result;
 }
 
@@ -857,30 +855,17 @@ NDArray<T> triu<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
   }
 
   final zeroVal = castValue(0, a.dtype) as T;
-  final coords = List<int>.filled(rank, 0);
-
-  void walk(int dim) {
-    if (dim == rank - 2) {
-      for (var r = 0; r < rows; r++) {
-        coords[rank - 2] = r;
-        for (var c = 0; c < cols; c++) {
-          coords[rank - 1] = c;
-          if (c >= r + k) {
-            result.setCell(coords, a.getCell(coords));
-          } else {
-            result.setCell(coords, zeroVal);
-          }
-        }
-      }
-      return;
-    }
-    for (var i = 0; i < a.shape[dim]; i++) {
-      coords[dim] = i;
-      walk(dim + 1);
+  final iter = NDIter(result);
+  while (iter.moveNext()) {
+    final coords = iter.coords;
+    final r = coords[rank - 2];
+    final c = coords[rank - 1];
+    if (c >= r + k) {
+      result.setCell(coords, a.getCell(coords));
+    } else {
+      result.setCell(coords, zeroVal);
     }
   }
-
-  walk(0);
   return result;
 }
 
@@ -925,7 +910,9 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
     emptyShape[targetAxis] = 0;
     if (out != null) {
       if (!listEquals(out.shape, emptyShape) || out.dtype != a.dtype) {
-        throw ArgumentError('Incompatible out buffer shape or dtype for diff.');
+        throw ArgumentError(
+          'Provided out buffer has incompatible shape or dtype.',
+        );
       }
       return out;
     }
@@ -1022,8 +1009,8 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
       case DType.uint8:
       case DType.int16:
       case DType.boolean:
-        final doubleA = castNDArray(a, DType.float64);
-        final doubleRes = NDArray<double>.create(targetShape, DType.float64);
+        final doubleA = promoteToDouble(a);
+        final doubleRes = NDArray<Float64>.create(targetShape, DType.float64);
         final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
         final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
 
@@ -1037,9 +1024,9 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
           targetAxis,
         );
 
-        final castedRes = castNDArray(doubleRes, a.dtype);
-        castedRes.copy(out: result);
-        castedRes.dispose();
+        final casted = castNDArray(doubleRes, a.dtype);
+        casted.copy(out: result);
+        casted.dispose();
         doubleA.dispose();
         doubleRes.dispose();
     }

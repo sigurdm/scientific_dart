@@ -387,20 +387,24 @@ NDArray<int> digitize(
 
   return NDArray.scope(() {
     // Check monotonicity
-    final binsList = bins.toList();
     bool increasing = true;
     bool decreasing = true;
-    for (var i = 1; i < binsList.length; i++) {
-      final d = binsList[i].toDouble() - binsList[i - 1].toDouble();
-      if (d < 0) increasing = false;
-      if (d > 0) decreasing = false;
+    final nBins = bins.size;
+    if (nBins > 1) {
+      var prev = bins.getCell([0]).toDouble();
+      for (var i = 1; i < nBins; i++) {
+        final current = bins.getCell([i]).toDouble();
+        final d = current - prev;
+        if (d < 0) increasing = false;
+        if (d > 0) decreasing = false;
+        prev = current;
+      }
     }
     if (!increasing && !decreasing) {
       throw ArgumentError('bins must be monotonic.');
     }
 
-    final commonDType =
-        resolveDType(bins.dtype, x.dtype) as DType<Object>;
+    final commonDType = resolveDType(bins.dtype, x.dtype) as DType<Object>;
     final commonBins = bins.dtype == commonDType
         ? bins as NDArray<Object>
         : castNDArray<Object>(bins, commonDType);
@@ -460,12 +464,16 @@ NDArray<int> digitize(
   (double, double)? range,
   bool density = false,
   NDArray<num>? weights,
+  NDArray<num>? out,
 }) {
   if (x.isDisposed) {
     throw StateError('Cannot compute histogram of a disposed array.');
   }
   if (weights != null && weights.isDisposed) {
     throw StateError('Weights array is disposed.');
+  }
+  if (out != null && out.isDisposed) {
+    throw StateError('Output array is disposed.');
   }
 
   return NDArray.scope(() {
@@ -508,7 +516,6 @@ NDArray<int> digitize(
         dtype: DType.float64,
       );
     } else if (bins is NDArray) {
-
       resolvedBinEdges = bins.dtype == DType.float64
           ? bins as NDArray<Float64>
           : castNDArray<Float64>(bins, DType.float64);
@@ -519,6 +526,14 @@ NDArray<int> digitize(
     final M = resolvedBinEdges.size;
     if (M < 2) {
       throw ArgumentError('bins must have at least 2 edges (1 bin).');
+    }
+
+    if (out != null) {
+      if (!listEquals(out.shape, [M - 1])) {
+        throw ArgumentError(
+          'Output array must have shape [${M - 1}], got ${out.shape}.',
+        );
+      }
     }
 
     // Vectorized boundary handling and bincount
@@ -561,6 +576,11 @@ NDArray<int> digitize(
       );
       final divisor = multiply<Float64, Float64, Float64>(widths, totalSumArr);
       finalHist = divide<num, Float64, Float64>(hist, divisor);
+    }
+
+    if (out != null) {
+      finalHist.copy(out: out);
+      return (hist: out, binEdges: resolvedBinEdges.detachToParentScope());
     }
 
     return (

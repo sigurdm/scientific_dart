@@ -9419,6 +9419,192 @@ external void v_fill_int64(ffi.Pointer<ffi.Int64> res, int value, int size);
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int32>, ffi.Int32, ffi.Int)>()
 external void v_fill_int32(ffi.Pointer<ffi.Int32> res, int value, int size);
 
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Int16>, ffi.Int16, ffi.Int)>()
+external void v_fill_int16(ffi.Pointer<ffi.Int16> res, int value, int size);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Uint8>, ffi.Uint8, ffi.Int)>()
+external void v_fill_uint8(ffi.Pointer<ffi.Uint8> res, int value, int size);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<cpx_t>, ffi.Double, ffi.Double, ffi.Int)
+>()
+external void v_fill_complex128(
+  ffi.Pointer<cpx_t> res,
+  double valR,
+  double valI,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<cpx_f_t>, ffi.Float, ffi.Float, ffi.Int)
+>()
+external void v_fill_complex64(
+  ffi.Pointer<cpx_f_t> res,
+  double valR,
+  double valI,
+  int size,
+);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Uint8>, ffi.Uint8, ffi.Int)>()
+external void v_fill_boolean(ffi.Pointer<ffi.Uint8> res, int value, int size);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Double,
+  )
+>()
+external void s_fill_double(
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  double value,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Float,
+  )
+>()
+external void s_fill_float(
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  double value,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int64,
+  )
+>()
+external void s_fill_int64(
+  ffi.Pointer<ffi.Int64> res,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int value,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int32,
+  )
+>()
+external void s_fill_int32(
+  ffi.Pointer<ffi.Int32> res,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int value,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int16,
+  )
+>()
+external void s_fill_int16(
+  ffi.Pointer<ffi.Int16> res,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int value,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Uint8,
+  )
+>()
+external void s_fill_uint8(
+  ffi.Pointer<ffi.Uint8> res,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int value,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Double,
+    ffi.Double,
+  )
+>()
+external void s_fill_complex128(
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  double valR,
+  double valI,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Float,
+    ffi.Float,
+  )
+>()
+external void s_fill_complex64(
+  ffi.Pointer<cpx_f_t> res,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  double valR,
+  double valI,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Uint8,
+  )
+>()
+external void s_fill_boolean(
+  ffi.Pointer<ffi.Uint8> res,
+  ffi.Pointer<ffi.Int> strides,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int value,
+);
+
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ffi.Double>, ffi.Double, ffi.Double, ffi.Int)
 >()

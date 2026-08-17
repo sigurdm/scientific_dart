@@ -265,6 +265,18 @@ void main() {
       });
     });
 
+    test('correlate out.dtype validation throws ArgumentError on mismatch', () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
+        final v = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+        final outBad = NDArray.zeros([2], DType.float32);
+        expect(
+          () => correlate(a, v, out: outBad as dynamic),
+          throwsArgumentError,
+        );
+      });
+    });
+
     test('1D convolve valid, full, same (Float64)', () {
       NDArray.scope(() {
         final a = NDArray<Float64>.fromList(

@@ -1,5 +1,4 @@
 // ignore_for_file: non_constant_identifier_names
-import 'dart:typed_data';
 import 'dart:math' as math;
 import 'dart:math' show Random;
 import '../ndarray.dart';
@@ -51,7 +50,7 @@ NDArray<T> uniform<T extends num>(
     }
   }
   final arr = out ?? NDArray<T>.create(shape, resolvedDType);
-  final len = arr.data.length;
+  final len = arr.size;
   final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
 
   switch (resolvedDType) {
@@ -130,7 +129,7 @@ NDArray<T> randint<T extends num>(
     }
   }
   final arr = out ?? NDArray<T>.create(shape, resolvedDType);
-  final len = arr.data.length;
+  final len = arr.size;
   final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
 
   switch (resolvedDType) {
@@ -219,7 +218,7 @@ NDArray<T> normal<T extends num>(
     }
   }
   final arr = out ?? NDArray<T>.create(shape, resolvedDType);
-  final len = arr.data.length;
+  final len = arr.size;
   final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
 
   switch (resolvedDType) {
@@ -301,7 +300,7 @@ NDArray<T> exponential<T extends num>(
     }
   }
   final arr = out ?? NDArray<T>.create(shape, resolvedDType);
-  final len = arr.data.length;
+  final len = arr.size;
   final seedVal = secure ? 0 : (seed ?? Random().nextInt(4294967296));
 
   switch (resolvedDType) {
@@ -311,11 +310,11 @@ NDArray<T> exponential<T extends num>(
       } else {
         v_uniform_double(arr.pointer.cast<ffi.Double>(), len, seedVal);
       }
-      final data = arr.data as Float64List;
+      final ptr = arr.pointer.cast<ffi.Double>();
       for (var i = 0; i < len; i++) {
-        var u = data[i];
+        var u = ptr[i];
         if (u >= 1.0) u = 0.9999999999999999;
-        data[i] = -targetScale * math.log(1.0 - u);
+        ptr[i] = -targetScale * math.log(1.0 - u);
       }
     case DType.float32:
       if (secure) {
@@ -323,11 +322,11 @@ NDArray<T> exponential<T extends num>(
       } else {
         v_uniform_float(arr.pointer.cast<ffi.Float>(), len, seedVal);
       }
-      final data = arr.data as Float32List;
+      final ptr = arr.pointer.cast<ffi.Float>();
       for (var i = 0; i < len; i++) {
-        var u = data[i];
+        var u = ptr[i];
         if (u >= 1.0) u = 0.999999;
-        data[i] = -targetScale * math.log(1.0 - u);
+        ptr[i] = -targetScale * math.log(1.0 - u);
       }
     default:
       throw ArgumentError(
@@ -390,7 +389,7 @@ NDArray<T> poisson<T extends num>(
     }
   }
   final arr = out ?? NDArray<T>.create(shape, resolvedDType);
-  final len = arr.data.length;
+  final len = arr.size;
   final seedVal = secure
       ? Random.secure().nextInt(4294967296)
       : (seed ?? Random().nextInt(4294967296));
@@ -806,6 +805,7 @@ NDArray<T> choice<T>(
   NDArray<double>? p,
   int? seed,
   bool secure = false,
+  NDArray<T>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot execute choice on a disposed array.');
@@ -835,10 +835,18 @@ NDArray<T> choice<T>(
     );
   }
 
+  if (out != null) {
+    if (!listEquals(out.shape, sampleShape) || out.dtype != a.dtype) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
+
   final rand = secure
       ? Random.secure()
       : Random(seed ?? Random().nextInt(4294967296));
-  final result1D = NDArray<T>.create([sampleCount], a.dtype);
+  final result1D = out != null
+      ? out.reshape([sampleCount])
+      : NDArray<T>.create([sampleCount], a.dtype);
 
   // Pre-calculate CDF if probability array p is specified
   List<double>? cdf;
@@ -847,8 +855,7 @@ NDArray<T> choice<T>(
     cdf = List<double>.filled(a.size, 0.0);
     var sumP = 0.0;
     for (var i = 0; i < a.size; i++) {
-      final prob =
-          nonNullP.data[nonNullP.offsetElements + i * nonNullP.strides[0]];
+      final prob = nonNullP.getCell([i]);
       if (prob < 0.0) {
         throw ArgumentError(
           'pvals must contain non-negative probabilities (was $prob at index $i)',
@@ -863,10 +870,6 @@ NDArray<T> choice<T>(
       }
     }
   }
-
-  final aOffset = a.offsetElements;
-  final aStride = a.strides[0];
-  final data = a.data;
 
   if (replace) {
     // Draw with replacement
@@ -886,7 +889,7 @@ NDArray<T> choice<T>(
         // Uniform draw
         index = rand.nextInt(a.size);
       }
-      result1D.data[i] = data[aOffset + index * aStride];
+      result1D.setCellFlat(i, a.getCell([index]));
     }
   } else {
     // Draw without replacement
@@ -900,13 +903,13 @@ NDArray<T> choice<T>(
       }
       for (var i = 0; i < sampleCount; i++) {
         final idx = indices[a.size - 1 - i];
-        result1D.data[i] = data[aOffset + idx * aStride];
+        result1D.setCellFlat(i, a.getCell([idx]));
       }
     } else {
       final nonNullP = p!;
       final tempProbs = List<double>.generate(
         a.size,
-        (i) => nonNullP.data[nonNullP.offsetElements + i * nonNullP.strides[0]],
+        (i) => nonNullP.getCell([i]),
       );
       final drawn = List<bool>.filled(a.size, false);
 
@@ -930,11 +933,12 @@ NDArray<T> choice<T>(
         }
 
         drawn[index] = true;
-        result1D.data[draw] = data[aOffset + index * aStride];
+        result1D.setCellFlat(draw, a.getCell([index]));
       }
     }
   }
 
+  if (out != null) return out;
   return sampleShape.isEmpty
       ? result1D.reshape([])
       : (sampleShape.length == 1 && sampleShape[0] == sampleCount

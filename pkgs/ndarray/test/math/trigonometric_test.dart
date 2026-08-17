@@ -964,4 +964,117 @@ void main() {
       });
     });
   });
+
+  group('Cycle 8 Stream 2 Remediation Tests', () {
+    test('boolean array promotion in transcendental functions', () {
+      NDArray.scope(() {
+        final b = NDArray.fromList([true, false], [2], DType.boolean);
+        final s = sin(b);
+        expect(s.dtype, DType.float64);
+        expect(s.getCell([0]), closeTo(math.sin(1.0), 1e-10));
+        expect(s.getCell([1]), closeTo(math.sin(0.0), 1e-10));
+
+        final c = cos(b);
+        expect(c.getCell([0]), closeTo(math.cos(1.0), 1e-10));
+        expect(c.getCell([1]), closeTo(math.cos(0.0), 1e-10));
+
+        final at2 = atan2(b, b);
+        expect(at2.getCell([0]), closeTo(math.atan2(1.0, 1.0), 1e-10));
+        expect(at2.getCell([1]), closeTo(math.atan2(0.0, 0.0), 1e-10));
+      });
+    });
+
+    test('deg2rad and rad2deg with where mask', () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([180.0, 90.0, 45.0], [3], DType.float64);
+        final mask = NDArray.fromList([true, false, true], [3], DType.boolean);
+        final out = NDArray.fromList([-1.0, -1.0, -1.0], [3], DType.float64);
+
+        deg2rad(a, where: mask, out: out);
+        expect(out.getCell([0]), closeTo(math.pi, 1e-10));
+        expect(out.getCell([1]), closeTo(-1.0, 1e-10));
+        expect(out.getCell([2]), closeTo(math.pi / 4.0, 1e-10));
+
+        final rads = NDArray.fromList(
+          [math.pi, math.pi / 2.0, math.pi / 4.0],
+          [3],
+          DType.float64,
+        );
+        final outDeg = NDArray.fromList([-1.0, -1.0, -1.0], [3], DType.float64);
+        rad2deg(rads, where: mask, out: outDeg);
+        expect(outDeg.getCell([0]), closeTo(180.0, 1e-10));
+        expect(outDeg.getCell([1]), closeTo(-1.0, 1e-10));
+        expect(outDeg.getCell([2]), closeTo(45.0, 1e-10));
+      });
+    });
+
+    test('hypot with real operands and where mask', () {
+      NDArray.scope(() {
+        final a = NDArray.fromList([3.0, 5.0], [2], DType.float64);
+        final b = NDArray.fromList([4.0, 12.0], [2], DType.float64);
+        final mask = NDArray.fromList([true, false], [2], DType.boolean);
+        final out = NDArray.fromList([-99.0, -99.0], [2], DType.float64);
+
+        hypot(a, b, where: mask, out: out);
+        expect(out.getCell([0]), closeTo(5.0, 1e-10));
+        expect(out.getCell([1]), closeTo(-99.0, 1e-10));
+      });
+    });
+
+    test('real, imag, and conj with where mask', () {
+      NDArray.scope(() {
+        final c = NDArray.fromList(
+          [Complex(3.0, 4.0), Complex(-1.0, 2.0)],
+          [2],
+          DType.complex128,
+        );
+        final mask = NDArray.fromList([true, false], [2], DType.boolean);
+
+        final outReal = NDArray.fromList([-99.0, -99.0], [2], DType.float64);
+        real(c, where: mask, out: outReal);
+        expect(outReal.getCell([0]), closeTo(3.0, 1e-10));
+        expect(outReal.getCell([1]), closeTo(-99.0, 1e-10));
+
+        final outImag = NDArray.fromList([-99.0, -99.0], [2], DType.float64);
+        imag(c, where: mask, out: outImag);
+        expect(outImag.getCell([0]), closeTo(4.0, 1e-10));
+        expect(outImag.getCell([1]), closeTo(-99.0, 1e-10));
+
+        final outConj = NDArray.fromList(
+          [Complex(0, 0), Complex(0, 0)],
+          [2],
+          DType.complex128,
+        );
+        conj(c, where: mask, out: outConj);
+        expect(outConj.getCell([0]), Complex(3.0, -4.0));
+        expect(outConj.getCell([1]), Complex(0.0, 0.0));
+      });
+    });
+
+    test('nan_to_num and ndenumerate verification without data property', () {
+      NDArray.scope(() {
+        final a = NDArray.fromList(
+          [1.0, double.nan, double.infinity, double.negativeInfinity],
+          [2, 2],
+          DType.float64,
+        );
+        final cleaned = nan_to_num(a, nan: 42.0, posinf: 100.0, neginf: -100.0);
+        expect(cleaned.getCell([0, 0]), 1.0);
+        expect(cleaned.getCell([0, 1]), 42.0);
+        expect(cleaned.getCell([1, 0]), 100.0);
+        expect(cleaned.getCell([1, 1]), -100.0);
+
+        final coords = <List<int>>[];
+        for (final (coord, _) in ndenumerate(a)) {
+          coords.add(coord);
+        }
+        expect(coords, [
+          [0, 0],
+          [0, 1],
+          [1, 0],
+          [1, 1],
+        ]);
+      });
+    });
+  });
 }

@@ -327,7 +327,7 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
         aMat = NDArray<Complex>.zeros([deg, deg], p.dtype as DType<Complex>);
         break;
       default:
-        aMat = NDArray<double>.zeros([deg, deg], DType.float64);
+        aMat = NDArray<Float64>.zeros([deg, deg], DType.float64);
         break;
     }
 

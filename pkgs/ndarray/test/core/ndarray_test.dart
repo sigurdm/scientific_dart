@@ -1662,5 +1662,23 @@ void main() {
         expect(bT.hashCode == bContig.hashCode, true);
       }),
     );
+
+    test(
+      "Contiguity checking ignores stride mismatches on unit dimensions (shape[i] <= 1)",
+      () {
+        NDArray.scope(() {
+          // Create an array with a unit dimension and an arbitrary stride on that dimension
+          final arr = NDArray.fromList([1, 2, 3], [1, 3], DType.int64);
+          // By slicing or creating a view where dimension 0 has size 1 with non-standard stride
+          // We can test _checkContiguous via broadcastTo or reshape or creating view
+          final view = NDArray.view(
+            arr,
+            shape: [1, 1, 3],
+            strides: [999, 3, 1],
+          );
+          expect(view.isContiguous, true);
+        });
+      },
+    );
   });
 }

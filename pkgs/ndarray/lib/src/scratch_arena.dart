@@ -328,12 +328,17 @@ final class ScratchArena {
   /// - [ndim] must be non-negative.
   /// - [segments] must be non-negative.
   ///
+  /// It is an error if [ndim] or [segments] is negative.
+  ///
   /// **Performance considerations:**
   /// - Time complexity is $O(1)$ amortized allocation on the bump stack.
   ///
   /// **Example:**
   /// {@example /example/scratch_arena_example.dart}
   static ffi.Pointer<ffi.Int> getStridedBuffer(int ndim, [int segments = 4]) {
+    if (ndim < 0 || segments < 0) {
+      throw ArgumentError('ndim and segments must be non-negative.');
+    }
     final count = ndim * segments;
     final requiredSize = count > 0 ? count : 1;
     return allocate<ffi.Int>(requiredSize * ffi.sizeOf<ffi.Int>());

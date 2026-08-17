@@ -161,5 +161,20 @@ void main() {
         expect(aC64.dtype, DType.complex64);
       });
     });
+
+    test("0-D view with offsetElements > 0", () {
+      NDArray.scope(() {
+        final arr = NDArray.fromList([10, 20, 30, 40], [4], DType.int64);
+        final view0D = NDArray.view(
+          arr,
+          shape: <int>[],
+          strides: <int>[],
+          offsetElements: 2,
+        );
+        expect(view0D.rank, 0);
+        expect(view0D.scalar, 30);
+        expect(view0D.scalar, view0D.getCell([]));
+      });
+    });
   });
 }

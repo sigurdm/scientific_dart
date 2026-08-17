@@ -89,6 +89,16 @@ void main() {
       });
     });
 
+    test('works with where mask on contiguous and strided arrays', () {
+      final x = NDArray.fromList([0.0, 1.0, 2.0], [3], DType.float64);
+      final mask = NDArray.fromList([true, false, true], [3], DType.boolean);
+      final out = NDArray.fromList([10.0, 20.0, 30.0], [3], DType.float64);
+      final y = i0(x, where: mask, out: out);
+      expect(y.getCell([0]), closeTo(1.0, 1e-7));
+      expect(y.getCell([1]), equals(20.0));
+      expect(y.getCell([2]), closeTo(2.2795853, 1e-6));
+    });
+
     test('integer promotion', () {
       NDArray.scope(() {
         final x = NDArray.fromList([0, 1, 2], [3], DType.int32);

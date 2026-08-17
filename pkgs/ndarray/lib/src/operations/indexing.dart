@@ -6,7 +6,7 @@ import 'helpers.dart';
 
 /// Modes for handling out-of-bounds choice indices in [choose].
 enum ChooseMode {
-  /// Raises a [RangeError] if an index is out of bounds (default).
+  /// It is an error if an index is out of bounds (default).
   raise,
 
   /// Wraps indices using modulo arithmetic (`(idx % N + N) % N`).
@@ -187,9 +187,9 @@ NDArray<T> take_along_axis<T extends Object>(
 /// - It is an error if [out] is provided and its shape does not match [arr.shape] or its dtype does not match [arr.dtype].
 ///
 /// **Throws:**
-/// - Throws [StateError] if any input array is disposed.
-/// - Throws [ArgumentError] if shapes are incompatible or [out] is invalid.
-/// - Throws [RangeError] if [axis] or index values in [indices] are out of bounds.
+/// - It is an error if any input array is disposed.
+/// - It is an error if shapes are incompatible or [out] is invalid.
+/// - It is an error if [axis] or index values in [indices] are out of bounds.
 ///
 /// **Example:**
 /// ```dart

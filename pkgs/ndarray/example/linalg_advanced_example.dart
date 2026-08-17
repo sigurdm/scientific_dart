@@ -33,7 +33,7 @@ void main() {
   l2.dispose();
 
   final m = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
-  final fro = norm(m, ord: 'fro');
+  final fro = norm(m, ord: NormKind.frobenius);
   print('Matrix Frobenius Norm: ${fro[0]}'); // sqrt(30)
   fro.dispose();
 }

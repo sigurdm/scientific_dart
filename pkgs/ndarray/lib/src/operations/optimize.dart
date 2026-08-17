@@ -443,7 +443,7 @@ OptimizeResult nelder_mead(
       final pXC = ScratchArena.allocate<ffi.Double>(n * doubleBytes);
 
       final x0Ptr = x0.pointer.cast<ffi.Double>();
-      cblas_dcopy(n, x0Ptr, 1, pSim[0], 1);
+      cblas_dcopy(n, x0Ptr, x0.strides[0], pSim[0], 1);
 
       for (int i = 0; i < n; i++) {
         cblas_dcopy(n, pSim[0], 1, pSim[i + 1], 1);
@@ -706,7 +706,7 @@ OptimizeResult lbfgs(
         }
       }
 
-      cblas_dcopy(n, x0.pointer.cast<ffi.Double>(), 1, pXCurr, 1);
+      cblas_dcopy(n, x0.pointer.cast<ffi.Double>(), x0.strides[0], pXCurr, 1);
       var (fCurr, _) = evalFunAndGrad(pXCurr, pGCurr);
 
       final pSHist = <ffi.Pointer<ffi.Double>>[];

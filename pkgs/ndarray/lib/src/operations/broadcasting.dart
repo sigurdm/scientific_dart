@@ -24,17 +24,16 @@ final class BroadcastResult {
   BroadcastResult(this.shape, this.stridesA, this.stridesB);
 }
 
-/// Calculates the broadcasted shape and strides for two arrays given their shapes and strides.
+/// Computes the broadcasted shape and strides given shapes and strides directly.
 ///
 /// **Preconditions:**
 /// - Trailing dimensions comparing from right-to-left must either be equal or one of them must be 1.
 ///
 /// **Throws:**
-/// - It is an error if shapes are not compatible for broadcasting.
+/// - It is an error if matrix shapes are not compatible for broadcasting.
 ///
 /// **Performance considerations:**
-/// - Algorithmic complexity is $O(D)$ where $D$ is the maximum rank dimension length, executing
-///   in zero unmanaged heap allocations.
+/// - Algorithmic complexity is $O(D)$ where $D$ is the maximum rank dimension length.
 BroadcastResult broadcastBinaryStrides(
   List<int> shapeA,
   List<int> stridesA,
@@ -85,7 +84,7 @@ BroadcastResult broadcastBinaryStrides(
   return BroadcastResult(commonShape, newStridesA, newStridesB);
 }
 
-/// Calculates the broadcasted shape and strides for two arrays.
+/// Calculates the broadcasted shape and strides for two matrices.
 ///
 /// Compares dimensions starting from the trailing dimensions and working forward
 /// according to standard NumPy shape broadcasting guidelines.
@@ -95,7 +94,7 @@ BroadcastResult broadcastBinaryStrides(
 ///
 /// **Throws:**
 /// - It is an error if [a] or [b] is disposed.
-/// - It is an error if array shapes are not compatible for broadcasting.
+/// - It is an error if matrix shapes are not compatible for broadcasting.
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(D)$ where $D$ is the maximum rank dimension length, executing
@@ -108,7 +107,7 @@ BroadcastResult broadcastBinaryStrides(
 /// final result = broadcast(a, b);
 /// print(result.shape); // [2, 3]
 /// ```
-BroadcastResult broadcast<Ta, Tb>(NDArray<Ta> a, NDArray<Tb> b) {
+BroadcastResult broadcast(NDArray a, NDArray b) {
   if (a.isDisposed || b.isDisposed) {
     throw StateError('Cannot execute broadcast() on a disposed array.');
   }

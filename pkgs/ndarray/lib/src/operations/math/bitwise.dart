@@ -16,11 +16,11 @@ import '../helpers.dart';
 /// - [a] and [b] must be broadcast-compatible.
 /// - If provided, [out] must match the broadcasted shape and resolved integer dtype.
 ///
-/// **Throws:**
-/// - [StateError] if [a] or [b] is disposed.
-/// - [ArgumentError] if [a] or [b] is not integer-typed.
-/// - [ArgumentError] if shapes are incompatible for broadcasting.
-/// - [ArgumentError] if [out] shape or dtype is incompatible.
+/// It is an error if:
+/// - [a] or [b] is disposed (throws [StateError]).
+/// - [a] or [b] is not integer-typed (throws [ArgumentError]).
+/// - shapes are incompatible for broadcasting (throws [ArgumentError]).
+/// - [out] shape or dtype is incompatible (throws [ArgumentError]).
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
@@ -33,7 +33,7 @@ import '../helpers.dart';
 NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<Uint8>? where,
+  NDArray<dynamic>? where,
   NDArray<Tr>? out,
 }) {
   if (a.isDisposed ||
@@ -191,11 +191,11 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
 /// - [a] and [b] must be broadcast-compatible.
 /// - If provided, [out] must match the broadcasted shape and resolved integer dtype.
 ///
-/// **Throws:**
-/// - [StateError] if [a] or [b] is disposed.
-/// - [ArgumentError] if [a] or [b] is not integer-typed.
-/// - [ArgumentError] if shapes are incompatible for broadcasting.
-/// - [ArgumentError] if [out] shape or dtype is incompatible.
+/// It is an error if:
+/// - [a] or [b] is disposed (throws [StateError]).
+/// - [a] or [b] is not integer-typed (throws [ArgumentError]).
+/// - shapes are incompatible for broadcasting (throws [ArgumentError]).
+/// - [out] shape or dtype is incompatible (throws [ArgumentError]).
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
@@ -208,7 +208,7 @@ NDArray<Tr> bitwise_and<Ta, Tb, Tr>(
 NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<Uint8>? where,
+  NDArray<dynamic>? where,
   NDArray<Tr>? out,
 }) {
   if (a.isDisposed ||
@@ -366,11 +366,11 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
 /// - [a] and [b] must be broadcast-compatible.
 /// - If provided, [out] must match the broadcasted shape and resolved integer dtype.
 ///
-/// **Throws:**
-/// - [StateError] if [a] or [b] is disposed.
-/// - [ArgumentError] if [a] or [b] is not integer-typed.
-/// - [ArgumentError] if shapes are incompatible for broadcasting.
-/// - [ArgumentError] if [out] shape or dtype is incompatible.
+/// It is an error if:
+/// - [a] or [b] is disposed (throws [StateError]).
+/// - [a] or [b] is not integer-typed (throws [ArgumentError]).
+/// - shapes are incompatible for broadcasting (throws [ArgumentError]).
+/// - [out] shape or dtype is incompatible (throws [ArgumentError]).
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
@@ -383,7 +383,7 @@ NDArray<Tr> bitwise_or<Ta, Tb, Tr>(
 NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<Uint8>? where,
+  NDArray<dynamic>? where,
   NDArray<Tr>? out,
 }) {
   if (a.isDisposed ||
@@ -541,11 +541,11 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
 /// - [a] and [b] must be broadcast-compatible.
 /// - If provided, [out] must match the broadcasted shape and resolved integer dtype.
 ///
-/// **Throws:**
-/// - [StateError] if [a] or [b] is disposed.
-/// - [ArgumentError] if [a] or [b] is not integer-typed.
-/// - [ArgumentError] if shapes are incompatible for broadcasting.
-/// - [ArgumentError] if [out] shape or dtype is incompatible.
+/// It is an error if:
+/// - [a] or [b] is disposed (throws [StateError]).
+/// - [a] or [b] is not integer-typed (throws [ArgumentError]).
+/// - shapes are incompatible for broadcasting (throws [ArgumentError]).
+/// - [out] shape or dtype is incompatible (throws [ArgumentError]).
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
@@ -558,7 +558,7 @@ NDArray<Tr> bitwise_xor<Ta, Tb, Tr>(
 NDArray<Tr> left_shift<Ta, Tb, Tr>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<Uint8>? where,
+  NDArray<dynamic>? where,
   NDArray<Tr>? out,
 }) {
   if (a.isDisposed ||
@@ -716,11 +716,11 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
 /// - [a] and [b] must be broadcast-compatible.
 /// - If provided, [out] must match the broadcasted shape and resolved integer dtype.
 ///
-/// **Throws:**
-/// - [StateError] if [a] or [b] is disposed.
-/// - [ArgumentError] if [a] or [b] is not integer-typed.
-/// - [ArgumentError] if shapes are incompatible for broadcasting.
-/// - [ArgumentError] if [out] shape or dtype is incompatible.
+/// It is an error if:
+/// - [a] or [b] is disposed (throws [StateError]).
+/// - [a] or [b] is not integer-typed (throws [ArgumentError]).
+/// - shapes are incompatible for broadcasting (throws [ArgumentError]).
+/// - [out] shape or dtype is incompatible (throws [ArgumentError]).
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
@@ -733,7 +733,7 @@ NDArray<Tr> left_shift<Ta, Tb, Tr>(
 NDArray<Tr> right_shift<Ta, Tb, Tr>(
   NDArray<Ta> a,
   NDArray<Tb> b, {
-  NDArray<Uint8>? where,
+  NDArray<dynamic>? where,
   NDArray<Tr>? out,
 }) {
   if (a.isDisposed ||
@@ -890,10 +890,10 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
 /// - [a] must not be disposed.
 /// - If provided, [out] must match the shape and dtype of [a].
 ///
-/// **Throws:**
-/// - [StateError] if [a] is disposed.
-/// - [ArgumentError] if [a] is not integer-typed.
-/// - [ArgumentError] if [out] shape or dtype is incompatible.
+/// It is an error if:
+/// - [a] is disposed (throws [StateError]).
+/// - [a] is not integer-typed (throws [ArgumentError]).
+/// - [out] shape or dtype is incompatible (throws [ArgumentError]).
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
@@ -905,7 +905,7 @@ NDArray<Tr> right_shift<Ta, Tb, Tr>(
 /// Reference: [NumPy invert](https://numpy.org/doc/stable/reference/generated/numpy.invert.html)
 NDArray<Tr> invert<Ta, Tr>(
   NDArray<Ta> a, {
-  NDArray<Uint8>? where,
+  NDArray<dynamic>? where,
   NDArray<Tr>? out,
 }) {
   if (a.isDisposed ||
@@ -1050,7 +1050,7 @@ NDArray<Tr> invert<Ta, Tr>(
 _prepareBinaryBitwise<Ta, Tb, Tr>(
   NDArray<Ta> a,
   NDArray<Tb> b,
-  NDArray<Uint8>? where,
+  NDArray<dynamic>? where,
   NDArray<Tr>? out,
   String opName,
 ) {
