@@ -309,12 +309,12 @@ NDArray<T> trapz<T extends Object>(
           final doubleValues = values
               .map((e) => (e as num).toDouble())
               .toList();
-          NDArray<double>? spacingArray;
+          NDArray<Float64>? spacingArray;
           try {
-            spacingArray = NDArray<double>.fromList(
+            spacingArray = NDArray<Float64>.fromList(
               doubleValues,
               [N],
-              y.dtype.isFloating ? y.dtype as DType<double> : DType.float64,
+              DType.float64,
             );
 
             final dtype = y.dtype;
@@ -682,12 +682,12 @@ NDArray<T> gradient<T extends Object>(
           final doubleValues = values
               .map((e) => (e as num).toDouble())
               .toList();
-          NDArray<double>? spacingArray;
+          NDArray<Float64>? spacingArray;
           try {
-            spacingArray = NDArray<double>.fromList(
+            spacingArray = NDArray<Float64>.fromList(
               doubleValues,
               [N],
-              f.dtype.isFloating ? f.dtype as DType<double> : DType.float64,
+              DType.float64,
             );
             final dtype = f.dtype;
             switch (dtype) {

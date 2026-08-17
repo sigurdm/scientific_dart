@@ -97,7 +97,7 @@ NDArray<R> polyval<Tc, Tx, R>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
     final n = c.shape[0];
 
     if (n == 1) {
-      final c0 = c.getCell([0]) as Object;
+      final c0 = c.getCellFlat(0) as Object;
       var res = _filledArray(x.shape, c0, targetDType);
       final xCast = _ensureDType(x, targetDType);
       if (xCast.dtype.isFloating || xCast.dtype.isComplex) {
@@ -114,11 +114,11 @@ NDArray<R> polyval<Tc, Tx, R>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
     }
 
     final xCast = _ensureDType(x, targetDType);
-    var val = _filledArray(x.shape, c.getCell([0]) as Object, targetDType);
+    var val = _filledArray(x.shape, c.getCellFlat(0) as Object, targetDType);
     for (var i = 1; i < n; i++) {
       val = add(
         multiply(val, xCast),
-        _makeScalar<R>(c.getCell([i]) as Object, targetDType),
+        _makeScalar<R>(c.getCellFlat(i) as Object, targetDType),
       );
     }
 
@@ -210,7 +210,7 @@ NDArray<R> polyfit<Tx, Ty, Tw, R>(
       }
 
       for (var i = 0; i < m; i++) {
-        vMat.setCell([i, j], col.getCell([i]) as R);
+        vMat.setCell([i, j], col.getCellFlat(i) as R);
       }
     }
 
@@ -223,8 +223,8 @@ NDArray<R> polyfit<Tx, Ty, Tw, R>(
       final rhsW = NDArray<R>.zeros([m], targetDType);
 
       for (var i = 0; i < m; i++) {
-        final wi = wCast.getCell([i]) as Object;
-        final yi = rhs.getCell([i]) as Object;
+        final wi = wCast.getCellFlat(i) as Object;
+        final yi = rhs.getCellFlat(i) as Object;
         rhsW.setCell([i], castValue(_mulScalar(wi, yi), targetDType) as R);
 
         for (var j = 0; j < nCols; j++) {
@@ -274,7 +274,7 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
     final size = p.shape[0];
     var firstNonZero = -1;
     for (var i = 0; i < size; i++) {
-      if (!_isZeroScalar(p.getCell([i]) as Object)) {
+      if (!_isZeroScalar(p.getCellFlat(i) as Object)) {
         firstNonZero = i;
         break;
       }
@@ -298,8 +298,8 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
     final deg = nCoeffs - 1;
 
     if (deg == 1) {
-      final c0 = p.getCell([firstNonZero]) as Object;
-      final c1 = p.getCell([firstNonZero + 1]) as Object;
+      final c0 = p.getCellFlat(firstNonZero) as Object;
+      final c1 = p.getCellFlat(firstNonZero + 1) as Object;
       final rootVal = _divScalar(_negScalar(c1), c0);
       final complexRoot = rootVal is Complex
           ? rootVal
@@ -332,11 +332,11 @@ NDArray<Complex> roots<T>(NDArray<T> p, {NDArray<Complex>? out}) {
         break;
     }
 
-    final c0 = p.getCell([firstNonZero]) as Object;
+    final c0 = p.getCellFlat(firstNonZero) as Object;
     final targetMatDType = aMat.dtype;
 
     for (var j = 0; j < deg; j++) {
-      final cj = p.getCell([firstNonZero + j + 1]) as Object;
+      final cj = p.getCellFlat(firstNonZero + j + 1) as Object;
       final val = _divScalar(_negScalar(cj), c0);
       aMat.setCell([0, j], castValue(val, targetMatDType));
     }

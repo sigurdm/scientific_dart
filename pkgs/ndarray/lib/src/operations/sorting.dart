@@ -105,22 +105,7 @@ NDArray<T> sort<T extends Object>(
       return result;
     }
 
-    int elementSizeInBytes;
-    if (src.dtype == DType.float64 || src.dtype == DType.int64) {
-      elementSizeInBytes = 8;
-    } else if (src.dtype == DType.float32 || src.dtype == DType.int32) {
-      elementSizeInBytes = 4;
-    } else if (src.dtype == DType.complex64) {
-      elementSizeInBytes = 8;
-    } else if (src.dtype == DType.complex128) {
-      elementSizeInBytes = 16;
-    } else if (src.dtype == DType.int16) {
-      elementSizeInBytes = 2;
-    } else if (src.dtype == DType.uint8) {
-      elementSizeInBytes = 1;
-    } else {
-      throw UnimplementedError('Unsupported dtype for sort: ${src.dtype}');
-    }
+    final elementSizeInBytes = src.dtype.byteWidth;
 
     final baseCast = result.pointer.cast<ffi.Uint8>();
     final rowSizeInBytes = n * elementSizeInBytes;
@@ -173,8 +158,8 @@ NDArray<T> sort<T extends Object>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<int> argsort(
-  NDArray a, {
+NDArray<int> argsort<T extends Object>(
+  NDArray<T> a, {
   int axis = -1,
   SortKind kind = SortKind.quicksort,
   NDArray<int>? out,
@@ -472,22 +457,7 @@ NDArray<T> partition<T extends Object>(
       return sort(result, axis: rank - 1, out: result);
     }
 
-    int elementSizeInBytes;
-    if (src.dtype == DType.float64 || src.dtype == DType.int64) {
-      elementSizeInBytes = 8;
-    } else if (src.dtype == DType.float32 || src.dtype == DType.int32) {
-      elementSizeInBytes = 4;
-    } else if (src.dtype == DType.complex64) {
-      elementSizeInBytes = 8;
-    } else if (src.dtype == DType.complex128) {
-      elementSizeInBytes = 16;
-    } else if (src.dtype == DType.int16) {
-      elementSizeInBytes = 2;
-    } else if (src.dtype == DType.uint8) {
-      elementSizeInBytes = 1;
-    } else {
-      throw UnimplementedError('Unsupported dtype for partition: ${src.dtype}');
-    }
+    final elementSizeInBytes = src.dtype.byteWidth;
 
     final baseCast = result.pointer.cast<ffi.Uint8>();
     final rowSizeInBytes = n * elementSizeInBytes;
@@ -589,8 +559,8 @@ NDArray<T> partition<T extends Object>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-NDArray<int> argpartition(
-  NDArray a,
+NDArray<int> argpartition<T extends Object>(
+  NDArray<T> a,
   dynamic kth, {
   int axis = -1,
   NDArray<int>? out,
@@ -861,9 +831,9 @@ NDArray<int> argpartition(
 ///   print(indices.toList()); // [[1, 2], [0, 3]]
 /// }
 /// ```
-NDArray<int> searchsorted(
-  NDArray a,
-  NDArray v, {
+NDArray<int> searchsorted<T extends Object>(
+  NDArray<T> a,
+  NDArray<T> v, {
   SearchSide side = SearchSide.left,
   NDArray<int>? sorter,
   NDArray<int>? out,
@@ -1053,11 +1023,9 @@ NDArray<int> searchsorted(
           cSorter,
         );
       case DType.boolean:
-        final sortedIndices = srcSorter?.toList();
-
         bool getElement(int idx) {
-          return sortedIndices != null
-              ? srcA.getCellFlat(sortedIndices[idx]) as bool
+          return srcSorter != null
+              ? srcA.getCellFlat(srcSorter.getCellFlat(idx)) as bool
               : srcA.getCellFlat(idx) as bool;
         }
 
@@ -1365,12 +1333,12 @@ dynamic where<T extends Object>(
 ///
 /// **Example:**
 /// {@example /example/sorting_searching_example.dart lang=dart}
-List<NDArray<int>> nonzero(NDArray a) {
+List<NDArray<int>> nonzero<T extends Object>(NDArray<T> a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute nonzero() on a disposed array.');
   }
   final rank = a.shape.length;
-  final count = count_nonzero<Object>(a as NDArray<Object>).scalar;
+  final count = count_nonzero<T>(a).scalar;
   final results = List.generate(
     rank,
     (_) => NDArray<int>.create([count], DType.int32, zeroInit: true),
@@ -1527,14 +1495,14 @@ List<NDArray<int>> nonzero(NDArray a) {
 /// elements, and `N` is the rank of [a].
 ///
 /// It is an error if [a] is disposed.
-NDArray<int> argwhere(NDArray a) {
+NDArray<int> argwhere<T extends Object>(NDArray<T> a) {
   if (a.isDisposed) {
     throw StateError('Cannot execute argwhere() on a disposed array.');
   }
   final rank = a.shape.length;
 
   return NDArray.scope(() {
-    final count = count_nonzero<Object>(a as NDArray<Object>).scalar;
+    final count = count_nonzero<T>(a).scalar;
 
     if (rank == 0) {
       if (count > 0) {

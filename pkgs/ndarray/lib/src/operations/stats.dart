@@ -128,7 +128,7 @@ enum QuantileMethod {
 /// ```dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 /// final s0 = sum(a, axis: 0); // Sum along rows
-/// print(s0.data); // [4.0, 6.0]
+/// print(s0.toList()); // [4.0, 6.0]
 /// ```
 NDArray<T> sum<T extends Object>(
   NDArray<T> a, {
@@ -267,7 +267,7 @@ NDArray<T> sum<T extends Object>(
 /// ```dart
 /// final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64);
 /// final p0 = prod(a, axis: 0); // Product along rows
-/// print(p0.data); // [3.0, 8.0]
+/// print(p0.toList()); // [3.0, 8.0]
 /// ```
 NDArray<T> prod<T extends Object>(
   NDArray<T> a, {
@@ -608,7 +608,7 @@ NDArray<R> mean<R, T>(
                 as NDArray<R>;
       } else {
         result =
-            NDArray<double>.create(targetShape, DType.float64) as NDArray<R>;
+            NDArray<Float64>.create(targetShape, DType.float64) as NDArray<R>;
       }
     }
     result.setCell(List.filled(targetShape.length, 0), meanVal as R);
@@ -631,7 +631,7 @@ NDArray<R> mean<R, T>(
                 as NDArray<R>;
       } else {
         result =
-            NDArray<double>.create(targetShape, DType.float64) as NDArray<R>;
+            NDArray<Float64>.create(targetShape, DType.float64) as NDArray<R>;
       }
     }
 
@@ -715,12 +715,12 @@ NDArray<R> mean<R, T>(
       if (promotedA != a) promotedA.dispose();
     } else {
       final promotedA =
-          (a.dtype.isFloating ? a : promoteToDouble(a)) as NDArray<double>;
-      sum<double>(
+          (a.dtype.isFloating ? a : promoteToDouble(a)) as NDArray<Float64>;
+      sum<Float64>(
         promotedA,
         axis: axis,
         keepdims: keepdims,
-        out: (result as dynamic) as NDArray<double>,
+        out: (result as dynamic) as NDArray<Float64>,
       );
       if (promotedA != a) promotedA.dispose();
     }
@@ -813,7 +813,7 @@ NDArray<Float64> std<T extends num>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<double>.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
+/// final a = NDArray.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
 /// final v = nanvar(a); // returns 0-D array containing 0.6666666666666666
 /// ```
 NDArray<Float64> nanvar<T extends num>(
@@ -905,7 +905,7 @@ NDArray<Float64> nanvar<T extends num>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<double>.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
+/// final a = NDArray.fromList([1.0, double.nan, 2.0, 3.0], [2, 2], DType.float64);
 /// final s = nanstd(a); // returns 0-D array containing sqrt(0.6666666666666666)
 /// ```
 NDArray<Float64> nanstd<T extends num>(
@@ -1123,7 +1123,7 @@ NDArray<T> min<T extends num>(
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
-/// print(nanmin(a).data); // [1.0] (0-D array)
+/// print(nanmin(a).scalar); // 1.0 (0-D array)
 /// ```
 NDArray<T> nanmin<T extends Object>(
   NDArray<T> a, {
@@ -1469,7 +1469,7 @@ NDArray<T> max<T extends num>(
 /// **Example:**
 /// ```dart
 /// final a = NDArray.fromList([1.0, double.nan, 3.0], [3], DType.float64);
-/// print(nanmax(a).data); // [3.0] (0-D array)
+/// print(nanmax(a).scalar); // 3.0 (0-D array)
 /// ```
 NDArray<T> nanmax<T extends Object>(
   NDArray<T> a, {
@@ -2009,7 +2009,7 @@ NDArray<Float64> var_<T extends num>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<double>.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], DType.float64);
+/// final a = NDArray.fromList([1.0, double.nan, 3.0, 4.0], [2, 2], DType.float64);
 /// final m = nanmean(a); // returns 0-D array containing 2.6666666666666665
 /// ```
 NDArray<R> nanmean<R extends Object>(
@@ -2064,7 +2064,7 @@ NDArray<R> nanmean<R extends Object>(
                 as NDArray<R>;
       } else {
         result =
-            NDArray<double>.create(targetShape, DType.float64) as NDArray<R>;
+            NDArray<Float64>.create(targetShape, DType.float64) as NDArray<R>;
       }
     }
 
@@ -2095,7 +2095,7 @@ NDArray<R> nanmean<R extends Object>(
       result =
           NDArray<Complex>.zeros(targetShape, DType.complex128) as NDArray<R>;
     } else {
-      result = NDArray<double>.zeros(targetShape, DType.float64) as NDArray<R>;
+      result = NDArray<Float64>.zeros(targetShape, DType.float64) as NDArray<R>;
     }
   }
   final counts = NDArray<int>.zeros(targetShape, DType.int32);
@@ -2157,13 +2157,13 @@ NDArray<R> nanmean<R extends Object>(
 ///
 /// - It is an error if [a] is disposed.
 /// - It is an error if [q] is out of bounds or [axis] is out of bounds.
-NDArray<double> quantile<T extends Object>(
+NDArray<Float64> quantile<T extends Object>(
   NDArray<T> a,
   double q, {
   int? axis,
   QuantileMethod method = QuantileMethod.linear,
   bool keepdims = false,
-  NDArray<double>? out,
+  NDArray<Float64>? out,
 }) {
   if (a.isDisposed) {
     throw StateError('Cannot compute quantile of a disposed array.');
@@ -2192,37 +2192,37 @@ NDArray<double> quantile<T extends Object>(
 
   if (targetAxis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final result = out ?? NDArray<double>.create([], DType.float64);
+    final result = out ?? NDArray<Float64>.create([], DType.float64);
     if (a.isContiguous) {
       switch (a.dtype) {
         case DType.float64:
           result.setCellFlat(
             0,
-            r_quantile_double(a.pointer.cast(), size, q, method.index),
+            Float64(r_quantile_double(a.pointer.cast(), size, q, method.index)),
           );
           return result;
         case DType.float32:
           result.setCellFlat(
             0,
-            r_quantile_float(a.pointer.cast(), size, q, method.index),
+            Float64(r_quantile_float(a.pointer.cast(), size, q, method.index)),
           );
           return result;
         case DType.int64:
           result.setCellFlat(
             0,
-            r_quantile_int64(a.pointer.cast(), size, q, method.index),
+            Float64(r_quantile_int64(a.pointer.cast(), size, q, method.index)),
           );
           return result;
         case DType.int32:
           result.setCellFlat(
             0,
-            r_quantile_int32(a.pointer.cast(), size, q, method.index),
+            Float64(r_quantile_int32(a.pointer.cast(), size, q, method.index)),
           );
           return result;
         case DType.uint8:
           result.setCellFlat(
             0,
-            r_quantile_uint8(a.pointer.cast(), size, q, method.index),
+            Float64(r_quantile_uint8(a.pointer.cast(), size, q, method.index)),
           );
           return result;
         default:
@@ -2232,7 +2232,7 @@ NDArray<double> quantile<T extends Object>(
       final flat = a.flatten();
       final resVal = r_quantile_helper(flat, flat.size, q, method.index);
       flat.dispose();
-      result.setCellFlat(0, resVal);
+      result.setCellFlat(0, Float64(resVal));
       return result;
     }
   }
@@ -2241,7 +2241,7 @@ NDArray<double> quantile<T extends Object>(
     throw ArgumentError('axis $axis out of bounds for shape ${a.shape}');
   }
 
-  final result = out ?? NDArray<double>.zeros(targetShape, DType.float64);
+  final result = out ?? NDArray<Float64>.zeros(targetShape, DType.float64);
 
   final rank = a.shape.length;
   final marker = ScratchArena.marker;
@@ -2361,13 +2361,13 @@ double r_quantile_helper(NDArray a, int size, double q, int method) {
 ///
 /// - It is an error if [a] is disposed.
 /// - It is an error if [q] is out of bounds or [axis] is out of bounds.
-NDArray<double> percentile<T extends Object>(
+NDArray<Float64> percentile<T extends Object>(
   NDArray<T> a,
   double q, {
   int? axis,
   QuantileMethod method = QuantileMethod.linear,
   bool keepdims = false,
-  NDArray<double>? out,
+  NDArray<Float64>? out,
 }) {
   if (q < 0.0 || q > 100.0) {
     throw ArgumentError('Percentile q must be between 0.0 and 100.0. Got $q');
@@ -3051,16 +3051,11 @@ NDArray<Float64> corrcoef<T extends num>(
     }
 
     final K = C.shape[0];
-    final stdList = <double>[];
+    final std = NDArray<Float64>.create([K], DType.float64);
     for (var i = 0; i < K; i++) {
       final variance = C.getCell([i, i]);
-      stdList.add(math.sqrt(variance));
+      std.setCellFlat(i, Float64(math.sqrt(variance)));
     }
-    final std = NDArray<Float64>.fromList(
-      stdList.map((e) => Float64(e)).toList(),
-      [K],
-      DType.float64,
-    );
 
     final stdCol = std.reshape([K, 1]);
     final stdRow = std.reshape([1, K]);
@@ -3068,7 +3063,7 @@ NDArray<Float64> corrcoef<T extends num>(
 
     final R = divide<Float64, Float64, Float64>(C, stdOuter, out: out);
     for (var i = 0; i < K; i++) {
-      if (stdList[i] == 0.0) {
+      if (std.getCellFlat(i) == 0.0) {
         for (var j = 0; j < K; j++) {
           R.setCell([i, j], Float64(double.nan));
           R.setCell([j, i], Float64(double.nan));
@@ -3089,7 +3084,7 @@ NDArray<Float64> corrcoef<T extends num>(
 ///
 /// **Example:**
 /// ```dart
-/// final a = NDArray<double>.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], DType.float64);
+/// final a = NDArray.fromList([1.0, double.nan, 3.0, double.nan], [2, 2], DType.float64);
 /// final s = nansum(a); // returns 4.0
 /// ```
 NDArray<T> nansum<T extends Object>(

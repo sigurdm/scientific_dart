@@ -270,18 +270,18 @@ void main() {
           // ogrid with out
           final r = GridRange(0.0, 2.0, numPoints: 3);
           final outOgrid = [
-            NDArray<double>.create([3], DType.float64),
+            NDArray<Float64>.create([3], DType.float64),
           ];
           final resOgrid = ogrid([r], out: outOgrid);
           expect(identical(resOgrid[0], outOgrid[0]), isTrue);
 
           // ogrid validation
           final badShape = [
-            NDArray<double>.create([5], DType.float64),
+            NDArray<Float64>.create([5], DType.float64),
           ];
           expect(() => ogrid([r], out: badShape), throwsArgumentError);
 
-          final disposedOut = NDArray<double>.create([3], DType.float64)
+          final disposedOut = NDArray<Float64>.create([3], DType.float64)
             ..dispose();
           expect(() => ogrid([r], out: [disposedOut]), throwsStateError);
         });

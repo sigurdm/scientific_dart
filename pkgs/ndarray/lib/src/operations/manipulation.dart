@@ -644,18 +644,30 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
     }
 
     if (len <= 0) {
+      if (out != null) {
+        if (!listEquals(out.shape, [0]) || out.dtype != v.dtype) {
+          throw ArgumentError('Provided out buffer has incompatible shape or dtype.');
+        }
+        return out;
+      }
       return NDArray<T>.create([0], v.dtype);
     }
 
     final offsetElements = startRow * v.strides[0] + startCol * v.strides[1];
     final diagStride = v.strides[0] + v.strides[1];
 
-    return NDArray<T>.view(
+    final view = NDArray<T>.view(
       v,
       shape: [len],
       strides: [diagStride],
       offsetElements: offsetElements,
     );
+    if (out != null) {
+      view.copy(out: out);
+      view.dispose();
+      return out;
+    }
+    return view;
   } else if (v.shape.length == 1) {
     final n = v.shape[0];
     final size = n + k.abs();
@@ -682,8 +694,13 @@ NDArray<T> diag<T>(NDArray<T> v, {int k = 0, NDArray<T>? out}) {
       startCol = 0;
     }
 
+    final resStride0 = result.strides[0];
+    final resStride1 = result.strides[1];
     for (var i = 0; i < n; i++) {
-      result.setCell([startRow + i, startCol + i], v.getCell([i]));
+      result.setCellFlat(
+        (startRow + i) * resStride0 + (startCol + i) * resStride1,
+        v.getCellFlat(i),
+      );
     }
 
     return result;
@@ -1012,26 +1029,26 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
       case DType.uint8:
       case DType.int16:
       case DType.boolean:
-        final doubleA = castNDArray(a, DType.float64);
-        final doubleRes = NDArray<double>.create(targetShape, DType.float64);
-        final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
-        final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
+        final intA = castNDArray(a, DType.int32);
+        final intRes = NDArray<int>.create(targetShape, DType.int32);
+        final cStridesIntA = ScratchArena.copyInts(intA.strides);
+        final cStridesIntRes = ScratchArena.copyInts(intRes.strides);
 
-        s_diff_double(
-          doubleA.pointer.cast(),
-          cStridesDoubleA,
-          doubleRes.pointer.cast(),
-          cStridesDoubleRes,
+        s_diff_int32(
+          intA.pointer.cast(),
+          cStridesIntA,
+          intRes.pointer.cast(),
+          cStridesIntRes,
           cShape,
           rank,
           targetAxis,
         );
 
-        final castedRes = castNDArray(doubleRes, a.dtype);
+        final castedRes = castNDArray(intRes, a.dtype);
         castedRes.copy(out: result);
         castedRes.dispose();
-        doubleA.dispose();
-        doubleRes.dispose();
+        intA.dispose();
+        intRes.dispose();
     }
   } finally {
     ScratchArena.reset(marker);
@@ -1156,9 +1173,9 @@ NDArray<T> _rollSingle1D<T extends Object>(NDArray<T> a, int shift) {
     throw StateError('Cannot execute _rollSingle1D() on a disposed array.');
   }
   final size = a.size;
-  if (size == 0) return a.copy();
+  if (size == 0) return a;
   final s = shift % size;
-  if (s == 0) return a.copy();
+  if (s == 0) return a;
 
   final realShift = s < 0 ? size + s : s;
 
@@ -1178,10 +1195,10 @@ NDArray<T> _rollSingle<T extends Object>(NDArray<T> a, int shift, int axis) {
   }
 
   final dimSize = a.shape[normAx];
-  if (dimSize == 0) return a.copy();
+  if (dimSize == 0) return a;
 
   final s = shift % dimSize;
-  if (s == 0) return a.copy();
+  if (s == 0) return a;
 
   final realShift = s < 0 ? dimSize + s : s;
 

@@ -29,7 +29,7 @@ import 'linalg.dart';
 ///
 /// By default, uses Dart's standard [Random] class, which is not cryptographically secure.
 /// You can pass a secure random object via the [random] parameter if needed.
-NDArray<T> uniform<T extends num>(
+NDArray<T> uniform<T extends Object>(
   List<int> shape, {
   DType<T>? dtype,
   int? seed,
@@ -188,7 +188,7 @@ NDArray<T> randint<T extends num>(
 ///
 /// Refer to the [Normal Distribution Reference](https://en.wikipedia.org/wiki/Normal_distribution)
 /// for details on standard Gaussian distributions.
-NDArray<T> normal<T extends num>(
+NDArray<T> normal<T extends Object>(
   List<int> shape, {
   double loc = 0.0,
   double scale = 1.0,
@@ -266,7 +266,7 @@ NDArray<T> normal<T extends num>(
 ///
 /// Refer to the [Exponential Distribution Reference](https://en.wikipedia.org/wiki/Exponential_distribution)
 /// for details on exponential variables.
-NDArray<T> exponential<T extends num>(
+NDArray<T> exponential<T extends Object>(
   List<int> shape, {
   double scale = 1.0,
   double? lam,
@@ -431,7 +431,7 @@ NDArray<T> poisson<T extends num>(
 ///
 /// Refer to the [Binomial Distribution Reference](https://en.wikipedia.org/wiki/Binomial_distribution)
 /// for details on independent Bernoulli trials.
-NDArray<T> binomial<T extends num>(
+NDArray<T> binomial<T extends Object>(
   List<int> shape, {
   required int n,
   required double p,
@@ -515,9 +515,9 @@ NDArray<T> binomial<T extends num>(
 /// final samples = multivariateNormal(mean, cov, size: [1000]);
 /// print(samples.shape); // [1000, 2]
 /// ```
-NDArray<T> multivariateNormal<T extends num>(
-  NDArray mean,
-  NDArray cov, {
+NDArray<T> multivariateNormal<T extends Object>(
+  NDArray<T> mean,
+  NDArray<T> cov, {
   List<int>? size,
   DType<T>? dtype,
   int? seed,
@@ -571,7 +571,7 @@ NDArray<T> multivariateNormal<T extends num>(
   }
 
   return NDArray.scope(() {
-    final l = cholesky(cov as NDArray<T>);
+    final l = cholesky(cov);
 
     final sampleShape = <int>[];
     if (size != null) {
@@ -628,9 +628,9 @@ NDArray<T> multivariateNormal<T extends num>(
 /// final samples = multinomial(10, pvals, size: [1000]);
 /// print(samples.shape); // [1000, 3]
 /// ```
-NDArray<T> multinomial<T extends num>(
+NDArray<T> multinomial<T extends num, P extends Object>(
   int n,
-  NDArray pvals, {
+  NDArray<P> pvals, {
   List<int>? size,
   DType<T>? dtype,
   int? seed,
@@ -670,7 +670,8 @@ NDArray<T> multinomial<T extends num>(
   final cdf = List<double>.filled(k, 0.0);
   var sumP = 0.0;
   for (var i = 0; i < k; i++) {
-    final p = (pvals.getCell([i]) as num).toDouble();
+    final val = pvals.getCellFlat(i);
+    final p = (val is num ? val : (val as dynamic).value as num).toDouble();
     if (p < 0.0) {
       throw ArgumentError(
         'pvals must contain non-negative probabilities (was $p at index $i)',
@@ -793,7 +794,7 @@ NDArray<T> choice<T>(
   NDArray<T> a, {
   List<int>? size,
   bool replace = true,
-  NDArray<double>? p,
+  NDArray<Float64>? p,
   int? seed,
   bool secure = false,
   NDArray<T>? out,
@@ -846,7 +847,7 @@ NDArray<T> choice<T>(
     cdf = List<double>.filled(a.size, 0.0);
     var sumP = 0.0;
     for (var i = 0; i < a.size; i++) {
-      final prob = nonNullP.getCell([i]);
+      final prob = nonNullP.getCellFlat(i).value;
       if (prob < 0.0) {
         throw ArgumentError(
           'pvals must contain non-negative probabilities (was $prob at index $i)',
@@ -956,7 +957,7 @@ NDArray<T> choice<T>(
 /// final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
 /// shuffle(a); // a is now shuffled in-place, e.g., [2.0, 1.0, 3.0]
 /// ```
-void shuffle(NDArray a, {int? seed, bool secure = false}) {
+void shuffle<T extends Object>(NDArray<T> a, {int? seed, bool secure = false}) {
   if (a.isDisposed) {
     throw StateError('Cannot shuffle a disposed array.');
   }
@@ -984,7 +985,7 @@ void shuffle(NDArray a, {int? seed, bool secure = false}) {
   final sliceShape = a.shape.sublist(1);
   final sliceStrides = a.strides.sublist(1);
 
-  final tempSlice = NDArray.create(sliceShape, a.dtype);
+  final tempSlice = NDArray<T>.create(sliceShape, a.dtype);
   try {
     final stepStride = a.strides[0];
 
@@ -1047,7 +1048,7 @@ void shuffle(NDArray a, {int? seed, bool secure = false}) {
 /// final a = NDArray.fromList([1.0, 2.0, 3.0], [3], DType.float64);
 /// final perm = permutation(a); // perm is a permuted copy, a remains unchanged
 /// ```
-NDArray<T> permutation<T>(
+NDArray<T> permutation<T extends Object>(
   NDArray<T> a, {
   int? seed,
   bool secure = false,
@@ -1061,10 +1062,10 @@ NDArray<T> permutation<T>(
   return copyArr;
 }
 
-void _copySlice(
-  NDArray src,
+void _copySlice<T extends Object>(
+  NDArray<T> src,
   int srcOffset,
-  NDArray dest,
+  NDArray<T> dest,
   int destOffset,
   List<int> shape,
   List<int> stridesSrc,

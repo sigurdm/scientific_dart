@@ -65,19 +65,19 @@ final class GridRange {
 }
 
 /// Helper to generate a 1D coordinate array from a [GridRange].
-NDArray<double> _generate1DCoordinate(GridRange range, DType<double> dtype) {
+NDArray<Float64> _generate1DCoordinate(GridRange range, DType<Float64> dtype) {
   if (range.numPoints != null) {
-    return linspace<double>(
-      range.start,
-      range.stop,
+    return linspace<Float64>(
+      Float64(range.start),
+      Float64(range.stop),
       range.numPoints!,
       dtype: dtype,
     );
   } else {
-    return NDArray<double>.arange(
-      range.start,
-      range.stop,
-      step: range.step,
+    return NDArray<Float64>.arange(
+      Float64(range.start),
+      Float64(range.stop),
+      step: Float64(range.step),
       dtype: dtype,
     );
   }
@@ -153,10 +153,10 @@ NDArray<T> asStrided<T>(NDArray<T> x, {List<int>? shape, List<int>? strides}) {
 ///
 /// Refer to the [NumPy ogrid reference](https://numpy.org/doc/stable/reference/generated/numpy.ogrid.html)
 /// for details.
-List<NDArray<double>> ogrid(
+List<NDArray<Float64>> ogrid(
   List<GridRange> ranges, {
-  DType<double> dtype = DType.float64,
-  List<NDArray<double>>? out,
+  DType<Float64> dtype = DType.float64,
+  List<NDArray<Float64>>? out,
 }) {
   if (ranges.isEmpty) {
     throw ArgumentError('ranges must not be empty.');
@@ -178,7 +178,7 @@ List<NDArray<double>> ogrid(
 
   return NDArray.scope(() {
     final k = ranges.length;
-    final results = <NDArray<double>>[];
+    final results = <NDArray<Float64>>[];
 
     for (var i = 0; i < k; i++) {
       final arr1D = _generate1DCoordinate(ranges[i], dtype);
@@ -230,10 +230,10 @@ List<NDArray<double>> ogrid(
 /// Refer to the [NumPy mgrid reference](https://numpy.org/doc/stable/reference/generated/numpy.mgrid.html)
 /// for details.
 /// If [out] is provided, writes the resulting grid array into it.
-NDArray<double> mgrid(
+NDArray<Float64> mgrid(
   List<GridRange> ranges, {
-  DType<double> dtype = DType.float64,
-  NDArray<double>? out,
+  DType<Float64> dtype = DType.float64,
+  NDArray<Float64>? out,
 }) {
   if (ranges.isEmpty) {
     throw ArgumentError('ranges must not be empty.');
@@ -246,7 +246,7 @@ NDArray<double> mgrid(
     final k = ranges.length;
 
     // 1. Generate 1D coordinates to determine shape of the grid
-    final allCoords = <NDArray<double>>[];
+    final allCoords = <NDArray<Float64>>[];
     final gridShape = <int>[];
 
     for (var i = 0; i < k; i++) {
@@ -262,14 +262,14 @@ NDArray<double> mgrid(
         throw ArgumentError('Incompatible out buffer shape or dtype.');
       }
     }
-    final result = out ?? NDArray<double>.create(outputShape, dtype);
+    final result = out ?? NDArray<Float64>.create(outputShape, dtype);
     // 3. Walk recursively to fill coordinates in-place
     for (var i = 0; i < k; i++) {
       final coords = allCoords[i];
       final currentIndices = List<int>.filled(k + 1, 0);
       currentIndices[0] = i;
 
-      void walk(int dim, double? val) {
+      void walk(int dim, Float64? val) {
         if (dim == k) {
           result.setCell(currentIndices, val!);
           return;

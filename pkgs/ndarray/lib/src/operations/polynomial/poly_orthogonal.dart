@@ -175,7 +175,7 @@ NDArray<R> _evalClenshaw<Tc, Tx, R>(
     final xCast = _ensureDType(x, targetDType);
 
     if (m == 0) {
-      final c0 = c.getCell([0]) as Object;
+      final c0 = c.getCellFlat(0) as Object;
       var res = _filledArray(x.shape, c0, targetDType);
       final xCast = _ensureDType(x, targetDType);
       if (xCast.dtype.isFloating || xCast.dtype.isComplex) {
@@ -191,19 +191,19 @@ NDArray<R> _evalClenshaw<Tc, Tx, R>(
       return res.detachToParentScope();
     }
 
-    NDArray b1 = NDArray<R>.zeros(x.shape, targetDType);
-    NDArray b2 = NDArray<R>.zeros(x.shape, targetDType);
+    NDArray<R> b1 = NDArray<R>.zeros(x.shape, targetDType);
+    NDArray<R> b2 = NDArray<R>.zeros(x.shape, targetDType);
 
     switch (kind) {
       case _OrthoKind.chebyshev:
         final x2 = multiply(xCast, _makeScalar<R>(2.0, targetDType));
         for (var i = m; i >= 1; i--) {
           final tmp = b1;
-          final ci = _makeScalar<R>(c.getCell([i]) as Object, targetDType);
+          final ci = _makeScalar<R>(c.getCellFlat(i) as Object, targetDType);
           b1 = add(subtract(multiply(x2, b1), b2), ci);
           b2 = tmp;
         }
-        final c0 = _makeScalar<R>(c.getCell([0]) as Object, targetDType);
+        final c0 = _makeScalar<R>(c.getCellFlat(0) as Object, targetDType);
         final res = add(subtract(multiply(xCast, b1), b2), c0);
         if (out != null) {
           _copyInto(res, out);
@@ -216,7 +216,7 @@ NDArray<R> _evalClenshaw<Tc, Tx, R>(
           final tmp = b1;
           final f1 = (2 * k + 1) / (k + 1);
           final f2 = (k + 1) / (k + 2);
-          final ci = _makeScalar<R>(c.getCell([k]) as Object, targetDType);
+          final ci = _makeScalar<R>(c.getCellFlat(k) as Object, targetDType);
           final term1 = multiply(
             multiply(xCast, b1),
             _makeScalar<R>(f1, targetDType),
@@ -225,7 +225,7 @@ NDArray<R> _evalClenshaw<Tc, Tx, R>(
           b1 = add(subtract(term1, term2), ci);
           b2 = tmp;
         }
-        final c0 = _makeScalar<R>(c.getCell([0]) as Object, targetDType);
+        final c0 = _makeScalar<R>(c.getCellFlat(0) as Object, targetDType);
         final term1 = multiply(xCast, b1);
         final term2 = multiply(b2, _makeScalar<R>(0.5, targetDType));
         final res = add(subtract(term1, term2), c0);
@@ -240,13 +240,13 @@ NDArray<R> _evalClenshaw<Tc, Tx, R>(
         for (var k = m; k >= 1; k--) {
           final tmp = b1;
           final f2 = 2.0 * k + 2.0;
-          final ci = _makeScalar<R>(c.getCell([k]) as Object, targetDType);
+          final ci = _makeScalar<R>(c.getCellFlat(k) as Object, targetDType);
           final term1 = multiply(x2, b1);
           final term2 = multiply(b2, _makeScalar<R>(f2, targetDType));
           b1 = add(subtract(term1, term2), ci);
           b2 = tmp;
         }
-        final c0 = _makeScalar<R>(c.getCell([0]) as Object, targetDType);
+        final c0 = _makeScalar<R>(c.getCellFlat(0) as Object, targetDType);
         final term1 = multiply(x2, b1);
         final term2 = multiply(b2, _makeScalar<R>(2.0, targetDType));
         final res = add(subtract(term1, term2), c0);
@@ -289,7 +289,7 @@ NDArray<Complex> _orthoRoots<T>(
   return NDArray.scope(() {
     var n = c.shape[0] - 1;
     while (n > 0) {
-      if (!_isZeroScalar(c.getCell([n]) as Object)) break;
+      if (!_isZeroScalar(c.getCellFlat(n) as Object)) break;
       n--;
     }
     if (n <= 0) {
@@ -301,9 +301,9 @@ NDArray<Complex> _orthoRoots<T>(
       return res.detachToParentScope();
     }
 
-    final cn = c.getCell([n]) as Object;
+    final cn = c.getCellFlat(n) as Object;
     if (n == 1) {
-      final c0 = c.getCell([0]) as Object;
+      final c0 = c.getCellFlat(0) as Object;
       Object rootVal;
       switch (kind) {
         case _OrthoKind.chebyshev:
@@ -362,7 +362,7 @@ NDArray<Complex> _orthoRoots<T>(
           ], castValue(isComp ? Complex(0.5, 0.0) : 0.5, targetMatDType));
         }
         for (var i = 0; i < n; i++) {
-          final ci = c.getCell([i]) as Object;
+          final ci = c.getCellFlat(i) as Object;
           final factor = (i == n - 1) ? 1.0 : 2.0;
           final denom = _mulScalar(cn, factor);
           final norm = _divScalar(ci, denom);
@@ -387,7 +387,7 @@ NDArray<Complex> _orthoRoots<T>(
         }
         final factor = (2 * n + 1) / n;
         for (var i = 0; i < n; i++) {
-          final ci = c.getCell([i]) as Object;
+          final ci = c.getCellFlat(i) as Object;
           final denom = _mulScalar(cn, factor);
           final norm = _divScalar(ci, denom);
           final cur = cMat.getCell([i, n - 1]) as Object;
@@ -411,7 +411,7 @@ NDArray<Complex> _orthoRoots<T>(
           );
         }
         for (var i = 0; i < n; i++) {
-          final ci = c.getCell([i]) as Object;
+          final ci = c.getCellFlat(i) as Object;
           final denom = _mulScalar(cn, 2.0);
           final norm = _divScalar(ci, denom);
           final cur = cMat.getCell([i, n - 1]) as Object;

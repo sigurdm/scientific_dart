@@ -109,7 +109,7 @@ void main() {
     });
 
     test('mgrid with optional out parameter', () {
-      final outGrid = NDArray<double>.zeros([2, 3, 1], DType.float64);
+      final outGrid = NDArray<Float64>.zeros([2, 3, 1], DType.float64);
       final res = mgrid([GridRange(0, 3), GridRange(0, 1)], out: outGrid);
       expect(res, same(outGrid));
       expect(outGrid.getCell([0, 0, 0]), 0.0);
