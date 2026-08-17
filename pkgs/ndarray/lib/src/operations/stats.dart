@@ -1741,7 +1741,7 @@ NDArray<R> cumprod<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
     result = out ?? NDArray<R>.create([size], targetDType as DType<R>);
     if (out != null) {
-      if (!listEquals(out.shape, [size]) || out.dtype != a.dtype) {
+      if (!listEquals(out.shape, [size]) || out.dtype != targetDType) {
         throw ArgumentError(
           'Provided out buffer has incompatible shape or dtype.',
         );
@@ -1774,7 +1774,7 @@ NDArray<R> cumprod<T, R>(NDArray<T> a, {int? axis, NDArray<R>? out}) {
 
   result = out ?? NDArray<R>.create(a.shape, targetDType as DType<R>);
   if (out != null) {
-    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != targetDType) {
       throw ArgumentError(
         'Provided out buffer has incompatible shape or dtype.',
       );
@@ -2045,7 +2045,7 @@ NDArray<R> nanmean<R extends Object>(
     var sumVal = (targetDType.isComplex ? Complex(0, 0) : 0.0) as dynamic;
     var count = 0;
     while (iter.moveNext()) {
-      final val = promotedA.data[iter.index];
+      final val = promotedA.getCellRaw(iter.index);
       if (val is double && val.isNaN) continue;
       if (val is Complex && (val.real.isNaN || val.imag.isNaN)) continue;
       sumVal += val;
@@ -2744,7 +2744,17 @@ average<T extends num, W extends num, R extends num>(
 
   if (weights == null) {
     final avg = mean<R, T>(a, axis: resolvedAxis, out: out);
-    return (average: avg, sumOfWeights: null);
+    if (!returned) {
+      return (average: avg, sumOfWeights: null);
+    }
+    return NDArray.scope(() {
+      final scale = resolvedAxis == null ? a.size : a.shape[resolvedAxis];
+      final scaleScalar = NDArray.fromList([scale], [], DType.int64);
+      final promoted = _castTo<R>(scaleScalar, avg.dtype);
+      final scaleArray = broadcastTo<R>(promoted, avg.shape);
+      scaleArray.detachToParentScope();
+      return (average: avg, sumOfWeights: scaleArray);
+    });
   }
 
   if (weights.isDisposed) {

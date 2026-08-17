@@ -463,7 +463,7 @@ NDArray<T> binomial<T extends num>(
     }
   }
   final arr = out ?? NDArray<T>.create(shape, resolvedDType);
-  final len = arr.data.length;
+  final len = arr.size;
   final seedVal = secure
       ? Random.secure().nextInt(4294967296)
       : (seed ?? Random().nextInt(4294967296));
@@ -968,15 +968,14 @@ void shuffle(NDArray a, {int? seed, bool secure = false}) {
   if (d0 <= 1) return;
 
   if (a.shape.length == 1) {
-    final data = a.data;
     final offset = a.offsetElements;
     final stride = a.strides[0];
     for (var i = d0 - 1; i > 0; i--) {
       final j = rand.nextInt(i + 1);
       if (i != j) {
-        final temp = data[offset + i * stride];
-        data[offset + i * stride] = data[offset + j * stride];
-        data[offset + j * stride] = temp;
+        final temp = a.getCellRaw(offset + i * stride);
+        a.setCellRaw(offset + i * stride, a.getCellRaw(offset + j * stride));
+        a.setCellRaw(offset + j * stride, temp);
       }
     }
     return;
@@ -988,7 +987,6 @@ void shuffle(NDArray a, {int? seed, bool secure = false}) {
   final tempSlice = NDArray.create(sliceShape, a.dtype);
   try {
     final stepStride = a.strides[0];
-    final data = a.data;
 
     for (var i = d0 - 1; i > 0; i--) {
       final j = rand.nextInt(i + 1);
@@ -997,9 +995,9 @@ void shuffle(NDArray a, {int? seed, bool secure = false}) {
         final offsetJ = a.offsetElements + j * stepStride;
 
         _copySlice(
-          data,
+          a,
           offsetI,
-          tempSlice.data,
+          tempSlice,
           0,
           sliceShape,
           sliceStrides,
@@ -1007,9 +1005,9 @@ void shuffle(NDArray a, {int? seed, bool secure = false}) {
           0,
         );
         _copySlice(
-          data,
+          a,
           offsetJ,
-          data,
+          a,
           offsetI,
           sliceShape,
           sliceStrides,
@@ -1017,9 +1015,9 @@ void shuffle(NDArray a, {int? seed, bool secure = false}) {
           0,
         );
         _copySlice(
-          tempSlice.data,
+          tempSlice,
           0,
-          data,
+          a,
           offsetJ,
           sliceShape,
           tempSlice.strides,
@@ -1064,9 +1062,9 @@ NDArray<T> permutation<T>(
 }
 
 void _copySlice(
-  List src,
+  NDArray src,
   int srcOffset,
-  List dest,
+  NDArray dest,
   int destOffset,
   List<int> shape,
   List<int> stridesSrc,
@@ -1074,7 +1072,7 @@ void _copySlice(
   int dim,
 ) {
   if (shape.isEmpty) {
-    dest[destOffset] = src[srcOffset];
+    dest.setCellRaw(destOffset, src.getCellRaw(srcOffset));
     return;
   }
   if (dim == shape.length - 1) {
@@ -1082,7 +1080,10 @@ void _copySlice(
     final strideSrc = stridesSrc[dim];
     final strideDest = stridesDest[dim];
     for (var i = 0; i < limit; i++) {
-      dest[destOffset + i * strideDest] = src[srcOffset + i * strideSrc];
+      dest.setCellRaw(
+        destOffset + i * strideDest,
+        src.getCellRaw(srcOffset + i * strideSrc),
+      );
     }
     return;
   }

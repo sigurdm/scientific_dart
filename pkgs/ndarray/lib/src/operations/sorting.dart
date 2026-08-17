@@ -700,112 +700,109 @@ NDArray<int> argpartition(
     }
 
     try {
-      if (src.dtype == DType.float64) {
-        final dataPtr = src.pointer.cast<ffi.Double>();
-        for (var r = 0; r < numRows; r++) {
-          native_argpartition_double(
-            dataPtr + r * n,
-            resPtr + r * n,
-            n,
-            cKList,
-            uniqueK.length,
-          );
-        }
-      } else if (src.dtype == DType.float32) {
-        final dataPtr = src.pointer.cast<ffi.Float>();
-        for (var r = 0; r < numRows; r++) {
-          native_argpartition_float(
-            dataPtr + r * n,
-            resPtr + r * n,
-            n,
-            cKList,
-            uniqueK.length,
-          );
-        }
-      } else if (src.dtype == DType.int64) {
-        final dataPtr = src.pointer.cast<ffi.LongLong>();
-        for (var r = 0; r < numRows; r++) {
-          native_argpartition_int64(
-            dataPtr + r * n,
-            resPtr + r * n,
-            n,
-            cKList,
-            uniqueK.length,
-          );
-        }
-      } else if (src.dtype == DType.int32) {
-        final dataPtr = src.pointer.cast<ffi.Int>();
-        for (var r = 0; r < numRows; r++) {
-          native_argpartition_int32(
-            dataPtr + r * n,
-            resPtr + r * n,
-            n,
-            cKList,
-            uniqueK.length,
-          );
-        }
-      } else if (src.dtype == DType.int16) {
-        final dataPtr = src.pointer.cast<ffi.Int16>();
-        for (var r = 0; r < numRows; r++) {
-          native_argpartition_int16(
-            dataPtr + r * n,
-            resPtr + r * n,
-            n,
-            cKList,
-            uniqueK.length,
-          );
-        }
-      } else if (src.dtype == DType.uint8) {
-        final dataPtr = src.pointer.cast<ffi.Uint8>();
-        for (var r = 0; r < numRows; r++) {
-          native_argpartition_uint8(
-            dataPtr + r * n,
-            resPtr + r * n,
-            n,
-            cKList,
-            uniqueK.length,
-          );
-        }
-      } else if (src.dtype == DType.complex128) {
-        final dataPtr = src.pointer.cast<ffi.Double>();
-        for (var r = 0; r < numRows; r++) {
-          native_argpartition_complex128(
-            dataPtr + r * n * 2,
-            resPtr + r * n,
-            n,
-            cKList,
-            uniqueK.length,
-          );
-        }
-      } else if (src.dtype == DType.complex64) {
-        final dataPtr = src.pointer.cast<ffi.Float>();
-        for (var r = 0; r < numRows; r++) {
-          native_argpartition_complex64(
-            dataPtr + r * n * 2,
-            resPtr + r * n,
-            n,
-            cKList,
-            uniqueK.length,
-          );
-        }
-      } else if (src.dtype == DType.boolean) {
-        for (var r = 0; r < numRows; r++) {
-          final rowStart = r * n;
-          final indices = List<int>.generate(n, (i) => i);
-          indices.sort((i, j) {
-            final bA = src.getCellFlat(rowStart + i) as bool;
-            final bB = src.getCellFlat(rowStart + j) as bool;
-            if (bA == bB) return 0;
-            return bA ? 1 : -1;
-          });
-          for (var i = 0; i < n; i++) {
-            result.setCellFlat(rowStart + i, indices[i]);
+      switch (src.dtype) {
+        case DType.float64:
+          final dataPtr = src.pointer.cast<ffi.Double>();
+          for (var r = 0; r < numRows; r++) {
+            native_argpartition_double(
+              dataPtr + r * n,
+              resPtr + r * n,
+              n,
+              cKList,
+              uniqueK.length,
+            );
           }
-        }
-      } else {
-        throw UnimplementedError(
-          'Unsupported dtype for argpartition: ${src.dtype}',
-        );
+        case DType.float32:
+          final dataPtr = src.pointer.cast<ffi.Float>();
+          for (var r = 0; r < numRows; r++) {
+            native_argpartition_float(
+              dataPtr + r * n,
+              resPtr + r * n,
+              n,
+              cKList,
+              uniqueK.length,
+            );
+          }
+        case DType.int64:
+          final dataPtr = src.pointer.cast<ffi.LongLong>();
+          for (var r = 0; r < numRows; r++) {
+            native_argpartition_int64(
+              dataPtr + r * n,
+              resPtr + r * n,
+              n,
+              cKList,
+              uniqueK.length,
+            );
+          }
+        case DType.int32:
+          final dataPtr = src.pointer.cast<ffi.Int>();
+          for (var r = 0; r < numRows; r++) {
+            native_argpartition_int32(
+              dataPtr + r * n,
+              resPtr + r * n,
+              n,
+              cKList,
+              uniqueK.length,
+            );
+          }
+        case DType.int16:
+          final dataPtr = src.pointer.cast<ffi.Int16>();
+          for (var r = 0; r < numRows; r++) {
+            native_argpartition_int16(
+              dataPtr + r * n,
+              resPtr + r * n,
+              n,
+              cKList,
+              uniqueK.length,
+            );
+          }
+        case DType.uint8:
+          final dataPtr = src.pointer.cast<ffi.Uint8>();
+          for (var r = 0; r < numRows; r++) {
+            native_argpartition_uint8(
+              dataPtr + r * n,
+              resPtr + r * n,
+              n,
+              cKList,
+              uniqueK.length,
+            );
+          }
+        case DType.complex128:
+          final dataPtr = src.pointer.cast<ffi.Double>();
+          for (var r = 0; r < numRows; r++) {
+            native_argpartition_complex128(
+              dataPtr + r * n * 2,
+              resPtr + r * n,
+              n,
+              cKList,
+              uniqueK.length,
+            );
+          }
+        case DType.complex64:
+          final dataPtr = src.pointer.cast<ffi.Float>();
+          for (var r = 0; r < numRows; r++) {
+            native_argpartition_complex64(
+              dataPtr + r * n * 2,
+              resPtr + r * n,
+              n,
+              cKList,
+              uniqueK.length,
+            );
+          }
+        case DType.boolean:
+          for (var r = 0; r < numRows; r++) {
+            final rowStart = r * n;
+            final indices = List<int>.generate(n, (i) => i);
+            indices.sort((i, j) {
+              final bA = src.getCellFlat(rowStart + i) as bool;
+              final bB = src.getCellFlat(rowStart + j) as bool;
+              if (bA == bB) return 0;
+              return bA ? 1 : -1;
+            });
+            for (var i = 0; i < n; i++) {
+              result.setCellFlat(rowStart + i, indices[i]);
+            }
+          }
       }
 
       if (is64 && src.dtype != DType.boolean) {

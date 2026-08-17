@@ -5024,6 +5024,29 @@ void main() {
           expect(r.getCell([1, 1]), closeTo(1.0, 1e-4));
         });
       });
+
+      group('Stream 4 remediation fixes', () {
+        test('cumprod boolean array with int32 out buffer', () {
+          final aBool = NDArray.fromList(
+            [true, false, true],
+            [3],
+            DType.boolean,
+          );
+          final outBuf = NDArray<int>.create([3], DType.int32);
+          final res = cumprod(aBool, out: outBuf);
+          expect(res, same(outBuf));
+          expect(res.toList(), [1, 0, 0]);
+        });
+
+        test('average with weights == null && returned == true', () {
+          final a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64);
+          final res = average(a, returned: true);
+          expect(res.average.scalar, 2.5);
+          expect(res.sumOfWeights, isNotNull);
+          expect(res.sumOfWeights!.scalar, 4.0);
+          expect(res.sumOfWeights!.dtype, DType.float64);
+        });
+      });
     });
   });
 }

@@ -730,26 +730,29 @@ NDArray<T> tril<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
       : a.shape.sublist(0, rank - 2).reduce((x, y) => x * y);
 
   if (a.isContiguous && result.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_tril_double(
-        a.pointer.cast(),
-        result.pointer.cast(),
-        batchCount,
-        rows,
-        cols,
-        k,
-      );
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_tril_float(
-        a.pointer.cast(),
-        result.pointer.cast(),
-        batchCount,
-        rows,
-        cols,
-        k,
-      );
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_tril_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          batchCount,
+          rows,
+          cols,
+          k,
+        );
+        return result;
+      case DType.float32:
+        v_tril_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          batchCount,
+          rows,
+          cols,
+          k,
+        );
+        return result;
+      default:
+        break;
     }
   }
 
@@ -819,26 +822,29 @@ NDArray<T> triu<T>(NDArray<T> a, {int k = 0, NDArray<T>? out}) {
       : a.shape.sublist(0, rank - 2).reduce((x, y) => x * y);
 
   if (a.isContiguous && result.isContiguous) {
-    if (a.dtype == DType.float64) {
-      v_triu_double(
-        a.pointer.cast(),
-        result.pointer.cast(),
-        batchCount,
-        rows,
-        cols,
-        k,
-      );
-      return result;
-    } else if (a.dtype == DType.float32) {
-      v_triu_float(
-        a.pointer.cast(),
-        result.pointer.cast(),
-        batchCount,
-        rows,
-        cols,
-        k,
-      );
-      return result;
+    switch (a.dtype) {
+      case DType.float64:
+        v_triu_double(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          batchCount,
+          rows,
+          cols,
+          k,
+        );
+        return result;
+      case DType.float32:
+        v_triu_float(
+          a.pointer.cast(),
+          result.pointer.cast(),
+          batchCount,
+          rows,
+          cols,
+          k,
+        );
+        return result;
+      default:
+        break;
     }
   }
 
