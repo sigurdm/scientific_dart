@@ -84,7 +84,7 @@ enum DType<T> {
 ///   - **Floor Division (`~/` or `floor_divide`) & Remainder (`%` or `remainder`)**:
 ///     - **For Floating-Point Types**: Behaves identically to true division, returning `double.nan`
 ///       on division by zero without throwing exceptions.
-///     - **For Integer Types**: Throws an [UnsupportedError] if any element of the divisor is `0`.
+///     - **For Integer Types**: It is an error if any element of the divisor is `0`.
 ///       This upfront safety check in Dart prevents native C integer division by zero, which is
 ///       undefined behavior in C and would crash the entire Dart VM process with a `SIGFPE` signal.
 /// - **Overflow**:
@@ -1452,7 +1452,7 @@ final class NDArray<T> implements ffi.Finalizable {
         'scalar can only be called on 0-dimensional arrays (has shape $shape)',
       );
     }
-    return data[0];
+    return getCellFlat(0);
   }
 
   /// Fetches the single scalar element at the specified multi-dimensional [coords].
@@ -1579,17 +1579,16 @@ final class NDArray<T> implements ffi.Finalizable {
     }
 
     var valueIndex = 0;
-    final valData = values.data;
 
     void walk(int dim, int currentOffset, int maskOffset) {
       if (dim == shape.length) {
         if (mask.data[maskOffset]) {
-          if (valueIndex >= valData.length) {
+          if (valueIndex >= values.size) {
             throw ArgumentError(
               'Source values array contains fewer elements than the mask targets',
             );
           }
-          data[currentOffset] = valData[valueIndex++];
+          data[currentOffset] = values.getCellFlat(valueIndex++);
         }
         return;
       }
@@ -1655,12 +1654,11 @@ final class NDArray<T> implements ffi.Finalizable {
       throw RangeError.range(axis, 0, shape.length - 1, 'axis');
     }
 
-    final idxData = indices.data;
     final sliceShape = List<int>.from(shape)..removeAt(axis);
     final sliceStrides = List<int>.from(strides)..removeAt(axis);
 
-    for (var idx = 0; idx < idxData.length; idx++) {
-      final targetIdx = idxData[idx];
+    for (var idx = 0; idx < indices.size; idx++) {
+      final targetIdx = indices.getCellFlat(idx);
       if (targetIdx < 0 || targetIdx >= shape[axis]) {
         throw RangeError.range(
           targetIdx,
@@ -1694,15 +1692,13 @@ final class NDArray<T> implements ffi.Finalizable {
       throw RangeError.range(axis, 0, shape.length - 1, 'axis');
     }
 
-    final idxData = indices.data;
     final sliceShape = List<int>.from(shape)..removeAt(axis);
     final sliceStrides = List<int>.from(strides)..removeAt(axis);
 
-    final valData = values.data;
     var valOffset = 0;
 
-    for (var idx = 0; idx < idxData.length; idx++) {
-      final targetIdx = idxData[idx];
+    for (var idx = 0; idx < indices.size; idx++) {
+      final targetIdx = indices.getCellFlat(idx);
       if (targetIdx < 0 || targetIdx >= shape[axis]) {
         throw RangeError.range(
           targetIdx,
@@ -1714,12 +1710,12 @@ final class NDArray<T> implements ffi.Finalizable {
 
       void writeSlice(int dim, int currentOffset) {
         if (dim == sliceShape.length) {
-          if (valOffset >= valData.length) {
+          if (valOffset >= values.size) {
             throw ArgumentError(
               'Source values array contains fewer elements than required for the advanced index allocation',
             );
           }
-          data[currentOffset] = valData[valOffset++] as T;
+          data[currentOffset] = _coerceScalar(values.getCellFlat(valOffset++));
           return;
         }
         for (var i = 0; i < sliceShape[dim]; i++) {
@@ -1734,8 +1730,8 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Accesses elements of the array polymorphically based on the runtime type of [spec].
   /// Safely coercing scalar inputs to matching array element type [T].
   T _coerceScalar(dynamic value) {
-    if (value is NDArray && (value.shape.isEmpty || value.data.length == 1)) {
-      value = value.scalar;
+    if (value is NDArray && (value.shape.isEmpty || value.size == 1)) {
+      value = value.getCellFlat(0);
     }
     if (value is T) return value;
     switch (dtype) {
@@ -1796,8 +1792,8 @@ final class NDArray<T> implements ffi.Finalizable {
       );
     }
 
-    if (value is NDArray && (value.shape.isEmpty || value.data.length == 1)) {
-      value = value.scalar;
+    if (value is NDArray && (value.shape.isEmpty || value.size == 1)) {
+      value = value.getCellFlat(0);
     }
 
     final processedSelectors = List<Selector>.from(selectors);
@@ -1863,16 +1859,35 @@ final class NDArray<T> implements ffi.Finalizable {
             : Slice.all();
         if (sel is Slice) {
           final step = sel.step;
-          final startIdx = sel.start == null
-              ? (step > 0 ? 0 : shape[i] - 1)
-              : (sel.start! < 0 ? shape[i] + sel.start! : sel.start!);
-          final stopIdx = sel.stop == null
-              ? (step > 0 ? shape[i] : -1)
-              : (sel.stop! < 0 ? shape[i] + sel.stop! : sel.stop!);
-          final realStart = startIdx.clamp(0, shape[i] - 1);
-          final realStop = stopIdx.clamp(-1, shape[i]);
-          final dimSize = ((realStop - realStart) / step).ceil();
-          targetShape.add(dimSize > 0 ? dimSize : 0);
+          final int realStart;
+          final int realStop;
+          final int dimSize;
+          if (step > 0) {
+            final startIdx = sel.start == null
+                ? 0
+                : (sel.start! < 0 ? shape[i] + sel.start! : sel.start!);
+            final stopIdx = sel.stop == null
+                ? shape[i]
+                : (sel.stop! < 0 ? shape[i] + sel.stop! : sel.stop!);
+            realStart = startIdx.clamp(0, shape[i]);
+            realStop = stopIdx.clamp(0, shape[i]);
+            dimSize = realStop > realStart
+                ? ((realStop - realStart + step - 1) ~/ step)
+                : 0;
+          } else {
+            final startIdx = sel.start == null
+                ? shape[i] - 1
+                : (sel.start! < 0 ? shape[i] + sel.start! : sel.start!);
+            final stopIdx = sel.stop == null
+                ? -1
+                : (sel.stop! < 0 ? shape[i] + sel.stop! : sel.stop!);
+            realStart = startIdx.clamp(-1, shape[i] - 1);
+            realStop = stopIdx.clamp(-1, shape[i] - 1);
+            dimSize = realStart > realStop
+                ? ((realStart - realStop - step - 1) ~/ -step)
+                : 0;
+          }
+          targetShape.add(dimSize);
         } else if (sel is Indices) {
           targetShape.add(sel.values.length);
         }
@@ -1911,17 +1926,31 @@ final class NDArray<T> implements ffi.Finalizable {
           walk(dim + 1, valDim);
         } else if (sel is Slice) {
           final step = sel.step;
-          final startIdx = sel.start == null
-              ? (step > 0 ? 0 : shape[dim] - 1)
-              : (sel.start! < 0 ? shape[dim] + sel.start! : sel.start!);
-          final stopIdx = sel.stop == null
-              ? (step > 0 ? shape[dim] : -1)
-              : (sel.stop! < 0 ? shape[dim] + sel.stop! : sel.stop!);
-          final realStart = startIdx.clamp(0, shape[dim] - 1);
+          final int realStart;
+          final int realStop;
+          if (step > 0) {
+            final startIdx = sel.start == null
+                ? 0
+                : (sel.start! < 0 ? shape[dim] + sel.start! : sel.start!);
+            final stopIdx = sel.stop == null
+                ? shape[dim]
+                : (sel.stop! < 0 ? shape[dim] + sel.stop! : sel.stop!);
+            realStart = startIdx.clamp(0, shape[dim]);
+            realStop = stopIdx.clamp(0, shape[dim]);
+          } else {
+            final startIdx = sel.start == null
+                ? shape[dim] - 1
+                : (sel.start! < 0 ? shape[dim] + sel.start! : sel.start!);
+            final stopIdx = sel.stop == null
+                ? -1
+                : (sel.stop! < 0 ? shape[dim] + sel.stop! : sel.stop!);
+            realStart = startIdx.clamp(-1, shape[dim] - 1);
+            realStop = stopIdx.clamp(-1, shape[dim] - 1);
+          }
           var stepIdx = 0;
           for (
             var idx = realStart;
-            step > 0 ? idx < stopIdx : idx > stopIdx;
+            step > 0 ? idx < realStop : idx > realStop;
             idx += step
           ) {
             currentCoords[dim] = idx;
@@ -2641,9 +2670,12 @@ final class NDArray<T> implements ffi.Finalizable {
             if (shape[i] == 0) {
               pSliceStarts[i] = 0;
               pSliceStops[i] = 0;
+            } else if (step > 0) {
+              pSliceStarts[i] = startIdx.clamp(0, shape[i]);
+              pSliceStops[i] = stopIdx.clamp(0, shape[i]);
             } else {
-              pSliceStarts[i] = startIdx.clamp(0, shape[i] - 1);
-              pSliceStops[i] = stopIdx.clamp(-1, shape[i]);
+              pSliceStarts[i] = startIdx.clamp(-1, shape[i] - 1);
+              pSliceStops[i] = stopIdx.clamp(-1, shape[i] - 1);
             }
             pSliceSteps[i] = step;
             pIndicesPtrs[i] = ffi.Pointer.fromAddress(0);
