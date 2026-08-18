@@ -64,5 +64,35 @@ void main() {
         closeTo(17.0, 1e-12),
       ); // 3(4) + 2(2) + 1 = 17
     });
+
+    test('pow exact polynomial exponentiation', () {
+      // P(x) = x + 1
+      final p = FlintRationalPoly.fromIntCoefficients([1, 1]);
+      final squared = p ^ 2; // (x + 1)^2 = x^2 + 2x + 1
+      expect(squared.degree, equals(2));
+      expect(squared.evaluate(2.0), closeTo(9.0, 1e-12));
+    });
+
+    test('compose exact polynomial composition', () {
+      // P(x) = x^2
+      final p = FlintRationalPoly.fromIntCoefficients([0, 0, 1]);
+      // Q(x) = 2x + 1
+      final q = FlintRationalPoly.fromIntCoefficients([1, 2]);
+      // P(Q(x)) = (2x + 1)^2 = 4x^2 + 4x + 1
+      final comp = p.compose(q);
+      expect(comp.degree, equals(2));
+      expect(comp.evaluate(1.0), closeTo(9.0, 1e-12));
+    });
+
+    test('evaluate and evaluateRational', () {
+      // P(x) = 3x^2 + 2x + 1
+      final p = FlintRationalPoly.fromIntCoefficients([1, 2, 3]);
+      expect(p.evaluate(2.0), closeTo(17.0, 1e-12));
+
+      // Evaluate at 1/2: 3*(1/4) + 2*(1/2) + 1 = 3/4 + 1 + 1 = 11/4
+      final ratRes = p.evaluateRational(1, 2);
+      expect(ratRes.numerator, equals(BigInt.from(11)));
+      expect(ratRes.denominator, equals(BigInt.from(4)));
+    });
   });
 }

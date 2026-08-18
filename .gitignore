@@ -34,7 +34,7 @@ scratch_notebook/
 .jetski/
 criterion_history.json
 **/benchmark/report/
-lib/
+.dart_tool/lib/
 
 # Local pub cache
 pub_cache/

@@ -63,6 +63,20 @@ void main() {
   for (final item in fac.factors) {
     print('  Factor (${item.factor}) ^ ${item.exponent}');
   }
+
+  // Exact equation & linear system solving
+  final roots = Expr.solvePoly((x ^ 2) - Integer(9), x);
+  print('Roots of x^2 - 9 = 0: $roots');
+
+  final sol = Expr.solveLinearSystem([
+    (Integer(2) * x) + y - Integer(5),
+    x + (Integer(3) * y) - Integer(5),
+  ], [x, y]);
+  print('Linear system solution (x, y): $sol');
+
+  // Code Generation
+  print('C code: ${wave.toCCode()}');
+  print('JS code: ${wave.toJSCode()}');
 }
 ```
 

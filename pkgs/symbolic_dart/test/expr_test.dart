@@ -77,10 +77,56 @@ void main() {
       expect(f.freeSymbols.length, 2);
     });
 
-    test('toLatex format', () {
+    test('toLatex, toCCode, toJSCode, toMathML format printers', () {
       final x = Symbol('x');
       final f = sin(x ^ 2);
       expect(f.toLatex(), isNotEmpty);
+      expect(f.toCCode(), isNotEmpty);
+      expect(f.toJSCode(), isNotEmpty);
+      expect(f.toMathML(), isNotEmpty);
+    });
+
+    test('trig, hyperbolic, and special functions chaining', () {
+      expect(Integer(9).sqrt().asDouble, closeTo(3.0, 1e-12));
+      expect(Integer(27).cbrt().asDouble, closeTo(3.0, 1e-12));
+      expect(kroneckerDelta(1, 1).asDouble, equals(1.0));
+      expect(kroneckerDelta(1, 2).asDouble, equals(0.0));
+      expect(gcd(12, 18).asDouble, equals(6.0));
+      expect(lcm(12, 18).asDouble, equals(36.0));
+      expect(Real(3.7).floor().asDouble, equals(3.0));
+      expect(Real(3.7).ceil().asDouble, equals(4.0));
+    });
+
+    test('asNumerDenom rational separation', () {
+      final x = Symbol('x');
+      final frac = (x ^ 2) / (x + 1);
+      final parts = frac.asNumerDenom();
+      expect(parts.numerator.eq(x ^ 2), isTrue);
+      expect(parts.denominator.eq(x + 1), isTrue);
+    });
+
+    test('exact polynomial solver solvePoly', () {
+      final x = Symbol('x');
+      // x^2 - 9 = 0
+      final roots = Expr.solvePoly((x ^ 2) - 9, x);
+      expect(roots.length, equals(2));
+      final rootVals = roots.map((r) => r.asDouble).toSet();
+      expect(rootVals, equals({-3.0, 3.0}));
+    });
+
+    test('exact linear system solver solveLinearSystem', () {
+      final x = Symbol('x');
+      final y = Symbol('y');
+      // 2*x + y - 5 = 0
+      // x + 3*y - 5 = 0
+      // Solution: x = 2, y = 1
+      final sol = Expr.solveLinearSystem(
+        [(Integer(2) * x) + y - 5, x + (Integer(3) * y) - 5],
+        [x, y],
+      );
+      expect(sol.length, equals(2));
+      expect(sol[0].asDouble, closeTo(2.0, 1e-12));
+      expect(sol[1].asDouble, closeTo(1.0, 1e-12));
     });
   });
 }
