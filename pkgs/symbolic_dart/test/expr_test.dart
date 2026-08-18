@@ -136,5 +136,60 @@ void main() {
       expect(sol[0].asDouble, closeTo(2.0, 1e-12));
       expect(sol[1].asDouble, closeTo(1.0, 1e-12));
     });
+
+    test('all remaining top-level trig, hyperbolic, and special functions', () {
+      final x = Symbol('x');
+      expect(tan(0).asDouble, closeTo(0.0, 1e-12));
+      expect(asin(0).asDouble, closeTo(0.0, 1e-12));
+      expect(acos(1).asDouble, closeTo(0.0, 1e-12));
+      expect(atan(0).asDouble, closeTo(0.0, 1e-12));
+      expect(atan2(0, 1).asDouble, closeTo(0.0, 1e-12));
+      expect(csc(Expr.pi / 2).asDouble, closeTo(1.0, 1e-12));
+      expect(sec(0).asDouble, closeTo(1.0, 1e-12));
+      expect(cot(Expr.pi / 2).asDouble, closeTo(0.0, 1e-12));
+
+      expect(sinh(0).asDouble, closeTo(0.0, 1e-12));
+      expect(cosh(0).asDouble, closeTo(1.0, 1e-12));
+      expect(tanh(0).asDouble, closeTo(0.0, 1e-12));
+      expect(asinh(0).asDouble, closeTo(0.0, 1e-12));
+      expect(acosh(1).asDouble, closeTo(0.0, 1e-12));
+      expect(atanh(0).asDouble, closeTo(0.0, 1e-12));
+
+      expect(floor(3.8).asDouble, equals(3.0));
+      expect(ceil(3.2).asDouble, equals(4.0));
+      expect(erf(0).asDouble, closeTo(0.0, 1e-12));
+      expect(erfc(0).asDouble, closeTo(1.0, 1e-12));
+      expect(gamma(1).asDouble, closeTo(1.0, 1e-12));
+      expect(lambertw(0).asDouble, closeTo(0.0, 1e-12));
+      expect(zeta(2).asDouble, closeTo(1.644934, 1e-5)); // pi^2/6
+    });
+
+    test('special constants and BigInt / String constructors', () {
+      expect(Expr.negInfinity.toString(), contains('-oo'));
+      expect(Expr.complexInfinity.toString(), contains('zoo'));
+      expect(Expr.nan.toString(), contains('nan'));
+
+      final bigIntExpr = Expr.fromObject(BigInt.from(123456789));
+      expect(bigIntExpr.asDouble, closeTo(123456789.0, 1e-6));
+
+      final strExpr = Expr.fromObject('y');
+      expect(strExpr.toString(), equals('y'));
+
+      expect(() => Expr.parse('invalid ((( formula'), throwsFormatException);
+      expect(() => Expr.fromObject(Object()), throwsArgumentError);
+    });
+
+    test('unary negation and binary arithmetic operators', () {
+      final x = Symbol('x');
+      final neg = -x;
+      expect(neg.subs({x: 5.0}).asDouble, closeTo(-5.0, 1e-12));
+
+      final a = Integer(10);
+      final b = Integer(2);
+      expect((a + b).asDouble, equals(12.0));
+      expect((a - b).asDouble, equals(8.0));
+      expect((a * b).asDouble, equals(20.0));
+      expect((a / b).asDouble, equals(5.0));
+    });
   });
 }

@@ -131,6 +131,77 @@ void main() {
       final ratCoeff = expS.evaluateRational(1); // 1 + 1 + 1/2 + 1/6 = 8/3
       expect(ratCoeff.numerator, equals(BigInt.from(8)));
       expect(ratCoeff.denominator, equals(BigInt.from(3)));
+
+      final pOne = FlintRationalPoly.fromIntCoefficients([1, 1]);
+      final logS = pOne.logSeries(3); // log(1+x) = x - x^2/2
+      expect(logS.degree, equals(2));
+
+      final cosS = p.cosSeries(3);
+      expect(cosS.degree, equals(2));
+
+      final sinS = p.sinSeries(3);
+      expect(sinS.degree, equals(1)); // sin(x) mod x^3 = x
+    });
+
+    test('constructors zero, one, monomial, and coefficients', () {
+      final z = FlintRationalPoly.zero();
+      expect(z.degree, equals(-1));
+      expect(z.length, equals(0));
+
+      final o = FlintRationalPoly.one();
+      expect(o.degree, equals(0));
+      expect(o.evaluate(5.0), equals(1.0));
+
+      final m = FlintRationalPoly.monomial(3, coefficient: 4);
+      expect(m.degree, equals(3));
+      expect(m.getCoefficientAsDouble(3), equals(4.0));
+      expect(m.getCoefficientAsDouble(100), equals(0.0));
+
+      expect(() => FlintRationalPoly.monomial(-1), throwsArgumentError);
+      expect(() => FlintRationalPoly.legendre(-1), throwsArgumentError);
+      expect(() => FlintRationalPoly.laguerre(-1), throwsArgumentError);
+    });
+
+    test('poly addition, subtraction, division, remainder, divmod', () {
+      // P(x) = x^2 - 1 = (x - 1)(x + 1)
+      final p = FlintRationalPoly.fromIntCoefficients([-1, 0, 1]);
+      final q = FlintRationalPoly.fromIntCoefficients([1, 1]); // x + 1
+
+      final sum = p + q; // x^2 + x
+      expect(sum.evaluate(2.0), equals(6.0));
+
+      final diff = p - q; // x^2 - x - 2
+      expect(diff.evaluate(2.0), equals(0.0));
+
+      final div = p / q; // x - 1
+      expect(div.evaluate(3.0), equals(2.0));
+
+      final rem = p % q; // 0
+      expect(rem.degree, equals(-1));
+
+      final dm = p.divmod(q);
+      expect(dm.quotient.evaluate(3.0), equals(2.0));
+      expect(dm.remainder.degree, equals(-1));
+
+      expect(() => p / FlintRationalPoly.zero(), throwsStateError);
+      expect(() => p % FlintRationalPoly.zero(), throwsStateError);
+      expect(() => p.divmod(FlintRationalPoly.zero()), throwsStateError);
+    });
+
+    test('poly derivative, integral, and gcd', () {
+      // P(x) = x^3
+      final p = FlintRationalPoly.monomial(3);
+      final der = p.derivative(); // 3x^2
+      expect(der.getCoefficientAsDouble(2), equals(3.0));
+
+      final integ = der.integral(); // x^3
+      expect(integ.getCoefficientAsDouble(3), equals(1.0));
+
+      // GCD of x^2 - 1 and x - 1 is x - 1 (monic)
+      final p1 = FlintRationalPoly.fromIntCoefficients([-1, 0, 1]);
+      final p2 = FlintRationalPoly.fromIntCoefficients([-1, 1]);
+      final g = p1.gcd(p2);
+      expect(g.evaluate(2.0), equals(1.0)); // 2 - 1 = 1
     });
   });
 }
