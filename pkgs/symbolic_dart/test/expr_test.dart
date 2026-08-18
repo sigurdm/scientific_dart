@@ -138,7 +138,6 @@ void main() {
     });
 
     test('all remaining top-level trig, hyperbolic, and special functions', () {
-      final x = Symbol('x');
       expect(tan(0).asDouble, closeTo(0.0, 1e-12));
       expect(asin(0).asDouble, closeTo(0.0, 1e-12));
       expect(acos(1).asDouble, closeTo(0.0, 1e-12));
