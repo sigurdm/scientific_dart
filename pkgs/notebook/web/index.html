@@ -17,10 +17,18 @@
     import { compileStreaming } from './editor_client.mjs';
     async function initWasm() {
       try {
-        const compiledApp = await compileStreaming(fetch('editor_client.wasm'));
+        const compiledApp = await compileStreaming(fetch('editor_client.wasm?v=' + Date.now()));
         const instantiatedApp = await compiledApp.instantiate({});
         instantiatedApp.invokeMain();
-        console.log('Dart CodeEditor WebAssembly module loaded successfully.');
+        console.log('Dart CodeEditor WebAssembly module loaded successfully. DartEditor type:', typeof window.DartEditor);
+        if (typeof window.switchEditorEngine === 'function') {
+          const stored = localStorage.getItem('notebook_editor_engine') || 'codemirror';
+          const select = document.getElementById('editorEngineSelect');
+          if (select) select.value = stored;
+          if (stored === 'dart_editor') {
+            window.switchEditorEngine('dart_editor');
+          }
+        }
       } catch (e) {
         console.warn('Wasm initialization error:', e);
       }
@@ -365,6 +373,97 @@
       margin: 4px 0 6px 18px;
       padding: 0;
     }
+
+    .inspector-drawer {
+      position: fixed;
+      top: 56px;
+      right: -360px;
+      width: 340px;
+      bottom: 0;
+      background-color: var(--panel-bg);
+      border-left: 1px solid var(--border-color);
+      box-shadow: -4px 0 20px rgba(0,0,0,0.5);
+      z-index: 1000;
+      transition: right 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+
+    .inspector-drawer.open {
+      right: 0;
+    }
+
+    .inspector-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 8px;
+    }
+
+    .inspector-title {
+      font-weight: 600;
+      color: var(--accent-color);
+      font-size: 1rem;
+    }
+
+    .inspector-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .inspector-item {
+      background-color: var(--cell-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+
+    .inspector-item-name {
+      font-family: 'Fira Code', monospace;
+      font-weight: bold;
+      color: #89b4fa;
+      font-size: 0.9rem;
+    }
+
+    .inspector-item-type {
+      font-size: 0.75rem;
+      color: #f9e2af;
+      margin-left: 6px;
+    }
+
+    .inspector-item-summary {
+      font-size: 0.82rem;
+      color: #cdd6f4;
+      margin-top: 4px;
+      word-break: break-all;
+    }
+
+    .cell-engine-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .cell-engine-badge.wasm {
+      background-color: rgba(137, 180, 250, 0.15);
+      color: #89b4fa;
+      border: 1px solid rgba(137, 180, 250, 0.4);
+    }
+    .cell-engine-badge.cm {
+      background-color: rgba(166, 173, 200, 0.1);
+      color: #a6adc8;
+      border: 1px solid rgba(166, 173, 200, 0.25);
+    }
   </style>
 </head>
 <body>
@@ -385,8 +484,19 @@
       <button onclick="addCell()">+ Code Cell</button>
       <button onclick="runAllCells()" class="primary">▶ Run All</button>
       <button onclick="clearAllOutputs()">Clear Outputs</button>
+      <button onclick="toggleVariableInspector()">📊 Array Inspector</button>
     </div>
   </header>
+
+  <div id="inspectorDrawer" class="inspector-drawer">
+    <div class="inspector-header">
+      <span class="inspector-title">Kernel Variables & NDArrays</span>
+      <button onclick="toggleVariableInspector()" style="padding: 2px 6px;">✕</button>
+    </div>
+    <div id="inspectorList" class="inspector-list">
+      <div style="color: #6c7086; font-size: 0.85rem;">Run a code cell declaring a variable (e.g. var a = NDArray...) to inspect live arrays.</div>
+    </div>
+  </div>
 
   <main>
     <div id="notebook" class="notebook-container"></div>
@@ -427,6 +537,9 @@
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         if (msg.type === 'result') {
+          if (msg.variables) {
+            renderVariableInspector(msg.variables);
+          }
           const callback = pendingEvaluations.get(msg.id);
           if (callback) {
             callback(msg.output, msg.isError, msg.outputs, msg.formattedCode);
@@ -434,6 +547,15 @@
           }
           if (pendingEvaluations.size === 0) {
             updateStatus('connected', 'Kernel Ready');
+          }
+        } else if (msg.type === 'variables_update') {
+          renderVariableInspector(msg.variables);
+        } else if (msg.type === 'format_result') {
+          const cell = document.getElementById(msg.cellId);
+          if (cell && cell._cm && msg.formattedCode && cell._cm.getValue() !== msg.formattedCode) {
+            const cursor = cell._cm.getCursor ? cell._cm.getCursor() : null;
+            cell._cm.setValue(msg.formattedCode);
+            if (cursor && cell._cm.setCursor) cell._cm.setCursor(cursor);
           }
         } else if (msg.type === 'completion') {
           const callback = pendingCompletions.get(msg.id);
@@ -752,8 +874,10 @@
       cell.innerHTML = `
         <div class="cell-header">
           <span class="cell-number">[ ${cellCount} ]</span>
+          <span class="cell-engine-badge cm" id="engine-badge-${cellId}">CM 5</span>
           <div class="cell-actions">
             <button onclick="runCell('${cellId}')" title="Run (Shift+Enter)">▶ Run</button>
+            <button onclick="formatCell('${cellId}')" title="Format Code (Shift+Alt+F)">✨ Format</button>
             <button onclick="runUntilCell('${cellId}')" title="Run all cells up to and including this one">▶▶ Until Here</button>
             <button onclick="deleteCell('${cellId}')" title="Delete Cell">🗑</button>
           </div>
@@ -788,16 +912,27 @@
 
     function setupEditorForCell(cell, textarea, cellId, initialCode) {
       let cm = null;
+      const badge = cell.querySelector('.cell-engine-badge') || document.getElementById(`engine-badge-${cellId}`);
 
       if (currentEditorEngine === 'dart_editor' && typeof window.DartEditor === 'function') {
         try {
           cm = window.DartEditor(textarea);
+          if (badge) {
+            badge.className = 'cell-engine-badge wasm';
+            badge.innerText = '⚡ Custom Wasm';
+            badge.title = 'Using Custom Dart CodeEditor (WebAssembly)';
+          }
         } catch (e) {
           console.warn('DartEditor initialization warning:', e);
         }
       }
 
       if (!cm || typeof cm.getValue !== 'function') {
+        if (badge) {
+          badge.className = 'cell-engine-badge cm';
+          badge.innerText = 'CM 5';
+          badge.title = 'Using CodeMirror 5';
+        }
         cm = CodeMirror.fromTextArea(textarea, {
           mode: 'clike',
           mime: 'application/x-dart',
@@ -904,6 +1039,9 @@
       updateStatus('busy', 'Executing...');
       output.className = 'output-container';
       output.innerText = 'Running...';
+      if (cell && cell._cm && typeof cell._cm.clearDiagnostics === 'function') {
+        cell._cm.clearDiagnostics();
+      }
 
       const reqId = `${cellId}-${Date.now()}`;
       pendingEvaluations.set(reqId, (resultText, isError, outputsArray, formattedCode) => {
@@ -915,6 +1053,14 @@
         }
         if (cell && !isError) {
           cell.classList.add('evaluated');
+        }
+        if (cell && isError && currentEditorEngine === 'dart_editor' && cell._cm && typeof cell._cm.setDiagnostic === 'function') {
+          let errLine = 0;
+          const lineMatch = /line\s+(\d+)/i.exec(resultText);
+          if (lineMatch) {
+            errLine = Math.max(0, parseInt(lineMatch[1], 10) - 1);
+          }
+          cell._cm.setDiagnostic(errLine, 0, 12, resultText.substring(0, 120));
         }
         if (onComplete) onComplete();
       });
@@ -957,10 +1103,53 @@
       autoSaveSession();
     }
 
+    function formatCell(cellId) {
+      const cell = document.getElementById(cellId);
+      if (cell && cell._cm) {
+        if (typeof cell._cm.formatCode === 'function') {
+          cell._cm.formatCode();
+        } else if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'format_code',
+            cellId: cellId,
+            code: cell._cm.getValue()
+          }));
+        }
+      }
+    }
+
+    function toggleVariableInspector() {
+      const drawer = document.getElementById('inspectorDrawer');
+      drawer.classList.toggle('open');
+      if (drawer.classList.contains('open') && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'inspect_variables' }));
+      }
+    }
+
+    function renderVariableInspector(vars) {
+      const list = document.getElementById('inspectorList');
+      if (!list) return;
+      if (!vars || vars.length === 0) {
+        list.innerHTML = '<div style="color: #6c7086; font-size: 0.85rem;">No user variables declared yet. Run a code cell declaring a variable (e.g. var a = NDArray...) to see it here.</div>';
+        return;
+      }
+      list.innerHTML = vars.map(v => `
+        <div class="inspector-item">
+          <div>
+            <span class="inspector-item-name">${v.name}</span>
+            <span class="inspector-item-type">[${v.type}]</span>
+          </div>
+          <div class="inspector-item-summary">${v.summary}</div>
+        </div>
+      `).join('');
+    }
+
     window.runCell = runCell;
     window.runUntilCell = runUntilCell;
     window.deleteCell = deleteCell;
     window.switchEditorEngine = switchEditorEngine;
+    window.formatCell = formatCell;
+    window.toggleVariableInspector = toggleVariableInspector;
 
     // Initialize default starter cells
     window.addEventListener('DOMContentLoaded', () => {

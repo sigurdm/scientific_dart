@@ -78,9 +78,14 @@ NDArray<T> sort<T extends Object>(
   }
 
   try {
-    final result = out ?? NDArray<T>.create(src.shape, src.dtype);
-    if (result != src) {
-      src.copy(out: result);
+    final NDArray<T> result;
+    if (out != null) {
+      if (out != src) {
+        src.copy(out: out);
+      }
+      result = out;
+    } else {
+      result = src.copy();
     }
 
     final n = src.shape.last;

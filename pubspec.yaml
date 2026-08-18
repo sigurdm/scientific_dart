@@ -9,6 +9,7 @@ workspace:
   - pkgs/ndarray_ma
   - pkgs/notebook
   - pkgs/code_editor
+  - pkgs/symbolic_dart
 dependencies:
   http: ^1.6.0
 

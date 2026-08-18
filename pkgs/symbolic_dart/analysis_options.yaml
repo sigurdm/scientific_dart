@@ -1,0 +1,6 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude:
+    - lib/src/ffi/symengine_bindings_generated.dart
+    - lib/src/ffi/flint_bindings_generated.dart

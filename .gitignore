@@ -31,6 +31,10 @@ pkgs/openblas/third_party/
 scratch/
 scratch_notebook/
 .local-chrome/
+.jetski/
+criterion_history.json
+**/benchmark/report/
+lib/
 
 # Local pub cache
 pub_cache/

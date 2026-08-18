@@ -20,6 +20,7 @@ dependencies:
 dev_dependencies:
   lints: ^6.1.0
   test: ^1.31.1
-  benchmark_harness: ^2.4.0
+  criterion:
+    git: https://github.com/sigurdm/criterion.git
   coverage: ^1.15.0
   ffigen: ^20.1.1

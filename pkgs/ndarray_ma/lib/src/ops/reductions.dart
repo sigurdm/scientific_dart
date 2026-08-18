@@ -85,7 +85,9 @@ MaskedArray<dynamic> _maVariance(MaskedArray self, {int? axis}) {
 }
 
 MaskedArray<dynamic> _maStd(MaskedArray self, {int? axis}) {
-  return self.variance(axis: axis).mapUnary((data) => ndops.sqrt(data));
+  return self
+      .variance(axis: axis)
+      .mapUnary((data) => ndops.sqrt<dynamic, double>(data));
 }
 
 MaskedArray<T> _reduction<T extends Object>(

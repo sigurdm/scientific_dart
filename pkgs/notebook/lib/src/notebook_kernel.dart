@@ -74,10 +74,20 @@ class NotebookKernel {
 
   Future<void> _startKernelOnly() async {
     final dartExecutable = p.join(dartSdkPath, 'bin', 'dart');
+    var kernelScriptPath = p.join(workspaceDir, 'bin', 'kernel.dart');
+    if (!File(kernelScriptPath).existsSync()) {
+      kernelScriptPath = p.join(
+        workspaceDir,
+        'pkgs',
+        'notebook',
+        'bin',
+        'kernel.dart',
+      );
+    }
 
     _process = await Process.start(dartExecutable, [
       '--enable-vm-service=0',
-      'bin/kernel.dart',
+      kernelScriptPath,
     ], workingDirectory: workspaceDir);
 
     final uriCompleter = Completer<String>();
@@ -196,11 +206,15 @@ class NotebookKernel {
   }
 
   void _updateWorkspaceLibId(Isolate isolate) {
+    LibraryRef? targetLib;
     for (var lib in isolate.libraries ?? []) {
       if (lib.uri != null && lib.uri!.endsWith('workspace.dart')) {
-        _workspaceLibId = lib.id!;
-        return;
+        targetLib = lib;
       }
+    }
+    if (targetLib != null) {
+      _workspaceLibId = targetLib.id!;
+      return;
     }
     throw StateError('Could not find workspace.dart library in isolate');
   }
@@ -218,12 +232,14 @@ class NotebookKernel {
     try {
       final formatter = DartFormatter(
         languageVersion: DartFormatter.latestLanguageVersion,
+        pageWidth: 120,
       );
       return formatter.format(trimmed).trim();
     } catch (_) {
       try {
         final formatter = DartFormatter(
           languageVersion: DartFormatter.latestLanguageVersion,
+          pageWidth: 120,
         );
         return formatter.formatStatement(trimmed).trim();
       } catch (_) {
@@ -233,36 +249,36 @@ class NotebookKernel {
   }
 
   Future<String> execute(String code) async {
-    code = formatCode(code);
-    if (code.isEmpty) return '';
+    final rawCode = code.trim();
+    if (rawCode.isEmpty) return '';
 
     final pubAddMatch = RegExp(
       r'^(?:%|%)?(?:pub\s+add|add)\s+([\w\d_\-]+)',
-    ).firstMatch(code);
+    ).firstMatch(rawCode);
     if (pubAddMatch != null) {
       final pkgName = pubAddMatch.group(1)!;
       return await _handleAddDependency(pkgName);
     }
 
-    if (RegExp(r'^import\s+').hasMatch(code)) {
+    if (RegExp(r'^import\s+').hasMatch(rawCode)) {
       final pkgMatch = RegExp(
         r"^import\s+[']package:([\w\d_\-]+)/",
-      ).firstMatch(code);
+      ).firstMatch(rawCode);
       if (pkgMatch != null) {
         final pkgName = pkgMatch.group(1)!;
         if (pkgName != 'ndarray' && pkgName != 'notebook') {
           await _ensurePackageInstalled(pkgName);
         }
       }
-      _imports.add(code);
+      _imports.add(rawCode);
       await _reloadWorkspace();
-      return 'Imported: $code';
+      return 'Imported ${pkgMatch?.group(1) ?? 'library'}';
     }
 
-    final declResult = _getDeclaredSymbolWithAnalyzer(code);
+    final declResult = _getDeclaredSymbolWithAnalyzer(rawCode);
     if (declResult != null) {
       final symbol = declResult.symbol;
-      var fullDecl = code.trim();
+      var fullDecl = rawCode;
       if (declResult.isVariable) {
         if (!fullDecl.endsWith(';')) fullDecl += ';';
         _definitions[symbol] = fullDecl;
@@ -302,7 +318,7 @@ class NotebookKernel {
     }
 
     final prevDefs = Map<String, String>.from(_definitions);
-    final transformRes = _transformCellCode(code);
+    final transformRes = _transformCellCode(rawCode);
     for (var def in transformRes.topLevelDefinitions) {
       final name = def.split(' ')[1].replaceAll(';', '');
       if (!_definitions.containsKey(name)) {
@@ -754,6 +770,49 @@ class NotebookKernel {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getVariableInspectorData() async {
+    if (_isolateId == null || _workspaceLibId == null || _service == null) {
+      return [];
+    }
+    final results = <Map<String, dynamic>>[];
+    for (final sym in _definitions.keys) {
+      try {
+        final evalObj = await _service!.evaluate(
+          _isolateId!,
+          _workspaceLibId!,
+          '''
+(() {
+  try {
+    final val = $sym;
+    if (val is NDArray) {
+      return 'NDArray shape: \${val.shape} | dtype: \${val.dtype.name} | strided: \${!val.isContiguous}';
+    }
+    final str = '\$val';
+    return '\${val.runtimeType} -> \${str.length > 60 ? str.substring(0, 60) + '...' : str}';
+  } catch (e) {
+    return 'error: \$e';
+  }
+})()
+''',
+        );
+        String? desc;
+        if (evalObj is InstanceRef && evalObj.valueAsString != null) {
+          desc = evalObj.valueAsString!;
+        } else {
+          desc = evalObj.toString();
+        }
+        results.add({
+          'name': sym,
+          'type': desc.startsWith('NDArray')
+              ? 'NDArray'
+              : desc.split(' -> ').first,
+          'summary': desc,
+        });
+      } catch (_) {}
+    }
+    return results;
+  }
+
   void _writeWorkspace() {
     final workspaceFile = File(
       p.join(workspaceDir, 'lib', 'src', 'workspace.dart'),
@@ -779,6 +838,9 @@ class NotebookKernel {
       buffer.writeln();
     }
     final content = buffer.toString();
+    if (!workspaceFile.parent.existsSync()) {
+      workspaceFile.parent.createSync(recursive: true);
+    }
     workspaceFile.writeAsStringSync(content);
     if (_lspClient != null) {
       final fileUri = p.toUri(workspaceFile.path).toString();

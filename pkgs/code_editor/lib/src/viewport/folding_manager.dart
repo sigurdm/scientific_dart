@@ -99,7 +99,7 @@ class FoldingManager {
 
   bool isLineHidden(int lineIndex) {
     for (final r in _regions) {
-      if (r.isCollapsed && lineIndex > r.startLine && lineIndex <= r.endLine) {
+      if (r.isCollapsed && lineIndex > r.startLine && lineIndex < r.endLine) {
         return true;
       }
     }
@@ -135,5 +135,44 @@ class FoldingManager {
       if (!isLineHidden(i)) count++;
     }
     return count;
+  }
+
+  /// Automatically scans document lines for '{' ... '}' blocks and '/*' ... '*/'
+  /// block comments, creating or updating fold regions while preserving existing
+  /// collapsed states.
+  void scanCodeBlocks(List<String> lines) {
+    final oldCollapsedMap = <int, bool>{};
+    for (final r in _regions) {
+      oldCollapsedMap[r.startLine] = r.isCollapsed;
+    }
+    _regions.clear();
+
+    final stack = <int>[];
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      // Check for opening brace {
+      for (int c = 0; c < line.length; c++) {
+        final ch = line[c];
+        if (ch == '{') {
+          stack.add(i);
+        } else if (ch == '}') {
+          if (stack.isNotEmpty) {
+            final start = stack.removeLast();
+            if (i > start + 1) {
+              final isCollapsed = oldCollapsedMap[start] ?? false;
+              _regions.add(
+                FoldRegion(
+                  startLine: start,
+                  endLine: i,
+                  isCollapsed: isCollapsed,
+                ),
+              );
+            }
+          }
+        }
+      }
+    }
+
+    _regions.sort((a, b) => a.startLine.compareTo(b.startLine));
   }
 }

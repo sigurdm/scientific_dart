@@ -192,6 +192,7 @@ class NotebookServer {
                 isError: false,
                 evaluated: true,
               );
+              final vars = await _kernel!.getVariableInspectorData();
               socket.add(
                 jsonEncode({
                   'type': 'result',
@@ -200,6 +201,7 @@ class NotebookServer {
                   'outputs': outputsList,
                   'formattedCode': formattedCode,
                   'isError': false,
+                  'variables': vars,
                 }),
               );
             } catch (e) {
@@ -211,6 +213,7 @@ class NotebookServer {
                 isError: true,
                 evaluated: false,
               );
+              final vars = await _kernel!.getVariableInspectorData();
               socket.add(
                 jsonEncode({
                   'type': 'result',
@@ -220,9 +223,26 @@ class NotebookServer {
                     {'mimeType': 'text/plain', 'data': errStr},
                   ],
                   'isError': true,
+                  'variables': vars,
                 }),
               );
             }
+          } else if (msgType == 'inspect_variables') {
+            final vars = await _kernel!.getVariableInspectorData();
+            socket.add(
+              jsonEncode({'type': 'variables_update', 'variables': vars}),
+            );
+          } else if (msgType == 'format_code') {
+            final cellId = msg['cellId'] as String;
+            final code = msg['code'] as String;
+            final formatted = _kernel!.formatCode(code);
+            socket.add(
+              jsonEncode({
+                'type': 'format_result',
+                'cellId': cellId,
+                'formattedCode': formatted,
+              }),
+            );
           } else if (msgType == 'complete') {
             final reqId = msg['id'] as String;
             final code = msg['code'] as String;

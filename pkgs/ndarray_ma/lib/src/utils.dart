@@ -174,54 +174,52 @@ MaskedArray<Object> dispatchCreateMaskedArray(
 }) {
   switch (data.dtype) {
     case DType.float64:
-      return MaskedArray<Float64>(
-        data as NDArray<Float64>,
+      return MaskedArray<double>(
+        data as NDArray<double>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.float64) as Float64?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.float64) as double?,
       );
     case DType.float32:
-      return MaskedArray<Float32>(
-        data as NDArray<Float32>,
+      return MaskedArray<double>(
+        data as NDArray<double>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.float32) as Float32?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.float32) as double?,
       );
     case DType.complex128:
-      return MaskedArray<Complex128>(
-        data as NDArray<Complex128>,
+      return MaskedArray<Complex>(
+        data as NDArray<Complex>,
         mask,
-        fillValue:
-            _coerceOrGetDefault(fillValue, DType.complex128) as Complex128?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.complex128) as Complex?,
       );
     case DType.complex64:
-      return MaskedArray<Complex64>(
-        data as NDArray<Complex64>,
+      return MaskedArray<Complex>(
+        data as NDArray<Complex>,
         mask,
-        fillValue:
-            _coerceOrGetDefault(fillValue, DType.complex64) as Complex64?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.complex64) as Complex?,
       );
     case DType.int64:
-      return MaskedArray<Int64>(
-        data as NDArray<Int64>,
+      return MaskedArray<int>(
+        data as NDArray<int>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.int64) as Int64?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.int64) as int?,
       );
     case DType.int32:
-      return MaskedArray<Int32>(
-        data as NDArray<Int32>,
+      return MaskedArray<int>(
+        data as NDArray<int>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.int32) as Int32?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.int32) as int?,
       );
     case DType.int16:
-      return MaskedArray<Int16>(
-        data as NDArray<Int16>,
+      return MaskedArray<int>(
+        data as NDArray<int>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.int16) as Int16?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.int16) as int?,
       );
     case DType.uint8:
-      return MaskedArray<Uint8>(
-        data as NDArray<Uint8>,
+      return MaskedArray<int>(
+        data as NDArray<int>,
         mask,
-        fillValue: _coerceOrGetDefault(fillValue, DType.uint8) as Uint8?,
+        fillValue: _coerceOrGetDefault(fillValue, DType.uint8) as int?,
       );
     case DType.boolean:
       return MaskedArray<bool>(
