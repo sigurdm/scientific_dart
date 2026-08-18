@@ -2,12 +2,12 @@ import 'package:meta/meta.dart';
 import 'dart:math' as math;
 import 'dart:ffi' as ffi;
 import 'dart:typed_data';
-import 'dart:async';
 import 'package:ffi/ffi.dart';
 import 'dart:collection';
 import 'ndarray_bindings.dart';
 import 'scratch_arena.dart';
 import 'package:openblas/openblas.dart' show openblas_set_num_threads;
+import 'package:resource_scope/resource_scope.dart';
 
 import 'operations.dart' as ops;
 import 'operations/helpers.dart' as helpers;
@@ -105,7 +105,7 @@ enum DType<T> {
 /// // Explicitly free memory when done
 /// a.dispose();
 /// ```
-final class NDArray<T> implements ffi.Finalizable {
+final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// Pointer to the raw C memory allocated for this array.
   final ffi.Pointer<ffi.Void> _pointer;
 
@@ -210,8 +210,6 @@ final class NDArray<T> implements ffi.Finalizable {
 
   static final _finalizer = ffi.NativeFinalizer(malloc.nativeFree);
 
-  static const _scopeKey = #ndarray.NDArrayScope;
-
   /// Whether to track all created memory-allocating (root) [NDArray]s.
   ///
   /// When enabled, all root [NDArray]s are tracked until they are disposed.
@@ -220,112 +218,24 @@ final class NDArray<T> implements ffi.Finalizable {
   /// Note: enabling this will keep undisposed [NDArray]s in memory,
   /// preventing them from being garbage collected, which allows
   /// [checkNoLeaks] to report them.
-  static const bool trackAllocations = bool.fromEnvironment(
-    'TRACK_NDARRAY_ALLOCATIONS',
-  );
+  static const bool trackAllocations = ResourceScope.trackAllocations;
 
-  static final Set<NDArray> _trackedAllocations = HashSet(
-    equals: identical,
-    hashCode: identityHashCode,
-  );
+  static List<NDArray> get trackedAllocations =>
+      ResourceScope.trackedAllocations.whereType<NDArray>().toList();
 
-  /// Returns a copy of the currently tracked (undisposed) root [NDArray]s.
-  static List<NDArray> get trackedAllocations => _trackedAllocations.toList();
+  static void checkNoLeaks() => ResourceScope.checkNoLeaks();
 
-  /// Checks that all tracked [NDArray]s have been disposed.
-  ///
-  /// It is an error if there are undisposed arrays.
-  static void checkNoLeaks() {
-    if (_trackedAllocations.isNotEmpty) {
-      final leaks = _trackedAllocations.toList();
-      throw StateError(
-        'Detected ${leaks.length} undisposed NDArrays:\n'
-        "${leaks.map((a) => '  NDArray(shape: ${a.shape}, dtype: ${a.dtype})').join('\n')}",
-      );
-    }
-  }
+  static void clearTrackedAllocations() =>
+      ResourceScope.clearTrackedAllocations();
 
-  /// Clears the list of tracked allocations.
-  static void clearTrackedAllocations() {
-    _trackedAllocations.clear();
-  }
+  static R scope<R>(R Function() callback) => ResourceScope.scope(callback);
 
-  /// Executes [callback] within an automatic resource management scope.
-  ///
-  /// Any [NDArray] created during the execution of [callback] (including
-  /// intermediate results from mathematical operations) will be automatically
-  /// disposed of when the callback returns (or throws).
-  ///
-  /// If you want an array to survive beyond the scope (e.g., if it's the result
-  /// of a computation), call [detachFromScope] on it before returning.
-  ///
-  /// **Example:**
-  /// ```dart
-  /// final result = NDArray.scope(() {
-  ///   final a = NDArray.zeros([100], DType.float64);
-  ///   final b = NDArray.ones([100], DType.float64);
-  ///   final c = add(a, b);
-  ///   return c.detachFromScope(); // 'a' and 'b' are freed, 'c' survives.
-  /// });
-  /// ```
-  static R scope<R>(R Function() callback) {
-    final parentScope = Zone.current[_scopeKey] as _NDArrayScope?;
-    final scope = _NDArrayScope(parentScope);
-    return runZoned(() {
-      R result;
-      try {
-        result = callback();
-      } catch (e) {
-        scope.dispose();
-        rethrow;
-      }
-
-      if (result is Future) {
-        return result.whenComplete(scope.dispose) as R;
-      }
-      scope.dispose();
-      return result;
-    }, zoneValues: {_scopeKey: scope});
-  }
-
-  /// Executes [callback] within an automatic resource management scope, automatically
-  /// detaching and returning the resulting [NDArray] to the parent scope (if any).
-  ///
-  /// Any intermediate arrays created inside [callback] will be automatically disposed,
-  /// while the returned [NDArray] survives the inner scope and is promoted to the caller's outer scope.
-  ///
-  /// **Example:**
-  /// ```dart
-  /// final result = NDArray.returning(() {
-  ///   final a = NDArray.zeros([100], DType.float64);
-  ///   final b = NDArray.ones([100], DType.float64);
-  ///   return add(a, b); // Intermediate arrays "a" and "b" disposed, result returned.
-  /// });
-  /// ```
   static NDArray<T> returning<T extends Object>(
     NDArray<T> Function() callback,
-  ) {
-    return scope(() {
-      final res = callback();
-      return res.detachToParentScope();
-    });
-  }
+  ) => ResourceScope.returning(callback);
 
-  /// Executes [callback] within an unmanaged context, preventing any created
-  /// [NDArray]s from being registered in or disposed of by any active outer scopes.
-  ///
-  /// **Example:**
-  /// ```dart
-  /// NDArray.scope(() {
-  ///   final a = NDArray.zeros([10]); // Automatically disposed by scope
-  ///   final b = NDArray.unmanaged(() {
-  ///     return NDArray.ones([10]); // completely unmanaged, survives the scope block!
-  ///   });
-  /// });
-  /// ```
-  static R unmanaged<R>(R Function() callback) {
-    return runZoned(callback, zoneValues: {_scopeKey: null});
-  }
+  static R unmanaged<R>(R Function() callback) =>
+      ResourceScope.unmanaged(callback);
 
   static bool _checkContiguous(List<int> shape, List<int> strides) {
     final cStrides = computeCStrides(shape);
@@ -383,11 +293,7 @@ final class NDArray<T> implements ffi.Finalizable {
       } else if (_customFinalizerInstance != null) {
         _customFinalizerInstance.attach(this, _pointer, detach: this);
       }
-      final scope = Zone.current[_scopeKey] as _NDArrayScope?;
-      scope?._track(this);
-      if (trackAllocations) {
-        _trackedAllocations.add(this);
-      }
+      ResourceScope.track(this);
     }
   }
 
@@ -400,45 +306,21 @@ final class NDArray<T> implements ffi.Finalizable {
     return current;
   }
 
-  /// Removes this array (or its allocating parent) from its automatic disposal scope.
-  ///
-  /// Use this when you want an array or view created inside an [NDArray.scope] to
-  /// survive after the scope finishes (e.g. when returning it as a result).
-  ///
-  /// Returns this array to allow for method chaining.
+  @override
   NDArray<T> detachFromScope() {
-    final root = _rootParent;
-    final scope = Zone.current[_scopeKey] as _NDArrayScope?;
-    scope?._untrack(root);
+    ResourceScope.untrack(_rootParent);
     return this;
   }
 
-  /// Detaches this array (or its allocating parent) from the current automatic disposal scope and
-  /// promotes/reattaches it to the parent (outer) scope (if any).
-  ///
-  /// Use this when returning an array or view from a helper function that uses an internal
-  /// [NDArray.scope] to clean up its own transients, but you want the returned array
-  /// to remain managed by the caller's outer scope.
-  ///
-  /// Returns this array to allow for method chaining.
+  @override
   NDArray<T> detachToParentScope() {
-    final root = _rootParent;
-    final scope = Zone.current[_scopeKey] as _NDArrayScope?;
-    if (scope == null) {
-      throw StateError(
-        'detachToParentScope() is only valid inside an active NDArray scope.',
-      );
-    }
-    scope._untrack(root);
-    if (scope._parentScope != null) {
-      scope._parentScope._track(root);
-    }
+    ResourceScope.promoteToParent(_rootParent);
     return this;
   }
 
   bool _isDisposed = false;
 
-  /// Returns true if this array or parent array's memory has been explicitly freed.
+  @override
   bool get isDisposed => _isDisposed || (_parent != null && _parent.isDisposed);
 
   /// Returns true if this is a zero-copy view sharing memory with another array.
@@ -3079,14 +2961,13 @@ final class NDArray<T> implements ffi.Finalizable {
   ///
   /// This method detaches the finalizer to prevent double-freeing.
   /// Calling this on a view does nothing, as the memory is owned by the parent.
+  @override
   void dispose() {
     if (_parent != null) return; // Views don't own memory
     if (_isDisposed) return; // Guard against double-free!
     _isDisposed = true;
 
-    if (trackAllocations) {
-      _trackedAllocations.remove(this);
-    }
+    ResourceScope.untrack(this);
 
     if (!_isExternallyOwned) {
       _finalizer.detach(this);
@@ -3555,76 +3436,6 @@ final class Mask extends Selector {
 
 void _copyContiguousNDArray(NDArray src, NDArray dest, int size) {
   custom_memcpy(dest._pointer, src._pointer, size * src.dtype.byteWidth);
-}
-
-/// Private class to manage a collection of [NDArray]s within a [Zone]
-/// using a hybrid scaling design: a flat List
-/// for collections up to 100 elements,
-/// promoting to a HashSet for larger collections to maintain O(1) scaling.
-final class _NDArrayScope {
-  // Parent outer scope context (if nested)
-  final _NDArrayScope? _parentScope;
-
-  // Flat List of tracked arrays for small collections
-  final List<NDArray> _list = [];
-
-  // Set for large-scale scopes (> 100 arrays)
-  Set<NDArray>? _set;
-
-  _NDArrayScope(this._parentScope);
-
-  void _track(NDArray array) {
-    if (_set != null) {
-      _set!.add(array);
-      return;
-    }
-
-    _list.add(array);
-
-    // Promotion trigger: promote to HashSet once we cross 100 elements
-    if (_list.length > 100) {
-      _set = HashSet(equals: identical, hashCode: identityHashCode);
-      _set!.addAll(_list);
-      _list.clear();
-    }
-  }
-
-  void _untrack(NDArray array) {
-    if (_set != null) {
-      _set!.remove(array);
-      return;
-    }
-
-    // Swap-and-Pop optimization to avoid shifting subsequent elements in the list!
-    final len = _list.length;
-    for (var i = 0; i < len; i++) {
-      if (identical(_list[i], array)) {
-        if (i < len - 1) {
-          _list[i] = _list.last;
-        }
-        _list.removeLast();
-        break;
-      }
-    }
-  }
-
-  void dispose() {
-    if (_set != null) {
-      for (final array in _set!) {
-        if (!array.isDisposed) {
-          array.dispose();
-        }
-      }
-      _set!.clear();
-    } else {
-      for (final array in _list) {
-        if (!array.isDisposed) {
-          array.dispose();
-        }
-      }
-      _list.clear();
-    }
-  }
 }
 
 bool _openblasInitialized = false;

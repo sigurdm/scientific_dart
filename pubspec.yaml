@@ -10,6 +10,7 @@ workspace:
   - pkgs/notebook
   - pkgs/code_editor
   - pkgs/symbolic_dart
+  - pkgs/resource_scope
 dependencies:
   http: ^1.6.0
 

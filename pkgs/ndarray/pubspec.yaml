@@ -16,6 +16,7 @@ dependencies:
   hooks: ^1.0.3
   code_assets: ^1.0.0
   meta: ^1.18.2
+  resource_scope: ^0.0.1
 
 dev_dependencies:
   lints: ^6.1.0

@@ -15,4 +15,14 @@ comments:
   style: any
   length: full
 silence-enum-warning: true
+structs:
+  include:
+    - CDenseMatrix
+    - CSparseMatrix
+    - CVecBasic
+    - CSetBasic
+    - CMapBasicBasic
+functions:
+  include:
+    - '.*'
 

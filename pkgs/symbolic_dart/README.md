@@ -12,6 +12,18 @@ A high-performance symbolic computer algebra system (CAS) for Dart, built on top
   - Formatting (`toString`, `toLatex`, `toCCode`)
 - **Vectorized Array Evaluation (`SymbolicLambda`)**:
   - Compiles symbolic formulas via `.lambdify([x, y])` into functions that evaluate vectorized over multi-dimensional `NDArray<Float64>` arrays from `package:ndarray` with automatic shape broadcasting.
+- **Symbolic Matrices & Analytical Jacobians (`SymbolicMatrix`)**:
+  - Exact matrix addition, subtraction, multiplication (`A * B`), and transpose (`transpose`).
+  - Exact symbolic determinant (`det`) and matrix inverse (`inv`).
+  - Exact linear equation solving (`A.solve(b)`) via LU decomposition.
+  - Analytical Jacobian matrix generation (`vecF.jacobian(variables)`) for vector systems $\vec{f}(\vec{x})$.
+  - Bidirectional conversion to/from 2D numeric arrays: `SymbolicMatrix.fromNDArray(arr)` and `.toNDArray()`.
+- **Seamless `NDArray` Integration (`NDArraySymbolicExtension` & `evaluateSymbolic`)**:
+  - Univariate element-wise mapping: `arr.mapSymbolic(sin(x) + x^2, x)`
+  - Named broadcasting evaluation: `evaluateSymbolic(f, inputs: {x: xArr, y: yArr})`
+- **Auto-Diff Root Solvers & Optimizers (`SymbolicOptimizer`)**:
+  - `SymbolicOptimizer.solveNewtonRaphson`: Solves non-linear equations $\vec{f}(\vec{x}) = \vec{0}$ over `NDArray<Float64>` state vectors by automatically deriving and inverting exact analytical Jacobian matrices $J(\vec{x})$.
+  - `SymbolicOptimizer.minimizeGradientDescent`: Minimizes objective functions $L(\vec{x})$ automatically using exact symbolic gradients $\nabla L(\vec{x})$.
 - **Exact Polynomial Ring over $\mathbb{Q}[x]$ (`FlintRationalPoly`)**:
   - Exact addition, subtraction, multiplication, and quotient/remainder division (`divmod`)
   - Exact derivative, integral, and polynomial GCD (`gcd`)
@@ -53,3 +65,31 @@ void main() {
   }
 }
 ```
+
+## Scoped Memory Management
+
+`package:symbolic_dart` integrates with **`package:resource_scope`** (`ScopedResource`) and `package:ndarray`'s zone-based scopes (`NDArray.scope`).
+
+All symbolic AST nodes (`Expr`), matrices (`SymbolicMatrix`), exact polynomials (`FlintRationalPoly`), and numerical buffers (`NDArray`) created inside a scope block are automatically and deterministically disposed (`.dispose()`) when the block exits:
+
+```dart
+import 'package:ndarray/ndarray.dart';
+import 'package:symbolic_dart/symbolic_dart.dart';
+
+void main() {
+  // Free all intermediate C++ SymEngine AST nodes and C buffers immediately at scope exit
+  final result = NDArray.returning(() {
+    final x = Symbol('x');
+    final mat = SymbolicMatrix.fromList([
+      [x ^ 2, sin(x)],
+      [cos(x), Integer(5)],
+    ]);
+    final jacobian = mat.jacobian([x]);
+    return jacobian.subs({x: 2.0}).toNDArray(); // Promoted out of scope
+  });
+
+  print(result);
+  result.dispose();
+}
+```
+
