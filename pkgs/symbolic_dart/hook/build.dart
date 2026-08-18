@@ -40,8 +40,8 @@ void main(List<String> args) async {
 
     final buildEnv = <String, String>{
       ...Platform.environment,
-      'CC':? ccPath,
-      'CXX':? ccPath,
+      'CC': ?ccPath,
+      'CXX': ?ccPath,
     };
 
     // Check if MPFR header is on system or needs local download
@@ -279,10 +279,7 @@ void main(List<String> args) async {
           'cmake',
           cmakeArgs,
           workingDirectory: symBuild.path,
-          environment: {
-            'PKG_CONFIG_PATH': pkgConfigPath,
-            ...buildEnv,
-          },
+          environment: {'PKG_CONFIG_PATH': pkgConfigPath, ...buildEnv},
         );
         if (cmakeRes.exitCode != 0) {
           throw StateError(
