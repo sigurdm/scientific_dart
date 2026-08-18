@@ -94,5 +94,43 @@ void main() {
       expect(ratRes.numerator, equals(BigInt.from(11)));
       expect(ratRes.denominator, equals(BigInt.from(4)));
     });
+
+    test('orthogonal polynomials legendre and laguerre', () {
+      // P_2(x) = (3x^2 - 1) / 2 = -1/2 + 3/2 x^2
+      final p2 = FlintRationalPoly.legendre(2);
+      expect(p2.degree, equals(2));
+      expect(p2.evaluate(1.0), closeTo(1.0, 1e-12));
+
+      // L_2(x)
+      final l2 = FlintRationalPoly.laguerre(2);
+      expect(l2.degree, equals(2));
+    });
+
+    test('resultant, isMonic, isSquareFree', () {
+      // P(x) = x^2 - 1, Q(x) = x - 1. Common root x=1 => Resultant is 0.
+      final p = FlintRationalPoly.fromIntCoefficients([-1, 0, 1]);
+      final q = FlintRationalPoly.fromIntCoefficients([-1, 1]);
+      expect(p.isMonic, isTrue);
+      expect(p.isSquareFree, isTrue);
+      final res = p.resultant(q);
+      expect(res.numerator, equals(BigInt.zero));
+
+      final nonMonic = FlintRationalPoly.fromIntCoefficients([2, 4]);
+      expect(nonMonic.isMonic, isFalse);
+      final monic = nonMonic.makeMonic();
+      expect(monic.isMonic, isTrue);
+    });
+
+    test('formal power series expSeries and sinSeries', () {
+      // P(x) = x
+      final p = FlintRationalPoly.fromIntCoefficients([0, 1]);
+      // exp(x) mod x^4 = 1 + x + x^2/2 + x^3/6
+      final expS = p.expSeries(4);
+      expect(expS.degree, equals(3));
+      // Coeff of x^3 is 1/6
+      final ratCoeff = expS.evaluateRational(1); // 1 + 1 + 1/2 + 1/6 = 8/3
+      expect(ratCoeff.numerator, equals(BigInt.from(8)));
+      expect(ratCoeff.denominator, equals(BigInt.from(3)));
+    });
   });
 }

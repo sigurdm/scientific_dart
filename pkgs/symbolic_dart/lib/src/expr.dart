@@ -217,7 +217,7 @@ final class Expr implements ffi.Finalizable, ScopedResource {
     return Expr._(ptr);
   }
 
-  /// Euler-Mascheroni constant `gamma`.
+  /// Euler-Mascheroni constant `gamma = 0.577215...`.
   static Expr get eulerGamma {
     _flintLoaded;
     final ptr = se.basic_new_heap();
@@ -225,7 +225,23 @@ final class Expr implements ffi.Finalizable, ScopedResource {
     return Expr._(ptr);
   }
 
-  /// Positive infinity.
+  /// Catalan's constant `G = 0.915965...`.
+  static Expr get catalan {
+    _flintLoaded;
+    final ptr = se.basic_new_heap();
+    se.basic_const_Catalan(ptr);
+    return Expr._(ptr);
+  }
+
+  /// The Golden Ratio `phi = (1 + sqrt(5)) / 2 = 1.618033...`.
+  static Expr get goldenRatio {
+    _flintLoaded;
+    final ptr = se.basic_new_heap();
+    se.basic_const_GoldenRatio(ptr);
+    return Expr._(ptr);
+  }
+
+  /// Positive infinity `+oo`.
   static Expr get infinity {
     _flintLoaded;
     final ptr = se.basic_new_heap();
@@ -233,12 +249,37 @@ final class Expr implements ffi.Finalizable, ScopedResource {
     return Expr._(ptr);
   }
 
-  /// Not-a-Number (NaN).
+  /// Negative infinity `-oo`.
+  static Expr get negInfinity {
+    _flintLoaded;
+    final ptr = se.basic_new_heap();
+    se.basic_const_neginfinity(ptr);
+    return Expr._(ptr);
+  }
+
+  /// Complex infinity `zoo`.
+  static Expr get complexInfinity {
+    _flintLoaded;
+    final ptr = se.basic_new_heap();
+    se.basic_const_complex_infinity(ptr);
+    return Expr._(ptr);
+  }
+
+  /// Symbolic Not-a-Number `NaN`.
   static Expr get nan {
     _flintLoaded;
     final ptr = se.basic_new_heap();
     se.basic_const_nan(ptr);
     return Expr._(ptr);
+  }
+
+  /// Computes the modular multiplicative inverse `a^-1 mod m`.
+  static Expr modInverse(Object a, Object m) {
+    final ea = Expr.fromObject(a);
+    final em = Expr.fromObject(m);
+    final res = se.basic_new_heap();
+    se.ntheory_mod_inverse(res, ea.pointer, em.pointer);
+    return Expr._(res);
   }
 
   // ===========================================================================

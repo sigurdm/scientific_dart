@@ -10,6 +10,14 @@ void main() {
       expect(Expr.i.isComplex, isTrue);
       expect(Expr.pi.asDouble, closeTo(3.141592653589793, 1e-12));
       expect(Expr.e.asDouble, closeTo(2.718281828459045, 1e-12));
+      expect(Expr.eulerGamma.asDouble, closeTo(0.5772156649, 1e-6));
+      expect(Expr.catalan.asDouble, closeTo(0.9159655941, 1e-6));
+      expect(Expr.goldenRatio.asDouble, closeTo(1.6180339887, 1e-6));
+      expect(Expr.infinity.toString(), contains('oo'));
+      expect(
+        Expr.modInverse(3, 7).asDouble,
+        equals(5.0),
+      ); // 3 * 5 = 15 = 1 mod 7
     });
 
     test('rational constructors', () {

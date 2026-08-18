@@ -291,6 +291,82 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
     }
   }
 
+  /// Constructs the [n]-th Legendre polynomial `P_n(x)`.
+  factory FlintRationalPoly.legendre(int n) {
+    if (n < 0) throw ArgumentError('Legendre degree must be non-negative.');
+    final ptr = _alloc();
+    fl.fmpq_poly_legendre_p(ptr, n);
+    return FlintRationalPoly._(ptr);
+  }
+
+  /// Constructs the [n]-th Laguerre polynomial `L_n(x)`.
+  factory FlintRationalPoly.laguerre(int n) {
+    if (n < 0) throw ArgumentError('Laguerre degree must be non-negative.');
+    final ptr = _alloc();
+    fl.fmpq_poly_laguerre_l(ptr, n);
+    return FlintRationalPoly._(ptr);
+  }
+
+  /// Whether this polynomial is monic (leading coefficient is 1).
+  bool get isMonic => fl.fmpq_poly_is_monic(pointer) != 0;
+
+  /// Whether this polynomial is square-free (has no repeated roots).
+  bool get isSquareFree => fl.fmpq_poly_is_squarefree(pointer) != 0;
+
+  /// Returns a monic normalized copy of this polynomial `P(x) / a_n`.
+  FlintRationalPoly makeMonic() {
+    final res = _alloc();
+    fl.fmpq_poly_make_monic(res, pointer);
+    return FlintRationalPoly._(res);
+  }
+
+  /// Computes the exact resultant `Res(P, Q)` of this polynomial and [other].
+  ({BigInt numerator, BigInt denominator}) resultant(FlintRationalPoly other) {
+    final qRes = calloc<fl.fmpq>();
+    final nPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
+    final dPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
+    try {
+      fl.fmpq_poly_resultant(qRes, pointer, other.pointer);
+      fl.fmpq_numerator(nPtr, qRes);
+      fl.fmpq_denominator(dPtr, qRes);
+      final nSi = fl.fmpz_get_si(nPtr);
+      final dSi = fl.fmpz_get_si(dPtr);
+      return (numerator: BigInt.from(nSi), denominator: BigInt.from(dSi));
+    } finally {
+      calloc.free(qRes);
+      calloc.free(nPtr);
+      calloc.free(dPtr);
+    }
+  }
+
+  /// Truncated formal exponential power series `exp(P(x)) mod x^order`.
+  FlintRationalPoly expSeries(int order) {
+    final res = _alloc();
+    fl.fmpq_poly_exp_series(res, pointer, order);
+    return FlintRationalPoly._(res);
+  }
+
+  /// Truncated formal logarithmic power series `log(P(x)) mod x^order`.
+  FlintRationalPoly logSeries(int order) {
+    final res = _alloc();
+    fl.fmpq_poly_log_series(res, pointer, order);
+    return FlintRationalPoly._(res);
+  }
+
+  /// Truncated formal sine power series `sin(P(x)) mod x^order`.
+  FlintRationalPoly sinSeries(int order) {
+    final res = _alloc();
+    fl.fmpq_poly_sin_series(res, pointer, order);
+    return FlintRationalPoly._(res);
+  }
+
+  /// Truncated formal cosine power series `cos(P(x)) mod x^order`.
+  FlintRationalPoly cosSeries(int order) {
+    final res = _alloc();
+    fl.fmpq_poly_cos_series(res, pointer, order);
+    return FlintRationalPoly._(res);
+  }
+
   /// Converts this FLINT exact polynomial into a SymEngine [Expr] using
   /// the symbolic variable [x].
   Expr toExpr(Expr x) {
