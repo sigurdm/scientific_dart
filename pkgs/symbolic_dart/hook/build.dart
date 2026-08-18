@@ -10,10 +10,12 @@ void main(List<String> args) async {
 
     final packageName = input.packageName;
     final os = input.config.code.targetOS;
+    final cCompiler = input.config.code.cCompiler;
+    final ccPath = cCompiler?.compiler.toFilePath();
 
-    if (os != OS.linux && os != OS.macOS) {
+    if (os != OS.linux && os != OS.macOS && os != OS.windows) {
       throw UnimplementedError(
-        'symbolic_dart native build currently only supports Linux and macOS.',
+        'symbolic_dart native build supports Linux, macOS, and Windows.',
       );
     }
 
@@ -23,8 +25,8 @@ void main(List<String> args) async {
     }
 
     final installDir = Directory.fromUri(outputDir.uri.resolve('install'));
-    final libPrefix = os == OS.macOS ? 'lib' : 'lib';
-    final ext = os == OS.macOS ? '.dylib' : '.so';
+    final libPrefix = os == OS.windows ? '' : 'lib';
+    final ext = os == OS.windows ? '.dll' : (os == OS.macOS ? '.dylib' : '.so');
 
     final flintLib = File(
       installDir.uri.resolve('lib/${libPrefix}flint$ext').toFilePath(),
@@ -35,6 +37,12 @@ void main(List<String> args) async {
     final mpfrLib = File(
       installDir.uri.resolve('lib/${libPrefix}mpfr$ext').toFilePath(),
     );
+
+    final buildEnv = <String, String>{
+      ...Platform.environment,
+      'CC':? ccPath,
+      'CXX':? ccPath,
+    };
 
     // Check if MPFR header is on system or needs local download
     final hasSystemMpfrHeader =
@@ -102,22 +110,29 @@ void main(List<String> args) async {
         final gmpInc = File('/usr/include/x86_64-linux-gnu/gmp.h').existsSync()
             ? '/usr/include/x86_64-linux-gnu'
             : '/usr/include';
-        final confRes = await Process.run('./configure', [
-          '--prefix=${installDir.path}',
-          '--with-gmp-include=$gmpInc',
-          '--disable-static',
-          '--enable-shared',
-        ], workingDirectory: mpfrExtract.path);
+        final confRes = await Process.run(
+          './configure',
+          [
+            '--prefix=${installDir.path}',
+            '--with-gmp-include=$gmpInc',
+            '--disable-static',
+            '--enable-shared',
+          ],
+          workingDirectory: mpfrExtract.path,
+          environment: buildEnv,
+        );
         if (confRes.exitCode != 0) {
           throw StateError(
             'MPFR configure failed:\n${confRes.stdout}\n${confRes.stderr}',
           );
         }
 
-        final makeRes = await Process.run('make', [
-          '-j${Platform.numberOfProcessors}',
-          'install',
-        ], workingDirectory: mpfrExtract.path);
+        final makeRes = await Process.run(
+          'make',
+          ['-j${Platform.numberOfProcessors}', 'install'],
+          workingDirectory: mpfrExtract.path,
+          environment: buildEnv,
+        );
         if (makeRes.exitCode != 0) {
           throw StateError(
             'MPFR make install failed:\n${makeRes.stdout}\n${makeRes.stderr}',
@@ -171,6 +186,7 @@ void main(List<String> args) async {
           './configure',
           confArgs,
           workingDirectory: flintExtract.path,
+          environment: buildEnv,
         );
         if (confRes.exitCode != 0) {
           throw StateError(
@@ -178,10 +194,12 @@ void main(List<String> args) async {
           );
         }
 
-        final makeRes = await Process.run('make', [
-          '-j${Platform.numberOfProcessors}',
-          'install',
-        ], workingDirectory: flintExtract.path);
+        final makeRes = await Process.run(
+          'make',
+          ['-j${Platform.numberOfProcessors}', 'install'],
+          workingDirectory: flintExtract.path,
+          environment: buildEnv,
+        );
         if (makeRes.exitCode != 0) {
           throw StateError(
             'FLINT make install failed:\n${makeRes.stdout}\n${makeRes.stderr}',
@@ -242,7 +260,11 @@ void main(List<String> args) async {
           '-DFLINT_LIBRARY=${flintLib.path}',
           '-DCMAKE_INSTALL_PREFIX=${installDir.path}',
           '-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON',
-          '-DCMAKE_INSTALL_RPATH=\$ORIGIN',
+          if (os != OS.windows) '-DCMAKE_INSTALL_RPATH=\$ORIGIN',
+          if (ccPath != null) ...[
+            '-DCMAKE_C_COMPILER=$ccPath',
+            '-DCMAKE_CXX_COMPILER=$ccPath',
+          ],
         ];
 
         if (!hasSystemMpfrHeader) {
@@ -257,7 +279,10 @@ void main(List<String> args) async {
           'cmake',
           cmakeArgs,
           workingDirectory: symBuild.path,
-          environment: {'PKG_CONFIG_PATH': pkgConfigPath},
+          environment: {
+            'PKG_CONFIG_PATH': pkgConfigPath,
+            ...buildEnv,
+          },
         );
         if (cmakeRes.exitCode != 0) {
           throw StateError(
@@ -266,10 +291,12 @@ void main(List<String> args) async {
         }
 
         print('Compiling SymEngine...');
-        final makeRes = await Process.run('make', [
-          '-j${Platform.numberOfProcessors}',
-          'install',
-        ], workingDirectory: symBuild.path);
+        final makeRes = await Process.run(
+          'make',
+          ['-j${Platform.numberOfProcessors}', 'install'],
+          workingDirectory: symBuild.path,
+          environment: buildEnv,
+        );
         if (makeRes.exitCode != 0) {
           throw StateError(
             'SymEngine make failed:\n${makeRes.stdout}\n${makeRes.stderr}',
@@ -285,11 +312,17 @@ void main(List<String> args) async {
       throw StateError('SymEngine library not found at ${symengineLib.path}');
     }
 
-    final flint19Lib = File(
-      installDir.uri.resolve('lib/${libPrefix}flint$ext.19').toFilePath(),
-    );
-    if (!flint19Lib.existsSync()) {
-      flintLib.copySync(flint19Lib.path);
+    final File assetFlintFile;
+    if (os == OS.windows) {
+      assetFlintFile = flintLib;
+    } else {
+      final flint19Lib = File(
+        installDir.uri.resolve('lib/${libPrefix}flint$ext.19').toFilePath(),
+      );
+      if (!flint19Lib.existsSync()) {
+        flintLib.copySync(flint19Lib.path);
+      }
+      assetFlintFile = flint19Lib;
     }
 
     output.assets.code.add(
@@ -297,7 +330,7 @@ void main(List<String> args) async {
         package: packageName,
         name: 'flint',
         linkMode: DynamicLoadingBundled(),
-        file: flint19Lib.uri,
+        file: assetFlintFile.uri,
       ),
     );
 
