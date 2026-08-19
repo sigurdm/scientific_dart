@@ -2,6 +2,7 @@ import 'dart:ffi' as ffi;
 import '../ndarray.dart';
 import '../scratch_arena.dart';
 import '../ndarray_bindings.dart' as bindings;
+import '../ndarray_extensions_bindings.dart' as ext_bindings;
 
 /// Supported padding modes.
 enum PadMode {
@@ -311,13 +312,281 @@ NDArray<T> pad<T extends Object>(
 
   if (!needsPadding) {
     if (out != null) {
-      // If no padding is needed, we still copy to out if provided
-      // We can just run the loop below, it will just copy.
+      return array.copy(out: out);
     } else {
       return array.copy();
     }
   }
 
+  final isFastNativeMode = switch (mode) {
+    PadMode.constant ||
+    PadMode.edge ||
+    PadMode.reflect ||
+    PadMode.symmetric ||
+    PadMode.wrap => true,
+    _ => false,
+  };
+
+  if (isFastNativeMode) {
+    return _padNativeFast<T>(
+      array,
+      normPadWidths,
+      mode,
+      normConstantValues,
+      finalShape,
+      out,
+    );
+  }
+
+  return _padAxisByAxis<T>(
+    array,
+    normPadWidths,
+    mode,
+    normConstantValues,
+    normEndValues,
+    normStatLengths,
+    out,
+  );
+}
+
+ffi.Pointer<ffi.Int16> _copyInt16s(List<int> list) {
+  final ptr = ScratchArena.allocate<ffi.Int16>(
+    list.length * ffi.sizeOf<ffi.Int16>(),
+  );
+  final typedList = ptr.asTypedList(list.length);
+  typedList.setRange(0, list.length, list);
+  return ptr;
+}
+
+ffi.Pointer<ffi.Uint8> _copyUint8s(List<int> list) {
+  final ptr = ScratchArena.allocate<ffi.Uint8>(
+    list.length * ffi.sizeOf<ffi.Uint8>(),
+  );
+  final typedList = ptr.asTypedList(list.length);
+  typedList.setRange(0, list.length, list);
+  return ptr;
+}
+
+(
+  ffi.Pointer<ffi.Void> constBeforePtr,
+  ffi.Pointer<ffi.Void> constAfterPtr,
+  int isUniformConstant,
+)
+_prepareConstants<T extends Object>(
+  DType dtype,
+  List<(T before, T after)> normConstantValues,
+  int rank,
+) {
+  var isUniform = 1;
+  final firstVal = normConstantValues[0].$1;
+  for (var i = 0; i < rank; i++) {
+    if (normConstantValues[i].$1 != firstVal ||
+        normConstantValues[i].$2 != firstVal) {
+      isUniform = 0;
+      break;
+    }
+  }
+
+  final beforeVals = normConstantValues.map((v) => v.$1).toList();
+  final afterVals = normConstantValues.map((v) => v.$2).toList();
+
+  final (cbPtr, caPtr) = switch (dtype) {
+    DType.float64 => (
+      ScratchArena.copyDoubles(
+        beforeVals.cast<num>().map((e) => e.toDouble()).toList(),
+      ).cast<ffi.Void>(),
+      ScratchArena.copyDoubles(
+        afterVals.cast<num>().map((e) => e.toDouble()).toList(),
+      ).cast<ffi.Void>(),
+    ),
+    DType.float32 => (
+      ScratchArena.copyFloats(
+        beforeVals.cast<num>().map((e) => e.toDouble()).toList(),
+      ).cast<ffi.Void>(),
+      ScratchArena.copyFloats(
+        afterVals.cast<num>().map((e) => e.toDouble()).toList(),
+      ).cast<ffi.Void>(),
+    ),
+    DType.int64 => (
+      ScratchArena.copyInt64s(beforeVals.cast<int>()).cast<ffi.Void>(),
+      ScratchArena.copyInt64s(afterVals.cast<int>()).cast<ffi.Void>(),
+    ),
+    DType.int32 => (
+      ScratchArena.copyInt32s(beforeVals.cast<int>()).cast<ffi.Void>(),
+      ScratchArena.copyInt32s(afterVals.cast<int>()).cast<ffi.Void>(),
+    ),
+    DType.int16 => (
+      _copyInt16s(beforeVals.cast<int>()).cast<ffi.Void>(),
+      _copyInt16s(afterVals.cast<int>()).cast<ffi.Void>(),
+    ),
+    DType.uint8 => (
+      _copyUint8s(beforeVals.cast<int>()).cast<ffi.Void>(),
+      _copyUint8s(afterVals.cast<int>()).cast<ffi.Void>(),
+    ),
+    DType.boolean => (
+      ScratchArena.copyBools(beforeVals.cast<bool>()).cast<ffi.Void>(),
+      ScratchArena.copyBools(afterVals.cast<bool>()).cast<ffi.Void>(),
+    ),
+    DType.complex128 => (
+      ScratchArena.copyComplexes(beforeVals.cast<Complex>()).cast<ffi.Void>(),
+      ScratchArena.copyComplexes(afterVals.cast<Complex>()).cast<ffi.Void>(),
+    ),
+    DType.complex64 => (
+      ScratchArena.copyFloatComplexes(
+        beforeVals.cast<Complex>(),
+      ).cast<ffi.Void>(),
+      ScratchArena.copyFloatComplexes(
+        afterVals.cast<Complex>(),
+      ).cast<ffi.Void>(),
+    ),
+  };
+
+  return (cbPtr, caPtr, isUniform);
+}
+
+NDArray<T> _padNativeFast<T extends Object>(
+  NDArray<T> array,
+  List<(int before, int after)> normPadWidths,
+  PadMode mode,
+  List<(T before, T after)> normConstantValues,
+  List<int> finalShape,
+  NDArray<T>? out,
+) {
+  final rank = array.rank;
+  final modeInt = switch (mode) {
+    PadMode.constant => 0,
+    PadMode.edge => 1,
+    PadMode.reflect => 2,
+    PadMode.symmetric => 3,
+    PadMode.wrap => 4,
+    _ => -1,
+  };
+
+  final dtypeInt = switch (array.dtype) {
+    DType.float64 => 0,
+    DType.float32 => 1,
+    DType.int32 => 2,
+    DType.int64 => 3,
+    DType.uint8 => 4,
+    DType.int16 => 5,
+    DType.complex128 => 6,
+    DType.complex64 => 7,
+    DType.boolean => 8,
+  };
+
+  return NDArray.scope(() {
+    final NDArray<T> targetDest;
+    final bool copyToOut;
+    if (out != null) {
+      if (out.isContiguous) {
+        targetDest = out;
+        copyToOut = false;
+      } else {
+        targetDest = NDArray<T>.create(
+          finalShape,
+          array.dtype,
+          zeroInit: false,
+        );
+        copyToOut = true;
+      }
+    } else {
+      targetDest = NDArray<T>.create(finalShape, array.dtype, zeroInit: false);
+      copyToOut = false;
+    }
+
+    final marker = ScratchArena.marker;
+    try {
+      final (cbPtr, caPtr, isUniform) = _prepareConstants<T>(
+        array.dtype,
+        normConstantValues,
+        rank,
+      );
+
+      if (rank == 2 && targetDest.isContiguous) {
+        final padTop = normPadWidths[0].$1;
+        final padBottom = normPadWidths[0].$2;
+        final padLeft = normPadWidths[1].$1;
+        final padRight = normPadWidths[1].$2;
+
+        final res = ext_bindings.native_pad_2d(
+          dtypeInt,
+          array.pointer.cast(),
+          array.shape[0],
+          array.shape[1],
+          array.strides[0],
+          array.strides[1],
+          targetDest.pointer.cast(),
+          padTop,
+          padBottom,
+          padLeft,
+          padRight,
+          modeInt,
+          cbPtr,
+          caPtr,
+          isUniform,
+        );
+        if (res < 0) {
+          throw StateError('native_pad_2d failed with code $res');
+        }
+      } else {
+        final srcShapePtr = ScratchArena.copyInt64s(array.shape);
+        final srcStridesPtr = ScratchArena.copyInt64s(array.strides);
+        final destShapePtr = ScratchArena.copyInt64s(targetDest.shape);
+        final destStridesPtr = ScratchArena.copyInt64s(targetDest.strides);
+        final padBeforePtr = ScratchArena.copyInt64s(
+          normPadWidths.map((w) => w.$1).toList(),
+        );
+        final padAfterPtr = ScratchArena.copyInt64s(
+          normPadWidths.map((w) => w.$2).toList(),
+        );
+
+        final res = ext_bindings.native_pad_nd(
+          dtypeInt,
+          array.pointer.cast(),
+          srcShapePtr,
+          srcStridesPtr,
+          targetDest.pointer.cast(),
+          destShapePtr,
+          destStridesPtr,
+          padBeforePtr,
+          padAfterPtr,
+          rank,
+          modeInt,
+          cbPtr,
+          caPtr,
+          isUniform,
+        );
+        if (res < 0) {
+          throw StateError('native_pad_nd failed with code $res');
+        }
+      }
+    } finally {
+      ScratchArena.reset(marker);
+    }
+
+    if (copyToOut) {
+      targetDest.copy(out: out);
+      targetDest.dispose();
+      return out!;
+    }
+
+    if (out == null) {
+      targetDest.detachToParentScope();
+    }
+    return targetDest;
+  });
+}
+
+NDArray<T> _padAxisByAxis<T extends Object>(
+  NDArray<T> array,
+  List<(int before, int after)> normPadWidths,
+  PadMode mode,
+  List<(T before, T after)> normConstantValues,
+  List<(T before, T after)> normEndValues,
+  List<(int before, int after)> normStatLengths,
+  NDArray<T>? out,
+) {
+  final rank = array.rank;
   return NDArray.scope(() {
     var currentSrc = array;
 

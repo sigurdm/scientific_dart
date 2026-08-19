@@ -418,3 +418,121 @@ external int native_tile_strided(
   ffi.Pointer<ffi.Int64> outStrides,
   int rank,
 );
+
+/// Custom Indexing / Manipulation: roll 1D
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Pointer<ffi.Void>,
+  )
+>()
+external int native_roll_1d(
+  int dtype,
+  ffi.Pointer<ffi.Void> src,
+  int size,
+  int shift,
+  ffi.Pointer<ffi.Void> dest,
+);
+
+/// Custom Indexing / Manipulation: roll ND
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int64>,
+  )
+>()
+external int native_roll_nd(
+  int dtype,
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Int64> shape,
+  ffi.Pointer<ffi.Int64> srcStrides,
+  int rank,
+  int shift,
+  int axis,
+  ffi.Pointer<ffi.Void> dest,
+  ffi.Pointer<ffi.Int64> destStrides,
+);
+
+/// Custom Padding: 2D
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+  )
+>()
+external int native_pad_2d(
+  int dtype,
+  ffi.Pointer<ffi.Void> src,
+  int srcRows,
+  int srcCols,
+  int srcStrideRows,
+  int srcStrideCols,
+  ffi.Pointer<ffi.Void> dest,
+  int padTop,
+  int padBottom,
+  int padLeft,
+  int padRight,
+  int mode,
+  ffi.Pointer<ffi.Void> constBefore,
+  ffi.Pointer<ffi.Void> constAfter,
+  int isUniformConstant,
+);
+
+/// Custom Padding: ND
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int64,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+  )
+>()
+external int native_pad_nd(
+  int dtype,
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Int64> srcShape,
+  ffi.Pointer<ffi.Int64> srcStrides,
+  ffi.Pointer<ffi.Void> dest,
+  ffi.Pointer<ffi.Int64> destShape,
+  ffi.Pointer<ffi.Int64> destStrides,
+  ffi.Pointer<ffi.Int64> padBefore,
+  ffi.Pointer<ffi.Int64> padAfter,
+  int rank,
+  int mode,
+  ffi.Pointer<ffi.Void> constBefore,
+  ffi.Pointer<ffi.Void> constAfter,
+  int isUniformConstant,
+);

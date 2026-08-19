@@ -929,6 +929,157 @@ void main() {
             expect(() => roll(a, 1, axis: 2), throwsRangeError);
           }),
         );
+
+        test(
+          'Roll with all DTypes',
+          () => NDArray.scope(() {
+            // float64
+            final f64 = NDArray.fromList(
+              [1.0, 2.0, 3.0, 4.0],
+              [2, 2],
+              DType.float64,
+            );
+            expect(roll(f64, 1, axis: 0).toList(), [3.0, 4.0, 1.0, 2.0]);
+            expect(roll(f64, 1, axis: 1).toList(), [2.0, 1.0, 4.0, 3.0]);
+
+            // float32
+            final f32 = NDArray.fromList(
+              [1.0, 2.0, 3.0, 4.0],
+              [2, 2],
+              DType.float32,
+            );
+            expect(roll(f32, 1, axis: 0).toList(), [3.0, 4.0, 1.0, 2.0]);
+
+            // int64
+            final i64 = NDArray.fromList([10, 20, 30, 40], [2, 2], DType.int64);
+            expect(roll(i64, 1, axis: 0).toList(), [30, 40, 10, 20]);
+
+            // int16
+            final i16 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int16);
+            expect(roll(i16, 1, axis: 0).toList(), [3, 4, 1, 2]);
+
+            // uint8
+            final u8 = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.uint8);
+            expect(roll(u8, 1, axis: 0).toList(), [3, 4, 1, 2]);
+
+            // boolean
+            final b = NDArray.fromList(
+              [true, false, true, true],
+              [2, 2],
+              DType.boolean,
+            );
+            expect(roll(b, 1, axis: 0).toList(), [true, true, true, false]);
+
+            // complex128
+            final c128 = NDArray.fromList(
+              [
+                Complex128(1, 2),
+                Complex128(3, 4),
+                Complex128(5, 6),
+                Complex128(7, 8),
+              ],
+              [2, 2],
+              DType.complex128,
+            );
+            final rolledC128 = roll(c128, 1, axis: 0);
+            expect(rolledC128.getCell([0, 0]), Complex128(5, 6));
+            expect(rolledC128.getCell([0, 1]), Complex128(7, 8));
+            expect(rolledC128.getCell([1, 0]), Complex128(1, 2));
+            expect(rolledC128.getCell([1, 1]), Complex128(3, 4));
+
+            // complex64
+            final c64 = NDArray.fromList(
+              [
+                Complex64(1, 2),
+                Complex64(3, 4),
+                Complex64(5, 6),
+                Complex64(7, 8),
+              ],
+              [2, 2],
+              DType.complex64,
+            );
+            final rolledC64 = roll(c64, 1, axis: 1);
+            expect(rolledC64.getCell([0, 0]), Complex64(3, 4));
+            expect(rolledC64.getCell([0, 1]), Complex64(1, 2));
+          }),
+        );
+
+        test(
+          'Roll with non-contiguous strided input',
+          () => NDArray.scope(() {
+            final a = NDArray.fromList(
+              [1, 2, 3, 4, 5, 6, 7, 8, 9],
+              [3, 3],
+              DType.int32,
+            );
+            final transposed = a.transpose(); // non-contiguous view
+            expect(transposed.isContiguous, isFalse);
+
+            // Transposed values:
+            // [[1, 4, 7],
+            //  [2, 5, 8],
+            //  [3, 6, 9]]
+            final rolledAx0 = roll(transposed, 1, axis: 0);
+            expect(rolledAx0.toList(), [3, 6, 9, 1, 4, 7, 2, 5, 8]);
+
+            final rolledAx1 = roll(transposed, 1, axis: 1);
+            expect(rolledAx1.toList(), [7, 1, 4, 8, 2, 5, 9, 3, 6]);
+
+            // Roll flat on non-contiguous view
+            final rolledFlat = roll(transposed, 1);
+            expect(rolledFlat.toList(), [9, 1, 4, 7, 2, 5, 8, 3, 6]);
+          }),
+        );
+
+        test(
+          'Roll with out parameter and in-place',
+          () => NDArray.scope(() {
+            final a = NDArray.fromList([1, 2, 3, 4, 5], [5], DType.int32);
+            final out = NDArray<Int32>.create([5], DType.int32);
+
+            final res = roll(a, 2, out: out);
+            expect(identical(res, out), isTrue);
+            expect(out.toList(), [4, 5, 1, 2, 3]);
+
+            // In-place roll (out: a)
+            roll(a, 2, out: a);
+            expect(a.toList(), [4, 5, 1, 2, 3]);
+
+            // Incompatible out throws
+            final badOut = NDArray<Int32>.create([4], DType.int32);
+            expect(() => roll(a, 1, out: badOut), throwsArgumentError);
+          }),
+        );
+
+        test(
+          'Roll 3D array along different axes',
+          () => NDArray.scope(() {
+            // Shape [2, 3, 2]
+            final a = NDArray.fromList(List.generate(12, (i) => i + 1), [
+              2,
+              3,
+              2,
+            ], DType.int32);
+
+            // Roll along axis 0
+            final r0 = roll(a, 1, axis: 0);
+            expect(r0.shape, [2, 3, 2]);
+            expect(r0.getCell([0, 0, 0]), 7);
+            expect(r0.getCell([1, 0, 0]), 1);
+
+            // Roll along axis 1
+            final r1 = roll(a, 1, axis: 1);
+            expect(r1.shape, [2, 3, 2]);
+            expect(r1.getCell([0, 0, 0]), 5);
+            expect(r1.getCell([0, 1, 0]), 1);
+
+            // Roll along axis 2 (negative index -1)
+            final r2 = roll(a, 1, axis: -1);
+            expect(r2.shape, [2, 3, 2]);
+            expect(r2.getCell([0, 0, 0]), 2);
+            expect(r2.getCell([0, 0, 1]), 1);
+          }),
+        );
       });
 
       group('Extension methods Tests', () {
@@ -1983,6 +2134,213 @@ void main() {
           );
           expect(r, same(out));
           expect(out.toList(), [9, 1, 2, 3, 9]);
+        }),
+      );
+
+      test(
+        '2D Reflect Padding',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1, 2, 3, 4, 5, 6], [2, 3], DType.int32);
+          final r = pad(a, PadWidth.all(1), mode: PadMode.reflect);
+          expect(r.shape, [4, 5]);
+          expect(r.toList(), [
+            5,
+            4,
+            5,
+            6,
+            5,
+            2,
+            1,
+            2,
+            3,
+            2,
+            5,
+            4,
+            5,
+            6,
+            5,
+            2,
+            1,
+            2,
+            3,
+            2,
+          ]);
+        }),
+      );
+
+      test(
+        '2D Symmetric Padding',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1, 2, 3, 4, 5, 6], [2, 3], DType.int32);
+          final r = pad(a, PadWidth.all(1), mode: PadMode.symmetric);
+          expect(r.shape, [4, 5]);
+          expect(r.toList(), [
+            1,
+            1,
+            2,
+            3,
+            3,
+            1,
+            1,
+            2,
+            3,
+            3,
+            4,
+            4,
+            5,
+            6,
+            6,
+            4,
+            4,
+            5,
+            6,
+            6,
+          ]);
+        }),
+      );
+
+      test(
+        '2D Wrap Padding',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1, 2, 3, 4, 5, 6], [2, 3], DType.int32);
+          final r = pad(a, PadWidth.all(1), mode: PadMode.wrap);
+          expect(r.shape, [4, 5]);
+          expect(r.toList(), [
+            6,
+            4,
+            5,
+            6,
+            4,
+            3,
+            1,
+            2,
+            3,
+            1,
+            6,
+            4,
+            5,
+            6,
+            4,
+            3,
+            1,
+            2,
+            3,
+            1,
+          ]);
+        }),
+      );
+
+      test(
+        '3D Padding - Constant, Edge, Reflect, Wrap, Symmetric',
+        () => NDArray.scope(() {
+          final list = List<double>.generate(24, (i) => i.toDouble());
+          final a = NDArray.fromList(list, [2, 3, 4], DType.float64);
+
+          // Constant
+          final rConst = pad(
+            a,
+            PadWidth.all(1),
+            mode: PadMode.constant,
+            constantValues: PadValues.all(-1.0),
+          );
+          expect(rConst.shape, [4, 5, 6]);
+          expect(rConst.getCell([0, 0, 0]), -1.0);
+          expect(rConst.getCell([1, 1, 1]), 0.0);
+          expect(rConst.getCell([2, 3, 4]), 23.0);
+          expect(rConst.getCell([3, 4, 5]), -1.0);
+
+          // Edge
+          final rEdge = pad(a, PadWidth.all(1), mode: PadMode.edge);
+          expect(rEdge.shape, [4, 5, 6]);
+          expect(rEdge.getCell([0, 0, 0]), 0.0);
+          expect(rEdge.getCell([3, 4, 5]), 23.0);
+
+          // Reflect
+          final rReflect = pad(a, PadWidth.all(1), mode: PadMode.reflect);
+          expect(rReflect.shape, [4, 5, 6]);
+
+          // Wrap
+          final rWrap = pad(a, PadWidth.all(1), mode: PadMode.wrap);
+          expect(rWrap.shape, [4, 5, 6]);
+
+          // Symmetric
+          final rSym = pad(a, PadWidth.all(1), mode: PadMode.symmetric);
+          expect(rSym.shape, [4, 5, 6]);
+        }),
+      );
+
+      test(
+        '4D Padding - Edge',
+        () => NDArray.scope(() {
+          final a = NDArray<double>.ones([2, 2, 2, 2], DType.float64);
+          final r = pad(a, PadWidth.all(1), mode: PadMode.edge);
+          expect(r.shape, [4, 4, 4, 4]);
+          for (final val in r.toList()) {
+            expect(val, 1.0);
+          }
+        }),
+      );
+
+      test(
+        'Strided Input Array Padding',
+        () => NDArray.scope(() {
+          final a = NDArray.fromList([1, 2, 3, 4], [2, 2], DType.int32);
+          final transposed = a.transposed; // non-contiguous
+          final r = pad(
+            transposed,
+            PadWidth.all(1),
+            mode: PadMode.constant,
+            constantValues: PadValues.all(0),
+          );
+          expect(r.shape, [4, 4]);
+          expect(r.toList(), [0, 0, 0, 0, 0, 1, 3, 0, 0, 2, 4, 0, 0, 0, 0, 0]);
+        }),
+      );
+
+      test(
+        'Padding All DTypes - Constant, Edge, Reflect',
+        () => NDArray.scope(() {
+          for (final dtype in [
+            DType.float64,
+            DType.float32,
+            DType.int64,
+            DType.int32,
+            DType.int16,
+            DType.uint8,
+          ]) {
+            final a = NDArray.fromList([1, 2, 3, 4], [2, 2], dtype);
+            final rEdge = pad(a, PadWidth.all(1), mode: PadMode.edge);
+            expect(rEdge.shape, [4, 4]);
+            expect(rEdge.dtype, dtype);
+
+            final rReflect = pad(a, PadWidth.all(1), mode: PadMode.reflect);
+            expect(rReflect.shape, [4, 4]);
+            expect(rReflect.dtype, dtype);
+
+            final rConst = pad(a, PadWidth.all(1), mode: PadMode.constant);
+            expect(rConst.shape, [4, 4]);
+            expect(rConst.dtype, dtype);
+          }
+
+          // Complex64
+          final c64 = NDArray.fromList(
+            [Complex(1, 2), Complex(3, 4), Complex(5, 6), Complex(7, 8)],
+            [2, 2],
+            DType.complex64,
+          );
+          final rC64 = pad(c64, PadWidth.all(1), mode: PadMode.edge);
+          expect(rC64.shape, [4, 4]);
+          expect(rC64.dtype, DType.complex64);
+
+          // Complex128
+          final c128 = NDArray.fromList(
+            [Complex(1, 2), Complex(3, 4), Complex(5, 6), Complex(7, 8)],
+            [2, 2],
+            DType.complex128,
+          );
+          final rC128 = pad(c128, PadWidth.all(1), mode: PadMode.reflect);
+          expect(rC128.shape, [4, 4]);
+          expect(rC128.dtype, DType.complex128);
         }),
       );
 

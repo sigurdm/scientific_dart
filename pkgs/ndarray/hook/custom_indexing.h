@@ -73,6 +73,41 @@ int native_tile_strided(
     int64_t rank
 );
 
+int native_pad_2d(
+    int dtype,
+    const void *src,
+    int64_t src_rows,
+    int64_t src_cols,
+    int64_t src_stride_rows,
+    int64_t src_stride_cols,
+    void *dest,
+    int64_t pad_top,
+    int64_t pad_bottom,
+    int64_t pad_left,
+    int64_t pad_right,
+    int mode,
+    const void *const_before,
+    const void *const_after,
+    int is_uniform_constant
+);
+
+int native_pad_nd(
+    int dtype,
+    const void *src,
+    const int64_t *src_shape,
+    const int64_t *src_strides,
+    void *dest,
+    const int64_t *dest_shape,
+    const int64_t *dest_strides,
+    const int64_t *pad_before,
+    const int64_t *pad_after,
+    int64_t rank,
+    int mode,
+    const void *const_before,
+    const void *const_after,
+    int is_uniform_constant
+);
+
 #ifdef __cplusplus
 }
 #endif

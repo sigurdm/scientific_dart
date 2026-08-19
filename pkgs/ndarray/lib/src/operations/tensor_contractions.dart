@@ -1,8 +1,9 @@
-// ignore_for_file: non_constant_identifier_names
 import "dart:ffi" as ffi;
 import "package:openblas/openblas.dart";
 import "dart:math" as math;
 import "../ndarray.dart";
+import "../scratch_arena.dart";
+import "../ndarray_bindings.dart";
 import "math.dart";
 import "linalg.dart";
 import "stats.dart";
@@ -1647,4 +1648,154 @@ NDArray<R> vdot<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     }
     return res;
   });
+}
+
+/// Computes the Kronecker product of two arrays.
+///
+/// The Kronecker product is a composite tensor operation formed by multiplying every element
+/// of array [a] by the entire array [b]. If [a] has shape $(m, n)$ and [b] has shape $(p, q)$,
+/// the result has shape $(mp, nq)$.
+///
+/// For arrays with different numbers of dimensions, 1s are prepended to the shape of the
+/// array with fewer dimensions until both shapes have equal rank.
+///
+/// **Preconditions:**
+/// - It is an error if [a], [b], or [out] is disposed.
+/// - It is an error if [out] has incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - 2D matrix Kronecker product uses dedicated AVX2 SIMD vectorization kernels for optimal row scaling throughput.
+/// - Higher-dimensional Kronecker products leverage odometer-based slice sweeps with vectorized 2D inner tiles.
+///
+/// **Example:**
+/// {@example /example/linalg_advanced_example.dart lang=dart}
+///
+/// Reference: [NumPy kron](https://numpy.org/doc/stable/reference/generated/numpy.kron.html)
+NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
+  if (a.isDisposed || b.isDisposed || (out != null && out.isDisposed)) {
+    throw StateError('Cannot execute kron() on a disposed array.');
+  }
+
+  final rankA = a.rank;
+  final rankB = b.rank;
+  final maxRank = math.max(rankA, rankB);
+
+  final paddedShapeA = List<int>.filled(maxRank, 1);
+  final paddedStridesA = List<int>.filled(maxRank, 0);
+  for (var i = 0; i < rankA; i++) {
+    paddedShapeA[maxRank - rankA + i] = a.shape[i];
+    paddedStridesA[maxRank - rankA + i] = a.strides[i];
+  }
+
+  final paddedShapeB = List<int>.filled(maxRank, 1);
+  final paddedStridesB = List<int>.filled(maxRank, 0);
+  for (var i = 0; i < rankB; i++) {
+    paddedShapeB[maxRank - rankB + i] = b.shape[i];
+    paddedStridesB[maxRank - rankB + i] = b.strides[i];
+  }
+
+  final expectedShape = List<int>.filled(maxRank, 0);
+  for (var i = 0; i < maxRank; i++) {
+    expectedShape[i] = paddedShapeA[i] * paddedShapeB[i];
+  }
+
+  final targetDType = resolveDType(a.dtype, b.dtype);
+  if (out != null &&
+      (!listEquals(out.shape, expectedShape) || out.dtype != targetDType)) {
+    throw ArgumentError(
+      'Provided out buffer has incompatible shape or dtype (expected shape $expectedShape and dtype $targetDType).',
+    );
+  }
+
+  final result =
+      out ?? NDArray<R>.create(expectedShape, targetDType as DType<R>);
+
+  final aCast = castNDArray(a, targetDType);
+  final bCast = castNDArray(b, targetDType);
+
+  try {
+    if (maxRank <= 2) {
+      final m = maxRank >= 2 ? paddedShapeA[0] : 1;
+      final n = maxRank >= 1 ? paddedShapeA[maxRank - 1] : 1;
+      final p = maxRank >= 2 ? paddedShapeB[0] : 1;
+      final q = maxRank >= 1 ? paddedShapeB[maxRank - 1] : 1;
+
+      final strideA_0 = maxRank >= 2 ? paddedStridesA[0] : 0;
+      final strideA_1 = maxRank >= 1 ? paddedStridesA[maxRank - 1] : 0;
+      final strideB_0 = maxRank >= 2 ? paddedStridesB[0] : 0;
+      final strideB_1 = maxRank >= 1 ? paddedStridesB[maxRank - 1] : 0;
+
+      final strideRes_0 = maxRank >= 2 ? result.strides[0] : 0;
+      final strideRes_1 = maxRank >= 1 ? result.strides[maxRank - 1] : 0;
+
+      native_kron_2d(
+        targetDType.index,
+        aCast.pointer.cast(),
+        strideA_0,
+        strideA_1,
+        m,
+        n,
+        bCast.pointer.cast(),
+        strideB_0,
+        strideB_1,
+        p,
+        q,
+        result.pointer.cast(),
+        strideRes_0,
+        strideRes_1,
+      );
+    } else {
+      final marker = ScratchArena.marker;
+      final cStridesA = ScratchArena.allocate<ffi.Int>(
+        maxRank * ffi.sizeOf<ffi.Int>(),
+      );
+      final cShapeA = ScratchArena.allocate<ffi.Int>(
+        maxRank * ffi.sizeOf<ffi.Int>(),
+      );
+      final cStridesB = ScratchArena.allocate<ffi.Int>(
+        maxRank * ffi.sizeOf<ffi.Int>(),
+      );
+      final cShapeB = ScratchArena.allocate<ffi.Int>(
+        maxRank * ffi.sizeOf<ffi.Int>(),
+      );
+      final cStridesRes = ScratchArena.allocate<ffi.Int>(
+        maxRank * ffi.sizeOf<ffi.Int>(),
+      );
+      final cShapeRes = ScratchArena.allocate<ffi.Int>(
+        maxRank * ffi.sizeOf<ffi.Int>(),
+      );
+
+      for (var i = 0; i < maxRank; i++) {
+        cStridesA[i] = paddedStridesA[i];
+        cShapeA[i] = paddedShapeA[i];
+        cStridesB[i] = paddedStridesB[i];
+        cShapeB[i] = paddedShapeB[i];
+        cStridesRes[i] = result.strides[i];
+        cShapeRes[i] = result.shape[i];
+      }
+
+      try {
+        native_kron_nd(
+          targetDType.index,
+          aCast.pointer.cast(),
+          cStridesA,
+          cShapeA,
+          bCast.pointer.cast(),
+          cStridesB,
+          cShapeB,
+          result.pointer.cast(),
+          cStridesRes,
+          cShapeRes,
+          maxRank,
+        );
+      } finally {
+        ScratchArena.reset(marker);
+      }
+    }
+  } finally {
+    if (aCast != a) aCast.dispose();
+    if (bCast != b) bCast.dispose();
+  }
+
+  return result;
 }

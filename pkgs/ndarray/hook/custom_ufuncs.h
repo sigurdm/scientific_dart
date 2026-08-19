@@ -116,8 +116,12 @@ void v_logaddexp2_double(const double *a, const double *b, double *res, int size
 double r_sum_double(const double *src, int size);
 double r_prod_double(const double *src, int size);
 double r_mean_double(const double *src, int size);
+double r_var_double(const double *src, int size, int ddof);
+double r_std_double(const double *src, int size, int ddof);
 void s_sum_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_mean_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_var_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, int ddof);
+void s_std_double(const double *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, int ddof);
 
 void v_add_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask);
 void v_sub_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask);
@@ -156,8 +160,18 @@ void v_log10_complex64(const cpx_f_t *src, cpx_f_t *res, int size, const uint8_t
 float r_sum_float(const float *src, int size);
 float r_prod_float(const float *src, int size);
 float r_mean_float(const float *src, int size);
+double r_mean_float_to_double(const float *src, int size);
+float r_var_float(const float *src, int size, int ddof);
+double r_var_float_to_double(const float *src, int size, int ddof);
+float r_std_float(const float *src, int size, int ddof);
+double r_std_float_to_double(const float *src, int size, int ddof);
 void s_sum_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_mean_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_mean_float_to_double(const float *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_var_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis, int ddof);
+void s_var_float_to_double(const float *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, int ddof);
+void s_std_float(const float *src, const int *stridesSrc, float *dest, const int *stridesDest, const int *shape, int rank, int axis, int ddof);
+void s_std_float_to_double(const float *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, int ddof);
 
 void v_sqrt_double(const double *src, double *res, int size, const uint8_t *mask);
 void v_tan_double(const double *src, double *res, int size, const uint8_t *mask);
@@ -1062,6 +1076,19 @@ void copy_advanced_c(
 
 
 /* Kronecker Product */
+void native_kron_2d(
+    int dtype,
+    const void *a, int strideA_0, int strideA_1, int m, int n,
+    const void *b, int strideB_0, int strideB_1, int p, int q,
+    void *res, int strideRes_0, int strideRes_1
+);
+void native_kron_nd(
+    int dtype,
+    const void *a, const int *stridesA, const int *shapeA,
+    const void *b, const int *stridesB, const int *shapeB,
+    void *res, const int *stridesRes, const int *shapeRes,
+    int rank
+);
 void s_kron_double(const double *a, const int *stridesA, const int *shapeA,
                    const double *b, const int *stridesB, const int *shapeB,
                    double *res, const int *stridesRes, const int *shapeRes, int rank);
@@ -1724,6 +1751,27 @@ int64_t r_sum_int64(const int64_t *src, int size);
 int32_t r_sum_int32(const int32_t *src, int size);
 uint8_t r_sum_uint8(const uint8_t *src, int size);
 int16_t r_sum_int16(const int16_t *src, int size);
+cpx_t r_sum_complex128(const cpx_t *src, int size);
+cpx_f_t r_sum_complex64(const cpx_f_t *src, int size);
+
+double r_mean_int64_to_double(const int64_t *src, int size);
+double r_mean_int32_to_double(const int32_t *src, int size);
+double r_mean_uint8_to_double(const uint8_t *src, int size);
+double r_mean_int16_to_double(const int16_t *src, int size);
+cpx_t r_mean_complex128(const cpx_t *src, int size);
+cpx_f_t r_mean_complex64(const cpx_f_t *src, int size);
+cpx_t r_mean_complex64_to_complex128(const cpx_f_t *src, int size);
+
+double r_var_int64_to_double(const int64_t *src, int size, int ddof);
+double r_var_int32_to_double(const int32_t *src, int size, int ddof);
+double r_var_uint8_to_double(const uint8_t *src, int size, int ddof);
+double r_var_int16_to_double(const int16_t *src, int size, int ddof);
+
+double r_std_int64_to_double(const int64_t *src, int size, int ddof);
+double r_std_int32_to_double(const int32_t *src, int size, int ddof);
+double r_std_uint8_to_double(const uint8_t *src, int size, int ddof);
+double r_std_int16_to_double(const int16_t *src, int size, int ddof);
+
 int64_t r_prod_int64(const int64_t *src, int size);
 int32_t r_prod_int32(const int32_t *src, int size);
 uint8_t r_prod_uint8(const uint8_t *src, int size);
@@ -1744,6 +1792,26 @@ void s_sum_int64(const int64_t *src, const int *stridesSrc, int64_t *dest, const
 void s_sum_int32(const int32_t *src, const int *stridesSrc, int32_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_sum_uint8(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
 void s_sum_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_sum_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_sum_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+
+void s_mean_int64_to_double(const int64_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_mean_int32_to_double(const int32_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_mean_uint8_to_double(const uint8_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_mean_int16_to_double(const int16_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_mean_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_mean_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+void s_mean_complex64_to_complex128(const cpx_f_t *src, const int *stridesSrc, cpx_t *dest, const int *stridesDest, const int *shape, int rank, int axis);
+
+void s_var_int64_to_double(const int64_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, int ddof);
+void s_var_int32_to_double(const int32_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, int ddof);
+void s_var_uint8_to_double(const uint8_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, int ddof);
+void s_var_int16_to_double(const int16_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, int ddof);
+
+void s_std_int64_to_double(const int64_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, int ddof);
+void s_std_int32_to_double(const int32_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, int ddof);
+void s_std_uint8_to_double(const uint8_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, int ddof);
+void s_std_int16_to_double(const int16_t *src, const int *stridesSrc, double *dest, const int *stridesDest, const int *shape, int rank, int axis, int ddof);
 
 int64_t r_bitwise_and_int64(const int64_t *src, int size);
 int32_t r_bitwise_and_int32(const int32_t *src, int size);

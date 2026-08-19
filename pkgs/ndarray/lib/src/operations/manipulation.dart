@@ -3,6 +3,7 @@ import 'dart:ffi' as ffi;
 import 'dart:math' as math;
 import '../ndarray.dart';
 import '../ndarray_bindings.dart';
+import '../ndarray_extensions_bindings.dart';
 import '../scratch_arena.dart';
 
 // Standalone operational relative cross-imports
@@ -1163,15 +1164,18 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
 ///
 /// **Preconditions:**
 /// - The array [a] must not be disposed.
-/// - [shift] must be an integer, or a list of integers if [axis] is a list of integers.
-/// - [axis] must be null, an integer, or a list of integers.
-/// - It is an error if [a] is disposed.
+/// - [shift] must be an integer, or a list of integers matching the length of [axis].
+/// - [axis] must be null, an integer, or a list of integers within `[-rank, rank - 1]`.
+/// - If [out] is provided, it must not be disposed and must have identical shape and dtype to [a].
+/// - It is an error if [a] or [out] is disposed.
 /// - It is an error if the shift/axis arguments are invalid or mismatched.
+/// - It is an error if [axis] is out of bounds.
+/// - It is an error if [out] has incompatible shape or dtype.
 ///
 /// **Performance considerations:**
-/// - Algorithmic Time Complexity is $O(N)$ where $N$ is the total number of elements,
-///   as it creates a new array and copies elements.
-/// - Space Complexity is $O(N)$ for the newly allocated output array.
+/// - Algorithmic Time Complexity is $O(N)$ where $N$ is the total number of elements.
+/// - For 1D and contiguous N-D arrays, native C `memcpy` blocks are executed with zero Dart allocation overhead.
+/// - Space Complexity is $O(N)$ for newly allocated output (or $O(1)$ auxiliary if [out] is provided).
 ///
 /// **Reference:**
 /// Refer to [NumPy roll documentation](https://numpy.org/doc/stable/reference/generated/numpy.roll.html).
@@ -1244,49 +1248,178 @@ NDArray<T> roll<T extends Object>(
     }
   }
 
-  if (a.rank == 0) {
+  if (axes != null) {
+    for (final ax in axes) {
+      final normAx = ax < 0 ? a.rank + ax : ax;
+      if (normAx < 0 || normAx >= a.rank) {
+        throw RangeError.range(normAx, 0, a.rank - 1, 'axis');
+      }
+    }
+  }
+
+  if (a.rank == 0 || a.size == 0) {
     return a.copy(out: out);
+  }
+
+  if (axes == null) {
+    if (a.rank == 1) {
+      return _roll1D(a, shifts[0], out: out);
+    }
+    if (a.isContiguous) {
+      final targetResult = out ?? NDArray<T>.create(a.shape, a.dtype);
+      if (targetResult.isContiguous) {
+        native_roll_1d(
+          a.dtype.index,
+          a.pointer.cast(),
+          a.size,
+          shifts[0],
+          targetResult.pointer.cast(),
+        );
+        return targetResult;
+      } else {
+        final contigRes = NDArray<T>.create(a.shape, a.dtype);
+        try {
+          native_roll_1d(
+            a.dtype.index,
+            a.pointer.cast(),
+            a.size,
+            shifts[0],
+            contigRes.pointer.cast(),
+          );
+          contigRes.copy(out: targetResult);
+          return targetResult;
+        } finally {
+          contigRes.dispose();
+        }
+      }
+    } else {
+      final contigA = a.copy();
+      try {
+        final targetResult = out ?? NDArray<T>.create(a.shape, a.dtype);
+        if (targetResult.isContiguous) {
+          native_roll_1d(
+            contigA.dtype.index,
+            contigA.pointer.cast(),
+            contigA.size,
+            shifts[0],
+            targetResult.pointer.cast(),
+          );
+        } else {
+          final contigRes = NDArray<T>.create(a.shape, a.dtype);
+          try {
+            native_roll_1d(
+              contigA.dtype.index,
+              contigA.pointer.cast(),
+              contigA.size,
+              shifts[0],
+              contigRes.pointer.cast(),
+            );
+            contigRes.copy(out: targetResult);
+          } finally {
+            contigRes.dispose();
+          }
+        }
+        return targetResult;
+      } finally {
+        contigA.dispose();
+      }
+    }
+  }
+
+  final nonNullAxes = axes;
+  if (nonNullAxes.length == 1) {
+    return _rollSingleND(a, shifts[0], nonNullAxes[0], out: out);
+  }
+
+  if (nonNullAxes.length == 2) {
+    final temp = NDArray<T>.create(a.shape, a.dtype);
+    try {
+      _rollSingleND(a, shifts[0], nonNullAxes[0], out: temp);
+      final targetResult = out ?? NDArray<T>.create(a.shape, a.dtype);
+      _rollSingleND(temp, shifts[1], nonNullAxes[1], out: targetResult);
+      return targetResult;
+    } finally {
+      temp.dispose();
+    }
   }
 
   return NDArray.scope(() {
     NDArray<T> current = a;
-
-    final NDArray<T> res;
-    if (axes == null) {
-      final flat = current.ravel();
-      final s = shifts[0];
-      final rolledFlat = _rollSingle1D(flat, s);
-      res = rolledFlat.reshape(a.shape);
-    } else {
-      for (var i = 0; i < axes.length; i++) {
-        current = _rollSingle(current, shifts[i], axes[i]);
-      }
-      res = current;
+    for (var i = 0; i < nonNullAxes.length; i++) {
+      final isLast = i == nonNullAxes.length - 1;
+      final stepOut = isLast ? out : null;
+      final next = _rollSingleND(
+        current,
+        shifts[i],
+        nonNullAxes[i],
+        out: stepOut,
+      );
+      current = next;
     }
-    final finalRes = res.copy(out: out);
-    return finalRes.detachToParentScope();
+    return current.detachToParentScope();
   });
 }
 
-NDArray<T> _rollSingle1D<T extends Object>(NDArray<T> a, int shift) {
+NDArray<T> _roll1D<T extends Object>(
+  NDArray<T> a,
+  int shift, {
+  NDArray<T>? out,
+}) {
   if (a.isDisposed) {
-    throw StateError('Cannot execute _rollSingle1D() on a disposed array.');
+    throw StateError('Cannot execute _roll1D() on a disposed array.');
   }
   final size = a.size;
-  if (size == 0) return a;
+  if (size == 0) {
+    return a.copy(out: out);
+  }
   final s = shift % size;
-  if (s == 0) return a;
-
   final realShift = s < 0 ? size + s : s;
+  if (realShift == 0) {
+    return a.copy(out: out);
+  }
 
-  final part1 = a.slice([Slice(start: size - realShift, stop: size)]);
-  final part2 = a.slice([Slice(start: 0, stop: size - realShift)]);
-  return concatenate([part1, part2], axis: 0);
+  final targetResult = out ?? NDArray<T>.create(a.shape, a.dtype);
+  if (a.isContiguous && targetResult.isContiguous) {
+    native_roll_1d(
+      a.dtype.index,
+      a.pointer.cast(),
+      size,
+      realShift,
+      targetResult.pointer.cast(),
+    );
+    return targetResult;
+  }
+
+  final marker = ScratchArena.marker;
+  try {
+    final cShape = ScratchArena.copyInt64s(a.shape);
+    final cSrcStrides = ScratchArena.copyInt64s(a.strides);
+    final cDestStrides = ScratchArena.copyInt64s(targetResult.strides);
+    native_roll_nd(
+      a.dtype.index,
+      a.pointer.cast(),
+      cShape,
+      cSrcStrides,
+      1,
+      realShift,
+      0,
+      targetResult.pointer.cast(),
+      cDestStrides,
+    );
+  } finally {
+    ScratchArena.reset(marker);
+  }
+  return targetResult;
 }
 
-NDArray<T> _rollSingle<T extends Object>(NDArray<T> a, int shift, int axis) {
+NDArray<T> _rollSingleND<T extends Object>(
+  NDArray<T> a,
+  int shift,
+  int axis, {
+  NDArray<T>? out,
+}) {
   if (a.isDisposed) {
-    throw StateError('Cannot execute _rollSingle() on a disposed array.');
+    throw StateError('Cannot execute _rollSingleND() on a disposed array.');
   }
   final rank = a.rank;
   final normAx = axis < 0 ? rank + axis : axis;
@@ -1295,28 +1428,62 @@ NDArray<T> _rollSingle<T extends Object>(NDArray<T> a, int shift, int axis) {
   }
 
   final dimSize = a.shape[normAx];
-  if (dimSize == 0) return a;
+  if (dimSize == 0 || a.size == 0) {
+    return a.copy(out: out);
+  }
 
   final s = shift % dimSize;
-  if (s == 0) return a;
-
   final realShift = s < 0 ? dimSize + s : s;
+  if (realShift == 0) {
+    return a.copy(out: out);
+  }
 
-  final selectors1 = List<Selector>.generate(
-    rank,
-    (i) => i == normAx
-        ? Slice(start: dimSize - realShift, stop: dimSize)
-        : const Slice.all(),
-  );
-  final selectors2 = List<Selector>.generate(
-    rank,
-    (i) => i == normAx
-        ? Slice(start: 0, stop: dimSize - realShift)
-        : const Slice.all(),
-  );
+  final targetResult = out ?? NDArray<T>.create(a.shape, a.dtype);
 
-  final part1 = a.slice(selectors1);
-  final part2 = a.slice(selectors2);
+  if (rank == 1 && a.isContiguous && targetResult.isContiguous) {
+    native_roll_1d(
+      a.dtype.index,
+      a.pointer.cast(),
+      a.size,
+      realShift,
+      targetResult.pointer.cast(),
+    );
+    return targetResult;
+  }
 
-  return concatenate([part1, part2], axis: normAx);
+  final marker = ScratchArena.marker;
+  try {
+    final cShape = ScratchArena.copyInt64s(a.shape);
+    if (a.isContiguous && targetResult.isContiguous) {
+      native_roll_nd(
+        a.dtype.index,
+        a.pointer.cast(),
+        cShape,
+        ffi.nullptr,
+        rank,
+        realShift,
+        normAx,
+        targetResult.pointer.cast(),
+        ffi.nullptr,
+      );
+    } else {
+      final cSrcStrides = ScratchArena.copyInt64s(a.strides);
+      final cDestStrides = ScratchArena.copyInt64s(targetResult.strides);
+      native_roll_nd(
+        a.dtype.index,
+        a.pointer.cast(),
+        cShape,
+        cSrcStrides,
+        rank,
+        realShift,
+        normAx,
+        targetResult.pointer.cast(),
+        cDestStrides,
+      );
+    }
+  } finally {
+    ScratchArena.reset(marker);
+  }
+
+  return targetResult;
 }

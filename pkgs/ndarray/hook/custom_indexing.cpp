@@ -931,3 +931,1136 @@ extern "C" int native_tile_strided(
     }
 }
 
+// ============================================================================
+// 4. MULTIDIMENSIONAL ARRAY PADDING KERNELS
+// ============================================================================
+
+template <typename T>
+static inline void fill_typed(T *RESTRICT dest, int64_t count, T val) {
+    if (count <= 0) return;
+    static const T zero_val = {};
+    if (memcmp(&val, &zero_val, sizeof(T)) == 0) {
+        memset(dest, 0, (size_t)count * sizeof(T));
+        return;
+    }
+    dest[0] = val;
+    int64_t copied = 1;
+    while (copied < count) {
+        int64_t to_copy = (copied <= count - copied) ? copied : (count - copied);
+        memcpy(dest + copied, dest, (size_t)to_copy * sizeof(T));
+        copied += to_copy;
+    }
+}
+
+static inline int64_t pad_reflect_map(int64_t i, int64_t N) {
+    if (N <= 1) return 0;
+    int64_t P = 2 * N - 2;
+    int64_t i_mod = (i < 0 ? -i : i) % P;
+    return i_mod < N ? i_mod : P - i_mod;
+}
+
+static inline int64_t pad_symmetric_map(int64_t i, int64_t N) {
+    if (N <= 0) return 0;
+    int64_t P = 2 * N;
+    int64_t i_mod;
+    if (i < 0) {
+        i_mod = (-i - 1) % P;
+    } else {
+        i_mod = i % P;
+    }
+    return i_mod < N ? i_mod : P - 1 - i_mod;
+}
+
+static inline int64_t pad_wrap_map(int64_t i, int64_t N) {
+    if (N <= 0) return 0;
+    int64_t rem = i % N;
+    return rem < 0 ? rem + N : rem;
+}
+
+static inline int64_t pad_map_index(int64_t i, int64_t N, int mode) {
+    switch (mode) {
+        case 1: /* edge */
+            if (i < 0) return 0;
+            if (i >= N) return N - 1;
+            return i;
+        case 2: /* reflect */
+            return pad_reflect_map(i, N);
+        case 3: /* symmetric */
+            return pad_symmetric_map(i, N);
+        case 4: /* wrap */
+            return pad_wrap_map(i, N);
+        default:
+            return 0;
+    }
+}
+
+template <typename T>
+static int pad_1d_impl(
+    const T *RESTRICT src,
+    int64_t src_len,
+    int64_t src_stride,
+    T *RESTRICT dest,
+    int64_t pad_before,
+    int64_t pad_after,
+    int mode,
+    T const_before,
+    T const_after,
+    int is_uniform_constant
+) {
+    int64_t dest_len = pad_before + src_len + pad_after;
+    if (dest_len <= 0) return 0;
+
+    T *dest_interior = dest + pad_before;
+
+    // Fast path: constant mode
+    if (mode == 0) {
+        if (is_uniform_constant) {
+            fill_typed<T>(dest, dest_len, const_before);
+        } else {
+            fill_typed<T>(dest, pad_before, const_before);
+            fill_typed<T>(dest + pad_before + src_len, pad_after, const_after);
+        }
+        if (src_len > 0) {
+            if (src_stride == 1) {
+                memcpy(dest_interior, src, (size_t)src_len * sizeof(T));
+            } else {
+                for (int64_t i = 0; i < src_len; i++) {
+                    dest_interior[i] = src[i * src_stride];
+                }
+            }
+        }
+        return 0;
+    }
+
+    // Step 1: Copy interior
+    if (src_len > 0) {
+        if (src_stride == 1) {
+            memcpy(dest_interior, src, (size_t)src_len * sizeof(T));
+        } else {
+            for (int64_t i = 0; i < src_len; i++) {
+                dest_interior[i] = src[i * src_stride];
+            }
+        }
+    }
+
+    // Step 2: Fill left border
+    if (pad_before > 0 && src_len > 0) {
+        if (mode == 1) { // edge
+            fill_typed<T>(dest, pad_before, dest_interior[0]);
+        } else {
+            for (int64_t c = 0; c < pad_before; c++) {
+                int64_t src_idx = pad_map_index(c - pad_before, src_len, mode);
+                dest[c] = dest_interior[src_idx];
+            }
+        }
+    }
+
+    // Step 3: Fill right border
+    if (pad_after > 0 && src_len > 0) {
+        T *dest_right = dest_interior + src_len;
+        if (mode == 1) { // edge
+            fill_typed<T>(dest_right, pad_after, dest_interior[src_len - 1]);
+        } else {
+            for (int64_t c = 0; c < pad_after; c++) {
+                int64_t src_idx = pad_map_index(src_len + c, src_len, mode);
+                dest_right[c] = dest_interior[src_idx];
+            }
+        }
+    }
+
+    return 0;
+}
+
+template <typename T>
+static int pad_2d_impl(
+    const T *RESTRICT src,
+    int64_t src_rows,
+    int64_t src_cols,
+    int64_t src_stride_rows,
+    int64_t src_stride_cols,
+    T *RESTRICT dest,
+    int64_t pad_top,
+    int64_t pad_bottom,
+    int64_t pad_left,
+    int64_t pad_right,
+    int mode,
+    const T *const_before, // [top, left]
+    const T *const_after,  // [bottom, right]
+    int is_uniform_constant
+) {
+    int64_t dest_rows = pad_top + src_rows + pad_bottom;
+    int64_t dest_cols = pad_left + src_cols + pad_right;
+    if (dest_rows <= 0 || dest_cols <= 0) return 0;
+
+    int64_t total_dest_elements = dest_rows * dest_cols;
+
+    // Fast path: constant mode
+    if (mode == 0) {
+        T cb_left = const_before ? const_before[1] : T{};
+        T ca_right = const_after ? const_after[1] : T{};
+        T cb_top = const_before ? const_before[0] : T{};
+        T ca_bottom = const_after ? const_after[0] : T{};
+        size_t row_bytes = (size_t)dest_cols * sizeof(T);
+
+        // Fill top rows
+        if (pad_top > 0) {
+            fill_typed<T>(dest, dest_cols, cb_top);
+            for (int64_t i = 1; i < pad_top; i++) {
+                memcpy(dest + i * dest_cols, dest, row_bytes);
+            }
+        }
+
+        // Fill interior rows with left & right padding
+        bool src_contiguous = (src_stride_rows == src_cols && src_stride_cols == 1);
+        for (int64_t r = 0; r < src_rows; r++) {
+            T *dest_row = dest + (pad_top + r) * dest_cols;
+            if (pad_left > 0) {
+                fill_typed<T>(dest_row, pad_left, cb_left);
+            }
+            if (src_cols > 0) {
+                T *dest_interior = dest_row + pad_left;
+                if (src_contiguous) {
+                    const T *src_row = src + r * src_cols;
+                    memcpy(dest_interior, src_row, (size_t)src_cols * sizeof(T));
+                } else {
+                    const T *src_row = src + r * src_stride_rows;
+                    for (int64_t c = 0; c < src_cols; c++) {
+                        dest_interior[c] = src_row[c * src_stride_cols];
+                    }
+                }
+            }
+            if (pad_right > 0) {
+                fill_typed<T>(dest_row + pad_left + src_cols, pad_right, ca_right);
+            }
+        }
+
+        // Fill bottom rows
+        if (pad_bottom > 0) {
+            T *first_bottom = dest + (pad_top + src_rows) * dest_cols;
+            fill_typed<T>(first_bottom, dest_cols, ca_bottom);
+            for (int64_t i = pad_top + src_rows + 1; i < dest_rows; i++) {
+                memcpy(dest + i * dest_cols, first_bottom, row_bytes);
+            }
+        }
+
+        // If non-uniform constant, overwrite left and right columns of top and bottom rows
+        if (!is_uniform_constant) {
+            if (pad_left > 0) {
+                for (int64_t i = 0; i < pad_top; i++) {
+                    fill_typed<T>(dest + i * dest_cols, pad_left, cb_left);
+                }
+                for (int64_t i = pad_top + src_rows; i < dest_rows; i++) {
+                    fill_typed<T>(dest + i * dest_cols, pad_left, cb_left);
+                }
+            }
+            if (pad_right > 0) {
+                for (int64_t i = 0; i < pad_top; i++) {
+                    fill_typed<T>(dest + i * dest_cols + pad_left + src_cols, pad_right, ca_right);
+                }
+                for (int64_t i = pad_top + src_rows; i < dest_rows; i++) {
+                    fill_typed<T>(dest + i * dest_cols + pad_left + src_cols, pad_right, ca_right);
+                }
+            }
+        }
+        return 0;
+    }
+
+    // Precompute horizontal index maps if needed
+    int64_t map_left_stack[256];
+    int64_t map_right_stack[256];
+    std::vector<int64_t> map_left_vec, map_right_vec;
+    int64_t *p_map_left = map_left_stack;
+    int64_t *p_map_right = map_right_stack;
+    if (pad_left > 256) {
+        map_left_vec.resize(pad_left);
+        p_map_left = map_left_vec.data();
+    }
+    if (pad_right > 256) {
+        map_right_vec.resize(pad_right);
+        p_map_right = map_right_vec.data();
+    }
+
+    if (src_cols > 0 && (mode == 2 || mode == 3 || mode == 4)) {
+        for (int64_t c = 0; c < pad_left; c++) {
+            p_map_left[c] = pad_map_index(c - pad_left, src_cols, mode);
+        }
+        for (int64_t c = 0; c < pad_right; c++) {
+            p_map_right[c] = pad_map_index(src_cols + c, src_cols, mode);
+        }
+    }
+
+    T cb_left = const_before ? const_before[1] : T{};
+    T ca_right = const_after ? const_after[1] : T{};
+    T cb_top = const_before ? const_before[0] : T{};
+    T ca_bottom = const_after ? const_after[0] : T{};
+
+    bool src_row_contiguous = (src_stride_cols == 1);
+
+    // Phase 1: Fill rows [pad_top .. pad_top + src_rows - 1]
+    for (int64_t r = 0; r < src_rows; r++) {
+        T *row_base = dest + (pad_top + r) * dest_cols;
+        T *row_interior = row_base + pad_left;
+        const T *src_row = src + r * src_stride_rows;
+
+        // Copy interior
+        if (src_cols > 0) {
+            if (src_row_contiguous) {
+                memcpy(row_interior, src_row, (size_t)src_cols * sizeof(T));
+            } else {
+                for (int64_t c = 0; c < src_cols; c++) {
+                    row_interior[c] = src_row[c * src_stride_cols];
+                }
+            }
+        }
+
+        // Left padding for row
+        if (pad_left > 0) {
+            if (mode == 0) { // constant
+                fill_typed<T>(row_base, pad_left, cb_left);
+            } else if (src_cols > 0) {
+                if (mode == 1) { // edge
+                    fill_typed<T>(row_base, pad_left, row_interior[0]);
+                } else { // reflect, symmetric, wrap
+                    for (int64_t c = 0; c < pad_left; c++) {
+                        row_base[c] = row_interior[p_map_left[c]];
+                    }
+                }
+            }
+        }
+
+        // Right padding for row
+        if (pad_right > 0) {
+            T *row_right = row_interior + src_cols;
+            if (mode == 0) { // constant
+                fill_typed<T>(row_right, pad_right, ca_right);
+            } else if (src_cols > 0) {
+                if (mode == 1) { // edge
+                    fill_typed<T>(row_right, pad_right, row_interior[src_cols - 1]);
+                } else { // reflect, symmetric, wrap
+                    for (int64_t c = 0; c < pad_right; c++) {
+                        row_right[c] = row_interior[p_map_right[c]];
+                    }
+                }
+            }
+        }
+    }
+
+    // Phase 2: Fill top rows [0 .. pad_top - 1]
+    size_t row_bytes = (size_t)dest_cols * sizeof(T);
+    if (pad_top > 0) {
+        if (mode == 0) { // constant
+            for (int64_t i = 0; i < pad_top; i++) {
+                fill_typed<T>(dest + i * dest_cols, dest_cols, cb_top);
+            }
+        } else if (src_rows > 0) {
+            if (mode == 1) { // edge
+                const T *src_full_row = dest + pad_top * dest_cols;
+                for (int64_t i = 0; i < pad_top; i++) {
+                    memcpy(dest + i * dest_cols, src_full_row, row_bytes);
+                }
+            } else { // reflect, symmetric, wrap
+                for (int64_t i = 0; i < pad_top; i++) {
+                    int64_t src_r = pad_map_index(i - pad_top, src_rows, mode);
+                    const T *src_full_row = dest + (pad_top + src_r) * dest_cols;
+                    memcpy(dest + i * dest_cols, src_full_row, row_bytes);
+                }
+            }
+        }
+    }
+
+    // Phase 3: Fill bottom rows [pad_top + src_rows .. dest_rows - 1]
+    if (pad_bottom > 0) {
+        if (mode == 0) { // constant
+            for (int64_t i = pad_top + src_rows; i < dest_rows; i++) {
+                fill_typed<T>(dest + i * dest_cols, dest_cols, ca_bottom);
+            }
+        } else if (src_rows > 0) {
+            if (mode == 1) { // edge
+                const T *src_full_row = dest + (pad_top + src_rows - 1) * dest_cols;
+                for (int64_t i = pad_top + src_rows; i < dest_rows; i++) {
+                    memcpy(dest + i * dest_cols, src_full_row, row_bytes);
+                }
+            } else { // reflect, symmetric, wrap
+                for (int64_t i = pad_top + src_rows; i < dest_rows; i++) {
+                    int64_t src_r = pad_map_index(i - pad_top, src_rows, mode);
+                    const T *src_full_row = dest + (pad_top + src_r) * dest_cols;
+                    memcpy(dest + i * dest_cols, src_full_row, row_bytes);
+                }
+            }
+        }
+    }
+
+    return 0;
+}
+
+template <typename T>
+static int pad_nd_impl(
+    const T *RESTRICT src,
+    const int64_t *RESTRICT src_shape,
+    const int64_t *RESTRICT src_strides,
+    T *RESTRICT dest,
+    const int64_t *RESTRICT dest_shape,
+    const int64_t *RESTRICT pad_before,
+    const int64_t *RESTRICT pad_after,
+    int64_t rank,
+    int mode,
+    const T *const_before,
+    const T *const_after,
+    int is_uniform_constant
+) {
+    if (rank <= 0) return 0;
+    if (rank == 1) {
+        return pad_1d_impl<T>(
+            src, src_shape[0], src_strides[0],
+            dest, pad_before[0], pad_after[0],
+            mode,
+            const_before ? const_before[0] : T{},
+            const_after ? const_after[0] : T{},
+            is_uniform_constant
+        );
+    }
+    if (rank == 2) {
+        return pad_2d_impl<T>(
+            src, src_shape[0], src_shape[1],
+            src_strides[0], src_strides[1],
+            dest,
+            pad_before[0], pad_after[0],
+            pad_before[1], pad_after[1],
+            mode,
+            const_before, const_after,
+            is_uniform_constant
+        );
+    }
+
+    int64_t total_dest_elements = 1;
+    for (int64_t d = 0; d < rank; d++) {
+        if (dest_shape[d] <= 0) return 0;
+        total_dest_elements *= dest_shape[d];
+    }
+
+    // Fast path: uniform constant mode
+    if (mode == 0 && is_uniform_constant) {
+        T cb_val = const_before ? const_before[0] : T{};
+        fill_typed<T>(dest, total_dest_elements, cb_val);
+    }
+
+    // Step 0: Copy interior src to dest
+    int64_t inner_len = src_shape[rank - 1];
+    int64_t inner_src_stride = src_strides[rank - 1];
+    int64_t inner_pad_before = pad_before[rank - 1];
+    int64_t inner_pad_after = pad_after[rank - 1];
+
+    int64_t dest_strides[32];
+    std::vector<int64_t> dest_strides_vec;
+    int64_t *p_dest_strides = dest_strides;
+    if (rank > 32) {
+        dest_strides_vec.resize(rank);
+        p_dest_strides = dest_strides_vec.data();
+    }
+    p_dest_strides[rank - 1] = 1;
+    for (int64_t d = rank - 2; d >= 0; d--) {
+        p_dest_strides[d] = p_dest_strides[d + 1] * dest_shape[d + 1];
+    }
+
+    int64_t outer_elements = 1;
+    for (int64_t d = 0; d < rank - 1; d++) {
+        outer_elements *= src_shape[d];
+    }
+
+    int64_t coord[32] = {0};
+    std::vector<int64_t> coord_vec;
+    int64_t *p_coord = coord;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        p_coord = coord_vec.data();
+    }
+
+    // Precompute inner left and right index maps
+    int64_t map_left_stack[256];
+    int64_t map_right_stack[256];
+    std::vector<int64_t> map_left_vec, map_right_vec;
+    int64_t *p_map_left = map_left_stack;
+    int64_t *p_map_right = map_right_stack;
+    if (inner_pad_before > 256) {
+        map_left_vec.resize(inner_pad_before);
+        p_map_left = map_left_vec.data();
+    }
+    if (inner_pad_after > 256) {
+        map_right_vec.resize(inner_pad_after);
+        p_map_right = map_right_vec.data();
+    }
+
+    if (inner_len > 0 && (mode == 2 || mode == 3 || mode == 4)) {
+        for (int64_t c = 0; c < inner_pad_before; c++) {
+            p_map_left[c] = pad_map_index(c - inner_pad_before, inner_len, mode);
+        }
+        for (int64_t c = 0; c < inner_pad_after; c++) {
+            p_map_right[c] = pad_map_index(inner_len + c, inner_len, mode);
+        }
+    }
+
+    T cb_inner = const_before ? const_before[rank - 1] : T{};
+    T ca_inner = const_after ? const_after[rank - 1] : T{};
+
+    int64_t src_offset = 0;
+    int64_t dest_base_offset = 0;
+    for (int64_t d = 0; d < rank - 1; d++) {
+        dest_base_offset += pad_before[d] * p_dest_strides[d];
+    }
+
+    if (outer_elements > 0) {
+        // Iterate over all outer slices of src
+        for (int64_t el = 0; el < outer_elements; el++) {
+            T *dest_row_base = dest + dest_base_offset;
+            T *dest_row_interior = dest_row_base + inner_pad_before;
+            const T *src_row = src + src_offset;
+
+            // Copy interior
+            if (inner_len > 0) {
+                if (inner_src_stride == 1) {
+                    memcpy(dest_row_interior, src_row, (size_t)inner_len * sizeof(T));
+                } else {
+                    for (int64_t c = 0; c < inner_len; c++) {
+                        dest_row_interior[c] = src_row[c * inner_src_stride];
+                    }
+                }
+            }
+
+            // If not uniform constant, fill inner left and right borders
+            if (!(mode == 0 && is_uniform_constant)) {
+                if (inner_pad_before > 0) {
+                    if (mode == 0) {
+                        fill_typed<T>(dest_row_base, inner_pad_before, cb_inner);
+                    } else if (inner_len > 0) {
+                        if (mode == 1) {
+                            fill_typed<T>(dest_row_base, inner_pad_before, dest_row_interior[0]);
+                        } else {
+                            for (int64_t c = 0; c < inner_pad_before; c++) {
+                                dest_row_base[c] = dest_row_interior[p_map_left[c]];
+                            }
+                        }
+                    }
+                }
+                if (inner_pad_after > 0) {
+                    T *dest_row_right = dest_row_interior + inner_len;
+                    if (mode == 0) {
+                        fill_typed<T>(dest_row_right, inner_pad_after, ca_inner);
+                    } else if (inner_len > 0) {
+                        if (mode == 1) {
+                            fill_typed<T>(dest_row_right, inner_pad_after, dest_row_interior[inner_len - 1]);
+                        } else {
+                            for (int64_t c = 0; c < inner_pad_after; c++) {
+                                dest_row_right[c] = dest_row_interior[p_map_right[c]];
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Advance outer coordinate
+            for (int64_t d = rank - 2; d >= 0; d--) {
+                p_coord[d]++;
+                if (p_coord[d] < src_shape[d]) {
+                    src_offset += src_strides[d];
+                    dest_base_offset += p_dest_strides[d];
+                    break;
+                }
+                p_coord[d] = 0;
+                src_offset -= (src_shape[d] - 1) * src_strides[d];
+                dest_base_offset -= (src_shape[d] - 1) * p_dest_strides[d];
+            }
+        }
+    }
+
+    if (mode == 0 && is_uniform_constant) {
+        return 0;
+    }
+
+    // Step 2: Pad outer axes from rank - 2 down to 0
+    for (int64_t dim = rank - 2; dim >= 0; dim--) {
+        int64_t b_dim = pad_before[dim];
+        int64_t a_dim = pad_after[dim];
+        int64_t s_dim = src_shape[dim];
+        int64_t d_dim = dest_shape[dim];
+        int64_t block_elements = p_dest_strides[dim];
+        size_t block_bytes = (size_t)block_elements * sizeof(T);
+        T cb_dim = const_before ? const_before[dim] : T{};
+        T ca_dim = const_after ? const_after[dim] : T{};
+
+        if (b_dim == 0 && a_dim == 0) {
+            continue;
+        }
+
+        int64_t outer_dim_elements = 1;
+        for (int64_t d = 0; d < dim; d++) {
+            outer_dim_elements *= src_shape[d];
+        }
+
+        int64_t coord_dim[32] = {0};
+        std::vector<int64_t> coord_dim_vec;
+        int64_t *p_coord_dim = coord_dim;
+        if (dim > 32) {
+            coord_dim_vec.assign(dim, 0);
+            p_coord_dim = coord_dim_vec.data();
+        }
+
+        int64_t dest_dim_base = 0;
+        for (int64_t d = 0; d < dim; d++) {
+            dest_dim_base += pad_before[d] * p_dest_strides[d];
+        }
+
+        for (int64_t el = 0; el < outer_dim_elements; el++) {
+            T *base = dest + dest_dim_base;
+
+            // Fill before padding
+            if (b_dim > 0) {
+                if (mode == 0) {
+                    for (int64_t j = 0; j < b_dim; j++) {
+                        fill_typed<T>(base + j * block_elements, block_elements, cb_dim);
+                    }
+                } else if (s_dim > 0) {
+                    if (mode == 1) { // edge
+                        const T *src_block = base + b_dim * block_elements;
+                        for (int64_t j = 0; j < b_dim; j++) {
+                            memcpy(base + j * block_elements, src_block, block_bytes);
+                        }
+                    } else { // reflect, symmetric, wrap
+                        for (int64_t j = 0; j < b_dim; j++) {
+                            int64_t src_j = pad_map_index(j - b_dim, s_dim, mode);
+                            const T *src_block = base + (b_dim + src_j) * block_elements;
+                            memcpy(base + j * block_elements, src_block, block_bytes);
+                        }
+                    }
+                }
+            }
+
+            // Fill after padding
+            if (a_dim > 0) {
+                if (mode == 0) {
+                    for (int64_t j = b_dim + s_dim; j < d_dim; j++) {
+                        fill_typed<T>(base + j * block_elements, block_elements, ca_dim);
+                    }
+                } else if (s_dim > 0) {
+                    if (mode == 1) { // edge
+                        const T *src_block = base + (b_dim + s_dim - 1) * block_elements;
+                        for (int64_t j = b_dim + s_dim; j < d_dim; j++) {
+                            memcpy(base + j * block_elements, src_block, block_bytes);
+                        }
+                    } else { // reflect, symmetric, wrap
+                        for (int64_t j = b_dim + s_dim; j < d_dim; j++) {
+                            int64_t src_j = pad_map_index(j - b_dim, s_dim, mode);
+                            const T *src_block = base + (b_dim + src_j) * block_elements;
+                            memcpy(base + j * block_elements, src_block, block_bytes);
+                        }
+                    }
+                }
+            }
+
+            // Advance outer coordinate
+            for (int64_t d = dim - 1; d >= 0; d--) {
+                p_coord_dim[d]++;
+                if (p_coord_dim[d] < src_shape[d]) {
+                    dest_dim_base += p_dest_strides[d];
+                    break;
+                }
+                p_coord_dim[d] = 0;
+                dest_dim_base -= (src_shape[d] - 1) * p_dest_strides[d];
+            }
+        }
+    }
+
+    return 0;
+}
+
+extern "C" int native_pad_2d(
+    int dtype,
+    const void *src,
+    int64_t src_rows,
+    int64_t src_cols,
+    int64_t src_stride_rows,
+    int64_t src_stride_cols,
+    void *dest,
+    int64_t pad_top,
+    int64_t pad_bottom,
+    int64_t pad_left,
+    int64_t pad_right,
+    int mode,
+    const void *const_before,
+    const void *const_after,
+    int is_uniform_constant
+) {
+    if (src == nullptr || dest == nullptr) return -3;
+    switch (dtype) {
+        case DTYPE_FLOAT64:
+            return pad_2d_impl<double>(
+                (const double *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
+                (double *)dest, pad_top, pad_bottom, pad_left, pad_right, mode,
+                (const double *)const_before, (const double *)const_after, is_uniform_constant);
+        case DTYPE_FLOAT32:
+            return pad_2d_impl<float>(
+                (const float *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
+                (float *)dest, pad_top, pad_bottom, pad_left, pad_right, mode,
+                (const float *)const_before, (const float *)const_after, is_uniform_constant);
+        case DTYPE_INT64:
+            return pad_2d_impl<int64_t>(
+                (const int64_t *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
+                (int64_t *)dest, pad_top, pad_bottom, pad_left, pad_right, mode,
+                (const int64_t *)const_before, (const int64_t *)const_after, is_uniform_constant);
+        case DTYPE_INT32:
+            return pad_2d_impl<int32_t>(
+                (const int32_t *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
+                (int32_t *)dest, pad_top, pad_bottom, pad_left, pad_right, mode,
+                (const int32_t *)const_before, (const int32_t *)const_after, is_uniform_constant);
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN:
+            return pad_2d_impl<uint8_t>(
+                (const uint8_t *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
+                (uint8_t *)dest, pad_top, pad_bottom, pad_left, pad_right, mode,
+                (const uint8_t *)const_before, (const uint8_t *)const_after, is_uniform_constant);
+        case DTYPE_INT16:
+            return pad_2d_impl<int16_t>(
+                (const int16_t *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
+                (int16_t *)dest, pad_top, pad_bottom, pad_left, pad_right, mode,
+                (const int16_t *)const_before, (const int16_t *)const_after, is_uniform_constant);
+        case DTYPE_COMPLEX128:
+            return pad_2d_impl<complex128_t>(
+                (const complex128_t *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
+                (complex128_t *)dest, pad_top, pad_bottom, pad_left, pad_right, mode,
+                (const complex128_t *)const_before, (const complex128_t *)const_after, is_uniform_constant);
+        case DTYPE_COMPLEX64:
+            return pad_2d_impl<complex64_t>(
+                (const complex64_t *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
+                (complex64_t *)dest, pad_top, pad_bottom, pad_left, pad_right, mode,
+                (const complex64_t *)const_before, (const complex64_t *)const_after, is_uniform_constant);
+        default:
+            return -2;
+    }
+}
+
+extern "C" int native_pad_nd(
+    int dtype,
+    const void *src,
+    const int64_t *src_shape,
+    const int64_t *src_strides,
+    void *dest,
+    const int64_t *dest_shape,
+    const int64_t *dest_strides,
+    const int64_t *pad_before,
+    const int64_t *pad_after,
+    int64_t rank,
+    int mode,
+    const void *const_before,
+    const void *const_after,
+    int is_uniform_constant
+) {
+    if (src == nullptr || dest == nullptr || src_shape == nullptr || src_strides == nullptr ||
+        dest_shape == nullptr || pad_before == nullptr || pad_after == nullptr) {
+        return -3;
+    }
+    (void)dest_strides;
+    switch (dtype) {
+        case DTYPE_FLOAT64:
+            return pad_nd_impl<double>(
+                (const double *)src, src_shape, src_strides,
+                (double *)dest, dest_shape, pad_before, pad_after, rank, mode,
+                (const double *)const_before, (const double *)const_after, is_uniform_constant);
+        case DTYPE_FLOAT32:
+            return pad_nd_impl<float>(
+                (const float *)src, src_shape, src_strides,
+                (float *)dest, dest_shape, pad_before, pad_after, rank, mode,
+                (const float *)const_before, (const float *)const_after, is_uniform_constant);
+        case DTYPE_INT64:
+            return pad_nd_impl<int64_t>(
+                (const int64_t *)src, src_shape, src_strides,
+                (int64_t *)dest, dest_shape, pad_before, pad_after, rank, mode,
+                (const int64_t *)const_before, (const int64_t *)const_after, is_uniform_constant);
+        case DTYPE_INT32:
+            return pad_nd_impl<int32_t>(
+                (const int32_t *)src, src_shape, src_strides,
+                (int32_t *)dest, dest_shape, pad_before, pad_after, rank, mode,
+                (const int32_t *)const_before, (const int32_t *)const_after, is_uniform_constant);
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN:
+            return pad_nd_impl<uint8_t>(
+                (const uint8_t *)src, src_shape, src_strides,
+                (uint8_t *)dest, dest_shape, pad_before, pad_after, rank, mode,
+                (const uint8_t *)const_before, (const uint8_t *)const_after, is_uniform_constant);
+        case DTYPE_INT16:
+            return pad_nd_impl<int16_t>(
+                (const int16_t *)src, src_shape, src_strides,
+                (int16_t *)dest, dest_shape, pad_before, pad_after, rank, mode,
+                (const int16_t *)const_before, (const int16_t *)const_after, is_uniform_constant);
+        case DTYPE_COMPLEX128:
+            return pad_nd_impl<complex128_t>(
+                (const complex128_t *)src, src_shape, src_strides,
+                (complex128_t *)dest, dest_shape, pad_before, pad_after, rank, mode,
+                (const complex128_t *)const_before, (const complex128_t *)const_after, is_uniform_constant);
+        case DTYPE_COMPLEX64:
+            return pad_nd_impl<complex64_t>(
+                (const complex64_t *)src, src_shape, src_strides,
+                (complex64_t *)dest, dest_shape, pad_before, pad_after, rank, mode,
+                (const complex64_t *)const_before, (const complex64_t *)const_after, is_uniform_constant);
+        default:
+            return -2;
+    }
+}
+
+
+// ============================================================================
+// 4. ROLL KERNELS
+// ============================================================================
+
+static inline size_t get_roll_dtype_itemsize(int dtype) {
+    switch (dtype) {
+        case DTYPE_FLOAT64:
+        case DTYPE_INT64:
+        case DTYPE_COMPLEX64:
+            return 8;
+        case DTYPE_FLOAT32:
+        case DTYPE_INT32:
+            return 4;
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN:
+            return 1;
+        case DTYPE_INT16:
+            return 2;
+        case DTYPE_COMPLEX128:
+            return 16;
+        default:
+            return 0;
+    }
+}
+
+static inline bool is_c_contiguous(const int64_t *shape, const int64_t *strides, int64_t rank) {
+    if (strides == nullptr) return true;
+    int64_t expected_stride = 1;
+    for (int64_t d = rank - 1; d >= 0; d--) {
+        if (shape[d] > 1 && strides[d] != expected_stride) {
+            return false;
+        }
+        expected_stride *= shape[d];
+    }
+    return true;
+}
+
+extern "C" int native_roll_1d(
+    int dtype,
+    const void *src,
+    int64_t size,
+    int64_t shift,
+    void *dest
+) {
+    if (src == nullptr || dest == nullptr) {
+        return -3;
+    }
+    if (size <= 0) return 0;
+
+    size_t itemsize = get_roll_dtype_itemsize(dtype);
+    if (itemsize == 0) return -2;
+
+    int64_t s = shift % size;
+    if (s < 0) s += size;
+
+    if (s == 0) {
+        if (src != dest) {
+            memcpy(dest, src, (size_t)size * itemsize);
+        }
+        return 0;
+    }
+
+    size_t b1 = (size_t)s * itemsize;
+    size_t b2 = (size_t)(size - s) * itemsize;
+    const uint8_t *s_ptr = (const uint8_t *)src;
+    uint8_t *d_ptr = (uint8_t *)dest;
+
+    if (src != dest) {
+        memcpy(d_ptr, s_ptr + b2, b1);
+        memcpy(d_ptr + b1, s_ptr, b2);
+    } else {
+        if (b1 <= b2) {
+            std::vector<uint8_t> tmp(b1);
+            memcpy(tmp.data(), s_ptr + b2, b1);
+            memmove(d_ptr + b1, s_ptr, b2);
+            memcpy(d_ptr, tmp.data(), b1);
+        } else {
+            std::vector<uint8_t> tmp(b2);
+            memcpy(tmp.data(), s_ptr, b2);
+            memmove(d_ptr, s_ptr + b2, b1);
+            memcpy(d_ptr + b1, tmp.data(), b2);
+        }
+    }
+    return 0;
+}
+
+template <typename T>
+static int roll_strided_impl(
+    const T *RESTRICT src,
+    const int64_t *RESTRICT shape,
+    const int64_t *RESTRICT src_strides,
+    int64_t rank,
+    int64_t shift,
+    int64_t axis,
+    T *RESTRICT dest,
+    const int64_t *RESTRICT dest_strides
+) {
+    if (rank <= 0) {
+        dest[0] = src[0];
+        return 0;
+    }
+    const int64_t axis_size = shape[axis];
+    if (axis_size <= 0) return 0;
+
+    int64_t total_elements = 1;
+    for (int64_t i = 0; i < rank; i++) {
+        if (shape[i] <= 0) return 0;
+        total_elements *= shape[i];
+    }
+    if (total_elements == 0) return 0;
+
+    int64_t s = shift % axis_size;
+    if (s < 0) s += axis_size;
+
+    // Fast path: 1D strided
+    if (rank == 1) {
+        const int64_t s_stride = src_strides[0];
+        const int64_t d_stride = dest_strides[0];
+        if (s == 0) {
+            for (int64_t i = 0; i < total_elements; i++) {
+                dest[i * d_stride] = src[i * s_stride];
+            }
+            return 0;
+        }
+        for (int64_t i = 0; i < s; i++) {
+            dest[i * d_stride] = src[(axis_size - s + i) * s_stride];
+        }
+        for (int64_t i = 0; i < axis_size - s; i++) {
+            dest[(s + i) * d_stride] = src[i * s_stride];
+        }
+        return 0;
+    }
+
+    // General N-D strided traversal
+    int64_t coord_stack[32] = {0};
+    std::vector<int64_t> coord_vec;
+    int64_t *coord = coord_stack;
+    if (rank > 32) {
+        coord_vec.assign(rank, 0);
+        coord = coord_vec.data();
+    }
+
+    int64_t offsetDest = 0;
+    for (int64_t el = 0; el < total_elements; el++) {
+        int64_t offsetSrc = 0;
+        for (int64_t d = 0; d < rank; d++) {
+            int64_t c = coord[d];
+            if (d == axis) {
+                int64_t src_c = (c < s) ? (c + axis_size - s) : (c - s);
+                offsetSrc += src_c * src_strides[d];
+            } else {
+                offsetSrc += c * src_strides[d];
+            }
+        }
+        dest[offsetDest] = src[offsetSrc];
+
+        for (int64_t d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetDest += dest_strides[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetDest -= (shape[d] - 1) * dest_strides[d];
+        }
+    }
+    return 0;
+}
+
+static int dispatch_roll_strided_by_dtype(
+    int dtype,
+    const void *src,
+    const int64_t *shape,
+    const int64_t *src_strides,
+    int64_t rank,
+    int64_t shift,
+    int64_t axis,
+    void *dest,
+    const int64_t *dest_strides
+) {
+    switch (dtype) {
+        case DTYPE_FLOAT64:
+            return roll_strided_impl<double>(
+                (const double *)src, shape, src_strides, rank, shift, axis,
+                (double *)dest, dest_strides);
+        case DTYPE_FLOAT32:
+            return roll_strided_impl<float>(
+                (const float *)src, shape, src_strides, rank, shift, axis,
+                (float *)dest, dest_strides);
+        case DTYPE_INT64:
+            return roll_strided_impl<int64_t>(
+                (const int64_t *)src, shape, src_strides, rank, shift, axis,
+                (int64_t *)dest, dest_strides);
+        case DTYPE_INT32:
+            return roll_strided_impl<int32_t>(
+                (const int32_t *)src, shape, src_strides, rank, shift, axis,
+                (int32_t *)dest, dest_strides);
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN:
+            return roll_strided_impl<uint8_t>(
+                (const uint8_t *)src, shape, src_strides, rank, shift, axis,
+                (uint8_t *)dest, dest_strides);
+        case DTYPE_INT16:
+            return roll_strided_impl<int16_t>(
+                (const int16_t *)src, shape, src_strides, rank, shift, axis,
+                (int16_t *)dest, dest_strides);
+        case DTYPE_COMPLEX128:
+            return roll_strided_impl<complex128_t>(
+                (const complex128_t *)src, shape, src_strides, rank, shift, axis,
+                (complex128_t *)dest, dest_strides);
+        case DTYPE_COMPLEX64:
+            return roll_strided_impl<complex64_t>(
+                (const complex64_t *)src, shape, src_strides, rank, shift, axis,
+                (complex64_t *)dest, dest_strides);
+        default:
+            return -2;
+    }
+}
+
+static int roll_contiguous_impl(
+    size_t itemsize,
+    const void *src,
+    const int64_t *shape,
+    int64_t rank,
+    int64_t shift,
+    int64_t axis,
+    void *dest
+) {
+    if (rank <= 0) {
+        if (src != dest) {
+            memcpy(dest, src, itemsize);
+        }
+        return 0;
+    }
+    const int64_t axis_size = shape[axis];
+    if (axis_size <= 0) return 0;
+
+    int64_t total_elements = 1;
+    for (int64_t i = 0; i < rank; i++) {
+        if (shape[i] <= 0) return 0;
+        total_elements *= shape[i];
+    }
+    if (total_elements == 0) return 0;
+
+    int64_t s = shift % axis_size;
+    if (s < 0) s += axis_size;
+
+    if (s == 0) {
+        if (src != dest) {
+            memcpy(dest, src, (size_t)total_elements * itemsize);
+        }
+        return 0;
+    }
+
+    if (rank == 1) {
+        size_t b1 = (size_t)s * itemsize;
+        size_t b2 = (size_t)(axis_size - s) * itemsize;
+        const uint8_t *s_ptr = (const uint8_t *)src;
+        uint8_t *d_ptr = (uint8_t *)dest;
+        if (src != dest) {
+            memcpy(d_ptr, s_ptr + b2, b1);
+            memcpy(d_ptr + b1, s_ptr, b2);
+        } else {
+            if (b1 <= b2) {
+                std::vector<uint8_t> tmp(b1);
+                memcpy(tmp.data(), s_ptr + b2, b1);
+                memmove(d_ptr + b1, s_ptr, b2);
+                memcpy(d_ptr, tmp.data(), b1);
+            } else {
+                std::vector<uint8_t> tmp(b2);
+                memcpy(tmp.data(), s_ptr, b2);
+                memmove(d_ptr, s_ptr + b2, b1);
+                memcpy(d_ptr + b1, tmp.data(), b2);
+            }
+        }
+        return 0;
+    }
+
+    int64_t outer_count = 1;
+    for (int64_t i = 0; i < axis; i++) {
+        outer_count *= shape[i];
+    }
+
+    int64_t inner_count = 1;
+    for (int64_t i = axis + 1; i < rank; i++) {
+        inner_count *= shape[i];
+    }
+
+    size_t chunk_bytes = (size_t)inner_count * itemsize;
+    size_t outer_stride_bytes = (size_t)axis_size * chunk_bytes;
+    size_t b1 = (size_t)s * chunk_bytes;
+    size_t b2 = (size_t)(axis_size - s) * chunk_bytes;
+
+    const uint8_t *s_ptr = (const uint8_t *)src;
+    uint8_t *d_ptr = (uint8_t *)dest;
+
+    if (src != dest) {
+        for (int64_t o = 0; o < outer_count; o++) {
+            const uint8_t *src_outer = s_ptr + o * outer_stride_bytes;
+            uint8_t *dest_outer = d_ptr + o * outer_stride_bytes;
+            memcpy(dest_outer, src_outer + b2, b1);
+            memcpy(dest_outer + b1, src_outer, b2);
+        }
+    } else {
+        size_t min_b = (b1 <= b2) ? b1 : b2;
+        std::vector<uint8_t> tmp(min_b);
+        for (int64_t o = 0; o < outer_count; o++) {
+            const uint8_t *src_outer = s_ptr + o * outer_stride_bytes;
+            uint8_t *dest_outer = d_ptr + o * outer_stride_bytes;
+            if (b1 <= b2) {
+                memcpy(tmp.data(), src_outer + b2, b1);
+                memmove(dest_outer + b1, src_outer, b2);
+                memcpy(dest_outer, tmp.data(), b1);
+            } else {
+                memcpy(tmp.data(), src_outer, b2);
+                memmove(dest_outer, src_outer + b2, b1);
+                memcpy(dest_outer + b1, tmp.data(), b2);
+            }
+        }
+    }
+
+    return 0;
+}
+
+extern "C" int native_roll_nd(
+    int dtype,
+    const void *src,
+    const int64_t *shape,
+    const int64_t *src_strides,
+    int64_t rank,
+    int64_t shift,
+    int64_t axis,
+    void *dest,
+    const int64_t *dest_strides
+) {
+    if (src == nullptr || dest == nullptr || shape == nullptr) {
+        return -3;
+    }
+    if (rank > 0 && (axis < 0 || axis >= rank)) {
+        return -1;
+    }
+
+    size_t itemsize = get_roll_dtype_itemsize(dtype);
+    if (itemsize == 0) return -2;
+
+    bool src_contig = is_c_contiguous(shape, src_strides, rank);
+    bool dest_contig = is_c_contiguous(shape, dest_strides, rank);
+
+    if (src_contig && dest_contig) {
+        return roll_contiguous_impl(itemsize, src, shape, rank, shift, axis, dest);
+    } else {
+        if (src_strides == nullptr || dest_strides == nullptr) {
+            return -3;
+        }
+        return dispatch_roll_strided_by_dtype(
+            dtype, src, shape, src_strides, rank, shift, axis, dest, dest_strides);
+    }
+}
