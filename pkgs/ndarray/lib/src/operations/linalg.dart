@@ -1759,6 +1759,161 @@ extension SlogdetRecordDispose<T, R>
 /// final x = solve(a, b);
 /// print(x.toList()); // [2.0, 3.0]
 /// ```
+void _copyStrided2DMatrix(
+  ffi.Pointer<ffi.Void> src,
+  List<int> strides,
+  int offsetElements,
+  int n,
+  DType dtype,
+  ffi.Pointer<ffi.Void> dest,
+) {
+  final stride0 = strides[strides.length - 2];
+  final stride1 = strides[strides.length - 1];
+  final byteWidth = dtype.byteWidth;
+  if (stride1 == 1) {
+    for (var r = 0; r < n; r++) {
+      final srcRow = ffi.Pointer<ffi.Uint8>.fromAddress(
+        src.address + (offsetElements + r * stride0) * byteWidth,
+      );
+      final destRow = ffi.Pointer<ffi.Uint8>.fromAddress(
+        dest.address + (r * n) * byteWidth,
+      );
+      custom_memcpy(destRow.cast(), srcRow.cast(), n * byteWidth);
+    }
+  } else {
+    final cBuf = ScratchArena.allocate<ffi.Int>(4);
+    cBuf[0] = stride0;
+    cBuf[1] = stride1;
+    cBuf[2] = n;
+    cBuf[3] = n;
+    final cStrides = cBuf;
+    final cShape = cBuf + 2;
+    final srcPtr = ffi.Pointer<ffi.Void>.fromAddress(
+      src.address + offsetElements * byteWidth,
+    );
+    switch (dtype) {
+      case DType.float64:
+        s_flatten_double(srcPtr.cast(), cStrides, dest.cast(), cShape, 2);
+      case DType.float32:
+        s_flatten_float(srcPtr.cast(), cStrides, dest.cast(), cShape, 2);
+      case DType.complex128:
+        s_flatten_complex128(srcPtr.cast(), cStrides, dest.cast(), cShape, 2);
+      case DType.complex64:
+        s_flatten_complex64(srcPtr.cast(), cStrides, dest.cast(), cShape, 2);
+      default:
+        throw UnsupportedError('Unsupported type: $dtype');
+    }
+  }
+}
+
+void _lapackeSolve(
+  DType dtype,
+  int n,
+  int nrhs,
+  ffi.Pointer<ffi.Void> aPtr,
+  ffi.Pointer<ffi.Int> ipiv,
+  ffi.Pointer<ffi.Void> bPtr,
+) {
+  final int info;
+  switch (dtype) {
+    case DType.float64:
+      info = LAPACKE_dgesv(
+        101,
+        n,
+        nrhs,
+        aPtr.cast<ffi.Double>(),
+        n,
+        ipiv,
+        bPtr.cast<ffi.Double>(),
+        nrhs,
+      );
+      if (info < 0) {
+        throw ArgumentError('Illegal value in call to LAPACKE_dgesv: $info');
+      }
+      if (info > 0) {
+        throw SingularMatrixException(
+          'Matrix is singular and cannot be solved',
+        );
+      }
+    case DType.float32:
+      info = LAPACKE_sgesv(
+        101,
+        n,
+        nrhs,
+        aPtr.cast<ffi.Float>(),
+        n,
+        ipiv,
+        bPtr.cast<ffi.Float>(),
+        nrhs,
+      );
+      if (info < 0) {
+        throw ArgumentError('Illegal value in call to LAPACKE_sgesv: $info');
+      }
+      if (info > 0) {
+        throw SingularMatrixException(
+          'Matrix is singular and cannot be solved',
+        );
+      }
+    case DType.complex128:
+      info = LAPACKE_zgesv(
+        101,
+        n,
+        nrhs,
+        aPtr.cast<ffi.Double>(),
+        n,
+        ipiv,
+        bPtr.cast<ffi.Double>(),
+        nrhs,
+      );
+      if (info < 0) {
+        throw ArgumentError('Illegal value in call to LAPACKE_zgesv: $info');
+      }
+      if (info > 0) {
+        throw SingularMatrixException(
+          'Matrix is singular and cannot be solved',
+        );
+      }
+    case DType.complex64:
+      info = LAPACKE_cgesv(
+        101,
+        n,
+        nrhs,
+        aPtr.cast<ffi.Float>(),
+        n,
+        ipiv,
+        bPtr.cast<ffi.Float>(),
+        nrhs,
+      );
+      if (info < 0) {
+        throw ArgumentError('Illegal value in call to LAPACKE_cgesv: $info');
+      }
+      if (info > 0) {
+        throw SingularMatrixException(
+          'Matrix is singular and cannot be solved',
+        );
+      }
+    default:
+      throw UnsupportedError('Unsupported type for solve: $dtype');
+  }
+}
+
+/// Solves a linear matrix equation, or framework of equations $AX = B$.
+///
+/// Computes the exact solution of the matrix equation $AX = B$, where $A$ is a square
+/// matrix (or batch of square matrices) of shape `(..., N, N)`, and $B$ is a vector or
+/// matrix (or batch) of shape `(..., N)` or `(..., N, K)`.
+///
+/// **Preconditions:**
+/// - $A$ and $B$ must not be disposed.
+/// - The last two dimensions of $A$ must be square ($M = N$).
+/// - $A$ and $B$ must have matching floating-point or complex data types.
+/// - If [out] is provided, it must match the result shape, data type, and be contiguous.
+///
+/// It is an error if $A$ or $B$ is disposed, non-square, or has incompatible shapes/dtypes.
+///
+/// Throws a [SingularMatrixException] if the matrix $A$ is singular or ill-conditioned.
+///
+/// {@example test/examples/linalg_example_test.dart [lang=dart] [indent=keep]}
 NDArray<T> solve<T extends Object>(
   NDArray<T> a,
   NDArray<T> b, {
@@ -1777,27 +1932,47 @@ NDArray<T> solve<T extends Object>(
     );
   }
   final n = a.shape[rankA - 1];
-  final stackShapeA = a.shape.sublist(0, rankA - 2);
   final rankB = b.shape.length;
 
-  if (rankB == rankA - 1) {
-    if (!listEquals(b.shape.sublist(0, rankA - 2), stackShapeA) ||
-        b.shape[rankB - 1] != n) {
+  if (rankA == 2) {
+    if (rankB == 1) {
+      if (b.shape[0] != n) {
+        throw ArgumentError(
+          'Dimensions of b (${b.shape}) must match matrix dimension $n of a (${a.shape})',
+        );
+      }
+    } else if (rankB == 2) {
+      if (b.shape[0] != n) {
+        throw ArgumentError(
+          'Dimensions of b (${b.shape}) must match matrix dimension $n of a (${a.shape})',
+        );
+      }
+    } else {
       throw ArgumentError(
-        'Dimensions of b (${b.shape}) must match stack shape $stackShapeA and matrix dimension $n of a (${a.shape})',
-      );
-    }
-  } else if (rankB == rankA) {
-    if (!listEquals(b.shape.sublist(0, rankA - 2), stackShapeA) ||
-        b.shape[rankB - 2] != n) {
-      throw ArgumentError(
-        'Dimensions of b (${b.shape}) must match stack shape $stackShapeA and matrix dimension $n of a (${a.shape})',
+        'Dimensions of b (${b.shape}) are incompatible with a (${a.shape}). Expected rank 1 or 2.',
       );
     }
   } else {
-    throw ArgumentError(
-      'Dimensions of b (${b.shape}) are incompatible with a (${a.shape}). Expected rank ${rankA - 1} or $rankA.',
-    );
+    final stackShapeA = a.shape.sublist(0, rankA - 2);
+    if (rankB == rankA - 1) {
+      if (!listEquals(b.shape.sublist(0, rankA - 2), stackShapeA) ||
+          b.shape[rankB - 1] != n) {
+        throw ArgumentError(
+          'Dimensions of b (${b.shape}) must match stack shape $stackShapeA and matrix dimension $n of a (${a.shape})',
+        );
+      }
+    } else if (rankB == rankA) {
+      if (!listEquals(b.shape.sublist(0, rankA - 2), stackShapeA) ||
+          b.shape[rankB - 2] != n) {
+        throw ArgumentError(
+          'Dimensions of b (${b.shape}) must match stack shape $stackShapeA and matrix dimension $n of a (${a.shape})',
+        );
+      }
+    } else {
+      throw ArgumentError(
+        'Dimensions of b (${b.shape}) are incompatible with a (${a.shape}). Expected rank ${rankA - 1} or $rankA.',
+      );
+    }
   }
 
   if (a.dtype != b.dtype) {
@@ -1826,157 +2001,103 @@ NDArray<T> solve<T extends Object>(
     }
   }
 
-  return NDArray.scope(() {
-    final nrhs = rankB == rankA ? b.shape[rankB - 1] : 1;
-    final marker = ScratchArena.marker;
+  final nrhs = rankB == rankA ? b.shape[rankB - 1] : 1;
+
+  final NDArray<T> bCopy;
+  if (out != null) {
+    bCopy = out;
+    b.copy(out: bCopy);
+  } else {
+    bCopy = b.copy();
+  }
+
+  if (n == 0) {
+    return bCopy;
+  }
+
+  final marker = ScratchArena.marker;
+  try {
     final ipiv = ScratchArena.allocate<ffi.Int>(n * ffi.sizeOf<ffi.Int>());
-    final aCopy = NDArray.create([n, n], a.dtype);
+    final aCopyPtr = ScratchArena.allocate<ffi.Uint8>(
+      n * n * a.dtype.byteWidth,
+    );
 
-    final NDArray<T> bCopy;
-    if (out != null) {
-      bCopy = out;
-      b.copy(out: bCopy);
-    } else {
-      bCopy = b.copy();
-    }
-
-    if (n == 0) {
-      if (out == null) {
-        bCopy.detachToParentScope();
+    if (rankA == 2) {
+      if (a.isContiguous) {
+        custom_memcpy(aCopyPtr.cast(), a.pointer, n * n * a.dtype.byteWidth);
+      } else {
+        _copyStrided2DMatrix(
+          a.pointer,
+          a.strides,
+          0,
+          n,
+          a.dtype,
+          aCopyPtr.cast(),
+        );
       }
+      _lapackeSolve(a.dtype, n, nrhs, aCopyPtr.cast(), ipiv, bCopy.pointer);
       return bCopy;
     }
 
-    try {
-      walkStackCoords(stackShapeA, List<int>.filled(stackShapeA.length, 0), 0, (
-        coords,
-      ) {
-        var offsetA = 0;
-        for (var i = 0; i < coords.length; i++) {
-          offsetA += coords[i] * a.strides[i];
-        }
-        final sliceA = NDArray.view(
-          a,
-          shape: [n, n],
-          strides: a.strides.sublist(rankA - 2),
-          offsetElements: offsetA,
-        );
-        sliceA.copy(out: aCopy);
-        sliceA.dispose();
-
-        var offsetB = 0;
-        for (var i = 0; i < coords.length; i++) {
-          offsetB += coords[i] * bCopy.strides[i];
-        }
-        final bSliceShape = rankB == rankA ? [n, nrhs] : [n];
-        final bSliceStrides = bCopy.strides.sublist(coords.length);
-        final sliceB = NDArray<T>.view(
-          bCopy,
-          shape: bSliceShape,
-          strides: bSliceStrides,
-          offsetElements: offsetB,
-        );
-
-        switch (a.dtype) {
-          case DType.float64:
-            final info = LAPACKE_dgesv(
-              101,
-              n,
-              nrhs,
-              aCopy.pointer.cast<ffi.Double>(),
-              n,
-              ipiv,
-              sliceB.pointer.cast<ffi.Double>(),
-              nrhs,
-            );
-            if (info < 0) {
-              throw ArgumentError(
-                'Illegal value in call to LAPACKE_dgesv: $info',
-              );
-            }
-            if (info > 0) {
-              throw SingularMatrixException(
-                'Matrix is singular and cannot be solved',
-              );
-            }
-          case DType.float32:
-            final info = LAPACKE_sgesv(
-              101,
-              n,
-              nrhs,
-              aCopy.pointer.cast<ffi.Float>(),
-              n,
-              ipiv,
-              sliceB.pointer.cast<ffi.Float>(),
-              nrhs,
-            );
-            if (info < 0) {
-              throw ArgumentError(
-                'Illegal value in call to LAPACKE_sgesv: $info',
-              );
-            }
-            if (info > 0) {
-              throw SingularMatrixException(
-                'Matrix is singular and cannot be solved',
-              );
-            }
-          case DType.complex128:
-            final info = LAPACKE_zgesv(
-              101,
-              n,
-              nrhs,
-              aCopy.pointer.cast<ffi.Double>(),
-              n,
-              ipiv,
-              sliceB.pointer.cast<ffi.Double>(),
-              nrhs,
-            );
-            if (info < 0) {
-              throw ArgumentError(
-                'Illegal value in call to LAPACKE_zgesv: $info',
-              );
-            }
-            if (info > 0) {
-              throw SingularMatrixException(
-                'Matrix is singular and cannot be solved',
-              );
-            }
-          case DType.complex64:
-            final info = LAPACKE_cgesv(
-              101,
-              n,
-              nrhs,
-              aCopy.pointer.cast<ffi.Float>(),
-              n,
-              ipiv,
-              sliceB.pointer.cast<ffi.Float>(),
-              nrhs,
-            );
-            if (info < 0) {
-              throw ArgumentError(
-                'Illegal value in call to LAPACKE_cgesv: $info',
-              );
-            }
-            if (info > 0) {
-              throw SingularMatrixException(
-                'Matrix is singular and cannot be solved',
-              );
-            }
-          default:
-            throw UnsupportedError('Unsupported type for solve: ${a.dtype}');
-        }
-        sliceB.dispose();
-      });
-
-      if (out == null) {
-        bCopy.detachToParentScope();
-      }
-      return bCopy;
-    } finally {
-      ScratchArena.reset(marker);
-      aCopy.dispose();
+    final stackDims = rankA - 2;
+    final stackShape = a.shape.sublist(0, stackDims);
+    var stackSize = 1;
+    for (var d = 0; d < stackDims; d++) {
+      stackSize *= stackShape[d];
     }
-  });
+
+    final coords = List<int>.filled(stackDims, 0);
+    final aStrides = a.strides;
+    final bCopyStrides = bCopy.strides;
+    final bElemSize = b.dtype.byteWidth;
+
+    for (var step = 0; step < stackSize; step++) {
+      var offsetA = 0;
+      var offsetB = 0;
+      for (var d = 0; d < stackDims; d++) {
+        offsetA += coords[d] * aStrides[d];
+        offsetB += coords[d] * bCopyStrides[d];
+      }
+
+      final isSliceAContig =
+          aStrides[rankA - 2] == n && aStrides[rankA - 1] == 1;
+      if (isSliceAContig) {
+        final srcSliceA = ffi.Pointer<ffi.Uint8>.fromAddress(
+          a.pointer.address + offsetA * a.dtype.byteWidth,
+        );
+        custom_memcpy(
+          aCopyPtr.cast(),
+          srcSliceA.cast(),
+          n * n * a.dtype.byteWidth,
+        );
+      } else {
+        _copyStrided2DMatrix(
+          a.pointer,
+          aStrides,
+          offsetA,
+          n,
+          a.dtype,
+          aCopyPtr.cast(),
+        );
+      }
+
+      final bSlicePtr = ffi.Pointer<ffi.Void>.fromAddress(
+        bCopy.pointer.address + offsetB * bElemSize,
+      );
+
+      _lapackeSolve(a.dtype, n, nrhs, aCopyPtr.cast(), ipiv, bSlicePtr);
+
+      for (var d = stackDims - 1; d >= 0; d--) {
+        coords[d]++;
+        if (coords[d] < stackShape[d]) break;
+        coords[d] = 0;
+      }
+    }
+
+    return bCopy;
+  } finally {
+    ScratchArena.reset(marker);
+  }
 }
 
 /// Computes the eigenvalues and right eigenvectors of a square array or stack of square arrays.

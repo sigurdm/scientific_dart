@@ -2,6 +2,8 @@
 import '../ndarray.dart';
 
 // Standalone operational relative cross-imports
+import 'broadcasting.dart';
+import 'manipulation.dart';
 import 'spacers.dart';
 
 /// Represents a range specification for meshgrid operations.
@@ -255,44 +257,18 @@ NDArray<Float64> mgrid(
       gridShape.add(arr1D.size);
     }
 
-    // 2. Allocate the dense result array of shape [k, d1, d2, ..., dk]
-    final outputShape = [k, ...gridShape];
-    if (out != null) {
-      if (!listEquals(out.shape, outputShape) || out.dtype != dtype) {
-        throw ArgumentError('Incompatible out buffer shape or dtype.');
-      }
-    }
-    final result = out ?? NDArray<Float64>.create(outputShape, dtype);
-    // 3. Walk recursively to fill coordinates in-place
+    // 2. Broadcast each 1D coordinate to gridShape
+    final broadcastedGrids = <NDArray<Float64>>[];
     for (var i = 0; i < k; i++) {
-      final coords = allCoords[i];
-      final currentIndices = List<int>.filled(k + 1, 0);
-      currentIndices[0] = i;
-
-      void walk(int dim, Float64? val) {
-        if (dim == k) {
-          result.setCell(currentIndices, val!);
-          return;
-        }
-
-        final size = gridShape[dim];
-
-        if (dim == i) {
-          for (var c = 0; c < size; c++) {
-            currentIndices[dim + 1] = c;
-            walk(dim + 1, coords.getCellFlat(c));
-          }
-        } else {
-          for (var c = 0; c < size; c++) {
-            currentIndices[dim + 1] = c;
-            walk(dim + 1, val);
-          }
-        }
-      }
-
-      walk(0, null);
+      final shape1D = List<int>.filled(k, 1);
+      shape1D[i] = gridShape[i];
+      final reshaped = allCoords[i].reshape(shape1D);
+      final broadcasted = broadcastTo(reshaped, gridShape);
+      broadcastedGrids.add(broadcasted);
     }
 
+    // 3. Stack all broadcasted grids along axis 0
+    final result = stack<Float64>(broadcastedGrids, axis: 0, out: out);
     if (out != null) {
       return out;
     }

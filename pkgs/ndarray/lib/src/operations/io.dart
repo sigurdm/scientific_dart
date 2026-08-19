@@ -1,11 +1,17 @@
 // ignore_for_file: non_constant_identifier_names
 import 'dart:typed_data';
 import 'dart:io';
-import 'package:archive/archive.dart';
+import 'package:ffi/ffi.dart';
 import '../ndarray.dart';
+import '../ndarray_extensions_bindings.dart';
 import 'dart:ffi' as ffi;
 
-// Standalone operational relative cross-imports
+final _descrRegex = RegExp(r'''['"]descr['"]:\s*['"]([^'"]+)['"]''');
+final _fortranRegex = RegExp(
+  r'''['"]fortran_order['"]:\s*(True|False)''',
+  caseSensitive: false,
+);
+final _shapeRegex = RegExp(r'''['"]shape['"]:\s*\(?([^\)]*)\)?''');
 
 /// Maps a NumPy descriptor string back to an [NDArray] [DType].
 DType<dynamic> _descrToDType(String descr) {
@@ -199,9 +205,7 @@ NDArray<dynamic> load(String filepath) {
     final headerStr = String.fromCharCodes(headerBytes);
 
     // Parse descr via regex
-    final descrMatch = RegExp(
-      '[\'"]descr[\'"]:\\s*[\'"]([^\'"]+)[\'"]',
-    ).firstMatch(headerStr);
+    final descrMatch = _descrRegex.firstMatch(headerStr);
     if (descrMatch == null) {
       throw FormatException(
         'Invalid npy header: could not parse "descr" parameter string',
@@ -211,10 +215,7 @@ NDArray<dynamic> load(String filepath) {
     final dtype = _descrToDType(descr);
 
     // Parse fortran_order bool flag
-    final fortMatch = RegExp(
-      '[\'"]fortran_order[\'"]:\\s*(True|False)',
-      caseSensitive: false,
-    ).firstMatch(headerStr);
+    final fortMatch = _fortranRegex.firstMatch(headerStr);
     if (fortMatch == null) {
       throw FormatException(
         'Invalid npy header: could not parse "fortran_order" boolean flag',
@@ -223,9 +224,7 @@ NDArray<dynamic> load(String filepath) {
     final fortranOrder = fortMatch.group(1)!.toLowerCase() == 'true';
 
     // Parse shape tuple
-    final shapeMatch = RegExp(
-      '[\'"]shape[\'"]:\\s*\\(?([^\\)]*)\\)?',
-    ).firstMatch(headerStr);
+    final shapeMatch = _shapeRegex.firstMatch(headerStr);
     if (shapeMatch == null) {
       throw FormatException(
         'Invalid npy header: could not parse "shape" tuple tokens',
@@ -268,173 +267,27 @@ NDArray<dynamic> load(String filepath) {
   }
 }
 
-/// Serialize an [NDArray] directly into in-memory `.npy` bytes (internal utility for .npz).
-Uint8List _serializeNpyBytes(NDArray a) {
-  final NDArray effectiveArray;
-  final bool needsDisposeEffective;
-  if (!a.isContiguous) {
-    effectiveArray = a.copy();
-    needsDisposeEffective = true;
-  } else {
-    effectiveArray = a;
-    needsDisposeEffective = false;
-  }
-
-  try {
-    final descr = effectiveArray.dtype.npyDescriptor;
-    final shapeStr = effectiveArray.shape.length == 1
-        ? '${effectiveArray.shape[0]},'
-        : effectiveArray.shape.join(', ');
-    final headerStr =
-        "{'descr': '$descr', 'fortran_order': False, 'shape': ($shapeStr)}";
-
-    final prefixLen = 6 + 2 + 2;
-    var paddedHeaderLen =
-        ((prefixLen + headerStr.length + 1) + 63) ~/ 64 * 64 - prefixLen;
-    final padCount = paddedHeaderLen - headerStr.length - 1;
-    final paddedHeader = '$headerStr${' ' * padCount}\n';
-
-    final headerBytes = Uint8List.fromList(paddedHeader.codeUnits);
-    final lenBytes = Uint8List(2);
-    ByteData.view(
-      lenBytes.buffer,
-    ).setUint16(0, headerBytes.length, Endian.little);
-
-    final elementCount = effectiveArray.shape.isEmpty
-        ? 1
-        : effectiveArray.shape.reduce((x, y) => x * y);
-    final dataByteSize = elementCount * effectiveArray.dtype.byteWidth;
-    final Uint8List rawDataView = effectiveArray.pointer
-        .cast<ffi.Uint8>()
-        .asTypedList(dataByteSize);
-
-    final totalBytesSize = 6 + 2 + 2 + headerBytes.length + rawDataView.length;
-    final resultList = Uint8List(totalBytesSize);
-
-    var offset = 0;
-    // Magic
-    resultList.setRange(offset, offset + 6, const [
-      0x93,
-      0x4e,
-      0x55,
-      0x4d,
-      0x50,
-      0x59,
-    ]);
-    offset += 6;
-    // Version
-    resultList.setRange(offset, offset + 2, const [0x01, 0x00]);
-    offset += 2;
-    // Header Len
-    resultList.setRange(offset, offset + 2, lenBytes);
-    offset += 2;
-    // Header ASCII
-    resultList.setRange(offset, offset + headerBytes.length, headerBytes);
-    offset += headerBytes.length;
-    // Data block copy
-    resultList.setRange(offset, offset + rawDataView.length, rawDataView);
-
-    return resultList;
-  } finally {
-    if (needsDisposeEffective) {
-      effectiveArray.dispose();
-    }
-  }
-}
-
-/// Deserializes an [NDArray] directly from in-memory `.npy` bytes (internal utility for .npz).
-NDArray _deserializeNpyBytes(Uint8List bytes) {
-  if (bytes.length < 10 ||
-      bytes[0] != 0x93 ||
-      bytes[1] != 0x4e ||
-      bytes[2] != 0x55 ||
-      bytes[3] != 0x4d ||
-      bytes[4] != 0x50 ||
-      bytes[5] != 0x59) {
-    throw FormatException('Invalid in-memory .npy byte signature block');
-  }
-
-  final headerLen = ByteData.view(
-    bytes.buffer,
-    bytes.offsetInBytes + 8,
-    2,
-  ).getUint16(0, Endian.little);
-
-  final headerBytes = Uint8List.view(
-    bytes.buffer,
-    bytes.offsetInBytes + 10,
-    headerLen,
-  );
-  final headerStr = String.fromCharCodes(headerBytes);
-
-  final descrMatch = RegExp(
-    '[\'"]descr[\'"]:\\s*[\'"]([^\'"]+)[\'"]',
-  ).firstMatch(headerStr);
-  final descr = descrMatch!.group(1)!;
-  final dtype = _descrToDType(descr);
-
-  final fortMatch = RegExp(
-    '[\'"]fortran_order[\'"]:\\s*(True|False)',
-    caseSensitive: false,
-  ).firstMatch(headerStr);
-  final fortranOrder = fortMatch!.group(1)!.toLowerCase() == 'true';
-
-  final shapeMatch = RegExp(
-    '[\'"]shape[\'"]:\\s*\\(?([^\\)]*)\\)?',
-  ).firstMatch(headerStr);
-  final shapeTokens = shapeMatch!.group(1)!.split(',');
-  final shape = <int>[];
-  for (var tok in shapeTokens) {
-    final cleanTok = tok.trim();
-    if (cleanTok.isNotEmpty) shape.add(int.parse(cleanTok));
-  }
-
-  final elementCount = shape.isEmpty ? 1 : shape.reduce((x, y) => x * y);
-  final dataByteSize = elementCount * dtype.byteWidth;
-
-  List<int>? strides;
-  if (fortranOrder && shape.length > 1) {
-    final fStrides = List<int>.filled(shape.length, 0);
-    var stride = 1;
-    for (var i = 0; i < shape.length; i++) {
-      fStrides[i] = stride;
-      stride *= shape[i];
-    }
-    strides = fStrides;
-  }
-
-  final result = NDArray.create(shape, dtype, strides: strides);
-
-  final dataOffset = 10 + headerLen;
-  final targetView = result.pointer.cast<ffi.Uint8>().asTypedList(dataByteSize);
-
-  final sourceView = Uint8List.view(
-    bytes.buffer,
-    bytes.offsetInBytes + dataOffset,
-    dataByteSize,
-  );
-  targetView.setRange(0, dataByteSize, sourceView);
-
-  return result;
-}
-
 /// Save multiple named arrays to a single ZIP archive file on disk (`.npz`).
 ///
 /// This corresponds to NumPy's `savez` and `savez_compressed` functions.
+///
+/// Uses high-performance native C zip streaming to serialize array headers and raw memory
+/// directly to disk without intermediate memory buffer copies.
 ///
 /// **Preconditions:**
 /// - [filepath] must be a valid, writable path string.
 /// - [arrays] map must not be empty, and all [NDArray] values must not be disposed.
 ///
-/// **Throws:**
+/// **Errors & Exceptions:**
 /// - It is an error if any array in [arrays] is disposed.
-/// - It is an error if the parent directories cannot be created or the archive file cannot be written.
-/// - It is an error if the ZIP archive encoding fails.
+/// - Throws [FormatException] if the native ZIP archive encoding fails.
+/// - Throws [FileSystemException] if the parent directories cannot be created or the archive file cannot be written.
 ///
 /// **Performance considerations:**
 /// - Algorithmic time complexity is $O(N)$ where $N$ is the total number of elements across all packed arrays.
-/// - If [compressed] is true, applies Deflate compression to minimize disk footprints. Note that compression
-///   is CPU-intensive and will temporarily increase dynamic RAM allocation for the compressed byte buffers.
+/// - Performs zero-copy streaming: reads unmanaged C-heap memory pages directly in chunks into the native
+///   ZIP writer without allocating transient Dart heap arrays.
+/// - If [compressed] is true, applies native Deflate compression.
 ///
 /// **Example:**
 /// {@example /example/numpy_interop_example.dart lang=dart}
@@ -451,56 +304,132 @@ void savez(
       throw StateError('Cannot save a disposed NDArray (key: ${entry.key}).');
     }
   }
-  final archive = Archive();
-
-  for (final entry in arrays.entries) {
-    final fileBytes = _serializeNpyBytes(entry.value);
-    final archiveFile = ArchiveFile(
-      '${entry.key}.npy',
-      fileBytes.length,
-      fileBytes,
-    );
-    archive.addFile(archiveFile);
-  }
-
-  // Encode archive as zip byte streams
-  final encoder = ZipEncoder();
-  final zipBytes = encoder.encode(
-    archive,
-    level: compressed ? Deflate.BEST_COMPRESSION : Deflate.NO_COMPRESSION,
-  );
-
-  if (zipBytes == null) {
-    throw FormatException('Failed to encode .npz zip archive format bytes');
-  }
 
   final file = File(filepath);
   if (!file.parent.existsSync()) {
     file.parent.createSync(recursive: true);
   }
-  file.writeAsBytesSync(Uint8List.fromList(zipBytes), flush: true);
+
+  final numArrays = arrays.length;
+  final toDispose = <NDArray<dynamic>>[];
+
+  try {
+    using((Arena arena) {
+      final cNames = arena<ffi.Pointer<ffi.Char>>(numArrays);
+      final cHeaderBytes = arena<ffi.Pointer<ffi.Uint8>>(numArrays);
+      final cHeaderLens = arena<ffi.Size>(numArrays);
+      final cDataPtrs = arena<ffi.Pointer<ffi.Void>>(numArrays);
+      final cDataLens = arena<ffi.Size>(numArrays);
+
+      var idx = 0;
+      for (final entry in arrays.entries) {
+        final arr = entry.value;
+        final NDArray<dynamic> effectiveArray;
+        if (!arr.isContiguous) {
+          effectiveArray = arr.copy();
+          toDispose.add(effectiveArray);
+        } else {
+          effectiveArray = arr;
+        }
+
+        final entryName = '${entry.key}.npy';
+        cNames[idx] = entryName.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+
+        final descr = effectiveArray.dtype.npyDescriptor;
+        final shapeStr = effectiveArray.shape.length == 1
+            ? '${effectiveArray.shape[0]},'
+            : effectiveArray.shape.join(', ');
+        final headerStr =
+            "{'descr': '$descr', 'fortran_order': False, 'shape': ($shapeStr)}";
+
+        final prefixLen = 6 + 2 + 2;
+        final paddedHeaderLen =
+            ((prefixLen + headerStr.length + 1) + 63) ~/ 64 * 64 - prefixLen;
+        final padCount = paddedHeaderLen - headerStr.length - 1;
+        final paddedHeader = '$headerStr${' ' * padCount}\n';
+
+        final headerCodeUnits = paddedHeader.codeUnits;
+        final totalHeaderBytes = 10 + headerCodeUnits.length;
+        final hBuf = arena<ffi.Uint8>(totalHeaderBytes);
+
+        // 1. Magic "\x93NUMPY"
+        hBuf[0] = 0x93;
+        hBuf[1] = 0x4e; // 'N'
+        hBuf[2] = 0x55; // 'U'
+        hBuf[3] = 0x4d; // 'M'
+        hBuf[4] = 0x50; // 'P'
+        hBuf[5] = 0x59; // 'Y'
+        // 2. Version 1.0
+        hBuf[6] = 0x01;
+        hBuf[7] = 0x00;
+        // 3. Header length uint16 little-endian
+        final hLen = headerCodeUnits.length;
+        hBuf[8] = hLen & 0xFF;
+        hBuf[9] = (hLen >> 8) & 0xFF;
+        // 4. ASCII Header dictionary
+        for (var j = 0; j < hLen; j++) {
+          hBuf[10 + j] = headerCodeUnits[j];
+        }
+
+        cHeaderBytes[idx] = hBuf;
+        cHeaderLens[idx] = totalHeaderBytes;
+
+        final elementCount = effectiveArray.shape.isEmpty
+            ? 1
+            : effectiveArray.shape.reduce((x, y) => x * y);
+        final byteSize = elementCount * effectiveArray.dtype.byteWidth;
+
+        cDataPtrs[idx] = effectiveArray.pointer.cast<ffi.Void>();
+        cDataLens[idx] = byteSize;
+        idx++;
+      }
+
+      final cFilepath = filepath
+          .toNativeUtf8(allocator: arena)
+          .cast<ffi.Char>();
+      final compressLevel = compressed ? 6 : 0;
+
+      final status = npz_save(
+        cFilepath,
+        numArrays,
+        cNames,
+        cHeaderBytes,
+        cHeaderLens,
+        cDataPtrs,
+        cDataLens,
+        compressLevel,
+      );
+
+      if (status != 0) {
+        throw FormatException(
+          'Failed to encode .npz zip archive format bytes (error code: $status)',
+        );
+      }
+    });
+  } finally {
+    for (final a in toDispose) {
+      a.dispose();
+    }
+  }
 }
 
 /// Load multiple named [NDArray] instances back from a NumPy `.npz` ZIP archive.
 ///
-/// Unpacks and deserializes all inner files, mapping variable name keys to loaded array targets.
-/// Supports compressed and uncompressed Python-generated `.npz` archives.
+/// Unpacks and deserializes all inner `.npy` files, mapping variable name keys to loaded array targets.
+/// Supports compressed and uncompressed Python-generated `.npz` archives with zero memory copying.
 ///
 /// **Preconditions:**
 /// - [filepath] must point to an existing, readable `.npz` ZIP archive file on the filesystem.
 ///
-/// **Throws:**
-/// - It is an error if the file does not exist or cannot be read.
-/// - It is an error if the file is not a valid ZIP archive or contains corrupted inner `.npy` byte streams.
+/// **Errors & Exceptions:**
+/// - Throws [FileSystemException] if the file does not exist or cannot be read.
+/// - Throws [FormatException] if the file is not a valid ZIP archive or contains corrupted inner `.npy` byte streams.
 ///
 /// **Performance considerations:**
-/// - **Memory overhead:** During `.npz` deserialization, this method reads the
-///   archive bytes and decodes them fully in memory via `ZipDecoder().decodeBytes()`. When deserializing each `.npy` file,
-///   it allocates a contiguous unmanaged C-heap memory block and copies the bytes block.
-///   This creates a temporary **3x RAM footprint amplification factor** (compressed archive bytes list + fully
-///   inflated ArchiveFile list + unmanaged FFI pointer heap arrays). For gigabyte-scale scientific datasets
-///   (e.g. large machine learning checkpoints or dense matrix grids logs), ensure the host system has sufficient
-///   free memory pages to prevent Out-Of-Memory (OOM) isolate VM kills.
+/// - Algorithmic time complexity is $O(N)$ where $N$ is the total number of elements across all packed arrays.
+/// - **Zero-copy Native Decompression:** Reads/decompresses stream data directly from native zip file
+///   iterators straight into unmanaged C-heap array memory without intermediate Dart heap byte lists.
+/// - Supports **Column-Major Fortran strides mapping** in $O(1)$ time for column-major `.npy` entries.
 ///
 /// **Memory Ownership & Lifetime:**
 /// - Allocates new arrays on the unmanaged C heap. **The caller takes full ownership** of this memory and **must explicitly call [dispose]** on all returned arrays in the map to prevent native leaks, unless executing inside a managed [NDArray.scope].
@@ -516,26 +445,123 @@ Map<String, NDArray<dynamic>> loadz(String filepath) {
     throw FileSystemException('File not found for loadz npz', filepath);
   }
 
-  final bytes = file.readAsBytesSync();
-  final decoder = ZipDecoder();
-  final archive = decoder.decodeBytes(bytes);
+  return using((Arena arena) {
+    final cFilepath = filepath.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final pNumEntries = arena<ffi.Int64>();
 
-  final results = <String, NDArray>{};
-
-  for (final archiveFile in archive) {
-    if (archiveFile.isFile && archiveFile.name.endsWith('.npy')) {
-      final key = archiveFile.name.replaceAll('.npy', '');
-      final rawContent = archiveFile.content;
-      final Uint8List fileData = rawContent is Uint8List
-          ? rawContent
-          : Uint8List.fromList(rawContent as List<int>);
-
-      final loadedArray = _deserializeNpyBytes(fileData);
-      results[key] = loadedArray;
-      archiveFile.clear();
-      archiveFile.closeSync();
+    final handle = npz_open_reader(cFilepath, pNumEntries);
+    if (handle.address == 0) {
+      throw FormatException('Invalid or corrupted .npz ZIP archive: $filepath');
     }
-  }
 
-  return results;
+    try {
+      final numEntries = pNumEntries.value;
+      final results = <String, NDArray<dynamic>>{};
+
+      const nameBufLen = 512;
+      final nameBuf = arena<ffi.Char>(nameBufLen);
+      const headerBufLen = 65536;
+      final headerBuf = arena<ffi.Uint8>(headerBufLen);
+      final pHeaderLen = arena<ffi.Size>();
+      final pDataLen = arena<ffi.Size>();
+
+      for (var i = 0; i < numEntries; i++) {
+        final infoStatus = npz_reader_get_entry_info(
+          handle,
+          i,
+          nameBuf,
+          nameBufLen,
+          headerBuf,
+          headerBufLen,
+          pHeaderLen,
+          pDataLen,
+        );
+
+        if (infoStatus != 0) {
+          if (infoStatus == -8) {
+            // Corrupted magic bytes in .npy file
+            throw FormatException('Invalid .npy magic header in archive entry');
+          }
+          continue;
+        }
+
+        final filename = nameBuf.cast<Utf8>().toDartString();
+        if (!filename.endsWith('.npy')) {
+          continue;
+        }
+        final key = filename.substring(0, filename.length - 4);
+
+        final headerLen = pHeaderLen.value;
+        final dataLen = pDataLen.value;
+
+        final asciiHeaderLen = headerLen - 10;
+        final headerBytes = (headerBuf + 10).asTypedList(asciiHeaderLen);
+        final headerStr = String.fromCharCodes(headerBytes);
+
+        final descrMatch = _descrRegex.firstMatch(headerStr);
+        if (descrMatch == null) {
+          throw FormatException(
+            'Invalid npy header: could not parse "descr" parameter string',
+          );
+        }
+        final descr = descrMatch.group(1)!;
+        final dtype = _descrToDType(descr);
+
+        final fortMatch = _fortranRegex.firstMatch(headerStr);
+        if (fortMatch == null) {
+          throw FormatException(
+            'Invalid npy header: could not parse "fortran_order" boolean flag',
+          );
+        }
+        final fortranOrder = fortMatch.group(1)!.toLowerCase() == 'true';
+
+        final shapeMatch = _shapeRegex.firstMatch(headerStr);
+        if (shapeMatch == null) {
+          throw FormatException(
+            'Invalid npy header: could not parse "shape" tuple tokens',
+          );
+        }
+        final shapeTokens = shapeMatch.group(1)!.split(',');
+        final shape = <int>[];
+        for (final tok in shapeTokens) {
+          final cleanTok = tok.trim();
+          if (cleanTok.isNotEmpty) shape.add(int.parse(cleanTok));
+        }
+
+        List<int>? strides;
+        if (fortranOrder && shape.length > 1) {
+          final fStrides = List<int>.filled(shape.length, 0);
+          var stride = 1;
+          for (var s = 0; s < shape.length; s++) {
+            fStrides[s] = stride;
+            stride *= shape[s];
+          }
+          strides = fStrides;
+        }
+
+        final loadedArray = NDArray.create(shape, dtype, strides: strides);
+
+        final extractStatus = npz_reader_extract_data(
+          handle,
+          i,
+          headerLen,
+          loadedArray.pointer.cast<ffi.Void>(),
+          dataLen,
+        );
+
+        if (extractStatus != 0) {
+          loadedArray.dispose();
+          throw FormatException(
+            'Failed to extract .npy array data from .npz entry (index: $i, key: $key, code: $extractStatus)',
+          );
+        }
+
+        results[key] = loadedArray;
+      }
+
+      return results;
+    } finally {
+      npz_close_reader(handle);
+    }
+  });
 }

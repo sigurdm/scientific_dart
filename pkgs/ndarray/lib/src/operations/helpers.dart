@@ -473,69 +473,6 @@ void reduceRecursive<S extends Object, D extends Object>(
   }
 }
 
-void copyContiguousFlat(NDArray src, NDArray dest, int destOffset, int size) {
-  final width = src.dtype.byteWidth;
-  final destPtr = dest.pointer.cast<ffi.Uint8>() + destOffset * width;
-  final srcPtr = src.pointer.cast<ffi.Uint8>();
-  custom_memcpy(destPtr.cast(), srcPtr.cast(), size * width);
-}
-
-void copyConcatenateRecursive<T>(
-  NDArray<T> src,
-  NDArray<T> dest,
-  int axis,
-  int axisOffset,
-  List<int> currentIndices,
-  int currentDim,
-) {
-  if (currentDim == src.shape.length) {
-    final destIndices = List<int>.from(currentIndices);
-    destIndices[axis] += axisOffset;
-    dest[destIndices] = src[currentIndices];
-    return;
-  }
-
-  for (var i = 0; i < src.shape[currentDim]; i++) {
-    currentIndices[currentDim] = i;
-    copyConcatenateRecursive(
-      src,
-      dest,
-      axis,
-      axisOffset,
-      currentIndices,
-      currentDim + 1,
-    );
-  }
-}
-
-void copyStackRecursive(
-  NDArray src,
-  NDArray dest,
-  int targetAxis,
-  int axisOffset,
-  List<int> currentIndices,
-  int currentDim,
-) {
-  if (currentDim == src.shape.length) {
-    final destIndices = List<int>.from(currentIndices);
-    destIndices.insert(targetAxis, axisOffset);
-    dest[destIndices] = src[currentIndices];
-    return;
-  }
-
-  for (var i = 0; i < src.shape[currentDim]; i++) {
-    currentIndices[currentDim] = i;
-    copyStackRecursive(
-      src,
-      dest,
-      targetAxis,
-      axisOffset,
-      currentIndices,
-      currentDim + 1,
-    );
-  }
-}
-
 void unaryOp<Ta, Tr>(
   NDArray<Tr> result,
   NDArray<Ta> a,

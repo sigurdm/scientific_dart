@@ -5,6 +5,7 @@
 #include <string.h>
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #define VQSORT_ENABLED 1
 #include "hwy/contrib/sort/vqsort.h"
 #include "hwy/highway.h"
@@ -1596,32 +1597,159 @@ static inline bool eq_double_impl(double a, double b) {
     return (a == b) || (std::isnan(a) && std::isnan(b));
 }
 
-template<typename T, typename Comp, typename Eq>
-int unique_template(const T *src, T *dest, int size,
-                    int64_t *out_index, int64_t *out_inverse, int64_t *out_counts,
-                    Comp comp, Eq eq) {
+static int unique_double_fast(const double *src, double *dest, int size) {
     if (size <= 0) return 0;
-    
-    // If no optional returns, we can optimize by sorting in-place on a copy
-    if (out_index == nullptr && out_inverse == nullptr && out_counts == nullptr) {
-        memcpy(dest, src, size * sizeof(T));
-        std::sort(dest, dest + size, comp);
-        // Compact in-place
-        int write_idx = 0;
-        for (int read_idx = 1; read_idx < size; read_idx++) {
-            if (!eq(dest[read_idx], dest[write_idx])) {
+    memcpy(dest, src, size * sizeof(double));
+    double *non_nan_end = std::partition(dest, dest + size, [](double x) {
+        return !std::isnan(x);
+    });
+    int non_nan_size = non_nan_end - dest;
+    if (non_nan_size > 1) {
+        hwy::VQSort(dest, non_nan_size, hwy::SortAscending());
+    }
+    int write_idx = 0;
+    if (non_nan_size > 0) {
+        for (int read_idx = 1; read_idx < non_nan_size; read_idx++) {
+            if (dest[read_idx] != dest[write_idx]) {
                 write_idx++;
                 dest[write_idx] = dest[read_idx];
             }
         }
-        return write_idx + 1;
+        write_idx++;
     }
+    if (non_nan_size < size) {
+        dest[write_idx++] = std::numeric_limits<double>::quiet_NaN();
+    }
+    return write_idx;
+}
+
+static int unique_float_fast(const float *src, float *dest, int size) {
+    if (size <= 0) return 0;
+    memcpy(dest, src, size * sizeof(float));
+    float *non_nan_end = std::partition(dest, dest + size, [](float x) {
+        return !std::isnan(x);
+    });
+    int non_nan_size = non_nan_end - dest;
+    if (non_nan_size > 1) {
+        hwy::VQSort(dest, non_nan_size, hwy::SortAscending());
+    }
+    int write_idx = 0;
+    if (non_nan_size > 0) {
+        for (int read_idx = 1; read_idx < non_nan_size; read_idx++) {
+            if (dest[read_idx] != dest[write_idx]) {
+                write_idx++;
+                dest[write_idx] = dest[read_idx];
+            }
+        }
+        write_idx++;
+    }
+    if (non_nan_size < size) {
+        dest[write_idx++] = std::numeric_limits<float>::quiet_NaN();
+    }
+    return write_idx;
+}
+
+static int unique_int32_fast(const int32_t *src, int32_t *dest, int size) {
+    if (size <= 0) return 0;
+    memcpy(dest, src, size * sizeof(int32_t));
+    if (size > 1) {
+        hwy::VQSort(dest, size, hwy::SortAscending());
+    }
+    int write_idx = 0;
+    for (int read_idx = 1; read_idx < size; read_idx++) {
+        if (dest[read_idx] != dest[write_idx]) {
+            write_idx++;
+            dest[write_idx] = dest[read_idx];
+        }
+    }
+    return write_idx + 1;
+}
+
+static int unique_int64_fast(const int64_t *src, int64_t *dest, int size) {
+    if (size <= 0) return 0;
+    memcpy(dest, src, size * sizeof(int64_t));
+    if (size > 1) {
+        hwy::VQSort((int64_t *)dest, size, hwy::SortAscending());
+    }
+    int write_idx = 0;
+    for (int read_idx = 1; read_idx < size; read_idx++) {
+        if (dest[read_idx] != dest[write_idx]) {
+            write_idx++;
+            dest[write_idx] = dest[read_idx];
+        }
+    }
+    return write_idx + 1;
+}
+
+static int unique_int16_fast(const int16_t *src, int16_t *dest, int size) {
+    if (size <= 0) return 0;
+    memcpy(dest, src, size * sizeof(int16_t));
+    if (size > 1) {
+        hwy::VQSort(dest, size, hwy::SortAscending());
+    }
+    int write_idx = 0;
+    for (int read_idx = 1; read_idx < size; read_idx++) {
+        if (dest[read_idx] != dest[write_idx]) {
+            write_idx++;
+            dest[write_idx] = dest[read_idx];
+        }
+    }
+    return write_idx + 1;
+}
+
+static int unique_uint8_fast(const uint8_t *src, uint8_t *dest, int size) {
+    if (size <= 0) return 0;
+    bool present[256] = {false};
+    for (int i = 0; i < size; i++) {
+        present[src[i]] = true;
+    }
+    int count = 0;
+    for (int v = 0; v < 256; v++) {
+        if (present[v]) {
+            dest[count++] = (uint8_t)v;
+        }
+    }
+    return count;
+}
+
+static int unique_complex128_fast(const complex128_t *src, complex128_t *dest, int size) {
+    if (size <= 0) return 0;
+    memcpy(dest, src, size * sizeof(complex128_t));
+    std::sort(dest, dest + size, comp_complex_impl<complex128_t>);
+    int write_idx = 0;
+    for (int read_idx = 1; read_idx < size; read_idx++) {
+        if (!eq_complex_impl(dest[read_idx], dest[write_idx])) {
+            write_idx++;
+            dest[write_idx] = dest[read_idx];
+        }
+    }
+    return write_idx + 1;
+}
+
+static int unique_complex64_fast(const complex64_t *src, complex64_t *dest, int size) {
+    if (size <= 0) return 0;
+    memcpy(dest, src, size * sizeof(complex64_t));
+    std::sort(dest, dest + size, comp_complex_impl<complex64_t>);
+    int write_idx = 0;
+    for (int read_idx = 1; read_idx < size; read_idx++) {
+        if (!eq_complex_impl(dest[read_idx], dest[write_idx])) {
+            write_idx++;
+            dest[write_idx] = dest[read_idx];
+        }
+    }
+    return write_idx + 1;
+}
+
+template<typename T, typename Comp, typename Eq>
+static int unique_template(const T *src, T *dest, int size,
+                           int64_t *out_index, int64_t *out_inverse, int64_t *out_counts,
+                           Comp comp, Eq eq) {
+    if (size <= 0) return 0;
     
-    // We need at least one optional return.
-    std::vector<int64_t> idx(size);
+    std::vector<int> idx(size);
     for (int i = 0; i < size; i++) idx[i] = i;
     
-    std::stable_sort(idx.begin(), idx.end(), [&](int64_t a, int64_t b) {
+    std::stable_sort(idx.begin(), idx.end(), [&](int a, int b) {
         return comp(src[a], src[b]);
     });
     
@@ -1654,6 +1782,31 @@ extern "C" {
 int ndarray_unique(const void *src, void *dest, int size, int dtype,
                    int64_t *out_index, int64_t *out_inverse, int64_t *out_counts) {
     if (src == nullptr || dest == nullptr || size <= 0) return 0;
+    
+    bool has_optional = (out_index != nullptr || out_inverse != nullptr || out_counts != nullptr);
+    if (!has_optional) {
+        switch (dtype) {
+            case DTYPE_FLOAT64:
+                return unique_double_fast((const double *)src, (double *)dest, size);
+            case DTYPE_FLOAT32:
+                return unique_float_fast((const float *)src, (float *)dest, size);
+            case DTYPE_INT32:
+                return unique_int32_fast((const int32_t *)src, (int32_t *)dest, size);
+            case DTYPE_INT64:
+                return unique_int64_fast((const int64_t *)src, (int64_t *)dest, size);
+            case DTYPE_INT16:
+                return unique_int16_fast((const int16_t *)src, (int16_t *)dest, size);
+            case DTYPE_UINT8:
+            case DTYPE_BOOLEAN:
+                return unique_uint8_fast((const uint8_t *)src, (uint8_t *)dest, size);
+            case DTYPE_COMPLEX128:
+                return unique_complex128_fast((const complex128_t *)src, (complex128_t *)dest, size);
+            case DTYPE_COMPLEX64:
+                return unique_complex64_fast((const complex64_t *)src, (complex64_t *)dest, size);
+            default:
+                return 0;
+        }
+    }
     
     switch (dtype) {
         case DTYPE_FLOAT64:

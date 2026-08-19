@@ -101,17 +101,8 @@ void _storeKissOutputToResult<R>(
   }
 }
 
-kiss_fft_cfg _allocateKissFFTPlan(int nfft, int inverse_fft) {
-  final lenmem = ScratchArena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
-  lenmem[0] = 0;
-  kiss_fft_alloc(nfft, inverse_fft, ffi.nullptr, lenmem);
-
-  final mem = ScratchArena.allocate<ffi.Void>(lenmem[0]);
-  final cfg = kiss_fft_alloc(nfft, inverse_fft, mem, lenmem);
-  if (cfg.address == 0) {
-    throw StateError('Failed to allocate native FFT plan for length $nfft');
-  }
-  return cfg;
+kiss_fft_cfg _getKissFFTPlan(int nfft, int inverse_fft) {
+  return PocketFFTPlanCache.instance.getPlan(nfft, isInverse: inverse_fft != 0);
 }
 
 /// Computes the 1D discrete Fourier Transform (FFT) along the specified [axis].
@@ -260,7 +251,7 @@ NDArray<R> fft<T, R extends Complex>(
   if (isZeroCopyFastPath) {
     final marker = ScratchArena.marker;
     try {
-      cfg = _allocateKissFFTPlan(targetLen, 0);
+      cfg = _getKissFFTPlan(targetLen, 0);
 
       for (var s = 0; s < signalsCount; s++) {
         final rowPin = inputA.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
@@ -281,7 +272,7 @@ NDArray<R> fft<T, R extends Complex>(
   ffi.Pointer<kiss_fft_cpx> pout = ffi.nullptr.cast();
 
   try {
-    cfg = _allocateKissFFTPlan(targetLen, 0);
+    cfg = _getKissFFTPlan(targetLen, 0);
     pin = ScratchArena.allocate<kiss_fft_cpx>(
       targetLen * ffi.sizeOf<kiss_fft_cpx>(),
     );
@@ -452,7 +443,7 @@ NDArray<R> ifft<T, R extends Complex>(
   if (isZeroCopyFastPath) {
     final marker = ScratchArena.marker;
     try {
-      cfg = _allocateKissFFTPlan(targetLen, 1);
+      cfg = _getKissFFTPlan(targetLen, 1);
 
       final scaleFactor = 1.0 / targetLen;
       for (var s = 0; s < signalsCount; s++) {
@@ -460,9 +451,10 @@ NDArray<R> ifft<T, R extends Complex>(
         final rowPout = result.pointer.cast<kiss_fft_cpx>() + s * targetLen;
         kiss_fft(cfg, rowPin, rowPout);
 
-        for (var i = 0; i < targetLen; i++) {
-          rowPout[i].r *= scaleFactor;
-          rowPout[i].i *= scaleFactor;
+        final pDoubles = rowPout.cast<ffi.Double>();
+        final count = targetLen * 2;
+        for (var i = 0; i < count; i++) {
+          pDoubles[i] *= scaleFactor;
         }
       }
     } finally {
@@ -479,7 +471,7 @@ NDArray<R> ifft<T, R extends Complex>(
   ffi.Pointer<kiss_fft_cpx> pout = ffi.nullptr.cast();
 
   try {
-    cfg = _allocateKissFFTPlan(targetLen, 1);
+    cfg = _getKissFFTPlan(targetLen, 1);
     pin = ScratchArena.allocate<kiss_fft_cpx>(
       targetLen * ffi.sizeOf<kiss_fft_cpx>(),
     );
@@ -673,38 +665,20 @@ NDArray<T> ifftshift<T extends Object>(
   });
 }
 
-// Helper to allocate a KissFFTR plan configuration on the ScratchArena stack.
-kiss_fftr_cfg _allocateKissFFTRPlan(int nfft, int inverse_fft) {
-  final lenmem = ScratchArena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
-  lenmem[0] = 0;
-  kiss_fftr_alloc(nfft, inverse_fft, ffi.nullptr, lenmem);
-
-  final mem = ScratchArena.allocate<ffi.Void>(lenmem[0]);
-  final cfg = kiss_fftr_alloc(nfft, inverse_fft, mem, lenmem);
-  if (cfg.address == 0) {
-    throw StateError('Failed to allocate native FFTR plan for length $nfft');
-  }
-  return cfg;
+// Helper to retrieve a KissFFTR plan configuration from the cache.
+kiss_fftr_cfg _getKissFFTRPlan(int nfft, int inverse_fft) {
+  return PocketFFTPlanCache.instance.getRealPlan(
+    nfft,
+    isInverse: inverse_fft != 0,
+  );
 }
 
-// Helper to allocate a KissFFTND plan configuration on the ScratchArena stack.
-kiss_fftnd_cfg _allocateKissFFTNDPlan(List<int> dims, int inverse_fft) {
-  final ndims = dims.length;
-  final pDims = ScratchArena.allocate<ffi.Int>(ndims * ffi.sizeOf<ffi.Int>());
-  for (var i = 0; i < ndims; i++) {
-    pDims[i] = dims[i];
-  }
-
-  final lenmem = ScratchArena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
-  lenmem[0] = 0;
-  kiss_fftnd_alloc(pDims, ndims, inverse_fft, ffi.nullptr, lenmem);
-
-  final mem = ScratchArena.allocate<ffi.Void>(lenmem[0]);
-  final cfg = kiss_fftnd_alloc(pDims, ndims, inverse_fft, mem, lenmem);
-  if (cfg.address == 0) {
-    throw StateError('Failed to allocate native ND FFT plan');
-  }
-  return cfg;
+// Helper to retrieve a KissFFTND plan configuration from the cache.
+kiss_fftnd_cfg _getKissFFTNDPlan(List<int> dims, int inverse_fft) {
+  return PocketFFTPlanCache.instance.getNDPlan(
+    dims,
+    isInverse: inverse_fft != 0,
+  );
 }
 
 List<int> _inversePermutation(List<int> p) {
@@ -893,33 +867,34 @@ NDArray<R> _promoteToComplex<T, R extends Complex>(
 
   if (targetDType == DType.complex128) {
     final pOut = result.pointer.cast<kiss_fft_cpx>();
+    final pOutD = pOut.cast<ffi.Double>();
     switch (contiguousA.dtype) {
       case DType.complex128:
-        final pIn = contiguousA.pointer.cast<kiss_fft_cpx>();
-        for (var i = 0; i < numElements; i++) {
-          pOut[i].r = pIn[i].r;
-          pOut[i].i = pIn[i].i;
+        final pInD = contiguousA.pointer.cast<ffi.Double>();
+        final count = numElements * 2;
+        for (var i = 0; i < count; i++) {
+          pOutD[i] = pInD[i];
         }
         break;
       case DType.complex64:
-        final pIn = contiguousA.pointer.cast<ffi.Float>();
+        final pInF = contiguousA.pointer.cast<ffi.Float>();
         for (var i = 0; i < numElements; i++) {
-          pOut[i].r = pIn[2 * i];
-          pOut[i].i = pIn[2 * i + 1];
+          pOutD[2 * i] = pInF[2 * i];
+          pOutD[2 * i + 1] = pInF[2 * i + 1];
         }
         break;
       case DType.float64:
-        final pIn = contiguousA.pointer.cast<ffi.Double>();
+        final pInD = contiguousA.pointer.cast<ffi.Double>();
         for (var i = 0; i < numElements; i++) {
-          pOut[i].r = pIn[i];
-          pOut[i].i = 0.0;
+          pOutD[2 * i] = pInD[i];
+          pOutD[2 * i + 1] = 0.0;
         }
         break;
       case DType.float32:
-        final pIn = contiguousA.pointer.cast<ffi.Float>();
+        final pInF = contiguousA.pointer.cast<ffi.Float>();
         for (var i = 0; i < numElements; i++) {
-          pOut[i].r = pIn[i];
-          pOut[i].i = 0.0;
+          pOutD[2 * i] = pInF[i];
+          pOutD[2 * i + 1] = 0.0;
         }
         break;
       default:
@@ -930,30 +905,30 @@ NDArray<R> _promoteToComplex<T, R extends Complex>(
     final pOut = result.pointer.cast<ffi.Float>();
     switch (contiguousA.dtype) {
       case DType.complex128:
-        final pIn = contiguousA.pointer.cast<kiss_fft_cpx>();
+        final pInD = contiguousA.pointer.cast<ffi.Double>();
         for (var i = 0; i < numElements; i++) {
-          pOut[2 * i] = pIn[i].r;
-          pOut[2 * i + 1] = pIn[i].i;
+          pOut[2 * i] = pInD[2 * i];
+          pOut[2 * i + 1] = pInD[2 * i + 1];
         }
         break;
       case DType.complex64:
-        final pIn = contiguousA.pointer.cast<ffi.Float>();
-        for (var i = 0; i < numElements; i++) {
-          pOut[2 * i] = pIn[2 * i];
-          pOut[2 * i + 1] = pIn[2 * i + 1];
+        final pInF = contiguousA.pointer.cast<ffi.Float>();
+        final count = numElements * 2;
+        for (var i = 0; i < count; i++) {
+          pOut[i] = pInF[i];
         }
         break;
       case DType.float64:
-        final pIn = contiguousA.pointer.cast<ffi.Double>();
+        final pInD = contiguousA.pointer.cast<ffi.Double>();
         for (var i = 0; i < numElements; i++) {
-          pOut[2 * i] = pIn[i];
+          pOut[2 * i] = pInD[i];
           pOut[2 * i + 1] = 0.0;
         }
         break;
       case DType.float32:
-        final pIn = contiguousA.pointer.cast<ffi.Float>();
+        final pInF = contiguousA.pointer.cast<ffi.Float>();
         for (var i = 0; i < numElements; i++) {
-          pOut[2 * i] = pIn[i];
+          pOut[2 * i] = pInF[i];
           pOut[2 * i + 1] = 0.0;
         }
         break;
@@ -974,30 +949,44 @@ NDArray<R> _padOrTruncate<T, R extends Complex>(
   List<int> axes,
   DType<R> targetDType,
 ) {
+  var needsSliceOrPad = false;
+  for (var i = 0; i < axes.length; i++) {
+    if (s[i] != arr.shape[axes[i]]) {
+      needsSliceOrPad = true;
+      break;
+    }
+  }
+
+  if (!needsSliceOrPad && arr.dtype == targetDType && arr.isContiguous) {
+    return (arr as NDArray<R>).copy();
+  }
+
   return NDArray.scope(() {
     NDArray<R> current = _promoteToComplex<T, R>(arr, targetDType);
 
-    for (var i = 0; i < axes.length; i++) {
-      final axis = axes[i];
-      final targetSize = s[i];
-      final currentSize = current.shape[axis];
+    if (needsSliceOrPad) {
+      for (var i = 0; i < axes.length; i++) {
+        final axis = axes[i];
+        final targetSize = s[i];
+        final currentSize = current.shape[axis];
 
-      if (targetSize < currentSize) {
-        final slices = List<Selector>.generate(current.rank, (dim) {
-          if (dim == axis) {
-            return Slice(start: 0, stop: targetSize);
-          }
-          return const Slice.all();
-        });
-        current = current.slice(slices).copy();
-      } else if (targetSize > currentSize) {
-        final padWidthList = List<(int, int)>.generate(current.rank, (dim) {
-          if (dim == axis) {
-            return (0, targetSize - currentSize);
-          }
-          return (0, 0);
-        });
-        current = pad(current, PadWidth.axes(padWidthList));
+        if (targetSize < currentSize) {
+          final slices = List<Selector>.generate(current.rank, (dim) {
+            if (dim == axis) {
+              return Slice(start: 0, stop: targetSize);
+            }
+            return const Slice.all();
+          });
+          current = current.slice(slices).copy();
+        } else if (targetSize > currentSize) {
+          final padWidthList = List<(int, int)>.generate(current.rank, (dim) {
+            if (dim == axis) {
+              return (0, targetSize - currentSize);
+            }
+            return (0, 0);
+          });
+          current = pad(current, PadWidth.axes(padWidthList));
+        }
       }
     }
     return current.detachToParentScope();
@@ -1216,7 +1205,7 @@ NDArray<R> rfft<T, R extends Complex>(
     if (isZeroCopyFastPath) {
       final marker = ScratchArena.marker;
       try {
-        cfg = _allocateKissFFTRPlan(targetLen, 0);
+        cfg = _getKissFFTRPlan(targetLen, 0);
         final outLen = targetLen ~/ 2 + 1;
         for (var s = 0; s < signalsCount; s++) {
           final rowPin = inputA.pointer.cast<ffi.Double>() + s * lastAxisDim;
@@ -1232,7 +1221,7 @@ NDArray<R> rfft<T, R extends Complex>(
 
     final marker = ScratchArena.marker;
     try {
-      cfg = _allocateKissFFTRPlan(targetLen, 0);
+      cfg = _getKissFFTRPlan(targetLen, 0);
       final pin = ScratchArena.allocate<ffi.Double>(
         targetLen * ffi.sizeOf<ffi.Double>(),
       );
@@ -1255,10 +1244,11 @@ NDArray<R> rfft<T, R extends Complex>(
         kiss_fftr(cfg, pin, pout);
 
         if (result.dtype == DType.complex128) {
-          final pOut = result.pointer.cast<kiss_fft_cpx>() + destStart;
-          for (var i = 0; i < outLen; i++) {
-            pOut[i].r = pout[i].r;
-            pOut[i].i = pout[i].i;
+          final pOut = result.pointer.cast<ffi.Double>() + destStart * 2;
+          final pPoutD = pout.cast<ffi.Double>();
+          final numDoubles = outLen * 2;
+          for (var i = 0; i < numDoubles; i++) {
+            pOut[i] = pPoutD[i];
           }
         } else {
           final pOut = result.pointer.cast<ffi.Float>() + destStart * 2;
@@ -1431,7 +1421,7 @@ NDArray<R> irfft<T, R extends double>(
     if (isZeroCopyFastPath) {
       final marker = ScratchArena.marker;
       try {
-        cfg = _allocateKissFFTRPlan(targetLen, 1);
+        cfg = _getKissFFTRPlan(targetLen, 1);
         final scaleFactor = 1.0 / targetLen;
         for (var s = 0; s < signalsCount; s++) {
           final rowPin = inputA.pointer.cast<kiss_fft_cpx>() + s * lastAxisDim;
@@ -1450,7 +1440,7 @@ NDArray<R> irfft<T, R extends double>(
 
     final marker = ScratchArena.marker;
     try {
-      cfg = _allocateKissFFTRPlan(targetLen, 1);
+      cfg = _getKissFFTRPlan(targetLen, 1);
       final pin = ScratchArena.allocate<kiss_fft_cpx>(
         targetInputLen * ffi.sizeOf<kiss_fft_cpx>(),
       );
@@ -1736,7 +1726,7 @@ NDArray<R> _fftnND<T, R extends Complex>(
 
     final marker = ScratchArena.marker;
     try {
-      final cfg = _allocateKissFFTNDPlan(sResolved, inverse ? 1 : 0);
+      final cfg = _getKissFFTNDPlan(sResolved, inverse ? 1 : 0);
 
       if (targetDType == DType.complex128) {
         final pIn = contiguousTransposed.pointer.cast<kiss_fft_cpx>();
@@ -1746,9 +1736,10 @@ NDArray<R> _fftnND<T, R extends Complex>(
           final rowPout = pOut + s * signalSize;
           kiss_fftnd(cfg, rowPin, rowPout);
           if (inverse) {
-            for (var i = 0; i < signalSize; i++) {
-              rowPout[i].r *= scale;
-              rowPout[i].i *= scale;
+            final pOutD = rowPout.cast<ffi.Double>();
+            final numDoubles = signalSize * 2;
+            for (var i = 0; i < numDoubles; i++) {
+              pOutD[i] *= scale;
             }
           }
         }
@@ -1893,4 +1884,13 @@ NDArray<R> ifft2<T, R extends Complex>(
     throw ArgumentError('axes must have length 2');
   }
   return ifftn<T, R>(a, s: s, axes: resolvedAxes, out: out);
+}
+
+/// Clears all precomputed native FFT plans from the isolate plan cache.
+///
+/// Frees unmanaged C heap memory allocated for twiddle factor tables and
+/// multidimensional transform buffers across 1D complex, 1D real, and
+/// N-dimensional FFT plans.
+void clearFFTPlanCache() {
+  PocketFFTPlanCache.instance.clear();
 }

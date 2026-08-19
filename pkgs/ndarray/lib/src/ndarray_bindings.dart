@@ -1191,6 +1191,36 @@ external void native_count_nonzero_complex64(
   int is_contiguous,
 );
 
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
+  )
+>()
+external int ndarray_unique(
+  ffi.Pointer<ffi.Void> src,
+  ffi.Pointer<ffi.Void> dest,
+  int size,
+  int dtype,
+  ffi.Pointer<ffi.Int64> out_index,
+  ffi.Pointer<ffi.Int64> out_inverse,
+  ffi.Pointer<ffi.Int64> out_counts,
+);
+
+@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.Int)>()
+external ffi.Pointer<ffi.Char> get_binary_op_name(int index);
+
+@ffi.Native<ffi.Int Function()>()
+external int get_binary_op_count();
+
+@ffi.Native<ffi.Int Function(ffi.Int)>()
+external int get_binary_op_enum_val(int index);
+
 /// ============================================================================
 /// SECTION 2: FLAT CONTIGUOUS VECTOR MATHEMATICS (ufuncs)
 /// ============================================================================
@@ -3680,6 +3710,7 @@ external void v_remainder_int32(
   int size,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Double>,
@@ -3696,6 +3727,7 @@ external void v_fmod_double(
   int size,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Float>,
@@ -3712,6 +3744,7 @@ external void v_fmod_float(
   int size,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int64>,
@@ -3728,6 +3761,7 @@ external void v_fmod_int64(
   int size,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int32>,
@@ -3744,6 +3778,7 @@ external void v_fmod_int32(
   int size,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int64>,
@@ -3760,6 +3795,7 @@ external void v_gcd_int64(
   int size,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int32>,
@@ -3776,6 +3812,7 @@ external void v_gcd_int32(
   int size,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int64>,
@@ -3792,6 +3829,7 @@ external void v_lcm_int64(
   int size,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int32>,
@@ -3808,6 +3846,7 @@ external void v_lcm_int32(
   int size,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Double>,
@@ -3824,6 +3863,7 @@ external void v_heaviside_double(
   int size,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Float>,
@@ -3840,6 +3880,7 @@ external void v_heaviside_float(
   int size,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int64>,
@@ -3856,6 +3897,7 @@ external void v_heaviside_int64(
   int size,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int32>,
@@ -6129,6 +6171,48 @@ external void s_cumprod_int32(
 
 @ffi.Native<
   ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_cumprod_int16(
+  ffi.Pointer<ffi.Int16> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int16> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_cumprod_uint8(
+  ffi.Pointer<ffi.Uint8> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Uint8> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
     ffi.Pointer<cpx_t>,
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<cpx_t>,
@@ -6255,6 +6339,48 @@ external void s_cummin_int32(
 
 @ffi.Native<
   ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_cummin_int16(
+  ffi.Pointer<ffi.Int16> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int16> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_cummin_uint8(
+  ffi.Pointer<ffi.Uint8> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Uint8> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
     ffi.Pointer<ffi.Double>,
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<ffi.Double>,
@@ -6331,6 +6457,48 @@ external void s_cummax_int32(
   ffi.Pointer<ffi.Int32> src,
   ffi.Pointer<ffi.Int> stridesSrc,
   ffi.Pointer<ffi.Int32> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_cummax_int16(
+  ffi.Pointer<ffi.Int16> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int16> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_cummax_uint8(
+  ffi.Pointer<ffi.Uint8> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Uint8> res,
   ffi.Pointer<ffi.Int> stridesRes,
   ffi.Pointer<ffi.Int> shape,
   int rank,
@@ -8336,6 +8504,7 @@ external void s_remainder_int32(
   int rank,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Double>,
@@ -8360,6 +8529,7 @@ external void s_fmod_double(
   int rank,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Float>,
@@ -8384,6 +8554,7 @@ external void s_fmod_float(
   int rank,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int64>,
@@ -8408,6 +8579,7 @@ external void s_fmod_int64(
   int rank,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int32>,
@@ -8432,6 +8604,7 @@ external void s_fmod_int32(
   int rank,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int64>,
@@ -8456,6 +8629,7 @@ external void s_gcd_int64(
   int rank,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int32>,
@@ -8480,6 +8654,7 @@ external void s_gcd_int32(
   int rank,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int64>,
@@ -8504,6 +8679,7 @@ external void s_lcm_int64(
   int rank,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int32>,
@@ -8528,6 +8704,7 @@ external void s_lcm_int32(
   int rank,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Double>,
@@ -8552,6 +8729,7 @@ external void s_heaviside_double(
   int rank,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Float>,
@@ -8576,6 +8754,7 @@ external void s_heaviside_float(
   int rank,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int64>,
@@ -8600,6 +8779,7 @@ external void s_heaviside_int64(
   int rank,
   ffi.Pointer<ffi.Uint8> mask,
 );
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Int32>,
@@ -21327,12 +21507,6 @@ external void s_linspace_grid_uint8(
 @ffi.Native<ffi.Int Function()>()
 external int get_and_reset_division_error();
 
-@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.Int)>()
-external ffi.Pointer<ffi.Char> get_binary_op_name(int index);
-
-@ffi.Native<ffi.Int Function()>()
-external int get_binary_op_count();
-
 /// Decoupled LAPACK-Dispatched Determinants
 @ffi.Native<
   ffi.Void Function(
@@ -22086,30 +22260,6 @@ external void pad_axis_complex64(
   int statLengthAfter,
 );
 
-/// ============================================================================
-/// SECTION 10: SET OPERATIONS KERNELS
-/// ============================================================================
-@ffi.Native<
-  ffi.Int Function(
-    ffi.Pointer<ffi.Void>,
-    ffi.Pointer<ffi.Void>,
-    ffi.Int,
-    ffi.Int,
-    ffi.Pointer<ffi.Int64>,
-    ffi.Pointer<ffi.Int64>,
-    ffi.Pointer<ffi.Int64>,
-  )
->()
-external int ndarray_unique(
-  ffi.Pointer<ffi.Void> src,
-  ffi.Pointer<ffi.Void> dest,
-  int size,
-  int dtype,
-  ffi.Pointer<ffi.Int64> out_index,
-  ffi.Pointer<ffi.Int64> out_inverse,
-  ffi.Pointer<ffi.Int64> out_counts,
-);
-
 @ffi.Native<
   ffi.Int Function(
     ffi.Pointer<ffi.Void>,
@@ -22731,6 +22881,52 @@ external void s_interp_float(
   ffi.Pointer<ffi.Int> stridesRes,
   ffi.Pointer<ffi.Int> shape,
   int rank,
+  ffi.Pointer<ffi.Float> left,
+  ffi.Pointer<ffi.Float> right,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+  )
+>()
+external void native_interp_double(
+  ffi.Pointer<ffi.Double> x,
+  int x_size,
+  ffi.Pointer<ffi.Double> xp,
+  int xp_size,
+  ffi.Pointer<ffi.Double> fp,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Double> left,
+  ffi.Pointer<ffi.Double> right,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+  )
+>()
+external void native_interp_float(
+  ffi.Pointer<ffi.Float> x,
+  int x_size,
+  ffi.Pointer<ffi.Float> xp,
+  int xp_size,
+  ffi.Pointer<ffi.Float> fp,
+  ffi.Pointer<ffi.Float> res,
   ffi.Pointer<ffi.Float> left,
   ffi.Pointer<ffi.Float> right,
 );
@@ -24188,6 +24384,150 @@ external void s_i0_complex128(
   ffi.Pointer<ffi.Uint8> mask,
 );
 
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void v_gamma_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+  ffi.Pointer<ffi.Uint8> mask,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void s_gamma_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  ffi.Pointer<ffi.Uint8> mask,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void v_gamma_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+  ffi.Pointer<ffi.Uint8> mask,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void s_gamma_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  ffi.Pointer<ffi.Uint8> mask,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void v_erf_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+  ffi.Pointer<ffi.Uint8> mask,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void s_erf_float(
+  ffi.Pointer<ffi.Float> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  ffi.Pointer<ffi.Uint8> mask,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void v_erf_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+  ffi.Pointer<ffi.Uint8> mask,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+  )
+>()
+external void s_erf_double(
+  ffi.Pointer<ffi.Double> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  ffi.Pointer<ffi.Uint8> mask,
+);
+
 /// Spatial N-D Correlation
 @ffi.Native<
   ffi.Void Function(
@@ -25590,7 +25930,7 @@ external void v_reduceat_double(
   int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Double> dest,
   int opCode,
 );
 
@@ -25609,7 +25949,7 @@ external void v_reduceat_float(
   int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Float> dest,
   int opCode,
 );
 
@@ -25628,7 +25968,7 @@ external void v_reduceat_int64(
   int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  ffi.Pointer<ffi.Int64> res,
+  ffi.Pointer<ffi.Int64> dest,
   int opCode,
 );
 
@@ -25647,26 +25987,7 @@ external void v_reduceat_int32(
   int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  ffi.Pointer<ffi.Int32> res,
-  int opCode,
-);
-
-@ffi.Native<
-  ffi.Void Function(
-    ffi.Pointer<ffi.Int16>,
-    ffi.Int64,
-    ffi.Pointer<ffi.Int64>,
-    ffi.Int64,
-    ffi.Pointer<ffi.Int16>,
-    ffi.Int,
-  )
->()
-external void v_reduceat_int16(
-  ffi.Pointer<ffi.Int16> src,
-  int size,
-  ffi.Pointer<ffi.Int64> indices,
-  int numIndices,
-  ffi.Pointer<ffi.Int16> res,
+  ffi.Pointer<ffi.Int32> dest,
   int opCode,
 );
 
@@ -25685,7 +26006,26 @@ external void v_reduceat_uint8(
   int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  ffi.Pointer<ffi.Uint8> res,
+  ffi.Pointer<ffi.Uint8> dest,
+  int opCode,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Int64,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int64,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Int,
+  )
+>()
+external void v_reduceat_int16(
+  ffi.Pointer<ffi.Int16> src,
+  int size,
+  ffi.Pointer<ffi.Int64> indices,
+  int numIndices,
+  ffi.Pointer<ffi.Int16> dest,
   int opCode,
 );
 
@@ -25704,7 +26044,7 @@ external void v_reduceat_complex128(
   int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<cpx_t> dest,
   int opCode,
 );
 
@@ -25723,7 +26063,26 @@ external void v_reduceat_complex64(
   int size,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  ffi.Pointer<cpx_f_t> res,
+  ffi.Pointer<cpx_f_t> dest,
+  int opCode,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int64,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int64,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Int,
+  )
+>()
+external void v_reduceat_boolean(
+  ffi.Pointer<ffi.Uint8> src,
+  int size,
+  ffi.Pointer<ffi.Int64> indices,
+  int numIndices,
+  ffi.Pointer<ffi.Uint8> dest,
   int opCode,
 );
 
@@ -25731,12 +26090,12 @@ external void v_reduceat_complex64(
   ffi.Void Function(
     ffi.Pointer<ffi.Double>,
     ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Int64>,
-    ffi.Int,
     ffi.Pointer<ffi.Double>,
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<ffi.Int>,
     ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int64>,
     ffi.Int,
     ffi.Int,
   )
@@ -25744,13 +26103,13 @@ external void v_reduceat_complex64(
 external void s_reduceat_double(
   ffi.Pointer<ffi.Double> src,
   ffi.Pointer<ffi.Int> stridesSrc,
-  ffi.Pointer<ffi.Int64> indices,
-  int numIndices,
-  ffi.Pointer<ffi.Double> res,
-  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Double> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
   ffi.Pointer<ffi.Int> shape,
   int rank,
   int axis,
+  ffi.Pointer<ffi.Int64> indices,
+  int numIndices,
   int opCode,
 );
 
@@ -25758,12 +26117,12 @@ external void s_reduceat_double(
   ffi.Void Function(
     ffi.Pointer<ffi.Float>,
     ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Int64>,
-    ffi.Int,
     ffi.Pointer<ffi.Float>,
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<ffi.Int>,
     ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int64>,
     ffi.Int,
     ffi.Int,
   )
@@ -25771,13 +26130,13 @@ external void s_reduceat_double(
 external void s_reduceat_float(
   ffi.Pointer<ffi.Float> src,
   ffi.Pointer<ffi.Int> stridesSrc,
-  ffi.Pointer<ffi.Int64> indices,
-  int numIndices,
-  ffi.Pointer<ffi.Float> res,
-  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Float> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
   ffi.Pointer<ffi.Int> shape,
   int rank,
   int axis,
+  ffi.Pointer<ffi.Int64> indices,
+  int numIndices,
   int opCode,
 );
 
@@ -25786,11 +26145,11 @@ external void s_reduceat_float(
     ffi.Pointer<ffi.Int64>,
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
     ffi.Int,
     ffi.Pointer<ffi.Int64>,
-    ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Int>,
-    ffi.Int,
     ffi.Int,
     ffi.Int,
   )
@@ -25798,13 +26157,13 @@ external void s_reduceat_float(
 external void s_reduceat_int64(
   ffi.Pointer<ffi.Int64> src,
   ffi.Pointer<ffi.Int> stridesSrc,
-  ffi.Pointer<ffi.Int64> indices,
-  int numIndices,
-  ffi.Pointer<ffi.Int64> res,
-  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int64> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
   ffi.Pointer<ffi.Int> shape,
   int rank,
   int axis,
+  ffi.Pointer<ffi.Int64> indices,
+  int numIndices,
   int opCode,
 );
 
@@ -25812,12 +26171,12 @@ external void s_reduceat_int64(
   ffi.Void Function(
     ffi.Pointer<ffi.Int32>,
     ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Int64>,
-    ffi.Int,
     ffi.Pointer<ffi.Int32>,
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<ffi.Int>,
     ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int64>,
     ffi.Int,
     ffi.Int,
   )
@@ -25825,40 +26184,13 @@ external void s_reduceat_int64(
 external void s_reduceat_int32(
   ffi.Pointer<ffi.Int32> src,
   ffi.Pointer<ffi.Int> stridesSrc,
-  ffi.Pointer<ffi.Int64> indices,
-  int numIndices,
-  ffi.Pointer<ffi.Int32> res,
-  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int32> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
   ffi.Pointer<ffi.Int> shape,
   int rank,
   int axis,
-  int opCode,
-);
-
-@ffi.Native<
-  ffi.Void Function(
-    ffi.Pointer<ffi.Int16>,
-    ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Int64>,
-    ffi.Int,
-    ffi.Pointer<ffi.Int16>,
-    ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Int>,
-    ffi.Int,
-    ffi.Int,
-    ffi.Int,
-  )
->()
-external void s_reduceat_int16(
-  ffi.Pointer<ffi.Int16> src,
-  ffi.Pointer<ffi.Int> stridesSrc,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
-  ffi.Pointer<ffi.Int16> res,
-  ffi.Pointer<ffi.Int> stridesRes,
-  ffi.Pointer<ffi.Int> shape,
-  int rank,
-  int axis,
   int opCode,
 );
 
@@ -25866,12 +26198,12 @@ external void s_reduceat_int16(
   ffi.Void Function(
     ffi.Pointer<ffi.Uint8>,
     ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Int64>,
-    ffi.Int,
     ffi.Pointer<ffi.Uint8>,
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<ffi.Int>,
     ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int64>,
     ffi.Int,
     ffi.Int,
   )
@@ -25879,13 +26211,40 @@ external void s_reduceat_int16(
 external void s_reduceat_uint8(
   ffi.Pointer<ffi.Uint8> src,
   ffi.Pointer<ffi.Int> stridesSrc,
-  ffi.Pointer<ffi.Int64> indices,
-  int numIndices,
-  ffi.Pointer<ffi.Uint8> res,
-  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Uint8> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
   ffi.Pointer<ffi.Int> shape,
   int rank,
   int axis,
+  ffi.Pointer<ffi.Int64> indices,
+  int numIndices,
+  int opCode,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int16>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_reduceat_int16(
+  ffi.Pointer<ffi.Int16> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Int16> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  ffi.Pointer<ffi.Int64> indices,
+  int numIndices,
   int opCode,
 );
 
@@ -25893,12 +26252,12 @@ external void s_reduceat_uint8(
   ffi.Void Function(
     ffi.Pointer<cpx_t>,
     ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Int64>,
-    ffi.Int,
     ffi.Pointer<cpx_t>,
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<ffi.Int>,
     ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int64>,
     ffi.Int,
     ffi.Int,
   )
@@ -25906,13 +26265,13 @@ external void s_reduceat_uint8(
 external void s_reduceat_complex128(
   ffi.Pointer<cpx_t> src,
   ffi.Pointer<ffi.Int> stridesSrc,
-  ffi.Pointer<ffi.Int64> indices,
-  int numIndices,
-  ffi.Pointer<cpx_t> res,
-  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<cpx_t> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
   ffi.Pointer<ffi.Int> shape,
   int rank,
   int axis,
+  ffi.Pointer<ffi.Int64> indices,
+  int numIndices,
   int opCode,
 );
 
@@ -25920,12 +26279,12 @@ external void s_reduceat_complex128(
   ffi.Void Function(
     ffi.Pointer<cpx_f_t>,
     ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Int64>,
-    ffi.Int,
     ffi.Pointer<cpx_f_t>,
     ffi.Pointer<ffi.Int>,
     ffi.Pointer<ffi.Int>,
     ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int64>,
     ffi.Int,
     ffi.Int,
   )
@@ -25933,14 +26292,921 @@ external void s_reduceat_complex128(
 external void s_reduceat_complex64(
   ffi.Pointer<cpx_f_t> src,
   ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<cpx_f_t> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
   ffi.Pointer<ffi.Int64> indices,
   int numIndices,
+  int opCode,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_reduceat_boolean(
+  ffi.Pointer<ffi.Uint8> src,
+  ffi.Pointer<ffi.Int> stridesSrc,
+  ffi.Pointer<ffi.Uint8> dest,
+  ffi.Pointer<ffi.Int> stridesDest,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+  int axis,
+  ffi.Pointer<ffi.Int64> indices,
+  int numIndices,
+  int opCode,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_polyval_double(
+  ffi.Pointer<ffi.Double> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_polyval_float(
+  ffi.Pointer<ffi.Float> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Float> x,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_polyval_complex128(
+  ffi.Pointer<cpx_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_t> x,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+  )
+>()
+external void v_polyval_complex64(
+  ffi.Pointer<cpx_f_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_f_t> x,
+  ffi.Pointer<cpx_f_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_polyval_double(
+  ffi.Pointer<ffi.Double> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_polyval_float(
+  ffi.Pointer<ffi.Float> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Float> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_polyval_complex128(
+  ffi.Pointer<cpx_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_t> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_polyval_complex64(
+  ffi.Pointer<cpx_f_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_f_t> x,
+  ffi.Pointer<ffi.Int> stridesX,
   ffi.Pointer<cpx_f_t> res,
   ffi.Pointer<ffi.Int> stridesRes,
   ffi.Pointer<ffi.Int> shape,
   int rank,
-  int axis,
-  int opCode,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_chebval_double(
+  ffi.Pointer<ffi.Double> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_chebval_float(
+  ffi.Pointer<ffi.Float> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Float> x,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_chebval_complex128(
+  ffi.Pointer<cpx_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_t> x,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+  )
+>()
+external void v_chebval_complex64(
+  ffi.Pointer<cpx_f_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_f_t> x,
+  ffi.Pointer<cpx_f_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_chebval_double(
+  ffi.Pointer<ffi.Double> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_chebval_float(
+  ffi.Pointer<ffi.Float> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Float> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_chebval_complex128(
+  ffi.Pointer<cpx_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_t> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_chebval_complex64(
+  ffi.Pointer<cpx_f_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_f_t> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<cpx_f_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_legval_double(
+  ffi.Pointer<ffi.Double> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_legval_float(
+  ffi.Pointer<ffi.Float> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Float> x,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_legval_complex128(
+  ffi.Pointer<cpx_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_t> x,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+  )
+>()
+external void v_legval_complex64(
+  ffi.Pointer<cpx_f_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_f_t> x,
+  ffi.Pointer<cpx_f_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_legval_double(
+  ffi.Pointer<ffi.Double> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_legval_float(
+  ffi.Pointer<ffi.Float> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Float> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_legval_complex128(
+  ffi.Pointer<cpx_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_t> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_legval_complex64(
+  ffi.Pointer<cpx_f_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_f_t> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<cpx_f_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_hermval_double(
+  ffi.Pointer<ffi.Double> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_hermval_float(
+  ffi.Pointer<ffi.Float> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Float> x,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_hermval_complex128(
+  ffi.Pointer<cpx_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_t> x,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+  )
+>()
+external void v_hermval_complex64(
+  ffi.Pointer<cpx_f_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_f_t> x,
+  ffi.Pointer<cpx_f_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_hermval_double(
+  ffi.Pointer<ffi.Double> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_hermval_float(
+  ffi.Pointer<ffi.Float> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Float> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_hermval_complex128(
+  ffi.Pointer<cpx_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_t> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_hermval_complex64(
+  ffi.Pointer<cpx_f_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_f_t> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<cpx_f_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+  )
+>()
+external void v_lagval_double(
+  ffi.Pointer<ffi.Double> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Double> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+  )
+>()
+external void v_lagval_float(
+  ffi.Pointer<ffi.Float> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Float> x,
+  ffi.Pointer<ffi.Float> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+  )
+>()
+external void v_lagval_complex128(
+  ffi.Pointer<cpx_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_t> x,
+  ffi.Pointer<cpx_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+  )
+>()
+external void v_lagval_complex64(
+  ffi.Pointer<cpx_f_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_f_t> x,
+  ffi.Pointer<cpx_f_t> res,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_lagval_double(
+  ffi.Pointer<ffi.Double> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Double> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_lagval_float(
+  ffi.Pointer<ffi.Float> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<ffi.Float> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<ffi.Float> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_lagval_complex128(
+  ffi.Pointer<cpx_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_t> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<cpx_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Int,
+  )
+>()
+external void s_lagval_complex64(
+  ffi.Pointer<cpx_f_t> c,
+  int stride_c,
+  int n_c,
+  ffi.Pointer<cpx_f_t> x,
+  ffi.Pointer<ffi.Int> stridesX,
+  ffi.Pointer<cpx_f_t> res,
+  ffi.Pointer<ffi.Int> stridesRes,
+  ffi.Pointer<ffi.Int> shape,
+  int rank,
 );
 
 typedef ptrdiff_t = ffi.Long;
@@ -26127,6 +27393,88 @@ enum QuantileMethod {
     11 => QUANTILE_MIDPOINT,
     12 => QUANTILE_NEAREST,
     _ => throw ArgumentError('Unknown value for QuantileMethod: $value'),
+  };
+}
+
+enum BinaryOpCode {
+  OP_ADD(0),
+  OP_MULTIPLY(1),
+  OP_MINIMUM(2),
+  OP_MAXIMUM(3),
+  OP_FMIN(4),
+  OP_FMAX(5),
+  OP_LOGADDEXP(6),
+  OP_LOGADDEXP2(7),
+  OP_GCD(8),
+  OP_LCM(9),
+  OP_BITWISE_AND(10),
+  OP_BITWISE_OR(11),
+  OP_BITWISE_XOR(12),
+  OP_LOGICAL_AND(13),
+  OP_LOGICAL_OR(14),
+  OP_LOGICAL_XOR(15),
+  OP_SUBTRACT(16),
+  OP_DIVIDE(17),
+  OP_FLOOR_DIVIDE(18),
+  OP_REMAINDER(19),
+  OP_FMOD(20),
+  OP_POWER(21),
+  OP_FLOAT_POWER(22),
+  OP_ARCTAN2(23),
+  OP_HYPOT(24),
+  OP_COPYSIGN(25),
+  OP_LEFT_SHIFT(26),
+  OP_RIGHT_SHIFT(27),
+  OP_HEAVISIDE(28),
+  OP_EQUAL(29),
+  OP_NOT_EQUAL(30),
+  OP_GREATER(31),
+  OP_GREATER_EQUAL(32),
+  OP_LESS(33),
+  OP_LESS_EQUAL(34),
+  OP_COUNT(35);
+
+  final int value;
+  const BinaryOpCode(this.value);
+
+  static BinaryOpCode fromValue(int value) => switch (value) {
+    0 => OP_ADD,
+    1 => OP_MULTIPLY,
+    2 => OP_MINIMUM,
+    3 => OP_MAXIMUM,
+    4 => OP_FMIN,
+    5 => OP_FMAX,
+    6 => OP_LOGADDEXP,
+    7 => OP_LOGADDEXP2,
+    8 => OP_GCD,
+    9 => OP_LCM,
+    10 => OP_BITWISE_AND,
+    11 => OP_BITWISE_OR,
+    12 => OP_BITWISE_XOR,
+    13 => OP_LOGICAL_AND,
+    14 => OP_LOGICAL_OR,
+    15 => OP_LOGICAL_XOR,
+    16 => OP_SUBTRACT,
+    17 => OP_DIVIDE,
+    18 => OP_FLOOR_DIVIDE,
+    19 => OP_REMAINDER,
+    20 => OP_FMOD,
+    21 => OP_POWER,
+    22 => OP_FLOAT_POWER,
+    23 => OP_ARCTAN2,
+    24 => OP_HYPOT,
+    25 => OP_COPYSIGN,
+    26 => OP_LEFT_SHIFT,
+    27 => OP_RIGHT_SHIFT,
+    28 => OP_HEAVISIDE,
+    29 => OP_EQUAL,
+    30 => OP_NOT_EQUAL,
+    31 => OP_GREATER,
+    32 => OP_GREATER_EQUAL,
+    33 => OP_LESS,
+    34 => OP_LESS_EQUAL,
+    35 => OP_COUNT,
+    _ => throw ArgumentError('Unknown value for BinaryOpCode: $value'),
   };
 }
 
@@ -26436,142 +27784,314 @@ const int CMP_OP_GT = 4;
 
 const int CMP_OP_GE = 5;
 
-@ffi.Native<ffi.Int Function(ffi.Int)>()
-external int get_binary_op_enum_val(int index);
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+  )
+>()
+external void v_histogram_uniform(
+  ffi.Pointer<ffi.Void> src,
+  int dtypeSrc,
+  ffi.Pointer<ffi.Void> weights,
+  int dtypeWeights,
+  ffi.Pointer<ffi.Void> hist,
+  int dtypeHist,
+  int size,
+  int nbins,
+  double minVal,
+  double maxVal,
+  double norm,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Int,
+    ffi.Double,
+    ffi.Double,
+    ffi.Double,
+  )
+>()
+external void s_histogram_uniform(
+  ffi.Pointer<ffi.Void> src,
+  int strideSrc,
+  int dtypeSrc,
+  ffi.Pointer<ffi.Void> weights,
+  int strideWeights,
+  int dtypeWeights,
+  ffi.Pointer<ffi.Void> hist,
+  int strideHist,
+  int dtypeHist,
+  int size,
+  int nbins,
+  double minVal,
+  double maxVal,
+  double norm,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void v_histogram_binsearch(
+  ffi.Pointer<ffi.Void> src,
+  int dtypeSrc,
+  ffi.Pointer<ffi.Void> weights,
+  int dtypeWeights,
+  ffi.Pointer<ffi.Void> hist,
+  int dtypeHist,
+  ffi.Pointer<ffi.Double> binEdges,
+  int numEdges,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_histogram_binsearch(
+  ffi.Pointer<ffi.Void> src,
+  int strideSrc,
+  int dtypeSrc,
+  ffi.Pointer<ffi.Void> weights,
+  int strideWeights,
+  int dtypeWeights,
+  ffi.Pointer<ffi.Void> hist,
+  int strideHist,
+  int dtypeHist,
+  ffi.Pointer<ffi.Double> binEdges,
+  int numEdges,
+  int size,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void v_vander_fit_double(
+  ffi.Pointer<ffi.Double> x,
+  ffi.Pointer<ffi.Double> y,
+  ffi.Pointer<ffi.Double> w,
+  ffi.Pointer<ffi.Double> v_mat,
+  ffi.Pointer<ffi.Double> rhs,
+  int m,
+  int deg,
+);
 
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Float>,
     ffi.Pointer<ffi.Float>,
-    ffi.Int,
-    ffi.Pointer<ffi.Uint8>,
-  )
->()
-external void v_gamma_float(
-  ffi.Pointer<ffi.Float> src,
-  ffi.Pointer<ffi.Float> res,
-  int size,
-  ffi.Pointer<ffi.Uint8> mask,
-);
-@ffi.Native<
-  ffi.Void Function(
     ffi.Pointer<ffi.Float>,
-    ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Float>,
-    ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Int>,
-    ffi.Int,
-    ffi.Pointer<ffi.Uint8>,
-  )
->()
-external void s_gamma_float(
-  ffi.Pointer<ffi.Float> src,
-  ffi.Pointer<ffi.Int> stridesSrc,
-  ffi.Pointer<ffi.Float> res,
-  ffi.Pointer<ffi.Int> stridesRes,
-  ffi.Pointer<ffi.Int> shape,
-  int rank,
-  ffi.Pointer<ffi.Uint8> mask,
-);
-@ffi.Native<
-  ffi.Void Function(
-    ffi.Pointer<ffi.Double>,
-    ffi.Pointer<ffi.Double>,
-    ffi.Int,
-    ffi.Pointer<ffi.Uint8>,
-  )
->()
-external void v_gamma_double(
-  ffi.Pointer<ffi.Double> src,
-  ffi.Pointer<ffi.Double> res,
-  int size,
-  ffi.Pointer<ffi.Uint8> mask,
-);
-@ffi.Native<
-  ffi.Void Function(
-    ffi.Pointer<ffi.Double>,
-    ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Double>,
-    ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Int>,
-    ffi.Int,
-    ffi.Pointer<ffi.Uint8>,
-  )
->()
-external void s_gamma_double(
-  ffi.Pointer<ffi.Double> src,
-  ffi.Pointer<ffi.Int> stridesSrc,
-  ffi.Pointer<ffi.Double> res,
-  ffi.Pointer<ffi.Int> stridesRes,
-  ffi.Pointer<ffi.Int> shape,
-  int rank,
-  ffi.Pointer<ffi.Uint8> mask,
-);
-@ffi.Native<
-  ffi.Void Function(
     ffi.Pointer<ffi.Float>,
     ffi.Pointer<ffi.Float>,
     ffi.Int,
-    ffi.Pointer<ffi.Uint8>,
+    ffi.Int,
   )
 >()
-external void v_erf_float(
-  ffi.Pointer<ffi.Float> src,
-  ffi.Pointer<ffi.Float> res,
-  int size,
-  ffi.Pointer<ffi.Uint8> mask,
+external void v_vander_fit_float(
+  ffi.Pointer<ffi.Float> x,
+  ffi.Pointer<ffi.Float> y,
+  ffi.Pointer<ffi.Float> w,
+  ffi.Pointer<ffi.Float> v_mat,
+  ffi.Pointer<ffi.Float> rhs,
+  int m,
+  int deg,
 );
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void v_vander_fit_complex128(
+  ffi.Pointer<cpx_t> x,
+  ffi.Pointer<cpx_t> y,
+  ffi.Pointer<cpx_t> w,
+  ffi.Pointer<cpx_t> v_mat,
+  ffi.Pointer<cpx_t> rhs,
+  int m,
+  int deg,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void v_vander_fit_complex64(
+  ffi.Pointer<cpx_f_t> x,
+  ffi.Pointer<cpx_f_t> y,
+  ffi.Pointer<cpx_f_t> w,
+  ffi.Pointer<cpx_f_t> v_mat,
+  ffi.Pointer<cpx_f_t> rhs,
+  int m,
+  int deg,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external void s_vander_fit_double(
+  ffi.Pointer<ffi.Double> x,
+  int strideX,
+  ffi.Pointer<ffi.Double> y,
+  int strideY,
+  ffi.Pointer<ffi.Double> w,
+  int strideW,
+  ffi.Pointer<ffi.Double> v_mat,
+  ffi.Pointer<ffi.Double> rhs,
+  int m,
+  int deg,
+);
+
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ffi.Float>,
-    ffi.Pointer<ffi.Int>,
+    ffi.Int,
     ffi.Pointer<ffi.Float>,
-    ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Int>,
     ffi.Int,
-    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Int,
+    ffi.Int,
   )
 >()
-external void s_erf_float(
-  ffi.Pointer<ffi.Float> src,
-  ffi.Pointer<ffi.Int> stridesSrc,
-  ffi.Pointer<ffi.Float> res,
-  ffi.Pointer<ffi.Int> stridesRes,
-  ffi.Pointer<ffi.Int> shape,
-  int rank,
-  ffi.Pointer<ffi.Uint8> mask,
+external void s_vander_fit_float(
+  ffi.Pointer<ffi.Float> x,
+  int strideX,
+  ffi.Pointer<ffi.Float> y,
+  int strideY,
+  ffi.Pointer<ffi.Float> w,
+  int strideW,
+  ffi.Pointer<ffi.Float> v_mat,
+  ffi.Pointer<ffi.Float> rhs,
+  int m,
+  int deg,
 );
+
 @ffi.Native<
   ffi.Void Function(
-    ffi.Pointer<ffi.Double>,
-    ffi.Pointer<ffi.Double>,
+    ffi.Pointer<cpx_t>,
     ffi.Int,
-    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Pointer<cpx_t>,
+    ffi.Pointer<cpx_t>,
+    ffi.Int,
+    ffi.Int,
   )
 >()
-external void v_erf_double(
-  ffi.Pointer<ffi.Double> src,
-  ffi.Pointer<ffi.Double> res,
-  int size,
-  ffi.Pointer<ffi.Uint8> mask,
+external void s_vander_fit_complex128(
+  ffi.Pointer<cpx_t> x,
+  int strideX,
+  ffi.Pointer<cpx_t> y,
+  int strideY,
+  ffi.Pointer<cpx_t> w,
+  int strideW,
+  ffi.Pointer<cpx_t> v_mat,
+  ffi.Pointer<cpx_t> rhs,
+  int m,
+  int deg,
 );
+
 @ffi.Native<
   ffi.Void Function(
-    ffi.Pointer<ffi.Double>,
-    ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Double>,
-    ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<cpx_f_t>,
     ffi.Int,
-    ffi.Pointer<ffi.Uint8>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Pointer<cpx_f_t>,
+    ffi.Int,
+    ffi.Int,
   )
 >()
-external void s_erf_double(
-  ffi.Pointer<ffi.Double> src,
-  ffi.Pointer<ffi.Int> stridesSrc,
-  ffi.Pointer<ffi.Double> res,
-  ffi.Pointer<ffi.Int> stridesRes,
-  ffi.Pointer<ffi.Int> shape,
-  int rank,
-  ffi.Pointer<ffi.Uint8> mask,
+external void s_vander_fit_complex64(
+  ffi.Pointer<cpx_f_t> x,
+  int strideX,
+  ffi.Pointer<cpx_f_t> y,
+  int strideY,
+  ffi.Pointer<cpx_f_t> w,
+  int strideW,
+  ffi.Pointer<cpx_f_t> v_mat,
+  ffi.Pointer<cpx_f_t> rhs,
+  int m,
+  int deg,
 );

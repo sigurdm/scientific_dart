@@ -438,12 +438,18 @@ NDArray<int> digitize(
 /// - If [weights] is provided, it must not be disposed and must match the shape of [x].
 /// - If [bins] is an integer, it must be strictly positive ($\ge 1$).
 /// - If [bins] is an array, it must be 1-D and monotonically increasing with at least 2 edges.
+/// - [x] and [weights] must not contain complex numbers.
 ///
 /// **Throws:**
 /// - It is an error if [x] or [weights] is disposed.
 /// - It is an error if [weights] shape does not match [x] shape.
 /// - It is an error if [bins] is non-positive or not a 1-D monotonically increasing array.
 /// - It is an error if [bins] has fewer than 2 edges.
+/// - It is an error if [x] or [weights] contains complex numbers.
+///
+/// **Performance considerations:**
+/// - For uniform bins (integer [bins]), uses a fused native C kernel with $O(N)$ single-pass binning.
+/// - For non-uniform bins, uses a native C binary search kernel with $O(N \log M)$ time complexity.
 ///
 /// **Example:**
 /// ```dart
@@ -466,25 +472,47 @@ NDArray<int> digitize(
   if (weights != null && weights.isDisposed) {
     throw StateError('Weights array is disposed.');
   }
+  if (x.dtype.isComplex || (weights != null && weights.dtype.isComplex)) {
+    throw ArgumentError('Complex arrays are not supported in histogram.');
+  }
 
   return NDArray.scope(() {
-    final flatX = x.rank == 1 ? x : x.ravel();
+    final flatX = (x.rank == 1 && x.isContiguous)
+        ? x
+        : (x.rank == 1 ? x : x.ravel());
     if (weights != null && !listEquals(weights.shape, x.shape)) {
       throw ArgumentError('Weights must have the same shape as x.');
     }
-    final flatWeights = weights?.rank == 1 ? weights : weights?.ravel();
+    final flatWeights = weights == null
+        ? null
+        : ((weights.rank == 1 && weights.isContiguous)
+              ? weights
+              : (weights.rank == 1 ? weights : weights.ravel()));
 
     NDArray<Float64> resolvedBinEdges;
+    final bool isUniform = bins is int;
+    final int nbins;
+    double minX = 0.0;
+    double maxX = 1.0;
+    double norm = 1.0;
 
-    if (bins is int) {
-      if (bins <= 0) {
+    if (isUniform) {
+      nbins = bins;
+      if (nbins <= 0) {
         throw ArgumentError('bins must be positive.');
       }
-      double minX;
-      double maxX;
       if (range != null) {
         minX = range.$1;
         maxX = range.$2;
+        if (minX > maxX) {
+          throw ArgumentError(
+            'max must be larger than min in range parameter.',
+          );
+        }
+        if (minX == maxX) {
+          minX -= 0.5;
+          maxX += 0.5;
+        }
       } else {
         if (flatX.size == 0) {
           minX = 0.0;
@@ -503,55 +531,133 @@ NDArray<int> digitize(
       resolvedBinEdges = linspace<Float64>(
         Float64(minX),
         Float64(maxX),
-        bins + 1,
+        nbins + 1,
         dtype: DType.float64,
       );
+      norm = nbins / (maxX - minX);
     } else if (bins is NDArray) {
+      if (bins.isDisposed) {
+        throw StateError('bins array is disposed.');
+      }
+      if (bins.shape.length != 1) {
+        throw ArgumentError('bins must be a 1-D array.');
+      }
       resolvedBinEdges = bins.dtype == DType.float64
           ? bins as NDArray<Float64>
           : castNDArray<Float64>(bins, DType.float64);
+      final M = resolvedBinEdges.size;
+      if (M < 2) {
+        throw ArgumentError('bins must have at least 2 edges (1 bin).');
+      }
+      // Check monotonicity
+      final cEdges = resolvedBinEdges.pointer.cast<ffi.Double>();
+      final strideEdges = resolvedBinEdges.strides[0];
+      for (var i = 1; i < M; i++) {
+        if (cEdges[i * strideEdges] <= cEdges[(i - 1) * strideEdges]) {
+          throw ArgumentError('bins must increase monotonically.');
+        }
+      }
+      nbins = M - 1;
     } else {
       throw ArgumentError('bins must be an int or an NDArray.');
     }
 
-    final M = resolvedBinEdges.size;
-    if (M < 2) {
-      throw ArgumentError('bins must have at least 2 edges (1 bin).');
-    }
+    final DType<num> histDType = flatWeights == null
+        ? (DType.int64 as DType<num>)
+        : (flatWeights.dtype.isFloating
+              ? flatWeights.dtype
+              : (DType.float64 as DType<num>));
 
-    // Vectorized boundary handling and bincount
-    final binIndices = digitize(flatX, resolvedBinEdges, right: false);
-    final counts = bincount(binIndices, weights: flatWeights, minlength: M + 1);
+    final NDArray<num> hist = NDArray<num>.zeros([nbins], histDType);
 
-    final lastEdgeVal = resolvedBinEdges.getCell([M - 1]);
-    final lastEdgeArr = NDArray<Float64>.scalar(
-      lastEdgeVal,
-      dtype: DType.float64,
-    );
-    final equalLastEdge = equal(flatX, lastEdgeArr);
+    final pSrc = flatX.pointer.cast<ffi.Void>();
+    final pWeights = flatWeights != null
+        ? flatWeights.pointer.cast<ffi.Void>()
+        : ffi.Pointer<ffi.Void>.fromAddress(0);
+    final pHist = hist.pointer.cast<ffi.Void>();
+    final dtypeSrc = encodeDType(flatX.dtype);
+    final dtypeWeights = flatWeights != null
+        ? encodeDType(flatWeights.dtype)
+        : -1;
+    final dtypeHist = encodeDType(hist.dtype);
 
-    num equalLastEdgeWeightSum = 0;
-    if (flatWeights == null) {
-      equalLastEdgeWeightSum = count_nonzero(equalLastEdge).scalar;
+    if (isUniform) {
+      if (flatX.isContiguous &&
+          (flatWeights == null || flatWeights.isContiguous)) {
+        v_histogram_uniform(
+          pSrc,
+          dtypeSrc,
+          pWeights,
+          dtypeWeights,
+          pHist,
+          dtypeHist,
+          flatX.size,
+          nbins,
+          minX,
+          maxX,
+          norm,
+        );
+      } else {
+        s_histogram_uniform(
+          pSrc,
+          flatX.strides[0],
+          dtypeSrc,
+          pWeights,
+          flatWeights != null ? flatWeights.strides[0] : 0,
+          dtypeWeights,
+          pHist,
+          hist.strides[0],
+          dtypeHist,
+          flatX.size,
+          nbins,
+          minX,
+          maxX,
+          norm,
+        );
+      }
     } else {
-      final zeroScalar = NDArray<num>.scalar(0.0, dtype: flatWeights.dtype);
-      final lastEdgeWeights =
-          where(equalLastEdge, flatWeights, zeroScalar) as NDArray<num>;
-      equalLastEdgeWeightSum = sum<num>(lastEdgeWeights).scalar;
+      final NDArray<Float64> contigEdges = resolvedBinEdges.isContiguous
+          ? resolvedBinEdges
+          : resolvedBinEdges.copy();
+      final pEdges = contigEdges.pointer.cast<ffi.Double>();
+
+      if (flatX.isContiguous &&
+          (flatWeights == null || flatWeights.isContiguous)) {
+        v_histogram_binsearch(
+          pSrc,
+          dtypeSrc,
+          pWeights,
+          dtypeWeights,
+          pHist,
+          dtypeHist,
+          pEdges,
+          resolvedBinEdges.size,
+          flatX.size,
+        );
+      } else {
+        s_histogram_binsearch(
+          pSrc,
+          flatX.strides[0],
+          dtypeSrc,
+          pWeights,
+          flatWeights != null ? flatWeights.strides[0] : 0,
+          dtypeWeights,
+          pHist,
+          hist.strides[0],
+          dtypeHist,
+          pEdges,
+          resolvedBinEdges.size,
+          flatX.size,
+        );
+      }
     }
-
-    final currentLastBinVal = counts.getCell([M - 1]);
-    counts.setCell([M - 1], currentLastBinVal + equalLastEdgeWeightSum);
-
-    final histView = counts.slice([Slice(start: 1, stop: M)]);
-    final hist = histView.copy();
 
     NDArray<num> finalHist = hist;
     if (density) {
       final totalSum = sum<num>(hist).scalar;
       final widths = subtract<Float64, Float64, Float64>(
         resolvedBinEdges.slice([Slice(start: 1)]),
-        resolvedBinEdges.slice([Slice(stop: M - 1)]),
+        resolvedBinEdges.slice([Slice(stop: resolvedBinEdges.size - 1)]),
       );
       final totalSumArr = NDArray<Float64>.scalar(
         Float64(totalSum.toDouble()),

@@ -1,9 +1,12 @@
 // Standard polynomial operations (polyval, polyfit, roots).
 library;
 
+import "dart:ffi" as ffi;
+import "package:openblas/openblas.dart";
 import "../../ndarray.dart";
+import "../../ndarray_bindings.dart";
+import "../../scratch_arena.dart";
 import "../helpers.dart";
-import "../math.dart";
 import "../linalg.dart";
 
 Object _divScalar(Object a, Object b) {
@@ -13,15 +16,6 @@ Object _divScalar(Object a, Object b) {
     return ca / cb;
   }
   return (a as num).toDouble() / (b as num).toDouble();
-}
-
-Object _mulScalar(Object a, Object b) {
-  if (a is Complex || b is Complex) {
-    final ca = a is Complex ? a : Complex((a as num).toDouble(), 0.0);
-    final cb = b is Complex ? b : Complex((b as num).toDouble(), 0.0);
-    return ca * cb;
-  }
-  return (a as num).toDouble() * (b as num).toDouble();
 }
 
 Object _negScalar(Object a) {
@@ -43,16 +37,6 @@ NDArray<R> _ensureDType<T, R>(NDArray<T> a, DType<R> targetDType) {
     return a as NDArray<R>;
   }
   return castNDArray(a, targetDType);
-}
-
-NDArray<R> _makeScalar<R>(Object val, DType<R> dtype) {
-  final norm = normalizeScalar(val, dtype) as R;
-  return NDArray<R>.scalar(norm, dtype: dtype);
-}
-
-NDArray<R> _filledArray<R>(List<int> shape, Object scalarVal, DType<R> dtype) {
-  final ones = NDArray<R>.ones(shape, dtype);
-  return multiply(ones, _makeScalar<R>(scalarVal, dtype));
 }
 
 void _copyInto<R>(NDArray src, NDArray<R> out) {
@@ -84,7 +68,11 @@ NDArray<R> polyval<Tc, Tx, R>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
     throw ArgumentError("Coefficient array c must not be empty.");
   }
 
-  final targetDType = resolveDType(c.dtype, x.dtype) as DType<R>;
+  var resolved = resolveDType(c.dtype, x.dtype);
+  if (!resolved.isFloating && !resolved.isComplex) {
+    resolved = DType.float64;
+  }
+  final targetDType = resolved as DType<R>;
   if (out != null) {
     if (!listEquals(out.shape, x.shape) || out.dtype != targetDType) {
       throw ArgumentError(
@@ -94,39 +82,138 @@ NDArray<R> polyval<Tc, Tx, R>(NDArray<Tc> c, NDArray<Tx> x, {NDArray<R>? out}) {
   }
 
   return NDArray.scope(() {
-    final n = c.shape[0];
-
-    if (n == 1) {
-      final c0 = c.getCellFlat(0) as Object;
-      var res = _filledArray(x.shape, c0, targetDType);
-      final xCast = _ensureDType(x, targetDType);
-      if (xCast.dtype.isFloating || xCast.dtype.isComplex) {
-        res.setByMaskScalar(
-          isnan(xCast),
-          normalizeScalar(double.nan, targetDType) as R,
-        );
-      }
-      if (out != null) {
-        _copyInto(res, out);
-        return out;
-      }
-      return res.detachToParentScope();
-    }
-
+    final cCast = _ensureDType(c, targetDType);
     final xCast = _ensureDType(x, targetDType);
-    var val = _filledArray(x.shape, c.getCellFlat(0) as Object, targetDType);
-    for (var i = 1; i < n; i++) {
-      val = add(
-        multiply(val, xCast),
-        _makeScalar<R>(c.getCellFlat(i) as Object, targetDType),
-      );
+    final res = out ?? NDArray<R>.zeros(x.shape, targetDType);
+
+    final isContiguous =
+        cCast.isContiguous && xCast.isContiguous && res.isContiguous;
+    final totalElements = xCast.shape.isEmpty
+        ? 1
+        : xCast.shape.reduce((a, b) => a * b);
+    final nCoeffs = cCast.shape[0];
+    final strideC = cCast.strides.isEmpty ? 1 : cCast.strides[0];
+
+    final marker = ScratchArena.marker;
+    try {
+      if (isContiguous) {
+        switch (targetDType) {
+          case DType.float64:
+            v_polyval_double(
+              cCast.pointer.cast(),
+              strideC,
+              nCoeffs,
+              xCast.pointer.cast(),
+              res.pointer.cast(),
+              totalElements,
+            );
+          case DType.float32:
+            v_polyval_float(
+              cCast.pointer.cast(),
+              strideC,
+              nCoeffs,
+              xCast.pointer.cast(),
+              res.pointer.cast(),
+              totalElements,
+            );
+          case DType.complex128:
+            v_polyval_complex128(
+              cCast.pointer.cast(),
+              strideC,
+              nCoeffs,
+              xCast.pointer.cast(),
+              res.pointer.cast(),
+              totalElements,
+            );
+          case DType.complex64:
+            v_polyval_complex64(
+              cCast.pointer.cast(),
+              strideC,
+              nCoeffs,
+              xCast.pointer.cast(),
+              res.pointer.cast(),
+              totalElements,
+            );
+          default:
+            throw UnsupportedError(
+              "Unsupported dtype $targetDType for polyval.",
+            );
+        }
+      } else {
+        final ndim = xCast.shape.isEmpty ? 1 : xCast.shape.length;
+        final cShape = ScratchArena.copyInts(
+          xCast.shape.isEmpty ? [1] : xCast.shape,
+        );
+        final cStridesX = ScratchArena.copyInts(
+          xCast.shape.isEmpty ? [0] : xCast.strides,
+        );
+        final cStridesRes = ScratchArena.copyInts(
+          xCast.shape.isEmpty ? [0] : res.strides,
+        );
+
+        switch (targetDType) {
+          case DType.float64:
+            s_polyval_double(
+              cCast.pointer.cast(),
+              strideC,
+              nCoeffs,
+              xCast.pointer.cast(),
+              cStridesX,
+              res.pointer.cast(),
+              cStridesRes,
+              cShape,
+              ndim,
+            );
+          case DType.float32:
+            s_polyval_float(
+              cCast.pointer.cast(),
+              strideC,
+              nCoeffs,
+              xCast.pointer.cast(),
+              cStridesX,
+              res.pointer.cast(),
+              cStridesRes,
+              cShape,
+              ndim,
+            );
+          case DType.complex128:
+            s_polyval_complex128(
+              cCast.pointer.cast(),
+              strideC,
+              nCoeffs,
+              xCast.pointer.cast(),
+              cStridesX,
+              res.pointer.cast(),
+              cStridesRes,
+              cShape,
+              ndim,
+            );
+          case DType.complex64:
+            s_polyval_complex64(
+              cCast.pointer.cast(),
+              strideC,
+              nCoeffs,
+              xCast.pointer.cast(),
+              cStridesX,
+              res.pointer.cast(),
+              cStridesRes,
+              cShape,
+              ndim,
+            );
+          default:
+            throw UnsupportedError(
+              "Unsupported dtype $targetDType for polyval.",
+            );
+        }
+      }
+    } finally {
+      ScratchArena.reset(marker);
     }
 
     if (out != null) {
-      _copyInto(val, out);
       return out;
     }
-    return val.detachToParentScope();
+    return res.detachToParentScope();
   });
 }
 
@@ -183,6 +270,9 @@ NDArray<R> polyfit<Tx, Ty, Tw, R>(
   if (w != null) {
     resolvedType = resolveDType(resolvedType, w.dtype);
   }
+  if (!resolvedType.isFloating && !resolvedType.isComplex) {
+    resolvedType = DType.float64;
+  }
   final targetDType = resolvedType as DType<R>;
 
   if (out != null) {
@@ -194,59 +284,360 @@ NDArray<R> polyfit<Tx, Ty, Tw, R>(
   }
 
   return NDArray.scope(() {
-    final nCols = deg + 1;
-    final vMat = NDArray<R>.zeros([m, nCols], targetDType);
+    final n = deg + 1;
     final xCast = _ensureDType(x, targetDType);
+    final yCast = _ensureDType(y, targetDType);
+    final wCast = w != null ? _ensureDType(w, targetDType) : null;
 
-    for (var j = 0; j < nCols; j++) {
-      final p = deg - j;
-      NDArray col;
-      if (p == 0) {
-        col = NDArray<R>.ones([m], targetDType);
-      } else if (p == 1) {
-        col = xCast;
+    final vMat = NDArray<R>.create([m, n], targetDType);
+    final rhs = NDArray<R>.create([m], targetDType);
+
+    final isContig =
+        xCast.isContiguous &&
+        yCast.isContiguous &&
+        (wCast == null || wCast.isContiguous);
+
+    void fillVander() {
+      if (isContig) {
+        switch (targetDType) {
+          case DType.float64:
+            v_vander_fit_double(
+              xCast.pointer.cast(),
+              yCast.pointer.cast(),
+              wCast != null ? wCast.pointer.cast() : ffi.nullptr,
+              vMat.pointer.cast(),
+              rhs.pointer.cast(),
+              m,
+              deg,
+            );
+          case DType.float32:
+            v_vander_fit_float(
+              xCast.pointer.cast(),
+              yCast.pointer.cast(),
+              wCast != null ? wCast.pointer.cast() : ffi.nullptr,
+              vMat.pointer.cast(),
+              rhs.pointer.cast(),
+              m,
+              deg,
+            );
+          case DType.complex128:
+            v_vander_fit_complex128(
+              xCast.pointer.cast(),
+              yCast.pointer.cast(),
+              wCast != null ? wCast.pointer.cast() : ffi.nullptr,
+              vMat.pointer.cast(),
+              rhs.pointer.cast(),
+              m,
+              deg,
+            );
+          case DType.complex64:
+            v_vander_fit_complex64(
+              xCast.pointer.cast(),
+              yCast.pointer.cast(),
+              wCast != null ? wCast.pointer.cast() : ffi.nullptr,
+              vMat.pointer.cast(),
+              rhs.pointer.cast(),
+              m,
+              deg,
+            );
+          default:
+            throw UnsupportedError(
+              "Unsupported dtype $targetDType for polyfit.",
+            );
+        }
       } else {
-        col = power(xCast, _makeScalar<R>(p, targetDType));
-      }
-
-      for (var i = 0; i < m; i++) {
-        vMat.setCell([i, j], col.getCellFlat(i) as R);
-      }
-    }
-
-    NDArray<R> rhs = _ensureDType(y, targetDType);
-    NDArray<R> lhs = vMat;
-
-    if (w != null) {
-      final wCast = _ensureDType(w, targetDType);
-      final lhsW = NDArray<R>.zeros([m, nCols], targetDType);
-      final rhsW = NDArray<R>.zeros([m], targetDType);
-
-      for (var i = 0; i < m; i++) {
-        final wi = wCast.getCellFlat(i) as Object;
-        final yi = rhs.getCellFlat(i) as Object;
-        rhsW.setCell([i], castValue(_mulScalar(wi, yi), targetDType) as R);
-
-        for (var j = 0; j < nCols; j++) {
-          final vij = vMat.getCell([i, j]) as Object;
-          lhsW.setCell([
-            i,
-            j,
-          ], castValue(_mulScalar(wi, vij), targetDType) as R);
+        final strideX = xCast.strides.isEmpty ? 1 : xCast.strides[0];
+        final strideY = yCast.strides.isEmpty ? 1 : yCast.strides[0];
+        final strideW = (wCast == null || wCast.strides.isEmpty)
+            ? 1
+            : wCast.strides[0];
+        switch (targetDType) {
+          case DType.float64:
+            s_vander_fit_double(
+              xCast.pointer.cast(),
+              strideX,
+              yCast.pointer.cast(),
+              strideY,
+              wCast != null ? wCast.pointer.cast() : ffi.nullptr,
+              strideW,
+              vMat.pointer.cast(),
+              rhs.pointer.cast(),
+              m,
+              deg,
+            );
+          case DType.float32:
+            s_vander_fit_float(
+              xCast.pointer.cast(),
+              strideX,
+              yCast.pointer.cast(),
+              strideY,
+              wCast != null ? wCast.pointer.cast() : ffi.nullptr,
+              strideW,
+              vMat.pointer.cast(),
+              rhs.pointer.cast(),
+              m,
+              deg,
+            );
+          case DType.complex128:
+            s_vander_fit_complex128(
+              xCast.pointer.cast(),
+              strideX,
+              yCast.pointer.cast(),
+              strideY,
+              wCast != null ? wCast.pointer.cast() : ffi.nullptr,
+              strideW,
+              vMat.pointer.cast(),
+              rhs.pointer.cast(),
+              m,
+              deg,
+            );
+          case DType.complex64:
+            s_vander_fit_complex64(
+              xCast.pointer.cast(),
+              strideX,
+              yCast.pointer.cast(),
+              strideY,
+              wCast != null ? wCast.pointer.cast() : ffi.nullptr,
+              strideW,
+              vMat.pointer.cast(),
+              rhs.pointer.cast(),
+              m,
+              deg,
+            );
+          default:
+            throw UnsupportedError(
+              "Unsupported dtype $targetDType for polyfit.",
+            );
         }
       }
-      lhs = lhsW;
-      rhs = rhsW;
     }
 
-    final lstsqRes = lstsq<R, R, R>(lhs, rhs, rcond: rcond);
-    final coeffs = lstsqRes.x;
+    fillVander();
+
+    final marker = ScratchArena.marker;
+    try {
+      int info = 0;
+      if (rcond == null) {
+        // Fast QR solve via dgels/sgels/zgels/cgels
+        switch (targetDType) {
+          case DType.float64:
+            info = LAPACKE_dgels(
+              101, // LAPACK_ROW_MAJOR
+              78, // 'N'
+              m,
+              n,
+              1,
+              vMat.pointer.cast<ffi.Double>(),
+              n,
+              rhs.pointer.cast<ffi.Double>(),
+              1,
+            );
+          case DType.float32:
+            info = LAPACKE_sgels(
+              101,
+              78,
+              m,
+              n,
+              1,
+              vMat.pointer.cast<ffi.Float>(),
+              n,
+              rhs.pointer.cast<ffi.Float>(),
+              1,
+            );
+          case DType.complex128:
+            info = LAPACKE_zgels(
+              101,
+              78,
+              m,
+              n,
+              1,
+              vMat.pointer.cast<ffi.Double>(),
+              n,
+              rhs.pointer.cast<ffi.Double>(),
+              1,
+            );
+          case DType.complex64:
+            info = LAPACKE_cgels(
+              101,
+              78,
+              m,
+              n,
+              1,
+              vMat.pointer.cast<ffi.Float>(),
+              n,
+              rhs.pointer.cast<ffi.Float>(),
+              1,
+            );
+          default:
+            throw UnsupportedError(
+              "Unsupported dtype $targetDType for polyfit.",
+            );
+        }
+
+        if (info > 0) {
+          // Rank deficiency: regenerate matrices and fallback to gelsy
+          fillVander();
+          final jpvt = ScratchArena.allocate<lapack_int>(
+            n * ffi.sizeOf<lapack_int>(),
+          );
+          for (var k = 0; k < n; k++) {
+            jpvt[k] = 0;
+          }
+          final rankPtr = ScratchArena.allocate<lapack_int>(
+            ffi.sizeOf<lapack_int>(),
+          );
+          switch (targetDType) {
+            case DType.float64:
+              info = LAPACKE_dgelsy(
+                101,
+                m,
+                n,
+                1,
+                vMat.pointer.cast<ffi.Double>(),
+                n,
+                rhs.pointer.cast<ffi.Double>(),
+                1,
+                jpvt,
+                -1.0,
+                rankPtr,
+              );
+            case DType.float32:
+              info = LAPACKE_sgelsy(
+                101,
+                m,
+                n,
+                1,
+                vMat.pointer.cast<ffi.Float>(),
+                n,
+                rhs.pointer.cast<ffi.Float>(),
+                1,
+                jpvt,
+                -1.0,
+                rankPtr,
+              );
+            case DType.complex128:
+              info = LAPACKE_zgelsy(
+                101,
+                m,
+                n,
+                1,
+                vMat.pointer.cast<ffi.Double>(),
+                n,
+                rhs.pointer.cast<ffi.Double>(),
+                1,
+                jpvt,
+                -1.0,
+                rankPtr,
+              );
+            case DType.complex64:
+              info = LAPACKE_cgelsy(
+                101,
+                m,
+                n,
+                1,
+                vMat.pointer.cast<ffi.Float>(),
+                n,
+                rhs.pointer.cast<ffi.Float>(),
+                1,
+                jpvt,
+                -1.0,
+                rankPtr,
+              );
+            default:
+              throw UnsupportedError(
+                "Unsupported dtype $targetDType for polyfit.",
+              );
+          }
+        }
+      } else {
+        // Explicit rcond: complete orthogonal factorization (gelsy)
+        final jpvt = ScratchArena.allocate<lapack_int>(
+          n * ffi.sizeOf<lapack_int>(),
+        );
+        for (var k = 0; k < n; k++) {
+          jpvt[k] = 0;
+        }
+        final rankPtr = ScratchArena.allocate<lapack_int>(
+          ffi.sizeOf<lapack_int>(),
+        );
+        switch (targetDType) {
+          case DType.float64:
+            info = LAPACKE_dgelsy(
+              101,
+              m,
+              n,
+              1,
+              vMat.pointer.cast<ffi.Double>(),
+              n,
+              rhs.pointer.cast<ffi.Double>(),
+              1,
+              jpvt,
+              rcond,
+              rankPtr,
+            );
+          case DType.float32:
+            info = LAPACKE_sgelsy(
+              101,
+              m,
+              n,
+              1,
+              vMat.pointer.cast<ffi.Float>(),
+              n,
+              rhs.pointer.cast<ffi.Float>(),
+              1,
+              jpvt,
+              rcond.toDouble(),
+              rankPtr,
+            );
+          case DType.complex128:
+            info = LAPACKE_zgelsy(
+              101,
+              m,
+              n,
+              1,
+              vMat.pointer.cast<ffi.Double>(),
+              n,
+              rhs.pointer.cast<ffi.Double>(),
+              1,
+              jpvt,
+              rcond,
+              rankPtr,
+            );
+          case DType.complex64:
+            info = LAPACKE_cgelsy(
+              101,
+              m,
+              n,
+              1,
+              vMat.pointer.cast<ffi.Float>(),
+              n,
+              rhs.pointer.cast<ffi.Float>(),
+              1,
+              jpvt,
+              rcond.toDouble(),
+              rankPtr,
+            );
+          default:
+            throw UnsupportedError(
+              "Unsupported dtype $targetDType for polyfit.",
+            );
+        }
+      }
+
+      if (info < 0) {
+        throw ArgumentError("Illegal parameter in LAPACK least-squares: $info");
+      }
+    } finally {
+      ScratchArena.reset(marker);
+    }
+
+    final res = out ?? NDArray<R>.create([n], targetDType);
+    rhs.slice([Slice(stop: n)]).copy(out: res);
 
     if (out != null) {
-      _copyInto(coeffs, out);
       return out;
     }
-    return coeffs.detachToParentScope();
+    return res.detachToParentScope();
   });
 }
 

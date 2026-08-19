@@ -2,6 +2,8 @@
 
 
 #include <stdint.h>
+#include <stddef.h>
+#include "custom_sorting.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -121,6 +123,10 @@ void v_add_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const u
 void v_sub_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask);
 void v_mul_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask);
 void v_div_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask);
+void v_add_complex64(const cpx_f_t *a, const cpx_f_t *b, cpx_f_t *res, int size, const uint8_t *mask);
+void v_sub_complex64(const cpx_f_t *a, const cpx_f_t *b, cpx_f_t *res, int size, const uint8_t *mask);
+void v_mul_complex64(const cpx_f_t *a, const cpx_f_t *b, cpx_f_t *res, int size, const uint8_t *mask);
+void v_div_complex64(const cpx_f_t *a, const cpx_f_t *b, cpx_f_t *res, int size, const uint8_t *mask);
 
 void v_add_float(const float *a, const float *b, float *res, int size, const uint8_t *mask);
 void v_sub_float(const float *a, const float *b, float *res, int size, const uint8_t *mask);
@@ -1515,6 +1521,16 @@ void s_interp_float(const float *x, const int *stridesX,
                     const int *shape, int rank,
                     const float *left, const float *right);
 
+void native_interp_double(const double *x, int x_size,
+                          const double *xp, int xp_size,
+                          const double *fp, double *res,
+                          const double *left, const double *right);
+
+void native_interp_float(const float *x, int x_size,
+                         const float *xp, int xp_size,
+                         const float *fp, float *res,
+                         const float *left, const float *right);
+
 #define CMP_OP_EQ 0
 #define CMP_OP_NE 1
 #define CMP_OP_LT 2
@@ -1814,6 +1830,122 @@ void s_reduceat_int16(const int16_t *src, const int *stridesSrc, int16_t *dest, 
 void s_reduceat_complex128(const cpx_t *src, const int *stridesSrc, cpx_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode);
 void s_reduceat_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode);
 void s_reduceat_boolean(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode);
+
+void v_polyval_double(const double *c, int stride_c, int n_c, const double *x, double *res, int size);
+void v_polyval_float(const float *c, int stride_c, int n_c, const float *x, float *res, int size);
+void v_polyval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, cpx_t *res, int size);
+void v_polyval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, cpx_f_t *res, int size);
+
+void s_polyval_double(const double *c, int stride_c, int n_c, const double *x, const int *stridesX, double *res, const int *stridesRes, const int *shape, int rank);
+void s_polyval_float(const float *c, int stride_c, int n_c, const float *x, const int *stridesX, float *res, const int *stridesRes, const int *shape, int rank);
+void s_polyval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, const int *stridesX, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_polyval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, const int *stridesX, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+
+void v_chebval_double(const double *c, int stride_c, int n_c, const double *x, double *res, int size);
+void v_chebval_float(const float *c, int stride_c, int n_c, const float *x, float *res, int size);
+void v_chebval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, cpx_t *res, int size);
+void v_chebval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, cpx_f_t *res, int size);
+
+void s_chebval_double(const double *c, int stride_c, int n_c, const double *x, const int *stridesX, double *res, const int *stridesRes, const int *shape, int rank);
+void s_chebval_float(const float *c, int stride_c, int n_c, const float *x, const int *stridesX, float *res, const int *stridesRes, const int *shape, int rank);
+void s_chebval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, const int *stridesX, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_chebval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, const int *stridesX, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+
+void v_legval_double(const double *c, int stride_c, int n_c, const double *x, double *res, int size);
+void v_legval_float(const float *c, int stride_c, int n_c, const float *x, float *res, int size);
+void v_legval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, cpx_t *res, int size);
+void v_legval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, cpx_f_t *res, int size);
+
+void s_legval_double(const double *c, int stride_c, int n_c, const double *x, const int *stridesX, double *res, const int *stridesRes, const int *shape, int rank);
+void s_legval_float(const float *c, int stride_c, int n_c, const float *x, const int *stridesX, float *res, const int *stridesRes, const int *shape, int rank);
+void s_legval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, const int *stridesX, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_legval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, const int *stridesX, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+
+void v_hermval_double(const double *c, int stride_c, int n_c, const double *x, double *res, int size);
+void v_hermval_float(const float *c, int stride_c, int n_c, const float *x, float *res, int size);
+void v_hermval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, cpx_t *res, int size);
+void v_hermval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, cpx_f_t *res, int size);
+
+void s_hermval_double(const double *c, int stride_c, int n_c, const double *x, const int *stridesX, double *res, const int *stridesRes, const int *shape, int rank);
+void s_hermval_float(const float *c, int stride_c, int n_c, const float *x, const int *stridesX, float *res, const int *stridesRes, const int *shape, int rank);
+void s_hermval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, const int *stridesX, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_hermval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, const int *stridesX, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+
+void v_lagval_double(const double *c, int stride_c, int n_c, const double *x, double *res, int size);
+void v_lagval_float(const float *c, int stride_c, int n_c, const float *x, float *res, int size);
+void v_lagval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, cpx_t *res, int size);
+void v_lagval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, cpx_f_t *res, int size);
+
+void s_lagval_double(const double *c, int stride_c, int n_c, const double *x, const int *stridesX, double *res, const int *stridesRes, const int *shape, int rank);
+void s_lagval_float(const float *c, int stride_c, int n_c, const float *x, const int *stridesX, float *res, const int *stridesRes, const int *shape, int rank);
+void s_lagval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, const int *stridesX, cpx_t *res, const int *stridesRes, const int *shape, int rank);
+void s_lagval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, const int *stridesX, cpx_f_t *res, const int *stridesRes, const int *shape, int rank);
+
+void v_histogram_uniform(
+    const void *src, int dtypeSrc,
+    const void *weights, int dtypeWeights,
+    void *hist, int dtypeHist,
+    int size, int nbins,
+    double min_val, double max_val, double norm
+);
+
+void s_histogram_uniform(
+    const void *src, int strideSrc, int dtypeSrc,
+    const void *weights, int strideWeights, int dtypeWeights,
+    void *hist, int strideHist, int dtypeHist,
+    int size, int nbins,
+    double min_val, double max_val, double norm
+);
+
+void v_histogram_binsearch(
+    const void *src, int dtypeSrc,
+    const void *weights, int dtypeWeights,
+    void *hist, int dtypeHist,
+    const double *bin_edges, int num_edges,
+    int size
+);
+
+void s_histogram_binsearch(
+    const void *src, int strideSrc, int dtypeSrc,
+    const void *weights, int strideWeights, int dtypeWeights,
+    void *hist, int strideHist, int dtypeHist,
+    const double *bin_edges, int num_edges,
+    int size
+);
+
+void v_vander_fit_double(const double *x, const double *y, const double *w,
+                         double *v_mat, double *rhs,
+                         int m, int deg);
+void v_vander_fit_float(const float *x, const float *y, const float *w,
+                        float *v_mat, float *rhs,
+                        int m, int deg);
+void v_vander_fit_complex128(const cpx_t *x, const cpx_t *y, const cpx_t *w,
+                             cpx_t *v_mat, cpx_t *rhs,
+                             int m, int deg);
+void v_vander_fit_complex64(const cpx_f_t *x, const cpx_f_t *y, const cpx_f_t *w,
+                            cpx_f_t *v_mat, cpx_f_t *rhs,
+                            int m, int deg);
+
+void s_vander_fit_double(const double *x, int strideX,
+                         const double *y, int strideY,
+                         const double *w, int strideW,
+                         double *v_mat, double *rhs,
+                         int m, int deg);
+void s_vander_fit_float(const float *x, int strideX,
+                        const float *y, int strideY,
+                        const float *w, int strideW,
+                        float *v_mat, float *rhs,
+                        int m, int deg);
+void s_vander_fit_complex128(const cpx_t *x, int strideX,
+                             const cpx_t *y, int strideY,
+                             const cpx_t *w, int strideW,
+                             cpx_t *v_mat, cpx_t *rhs,
+                             int m, int deg);
+void s_vander_fit_complex64(const cpx_f_t *x, int strideX,
+                            const cpx_f_t *y, int strideY,
+                            const cpx_f_t *w, int strideW,
+                            cpx_f_t *v_mat, cpx_f_t *rhs,
+                            int m, int deg);
 
 #ifdef __cplusplus
 }

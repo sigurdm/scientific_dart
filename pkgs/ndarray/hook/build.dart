@@ -137,6 +137,11 @@ void main(List<String> args) async {
       final sortingObj = outputDir.uri
           .resolve('custom_sorting.obj')
           .toFilePath();
+      final indexingObj = outputDir.uri
+          .resolve('custom_indexing.obj')
+          .toFilePath();
+      final minizObj = outputDir.uri.resolve('miniz.obj').toFilePath();
+      final npzIoObj = outputDir.uri.resolve('npz_io.obj').toFilePath();
 
       var res = await Process.run(cppCompilerPath, [
         '/c',
@@ -177,9 +182,71 @@ void main(List<String> args) async {
         );
       }
 
-      final allExports = extractExportsFromBindings(
-        input.packageRoot.resolve('lib/src/ndarray_bindings.dart').toFilePath(),
-      );
+      res = await Process.run(cppCompilerPath, [
+        '/c',
+        '/O2',
+        if (isX64) '/arch:AVX2',
+        '/MD',
+        '/EHsc',
+        '/D_USE_MATH_DEFINES',
+        '/I${input.packageRoot.toFilePath()}',
+        input.packageRoot.resolve('hook/custom_indexing.cpp').toFilePath(),
+        '/Fo:$indexingObj',
+      ], environment: msvcEnv);
+      if (res.exitCode != 0) {
+        throw StateError(
+          'Indexing compilation failed:\n'
+          'stdout: ${res.stdout}\n'
+          'stderr: ${res.stderr}',
+        );
+      }
+
+      res = await Process.run(compilerPath, [
+        '/c',
+        '/O2',
+        '/MD',
+        '/I${input.packageRoot.toFilePath()}',
+        input.packageRoot.resolve('third_party/miniz/miniz.c').toFilePath(),
+        '/Fo:$minizObj',
+      ], environment: msvcEnv);
+      if (res.exitCode != 0) {
+        throw StateError(
+          'miniz compilation failed:\n'
+          'stdout: ${res.stdout}\n'
+          'stderr: ${res.stderr}',
+        );
+      }
+
+      res = await Process.run(cppCompilerPath, [
+        '/c',
+        '/O2',
+        if (isX64) '/arch:AVX2',
+        '/MD',
+        '/EHsc',
+        '/I${input.packageRoot.toFilePath()}',
+        input.packageRoot.resolve('hook/npz_io.cpp').toFilePath(),
+        '/Fo:$npzIoObj',
+      ], environment: msvcEnv);
+      if (res.exitCode != 0) {
+        throw StateError(
+          'npz_io compilation failed:\n'
+          'stdout: ${res.stdout}\n'
+          'stderr: ${res.stderr}',
+        );
+      }
+
+      final allExports = [
+        ...extractExportsFromBindings(
+          input.packageRoot
+              .resolve('lib/src/ndarray_bindings.dart')
+              .toFilePath(),
+        ),
+        ...extractExportsFromBindings(
+          input.packageRoot
+              .resolve('lib/src/ndarray_extensions_bindings.dart')
+              .toFilePath(),
+        ),
+      ];
 
       final defFile = File(
         outputDir.uri.resolve('libndarray.def').toFilePath(),
@@ -196,6 +263,9 @@ void main(List<String> args) async {
         '/MD',
         ufuncsObj,
         sortingObj,
+        indexingObj,
+        minizObj,
+        npzIoObj,
         libhwyContrib.path,
         libhwy.path,
         '/Fe:${libFile.path}',
@@ -212,53 +282,153 @@ void main(List<String> args) async {
     } else {
       final ufuncsObj = outputDir.uri.resolve('custom_ufuncs.o').toFilePath();
       final sortingObj = outputDir.uri.resolve('custom_sorting.o').toFilePath();
+      final indexingObj = outputDir.uri
+          .resolve('custom_indexing.o')
+          .toFilePath();
+      final minizObj = outputDir.uri.resolve('miniz.o').toFilePath();
+      final npzIoObj = outputDir.uri.resolve('npz_io.o').toFilePath();
 
-      print('Compiling custom_ufuncs.cpp...');
-      var res = await Process.run(cppCompilerPath, [
-        '-c',
-        '-fPIC',
-        '-O3',
-        if (isX64) ...['-mavx2', '-mfma'],
-        '-fno-math-errno',
-        '-I${input.packageRoot.toFilePath()}',
-        input.packageRoot.resolve('hook/custom_ufuncs.cpp').toFilePath(),
-        '-o',
-        ufuncsObj,
-      ]);
-      if (res.exitCode != 0) {
-        throw StateError('Ufuncs compilation failed: ${res.stderr}');
+      bool needsCompile(String src, String obj) {
+        final srcF = File(src);
+        final objF = File(obj);
+        if (!objF.existsSync()) return true;
+        return srcF.lastModifiedSync().isAfter(objF.lastModifiedSync());
       }
 
-      print('Compiling custom_sorting.cpp...');
-      res = await Process.run(cppCompilerPath, [
-        '-c',
-        '-fPIC',
-        '-O3',
-        if (isX64) ...['-mavx2', '-mfma'],
-        '-fno-math-errno',
-        '-I${input.packageRoot.toFilePath()}',
-        '-I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',
-        input.packageRoot.resolve('hook/custom_sorting.cpp').toFilePath(),
-        '-o',
-        sortingObj,
-      ]);
-      if (res.exitCode != 0) {
-        throw StateError('Sorting compilation failed: ${res.stderr}');
+      final ufuncsSrc = input.packageRoot
+          .resolve('hook/custom_ufuncs.cpp')
+          .toFilePath();
+      if (needsCompile(ufuncsSrc, ufuncsObj)) {
+        print('Compiling custom_ufuncs.cpp...');
+        final res = await Process.run(cppCompilerPath, [
+          '-c',
+          '-fPIC',
+          '-O3',
+          if (isX64) ...['-mavx2', '-mfma'],
+          '-fno-math-errno',
+          '-I${input.packageRoot.toFilePath()}',
+          ufuncsSrc,
+          '-o',
+          ufuncsObj,
+        ]);
+        if (res.exitCode != 0) {
+          throw StateError('Ufuncs compilation failed: ${res.stderr}');
+        }
       }
 
-      print('Linking shared library...');
-      res = await Process.run(cppCompilerPath, [
-        '-shared',
-        '-fPIC',
-        ufuncsObj,
-        sortingObj,
-        libhwyContrib.path,
-        libhwy.path,
-        '-o',
-        libFile.path,
-        if (os != OS.windows) '-lm',
-      ]);
-      if (res.exitCode != 0) throw StateError('Linking failed: ${res.stderr}');
+      final sortingSrc = input.packageRoot
+          .resolve('hook/custom_sorting.cpp')
+          .toFilePath();
+      if (needsCompile(sortingSrc, sortingObj)) {
+        print('Compiling custom_sorting.cpp...');
+        final res = await Process.run(cppCompilerPath, [
+          '-c',
+          '-fPIC',
+          '-O3',
+          if (isX64) ...['-mavx2', '-mfma'],
+          '-fno-math-errno',
+          '-I${input.packageRoot.toFilePath()}',
+          '-I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',
+          sortingSrc,
+          '-o',
+          sortingObj,
+        ]);
+        if (res.exitCode != 0) {
+          throw StateError('Sorting compilation failed: ${res.stderr}');
+        }
+      }
+
+      final indexingSrc = input.packageRoot
+          .resolve('hook/custom_indexing.cpp')
+          .toFilePath();
+      if (needsCompile(indexingSrc, indexingObj)) {
+        print('Compiling custom_indexing.cpp...');
+        final res = await Process.run(cppCompilerPath, [
+          '-c',
+          '-fPIC',
+          '-O3',
+          if (isX64) ...['-mavx2', '-mfma'],
+          '-fno-math-errno',
+          '-I${input.packageRoot.toFilePath()}',
+          indexingSrc,
+          '-o',
+          indexingObj,
+        ]);
+        if (res.exitCode != 0) {
+          throw StateError('Indexing compilation failed: ${res.stderr}');
+        }
+      }
+
+      final minizSrc = input.packageRoot
+          .resolve('third_party/miniz/miniz.c')
+          .toFilePath();
+      final minizH = input.packageRoot
+          .resolve('third_party/miniz/miniz.h')
+          .toFilePath();
+      if (needsCompile(minizSrc, minizObj) || needsCompile(minizH, minizObj)) {
+        print('Compiling miniz.c...');
+        final res = await Process.run(compilerPath, [
+          '-c',
+          '-fPIC',
+          '-O3',
+          '-I${input.packageRoot.toFilePath()}',
+          minizSrc,
+          '-o',
+          minizObj,
+        ]);
+        if (res.exitCode != 0) {
+          throw StateError('miniz compilation failed: ${res.stderr}');
+        }
+      }
+
+      final npzIoSrc = input.packageRoot
+          .resolve('hook/npz_io.cpp')
+          .toFilePath();
+      if (needsCompile(npzIoSrc, npzIoObj) || needsCompile(minizH, npzIoObj)) {
+        print('Compiling npz_io.cpp...');
+        final res = await Process.run(cppCompilerPath, [
+          '-c',
+          '-fPIC',
+          '-O3',
+          '-I${input.packageRoot.toFilePath()}',
+          npzIoSrc,
+          '-o',
+          npzIoObj,
+        ]);
+        if (res.exitCode != 0) {
+          throw StateError('npz_io compilation failed: ${res.stderr}');
+        }
+      }
+
+      final objs = [ufuncsObj, sortingObj, indexingObj, minizObj, npzIoObj];
+      final needsLink =
+          !libFile.existsSync() ||
+          objs.any(
+            (obj) => File(
+              obj,
+            ).lastModifiedSync().isAfter(libFile.lastModifiedSync()),
+          );
+
+      if (needsLink) {
+        print('Linking shared library...');
+        final res = await Process.run(cppCompilerPath, [
+          '-shared',
+          '-fPIC',
+          ufuncsObj,
+          sortingObj,
+          indexingObj,
+          minizObj,
+          npzIoObj,
+          libhwyContrib.path,
+          libhwy.path,
+          '-o',
+          libFile.path,
+          if (os != OS.windows) '-lm',
+        ]);
+        if (res.exitCode != 0) {
+          throw StateError('Linking failed: ${res.stderr}');
+        }
+      }
     }
     print('Compiled ndarray shared library successfully at: ${libFile.path}');
 
@@ -283,6 +453,20 @@ void main(List<String> args) async {
       );
       output.dependencies.add(
         input.packageRoot.resolve('hook/custom_ufuncs.h'),
+      );
+      output.dependencies.add(
+        input.packageRoot.resolve('hook/custom_indexing.cpp'),
+      );
+      output.dependencies.add(
+        input.packageRoot.resolve('hook/custom_indexing.h'),
+      );
+      output.dependencies.add(input.packageRoot.resolve('hook/npz_io.cpp'));
+      output.dependencies.add(input.packageRoot.resolve('hook/npz_io.h'));
+      output.dependencies.add(
+        input.packageRoot.resolve('third_party/miniz/miniz.c'),
+      );
+      output.dependencies.add(
+        input.packageRoot.resolve('third_party/miniz/miniz.h'),
       );
       output.dependencies.add(
         input.packageRoot.resolve('third_party/timsort/timsort.h'),

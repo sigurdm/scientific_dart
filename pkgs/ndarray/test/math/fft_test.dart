@@ -1124,5 +1124,42 @@ void main() {
         }),
       );
     });
+
+    group('PocketFFT Plan Caching in NDArray', () {
+      test(
+        'Repeated transforms reuse plan cache and clearFFTPlanCache() succeeds',
+        () {
+          clearFFTPlanCache();
+
+          final a = NDArray.fromList(
+            Float64List.fromList([1.0, 2.0, 3.0, 4.0]),
+            [4],
+            DType.float64,
+          );
+          final f1 = fft(a);
+          final f2 = fft(a);
+          expect(f1.toList(), equals(f2.toList()));
+          f1.dispose();
+          f2.dispose();
+
+          final r1 = rfft(a);
+          final r2 = rfft(a);
+          expect(r1.toList(), equals(r2.toList()));
+          r1.dispose();
+          r2.dispose();
+
+          final a2D = NDArray.zeros([4, 4], DType.float64);
+          final nd1 = fft2(a2D);
+          final nd2 = fft2(a2D);
+          expect(nd1.toList(), equals(nd2.toList()));
+          nd1.dispose();
+          nd2.dispose();
+          a2D.dispose();
+          a.dispose();
+
+          clearFFTPlanCache();
+        },
+      );
+    });
   });
 }

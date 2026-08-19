@@ -14,3 +14,5 @@ export 'src/pocketfft_bindings.dart'
         kiss_fftnd_alloc,
         kiss_fftnd,
         free;
+
+export 'src/plan_cache.dart';

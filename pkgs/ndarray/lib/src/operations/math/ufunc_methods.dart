@@ -1837,13 +1837,13 @@ NDArray<T> reduceatUfunc<T extends Object>(
           s_reduceat_double(
             a.pointer.cast(),
             cStridesA,
-            indicesPtr,
-            numIndices,
             result.pointer.cast(),
             cStridesRes,
             cShape,
             rank,
             normAxis,
+            indicesPtr,
+            numIndices,
             opCode,
           );
           return result;
@@ -1851,13 +1851,13 @@ NDArray<T> reduceatUfunc<T extends Object>(
           s_reduceat_float(
             a.pointer.cast(),
             cStridesA,
-            indicesPtr,
-            numIndices,
             result.pointer.cast(),
             cStridesRes,
             cShape,
             rank,
             normAxis,
+            indicesPtr,
+            numIndices,
             opCode,
           );
           return result;
@@ -1865,13 +1865,13 @@ NDArray<T> reduceatUfunc<T extends Object>(
           s_reduceat_int64(
             a.pointer.cast(),
             cStridesA,
-            indicesPtr,
-            numIndices,
             result.pointer.cast(),
             cStridesRes,
             cShape,
             rank,
             normAxis,
+            indicesPtr,
+            numIndices,
             opCode,
           );
           return result;
@@ -1879,13 +1879,13 @@ NDArray<T> reduceatUfunc<T extends Object>(
           s_reduceat_int32(
             a.pointer.cast(),
             cStridesA,
-            indicesPtr,
-            numIndices,
             result.pointer.cast(),
             cStridesRes,
             cShape,
             rank,
             normAxis,
+            indicesPtr,
+            numIndices,
             opCode,
           );
           return result;
@@ -1893,13 +1893,13 @@ NDArray<T> reduceatUfunc<T extends Object>(
           s_reduceat_int16(
             a.pointer.cast(),
             cStridesA,
-            indicesPtr,
-            numIndices,
             result.pointer.cast(),
             cStridesRes,
             cShape,
             rank,
             normAxis,
+            indicesPtr,
+            numIndices,
             opCode,
           );
           return result;
@@ -1908,13 +1908,13 @@ NDArray<T> reduceatUfunc<T extends Object>(
           s_reduceat_uint8(
             a.pointer.cast(),
             cStridesA,
-            indicesPtr,
-            numIndices,
             result.pointer.cast(),
             cStridesRes,
             cShape,
             rank,
             normAxis,
+            indicesPtr,
+            numIndices,
             opCode,
           );
           return result;
@@ -1922,13 +1922,13 @@ NDArray<T> reduceatUfunc<T extends Object>(
           s_reduceat_complex128(
             a.pointer.cast(),
             cStridesA,
-            indicesPtr,
-            numIndices,
             result.pointer.cast(),
             cStridesRes,
             cShape,
             rank,
             normAxis,
+            indicesPtr,
+            numIndices,
             opCode,
           );
           return result;
@@ -1936,13 +1936,13 @@ NDArray<T> reduceatUfunc<T extends Object>(
           s_reduceat_complex64(
             a.pointer.cast(),
             cStridesA,
-            indicesPtr,
-            numIndices,
             result.pointer.cast(),
             cStridesRes,
             cShape,
             rank,
             normAxis,
+            indicesPtr,
+            numIndices,
             opCode,
           );
           return result;

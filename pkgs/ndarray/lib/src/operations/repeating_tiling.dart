@@ -1,4 +1,6 @@
 import '../ndarray.dart';
+import '../ndarray_extensions_bindings.dart';
+import '../scratch_arena.dart';
 
 // Standalone operational relative cross-imports
 
@@ -162,18 +164,17 @@ NDArray<T> repeat<T>(
 /// If `a.rank > d`, [reps] is promoted to `a.rank` by pre-pending 1's to it.
 ///
 /// **Preconditions:**
-/// - [reps] must be an `NDArray<int>`.
+/// - [a] must not be disposed.
 /// - All values in [reps] must be non-negative ($\ge 0$).
-/// - If [out] is provided, it must have the correct shape and [DType] to store
-///   the result.
-///
-/// **Throws:**
-/// - [ArgumentError] if [reps] contains negative values.
-/// - [ArgumentError] if [out] shape or [DType] is incompatible.
+/// - If [out] is provided, it must not be disposed and must have the correct shape and [DType] to store the result.
+/// - It is an error if [a] is disposed or [out] is disposed.
+/// - It is an error if [reps] contains negative values.
+/// - It is an error if [out] shape or [DType] is incompatible.
 ///
 /// **Performance considerations:**
 /// - Time Complexity: $O(N)$ where $N$ is the total number of elements in the
 ///   output array.
+/// - Contiguous blocks are replicated directly in unmanaged C memory using fast exponential doubling `memcpy`.
 /// - Space Complexity: $O(N)$ for the output array (unless [out] is provided).
 ///
 /// **Example:**
@@ -182,8 +183,15 @@ NDArray<T> repeat<T>(
 /// final t = tile(a, [2]);
 /// print(t.toList()); // [1, 2, 1, 2]
 /// ```
-NDArray<T> tile<T>(NDArray<T> a, List<int> reps, {NDArray<T>? out}) {
-  if (a.isDisposed) {
+///
+/// Refer to the [NumPy tile reference](https://numpy.org/doc/stable/reference/generated/numpy.tile.html)
+/// for details.
+NDArray<T> tile<T extends Object>(
+  NDArray<T> a,
+  List<int> reps, {
+  NDArray<T>? out,
+}) {
+  if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot access a disposed NDArray.');
   }
 
@@ -219,9 +227,6 @@ NDArray<T> tile<T>(NDArray<T> a, List<int> reps, {NDArray<T>? out}) {
 
     final NDArray<T> result;
     if (out != null) {
-      if (out.isDisposed) {
-        throw StateError('Cannot access a disposed out NDArray.');
-      }
       if (out.dtype != src.dtype) {
         throw ArgumentError('out buffer must have the same dtype as input');
       }
@@ -243,31 +248,76 @@ NDArray<T> tile<T>(NDArray<T> a, List<int> reps, {NDArray<T>? out}) {
     }
 
     final rank = src.rank;
-    final viewShape = <int>[];
-    final srcStrides = <int>[];
-
-    for (var i = 0; i < rank; i++) {
-      viewShape.add(tileReps[i]);
-      viewShape.add(src.shape[i]);
-      srcStrides.add(0);
-      srcStrides.add(src.strides[i]);
+    if (rank == 0) {
+      final marker = ScratchArena.marker;
+      try {
+        final cSrcShape = ScratchArena.copyInt64s(const <int>[]);
+        final cReps = ScratchArena.copyInt64s(const <int>[]);
+        final cOutShape = ScratchArena.copyInt64s(const <int>[]);
+        native_tile_contiguous(
+          src.dtype.index,
+          src.pointer.cast(),
+          cSrcShape,
+          cReps,
+          result.pointer.cast(),
+          cOutShape,
+          0,
+        );
+      } finally {
+        ScratchArena.reset(marker);
+      }
+      return result;
     }
 
-    final srcView = NDArray<T>.view(
-      src,
-      shape: viewShape,
-      strides: srcStrides,
-      offsetElements: 0,
-    );
+    final marker = ScratchArena.marker;
+    try {
+      final cSrcShape = ScratchArena.copyInt64s(src.shape);
+      final cReps = ScratchArena.copyInt64s(tileReps);
+      final cOutShape = ScratchArena.copyInt64s(outputShape);
 
-    final destView = NDArray<T>.view(
-      result,
-      shape: viewShape,
-      strides: NDArray.computeCStrides(viewShape),
-      offsetElements: 0,
-    );
-
-    srcView.copy(out: destView);
+      if (src.isContiguous && result.isContiguous) {
+        native_tile_contiguous(
+          src.dtype.index,
+          src.pointer.cast(),
+          cSrcShape,
+          cReps,
+          result.pointer.cast(),
+          cOutShape,
+          rank,
+        );
+      } else if (result.isContiguous) {
+        final contigSrc = src.copy();
+        try {
+          native_tile_contiguous(
+            contigSrc.dtype.index,
+            contigSrc.pointer.cast(),
+            cSrcShape,
+            cReps,
+            result.pointer.cast(),
+            cOutShape,
+            rank,
+          );
+        } finally {
+          contigSrc.dispose();
+        }
+      } else {
+        final cSrcStrides = ScratchArena.copyInt64s(src.strides);
+        final cOutStrides = ScratchArena.copyInt64s(result.strides);
+        native_tile_strided(
+          src.dtype.index,
+          src.pointer.cast(),
+          cSrcShape,
+          cSrcStrides,
+          cReps,
+          result.pointer.cast(),
+          cOutShape,
+          cOutStrides,
+          rank,
+        );
+      }
+    } finally {
+      ScratchArena.reset(marker);
+    }
 
     return result;
   } finally {

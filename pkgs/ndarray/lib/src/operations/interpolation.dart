@@ -187,7 +187,7 @@ NDArray<Float64> interp(
           res.isContiguous;
 
       if (isContiguous) {
-        v_interp_double(
+        native_interp_double(
           xDouble.pointer.cast(),
           xDouble.shape.isEmpty ? 1 : xDouble.shape.reduce((a, b) => a * b),
           xpDouble.pointer.cast(),
@@ -222,10 +222,10 @@ NDArray<Float64> interp(
           xDouble.pointer.cast(),
           cStridesX,
           xpDouble.pointer.cast(),
-          xpDouble.strides[0],
+          xpDouble.strides.isEmpty ? 1 : xpDouble.strides[0],
           xpDouble.shape[0],
           fpDouble.pointer.cast(),
-          fpDouble.strides[0],
+          fpDouble.strides.isEmpty ? 1 : fpDouble.strides[0],
           res.pointer.cast(),
           cStridesRes,
           cShape,

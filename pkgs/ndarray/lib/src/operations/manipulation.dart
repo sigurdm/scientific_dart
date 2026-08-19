@@ -1,4 +1,5 @@
 // ignore_for_file: non_constant_identifier_names
+import 'dart:ffi' as ffi;
 import 'dart:math' as math;
 import '../ndarray.dart';
 import '../ndarray_bindings.dart';
@@ -17,6 +18,22 @@ import 'helpers.dart';
 /// - It is an error if any array in [arrays] is disposed.
 /// - It is an error if [axis] is out of bounds.
 /// - It is an error if arrays have mismatched dtypes or shapes.
+/// - It is an error if [out] is provided with incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Time Complexity: $O(N)$ where $N$ is the total number of elements in the output array.
+/// - Contiguous memory blocks are copied directly using native C `memcpy`.
+/// - Space Complexity: $O(N)$ for newly allocated output (or $O(1)$ auxiliary if [out] is provided).
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1, 2], [2], DType.int32);
+/// final b = NDArray.fromList([3, 4], [2], DType.int32);
+/// final c = concatenate([a, b], axis: 0); // [1, 2, 3, 4]
+/// ```
+///
+/// Refer to the [NumPy concatenate reference](https://numpy.org/doc/stable/reference/generated/numpy.concatenate.html)
+/// for details.
 NDArray<T> concatenate<T>(
   List<NDArray<T>> arrays, {
   int axis = 0,
@@ -72,44 +89,67 @@ NDArray<T> concatenate<T>(
     }
   }
 
-  final result = out ?? NDArray<T>.create(targetShape, dtype);
-
-  var allContiguous = true;
-  for (final arr in arrays) {
-    if (!arr.isContiguous) {
-      allContiguous = false;
-      break;
-    }
+  final targetResult = out ?? NDArray<T>.create(targetShape, dtype);
+  if (targetResult.size == 0) {
+    return targetResult;
   }
 
-  if (allContiguous && normAxis == 0 && result.isContiguous) {
-    var destOffset = 0;
-    for (final arr in arrays) {
-      final size = arr.shape.isEmpty ? 1 : arr.shape.reduce((a, b) => a * b);
-      copyContiguousFlat(arr, result, destOffset, size);
-      destOffset += size;
-    }
-    return result;
-  }
+  final isDestContiguous = targetResult.isContiguous;
+  final result = isDestContiguous
+      ? targetResult
+      : NDArray<T>.create(targetShape, dtype);
+
+  final outer = first.shape.sublist(0, normAxis).fold<int>(1, (a, b) => a * b);
+  final inner = first.shape.sublist(normAxis + 1).fold<int>(1, (a, b) => a * b);
+  final byteWidth = dtype.byteWidth;
+  final destStrideBytes = totalAxisSize * inner * byteWidth;
+  final destPtr = result.pointer.cast<ffi.Uint8>();
 
   var axisOffset = 0;
-  for (final arr in arrays) {
-    copyConcatenateRecursive(
-      arr,
-      result,
-      normAxis,
-      axisOffset,
-      List<int>.filled(rank, 0),
-      0,
-    );
-    axisOffset += arr.shape[normAxis];
+  for (var r = 0; r < arrays.length; r++) {
+    final arr = arrays[r];
+    final sizeAlongAxis = arr.shape[normAxis];
+    if (sizeAlongAxis == 0) continue;
+
+    final blockBytes = sizeAlongAxis * inner * byteWidth;
+    final srcStrideBytes = sizeAlongAxis * inner * byteWidth;
+    final destInitialOffsetBytes = axisOffset * inner * byteWidth;
+
+    final srcContiguous = arr.isContiguous ? arr : arr.copy();
+    try {
+      final srcPtr = srcContiguous.pointer.cast<ffi.Uint8>();
+      if (outer == 1) {
+        custom_memcpy(
+          (destPtr + destInitialOffsetBytes).cast(),
+          srcPtr.cast(),
+          blockBytes,
+        );
+      } else {
+        for (var o = 0; o < outer; o++) {
+          custom_memcpy(
+            (destPtr + (o * destStrideBytes + destInitialOffsetBytes)).cast(),
+            (srcPtr + (o * srcStrideBytes)).cast(),
+            blockBytes,
+          );
+        }
+      }
+    } finally {
+      if (!identical(srcContiguous, arr)) {
+        srcContiguous.dispose();
+      }
+    }
+    axisOffset += sizeAlongAxis;
   }
 
-  return result;
+  if (!identical(result, targetResult)) {
+    result.copy(out: targetResult);
+    result.dispose();
+  }
+
+  return targetResult;
 }
 
 /// Join a sequence of arrays along a new axis.
-
 ///
 /// Stacks the input [arrays] along a new dimension at [axis]. All arrays in the
 /// list must have the exact same shape and `DType.`
@@ -122,6 +162,12 @@ NDArray<T> concatenate<T>(
 /// - It is an error if any array in [arrays] is disposed.
 /// - It is an error if [axis] is out of bounds.
 /// - It is an error if shapes or DTypes mismatch.
+/// - It is an error if [out] is provided with incompatible shape or dtype.
+///
+/// **Performance considerations:**
+/// - Time Complexity: $O(N)$ where $N$ is the total number of elements in the output array.
+/// - Directly preallocates destination memory and copies buffer blocks using native C `memcpy`.
+/// - Space Complexity: $O(N)$ for newly allocated output (or $O(1)$ auxiliary if [out] is provided).
 ///
 /// **Example:**
 /// ```dart
@@ -129,6 +175,9 @@ NDArray<T> concatenate<T>(
 /// final b = NDArray.fromList([3, 4], [2], DType.int32);
 /// final s = stack([a, b], axis: 0); // shape [2, 2], values [[1, 2], [3, 4]]
 /// ```
+///
+/// Refer to the [NumPy stack reference](https://numpy.org/doc/stable/reference/generated/numpy.stack.html)
+/// for details.
 NDArray<T> stack<T extends Object>(
   List<NDArray<T>> arrays, {
   int axis = 0,
@@ -178,14 +227,63 @@ NDArray<T> stack<T extends Object>(
     }
   }
 
-  final result = out ?? NDArray.zeros(stackedShape, dtype);
-
-  for (var i = 0; i < arrays.length; i++) {
-    final currentIndices = List<int>.filled(first.shape.length, 0);
-    copyStackRecursive(arrays[i], result, targetAxis, i, currentIndices, 0);
+  final targetResult = out ?? NDArray<T>.create(stackedShape, dtype);
+  if (targetResult.size == 0) {
+    return targetResult;
   }
 
-  return result;
+  final isDestContiguous = targetResult.isContiguous;
+  final result = isDestContiguous
+      ? targetResult
+      : NDArray<T>.create(stackedShape, dtype);
+
+  final numArrays = arrays.length;
+  final outer = first.shape
+      .sublist(0, targetAxis)
+      .fold<int>(1, (a, b) => a * b);
+  final inner = first.shape.sublist(targetAxis).fold<int>(1, (a, b) => a * b);
+  final byteWidth = dtype.byteWidth;
+  final blockBytes = inner * byteWidth;
+  final destStrideBytes = numArrays * inner * byteWidth;
+  final srcStrideBytes = inner * byteWidth;
+
+  final destPtr = result.pointer.cast<ffi.Uint8>();
+
+  for (var r = 0; r < numArrays; r++) {
+    final arr = arrays[r];
+    final srcContiguous = arr.isContiguous ? arr : arr.copy();
+    try {
+      final srcPtr = srcContiguous.pointer.cast<ffi.Uint8>();
+      final destInitialOffsetBytes = r * inner * byteWidth;
+
+      if (outer == 1) {
+        custom_memcpy(
+          (destPtr + destInitialOffsetBytes).cast(),
+          srcPtr.cast(),
+          blockBytes,
+        );
+      } else {
+        for (var o = 0; o < outer; o++) {
+          custom_memcpy(
+            (destPtr + (o * destStrideBytes + destInitialOffsetBytes)).cast(),
+            (srcPtr + (o * srcStrideBytes)).cast(),
+            blockBytes,
+          );
+        }
+      }
+    } finally {
+      if (!identical(srcContiguous, arr)) {
+        srcContiguous.dispose();
+      }
+    }
+  }
+
+  if (!identical(result, targetResult)) {
+    result.copy(out: targetResult);
+    result.dispose();
+  }
+
+  return targetResult;
 }
 
 /// Expand the shape of an array by inserting a new axis of size 1.

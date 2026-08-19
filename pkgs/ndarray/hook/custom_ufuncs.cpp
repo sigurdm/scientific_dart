@@ -23,6 +23,9 @@
 #include <stdio.h>
 #include "custom_sorting.h"
 #include <vector>
+#if (defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86))
+#include <immintrin.h>
+#endif
 
 constexpr int STACK_RANK_LIMIT = 32;
 
@@ -1360,54 +1363,324 @@ void s_div_double(const double *a, const int *stridesA,
 // 3. COMPLEX128 VECTOR KERNELS (CONTIGUOUS & STRIDED)
 // ============================================================================
 
-void v_add_complex(const cpx_t *a, const cpx_t *b, cpx_t *res,int size, const uint8_t *mask) {
+void v_add_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask) {
     if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        if (!mask || mask[i]) {
-            res[i].r = a[i].r + b[i].r;
-            res[i].i = a[i].i + b[i].i;
-        }
-    }
-}
-
-void v_sub_complex(const cpx_t *a, const cpx_t *b, cpx_t *res,int size, const uint8_t *mask) {
-    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        if (!mask || mask[i]) {
-            res[i].r = a[i].r - b[i].r;
-            res[i].i = a[i].i - b[i].i;
-        }
-    }
-}
-
-void v_mul_complex(const cpx_t *a, const cpx_t *b, cpx_t *res,int size, const uint8_t *mask) {
-    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        if (!mask || mask[i]) {
-            double r1 = a[i].r, i1 = a[i].i;
-            double r2 = b[i].r, i2 = b[i].i;
-            // Foil complex multiplication: (r1+i1*i)*(r2+i2*i) = (r1*r2 - i1*i2) + i*(r1*i2 + i1*r2)
-            res[i].r = r1 * r2 - i1 * i2;
-            res[i].i = r1 * i2 + i1 * r2;
-        }
-    }
-}
-
-void v_div_complex(const cpx_t *a, const cpx_t *b, cpx_t *res,int size, const uint8_t *mask) {
-    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        if (!mask || mask[i]) {
-            double r1 = a[i].r, i1 = a[i].i;
-            double r2 = b[i].r, i2 = b[i].i;
-            // Complex division rationalization:
-            double denom = r2 * r2 + i2 * i2;
-            if (denom == 0.0) {
-                res[i].r = NAN;
-                res[i].i = NAN;
-            } else {
-                res[i].r = (r1 * r2 + i1 * i2) / denom;
-                res[i].i = (i1 * r2 - r1 * i2) / denom;
+    if (mask != nullptr) {
+        for (int i = 0; i < size; i++) {
+            if (mask[i]) {
+                res[i].r = a[i].r + b[i].r;
+                res[i].i = a[i].i + b[i].i;
             }
+        }
+        return;
+    }
+    v_add_double((const double*)a, (const double*)b, (double*)res, size * 2, nullptr);
+}
+
+void v_add_complex64(const cpx_f_t *a, const cpx_f_t *b, cpx_f_t *res, int size, const uint8_t *mask) {
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
+    if (mask != nullptr) {
+        for (int i = 0; i < size; i++) {
+            if (mask[i]) {
+                res[i].r = a[i].r + b[i].r;
+                res[i].i = a[i].i + b[i].i;
+            }
+        }
+        return;
+    }
+    v_add_float((const float*)a, (const float*)b, (float*)res, size * 2, nullptr);
+}
+
+void v_sub_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask) {
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
+    if (mask != nullptr) {
+        for (int i = 0; i < size; i++) {
+            if (mask[i]) {
+                res[i].r = a[i].r - b[i].r;
+                res[i].i = a[i].i - b[i].i;
+            }
+        }
+        return;
+    }
+    v_sub_double((const double*)a, (const double*)b, (double*)res, size * 2, nullptr);
+}
+
+void v_sub_complex64(const cpx_f_t *a, const cpx_f_t *b, cpx_f_t *res, int size, const uint8_t *mask) {
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
+    if (mask != nullptr) {
+        for (int i = 0; i < size; i++) {
+            if (mask[i]) {
+                res[i].r = a[i].r - b[i].r;
+                res[i].i = a[i].i - b[i].i;
+            }
+        }
+        return;
+    }
+    v_sub_float((const float*)a, (const float*)b, (float*)res, size * 2, nullptr);
+}
+
+void v_mul_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask) {
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
+    if (mask != nullptr) {
+        for (int i = 0; i < size; i++) {
+            if (mask[i]) {
+                double r1 = a[i].r, i1 = a[i].i;
+                double r2 = b[i].r, i2 = b[i].i;
+                res[i].r = r1 * r2 - i1 * i2;
+                res[i].i = r1 * i2 + i1 * r2;
+            }
+        }
+        return;
+    }
+
+    const double *a_d = (const double*)a;
+    const double *b_d = (const double*)b;
+    double *res_d = (double*)res;
+    int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+    for (; i <= size - 8; i += 8) {
+        __m256d va0 = _mm256_loadu_pd(a_d + i * 2);
+        __m256d vb0 = _mm256_loadu_pd(b_d + i * 2);
+        __m256d va1 = _mm256_loadu_pd(a_d + i * 2 + 4);
+        __m256d vb1 = _mm256_loadu_pd(b_d + i * 2 + 4);
+        __m256d va2 = _mm256_loadu_pd(a_d + i * 2 + 8);
+        __m256d vb2 = _mm256_loadu_pd(b_d + i * 2 + 8);
+        __m256d va3 = _mm256_loadu_pd(a_d + i * 2 + 12);
+        __m256d vb3 = _mm256_loadu_pd(b_d + i * 2 + 12);
+
+        __m256d b_swap0 = _mm256_permute_pd(vb0, 0b0101);
+        __m256d a_re0   = _mm256_movedup_pd(va0);
+        __m256d a_im0   = _mm256_unpackhi_pd(va0, va0);
+        __m256d prod0   = _mm256_mul_pd(a_im0, b_swap0);
+        __m256d r0      = _mm256_fmsubadd_pd(a_re0, vb0, prod0);
+
+        __m256d b_swap1 = _mm256_permute_pd(vb1, 0b0101);
+        __m256d a_re1   = _mm256_movedup_pd(va1);
+        __m256d a_im1   = _mm256_unpackhi_pd(va1, va1);
+        __m256d prod1   = _mm256_mul_pd(a_im1, b_swap1);
+        __m256d r1      = _mm256_fmsubadd_pd(a_re1, vb1, prod1);
+
+        __m256d b_swap2 = _mm256_permute_pd(vb2, 0b0101);
+        __m256d a_re2   = _mm256_movedup_pd(va2);
+        __m256d a_im2   = _mm256_unpackhi_pd(va2, va2);
+        __m256d prod2   = _mm256_mul_pd(a_im2, b_swap2);
+        __m256d r2      = _mm256_fmsubadd_pd(a_re2, vb2, prod2);
+
+        __m256d b_swap3 = _mm256_permute_pd(vb3, 0b0101);
+        __m256d a_re3   = _mm256_movedup_pd(va3);
+        __m256d a_im3   = _mm256_unpackhi_pd(va3, va3);
+        __m256d prod3   = _mm256_mul_pd(a_im3, b_swap3);
+        __m256d r3      = _mm256_fmsubadd_pd(a_re3, vb3, prod3);
+
+        _mm256_storeu_pd(res_d + i * 2, r0);
+        _mm256_storeu_pd(res_d + i * 2 + 4, r1);
+        _mm256_storeu_pd(res_d + i * 2 + 8, r2);
+        _mm256_storeu_pd(res_d + i * 2 + 12, r3);
+    }
+#endif
+    for (; i < size; i++) {
+        double r1 = a[i].r, i1 = a[i].i;
+        double r2 = b[i].r, i2 = b[i].i;
+        res[i].r = r1 * r2 - i1 * i2;
+        res[i].i = r1 * i2 + i1 * r2;
+    }
+}
+
+void v_mul_complex64(const cpx_f_t *a, const cpx_f_t *b, cpx_f_t *res, int size, const uint8_t *mask) {
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
+    if (mask != nullptr) {
+        for (int i = 0; i < size; i++) {
+            if (mask[i]) {
+                float r1 = a[i].r, i1 = a[i].i;
+                float r2 = b[i].r, i2 = b[i].i;
+                res[i].r = r1 * r2 - i1 * i2;
+                res[i].i = r1 * i2 + i1 * r2;
+            }
+        }
+        return;
+    }
+
+    const float *a_f = (const float*)a;
+    const float *b_f = (const float*)b;
+    float *res_f = (float*)res;
+    int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+    for (; i <= size - 8; i += 8) {
+        __m256 va0 = _mm256_loadu_ps(a_f + i * 2);
+        __m256 vb0 = _mm256_loadu_ps(b_f + i * 2);
+        __m256 va1 = _mm256_loadu_ps(a_f + i * 2 + 8);
+        __m256 vb1 = _mm256_loadu_ps(b_f + i * 2 + 8);
+
+        __m256 b_swap0 = _mm256_permute_ps(vb0, _MM_SHUFFLE(2, 3, 0, 1));
+        __m256 a_re0   = _mm256_moveldup_ps(va0);
+        __m256 a_im0   = _mm256_movehdup_ps(va0);
+        __m256 prod0   = _mm256_mul_ps(a_im0, b_swap0);
+        __m256 r0      = _mm256_fmsubadd_ps(a_re0, vb0, prod0);
+
+        __m256 b_swap1 = _mm256_permute_ps(vb1, _MM_SHUFFLE(2, 3, 0, 1));
+        __m256 a_re1   = _mm256_moveldup_ps(va1);
+        __m256 a_im1   = _mm256_movehdup_ps(va1);
+        __m256 prod1   = _mm256_mul_ps(a_im1, b_swap1);
+        __m256 r1      = _mm256_fmsubadd_ps(a_re1, vb1, prod1);
+
+        _mm256_storeu_ps(res_f + i * 2, r0);
+        _mm256_storeu_ps(res_f + i * 2 + 8, r1);
+    }
+#endif
+    for (; i < size; i++) {
+        float r1 = a[i].r, i1 = a[i].i;
+        float r2 = b[i].r, i2 = b[i].i;
+        res[i].r = r1 * r2 - i1 * i2;
+        res[i].i = r1 * i2 + i1 * r2;
+    }
+}
+
+void v_div_complex(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask) {
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
+    if (mask != nullptr) {
+        for (int i = 0; i < size; i++) {
+            if (mask[i]) {
+                double r1 = a[i].r, i1 = a[i].i;
+                double r2 = b[i].r, i2 = b[i].i;
+                double denom = r2 * r2 + i2 * i2;
+                if (denom == 0.0) {
+                    res[i].r = NAN;
+                    res[i].i = NAN;
+                } else {
+                    res[i].r = (r1 * r2 + i1 * i2) / denom;
+                    res[i].i = (i1 * r2 - r1 * i2) / denom;
+                }
+            }
+        }
+        return;
+    }
+
+    const double *a_d = (const double*)a;
+    const double *b_d = (const double*)b;
+    double *res_d = (double*)res;
+    int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+    const __m256d sign_mask = _mm256_setr_pd(0.0, -0.0, 0.0, -0.0);
+    for (; i <= size - 4; i += 4) {
+        __m256d va0 = _mm256_loadu_pd(a_d + i * 2);
+        __m256d vb0 = _mm256_loadu_pd(b_d + i * 2);
+        __m256d va1 = _mm256_loadu_pd(a_d + i * 2 + 4);
+        __m256d vb1 = _mm256_loadu_pd(b_d + i * 2 + 4);
+
+        __m256d b_sq0 = _mm256_mul_pd(vb0, vb0);
+        __m256d b_sq_swap0 = _mm256_permute_pd(b_sq0, 0b0101);
+        __m256d denom0 = _mm256_add_pd(b_sq0, b_sq_swap0);
+
+        __m256d b_sq1 = _mm256_mul_pd(vb1, vb1);
+        __m256d b_sq_swap1 = _mm256_permute_pd(b_sq1, 0b0101);
+        __m256d denom1 = _mm256_add_pd(b_sq1, b_sq_swap1);
+
+        __m256d b_conj0 = _mm256_xor_pd(vb0, sign_mask);
+        __m256d b_conj_swap0 = _mm256_permute_pd(b_conj0, 0b0101);
+        __m256d a_re0 = _mm256_movedup_pd(va0);
+        __m256d a_im0 = _mm256_permute_pd(va0, 0b1111);
+        __m256d prod0 = _mm256_mul_pd(a_im0, b_conj_swap0);
+        __m256d num0 = _mm256_fmsubadd_pd(a_re0, b_conj0, prod0);
+
+        __m256d b_conj1 = _mm256_xor_pd(vb1, sign_mask);
+        __m256d b_conj_swap1 = _mm256_permute_pd(b_conj1, 0b0101);
+        __m256d a_re1 = _mm256_movedup_pd(va1);
+        __m256d a_im1 = _mm256_permute_pd(va1, 0b1111);
+        __m256d prod1 = _mm256_mul_pd(a_im1, b_conj_swap1);
+        __m256d num1 = _mm256_fmsubadd_pd(a_re1, b_conj1, prod1);
+
+        __m256d r0 = _mm256_div_pd(num0, denom0);
+        __m256d r1 = _mm256_div_pd(num1, denom1);
+
+        _mm256_storeu_pd(res_d + i * 2, r0);
+        _mm256_storeu_pd(res_d + i * 2 + 4, r1);
+    }
+#endif
+    for (; i < size; i++) {
+        double r1 = a[i].r, i1 = a[i].i;
+        double r2 = b[i].r, i2 = b[i].i;
+        double denom = r2 * r2 + i2 * i2;
+        if (denom == 0.0) {
+            res[i].r = NAN;
+            res[i].i = NAN;
+        } else {
+            res[i].r = (r1 * r2 + i1 * i2) / denom;
+            res[i].i = (i1 * r2 - r1 * i2) / denom;
+        }
+    }
+}
+
+void v_div_complex64(const cpx_f_t *a, const cpx_f_t *b, cpx_f_t *res, int size, const uint8_t *mask) {
+    if (a == nullptr || b == nullptr || res == nullptr || size <= 0) return;
+    if (mask != nullptr) {
+        for (int i = 0; i < size; i++) {
+            if (mask[i]) {
+                float r1 = a[i].r, i1 = a[i].i;
+                float r2 = b[i].r, i2 = b[i].i;
+                float denom = r2 * r2 + i2 * i2;
+                if (denom == 0.0f) {
+                    res[i].r = NAN;
+                    res[i].i = NAN;
+                } else {
+                    res[i].r = (r1 * r2 + i1 * i2) / denom;
+                    res[i].i = (i1 * r2 - r1 * i2) / denom;
+                }
+            }
+        }
+        return;
+    }
+
+    const float *a_f = (const float*)a;
+    const float *b_f = (const float*)b;
+    float *res_f = (float*)res;
+    int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+    const __m256 sign_mask_f = _mm256_setr_ps(0.0f, -0.0f, 0.0f, -0.0f, 0.0f, -0.0f, 0.0f, -0.0f);
+    for (; i <= size - 8; i += 8) {
+        __m256 va0 = _mm256_loadu_ps(a_f + i * 2);
+        __m256 vb0 = _mm256_loadu_ps(b_f + i * 2);
+        __m256 va1 = _mm256_loadu_ps(a_f + i * 2 + 8);
+        __m256 vb1 = _mm256_loadu_ps(b_f + i * 2 + 8);
+
+        __m256 b_sq0 = _mm256_mul_ps(vb0, vb0);
+        __m256 b_sq_swap0 = _mm256_permute_ps(b_sq0, _MM_SHUFFLE(2, 3, 0, 1));
+        __m256 denom0 = _mm256_add_ps(b_sq0, b_sq_swap0);
+
+        __m256 b_sq1 = _mm256_mul_ps(vb1, vb1);
+        __m256 b_sq_swap1 = _mm256_permute_ps(b_sq1, _MM_SHUFFLE(2, 3, 0, 1));
+        __m256 denom1 = _mm256_add_ps(b_sq1, b_sq_swap1);
+
+        __m256 b_conj0 = _mm256_xor_ps(vb0, sign_mask_f);
+        __m256 b_conj_swap0 = _mm256_permute_ps(b_conj0, _MM_SHUFFLE(2, 3, 0, 1));
+        __m256 a_re0 = _mm256_moveldup_ps(va0);
+        __m256 a_im0 = _mm256_movehdup_ps(va0);
+        __m256 prod0 = _mm256_mul_ps(a_im0, b_conj_swap0);
+        __m256 num0 = _mm256_fmsubadd_ps(a_re0, b_conj0, prod0);
+
+        __m256 b_conj1 = _mm256_xor_ps(vb1, sign_mask_f);
+        __m256 b_conj_swap1 = _mm256_permute_ps(b_conj1, _MM_SHUFFLE(2, 3, 0, 1));
+        __m256 a_re1 = _mm256_moveldup_ps(va1);
+        __m256 a_im1 = _mm256_movehdup_ps(va1);
+        __m256 prod1 = _mm256_mul_ps(a_im1, b_conj_swap1);
+        __m256 num1 = _mm256_fmsubadd_ps(a_re1, b_conj1, prod1);
+
+        __m256 r0 = _mm256_div_ps(num0, denom0);
+        __m256 r1 = _mm256_div_ps(num1, denom1);
+
+        _mm256_storeu_ps(res_f + i * 2, r0);
+        _mm256_storeu_ps(res_f + i * 2 + 8, r1);
+    }
+#endif
+    for (; i < size; i++) {
+        float r1 = a[i].r, i1 = a[i].i;
+        float r2 = b[i].r, i2 = b[i].i;
+        float denom = r2 * r2 + i2 * i2;
+        if (denom == 0.0f) {
+            res[i].r = NAN;
+            res[i].i = NAN;
+        } else {
+            res[i].r = (r1 * r2 + i1 * i2) / denom;
+            res[i].i = (i1 * r2 - r1 * i2) / denom;
         }
     }
 }
@@ -3802,19 +4075,78 @@ DEFINE_STRIDED_UNARY_OP(s_sqrt_complex64, cpx_f_t, cpx_sqrt_f)
 DEFINE_STRIDED_UNARY_OP(s_acosh_complex128, cpx_t, cpx_acosh)
 DEFINE_STRIDED_UNARY_OP(s_acosh_complex64, cpx_f_t, cpx_acosh_f)
 
-void v_abs_complex128(const cpx_t *src, double *res,int size, const uint8_t *mask) {
+void v_abs_complex128(const cpx_t *src, double *res, int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        std::complex<double> cz(src[i].r, src[i].i);
-        res[i] = std::abs(cz);
+    if (mask != nullptr) {
+        for (int i = 0; i < size; i++) {
+            if (mask[i]) {
+                double r = src[i].r;
+                double im = src[i].i;
+                res[i] = std::sqrt(r * r + im * im);
+            }
+        }
+        return;
+    }
+
+    const double *src_d = (const double*)src;
+    int i = 0;
+#if defined(__AVX2__)
+    for (; i <= size - 4; i += 4) {
+        __m256d v0 = _mm256_loadu_pd(src_d + i * 2);
+        __m256d v1 = _mm256_loadu_pd(src_d + i * 2 + 4);
+
+        __m256d sq0 = _mm256_mul_pd(v0, v0);
+        __m256d sq1 = _mm256_mul_pd(v1, v1);
+
+        __m256d hadd = _mm256_hadd_pd(sq0, sq1);
+        __m256d sum = _mm256_permute4x64_pd(hadd, _MM_SHUFFLE(3, 1, 2, 0));
+
+        __m256d r = _mm256_sqrt_pd(sum);
+        _mm256_storeu_pd(res + i, r);
+    }
+#endif
+    for (; i < size; i++) {
+        double r = src[i].r;
+        double im = src[i].i;
+        res[i] = std::sqrt(r * r + im * im);
     }
 }
 
-void v_abs_complex64(const cpx_f_t *src, float *res,int size, const uint8_t *mask) {
+void v_abs_complex64(const cpx_f_t *src, float *res, int size, const uint8_t *mask) {
     if (src == nullptr || res == nullptr || size <= 0) return;
-    for (int i = 0; i < size; i++) {
-        std::complex<float> cz(src[i].r, src[i].i);
-        res[i] = std::abs(cz);
+    if (mask != nullptr) {
+        for (int i = 0; i < size; i++) {
+            if (mask[i]) {
+                float r = src[i].r;
+                float im = src[i].i;
+                res[i] = std::sqrt(r * r + im * im);
+            }
+        }
+        return;
+    }
+
+    const float *src_f = (const float*)src;
+    int i = 0;
+#if defined(__AVX2__)
+    const __m256i perm_mask = _mm256_setr_epi32(0, 1, 4, 5, 2, 3, 6, 7);
+    for (; i <= size - 8; i += 8) {
+        __m256 v0 = _mm256_loadu_ps(src_f + i * 2);
+        __m256 v1 = _mm256_loadu_ps(src_f + i * 2 + 8);
+
+        __m256 sq0 = _mm256_mul_ps(v0, v0);
+        __m256 sq1 = _mm256_mul_ps(v1, v1);
+
+        __m256 hadd = _mm256_hadd_ps(sq0, sq1);
+        __m256 sum = _mm256_permutevar8x32_ps(hadd, perm_mask);
+
+        __m256 r = _mm256_sqrt_ps(sum);
+        _mm256_storeu_ps(res + i, r);
+    }
+#endif
+    for (; i < size; i++) {
+        float r = src[i].r;
+        float im = src[i].i;
+        res[i] = std::sqrt(r * r + im * im);
     }
 }
 
@@ -3833,8 +4165,9 @@ void s_abs_complex128(const cpx_t *src, const int *stridesSrc,
             offsetRes += coord[d] * stridesRes[d];
         }
         if (!mask || mask[i]) {
-            std::complex<double> cz(src[offsetSrc].r, src[offsetSrc].i);
-            res[offsetRes] = std::abs(cz);
+            double r = src[offsetSrc].r;
+            double im = src[offsetSrc].i;
+            res[offsetRes] = std::sqrt(r * r + im * im);
         }
         for (int d = rank - 1; d >= 0; d--) {
             coord[d]++;
@@ -3859,8 +4192,9 @@ void s_abs_complex64(const cpx_f_t *src, const int *stridesSrc,
             offsetRes += coord[d] * stridesRes[d];
         }
         if (!mask || mask[i]) {
-            std::complex<float> cz(src[offsetSrc].r, src[offsetSrc].i);
-            res[offsetRes] = std::abs(cz);
+            float r = src[offsetSrc].r;
+            float im = src[offsetSrc].i;
+            res[offsetRes] = std::sqrt(r * r + im * im);
         }
         for (int d = rank - 1; d >= 0; d--) {
             coord[d]++;
@@ -4267,9 +4601,61 @@ static inline cpx_f_t cpx_div_f(cpx_f_t x, cpx_f_t y) {
 #define EXPR_cpx(OP, Ta, Tb, x, y, OP_SYM) cpx_##OP(cpx_from_##Ta(x), cpx_from_##Tb(y))
 #define EXPR_cpx64(OP, Ta, Tb, x, y, OP_SYM) cpx_f_from_cpx(cpx_##OP(cpx_from_##Ta(x), cpx_from_##Tb(y)))
 
+template <typename Ta, typename Tb, typename Tr, typename Lambda>
+static inline void v_dispatch_add(const Ta *a, const Tb *b, Tr *res, int size, const uint8_t *mask, Lambda fn) {
+    v_binary_impl(a, b, res, size, mask, fn);
+}
+template <typename Lambda>
+static inline void v_dispatch_add(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask, Lambda fn) {
+    v_add_complex(a, b, res, size, mask);
+}
+template <typename Lambda>
+static inline void v_dispatch_add(const cpx_f_t *a, const cpx_f_t *b, cpx_f_t *res, int size, const uint8_t *mask, Lambda fn) {
+    v_add_complex64(a, b, res, size, mask);
+}
+
+template <typename Ta, typename Tb, typename Tr, typename Lambda>
+static inline void v_dispatch_sub(const Ta *a, const Tb *b, Tr *res, int size, const uint8_t *mask, Lambda fn) {
+    v_binary_impl(a, b, res, size, mask, fn);
+}
+template <typename Lambda>
+static inline void v_dispatch_sub(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask, Lambda fn) {
+    v_sub_complex(a, b, res, size, mask);
+}
+template <typename Lambda>
+static inline void v_dispatch_sub(const cpx_f_t *a, const cpx_f_t *b, cpx_f_t *res, int size, const uint8_t *mask, Lambda fn) {
+    v_sub_complex64(a, b, res, size, mask);
+}
+
+template <typename Ta, typename Tb, typename Tr, typename Lambda>
+static inline void v_dispatch_mul(const Ta *a, const Tb *b, Tr *res, int size, const uint8_t *mask, Lambda fn) {
+    v_binary_impl(a, b, res, size, mask, fn);
+}
+template <typename Lambda>
+static inline void v_dispatch_mul(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask, Lambda fn) {
+    v_mul_complex(a, b, res, size, mask);
+}
+template <typename Lambda>
+static inline void v_dispatch_mul(const cpx_f_t *a, const cpx_f_t *b, cpx_f_t *res, int size, const uint8_t *mask, Lambda fn) {
+    v_mul_complex64(a, b, res, size, mask);
+}
+
+template <typename Ta, typename Tb, typename Tr, typename Lambda>
+static inline void v_dispatch_div(const Ta *a, const Tb *b, Tr *res, int size, const uint8_t *mask, Lambda fn) {
+    v_binary_impl(a, b, res, size, mask, fn);
+}
+template <typename Lambda>
+static inline void v_dispatch_div(const cpx_t *a, const cpx_t *b, cpx_t *res, int size, const uint8_t *mask, Lambda fn) {
+    v_div_complex(a, b, res, size, mask);
+}
+template <typename Lambda>
+static inline void v_dispatch_div(const cpx_f_t *a, const cpx_f_t *b, cpx_f_t *res, int size, const uint8_t *mask, Lambda fn) {
+    v_div_complex64(a, b, res, size, mask);
+}
+
 #define DEFINE_V_UFUNC(OP, Ta_tok, Tb_tok, Tr_tok, Ta, Tb, Tr, OP_SYM) \
 void v_##OP##_##Ta_tok##_##Tb_tok##_##Tr_tok(const Ta *a, const Tb *b, Tr *res, int size, const uint8_t *mask) { \
-    v_binary_impl(a, b, res, size, mask, [](Ta x, Tb y) { \
+    v_dispatch_##OP(a, b, res, size, mask, [](Ta x, Tb y) { \
         return EXPR_##Tr_tok(OP, Ta_tok, Tb_tok, x, y, OP_SYM); \
     }); \
 }
@@ -8583,40 +8969,27 @@ int is_strictly_increasing_double(const double *arr, int size, int stride) {
     return 1;
 }
 
-static inline int find_interval_double(const double *xp, int xp_size, int stride, double x_val) {
-    if (x_val == xp[(xp_size - 1) * stride]) {
-        return xp_size - 2;
-    }
-    int low = 0;
-    int high = xp_size - 1;
-    while (low < high - 1) {
-        int mid = low + (high - low) / 2;
-        if (xp[mid * stride] <= x_val) {
-            low = mid;
-        } else {
-            high = mid;
-        }
-    }
-    return low;
-}
-
-void v_interp_double(const double *x, int x_size,
-                     const double *xp, int xp_size,
-                     const double *fp, double *res,
-                     const double *left, const double *right) {
+template <typename T>
+static inline void fast_interp_vector(const T *x, int x_size,
+                                      const T *xp, int xp_size,
+                                      const T *fp, T *res,
+                                      const T *left, const T *right) {
     if (x == nullptr || xp == nullptr || fp == nullptr || res == nullptr || x_size <= 0 || xp_size <= 0) {
         return;
     }
     if (xp_size == 1) {
-        double val = fp[0];
+        T val = fp[0];
+        T lval = (left != nullptr) ? *left : val;
+        T rval = (right != nullptr) ? *right : val;
+        T xp0 = xp[0];
         for (int i = 0; i < x_size; i++) {
-            double xv = x[i];
+            T xv = x[i];
             if (std::isnan(xv)) {
-                res[i] = NAN;
-            } else if (xv < xp[0]) {
-                res[i] = (left != nullptr) ? *left : val;
-            } else if (xv > xp[0]) {
-                res[i] = (right != nullptr) ? *right : val;
+                res[i] = std::numeric_limits<T>::quiet_NaN();
+            } else if (xv < xp0) {
+                res[i] = lval;
+            } else if (xv > xp0) {
+                res[i] = rval;
             } else {
                 res[i] = val;
             }
@@ -8624,28 +8997,187 @@ void v_interp_double(const double *x, int x_size,
         return;
     }
 
-    double xp_min = xp[0];
-    double xp_max = xp[xp_size - 1];
+    T xp_min = xp[0];
+    T xp_max = xp[xp_size - 1];
+    T lval = (left != nullptr) ? *left : fp[0];
+    T rval = (right != nullptr) ? *right : fp[xp_size - 1];
 
+    int j = 0;
     for (int i = 0; i < x_size; i++) {
-        double xv = x[i];
+        T xv = x[i];
+        if (std::isnan(xv)) {
+            res[i] = std::numeric_limits<T>::quiet_NaN();
+            continue;
+        }
         if (xv < xp_min) {
-            res[i] = (left != nullptr) ? *left : fp[0];
-        } else if (xv > xp_max) {
-            res[i] = (right != nullptr) ? *right : fp[xp_size - 1];
+            res[i] = lval;
+            continue;
+        }
+        if (xv > xp_max) {
+            res[i] = rval;
+            continue;
+        }
+        if (xv == xp_max) {
+            res[i] = fp[xp_size - 1];
+            continue;
+        }
+
+        // Fast path for monotonic / localized query streams
+        if (xv >= xp[j] && xv < xp[j + 1]) {
+            // within current interval
+        } else if (j + 1 < xp_size - 1 && xv >= xp[j + 1] && xv < xp[j + 2]) {
+            j++;
+        } else if (j > 0 && xv >= xp[j - 1] && xv < xp[j]) {
+            j--;
         } else {
-            int j = find_interval_double(xp, xp_size, 1, xv);
-            double x0 = xp[j];
-            double x1 = xp[j + 1];
-            double y0 = fp[j];
-            double y1 = fp[j + 1];
-            if (x0 == x1) {
-                res[i] = y0;
-            } else {
-                res[i] = y0 + (y1 - y0) * (xv - x0) / (x1 - x0);
-            }
+            // Binary search using std::upper_bound
+            const T *it = std::upper_bound(xp, xp + xp_size, xv);
+            j = static_cast<int>(it - xp) - 1;
+            if (j < 0) j = 0;
+            if (j >= xp_size - 1) j = xp_size - 2;
+        }
+
+        T x0 = xp[j];
+        T x1 = xp[j + 1];
+        T y0 = fp[j];
+        T y1 = fp[j + 1];
+        T dx = x1 - x0;
+        if (dx == 0) {
+            res[i] = y0;
+        } else {
+            res[i] = y0 + (y1 - y0) * (xv - x0) / dx;
         }
     }
+}
+
+template <typename T>
+static inline void fast_interp_strided(const T *x, const int *stridesX,
+                                       const T *xp, int strideXP, int xp_size,
+                                       const T *fp, int strideFP,
+                                       T *res, const int *stridesRes,
+                                       const int *shape, int rank,
+                                       const T *left, const T *right) {
+    if (x == nullptr || xp == nullptr || fp == nullptr || res == nullptr || rank <= 0 || rank > 32 || xp_size <= 0) {
+        return;
+    }
+
+    if (xp_size == 1) {
+        T val = fp[0];
+        T lval = (left != nullptr) ? *left : val;
+        T rval = (right != nullptr) ? *right : val;
+        T xp0 = xp[0];
+        int total_elements = 1;
+        for (int i = 0; i < rank; i++) total_elements *= shape[i];
+        int coord[32] = {0};
+        int offsetX = 0, offsetRes = 0;
+        for (int el = 0; el < total_elements; el++) {
+            T xv = x[offsetX];
+            if (std::isnan(xv)) {
+                res[offsetRes] = std::numeric_limits<T>::quiet_NaN();
+            } else if (xv < xp0) {
+                res[offsetRes] = lval;
+            } else if (xv > xp0) {
+                res[offsetRes] = rval;
+            } else {
+                res[offsetRes] = val;
+            }
+            for (int d = rank - 1; d >= 0; d--) {
+                coord[d]++;
+                if (coord[d] < shape[d]) {
+                    offsetX += stridesX[d];
+                    offsetRes += stridesRes[d];
+                    break;
+                }
+                coord[d] = 0;
+                offsetX -= (shape[d] - 1) * stridesX[d];
+                offsetRes -= (shape[d] - 1) * stridesRes[d];
+            }
+        }
+        return;
+    }
+
+    T xp_min = xp[0];
+    T xp_max = xp[(xp_size - 1) * strideXP];
+    T lval = (left != nullptr) ? *left : fp[0];
+    T rval = (right != nullptr) ? *right : fp[(xp_size - 1) * strideFP];
+
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+    int coord[32] = {0};
+    int offsetX = 0, offsetRes = 0;
+    int j = 0;
+
+    for (int el = 0; el < total_elements; el++) {
+        T xv = x[offsetX];
+        if (std::isnan(xv)) {
+            res[offsetRes] = std::numeric_limits<T>::quiet_NaN();
+        } else if (xv < xp_min) {
+            res[offsetRes] = lval;
+        } else if (xv > xp_max) {
+            res[offsetRes] = rval;
+        } else if (xv == xp_max) {
+            res[offsetRes] = fp[(xp_size - 1) * strideFP];
+        } else {
+            T xj = xp[j * strideXP];
+            T xj1 = xp[(j + 1) * strideXP];
+            if (xv >= xj && xv < xj1) {
+                // in current interval
+            } else if (j + 1 < xp_size - 1 && xv >= xj1 && xv < xp[(j + 2) * strideXP]) {
+                j++;
+            } else if (j > 0 && xv >= xp[(j - 1) * strideXP] && xv < xj) {
+                j--;
+            } else {
+                int low = 0;
+                int high = xp_size - 1;
+                while (low < high - 1) {
+                    int mid = low + (high - low) / 2;
+                    if (xp[mid * strideXP] <= xv) {
+                        low = mid;
+                    } else {
+                        high = mid;
+                    }
+                }
+                j = low;
+            }
+
+            T x0 = xp[j * strideXP];
+            T x1 = xp[(j + 1) * strideXP];
+            T y0 = fp[j * strideFP];
+            T y1 = fp[(j + 1) * strideFP];
+            T dx = x1 - x0;
+            if (dx == 0) {
+                res[offsetRes] = y0;
+            } else {
+                res[offsetRes] = y0 + (y1 - y0) * (xv - x0) / dx;
+            }
+        }
+
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetX += stridesX[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetX -= (shape[d] - 1) * stridesX[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
+    }
+}
+
+void v_interp_double(const double *x, int x_size,
+                     const double *xp, int xp_size,
+                     const double *fp, double *res,
+                     const double *left, const double *right) {
+    fast_interp_vector<double>(x, x_size, xp, xp_size, fp, res, left, right);
+}
+
+void native_interp_double(const double *x, int x_size,
+                          const double *xp, int xp_size,
+                          const double *fp, double *res,
+                          const double *left, const double *right) {
+    fast_interp_vector<double>(x, x_size, xp, xp_size, fp, res, left, right);
 }
 
 void s_interp_double(const double *x, const int *stridesX,
@@ -8654,144 +9186,21 @@ void s_interp_double(const double *x, const int *stridesX,
                      double *res, const int *stridesRes,
                      const int *shape, int rank,
                      const double *left, const double *right) {
-    if (x == nullptr || xp == nullptr || fp == nullptr || res == nullptr || rank <= 0 || rank > 32 || xp_size <= 0) {
-        return;
-    }
-
-    if (xp_size == 1) {
-        double val = fp[0];
-        double xp0 = xp[0];
-        int total_elements = 1;
-        for (int i = 0; i < rank; i++) total_elements *= shape[i];
-        int coord[32] = {0};
-        int offsetX = 0, offsetRes = 0;
-        for (int el = 0; el < total_elements; el++) {
-            double xv = x[offsetX];
-            if (std::isnan(xv)) {
-                res[offsetRes] = NAN;
-            } else if (xv < xp0) {
-                res[offsetRes] = (left != nullptr) ? *left : val;
-            } else if (xv > xp0) {
-                res[offsetRes] = (right != nullptr) ? *right : val;
-            } else {
-                res[offsetRes] = val;
-            }
-            for (int d = rank - 1; d >= 0; d--) {
-                coord[d]++;
-                if (coord[d] < shape[d]) {
-                    offsetX += stridesX[d];
-                    offsetRes += stridesRes[d];
-                    break;
-                }
-                coord[d] = 0;
-                offsetX -= (shape[d] - 1) * stridesX[d];
-                offsetRes -= (shape[d] - 1) * stridesRes[d];
-            }
-        }
-        return;
-    }
-
-    double xp_min = xp[0];
-    double xp_max = xp[(xp_size - 1) * strideXP];
-
-    int total_elements = 1;
-    for (int i = 0; i < rank; i++) total_elements *= shape[i];
-    int coord[32] = {0};
-    int offsetX = 0, offsetRes = 0;
-
-    for (int el = 0; el < total_elements; el++) {
-        double xv = x[offsetX];
-        if (xv < xp_min) {
-            res[offsetRes] = (left != nullptr) ? *left : fp[0];
-        } else if (xv > xp_max) {
-            res[offsetRes] = (right != nullptr) ? *right : fp[(xp_size - 1) * strideFP];
-        } else {
-            int j = find_interval_double(xp, xp_size, strideXP, xv);
-            double x0 = xp[j * strideXP];
-            double x1 = xp[(j + 1) * strideXP];
-            double y0 = fp[j * strideFP];
-            double y1 = fp[(j + 1) * strideFP];
-            if (x0 == x1) {
-                res[offsetRes] = y0;
-            } else {
-                res[offsetRes] = y0 + (y1 - y0) * (xv - x0) / (x1 - x0);
-            }
-        }
-
-        for (int d = rank - 1; d >= 0; d--) {
-            coord[d]++;
-            if (coord[d] < shape[d]) {
-                offsetX += stridesX[d];
-                offsetRes += stridesRes[d];
-                break;
-            }
-            coord[d] = 0;
-            offsetX -= (shape[d] - 1) * stridesX[d];
-            offsetRes -= (shape[d] - 1) * stridesRes[d];
-        }
-    }
-}
-
-static inline int find_interval_float(const float *xp, int xp_size, int stride, float x_val) {
-    if (x_val == xp[(xp_size - 1) * stride]) {
-        return xp_size - 2;
-    }
-    int low = 0;
-    int high = xp_size - 1;
-    while (low < high - 1) {
-        int mid = low + (high - low) / 2;
-        if (xp[mid * stride] <= x_val) {
-            low = mid;
-        } else {
-            high = mid;
-        }
-    }
-    return low;
+    fast_interp_strided<double>(x, stridesX, xp, strideXP, xp_size, fp, strideFP, res, stridesRes, shape, rank, left, right);
 }
 
 void v_interp_float(const float *x, int x_size,
                     const float *xp, int xp_size,
                     const float *fp, float *res,
                     const float *left, const float *right) {
-    if (x == nullptr || xp == nullptr || fp == nullptr || res == nullptr || x_size <= 0 || xp_size <= 0) {
-        return;
-    }
-    if (xp_size == 1) {
-        float val = fp[0];
-        for (int i = 0; i < x_size; i++) {
-            if (x[i] < xp[0]) {
-                res[i] = (left != nullptr) ? *left : val;
-            } else if (x[i] > xp[0]) {
-                res[i] = (right != nullptr) ? *right : val;
-            } else {
-                res[i] = val;
-            }
-        }
-        return;
-    }
+    fast_interp_vector<float>(x, x_size, xp, xp_size, fp, res, left, right);
+}
 
-    float xp_min = xp[0];
-    float xp_max = xp[xp_size - 1];
-
-    for (int i = 0; i < x_size; i++) {
-        float xv = x[i];
-        if (xv < xp_min) {
-            res[i] = (left != nullptr) ? *left : fp[0];
-        } else if (xv > xp_max) {
-            res[i] = (right != nullptr) ? *right : fp[xp_size - 1];
-        } else {
-            int j = find_interval_float(xp, xp_size, 1, xv);
-            float x0 = xp[j];
-            float x1 = xp[j + 1];
-            float y0 = fp[j];
-            float y1 = fp[j + 1];
-            if (x0 == x1) {
-                res[i] = y0;
-            } else {
-                res[i] = y0 + (y1 - y0) * (xv - x0) / (x1 - x0);
-            }
-        }
-    }
+void native_interp_float(const float *x, int x_size,
+                         const float *xp, int xp_size,
+                         const float *fp, float *res,
+                         const float *left, const float *right) {
+    fast_interp_vector<float>(x, x_size, xp, xp_size, fp, res, left, right);
 }
 
 void s_interp_float(const float *x, const int *stridesX,
@@ -8800,80 +9209,7 @@ void s_interp_float(const float *x, const int *stridesX,
                     float *res, const int *stridesRes,
                     const int *shape, int rank,
                     const float *left, const float *right) {
-    if (x == nullptr || xp == nullptr || fp == nullptr || res == nullptr || rank <= 0 || rank > 32 || xp_size <= 0) {
-        return;
-    }
-
-    if (xp_size == 1) {
-        float val = fp[0];
-        float xp0 = xp[0];
-        int total_elements = 1;
-        for (int i = 0; i < rank; i++) total_elements *= shape[i];
-        int coord[32] = {0};
-        int offsetX = 0, offsetRes = 0;
-        for (int el = 0; el < total_elements; el++) {
-            float xv = x[offsetX];
-            if (xv < xp0) {
-                res[offsetRes] = (left != nullptr) ? *left : val;
-            } else if (xv > xp0) {
-                res[offsetRes] = (right != nullptr) ? *right : val;
-            } else {
-                res[offsetRes] = val;
-            }
-            for (int d = rank - 1; d >= 0; d--) {
-                coord[d]++;
-                if (coord[d] < shape[d]) {
-                    offsetX += stridesX[d];
-                    offsetRes += stridesRes[d];
-                    break;
-                }
-                coord[d] = 0;
-                offsetX -= (shape[d] - 1) * stridesX[d];
-                offsetRes -= (shape[d] - 1) * stridesRes[d];
-            }
-        }
-        return;
-    }
-
-    float xp_min = xp[0];
-    float xp_max = xp[(xp_size - 1) * strideXP];
-
-    int total_elements = 1;
-    for (int i = 0; i < rank; i++) total_elements *= shape[i];
-    int coord[32] = {0};
-    int offsetX = 0, offsetRes = 0;
-
-    for (int el = 0; el < total_elements; el++) {
-        float xv = x[offsetX];
-        if (xv < xp_min) {
-            res[offsetRes] = (left != nullptr) ? *left : fp[0];
-        } else if (xv > xp_max) {
-            res[offsetRes] = (right != nullptr) ? *right : fp[(xp_size - 1) * strideFP];
-        } else {
-            int j = find_interval_float(xp, xp_size, strideXP, xv);
-            float x0 = xp[j * strideXP];
-            float x1 = xp[(j + 1) * strideXP];
-            float y0 = fp[j * strideFP];
-            float y1 = fp[(j + 1) * strideFP];
-            if (x0 == x1) {
-                res[offsetRes] = y0;
-            } else {
-                res[offsetRes] = y0 + (y1 - y0) * (xv - x0) / (x1 - x0);
-            }
-        }
-
-        for (int d = rank - 1; d >= 0; d--) {
-            coord[d]++;
-            if (coord[d] < shape[d]) {
-                offsetX += stridesX[d];
-                offsetRes += stridesRes[d];
-                break;
-            }
-            coord[d] = 0;
-            offsetX -= (shape[d] - 1) * stridesX[d];
-            offsetRes -= (shape[d] - 1) * stridesRes[d];
-        }
-    }
+    fast_interp_strided<float>(x, stridesX, xp, strideXP, xp_size, fp, strideFP, res, stridesRes, shape, rank, left, right);
 }
 
 // ============================================================================
@@ -11111,4 +11447,1876 @@ void s_reduceat_complex64(const cpx_f_t *src, const int *stridesSrc, cpx_f_t *de
 }
 void s_reduceat_boolean(const uint8_t *src, const int *stridesSrc, uint8_t *dest, const int *stridesDest, const int *shape, int rank, int axis, const int64_t *indices, int numIndices, int opCode) {
     s_reduceat_generic(src, stridesSrc, dest, stridesDest, shape, rank, axis, indices, numIndices, opCode);
+}
+
+/* ============================================================================
+ * SECTION 30: POLYNOMIAL & ORTHOGONAL SERIES EVALUATION (CLENSHAW RECURRENCE)
+ * ============================================================================
+ */
+
+static inline cpx_t cpx_add_val(cpx_t a, cpx_t b) {
+    return {a.r + b.r, a.i + b.i};
+}
+static inline cpx_t cpx_sub_val(cpx_t a, cpx_t b) {
+    return {a.r - b.r, a.i - b.i};
+}
+static inline cpx_t cpx_mul_val(cpx_t a, cpx_t b) {
+    return {a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r};
+}
+static inline cpx_t cpx_mul_scalar(cpx_t a, double s) {
+    return {a.r * s, a.i * s};
+}
+static inline bool cpx_isnan(cpx_t a) {
+    return std::isnan(a.r) || std::isnan(a.i);
+}
+
+static inline cpx_f_t cpx_f_add_val(cpx_f_t a, cpx_f_t b) {
+    return {a.r + b.r, a.i + b.i};
+}
+static inline cpx_f_t cpx_f_sub_val(cpx_f_t a, cpx_f_t b) {
+    return {a.r - b.r, a.i - b.i};
+}
+static inline cpx_f_t cpx_f_mul_val(cpx_f_t a, cpx_f_t b) {
+    return {a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r};
+}
+static inline cpx_f_t cpx_f_mul_scalar(cpx_f_t a, float s) {
+    return {a.r * s, a.i * s};
+}
+static inline bool cpx_f_isnan(cpx_f_t a) {
+    return std::isnan(a.r) || std::isnan(a.i);
+}
+
+// ----------------------------------------------------------------------------
+// Scalar Evaluators
+// ----------------------------------------------------------------------------
+
+static inline double eval_poly_double(const double *c, int stride_c, int n_c, double x) {
+    if (n_c <= 0) return 0.0;
+    if (n_c == 1) return std::isnan(x) ? NAN : c[0];
+    double val = c[0];
+    for (int k = 1; k < n_c; k++) {
+        val = val * x + c[k * stride_c];
+    }
+    return val;
+}
+
+static inline float eval_poly_float(const float *c, int stride_c, int n_c, float x) {
+    if (n_c <= 0) return 0.0f;
+    if (n_c == 1) return std::isnan(x) ? NAN : c[0];
+    float val = c[0];
+    for (int k = 1; k < n_c; k++) {
+        val = val * x + c[k * stride_c];
+    }
+    return val;
+}
+
+static inline cpx_t eval_poly_complex128(const cpx_t *c, int stride_c, int n_c, cpx_t x) {
+    if (n_c <= 0) return {0.0, 0.0};
+    if (n_c == 1) return cpx_isnan(x) ? (cpx_t){NAN, NAN} : c[0];
+    cpx_t val = c[0];
+    for (int k = 1; k < n_c; k++) {
+        val = cpx_add_val(cpx_mul_val(val, x), c[k * stride_c]);
+    }
+    return val;
+}
+
+static inline cpx_f_t eval_poly_complex64(const cpx_f_t *c, int stride_c, int n_c, cpx_f_t x) {
+    if (n_c <= 0) return {0.0f, 0.0f};
+    if (n_c == 1) return cpx_f_isnan(x) ? (cpx_f_t){NAN, NAN} : c[0];
+    cpx_f_t val = c[0];
+    for (int k = 1; k < n_c; k++) {
+        val = cpx_f_add_val(cpx_f_mul_val(val, x), c[k * stride_c]);
+    }
+    return val;
+}
+
+static inline double eval_cheb_double(const double *c, int stride_c, int n_c, double x) {
+    if (n_c <= 0) return 0.0;
+    if (n_c == 1) return std::isnan(x) ? NAN : c[0];
+    if (n_c == 2) return c[0] + c[stride_c] * x;
+    double x2 = 2.0 * x;
+    double c0 = c[(n_c - 2) * stride_c];
+    double c1 = c[(n_c - 1) * stride_c];
+    for (int k = 3; k <= n_c; k++) {
+        double tmp = c0;
+        c0 = c[(n_c - k) * stride_c] - c1;
+        c1 = tmp + c1 * x2;
+    }
+    return c0 + c1 * x;
+}
+
+static inline float eval_cheb_float(const float *c, int stride_c, int n_c, float x) {
+    if (n_c <= 0) return 0.0f;
+    if (n_c == 1) return std::isnan(x) ? NAN : c[0];
+    if (n_c == 2) return c[0] + c[stride_c] * x;
+    float x2 = 2.0f * x;
+    float c0 = c[(n_c - 2) * stride_c];
+    float c1 = c[(n_c - 1) * stride_c];
+    for (int k = 3; k <= n_c; k++) {
+        float tmp = c0;
+        c0 = c[(n_c - k) * stride_c] - c1;
+        c1 = tmp + c1 * x2;
+    }
+    return c0 + c1 * x;
+}
+
+static inline cpx_t eval_cheb_complex128(const cpx_t *c, int stride_c, int n_c, cpx_t x) {
+    if (n_c <= 0) return {0.0, 0.0};
+    if (n_c == 1) return cpx_isnan(x) ? (cpx_t){NAN, NAN} : c[0];
+    if (n_c == 2) return cpx_add_val(c[0], cpx_mul_val(c[stride_c], x));
+    cpx_t x2 = cpx_mul_scalar(x, 2.0);
+    cpx_t c0 = c[(n_c - 2) * stride_c];
+    cpx_t c1 = c[(n_c - 1) * stride_c];
+    for (int k = 3; k <= n_c; k++) {
+        cpx_t tmp = c0;
+        c0 = cpx_sub_val(c[(n_c - k) * stride_c], c1);
+        c1 = cpx_add_val(tmp, cpx_mul_val(c1, x2));
+    }
+    return cpx_add_val(c0, cpx_mul_val(c1, x));
+}
+
+static inline cpx_f_t eval_cheb_complex64(const cpx_f_t *c, int stride_c, int n_c, cpx_f_t x) {
+    if (n_c <= 0) return {0.0f, 0.0f};
+    if (n_c == 1) return cpx_f_isnan(x) ? (cpx_f_t){NAN, NAN} : c[0];
+    if (n_c == 2) return cpx_f_add_val(c[0], cpx_f_mul_val(c[stride_c], x));
+    cpx_f_t x2 = cpx_f_mul_scalar(x, 2.0f);
+    cpx_f_t c0 = c[(n_c - 2) * stride_c];
+    cpx_f_t c1 = c[(n_c - 1) * stride_c];
+    for (int k = 3; k <= n_c; k++) {
+        cpx_f_t tmp = c0;
+        c0 = cpx_f_sub_val(c[(n_c - k) * stride_c], c1);
+        c1 = cpx_f_add_val(tmp, cpx_f_mul_val(c1, x2));
+    }
+    return cpx_f_add_val(c0, cpx_f_mul_val(c1, x));
+}
+
+static inline double eval_leg_double(const double *c, int stride_c, int n_c, double x) {
+    if (n_c <= 0) return 0.0;
+    if (n_c == 1) return std::isnan(x) ? NAN : c[0];
+    if (n_c == 2) return c[0] + c[stride_c] * x;
+    double c0 = c[(n_c - 2) * stride_c];
+    double c1 = c[(n_c - 1) * stride_c];
+    int nd = n_c;
+    for (int k = 3; k <= n_c; k++) {
+        double tmp = c0;
+        nd--;
+        double f0 = (double)(nd - 1) / (double)nd;
+        double f1 = (double)(2 * nd - 1) / (double)nd;
+        c0 = c[(n_c - k) * stride_c] - c1 * f0;
+        c1 = tmp + c1 * x * f1;
+    }
+    return c0 + c1 * x;
+}
+
+static inline float eval_leg_float(const float *c, int stride_c, int n_c, float x) {
+    if (n_c <= 0) return 0.0f;
+    if (n_c == 1) return std::isnan(x) ? NAN : c[0];
+    if (n_c == 2) return c[0] + c[stride_c] * x;
+    float c0 = c[(n_c - 2) * stride_c];
+    float c1 = c[(n_c - 1) * stride_c];
+    int nd = n_c;
+    for (int k = 3; k <= n_c; k++) {
+        float tmp = c0;
+        nd--;
+        float f0 = (float)(nd - 1) / (float)nd;
+        float f1 = (float)(2 * nd - 1) / (float)nd;
+        c0 = c[(n_c - k) * stride_c] - c1 * f0;
+        c1 = tmp + c1 * x * f1;
+    }
+    return c0 + c1 * x;
+}
+
+static inline cpx_t eval_leg_complex128(const cpx_t *c, int stride_c, int n_c, cpx_t x) {
+    if (n_c <= 0) return {0.0, 0.0};
+    if (n_c == 1) return cpx_isnan(x) ? (cpx_t){NAN, NAN} : c[0];
+    if (n_c == 2) return cpx_add_val(c[0], cpx_mul_val(c[stride_c], x));
+    cpx_t c0 = c[(n_c - 2) * stride_c];
+    cpx_t c1 = c[(n_c - 1) * stride_c];
+    int nd = n_c;
+    for (int k = 3; k <= n_c; k++) {
+        cpx_t tmp = c0;
+        nd--;
+        double f0 = (double)(nd - 1) / (double)nd;
+        double f1 = (double)(2 * nd - 1) / (double)nd;
+        c0 = cpx_sub_val(c[(n_c - k) * stride_c], cpx_mul_scalar(c1, f0));
+        c1 = cpx_add_val(tmp, cpx_mul_scalar(cpx_mul_val(c1, x), f1));
+    }
+    return cpx_add_val(c0, cpx_mul_val(c1, x));
+}
+
+static inline cpx_f_t eval_leg_complex64(const cpx_f_t *c, int stride_c, int n_c, cpx_f_t x) {
+    if (n_c <= 0) return {0.0f, 0.0f};
+    if (n_c == 1) return cpx_f_isnan(x) ? (cpx_f_t){NAN, NAN} : c[0];
+    if (n_c == 2) return cpx_f_add_val(c[0], cpx_f_mul_val(c[stride_c], x));
+    cpx_f_t c0 = c[(n_c - 2) * stride_c];
+    cpx_f_t c1 = c[(n_c - 1) * stride_c];
+    int nd = n_c;
+    for (int k = 3; k <= n_c; k++) {
+        cpx_f_t tmp = c0;
+        nd--;
+        float f0 = (float)(nd - 1) / (float)nd;
+        float f1 = (float)(2 * nd - 1) / (float)nd;
+        c0 = cpx_f_sub_val(c[(n_c - k) * stride_c], cpx_f_mul_scalar(c1, f0));
+        c1 = cpx_f_add_val(tmp, cpx_f_mul_scalar(cpx_f_mul_val(c1, x), f1));
+    }
+    return cpx_f_add_val(c0, cpx_f_mul_val(c1, x));
+}
+
+static inline double eval_herm_double(const double *c, int stride_c, int n_c, double x) {
+    if (n_c <= 0) return 0.0;
+    if (n_c == 1) return std::isnan(x) ? NAN : c[0];
+    double x2 = 2.0 * x;
+    if (n_c == 2) return c[0] + c[stride_c] * x2;
+    double c0 = c[(n_c - 2) * stride_c];
+    double c1 = c[(n_c - 1) * stride_c];
+    int nd = n_c;
+    for (int k = 3; k <= n_c; k++) {
+        double tmp = c0;
+        nd--;
+        double f0 = 2.0 * (double)(nd - 1);
+        c0 = c[(n_c - k) * stride_c] - c1 * f0;
+        c1 = tmp + c1 * x2;
+    }
+    return c0 + c1 * x2;
+}
+
+static inline float eval_herm_float(const float *c, int stride_c, int n_c, float x) {
+    if (n_c <= 0) return 0.0f;
+    if (n_c == 1) return std::isnan(x) ? NAN : c[0];
+    float x2 = 2.0f * x;
+    if (n_c == 2) return c[0] + c[stride_c] * x2;
+    float c0 = c[(n_c - 2) * stride_c];
+    float c1 = c[(n_c - 1) * stride_c];
+    int nd = n_c;
+    for (int k = 3; k <= n_c; k++) {
+        float tmp = c0;
+        nd--;
+        float f0 = 2.0f * (float)(nd - 1);
+        c0 = c[(n_c - k) * stride_c] - c1 * f0;
+        c1 = tmp + c1 * x2;
+    }
+    return c0 + c1 * x2;
+}
+
+static inline cpx_t eval_herm_complex128(const cpx_t *c, int stride_c, int n_c, cpx_t x) {
+    if (n_c <= 0) return {0.0, 0.0};
+    if (n_c == 1) return cpx_isnan(x) ? (cpx_t){NAN, NAN} : c[0];
+    cpx_t x2 = cpx_mul_scalar(x, 2.0);
+    if (n_c == 2) return cpx_add_val(c[0], cpx_mul_val(c[stride_c], x2));
+    cpx_t c0 = c[(n_c - 2) * stride_c];
+    cpx_t c1 = c[(n_c - 1) * stride_c];
+    int nd = n_c;
+    for (int k = 3; k <= n_c; k++) {
+        cpx_t tmp = c0;
+        nd--;
+        double f0 = 2.0 * (double)(nd - 1);
+        c0 = cpx_sub_val(c[(n_c - k) * stride_c], cpx_mul_scalar(c1, f0));
+        c1 = cpx_add_val(tmp, cpx_mul_val(c1, x2));
+    }
+    return cpx_add_val(c0, cpx_mul_val(c1, x2));
+}
+
+static inline cpx_f_t eval_herm_complex64(const cpx_f_t *c, int stride_c, int n_c, cpx_f_t x) {
+    if (n_c <= 0) return {0.0f, 0.0f};
+    if (n_c == 1) return cpx_f_isnan(x) ? (cpx_f_t){NAN, NAN} : c[0];
+    cpx_f_t x2 = cpx_f_mul_scalar(x, 2.0f);
+    if (n_c == 2) return cpx_f_add_val(c[0], cpx_f_mul_val(c[stride_c], x2));
+    cpx_f_t c0 = c[(n_c - 2) * stride_c];
+    cpx_f_t c1 = c[(n_c - 1) * stride_c];
+    int nd = n_c;
+    for (int k = 3; k <= n_c; k++) {
+        cpx_f_t tmp = c0;
+        nd--;
+        float f0 = 2.0f * (float)(nd - 1);
+        c0 = cpx_f_sub_val(c[(n_c - k) * stride_c], cpx_f_mul_scalar(c1, f0));
+        c1 = cpx_f_add_val(tmp, cpx_f_mul_val(c1, x2));
+    }
+    return cpx_f_add_val(c0, cpx_f_mul_val(c1, x2));
+}
+
+static inline double eval_lag_double(const double *c, int stride_c, int n_c, double x) {
+    if (n_c <= 0) return 0.0;
+    if (n_c == 1) return std::isnan(x) ? NAN : c[0];
+    if (n_c == 2) return c[0] + c[stride_c] * (1.0 - x);
+    double c0 = c[(n_c - 2) * stride_c];
+    double c1 = c[(n_c - 1) * stride_c];
+    int nd = n_c;
+    for (int k = 3; k <= n_c; k++) {
+        double tmp = c0;
+        nd--;
+        double f0 = (double)(nd - 1) / (double)nd;
+        c0 = c[(n_c - k) * stride_c] - c1 * f0;
+        c1 = tmp + (c1 * ((2.0 * nd - 1.0) - x)) / (double)nd;
+    }
+    return c0 + c1 * (1.0 - x);
+}
+
+static inline float eval_lag_float(const float *c, int stride_c, int n_c, float x) {
+    if (n_c <= 0) return 0.0f;
+    if (n_c == 1) return std::isnan(x) ? NAN : c[0];
+    if (n_c == 2) return c[0] + c[stride_c] * (1.0f - x);
+    float c0 = c[(n_c - 2) * stride_c];
+    float c1 = c[(n_c - 1) * stride_c];
+    int nd = n_c;
+    for (int k = 3; k <= n_c; k++) {
+        float tmp = c0;
+        nd--;
+        float f0 = (float)(nd - 1) / (float)nd;
+        c0 = c[(n_c - k) * stride_c] - c1 * f0;
+        c1 = tmp + (c1 * ((2.0f * nd - 1.0f) - x)) / (float)nd;
+    }
+    return c0 + c1 * (1.0f - x);
+}
+
+static inline cpx_t eval_lag_complex128(const cpx_t *c, int stride_c, int n_c, cpx_t x) {
+    if (n_c <= 0) return {0.0, 0.0};
+    if (n_c == 1) return cpx_isnan(x) ? (cpx_t){NAN, NAN} : c[0];
+    cpx_t omx = {1.0 - x.r, -x.i};
+    if (n_c == 2) return cpx_add_val(c[0], cpx_mul_val(c[stride_c], omx));
+    cpx_t c0 = c[(n_c - 2) * stride_c];
+    cpx_t c1 = c[(n_c - 1) * stride_c];
+    int nd = n_c;
+    for (int k = 3; k <= n_c; k++) {
+        cpx_t tmp = c0;
+        nd--;
+        double f0 = (double)(nd - 1) / (double)nd;
+        cpx_t term = {(2.0 * nd - 1.0 - x.r) / (double)nd, -x.i / (double)nd};
+        c0 = cpx_sub_val(c[(n_c - k) * stride_c], cpx_mul_scalar(c1, f0));
+        c1 = cpx_add_val(tmp, cpx_mul_val(c1, term));
+    }
+    return cpx_add_val(c0, cpx_mul_val(c1, omx));
+}
+
+static inline cpx_f_t eval_lag_complex64(const cpx_f_t *c, int stride_c, int n_c, cpx_f_t x) {
+    if (n_c <= 0) return {0.0f, 0.0f};
+    if (n_c == 1) return cpx_f_isnan(x) ? (cpx_f_t){NAN, NAN} : c[0];
+    cpx_f_t omx = {1.0f - x.r, -x.i};
+    if (n_c == 2) return cpx_f_add_val(c[0], cpx_f_mul_val(c[stride_c], omx));
+    cpx_f_t c0 = c[(n_c - 2) * stride_c];
+    cpx_f_t c1 = c[(n_c - 1) * stride_c];
+    int nd = n_c;
+    for (int k = 3; k <= n_c; k++) {
+        cpx_f_t tmp = c0;
+        nd--;
+        float f0 = (float)(nd - 1) / (float)nd;
+        cpx_f_t term = {(2.0f * nd - 1.0f - x.r) / (float)nd, -x.i / (float)nd};
+        c0 = cpx_f_sub_val(c[(n_c - k) * stride_c], cpx_f_mul_scalar(c1, f0));
+        c1 = cpx_f_add_val(tmp, cpx_f_mul_val(c1, term));
+    }
+    return cpx_f_add_val(c0, cpx_f_mul_val(c1, omx));
+}
+
+// ----------------------------------------------------------------------------
+// Flat Vector Kernels (AVX2 / SIMD + Loop Unrolling)
+// ----------------------------------------------------------------------------
+
+void v_polyval_double(const double *c, int stride_c, int n_c,
+                      const double *x, double *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    if (n_c == 1) {
+        double c0 = c[0];
+        for (int i = 0; i < size; i++) {
+            res[i] = std::isnan(x[i]) ? NAN : c0;
+        }
+        return;
+    }
+    int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+    for (; i + 7 < size; i += 8) {
+        __m256d vx0 = _mm256_loadu_pd(&x[i]);
+        __m256d vx1 = _mm256_loadu_pd(&x[i + 4]);
+        __m256d vval0 = _mm256_set1_pd(c[0]);
+        __m256d vval1 = vval0;
+        for (int k = 1; k < n_c; k++) {
+            __m256d vck = _mm256_set1_pd(c[k * stride_c]);
+            vval0 = _mm256_fmadd_pd(vval0, vx0, vck);
+            vval1 = _mm256_fmadd_pd(vval1, vx1, vck);
+        }
+        _mm256_storeu_pd(&res[i], vval0);
+        _mm256_storeu_pd(&res[i + 4], vval1);
+    }
+#endif
+    for (; i < size; i++) {
+        double xi = x[i];
+        double val = c[0];
+        for (int k = 1; k < n_c; k++) {
+            val = val * xi + c[k * stride_c];
+        }
+        res[i] = val;
+    }
+}
+
+void v_polyval_float(const float *c, int stride_c, int n_c,
+                     const float *x, float *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    if (n_c == 1) {
+        float c0 = c[0];
+        for (int i = 0; i < size; i++) {
+            res[i] = std::isnan(x[i]) ? NAN : c0;
+        }
+        return;
+    }
+    int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+    for (; i + 15 < size; i += 16) {
+        __m256 vx0 = _mm256_loadu_ps(&x[i]);
+        __m256 vx1 = _mm256_loadu_ps(&x[i + 8]);
+        __m256 vval0 = _mm256_set1_ps(c[0]);
+        __m256 vval1 = vval0;
+        for (int k = 1; k < n_c; k++) {
+            __m256 vck = _mm256_set1_ps(c[k * stride_c]);
+            vval0 = _mm256_fmadd_ps(vval0, vx0, vck);
+            vval1 = _mm256_fmadd_ps(vval1, vx1, vck);
+        }
+        _mm256_storeu_ps(&res[i], vval0);
+        _mm256_storeu_ps(&res[i + 8], vval1);
+    }
+#endif
+    for (; i < size; i++) {
+        float xi = x[i];
+        float val = c[0];
+        for (int k = 1; k < n_c; k++) {
+            val = val * xi + c[k * stride_c];
+        }
+        res[i] = val;
+    }
+}
+
+void v_polyval_complex128(const cpx_t *c, int stride_c, int n_c,
+                          const cpx_t *x, cpx_t *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = eval_poly_complex128(c, stride_c, n_c, x[i]);
+    }
+}
+
+void v_polyval_complex64(const cpx_f_t *c, int stride_c, int n_c,
+                         const cpx_f_t *x, cpx_f_t *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = eval_poly_complex64(c, stride_c, n_c, x[i]);
+    }
+}
+
+void v_chebval_double(const double *c, int stride_c, int n_c,
+                      const double *x, double *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    if (n_c == 1) {
+        double c0 = c[0];
+        for (int i = 0; i < size; i++) {
+            res[i] = std::isnan(x[i]) ? NAN : c0;
+        }
+        return;
+    }
+    if (n_c == 2) {
+        double c0 = c[0];
+        double c1 = c[stride_c];
+        int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+        __m256d vc0 = _mm256_set1_pd(c0);
+        __m256d vc1 = _mm256_set1_pd(c1);
+        for (; i + 7 < size; i += 8) {
+            __m256d vx0 = _mm256_loadu_pd(&x[i]);
+            __m256d vx1 = _mm256_loadu_pd(&x[i + 4]);
+            _mm256_storeu_pd(&res[i], _mm256_fmadd_pd(vc1, vx0, vc0));
+            _mm256_storeu_pd(&res[i + 4], _mm256_fmadd_pd(vc1, vx1, vc0));
+        }
+#endif
+        for (; i < size; i++) {
+            res[i] = c0 + c1 * x[i];
+        }
+        return;
+    }
+
+    int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+    for (; i + 7 < size; i += 8) {
+        __m256d vx0 = _mm256_loadu_pd(&x[i]);
+        __m256d vx1 = _mm256_loadu_pd(&x[i + 4]);
+        __m256d vx2_0 = _mm256_add_pd(vx0, vx0);
+        __m256d vx2_1 = _mm256_add_pd(vx1, vx1);
+        __m256d vc0_0 = _mm256_set1_pd(c[(n_c - 2) * stride_c]);
+        __m256d vc0_1 = vc0_0;
+        __m256d vc1_0 = _mm256_set1_pd(c[(n_c - 1) * stride_c]);
+        __m256d vc1_1 = vc1_0;
+
+        for (int k = 3; k <= n_c; k++) {
+            __m256d vtmp0 = vc0_0;
+            __m256d vtmp1 = vc0_1;
+            __m256d vck = _mm256_set1_pd(c[(n_c - k) * stride_c]);
+            vc0_0 = _mm256_sub_pd(vck, vc1_0);
+            vc0_1 = _mm256_sub_pd(vck, vc1_1);
+            vc1_0 = _mm256_fmadd_pd(vc1_0, vx2_0, vtmp0);
+            vc1_1 = _mm256_fmadd_pd(vc1_1, vx2_1, vtmp1);
+        }
+        _mm256_storeu_pd(&res[i], _mm256_fmadd_pd(vc1_0, vx0, vc0_0));
+        _mm256_storeu_pd(&res[i + 4], _mm256_fmadd_pd(vc1_1, vx1, vc0_1));
+    }
+#endif
+    for (; i < size; i++) {
+        double xi = x[i];
+        double x2 = 2.0 * xi;
+        double c0 = c[(n_c - 2) * stride_c];
+        double c1 = c[(n_c - 1) * stride_c];
+        for (int k = 3; k <= n_c; k++) {
+            double tmp = c0;
+            c0 = c[(n_c - k) * stride_c] - c1;
+            c1 = tmp + c1 * x2;
+        }
+        res[i] = c0 + c1 * xi;
+    }
+}
+
+void v_chebval_float(const float *c, int stride_c, int n_c,
+                     const float *x, float *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    if (n_c == 1) {
+        float c0 = c[0];
+        for (int i = 0; i < size; i++) {
+            res[i] = std::isnan(x[i]) ? NAN : c0;
+        }
+        return;
+    }
+    if (n_c == 2) {
+        float c0 = c[0];
+        float c1 = c[stride_c];
+        int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+        __m256 vc0 = _mm256_set1_ps(c0);
+        __m256 vc1 = _mm256_set1_ps(c1);
+        for (; i + 15 < size; i += 16) {
+            __m256 vx0 = _mm256_loadu_ps(&x[i]);
+            __m256 vx1 = _mm256_loadu_ps(&x[i + 8]);
+            _mm256_storeu_ps(&res[i], _mm256_fmadd_ps(vc1, vx0, vc0));
+            _mm256_storeu_ps(&res[i + 8], _mm256_fmadd_ps(vc1, vx1, vc0));
+        }
+#endif
+        for (; i < size; i++) {
+            res[i] = c0 + c1 * x[i];
+        }
+        return;
+    }
+
+    int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+    for (; i + 15 < size; i += 16) {
+        __m256 vx0 = _mm256_loadu_ps(&x[i]);
+        __m256 vx1 = _mm256_loadu_ps(&x[i + 8]);
+        __m256 vx2_0 = _mm256_add_ps(vx0, vx0);
+        __m256 vx2_1 = _mm256_add_ps(vx1, vx1);
+        __m256 vc0_0 = _mm256_set1_ps(c[(n_c - 2) * stride_c]);
+        __m256 vc0_1 = vc0_0;
+        __m256 vc1_0 = _mm256_set1_ps(c[(n_c - 1) * stride_c]);
+        __m256 vc1_1 = vc1_0;
+
+        for (int k = 3; k <= n_c; k++) {
+            __m256 vtmp0 = vc0_0;
+            __m256 vtmp1 = vc0_1;
+            __m256 vck = _mm256_set1_ps(c[(n_c - k) * stride_c]);
+            vc0_0 = _mm256_sub_ps(vck, vc1_0);
+            vc0_1 = _mm256_sub_ps(vck, vc1_1);
+            vc1_0 = _mm256_fmadd_ps(vc1_0, vx2_0, vtmp0);
+            vc1_1 = _mm256_fmadd_ps(vc1_1, vx2_1, vtmp1);
+        }
+        _mm256_storeu_ps(&res[i], _mm256_fmadd_ps(vc1_0, vx0, vc0_0));
+        _mm256_storeu_ps(&res[i + 8], _mm256_fmadd_ps(vc1_1, vx1, vc0_1));
+    }
+#endif
+    for (; i < size; i++) {
+        float xi = x[i];
+        float x2 = 2.0f * xi;
+        float c0 = c[(n_c - 2) * stride_c];
+        float c1 = c[(n_c - 1) * stride_c];
+        for (int k = 3; k <= n_c; k++) {
+            float tmp = c0;
+            c0 = c[(n_c - k) * stride_c] - c1;
+            c1 = tmp + c1 * x2;
+        }
+        res[i] = c0 + c1 * xi;
+    }
+}
+
+void v_chebval_complex128(const cpx_t *c, int stride_c, int n_c,
+                          const cpx_t *x, cpx_t *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = eval_cheb_complex128(c, stride_c, n_c, x[i]);
+    }
+}
+
+void v_chebval_complex64(const cpx_f_t *c, int stride_c, int n_c,
+                         const cpx_f_t *x, cpx_f_t *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = eval_cheb_complex64(c, stride_c, n_c, x[i]);
+    }
+}
+
+void v_legval_double(const double *c, int stride_c, int n_c,
+                     const double *x, double *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    if (n_c == 1) {
+        double c0 = c[0];
+        for (int i = 0; i < size; i++) {
+            res[i] = std::isnan(x[i]) ? NAN : c0;
+        }
+        return;
+    }
+    if (n_c == 2) {
+        double c0 = c[0];
+        double c1 = c[stride_c];
+        int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+        __m256d vc0 = _mm256_set1_pd(c0);
+        __m256d vc1 = _mm256_set1_pd(c1);
+        for (; i + 7 < size; i += 8) {
+            __m256d vx0 = _mm256_loadu_pd(&x[i]);
+            __m256d vx1 = _mm256_loadu_pd(&x[i + 4]);
+            _mm256_storeu_pd(&res[i], _mm256_fmadd_pd(vc1, vx0, vc0));
+            _mm256_storeu_pd(&res[i + 4], _mm256_fmadd_pd(vc1, vx1, vc0));
+        }
+#endif
+        for (; i < size; i++) {
+            res[i] = c0 + c1 * x[i];
+        }
+        return;
+    }
+
+    int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+    for (; i + 7 < size; i += 8) {
+        __m256d vx0 = _mm256_loadu_pd(&x[i]);
+        __m256d vx1 = _mm256_loadu_pd(&x[i + 4]);
+        __m256d vc0_0 = _mm256_set1_pd(c[(n_c - 2) * stride_c]);
+        __m256d vc0_1 = vc0_0;
+        __m256d vc1_0 = _mm256_set1_pd(c[(n_c - 1) * stride_c]);
+        __m256d vc1_1 = vc1_0;
+
+        int nd = n_c;
+        for (int k = 3; k <= n_c; k++) {
+            __m256d vtmp0 = vc0_0;
+            __m256d vtmp1 = vc0_1;
+            nd--;
+            double f0 = (double)(nd - 1) / (double)nd;
+            double f1 = (double)(2 * nd - 1) / (double)nd;
+            __m256d vck = _mm256_set1_pd(c[(n_c - k) * stride_c]);
+            __m256d vf0 = _mm256_set1_pd(f0);
+            __m256d vf1 = _mm256_set1_pd(f1);
+
+            vc0_0 = _mm256_fnmadd_pd(vc1_0, vf0, vck);
+            vc0_1 = _mm256_fnmadd_pd(vc1_1, vf0, vck);
+            __m256d v_scale0 = _mm256_mul_pd(vx0, vf1);
+            __m256d v_scale1 = _mm256_mul_pd(vx1, vf1);
+            vc1_0 = _mm256_fmadd_pd(vc1_0, v_scale0, vtmp0);
+            vc1_1 = _mm256_fmadd_pd(vc1_1, v_scale1, vtmp1);
+        }
+        _mm256_storeu_pd(&res[i], _mm256_fmadd_pd(vc1_0, vx0, vc0_0));
+        _mm256_storeu_pd(&res[i + 4], _mm256_fmadd_pd(vc1_1, vx1, vc0_1));
+    }
+#endif
+    for (; i < size; i++) {
+        double xi = x[i];
+        double c0 = c[(n_c - 2) * stride_c];
+        double c1 = c[(n_c - 1) * stride_c];
+        int nd = n_c;
+        for (int k = 3; k <= n_c; k++) {
+            double tmp = c0;
+            nd--;
+            double f0 = (double)(nd - 1) / (double)nd;
+            double f1 = (double)(2 * nd - 1) / (double)nd;
+            c0 = c[(n_c - k) * stride_c] - c1 * f0;
+            c1 = tmp + c1 * xi * f1;
+        }
+        res[i] = c0 + c1 * xi;
+    }
+}
+
+void v_legval_float(const float *c, int stride_c, int n_c,
+                    const float *x, float *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    if (n_c == 1) {
+        float c0 = c[0];
+        for (int i = 0; i < size; i++) {
+            res[i] = std::isnan(x[i]) ? NAN : c0;
+        }
+        return;
+    }
+    if (n_c == 2) {
+        float c0 = c[0];
+        float c1 = c[stride_c];
+        int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+        __m256 vc0 = _mm256_set1_ps(c0);
+        __m256 vc1 = _mm256_set1_ps(c1);
+        for (; i + 15 < size; i += 16) {
+            __m256 vx0 = _mm256_loadu_ps(&x[i]);
+            __m256 vx1 = _mm256_loadu_ps(&x[i + 8]);
+            _mm256_storeu_ps(&res[i], _mm256_fmadd_ps(vc1, vx0, vc0));
+            _mm256_storeu_ps(&res[i + 8], _mm256_fmadd_ps(vc1, vx1, vc0));
+        }
+#endif
+        for (; i < size; i++) {
+            res[i] = c0 + c1 * x[i];
+        }
+        return;
+    }
+
+    int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+    for (; i + 15 < size; i += 16) {
+        __m256 vx0 = _mm256_loadu_ps(&x[i]);
+        __m256 vx1 = _mm256_loadu_ps(&x[i + 8]);
+        __m256 vc0_0 = _mm256_set1_ps(c[(n_c - 2) * stride_c]);
+        __m256 vc0_1 = vc0_0;
+        __m256 vc1_0 = _mm256_set1_ps(c[(n_c - 1) * stride_c]);
+        __m256 vc1_1 = vc1_0;
+
+        int nd = n_c;
+        for (int k = 3; k <= n_c; k++) {
+            __m256 vtmp0 = vc0_0;
+            __m256 vtmp1 = vc0_1;
+            nd--;
+            float f0 = (float)(nd - 1) / (float)nd;
+            float f1 = (float)(2 * nd - 1) / (float)nd;
+            __m256 vck = _mm256_set1_ps(c[(n_c - k) * stride_c]);
+            __m256 vf0 = _mm256_set1_ps(f0);
+            __m256 vf1 = _mm256_set1_ps(f1);
+
+            vc0_0 = _mm256_fnmadd_ps(vc1_0, vf0, vck);
+            vc0_1 = _mm256_fnmadd_ps(vc1_1, vf0, vck);
+            __m256 v_scale0 = _mm256_mul_ps(vx0, vf1);
+            __m256 v_scale1 = _mm256_mul_ps(vx1, vf1);
+            vc1_0 = _mm256_fmadd_ps(vc1_0, v_scale0, vtmp0);
+            vc1_1 = _mm256_fmadd_ps(vc1_1, v_scale1, vtmp1);
+        }
+        _mm256_storeu_ps(&res[i], _mm256_fmadd_ps(vc1_0, vx0, vc0_0));
+        _mm256_storeu_ps(&res[i + 8], _mm256_fmadd_ps(vc1_1, vx1, vc0_1));
+    }
+#endif
+    for (; i < size; i++) {
+        float xi = x[i];
+        float c0 = c[(n_c - 2) * stride_c];
+        float c1 = c[(n_c - 1) * stride_c];
+        int nd = n_c;
+        for (int k = 3; k <= n_c; k++) {
+            float tmp = c0;
+            nd--;
+            float f0 = (float)(nd - 1) / (float)nd;
+            float f1 = (float)(2 * nd - 1) / (float)nd;
+            c0 = c[(n_c - k) * stride_c] - c1 * f0;
+            c1 = tmp + c1 * xi * f1;
+        }
+        res[i] = c0 + c1 * xi;
+    }
+}
+
+void v_legval_complex128(const cpx_t *c, int stride_c, int n_c,
+                         const cpx_t *x, cpx_t *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = eval_leg_complex128(c, stride_c, n_c, x[i]);
+    }
+}
+
+void v_legval_complex64(const cpx_f_t *c, int stride_c, int n_c,
+                        const cpx_f_t *x, cpx_f_t *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = eval_leg_complex64(c, stride_c, n_c, x[i]);
+    }
+}
+
+void v_hermval_double(const double *c, int stride_c, int n_c,
+                      const double *x, double *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    if (n_c == 1) {
+        double c0 = c[0];
+        for (int i = 0; i < size; i++) {
+            res[i] = std::isnan(x[i]) ? NAN : c0;
+        }
+        return;
+    }
+    if (n_c == 2) {
+        double c0 = c[0];
+        double c1 = c[stride_c];
+        double c1_2 = 2.0 * c1;
+        int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+        __m256d vc0 = _mm256_set1_pd(c0);
+        __m256d vc1_2 = _mm256_set1_pd(c1_2);
+        for (; i + 7 < size; i += 8) {
+            __m256d vx0 = _mm256_loadu_pd(&x[i]);
+            __m256d vx1 = _mm256_loadu_pd(&x[i + 4]);
+            _mm256_storeu_pd(&res[i], _mm256_fmadd_pd(vc1_2, vx0, vc0));
+            _mm256_storeu_pd(&res[i + 4], _mm256_fmadd_pd(vc1_2, vx1, vc0));
+        }
+#endif
+        for (; i < size; i++) {
+            res[i] = c0 + c1_2 * x[i];
+        }
+        return;
+    }
+
+    int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+    for (; i + 7 < size; i += 8) {
+        __m256d vx0 = _mm256_loadu_pd(&x[i]);
+        __m256d vx1 = _mm256_loadu_pd(&x[i + 4]);
+        __m256d vx2_0 = _mm256_add_pd(vx0, vx0);
+        __m256d vx2_1 = _mm256_add_pd(vx1, vx1);
+        __m256d vc0_0 = _mm256_set1_pd(c[(n_c - 2) * stride_c]);
+        __m256d vc0_1 = vc0_0;
+        __m256d vc1_0 = _mm256_set1_pd(c[(n_c - 1) * stride_c]);
+        __m256d vc1_1 = vc1_0;
+
+        int nd = n_c;
+        for (int k = 3; k <= n_c; k++) {
+            __m256d vtmp0 = vc0_0;
+            __m256d vtmp1 = vc0_1;
+            nd--;
+            double f0 = 2.0 * (double)(nd - 1);
+            __m256d vck = _mm256_set1_pd(c[(n_c - k) * stride_c]);
+            __m256d vf0 = _mm256_set1_pd(f0);
+
+            vc0_0 = _mm256_fnmadd_pd(vc1_0, vf0, vck);
+            vc0_1 = _mm256_fnmadd_pd(vc1_1, vf0, vck);
+            vc1_0 = _mm256_fmadd_pd(vc1_0, vx2_0, vtmp0);
+            vc1_1 = _mm256_fmadd_pd(vc1_1, vx2_1, vtmp1);
+        }
+        _mm256_storeu_pd(&res[i], _mm256_fmadd_pd(vc1_0, vx2_0, vc0_0));
+        _mm256_storeu_pd(&res[i + 4], _mm256_fmadd_pd(vc1_1, vx2_1, vc0_1));
+    }
+#endif
+    for (; i < size; i++) {
+        double xi = x[i];
+        double x2 = 2.0 * xi;
+        double c0 = c[(n_c - 2) * stride_c];
+        double c1 = c[(n_c - 1) * stride_c];
+        int nd = n_c;
+        for (int k = 3; k <= n_c; k++) {
+            double tmp = c0;
+            nd--;
+            double f0 = 2.0 * (double)(nd - 1);
+            c0 = c[(n_c - k) * stride_c] - c1 * f0;
+            c1 = tmp + c1 * x2;
+        }
+        res[i] = c0 + c1 * x2;
+    }
+}
+
+void v_hermval_float(const float *c, int stride_c, int n_c,
+                     const float *x, float *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    if (n_c == 1) {
+        float c0 = c[0];
+        for (int i = 0; i < size; i++) {
+            res[i] = std::isnan(x[i]) ? NAN : c0;
+        }
+        return;
+    }
+    if (n_c == 2) {
+        float c0 = c[0];
+        float c1 = c[stride_c];
+        float c1_2 = 2.0f * c1;
+        int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+        __m256 vc0 = _mm256_set1_ps(c0);
+        __m256 vc1_2 = _mm256_set1_ps(c1_2);
+        for (; i + 15 < size; i += 16) {
+            __m256 vx0 = _mm256_loadu_ps(&x[i]);
+            __m256 vx1 = _mm256_loadu_ps(&x[i + 8]);
+            _mm256_storeu_ps(&res[i], _mm256_fmadd_ps(vc1_2, vx0, vc0));
+            _mm256_storeu_ps(&res[i + 8], _mm256_fmadd_ps(vc1_2, vx1, vc0));
+        }
+#endif
+        for (; i < size; i++) {
+            res[i] = c0 + c1_2 * x[i];
+        }
+        return;
+    }
+
+    int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+    for (; i + 15 < size; i += 16) {
+        __m256 vx0 = _mm256_loadu_ps(&x[i]);
+        __m256 vx1 = _mm256_loadu_ps(&x[i + 8]);
+        __m256 vx2_0 = _mm256_add_ps(vx0, vx0);
+        __m256 vx2_1 = _mm256_add_ps(vx1, vx1);
+        __m256 vc0_0 = _mm256_set1_ps(c[(n_c - 2) * stride_c]);
+        __m256 vc0_1 = vc0_0;
+        __m256 vc1_0 = _mm256_set1_ps(c[(n_c - 1) * stride_c]);
+        __m256 vc1_1 = vc1_0;
+
+        int nd = n_c;
+        for (int k = 3; k <= n_c; k++) {
+            __m256 vtmp0 = vc0_0;
+            __m256 vtmp1 = vc0_1;
+            nd--;
+            float f0 = 2.0f * (float)(nd - 1);
+            __m256 vck = _mm256_set1_ps(c[(n_c - k) * stride_c]);
+            __m256 vf0 = _mm256_set1_ps(f0);
+
+            vc0_0 = _mm256_fnmadd_ps(vc1_0, vf0, vck);
+            vc0_1 = _mm256_fnmadd_ps(vc1_1, vf0, vck);
+            vc1_0 = _mm256_fmadd_ps(vc1_0, vx2_0, vtmp0);
+            vc1_1 = _mm256_fmadd_ps(vc1_1, vx2_1, vtmp1);
+        }
+        _mm256_storeu_ps(&res[i], _mm256_fmadd_ps(vc1_0, vx2_0, vc0_0));
+        _mm256_storeu_ps(&res[i + 8], _mm256_fmadd_ps(vc1_1, vx2_1, vc0_1));
+    }
+#endif
+    for (; i < size; i++) {
+        float xi = x[i];
+        float x2 = 2.0f * xi;
+        float c0 = c[(n_c - 2) * stride_c];
+        float c1 = c[(n_c - 1) * stride_c];
+        int nd = n_c;
+        for (int k = 3; k <= n_c; k++) {
+            float tmp = c0;
+            nd--;
+            float f0 = 2.0f * (float)(nd - 1);
+            c0 = c[(n_c - k) * stride_c] - c1 * f0;
+            c1 = tmp + c1 * x2;
+        }
+        res[i] = c0 + c1 * x2;
+    }
+}
+
+void v_hermval_complex128(const cpx_t *c, int stride_c, int n_c,
+                          const cpx_t *x, cpx_t *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = eval_herm_complex128(c, stride_c, n_c, x[i]);
+    }
+}
+
+void v_hermval_complex64(const cpx_f_t *c, int stride_c, int n_c,
+                         const cpx_f_t *x, cpx_f_t *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = eval_herm_complex64(c, stride_c, n_c, x[i]);
+    }
+}
+
+void v_lagval_double(const double *c, int stride_c, int n_c,
+                     const double *x, double *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    if (n_c == 1) {
+        double c0 = c[0];
+        for (int i = 0; i < size; i++) {
+            res[i] = std::isnan(x[i]) ? NAN : c0;
+        }
+        return;
+    }
+    if (n_c == 2) {
+        double c0 = c[0];
+        double c1 = c[stride_c];
+        int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+        __m256d vc0 = _mm256_set1_pd(c0);
+        __m256d vc1 = _mm256_set1_pd(c1);
+        __m256d v1 = _mm256_set1_pd(1.0);
+        for (; i + 7 < size; i += 8) {
+            __m256d vx0 = _mm256_loadu_pd(&x[i]);
+            __m256d vx1 = _mm256_loadu_pd(&x[i + 4]);
+            __m256d vomx0 = _mm256_sub_pd(v1, vx0);
+            __m256d vomx1 = _mm256_sub_pd(v1, vx1);
+            _mm256_storeu_pd(&res[i], _mm256_fmadd_pd(vc1, vomx0, vc0));
+            _mm256_storeu_pd(&res[i + 4], _mm256_fmadd_pd(vc1, vomx1, vc0));
+        }
+#endif
+        for (; i < size; i++) {
+            res[i] = c0 + c1 * (1.0 - x[i]);
+        }
+        return;
+    }
+
+    int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+    __m256d v1 = _mm256_set1_pd(1.0);
+    for (; i + 7 < size; i += 8) {
+        __m256d vx0 = _mm256_loadu_pd(&x[i]);
+        __m256d vx1 = _mm256_loadu_pd(&x[i + 4]);
+        __m256d vc0_0 = _mm256_set1_pd(c[(n_c - 2) * stride_c]);
+        __m256d vc0_1 = vc0_0;
+        __m256d vc1_0 = _mm256_set1_pd(c[(n_c - 1) * stride_c]);
+        __m256d vc1_1 = vc1_0;
+
+        int nd = n_c;
+        for (int k = 3; k <= n_c; k++) {
+            __m256d vtmp0 = vc0_0;
+            __m256d vtmp1 = vc0_1;
+            nd--;
+            double f0 = (double)(nd - 1) / (double)nd;
+            double f1 = (double)(2 * nd - 1) / (double)nd;
+            double inv_nd = 1.0 / (double)nd;
+            __m256d vck = _mm256_set1_pd(c[(n_c - k) * stride_c]);
+            __m256d vf0 = _mm256_set1_pd(f0);
+            __m256d vf1 = _mm256_set1_pd(f1);
+            __m256d vinv = _mm256_set1_pd(inv_nd);
+
+            vc0_0 = _mm256_fnmadd_pd(vc1_0, vf0, vck);
+            vc0_1 = _mm256_fnmadd_pd(vc1_1, vf0, vck);
+            __m256d v_term0 = _mm256_fnmadd_pd(vx0, vinv, vf1);
+            __m256d v_term1 = _mm256_fnmadd_pd(vx1, vinv, vf1);
+            vc1_0 = _mm256_fmadd_pd(vc1_0, v_term0, vtmp0);
+            vc1_1 = _mm256_fmadd_pd(vc1_1, v_term1, vtmp1);
+        }
+        __m256d vomx0 = _mm256_sub_pd(v1, vx0);
+        __m256d vomx1 = _mm256_sub_pd(v1, vx1);
+        _mm256_storeu_pd(&res[i], _mm256_fmadd_pd(vc1_0, vomx0, vc0_0));
+        _mm256_storeu_pd(&res[i + 4], _mm256_fmadd_pd(vc1_1, vomx1, vc0_1));
+    }
+#endif
+    for (; i < size; i++) {
+        double xi = x[i];
+        double c0 = c[(n_c - 2) * stride_c];
+        double c1 = c[(n_c - 1) * stride_c];
+        int nd = n_c;
+        for (int k = 3; k <= n_c; k++) {
+            double tmp = c0;
+            nd--;
+            double f0 = (double)(nd - 1) / (double)nd;
+            c0 = c[(n_c - k) * stride_c] - c1 * f0;
+            c1 = tmp + (c1 * ((2.0 * nd - 1.0) - xi)) / (double)nd;
+        }
+        res[i] = c0 + c1 * (1.0 - xi);
+    }
+}
+
+void v_lagval_float(const float *c, int stride_c, int n_c,
+                    const float *x, float *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    if (n_c == 1) {
+        float c0 = c[0];
+        for (int i = 0; i < size; i++) {
+            res[i] = std::isnan(x[i]) ? NAN : c0;
+        }
+        return;
+    }
+    if (n_c == 2) {
+        float c0 = c[0];
+        float c1 = c[stride_c];
+        int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+        __m256 vc0 = _mm256_set1_ps(c0);
+        __m256 vc1 = _mm256_set1_ps(c1);
+        __m256 v1 = _mm256_set1_ps(1.0f);
+        for (; i + 15 < size; i += 16) {
+            __m256 vx0 = _mm256_loadu_ps(&x[i]);
+            __m256 vx1 = _mm256_loadu_ps(&x[i + 8]);
+            __m256 vomx0 = _mm256_sub_ps(v1, vx0);
+            __m256 vomx1 = _mm256_sub_ps(v1, vx1);
+            _mm256_storeu_ps(&res[i], _mm256_fmadd_ps(vc1, vomx0, vc0));
+            _mm256_storeu_ps(&res[i + 8], _mm256_fmadd_ps(vc1, vomx1, vc0));
+        }
+#endif
+        for (; i < size; i++) {
+            res[i] = c0 + c1 * (1.0f - x[i]);
+        }
+        return;
+    }
+
+    int i = 0;
+#if defined(__AVX2__) && defined(__FMA__)
+    __m256 v1 = _mm256_set1_ps(1.0f);
+    for (; i + 15 < size; i += 16) {
+        __m256 vx0 = _mm256_loadu_ps(&x[i]);
+        __m256 vx1 = _mm256_loadu_ps(&x[i + 8]);
+        __m256 vc0_0 = _mm256_set1_ps(c[(n_c - 2) * stride_c]);
+        __m256 vc0_1 = vc0_0;
+        __m256 vc1_0 = _mm256_set1_ps(c[(n_c - 1) * stride_c]);
+        __m256 vc1_1 = vc1_0;
+
+        int nd = n_c;
+        for (int k = 3; k <= n_c; k++) {
+            __m256 vtmp0 = vc0_0;
+            __m256 vtmp1 = vc0_1;
+            nd--;
+            float f0 = (float)(nd - 1) / (float)nd;
+            float f1 = (float)(2 * nd - 1) / (float)nd;
+            float inv_nd = 1.0f / (float)nd;
+            __m256 vck = _mm256_set1_ps(c[(n_c - k) * stride_c]);
+            __m256 vf0 = _mm256_set1_ps(f0);
+            __m256 vf1 = _mm256_set1_ps(f1);
+            __m256 vinv = _mm256_set1_ps(inv_nd);
+
+            vc0_0 = _mm256_fnmadd_ps(vc1_0, vf0, vck);
+            vc0_1 = _mm256_fnmadd_ps(vc1_1, vf0, vck);
+            __m256 v_term0 = _mm256_fnmadd_ps(vx0, vinv, vf1);
+            __m256 v_term1 = _mm256_fnmadd_ps(vx1, vinv, vf1);
+            vc1_0 = _mm256_fmadd_ps(vc1_0, v_term0, vtmp0);
+            vc1_1 = _mm256_fmadd_ps(vc1_1, v_term1, vtmp1);
+        }
+        __m256 vomx0 = _mm256_sub_ps(v1, vx0);
+        __m256 vomx1 = _mm256_sub_ps(v1, vx1);
+        _mm256_storeu_ps(&res[i], _mm256_fmadd_ps(vc1_0, vomx0, vc0_0));
+        _mm256_storeu_ps(&res[i + 8], _mm256_fmadd_ps(vc1_1, vomx1, vc0_1));
+    }
+#endif
+    for (; i < size; i++) {
+        float xi = x[i];
+        float c0 = c[(n_c - 2) * stride_c];
+        float c1 = c[(n_c - 1) * stride_c];
+        int nd = n_c;
+        for (int k = 3; k <= n_c; k++) {
+            float tmp = c0;
+            nd--;
+            float f0 = (float)(nd - 1) / (float)nd;
+            c0 = c[(n_c - k) * stride_c] - c1 * f0;
+            c1 = tmp + (c1 * ((2.0f * nd - 1.0f) - xi)) / (float)nd;
+        }
+        res[i] = c0 + c1 * (1.0f - xi);
+    }
+}
+
+void v_lagval_complex128(const cpx_t *c, int stride_c, int n_c,
+                         const cpx_t *x, cpx_t *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = eval_lag_complex128(c, stride_c, n_c, x[i]);
+    }
+}
+
+void v_lagval_complex64(const cpx_f_t *c, int stride_c, int n_c,
+                        const cpx_f_t *x, cpx_f_t *res, int size) {
+    if (c == nullptr || x == nullptr || res == nullptr || size <= 0 || n_c <= 0) return;
+    for (int i = 0; i < size; i++) {
+        res[i] = eval_lag_complex64(c, stride_c, n_c, x[i]);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Strided Multi-Dimensional Kernels
+// ----------------------------------------------------------------------------
+
+template <typename T, typename Func>
+static void s_poly_generic_impl(const T *c, int stride_c, int n_c,
+                                const T *x, const int *stridesX,
+                                T *res, const int *stridesRes,
+                                const int *shape, int rank,
+                                Func eval_fn) {
+    if (c == nullptr || x == nullptr || res == nullptr || rank <= 0 || rank > 32 || n_c <= 0) return;
+    
+    int total_elements = 1;
+    for (int i = 0; i < rank; i++) total_elements *= shape[i];
+
+    int coord[32] = {0};
+    int offsetX = 0, offsetRes = 0;
+    for (int el = 0; el < total_elements; el++) {
+        res[offsetRes] = eval_fn(c, stride_c, n_c, x[offsetX]);
+
+        for (int d = rank - 1; d >= 0; d--) {
+            coord[d]++;
+            if (coord[d] < shape[d]) {
+                offsetX += stridesX[d];
+                offsetRes += stridesRes[d];
+                break;
+            }
+            coord[d] = 0;
+            offsetX -= (shape[d] - 1) * stridesX[d];
+            offsetRes -= (shape[d] - 1) * stridesRes[d];
+        }
+    }
+}
+
+void s_polyval_double(const double *c, int stride_c, int n_c, const double *x, const int *stridesX, double *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_poly_double);
+}
+void s_polyval_float(const float *c, int stride_c, int n_c, const float *x, const int *stridesX, float *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_poly_float);
+}
+void s_polyval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, const int *stridesX, cpx_t *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_poly_complex128);
+}
+void s_polyval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, const int *stridesX, cpx_f_t *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_poly_complex64);
+}
+
+void s_chebval_double(const double *c, int stride_c, int n_c, const double *x, const int *stridesX, double *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_cheb_double);
+}
+void s_chebval_float(const float *c, int stride_c, int n_c, const float *x, const int *stridesX, float *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_cheb_float);
+}
+void s_chebval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, const int *stridesX, cpx_t *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_cheb_complex128);
+}
+void s_chebval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, const int *stridesX, cpx_f_t *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_cheb_complex64);
+}
+
+void s_legval_double(const double *c, int stride_c, int n_c, const double *x, const int *stridesX, double *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_leg_double);
+}
+void s_legval_float(const float *c, int stride_c, int n_c, const float *x, const int *stridesX, float *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_leg_float);
+}
+void s_legval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, const int *stridesX, cpx_t *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_leg_complex128);
+}
+void s_legval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, const int *stridesX, cpx_f_t *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_leg_complex64);
+}
+
+void s_hermval_double(const double *c, int stride_c, int n_c, const double *x, const int *stridesX, double *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_herm_double);
+}
+void s_hermval_float(const float *c, int stride_c, int n_c, const float *x, const int *stridesX, float *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_herm_float);
+}
+void s_hermval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, const int *stridesX, cpx_t *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_herm_complex128);
+}
+void s_hermval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, const int *stridesX, cpx_f_t *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_herm_complex64);
+}
+
+void s_lagval_double(const double *c, int stride_c, int n_c, const double *x, const int *stridesX, double *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_lag_double);
+}
+void s_lagval_float(const float *c, int stride_c, int n_c, const float *x, const int *stridesX, float *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_lag_float);
+}
+void s_lagval_complex128(const cpx_t *c, int stride_c, int n_c, const cpx_t *x, const int *stridesX, cpx_t *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_lag_complex128);
+}
+void s_lagval_complex64(const cpx_f_t *c, int stride_c, int n_c, const cpx_f_t *x, const int *stridesX, cpx_f_t *res, const int *stridesRes, const int *shape, int rank) {
+    s_poly_generic_impl(c, stride_c, n_c, x, stridesX, res, stridesRes, shape, rank, eval_lag_complex64);
+}
+
+// ============================================================================
+// Histogram Implementations (Uniform and Binary Search)
+// ============================================================================
+
+template <typename T, typename W, typename H>
+static void v_histogram_uniform_kernel(
+    const T *src,
+    const W *weights,
+    int size,
+    int nbins,
+    double min_val,
+    double max_val,
+    double norm,
+    H *hist
+) {
+    for (int i = 0; i < size; ++i) {
+        double val = (double)src[i];
+        if (std::isnan(val) || val < min_val || val > max_val) continue;
+        int bin;
+        if (val == max_val) {
+            bin = nbins - 1;
+        } else {
+            bin = (int)((val - min_val) * norm);
+            if (bin < 0) continue;
+            if (bin >= nbins) bin = nbins - 1;
+        }
+        if (weights != nullptr) {
+            hist[bin] += (H)weights[i];
+        } else {
+            hist[bin] += 1;
+        }
+    }
+}
+
+template <typename T, typename W, typename H>
+static void s_histogram_uniform_kernel(
+    const T *src, int strideSrc,
+    const W *weights, int strideWeights,
+    int size,
+    int nbins,
+    double min_val,
+    double max_val,
+    double norm,
+    H *hist, int strideHist
+) {
+    for (int i = 0; i < size; ++i) {
+        double val = (double)src[i * strideSrc];
+        if (std::isnan(val) || val < min_val || val > max_val) continue;
+        int bin;
+        if (val == max_val) {
+            bin = nbins - 1;
+        } else {
+            bin = (int)((val - min_val) * norm);
+            if (bin < 0) continue;
+            if (bin >= nbins) bin = nbins - 1;
+        }
+        if (weights != nullptr) {
+            hist[bin * strideHist] += (H)weights[i * strideWeights];
+        } else {
+            hist[bin * strideHist] += 1;
+        }
+    }
+}
+
+template <typename T, typename W, typename H>
+static void v_histogram_binsearch_kernel(
+    const T *src,
+    const W *weights,
+    const double *bin_edges,
+    int num_edges,
+    int size,
+    H *hist
+) {
+    int nbins = num_edges - 1;
+    double first_edge = bin_edges[0];
+    double last_edge = bin_edges[num_edges - 1];
+    for (int i = 0; i < size; ++i) {
+        double val = (double)src[i];
+        if (std::isnan(val) || val < first_edge || val > last_edge) continue;
+        int bin;
+        if (val == last_edge) {
+            bin = nbins - 1;
+        } else {
+            const double *p = std::upper_bound(bin_edges, bin_edges + num_edges, val);
+            bin = (int)(p - bin_edges) - 1;
+            if (bin < 0 || bin >= nbins) continue;
+        }
+        if (weights != nullptr) {
+            hist[bin] += (H)weights[i];
+        } else {
+            hist[bin] += 1;
+        }
+    }
+}
+
+template <typename T, typename W, typename H>
+static void s_histogram_binsearch_kernel(
+    const T *src, int strideSrc,
+    const W *weights, int strideWeights,
+    const double *bin_edges,
+    int num_edges,
+    int size,
+    H *hist, int strideHist
+) {
+    int nbins = num_edges - 1;
+    double first_edge = bin_edges[0];
+    double last_edge = bin_edges[num_edges - 1];
+    for (int i = 0; i < size; ++i) {
+        double val = (double)src[i * strideSrc];
+        if (std::isnan(val) || val < first_edge || val > last_edge) continue;
+        int bin;
+        if (val == last_edge) {
+            bin = nbins - 1;
+        } else {
+            const double *p = std::upper_bound(bin_edges, bin_edges + num_edges, val);
+            bin = (int)(p - bin_edges) - 1;
+            if (bin < 0 || bin >= nbins) continue;
+        }
+        if (weights != nullptr) {
+            hist[bin * strideHist] += (H)weights[i * strideWeights];
+        } else {
+            hist[bin * strideHist] += 1;
+        }
+    }
+}
+
+#define DISPATCH_HIST_H_TYPE_V(T, W, KERNEL_NAME, ...) \
+    switch (dtypeHist) { \
+        case DTYPE_INT64: \
+            KERNEL_NAME<T, W, int64_t>(__VA_ARGS__, (int64_t *)hist); \
+            break; \
+        case DTYPE_FLOAT64: \
+            KERNEL_NAME<T, W, double>(__VA_ARGS__, (double *)hist); \
+            break; \
+        case DTYPE_FLOAT32: \
+            KERNEL_NAME<T, W, float>(__VA_ARGS__, (float *)hist); \
+            break; \
+        default: break; \
+    }
+
+#define DISPATCH_HIST_H_TYPE_S(T, W, KERNEL_NAME, ...) \
+    switch (dtypeHist) { \
+        case DTYPE_INT64: \
+            KERNEL_NAME<T, W, int64_t>(__VA_ARGS__, (int64_t *)hist, strideHist); \
+            break; \
+        case DTYPE_FLOAT64: \
+            KERNEL_NAME<T, W, double>(__VA_ARGS__, (double *)hist, strideHist); \
+            break; \
+        case DTYPE_FLOAT32: \
+            KERNEL_NAME<T, W, float>(__VA_ARGS__, (float *)hist, strideHist); \
+            break; \
+        default: break; \
+    }
+
+#define DISPATCH_HIST_W_TYPE_V_UNIFORM(T) \
+    if (weights == nullptr) { \
+        DISPATCH_HIST_H_TYPE_V(T, double, v_histogram_uniform_kernel, (const T *)src, (const double *)nullptr, size, nbins, min_val, max_val, norm) \
+    } else { \
+        switch (dtypeWeights) { \
+            case DTYPE_FLOAT64: \
+                DISPATCH_HIST_H_TYPE_V(T, double, v_histogram_uniform_kernel, (const T *)src, (const double *)weights, size, nbins, min_val, max_val, norm) \
+                break; \
+            case DTYPE_FLOAT32: \
+                DISPATCH_HIST_H_TYPE_V(T, float, v_histogram_uniform_kernel, (const T *)src, (const float *)weights, size, nbins, min_val, max_val, norm) \
+                break; \
+            case DTYPE_INT32: \
+                DISPATCH_HIST_H_TYPE_V(T, int32_t, v_histogram_uniform_kernel, (const T *)src, (const int32_t *)weights, size, nbins, min_val, max_val, norm) \
+                break; \
+            case DTYPE_INT64: \
+                DISPATCH_HIST_H_TYPE_V(T, int64_t, v_histogram_uniform_kernel, (const T *)src, (const int64_t *)weights, size, nbins, min_val, max_val, norm) \
+                break; \
+            case DTYPE_INT16: \
+                DISPATCH_HIST_H_TYPE_V(T, int16_t, v_histogram_uniform_kernel, (const T *)src, (const int16_t *)weights, size, nbins, min_val, max_val, norm) \
+                break; \
+            case DTYPE_UINT8: \
+            case DTYPE_BOOLEAN: \
+                DISPATCH_HIST_H_TYPE_V(T, uint8_t, v_histogram_uniform_kernel, (const T *)src, (const uint8_t *)weights, size, nbins, min_val, max_val, norm) \
+                break; \
+            default: break; \
+        } \
+    }
+
+#define DISPATCH_HIST_W_TYPE_S_UNIFORM(T) \
+    if (weights == nullptr) { \
+        DISPATCH_HIST_H_TYPE_S(T, double, s_histogram_uniform_kernel, (const T *)src, strideSrc, (const double *)nullptr, 0, size, nbins, min_val, max_val, norm) \
+    } else { \
+        switch (dtypeWeights) { \
+            case DTYPE_FLOAT64: \
+                DISPATCH_HIST_H_TYPE_S(T, double, s_histogram_uniform_kernel, (const T *)src, strideSrc, (const double *)weights, strideWeights, size, nbins, min_val, max_val, norm) \
+                break; \
+            case DTYPE_FLOAT32: \
+                DISPATCH_HIST_H_TYPE_S(T, float, s_histogram_uniform_kernel, (const T *)src, strideSrc, (const float *)weights, strideWeights, size, nbins, min_val, max_val, norm) \
+                break; \
+            case DTYPE_INT32: \
+                DISPATCH_HIST_H_TYPE_S(T, int32_t, s_histogram_uniform_kernel, (const T *)src, strideSrc, (const int32_t *)weights, strideWeights, size, nbins, min_val, max_val, norm) \
+                break; \
+            case DTYPE_INT64: \
+                DISPATCH_HIST_H_TYPE_S(T, int64_t, s_histogram_uniform_kernel, (const T *)src, strideSrc, (const int64_t *)weights, strideWeights, size, nbins, min_val, max_val, norm) \
+                break; \
+            case DTYPE_INT16: \
+                DISPATCH_HIST_H_TYPE_S(T, int16_t, s_histogram_uniform_kernel, (const T *)src, strideSrc, (const int16_t *)weights, strideWeights, size, nbins, min_val, max_val, norm) \
+                break; \
+            case DTYPE_UINT8: \
+            case DTYPE_BOOLEAN: \
+                DISPATCH_HIST_H_TYPE_S(T, uint8_t, s_histogram_uniform_kernel, (const T *)src, strideSrc, (const uint8_t *)weights, strideWeights, size, nbins, min_val, max_val, norm) \
+                break; \
+            default: break; \
+        } \
+    }
+
+#define DISPATCH_HIST_W_TYPE_V_BINSEARCH(T) \
+    if (weights == nullptr) { \
+        DISPATCH_HIST_H_TYPE_V(T, double, v_histogram_binsearch_kernel, (const T *)src, (const double *)nullptr, bin_edges, num_edges, size) \
+    } else { \
+        switch (dtypeWeights) { \
+            case DTYPE_FLOAT64: \
+                DISPATCH_HIST_H_TYPE_V(T, double, v_histogram_binsearch_kernel, (const T *)src, (const double *)weights, bin_edges, num_edges, size) \
+                break; \
+            case DTYPE_FLOAT32: \
+                DISPATCH_HIST_H_TYPE_V(T, float, v_histogram_binsearch_kernel, (const T *)src, (const float *)weights, bin_edges, num_edges, size) \
+                break; \
+            case DTYPE_INT32: \
+                DISPATCH_HIST_H_TYPE_V(T, int32_t, v_histogram_binsearch_kernel, (const T *)src, (const int32_t *)weights, bin_edges, num_edges, size) \
+                break; \
+            case DTYPE_INT64: \
+                DISPATCH_HIST_H_TYPE_V(T, int64_t, v_histogram_binsearch_kernel, (const T *)src, (const int64_t *)weights, bin_edges, num_edges, size) \
+                break; \
+            case DTYPE_INT16: \
+                DISPATCH_HIST_H_TYPE_V(T, int16_t, v_histogram_binsearch_kernel, (const T *)src, (const int16_t *)weights, bin_edges, num_edges, size) \
+                break; \
+            case DTYPE_UINT8: \
+            case DTYPE_BOOLEAN: \
+                DISPATCH_HIST_H_TYPE_V(T, uint8_t, v_histogram_binsearch_kernel, (const T *)src, (const uint8_t *)weights, bin_edges, num_edges, size) \
+                break; \
+            default: break; \
+        } \
+    }
+
+#define DISPATCH_HIST_W_TYPE_S_BINSEARCH(T) \
+    if (weights == nullptr) { \
+        DISPATCH_HIST_H_TYPE_S(T, double, s_histogram_binsearch_kernel, (const T *)src, strideSrc, (const double *)nullptr, 0, bin_edges, num_edges, size) \
+    } else { \
+        switch (dtypeWeights) { \
+            case DTYPE_FLOAT64: \
+                DISPATCH_HIST_H_TYPE_S(T, double, s_histogram_binsearch_kernel, (const T *)src, strideSrc, (const double *)weights, strideWeights, bin_edges, num_edges, size) \
+                break; \
+            case DTYPE_FLOAT32: \
+                DISPATCH_HIST_H_TYPE_S(T, float, s_histogram_binsearch_kernel, (const T *)src, strideSrc, (const float *)weights, strideWeights, bin_edges, num_edges, size) \
+                break; \
+            case DTYPE_INT32: \
+                DISPATCH_HIST_H_TYPE_S(T, int32_t, s_histogram_binsearch_kernel, (const T *)src, strideSrc, (const int32_t *)weights, strideWeights, bin_edges, num_edges, size) \
+                break; \
+            case DTYPE_INT64: \
+                DISPATCH_HIST_H_TYPE_S(T, int64_t, s_histogram_binsearch_kernel, (const T *)src, strideSrc, (const int64_t *)weights, strideWeights, bin_edges, num_edges, size) \
+                break; \
+            case DTYPE_INT16: \
+                DISPATCH_HIST_H_TYPE_S(T, int16_t, s_histogram_binsearch_kernel, (const T *)src, strideSrc, (const int16_t *)weights, strideWeights, bin_edges, num_edges, size) \
+                break; \
+            case DTYPE_UINT8: \
+            case DTYPE_BOOLEAN: \
+                DISPATCH_HIST_H_TYPE_S(T, uint8_t, s_histogram_binsearch_kernel, (const T *)src, strideSrc, (const uint8_t *)weights, strideWeights, bin_edges, num_edges, size) \
+                break; \
+            default: break; \
+        } \
+    }
+
+extern "C" {
+void v_histogram_uniform(
+    const void *src, int dtypeSrc,
+    const void *weights, int dtypeWeights,
+    void *hist, int dtypeHist,
+    int size, int nbins,
+    double min_val, double max_val, double norm
+) {
+    if (src == nullptr || hist == nullptr || size <= 0 || nbins <= 0) return;
+    switch (dtypeSrc) {
+        case DTYPE_FLOAT64: DISPATCH_HIST_W_TYPE_V_UNIFORM(double); break;
+        case DTYPE_FLOAT32: DISPATCH_HIST_W_TYPE_V_UNIFORM(float); break;
+        case DTYPE_INT32: DISPATCH_HIST_W_TYPE_V_UNIFORM(int32_t); break;
+        case DTYPE_INT64: DISPATCH_HIST_W_TYPE_V_UNIFORM(int64_t); break;
+        case DTYPE_INT16: DISPATCH_HIST_W_TYPE_V_UNIFORM(int16_t); break;
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN: DISPATCH_HIST_W_TYPE_V_UNIFORM(uint8_t); break;
+        default: break;
+    }
+}
+
+void s_histogram_uniform(
+    const void *src, int strideSrc, int dtypeSrc,
+    const void *weights, int strideWeights, int dtypeWeights,
+    void *hist, int strideHist, int dtypeHist,
+    int size, int nbins,
+    double min_val, double max_val, double norm
+) {
+    if (src == nullptr || hist == nullptr || size <= 0 || nbins <= 0) return;
+    switch (dtypeSrc) {
+        case DTYPE_FLOAT64: DISPATCH_HIST_W_TYPE_S_UNIFORM(double); break;
+        case DTYPE_FLOAT32: DISPATCH_HIST_W_TYPE_S_UNIFORM(float); break;
+        case DTYPE_INT32: DISPATCH_HIST_W_TYPE_S_UNIFORM(int32_t); break;
+        case DTYPE_INT64: DISPATCH_HIST_W_TYPE_S_UNIFORM(int64_t); break;
+        case DTYPE_INT16: DISPATCH_HIST_W_TYPE_S_UNIFORM(int16_t); break;
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN: DISPATCH_HIST_W_TYPE_S_UNIFORM(uint8_t); break;
+        default: break;
+    }
+}
+
+void v_histogram_binsearch(
+    const void *src, int dtypeSrc,
+    const void *weights, int dtypeWeights,
+    void *hist, int dtypeHist,
+    const double *bin_edges, int num_edges,
+    int size
+) {
+    if (src == nullptr || hist == nullptr || bin_edges == nullptr || size <= 0 || num_edges < 2) return;
+    switch (dtypeSrc) {
+        case DTYPE_FLOAT64: DISPATCH_HIST_W_TYPE_V_BINSEARCH(double); break;
+        case DTYPE_FLOAT32: DISPATCH_HIST_W_TYPE_V_BINSEARCH(float); break;
+        case DTYPE_INT32: DISPATCH_HIST_W_TYPE_V_BINSEARCH(int32_t); break;
+        case DTYPE_INT64: DISPATCH_HIST_W_TYPE_V_BINSEARCH(int64_t); break;
+        case DTYPE_INT16: DISPATCH_HIST_W_TYPE_V_BINSEARCH(int16_t); break;
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN: DISPATCH_HIST_W_TYPE_V_BINSEARCH(uint8_t); break;
+        default: break;
+    }
+}
+
+void s_histogram_binsearch(
+    const void *src, int strideSrc, int dtypeSrc,
+    const void *weights, int strideWeights, int dtypeWeights,
+    void *hist, int strideHist, int dtypeHist,
+    const double *bin_edges, int num_edges,
+    int size
+) {
+    if (src == nullptr || hist == nullptr || bin_edges == nullptr || size <= 0 || num_edges < 2) return;
+    switch (dtypeSrc) {
+        case DTYPE_FLOAT64: DISPATCH_HIST_W_TYPE_S_BINSEARCH(double); break;
+        case DTYPE_FLOAT32: DISPATCH_HIST_W_TYPE_S_BINSEARCH(float); break;
+        case DTYPE_INT32: DISPATCH_HIST_W_TYPE_S_BINSEARCH(int32_t); break;
+        case DTYPE_INT64: DISPATCH_HIST_W_TYPE_S_BINSEARCH(int64_t); break;
+        case DTYPE_INT16: DISPATCH_HIST_W_TYPE_S_BINSEARCH(int16_t); break;
+        case DTYPE_UINT8:
+        case DTYPE_BOOLEAN: DISPATCH_HIST_W_TYPE_S_BINSEARCH(uint8_t); break;
+        default: break;
+    }
+}
+}
+
+void v_vander_fit_double(const double *x, const double *y, const double *w,
+                         double *v_mat, double *rhs,
+                         int m, int deg) {
+    if (x == nullptr || y == nullptr || v_mat == nullptr || rhs == nullptr || m <= 0 || deg < 0) {
+        return;
+    }
+    int n_cols = deg + 1;
+    if (w != nullptr) {
+        for (int i = 0; i < m; i++) {
+            double xi = x[i];
+            double wi = w[i];
+            rhs[i] = y[i] * wi;
+            double *row = v_mat + i * n_cols;
+            double cur = wi;
+            row[deg] = cur;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur *= xi;
+                row[j] = cur;
+            }
+        }
+    } else {
+        for (int i = 0; i < m; i++) {
+            double xi = x[i];
+            rhs[i] = y[i];
+            double *row = v_mat + i * n_cols;
+            double cur = 1.0;
+            row[deg] = 1.0;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur *= xi;
+                row[j] = cur;
+            }
+        }
+    }
+}
+
+void v_vander_fit_float(const float *x, const float *y, const float *w,
+                        float *v_mat, float *rhs,
+                        int m, int deg) {
+    if (x == nullptr || y == nullptr || v_mat == nullptr || rhs == nullptr || m <= 0 || deg < 0) {
+        return;
+    }
+    int n_cols = deg + 1;
+    if (w != nullptr) {
+        for (int i = 0; i < m; i++) {
+            float xi = x[i];
+            float wi = w[i];
+            rhs[i] = y[i] * wi;
+            float *row = v_mat + i * n_cols;
+            float cur = wi;
+            row[deg] = cur;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur *= xi;
+                row[j] = cur;
+            }
+        }
+    } else {
+        for (int i = 0; i < m; i++) {
+            float xi = x[i];
+            rhs[i] = y[i];
+            float *row = v_mat + i * n_cols;
+            float cur = 1.0f;
+            row[deg] = 1.0f;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur *= xi;
+                row[j] = cur;
+            }
+        }
+    }
+}
+
+void v_vander_fit_complex128(const cpx_t *x, const cpx_t *y, const cpx_t *w,
+                             cpx_t *v_mat, cpx_t *rhs,
+                             int m, int deg) {
+    if (x == nullptr || y == nullptr || v_mat == nullptr || rhs == nullptr || m <= 0 || deg < 0) {
+        return;
+    }
+    int n_cols = deg + 1;
+    if (w != nullptr) {
+        for (int i = 0; i < m; i++) {
+            cpx_t xi = x[i];
+            cpx_t wi = w[i];
+            rhs[i] = {y[i].r * wi.r - y[i].i * wi.i, y[i].r * wi.i + y[i].i * wi.r};
+            cpx_t *row = v_mat + i * n_cols;
+            cpx_t cur = wi;
+            row[deg] = cur;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur = {cur.r * xi.r - cur.i * xi.i, cur.r * xi.i + cur.i * xi.r};
+                row[j] = cur;
+            }
+        }
+    } else {
+        for (int i = 0; i < m; i++) {
+            cpx_t xi = x[i];
+            rhs[i] = y[i];
+            cpx_t *row = v_mat + i * n_cols;
+            cpx_t cur = {1.0, 0.0};
+            row[deg] = cur;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur = {cur.r * xi.r - cur.i * xi.i, cur.r * xi.i + cur.i * xi.r};
+                row[j] = cur;
+            }
+        }
+    }
+}
+
+void v_vander_fit_complex64(const cpx_f_t *x, const cpx_f_t *y, const cpx_f_t *w,
+                            cpx_f_t *v_mat, cpx_f_t *rhs,
+                            int m, int deg) {
+    if (x == nullptr || y == nullptr || v_mat == nullptr || rhs == nullptr || m <= 0 || deg < 0) {
+        return;
+    }
+    int n_cols = deg + 1;
+    if (w != nullptr) {
+        for (int i = 0; i < m; i++) {
+            cpx_f_t xi = x[i];
+            cpx_f_t wi = w[i];
+            rhs[i] = {y[i].r * wi.r - y[i].i * wi.i, y[i].r * wi.i + y[i].i * wi.r};
+            cpx_f_t *row = v_mat + i * n_cols;
+            cpx_f_t cur = wi;
+            row[deg] = cur;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur = {cur.r * xi.r - cur.i * xi.i, cur.r * xi.i + cur.i * xi.r};
+                row[j] = cur;
+            }
+        }
+    } else {
+        for (int i = 0; i < m; i++) {
+            cpx_f_t xi = x[i];
+            rhs[i] = y[i];
+            cpx_f_t *row = v_mat + i * n_cols;
+            cpx_f_t cur = {1.0f, 0.0f};
+            row[deg] = cur;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur = {cur.r * xi.r - cur.i * xi.i, cur.r * xi.i + cur.i * xi.r};
+                row[j] = cur;
+            }
+        }
+    }
+}
+
+void s_vander_fit_double(const double *x, int strideX,
+                         const double *y, int strideY,
+                         const double *w, int strideW,
+                         double *v_mat, double *rhs,
+                         int m, int deg) {
+    if (x == nullptr || y == nullptr || v_mat == nullptr || rhs == nullptr || m <= 0 || deg < 0) {
+        return;
+    }
+    int n_cols = deg + 1;
+    if (w != nullptr) {
+        for (int i = 0; i < m; i++) {
+            double xi = x[i * strideX];
+            double wi = w[i * strideW];
+            rhs[i] = y[i * strideY] * wi;
+            double *row = v_mat + i * n_cols;
+            double cur = wi;
+            row[deg] = cur;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur *= xi;
+                row[j] = cur;
+            }
+        }
+    } else {
+        for (int i = 0; i < m; i++) {
+            double xi = x[i * strideX];
+            rhs[i] = y[i * strideY];
+            double *row = v_mat + i * n_cols;
+            double cur = 1.0;
+            row[deg] = 1.0;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur *= xi;
+                row[j] = cur;
+            }
+        }
+    }
+}
+
+void s_vander_fit_float(const float *x, int strideX,
+                        const float *y, int strideY,
+                        const float *w, int strideW,
+                        float *v_mat, float *rhs,
+                        int m, int deg) {
+    if (x == nullptr || y == nullptr || v_mat == nullptr || rhs == nullptr || m <= 0 || deg < 0) {
+        return;
+    }
+    int n_cols = deg + 1;
+    if (w != nullptr) {
+        for (int i = 0; i < m; i++) {
+            float xi = x[i * strideX];
+            float wi = w[i * strideW];
+            rhs[i] = y[i * strideY] * wi;
+            float *row = v_mat + i * n_cols;
+            float cur = wi;
+            row[deg] = cur;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur *= xi;
+                row[j] = cur;
+            }
+        }
+    } else {
+        for (int i = 0; i < m; i++) {
+            float xi = x[i * strideX];
+            rhs[i] = y[i * strideY];
+            float *row = v_mat + i * n_cols;
+            float cur = 1.0f;
+            row[deg] = 1.0f;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur *= xi;
+                row[j] = cur;
+            }
+        }
+    }
+}
+
+void s_vander_fit_complex128(const cpx_t *x, int strideX,
+                             const cpx_t *y, int strideY,
+                             const cpx_t *w, int strideW,
+                             cpx_t *v_mat, cpx_t *rhs,
+                             int m, int deg) {
+    if (x == nullptr || y == nullptr || v_mat == nullptr || rhs == nullptr || m <= 0 || deg < 0) {
+        return;
+    }
+    int n_cols = deg + 1;
+    if (w != nullptr) {
+        for (int i = 0; i < m; i++) {
+            cpx_t xi = x[i * strideX];
+            cpx_t wi = w[i * strideW];
+            rhs[i] = {y[i * strideY].r * wi.r - y[i * strideY].i * wi.i, y[i * strideY].r * wi.i + y[i * strideY].i * wi.r};
+            cpx_t *row = v_mat + i * n_cols;
+            cpx_t cur = wi;
+            row[deg] = cur;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur = {cur.r * xi.r - cur.i * xi.i, cur.r * xi.i + cur.i * xi.r};
+                row[j] = cur;
+            }
+        }
+    } else {
+        for (int i = 0; i < m; i++) {
+            cpx_t xi = x[i * strideX];
+            rhs[i] = y[i * strideY];
+            cpx_t *row = v_mat + i * n_cols;
+            cpx_t cur = {1.0, 0.0};
+            row[deg] = cur;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur = {cur.r * xi.r - cur.i * xi.i, cur.r * xi.i + cur.i * xi.r};
+                row[j] = cur;
+            }
+        }
+    }
+}
+
+void s_vander_fit_complex64(const cpx_f_t *x, int strideX,
+                            const cpx_f_t *y, int strideY,
+                            const cpx_f_t *w, int strideW,
+                            cpx_f_t *v_mat, cpx_f_t *rhs,
+                            int m, int deg) {
+    if (x == nullptr || y == nullptr || v_mat == nullptr || rhs == nullptr || m <= 0 || deg < 0) {
+        return;
+    }
+    int n_cols = deg + 1;
+    if (w != nullptr) {
+        for (int i = 0; i < m; i++) {
+            cpx_f_t xi = x[i * strideX];
+            cpx_f_t wi = w[i * strideW];
+            rhs[i] = {y[i * strideY].r * wi.r - y[i * strideY].i * wi.i, y[i * strideY].r * wi.i + y[i * strideY].i * wi.r};
+            cpx_f_t *row = v_mat + i * n_cols;
+            cpx_f_t cur = wi;
+            row[deg] = cur;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur = {cur.r * xi.r - cur.i * xi.i, cur.r * xi.i + cur.i * xi.r};
+                row[j] = cur;
+            }
+        }
+    } else {
+        for (int i = 0; i < m; i++) {
+            cpx_f_t xi = x[i * strideX];
+            rhs[i] = y[i * strideY];
+            cpx_f_t *row = v_mat + i * n_cols;
+            cpx_f_t cur = {1.0f, 0.0f};
+            row[deg] = cur;
+            for (int j = deg - 1; j >= 0; j--) {
+                cur = {cur.r * xi.r - cur.i * xi.i, cur.r * xi.i + cur.i * xi.r};
+                row[j] = cur;
+            }
+        }
+    }
 }

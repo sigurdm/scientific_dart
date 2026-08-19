@@ -11,7 +11,6 @@ environment:
 dependencies:
   openblas: ^0.0.1
   ffi: ^2.2.0
-  archive: ^3.6.1
   pocketfft: ^0.0.1
   hooks: ^1.0.3
   code_assets: ^1.0.0
@@ -19,6 +18,7 @@ dependencies:
   resource_scope: ^0.0.1
 
 dev_dependencies:
+  archive: ^3.6.1
   lints: ^6.1.0
   test: ^1.31.1
   criterion:

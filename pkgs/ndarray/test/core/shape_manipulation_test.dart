@@ -369,6 +369,169 @@ void main() {
         );
 
         test(
+          'Tile 3D array',
+          () => NDArray.scope(() {
+            final a = NDArray<Int32>.arange(
+              0,
+              6,
+              dtype: DType.int32,
+            ).reshape([1, 2, 3]);
+            final b = tile(a, [2, 2, 2]);
+            expect(b.shape, [2, 4, 6]);
+            expect(b[[0, 0, 0]], 0);
+            expect(b[[0, 0, 3]], 0);
+            expect(b[[0, 2, 0]], 0);
+            expect(b[[1, 0, 0]], 0);
+            expect(b[[0, 1, 2]], 5);
+            expect(b[[1, 3, 5]], 5);
+          }),
+        );
+
+        test(
+          'Tile with strided non-contiguous source (transposed and sliced)',
+          () => NDArray.scope(() {
+            final a = NDArray<Float64>.arange(
+              0,
+              12,
+              dtype: DType.float64,
+            ).reshape([3, 4]);
+            final transposed = a.transposed; // shape [4, 3], strided
+            expect(transposed.isContiguous, false);
+
+            final tiled = tile(transposed, [2, 3]);
+            expect(tiled.shape, [8, 9]);
+            for (var r = 0; r < 8; r++) {
+              for (var c = 0; c < 9; c++) {
+                expect(tiled[[r, c]], transposed[[r % 4, c % 3]]);
+              }
+            }
+          }),
+        );
+
+        test(
+          'Tile with explicit out buffer',
+          () => NDArray.scope(() {
+            final a = NDArray<Float32>.fromList(
+              Float32List.fromList([1.0, 2.0, 3.0, 4.0]),
+              [2, 2],
+              DType.float32,
+            );
+            final out = NDArray<Float32>.zeros([4, 4], DType.float32);
+            final result = tile(a, [2, 2], out: out);
+            expect(identical(result, out), true);
+            expect(out.shape, [4, 4]);
+            expect(out[[0, 0]], 1.0);
+            expect(out[[0, 2]], 1.0);
+            expect(out[[2, 0]], 1.0);
+            expect(out[[2, 2]], 1.0);
+            expect(out[[3, 3]], 4.0);
+          }),
+        );
+
+        test(
+          'Tile all DTypes',
+          () => NDArray.scope(() {
+            // Int64
+            final i64 = NDArray<Int64>.fromList(
+              [Int64(10), Int64(20)],
+              [2],
+              DType.int64,
+            );
+            expect(tile(i64, [3]).toList(), [10, 20, 10, 20, 10, 20]);
+
+            // Int16
+            final i16 = NDArray<Int16>.fromList(
+              [Int16(1), Int16(2)],
+              [2],
+              DType.int16,
+            );
+            expect(tile(i16, [2]).toList(), [1, 2, 1, 2]);
+
+            // Uint8
+            final u8 = NDArray<Uint8>.fromList(
+              [Uint8(255), Uint8(0)],
+              [2],
+              DType.uint8,
+            );
+            expect(tile(u8, [2]).toList(), [255, 0, 255, 0]);
+
+            // Boolean
+            final b = NDArray<bool>.fromList([true, false], [2], DType.boolean);
+            expect(tile(b, [2]).toList(), [true, false, true, false]);
+
+            // Complex128
+            final c128 = NDArray<Complex128>.fromList(
+              [Complex128(1.0, 2.0), Complex128(3.0, 4.0)],
+              [2],
+              DType.complex128,
+            );
+            final tiledC128 = tile(c128, [2]);
+            expect(tiledC128.shape, [4]);
+            expect(tiledC128[[0]], Complex(1.0, 2.0));
+            expect(tiledC128[[1]], Complex(3.0, 4.0));
+            expect(tiledC128[[2]], Complex(1.0, 2.0));
+            expect(tiledC128[[3]], Complex(3.0, 4.0));
+
+            // Complex64
+            final c64 = NDArray<Complex64>.fromList(
+              [Complex64(1.0, 2.0), Complex64(3.0, 4.0)],
+              [2],
+              DType.complex64,
+            );
+            final tiledC64 = tile(c64, [2]);
+            expect(tiledC64.shape, [4]);
+            expect(tiledC64[[0]], Complex(1.0, 2.0));
+            expect(tiledC64[[1]], Complex(3.0, 4.0));
+            expect(tiledC64[[2]], Complex(1.0, 2.0));
+            expect(tiledC64[[3]], Complex(3.0, 4.0));
+          }),
+        );
+
+        test(
+          'Tile 0D scalar array',
+          () => NDArray.scope(() {
+            final s = NDArray<Float64>.scalar(
+              Float64(42.0),
+              dtype: DType.float64,
+            );
+            final t0 = tile(s, []);
+            expect(t0.shape, isEmpty);
+            expect(t0.scalar, 42.0);
+
+            final t2d = tile(s, [2, 3]);
+            expect(t2d.shape, [2, 3]);
+            expect(t2d.toList(), [42.0, 42.0, 42.0, 42.0, 42.0, 42.0]);
+          }),
+        );
+
+        test(
+          'Tile with 0 in reps or 0-sized array',
+          () => NDArray.scope(() {
+            final a = NDArray<Float64>.fromList([1.0, 2.0], [2], DType.float64);
+            final t0 = tile(a, [0]);
+            expect(t0.shape, [0]);
+            expect(t0.size, 0);
+
+            final empty = NDArray<Float64>.create([0, 5], DType.float64);
+            final tEmpty = tile(empty, [3, 2]);
+            expect(tEmpty.shape, [0, 10]);
+            expect(tEmpty.size, 0);
+          }),
+        );
+
+        test('Tile with disposed array throws StateError', () {
+          final a = NDArray<Float64>.fromList([1.0, 2.0], [2], DType.float64);
+          a.dispose();
+          expect(() => tile(a, [2]), throwsStateError);
+
+          final a2 = NDArray<Float64>.fromList([1.0, 2.0], [2], DType.float64);
+          final out = NDArray<Float64>.create([4], DType.float64);
+          out.dispose();
+          expect(() => tile(a2, [2], out: out), throwsStateError);
+          a2.dispose();
+        });
+
+        test(
           'Tile with negative or invalid reps throws',
           () => NDArray.scope(() {
             final a = NDArray.create([2], DType.float64);

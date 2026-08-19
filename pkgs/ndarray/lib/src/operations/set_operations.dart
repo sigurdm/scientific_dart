@@ -90,7 +90,6 @@ dynamic unique<T extends Object>(
       throw ArgumentError('Incompatible out buffer shape.');
     }
 
-    final view = dest.slice([Slice(start: 0, stop: uniqueCount)]);
     final NDArray<T> result;
     if (out != null) {
       custom_memcpy(
@@ -100,15 +99,22 @@ dynamic unique<T extends Object>(
       );
       result = out;
     } else {
-      result = view.copy();
+      result = NDArray<T>.create([uniqueCount], flat.dtype);
+      custom_memcpy(
+        result.pointer.cast(),
+        dest.pointer.cast(),
+        uniqueCount * ar.dtype.byteWidth,
+      );
     }
-    view.dispose();
 
     NDArray<int>? indexResult;
     if (outIndex != null) {
-      final v = outIndex.slice([Slice(start: 0, stop: uniqueCount)]);
-      indexResult = v.copy();
-      v.dispose();
+      indexResult = NDArray<int>.create([uniqueCount], DType.int64);
+      custom_memcpy(
+        indexResult.pointer.cast(),
+        outIndex.pointer.cast(),
+        uniqueCount * 8,
+      );
     }
 
     NDArray<int>? inverseResult;
@@ -118,9 +124,12 @@ dynamic unique<T extends Object>(
 
     NDArray<int>? countsResult;
     if (outCounts != null) {
-      final v = outCounts.slice([Slice(start: 0, stop: uniqueCount)]);
-      countsResult = v.copy();
-      v.dispose();
+      countsResult = NDArray<int>.create([uniqueCount], DType.int64);
+      custom_memcpy(
+        countsResult.pointer.cast(),
+        outCounts.pointer.cast(),
+        uniqueCount * 8,
+      );
     }
 
     if (returnIndex || returnInverse || returnCounts) {
@@ -214,7 +223,6 @@ NDArray<T> intersect1d<T extends Object>(
       throw ArgumentError('Incompatible out buffer shape.');
     }
 
-    final view = dest.slice([Slice(start: 0, stop: intersectionCount)]);
     final NDArray<T> result;
     if (out != null) {
       custom_memcpy(
@@ -224,9 +232,13 @@ NDArray<T> intersect1d<T extends Object>(
       );
       result = out;
     } else {
-      result = view.copy();
+      result = NDArray<T>.create([intersectionCount], ar1.dtype);
+      custom_memcpy(
+        result.pointer.cast(),
+        dest.pointer.cast(),
+        intersectionCount * ar1.dtype.byteWidth,
+      );
     }
-    view.dispose();
     return result;
   } finally {
     dest?.dispose();
@@ -307,7 +319,6 @@ NDArray<T> setdiff1d<T extends Object>(
       throw ArgumentError('Incompatible out buffer shape.');
     }
 
-    final view = dest.slice([Slice(start: 0, stop: diffCount)]);
     final NDArray<T> result;
     if (out != null) {
       custom_memcpy(
@@ -317,9 +328,13 @@ NDArray<T> setdiff1d<T extends Object>(
       );
       result = out;
     } else {
-      result = view.copy();
+      result = NDArray<T>.create([diffCount], ar1.dtype);
+      custom_memcpy(
+        result.pointer.cast(),
+        dest.pointer.cast(),
+        diffCount * ar1.dtype.byteWidth,
+      );
     }
-    view.dispose();
     return result;
   } finally {
     dest?.dispose();
@@ -400,7 +415,6 @@ NDArray<T> setxor1d<T extends Object>(
       throw ArgumentError('Incompatible out buffer shape.');
     }
 
-    final view = dest.slice([Slice(start: 0, stop: xorCount)]);
     final NDArray<T> result;
     if (out != null) {
       custom_memcpy(
@@ -410,9 +424,13 @@ NDArray<T> setxor1d<T extends Object>(
       );
       result = out;
     } else {
-      result = view.copy();
+      result = NDArray<T>.create([xorCount], ar1.dtype);
+      custom_memcpy(
+        result.pointer.cast(),
+        dest.pointer.cast(),
+        xorCount * ar1.dtype.byteWidth,
+      );
     }
-    view.dispose();
     return result;
   } finally {
     dest?.dispose();
@@ -485,7 +503,6 @@ NDArray<T> union1d<T extends Object>(
       throw ArgumentError('Incompatible out buffer shape.');
     }
 
-    final view = dest.slice([Slice(start: 0, stop: unionCount)]);
     final NDArray<T> result;
     if (out != null) {
       custom_memcpy(
@@ -495,9 +512,13 @@ NDArray<T> union1d<T extends Object>(
       );
       result = out;
     } else {
-      result = view.copy();
+      result = NDArray<T>.create([unionCount], ar1.dtype);
+      custom_memcpy(
+        result.pointer.cast(),
+        dest.pointer.cast(),
+        unionCount * ar1.dtype.byteWidth,
+      );
     }
-    view.dispose();
     return result;
   } finally {
     dest?.dispose();
