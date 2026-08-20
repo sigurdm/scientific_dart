@@ -649,6 +649,61 @@ NDArray<T> flipud<T extends Object>(NDArray<T> a) {
   return flip(a, axis: 0);
 }
 
+/// Rotate an array by 90 degrees in the plane specified by axes.
+///
+/// Rotation direction is from the first towards the second axis.
+///
+/// **Preconditions:**
+/// - [a] must not be disposed.
+/// - [a] must have rank >= 2.
+/// - [axes] must be a list of 2 distinct axes.
+///
+/// Refer to [NumPy rot90 documentation](https://numpy.org/doc/stable/reference/generated/numpy.rot90.html).
+NDArray<T> rot90<T extends Object>(
+  NDArray<T> a, [
+  int k = 1,
+  List<int> axes = const [0, 1],
+]) {
+  if (a.isDisposed) {
+    throw StateError('Cannot rot90 a disposed array.');
+  }
+  final rank = a.rank;
+  if (rank < 2) {
+    throw ArgumentError('Input must be >= 2-D (was rank ).');
+  }
+  if (axes.length != 2) {
+    throw ArgumentError('len(axes) must be 2.');
+  }
+  final ax0 = axes[0] < 0 ? rank + axes[0] : axes[0];
+  final ax1 = axes[1] < 0 ? rank + axes[1] : axes[1];
+  if (ax0 < 0 || ax0 >= rank || ax1 < 0 || ax1 >= rank) {
+    throw RangeError('axes out of range for array of rank ');
+  }
+  if (ax0 == ax1) {
+    throw ArgumentError('Axes must be different.');
+  }
+
+  var rotK = k % 4;
+  if (rotK < 0) rotK += 4;
+  if (rotK == 0) {
+    return NDArray.view(a, shape: a.shape, strides: a.strides, offsetElements: 0);
+  }
+  if (rotK == 2) {
+    return flip(flip(a, axis: ax0), axis: ax1);
+  }
+
+  final axesList = List.generate(rank, (i) => i);
+  axesList[ax0] = ax1;
+  axesList[ax1] = ax0;
+
+  if (rotK == 1) {
+    return flip(a.transpose(axesList), axis: ax0);
+  } else {
+    // rotK == 3
+    return flip(a.transpose(axesList), axis: ax1);
+  }
+}
+
 /// Stacks arrays in sequence vertically (row wise).
 ///
 /// It is an error if [arrays] is empty, any array is disposed, or array shapes/dtypes mismatch.

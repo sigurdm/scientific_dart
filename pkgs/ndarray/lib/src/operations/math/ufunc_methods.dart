@@ -2070,6 +2070,19 @@ void atUfunc<T extends Object>(
     throw StateError('Cannot execute at on a disposed array.');
   }
 
+  if ((a.dtype.isFloating || a.dtype.isComplex) &&
+      (op == BinaryOp.gcd ||
+          op == BinaryOp.lcm ||
+          op == BinaryOp.bitwiseAnd ||
+          op == BinaryOp.bitwiseOr ||
+          op == BinaryOp.bitwiseXor ||
+          op == BinaryOp.leftShift ||
+          op == BinaryOp.rightShift)) {
+    throw UnsupportedError(
+      'Binary operation ${op.name} is not supported on dtype ${a.dtype}',
+    );
+  }
+
   final opCode = op.index;
 
   final rankA = a.rank;

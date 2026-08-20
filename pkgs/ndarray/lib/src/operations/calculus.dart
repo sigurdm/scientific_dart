@@ -306,12 +306,21 @@ NDArray<T> trapz<T extends Object>(
               throw ArgumentError('Unsupported DType for trapz: ${y.dtype}');
           }
         } else {
-          NDArray<Float64>? spacingArray;
+          NDArray<num>? spacingArray;
           try {
-            spacingArray = NDArray<Float64>.create([N], DType.float64);
-            var i = 0;
-            for (final val in values) {
-              spacingArray.setCellFlat(i++, Float64((val as num).toDouble()));
+            final bool useFloat = y.dtype == DType.float32 || y.dtype == DType.complex64;
+            if (useFloat) {
+              spacingArray = NDArray<Float32>.create([N], DType.float32);
+              var i = 0;
+              for (final val in values) {
+                spacingArray.setCellFlat(i++, Float32((val as num).toDouble()));
+              }
+            } else {
+              spacingArray = NDArray<Float64>.create([N], DType.float64);
+              var i = 0;
+              for (final val in values) {
+                spacingArray.setCellFlat(i++, Float64((val as num).toDouble()));
+              }
             }
 
             final dtype = y.dtype;
@@ -676,12 +685,21 @@ NDArray<T> gradient<T extends Object>(
               throw ArgumentError('Unsupported DType for gradient: ${f.dtype}');
           }
         } else {
-          NDArray<Float64>? spacingArray;
+          NDArray<num>? spacingArray;
           try {
-            spacingArray = NDArray<Float64>.create([N], DType.float64);
-            var i = 0;
-            for (final val in values) {
-              spacingArray.setCellFlat(i++, Float64((val as num).toDouble()));
+            final bool useFloat = f.dtype == DType.float32 || f.dtype == DType.complex64;
+            if (useFloat) {
+              spacingArray = NDArray<Float32>.create([N], DType.float32);
+              var i = 0;
+              for (final val in values) {
+                spacingArray.setCellFlat(i++, Float32((val as num).toDouble()));
+              }
+            } else {
+              spacingArray = NDArray<Float64>.create([N], DType.float64);
+              var i = 0;
+              for (final val in values) {
+                spacingArray.setCellFlat(i++, Float64((val as num).toDouble()));
+              }
             }
             final dtype = f.dtype;
             switch (dtype) {

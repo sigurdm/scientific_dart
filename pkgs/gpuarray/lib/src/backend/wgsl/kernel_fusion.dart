@@ -458,7 +458,7 @@ final class LoopExpr extends Expr {
     final initStatements = StringBuffer();
     for (var i = 0; i < initialValues.length; i++) {
       initStatements.writeln(
-        '  var ${stateVars[i].name}: f32 = ${initialValues[i].toWgsl()};',
+        '  var ${stateVars[i].name}_val: f32 = ${initialValues[i].toWgsl()};',
       );
     }
 
@@ -470,16 +470,16 @@ final class LoopExpr extends Expr {
     }
     for (var i = 0; i < stepExprs.length; i++) {
       stepStatements.writeln(
-        '    ${stateVars[i].name} = _next_${stateVars[i].name};',
+        '    ${stateVars[i].name}_val = _next_${stateVars[i].name};',
       );
     }
 
     return '''
 fn $functionName($params) -> f32 {
-$initStatements  var ${iterVar.name}: f32 = 0.0;
+$initStatements  var ${iterVar.name}_val: f32 = 0.0;
   let _max_iter: f32 = ${maxIterations.toWgsl()};
-  while (${iterVar.name} < _max_iter && ((${conditionExpr.toWgsl()}) > 0.0)) {
-$stepStatements    ${iterVar.name} += 1.0;
+  while (${iterVar.name}_val < _max_iter && ((${conditionExpr.toWgsl()}) > 0.0)) {
+$stepStatements    ${iterVar.name}_val += 1.0;
   }
   return ${resultExpr.toWgsl()};
 }
@@ -796,8 +796,17 @@ $loadStatements
     final uniformWords = <int>[totalOut];
     final byteData = ByteData(4);
     for (final sp in scalarList) {
-      byteData.setFloat32(0, sp.defaultValue, Endian.little);
-      uniformWords.add(byteData.getUint32(0, Endian.little));
+      final matchingSlider = parsedSliders.cast<WebGpuSlider?>().firstWhere(
+        (s) => s?.name == sp.name,
+        orElse: () => null,
+      );
+      final initialVal = matchingSlider?.initialValue ?? sp.defaultValue;
+      if (matchingSlider?.isInteger == true) {
+        uniformWords.add(initialVal.round());
+      } else {
+        byteData.setFloat32(0, initialVal, Endian.little);
+        uniformWords.add(byteData.getUint32(0, Endian.little));
+      }
     }
     while (uniformWords.length % 4 != 0) {
       uniformWords.add(0);

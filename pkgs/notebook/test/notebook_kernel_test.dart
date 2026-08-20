@@ -240,7 +240,10 @@ final mandelbrotExpr = GpuExpr.loop(
     s[0] * s[1] * 2.0 + ci,
     s[2] + 1.0,
   ],
-  result: (s) => s[2] / maxIter,
+  result: (s) => (s[2].greaterEqual(maxIter)).where(
+    GpuExpr.constant(0.0),
+    s[2] / maxIter,
+  ),
 );
 
 final descriptor = FusedKernelDescriptor(
