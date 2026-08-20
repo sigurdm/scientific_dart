@@ -608,8 +608,9 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
       );
     }
 
+    GpuArray<T> res;
     if (isContiguous) {
-      return GpuArray<T>._(
+      res = GpuArray<T>._(
         buffer,
         shape: List.unmodifiable(newShape),
         strides: List.unmodifiable(ShapeUtils.computeCStrides(newShape)),
@@ -620,8 +621,15 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
       );
     } else {
       final contiguousCopy = copy();
-      return contiguousCopy.reshape(newShape);
+      res = contiguousCopy.reshape(newShape);
     }
+
+    if (isGradEnabled && requiresGrad) {
+      res.requiresGrad = true;
+      res.gradFn = ReshapeBackward(this, shape);
+    }
+
+    return res;
   }
 
   /// Permutes the axes of this tensor.
@@ -636,7 +644,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
     final newShape = List<int>.generate(rank, (i) => shape[perm[i]]);
     final newStrides = List<int>.generate(rank, (i) => strides[perm[i]]);
 
-    return GpuArray<T>._(
+    final res = GpuArray<T>._(
       buffer,
       shape: List.unmodifiable(newShape),
       strides: List.unmodifiable(newStrides),
@@ -645,6 +653,13 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
       offsetElements: offsetElements,
       parent: this,
     );
+
+    if (isGradEnabled && requiresGrad) {
+      res.requiresGrad = true;
+      res.gradFn = TransposeBackward(this, perm);
+    }
+
+    return res;
   }
 
   /// Returns a 1D flattened view or contiguous copy of this tensor.
@@ -674,7 +689,12 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
         newShape.add(1);
       }
     }
-    return reshape(newShape);
+    final res = reshape(newShape);
+    if (isGradEnabled && requiresGrad) {
+      res.requiresGrad = true;
+      res.gradFn = SqueezeBackward(this, shape);
+    }
+    return res;
   }
 
   /// Inserts a new dimension of size 1 at position [axis].
@@ -684,7 +704,12 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
       throw RangeError.range(normAxis, 0, rank, 'axis');
     }
     final newShape = List<int>.from(shape)..insert(normAxis, 1);
-    return reshape(newShape);
+    final res = reshape(newShape);
+    if (isGradEnabled && requiresGrad) {
+      res.requiresGrad = true;
+      res.gradFn = UnsqueezeBackward(this, shape);
+    }
+    return res;
   }
 
   /// Creates a new contiguous copy of this tensor in device memory.
@@ -731,7 +756,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
       specs: specs,
     );
 
-    return GpuArray<T>._(
+    final res = GpuArray<T>._(
       buffer,
       shape: view.shape,
       strides: view.strides,
@@ -740,6 +765,13 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
       offsetElements: view.offsetElements,
       parent: this,
     );
+
+    if (isGradEnabled && requiresGrad) {
+      res.requiresGrad = true;
+      res.gradFn = SliceBackward(this, specs);
+    }
+
+    return res;
   }
 
   /// Slices this array using [index] (can be a [Slice], [Index], [All], [NewAxis], [Ellipsis], or a [List] of them).
@@ -805,7 +837,21 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
   /// Downloads this GPU tensor into host memory as a standard [NDArray].
   nd.NDArray<T> toNDArray() {
     final contiguousArray = isContiguous ? this : copy();
-    final ndarray = nd.NDArray<T>.create(shape, dtype);
+    nd.NDArray<T> ndarray;
+    if (identical(T, dynamic) ||
+        identical(T, Object) ||
+        identical(T, double) ||
+        identical(T, int) ||
+        identical(T, bool) ||
+        identical(T, num)) {
+      ndarray = nd.NDArray<T>.create(shape, dtype);
+    } else {
+      try {
+        ndarray = nd.NDArray<T>.create(shape, dtype);
+      } catch (_) {
+        ndarray = (nd.NDArray<dynamic>.create(shape, dtype) as dynamic) as nd.NDArray<T>;
+      }
+    }
 
     contiguousArray.buffer.copyToHost(
       ndarray.pointer,
@@ -916,6 +962,9 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
           case BinaryOp.divide:
             dst.gradFn = DivBackward(this, other);
             break;
+          case BinaryOp.power:
+            dst.gradFn = PowBackward(this, other);
+            break;
           default:
             break;
         }
@@ -997,6 +1046,30 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
       offsetDst: dst.offsetElements,
       dtypeDst: dtype,
     );
+
+    if (isGradEnabled && requiresGrad) {
+      dst.requiresGrad = true;
+      switch (op) {
+        case UnaryOp.negate:
+          dst.gradFn = NegBackward(this);
+          break;
+        case UnaryOp.sqrt:
+          dst.gradFn = SqrtBackward(this, dst);
+          break;
+        case UnaryOp.exp:
+          dst.gradFn = ExpBackward(this, dst);
+          break;
+        case UnaryOp.log:
+          dst.gradFn = LogBackward(this);
+          break;
+        case UnaryOp.tanh:
+          dst.gradFn = TanhBackward(this, dst);
+          break;
+        default:
+          break;
+      }
+    }
+
     return dst;
   }
 
@@ -1019,8 +1092,10 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
       }
     }
 
+    final GpuArray dst = (op == 'mean')
+        ? GpuArray<double>.empty(outShape, DType.float64, device: device)
+        : GpuArray<T>.empty(outShape, dtype, device: device);
     final outDtype = (op == 'mean') ? DType.float64 : dtype;
-    final dst = GpuArray.empty(outShape, outDtype, device: device);
 
     GpuKernels.executeReduction(
       op: op,

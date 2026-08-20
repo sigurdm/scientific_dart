@@ -1,6 +1,5 @@
 // ignore_for_file: non_constant_identifier_names
 import 'dart:math' as math;
-import '../dtype.dart';
 import '../gpu_array.dart';
 import '../autograd/autograd.dart';
 
@@ -17,12 +16,11 @@ GpuArray relu(GpuArray input) {
 
 /// Applies the Sigmoid element-wise: $\sigma(x) = \frac{1}{1 + e^{-x}}$.
 GpuArray sigmoid(GpuArray input) {
-  // sigmoid(x) = 1 / (1 + exp(-x))
   final expNeg = input.negate().exp();
   final out = (expNeg + 1.0).pow(-1.0);
   if (isGradEnabled && input.requiresGrad) {
     out.requiresGrad = true;
-    out.gradFn = SigmoidBackward(out);
+    out.gradFn = SigmoidBackward(input, out);
   }
   return out;
 }
@@ -32,7 +30,7 @@ GpuArray tanh(GpuArray input) {
   final out = input.tanh();
   if (isGradEnabled && input.requiresGrad) {
     out.requiresGrad = true;
-    out.gradFn = TanhBackward(out);
+    out.gradFn = TanhBackward(input, out);
   }
   return out;
 }
@@ -58,7 +56,12 @@ GpuArray softmax(GpuArray input, {int axis = -1}) {
   final maxVal = input.max(axis: axis, keepDims: true);
   final expX = (input - maxVal).exp();
   final sumExp = expX.sum(axis: axis, keepDims: true);
-  return expX / sumExp;
+  final out = expX / sumExp;
+  if (isGradEnabled && input.requiresGrad) {
+    out.requiresGrad = true;
+    out.gradFn = SoftmaxBackward(input, out, axis: axis);
+  }
+  return out;
 }
 
 /// Applies Log-Softmax function to an n-dimensional input tensor along [axis].
@@ -66,7 +69,12 @@ GpuArray log_softmax(GpuArray input, {int axis = -1}) {
   final maxVal = input.max(axis: axis, keepDims: true);
   final expX = (input - maxVal).exp();
   final sumExp = expX.sum(axis: axis, keepDims: true);
-  return (input - maxVal) - sumExp.log();
+  final out = (input - maxVal) - sumExp.log();
+  if (isGradEnabled && input.requiresGrad) {
+    out.requiresGrad = true;
+    out.gradFn = LogSoftmaxBackward(input, out, axis: axis);
+  }
+  return out;
 }
 
 /// Measures the Mean Squared Error (squared L2 norm) between [input] and [target].
@@ -91,14 +99,16 @@ GpuArray cross_entropy(
   GpuArray targets, {
   String reduction = 'mean',
 }) {
-  // logits: [N, C], targets: [N] (integers)
+  final probs = softmax(logits, axis: -1);
   final logProbs = log_softmax(logits, axis: -1);
   final numSamples = logits.shape[0];
-  final numClasses = logits.shape[1];
+  final numClasses = logits.shape[logits.rank - 1];
 
   final targetList = targets.toList().cast<int>();
-  final logProbsFlat = logProbs.toNDArray();
-  final logProbsList = logProbsFlat.toList().cast<num>().map((e) => e.toDouble()).toList();
+  final logProbsND = logProbs.toNDArray();
+  final logProbsList =
+      logProbsND.toList().cast<num>().map((e) => e.toDouble()).toList();
+  logProbsND.dispose();
 
   final losses = <double>[];
   for (var i = 0; i < numSamples; i++) {
@@ -106,14 +116,48 @@ GpuArray cross_entropy(
     final logP = logProbsList[i * numClasses + targetClass];
     losses.add(-logP);
   }
-  logProbsFlat.dispose();
 
-  final lossArray = GpuArray.fromList(losses, [numSamples], DType.float64, device: logits.device);
-
+  GpuArray lossArray;
   if (reduction == 'mean') {
-    return lossArray.mean();
+    var sum = 0.0;
+    for (final l in losses) {
+      sum += l;
+    }
+    lossArray = GpuArray.fromList(
+      [sum / numSamples],
+      [],
+      logits.dtype,
+      device: logits.device,
+    );
   } else if (reduction == 'sum') {
-    return lossArray.sum();
+    var sum = 0.0;
+    for (final l in losses) {
+      sum += l;
+    }
+    lossArray = GpuArray.fromList(
+      [sum],
+      [],
+      logits.dtype,
+      device: logits.device,
+    );
+  } else {
+    lossArray = GpuArray.fromList(
+      losses,
+      [numSamples],
+      logits.dtype,
+      device: logits.device,
+    );
   }
+
+  if (isGradEnabled && logits.requiresGrad) {
+    lossArray.requiresGrad = true;
+    lossArray.gradFn = CrossEntropyBackward(
+      logits,
+      targets,
+      probs,
+      reduction: reduction,
+    );
+  }
+
   return lossArray;
 }

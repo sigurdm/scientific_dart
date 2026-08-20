@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import '../gpu_array.dart';
+import '../autograd/autograd.dart';
 
 /// Base class for all parameter optimizers.
 abstract class Optimizer {
@@ -20,6 +21,9 @@ abstract class Optimizer {
       p.zeroGrad();
     }
   }
+
+  /// Disposes internal optimizer states.
+  void dispose();
 }
 
 /// Stochastic Gradient Descent (SGD) optimizer with momentum and weight decay.
@@ -40,51 +44,62 @@ class SGD extends Optimizer {
 
   @override
   void step() {
-    for (final p in params) {
-      final grad = p.grad;
-      if (grad == null) continue;
+    no_grad(() {
+      for (final p in params) {
+        final grad = p.grad;
+        if (grad == null) continue;
 
-      var dP = grad;
-      if (weightDecay != 0.0) {
-        dP = dP + (p * weightDecay);
-      }
-
-      if (momentum != 0.0) {
-        var v = _velocity[p];
-        if (v == null) {
-          v = GpuArray.zeros(p.shape, p.dtype, device: p.device);
-          _velocity[p] = v;
+        var dP = grad;
+        GpuArray? dPDecayed;
+        if (weightDecay != 0.0) {
+          final pDecay = p * weightDecay;
+          dPDecayed = dP + pDecay;
+          pDecay.dispose();
+          dP = dPDecayed;
         }
 
-        // v = momentum * v + dP
-        final newV = (v * momentum) + dP;
-        _velocity[p] = newV;
+        if (momentum != 0.0) {
+          var v = _velocity[p];
+          if (v == null) {
+            v = GpuArray.zeros(p.shape, p.dtype, device: p.device);
+            _velocity[p] = v;
+          }
 
-        if (nesterov) {
-          dP = dP + (newV * momentum);
-        } else {
-          dP = newV;
+          // v = momentum * v + dP
+          final vScaled = v * momentum;
+          final newV = vScaled + dP;
+          vScaled.dispose();
+          newV.buffer.copyToBuffer(v.buffer, v.byteSize);
+          newV.dispose();
+
+          if (nesterov) {
+            final vNesterov = v * momentum;
+            final dPNesterov = dP + vNesterov;
+            vNesterov.dispose();
+            dP = dPNesterov;
+          } else {
+            dP = v;
+          }
         }
+
+        // p = p - lr * dP
+        final step = dP * lr;
+        final newP = p - step;
+        newP.buffer.copyToBuffer(p.buffer, p.byteSize);
+
+        step.dispose();
+        newP.dispose();
+        dPDecayed?.dispose();
       }
+    });
+  }
 
-      // p = p - lr * dP (in-place update directly on buffer)
-      final pFlat = p.toNDArray();
-      final pList = pFlat.toList().cast<double>();
-      final dpFlat = dP.toNDArray();
-      final dpList = dpFlat.toList().cast<double>();
-
-      final updated = <double>[];
-      for (var i = 0; i < pList.length; i++) {
-        updated.add(pList[i] - lr * dpList[i]);
-      }
-
-      final newP = GpuArray.fromList(updated, p.shape, p.dtype, device: p.device);
-      newP.buffer.copyToBuffer(p.buffer, p.byteSize);
-
-      pFlat.dispose();
-      dpFlat.dispose();
-      newP.dispose();
+  @override
+  void dispose() {
+    for (final v in _velocity.values) {
+      v.dispose();
     }
+    _velocity.clear();
   }
 }
 
@@ -110,62 +125,88 @@ class Adam extends Optimizer {
 
   @override
   void step() {
-    _stepCount++;
-    final biasCorrection1 = 1.0 - math.pow(beta1, _stepCount);
-    final biasCorrection2 = 1.0 - math.pow(beta2, _stepCount);
+    no_grad(() {
+      _stepCount++;
+      final biasCorrection1 = 1.0 - math.pow(beta1, _stepCount);
+      final biasCorrection2 = 1.0 - math.pow(beta2, _stepCount);
 
-    for (final p in params) {
-      final grad = p.grad;
-      if (grad == null) continue;
+      for (final p in params) {
+        final grad = p.grad;
+        if (grad == null) continue;
 
-      var g = grad;
-      if (weightDecay != 0.0) {
-        g = g + (p * weightDecay);
+        var g = grad;
+        GpuArray? gDecayed;
+        if (weightDecay != 0.0) {
+          final pDecay = p * weightDecay;
+          gDecayed = g + pDecay;
+          pDecay.dispose();
+          g = gDecayed;
+        }
+
+        var m = _m[p];
+        if (m == null) {
+          m = GpuArray.zeros(p.shape, p.dtype, device: p.device);
+          _m[p] = m;
+        }
+
+        var v = _v[p];
+        if (v == null) {
+          v = GpuArray.zeros(p.shape, p.dtype, device: p.device);
+          _v[p] = v;
+        }
+
+        // m = beta1 * m + (1 - beta1) * g
+        final mScaled = m * beta1;
+        final gScaledM = g * (1.0 - beta1);
+        final newM = mScaled + gScaledM;
+        mScaled.dispose();
+        gScaledM.dispose();
+        newM.buffer.copyToBuffer(m.buffer, m.byteSize);
+        newM.dispose();
+
+        // v = beta2 * v + (1 - beta2) * (g * g)
+        final vScaled = v * beta2;
+        final gSq = g * g;
+        final gSqScaled = gSq * (1.0 - beta2);
+        final newV = vScaled + gSqScaled;
+        vScaled.dispose();
+        gSq.dispose();
+        gSqScaled.dispose();
+        newV.buffer.copyToBuffer(v.buffer, v.byteSize);
+        newV.dispose();
+
+        // update = (m / biasCorrection1) / (sqrt(v / biasCorrection2) + eps)
+        final mHat = m * (1.0 / biasCorrection1);
+        final vHat = v * (1.0 / biasCorrection2);
+        final vHatSqrt = vHat.sqrt();
+        final denom = vHatSqrt + eps;
+        final stepDir = mHat / denom;
+        final step = stepDir * lr;
+        final newP = p - step;
+        newP.buffer.copyToBuffer(p.buffer, p.byteSize);
+
+        mHat.dispose();
+        vHat.dispose();
+        vHatSqrt.dispose();
+        denom.dispose();
+        stepDir.dispose();
+        step.dispose();
+        newP.dispose();
+        gDecayed?.dispose();
       }
+    });
+  }
 
-      var m = _m[p];
-      if (m == null) {
-        m = GpuArray.zeros(p.shape, p.dtype, device: p.device);
-        _m[p] = m;
-      }
-
-      var v = _v[p];
-      if (v == null) {
-        v = GpuArray.zeros(p.shape, p.dtype, device: p.device);
-        _v[p] = v;
-      }
-
-      // m = beta1 * m + (1 - beta1) * g
-      final newM = (m * beta1) + (g * (1.0 - beta1));
-      _m[p] = newM;
-
-      // v = beta2 * v + (1 - beta2) * (g * g)
-      final newV = (v * beta2) + ((g * g) * (1.0 - beta2));
-      _v[p] = newV;
-
-      // update = (m / biasCorrection1) / (sqrt(v / biasCorrection2) + eps)
-      final mHat = newM * (1.0 / biasCorrection1);
-      final vHat = newV * (1.0 / biasCorrection2);
-      final denom = vHat.sqrt() + eps;
-      final step = (mHat / denom) * lr;
-
-      final pFlat = p.toNDArray();
-      final pList = pFlat.toList().cast<double>();
-      final stepFlat = step.toNDArray();
-      final stepList = stepFlat.toList().cast<double>();
-
-      final updated = <double>[];
-      for (var i = 0; i < pList.length; i++) {
-        updated.add(pList[i] - stepList[i]);
-      }
-
-      final newP = GpuArray.fromList(updated, p.shape, p.dtype, device: p.device);
-      newP.buffer.copyToBuffer(p.buffer, p.byteSize);
-
-      pFlat.dispose();
-      stepFlat.dispose();
-      newP.dispose();
+  @override
+  void dispose() {
+    for (final m in _m.values) {
+      m.dispose();
     }
+    for (final v in _v.values) {
+      v.dispose();
+    }
+    _m.clear();
+    _v.clear();
   }
 }
 
@@ -191,59 +232,81 @@ class AdamW extends Optimizer {
 
   @override
   void step() {
-    _stepCount++;
-    final biasCorrection1 = 1.0 - math.pow(beta1, _stepCount);
-    final biasCorrection2 = 1.0 - math.pow(beta2, _stepCount);
+    no_grad(() {
+      _stepCount++;
+      final biasCorrection1 = 1.0 - math.pow(beta1, _stepCount);
+      final biasCorrection2 = 1.0 - math.pow(beta2, _stepCount);
 
-    for (final p in params) {
-      final grad = p.grad;
-      if (grad == null) continue;
+      for (final p in params) {
+        final grad = p.grad;
+        if (grad == null) continue;
 
-      // Weight decay step decoupled from gradient update
-      if (weightDecay != 0.0) {
-        final pDecayed = p * (1.0 - lr * weightDecay);
-        pDecayed.buffer.copyToBuffer(p.buffer, p.byteSize);
+        // Weight decay step decoupled from gradient update
+        if (weightDecay != 0.0) {
+          final pDecayed = p * (1.0 - lr * weightDecay);
+          pDecayed.buffer.copyToBuffer(p.buffer, p.byteSize);
+          pDecayed.dispose();
+        }
+
+        var m = _m[p];
+        if (m == null) {
+          m = GpuArray.zeros(p.shape, p.dtype, device: p.device);
+          _m[p] = m;
+        }
+
+        var v = _v[p];
+        if (v == null) {
+          v = GpuArray.zeros(p.shape, p.dtype, device: p.device);
+          _v[p] = v;
+        }
+
+        final mScaled = m * beta1;
+        final gScaledM = grad * (1.0 - beta1);
+        final newM = mScaled + gScaledM;
+        mScaled.dispose();
+        gScaledM.dispose();
+        newM.buffer.copyToBuffer(m.buffer, m.byteSize);
+        newM.dispose();
+
+        final vScaled = v * beta2;
+        final gSq = grad * grad;
+        final gSqScaled = gSq * (1.0 - beta2);
+        final newV = vScaled + gSqScaled;
+        vScaled.dispose();
+        gSq.dispose();
+        gSqScaled.dispose();
+        newV.buffer.copyToBuffer(v.buffer, v.byteSize);
+        newV.dispose();
+
+        final mHat = m * (1.0 / biasCorrection1);
+        final vHat = v * (1.0 / biasCorrection2);
+        final vHatSqrt = vHat.sqrt();
+        final denom = vHatSqrt + eps;
+        final stepDir = mHat / denom;
+        final step = stepDir * lr;
+        final newP = p - step;
+        newP.buffer.copyToBuffer(p.buffer, p.byteSize);
+
+        mHat.dispose();
+        vHat.dispose();
+        vHatSqrt.dispose();
+        denom.dispose();
+        stepDir.dispose();
+        step.dispose();
+        newP.dispose();
       }
+    });
+  }
 
-      var m = _m[p];
-      if (m == null) {
-        m = GpuArray.zeros(p.shape, p.dtype, device: p.device);
-        _m[p] = m;
-      }
-
-      var v = _v[p];
-      if (v == null) {
-        v = GpuArray.zeros(p.shape, p.dtype, device: p.device);
-        _v[p] = v;
-      }
-
-      final newM = (m * beta1) + (grad * (1.0 - beta1));
-      _m[p] = newM;
-
-      final newV = (v * beta2) + ((grad * grad) * (1.0 - beta2));
-      _v[p] = newV;
-
-      final mHat = newM * (1.0 / biasCorrection1);
-      final vHat = newV * (1.0 / biasCorrection2);
-      final denom = vHat.sqrt() + eps;
-      final step = (mHat / denom) * lr;
-
-      final pFlat = p.toNDArray();
-      final pList = pFlat.toList().cast<double>();
-      final stepFlat = step.toNDArray();
-      final stepList = stepFlat.toList().cast<double>();
-
-      final updated = <double>[];
-      for (var i = 0; i < pList.length; i++) {
-        updated.add(pList[i] - stepList[i]);
-      }
-
-      final newP = GpuArray.fromList(updated, p.shape, p.dtype, device: p.device);
-      newP.buffer.copyToBuffer(p.buffer, p.byteSize);
-
-      pFlat.dispose();
-      stepFlat.dispose();
-      newP.dispose();
+  @override
+  void dispose() {
+    for (final m in _m.values) {
+      m.dispose();
     }
+    for (final v in _v.values) {
+      v.dispose();
+    }
+    _m.clear();
+    _v.clear();
   }
 }
