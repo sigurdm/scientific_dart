@@ -6,6 +6,142 @@ import '../slice.dart';
 import '../backend/compute_engine.dart';
 import '../operations/manipulation.dart' as manip;
 
+/// Cooley-Tukey Radix-2 1D FFT implementation.
+void _fftRadix2(
+  List<double> real,
+  List<double> imag,
+  int n, {
+  required bool inverse,
+}) {
+  if (n <= 1) return;
+
+  // Bit reversal permutation
+  var j = 0;
+  for (var i = 0; i < n - 1; i++) {
+    if (i < j) {
+      final tr = real[i];
+      real[i] = real[j];
+      real[j] = tr;
+      final ti = imag[i];
+      imag[i] = imag[j];
+      imag[j] = ti;
+    }
+    var k = n >> 1;
+    while (k <= j) {
+      j -= k;
+      k >>= 1;
+    }
+    j += k;
+  }
+
+  // Cooley-Tukey radix-2 butterfly
+  for (var len = 2; len <= n; len <<= 1) {
+    final half = len >> 1;
+    final angle = (inverse ? 2.0 : -2.0) * math.pi / len;
+    final wstepR = math.cos(angle);
+    final wstepI = math.sin(angle);
+
+    for (var i = 0; i < n; i += len) {
+      var wr = 1.0;
+      var wi = 0.0;
+      for (var k = 0; k < half; k++) {
+        final uR = real[i + k];
+        final uI = imag[i + k];
+        final vR = real[i + k + half] * wr - imag[i + k + half] * wi;
+        final vI = real[i + k + half] * wi + imag[i + k + half] * wr;
+
+        real[i + k] = uR + vR;
+        imag[i + k] = uI + vI;
+        real[i + k + half] = uR - vR;
+        imag[i + k + half] = uI - vI;
+
+        final nextWr = wr * wstepR - wi * wstepI;
+        wi = wr * wstepI + wi * wstepR;
+        wr = nextWr;
+      }
+    }
+  }
+
+  if (inverse) {
+    for (var i = 0; i < n; i++) {
+      real[i] /= n;
+      imag[i] /= n;
+    }
+  }
+}
+
+/// Bluestein Chirp-Z transform for arbitrary non-power-of-2 FFT (O(N log N)).
+void _fftBluestein(
+  List<double> real,
+  List<double> imag,
+  int n, {
+  required bool inverse,
+}) {
+  // Find power of 2 M >= 2*n - 1
+  var m = 1;
+  while (m < 2 * n - 1) {
+    m <<= 1;
+  }
+
+  final aReal = List<double>.filled(m, 0.0);
+  final aImag = List<double>.filled(m, 0.0);
+  final bReal = List<double>.filled(m, 0.0);
+  final bImag = List<double>.filled(m, 0.0);
+
+  final chirpReal = List<double>.filled(n, 0.0);
+  final chirpImag = List<double>.filled(n, 0.0);
+
+  final sign = inverse ? 1.0 : -1.0;
+  final twoN = 2 * n;
+
+  for (var i = 0; i < n; i++) {
+    final angle = sign * math.pi * ((i * i) % twoN) / n;
+    final c = math.cos(angle);
+    final s = math.sin(angle);
+    chirpReal[i] = c;
+    chirpImag[i] = s;
+
+    // a[i] = input[i] * chirp[i]
+    aReal[i] = real[i] * c - imag[i] * s;
+    aImag[i] = real[i] * s + imag[i] * c;
+
+    // b[i] = conj(chirp[i])
+    bReal[i] = c;
+    bImag[i] = -s;
+    if (i > 0) {
+      bReal[m - i] = c;
+      bImag[m - i] = -s;
+    }
+  }
+
+  // Forward FFTs on length M
+  _fftRadix2(aReal, aImag, m, inverse: false);
+  _fftRadix2(bReal, bImag, m, inverse: false);
+
+  // Pointwise multiply: FC = FA * FB
+  for (var i = 0; i < m; i++) {
+    final r = aReal[i] * bReal[i] - aImag[i] * bImag[i];
+    final im = aReal[i] * bImag[i] + aImag[i] * bReal[i];
+    aReal[i] = r;
+    aImag[i] = im;
+  }
+
+  // Inverse FFT on length M
+  _fftRadix2(aReal, aImag, m, inverse: true);
+
+  // result[k] = C[k] * chirp[k]
+  for (var k = 0; k < n; k++) {
+    final c = chirpReal[k];
+    final s = chirpImag[k];
+    real[k] = aReal[k] * c - aImag[k] * s;
+    imag[k] = aReal[k] * s + aImag[k] * c;
+    if (inverse) {
+      real[k] /= n;
+      imag[k] /= n;
+    }
+  }
+}
+
 /// Internal helper for 1D Complex FFT (Cooley-Tukey / Bluestein).
 void _fft1d(
   List<double> real,
@@ -15,85 +151,10 @@ void _fft1d(
 }) {
   if (n <= 1) return;
 
-  // Check if power of 2
   if ((n & (n - 1)) == 0) {
-    // Bit reversal permutation
-    var j = 0;
-    for (var i = 0; i < n - 1; i++) {
-      if (i < j) {
-        final tr = real[i];
-        real[i] = real[j];
-        real[j] = tr;
-        final ti = imag[i];
-        imag[i] = imag[j];
-        imag[j] = ti;
-      }
-      var k = n >> 1;
-      while (k <= j) {
-        j -= k;
-        k >>= 1;
-      }
-      j += k;
-    }
-
-    // Cooley-Tukey radix-2 butterfly
-    for (var len = 2; len <= n; len <<= 1) {
-      final half = len >> 1;
-      final angle = (inverse ? 2.0 : -2.0) * math.pi / len;
-      final wstepR = math.cos(angle);
-      final wstepI = math.sin(angle);
-
-      for (var i = 0; i < n; i += len) {
-        var wr = 1.0;
-        var wi = 0.0;
-        for (var k = 0; k < half; k++) {
-          final uR = real[i + k];
-          final uI = imag[i + k];
-          final vR = real[i + k + half] * wr - imag[i + k + half] * wi;
-          final vI = real[i + k + half] * wi + imag[i + k + half] * wr;
-
-          real[i + k] = uR + vR;
-          imag[i + k] = uI + vI;
-          real[i + k + half] = uR - vR;
-          imag[i + k + half] = uI - vI;
-
-          final nextWr = wr * wstepR - wi * wstepI;
-          wi = wr * wstepI + wi * wstepR;
-          wr = nextWr;
-        }
-      }
-    }
+    _fftRadix2(real, imag, n, inverse: inverse);
   } else {
-    // Direct DFT for arbitrary N
-    final outR = List<double>.filled(n, 0.0);
-    final outI = List<double>.filled(n, 0.0);
-    final sign = inverse ? 1.0 : -1.0;
-
-    for (var k = 0; k < n; k++) {
-      var sumR = 0.0;
-      var sumI = 0.0;
-      for (var t = 0; t < n; t++) {
-        final angle = sign * 2.0 * math.pi * t * k / n;
-        final cosA = math.cos(angle);
-        final sinA = math.sin(angle);
-        sumR += real[t] * cosA - imag[t] * sinA;
-        sumI += real[t] * sinA + imag[t] * cosA;
-      }
-      outR[k] = sumR;
-      outI[k] = sumI;
-    }
-
-    for (var i = 0; i < n; i++) {
-      real[i] = outR[i];
-      imag[i] = outI[i];
-    }
-  }
-
-  if (inverse) {
-    for (var i = 0; i < n; i++) {
-      real[i] /= n;
-      imag[i] /= n;
-    }
+    _fftBluestein(real, imag, n, inverse: inverse);
   }
 }
 
@@ -169,6 +230,7 @@ GpuArray<T> fft<T>(
     }
   }
 
+  aFlat.dispose();
   return result;
 }
 
@@ -236,6 +298,7 @@ GpuArray<T> ifft<T>(
     }
   }
 
+  aFlat.dispose();
   return result;
 }
 
@@ -311,6 +374,8 @@ GpuArray<T> irfft<T>(
   aFlat.dispose();
 
   final ifftRes = ifft(fullComplex, n: outLen, axis: normAxis, norm: norm);
+  fullComplex.dispose();
+
   final outDType = (a.dtype == DType.complex64) ? DType.float32 : DType.float64;
   final result = GpuArray<T>.empty(fullComplexShape, outDType as DType<T>, device: a.device);
 
@@ -324,6 +389,7 @@ GpuArray<T> irfft<T>(
   }
 
   ifftFlat.dispose();
+  ifftRes.dispose();
   return result;
 }
 
@@ -339,9 +405,10 @@ GpuArray<T> fft2<T>(
   final s1 = s != null ? s[0] : null;
   final s2 = s != null ? s[1] : null;
 
-  var res = fft(a, n: s1, axis: ax1, norm: norm);
-  res = fft(res, n: s2, axis: ax2, norm: norm);
-  return res as GpuArray<T>;
+  final res1 = fft(a, n: s1, axis: ax1, norm: norm);
+  final res2 = fft(res1, n: s2, axis: ax2, norm: norm);
+  res1.dispose();
+  return res2 as GpuArray<T>;
 }
 
 /// Computes 2D Inverse Discrete Fourier Transform of [a].
@@ -356,9 +423,10 @@ GpuArray<T> ifft2<T>(
   final s1 = s != null ? s[0] : null;
   final s2 = s != null ? s[1] : null;
 
-  var res = ifft(a, n: s1, axis: ax1, norm: norm);
-  res = ifft(res, n: s2, axis: ax2, norm: norm);
-  return res as GpuArray<T>;
+  final res1 = ifft(a, n: s1, axis: ax1, norm: norm);
+  final res2 = ifft(res1, n: s2, axis: ax2, norm: norm);
+  res1.dispose();
+  return res2 as GpuArray<T>;
 }
 
 /// Returns the DFT sample frequencies.
@@ -391,7 +459,9 @@ GpuArray<Float64> rfftfreq(int n, {double d = 1.0}) {
 }
 
 /// Shifts zero-frequency component to center of spectrum.
-GpuArray<T> fftshift<T>(GpuArray<T> x, {dynamic axes}) {
+///
+/// [axes] can be an [int], a `List<int>`, or `null` (shifts all axes).
+GpuArray<T> fftshift<T>(GpuArray<T> x, {Object? axes}) {
   if (axes == null) {
     var curr = x;
     for (var dim = 0; dim < x.rank; dim++) {
@@ -404,7 +474,7 @@ GpuArray<T> fftshift<T>(GpuArray<T> x, {dynamic axes}) {
     final shift = x.shape[axes < 0 ? axes + x.rank : axes] ~/ 2;
     return manip.roll(x, shift, axis: axes);
   }
-  if (axes is List<int>) {
+  if (axes is Iterable<int>) {
     var curr = x;
     for (final ax in axes) {
       final normAx = ax < 0 ? ax + x.rank : ax;
@@ -413,11 +483,13 @@ GpuArray<T> fftshift<T>(GpuArray<T> x, {dynamic axes}) {
     }
     return curr;
   }
-  throw ArgumentError('Invalid axes for fftshift: $axes');
+  throw ArgumentError('Invalid axes for fftshift: $axes. Expected int, List<int>, or null.');
 }
 
 /// Inverse of [fftshift].
-GpuArray<T> ifftshift<T>(GpuArray<T> x, {dynamic axes}) {
+///
+/// [axes] can be an [int], a `List<int>`, or `null` (shifts all axes).
+GpuArray<T> ifftshift<T>(GpuArray<T> x, {Object? axes}) {
   if (axes == null) {
     var curr = x;
     for (var dim = 0; dim < x.rank; dim++) {
@@ -430,7 +502,7 @@ GpuArray<T> ifftshift<T>(GpuArray<T> x, {dynamic axes}) {
     final shift = -((x.shape[axes < 0 ? axes + x.rank : axes]) ~/ 2);
     return manip.roll(x, shift, axis: axes);
   }
-  if (axes is List<int>) {
+  if (axes is Iterable<int>) {
     var curr = x;
     for (final ax in axes) {
       final normAx = ax < 0 ? ax + x.rank : ax;
@@ -439,5 +511,5 @@ GpuArray<T> ifftshift<T>(GpuArray<T> x, {dynamic axes}) {
     }
     return curr;
   }
-  throw ArgumentError('Invalid axes for ifftshift: $axes');
+  throw ArgumentError('Invalid axes for ifftshift: $axes. Expected int, List<int>, or null.');
 }
