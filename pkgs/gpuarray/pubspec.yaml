@@ -16,6 +16,10 @@ dependencies:
   ffi: ^2.2.0
   meta: ^1.18.2
   web: ^1.1.1
+  hooks: ^1.0.3
+  code_assets: ^1.0.0
+  archive: ^3.6.1
+  crypto: ^3.0.6
 
 dev_dependencies:
   test: ^1.31.1

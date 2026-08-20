@@ -1347,7 +1347,12 @@ final class WgpuNativeLib {
       }
     }
 
-    final candidatePaths = <String>[];
+    final candidatePaths = <String>[
+      // 1. Try Native Assets bundled asset identifiers
+      "package:gpuarray/wgpu_native",
+      "wgpu_native",
+      "libwgpu_native",
+    ];
 
     final envPath = Platform.environment["WGPU_LIB_PATH"];
     if (envPath != null && envPath.isNotEmpty) {
@@ -1384,6 +1389,13 @@ final class WgpuNativeLib {
         // Continue searching candidates
       }
     }
+
+    // Try process lookup (embedded / statically linked on iOS or macOS)
+    try {
+      final processDylib = ffi.DynamicLibrary.process();
+      final lib = WgpuNativeLib(processDylib, libraryPath: 'process');
+      if (lib.isAvailable) return lib;
+    } catch (_) {}
 
     return null;
   }

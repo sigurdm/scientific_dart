@@ -12906,13 +12906,23 @@ static inline T apply_at_op(T a, T b, int opCode) {
     switch (opCode) {
         case 0: return a + b;
         case 1: return a * b;
-        case 2: return a - b;
-        case 3: return a / b;
-        case 4: return (a < b) ? a : b;
-        case 5: return (a > b) ? a : b;
-        case 6: return std::floor(a / b);
-        case 7: return std::fmod(a, b);
-        case 8: return std::pow(a, b);
+        case 2: return (a < b) ? a : b;
+        case 3: return (a > b) ? a : b;
+        case 4: return (std::isnan((double)a) ? b : (std::isnan((double)b) ? a : ((a < b) ? a : b)));
+        case 5: return (std::isnan((double)a) ? b : (std::isnan((double)b) ? a : ((a > b) ? a : b)));
+        case 6: { double x = (double)a, y = (double)b; double mx = (x > y) ? x : y; return (T)(mx + std::log(std::exp(x - mx) + std::exp(y - mx))); }
+        case 7: { double x = (double)a, y = (double)b; double mx = (x > y) ? x : y; return (T)(mx + std::log2(std::pow(2.0, x - mx) + std::pow(2.0, y - mx))); }
+        case 16: return a - b;
+        case 17: return a / b;
+        case 18: return (T)std::floor((double)a / (double)b);
+        case 19: return (T)std::fmod((double)a, (double)b);
+        case 20: return (T)std::fmod((double)a, (double)b);
+        case 21:
+        case 22: return (T)std::pow((double)a, (double)b);
+        case 23: return (T)std::atan2((double)a, (double)b);
+        case 24: return (T)std::hypot((double)a, (double)b);
+        case 25: return (T)std::copysign((double)a, (double)b);
+        case 28: return (a < 0) ? (T)0 : (a == 0 ? b : (T)1);
         default: return a + b;
     }
 }
@@ -12922,16 +12932,37 @@ inline int64_t apply_at_op<int64_t>(int64_t a, int64_t b, int opCode) {
     switch (opCode) {
         case 0: return a + b;
         case 1: return a * b;
-        case 2: return a - b;
-        case 3: return (b != 0) ? (a / b) : 0;
+        case 2: return (a < b) ? a : b;
+        case 3: return (a > b) ? a : b;
         case 4: return (a < b) ? a : b;
         case 5: return (a > b) ? a : b;
-        case 6: return (b != 0) ? (a / b) : 0;
-        case 7: return (b != 0) ? (a % b) : 0;
-        case 8: return (int64_t)std::pow((double)a, (double)b);
-        case 9: return a & b;
-        case 10: return a | b;
-        case 11: return a ^ b;
+        case 8: {
+            int64_t x = std::abs(a), y = std::abs(b);
+            while (y != 0) { int64_t t = y; y = x % y; x = t; }
+            return x;
+        }
+        case 9: {
+            if (a == 0 || b == 0) return 0;
+            int64_t x = std::abs(a), y = std::abs(b);
+            int64_t ox = x, oy = y;
+            while (y != 0) { int64_t t = y; y = x % y; x = t; }
+            return (ox / x) * oy;
+        }
+        case 10: return a & b;
+        case 11: return a | b;
+        case 12: return a ^ b;
+        case 13: return (a != 0) && (b != 0) ? 1 : 0;
+        case 14: return (a != 0) || (b != 0) ? 1 : 0;
+        case 15: return ((a != 0) != (b != 0)) ? 1 : 0;
+        case 16: return a - b;
+        case 17: return (b != 0) ? (a / b) : 0;
+        case 18: return (b != 0) ? (int64_t)std::floor((double)a / (double)b) : 0;
+        case 19:
+        case 20: return (b != 0) ? (a % b) : 0;
+        case 21:
+        case 22: return (int64_t)std::pow((double)a, (double)b);
+        case 26: return a << b;
+        case 27: return a >> b;
         default: return a + b;
     }
 }
@@ -12941,16 +12972,37 @@ inline int32_t apply_at_op<int32_t>(int32_t a, int32_t b, int opCode) {
     switch (opCode) {
         case 0: return a + b;
         case 1: return a * b;
-        case 2: return a - b;
-        case 3: return (b != 0) ? (a / b) : 0;
+        case 2: return (a < b) ? a : b;
+        case 3: return (a > b) ? a : b;
         case 4: return (a < b) ? a : b;
         case 5: return (a > b) ? a : b;
-        case 6: return (b != 0) ? (a / b) : 0;
-        case 7: return (b != 0) ? (a % b) : 0;
-        case 8: return (int32_t)std::pow((double)a, (double)b);
-        case 9: return a & b;
-        case 10: return a | b;
-        case 11: return a ^ b;
+        case 8: {
+            int32_t x = std::abs(a), y = std::abs(b);
+            while (y != 0) { int32_t t = y; y = x % y; x = t; }
+            return x;
+        }
+        case 9: {
+            if (a == 0 || b == 0) return 0;
+            int32_t x = std::abs(a), y = std::abs(b);
+            int32_t ox = x, oy = y;
+            while (y != 0) { int32_t t = y; y = x % y; x = t; }
+            return (ox / x) * oy;
+        }
+        case 10: return a & b;
+        case 11: return a | b;
+        case 12: return a ^ b;
+        case 13: return (a != 0) && (b != 0) ? 1 : 0;
+        case 14: return (a != 0) || (b != 0) ? 1 : 0;
+        case 15: return ((a != 0) != (b != 0)) ? 1 : 0;
+        case 16: return a - b;
+        case 17: return (b != 0) ? (a / b) : 0;
+        case 18: return (b != 0) ? (int32_t)std::floor((double)a / (double)b) : 0;
+        case 19:
+        case 20: return (b != 0) ? (a % b) : 0;
+        case 21:
+        case 22: return (int32_t)std::pow((double)a, (double)b);
+        case 26: return a << b;
+        case 27: return a >> b;
         default: return a + b;
     }
 }
@@ -12960,19 +13012,25 @@ inline uint8_t apply_at_op<uint8_t>(uint8_t a, uint8_t b, int opCode) {
     switch (opCode) {
         case 0: return (uint8_t)(a + b);
         case 1: return (uint8_t)(a * b);
-        case 2: return (uint8_t)(a - b);
-        case 3: return (b != 0) ? (uint8_t)(a / b) : 0;
+        case 2: return (a < b) ? a : b;
+        case 3: return (a > b) ? a : b;
         case 4: return (a < b) ? a : b;
         case 5: return (a > b) ? a : b;
-        case 6: return (b != 0) ? (uint8_t)(a / b) : 0;
-        case 7: return (b != 0) ? (uint8_t)(a % b) : 0;
-        case 8: return (uint8_t)std::pow((double)a, (double)b);
-        case 9: return (uint8_t)(a & b);
-        case 10: return (uint8_t)(a | b);
-        case 11: return (uint8_t)(a ^ b);
-        case 12: return (a != 0) && (b != 0) ? 1 : 0;
-        case 13: return (a != 0) || (b != 0) ? 1 : 0;
-        case 14: return ((a != 0) != (b != 0)) ? 1 : 0;
+        case 10: return (uint8_t)(a & b);
+        case 11: return (uint8_t)(a | b);
+        case 12: return (uint8_t)(a ^ b);
+        case 13: return (a != 0) && (b != 0) ? 1 : 0;
+        case 14: return (a != 0) || (b != 0) ? 1 : 0;
+        case 15: return ((a != 0) != (b != 0)) ? 1 : 0;
+        case 16: return (uint8_t)(a - b);
+        case 17: return (b != 0) ? (uint8_t)(a / b) : 0;
+        case 18: return (b != 0) ? (uint8_t)(a / b) : 0;
+        case 19:
+        case 20: return (b != 0) ? (uint8_t)(a % b) : 0;
+        case 21:
+        case 22: return (uint8_t)std::pow((double)a, (double)b);
+        case 26: return (uint8_t)(a << b);
+        case 27: return (uint8_t)(a >> b);
         default: return (uint8_t)(a + b);
     }
 }
@@ -12982,16 +13040,25 @@ inline int16_t apply_at_op<int16_t>(int16_t a, int16_t b, int opCode) {
     switch (opCode) {
         case 0: return (int16_t)(a + b);
         case 1: return (int16_t)(a * b);
-        case 2: return (int16_t)(a - b);
-        case 3: return (b != 0) ? (int16_t)(a / b) : 0;
+        case 2: return (a < b) ? a : b;
+        case 3: return (a > b) ? a : b;
         case 4: return (a < b) ? a : b;
         case 5: return (a > b) ? a : b;
-        case 6: return (b != 0) ? (int16_t)(a / b) : 0;
-        case 7: return (b != 0) ? (int16_t)(a % b) : 0;
-        case 8: return (int16_t)std::pow((double)a, (double)b);
-        case 9: return (int16_t)(a & b);
-        case 10: return (int16_t)(a | b);
-        case 11: return (int16_t)(a ^ b);
+        case 10: return (int16_t)(a & b);
+        case 11: return (int16_t)(a | b);
+        case 12: return (int16_t)(a ^ b);
+        case 13: return (a != 0) && (b != 0) ? 1 : 0;
+        case 14: return (a != 0) || (b != 0) ? 1 : 0;
+        case 15: return ((a != 0) != (b != 0)) ? 1 : 0;
+        case 16: return (int16_t)(a - b);
+        case 17: return (b != 0) ? (int16_t)(a / b) : 0;
+        case 18: return (b != 0) ? (int16_t)std::floor((double)a / (double)b) : 0;
+        case 19:
+        case 20: return (b != 0) ? (int16_t)(a % b) : 0;
+        case 21:
+        case 22: return (int16_t)std::pow((double)a, (double)b);
+        case 26: return (int16_t)(a << b);
+        case 27: return (int16_t)(a >> b);
         default: return (int16_t)(a + b);
     }
 }
@@ -13001,8 +13068,8 @@ inline cpx_t apply_at_op<cpx_t>(cpx_t a, cpx_t b, int opCode) {
     switch (opCode) {
         case 0: return cpx_add(a, b);
         case 1: return cpx_mul(a, b);
-        case 2: return cpx_sub(a, b);
-        case 3: return cpx_div(a, b);
+        case 16: return cpx_sub(a, b);
+        case 17: return cpx_div(a, b);
         default: return cpx_add(a, b);
     }
 }
@@ -13012,7 +13079,8 @@ inline cpx_f_t apply_at_op<cpx_f_t>(cpx_f_t a, cpx_f_t b, int opCode) {
     switch (opCode) {
         case 0: return cpx_add_f(a, b);
         case 1: return cpx_mul_f(a, b);
-        case 2: return (cpx_f_t){a.r - b.r, a.i - b.i};
+        case 16: return (cpx_f_t){a.r - b.r, a.i - b.i};
+        case 17: return cpx_div_f(a, b);
         default: return cpx_add_f(a, b);
     }
 }

@@ -5653,7 +5653,7 @@ double _vectorNorm<T>(NDArray<T> a, dynamic ord, DType targetDType) {
       ),
     };
   }
-  final needsCast = a.dtype != targetDType;
+  final bool needsCast = !a.dtype.isFloating && !a.dtype.isComplex;
   final castedA = needsCast ? castNDArray(a, targetDType) : a;
 
   final size = castedA.size;

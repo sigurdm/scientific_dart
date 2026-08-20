@@ -124,85 +124,25 @@ NDArray<R> binaryUfunc<T extends Object, R extends Object>(
       return power(a, b, where: where, out: out as NDArray<double>?)
           as NDArray<R>;
     case BinaryOp.logaddexp:
-      return logaddexp(
-            a as NDArray<num>,
-            b as NDArray<num>,
-            where: where,
-            out: out as NDArray<double>?,
-          )
-          as NDArray<R>;
+      return logaddexp<num, num>(a as NDArray<num>, b as NDArray<num>, where: where, out: out as NDArray<double>?) as NDArray<R>;
     case BinaryOp.logaddexp2:
-      return logaddexp2(
-            a as NDArray<num>,
-            b as NDArray<num>,
-            where: where,
-            out: out as NDArray<double>?,
-          )
-          as NDArray<R>;
+      return logaddexp2<num, num>(a as NDArray<num>, b as NDArray<num>, where: where, out: out as NDArray<double>?) as NDArray<R>;
     case BinaryOp.arctan2:
-      return atan2(
-            a as NDArray<num>,
-            b as NDArray<num>,
-            where: where,
-            out: out as NDArray<double>?,
-          )
-          as NDArray<R>;
+      return atan2<num, num>(a as NDArray<num>, b as NDArray<num>, where: where, out: out as NDArray<double>?) as NDArray<R>;
     case BinaryOp.hypot:
-      return hypot(
-            a as NDArray<num>,
-            b as NDArray<num>,
-            where: where,
-            out: out as NDArray<double>?,
-          )
-          as NDArray<R>;
+      return hypot<dynamic, dynamic, R>(a, b, where: where, out: out);
     case BinaryOp.copysign:
-      return copysign(
-            a as NDArray<num>,
-            b as NDArray<num>,
-            where: where,
-            out: out as NDArray<double>?,
-          )
-          as NDArray<R>;
+      return copysign<R>(a as NDArray<R>, b as NDArray<R>, where: where, out: out);
     case BinaryOp.bitwiseAnd:
-      return bitwise_and(
-            a as NDArray<int>,
-            b as NDArray<int>,
-            where: where,
-            out: out as NDArray<int>?,
-          )
-          as NDArray<R>;
+      return bitwise_and<dynamic, dynamic, R>(a, b, where: where, out: out);
     case BinaryOp.bitwiseOr:
-      return bitwise_or(
-            a as NDArray<int>,
-            b as NDArray<int>,
-            where: where,
-            out: out as NDArray<int>?,
-          )
-          as NDArray<R>;
+      return bitwise_or<dynamic, dynamic, R>(a, b, where: where, out: out);
     case BinaryOp.bitwiseXor:
-      return bitwise_xor(
-            a as NDArray<int>,
-            b as NDArray<int>,
-            where: where,
-            out: out as NDArray<int>?,
-          )
-          as NDArray<R>;
+      return bitwise_xor<dynamic, dynamic, R>(a, b, where: where, out: out);
     case BinaryOp.leftShift:
-      return left_shift(
-            a as NDArray<int>,
-            b as NDArray<int>,
-            where: where,
-            out: out as NDArray<int>?,
-          )
-          as NDArray<R>;
+      return left_shift<dynamic, dynamic, R>(a, b, where: where, out: out);
     case BinaryOp.rightShift:
-      return right_shift(
-            a as NDArray<int>,
-            b as NDArray<int>,
-            where: where,
-            out: out as NDArray<int>?,
-          )
-          as NDArray<R>;
+      return right_shift<dynamic, dynamic, R>(a, b, where: where, out: out);
     case BinaryOp.logicalAnd:
       return logical_and(a, b, where: where, out: out as NDArray<bool>?)
           as NDArray<R>;
@@ -2130,47 +2070,7 @@ void atUfunc<T extends Object>(
     throw StateError('Cannot execute at on a disposed array.');
   }
 
-  int opCode;
-  switch (op) {
-    case BinaryOp.add:
-      opCode = 0;
-    case BinaryOp.multiply:
-      opCode = 1;
-    case BinaryOp.subtract:
-      opCode = 2;
-    case BinaryOp.divide:
-      opCode = 3;
-    case BinaryOp.minimum:
-    case BinaryOp.fmin:
-      opCode = 4;
-    case BinaryOp.maximum:
-    case BinaryOp.fmax:
-      opCode = 5;
-    case BinaryOp.floorDivide:
-      opCode = 6;
-    case BinaryOp.remainder:
-    case BinaryOp.fmod:
-      opCode = 7;
-    case BinaryOp.power:
-    case BinaryOp.floatPower:
-      opCode = 8;
-    case BinaryOp.bitwiseAnd:
-      opCode = 9;
-    case BinaryOp.bitwiseOr:
-      opCode = 10;
-    case BinaryOp.bitwiseXor:
-      opCode = 11;
-    case BinaryOp.logicalAnd:
-      opCode = 12;
-    case BinaryOp.logicalOr:
-      opCode = 13;
-    case BinaryOp.logicalXor:
-      opCode = 14;
-    default:
-      throw UnsupportedError(
-        'Binary operation ${op.name} is not supported in atUfunc.',
-      );
-  }
+  final opCode = op.index;
 
   final rankA = a.rank;
   final rankB = b.rank;
