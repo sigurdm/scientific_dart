@@ -7,6 +7,11 @@ import '../../gpu_array.dart';
 import '../../serialization/webgpu_pipeline.dart';
 
 /// Base class for all expression nodes in a fused kernel computation graph.
+typedef GpuExpr = Expr;
+typedef GpuVarExpr = VarExpr;
+typedef GpuConstExpr = ConstExpr;
+typedef GpuScalarParamExpr = ScalarParamExpr;
+
 abstract class Expr {
   const Expr();
 
@@ -367,13 +372,15 @@ final class FusedKernelDescriptor {
 
   FusedKernelDescriptor({
     required this.name,
-    required this.expression,
+    Expr? expression,
+    Expr? outputExpr,
     List<VarExpr>? inputs,
     List<ScalarParamExpr>? scalarParams,
     this.outputDType = WgslDType.float32,
     this.isStrided = false,
-  }) : inputs = inputs ?? _sortVariables(expression.variables),
-       scalarParams = scalarParams ?? expression.scalarParams.toList();
+  }) : expression = expression ?? outputExpr ?? (throw ArgumentError('Either expression or outputExpr must be provided.')),
+       inputs = inputs ?? _sortVariables((expression ?? outputExpr!).variables),
+       scalarParams = scalarParams ?? (expression ?? outputExpr!).scalarParams.toList();
 
   static List<VarExpr> _sortVariables(Set<VarExpr> vars) {
     final list = vars.toList();

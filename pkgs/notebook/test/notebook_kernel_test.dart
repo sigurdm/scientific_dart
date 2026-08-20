@@ -134,4 +134,77 @@ display(descriptor.createBrowserWidget(
     expect(result, contains('webgpu-notebook-widget'));
     expect(result, contains('Interactive SiLU (Browser WebGPU)'));
   });
+
+  test('evaluates 2D graphical fused radial ripple widget', () async {
+    final code = '''
+final size = 64;
+final xGrid = NDArray.zeros([size, size], DType.float32);
+final yGrid = NDArray.zeros([size, size], DType.float32);
+
+for (var r = 0; r < size; r++) {
+  for (var c = 0; c < size; c++) {
+    xGrid[[r, c]] = (c / size - 0.5) * 10.0;
+    yGrid[[r, c]] = (r / size - 0.5) * 10.0;
+  }
+}
+
+final x = GpuArray.fromNDArray(xGrid);
+final y = GpuArray.fromNDArray(yGrid);
+
+final xIn = GpuExpr.variable('x_grid');
+final yIn = GpuExpr.variable('y_grid');
+final ripple = GpuExpr.scalar('ripple', defaultValue: 3.5);
+final phase = GpuExpr.scalar('phase', defaultValue: 0.0);
+final freq = GpuExpr.scalar('freq', defaultValue: 2.0);
+
+final dist = (xIn * xIn + yIn * yIn).sqrt();
+final zExpr = ((dist * ripple - phase).sin() * (xIn * freq).cos() + 1.0) / 2.0;
+
+final descriptor = FusedKernelDescriptor(
+  name: 'fused_radial_ripple',
+  outputExpr: zExpr,
+);
+
+display(descriptor.createBrowserWidget(
+  inputArrays: [x, y],
+  outputShape: [size, size],
+  sliders: [
+    const WebGpuSlider(
+      name: 'ripple',
+      label: 'Ripple Frequency',
+      min: 0.5,
+      max: 10.0,
+      initialValue: 3.5,
+      step: 0.1,
+    ),
+    const WebGpuSlider(
+      name: 'phase',
+      label: 'Phase / Time',
+      min: 0.0,
+      max: 6.28,
+      initialValue: 0.0,
+      step: 0.05,
+    ),
+    const WebGpuSlider(
+      name: 'freq',
+      label: 'Harmonic Modulation',
+      min: 0.0,
+      max: 8.0,
+      initialValue: 2.0,
+      step: 0.1,
+    ),
+  ],
+  renderToCanvas: true,
+  canvasWidth: size,
+  canvasHeight: size,
+  colorMap: 'turbo',
+  title: '🌊 2D GPUArray Fused Radial Ripple (WebGPU)',
+));
+''';
+
+    final result = await kernel.execute(code);
+    expect(result, contains('text/html'));
+    expect(result, contains('<canvas'));
+    expect(result, contains('fused_radial_ripple'));
+  });
 }

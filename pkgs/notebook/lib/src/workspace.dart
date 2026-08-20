@@ -7,6 +7,30 @@ import 'package:symbolic_dart/symbolic_dart.dart' hide sin, cos, tan, asin, acos
 import 'package:resource_scope/resource_scope.dart';
 import 'package:gpuarray/gpuarray.dart';
 import 'package:ndarray/ndarray.dart';
-import 'package:gpuarray/gpuarray.dart' as gpuarray;
-import 'package:notebook/notebook.dart';
+
+dynamic size;
+
+dynamic xGrid;
+
+dynamic yGrid;
+
+dynamic x;
+
+dynamic y;
+
+dynamic xIn;
+
+dynamic yIn;
+
+dynamic ripple;
+
+dynamic phase;
+
+dynamic freq;
+
+dynamic dist;
+
+dynamic zExpr;
+
+dynamic descriptor;
 
