@@ -102,13 +102,10 @@ display(arr.toWebGpuWidget());
 
   test('evaluates fused kernel interactive WebGPU browser widget', () async {
     final code = '''
-import 'package:gpuarray/gpuarray.dart' as gpuarray;
-import 'package:notebook/notebook.dart';
-
-final x = gpuarray.GpuArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float32);
-final xVar = gpuarray.Expr.variable('x', bindingIndex: 0);
+final x = GpuArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float32);
+final xVar = GpuExpr.variable('x', bindingIndex: 0);
 final fused = (xVar * 2.5 + 1.2).silu();
-final descriptor = gpuarray.FusedKernelDescriptor(
+final descriptor = FusedKernelDescriptor(
   name: 'interactive_silu',
   expression: fused,
 );
@@ -206,5 +203,100 @@ display(descriptor.createBrowserWidget(
     expect(result, contains('text/html'));
     expect(result, contains('<canvas'));
     expect(result, contains('fused_radial_ripple'));
+  });
+
+  test('evaluates GpuExpr.loop Mandelbrot in notebook kernel', () async {
+    final code = '''
+final size = 64;
+final xGrid = NDArray.zeros([size, size], DType.float32);
+final yGrid = NDArray.zeros([size, size], DType.float32);
+
+for (var r = 0; r < size; r++) {
+  for (var c = 0; c < size; c++) {
+    xGrid[[r, c]] = (c / size - 0.5);
+    yGrid[[r, c]] = (r / size - 0.5);
+  }
+}
+
+final x = GpuArray.fromNDArray(xGrid);
+final y = GpuArray.fromNDArray(yGrid);
+
+final xIn = GpuExpr.variable('x_grid');
+final yIn = GpuExpr.variable('y_grid');
+final zoom = GpuExpr.scalar('zoom', defaultValue: 2.5);
+final centerX = GpuExpr.scalar('center_x', defaultValue: -0.7);
+final centerY = GpuExpr.scalar('center_y', defaultValue: 0.0);
+final maxIter = GpuExpr.scalar('max_iter', defaultValue: 32.0);
+
+final cr = xIn * zoom + centerX;
+final ci = yIn * zoom + centerY;
+
+final mandelbrotExpr = GpuExpr.loop(
+  initialValues: [cr, ci, GpuExpr.constant(0.0)],
+  maxIterations: maxIter,
+  condition: (s, i) => (s[0] * s[0] + s[1] * s[1]).lessThan(4.0),
+  step: (s, i) => [
+    s[0] * s[0] - s[1] * s[1] + cr,
+    s[0] * s[1] * 2.0 + ci,
+    s[2] + 1.0,
+  ],
+  result: (s) => s[2] / maxIter,
+);
+
+final descriptor = FusedKernelDescriptor(
+  name: 'fused_mandelbrot_loop',
+  outputExpr: mandelbrotExpr,
+);
+
+display(descriptor.createBrowserWidget(
+  inputArrays: [x, y],
+  outputShape: [size, size],
+  sliders: [
+    const WebGpuSlider(
+      name: 'zoom',
+      label: 'Zoom Factor',
+      min: 0.01,
+      max: 3.5,
+      initialValue: 2.5,
+      step: 0.01,
+    ),
+    const WebGpuSlider(
+      name: 'center_x',
+      label: 'Center X',
+      min: -2.0,
+      max: 1.0,
+      initialValue: -0.7,
+      step: 0.01,
+    ),
+    const WebGpuSlider(
+      name: 'center_y',
+      label: 'Center Y',
+      min: -1.5,
+      max: 1.5,
+      initialValue: 0.0,
+      step: 0.01,
+    ),
+    const WebGpuSlider(
+      name: 'max_iter',
+      label: 'Max Iterations',
+      min: 10,
+      max: 100,
+      initialValue: 32,
+      step: 1,
+      isInteger: true,
+    ),
+  ],
+  renderToCanvas: true,
+  canvasWidth: size,
+  canvasHeight: size,
+  colorMap: 'turbo',
+  title: '🌀 Mandelbrot Loop (GPUArray Fused AST)',
+));
+''';
+
+    final result = await kernel.execute(code);
+    expect(result, contains('text/html'));
+    expect(result, contains('<canvas'));
+    expect(result, contains('fused_mandelbrot_loop'));
   });
 }

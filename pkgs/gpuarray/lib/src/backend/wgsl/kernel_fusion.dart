@@ -11,6 +11,7 @@ typedef GpuExpr = Expr;
 typedef GpuVarExpr = VarExpr;
 typedef GpuConstExpr = ConstExpr;
 typedef GpuScalarParamExpr = ScalarParamExpr;
+typedef GpuLoopExpr = LoopExpr;
 
 abstract class Expr {
   const Expr();
@@ -28,6 +29,23 @@ abstract class Expr {
   /// Creates a runtime scalar uniform parameter.
   static ScalarParamExpr scalar(String name, {double defaultValue = 0.0}) =>
       ScalarParamExpr(name, defaultValue: defaultValue);
+
+  /// Creates a functional loop AST node with state variables, dynamic condition, and step function.
+  static LoopExpr loop({
+    required List<Object> initialValues,
+    required Object maxIterations,
+    required Expr Function(List<Expr> state, Expr iter) condition,
+    required List<Expr> Function(List<Expr> state, Expr iter) step,
+    Expr Function(List<Expr> state)? result,
+    String? name,
+  }) => LoopExpr(
+    initialValues: initialValues,
+    maxIterations: maxIterations,
+    condition: condition,
+    step: step,
+    result: result,
+    name: name,
+  );
 
   /// Converts any num or Expr object into an [Expr].
   static Expr from(Object value) {
@@ -361,6 +379,164 @@ final class TernaryOpExpr extends Expr {
   String toString() => 'TernaryOpExpr($op, $first, $second, $third)';
 }
 
+/// Represents a functional bounded loop node in the expression graph.
+final class LoopExpr extends Expr {
+  final List<Expr> initialValues;
+  final Expr maxIterations;
+  final Expr conditionExpr;
+  final List<Expr> stepExprs;
+  final Expr resultExpr;
+  final List<VarExpr> stateVars;
+  final VarExpr iterVar;
+  final String functionName;
+
+  LoopExpr._({
+    required this.initialValues,
+    required this.maxIterations,
+    required this.conditionExpr,
+    required this.stepExprs,
+    required this.resultExpr,
+    required this.stateVars,
+    required this.iterVar,
+    required this.functionName,
+  });
+
+  static int _loopCounter = 0;
+
+  factory LoopExpr({
+    required List<Object> initialValues,
+    required Object maxIterations,
+    required Expr Function(List<Expr> state, Expr iter) condition,
+    required List<Expr> Function(List<Expr> state, Expr iter) step,
+    Expr Function(List<Expr> state)? result,
+    String? name,
+  }) {
+    final parsedInit = initialValues.map(Expr.from).toList();
+    final parsedMax = Expr.from(maxIterations);
+    final fnName = name ?? 'fused_loop_${_loopCounter++}';
+    final stateVars = List.generate(
+      parsedInit.length,
+      (i) => VarExpr('${fnName}_s$i'),
+    );
+    final iterVar = VarExpr('${fnName}_iter');
+
+    final cond = condition(stateVars, iterVar);
+    final nextSteps = step(stateVars, iterVar);
+    if (nextSteps.length != parsedInit.length) {
+      throw ArgumentError(
+        'step() returned ${nextSteps.length} values, expected ${parsedInit.length} to match initialValues.',
+      );
+    }
+    final res = result != null ? result(stateVars) : stateVars.first;
+
+    return LoopExpr._(
+      initialValues: parsedInit,
+      maxIterations: parsedMax,
+      conditionExpr: cond,
+      stepExprs: nextSteps,
+      resultExpr: res,
+      stateVars: stateVars,
+      iterVar: iterVar,
+      functionName: fnName,
+    );
+  }
+
+  @override
+  String toWgsl() {
+    final args = variables.toList();
+    args.sort((a, b) => a.bindingIndex.compareTo(b.bindingIndex));
+    final argList = args.map((v) => '${v.name}_val').join(', ');
+    return '$functionName($argList)';
+  }
+
+  /// Generates the standalone WGSL helper function for this loop.
+  String generateWgslFunction() {
+    final args = variables.toList();
+    args.sort((a, b) => a.bindingIndex.compareTo(b.bindingIndex));
+    final params = args.map((v) => '${v.name}_val: f32').join(', ');
+
+    final initStatements = StringBuffer();
+    for (var i = 0; i < initialValues.length; i++) {
+      initStatements.writeln(
+        '  var ${stateVars[i].name}: f32 = ${initialValues[i].toWgsl()};',
+      );
+    }
+
+    final stepStatements = StringBuffer();
+    for (var i = 0; i < stepExprs.length; i++) {
+      stepStatements.writeln(
+        '    let _next_${stateVars[i].name} = ${stepExprs[i].toWgsl()};',
+      );
+    }
+    for (var i = 0; i < stepExprs.length; i++) {
+      stepStatements.writeln(
+        '    ${stateVars[i].name} = _next_${stateVars[i].name};',
+      );
+    }
+
+    return '''
+fn $functionName($params) -> f32 {
+$initStatements  var ${iterVar.name}: f32 = 0.0;
+  let _max_iter: f32 = ${maxIterations.toWgsl()};
+  while (${iterVar.name} < _max_iter && ((${conditionExpr.toWgsl()}) > 0.0)) {
+$stepStatements    ${iterVar.name} += 1.0;
+  }
+  return ${resultExpr.toWgsl()};
+}
+''';
+  }
+
+  @override
+  Set<VarExpr> get variables {
+    final localNames = {...stateVars.map((v) => v.name), iterVar.name};
+    final allVars = {
+      for (final v in initialValues) ...v.variables,
+      ...maxIterations.variables,
+      ...conditionExpr.variables,
+      for (final s in stepExprs) ...s.variables,
+      ...resultExpr.variables,
+    };
+    return allVars.where((v) => !localNames.contains(v.name)).toSet();
+  }
+
+  @override
+  Set<ScalarParamExpr> get scalarParams => {
+    for (final v in initialValues) ...v.scalarParams,
+    ...maxIterations.scalarParams,
+    ...conditionExpr.scalarParams,
+    for (final s in stepExprs) ...s.scalarParams,
+    ...resultExpr.scalarParams,
+  };
+
+  @override
+  int get depth =>
+      1 +
+      [
+        ...initialValues.map((e) => e.depth),
+        maxIterations.depth,
+        conditionExpr.depth,
+        ...stepExprs.map((e) => e.depth),
+        resultExpr.depth,
+      ].reduce((a, b) => a > b ? a : b);
+
+  @override
+  int get nodeCount =>
+      1 +
+      initialValues.fold<int>(0, (sum, e) => sum + e.nodeCount) +
+      maxIterations.nodeCount +
+      conditionExpr.nodeCount +
+      stepExprs.fold<int>(0, (sum, e) => sum + e.nodeCount) +
+      resultExpr.nodeCount;
+
+  @override
+  String toFingerprint() =>
+      'loop(${initialValues.map((e) => e.toFingerprint()).join(",")};max:${maxIterations.toFingerprint()};cond:${conditionExpr.toFingerprint()};step:${stepExprs.map((e) => e.toFingerprint()).join(",")};res:${resultExpr.toFingerprint()})';
+
+  @override
+  String toString() =>
+      'LoopExpr($functionName, inits: $initialValues, max: $maxIterations)';
+}
+
 /// Descriptor that holds the full configuration for compiling a fused kernel.
 final class FusedKernelDescriptor {
   final String name;
@@ -386,6 +562,36 @@ final class FusedKernelDescriptor {
     final list = vars.toList();
     list.sort((a, b) => a.bindingIndex.compareTo(b.bindingIndex));
     return list;
+  }
+
+  static Set<LoopExpr> _collectLoops(Expr expr) {
+    final loops = <LoopExpr>{};
+    void walk(Expr e) {
+      if (e is LoopExpr) {
+        loops.add(e);
+        for (final init in e.initialValues) {
+          walk(init);
+        }
+        walk(e.maxIterations);
+        walk(e.conditionExpr);
+        for (final s in e.stepExprs) {
+          walk(s);
+        }
+        walk(e.resultExpr);
+      } else if (e is UnaryOpExpr) {
+        walk(e.child);
+      } else if (e is BinaryOpExpr) {
+        walk(e.left);
+        walk(e.right);
+      } else if (e is TernaryOpExpr) {
+        walk(e.first);
+        walk(e.second);
+        walk(e.third);
+      }
+    }
+
+    walk(expr);
+    return loops;
   }
 
   /// Produces a deterministic unique cache key for this kernel.
@@ -441,6 +647,9 @@ final class FusedKernelDescriptor {
     final bufferDeclarations = bindings
         .map((b) => b.toWgslDeclaration())
         .join('\n');
+    final loopFunctions = _collectLoops(
+      expression,
+    ).map((l) => l.generateWgslFunction()).join('\n');
 
     if (!isStrided) {
       // Contiguous 1D fast path
@@ -467,6 +676,8 @@ $uniformFields}
 $bufferDeclarations
 
 ${WgslTemplates.mathHelpers}
+
+$loopFunctions
 
 @compute ${wgSize.toAttribute()}
 fn main(
@@ -504,6 +715,8 @@ ${WgslTemplates.stridedHeader}
 $bufferDeclarations
 
 ${WgslTemplates.mathHelpers}
+
+$loopFunctions
 
 @compute ${wgSize.toAttribute()}
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {

@@ -620,4 +620,44 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
       },
     );
   });
+
+  group('WGSL Loop Expressions & AST Fusion', () {
+    test('Compiles functional loop AST into valid WGSL shader', () {
+      final xIn = GpuExpr.variable('x_grid');
+      final yIn = GpuExpr.variable('y_grid');
+      final zoom = GpuExpr.scalar('zoom', defaultValue: 2.5);
+      final centerX = GpuExpr.scalar('center_x', defaultValue: -0.7);
+      final centerY = GpuExpr.scalar('center_y', defaultValue: 0.0);
+      final maxIter = GpuExpr.scalar('max_iter', defaultValue: 64.0);
+
+      final cr = xIn * zoom + centerX;
+      final ci = yIn * zoom + centerY;
+
+      final mandelbrotExpr = GpuExpr.loop(
+        initialValues: [cr, ci, GpuExpr.constant(0.0)],
+        maxIterations: maxIter,
+        condition: (s, i) => (s[0] * s[0] + s[1] * s[1]).lessThan(4.0),
+        step: (s, i) => [
+          s[0] * s[0] - s[1] * s[1] + cr,
+          s[0] * s[1] * 2.0 + ci,
+          s[2] + 1.0,
+        ],
+        result: (s) => s[2] / maxIter,
+        name: 'mandelbrot_core',
+      );
+
+      final descriptor = FusedKernelDescriptor(
+        name: 'mandelbrot_loop_test',
+        outputExpr: mandelbrotExpr,
+      );
+
+      final wgsl = descriptor.generateWgslSource();
+      expect(wgsl, contains('fn mandelbrot_core('));
+      expect(wgsl, contains('while ('));
+      expect(wgsl, contains('mandelbrot_core(x_grid_val, y_grid_val)'));
+
+      final val = WgslSyntaxValidator.validate(wgsl);
+      expect(val.isValid, isTrue, reason: val.errors.toString());
+    });
+  });
 }

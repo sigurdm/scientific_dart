@@ -8,3 +8,33 @@ import 'package:resource_scope/resource_scope.dart';
 import 'package:gpuarray/gpuarray.dart';
 import 'package:ndarray/ndarray.dart';
 
+dynamic size;
+
+dynamic xGrid;
+
+dynamic yGrid;
+
+dynamic x;
+
+dynamic y;
+
+dynamic xIn;
+
+dynamic yIn;
+
+dynamic zoom;
+
+dynamic centerX;
+
+dynamic centerY;
+
+dynamic maxIter;
+
+dynamic cr;
+
+dynamic ci;
+
+dynamic mandelbrotExpr;
+
+dynamic descriptor;
+
