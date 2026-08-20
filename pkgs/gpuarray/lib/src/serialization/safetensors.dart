@@ -109,9 +109,11 @@ Uint8List saveSafetensors(
 
     final u8List = Uint8List(byteLen);
     if (byteLen > 0) {
-      final ptr = (contiguousTensor.buffer.pointer.cast<ffi.Uint8>() +
-              contiguousTensor.offsetElements * contiguousTensor.dtype.byteWidth)
-          .cast<ffi.Uint8>();
+      final ptr =
+          (contiguousTensor.buffer.pointer.cast<ffi.Uint8>() +
+                  contiguousTensor.offsetElements *
+                      contiguousTensor.dtype.byteWidth)
+              .cast<ffi.Uint8>();
       u8List.setAll(0, ptr.asTypedList(byteLen));
     }
     tensorBytesList.add(u8List);
@@ -142,10 +144,7 @@ Uint8List saveSafetensors(
 }
 
 /// Deserializes a binary SafeTensors byte buffer into a dictionary of [GpuArray] tensors.
-Map<String, GpuArray> loadSafetensors(
-  Uint8List bytes, {
-  GpuDevice? device,
-}) {
+Map<String, GpuArray> loadSafetensors(Uint8List bytes, {GpuDevice? device}) {
   final dev = device ?? GpuDevice.defaultDevice;
   if (bytes.length < 8) {
     throw ArgumentError(
@@ -178,7 +177,9 @@ Map<String, GpuArray> loadSafetensors(
     final offsets = (info['data_offsets'] as List).cast<int>();
 
     if (offsets.length != 2 || offsets[0] < 0 || offsets[1] < offsets[0]) {
-      throw FormatException('Invalid data_offsets for tensor "${entry.key}": $offsets');
+      throw FormatException(
+        'Invalid data_offsets for tensor "${entry.key}": $offsets',
+      );
     }
 
     final start = dataStartOffset + offsets[0];

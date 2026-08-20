@@ -176,5 +176,52 @@ void main() {
         expect(coords.toList(), equals([0, 0, 1, 1, 2, 0, 2, 2]));
       });
     });
+
+    test(
+      'nonzero(), flatnonzero(), argwhere() with Complex64 and Complex128',
+      () {
+        ResourceScope.scope(() {
+          // Complex64 with pure imaginary non-zeros
+          final c64Data = [
+            Complex64(0.0, 2.0), // pure imaginary non-zero -> idx 0 (0, 0)
+            Complex64(0.0, 0.0), // zero -> idx 1 (0, 1)
+            Complex64(3.0, 0.0), // pure real non-zero -> idx 2 (1, 0)
+            Complex64(4.0, -5.0), // mixed non-zero -> idx 3 (1, 1)
+          ];
+          final aC64 = GpuArray.fromList(c64Data, [2, 2], DType.complex64);
+
+          final flatC64 = flatnonzero(aC64);
+          expect(flatC64.toList(), equals([0, 2, 3]));
+
+          final nzC64 = nonzero(aC64);
+          expect(nzC64.length, equals(2));
+          expect(nzC64[0].toList(), equals([0, 1, 1]));
+          expect(nzC64[1].toList(), equals([0, 0, 1]));
+
+          final coordsC64 = argwhere(aC64);
+          expect(coordsC64.shape, equals([3, 2]));
+          expect(coordsC64.toList(), equals([0, 0, 1, 0, 1, 1]));
+
+          // Complex128 with pure imaginary non-zeros
+          final c128Data = [
+            Complex128(0.0, 0.0), // idx 0
+            Complex128(0.0, 7.5), // pure imag non-zero -> idx 1
+            Complex128(-1.0, 0.0), // idx 2
+          ];
+          final aC128 = GpuArray.fromList(c128Data, [3], DType.complex128);
+
+          final flatC128 = flatnonzero(aC128);
+          expect(flatC128.toList(), equals([1, 2]));
+
+          final nzC128 = nonzero(aC128);
+          expect(nzC128.length, equals(1));
+          expect(nzC128[0].toList(), equals([1, 2]));
+
+          final coordsC128 = argwhere(aC128);
+          expect(coordsC128.shape, equals([2, 1]));
+          expect(coordsC128.toList(), equals([1, 2]));
+        });
+      },
+    );
   });
 }

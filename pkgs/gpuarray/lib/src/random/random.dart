@@ -73,7 +73,7 @@ final class RandomState {
   int _bufIndex = 0;
 
   RandomState([int? seed])
-      : _seed = seed ?? DateTime.now().microsecondsSinceEpoch;
+    : _seed = seed ?? DateTime.now().microsecondsSinceEpoch;
 
   /// Seeds this random state.
   void seed(int s) {
@@ -170,7 +170,9 @@ final class RandomState {
     final effectiveHigh = (high == null) ? low : high;
 
     if (effectiveHigh <= effectiveLow) {
-      throw ArgumentError('randint high ($effectiveHigh) must be > low ($effectiveLow).');
+      throw ArgumentError(
+        'randint high ($effectiveHigh) must be > low ($effectiveLow).',
+      );
     }
 
     final span = effectiveHigh - effectiveLow;
@@ -195,7 +197,11 @@ final class RandomState {
   }) {
     final base = rand(shape, device);
     final span = high - low;
-    final data = base.toList().cast<double>().map((v) => low + v * span).toList();
+    final data = base
+        .toList()
+        .cast<double>()
+        .map((v) => low + v * span)
+        .toList();
     return GpuArray.fromList(data, shape, DType.float64, device: device);
   }
 
@@ -207,12 +213,19 @@ final class RandomState {
     GpuDevice? device,
   }) {
     final base = randn(shape, device);
-    final data = base.toList().cast<double>().map((v) => loc + v * scale).toList();
+    final data = base
+        .toList()
+        .cast<double>()
+        .map((v) => loc + v * scale)
+        .toList();
     return GpuArray.fromList(data, shape, DType.float64, device: device);
   }
 
   /// Standard normal distribution $\\mathcal{N}(0, 1)$.
-  GpuArray<Float64> standard_normal([List<int> shape = const [], GpuDevice? device]) => randn(shape, device);
+  GpuArray<Float64> standard_normal([
+    List<int> shape = const [],
+    GpuDevice? device,
+  ]) => randn(shape, device);
 
   /// Exponential distribution.
   GpuArray<Float64> exponential({
@@ -358,7 +371,12 @@ final class RandomState {
     if (x is GpuArray) {
       final list = x.toList();
       _shuffleList(list);
-      return GpuArray.fromList(list, x.shape, x.dtype, device: device ?? x.device);
+      return GpuArray.fromList(
+        list,
+        x.shape,
+        x.dtype,
+        device: device ?? x.device,
+      );
     }
     throw ArgumentError('permutation requires an integer or a GpuArray.');
   }
@@ -389,10 +407,12 @@ final RandomState defaultRandomState = RandomState();
 void seed(int s) => defaultRandomState.seed(s);
 
 /// Uniform random numbers in $[0.0, 1.0)$.
-GpuArray<Float64> rand([List<int> shape = const [], GpuDevice? device]) => defaultRandomState.rand(shape, device);
+GpuArray<Float64> rand([List<int> shape = const [], GpuDevice? device]) =>
+    defaultRandomState.rand(shape, device);
 
 /// Standard normal random numbers ($\\mathcal{N}(0, 1)$).
-GpuArray<Float64> randn([List<int> shape = const [], GpuDevice? device]) => defaultRandomState.randn(shape, device);
+GpuArray<Float64> randn([List<int> shape = const [], GpuDevice? device]) =>
+    defaultRandomState.randn(shape, device);
 
 /// Random integers from [low] to [high].
 GpuArray<T> randint<T>(
@@ -401,8 +421,7 @@ GpuArray<T> randint<T>(
   List<int> shape = const [],
   DType<T>? dtype,
   GpuDevice? device,
-]) =>
-    defaultRandomState.randint<T>(low, high, shape, dtype, device);
+]) => defaultRandomState.randint<T>(low, high, shape, dtype, device);
 
 /// Uniform distribution over $[low, high)$.
 GpuArray<Float64> uniform({
@@ -410,8 +429,12 @@ GpuArray<Float64> uniform({
   double high = 1.0,
   List<int> shape = const [],
   GpuDevice? device,
-}) =>
-    defaultRandomState.uniform(low: low, high: high, shape: shape, device: device);
+}) => defaultRandomState.uniform(
+  low: low,
+  high: high,
+  shape: shape,
+  device: device,
+);
 
 /// Normal (Gaussian) distribution.
 GpuArray<Float64> normal({
@@ -419,12 +442,18 @@ GpuArray<Float64> normal({
   double scale = 1.0,
   List<int> shape = const [],
   GpuDevice? device,
-}) =>
-    defaultRandomState.normal(loc: loc, scale: scale, shape: shape, device: device);
+}) => defaultRandomState.normal(
+  loc: loc,
+  scale: scale,
+  shape: shape,
+  device: device,
+);
 
 /// Standard normal distribution.
-GpuArray<Float64> standard_normal([List<int> shape = const [], GpuDevice? device]) =>
-    defaultRandomState.standard_normal(shape, device);
+GpuArray<Float64> standard_normal([
+  List<int> shape = const [],
+  GpuDevice? device,
+]) => defaultRandomState.standard_normal(shape, device);
 
 /// Exponential distribution.
 GpuArray<Float64> exponential({
@@ -441,11 +470,17 @@ GpuArray<T> choice<T>(
   bool replace = true,
   List<double>? p,
   GpuDevice? device,
-}) =>
-    defaultRandomState.choice(a, size: size, replace: replace, p: p, device: device);
+}) => defaultRandomState.choice(
+  a,
+  size: size,
+  replace: replace,
+  p: p,
+  device: device,
+);
 
 /// Random permutation.
-dynamic permutation(dynamic x, [GpuDevice? device]) => defaultRandomState.permutation(x, device);
+dynamic permutation(dynamic x, [GpuDevice? device]) =>
+    defaultRandomState.permutation(x, device);
 
 /// In-place shuffle.
 void shuffle(GpuArray x) => defaultRandomState.shuffle(x);

@@ -150,13 +150,19 @@ class Conv2d extends Module {
     final outW = ((inW + 2 * padding - kernelSize) ~/ stride) + 1;
 
     final inputND = input.toNDArray();
-    final inputList =
-        inputND.toList().cast<num>().map((e) => e.toDouble()).toList();
+    final inputList = inputND
+        .toList()
+        .cast<num>()
+        .map((e) => e.toDouble())
+        .toList();
     inputND.dispose();
 
     final weightND = weight.toNDArray();
-    final weightList =
-        weightND.toList().cast<num>().map((e) => e.toDouble()).toList();
+    final weightList = weightND
+        .toList()
+        .cast<num>()
+        .map((e) => e.toDouble())
+        .toList();
     weightND.dispose();
 
     List<double>? biasList;
@@ -186,10 +192,10 @@ class Conv2d extends Module {
                   final iw = iwStart + kw;
                   if (iw < 0 || iw >= inW) continue;
 
-                    final inIdx = ((b * inC + ic) * inH + ih) * inW + iw;
-                    final wIdx =
-                        ((oc * inC + ic) * kernelSize + kh) * kernelSize + kw;
-                    sum += inputList[inIdx] * weightList[wIdx];
+                  final inIdx = ((b * inC + ic) * inH + ih) * inW + iw;
+                  final wIdx =
+                      ((oc * inC + ic) * kernelSize + kh) * kernelSize + kw;
+                  sum += inputList[inIdx] * weightList[wIdx];
                 }
               }
             }
@@ -235,11 +241,7 @@ class LayerNorm extends Module {
   late final GpuArray weight;
   late final GpuArray bias;
 
-  LayerNorm(
-    this.normalizedShape, {
-    this.eps = 1e-5,
-    GpuDevice? device,
-  }) {
+  LayerNorm(this.normalizedShape, {this.eps = 1e-5, GpuDevice? device}) {
     final dev = device ?? GpuDevice.defaultDevice;
     weight = registerParameter(
       'weight',
@@ -264,8 +266,10 @@ class LayerNorm extends Module {
   @override
   GpuArray forward(GpuArray input) {
     final mean = input.mean(axis: -1, keepDims: true);
-    final variance =
-        ((input - mean) * (input - mean)).mean(axis: -1, keepDims: true);
+    final variance = ((input - mean) * (input - mean)).mean(
+      axis: -1,
+      keepDims: true,
+    );
     final normalized = (input - mean) / ((variance + eps).sqrt());
     return normalized * weight + bias;
   }
@@ -280,8 +284,10 @@ class Dropout extends Module {
   @override
   GpuArray forward(GpuArray input) {
     if (!isTraining || p == 0.0) return input;
-    final mask =
-        rng.rand(input.shape, input.device).greater(p).astype(input.dtype);
+    final mask = rng
+        .rand(input.shape, input.device)
+        .greater(p)
+        .astype(input.dtype);
     final scale = 1.0 / (1.0 - p);
     return input * mask * scale;
   }
@@ -294,11 +300,7 @@ class Embedding extends Module {
 
   late final GpuArray weight;
 
-  Embedding(
-    this.numEmbeddings,
-    this.embeddingDim, {
-    GpuDevice? device,
-  }) {
+  Embedding(this.numEmbeddings, this.embeddingDim, {GpuDevice? device}) {
     final dev = device ?? GpuDevice.defaultDevice;
     final rawW = rng.randn([numEmbeddings, embeddingDim], dev);
     weight = registerParameter(

@@ -88,8 +88,9 @@ class SubBackward extends GradFn {
   @override
   List<GpuArray?> backward(GpuArray gradOutput) {
     final gradA = a.requiresGrad ? _unbroadcast(gradOutput, a.shape) : null;
-    final gradB =
-        b.requiresGrad ? _unbroadcast(gradOutput.negate(), b.shape) : null;
+    final gradB = b.requiresGrad
+        ? _unbroadcast(gradOutput.negate(), b.shape)
+        : null;
     return [gradA, gradB];
   }
 }
@@ -109,10 +110,8 @@ class MulBackward extends GradFn {
 
   @override
   List<GpuArray?> backward(GpuArray gradOutput) {
-    final gradA =
-        a.requiresGrad ? _unbroadcast(gradOutput * b, a.shape) : null;
-    final gradB =
-        b.requiresGrad ? _unbroadcast(gradOutput * a, b.shape) : null;
+    final gradA = a.requiresGrad ? _unbroadcast(gradOutput * b, a.shape) : null;
+    final gradB = b.requiresGrad ? _unbroadcast(gradOutput * a, b.shape) : null;
     return [gradA, gradB];
   }
 }
@@ -132,8 +131,7 @@ class DivBackward extends GradFn {
 
   @override
   List<GpuArray?> backward(GpuArray gradOutput) {
-    final gradA =
-        a.requiresGrad ? _unbroadcast(gradOutput / b, a.shape) : null;
+    final gradA = a.requiresGrad ? _unbroadcast(gradOutput / b, a.shape) : null;
     final gradB = b.requiresGrad
         ? _unbroadcast((gradOutput * a.negate()) / (b * b), b.shape)
         : null;
@@ -357,8 +355,9 @@ class MeanBackward extends GradFn {
   List<GpuArray?> backward(GpuArray gradOutput) {
     if (!a.requiresGrad) return [null];
 
-    final n =
-        (axis == null) ? a.size : a.shape[axis! < 0 ? axis! + a.rank : axis!];
+    final n = (axis == null)
+        ? a.size
+        : a.shape[axis! < 0 ? axis! + a.rank : axis!];
     final scale = 1.0 / n;
 
     var grad = gradOutput * scale;
@@ -586,8 +585,7 @@ class SliceBackward extends GradFn {
   @override
   List<GpuArray?> backward(GpuArray gradOutput) {
     if (!input.requiresGrad) return [null];
-    final grad =
-        GpuArray.zeros(input.shape, input.dtype, device: input.device);
+    final grad = GpuArray.zeros(input.shape, input.dtype, device: input.device);
     final sliceView = grad.slice(specs);
     GpuKernels.copyStrided(
       src: gradOutput.buffer,
@@ -627,12 +625,18 @@ class EmbeddingBackward extends GradFn {
   @override
   List<GpuArray?> backward(GpuArray gradOutput) {
     if (!weight.requiresGrad) return [null];
-    final gradW =
-        GpuArray.zeros(weight.shape, weight.dtype, device: weight.device);
+    final gradW = GpuArray.zeros(
+      weight.shape,
+      weight.dtype,
+      device: weight.device,
+    );
     final idxList = indices.toList().cast<int>();
     final gradND = gradOutput.toNDArray();
-    final gradList =
-        gradND.toList().cast<num>().map((e) => e.toDouble()).toList();
+    final gradList = gradND
+        .toList()
+        .cast<num>()
+        .map((e) => e.toDouble())
+        .toList();
     gradND.dispose();
 
     final wND = gradW.toNDArray();
@@ -687,8 +691,11 @@ class CrossEntropyBackward extends GradFn {
     final targetList = targets.toList().cast<int>();
 
     final gradND = probs.toNDArray();
-    final gradList =
-        gradND.toList().cast<num>().map((e) => e.toDouble()).toList();
+    final gradList = gradND
+        .toList()
+        .cast<num>()
+        .map((e) => e.toDouble())
+        .toList();
     gradND.dispose();
 
     for (var i = 0; i < numSamples; i++) {
@@ -764,8 +771,11 @@ class Conv2dBackward extends GradFn {
     final outW = gradOutput.shape[3];
 
     final gradOutND = gradOutput.toNDArray();
-    final gradOutList =
-        gradOutND.toList().cast<num>().map((e) => e.toDouble()).toList();
+    final gradOutList = gradOutND
+        .toList()
+        .cast<num>()
+        .map((e) => e.toDouble())
+        .toList();
     gradOutND.dispose();
 
     GpuArray? gradInput;
@@ -774,8 +784,11 @@ class Conv2dBackward extends GradFn {
 
     if (input.requiresGrad) {
       final weightND = weight.toNDArray();
-      final weightList =
-          weightND.toList().cast<num>().map((e) => e.toDouble()).toList();
+      final weightList = weightND
+          .toList()
+          .cast<num>()
+          .map((e) => e.toDouble())
+          .toList();
       weightND.dispose();
 
       final inGradList = List<double>.filled(input.size, 0.0);
@@ -817,8 +830,11 @@ class Conv2dBackward extends GradFn {
 
     if (weight.requiresGrad) {
       final inputND = input.toNDArray();
-      final inList =
-          inputND.toList().cast<num>().map((e) => e.toDouble()).toList();
+      final inList = inputND
+          .toList()
+          .cast<num>()
+          .map((e) => e.toDouble())
+          .toList();
       inputND.dispose();
 
       final wGradList = List<double>.filled(weight.size, 0.0);
@@ -896,7 +912,8 @@ void runBackward(
   }
 
   no_grad(() {
-    final seedGrad = gradient ??
+    final seedGrad =
+        gradient ??
         ((root.rank == 0 || root.size == 1)
             ? GpuArray.ones(root.shape, root.dtype, device: root.device)
             : throw ArgumentError(
