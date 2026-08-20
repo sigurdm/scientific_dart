@@ -52,8 +52,8 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
     this._device, {
     GpuMemoryPool? originPool,
     bool isUnmanaged = false,
-  })  : _originPool = originPool,
-        _isUnmanaged = isUnmanaged {
+  }) : _originPool = originPool,
+       _isUnmanaged = isUnmanaged {
     if (!_isUnmanaged) {
       if (_pointer != ffi.nullptr && _originPool == null) {
         _finalizer.attach(this, _pointer, detach: this);
@@ -204,8 +204,14 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
   @override
   bool get isDisposed => _isDisposed;
 
-  void copyFromHost(ffi.Pointer<ffi.Void> srcPointer, int bytes, {int offset = 0}) {
-    if (_isDisposed) throw GpuMemoryException('Cannot copy to disposed GpuBuffer.');
+  void copyFromHost(
+    ffi.Pointer<ffi.Void> srcPointer,
+    int bytes, {
+    int offset = 0,
+  }) {
+    if (_isDisposed) {
+      throw GpuMemoryException('Cannot copy to disposed GpuBuffer.');
+    }
     if (bytes < 0 || offset < 0 || offset + bytes > _sizeInBytes) {
       throw GpuMemoryException('Copy operation exceeds buffer boundaries.');
     }
@@ -218,8 +224,14 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
     );
   }
 
-  void copyToHost(ffi.Pointer<ffi.Void> dstPointer, int bytes, {int offset = 0}) {
-    if (_isDisposed) throw GpuMemoryException('Cannot copy from disposed GpuBuffer.');
+  void copyToHost(
+    ffi.Pointer<ffi.Void> dstPointer,
+    int bytes, {
+    int offset = 0,
+  }) {
+    if (_isDisposed) {
+      throw GpuMemoryException('Cannot copy from disposed GpuBuffer.');
+    }
     if (bytes < 0 || offset < 0 || offset + bytes > _sizeInBytes) {
       throw GpuMemoryException('Copy operation exceeds buffer boundaries.');
     }

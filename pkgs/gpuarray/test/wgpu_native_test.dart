@@ -28,9 +28,15 @@ void main() {
       expect(WGPUBufferUsage_Storage, equals(128));
 
       // Combined usage bitmasks
-      final computeStorage = WGPUBufferUsage.storage | WGPUBufferUsage.copyDst | WGPUBufferUsage.copySrc;
+      final computeStorage =
+          WGPUBufferUsage.storage |
+          WGPUBufferUsage.copyDst |
+          WGPUBufferUsage.copySrc;
       expect(computeStorage, equals(128 | 8 | 4));
-      expect(computeStorage & WGPUBufferUsage.storage, equals(WGPUBufferUsage.storage));
+      expect(
+        computeStorage & WGPUBufferUsage.storage,
+        equals(WGPUBufferUsage.storage),
+      );
       expect(computeStorage & WGPUBufferUsage.uniform, equals(0));
     });
 
@@ -91,7 +97,8 @@ void main() {
         final wgslDesc = arena<WGPUShaderSourceWGSL>();
         wgslDesc.ref.chain.next = ffi.nullptr;
         wgslDesc.ref.chain.sType = WGPUSType.shaderSourceWGSL;
-        wgslDesc.ref.code.data = '@compute @workgroup_size(64) fn main() {}'.toNativeUtf8(allocator: arena);
+        wgslDesc.ref.code.data = '@compute @workgroup_size(64) fn main() {}'
+            .toNativeUtf8(allocator: arena);
         wgslDesc.ref.code.length = 37;
         expect(wgslDesc.ref.chain.sType, equals(2));
         expect(wgslDesc.ref.code.data.toDartString(), contains('@compute'));
@@ -109,12 +116,22 @@ void main() {
         // WGPUComputePipelineDescriptor
         final pipeDesc = arena<WGPUComputePipelineDescriptor>();
         pipeDesc.ref.nextInChain = ffi.nullptr;
-        pipeDesc.ref.label.data = 'ComputePipeline'.toNativeUtf8(allocator: arena);
+        pipeDesc.ref.label.data = 'ComputePipeline'.toNativeUtf8(
+          allocator: arena,
+        );
         pipeDesc.ref.label.length = 15;
-        pipeDesc.ref.computeEntryPoint.data = 'main'.toNativeUtf8(allocator: arena);
+        pipeDesc.ref.computeEntryPoint.data = 'main'.toNativeUtf8(
+          allocator: arena,
+        );
         pipeDesc.ref.computeEntryPoint.length = 4;
-        expect(pipeDesc.ref.label.data.toDartString(), equals('ComputePipeline'));
-        expect(pipeDesc.ref.computeEntryPoint.data.toDartString(), equals('main'));
+        expect(
+          pipeDesc.ref.label.data.toDartString(),
+          equals('ComputePipeline'),
+        );
+        expect(
+          pipeDesc.ref.computeEntryPoint.data.toDartString(),
+          equals('main'),
+        );
       });
     });
   });
@@ -130,7 +147,9 @@ void main() {
 
     test('load throws GpuDeviceException for non-existent library path', () {
       expect(
-        () => WgpuNativeLib.load(customPath: '/invalid/path/to/non_existent_wgpu.so'),
+        () => WgpuNativeLib.load(
+          customPath: '/invalid/path/to/non_existent_wgpu.so',
+        ),
         throwsA(isA<GpuDeviceException>()),
       );
     });
@@ -152,15 +171,18 @@ void main() {
       expect(autoBackend.isMock, isTrue);
     });
 
-    test('throws when useMockIfUnavailable is false and lib is missing', () async {
-      expect(
-        () => WgpuNativeBackend.create(
-          libPath: '/non_existent_path.so',
-          useMockIfUnavailable: false,
-        ),
-        throwsA(isA<GpuDeviceException>()),
-      );
-    });
+    test(
+      'throws when useMockIfUnavailable is false and lib is missing',
+      () async {
+        expect(
+          () => WgpuNativeBackend.create(
+            libPath: '/non_existent_path.so',
+            useMockIfUnavailable: false,
+          ),
+          throwsA(isA<GpuDeviceException>()),
+        );
+      },
+    );
 
     test('Buffer memory allocation, tracking and freeing', () {
       final backend = WgpuNativeBackend.mock();
@@ -198,7 +220,10 @@ void main() {
 
     test('Host to Buffer and Buffer to Host memory copies', () {
       final backend = WgpuNativeBackend.mock();
-      final device = GpuDevice.create(backend: backend, type: GpuDeviceType.webgpu);
+      final device = GpuDevice.create(
+        backend: backend,
+        type: GpuDeviceType.webgpu,
+      );
 
       final buffer = GpuBuffer.allocate(
         sizeInBytes: 16,
@@ -232,7 +257,10 @@ void main() {
 
     test('Buffer to Buffer copies', () {
       final backend = WgpuNativeBackend.mock();
-      final device = GpuDevice.create(backend: backend, type: GpuDeviceType.webgpu);
+      final device = GpuDevice.create(
+        backend: backend,
+        type: GpuDeviceType.webgpu,
+      );
 
       final bufA = GpuBuffer.allocate(
         sizeInBytes: 16,
@@ -271,7 +299,10 @@ void main() {
 
     test('dispatchComputePipeline recording and CPU simulation', () {
       final backend = WgpuNativeBackend.mock();
-      final device = GpuDevice.create(backend: backend, type: GpuDeviceType.webgpu);
+      final device = GpuDevice.create(
+        backend: backend,
+        type: GpuDeviceType.webgpu,
+      );
 
       final bufA = GpuBuffer.allocate(
         sizeInBytes: 16,
@@ -318,14 +349,15 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         code: wgslCode,
         entryPoint: 'main',
         metadata: {
-          'cpu_kernel': (List<GpuBuffer> bufs, List<int>? uniforms, int x, int y, int z) {
-            final aPtr = bufs[0].address.cast<ffi.Float>();
-            final bPtr = bufs[1].address.cast<ffi.Float>();
-            final outPtr = bufs[2].address.cast<ffi.Float>();
-            for (var i = 0; i < 4; i++) {
-              outPtr[i] = aPtr[i] + bPtr[i];
-            }
-          },
+          'cpu_kernel':
+              (List<GpuBuffer> bufs, List<int>? uniforms, int x, int y, int z) {
+                final aPtr = bufs[0].address.cast<ffi.Float>();
+                final bPtr = bufs[1].address.cast<ffi.Float>();
+                final outPtr = bufs[2].address.cast<ffi.Float>();
+                for (var i = 0; i < 4; i++) {
+                  outPtr[i] = aPtr[i] + bPtr[i];
+                }
+              },
         },
       );
 
@@ -369,7 +401,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     test('dispatchComputePipeline validation errors', () {
       final backend = WgpuNativeBackend.mock();
-      final device = GpuDevice.create(backend: backend, type: GpuDeviceType.webgpu);
+      final device = GpuDevice.create(
+        backend: backend,
+        type: GpuDeviceType.webgpu,
+      );
 
       final buf = GpuBuffer.allocate(
         sizeInBytes: 16,

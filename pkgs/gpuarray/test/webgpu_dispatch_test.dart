@@ -7,39 +7,45 @@ import 'package:gpuarray/src/backend/compute_engine.dart';
 
 void main() {
   group('WebGPU Cross-Platform Device Creation & Backend Selection', () {
-    test('createWebGpuDevice initializes a GpuDevice with GpuDeviceType.webgpu', () async {
-      final device = await createWebGpuDevice(
-        name: 'Test WebGPU Device',
-        enableMemoryPool: true,
-      );
+    test(
+      'createWebGpuDevice initializes a GpuDevice with GpuDeviceType.webgpu',
+      () async {
+        final device = await createWebGpuDevice(
+          name: 'Test WebGPU Device',
+          enableMemoryPool: true,
+        );
 
-      expect(device.name, equals('Test WebGPU Device'));
-      expect(device.type, equals(GpuDeviceType.webgpu));
-      expect(device.backend, isNotNull);
-      expect(device.backend.deviceType, equals(GpuDeviceType.webgpu));
-      expect(device.enableMemoryPool, isTrue);
+        expect(device.name, equals('Test WebGPU Device'));
+        expect(device.type, equals(GpuDeviceType.webgpu));
+        expect(device.backend, isNotNull);
+        expect(device.backend.deviceType, equals(GpuDeviceType.webgpu));
+        expect(device.enableMemoryPool, isTrue);
 
-      // Verify buffer allocation on WebGPU device
-      final buffer = device.createBuffer(
-        sizeInBytes: 1024,
-        usage: GpuBufferUsage.storage | GpuBufferUsage.copyDst,
-      );
-      expect(buffer.sizeInBytes, equals(1024));
-      expect(device.allocatedMemoryBytes, equals(1024));
+        // Verify buffer allocation on WebGPU device
+        final buffer = device.createBuffer(
+          sizeInBytes: 1024,
+          usage: GpuBufferUsage.storage | GpuBufferUsage.copyDst,
+        );
+        expect(buffer.sizeInBytes, equals(1024));
+        expect(device.allocatedMemoryBytes, equals(1024));
 
-      buffer.dispose();
-      device.dispose();
-      expect(device.isDisposed, isTrue);
-    });
+        buffer.dispose();
+        device.dispose();
+        expect(device.isDisposed, isTrue);
+      },
+    );
 
-    test('WgpuNativeBackend creates simulated backend when native WebGPU library is not loaded', () async {
-      final backend = WgpuNativeBackend.mock();
+    test(
+      'WgpuNativeBackend creates simulated backend when native WebGPU library is not loaded',
+      () async {
+        final backend = WgpuNativeBackend.mock();
 
-      expect(backend.deviceType, equals(GpuDeviceType.webgpu));
-      expect(backend.isSimulated, isTrue);
-      expect(backend.pipelineCacheSize, equals(0));
-      expect(backend.dispatchLog, isEmpty);
-    });
+        expect(backend.deviceType, equals(GpuDeviceType.webgpu));
+        expect(backend.isSimulated, isTrue);
+        expect(backend.pipelineCacheSize, equals(0));
+        expect(backend.dispatchLog, isEmpty);
+      },
+    );
   });
 
   group('WebGPU Memory Driver & Buffers', () {
@@ -62,11 +68,17 @@ void main() {
     test('Buffer memory allocation, write, copy, and free', () {
       final bufA = device.createBuffer(
         sizeInBytes: 64,
-        usage: GpuBufferUsage.storage | GpuBufferUsage.copySrc | GpuBufferUsage.copyDst,
+        usage:
+            GpuBufferUsage.storage |
+            GpuBufferUsage.copySrc |
+            GpuBufferUsage.copyDst,
       );
       final bufB = device.createBuffer(
         sizeInBytes: 64,
-        usage: GpuBufferUsage.storage | GpuBufferUsage.copySrc | GpuBufferUsage.copyDst,
+        usage:
+            GpuBufferUsage.storage |
+            GpuBufferUsage.copySrc |
+            GpuBufferUsage.copyDst,
       );
 
       final hostData = calloc<ffi.Float>(16);
@@ -149,16 +161,14 @@ void main() {
         workgroupsX: dispatch.workgroupsX,
       );
 
-      expect(backend.dispatchLog, contains('elementwise_binary_add_contiguous(4, 1, 1)'));
+      expect(
+        backend.dispatchLog,
+        contains('elementwise_binary_add_contiguous(4, 1, 1)'),
+      );
 
       // In CPU simulation mode, simulate elementwise computation
       for (var i = 0; i < 1024; i++) {
-        ComputeEngine.writeValue(
-          bufOut,
-          DType.float32,
-          i,
-          hostA[i] + hostB[i],
-        );
+        ComputeEngine.writeValue(bufOut, DType.float32, i, hostA[i] + hostB[i]);
       }
 
       for (var i = 0; i < 10; i++) {
@@ -173,77 +183,80 @@ void main() {
       bufOut.dispose();
     });
 
-    test('Dispatches Tiled GEMM Matrix Multiplication Shader (16x16 Shared Memory)', () {
-      final gemmShader = WgslTemplates.tiledMatmul(
-        dtype: WgslDType.float32,
-        tileSize: 16,
-      );
+    test(
+      'Dispatches Tiled GEMM Matrix Multiplication Shader (16x16 Shared Memory)',
+      () {
+        final gemmShader = WgslTemplates.tiledMatmul(
+          dtype: WgslDType.float32,
+          tileSize: 16,
+        );
 
-      const M = 64;
-      const K = 32;
-      const N = 48;
+        const M = 64;
+        const K = 32;
+        const N = 48;
 
-      final bufA = device.createBuffer(
-        sizeInBytes: M * K * 4,
-        usage: GpuBufferUsage.storage | GpuBufferUsage.copyDst,
-      );
-      final bufB = device.createBuffer(
-        sizeInBytes: K * N * 4,
-        usage: GpuBufferUsage.storage | GpuBufferUsage.copyDst,
-      );
-      final bufC = device.createBuffer(
-        sizeInBytes: M * N * 4,
-        usage: GpuBufferUsage.storage | GpuBufferUsage.copySrc,
-      );
+        final bufA = device.createBuffer(
+          sizeInBytes: M * K * 4,
+          usage: GpuBufferUsage.storage | GpuBufferUsage.copyDst,
+        );
+        final bufB = device.createBuffer(
+          sizeInBytes: K * N * 4,
+          usage: GpuBufferUsage.storage | GpuBufferUsage.copyDst,
+        );
+        final bufC = device.createBuffer(
+          sizeInBytes: M * N * 4,
+          usage: GpuBufferUsage.storage | GpuBufferUsage.copySrc,
+        );
 
-      final hostA = calloc<ffi.Float>(M * K);
-      final hostB = calloc<ffi.Float>(K * N);
-      for (var i = 0; i < M * K; i++) {
-        hostA[i] = (i % 7) * 0.5;
-      }
-      for (var i = 0; i < K * N; i++) {
-        hostB[i] = (i % 5) * 0.25;
-      }
-
-      bufA.copyFromHost(hostA.cast<ffi.Void>(), M * K * 4);
-      bufB.copyFromHost(hostB.cast<ffi.Void>(), K * N * 4);
-
-      final dispatch = gemmShader.calculateDispatch2D(N, M);
-      backend.dispatchComputePipeline(
-        shaderModule: gemmShader,
-        buffers: [bufA, bufB, bufC],
-        uniforms: [M, K, N, 0],
-        workgroupsX: dispatch.workgroupsX,
-        workgroupsY: dispatch.workgroupsY,
-      );
-
-      expect(backend.dispatchLog, contains('tiled_matmul_16x16(3, 4, 1)'));
-
-      // Validate CPU reference computation
-      final hostC = calloc<ffi.Float>(M * N);
-      for (var r = 0; r < M; r++) {
-        for (var c = 0; c < N; c++) {
-          var sum = 0.0;
-          for (var k = 0; k < K; k++) {
-            sum += hostA[r * K + k] * hostB[k * N + c];
-          }
-          hostC[r * N + c] = sum;
-          ComputeEngine.writeValue(bufC, DType.float32, r * N + c, sum);
+        final hostA = calloc<ffi.Float>(M * K);
+        final hostB = calloc<ffi.Float>(K * N);
+        for (var i = 0; i < M * K; i++) {
+          hostA[i] = (i % 7) * 0.5;
         }
-      }
+        for (var i = 0; i < K * N; i++) {
+          hostB[i] = (i % 5) * 0.25;
+        }
 
-      for (var i = 0; i < 20; i++) {
-        final gpuVal = ComputeEngine.readValue(bufC, DType.float32, i);
-        expect(gpuVal, closeTo(hostC[i], 1e-4));
-      }
+        bufA.copyFromHost(hostA.cast<ffi.Void>(), M * K * 4);
+        bufB.copyFromHost(hostB.cast<ffi.Void>(), K * N * 4);
 
-      calloc.free(hostA);
-      calloc.free(hostB);
-      calloc.free(hostC);
-      bufA.dispose();
-      bufB.dispose();
-      bufC.dispose();
-    });
+        final dispatch = gemmShader.calculateDispatch2D(N, M);
+        backend.dispatchComputePipeline(
+          shaderModule: gemmShader,
+          buffers: [bufA, bufB, bufC],
+          uniforms: [M, K, N, 0],
+          workgroupsX: dispatch.workgroupsX,
+          workgroupsY: dispatch.workgroupsY,
+        );
+
+        expect(backend.dispatchLog, contains('tiled_matmul_16x16(3, 4, 1)'));
+
+        // Validate CPU reference computation
+        final hostC = calloc<ffi.Float>(M * N);
+        for (var r = 0; r < M; r++) {
+          for (var c = 0; c < N; c++) {
+            var sum = 0.0;
+            for (var k = 0; k < K; k++) {
+              sum += hostA[r * K + k] * hostB[k * N + c];
+            }
+            hostC[r * N + c] = sum;
+            ComputeEngine.writeValue(bufC, DType.float32, r * N + c, sum);
+          }
+        }
+
+        for (var i = 0; i < 20; i++) {
+          final gpuVal = ComputeEngine.readValue(bufC, DType.float32, i);
+          expect(gpuVal, closeTo(hostC[i], 1e-4));
+        }
+
+        calloc.free(hostA);
+        calloc.free(hostB);
+        calloc.free(hostC);
+        bufA.dispose();
+        bufB.dispose();
+        bufC.dispose();
+      },
+    );
 
     test('Dispatches Tree Reduction WGSL Compute Shader', () {
       final reduceShader = WgslTemplates.treeReduction(
@@ -334,15 +347,9 @@ void main() {
     });
 
     test('Dispatches 2D Convolution and Normalization Shaders', () {
-      final convShader = WgslTemplates.conv2d(
-        dtype: WgslDType.float32,
-      );
-      final softmaxShader = WgslTemplates.softmax(
-        workgroupSize: 256,
-      );
-      final rmsNormShader = WgslTemplates.rmsNorm(
-        workgroupSize: 256,
-      );
+      final convShader = WgslTemplates.conv2d(dtype: WgslDType.float32);
+      final softmaxShader = WgslTemplates.softmax(workgroupSize: 256);
+      final rmsNormShader = WgslTemplates.rmsNorm(workgroupSize: 256);
 
       final buf = device.createBuffer(
         sizeInBytes: 256,
@@ -376,45 +383,48 @@ void main() {
       buf.dispose();
     });
 
-    test('dispatchComputePipeline validation for disposed buffers and workgroups', () {
-      final validBuf = device.createBuffer(
-        sizeInBytes: 64,
-        usage: GpuBufferUsage.storage,
-      );
-      final disposedBuf = device.createBuffer(
-        sizeInBytes: 64,
-        usage: GpuBufferUsage.storage,
-      );
-      disposedBuf.dispose();
+    test(
+      'dispatchComputePipeline validation for disposed buffers and workgroups',
+      () {
+        final validBuf = device.createBuffer(
+          sizeInBytes: 64,
+          usage: GpuBufferUsage.storage,
+        );
+        final disposedBuf = device.createBuffer(
+          sizeInBytes: 64,
+          usage: GpuBufferUsage.storage,
+        );
+        disposedBuf.dispose();
 
-      final shader = WgslShaderModule(
-        name: 'test_validation',
-        code: '@compute @workgroup_size(64, 1, 1) fn main() {}',
-        bindings: [],
-        workgroupSize: const WgslWorkgroupSize(64, 1, 1),
-      );
+        final shader = WgslShaderModule(
+          name: 'test_validation',
+          code: '@compute @workgroup_size(64, 1, 1) fn main() {}',
+          bindings: [],
+          workgroupSize: const WgslWorkgroupSize(64, 1, 1),
+        );
 
-      // Throws on disposed buffer
-      expect(
-        () => backend.dispatchComputePipeline(
-          shaderModule: shader,
-          buffers: [validBuf, disposedBuf],
-          workgroupsX: 1,
-        ),
-        throwsA(isA<GpuMemoryException>()),
-      );
+        // Throws on disposed buffer
+        expect(
+          () => backend.dispatchComputePipeline(
+            shaderModule: shader,
+            buffers: [validBuf, disposedBuf],
+            workgroupsX: 1,
+          ),
+          throwsA(isA<GpuMemoryException>()),
+        );
 
-      // Throws on invalid workgroup dimensions
-      expect(
-        () => backend.dispatchComputePipeline(
-          shaderModule: shader,
-          buffers: [validBuf],
-          workgroupsX: 0,
-        ),
-        throwsA(isA<ArgumentError>()),
-      );
+        // Throws on invalid workgroup dimensions
+        expect(
+          () => backend.dispatchComputePipeline(
+            shaderModule: shader,
+            buffers: [validBuf],
+            workgroupsX: 0,
+          ),
+          throwsA(isA<ArgumentError>()),
+        );
 
-      validBuf.dispose();
-    });
+        validBuf.dispose();
+      },
+    );
   });
 }

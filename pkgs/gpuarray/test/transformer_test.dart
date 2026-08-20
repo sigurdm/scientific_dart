@@ -10,33 +10,21 @@ void main() {
       ResourceScope.scope(() {
         // Query, Key, Value: shape [1, 1, 3, 2] (B=1, H=1, seqLen=3, headDim=2)
         final q = GpuArray.fromList(
-          [
-            1.0, 0.0,
-            0.0, 1.0,
-            1.0, 1.0,
-          ],
+          [1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
           [1, 1, 3, 2],
           DType.float64,
           requiresGrad: true,
         );
 
         final k = GpuArray.fromList(
-          [
-            1.0, 0.0,
-            0.0, 1.0,
-            1.0, 1.0,
-          ],
+          [1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
           [1, 1, 3, 2],
           DType.float64,
           requiresGrad: true,
         );
 
         final v = GpuArray.fromList(
-          [
-            10.0, 0.0,
-            0.0, 20.0,
-            30.0, 30.0,
-          ],
+          [10.0, 0.0, 0.0, 20.0, 30.0, 30.0],
           [1, 1, 3, 2],
           DType.float64,
           requiresGrad: true,
@@ -92,7 +80,12 @@ void main() {
           DType.boolean,
         );
 
-        final out = nn.scaled_dot_product_attention(q, k, v, attnMask: boolMask);
+        final out = nn.scaled_dot_product_attention(
+          q,
+          k,
+          v,
+          attnMask: boolMask,
+        );
         expect(out.shape, equals([2, 4]));
 
         final outList = out.toList().cast<double>();
@@ -106,38 +99,41 @@ void main() {
       });
     });
 
-    test("MultiheadAttention forward pass, head splitting, and autograd backward", () {
-      ResourceScope.scope(() {
-        const embedDim = 8;
-        const numHeads = 2;
-        const seqLen = 4;
-        const batchSize = 2;
+    test(
+      "MultiheadAttention forward pass, head splitting, and autograd backward",
+      () {
+        ResourceScope.scope(() {
+          const embedDim = 8;
+          const numHeads = 2;
+          const seqLen = 4;
+          const batchSize = 2;
 
-        final mha = nn.MultiheadAttention(embedDim, numHeads);
-        expect(mha.parameters().length, equals(8)); // 4 weights + 4 biases
+          final mha = nn.MultiheadAttention(embedDim, numHeads);
+          expect(mha.parameters().length, equals(8)); // 4 weights + 4 biases
 
-        final input = GpuArray.ones(
-          [batchSize, seqLen, embedDim],
-          DType.float64,
-          requiresGrad: true,
-        );
+          final input = GpuArray.ones(
+            [batchSize, seqLen, embedDim],
+            DType.float64,
+            requiresGrad: true,
+          );
 
-        final out = mha(input, isCausal: true);
-        expect(out.shape, equals([batchSize, seqLen, embedDim]));
-        expect(out.requiresGrad, isTrue);
+          final out = mha(input, isCausal: true);
+          expect(out.shape, equals([batchSize, seqLen, embedDim]));
+          expect(out.requiresGrad, isTrue);
 
-        final loss = out.sum();
-        loss.backward();
+          final loss = out.sum();
+          loss.backward();
 
-        expect(mha.qProj.weight.grad, isNotNull);
-        expect(mha.qProj.weight.grad!.shape, equals([embedDim, embedDim]));
-        expect(mha.kProj.weight.grad, isNotNull);
-        expect(mha.vProj.weight.grad, isNotNull);
-        expect(mha.outProj.weight.grad, isNotNull);
-        expect(input.grad, isNotNull);
-        expect(input.grad!.shape, equals([batchSize, seqLen, embedDim]));
-      });
-    });
+          expect(mha.qProj.weight.grad, isNotNull);
+          expect(mha.qProj.weight.grad!.shape, equals([embedDim, embedDim]));
+          expect(mha.kProj.weight.grad, isNotNull);
+          expect(mha.vProj.weight.grad, isNotNull);
+          expect(mha.outProj.weight.grad, isNotNull);
+          expect(input.grad, isNotNull);
+          expect(input.grad!.shape, equals([batchSize, seqLen, embedDim]));
+        });
+      },
+    );
 
     test("MultiheadAttention with 2D inputs and cross-attention key/value", () {
       ResourceScope.scope(() {
@@ -189,52 +185,51 @@ void main() {
       });
     });
 
-    test("RotaryEmbedding (RoPE) forward rotation, norm preservation, and backward", () {
-      ResourceScope.scope(() {
-        const dim = 4;
-        const seqLen = 3;
-        final rope = nn.RotaryEmbedding(dim, maxSeqLen: 16);
+    test(
+      "RotaryEmbedding (RoPE) forward rotation, norm preservation, and backward",
+      () {
+        ResourceScope.scope(() {
+          const dim = 4;
+          const seqLen = 3;
+          final rope = nn.RotaryEmbedding(dim, maxSeqLen: 16);
 
-        final x = GpuArray.fromList(
-          [
-            1.0, 2.0, 3.0, 4.0,
-            0.5, 1.5, 2.5, 3.5,
-            -1.0, 0.0, 1.0, 2.0,
-          ],
-          [seqLen, dim],
-          DType.float64,
-          requiresGrad: true,
-        );
+          final x = GpuArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 0.5, 1.5, 2.5, 3.5, -1.0, 0.0, 1.0, 2.0],
+            [seqLen, dim],
+            DType.float64,
+            requiresGrad: true,
+          );
 
-        final out = rope(x);
-        expect(out.shape, equals([seqLen, dim]));
+          final out = rope(x);
+          expect(out.shape, equals([seqLen, dim]));
 
-        // Position 0 should have theta = 0 -> cos = 1, sin = 0 -> out[0] == x[0]
-        final xList = x.toList().cast<double>();
-        final outList = out.toList().cast<double>();
-        for (var i = 0; i < dim; i++) {
-          expect(outList[i], closeTo(xList[i], 1e-5));
-        }
-
-        // L2 Norm preservation: for any token position p, ||rope(x[p])||_2 == ||x[p]||_2
-        for (var p = 0; p < seqLen; p++) {
-          var normX = 0.0;
-          var normOut = 0.0;
-          for (var d = 0; d < dim; d++) {
-            final xv = xList[p * dim + d];
-            final ov = outList[p * dim + d];
-            normX += xv * xv;
-            normOut += ov * ov;
+          // Position 0 should have theta = 0 -> cos = 1, sin = 0 -> out[0] == x[0]
+          final xList = x.toList().cast<double>();
+          final outList = out.toList().cast<double>();
+          for (var i = 0; i < dim; i++) {
+            expect(outList[i], closeTo(xList[i], 1e-5));
           }
-          expect(math.sqrt(normOut), closeTo(math.sqrt(normX), 1e-4));
-        }
 
-        final loss = out.sum();
-        loss.backward();
-        expect(x.grad, isNotNull);
-        expect(x.grad!.shape, equals([seqLen, dim]));
-      });
-    });
+          // L2 Norm preservation: for any token position p, ||rope(x[p])||_2 == ||x[p]||_2
+          for (var p = 0; p < seqLen; p++) {
+            var normX = 0.0;
+            var normOut = 0.0;
+            for (var d = 0; d < dim; d++) {
+              final xv = xList[p * dim + d];
+              final ov = outList[p * dim + d];
+              normX += xv * xv;
+              normOut += ov * ov;
+            }
+            expect(math.sqrt(normOut), closeTo(math.sqrt(normX), 1e-4));
+          }
+
+          final loss = out.sum();
+          loss.backward();
+          expect(x.grad, isNotNull);
+          expect(x.grad!.shape, equals([seqLen, dim]));
+        });
+      },
+    );
 
     test("SwiGLU & GeGLU gated linear units forward and backward", () {
       ResourceScope.scope(() {
@@ -263,60 +258,78 @@ void main() {
       });
     });
 
-    test("TransformerEncoderLayer forward and backward (Post-LN and Pre-LN)", () {
-      ResourceScope.scope(() {
-        // Post-LN
-        final postLayer = nn.TransformerEncoderLayer(
-          8,
-          2,
-          dimFeedforward: 16,
-          normFirst: false,
-        );
-        final x1 = GpuArray.ones([2, 3, 8], DType.float64, requiresGrad: true);
-        final outPost = postLayer(x1);
-        expect(outPost.shape, equals([2, 3, 8]));
-        outPost.sum().backward();
-        expect(x1.grad, isNotNull);
-        expect(postLayer.selfAttn.qProj.weight.grad, isNotNull);
-        expect(postLayer.linear1.weight.grad, isNotNull);
+    test(
+      "TransformerEncoderLayer forward and backward (Post-LN and Pre-LN)",
+      () {
+        ResourceScope.scope(() {
+          // Post-LN
+          final postLayer = nn.TransformerEncoderLayer(
+            8,
+            2,
+            dimFeedforward: 16,
+            normFirst: false,
+          );
+          final x1 = GpuArray.ones(
+            [2, 3, 8],
+            DType.float64,
+            requiresGrad: true,
+          );
+          final outPost = postLayer(x1);
+          expect(outPost.shape, equals([2, 3, 8]));
+          outPost.sum().backward();
+          expect(x1.grad, isNotNull);
+          expect(postLayer.selfAttn.qProj.weight.grad, isNotNull);
+          expect(postLayer.linear1.weight.grad, isNotNull);
 
-        // Pre-LN
-        final preLayer = nn.TransformerEncoderLayer(
-          8,
-          2,
-          dimFeedforward: 16,
-          normFirst: true,
-        );
-        final x2 = GpuArray.ones([2, 3, 8], DType.float64, requiresGrad: true);
-        final outPre = preLayer(x2, isCausal: true);
-        expect(outPre.shape, equals([2, 3, 8]));
-        outPre.sum().backward();
-        expect(x2.grad, isNotNull);
-        expect(preLayer.selfAttn.qProj.weight.grad, isNotNull);
-      });
-    });
+          // Pre-LN
+          final preLayer = nn.TransformerEncoderLayer(
+            8,
+            2,
+            dimFeedforward: 16,
+            normFirst: true,
+          );
+          final x2 = GpuArray.ones(
+            [2, 3, 8],
+            DType.float64,
+            requiresGrad: true,
+          );
+          final outPre = preLayer(x2, isCausal: true);
+          expect(outPre.shape, equals([2, 3, 8]));
+          outPre.sum().backward();
+          expect(x2.grad, isNotNull);
+          expect(preLayer.selfAttn.qProj.weight.grad, isNotNull);
+        });
+      },
+    );
 
-    test("TransformerDecoderLayer forward and backward with cross-attention", () {
-      ResourceScope.scope(() {
-        final decLayer = nn.TransformerDecoderLayer(8, 2, dimFeedforward: 16);
-        final tgt = GpuArray.ones([2, 4, 8], DType.float64, requiresGrad: true);
-        final memory = GpuArray.ones(
-          [2, 6, 8],
-          DType.float64,
-          requiresGrad: true,
-        );
+    test(
+      "TransformerDecoderLayer forward and backward with cross-attention",
+      () {
+        ResourceScope.scope(() {
+          final decLayer = nn.TransformerDecoderLayer(8, 2, dimFeedforward: 16);
+          final tgt = GpuArray.ones(
+            [2, 4, 8],
+            DType.float64,
+            requiresGrad: true,
+          );
+          final memory = GpuArray.ones(
+            [2, 6, 8],
+            DType.float64,
+            requiresGrad: true,
+          );
 
-        final out = decLayer(tgt, memory: memory);
-        expect(out.shape, equals([2, 4, 8]));
+          final out = decLayer(tgt, memory: memory);
+          expect(out.shape, equals([2, 4, 8]));
 
-        final loss = out.sum();
-        loss.backward();
+          final loss = out.sum();
+          loss.backward();
 
-        expect(tgt.grad, isNotNull);
-        expect(memory.grad, isNotNull);
-        expect(decLayer.selfAttn.qProj.weight.grad, isNotNull);
-        expect(decLayer.multiheadAttn.kProj.weight.grad, isNotNull);
-      });
-    });
+          expect(tgt.grad, isNotNull);
+          expect(memory.grad, isNotNull);
+          expect(decLayer.selfAttn.qProj.weight.grad, isNotNull);
+          expect(decLayer.multiheadAttn.kProj.weight.grad, isNotNull);
+        });
+      },
+    );
   });
 }

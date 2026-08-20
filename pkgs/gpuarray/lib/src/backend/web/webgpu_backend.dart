@@ -45,13 +45,17 @@ abstract final class GPUShaderStageConstants {
 
 @JS()
 extension type GPU(JSObject _) implements JSObject {
-  external JSPromise<GPUAdapter?> requestAdapter([GPURequestAdapterOptions? options]);
+  external JSPromise<GPUAdapter?> requestAdapter([
+    GPURequestAdapterOptions? options,
+  ]);
   external String getPreferredCanvasFormat();
 }
 
 @JS()
 extension type GPUAdapter(JSObject _) implements JSObject {
-  external JSPromise<GPUDevice> requestDevice([GPUDeviceDescriptor? descriptor]);
+  external JSPromise<GPUDevice> requestDevice([
+    GPUDeviceDescriptor? descriptor,
+  ]);
   external GPUAdapterInfo get info;
   external GPUSupportedLimits get limits;
   external GPUSupportedFeatures get features;
@@ -86,11 +90,19 @@ extension type GPUSupportedFeatures(JSObject _) implements JSObject {
 extension type GPUDevice(JSObject _) implements JSObject {
   external GPUQueue get queue;
   external GPUBuffer createBuffer(GPUBufferDescriptor descriptor);
-  external GPUShaderModule createShaderModule(GPUShaderModuleDescriptor descriptor);
-  external GPUComputePipeline createComputePipeline(GPUComputePipelineDescriptor descriptor);
-  external GPUBindGroupLayout createBindGroupLayout(GPUBindGroupLayoutDescriptor descriptor);
+  external GPUShaderModule createShaderModule(
+    GPUShaderModuleDescriptor descriptor,
+  );
+  external GPUComputePipeline createComputePipeline(
+    GPUComputePipelineDescriptor descriptor,
+  );
+  external GPUBindGroupLayout createBindGroupLayout(
+    GPUBindGroupLayoutDescriptor descriptor,
+  );
   external GPUBindGroup createBindGroup(GPUBindGroupDescriptor descriptor);
-  external GPUCommandEncoder createCommandEncoder([GPUCommandEncoderDescriptor? descriptor]);
+  external GPUCommandEncoder createCommandEncoder([
+    GPUCommandEncoderDescriptor? descriptor,
+  ]);
   external void destroy();
 }
 
@@ -149,7 +161,9 @@ extension type GPUBindGroup(JSObject _) implements JSObject {}
 
 @JS()
 extension type GPUCommandEncoder(JSObject _) implements JSObject {
-  external GPUComputePassEncoder beginComputePass([GPUComputePassDescriptor? descriptor]);
+  external GPUComputePassEncoder beginComputePass([
+    GPUComputePassDescriptor? descriptor,
+  ]);
   external void copyBufferToBuffer(
     GPUBuffer source,
     int sourceOffset,
@@ -191,9 +205,7 @@ extension type GPURequestAdapterOptions._(JSObject _) implements JSObject {
 }
 
 extension type GPUDeviceDescriptor._(JSObject _) implements JSObject {
-  external factory GPUDeviceDescriptor({
-    String? label,
-  });
+  external factory GPUDeviceDescriptor({String? label});
 }
 
 extension type GPUBufferDescriptor._(JSObject _) implements JSObject {
@@ -274,21 +286,15 @@ extension type GPUBufferBinding._(JSObject _) implements JSObject {
 }
 
 extension type GPUCommandEncoderDescriptor._(JSObject _) implements JSObject {
-  external factory GPUCommandEncoderDescriptor({
-    String? label,
-  });
+  external factory GPUCommandEncoderDescriptor({String? label});
 }
 
 extension type GPUComputePassDescriptor._(JSObject _) implements JSObject {
-  external factory GPUComputePassDescriptor({
-    String? label,
-  });
+  external factory GPUComputePassDescriptor({String? label});
 }
 
 extension type GPUCommandBufferDescriptor._(JSObject _) implements JSObject {
-  external factory GPUCommandBufferDescriptor({
-    String? label,
-  });
+  external factory GPUCommandBufferDescriptor({String? label});
 }
 
 /// Navigator helper extension to access the browser WebGPU instance.
@@ -329,11 +335,7 @@ final class BrowserWebGpuBackend extends GpuBackend {
   final List<String> _dispatchLog = [];
   bool _isDisposed = false;
 
-  BrowserWebGpuBackend({
-    this.adapter,
-    this.device,
-    this.isSimulated = false,
-  });
+  BrowserWebGpuBackend({this.adapter, this.device, this.isSimulated = false});
 
   @override
   GpuDeviceType get deviceType => GpuDeviceType.webgpu;
@@ -405,7 +407,8 @@ final class BrowserWebGpuBackend extends GpuBackend {
       final gpuBuffer = device!.createBuffer(
         GPUBufferDescriptor(
           size: alignedSize,
-          usage: GPUBufferUsageConstants.storage |
+          usage:
+              GPUBufferUsageConstants.storage |
               GPUBufferUsageConstants.copySrc |
               GPUBufferUsageConstants.copyDst |
               GPUBufferUsageConstants.uniform,
@@ -448,8 +451,6 @@ final class BrowserWebGpuBackend extends GpuBackend {
     }
   }
 
-
-
   /// Asynchronously copies memory from GPU device buffer [src] into host pointer [dst]
   /// via a staging buffer and WebGPU `mapAsync(GPUMapMode.READ)`.
   Future<void> copyBufferToHostAsync(
@@ -472,7 +473,8 @@ final class BrowserWebGpuBackend extends GpuBackend {
     final stagingBuffer = device!.createBuffer(
       GPUBufferDescriptor(
         size: alignedBytes,
-        usage: GPUBufferUsageConstants.mapRead | GPUBufferUsageConstants.copyDst,
+        usage:
+            GPUBufferUsageConstants.mapRead | GPUBufferUsageConstants.copyDst,
       ),
     );
 
@@ -481,7 +483,9 @@ final class BrowserWebGpuBackend extends GpuBackend {
     final cmdBuf = encoder.finish();
     device!.queue.submit([cmdBuf].toJS);
 
-    await stagingBuffer.mapAsync(GPUMapModeConstants.read, 0, alignedBytes).toDart;
+    await stagingBuffer
+        .mapAsync(GPUMapModeConstants.read, 0, alignedBytes)
+        .toDart;
     final arrayBuffer = stagingBuffer.getMappedRange(0, alignedBytes);
     final dartBytes = arrayBuffer.toDart.asUint8List();
     final dstBytes = dst.asTypedList(bytes);
@@ -512,7 +516,13 @@ final class BrowserWebGpuBackend extends GpuBackend {
       if (srcGpu != null && dstGpu != null) {
         final alignedBytes = math.max(16, (bytes + 3) & ~3);
         final encoder = device!.createCommandEncoder();
-        encoder.copyBufferToBuffer(srcGpu, srcOffset, dstGpu, dstOffset, alignedBytes);
+        encoder.copyBufferToBuffer(
+          srcGpu,
+          srcOffset,
+          dstGpu,
+          dstOffset,
+          alignedBytes,
+        );
         final cmdBuf = encoder.finish();
         device!.queue.submit([cmdBuf].toJS);
       }
@@ -567,8 +577,8 @@ final class BrowserWebGpuBackend extends GpuBackend {
       uniformBuffer = device!.createBuffer(
         GPUBufferDescriptor(
           size: uSize,
-          usage: GPUBufferUsageConstants.uniform |
-              GPUBufferUsageConstants.copyDst,
+          usage:
+              GPUBufferUsageConstants.uniform | GPUBufferUsageConstants.copyDst,
         ),
       );
       device!.queue.writeBuffer(uniformBuffer, 0, u32List.buffer.toJS);
@@ -621,7 +631,8 @@ final class BrowserWebGpuBackend extends GpuBackend {
 
   /// Compiles or retrieves a cached [GPUComputePipeline] for [shaderModule].
   GPUComputePipeline _getOrCreatePipeline(WgslShaderModule shaderModule) {
-    final key = '${shaderModule.name}_${shaderModule.entryPoint}_${shaderModule.code}';
+    final key =
+        '${shaderModule.name}_${shaderModule.entryPoint}_${shaderModule.code}';
     final cached = _pipelineCache[key];
     if (cached != null) return cached;
 

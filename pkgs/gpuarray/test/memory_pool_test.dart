@@ -76,12 +76,12 @@ void main() {
 
     test('GpuMemoryPool trim purges cached buffers to OS', () {
       final backend = TrackingBackend();
-      final device = GpuDevice.create(
-        backend: backend,
-        enableMemoryPool: true,
-      );
+      final device = GpuDevice.create(backend: backend, enableMemoryPool: true);
 
-      final buf = device.createBuffer(sizeInBytes: 500, usage: GpuBufferUsage.storage);
+      final buf = device.createBuffer(
+        sizeInBytes: 500,
+        usage: GpuBufferUsage.storage,
+      );
       buf.dispose();
       expect(device.memoryPool.cachedBytes, equals(512));
 
@@ -96,8 +96,18 @@ void main() {
       final device = GpuDevice.create(enableMemoryPool: true);
 
       final result = ResourceScope.returning(() {
-        final a = GpuArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64, device: device);
-        final b = GpuArray.fromList([10.0, 20.0, 30.0, 40.0], [4], DType.float64, device: device);
+        final a = GpuArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [4],
+          DType.float64,
+          device: device,
+        );
+        final b = GpuArray.fromList(
+          [10.0, 20.0, 30.0, 40.0],
+          [4],
+          DType.float64,
+          device: device,
+        );
         final c = a + b;
         return c;
       });
@@ -107,37 +117,43 @@ void main() {
       device.dispose();
     });
 
-    test('Device disposal frees active pooled buffers without leaking memory', () {
-      final backend = TrackingBackend();
-      final device = GpuDevice.create(
-        backend: backend,
-        enableMemoryPool: true,
-      );
+    test(
+      'Device disposal frees active pooled buffers without leaking memory',
+      () {
+        final backend = TrackingBackend();
+        final device = GpuDevice.create(
+          backend: backend,
+          enableMemoryPool: true,
+        );
 
-      final buf1 = device.createBuffer(sizeInBytes: 100, usage: GpuBufferUsage.storage);
-      final buf2 = device.createBuffer(sizeInBytes: 200, usage: GpuBufferUsage.storage);
-      expect(backend.allocCount, equals(2));
-      expect(backend.freeCount, equals(0));
+        final buf1 = device.createBuffer(
+          sizeInBytes: 100,
+          usage: GpuBufferUsage.storage,
+        );
+        final buf2 = device.createBuffer(
+          sizeInBytes: 200,
+          usage: GpuBufferUsage.storage,
+        );
+        expect(backend.allocCount, equals(2));
+        expect(backend.freeCount, equals(0));
 
-      device.dispose();
+        device.dispose();
 
-      expect(buf1.isDisposed, isTrue);
-      expect(buf2.isDisposed, isTrue);
-      expect(device.isDisposed, isTrue);
-      expect(device.memoryPool.isDisposed, isTrue);
-      expect(backend.freeCount, equals(2));
+        expect(buf1.isDisposed, isTrue);
+        expect(buf2.isDisposed, isTrue);
+        expect(device.isDisposed, isTrue);
+        expect(device.memoryPool.isDisposed, isTrue);
+        expect(backend.freeCount, equals(2));
 
-      // Subsequent dispose on buffer is safe
-      buf1.dispose();
-      expect(backend.freeCount, equals(2));
-    });
+        // Subsequent dispose on buffer is safe
+        buf1.dispose();
+        expect(backend.freeCount, equals(2));
+      },
+    );
 
     test('GpuMemoryPool enforces maxCachedBytes limit', () {
       final backend = TrackingBackend();
-      final device = GpuDevice.create(
-        backend: backend,
-        enableMemoryPool: true,
-      );
+      final device = GpuDevice.create(backend: backend, enableMemoryPool: true);
       final smallPool = GpuMemoryPool(device, maxCachedBytes: 128);
 
       final buf1 = smallPool.acquire(64);
@@ -212,75 +228,171 @@ void main() {
       device.dispose();
     });
 
-    test('copyFromHost, copyToHost, and copyToBuffer throw GpuMemoryException on invalid bounds', () {
-      final device = GpuDevice.create();
-      final buf1 = device.createBuffer(sizeInBytes: 64, usage: GpuBufferUsage.storage);
-      final buf2 = device.createBuffer(sizeInBytes: 64, usage: GpuBufferUsage.storage);
-      final hostPtr = calloc<ffi.Uint8>(128);
+    test(
+      'copyFromHost, copyToHost, and copyToBuffer throw GpuMemoryException on invalid bounds',
+      () {
+        final device = GpuDevice.create();
+        final buf1 = device.createBuffer(
+          sizeInBytes: 64,
+          usage: GpuBufferUsage.storage,
+        );
+        final buf2 = device.createBuffer(
+          sizeInBytes: 64,
+          usage: GpuBufferUsage.storage,
+        );
+        final hostPtr = calloc<ffi.Uint8>(128);
 
-      try {
-        // Negative bytes
-        expect(() => buf1.copyFromHost(hostPtr.cast<ffi.Void>(), -1), throwsA(isA<GpuMemoryException>()));
-        expect(() => buf1.copyToHost(hostPtr.cast<ffi.Void>(), -1), throwsA(isA<GpuMemoryException>()));
-        expect(() => buf1.copyToBuffer(buf2, -1), throwsA(isA<GpuMemoryException>()));
+        try {
+          // Negative bytes
+          expect(
+            () => buf1.copyFromHost(hostPtr.cast<ffi.Void>(), -1),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => buf1.copyToHost(hostPtr.cast<ffi.Void>(), -1),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => buf1.copyToBuffer(buf2, -1),
+            throwsA(isA<GpuMemoryException>()),
+          );
 
-        // Negative offsets
-        expect(() => buf1.copyFromHost(hostPtr.cast<ffi.Void>(), 10, offset: -1), throwsA(isA<GpuMemoryException>()));
-        expect(() => buf1.copyToHost(hostPtr.cast<ffi.Void>(), 10, offset: -1), throwsA(isA<GpuMemoryException>()));
-        expect(() => buf1.copyToBuffer(buf2, 10, srcOffset: -1), throwsA(isA<GpuMemoryException>()));
-        expect(() => buf1.copyToBuffer(buf2, 10, dstOffset: -1), throwsA(isA<GpuMemoryException>()));
+          // Negative offsets
+          expect(
+            () => buf1.copyFromHost(hostPtr.cast<ffi.Void>(), 10, offset: -1),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => buf1.copyToHost(hostPtr.cast<ffi.Void>(), 10, offset: -1),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => buf1.copyToBuffer(buf2, 10, srcOffset: -1),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => buf1.copyToBuffer(buf2, 10, dstOffset: -1),
+            throwsA(isA<GpuMemoryException>()),
+          );
 
-        // Out-of-bounds offset + bytes > sizeInBytes
-        expect(() => buf1.copyFromHost(hostPtr.cast<ffi.Void>(), 65), throwsA(isA<GpuMemoryException>()));
-        expect(() => buf1.copyFromHost(hostPtr.cast<ffi.Void>(), 10, offset: 60), throwsA(isA<GpuMemoryException>()));
-        expect(() => buf1.copyToHost(hostPtr.cast<ffi.Void>(), 65), throwsA(isA<GpuMemoryException>()));
-        expect(() => buf1.copyToHost(hostPtr.cast<ffi.Void>(), 10, offset: 60), throwsA(isA<GpuMemoryException>()));
-        expect(() => buf1.copyToBuffer(buf2, 65), throwsA(isA<GpuMemoryException>()));
-        expect(() => buf1.copyToBuffer(buf2, 10, srcOffset: 60), throwsA(isA<GpuMemoryException>()));
-        expect(() => buf1.copyToBuffer(buf2, 10, dstOffset: 60), throwsA(isA<GpuMemoryException>()));
+          // Out-of-bounds offset + bytes > sizeInBytes
+          expect(
+            () => buf1.copyFromHost(hostPtr.cast<ffi.Void>(), 65),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => buf1.copyFromHost(hostPtr.cast<ffi.Void>(), 10, offset: 60),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => buf1.copyToHost(hostPtr.cast<ffi.Void>(), 65),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => buf1.copyToHost(hostPtr.cast<ffi.Void>(), 10, offset: 60),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => buf1.copyToBuffer(buf2, 65),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => buf1.copyToBuffer(buf2, 10, srcOffset: 60),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => buf1.copyToBuffer(buf2, 10, dstOffset: 60),
+            throwsA(isA<GpuMemoryException>()),
+          );
 
-        // Direct driver backend validation
-        expect(() => device.backend.copyHostToBuffer(hostPtr, buf1, -5), throwsA(isA<GpuMemoryException>()));
-        expect(() => device.backend.copyHostToBuffer(hostPtr, buf1, 10, offset: -1), throwsA(isA<GpuMemoryException>()));
-        expect(() => device.backend.copyHostToBuffer(hostPtr, buf1, 70), throwsA(isA<GpuMemoryException>()));
-        expect(() => device.backend.copyBufferToHost(buf1, hostPtr, -5), throwsA(isA<GpuMemoryException>()));
-        expect(() => device.backend.copyBufferToHost(buf1, hostPtr, 10, offset: -1), throwsA(isA<GpuMemoryException>()));
-        expect(() => device.backend.copyBufferToHost(buf1, hostPtr, 70), throwsA(isA<GpuMemoryException>()));
-        expect(() => device.backend.copyBufferToBuffer(buf1, buf2, -5), throwsA(isA<GpuMemoryException>()));
-        expect(() => device.backend.copyBufferToBuffer(buf1, buf2, 10, srcOffset: -1), throwsA(isA<GpuMemoryException>()));
-        expect(() => device.backend.copyBufferToBuffer(buf1, buf2, 10, dstOffset: -1), throwsA(isA<GpuMemoryException>()));
-        expect(() => device.backend.copyBufferToBuffer(buf1, buf2, 70), throwsA(isA<GpuMemoryException>()));
-      } finally {
-        calloc.free(hostPtr);
+          // Direct driver backend validation
+          expect(
+            () => device.backend.copyHostToBuffer(hostPtr, buf1, -5),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () =>
+                device.backend.copyHostToBuffer(hostPtr, buf1, 10, offset: -1),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => device.backend.copyHostToBuffer(hostPtr, buf1, 70),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => device.backend.copyBufferToHost(buf1, hostPtr, -5),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () =>
+                device.backend.copyBufferToHost(buf1, hostPtr, 10, offset: -1),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => device.backend.copyBufferToHost(buf1, hostPtr, 70),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => device.backend.copyBufferToBuffer(buf1, buf2, -5),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => device.backend.copyBufferToBuffer(
+              buf1,
+              buf2,
+              10,
+              srcOffset: -1,
+            ),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => device.backend.copyBufferToBuffer(
+              buf1,
+              buf2,
+              10,
+              dstOffset: -1,
+            ),
+            throwsA(isA<GpuMemoryException>()),
+          );
+          expect(
+            () => device.backend.copyBufferToBuffer(buf1, buf2, 70),
+            throwsA(isA<GpuMemoryException>()),
+          );
+        } finally {
+          calloc.free(hostPtr);
+          buf1.dispose();
+          buf2.dispose();
+          device.dispose();
+        }
+      },
+    );
+
+    test(
+      'GpuMemoryPool acquire preserves and updates strongly-typed GpuBufferUsage',
+      () {
+        final device = GpuDevice.create(enableMemoryPool: true);
+
+        final buf1 = device.memoryPool.acquire(
+          100,
+          usage: GpuBufferUsage.storage | GpuBufferUsage.copyDst,
+        );
+        expect(buf1.usage.contains(GpuBufferUsage.storage), isTrue);
+        expect(buf1.usage.contains(GpuBufferUsage.copyDst), isTrue);
+        expect(buf1.usage.contains(GpuBufferUsage.uniform), isFalse);
+
         buf1.dispose();
+
+        // Re-acquire same bucket with different usage
+        final buf2 = device.memoryPool.acquire(
+          100,
+          usage: GpuBufferUsage.uniform,
+        );
+        expect(buf2.usage.contains(GpuBufferUsage.uniform), isTrue);
+        expect(buf2.usage.contains(GpuBufferUsage.copyDst), isFalse);
+
         buf2.dispose();
         device.dispose();
-      }
-    });
-
-    test('GpuMemoryPool acquire preserves and updates strongly-typed GpuBufferUsage', () {
-      final device = GpuDevice.create(enableMemoryPool: true);
-
-      final buf1 = device.memoryPool.acquire(
-        100,
-        usage: GpuBufferUsage.storage | GpuBufferUsage.copyDst,
-      );
-      expect(buf1.usage.contains(GpuBufferUsage.storage), isTrue);
-      expect(buf1.usage.contains(GpuBufferUsage.copyDst), isTrue);
-      expect(buf1.usage.contains(GpuBufferUsage.uniform), isFalse);
-
-      buf1.dispose();
-
-      // Re-acquire same bucket with different usage
-      final buf2 = device.memoryPool.acquire(
-        100,
-        usage: GpuBufferUsage.uniform,
-      );
-      expect(buf2.usage.contains(GpuBufferUsage.uniform), isTrue);
-      expect(buf2.usage.contains(GpuBufferUsage.copyDst), isFalse);
-
-      buf2.dispose();
-      device.dispose();
-    });
+      },
+    );
   });
 }

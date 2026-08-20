@@ -26,25 +26,17 @@ void main() async {
       final matB = GpuArray.filled([matSize, matSize], 2.5, DType.float64);
 
       c.group('1. Arithmetic & Ufuncs [$size elements]', () {
-        c.bench(
-          'GpuArray add (gpuArr1 + gpuArr2)',
-          () {
-            final res = gpuArr1 + gpuArr2;
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('GpuArray add (gpuArr1 + gpuArr2)', () {
+          final res = gpuArr1 + gpuArr2;
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'GpuArray multiply (gpuArr1 * gpuArr2)',
-          () {
-            final res = gpuArr1 * gpuArr2;
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('GpuArray multiply (gpuArr1 * gpuArr2)', () {
+          final res = gpuArr1 * gpuArr2;
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
 
         c.bench('GpuArray sqrt (gpuArr1.sqrt())', () {
           final res = gpuArr1.sqrt();
@@ -80,37 +72,25 @@ void main() async {
       });
 
       c.group('3. Linear Algebra (Matrix Multiplication)', () {
-        c.bench(
-          'GpuArray matmul [$matSize x $matSize]',
-          () {
-            final res = matA.matmul(matB);
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(matSize * matSize * matSize),
-        );
+        c.bench('GpuArray matmul [$matSize x $matSize]', () {
+          final res = matA.matmul(matB);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(matSize * matSize * matSize));
       });
 
       c.group('4. Host <-> GPU Memory Transfers', () {
-        c.bench(
-          'Host NDArray -> GPU (toGpu) [$size elements]',
-          () {
-            final res = ndArr1.toGpu();
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('Host NDArray -> GPU (toGpu) [$size elements]', () {
+          final res = ndArr1.toGpu();
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
 
-        c.bench(
-          'GPU -> Host NDArray (toNDArray) [$size elements]',
-          () {
-            final res = gpuArr1.toNDArray();
-            blackhole(res);
-            res.dispose();
-          },
-          throughput: Throughput.elements(size),
-        );
+        c.bench('GPU -> Host NDArray (toNDArray) [$size elements]', () {
+          final res = gpuArr1.toNDArray();
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
       });
     },
     config: CriterionConfig(

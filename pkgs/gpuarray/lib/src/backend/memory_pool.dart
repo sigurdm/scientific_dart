@@ -90,7 +90,10 @@ class GpuMemoryPool {
 
     final bucketSize = buffer.sizeInBytes;
     if (_isDisposed || (_cachedBytes + bucketSize > maxCachedBytes)) {
-      device.backend.freeBuffer(buffer.rawPointer.cast<ffi.Uint8>(), bucketSize);
+      device.backend.freeBuffer(
+        buffer.rawPointer.cast<ffi.Uint8>(),
+        bucketSize,
+      );
       return;
     }
 
@@ -104,7 +107,10 @@ class GpuMemoryPool {
     for (final entry in _buckets.entries) {
       final bucket = entry.value;
       for (final buffer in bucket) {
-        device.backend.freeBuffer(buffer.rawPointer.cast<ffi.Uint8>(), buffer.sizeInBytes);
+        device.backend.freeBuffer(
+          buffer.rawPointer.cast<ffi.Uint8>(),
+          buffer.sizeInBytes,
+        );
       }
       bucket.clear();
     }

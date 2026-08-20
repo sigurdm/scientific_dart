@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import '../dtype.dart';
 import '../gpu_array.dart';
 import '../backend/wgsl/kernel_fusion.dart';
-import '../backend/compute_engine.dart';
 
 /// Configuration for an interactive UI slider in a browser WebGPU widget.
 final class WebGpuSlider {
@@ -201,11 +200,15 @@ final class GpuComputePipelinePackage {
         name: json['name'] as String,
         wgslCode: json['wgslCode'] as String,
         entryPoint: json['entryPoint'] as String? ?? 'main',
-        workgroupSize: List<int>.from(json['workgroupSize'] as List? ?? [256, 1, 1]),
+        workgroupSize: List<int>.from(
+          json['workgroupSize'] as List? ?? [256, 1, 1],
+        ),
         inputs: (json['inputs'] as List)
             .map((e) => GpuBufferPayload.fromJson(e as Map<String, dynamic>))
             .toList(),
-        output: GpuBufferPayload.fromJson(json['output'] as Map<String, dynamic>),
+        output: GpuBufferPayload.fromJson(
+          json['output'] as Map<String, dynamic>,
+        ),
         uniforms: List<int>.from(json['uniforms'] as List? ?? []),
         sliders: (json['sliders'] as List? ?? [])
             .map((e) => WebGpuSlider.fromJson(e as Map<String, dynamic>))
@@ -220,14 +223,20 @@ final class GpuComputePipelinePackage {
   /// Generates self-contained, interactive HTML & WebGPU JavaScript code that executes
   /// this compute shader directly on the client's GPU in any WebGPU-capable browser.
   String toHtml({String? containerId, String? title}) {
-    final uid = containerId ?? 'webgpu_widget_${name}_${math.Random().nextInt(1000000)}';
+    final uid =
+        containerId ??
+        'webgpu_widget_${name}_${math.Random().nextInt(1000000)}';
     final headerTitle = title ?? '⚡ $name (Client-Side WebGPU Compute)';
     final payloadJson = jsonEncode(toJson());
 
     final sliderHtml = StringBuffer();
     if (sliders.isNotEmpty) {
-      sliderHtml.writeln('<div style="margin-top:12px; padding:12px; background:#11111b; border-radius:6px; border:1px solid #313244;">');
-      sliderHtml.writeln('  <div style="font-weight:bold; color:#cdd6f4; margin-bottom:8px; font-size:13px;">⚙️ Interactive GPU Parameters (60 FPS Local Dispatch)</div>');
+      sliderHtml.writeln(
+        '<div style="margin-top:12px; padding:12px; background:#11111b; border-radius:6px; border:1px solid #313244;">',
+      );
+      sliderHtml.writeln(
+        '  <div style="font-weight:bold; color:#cdd6f4; margin-bottom:8px; font-size:13px;">⚙️ Interactive GPU Parameters (60 FPS Local Dispatch)</div>',
+      );
       for (var i = 0; i < sliders.length; i++) {
         final s = sliders[i];
         final sliderId = '${uid}_slider_$i';
@@ -477,79 +486,6 @@ final class WebGpuWidget {
   String toString() => toHtml();
 }
 
-/// Extension methods on [GpuArray] for exporting WebGPU compute pipelines and widgets.
-extension GpuArrayWebGpuSerializationExtension on GpuArray {
-  /// Packages this [GpuArray]'s underlying compute pipeline into a [WebGpuWidget].
-  WebGpuWidget toWebGpuWidget({
-    String? title,
-    bool renderToCanvas = false,
-    List<WebGpuSlider> sliders = const [],
-  }) {
-    final rawND = toNDArray();
-    final rawList = rawND.toList();
-    final f32List = Float32List.fromList(
-      rawList.map((e) => (e as num).toDouble()).toList(),
-    );
-    final base64Payload = base64Encode(f32List.buffer.asUint8List());
-    rawND.dispose();
-
-    // Default pass-through identity / inspection shader
-    final wgsl = '''
-struct Uniforms {
-  total_elements: u32,
-  pad0: u32,
-  pad1: u32,
-  pad2: u32,
-}
-
-@group(0) @binding(0) var<storage, read> src: array<f32>;
-@group(0) @binding(1) var<storage, read_write> dst: array<f32>;
-@group(0) @binding(2) var<uniform> uniforms: Uniforms;
-
-@compute @workgroup_size(256, 1, 1)
-fn main(
-  @builtin(global_invocation_id) global_id: vec3<u32>,
-  @builtin(num_workgroups) num_workgroups: vec3<u32>
-) {
-  var idx = global_id.x;
-  let stride = num_workgroups.x * 256u;
-  while (idx < uniforms.total_elements) {
-    dst[idx] = src[idx];
-    idx += stride;
-  }
-}
-''';
-
-    final pkg = GpuComputePipelinePackage(
-      name: title ?? 'GpuArray_${dtype.name}',
-      wgslCode: wgsl,
-      inputs: [
-        GpuBufferPayload(
-          bindingIndex: 0,
-          name: 'src',
-          dtype: dtype,
-          shape: shape,
-          base64Data: base64Payload,
-          sizeInBytes: buffer.sizeInBytes,
-        ),
-      ],
-      output: GpuBufferPayload(
-        bindingIndex: 1,
-        name: 'dst',
-        dtype: dtype,
-        shape: shape,
-        isOutput: true,
-        sizeInBytes: buffer.sizeInBytes,
-      ),
-      uniforms: [ShapeUtils.computeSize(shape), 0, 0, 0],
-      sliders: sliders,
-      renderToCanvas: renderToCanvas,
-    );
-
-    return WebGpuWidget(pkg, title: title ?? 'GpuArray Interactive Inspector');
-  }
-}
-
 /// Extension on [FusedKernelDescriptor] for creating client-side WebGPU browser widgets.
 extension FusedKernelWebGpuWidgetExtension on FusedKernelDescriptor {
   /// Packages this fused kernel and its input tensors into an interactive [WebGpuWidget].
@@ -594,7 +530,9 @@ extension FusedKernelWebGpuWidgetExtension on FusedKernelDescriptor {
     final outputPayload = GpuBufferPayload(
       bindingIndex: inputArrays.length,
       name: 'dst',
-      dtype: DType.values.byName(outputDType.wgslType == 'f32' ? 'float32' : 'float16'),
+      dtype: DType.values.byName(
+        outputDType.wgslType == 'f32' ? 'float32' : 'float16',
+      ),
       shape: outputShape,
       isOutput: true,
       sizeInBytes: outBytes,

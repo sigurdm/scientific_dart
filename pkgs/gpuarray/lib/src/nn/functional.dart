@@ -167,7 +167,6 @@ GpuArray cross_entropy(
   return lossArray;
 }
 
-
 /// Scaled Dot-Product Attention:
 /// \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{Q K^T}{\sqrt{d_k}} + M\right) V
 ///

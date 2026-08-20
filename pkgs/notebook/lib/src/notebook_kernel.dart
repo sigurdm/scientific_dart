@@ -45,6 +45,7 @@ class NotebookKernel {
 
   final Set<String> _imports = {
     "import 'package:ndarray/ndarray.dart';",
+    "import 'package:gpuarray/gpuarray.dart';",
     "import 'dart:math' as math;",
   };
   final Map<String, String> _definitions = {};
@@ -274,7 +275,7 @@ class NotebookKernel {
   }
 
   Future<String> execute(String code) async {
-    final rawCode = code.trim();
+    var rawCode = code.trim();
     if (rawCode.isEmpty) return '';
 
     final pubAddMatch = RegExp(
@@ -285,22 +286,44 @@ class NotebookKernel {
       return await _handleAddDependency(pkgName);
     }
 
-    if (RegExp(r'^import\s+').hasMatch(rawCode)) {
-      final pkgMatch = RegExp(
-        r"^import\s+[']package:([\w\d_\-]+)/",
-      ).firstMatch(rawCode);
-      if (pkgMatch != null) {
-        final pkgName = pkgMatch.group(1)!;
-        if (pkgName != 'ndarray' &&
-            pkgName != 'notebook' &&
-            pkgName != 'symbolic_dart' &&
-            pkgName != 'resource_scope') {
-          await _ensurePackageInstalled(pkgName);
+    final importRegex = RegExp(
+      r'''^\s*import\s+['"][^;]+;\s*''',
+      multiLine: true,
+    );
+    final importMatches = importRegex.allMatches(rawCode).toList();
+    if (importMatches.isNotEmpty) {
+      final newlyImportedPkgs = <String>[];
+      for (final match in importMatches) {
+        final importStmt = match.group(0)!.trim();
+        final pkgMatch = RegExp(
+          r'''^import\s+['"]package:([\w\d_\-]+)/''',
+        ).firstMatch(importStmt);
+        if (pkgMatch != null) {
+          final pkgName = pkgMatch.group(1)!;
+          if (pkgName != 'ndarray' &&
+              pkgName != 'notebook' &&
+              pkgName != 'symbolic_dart' &&
+              pkgName != 'gpuarray' &&
+              pkgName != 'resource_scope') {
+            await _ensurePackageInstalled(pkgName);
+          }
+          newlyImportedPkgs.add(pkgName);
+        } else {
+          final dartMatch = RegExp(
+            r'''^import\s+['"]dart:([\w\d_\-]+)''',
+          ).firstMatch(importStmt);
+          newlyImportedPkgs.add(dartMatch?.group(1) ?? 'library');
         }
+        _imports.add(importStmt);
       }
-      _imports.add(rawCode);
+
+      rawCode = rawCode.replaceAll(importRegex, '').trim();
+      if (rawCode.isEmpty) {
+        await _reloadWorkspace();
+        return 'Imported ${newlyImportedPkgs.join(', ')}';
+      }
+
       await _reloadWorkspace();
-      return 'Imported ${pkgMatch?.group(1) ?? 'library'}';
     }
 
     final declResult = _getDeclaredSymbolWithAnalyzer(rawCode);
@@ -907,6 +930,21 @@ class NotebookKernel {
         detail: 'Renderable graphic image wrapper for NDArray',
       ),
       CompletionItem(
+        label: 'GpuDevice',
+        type: 'class',
+        detail: 'Hardware or CPU compute device',
+      ),
+      CompletionItem(
+        label: 'GpuArray',
+        type: 'class',
+        detail: 'GPU-accelerated n-dimensional array',
+      ),
+      CompletionItem(
+        label: 'display',
+        type: 'function',
+        detail: 'Display an interactive widget, image, or plot',
+      ),
+      CompletionItem(
         label: 'DType',
         type: 'enum',
         detail: 'Data type specifier',
@@ -1007,6 +1045,7 @@ class NotebookKernel {
       "import 'package:ndarray/ndarray.dart' hide sin, cos, tan, asin, acos, atan, exp, log, sqrt, abs;",
       "import 'package:symbolic_dart/symbolic_dart.dart' hide sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, exp, log, sqrt, abs;",
       "import 'package:resource_scope/resource_scope.dart';",
+      "import 'package:gpuarray/gpuarray.dart';",
     };
     for (var imp in defaultImports) {
       buffer.writeln(imp);

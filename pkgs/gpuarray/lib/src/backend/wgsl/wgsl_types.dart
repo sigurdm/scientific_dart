@@ -30,7 +30,8 @@ enum WgslDType {
       case DType.uint8:
         return WgslDType.uint32;
       case DType.boolean:
-        return WgslDType.uint32; // Standard WebGPU storage representation for bool
+        return WgslDType
+            .uint32; // Standard WebGPU storage representation for bool
       case DType.float64:
       case DType.int64:
       case DType.uint64:
@@ -79,12 +80,15 @@ final class WgslBinding {
       final typeStr = customTypeName ?? dtype.wgslType;
       return '@group($group) @binding($binding) var<uniform> $name: $typeStr;';
     }
-    final typeStr = customTypeName ?? (isArray ? 'array<${dtype.wgslType}>' : dtype.wgslType);
+    final typeStr =
+        customTypeName ??
+        (isArray ? 'array<${dtype.wgslType}>' : dtype.wgslType);
     return '@group($group) @binding($binding) var<storage, ${access.qualifier}> $name: $typeStr;';
   }
 
   @override
-  String toString() => 'WgslBinding(group: $group, binding: $binding, name: "$name", type: ${customTypeName ?? dtype.wgslType})';
+  String toString() =>
+      'WgslBinding(group: $group, binding: $binding, name: "$name", type: ${customTypeName ?? dtype.wgslType})';
 }
 
 /// Workgroup size dimensions for a compute shader.
@@ -179,5 +183,6 @@ final class WgslShaderModule {
   }
 
   @override
-  String toString() => 'WgslShaderModule(name: "$name", entryPoint: "$entryPoint", workgroup: $workgroupSize, bindings: ${bindings.length})';
+  String toString() =>
+      'WgslShaderModule(name: "$name", entryPoint: "$entryPoint", workgroup: $workgroupSize, bindings: ${bindings.length})';
 }

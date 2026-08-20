@@ -369,7 +369,6 @@ class Tanh extends Module {
   GpuArray forward(GpuArray input) => f.tanh(input);
 }
 
-
 /// Applies Multi-Head Attention over input sequences.
 ///
 /// Multi-head attention allows the model to jointly attend to information
@@ -398,9 +397,9 @@ class MultiheadAttention extends Module {
     int? kdim,
     int? vdim,
     GpuDevice? device,
-  })  : kdim = kdim ?? embedDim,
-        vdim = vdim ?? embedDim,
-        headDim = embedDim ~/ numHeads {
+  }) : kdim = kdim ?? embedDim,
+       vdim = vdim ?? embedDim,
+       headDim = embedDim ~/ numHeads {
     if (embedDim % numHeads != 0) {
       throw ArgumentError(
         'embedDim ($embedDim) must be divisible by numHeads ($numHeads)',
@@ -469,9 +468,11 @@ class MultiheadAttention extends Module {
     ); // [B, numHeads, tgtLen, headDim]
 
     // 4. Merge heads: [B, tgtLen, embedDim]
-    final merged = attnOut
-        .swapaxes(1, 2)
-        .reshape([batchSize, tgtLen, embedDim]);
+    final merged = attnOut.swapaxes(1, 2).reshape([
+      batchSize,
+      tgtLen,
+      embedDim,
+    ]);
 
     // 5. Output projection
     final output = outProj(merged);
@@ -613,10 +614,7 @@ class RotaryEmbedding extends Module {
   GpuArray forward(GpuArray input, {int offset = 0}) {
     final x = input;
     final seqLen = x.shape[x.rank - 2];
-    final cosSliceSpecs = [
-      Slice(offset, offset + seqLen),
-      const All(),
-    ];
+    final cosSliceSpecs = [Slice(offset, offset + seqLen), const All()];
     final cos = cosCached.slice(cosSliceSpecs);
     final sin = sinCached.slice(cosSliceSpecs);
 
@@ -627,7 +625,8 @@ class RotaryEmbedding extends Module {
   }
 
   @override
-  GpuArray call(GpuArray input, {int offset = 0}) => forward(input, offset: offset);
+  GpuArray call(GpuArray input, {int offset = 0}) =>
+      forward(input, offset: offset);
 }
 
 /// Gated Linear Unit with SiLU activation (SwiGLU).
@@ -740,8 +739,8 @@ class TransformerEncoderLayer extends Module {
     Module? activation,
     this.normFirst = false,
     GpuDevice? device,
-  })  : dimFeedforward = dimFeedforward ?? (4 * dModel),
-        activation = activation ?? ReLU() {
+  }) : dimFeedforward = dimFeedforward ?? (4 * dModel),
+       activation = activation ?? ReLU() {
     final dev = device ?? GpuDevice.defaultDevice;
     selfAttn = registerModule(
       MultiheadAttention(dModel, nhead, dropout: dropout, device: dev),
@@ -756,11 +755,7 @@ class TransformerEncoderLayer extends Module {
   }
 
   @override
-  GpuArray forward(
-    GpuArray input, {
-    GpuArray? srcMask,
-    bool isCausal = false,
-  }) {
+  GpuArray forward(GpuArray input, {GpuArray? srcMask, bool isCausal = false}) {
     final src = input;
     if (normFirst) {
       var x = src;
@@ -780,11 +775,8 @@ class TransformerEncoderLayer extends Module {
   }
 
   @override
-  GpuArray call(
-    GpuArray input, {
-    GpuArray? srcMask,
-    bool isCausal = false,
-  }) => forward(input, srcMask: srcMask, isCausal: isCausal);
+  GpuArray call(GpuArray input, {GpuArray? srcMask, bool isCausal = false}) =>
+      forward(input, srcMask: srcMask, isCausal: isCausal);
 }
 
 /// Transformer Decoder Layer.
@@ -818,8 +810,8 @@ class TransformerDecoderLayer extends Module {
     Module? activation,
     this.normFirst = false,
     GpuDevice? device,
-  })  : dimFeedforward = dimFeedforward ?? (4 * dModel),
-        activation = activation ?? ReLU() {
+  }) : dimFeedforward = dimFeedforward ?? (4 * dModel),
+       activation = activation ?? ReLU() {
     final dev = device ?? GpuDevice.defaultDevice;
     selfAttn = registerModule(
       MultiheadAttention(dModel, nhead, dropout: dropout, device: dev),

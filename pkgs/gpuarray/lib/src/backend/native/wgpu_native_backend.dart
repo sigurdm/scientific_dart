@@ -76,10 +76,8 @@ final class WgpuNativeBackend extends GpuBackend {
   });
 
   /// Creates a mock/simulation backend for headless testing environments.
-  factory WgpuNativeBackend({
-    bool isMock = true,
-    bool isSimulated = true,
-  }) => WgpuNativeBackend.mock();
+  factory WgpuNativeBackend({bool isMock = true, bool isSimulated = true}) =>
+      WgpuNativeBackend.mock();
 
   /// Creates a mock/simulation backend for headless testing environments.
   factory WgpuNativeBackend.mock() {
@@ -186,7 +184,8 @@ final class WgpuNativeBackend extends GpuBackend {
       gpuBuf = lib!.createBuffer(
         device,
         size: alignedSize,
-        usage: WGPUBufferUsage.storage |
+        usage:
+            WGPUBufferUsage.storage |
             WGPUBufferUsage.copySrc |
             WGPUBufferUsage.copyDst |
             WGPUBufferUsage.uniform,
@@ -198,7 +197,8 @@ final class WgpuNativeBackend extends GpuBackend {
       hostPointer: hostPtr,
       gpuBuffer: gpuBuf,
       sizeInBytes: sizeInBytes,
-      usage: WGPUBufferUsage.storage |
+      usage:
+          WGPUBufferUsage.storage |
           WGPUBufferUsage.copySrc |
           WGPUBufferUsage.copyDst |
           WGPUBufferUsage.uniform,
@@ -253,7 +253,10 @@ final class WgpuNativeBackend extends GpuBackend {
     int bytes, {
     int offset = 0,
   }) {
-    if (!isMock && device != ffi.nullptr && queue != ffi.nullptr && lib != null) {
+    if (!isMock &&
+        device != ffi.nullptr &&
+        queue != ffi.nullptr &&
+        lib != null) {
       final alloc = _allocations[src.address.address];
       if (alloc != null && alloc.gpuBuffer != ffi.nullptr && alloc.isGpuDirty) {
         _syncGpuBufferToHost(alloc, offset: offset, bytes: bytes);
@@ -281,7 +284,10 @@ final class WgpuNativeBackend extends GpuBackend {
 
     if (bytes == 0) return;
 
-    if (!isMock && device != ffi.nullptr && queue != ffi.nullptr && lib != null) {
+    if (!isMock &&
+        device != ffi.nullptr &&
+        queue != ffi.nullptr &&
+        lib != null) {
       final srcAlloc = _allocations[src.address.address];
       final dstAlloc = _allocations[dst.address.address];
       if (srcAlloc != null &&
@@ -315,7 +321,10 @@ final class WgpuNativeBackend extends GpuBackend {
     int offset = 0,
     int bytes = 0,
   }) {
-    if (isMock || lib == null || device == ffi.nullptr || queue == ffi.nullptr) {
+    if (isMock ||
+        lib == null ||
+        device == ffi.nullptr ||
+        queue == ffi.nullptr) {
       return;
     }
     final fullBytes = alloc.sizeInBytes;
@@ -389,7 +398,9 @@ final class WgpuNativeBackend extends GpuBackend {
       );
     }
     if (buffers.any((b) => b.isDisposed)) {
-      throw GpuMemoryException('Cannot dispatch pipeline with disposed buffers.');
+      throw GpuMemoryException(
+        'Cannot dispatch pipeline with disposed buffers.',
+      );
     }
     if (workgroupsX <= 0 || workgroupsY <= 0 || workgroupsZ <= 0) {
       throw ArgumentError(
@@ -409,7 +420,10 @@ final class WgpuNativeBackend extends GpuBackend {
       ),
     );
 
-    if (isMock || lib == null || device == ffi.nullptr || queue == ffi.nullptr) {
+    if (isMock ||
+        lib == null ||
+        device == ffi.nullptr ||
+        queue == ffi.nullptr) {
       final cpuKernel = shaderModule.metadata['cpu_kernel'];
       if (cpuKernel is Function) {
         cpuKernel(buffers, uniforms, workgroupsX, workgroupsY, workgroupsZ);

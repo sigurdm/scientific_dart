@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:resource_scope/resource_scope.dart';
 import 'package:ndarray/ndarray.dart' as nd;
 
@@ -12,6 +14,7 @@ import 'operations/manipulation.dart' as manip;
 import 'backend/compute_engine.dart';
 import 'backend/kernels.dart';
 import 'autograd/autograd.dart';
+import 'serialization/webgpu_pipeline.dart';
 
 /// An N-dimensional array living on a GPU device.
 ///
@@ -1247,5 +1250,74 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
     ResourceScope.promoteToParent(this);
     buffer.detachToParentScope();
     return this;
+  }
+
+  /// Packages this [GpuArray]'s underlying compute pipeline and data into an interactive client-side [WebGpuWidget].
+  WebGpuWidget toWebGpuWidget({
+    String? title,
+    bool renderToCanvas = false,
+    List<WebGpuSlider> sliders = const [],
+  }) {
+    final rawND = toNDArray();
+    final rawList = rawND.toList();
+    final f32List = Float32List.fromList(
+      rawList.map((e) => (e as num).toDouble()).toList(),
+    );
+    final base64Payload = base64Encode(f32List.buffer.asUint8List());
+    rawND.dispose();
+
+    const wgsl = '''
+struct Uniforms {
+  total_elements: u32,
+  pad0: u32,
+  pad1: u32,
+  pad2: u32,
+}
+
+@group(0) @binding(0) var<storage, read> src: array<f32>;
+@group(0) @binding(1) var<storage, read_write> dst: array<f32>;
+@group(0) @binding(2) var<uniform> uniforms: Uniforms;
+
+@compute @workgroup_size(256, 1, 1)
+fn main(
+  @builtin(global_invocation_id) global_id: vec3<u32>,
+  @builtin(num_workgroups) num_workgroups: vec3<u32>
+) {
+  var idx = global_id.x;
+  let stride = num_workgroups.x * 256u;
+  while (idx < uniforms.total_elements) {
+    dst[idx] = src[idx];
+    idx += stride;
+  }
+}
+''';
+
+    final pkg = GpuComputePipelinePackage(
+      name: title ?? 'GpuArray_${dtype.name}',
+      wgslCode: wgsl,
+      inputs: [
+        GpuBufferPayload(
+          bindingIndex: 0,
+          name: 'src',
+          dtype: dtype,
+          shape: shape,
+          base64Data: base64Payload,
+          sizeInBytes: buffer.sizeInBytes,
+        ),
+      ],
+      output: GpuBufferPayload(
+        bindingIndex: 1,
+        name: 'dst',
+        dtype: dtype,
+        shape: shape,
+        isOutput: true,
+        sizeInBytes: buffer.sizeInBytes,
+      ),
+      uniforms: [ShapeUtils.computeSize(shape), 0, 0, 0],
+      sliders: sliders,
+      renderToCanvas: renderToCanvas,
+    );
+
+    return WebGpuWidget(pkg, title: title ?? 'GpuArray Interactive Inspector');
   }
 }

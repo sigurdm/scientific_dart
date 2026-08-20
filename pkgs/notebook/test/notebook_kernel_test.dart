@@ -62,4 +62,41 @@ Image(gradientArray)
       expect(evalResult, contains('[10, 10, 3]'));
     },
   );
+
+  test('evaluates pure import statement', () async {
+    final result = await kernel.execute(
+      "import 'package:path/path.dart' as p;",
+    );
+    expect(result, contains('Imported path'));
+  });
+
+  test(
+    'evaluates multi-line cell containing import statements and statements',
+    () async {
+      final code = '''
+import 'package:gpuarray/gpuarray.dart';
+
+final dev = GpuDevice.cpu();
+final arr = GpuArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float32, device: dev);
+arr.sum().scalar
+''';
+
+      final result = await kernel.execute(code);
+      expect(result, contains('10.0'));
+    },
+  );
+
+  test('evaluates multi-line cell with WebGPU widget display', () async {
+    final code = '''
+import 'package:gpuarray/gpuarray.dart';
+
+final dev = GpuDevice.cpu();
+final arr = GpuArray.fromList([1.0, 2.0, 3.0], [3], DType.float32, device: dev);
+display(arr.toWebGpuWidget());
+''';
+
+    final result = await kernel.execute(code);
+    expect(result, contains('text/html'));
+    expect(result, contains('webgpu-notebook-widget'));
+  });
 }

@@ -546,14 +546,22 @@ final class GpuKernels {
         final betaBits = ByteData(4)..setFloat32(0, 0.0, Endian.little);
 
         final uniforms = <int>[
-          M, N, K,
-          stridesA[0], stridesA[1],
-          stridesB[0], stridesB[1],
-          outStrides[0], outStrides[1],
-          offsetA, offsetB, offsetDst,
+          M,
+          N,
+          K,
+          stridesA[0],
+          stridesA[1],
+          stridesB[0],
+          stridesB[1],
+          outStrides[0],
+          outStrides[1],
+          offsetA,
+          offsetB,
+          offsetDst,
           alphaBits.getUint32(0, Endian.little),
           betaBits.getUint32(0, Endian.little),
-          0, 0,
+          0,
+          0,
         ];
 
         srcA.device.backend.dispatchComputePipeline(
