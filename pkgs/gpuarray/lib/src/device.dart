@@ -113,7 +113,7 @@ final class GpuDevice implements ScopedResource {
     }
     _pruneDeadBuffers();
     if (enableMemoryPool) {
-      return memoryPool.acquire(sizeInBytes, usage: usage.value);
+      return memoryPool.acquire(sizeInBytes, usage: usage);
     }
     return GpuBuffer.allocate(
       sizeInBytes: sizeInBytes,
@@ -178,7 +178,6 @@ final class GpuDevice implements ScopedResource {
     if (_isDisposed) return;
     _isDisposed = true;
     ResourceScope.untrack(this);
-    memoryPool.dispose();
     final buffers = _activeBuffers
         .map((ref) => ref.target)
         .whereType<GpuBuffer>()
@@ -189,6 +188,7 @@ final class GpuDevice implements ScopedResource {
       }
     }
     _activeBuffers.clear();
+    memoryPool.dispose();
   }
 
   @override

@@ -23,7 +23,9 @@ abstract class Expr {
   static Expr from(Object value) {
     if (value is Expr) return value;
     if (value is num) return ConstExpr(value.toDouble());
-    throw ArgumentError('Cannot convert $value of type ${value.runtimeType} to Expr');
+    throw ArgumentError(
+      'Cannot convert $value of type ${value.runtimeType} to Expr',
+    );
   }
 
   /// Evaluates to the WGSL code snippet for this subexpression.
@@ -45,46 +47,34 @@ abstract class Expr {
   String toFingerprint();
 
   // Operator overloads for building expression trees fluently
-  Expr operator +(Object other) =>
-      BinaryOpExpr('add', this, Expr.from(other));
+  Expr operator +(Object other) => BinaryOpExpr('add', this, Expr.from(other));
 
-  Expr operator -(Object other) =>
-      BinaryOpExpr('sub', this, Expr.from(other));
+  Expr operator -(Object other) => BinaryOpExpr('sub', this, Expr.from(other));
 
-  Expr operator *(Object other) =>
-      BinaryOpExpr('mul', this, Expr.from(other));
+  Expr operator *(Object other) => BinaryOpExpr('mul', this, Expr.from(other));
 
-  Expr operator /(Object other) =>
-      BinaryOpExpr('div', this, Expr.from(other));
+  Expr operator /(Object other) => BinaryOpExpr('div', this, Expr.from(other));
 
   Expr operator -() => UnaryOpExpr('negate', this);
 
-  Expr pow(Object exponent) =>
-      BinaryOpExpr('pow', this, Expr.from(exponent));
+  Expr pow(Object exponent) => BinaryOpExpr('pow', this, Expr.from(exponent));
 
-  Expr max(Object other) =>
-      BinaryOpExpr('max', this, Expr.from(other));
+  Expr max(Object other) => BinaryOpExpr('max', this, Expr.from(other));
 
-  Expr min(Object other) =>
-      BinaryOpExpr('min', this, Expr.from(other));
+  Expr min(Object other) => BinaryOpExpr('min', this, Expr.from(other));
 
-  Expr equal(Object other) =>
-      BinaryOpExpr('eq', this, Expr.from(other));
+  Expr equal(Object other) => BinaryOpExpr('eq', this, Expr.from(other));
 
-  Expr notEqual(Object other) =>
-      BinaryOpExpr('neq', this, Expr.from(other));
+  Expr notEqual(Object other) => BinaryOpExpr('neq', this, Expr.from(other));
 
-  Expr greaterThan(Object other) =>
-      BinaryOpExpr('gt', this, Expr.from(other));
+  Expr greaterThan(Object other) => BinaryOpExpr('gt', this, Expr.from(other));
 
-  Expr lessThan(Object other) =>
-      BinaryOpExpr('lt', this, Expr.from(other));
+  Expr lessThan(Object other) => BinaryOpExpr('lt', this, Expr.from(other));
 
   Expr greaterEqual(Object other) =>
       BinaryOpExpr('gte', this, Expr.from(other));
 
-  Expr lessEqual(Object other) =>
-      BinaryOpExpr('lte', this, Expr.from(other));
+  Expr lessEqual(Object other) => BinaryOpExpr('lte', this, Expr.from(other));
 
   // Common Unary activations and math functions
   Expr relu() => UnaryOpExpr('relu', this);
@@ -123,7 +113,11 @@ final class VarExpr extends Expr {
   final int bindingIndex;
   final WgslDType dtype;
 
-  const VarExpr(this.name, {this.bindingIndex = 0, this.dtype = WgslDType.float32});
+  const VarExpr(
+    this.name, {
+    this.bindingIndex = 0,
+    this.dtype = WgslDType.float32,
+  });
 
   @override
   String toWgsl() => '${name}_val';
@@ -168,7 +162,9 @@ final class ConstExpr extends Expr {
   @override
   String toWgsl() {
     final s = value.toString();
-    return s.contains('.') ? '${s}f' : '$s.0f';
+    return (s.contains('.') || s.contains('e') || s.contains('E'))
+        ? '${s}f'
+        : '$s.0f';
   }
 
   @override
@@ -247,7 +243,8 @@ final class UnaryOpExpr extends Expr {
   const UnaryOpExpr(this.op, this.child);
 
   @override
-  String toWgsl() => WgslTemplates.getWgslUnaryExpression(op, '(${child.toWgsl()})');
+  String toWgsl() =>
+      WgslTemplates.getWgslUnaryExpression(op, '(${child.toWgsl()})');
 
   @override
   Set<VarExpr> get variables => child.variables;
@@ -284,8 +281,10 @@ final class BinaryOpExpr extends Expr {
   Set<VarExpr> get variables => {...left.variables, ...right.variables};
 
   @override
-  Set<ScalarParamExpr> get scalarParams =>
-      {...left.scalarParams, ...right.scalarParams};
+  Set<ScalarParamExpr> get scalarParams => {
+    ...left.scalarParams,
+    ...right.scalarParams,
+  };
 
   @override
   int get depth => 1 + (left.depth > right.depth ? left.depth : right.depth);
@@ -294,7 +293,8 @@ final class BinaryOpExpr extends Expr {
   int get nodeCount => 1 + left.nodeCount + right.nodeCount;
 
   @override
-  String toFingerprint() => '$op(${left.toFingerprint()}, ${right.toFingerprint()})';
+  String toFingerprint() =>
+      '$op(${left.toFingerprint()}, ${right.toFingerprint()})';
 
   @override
   String toString() => 'BinaryOpExpr($op, $left, $right)';
@@ -322,15 +322,23 @@ final class TernaryOpExpr extends Expr {
   }
 
   @override
-  Set<VarExpr> get variables =>
-      {...first.variables, ...second.variables, ...third.variables};
+  Set<VarExpr> get variables => {
+    ...first.variables,
+    ...second.variables,
+    ...third.variables,
+  };
 
   @override
-  Set<ScalarParamExpr> get scalarParams =>
-      {...first.scalarParams, ...second.scalarParams, ...third.scalarParams};
+  Set<ScalarParamExpr> get scalarParams => {
+    ...first.scalarParams,
+    ...second.scalarParams,
+    ...third.scalarParams,
+  };
 
   @override
-  int get depth => 1 + [first.depth, second.depth, third.depth].reduce((a, b) => a > b ? a : b);
+  int get depth =>
+      1 +
+      [first.depth, second.depth, third.depth].reduce((a, b) => a > b ? a : b);
 
   @override
   int get nodeCount => 1 + first.nodeCount + second.nodeCount + third.nodeCount;
@@ -359,8 +367,8 @@ final class FusedKernelDescriptor {
     List<ScalarParamExpr>? scalarParams,
     this.outputDType = WgslDType.float32,
     this.isStrided = false,
-  })  : inputs = inputs ?? _sortVariables(expression.variables),
-        scalarParams = scalarParams ?? expression.scalarParams.toList();
+  }) : inputs = inputs ?? _sortVariables(expression.variables),
+       scalarParams = scalarParams ?? expression.scalarParams.toList();
 
   static List<VarExpr> _sortVariables(Set<VarExpr> vars) {
     final list = vars.toList();
@@ -418,7 +426,9 @@ final class FusedKernelDescriptor {
   String generateWgslSource({int workgroupSize = 256}) {
     final bindings = createBindings();
     final wgSize = WgslWorkgroupSize(workgroupSize, 1, 1);
-    final bufferDeclarations = bindings.map((b) => b.toWgslDeclaration()).join('\n');
+    final bufferDeclarations = bindings
+        .map((b) => b.toWgslDeclaration())
+        .join('\n');
 
     if (!isStrided) {
       // Contiguous 1D fast path
@@ -430,8 +440,11 @@ final class FusedKernelDescriptor {
       for (final sp in scalarParams) {
         uniformFields.writeln('  ${sp.name}: f32,');
       }
-      uniformFields.writeln('  pad0: u32,');
-      uniformFields.writeln('  pad1: u32,');
+      final fieldCount = 1 + scalarParams.length;
+      final padNeeded = (4 - (fieldCount % 4)) % 4;
+      for (var i = 0; i < padNeeded; i++) {
+        uniformFields.writeln('  pad$i: u32,');
+      }
 
       return '''
 // WGSL JIT Fused Compute Shader: $name (Contiguous)
@@ -458,7 +471,14 @@ $loadStatements
     } else {
       // Strided multidimensional path
       final loadStatements = inputs
-          .map((v) => '  let ${v.name}_val = ${v.name}[off_a];')
+          .asMap()
+          .entries
+          .map((entry) {
+            final offsetVar = entry.key == 0
+                ? 'off_a'
+                : (entry.key == 1 ? 'off_b' : 'off_a');
+            return '  let ${entry.value.name}_val = ${entry.value.name}[$offsetVar];';
+          })
           .join('\n');
 
       return '''

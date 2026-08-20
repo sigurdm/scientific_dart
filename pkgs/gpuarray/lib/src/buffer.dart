@@ -37,9 +37,10 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
 
   final ffi.Pointer<ffi.Void> _pointer;
   final int _sizeInBytes;
-  final GpuBufferUsage _usage;
+  GpuBufferUsage _usage;
   final GpuDevice _device;
   final GpuMemoryPool? _originPool;
+  final bool _isUnmanaged;
 
   int _refCount = 1;
   bool _isDisposed = false;
@@ -50,13 +51,20 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
     this._usage,
     this._device, {
     GpuMemoryPool? originPool,
-  }) : _originPool = originPool {
-    if (_pointer != ffi.nullptr && _originPool == null) {
-      _finalizer.attach(this, _pointer, detach: this);
+    bool isUnmanaged = false,
+  })  : _originPool = originPool,
+        _isUnmanaged = isUnmanaged {
+    if (!_isUnmanaged) {
+      if (_pointer != ffi.nullptr && _originPool == null) {
+        _finalizer.attach(this, _pointer, detach: this);
+      }
+      ResourceScope.track(this);
     }
-    ResourceScope.track(this);
     _device.registerBuffer(this);
   }
+
+  /// Whether this buffer wraps an unmanaged native pointer.
+  bool get isUnmanaged => _isUnmanaged;
 
   /// Retains a reference to this buffer.
   void retain() {
@@ -77,18 +85,27 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
 
   int get refCount => _refCount;
 
-  void resetForReuse() {
+  void resetForReuse({GpuBufferUsage? usage}) {
     _refCount = 1;
     _isDisposed = false;
-    ResourceScope.track(this);
+    _usage = usage ?? _usage;
+    if (!_isUnmanaged) {
+      ResourceScope.track(this);
+    }
     _device.registerBuffer(this);
   }
 
   void _disposeInternal() {
     if (_isDisposed) return;
     _isDisposed = true;
-    ResourceScope.untrack(this);
+    if (!_isUnmanaged) {
+      ResourceScope.untrack(this);
+    }
     _device.unregisterBuffer(this);
+
+    if (_isUnmanaged) {
+      return;
+    }
 
     if (_originPool != null) {
       _originPool.recycle(this);
@@ -151,11 +168,19 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
     GpuBufferUsage usage = GpuBufferUsage.storage,
     GpuDevice? device,
   }) {
+    if (sizeInBytes < 0) {
+      throw ArgumentError.value(
+        sizeInBytes,
+        'sizeInBytes',
+        'Buffer size cannot be negative.',
+      );
+    }
     return GpuBuffer._(
       pointer,
       sizeInBytes,
       usage,
       device ?? GpuDevice.defaultDevice,
+      isUnmanaged: true,
     );
   }
 
@@ -181,40 +206,56 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
 
   void copyFromHost(ffi.Pointer<ffi.Void> srcPointer, int bytes, {int offset = 0}) {
     if (_isDisposed) throw GpuMemoryException('Cannot copy to disposed GpuBuffer.');
-    if (offset + bytes > _sizeInBytes) throw GpuMemoryException('Copy operation exceeds buffer boundaries.');
+    if (bytes < 0 || offset < 0 || offset + bytes > _sizeInBytes) {
+      throw GpuMemoryException('Copy operation exceeds buffer boundaries.');
+    }
     if (bytes == 0) return;
-
-    final src = srcPointer.cast<ffi.Uint8>();
-    final dst = _pointer.cast<ffi.Uint8>();
-    final srcList = src.asTypedList(bytes);
-    final dstList = (dst + offset).asTypedList(bytes);
-    dstList.setAll(0, srcList);
+    _device.backend.copyHostToBuffer(
+      srcPointer.cast<ffi.Uint8>(),
+      this,
+      bytes,
+      offset: offset,
+    );
   }
 
   void copyToHost(ffi.Pointer<ffi.Void> dstPointer, int bytes, {int offset = 0}) {
     if (_isDisposed) throw GpuMemoryException('Cannot copy from disposed GpuBuffer.');
-    if (offset + bytes > _sizeInBytes) throw GpuMemoryException('Copy operation exceeds buffer boundaries.');
+    if (bytes < 0 || offset < 0 || offset + bytes > _sizeInBytes) {
+      throw GpuMemoryException('Copy operation exceeds buffer boundaries.');
+    }
     if (bytes == 0) return;
-
-    final src = _pointer.cast<ffi.Uint8>();
-    final dst = dstPointer.cast<ffi.Uint8>();
-    final srcList = (src + offset).asTypedList(bytes);
-    final dstList = dst.asTypedList(bytes);
-    dstList.setAll(0, srcList);
+    _device.backend.copyBufferToHost(
+      this,
+      dstPointer.cast<ffi.Uint8>(),
+      bytes,
+      offset: offset,
+    );
   }
 
-  void copyToBuffer(GpuBuffer dstBuffer, int bytes, {int srcOffset = 0, int dstOffset = 0}) {
-    if (_isDisposed || dstBuffer.isDisposed) throw GpuMemoryException('Cannot copy with disposed GpuBuffer.');
-    if (srcOffset + bytes > _sizeInBytes || dstOffset + bytes > dstBuffer._sizeInBytes) {
+  void copyToBuffer(
+    GpuBuffer dstBuffer,
+    int bytes, {
+    int srcOffset = 0,
+    int dstOffset = 0,
+  }) {
+    if (_isDisposed || dstBuffer.isDisposed) {
+      throw GpuMemoryException('Cannot copy with disposed GpuBuffer.');
+    }
+    if (bytes < 0 ||
+        srcOffset < 0 ||
+        dstOffset < 0 ||
+        srcOffset + bytes > _sizeInBytes ||
+        dstOffset + bytes > dstBuffer._sizeInBytes) {
       throw GpuMemoryException('Buffer copy exceeds boundaries.');
     }
     if (bytes == 0) return;
-
-    final src = _pointer.cast<ffi.Uint8>();
-    final dst = dstBuffer._pointer.cast<ffi.Uint8>();
-    final srcList = (src + srcOffset).asTypedList(bytes);
-    final dstList = (dst + dstOffset).asTypedList(bytes);
-    dstList.setAll(0, srcList);
+    _device.backend.copyBufferToBuffer(
+      this,
+      dstBuffer,
+      bytes,
+      srcOffset: srcOffset,
+      dstOffset: dstOffset,
+    );
   }
 
   @override
@@ -222,13 +263,17 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
 
   @override
   ScopedResource detachFromScope() {
-    ResourceScope.untrack(this);
+    if (!_isUnmanaged) {
+      ResourceScope.untrack(this);
+    }
     return this;
   }
 
   @override
   ScopedResource detachToParentScope() {
-    ResourceScope.promoteToParent(this);
+    if (!_isUnmanaged) {
+      ResourceScope.promoteToParent(this);
+    }
     return this;
   }
 }

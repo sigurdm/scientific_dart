@@ -258,20 +258,72 @@ fn mish(x: f32) -> f32 {
 
   /// Initial identity value for a reduction operation.
   static String getWgslReductionInit(String op, WgslDType dtype) {
-    switch (op.toLowerCase()) {
-      case 'sum':
-      case 'mean':
-      case 'sum_sq':
-        return '0.0';
-      case 'prod':
-      case 'product':
-        return '1.0';
-      case 'min':
-        return '3.402823e+38'; // f32 max
-      case 'max':
-        return '-3.402823e+38'; // f32 min
+    final lowerOp = op.toLowerCase();
+    switch (dtype) {
+      case WgslDType.float16:
+        switch (lowerOp) {
+          case 'sum':
+          case 'mean':
+          case 'sum_sq':
+            return '0.0h';
+          case 'prod':
+          case 'product':
+            return '1.0h';
+          case 'min':
+            return '65504.0h';
+          case 'max':
+            return '-65504.0h';
+          default:
+            return '0.0h';
+        }
+      case WgslDType.int32:
+        switch (lowerOp) {
+          case 'sum':
+          case 'mean':
+          case 'sum_sq':
+            return '0';
+          case 'prod':
+          case 'product':
+            return '1';
+          case 'min':
+            return '2147483647';
+          case 'max':
+            return '-2147483648';
+          default:
+            return '0';
+        }
+      case WgslDType.uint32:
+        switch (lowerOp) {
+          case 'sum':
+          case 'mean':
+          case 'sum_sq':
+            return '0u';
+          case 'prod':
+          case 'product':
+            return '1u';
+          case 'min':
+            return '4294967295u';
+          case 'max':
+            return '0u';
+          default:
+            return '0u';
+        }
       default:
-        return '0.0';
+        switch (lowerOp) {
+          case 'sum':
+          case 'mean':
+          case 'sum_sq':
+            return '0.0';
+          case 'prod':
+          case 'product':
+            return '1.0';
+          case 'min':
+            return '3.402823e+38'; // f32 max
+          case 'max':
+            return '-3.402823e+38'; // f32 min
+          default:
+            return '0.0';
+        }
     }
   }
 
@@ -291,13 +343,38 @@ fn mish(x: f32) -> f32 {
     if (!strided) {
       // Contiguous 1D fast path
       bindings = [
-        WgslBinding(group: 0, binding: 0, name: 'src_a', dtype: dtype, access: WgslBufferAccess.read),
-        WgslBinding(group: 0, binding: 1, name: 'src_b', dtype: dtype, access: WgslBufferAccess.read),
-        WgslBinding(group: 0, binding: 2, name: 'dst', dtype: dtype, access: WgslBufferAccess.readWrite),
-        WgslBinding(group: 0, binding: 3, name: 'uniforms', isUniform: true, customTypeName: 'Uniforms'),
+        WgslBinding(
+          group: 0,
+          binding: 0,
+          name: 'src_a',
+          dtype: dtype,
+          access: WgslBufferAccess.read,
+        ),
+        WgslBinding(
+          group: 0,
+          binding: 1,
+          name: 'src_b',
+          dtype: dtype,
+          access: WgslBufferAccess.read,
+        ),
+        WgslBinding(
+          group: 0,
+          binding: 2,
+          name: 'dst',
+          dtype: dtype,
+          access: WgslBufferAccess.readWrite,
+        ),
+        WgslBinding(
+          group: 0,
+          binding: 3,
+          name: 'uniforms',
+          isUniform: true,
+          customTypeName: 'Uniforms',
+        ),
       ];
 
-      code = '''
+      code =
+          '''
 // WGSL Elementwise Binary: $op (Contiguous)
 struct Uniforms {
   total_elements: u32,
@@ -327,13 +404,38 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     } else {
       // Strided multidimensional layout with broadcasting support
       bindings = [
-        WgslBinding(group: 0, binding: 0, name: 'src_a', dtype: dtype, access: WgslBufferAccess.read),
-        WgslBinding(group: 0, binding: 1, name: 'src_b', dtype: dtype, access: WgslBufferAccess.read),
-        WgslBinding(group: 0, binding: 2, name: 'dst', dtype: dtype, access: WgslBufferAccess.readWrite),
-        WgslBinding(group: 0, binding: 3, name: 'meta', isUniform: true, customTypeName: 'StridedMetadata'),
+        WgslBinding(
+          group: 0,
+          binding: 0,
+          name: 'src_a',
+          dtype: dtype,
+          access: WgslBufferAccess.read,
+        ),
+        WgslBinding(
+          group: 0,
+          binding: 1,
+          name: 'src_b',
+          dtype: dtype,
+          access: WgslBufferAccess.read,
+        ),
+        WgslBinding(
+          group: 0,
+          binding: 2,
+          name: 'dst',
+          dtype: dtype,
+          access: WgslBufferAccess.readWrite,
+        ),
+        WgslBinding(
+          group: 0,
+          binding: 3,
+          name: 'meta',
+          isUniform: true,
+          customTypeName: 'StridedMetadata',
+        ),
       ];
 
-      code = '''
+      code =
+          '''
 // WGSL Elementwise Binary: $op (Strided & Broadcast)
 $stridedHeader
 
@@ -387,12 +489,31 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     if (!strided) {
       bindings = [
-        WgslBinding(group: 0, binding: 0, name: 'src', dtype: dtype, access: WgslBufferAccess.read),
-        WgslBinding(group: 0, binding: 1, name: 'dst', dtype: dtype, access: WgslBufferAccess.readWrite),
-        WgslBinding(group: 0, binding: 2, name: 'uniforms', isUniform: true, customTypeName: 'Uniforms'),
+        WgslBinding(
+          group: 0,
+          binding: 0,
+          name: 'src',
+          dtype: dtype,
+          access: WgslBufferAccess.read,
+        ),
+        WgslBinding(
+          group: 0,
+          binding: 1,
+          name: 'dst',
+          dtype: dtype,
+          access: WgslBufferAccess.readWrite,
+        ),
+        WgslBinding(
+          group: 0,
+          binding: 2,
+          name: 'uniforms',
+          isUniform: true,
+          customTypeName: 'Uniforms',
+        ),
       ];
 
-      code = '''
+      code =
+          '''
 // WGSL Elementwise Unary: $op (Contiguous)
 struct Uniforms {
   total_elements: u32,
@@ -419,12 +540,31 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 ''';
     } else {
       bindings = [
-        WgslBinding(group: 0, binding: 0, name: 'src', dtype: dtype, access: WgslBufferAccess.read),
-        WgslBinding(group: 0, binding: 1, name: 'dst', dtype: dtype, access: WgslBufferAccess.readWrite),
-        WgslBinding(group: 0, binding: 2, name: 'meta', isUniform: true, customTypeName: 'StridedMetadata'),
+        WgslBinding(
+          group: 0,
+          binding: 0,
+          name: 'src',
+          dtype: dtype,
+          access: WgslBufferAccess.read,
+        ),
+        WgslBinding(
+          group: 0,
+          binding: 1,
+          name: 'dst',
+          dtype: dtype,
+          access: WgslBufferAccess.readWrite,
+        ),
+        WgslBinding(
+          group: 0,
+          binding: 2,
+          name: 'meta',
+          isUniform: true,
+          customTypeName: 'StridedMetadata',
+        ),
       ];
 
-      code = '''
+      code =
+          '''
 // WGSL Elementwise Unary: $op (Strided)
 $stridedHeader
 
@@ -474,14 +614,35 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     final wgSize = WgslWorkgroupSize(workgroupSize, 1, 1);
 
     final bindings = [
-      WgslBinding(group: 0, binding: 0, name: 'src', dtype: dtype, access: WgslBufferAccess.read),
-      WgslBinding(group: 0, binding: 1, name: 'dst', dtype: dtype, access: WgslBufferAccess.readWrite),
-      WgslBinding(group: 0, binding: 2, name: 'uniforms', isUniform: true, customTypeName: 'ReductionUniforms'),
+      WgslBinding(
+        group: 0,
+        binding: 0,
+        name: 'src',
+        dtype: dtype,
+        access: WgslBufferAccess.read,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 1,
+        name: 'dst',
+        dtype: dtype,
+        access: WgslBufferAccess.readWrite,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 2,
+        name: 'uniforms',
+        isUniform: true,
+        customTypeName: 'ReductionUniforms',
+      ),
     ];
 
-    final accumStmt = isSumSq ? 'my_val = my_val + elem * elem;' : 'my_val = ${getWgslReductionOp(op, "my_val", "elem")};';
+    final accumStmt = isSumSq
+        ? 'my_val = my_val + elem * elem;'
+        : 'my_val = ${getWgslReductionOp(op, "my_val", "elem")};';
 
-    final code = '''
+    final code =
+        '''
 // WGSL Parallel Tree Reduction: $op
 struct ReductionUniforms {
   total_elements: u32,
@@ -538,7 +699,11 @@ fn main(
       code: code,
       workgroupSize: wgSize,
       bindings: bindings,
-      metadata: {'op': op, 'workgroupSize': workgroupSize, 'dtype': dtype.wgslType},
+      metadata: {
+        'op': op,
+        'workgroupSize': workgroupSize,
+        'dtype': dtype.wgslType,
+      },
     );
   }
 
@@ -553,15 +718,46 @@ fn main(
     final wgSize = WgslWorkgroupSize(tileSize, tileSize, 1);
 
     final bindings = [
-      WgslBinding(group: 0, binding: 0, name: 'matrix_a', dtype: dtype, access: WgslBufferAccess.read),
-      WgslBinding(group: 0, binding: 1, name: 'matrix_b', dtype: dtype, access: WgslBufferAccess.read),
-      WgslBinding(group: 0, binding: 2, name: 'matrix_c', dtype: dtype, access: WgslBufferAccess.readWrite),
+      WgslBinding(
+        group: 0,
+        binding: 0,
+        name: 'matrix_a',
+        dtype: dtype,
+        access: WgslBufferAccess.read,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 1,
+        name: 'matrix_b',
+        dtype: dtype,
+        access: WgslBufferAccess.read,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 2,
+        name: 'matrix_c',
+        dtype: dtype,
+        access: WgslBufferAccess.readWrite,
+      ),
       if (hasBias)
-        WgslBinding(group: 0, binding: 3, name: 'bias', dtype: dtype, access: WgslBufferAccess.read),
-      WgslBinding(group: 0, binding: hasBias ? 4 : 3, name: 'uniforms', isUniform: true, customTypeName: 'MatmulUniforms'),
+        WgslBinding(
+          group: 0,
+          binding: 3,
+          name: 'bias',
+          dtype: dtype,
+          access: WgslBufferAccess.read,
+        ),
+      WgslBinding(
+        group: 0,
+        binding: hasBias ? 4 : 3,
+        name: 'uniforms',
+        isUniform: true,
+        customTypeName: 'MatmulUniforms',
+      ),
     ];
 
-    final code = '''
+    final code =
+        '''
 // WGSL Tiled Block GEMM (Matrix Multiplication)
 // Computes C = alpha * (A x B) + beta * C (+ bias)
 struct MatmulUniforms {
@@ -645,7 +841,11 @@ fn main(
       code: code,
       workgroupSize: wgSize,
       bindings: bindings,
-      metadata: {'tileSize': tileSize, 'hasBias': hasBias, 'dtype': dtype.wgslType},
+      metadata: {
+        'tileSize': tileSize,
+        'hasBias': hasBias,
+        'dtype': dtype.wgslType,
+      },
     );
   }
 
@@ -658,13 +858,38 @@ fn main(
     final wgSize = WgslWorkgroupSize(tileSize, tileSize, 1);
 
     final bindings = [
-      WgslBinding(group: 0, binding: 0, name: 'matrix_a', dtype: dtype, access: WgslBufferAccess.read),
-      WgslBinding(group: 0, binding: 1, name: 'matrix_b', dtype: dtype, access: WgslBufferAccess.read),
-      WgslBinding(group: 0, binding: 2, name: 'matrix_c', dtype: dtype, access: WgslBufferAccess.readWrite),
-      WgslBinding(group: 0, binding: 3, name: 'uniforms', isUniform: true, customTypeName: 'BatchedMatmulUniforms'),
+      WgslBinding(
+        group: 0,
+        binding: 0,
+        name: 'matrix_a',
+        dtype: dtype,
+        access: WgslBufferAccess.read,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 1,
+        name: 'matrix_b',
+        dtype: dtype,
+        access: WgslBufferAccess.read,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 2,
+        name: 'matrix_c',
+        dtype: dtype,
+        access: WgslBufferAccess.readWrite,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 3,
+        name: 'uniforms',
+        isUniform: true,
+        customTypeName: 'BatchedMatmulUniforms',
+      ),
     ];
 
-    final code = '''
+    final code =
+        '''
 // WGSL Batched GEMM (B x M x N) = (B x M x K) x (B x K x N)
 struct BatchedMatmulUniforms {
   M: u32,
@@ -753,15 +978,46 @@ fn main(
     final wgSize = const WgslWorkgroupSize(16, 16, 1);
 
     final bindings = [
-      WgslBinding(group: 0, binding: 0, name: 'input', dtype: dtype, access: WgslBufferAccess.read),
-      WgslBinding(group: 0, binding: 1, name: 'weight', dtype: dtype, access: WgslBufferAccess.read),
-      WgslBinding(group: 0, binding: 2, name: 'output', dtype: dtype, access: WgslBufferAccess.readWrite),
+      WgslBinding(
+        group: 0,
+        binding: 0,
+        name: 'input',
+        dtype: dtype,
+        access: WgslBufferAccess.read,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 1,
+        name: 'weight',
+        dtype: dtype,
+        access: WgslBufferAccess.read,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 2,
+        name: 'output',
+        dtype: dtype,
+        access: WgslBufferAccess.readWrite,
+      ),
       if (hasBias)
-        WgslBinding(group: 0, binding: 3, name: 'bias', dtype: dtype, access: WgslBufferAccess.read),
-      WgslBinding(group: 0, binding: hasBias ? 4 : 3, name: 'uniforms', isUniform: true, customTypeName: 'Conv2dUniforms'),
+        WgslBinding(
+          group: 0,
+          binding: 3,
+          name: 'bias',
+          dtype: dtype,
+          access: WgslBufferAccess.read,
+        ),
+      WgslBinding(
+        group: 0,
+        binding: hasBias ? 4 : 3,
+        name: 'uniforms',
+        isUniform: true,
+        customTypeName: 'Conv2dUniforms',
+      ),
     ];
 
-    final code = '''
+    final code =
+        '''
 // WGSL 2D Convolution (NCHW)
 struct Conv2dUniforms {
   batch_size: u32,
@@ -867,12 +1123,31 @@ fn main(
     final wgSize = WgslWorkgroupSize(tileSize, tileSize, 1);
 
     final bindings = [
-      WgslBinding(group: 0, binding: 0, name: 'src', dtype: dtype, access: WgslBufferAccess.read),
-      WgslBinding(group: 0, binding: 1, name: 'dst', dtype: dtype, access: WgslBufferAccess.readWrite),
-      WgslBinding(group: 0, binding: 2, name: 'uniforms', isUniform: true, customTypeName: 'TransposeUniforms'),
+      WgslBinding(
+        group: 0,
+        binding: 0,
+        name: 'src',
+        dtype: dtype,
+        access: WgslBufferAccess.read,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 1,
+        name: 'dst',
+        dtype: dtype,
+        access: WgslBufferAccess.readWrite,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 2,
+        name: 'uniforms',
+        isUniform: true,
+        customTypeName: 'TransposeUniforms',
+      ),
     ];
 
-    final code = '''
+    final code =
+        '''
 // WGSL 2D Coalesced Transpose Matrix
 struct TransposeUniforms {
   rows: u32,
@@ -934,12 +1209,31 @@ fn main(
     final wgSize = WgslWorkgroupSize(workgroupSize, 1, 1);
 
     final bindings = [
-      WgslBinding(group: 0, binding: 0, name: 'src', dtype: dtype, access: WgslBufferAccess.read),
-      WgslBinding(group: 0, binding: 1, name: 'dst', dtype: dtype, access: WgslBufferAccess.readWrite),
-      WgslBinding(group: 0, binding: 2, name: 'uniforms', isUniform: true, customTypeName: 'SoftmaxUniforms'),
+      WgslBinding(
+        group: 0,
+        binding: 0,
+        name: 'src',
+        dtype: dtype,
+        access: WgslBufferAccess.read,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 1,
+        name: 'dst',
+        dtype: dtype,
+        access: WgslBufferAccess.readWrite,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 2,
+        name: 'uniforms',
+        isUniform: true,
+        customTypeName: 'SoftmaxUniforms',
+      ),
     ];
 
-    final code = '''
+    final code =
+        '''
 // WGSL Numerically Stable Softmax (Last Axis)
 struct SoftmaxUniforms {
   num_rows: u32,
@@ -1031,13 +1325,38 @@ fn main(
     final wgSize = WgslWorkgroupSize(workgroupSize, 1, 1);
 
     final bindings = [
-      WgslBinding(group: 0, binding: 0, name: 'src', dtype: dtype, access: WgslBufferAccess.read),
-      WgslBinding(group: 0, binding: 1, name: 'weight', dtype: dtype, access: WgslBufferAccess.read),
-      WgslBinding(group: 0, binding: 2, name: 'dst', dtype: dtype, access: WgslBufferAccess.readWrite),
-      WgslBinding(group: 0, binding: 3, name: 'uniforms', isUniform: true, customTypeName: 'RMSNormUniforms'),
+      WgslBinding(
+        group: 0,
+        binding: 0,
+        name: 'src',
+        dtype: dtype,
+        access: WgslBufferAccess.read,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 1,
+        name: 'weight',
+        dtype: dtype,
+        access: WgslBufferAccess.read,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 2,
+        name: 'dst',
+        dtype: dtype,
+        access: WgslBufferAccess.readWrite,
+      ),
+      WgslBinding(
+        group: 0,
+        binding: 3,
+        name: 'uniforms',
+        isUniform: true,
+        customTypeName: 'RMSNormUniforms',
+      ),
     ];
 
-    final code = '''
+    final code =
+        '''
 // WGSL RMSNorm (Root Mean Square Layer Normalization)
 struct RMSNormUniforms {
   num_rows: u32,

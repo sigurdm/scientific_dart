@@ -1,6 +1,7 @@
 import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import '../buffer.dart';
+import '../exceptions.dart';
 
 /// Device driver classification for hardware compute acceleration.
 enum GpuDeviceType {
@@ -31,6 +32,13 @@ abstract class GpuBackend {
     int bytes, {
     int offset = 0,
   }) {
+    if (dst.isDisposed) {
+      throw GpuMemoryException('Cannot copy to disposed GpuBuffer.');
+    }
+    if (bytes < 0 || offset < 0 || offset + bytes > dst.sizeInBytes) {
+      throw GpuMemoryException('Copy operation exceeds buffer boundaries.');
+    }
+    if (bytes == 0) return;
     final dstPtr = dst.address.cast<ffi.Uint8>();
     final srcBytes = src.asTypedList(bytes);
     final dstBytes = (dstPtr + offset).asTypedList(bytes);
@@ -44,6 +52,13 @@ abstract class GpuBackend {
     int bytes, {
     int offset = 0,
   }) {
+    if (src.isDisposed) {
+      throw GpuMemoryException('Cannot copy from disposed GpuBuffer.');
+    }
+    if (bytes < 0 || offset < 0 || offset + bytes > src.sizeInBytes) {
+      throw GpuMemoryException('Copy operation exceeds buffer boundaries.');
+    }
+    if (bytes == 0) return;
     final srcPtr = src.address.cast<ffi.Uint8>();
     final srcBytes = (srcPtr + offset).asTypedList(bytes);
     final dstBytes = dst.asTypedList(bytes);
@@ -58,6 +73,17 @@ abstract class GpuBackend {
     int srcOffset = 0,
     int dstOffset = 0,
   }) {
+    if (src.isDisposed || dst.isDisposed) {
+      throw GpuMemoryException('Cannot copy with disposed GpuBuffer.');
+    }
+    if (bytes < 0 ||
+        srcOffset < 0 ||
+        dstOffset < 0 ||
+        srcOffset + bytes > src.sizeInBytes ||
+        dstOffset + bytes > dst.sizeInBytes) {
+      throw GpuMemoryException('Buffer copy exceeds boundaries.');
+    }
+    if (bytes == 0) return;
     final srcPtr = src.address.cast<ffi.Uint8>();
     final dstPtr = dst.address.cast<ffi.Uint8>();
     final srcBytes = (srcPtr + srcOffset).asTypedList(bytes);

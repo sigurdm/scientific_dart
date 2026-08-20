@@ -1,6 +1,7 @@
 import 'dart:ffi' as ffi;
 import '../buffer.dart';
 import '../device.dart';
+import '../exceptions.dart';
 
 /// An efficient power-of-2 size-bucketed memory pool allocator for GPU buffers.
 ///
@@ -14,8 +15,12 @@ class GpuMemoryPool {
   int _cachedBytes = 0;
   int _hits = 0;
   int _misses = 0;
+  bool _isDisposed = false;
 
   GpuMemoryPool(this.device, {this.maxCachedBytes = 256 * 1024 * 1024});
+
+  /// Whether the memory pool has been disposed.
+  bool get isDisposed => _isDisposed;
 
   /// Total number of bytes currently cached in the pool.
   int get cachedBytes => _cachedBytes;
@@ -37,9 +42,24 @@ class GpuMemoryPool {
   }
 
   /// Acquires a buffer of at least [sizeInBytes] from the pool or allocates a new one.
-  GpuBuffer acquire(int sizeInBytes, {int usage = 0}) {
-    if (sizeInBytes <= 0) {
-      return GpuBuffer.unmanaged(ffi.nullptr, 0, device: device);
+  GpuBuffer acquire(
+    int sizeInBytes, {
+    GpuBufferUsage usage = GpuBufferUsage.storage,
+  }) {
+    if (_isDisposed || device.isDisposed) {
+      throw GpuDeviceDisposedException(
+        'Cannot acquire buffer on disposed device or memory pool.',
+      );
+    }
+    if (sizeInBytes < 0) {
+      throw ArgumentError.value(
+        sizeInBytes,
+        'sizeInBytes',
+        'Buffer size cannot be negative.',
+      );
+    }
+    if (sizeInBytes == 0) {
+      return GpuBuffer.unmanaged(ffi.nullptr, 0, device: device, usage: usage);
     }
 
     final bucketSize = computeBucketSize(sizeInBytes);
@@ -49,13 +69,19 @@ class GpuMemoryPool {
       final buffer = bucket.removeLast();
       _cachedBytes -= bucketSize;
       _hits++;
-      buffer.resetForReuse();
+      buffer.resetForReuse(usage: usage);
       return buffer;
     }
 
     _misses++;
     final ptr = device.backend.allocateBuffer(bucketSize);
-    return GpuBuffer.fromPool(ptr, bucketSize, this, device: device);
+    return GpuBuffer.fromPool(
+      ptr,
+      bucketSize,
+      this,
+      device: device,
+      usage: usage,
+    );
   }
 
   /// Recycles a buffer back into the pool.
@@ -63,7 +89,7 @@ class GpuMemoryPool {
     if (buffer.rawPointer == ffi.nullptr) return;
 
     final bucketSize = buffer.sizeInBytes;
-    if (_cachedBytes + bucketSize > maxCachedBytes) {
+    if (_isDisposed || (_cachedBytes + bucketSize > maxCachedBytes)) {
       device.backend.freeBuffer(buffer.rawPointer.cast<ffi.Uint8>(), bucketSize);
       return;
     }
@@ -87,6 +113,8 @@ class GpuMemoryPool {
 
   /// Disposes the pool and frees all cached buffers.
   void dispose() {
+    if (_isDisposed) return;
+    _isDisposed = true;
     trim();
     _buckets.clear();
   }
