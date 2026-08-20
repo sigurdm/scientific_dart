@@ -66,3 +66,21 @@ class GpuAxisOutOfBoundsException extends GpuException {
   @override
   String toString() => 'GpuAxisOutOfBoundsException: $message';
 }
+
+/// Exception thrown when a GPU device initialization or driver operation fails.
+class GpuDeviceException extends GpuException {
+  /// Creates a new [GpuDeviceException] with the given [message].
+  const GpuDeviceException(super.message);
+
+  @override
+  String toString() => 'GpuDeviceException: $message';
+}
+
+/// Exception thrown when a compute shader compilation or pipeline dispatch fails.
+class GpuComputeException extends GpuException {
+  /// Creates a new [GpuComputeException] with the given [message].
+  const GpuComputeException(super.message);
+
+  @override
+  String toString() => 'GpuComputeException: $message';
+}

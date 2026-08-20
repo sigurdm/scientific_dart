@@ -2,7 +2,6 @@ import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'package:test/test.dart';
 import 'package:resource_scope/resource_scope.dart';
-import 'package:gpuarray/src/backend/backend.dart';
 import 'package:gpuarray/src/backend/memory_pool.dart';
 import 'package:gpuarray/gpuarray.dart';
 

@@ -2,6 +2,7 @@ import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import '../buffer.dart';
 import '../exceptions.dart';
+import 'wgsl/wgsl_types.dart';
 
 /// Device driver classification for hardware compute acceleration.
 enum GpuDeviceType {
@@ -90,6 +91,18 @@ abstract class GpuBackend {
     final dstBytes = (dstPtr + dstOffset).asTypedList(bytes);
     dstBytes.setAll(0, srcBytes);
   }
+
+  /// Dispatches a WGSL compute shader pipeline over the provided [buffers].
+  void dispatchComputePipeline({
+    required WgslShaderModule shaderModule,
+    required List<GpuBuffer> buffers,
+    List<int>? uniforms,
+    required int workgroupsX,
+    int workgroupsY = 1,
+    int workgroupsZ = 1,
+  }) {
+    // Default base implementation for CPU/fallback backends.
+  }
 }
 
 /// Default CPU Vector & SIMD memory driver backend using calloc native allocations.
@@ -109,6 +122,26 @@ class CpuVectorBackend extends GpuBackend {
   void freeBuffer(ffi.Pointer<ffi.Uint8> pointer, int sizeInBytes) {
     if (pointer != ffi.nullptr) {
       calloc.free(pointer);
+    }
+  }
+
+  @override
+  void dispatchComputePipeline({
+    required WgslShaderModule shaderModule,
+    required List<GpuBuffer> buffers,
+    List<int>? uniforms,
+    required int workgroupsX,
+    int workgroupsY = 1,
+    int workgroupsZ = 1,
+  }) {
+    if (buffers.any((b) => b.isDisposed)) {
+      throw GpuMemoryException(
+        'Cannot dispatch pipeline with disposed buffers.',
+      );
+    }
+    final cpuKernel = shaderModule.metadata['cpu_kernel'];
+    if (cpuKernel is Function) {
+      cpuKernel(buffers, uniforms, workgroupsX, workgroupsY, workgroupsZ);
     }
   }
 }
