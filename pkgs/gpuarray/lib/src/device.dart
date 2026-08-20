@@ -2,21 +2,10 @@ import 'dart:ffi' as ffi;
 import 'package:resource_scope/resource_scope.dart';
 import 'exceptions.dart';
 import 'buffer.dart';
+import 'backend/backend.dart';
+import 'backend/memory_pool.dart';
 
-/// The type of GPU hardware or execution environment.
-enum GpuDeviceType {
-  /// Dedicated discrete GPU (e.g. NVIDIA, AMD Radeon).
-  discrete,
-
-  /// Integrated GPU sharing system memory (e.g. Intel Iris, Apple Silicon).
-  integrated,
-
-  /// Virtualized or software-rasterized compute device.
-  virtual,
-
-  /// CPU fallback compute device.
-  cpu,
-}
+export 'backend/backend.dart' show GpuDeviceType;
 
 /// Represents a GPU compute device capable of allocating memory and executing compute kernels.
 final class GpuDevice implements ScopedResource {
@@ -30,7 +19,8 @@ final class GpuDevice implements ScopedResource {
     final dev = ResourceScope.unmanaged(
       () => GpuDevice._(
         name: 'Default GPU Device',
-        type: GpuDeviceType.virtual,
+        type: GpuDeviceType.cpu,
+        backend: const CpuVectorBackend(),
         trackInScope: false,
       ),
     );
@@ -44,14 +34,26 @@ final class GpuDevice implements ScopedResource {
   /// Hardware category of this device.
   final GpuDeviceType type;
 
+  /// Low-level backend driver managing allocations and kernel execution.
+  final GpuBackend backend;
+
+  /// Sub-allocating memory pool for fast O(1) buffer recycling.
+  late final GpuMemoryPool memoryPool;
+
+  /// Whether buffer allocations on this device use the memory pool.
+  bool enableMemoryPool;
+
   final Set<WeakReference<GpuBuffer>> _activeBuffers = {};
   bool _isDisposed = false;
 
   GpuDevice._({
     required this.name,
     required this.type,
+    required this.backend,
+    this.enableMemoryPool = false,
     bool trackInScope = true,
   }) {
+    memoryPool = GpuMemoryPool(this);
     if (trackInScope) {
       ResourceScope.track(this);
     }
@@ -60,9 +62,17 @@ final class GpuDevice implements ScopedResource {
   /// Creates a new custom [GpuDevice] instance.
   factory GpuDevice.create({
     String name = 'Custom GPU Device',
-    GpuDeviceType type = GpuDeviceType.virtual,
+    GpuDeviceType type = GpuDeviceType.cpu,
+    GpuBackend? backend,
+    bool enableMemoryPool = false,
   }) {
-    return GpuDevice._(name: name, type: type, trackInScope: true);
+    return GpuDevice._(
+      name: name,
+      type: type,
+      backend: backend ?? const CpuVectorBackend(),
+      enableMemoryPool: enableMemoryPool,
+      trackInScope: true,
+    );
   }
 
   @override
@@ -102,6 +112,9 @@ final class GpuDevice implements ScopedResource {
       );
     }
     _pruneDeadBuffers();
+    if (enableMemoryPool) {
+      return memoryPool.acquire(sizeInBytes, usage: usage.value);
+    }
     return GpuBuffer.allocate(
       sizeInBytes: sizeInBytes,
       usage: usage,
@@ -144,7 +157,6 @@ final class GpuDevice implements ScopedResource {
         'Cannot synchronize a disposed GpuDevice.',
       );
     }
-    // Execution is currently synchronous; hook for async execution queue drains.
   }
 
   /// Registers an active buffer with this device.
@@ -166,6 +178,7 @@ final class GpuDevice implements ScopedResource {
     if (_isDisposed) return;
     _isDisposed = true;
     ResourceScope.untrack(this);
+    memoryPool.dispose();
     final buffers = _activeBuffers
         .map((ref) => ref.target)
         .whereType<GpuBuffer>()

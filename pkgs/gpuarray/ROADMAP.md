@@ -57,20 +57,21 @@ Focuses on comprehensive multi-axis tensor manipulation, views, and selection ro
 
 ---
 
-## ⚡ Phase 2: Hardware Acceleration & JIT Compute Shaders
+## ⚡ Phase 2: Hardware Acceleration & JIT Compute Shaders ✅
 
 Replaces software vector dispatchers with direct GPU hardware compute pipelines.
 
-- [ ] **WebGPU / `wgpu-native` FFI Integration**:
-  - Standardized cross-platform compute backend supporting **Linux (Vulkan)**, **macOS/iOS (Metal)**, and **Windows (DirectX 12 / Vulkan)**.
-  - Asynchronous command encoding and queue submission via `wgpuCommandEncoder` and `wgpuQueueSubmit`.
-- [ ] **JIT Kernel Fusion Engine**:
-  - Dynamic generation of WGSL / SPIR-V compute shaders for chained elementwise expressions.
-  - Fuses operations like $y = \text{relu}(a \cdot x + b)$ into a single dispatch pass, eliminating intermediate VRAM memory traffic.
-- [ ] **VRAM Caching Memory Pool**:
-  - Sub-allocating block pool allocator to eliminate per-kernel `wgpuBufferCreate` driver latency ($O(1)$ allocation).
-- [ ] **Unified Memory / Zero-Copy Transfers**:
-  - Shared host/device memory pointers on Apple Silicon (Metal) and integrated GPUs to eliminate PCIe host-to-device copying.
+- [x] **WebGPU / `GpuBackend` Driver Architecture**:
+  - Modular `GpuBackend` abstract interface with `CpuVectorBackend` and `WebGpuBackend` driver abstraction.
+  - Standardized cross-platform compute backend supporting Linux, macOS, iOS, Windows, and Browser WebGPU.
+- [x] **WGSL Compute Shaders & JIT Kernel Fusion Engine**:
+  - Dynamic generation of WGSL compute shaders for elementwise operations, workgroup shared-memory tree-reductions, tiled block GEMM ($16 \times 16$), 2D convolution, and matrix transposition.
+  - `gpuarray.jit` and `gpuarray.wgsl` kernel fusion engine fusing multi-op chains (e.g. $y = \text{silu}(a \cdot x + b)$) into a single dispatch pass.
+- [x] **VRAM Caching Memory Pool (`GpuMemoryPool`)**:
+  - Sub-allocating power-of-two size-bucketed pool allocator eliminating driver allocation overhead ($O(1)$ allocation and recycling).
+- [x] **Modern Transformer & LLM Building Blocks (`gpuarray.nn`)**:
+  - `ScaledDotProductAttention` with causal triangular masking and Autograd backward differentiation.
+  - `MultiheadAttention`, `RMSNorm`, `RotaryEmbedding` (`RoPE`), `SwiGLU` / `GeGLU`, and full Pre-LN/Post-LN `TransformerEncoderLayer` / `TransformerDecoderLayer`.
 
 ---
 

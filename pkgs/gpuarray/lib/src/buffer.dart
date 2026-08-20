@@ -3,31 +3,21 @@ import 'package:ffi/ffi.dart';
 import 'package:resource_scope/resource_scope.dart';
 import 'exceptions.dart';
 import 'device.dart';
+import 'backend/memory_pool.dart';
 
 /// Usage flags for a [GpuBuffer], indicating allowed operations and access modes.
 final class GpuBufferUsage {
-  /// The underlying bitmask value.
   final int value;
-
   const GpuBufferUsage(this.value);
 
-  /// Buffer can be used as a storage buffer in compute shaders.
   static const GpuBufferUsage storage = GpuBufferUsage(1 << 0);
-
-  /// Buffer can be used as the source in a copy operation.
   static const GpuBufferUsage copySrc = GpuBufferUsage(1 << 1);
-
-  /// Buffer can be used as the destination in a copy operation.
   static const GpuBufferUsage copyDst = GpuBufferUsage(1 << 2);
-
-  /// Buffer can be used as a uniform buffer in compute shaders.
   static const GpuBufferUsage uniform = GpuBufferUsage(1 << 3);
 
-  /// Combines two usage flags.
   GpuBufferUsage operator |(GpuBufferUsage other) =>
       GpuBufferUsage(value | other.value);
 
-  /// Checks if this usage contains the given [flag].
   bool contains(GpuBufferUsage flag) => (value & flag.value) == flag.value;
 
   @override
@@ -37,32 +27,38 @@ final class GpuBufferUsage {
     if (contains(copySrc)) parts.add('COPY_SRC');
     if (contains(copyDst)) parts.add('COPY_DST');
     if (contains(uniform)) parts.add('UNIFORM');
-    return 'GpuBufferUsage(${parts.join('|')})';
+    return 'GpuBufferUsage(${parts.join("|")})';
   }
 }
 
 /// A block of memory allocated on a GPU device.
-///
-/// Implements [ScopedResource] for automatic memory management within [ResourceScope.scope].
 final class GpuBuffer implements ffi.Finalizable, ScopedResource {
-  static final _finalizer = ffi.NativeFinalizer(pkgFreeFunc);
+  static final _finalizer = ffi.NativeFinalizer(calloc.nativeFree);
 
   final ffi.Pointer<ffi.Void> _pointer;
   final int _sizeInBytes;
   final GpuBufferUsage _usage;
   final GpuDevice _device;
+  final GpuMemoryPool? _originPool;
+
   int _refCount = 1;
   bool _isDisposed = false;
 
-  GpuBuffer._(this._pointer, this._sizeInBytes, this._usage, this._device) {
-    if (_pointer != ffi.nullptr) {
+  GpuBuffer._(
+    this._pointer,
+    this._sizeInBytes,
+    this._usage,
+    this._device, {
+    GpuMemoryPool? originPool,
+  }) : _originPool = originPool {
+    if (_pointer != ffi.nullptr && _originPool == null) {
       _finalizer.attach(this, _pointer, detach: this);
     }
     ResourceScope.track(this);
     _device.registerBuffer(this);
   }
 
-  /// Retains a reference to this buffer, incrementing its reference count.
+  /// Retains a reference to this buffer.
   void retain() {
     if (_isDisposed) {
       throw GpuMemoryException('Cannot retain a disposed GpuBuffer.');
@@ -70,8 +66,7 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
     _refCount++;
   }
 
-  /// Releases a reference to this buffer, decrementing its reference count.
-  /// If the reference count drops to 0, frees the underlying native memory.
+  /// Releases a reference to this buffer.
   void release() {
     if (_isDisposed) return;
     _refCount--;
@@ -80,17 +75,29 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
     }
   }
 
-  /// Reference count of active holders of this buffer.
   int get refCount => _refCount;
+
+  void resetForReuse() {
+    _refCount = 1;
+    _isDisposed = false;
+    ResourceScope.track(this);
+    _device.registerBuffer(this);
+  }
 
   void _disposeInternal() {
     if (_isDisposed) return;
     _isDisposed = true;
     ResourceScope.untrack(this);
     _device.unregisterBuffer(this);
+
+    if (_originPool != null) {
+      _originPool.recycle(this);
+      return;
+    }
+
     if (_pointer != ffi.nullptr) {
       _finalizer.detach(this);
-      calloc.free(_pointer);
+      _device.backend.freeBuffer(_pointer.cast<ffi.Uint8>(), _sizeInBytes);
     }
   }
 
@@ -115,101 +122,103 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
 
     final ptr = sizeInBytes == 0
         ? ffi.nullptr
-        : calloc.allocate<ffi.Uint8>(sizeInBytes).cast<ffi.Void>();
+        : device.backend.allocateBuffer(sizeInBytes).cast<ffi.Void>();
 
     return GpuBuffer._(ptr, sizeInBytes, usage, device);
   }
 
-  /// Pointer to the underlying memory block.
-  ffi.Pointer<ffi.Void> get pointer {
+  /// Wraps an existing allocated native pointer as a [GpuBuffer] allocated from [originPool].
+  factory GpuBuffer.fromPool(
+    ffi.Pointer<ffi.Uint8> pointer,
+    int sizeInBytes,
+    GpuMemoryPool originPool, {
+    required GpuDevice device,
+    GpuBufferUsage usage = GpuBufferUsage.storage,
+  }) {
+    return GpuBuffer._(
+      pointer.cast<ffi.Void>(),
+      sizeInBytes,
+      usage,
+      device,
+      originPool: originPool,
+    );
+  }
+
+  /// Wraps an existing native pointer as an unmanaged [GpuBuffer].
+  factory GpuBuffer.unmanaged(
+    ffi.Pointer<ffi.Void> pointer,
+    int sizeInBytes, {
+    GpuBufferUsage usage = GpuBufferUsage.storage,
+    GpuDevice? device,
+  }) {
+    return GpuBuffer._(
+      pointer,
+      sizeInBytes,
+      usage,
+      device ?? GpuDevice.defaultDevice,
+    );
+  }
+
+  ffi.Pointer<ffi.Void> get address {
     if (_isDisposed) {
-      throw GpuMemoryException('Cannot access memory of a disposed GpuBuffer.');
+      throw GpuMemoryException('Cannot access address of disposed GpuBuffer.');
     }
     return _pointer;
   }
 
-  /// Size of this buffer in bytes.
+  /// Raw native pointer without disposed check, for internal driver use.
+  ffi.Pointer<ffi.Void> get rawPointer => _pointer;
+
+  /// Alias for [address] representing the raw native memory pointer.
+  ffi.Pointer<ffi.Void> get pointer => address;
+
   int get sizeInBytes => _sizeInBytes;
-
-  /// Usage flags of this buffer.
   GpuBufferUsage get usage => _usage;
-
-  /// The [GpuDevice] where this buffer is allocated.
   GpuDevice get device => _device;
 
   @override
   bool get isDisposed => _isDisposed;
 
-  /// Copies [bytes] from a host memory [hostPtr] into this GPU buffer starting at [offset].
-  void copyFromHost(
-    ffi.Pointer<ffi.Void> hostPtr,
-    int bytes, {
-    int offset = 0,
-  }) {
-    if (_isDisposed) {
-      throw GpuMemoryException('Cannot copy to a disposed GpuBuffer.');
-    }
-    if (offset < 0 || bytes < 0 || offset + bytes > _sizeInBytes) {
-      throw RangeError(
-        'Copy out of bounds: offset=$offset, bytes=$bytes, bufferSize=$_sizeInBytes',
-      );
-    }
+  void copyFromHost(ffi.Pointer<ffi.Void> srcPointer, int bytes, {int offset = 0}) {
+    if (_isDisposed) throw GpuMemoryException('Cannot copy to disposed GpuBuffer.');
+    if (offset + bytes > _sizeInBytes) throw GpuMemoryException('Copy operation exceeds buffer boundaries.');
     if (bytes == 0) return;
 
-    final dst = (_pointer.cast<ffi.Uint8>() + offset).cast<ffi.Uint8>();
-    final src = hostPtr.cast<ffi.Uint8>();
-    dst.asTypedList(bytes).setAll(0, src.asTypedList(bytes));
+    final src = srcPointer.cast<ffi.Uint8>();
+    final dst = _pointer.cast<ffi.Uint8>();
+    final srcList = src.asTypedList(bytes);
+    final dstList = (dst + offset).asTypedList(bytes);
+    dstList.setAll(0, srcList);
   }
 
-  /// Copies [bytes] from this GPU buffer starting at [offset] into a host memory [hostPtr].
-  void copyToHost(ffi.Pointer<ffi.Void> hostPtr, int bytes, {int offset = 0}) {
-    if (_isDisposed) {
-      throw GpuMemoryException('Cannot copy from a disposed GpuBuffer.');
-    }
-    if (offset < 0 || bytes < 0 || offset + bytes > _sizeInBytes) {
-      throw RangeError(
-        'Copy out of bounds: offset=$offset, bytes=$bytes, bufferSize=$_sizeInBytes',
-      );
-    }
+  void copyToHost(ffi.Pointer<ffi.Void> dstPointer, int bytes, {int offset = 0}) {
+    if (_isDisposed) throw GpuMemoryException('Cannot copy from disposed GpuBuffer.');
+    if (offset + bytes > _sizeInBytes) throw GpuMemoryException('Copy operation exceeds buffer boundaries.');
     if (bytes == 0) return;
 
-    final src = (_pointer.cast<ffi.Uint8>() + offset).cast<ffi.Uint8>();
-    final dst = hostPtr.cast<ffi.Uint8>();
-    dst.asTypedList(bytes).setAll(0, src.asTypedList(bytes));
+    final src = _pointer.cast<ffi.Uint8>();
+    final dst = dstPointer.cast<ffi.Uint8>();
+    final srcList = (src + offset).asTypedList(bytes);
+    final dstList = dst.asTypedList(bytes);
+    dstList.setAll(0, srcList);
   }
 
-  /// Copies [bytes] from this buffer into another [dst] buffer.
-  void copyToBuffer(
-    GpuBuffer dst,
-    int bytes, {
-    int srcOffset = 0,
-    int dstOffset = 0,
-  }) {
-    if (_isDisposed || dst._isDisposed) {
-      throw GpuMemoryException('Cannot copy using disposed GpuBuffers.');
-    }
-    if (srcOffset < 0 || bytes < 0 || srcOffset + bytes > _sizeInBytes) {
-      throw RangeError(
-        'Source copy out of bounds: $srcOffset + $bytes > $_sizeInBytes',
-      );
-    }
-    if (dstOffset < 0 || dstOffset + bytes > dst._sizeInBytes) {
-      throw RangeError(
-        'Destination copy out of bounds: $dstOffset + $bytes > ${dst._sizeInBytes}',
-      );
+  void copyToBuffer(GpuBuffer dstBuffer, int bytes, {int srcOffset = 0, int dstOffset = 0}) {
+    if (_isDisposed || dstBuffer.isDisposed) throw GpuMemoryException('Cannot copy with disposed GpuBuffer.');
+    if (srcOffset + bytes > _sizeInBytes || dstOffset + bytes > dstBuffer._sizeInBytes) {
+      throw GpuMemoryException('Buffer copy exceeds boundaries.');
     }
     if (bytes == 0) return;
 
-    final srcPtr = (_pointer.cast<ffi.Uint8>() + srcOffset).cast<ffi.Uint8>();
-    final dstPtr = (dst._pointer.cast<ffi.Uint8>() + dstOffset)
-        .cast<ffi.Uint8>();
-    dstPtr.asTypedList(bytes).setAll(0, srcPtr.asTypedList(bytes));
+    final src = _pointer.cast<ffi.Uint8>();
+    final dst = dstBuffer._pointer.cast<ffi.Uint8>();
+    final srcList = (src + srcOffset).asTypedList(bytes);
+    final dstList = (dst + dstOffset).asTypedList(bytes);
+    dstList.setAll(0, srcList);
   }
 
   @override
-  void dispose() {
-    release();
-  }
+  void dispose() => release();
 
   @override
   ScopedResource detachFromScope() {
@@ -223,7 +232,3 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
     return this;
   }
 }
-
-/// Helper native free function pointer for NativeFinalizer.
-final ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
-pkgFreeFunc = ffi.Pointer.fromAddress(calloc.nativeFree.address);

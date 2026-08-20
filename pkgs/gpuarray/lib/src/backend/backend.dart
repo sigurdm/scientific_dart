@@ -1,0 +1,88 @@
+import 'dart:ffi' as ffi;
+import 'package:ffi/ffi.dart';
+import '../buffer.dart';
+
+/// Device driver classification for hardware compute acceleration.
+enum GpuDeviceType {
+  /// CPU Vector / SIMD backend via native FFI C pointers.
+  cpu,
+
+  /// WebGPU / wgpu hardware compute backend via WGSL shaders.
+  webgpu,
+}
+
+/// Abstract hardware driver backend for memory allocation and compute dispatch.
+abstract class GpuBackend {
+  const GpuBackend();
+
+  /// The type of hardware device targeted by this backend.
+  GpuDeviceType get deviceType;
+
+  /// Allocates a low-level memory buffer of [sizeInBytes].
+  ffi.Pointer<ffi.Uint8> allocateBuffer(int sizeInBytes);
+
+  /// Frees a low-level memory buffer.
+  void freeBuffer(ffi.Pointer<ffi.Uint8> pointer, int sizeInBytes);
+
+  /// Copies [bytes] from host memory [src] to device buffer [dst].
+  void copyHostToBuffer(
+    ffi.Pointer<ffi.Uint8> src,
+    GpuBuffer dst,
+    int bytes, {
+    int offset = 0,
+  }) {
+    final dstPtr = dst.address.cast<ffi.Uint8>();
+    final srcBytes = src.asTypedList(bytes);
+    final dstBytes = (dstPtr + offset).asTypedList(bytes);
+    dstBytes.setAll(0, srcBytes);
+  }
+
+  /// Copies [bytes] from device buffer [src] to host memory [dst].
+  void copyBufferToHost(
+    GpuBuffer src,
+    ffi.Pointer<ffi.Uint8> dst,
+    int bytes, {
+    int offset = 0,
+  }) {
+    final srcPtr = src.address.cast<ffi.Uint8>();
+    final srcBytes = (srcPtr + offset).asTypedList(bytes);
+    final dstBytes = dst.asTypedList(bytes);
+    dstBytes.setAll(0, srcBytes);
+  }
+
+  /// Copies [bytes] between two device buffers.
+  void copyBufferToBuffer(
+    GpuBuffer src,
+    GpuBuffer dst,
+    int bytes, {
+    int srcOffset = 0,
+    int dstOffset = 0,
+  }) {
+    final srcPtr = src.address.cast<ffi.Uint8>();
+    final dstPtr = dst.address.cast<ffi.Uint8>();
+    final srcBytes = (srcPtr + srcOffset).asTypedList(bytes);
+    final dstBytes = (dstPtr + dstOffset).asTypedList(bytes);
+    dstBytes.setAll(0, srcBytes);
+  }
+}
+
+/// Default CPU Vector & SIMD memory driver backend using calloc native allocations.
+class CpuVectorBackend extends GpuBackend {
+  const CpuVectorBackend();
+
+  @override
+  GpuDeviceType get deviceType => GpuDeviceType.cpu;
+
+  @override
+  ffi.Pointer<ffi.Uint8> allocateBuffer(int sizeInBytes) {
+    if (sizeInBytes <= 0) return ffi.nullptr;
+    return calloc<ffi.Uint8>(sizeInBytes);
+  }
+
+  @override
+  void freeBuffer(ffi.Pointer<ffi.Uint8> pointer, int sizeInBytes) {
+    if (pointer != ffi.nullptr) {
+      calloc.free(pointer);
+    }
+  }
+}

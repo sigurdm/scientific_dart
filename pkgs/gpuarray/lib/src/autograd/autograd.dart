@@ -1,6 +1,7 @@
 // ignore_for_file: non_constant_identifier_names
 import '../gpu_array.dart';
 import '../backend/kernels.dart';
+import '../slice.dart';
 
 /// Global flag controlling whether gradient tracking is enabled.
 bool _gradEnabled = true;
@@ -599,6 +600,44 @@ class SliceBackward extends GradFn {
       dtypeDst: sliceView.dtype,
     );
     return [grad];
+  }
+}
+
+/// Backward node for Concatenate: $y = \text{concat}([a, b, \dots], \text{axis})$.
+class ConcatenateBackward extends GradFn {
+  @override
+  final List<GpuArray> inputs;
+  final int axis;
+
+  ConcatenateBackward(this.inputs, {required this.axis});
+
+  @override
+  String get name => 'ConcatenateBackward';
+
+  @override
+  List<GpuArray?> backward(GpuArray gradOutput) {
+    final grads = <GpuArray?>[];
+    var offset = 0;
+    final rank = gradOutput.rank;
+    final normAxis = axis < 0 ? axis + rank : axis;
+
+    for (final inp in inputs) {
+      final inpLen = inp.shape[normAxis];
+      if (inp.requiresGrad) {
+        final sliceSpecs = List<dynamic>.generate(rank, (d) {
+          if (d == normAxis) {
+            return Slice(offset, offset + inpLen);
+          }
+          return const All();
+        });
+        final sliceView = gradOutput.slice(sliceSpecs);
+        grads.add(sliceView.copy());
+      } else {
+        grads.add(null);
+      }
+      offset += inpLen;
+    }
+    return grads;
   }
 }
 

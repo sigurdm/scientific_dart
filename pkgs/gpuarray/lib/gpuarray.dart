@@ -20,3 +20,5 @@ export 'src/autograd/autograd.dart';
 export 'src/nn/nn.dart';
 export 'src/serialization/safetensors.dart';
 export 'src/interop.dart';
+export 'wgsl.dart';
+export 'jit.dart';

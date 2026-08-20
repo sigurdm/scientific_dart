@@ -1,3 +1,5 @@
+import '../random/random.dart' as rng;
+import '../dtype.dart';
 // ignore_for_file: non_constant_identifier_names
 import 'dart:math' as math;
 import '../gpu_array.dart';
@@ -163,4 +165,80 @@ GpuArray cross_entropy(
   }
 
   return lossArray;
+}
+
+
+/// Scaled Dot-Product Attention:
+/// \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{Q K^T}{\sqrt{d_k}} + M\right) V
+///
+/// Supports batched queries, keys, and values (e.g. `[B, H, N, D]` or `[N, D]`).
+/// Supports optional causal triangular masking when [isCausal] is true,
+/// arbitrary custom [attnMask], [dropoutP], and explicit [scale].
+GpuArray scaled_dot_product_attention(
+  GpuArray query,
+  GpuArray key,
+  GpuArray value, {
+  GpuArray? attnMask,
+  double dropoutP = 0.0,
+  bool isCausal = false,
+  double? scale,
+}) {
+  final dK = query.shape[query.rank - 1];
+  final scaleFactor = scale ?? (1.0 / math.sqrt(dK));
+
+  final kT = key.swapaxes(-1, -2);
+  var scores = query.matmul(kT) * scaleFactor;
+
+  final qSeqLen = query.shape[query.rank - 2];
+  final kSeqLen = key.shape[key.rank - 2];
+
+  if (isCausal) {
+    final causalList = List<double>.generate(qSeqLen * kSeqLen, (idx) {
+      final i = idx ~/ kSeqLen;
+      final j = idx % kSeqLen;
+      return (j > i) ? -1e9 : 0.0;
+    });
+    final causalMask = GpuArray.fromList(
+      causalList,
+      [qSeqLen, kSeqLen],
+      scores.dtype,
+      device: scores.device,
+    );
+    scores = scores + causalMask;
+  }
+
+  if (attnMask != null) {
+    if (attnMask.dtype == DType.boolean) {
+      final maskND = attnMask.toNDArray();
+      final maskList = maskND.toList().cast<dynamic>();
+      maskND.dispose();
+      final additiveList = List<double>.generate(maskList.length, (i) {
+        final val = maskList[i];
+        final keep = (val == true || (val is num && val != 0));
+        return keep ? 0.0 : -1e9;
+      });
+      final additiveMask = GpuArray.fromList(
+        additiveList,
+        attnMask.shape,
+        scores.dtype,
+        device: scores.device,
+      );
+      scores = scores + additiveMask;
+    } else {
+      scores = scores + attnMask;
+    }
+  }
+
+  var attnWeights = softmax(scores, axis: -1);
+
+  if (dropoutP > 0.0) {
+    final mask = rng
+        .rand(attnWeights.shape, attnWeights.device)
+        .greater(dropoutP)
+        .astype(attnWeights.dtype);
+    final pScale = 1.0 / (1.0 - dropoutP);
+    attnWeights = attnWeights * mask * pScale;
+  }
+
+  return attnWeights.matmul(value);
 }

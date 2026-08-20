@@ -5,6 +5,7 @@ import '../exceptions.dart';
 import '../slice.dart';
 import '../backend/compute_engine.dart';
 import '../backend/kernels.dart';
+import '../autograd/autograd.dart';
 
 /// Joins a sequence of [arrays] along an existing [axis].
 GpuArray<T> concatenate<T>(List<GpuArray> arrays, {int axis = 0}) {
@@ -56,6 +57,11 @@ GpuArray<T> concatenate<T>(List<GpuArray> arrays, {int axis = 0}) {
     dtypeDst: outDType,
     axis: normAxis,
   );
+
+  if (isGradEnabled && arrays.any((a) => a.requiresGrad)) {
+    result.requiresGrad = true;
+    result.gradFn = ConcatenateBackward(arrays, axis: normAxis);
+  }
 
   return result;
 }
