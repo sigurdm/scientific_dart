@@ -336,9 +336,12 @@ GpuArray<T> irfft<T>(GpuArray a, {int? n, int axis = -1, String? norm}) {
   final outerSize = a.shape.sublist(0, normAxis).fold(1, (r, e) => r * e);
   final innerSize = a.shape.sublist(normAxis + 1).fold(1, (r, e) => r * e);
 
+  final numPos = math.min(inLen, (outLen ~/ 2) + 1);
+  final maxMirror = (outLen - 1) ~/ 2;
+
   for (var o = 0; o < outerSize; o++) {
     for (var i = 0; i < innerSize; i++) {
-      for (var k = 0; k < inLen; k++) {
+      for (var k = 0; k < numPos; k++) {
         final srcIdx = (o * inLen + k) * innerSize + i;
         final (r, im) = _readComplexOrReal(aList[srcIdx]);
         final dstIdx = (o * outLen + k) * innerSize + i;
@@ -349,17 +352,18 @@ GpuArray<T> irfft<T>(GpuArray a, {int? n, int axis = -1, String? norm}) {
           Complex(r, im),
         );
       }
-      for (var k = inLen; k < outLen; k++) {
-        final mirror = outLen - k;
-        final srcIdx = (o * inLen + mirror) * innerSize + i;
-        final (r, im) = _readComplexOrReal(aList[srcIdx]);
-        final dstIdx = (o * outLen + k) * innerSize + i;
-        ComputeEngine.writeAny(
-          fullComplex.buffer,
-          DType.complex128,
-          dstIdx,
-          Complex(r, -im),
-        );
+      for (var k = 1; k <= maxMirror; k++) {
+        if (k < inLen) {
+          final srcIdx = (o * inLen + k) * innerSize + i;
+          final (r, im) = _readComplexOrReal(aList[srcIdx]);
+          final dstIdx = (o * outLen + (outLen - k)) * innerSize + i;
+          ComputeEngine.writeAny(
+            fullComplex.buffer,
+            DType.complex128,
+            dstIdx,
+            Complex(r, -im),
+          );
+        }
       }
     }
   }
@@ -463,7 +467,11 @@ GpuArray<T> fftshift<T>(GpuArray<T> x, {Object? axes}) {
     var curr = x;
     for (var dim = 0; dim < x.rank; dim++) {
       final shift = x.shape[dim] ~/ 2;
+      final prev = curr;
       curr = manip.roll(curr, shift, axis: dim);
+      if (!identical(prev, x)) {
+        prev.dispose();
+      }
     }
     return curr;
   }
@@ -476,7 +484,11 @@ GpuArray<T> fftshift<T>(GpuArray<T> x, {Object? axes}) {
     for (final ax in axes) {
       final normAx = ax < 0 ? ax + x.rank : ax;
       final shift = x.shape[normAx] ~/ 2;
+      final prev = curr;
       curr = manip.roll(curr, shift, axis: normAx);
+      if (!identical(prev, x)) {
+        prev.dispose();
+      }
     }
     return curr;
   }
@@ -493,7 +505,11 @@ GpuArray<T> ifftshift<T>(GpuArray<T> x, {Object? axes}) {
     var curr = x;
     for (var dim = 0; dim < x.rank; dim++) {
       final shift = -((x.shape[dim]) ~/ 2);
+      final prev = curr;
       curr = manip.roll(curr, shift, axis: dim);
+      if (!identical(prev, x)) {
+        prev.dispose();
+      }
     }
     return curr;
   }
@@ -506,7 +522,11 @@ GpuArray<T> ifftshift<T>(GpuArray<T> x, {Object? axes}) {
     for (final ax in axes) {
       final normAx = ax < 0 ? ax + x.rank : ax;
       final shift = -((x.shape[normAx]) ~/ 2);
+      final prev = curr;
       curr = manip.roll(curr, shift, axis: normAx);
+      if (!identical(prev, x)) {
+        prev.dispose();
+      }
     }
     return curr;
   }

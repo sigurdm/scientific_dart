@@ -231,5 +231,55 @@ void main() {
         });
       },
     );
+
+    test(
+      'IRFFT with arbitrary n (zero-padding and truncation in frequency domain)',
+      () {
+        ResourceScope.scope(() {
+          // Length 5 complex input spectrum (corresponding standard outLen = 2 * (5 - 1) = 8)
+          final rawSignal = [1.0, 2.0, 3.0, 4.0, 5.0, 4.0, 3.0, 2.0];
+          final sig = GpuArray.fromList(rawSignal, [8], DType.float64);
+          final rspec = fft.rfft(sig);
+          expect(rspec.shape, equals([5]));
+
+          // Standard length n = 8
+          final rec8 = fft.irfft(rspec);
+          expect(rec8.shape, equals([8]));
+          final rec8List = rec8.toList().cast<double>();
+          for (var i = 0; i < 8; i++) {
+            expect(rec8List[i], closeTo(rawSignal[i], 1e-4));
+          }
+
+          // Explicit n = 16 (zero-padding in frequency domain, n > 2*(inLen - 1))
+          final rec16 = fft.irfft(rspec, n: 16);
+          expect(rec16.shape, equals([16]));
+          expect(rec16.dtype, equals(DType.float64));
+
+          // Explicit n = 6 (truncation in frequency domain, n < 2*(inLen - 1))
+          final rec6 = fft.irfft(rspec, n: 6);
+          expect(rec6.shape, equals([6]));
+          expect(rec6.dtype, equals(DType.float64));
+
+          // Direct synthetic complex spectrum of length 5
+          final synthSpec = GpuArray.fromList(
+            [
+              Complex(10.0, 0.0),
+              Complex(2.0, -1.0),
+              Complex(1.0, 0.5),
+              Complex(-0.5, 0.2),
+              Complex(0.1, 0.0),
+            ],
+            [5],
+            DType.complex128,
+          );
+
+          final padded = fft.irfft(synthSpec, n: 16);
+          expect(padded.shape, equals([16]));
+
+          final truncated = fft.irfft(synthSpec, n: 6);
+          expect(truncated.shape, equals([6]));
+        });
+      },
+    );
   });
 }

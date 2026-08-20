@@ -190,6 +190,25 @@ void main() {
               rng.choice(arr, size: 3, p: [0.0, 0.0, 0.0, 0.0, 0.0]), // Sum = 0
           throwsArgumentError,
         );
+
+        // Insufficient positive probabilities when replace = false
+        expect(
+          () => rng.choice(
+            arr,
+            size: 3,
+            replace: false,
+            p: [0.5, 0.5, 0.0, 0.0, 0.0],
+          ),
+          throwsA(
+            isA<ArgumentError>().having(
+              (e) => e.message,
+              'message',
+              contains(
+                'Cannot take 3 samples without replacement when only 2 items have positive probability.',
+              ),
+            ),
+          ),
+        );
       });
     });
 
@@ -207,6 +226,34 @@ void main() {
         );
         rng.shuffle(orig);
         expect(orig.toList().cast<double>().toSet().length, equals(5));
+      });
+    });
+
+    test('Shuffle on sliced subarray with non-zero offset', () {
+      ResourceScope.scope(() {
+        rng.seed(42);
+        final base = GpuArray.fromList(
+          [100.0, 200.0, 1.0, 2.0, 3.0, 4.0, 300.0, 400.0],
+          [8],
+          DType.float64,
+        );
+
+        final sub = base.slice([Slice(2, 6)]);
+        expect(sub.offsetElements, equals(2));
+        expect(sub.shape, equals([4]));
+
+        rng.shuffle(sub);
+
+        final baseList = base.toList().cast<double>();
+        // Unmodified prefix and suffix
+        expect(baseList[0], equals(100.0));
+        expect(baseList[1], equals(200.0));
+        expect(baseList[6], equals(300.0));
+        expect(baseList[7], equals(400.0));
+
+        // Subarray is shuffled in place within its slice
+        final subList = baseList.sublist(2, 6);
+        expect(subList.toSet(), equals({1.0, 2.0, 3.0, 4.0}));
       });
     });
   });
