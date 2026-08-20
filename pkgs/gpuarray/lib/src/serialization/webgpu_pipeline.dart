@@ -389,8 +389,20 @@ final class GpuComputePipelinePackage {
 
           const totalElements = pkg.output.shape.reduce((a, b) => a * b, 1);
           const wgSizeX = pkg.workgroupSize[0] || 256;
-          const wgCountX = Math.min(65535, Math.ceil(totalElements / wgSizeX));
-          pass.dispatchWorkgroups(wgCountX, 1, 1);
+          const wgSizeY = pkg.workgroupSize[1] || 1;
+          const wgSizeZ = pkg.workgroupSize[2] || 1;
+
+          let wgCountX, wgCountY, wgCountZ;
+          if (pkg.renderToCanvas && pkg.canvasWidth && pkg.canvasHeight && wgSizeY > 1) {
+            wgCountX = Math.ceil(pkg.canvasWidth / wgSizeX);
+            wgCountY = Math.ceil(pkg.canvasHeight / wgSizeY);
+            wgCountZ = 1;
+          } else {
+            wgCountX = Math.min(65535, Math.ceil(totalElements / wgSizeX));
+            wgCountY = 1;
+            wgCountZ = 1;
+          }
+          pass.dispatchWorkgroups(wgCountX, wgCountY, wgCountZ);
           pass.end();
 
           encoder.copyBufferToBuffer(outBuffer, 0, stagingBuffer, 0, outSize);
@@ -426,17 +438,43 @@ final class GpuComputePipelinePackage {
             for (let i = 0; i < count; i++) {
               const val = floatArr[i];
               const pIdx = i * 4;
+              const norm = Math.max(0, Math.min(1, isNaN(val) ? 0 : val));
+
               if (pkg.colorMap === 'viridis') {
-                const norm = Math.max(0, Math.min(1, val));
-                pixels[pIdx] = Math.floor(norm * 68 + (1 - norm) * 253);
-                pixels[pIdx + 1] = Math.floor(norm * 1 + (1 - norm) * 231);
-                pixels[pIdx + 2] = Math.floor(norm * 84 + (1 - norm) * 37);
+                pixels[pIdx] = Math.floor(Math.sin(norm * Math.PI * 0.9) * 200 + 30);
+                pixels[pIdx + 1] = Math.floor(Math.pow(norm, 0.7) * 240);
+                pixels[pIdx + 2] = Math.floor((1 - norm) * 180 + Math.sin(norm * Math.PI) * 75);
+                pixels[pIdx + 3] = 255;
+              } else if (pkg.colorMap === 'magma' || pkg.colorMap === 'inferno') {
+                pixels[pIdx] = Math.floor(Math.pow(norm, 0.6) * 255);
+                pixels[pIdx + 1] = Math.floor(Math.pow(norm, 1.8) * 220);
+                pixels[pIdx + 2] = Math.floor(Math.sin(norm * Math.PI * 0.8) * 160 + (norm < 0.5 ? norm * 200 : 0));
+                pixels[pIdx + 3] = 255;
+              } else if (pkg.colorMap === 'plasma') {
+                pixels[pIdx] = Math.floor(Math.sin(norm * Math.PI * 0.7) * 230 + 20);
+                pixels[pIdx + 1] = Math.floor(Math.pow(norm, 1.5) * 220);
+                pixels[pIdx + 2] = Math.floor((1 - norm) * 210 + 40);
+                pixels[pIdx + 3] = 255;
+              } else if (pkg.colorMap === 'turbo' || pkg.colorMap === 'rainbow') {
+                const h = (1 - norm) * 240;
+                const s = 1.0, l = 0.5;
+                const c = (1 - Math.abs(2 * l - 1)) * s;
+                const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+                const m = l - c / 2;
+                let r = 0, g = 0, b = 0;
+                if (h >= 0 && h < 60) { r = c; g = x; b = 0; }
+                else if (h >= 60 && h < 120) { r = x; g = c; b = 0; }
+                else if (h >= 120 && h < 180) { r = 0; g = c; b = x; }
+                else if (h >= 180 && h < 240) { r = 0; g = x; b = c; }
+                pixels[pIdx] = Math.floor((r + m) * 255);
+                pixels[pIdx + 1] = Math.floor((g + m) * 255);
+                pixels[pIdx + 2] = Math.floor((b + m) * 255);
                 pixels[pIdx + 3] = 255;
               } else {
-                const norm = Math.max(0, Math.min(255, Math.floor(val * 255)));
-                pixels[pIdx] = norm;
-                pixels[pIdx + 1] = norm;
-                pixels[pIdx + 2] = norm;
+                const v = Math.floor(norm * 255);
+                pixels[pIdx] = v;
+                pixels[pIdx + 1] = v;
+                pixels[pIdx + 2] = v;
                 pixels[pIdx + 3] = 255;
               }
             }
@@ -487,6 +525,252 @@ final class WebGpuWidget {
   final String title;
 
   const WebGpuWidget(this.pipeline, {this.title = 'WebGPU Compute Widget'});
+
+  /// Creates a real-time interactive Mandelbrot fractal WebGPU compute widget.
+  factory WebGpuWidget.fractal({
+    int width = 512,
+    int height = 512,
+    String colorMap = 'turbo',
+    String? title,
+  }) {
+    const wgsl = '''
+struct Uniforms {
+  width: u32,
+  height: u32,
+  max_iter: u32,
+  pad0: u32,
+  center_x: f32,
+  center_y: f32,
+  zoom: f32,
+  color_shift: f32,
+}
+
+@group(0) @binding(0) var<storage, read_write> dst: array<f32>;
+@group(0) @binding(1) var<uniform> uniforms: Uniforms;
+
+@compute @workgroup_size(16, 16, 1)
+fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+  if (id.x >= uniforms.width || id.y >= uniforms.height) { return; }
+  
+  let aspect = f32(uniforms.width) / f32(uniforms.height);
+  let uv = vec2<f32>(
+    ((f32(id.x) / f32(uniforms.width) - 0.5) * aspect) * uniforms.zoom + uniforms.center_x,
+    (f32(id.y) / f32(uniforms.height) - 0.5) * uniforms.zoom + uniforms.center_y
+  );
+  
+  var z = uv;
+  var c = uv;
+  var iter = 0u;
+  while (iter < uniforms.max_iter && (z.x * z.x + z.y * z.y) < 4.0) {
+    let x_new = z.x * z.x - z.y * z.y + c.x;
+    let y_new = 2.0 * z.x * z.y + c.y;
+    z = vec2<f32>(x_new, y_new);
+    iter += 1u;
+  }
+  
+  let idx = id.y * uniforms.width + id.x;
+  if (iter >= uniforms.max_iter) {
+    dst[idx] = 0.0;
+  } else {
+    let mag = sqrt(z.x * z.x + z.y * z.y);
+    let log_zn = log(mag * mag) / 2.0;
+    let nu = log(log_zn / log(2.0)) / log(2.0);
+    let iter_smooth = f32(iter) + 1.0 - nu;
+    let val = (iter_smooth / f32(uniforms.max_iter) + uniforms.color_shift) % 1.0;
+    dst[idx] = max(0.01, val);
+  }
+}
+''';
+
+    final pkg = GpuComputePipelinePackage(
+      name: 'mandelbrot_fractal',
+      wgslCode: wgsl,
+      workgroupSize: [16, 16, 1],
+      inputs: [],
+      output: GpuBufferPayload(
+        bindingIndex: 0,
+        name: 'dst',
+        dtype: DType.float32,
+        shape: [height, width],
+        isOutput: true,
+        sizeInBytes: width * height * 4,
+      ),
+      uniforms: [width, height, 80, 0],
+      sliders: [
+        const WebGpuSlider(
+          name: 'zoom',
+          label: 'Zoom Factor',
+          min: 0.001,
+          max: 3.5,
+          initialValue: 2.2,
+          step: 0.005,
+          uniformWordIndex: 6,
+        ),
+        const WebGpuSlider(
+          name: 'center_x',
+          label: 'Center X',
+          min: -2.0,
+          max: 1.5,
+          initialValue: -0.7,
+          step: 0.005,
+          uniformWordIndex: 4,
+        ),
+        const WebGpuSlider(
+          name: 'center_y',
+          label: 'Center Y',
+          min: -1.5,
+          max: 1.5,
+          initialValue: 0.0,
+          step: 0.005,
+          uniformWordIndex: 5,
+        ),
+        const WebGpuSlider(
+          name: 'max_iter',
+          label: 'Max Iterations',
+          min: 10,
+          max: 200,
+          initialValue: 80,
+          step: 1,
+          isInteger: true,
+          uniformWordIndex: 2,
+        ),
+        const WebGpuSlider(
+          name: 'color_shift',
+          label: 'Color Palette Shift',
+          min: 0.0,
+          max: 1.0,
+          initialValue: 0.0,
+          step: 0.01,
+          uniformWordIndex: 7,
+        ),
+      ],
+      renderToCanvas: true,
+      canvasWidth: width,
+      canvasHeight: height,
+      colorMap: colorMap,
+    );
+
+    return WebGpuWidget(
+      pkg,
+      title: title ?? '🌀 Real-Time WebGPU Mandelbrot Fractal (60 FPS)',
+    );
+  }
+
+  /// Creates a real-time interactive 2D Wave Interference WebGPU compute widget.
+  factory WebGpuWidget.waveInterference({
+    int width = 512,
+    int height = 512,
+    String colorMap = 'plasma',
+    String? title,
+  }) {
+    const wgsl = '''
+struct Uniforms {
+  width: u32,
+  height: u32,
+  pad0: u32,
+  pad1: u32,
+  freq: f32,
+  phase: f32,
+  separation: f32,
+  amplitude: f32,
+}
+
+@group(0) @binding(0) var<storage, read_write> dst: array<f32>;
+@group(0) @binding(1) var<uniform> uniforms: Uniforms;
+
+@compute @workgroup_size(16, 16, 1)
+fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+  if (id.x >= uniforms.width || id.y >= uniforms.height) { return; }
+  
+  let aspect = f32(uniforms.width) / f32(uniforms.height);
+  let uv = vec2<f32>(
+    (f32(id.x) / f32(uniforms.width) - 0.5) * aspect * 2.0,
+    (f32(id.y) / f32(uniforms.height) - 0.5) * 2.0
+  );
+  
+  let p1 = vec2<f32>(-uniforms.separation, 0.0);
+  let p2 = vec2<f32>(uniforms.separation, 0.0);
+  let p3 = vec2<f32>(0.0, uniforms.separation * 0.8);
+  
+  let d1 = distance(uv, p1);
+  let d2 = distance(uv, p2);
+  let d3 = distance(uv, p3);
+  
+  let w1 = sin(d1 * uniforms.freq - uniforms.phase);
+  let w2 = sin(d2 * uniforms.freq - uniforms.phase);
+  let w3 = sin(d3 * uniforms.freq - uniforms.phase * 1.4);
+  
+  let total = (w1 + w2 + w3) / 3.0;
+  let normalized = (total * uniforms.amplitude + 1.0) * 0.5;
+  
+  let idx = id.y * uniforms.width + id.x;
+  dst[idx] = clamp(normalized, 0.0, 1.0);
+}
+''';
+
+    final pkg = GpuComputePipelinePackage(
+      name: 'wave_interference',
+      wgslCode: wgsl,
+      workgroupSize: [16, 16, 1],
+      inputs: [],
+      output: GpuBufferPayload(
+        bindingIndex: 0,
+        name: 'dst',
+        dtype: DType.float32,
+        shape: [height, width],
+        isOutput: true,
+        sizeInBytes: width * height * 4,
+      ),
+      uniforms: [width, height, 0, 0],
+      sliders: [
+        const WebGpuSlider(
+          name: 'freq',
+          label: 'Wave Frequency',
+          min: 5.0,
+          max: 60.0,
+          initialValue: 24.0,
+          step: 0.5,
+          uniformWordIndex: 4,
+        ),
+        const WebGpuSlider(
+          name: 'phase',
+          label: 'Phase / Time',
+          min: 0.0,
+          max: 12.56,
+          initialValue: 0.0,
+          step: 0.05,
+          uniformWordIndex: 5,
+        ),
+        const WebGpuSlider(
+          name: 'separation',
+          label: 'Source Separation',
+          min: 0.05,
+          max: 1.0,
+          initialValue: 0.45,
+          step: 0.01,
+          uniformWordIndex: 6,
+        ),
+        const WebGpuSlider(
+          name: 'amplitude',
+          label: 'Wave Amplitude',
+          min: 0.2,
+          max: 3.0,
+          initialValue: 1.2,
+          step: 0.05,
+          uniformWordIndex: 7,
+        ),
+      ],
+      renderToCanvas: true,
+      canvasWidth: width,
+      canvasHeight: height,
+      colorMap: colorMap,
+    );
+
+    return WebGpuWidget(
+      pkg,
+      title: title ?? '🌊 2D Wave Interference Simulation (WebGPU)',
+    );
+  }
 
   /// Standard MIME type for notebook display engines.
   String get mimeType => 'text/html';

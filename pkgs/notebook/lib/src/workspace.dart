@@ -10,11 +10,3 @@ import 'package:ndarray/ndarray.dart';
 import 'package:gpuarray/gpuarray.dart' as gpuarray;
 import 'package:notebook/notebook.dart';
 
-dynamic x;
-
-dynamic xVar;
-
-dynamic fused;
-
-dynamic descriptor;
-
