@@ -47,4 +47,6 @@ pub_cache/
 *.mjs
 *.support.js
 editor_client.js
+notebook_session.json
+notebook_session.ipynb
 

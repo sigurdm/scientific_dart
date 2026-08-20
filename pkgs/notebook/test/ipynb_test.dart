@@ -16,54 +16,60 @@ void main() {
       expect(decoded.metadata['kernelspec']['name'], 'dart');
     });
 
-    test('Encodes and decodes markdown and code cells with multi-line sources', () {
-      final nb = IpynbNotebook(
-        cells: [
-          IpynbCell(
-            id: 'cell-md-1',
-            cellType: IpynbCellType.markdown,
-            source: '# Introduction\nHere is some math:\n\$\$x^2 + y^2\$\$',
-          ),
-          IpynbCell(
-            id: 'cell-code-1',
-            cellType: IpynbCellType.code,
-            source: 'final x = Symbol(\'x\');\nprint(x);\nx.pow(2)',
-            executionCount: 1,
-            outputs: [
-              IpynbOutput.stream(text: 'x\n'),
-              IpynbOutput.executeResult(
-                executionCount: 1,
-                data: {
-                  'text/plain': 'x^2',
-                  'text/html': '<span class="katex">x^2</span>',
-                },
-              ),
-            ],
-          ),
-        ],
-      );
+    test(
+      'Encodes and decodes markdown and code cells with multi-line sources',
+      () {
+        final nb = IpynbNotebook(
+          cells: [
+            IpynbCell(
+              id: 'cell-md-1',
+              cellType: IpynbCellType.markdown,
+              source: '# Introduction\nHere is some math:\n\$\$x^2 + y^2\$\$',
+            ),
+            IpynbCell(
+              id: 'cell-code-1',
+              cellType: IpynbCellType.code,
+              source: 'final x = Symbol(\'x\');\nprint(x);\nx.pow(2)',
+              executionCount: 1,
+              outputs: [
+                IpynbOutput.stream(text: 'x\n'),
+                IpynbOutput.executeResult(
+                  executionCount: 1,
+                  data: {
+                    'text/plain': 'x^2',
+                    'text/html': '<span class="katex">x^2</span>',
+                  },
+                ),
+              ],
+            ),
+          ],
+        );
 
-      final jsonStr = nb.toJsonString();
-      final decoded = IpynbNotebook.fromJsonString(jsonStr);
+        final jsonStr = nb.toJsonString();
+        final decoded = IpynbNotebook.fromJsonString(jsonStr);
 
-      expect(decoded.cells.length, 2);
-      expect(decoded.cells[0].cellType, IpynbCellType.markdown);
-      expect(decoded.cells[0].source, '# Introduction\nHere is some math:\n\$\$x^2 + y^2\$\$');
+        expect(decoded.cells.length, 2);
+        expect(decoded.cells[0].cellType, IpynbCellType.markdown);
+        expect(
+          decoded.cells[0].source,
+          '# Introduction\nHere is some math:\n\$\$x^2 + y^2\$\$',
+        );
 
-      expect(decoded.cells[1].cellType, IpynbCellType.code);
-      expect(decoded.cells[1].executionCount, 1);
-      expect(decoded.cells[1].outputs.length, 2);
+        expect(decoded.cells[1].cellType, IpynbCellType.code);
+        expect(decoded.cells[1].executionCount, 1);
+        expect(decoded.cells[1].outputs.length, 2);
 
-      final streamOut = decoded.cells[1].outputs[0];
-      expect(streamOut.outputType, IpynbOutputType.stream);
-      expect(streamOut.name, 'stdout');
-      expect(streamOut.text, 'x\n');
+        final streamOut = decoded.cells[1].outputs[0];
+        expect(streamOut.outputType, IpynbOutputType.stream);
+        expect(streamOut.name, 'stdout');
+        expect(streamOut.text, 'x\n');
 
-      final execOut = decoded.cells[1].outputs[1];
-      expect(execOut.outputType, IpynbOutputType.executeResult);
-      expect(execOut.data!['text/plain'], 'x^2');
-      expect(execOut.data!['text/html'], '<span class="katex">x^2</span>');
-    });
+        final execOut = decoded.cells[1].outputs[1];
+        expect(execOut.outputType, IpynbOutputType.executeResult);
+        expect(execOut.data!['text/plain'], 'x^2');
+        expect(execOut.data!['text/html'], '<span class="katex">x^2</span>');
+      },
+    );
 
     test('Converts from and to legacy session cells list', () {
       final sessionCells = [

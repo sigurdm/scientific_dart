@@ -54,7 +54,8 @@ final class IpynbOutput {
   final IpynbOutputType outputType;
   final String? name; // 'stdout' or 'stderr' for stream
   final String? text; // for stream
-  final Map<String, dynamic>? data; // MIME bundle for execute_result / display_data
+  final Map<String, dynamic>?
+  data; // MIME bundle for execute_result / display_data
   final Map<String, dynamic>? metadata;
   final int? executionCount;
   final String? ename;
@@ -73,10 +74,7 @@ final class IpynbOutput {
     this.traceback,
   });
 
-  factory IpynbOutput.stream({
-    required String text,
-    String name = 'stdout',
-  }) {
+  factory IpynbOutput.stream({required String text, String name = 'stdout'}) {
     return IpynbOutput(
       outputType: IpynbOutputType.stream,
       name: name,
@@ -122,7 +120,9 @@ final class IpynbOutput {
   }
 
   factory IpynbOutput.fromJson(Map<String, dynamic> json) {
-    final outputType = IpynbOutputType.fromString(json['output_type'] as String? ?? 'display_data');
+    final outputType = IpynbOutputType.fromString(
+      json['output_type'] as String? ?? 'display_data',
+    );
     final name = json['name'] as String?;
     final textRaw = json['text'];
     final text = textRaw is List ? textRaw.join('') : textRaw as String?;
@@ -159,9 +159,7 @@ final class IpynbOutput {
   }
 
   Map<String, dynamic> toJson() {
-    final map = <String, dynamic>{
-      'output_type': outputType.value,
-    };
+    final map = <String, dynamic>{'output_type': outputType.value};
 
     switch (outputType) {
       case IpynbOutputType.stream:
@@ -206,11 +204,18 @@ final class IpynbCell {
     this.metadata = const {},
   });
 
-  factory IpynbCell.fromJson(Map<String, dynamic> json, [int fallbackIndex = 0]) {
-    final cellType = IpynbCellType.fromString(json['cell_type'] as String? ?? 'code');
+  factory IpynbCell.fromJson(
+    Map<String, dynamic> json, [
+    int fallbackIndex = 0,
+  ]) {
+    final cellType = IpynbCellType.fromString(
+      json['cell_type'] as String? ?? 'code',
+    );
     final id = json['id'] as String? ?? 'cell-$fallbackIndex';
     final sourceRaw = json['source'];
-    final source = sourceRaw is List ? sourceRaw.join('') : (sourceRaw as String? ?? '');
+    final source = sourceRaw is List
+        ? sourceRaw.join('')
+        : (sourceRaw as String? ?? '');
     final executionCount = json['execution_count'] as int?;
     final metadata = Map<String, dynamic>.from(json['metadata'] as Map? ?? {});
 
@@ -260,7 +265,9 @@ final class IpynbNotebook {
     this.nbformatMinor = 5,
   }) : metadata = metadata ?? _defaultMetadata();
 
-  static Map<String, dynamic> _defaultMetadata({String dartVersion = '3.13.1'}) {
+  static Map<String, dynamic> _defaultMetadata({
+    String dartVersion = '3.13.1',
+  }) {
     return {
       'kernelspec': {
         'display_name': 'Dart',
@@ -318,7 +325,9 @@ final class IpynbNotebook {
   }
 
   /// Converts a legacy session cells list (from notebook_server.dart / web UI) to an [IpynbNotebook].
-  factory IpynbNotebook.fromSessionCells(List<Map<String, dynamic>> sessionCells) {
+  factory IpynbNotebook.fromSessionCells(
+    List<Map<String, dynamic>> sessionCells,
+  ) {
     final cells = <IpynbCell>[];
     var execIndex = 1;
 
@@ -334,7 +343,11 @@ final class IpynbNotebook {
 
       final outputs = <IpynbOutput>[];
 
-      if (cellType == IpynbCellType.code && (evaluated || isError || (outputsRawList is List && outputsRawList.isNotEmpty) || (outputRaw != null && outputRaw.toString().isNotEmpty))) {
+      if (cellType == IpynbCellType.code &&
+          (evaluated ||
+              isError ||
+              (outputsRawList is List && outputsRawList.isNotEmpty) ||
+              (outputRaw != null && outputRaw.toString().isNotEmpty))) {
         if (isError) {
           outputs.add(
             IpynbOutput.error(
@@ -384,10 +397,7 @@ final class IpynbNotebook {
                 if (mime == 'text/html') {
                   outputs.add(
                     IpynbOutput.displayData(
-                      data: {
-                        'text/html': data,
-                        'text/plain': data,
-                      },
+                      data: {'text/html': data, 'text/plain': data},
                     ),
                   );
                 } else {
@@ -416,7 +426,9 @@ final class IpynbNotebook {
           id: id,
           cellType: cellType,
           source: code,
-          executionCount: evaluated && cellType == IpynbCellType.code ? execIndex++ : null,
+          executionCount: evaluated && cellType == IpynbCellType.code
+              ? execIndex++
+              : null,
           outputs: outputs,
         ),
       );

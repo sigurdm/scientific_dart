@@ -21,10 +21,14 @@ class NotebookServer {
     this.port = 8080,
   });
 
+  int get actualPort => _server?.port ?? port;
+
   List<Map<String, dynamic>> _sessionCells = [];
 
-  File get _sessionIpynbFile => File(p.join(workspaceDir, 'notebook_session.ipynb'));
-  File get _sessionJsonFile => File(p.join(workspaceDir, 'notebook_session.json'));
+  File get _sessionIpynbFile =>
+      File(p.join(workspaceDir, 'notebook_session.ipynb'));
+  File get _sessionJsonFile =>
+      File(p.join(workspaceDir, 'notebook_session.json'));
 
   void _loadSessionData() {
     try {
@@ -69,7 +73,10 @@ class NotebookServer {
   }
 
   void _broadcastSession() {
-    final payload = jsonEncode({'type': 'init_session', 'cells': _sessionCells});
+    final payload = jsonEncode({
+      'type': 'init_session',
+      'cells': _sessionCells,
+    });
     for (final client in _connectedClients) {
       try {
         client.add(payload);
@@ -132,9 +139,17 @@ class NotebookServer {
           request.response.close();
         }
       } else if (path == '/api/export/ipynb') {
-        final ipynbJson = IpynbNotebook.fromSessionCells(_sessionCells).toJsonString(pretty: true);
-        request.response.headers.set('content-type', 'application/x-ipynb+json');
-        request.response.headers.set('content-disposition', 'attachment; filename="notebook.ipynb"');
+        final ipynbJson = IpynbNotebook.fromSessionCells(
+          _sessionCells,
+        ).toJsonString(pretty: true);
+        request.response.headers.set(
+          'content-type',
+          'application/x-ipynb+json',
+        );
+        request.response.headers.set(
+          'content-disposition',
+          'attachment; filename="notebook.ipynb"',
+        );
         request.response.write(ipynbJson);
         await request.response.close();
       } else if (path == '/api/import/ipynb' && request.method == 'POST') {
@@ -146,10 +161,14 @@ class NotebookServer {
           _broadcastSession();
           request.response.statusCode = HttpStatus.ok;
           request.response.headers.contentType = ContentType.json;
-          request.response.write(jsonEncode({'status': 'ok', 'cellCount': _sessionCells.length}));
+          request.response.write(
+            jsonEncode({'status': 'ok', 'cellCount': _sessionCells.length}),
+          );
         } catch (e) {
           request.response.statusCode = HttpStatus.badRequest;
-          request.response.write(jsonEncode({'status': 'error', 'message': '$e'}));
+          request.response.write(
+            jsonEncode({'status': 'error', 'message': '$e'}),
+          );
         }
         await request.response.close();
       } else {
@@ -177,7 +196,10 @@ class NotebookServer {
               request.response.headers.set('content-type', 'text/css');
               break;
             case '.ipynb':
-              request.response.headers.set('content-type', 'application/x-ipynb+json');
+              request.response.headers.set(
+                'content-type',
+                'application/x-ipynb+json',
+              );
               break;
             default:
               request.response.headers.contentType = ContentType.binary;
@@ -210,8 +232,14 @@ class NotebookServer {
           } else if (msgType == 'update_cell') {
             final cellId = msg['id'] as String;
             final code = msg['code'] as String?;
-            final type = msg['cellType'] as String? ?? msg['type_name'] as String?;
-            _updateOrAddCell(id: cellId, code: code, type: type, evaluated: false);
+            final type =
+                msg['cellType'] as String? ?? msg['type_name'] as String?;
+            _updateOrAddCell(
+              id: cellId,
+              code: code,
+              type: type,
+              evaluated: false,
+            );
           } else if (msgType == 'delete_cell') {
             final cellId = msg['id'] as String;
             _sessionCells.removeWhere((c) => c['id'] == cellId);
@@ -223,7 +251,9 @@ class NotebookServer {
             _saveSessionData();
             _broadcastSession();
           } else if (msgType == 'export_ipynb') {
-            final ipynbJson = IpynbNotebook.fromSessionCells(_sessionCells).toJsonString(pretty: true);
+            final ipynbJson = IpynbNotebook.fromSessionCells(
+              _sessionCells,
+            ).toJsonString(pretty: true);
             socket.add(jsonEncode({'type': 'ipynb_data', 'data': ipynbJson}));
           } else if (msgType == 'execute') {
             final reqId = msg['id'] as String;

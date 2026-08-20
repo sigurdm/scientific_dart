@@ -908,17 +908,90 @@
       outputElement.innerText = text;
     }
 
-    function addCellWithState(initialCode = '', outputText = '', isError = false, evaluated = false, existingId = null) {
-      const cellId = addCell(initialCode, existingId);
-      if (outputText) {
-        const output = document.getElementById(`output-${cellId}`);
-        renderOutputElement(output, outputText, isError);
+    function addCellWithState(initialCode = '', outputText = '', isError = false, evaluated = false, existingId = null, cellType = 'code', outputsArray = null) {
+      const cellId = cellType === 'markdown' ? addMarkdownCell(initialCode, existingId) : addCell(initialCode, existingId);
+      const cell = document.getElementById(cellId);
+      if (cell && outputsArray && outputsArray.length > 0) {
+        cell._outputsList = outputsArray;
       }
-      if (evaluated) {
-        const cell = document.getElementById(cellId);
-        if (cell) cell.classList.add('evaluated');
+      if (cellType === 'markdown') {
+        if (initialCode) {
+          renderMarkdownCell(cellId);
+        }
+      } else {
+        if (outputText || (outputsArray && outputsArray.length > 0)) {
+          const output = document.getElementById(`output-${cellId}`);
+          renderOutputElement(output, outputText, isError, outputsArray);
+        }
+        if (evaluated) {
+          if (cell) cell.classList.add('evaluated');
+        }
       }
       return cellId;
+    }
+
+    function addMarkdownCell(initialText = '', existingId = null) {
+      cellCount++;
+      const cellId = existingId || `cell-${Date.now()}-${cellCount}`;
+      const notebook = document.getElementById('notebook');
+
+      const cell = document.createElement('div');
+      cell.className = 'cell markdown-cell';
+      cell.id = cellId;
+      cell.setAttribute('data-cell-type', 'markdown');
+
+      cell.innerHTML = `
+        <div class="cell-header">
+          <span class="cell-number">[ M ]</span>
+          <span class="cell-engine-badge cm" style="color: #a6e3a1; border-color: rgba(166, 227, 161, 0.3);">Markdown</span>
+          <div class="cell-actions">
+            <button onclick="runCell('${cellId}')" title="Render Markdown (Shift+Enter)">▶ Render</button>
+            <button onclick="editMarkdownCell('${cellId}')" title="Edit Markdown">✏️ Edit</button>
+            <button onclick="deleteCell('${cellId}')" title="Delete Cell">🗑</button>
+          </div>
+        </div>
+        <div class="code-container">
+          <textarea class="code-editor" id="editor-${cellId}" placeholder="Enter Markdown text or LaTeX math (e.g. \$\$E = mc^2\$\$)...">${initialText}</textarea>
+        </div>
+        <div class="markdown-rendered-view" id="rendered-${cellId}" onclick="editMarkdownCell('${cellId}')" title="Click to edit markdown"></div>
+        <div class="output-container empty" id="output-${cellId}"></div>
+      `;
+
+      notebook.appendChild(cell);
+
+      const textarea = document.getElementById(`editor-${cellId}`);
+      setupEditorForCell(cell, textarea, cellId, initialText);
+
+      if (initialText && initialText.trim().length > 0) {
+        renderMarkdownCell(cellId);
+      }
+      return cellId;
+    }
+
+    function renderMarkdownCell(cellId) {
+      const cell = document.getElementById(cellId);
+      if (!cell) return;
+      const text = cell._cm ? cell._cm.getValue() : (document.getElementById(`editor-${cellId}`)?.value || '');
+      const renderedView = document.getElementById(`rendered-${cellId}`);
+      if (renderedView) {
+        if (window.marked && typeof window.marked.parse === 'function') {
+          renderedView.innerHTML = marked.parse(text);
+        } else {
+          renderedView.innerText = text;
+        }
+        tryRenderKaTeX(renderedView);
+      }
+      cell.classList.add('rendered');
+      autoSaveSession();
+    }
+
+    function editMarkdownCell(cellId) {
+      const cell = document.getElementById(cellId);
+      if (!cell) return;
+      cell.classList.remove('rendered');
+      if (cell._cm && cell._cm.focus) {
+        cell._cm.focus();
+      }
     }
 
     function addCell(initialCode = '', existingId = null) {
@@ -929,6 +1002,7 @@
       const cell = document.createElement('div');
       cell.className = 'cell';
       cell.id = cellId;
+      cell.setAttribute('data-cell-type', 'code');
 
       cell.innerHTML = `
         <div class="cell-header">
@@ -952,6 +1026,42 @@
       const textarea = document.getElementById(`editor-${cellId}`);
       setupEditorForCell(cell, textarea, cellId, initialCode);
       return cellId;
+    }
+
+    function exportIpynb() {
+      window.location.href = '/api/export/ipynb';
+    }
+
+    function triggerImportIpynb() {
+      const fileInput = document.getElementById('ipynbFileInput');
+      if (fileInput) {
+        fileInput.value = '';
+        fileInput.click();
+      }
+    }
+
+    function handleImportIpynb(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const content = e.target.result;
+        try {
+          JSON.parse(content); // validate JSON
+          const res = await fetch('/api/import/ipynb', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-ipynb+json' },
+            body: content
+          });
+          if (!res.ok) {
+            const err = await res.text();
+            alert('Failed to import notebook: ' + err);
+          }
+        } catch (err) {
+          alert('Invalid .ipynb notebook file: ' + err);
+        }
+      };
+      reader.readAsText(file);
     }
 
     let currentEditorEngine = localStorage.getItem('notebook_editor_engine') || 'codemirror';
@@ -1084,8 +1194,19 @@
 
     function runCell(cellId, onComplete) {
       const cell = document.getElementById(cellId);
+      if (!cell) {
+        if (onComplete) onComplete();
+        return;
+      }
+
+      if (cell.getAttribute('data-cell-type') === 'markdown') {
+        renderMarkdownCell(cellId);
+        if (onComplete) onComplete();
+        return;
+      }
+
       const output = document.getElementById(`output-${cellId}`);
-      const code = (cell && cell._cm ? cell._cm.getValue() : '').trim();
+      const code = (cell._cm ? cell._cm.getValue() : (document.getElementById(`editor-${cellId}`)?.value || '')).trim();
 
       if (!code) {
         if (onComplete) onComplete();
@@ -1106,12 +1227,15 @@
       pendingEvaluations.set(reqId, (resultText, isError, outputsArray, formattedCode) => {
         renderOutputElement(output, resultText, isError, outputsArray);
         if (formattedCode && cell && cell._cm && cell._cm.getValue() !== formattedCode) {
-          const cursor = cell._cm.getCursor();
+          const cursor = cell._cm.getCursor ? cell._cm.getCursor() : null;
           cell._cm.setValue(formattedCode);
-          cell._cm.setCursor(cursor);
+          if (cursor && cell._cm.setCursor) cell._cm.setCursor(cursor);
         }
         if (cell && !isError) {
           cell.classList.add('evaluated');
+        }
+        if (outputsArray && outputsArray.length > 0) {
+          cell._outputsList = outputsArray;
         }
         if (cell && isError && currentEditorEngine === 'dart_editor' && cell._cm && typeof cell._cm.setDiagnostic === 'function') {
           let errLine = 0;
@@ -1121,6 +1245,7 @@
           }
           cell._cm.setDiagnostic(errLine, 0, 12, resultText.substring(0, 120));
         }
+        autoSaveSession();
         if (onComplete) onComplete();
       });
 
@@ -1158,6 +1283,9 @@
       document.querySelectorAll('.output-container').forEach(out => {
         out.className = 'output-container empty';
         out.innerText = '';
+      });
+      document.querySelectorAll('.cell').forEach(cell => {
+        cell._outputsList = [];
       });
       autoSaveSession();
     }
@@ -1209,6 +1337,13 @@
     window.switchEditorEngine = switchEditorEngine;
     window.formatCell = formatCell;
     window.toggleVariableInspector = toggleVariableInspector;
+    window.addCell = addCell;
+    window.addMarkdownCell = addMarkdownCell;
+    window.renderMarkdownCell = renderMarkdownCell;
+    window.editMarkdownCell = editMarkdownCell;
+    window.exportIpynb = exportIpynb;
+    window.triggerImportIpynb = triggerImportIpynb;
+    window.handleImportIpynb = handleImportIpynb;
 
     // Initialize default starter cells
     window.addEventListener('DOMContentLoaded', () => {
