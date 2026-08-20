@@ -1,5 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'wgsl_types.dart';
 import 'wgsl_templates.dart';
+import '../../dtype.dart';
+import '../../gpu_array.dart';
+import '../../serialization/webgpu_pipeline.dart';
 
 /// Base class for all expression nodes in a fused kernel computation graph.
 abstract class Expr {
@@ -511,5 +516,75 @@ $loadStatements
 }
 ''';
     }
+  }
+
+  /// Packages this fused kernel and its input tensors into an interactive [WebGpuWidget].
+  WebGpuWidget createBrowserWidget({
+    required List<dynamic> inputArrays,
+    required List<dynamic> outputShape,
+    String? title,
+    List<dynamic> sliders = const [],
+    bool renderToCanvas = false,
+    int canvasWidth = 512,
+    int canvasHeight = 512,
+    String colorMap = 'viridis',
+  }) {
+    final parsedInputs = inputArrays.map((e) => e as GpuArray).toList();
+    final parsedShape = outputShape.map((e) => (e as num).toInt()).toList();
+    final parsedSliders = sliders.map((e) => e as WebGpuSlider).toList();
+
+    final wgslSource = generateWgslSource();
+    final inputPayloads = <GpuBufferPayload>[];
+
+    for (var i = 0; i < parsedInputs.length; i++) {
+      final arr = parsedInputs[i];
+      final rawND = arr.toNDArray();
+      final rawList = rawND.toList();
+      final f32List = Float32List.fromList(
+        rawList.map((e) => (e as num).toDouble()).toList(),
+      );
+      final base64Payload = base64Encode(f32List.buffer.asUint8List());
+      rawND.dispose();
+
+      inputPayloads.add(
+        GpuBufferPayload(
+          bindingIndex: i,
+          name: inputs.length > i ? inputs[i].name : 'input_$i',
+          dtype: arr.dtype,
+          shape: arr.shape,
+          base64Data: base64Payload,
+          sizeInBytes: arr.buffer.sizeInBytes,
+        ),
+      );
+    }
+
+    final totalOut = parsedShape.reduce((a, b) => a * b);
+    final outBytes = totalOut * outputDType.byteSize;
+
+    final outputPayload = GpuBufferPayload(
+      bindingIndex: parsedInputs.length,
+      name: 'dst',
+      dtype: DType.values.byName(
+        outputDType.wgslType == 'f32' ? 'float32' : 'float16',
+      ),
+      shape: parsedShape,
+      isOutput: true,
+      sizeInBytes: outBytes,
+    );
+
+    final pkg = GpuComputePipelinePackage(
+      name: name,
+      wgslCode: wgslSource,
+      inputs: inputPayloads,
+      output: outputPayload,
+      uniforms: [totalOut, 0, 0, 0],
+      sliders: parsedSliders,
+      renderToCanvas: renderToCanvas,
+      canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight,
+      colorMap: colorMap,
+    );
+
+    return WebGpuWidget(pkg, title: title ?? name);
   }
 }

@@ -1256,8 +1256,9 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
   WebGpuWidget toWebGpuWidget({
     String? title,
     bool renderToCanvas = false,
-    List<WebGpuSlider> sliders = const [],
+    List<dynamic> sliders = const [],
   }) {
+    final parsedSliders = sliders.map((e) => e as WebGpuSlider).toList();
     final rawND = toNDArray();
     final rawList = rawND.toList();
     final f32List = Float32List.fromList(
@@ -1314,7 +1315,7 @@ fn main(
         sizeInBytes: buffer.sizeInBytes,
       ),
       uniforms: [ShapeUtils.computeSize(shape), 0, 0, 0],
-      sliders: sliders,
+      sliders: parsedSliders,
       renderToCanvas: renderToCanvas,
     );
 

@@ -1,9 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:math' as math;
 import '../dtype.dart';
-import '../gpu_array.dart';
-import '../backend/wgsl/kernel_fusion.dart';
 
 /// Configuration for an interactive UI slider in a browser WebGPU widget.
 final class WebGpuSlider {
@@ -39,7 +36,7 @@ final class WebGpuSlider {
     this.step = 0.01,
     required this.initialValue,
     this.isInteger = false,
-    required this.uniformWordIndex,
+    this.uniformWordIndex = 0,
   });
 
   Map<String, dynamic> toJson() => {
@@ -484,73 +481,4 @@ final class WebGpuWidget {
 
   @override
   String toString() => toHtml();
-}
-
-/// Extension on [FusedKernelDescriptor] for creating client-side WebGPU browser widgets.
-extension FusedKernelWebGpuWidgetExtension on FusedKernelDescriptor {
-  /// Packages this fused kernel and its input tensors into an interactive [WebGpuWidget].
-  WebGpuWidget createBrowserWidget({
-    required List<GpuArray> inputArrays,
-    required List<int> outputShape,
-    String? title,
-    List<WebGpuSlider> sliders = const [],
-    bool renderToCanvas = false,
-    int canvasWidth = 512,
-    int canvasHeight = 512,
-    String colorMap = 'viridis',
-  }) {
-    final wgslSource = generateWgslSource();
-    final inputPayloads = <GpuBufferPayload>[];
-
-    for (var i = 0; i < inputArrays.length; i++) {
-      final arr = inputArrays[i];
-      final rawND = arr.toNDArray();
-      final rawList = rawND.toList();
-      final f32List = Float32List.fromList(
-        rawList.map((e) => (e as num).toDouble()).toList(),
-      );
-      final base64Payload = base64Encode(f32List.buffer.asUint8List());
-      rawND.dispose();
-
-      inputPayloads.add(
-        GpuBufferPayload(
-          bindingIndex: i,
-          name: inputs.length > i ? inputs[i].name : 'input_$i',
-          dtype: arr.dtype,
-          shape: arr.shape,
-          base64Data: base64Payload,
-          sizeInBytes: arr.buffer.sizeInBytes,
-        ),
-      );
-    }
-
-    final totalOut = outputShape.reduce((a, b) => a * b);
-    final outBytes = totalOut * outputDType.byteSize;
-
-    final outputPayload = GpuBufferPayload(
-      bindingIndex: inputArrays.length,
-      name: 'dst',
-      dtype: DType.values.byName(
-        outputDType.wgslType == 'f32' ? 'float32' : 'float16',
-      ),
-      shape: outputShape,
-      isOutput: true,
-      sizeInBytes: outBytes,
-    );
-
-    final pkg = GpuComputePipelinePackage(
-      name: name,
-      wgslCode: wgslSource,
-      inputs: inputPayloads,
-      output: outputPayload,
-      uniforms: [totalOut, 0, 0, 0],
-      sliders: sliders,
-      renderToCanvas: renderToCanvas,
-      canvasWidth: canvasWidth,
-      canvasHeight: canvasHeight,
-      colorMap: colorMap,
-    );
-
-    return WebGpuWidget(pkg, title: title ?? name);
-  }
 }

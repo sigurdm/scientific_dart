@@ -99,4 +99,39 @@ display(arr.toWebGpuWidget());
     expect(result, contains('text/html'));
     expect(result, contains('webgpu-notebook-widget'));
   });
+
+  test('evaluates fused kernel interactive WebGPU browser widget', () async {
+    final code = '''
+import 'package:gpuarray/gpuarray.dart' as gpuarray;
+import 'package:notebook/notebook.dart';
+
+final x = gpuarray.GpuArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float32);
+final xVar = gpuarray.Expr.variable('x', bindingIndex: 0);
+final fused = (xVar * 2.5 + 1.2).silu();
+final descriptor = gpuarray.FusedKernelDescriptor(
+  name: 'interactive_silu',
+  expression: fused,
+);
+display(descriptor.createBrowserWidget(
+  inputArrays: [x],
+  outputShape: [4],
+  title: 'Interactive SiLU (Browser WebGPU)',
+  sliders: [
+    WebGpuSlider(
+      name: 'multiplier',
+      label: 'Input Multiplier',
+      min: 0.1,
+      max: 10.0,
+      initialValue: 2.5,
+      uniformWordIndex: 1,
+    ),
+  ],
+));
+''';
+
+    final result = await kernel.execute(code);
+    expect(result, contains('text/html'));
+    expect(result, contains('webgpu-notebook-widget'));
+    expect(result, contains('Interactive SiLU (Browser WebGPU)'));
+  });
 }

@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
@@ -275,8 +276,57 @@
     .add-cell-bar {
       display: flex;
       justify-content: center;
+      gap: 12px;
       margin-top: 12px;
       margin-bottom: 48px;
+    }
+
+    .cell.markdown-cell.rendered .code-container {
+      display: none;
+    }
+
+    .markdown-rendered-view {
+      padding: 14px 20px;
+      line-height: 1.6;
+      color: var(--text-color);
+      cursor: pointer;
+    }
+
+    .markdown-rendered-view h1, .markdown-rendered-view h2, .markdown-rendered-view h3 {
+      color: var(--accent-color);
+      margin-top: 8px;
+      margin-bottom: 8px;
+    }
+
+    .markdown-rendered-view p {
+      margin-bottom: 8px;
+    }
+
+    .markdown-rendered-view code {
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+
+    .markdown-rendered-view pre {
+      background: var(--code-bg);
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      overflow-x: auto;
+    }
+
+    .markdown-rendered-view blockquote {
+      border-left: 3px solid var(--accent-color);
+      padding-left: 12px;
+      color: #a6adc8;
+      margin-bottom: 8px;
+    }
+
+    .cell.markdown-cell:not(.rendered) .markdown-rendered-view {
+      display: none;
     }
 
     /* Autocomplete Popup Styling */
@@ -481,10 +531,14 @@
         <option value="codemirror" selected>CodeMirror 5</option>
         <option value="dart_editor">Dart CodeEditor (Custom / Wasm)</option>
       </select>
-      <button onclick="addCell()">+ Code Cell</button>
+      <button onclick="addCell()">+ Code</button>
+      <button onclick="addMarkdownCell()">+ Markdown</button>
       <button onclick="runAllCells()" class="primary">▶ Run All</button>
       <button onclick="clearAllOutputs()">Clear Outputs</button>
-      <button onclick="toggleVariableInspector()">📊 Array Inspector</button>
+      <button onclick="toggleVariableInspector()">📊 Inspector</button>
+      <button onclick="exportIpynb()" title="Export as Jupyter Notebook (.ipynb)">💾 Export .ipynb</button>
+      <button onclick="triggerImportIpynb()" title="Open / Import Jupyter Notebook (.ipynb)">📂 Open .ipynb</button>
+      <input type="file" id="ipynbFileInput" accept=".ipynb,application/json" style="display: none;" onchange="handleImportIpynb(event)">
     </div>
   </header>
 
@@ -502,6 +556,7 @@
     <div id="notebook" class="notebook-container"></div>
     <div class="add-cell-bar">
       <button onclick="addCell()">+ Add Code Cell</button>
+      <button onclick="addMarkdownCell()">+ Add Markdown Cell</button>
     </div>
   </main>
 
@@ -569,9 +624,10 @@
             notebook.innerHTML = '';
             cellCount = 0;
             msg.cells.forEach(c => {
-              addCellWithState(c.code, c.output, c.isError, c.evaluated, c.id);
+              addCellWithState(c.code, c.output, c.isError, c.evaluated, c.id, c.type || 'code', c.outputs);
             });
           } else if (document.querySelectorAll('.cell').length === 0) {
+            addCellWithState("# Dart NDArray & Symbolic Notebook\nInteractive scientific computing in Dart with native acceleration.", "", false, false, null, 'markdown');
             addCell("// Welcome to Dart NDArray Notebook!\n// Type 'Ctrl+Space' or '.' to test autocompletion.\nvar a = NDArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64)");
             addCell("// Multiply by scalar or matrix:\na * 2");
           }
@@ -585,16 +641,19 @@
       };
     }
 
-     function autoSaveSession() {
+    function autoSaveSession() {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
       const cellsData = [];
       document.querySelectorAll('.cell').forEach(cell => {
-        const code = cell._cm ? cell._cm.getValue() : '';
+        const code = cell._cm ? cell._cm.getValue() : (cell.querySelector('textarea') ? cell.querySelector('textarea').value : '');
         const output = cell.querySelector('.output-container');
+        const type = cell.getAttribute('data-cell-type') || 'code';
         cellsData.push({
           id: cell.id,
+          type: type,
           code: code,
           output: output ? output.innerText : '',
+          outputs: cell._outputsList || [],
           isError: output ? output.classList.contains('error') : false,
           evaluated: cell.classList.contains('evaluated')
         });

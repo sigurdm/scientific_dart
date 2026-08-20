@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:notebook/src/notebook_kernel.dart';
+import 'package:notebook/src/ipynb.dart';
 import 'package:markdown/markdown.dart' as md;
 
 class NotebookServer {
@@ -12,6 +13,7 @@ class NotebookServer {
 
   HttpServer? _server;
   NotebookKernel? _kernel;
+  final Set<WebSocket> _connectedClients = {};
 
   NotebookServer({
     required this.workspaceDir,
@@ -21,12 +23,22 @@ class NotebookServer {
 
   List<Map<String, dynamic>> _sessionCells = [];
 
-  File get _sessionFile => File(p.join(workspaceDir, 'notebook_session.json'));
+  File get _sessionIpynbFile => File(p.join(workspaceDir, 'notebook_session.ipynb'));
+  File get _sessionJsonFile => File(p.join(workspaceDir, 'notebook_session.json'));
 
   void _loadSessionData() {
     try {
-      if (_sessionFile.existsSync()) {
-        final content = _sessionFile.readAsStringSync();
+      if (_sessionIpynbFile.existsSync()) {
+        final content = _sessionIpynbFile.readAsStringSync();
+        if (content.trim().isNotEmpty) {
+          final nb = IpynbNotebook.fromJsonString(content);
+          _sessionCells = nb.toSessionCells();
+          return;
+        }
+      }
+
+      if (_sessionJsonFile.existsSync()) {
+        final content = _sessionJsonFile.readAsStringSync();
         if (content.trim().isNotEmpty) {
           final decoded = jsonDecode(content);
           if (decoded is List) {
@@ -48,9 +60,20 @@ class NotebookServer {
           cells.map((e) => Map<String, dynamic>.from(e as Map)),
         );
       }
-      _sessionFile.writeAsStringSync(jsonEncode(_sessionCells));
+      final ipynb = IpynbNotebook.fromSessionCells(_sessionCells);
+      _sessionIpynbFile.writeAsStringSync(ipynb.toJsonString(pretty: true));
+      _sessionJsonFile.writeAsStringSync(jsonEncode(_sessionCells));
     } catch (e) {
       print('Warning: Failed to save session file: $e');
+    }
+  }
+
+  void _broadcastSession() {
+    final payload = jsonEncode({'type': 'init_session', 'cells': _sessionCells});
+    for (final client in _connectedClients) {
+      try {
+        client.add(payload);
+      } catch (_) {}
     }
   }
 
@@ -60,6 +83,7 @@ class NotebookServer {
     String? output,
     bool? isError,
     bool? evaluated,
+    String? type,
   }) {
     final index = _sessionCells.indexWhere((c) => c['id'] == id);
     if (index != -1) {
@@ -67,9 +91,11 @@ class NotebookServer {
       if (output != null) _sessionCells[index]['output'] = output;
       if (isError != null) _sessionCells[index]['isError'] = isError;
       if (evaluated != null) _sessionCells[index]['evaluated'] = evaluated;
+      if (type != null) _sessionCells[index]['type'] = type;
     } else {
       _sessionCells.add({
         'id': id,
+        'type': type ?? 'code',
         'code': code ?? '',
         'output': output ?? '',
         'isError': isError ?? false,
@@ -95,7 +121,9 @@ class NotebookServer {
     print('Server listening on http://localhost:$port');
 
     _server!.listen((HttpRequest request) async {
-      if (request.uri.path == '/ws') {
+      final path = request.uri.path;
+
+      if (path == '/ws') {
         if (WebSocketTransformer.isUpgradeRequest(request)) {
           final socket = await WebSocketTransformer.upgrade(request);
           _handleWebSocket(socket);
@@ -103,6 +131,27 @@ class NotebookServer {
           request.response.statusCode = HttpStatus.badRequest;
           request.response.close();
         }
+      } else if (path == '/api/export/ipynb') {
+        final ipynbJson = IpynbNotebook.fromSessionCells(_sessionCells).toJsonString(pretty: true);
+        request.response.headers.set('content-type', 'application/x-ipynb+json');
+        request.response.headers.set('content-disposition', 'attachment; filename="notebook.ipynb"');
+        request.response.write(ipynbJson);
+        await request.response.close();
+      } else if (path == '/api/import/ipynb' && request.method == 'POST') {
+        try {
+          final body = await utf8.decoder.bind(request).join();
+          final nb = IpynbNotebook.fromJsonString(body);
+          _sessionCells = nb.toSessionCells();
+          _saveSessionData();
+          _broadcastSession();
+          request.response.statusCode = HttpStatus.ok;
+          request.response.headers.contentType = ContentType.json;
+          request.response.write(jsonEncode({'status': 'ok', 'cellCount': _sessionCells.length}));
+        } catch (e) {
+          request.response.statusCode = HttpStatus.badRequest;
+          request.response.write(jsonEncode({'status': 'error', 'message': '$e'}));
+        }
+        await request.response.close();
       } else {
         var requestedPath = request.uri.path;
         if (requestedPath == '/') requestedPath = '/index.html';
@@ -127,6 +176,9 @@ class NotebookServer {
             case '.css':
               request.response.headers.set('content-type', 'text/css');
               break;
+            case '.ipynb':
+              request.response.headers.set('content-type', 'application/x-ipynb+json');
+              break;
             default:
               request.response.headers.contentType = ContentType.binary;
           }
@@ -142,6 +194,7 @@ class NotebookServer {
 
   void _handleWebSocket(WebSocket socket) {
     print('Client connected to WebSocket.');
+    _connectedClients.add(socket);
     socket.add(jsonEncode({'type': 'init_session', 'cells': _sessionCells}));
 
     socket.listen(
@@ -157,11 +210,21 @@ class NotebookServer {
           } else if (msgType == 'update_cell') {
             final cellId = msg['id'] as String;
             final code = msg['code'] as String?;
-            _updateOrAddCell(id: cellId, code: code, evaluated: false);
+            final type = msg['cellType'] as String? ?? msg['type_name'] as String?;
+            _updateOrAddCell(id: cellId, code: code, type: type, evaluated: false);
           } else if (msgType == 'delete_cell') {
             final cellId = msg['id'] as String;
             _sessionCells.removeWhere((c) => c['id'] == cellId);
             _saveSessionData();
+          } else if (msgType == 'import_ipynb') {
+            final ipynbContent = msg['data'] as String;
+            final nb = IpynbNotebook.fromJsonString(ipynbContent);
+            _sessionCells = nb.toSessionCells();
+            _saveSessionData();
+            _broadcastSession();
+          } else if (msgType == 'export_ipynb') {
+            final ipynbJson = IpynbNotebook.fromSessionCells(_sessionCells).toJsonString(pretty: true);
+            socket.add(jsonEncode({'type': 'ipynb_data', 'data': ipynbJson}));
           } else if (msgType == 'execute') {
             final reqId = msg['id'] as String;
             final code = msg['code'] as String;
@@ -282,12 +345,19 @@ class NotebookServer {
         }
       },
       onDone: () {
+        _connectedClients.remove(socket);
         print('Client disconnected from WebSocket.');
       },
     );
   }
 
   Future<void> stop() async {
+    for (final client in _connectedClients) {
+      try {
+        await client.close();
+      } catch (_) {}
+    }
+    _connectedClients.clear();
     await _server?.close();
     await _kernel?.stop();
     print('Notebook server stopped.');
