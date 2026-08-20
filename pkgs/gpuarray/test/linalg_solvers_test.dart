@@ -127,5 +127,55 @@ void main() {
         expect(c, greaterThan(1.0));
       });
     });
+    test('Optimized det and slogdet edge cases and batching', () {
+      ResourceScope.scope(() {
+        // 3x3 Matrix
+        // [[6, 1, 1],
+        //  [4, -2, 5],
+        //  [2, 8, 7]]
+        // det = 6*(-14 - 40) - 1*(28 - 10) + 1*(32 - (-4)) = 6*(-54) - 18 + 36 = -324 - 18 + 36 = -306
+        final a3 = GpuArray.fromList(
+          [6.0, 1.0, 1.0, 4.0, -2.0, 5.0, 2.0, 8.0, 7.0],
+          [3, 3],
+          DType.float64,
+        );
+
+        final d3 = linalg.det(a3) as double;
+        expect(d3, closeTo(-306.0, 1e-4));
+
+        final slog3 = linalg.slogdet(a3);
+        expect(slog3.sign.item(), closeTo(-1.0, 1e-4));
+        expect(slog3.logabsdet.item(), closeTo(math.log(306.0), 1e-4));
+
+        // Singular matrix (det == 0)
+        final singular = GpuArray.fromList(
+          [1.0, 2.0, 2.0, 4.0],
+          [2, 2],
+          DType.float64,
+        );
+        final dSing = linalg.det(singular) as double;
+        expect(dSing.abs(), closeTo(0.0, 1e-10));
+
+        final slogSing = linalg.slogdet(singular);
+        expect(slogSing.sign.item(), closeTo(0.0, 1e-4));
+        expect(slogSing.logabsdet.item(), equals(double.negativeInfinity));
+
+        // Batched determinant: 2 matrices of 2x2
+        final aBatch = GpuArray.fromList(
+          [
+            1.0, 2.0, 3.0, 4.0, // det = -2
+            5.0, 2.0, 1.0, 3.0, // det = 15 - 2 = 13
+          ],
+          [2, 2, 2],
+          DType.float64,
+        );
+
+        final dBatch = linalg.det(aBatch) as GpuArray;
+        expect(dBatch.shape, equals([2]));
+        final dBatchList = dBatch.toList().cast<double>();
+        expect(dBatchList[0], closeTo(-2.0, 1e-4));
+        expect(dBatchList[1], closeTo(13.0, 1e-4));
+      });
+    });
   });
 }

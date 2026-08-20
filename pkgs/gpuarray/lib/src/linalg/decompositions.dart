@@ -532,6 +532,17 @@ SvdResult<T> svd<T>(
 
   final m = a.shape[a.rank - 2];
   final n = a.shape[a.rank - 1];
+
+  // When m < n (fat matrix), compute SVD of A^T and transpose singular vectors
+  if (m < n) {
+    final aT = a.swapaxes(-1, -2);
+    final resT = svd<T>(aT, fullMatrices: fullMatrices, computeUv: computeUv);
+    final u = resT.vt.swapaxes(-1, -2);
+    final s = resT.s;
+    final vt = resT.u.swapaxes(-1, -2);
+    return SvdResult<T>(u: u, s: s, vt: vt);
+  }
+
   final k = math.min(m, n);
 
   final uCols = fullMatrices ? m : k;
@@ -638,11 +649,50 @@ SvdResult<T> svd<T>(
     final order = List.generate(n, (i) => i);
     order.sort((i, j) => sigma[j].compareTo(sigma[i]));
 
+    final uMat = List.generate(m, (_) => List.filled(uCols, 0.0));
+    var currCols = 0;
     for (var idx = 0; idx < k; idx++) {
       final col = order[idx];
       sData[b * k + idx] = sigma[col];
-      for (var i = 0; i < m; i++) {
-        uData[b * m * uCols + i * uCols + idx] = aMat[i][col];
+      if (sigma[col] > 1e-15) {
+        for (var i = 0; i < m; i++) {
+          uMat[i][currCols] = aMat[i][col];
+        }
+        currCols++;
+      }
+    }
+
+    // Orthogonal completion for remaining columns of U (fullMatrices: true or rank-deficient)
+    for (var j = 0; j < m && currCols < uCols; j++) {
+      final v = List<double>.filled(m, 0.0);
+      v[j] = 1.0;
+      for (var pass = 0; pass < 2; pass++) {
+        for (var i = 0; i < currCols; i++) {
+          var dot = 0.0;
+          for (var r = 0; r < m; r++) {
+            dot += v[r] * uMat[r][i];
+          }
+          for (var r = 0; r < m; r++) {
+            v[r] -= dot * uMat[r][i];
+          }
+        }
+      }
+      var norm = 0.0;
+      for (var r = 0; r < m; r++) {
+        norm += v[r] * v[r];
+      }
+      norm = math.sqrt(norm);
+      if (norm > 1e-8) {
+        for (var r = 0; r < m; r++) {
+          uMat[r][currCols] = v[r] / norm;
+        }
+        currCols++;
+      }
+    }
+
+    for (var i = 0; i < m; i++) {
+      for (var j = 0; j < uCols; j++) {
+        uData[b * m * uCols + i * uCols + j] = uMat[i][j];
       }
     }
 
