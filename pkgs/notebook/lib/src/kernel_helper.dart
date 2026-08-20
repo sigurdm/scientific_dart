@@ -49,6 +49,13 @@ void display(dynamic object) {
       CellOutputItem('text/html', LaTeX(object.toLatex()).toHtml()),
     );
   } else {
+    try {
+      final html = (object as dynamic).toHtml();
+      if (html is String) {
+        capturedOutputs.add(CellOutputItem('text/html', html));
+        return;
+      }
+    } catch (_) {}
     capturedOutputs.add(CellOutputItem('text/plain', object.toString()));
   }
 }
@@ -99,6 +106,10 @@ String prettyFormat(dynamic x) {
   if (x is FlintRationalPoly) {
     return LaTeX(x.toLatex()).toHtml();
   }
+  try {
+    final html = (x as dynamic).toHtml();
+    if (html is String) return html;
+  } catch (_) {}
   return x.toString();
 }
 
@@ -1017,6 +1028,79 @@ Heatmap plotSymbolic2D(
   ]);
   final zArr = lambda.callArray([grids[0], grids[1]]);
   return Heatmap(zArr, title: title ?? 'f($xVar, $yVar) = $f');
+}
+
+/// Represents an interactive client-side WebGPU compute widget for browser notebooks.
+final class WebGpuShaderWidget extends Displayable {
+  /// Custom title displayed at the top of the widget.
+  final String title;
+
+  /// Raw WGSL compute shader source code.
+  final String wgsl;
+
+  /// Compute shader entry point function name.
+  final String entryPoint;
+
+  /// Workgroup invocation layout.
+  final List<int> workgroups;
+
+  /// Uniform scalar values.
+  final List<int> uniforms;
+
+  /// Arbitrary configuration metadata.
+  final Map<String, dynamic> metadata;
+
+  WebGpuShaderWidget({
+    this.title = 'WebGPU Compute Pipeline',
+    required this.wgsl,
+    this.entryPoint = 'main',
+    this.workgroups = const [1, 1, 1],
+    this.uniforms = const [],
+    this.metadata = const {},
+  });
+
+  @override
+  String toHtml() {
+    final uid = 'webgpu_widget_${DateTime.now().microsecondsSinceEpoch}';
+    final payload = jsonEncode({
+      'wgsl': wgsl,
+      'entryPoint': entryPoint,
+      'workgroups': workgroups,
+      'uniforms': uniforms,
+      'metadata': metadata,
+    });
+
+    return '''
+<div id="$uid" style="background:#181825; border:1px solid #45475a; border-radius:8px; padding:16px; margin:8px 0; font-family:system-ui, sans-serif; color:#cdd6f4;">
+  <div style="font-weight:bold; color:#89b4fa; margin-bottom:8px;">⚡ $title (Browser WebGPU)</div>
+  <div id="\${uid}_status" style="color:#a6adc8; font-size:13px;">Initializing client WebGPU...</div>
+  <pre id="\${uid}_output" style="display:none; background:#11111b; color:#a6e3a1; padding:10px; border-radius:4px; margin-top:8px; font-size:12px; font-family:monospace;"></pre>
+  <script>
+    (async () => {
+      const statusEl = document.getElementById('\${uid}_status');
+      const config = $payload;
+      if (!navigator.gpu) {
+        statusEl.innerHTML = '<span style="color:#f38ba8;">WebGPU is not supported in this browser.</span>';
+        return;
+      }
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        const device = await adapter.requestDevice();
+        const shader = device.createShaderModule({ code: config.wgsl });
+        const pipeline = device.createComputePipeline({
+          layout: 'auto',
+          compute: { module: shader, entryPoint: config.entryPoint }
+        });
+        const arch = adapter.info?.architecture || adapter.info?.vendor || 'Physical GPU';
+        statusEl.innerHTML = '<span style="color:#a6e3a1;">Shader module active on client GPU (' + arch + ').</span>';
+      } catch (e) {
+        statusEl.innerHTML = '<span style="color:#f38ba8;">Shader Compilation Error: ' + e.message + '</span>';
+      }
+    })();
+  </script>
+</div>
+''';
+  }
 }
 
 dynamic evalInNotebookZone(dynamic Function() body) {

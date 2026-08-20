@@ -24,3 +24,4 @@ export 'src/backend/backend.dart' show GpuBackend, GpuDeviceType, CpuVectorBacke
 export 'src/backend/webgpu_backend.dart';
 export 'wgsl.dart';
 export 'jit.dart';
+export 'serialization.dart';

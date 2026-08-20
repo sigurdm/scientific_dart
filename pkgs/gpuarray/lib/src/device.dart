@@ -59,6 +59,17 @@ final class GpuDevice implements ScopedResource {
     }
   }
 
+  /// Creates a CPU Vector compute device.
+  factory GpuDevice.cpu({
+    String name = 'CPU Vector Device',
+    bool enableMemoryPool = false,
+  }) => GpuDevice.create(
+    name: name,
+    type: GpuDeviceType.cpu,
+    backend: const CpuVectorBackend(),
+    enableMemoryPool: enableMemoryPool,
+  );
+
   /// Creates a new custom [GpuDevice] instance.
   factory GpuDevice.create({
     String name = 'Custom GPU Device',

@@ -7,3 +7,7 @@ import 'package:symbolic_dart/symbolic_dart.dart' hide sin, cos, tan, asin, acos
 import 'package:resource_scope/resource_scope.dart';
 import 'package:ndarray/ndarray.dart';
 
+dynamic pixels;
+
+dynamic gradientArray;
+
