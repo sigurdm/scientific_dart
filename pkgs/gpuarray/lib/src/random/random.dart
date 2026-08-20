@@ -274,14 +274,23 @@ final class RandomState {
         );
       }
       var sumP = 0.0;
+      var positiveCount = 0;
       for (var i = 0; i < n; i++) {
         if (p[i] < 0.0 || p[i].isNaN) {
           throw ArgumentError('Probabilities in p must be non-negative.');
         }
         sumP += p[i];
+        if (p[i] > 0.0) {
+          positiveCount++;
+        }
       }
       if (sumP <= 0.0) {
         throw ArgumentError('Probabilities in p must sum to > 0.');
+      }
+      if (!replace && positiveCount < count) {
+        throw ArgumentError(
+          'Cannot take $count samples without replacement when only $positiveCount items have positive probability.',
+        );
       }
     }
 
@@ -385,8 +394,19 @@ final class RandomState {
   void shuffle(GpuArray x) {
     final list = x.toList();
     _shuffleList(list);
-    for (var i = 0; i < list.length; i++) {
-      ComputeEngine.writeAny(x.buffer, x.dtype, i, list[i]);
+    final total = list.length;
+    final coords = List<int>.filled(x.rank, 0);
+    for (var i = 0; i < total; i++) {
+      var dstIdx = x.offsetElements;
+      for (var d = 0; d < x.rank; d++) {
+        dstIdx += coords[d] * x.strides[d];
+      }
+      ComputeEngine.writeAny(x.buffer, x.dtype, dstIdx, list[i]);
+      for (var d = x.rank - 1; d >= 0; d--) {
+        coords[d]++;
+        if (coords[d] < x.shape[d]) break;
+        coords[d] = 0;
+      }
     }
   }
 
