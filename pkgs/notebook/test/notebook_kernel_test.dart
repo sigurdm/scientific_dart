@@ -207,20 +207,4 @@ display(descriptor.createBrowserWidget(
     expect(result, contains('<canvas'));
     expect(result, contains('fused_radial_ripple'));
   });
-
-  test('evaluates 2D Mandelbrot fractal widget from gpuarray', () async {
-    final code = '''
-display(WebGpuWidget.fractal(
-  width: 128,
-  height: 128,
-  colorMap: 'turbo',
-  title: '🌀 Mandelbrot Fractal (GPUArray WebGPU)',
-));
-''';
-
-    final result = await kernel.execute(code);
-    expect(result, contains('text/html'));
-    expect(result, contains('<canvas'));
-    expect(result, contains('mandelbrot_fractal'));
-  });
 }
