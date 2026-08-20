@@ -857,7 +857,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
       contiguousArray.dispose();
     }
 
-    return ndarray as nd.NDArray<T>;
+    return ndarray;
   }
 
   /// Returns a flat Dart list containing a copy of the elements in this tensor.
