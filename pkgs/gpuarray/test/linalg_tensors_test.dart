@@ -44,6 +44,10 @@ void main() {
         final outer = linalg.einsum('i,j->ij', [v1, v2]);
         expect(outer.shape, equals([2, 2]));
         expect(outer.toList(), equals([3.0, 4.0, 6.0, 8.0]));
+
+        // 5. Undefined output subscripts throw ArgumentError
+        expect(() => linalg.einsum('ij,jk->il', [a, b]), throwsArgumentError);
+        expect(() => linalg.einsum('ij->k', [a]), throwsArgumentError);
       });
     });
 

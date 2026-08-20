@@ -64,6 +64,16 @@ GpuArray<T> einsum<T>(String subscripts, List<GpuArray> operands) {
     }
   }
 
+  if (parts.length > 1) {
+    for (final ch in outTerm.split('')) {
+      if (!indexDims.containsKey(ch)) {
+        throw ArgumentError(
+          'Output subscript "$ch" not found in input subscripts.',
+        );
+      }
+    }
+  }
+
   // Determine promoted dtype
   var outDType = operands[0].dtype;
   for (var i = 1; i < operands.length; i++) {

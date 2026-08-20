@@ -476,6 +476,25 @@ GpuArray<T> lu_solve<T>(GpuArray<T> lu, GpuArray<Int32> piv, GpuArray<T> b) {
       'lu_solve: RHS b rank (${b.rank}) must be either equal to lu rank (${lu.rank}) or lu rank - 1 (${lu.rank - 1}).',
     );
   }
+
+  if (isVector) {
+    if (b.shape.last != n ||
+        !ShapeUtils.areEqual(
+          b.shape.sublist(0, b.rank - 1),
+          lu.shape.sublist(0, lu.rank - 2),
+        )) {
+      throw GpuShapeMismatchException('lu_solve', lu.shape, b.shape);
+    }
+  } else {
+    if (b.shape[b.rank - 2] != n ||
+        !ShapeUtils.areEqual(
+          b.shape.sublist(0, b.rank - 2),
+          lu.shape.sublist(0, lu.rank - 2),
+        )) {
+      throw GpuShapeMismatchException('lu_solve', lu.shape, b.shape);
+    }
+  }
+
   final bCols = isVector ? 1 : b.shape[b.rank - 1];
 
   final outShape = List<int>.from(b.shape);

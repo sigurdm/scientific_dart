@@ -33,10 +33,29 @@ GpuArray<T> solve<T>(GpuArray<T> a, GpuArray<T> b) {
   if (m == 0 || n == 0 || ShapeUtils.computeSize(a.shape) == 0) {
     throw ArgumentError('Matrix dimensions cannot be zero.');
   }
-  if (b.rank != a.rank && b.rank != a.rank - 1) {
+  final isVector = (b.rank == a.rank - 1);
+  if (b.rank != a.rank && !isVector) {
     throw ArgumentError(
       'solve: RHS b rank (${b.rank}) must be either equal to A rank (${a.rank}) or A rank - 1 (${a.rank - 1}).',
     );
+  }
+
+  if (isVector) {
+    if (b.shape.last != n ||
+        !ShapeUtils.areEqual(
+          b.shape.sublist(0, b.rank - 1),
+          a.shape.sublist(0, a.rank - 2),
+        )) {
+      throw GpuShapeMismatchException('solve', a.shape, b.shape);
+    }
+  } else {
+    if (b.shape[b.rank - 2] != n ||
+        !ShapeUtils.areEqual(
+          b.shape.sublist(0, b.rank - 2),
+          a.shape.sublist(0, a.rank - 2),
+        )) {
+      throw GpuShapeMismatchException('solve', a.shape, b.shape);
+    }
   }
 
   final luRes = lu_factor(a);

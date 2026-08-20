@@ -32,6 +32,16 @@ final class ShapeUtils {
     return size;
   }
 
+  /// Checks if two shapes are identical in dimensions.
+  static bool areEqual(List<int> a, List<int> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
   /// Checks if [shape] and [strides] represent a contiguous C-layout.
   static bool isContiguous(List<int> shape, List<int> strides) {
     if (shape.isEmpty) return true;

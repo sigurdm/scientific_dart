@@ -184,8 +184,24 @@ void main() {
         // A1: [[1, 2, 3], [0, 1, 4], [5, 6, 0]], b1: [14, 14, 17] -> x1: [1, 2, 3]
         final a = GpuArray.fromList(
           [
-            2.0, 1.0, 1.0, 4.0, 3.0, 3.0, 8.0, 7.0, 9.0,
-            1.0, 2.0, 3.0, 0.0, 1.0, 4.0, 5.0, 6.0, 0.0,
+            2.0,
+            1.0,
+            1.0,
+            4.0,
+            3.0,
+            3.0,
+            8.0,
+            7.0,
+            9.0,
+            1.0,
+            2.0,
+            3.0,
+            0.0,
+            1.0,
+            4.0,
+            5.0,
+            6.0,
+            0.0,
           ],
           [2, 3, 3],
           DType.float64,
@@ -207,6 +223,70 @@ void main() {
         expect(xList[5], closeTo(3.0, 1e-4));
       });
     });
+
+    test(
+      'solve throws GpuShapeMismatchException on RHS dimension and batch shape mismatches',
+      () {
+        ResourceScope.scope(() {
+          final a = GpuArray.fromList(
+            [1.0, 2.0, 3.0, 4.0],
+            [2, 2],
+            DType.float64,
+          );
+
+          // Vector RHS size mismatch: matrix is 2x2, vector is length 3
+          final bVecMismatch = GpuArray.fromList(
+            [1.0, 2.0, 3.0],
+            [3],
+            DType.float64,
+          );
+          expect(
+            () => linalg.solve(a, bVecMismatch),
+            throwsA(isA<GpuShapeMismatchException>()),
+          );
+
+          // Matrix RHS row mismatch: matrix is 2x2, RHS is 3x2
+          final bMatMismatch = GpuArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            [3, 2],
+            DType.float64,
+          );
+          expect(
+            () => linalg.solve(a, bMatMismatch),
+            throwsA(isA<GpuShapeMismatchException>()),
+          );
+
+          // Batched matrix: [2, 2, 2]
+          final aBatch = GpuArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+            [2, 2, 2],
+            DType.float64,
+          );
+
+          // Batched vector RHS batch mismatch: [3, 2] instead of [2, 2]
+          final bBatchVecMismatch = GpuArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            [3, 2],
+            DType.float64,
+          );
+          expect(
+            () => linalg.solve(aBatch, bBatchVecMismatch),
+            throwsA(isA<GpuShapeMismatchException>()),
+          );
+
+          // Batched matrix RHS batch mismatch: [3, 2, 2] instead of [2, 2, 2]
+          final bBatchMatMismatch = GpuArray.fromList(
+            List.generate(12, (i) => i.toDouble()),
+            [3, 2, 2],
+            DType.float64,
+          );
+          expect(
+            () => linalg.solve(aBatch, bBatchMatMismatch),
+            throwsA(isA<GpuShapeMismatchException>()),
+          );
+        });
+      },
+    );
 
     test('0-Dimension matrices throw ArgumentError in solvers', () {
       ResourceScope.scope(() {
