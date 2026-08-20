@@ -588,7 +588,7 @@ NDArray<T> reduceUfunc<T extends Object>(
     final marker = ScratchArena.marker;
     try {
       final rank = a.rank;
-      final cBuffer = ScratchArena.getStridedBuffer(rank * 2 + 1);
+      final cBuffer = ScratchArena.getStridedBuffer(rank * 3);
       final cShape = cBuffer;
       final cStridesA = cBuffer + rank;
       final cStridesRes = cBuffer + (rank * 2);
@@ -597,8 +597,17 @@ NDArray<T> reduceUfunc<T extends Object>(
         cStridesA[i] = a.strides[i];
       }
       if (rank > 1) {
-        for (var i = 0; i < rank - 1; i++) {
-          cStridesRes[i] = result.strides[i];
+        if (keepdims) {
+          var resIdx = 0;
+          for (var i = 0; i < rank; i++) {
+            if (i != normAxis) {
+              cStridesRes[resIdx++] = result.strides[i];
+            }
+          }
+        } else {
+          for (var i = 0; i < rank - 1; i++) {
+            cStridesRes[i] = result.strides[i];
+          }
         }
       }
 
@@ -1138,7 +1147,16 @@ NDArray<T> reduceUfunc<T extends Object>(
       current = next;
     }
   }
-  current.copy(out: result);
+  if (!listEquals(current.shape, result.shape)) {
+    final reshaped = current.reshape(result.shape);
+    try {
+      reshaped.copy(out: result);
+    } finally {
+      reshaped.dispose();
+    }
+  } else {
+    current.copy(out: result);
+  }
   current.dispose();
   return result;
 }
@@ -1178,7 +1196,7 @@ NDArray<T> accumulateUfunc<T extends Object>(
   bool handled = false;
   try {
     final rank = a.rank;
-    final cBuffer = ScratchArena.getStridedBuffer(rank * 2 + 1);
+    final cBuffer = ScratchArena.getStridedBuffer(rank * 3);
     final cShape = cBuffer;
     final cStridesA = cBuffer + rank;
     final cStridesRes = cBuffer + (rank * 2);

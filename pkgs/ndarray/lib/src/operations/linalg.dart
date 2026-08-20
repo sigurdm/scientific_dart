@@ -5764,6 +5764,13 @@ double _matrixNorm<T extends Object>(
   dynamic ord,
   DType targetDType,
 ) {
+  if (ord is String) {
+    if (ord == 'fro' || ord == 'frobenius') {
+      ord = NormKind.frobenius;
+    } else if (ord == 'nuc' || ord == 'nuclear') {
+      ord = NormKind.nuclear;
+    }
+  }
   if (ord is NormKind) {
     ord = switch (ord) {
       NormKind.frobenius => NormKind.frobenius,

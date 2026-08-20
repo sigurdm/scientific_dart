@@ -9503,7 +9503,7 @@ static void dispatch_cast_src(
     }
 }
 
-void s_cast_generic(
+extern "C" void s_cast_generic(
     const void *src_ptr, const int *stridesSrc, int dtypeSrc,
     void *dest_ptr, int dtypeDst,
     const int *shape, int rank

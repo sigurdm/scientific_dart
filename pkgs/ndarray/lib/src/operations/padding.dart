@@ -202,7 +202,10 @@ final class StatLength {
 
 /// Helper to get default constant value for a DType.
 Object _getDefaultValue(DType dtype) {
-  if (dtype == DType.float64 || dtype == DType.float32) {
+  if (dtype == DType.float64 ||
+      dtype == DType.float32 ||
+      dtype == DType.float16 ||
+      dtype == DType.bfloat16) {
     return 0.0;
   } else if (dtype == DType.complex128 || dtype == DType.complex64) {
     return Complex(0.0, 0.0);
@@ -265,13 +268,14 @@ NDArray<T> pad<T extends Object>(
 
   // Normalize parameters
   final normPadWidths = padWidth.normalize(rank);
-  final defaultValue = _getDefaultValue(array.dtype) as T;
-  final normConstantValues = (constantValues ?? PadValues.all(defaultValue))
-      .normalize(rank, defaultValue);
-  final normEndValues = (endValues ?? PadValues.all(defaultValue)).normalize(
-    rank,
-    defaultValue,
-  );
+  final defaultValue = _getDefaultValue(array.dtype);
+  final normConstantValues =
+      (constantValues ?? PadValues.all(defaultValue as dynamic)).normalize(
+        rank,
+        defaultValue as dynamic,
+      );
+  final normEndValues = (endValues ?? PadValues.all(defaultValue as dynamic))
+      .normalize(rank, defaultValue as dynamic);
   final normStatLengths =
       statLength?.normalize(array.shape) ??
       List.generate(rank, (i) => (array.shape[i], array.shape[i]));
@@ -486,18 +490,7 @@ NDArray<T> _padNativeFast<T extends Object>(
     _ => -1,
   };
 
-  final dtypeInt = switch (array.dtype) {
-    DType.float64 => 0,
-    DType.float32 => 1,
-    DType.int32 => 2,
-    DType.int64 => 3,
-    DType.uint8 => 4,
-    DType.int16 => 5,
-    DType.complex128 => 6,
-    DType.complex64 => 7,
-    DType.boolean => 8,
-    _ => throw UnsupportedError("Unsupported dtype"),
-  };
+  final dtypeInt = array.dtype.index;
 
   return NDArray.scope(() {
     final NDArray<T> targetDest;

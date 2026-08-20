@@ -28849,19 +28849,31 @@ const int DTYPE_FLOAT64 = 0;
 
 const int DTYPE_FLOAT32 = 1;
 
-const int DTYPE_INT32 = 2;
+const int DTYPE_FLOAT16 = 2;
 
-const int DTYPE_INT64 = 3;
+const int DTYPE_BFLOAT16 = 3;
 
-const int DTYPE_UINT8 = 4;
+const int DTYPE_INT64 = 4;
 
-const int DTYPE_INT16 = 5;
+const int DTYPE_INT32 = 5;
 
-const int DTYPE_COMPLEX128 = 6;
+const int DTYPE_INT16 = 6;
 
-const int DTYPE_COMPLEX64 = 7;
+const int DTYPE_INT8 = 7;
 
-const int DTYPE_BOOLEAN = 8;
+const int DTYPE_UINT64 = 8;
+
+const int DTYPE_UINT32 = 9;
+
+const int DTYPE_UINT16 = 10;
+
+const int DTYPE_UINT8 = 11;
+
+const int DTYPE_COMPLEX128 = 12;
+
+const int DTYPE_COMPLEX64 = 13;
+
+const int DTYPE_BOOLEAN = 14;
 
 const int CMP_OP_EQ = 0;
 

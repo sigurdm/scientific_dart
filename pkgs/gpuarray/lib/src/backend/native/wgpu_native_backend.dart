@@ -117,6 +117,7 @@ final class WgpuNativeBackend extends GpuBackend {
       final instance = nativeLib.createInstance();
       final adapter = await nativeLib.requestAdapter(instance);
       final device = await nativeLib.requestDevice(
+        instance,
         adapter,
         label: 'ScientificDart_WGPUDevice',
       );
@@ -145,6 +146,7 @@ final class WgpuNativeBackend extends GpuBackend {
   bool get isDisposed => _isDisposed;
 
   /// Whether this backend is running in simulation/mock mode.
+  @override
   bool get isSimulated => isMock;
 
   /// The number of compiled and cached compute pipelines.
@@ -180,9 +182,10 @@ final class WgpuNativeBackend extends GpuBackend {
     ffi.Pointer<ffi.Void> gpuBuf = ffi.nullptr;
 
     if (!isMock && device != ffi.nullptr && lib != null) {
+      final alignedSize = math.max(16, (sizeInBytes + 3) & ~3);
       gpuBuf = lib!.createBuffer(
         device,
-        size: sizeInBytes,
+        size: alignedSize,
         usage: WGPUBufferUsage.storage |
             WGPUBufferUsage.copySrc |
             WGPUBufferUsage.copyDst |
@@ -344,7 +347,8 @@ final class WgpuNativeBackend extends GpuBackend {
       lib!.commandBufferRelease(cmdBuf);
       lib!.commandEncoderRelease(encoder);
 
-      lib!.bufferMapAsync(
+      lib!.bufferMapSync(
+        instance,
         stagingBuf,
         mode: WGPUMapMode.read,
         offset: 0,

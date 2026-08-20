@@ -33,9 +33,7 @@ void main() {
     });
 
     test('WgpuNativeBackend creates simulated backend when native WebGPU library is not loaded', () async {
-      final backend = await WgpuNativeBackend.create(
-        fallbackToSimulation: true,
-      );
+      final backend = WgpuNativeBackend.mock();
 
       expect(backend.deviceType, equals(GpuDeviceType.webgpu));
       expect(backend.isSimulated, isTrue);

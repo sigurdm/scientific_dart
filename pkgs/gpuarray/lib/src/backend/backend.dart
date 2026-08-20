@@ -20,6 +20,9 @@ abstract class GpuBackend {
   /// The type of hardware device targeted by this backend.
   GpuDeviceType get deviceType;
 
+  /// Whether this backend runs in software/CPU simulation mode.
+  bool get isSimulated => true;
+
   /// Allocates a low-level memory buffer of [sizeInBytes].
   ffi.Pointer<ffi.Uint8> allocateBuffer(int sizeInBytes);
 

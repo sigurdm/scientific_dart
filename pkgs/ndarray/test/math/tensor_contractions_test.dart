@@ -1516,11 +1516,10 @@ void main() {
           3,
         ], DType.int64);
         expect(
-          () => einsum<Int64, Int64>(
-            EinsumSubscripts.parse("bij,bjk->ikb"),
-            [aStridedInt, bStridedInt],
-            out: invalidOutStridedBatchPerm,
-          ),
+          () => einsum<Int64, Int64>(EinsumSubscripts.parse("bij,bjk->ikb"), [
+            aStridedInt,
+            bStridedInt,
+          ], out: invalidOutStridedBatchPerm),
           throwsArgumentError,
         );
 

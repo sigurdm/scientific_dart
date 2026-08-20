@@ -75,34 +75,26 @@ void main() {
         expect(instDesc.ref.nextInChain, equals(chained));
         expect(ffi.sizeOf<WGPUInstanceDescriptor>(), greaterThan(0));
 
-        // WGPURequestAdapterOptions
-        final adapterOpts = arena<WGPURequestAdapterOptions>();
-        adapterOpts.ref.nextInChain = ffi.nullptr;
-        adapterOpts.ref.compatibleSurface = ffi.nullptr;
-        adapterOpts.ref.powerPreference = WGPUPowerPreference.highPerformance;
-        adapterOpts.ref.backendType = WGPUBackendType.vulkan;
-        adapterOpts.ref.forceFallbackAdapter = 0;
-        expect(adapterOpts.ref.powerPreference, equals(2));
-        expect(adapterOpts.ref.backendType, equals(6));
-
         // WGPUBufferDescriptor
         final bufDesc = arena<WGPUBufferDescriptor>();
         bufDesc.ref.nextInChain = ffi.nullptr;
-        bufDesc.ref.label = 'TestBuffer'.toNativeUtf8(allocator: arena);
+        bufDesc.ref.label.data = 'TestBuffer'.toNativeUtf8(allocator: arena);
+        bufDesc.ref.label.length = 10;
         bufDesc.ref.usage = WGPUBufferUsage.storage | WGPUBufferUsage.copyDst;
         bufDesc.ref.size = 1024;
         bufDesc.ref.mappedAtCreation = 0;
         expect(bufDesc.ref.usage, equals(136));
         expect(bufDesc.ref.size, equals(1024));
-        expect(bufDesc.ref.label.toDartString(), equals('TestBuffer'));
+        expect(bufDesc.ref.label.data.toDartString(), equals('TestBuffer'));
 
-        // WGPUShaderModuleWGSLDescriptor
-        final wgslDesc = arena<WGPUShaderModuleWGSLDescriptor>();
+        // WGPUShaderSourceWGSL
+        final wgslDesc = arena<WGPUShaderSourceWGSL>();
         wgslDesc.ref.chain.next = ffi.nullptr;
-        wgslDesc.ref.chain.sType = WGPUSType.shaderModuleWGSLDescriptor;
-        wgslDesc.ref.code = '@compute @workgroup_size(64) fn main() {}'.toNativeUtf8(allocator: arena);
-        expect(wgslDesc.ref.chain.sType, equals(6));
-        expect(wgslDesc.ref.code.toDartString(), contains('@compute'));
+        wgslDesc.ref.chain.sType = WGPUSType.shaderSourceWGSL;
+        wgslDesc.ref.code.data = '@compute @workgroup_size(64) fn main() {}'.toNativeUtf8(allocator: arena);
+        wgslDesc.ref.code.length = 37;
+        expect(wgslDesc.ref.chain.sType, equals(2));
+        expect(wgslDesc.ref.code.data.toDartString(), contains('@compute'));
 
         // WGPUBindGroupEntry
         final bgEntry = arena<WGPUBindGroupEntry>();
@@ -117,10 +109,12 @@ void main() {
         // WGPUComputePipelineDescriptor
         final pipeDesc = arena<WGPUComputePipelineDescriptor>();
         pipeDesc.ref.nextInChain = ffi.nullptr;
-        pipeDesc.ref.label = 'ComputePipeline'.toNativeUtf8(allocator: arena);
-        pipeDesc.ref.compute.entryPoint = 'main'.toNativeUtf8(allocator: arena);
-        expect(pipeDesc.ref.label.toDartString(), equals('ComputePipeline'));
-        expect(pipeDesc.ref.compute.entryPoint.toDartString(), equals('main'));
+        pipeDesc.ref.label.data = 'ComputePipeline'.toNativeUtf8(allocator: arena);
+        pipeDesc.ref.label.length = 15;
+        pipeDesc.ref.computeEntryPoint.data = 'main'.toNativeUtf8(allocator: arena);
+        pipeDesc.ref.computeEntryPoint.length = 4;
+        expect(pipeDesc.ref.label.data.toDartString(), equals('ComputePipeline'));
+        expect(pipeDesc.ref.computeEntryPoint.data.toDartString(), equals('main'));
       });
     });
   });

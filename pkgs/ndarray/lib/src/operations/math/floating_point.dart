@@ -640,11 +640,11 @@ NDArray<T> copysign<T extends Object>(
       return b < 0.0 ? -a.abs() : a.abs();
     }
 
-    if (targetDType == DType.float64 || targetDType == DType.float32) {
-      elementWiseOp<double, double, double>(
-        result as NDArray<double>,
-        x1 as NDArray<double>,
-        x2 as NDArray<double>,
+    if (targetDType.isFloating) {
+      elementWiseOp<dynamic, dynamic, dynamic>(
+        result,
+        x1,
+        x2,
         shape,
         stridesA,
         stridesB,
@@ -653,14 +653,17 @@ NDArray<T> copysign<T extends Object>(
         x1.offsetElements,
         x2.offsetElements,
         result.offsetElements,
-        (x, y) => copysignOp(x, y),
+        (x, y) => castValue(
+          copysignOp((x as num).toDouble(), (y as num).toDouble()),
+          targetDType,
+        ),
         maskHolder.pointer,
       );
     } else {
-      elementWiseOp<num, num, int>(
-        result as NDArray<int>,
-        x1 as NDArray<num>,
-        x2 as NDArray<num>,
+      elementWiseOp<dynamic, dynamic, dynamic>(
+        result,
+        x1,
+        x2,
         shape,
         stridesA,
         stridesB,
@@ -669,7 +672,10 @@ NDArray<T> copysign<T extends Object>(
         x1.offsetElements,
         x2.offsetElements,
         result.offsetElements,
-        (x, y) => copysignOp(x.toDouble(), y.toDouble()).toInt(),
+        (x, y) => castValue(
+          copysignOp((x as num).toDouble(), (y as num).toDouble()).toInt(),
+          targetDType,
+        ),
         maskHolder.pointer,
       );
     }

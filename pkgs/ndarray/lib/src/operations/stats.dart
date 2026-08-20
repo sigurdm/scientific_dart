@@ -25,6 +25,19 @@ List<int> _reductionTargetShape(List<int> shape, int? axis, bool keepdims) {
   }
 }
 
+double _r_stat_scalar_double_fallback<T>(
+  NDArray<T> arr,
+  int size,
+  double Function(ffi.Pointer<ffi.Double>, int) rDoubleFunc,
+) {
+  final d = castNDArray(arr, DType.float64);
+  try {
+    return rDoubleFunc(d.pointer.cast(), size);
+  } finally {
+    d.dispose();
+  }
+}
+
 dynamic _r_stat_scalar_fallback<T>(
   NDArray<T> arr,
   int size,
@@ -953,7 +966,7 @@ NDArray<R> mean<R, T>(
         case DType.uint64:
         case DType.uint32:
         case DType.uint16:
-          acc = _r_stat_scalar_fallback(a, size, r_mean_double);
+          acc = _r_stat_scalar_double_fallback(a, size, r_mean_double);
       }
       result.setCellFlat(0, acc as R);
       return result;
@@ -988,7 +1001,7 @@ NDArray<R> mean<R, T>(
       case DType.uint64:
       case DType.uint32:
       case DType.uint16:
-        acc = _r_stat_scalar_fallback(copyA, size, r_mean_double);
+        acc = _r_stat_scalar_double_fallback(copyA, size, r_mean_double);
     }
     copyA.dispose();
     result.setCellFlat(0, acc as R);
@@ -1215,7 +1228,7 @@ NDArray<Float64> std<T extends num>(
         case DType.uint64:
         case DType.uint32:
         case DType.uint16:
-          acc = _r_stat_scalar_fallback(
+          acc = _r_stat_scalar_double_fallback(
             a,
             size,
             (p, s) => r_std_double(p, s, ddof),
@@ -1250,7 +1263,7 @@ NDArray<Float64> std<T extends num>(
       case DType.uint64:
       case DType.uint32:
       case DType.uint16:
-        acc = _r_stat_scalar_fallback(
+        acc = _r_stat_scalar_double_fallback(
           copyA,
           size,
           (p, s) => r_std_double(p, s, ddof),
@@ -2669,7 +2682,7 @@ NDArray<Float64> variance<T extends num>(
         case DType.uint64:
         case DType.uint32:
         case DType.uint16:
-          acc = _r_stat_scalar_fallback(
+          acc = _r_stat_scalar_double_fallback(
             a,
             size,
             (p, s) => r_var_double(p, s, ddof),
@@ -2704,7 +2717,7 @@ NDArray<Float64> variance<T extends num>(
       case DType.uint64:
       case DType.uint32:
       case DType.uint16:
-        acc = _r_stat_scalar_fallback(
+        acc = _r_stat_scalar_double_fallback(
           copyA,
           size,
           (p, s) => r_var_double(p, s, ddof),

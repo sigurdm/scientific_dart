@@ -994,7 +994,7 @@ NDArray<R> _padOrTruncate<T, R extends Complex>(
     }
   }
 
-  if (!needsSliceOrPad && arr.dtype == targetDType && arr.isContiguous) {
+  if (!needsSliceOrPad && arr.dtype == targetDType && arr.isContiguous && arr is NDArray<R>) {
     return (arr as NDArray<R>).copy();
   }
 
@@ -1592,8 +1592,8 @@ NDArray<R> irfft<T, R extends double>(
         contiguousInput.dispose();
       }
 
-      final reconView = contiguousRecon.transpose(resolvedAxes);
-      final complexIFFT = ifft(reconView);
+      final complexIFFTTransposed = ifft(contiguousRecon);
+      final complexIFFT = complexIFFTTransposed.transpose(resolvedAxes);
 
       final outShape = List<int>.from(a.shape);
       outShape[normAxis] = targetLen;

@@ -154,7 +154,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       }
     }
 
-    unaryOp<T, R>(
+    unaryOp<dynamic, dynamic>(
       result,
       a,
       a.shape,
@@ -163,7 +163,14 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => math.exp((x as num).toDouble()) as R,
+      (x) {
+        if (x is Complex) {
+          final expR = math.exp(x.real);
+          return Complex(expR * math.cos(x.imag), expR * math.sin(x.imag));
+        }
+        final dx = x is bool ? (x ? 1.0 : 0.0) : (x as num).toDouble();
+        return castValue(math.exp(dx), result.dtype);
+      },
       maskHolder.pointer,
     );
     return result;
@@ -178,7 +185,7 @@ NDArray<R> exp<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
 /// - Input array [a] elements must be numeric (`T extends num`).
 /// - If provided, the [out] recycler array must exactly match the shape and the resolved floating-point dtype (Float32 if [a] is Float32, Float64 otherwise).
 ///
-/// It is an error if the provided [out] buffer has an incompatible shape or dtype (throws [ArgumentError]).
+/// It is an error if the provided [out] buffer has an incompatible shape (throws [ArgumentError]).
 ///
 /// **Performance considerations:**
 /// - Algorithmic complexity is $O(N)$ where $N$ is the total number of elements.
@@ -194,12 +201,11 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute log() on a disposed array.');
   }
-  final DType<R> targetDType;
+  final DType<dynamic> targetDType;
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
-    targetDType = a.dtype as DType<R>;
+    targetDType = a.dtype;
   } else {
-    targetDType =
-        (a.dtype == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
+    targetDType = a.dtype == DType.float32 ? DType.float32 : DType.float64;
   }
 
   final NDArray<R> result;
@@ -211,7 +217,7 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType);
+    result = NDArray.create(a.shape, targetDType as DType<R>);
   }
   final maskHolder = prepareMask(where, result.shape);
 
@@ -319,7 +325,7 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       }
     }
 
-    unaryOp<T, R>(
+    unaryOp<dynamic, dynamic>(
       result,
       a,
       a.shape,
@@ -328,7 +334,11 @@ NDArray<R> log<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       0,
       a.offsetElements,
       result.offsetElements,
-      (x) => math.log((x as num).toDouble()) as R,
+      (x) {
+        if (x is Complex) return x.log();
+        final dx = x is bool ? (x ? 1.0 : 0.0) : (x as num).toDouble();
+        return castValue(math.log(dx), result.dtype);
+      },
       maskHolder.pointer,
     );
     return result;
@@ -373,7 +383,7 @@ NDArray<R> log2<T, R>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
+    result = NDArray.create(a.shape, targetDType as DType<R>);
   }
   final maskHolder = prepareMask(where, result.shape);
 
@@ -482,7 +492,7 @@ NDArray<R> log2<T, R>(
       }
     }
 
-    unaryOp<T, R>(
+    unaryOp<dynamic, dynamic>(
       result,
       a,
       a.shape,
@@ -492,10 +502,9 @@ NDArray<R> log2<T, R>(
       a.offsetElements,
       result.offsetElements,
       (x) {
-        if (x is Complex) {
-          return (x.log() / math.log(2.0)) as R;
-        }
-        return (math.log((x as num).toDouble()) / math.log(2.0)) as R;
+        if (x is Complex) return x.log() / math.log(2.0);
+        final dx = x is bool ? (x ? 1.0 : 0.0) : (x as num).toDouble();
+        return castValue(math.log(dx) / math.log(2.0), result.dtype);
       },
       maskHolder.pointer,
     );
@@ -541,7 +550,7 @@ NDArray<R> log10<T, R>(
     }
     result = out;
   } else {
-    result = NDArray.create(a.shape, targetDType) as NDArray<R>;
+    result = NDArray.create(a.shape, targetDType as DType<R>);
   }
   final maskHolder = prepareMask(where, result.shape);
 
@@ -650,7 +659,7 @@ NDArray<R> log10<T, R>(
       }
     }
 
-    unaryOp<T, R>(
+    unaryOp<dynamic, dynamic>(
       result,
       a,
       a.shape,
@@ -660,10 +669,9 @@ NDArray<R> log10<T, R>(
       a.offsetElements,
       result.offsetElements,
       (x) {
-        if (x is Complex) {
-          return (x.log() / math.log(10.0)) as R;
-        }
-        return (math.log((x as num).toDouble()) / math.log(10.0)) as R;
+        if (x is Complex) return x.log() / math.log(10.0);
+        final dx = x is bool ? (x ? 1.0 : 0.0) : (x as num).toDouble();
+        return castValue(math.log(dx) / math.log(10.0), result.dtype);
       },
       maskHolder.pointer,
     );

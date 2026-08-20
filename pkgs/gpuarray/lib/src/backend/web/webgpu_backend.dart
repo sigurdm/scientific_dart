@@ -320,6 +320,7 @@ final class BrowserWebGpuBackend extends GpuBackend {
   final GPUDevice? device;
 
   /// Whether this backend operates in simulated test mode.
+  @override
   final bool isSimulated;
 
   final Map<int, GPUBuffer> _deviceBuffers = {};

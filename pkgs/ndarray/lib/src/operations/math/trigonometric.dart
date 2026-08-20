@@ -31,7 +31,10 @@ NDArray<R> sin<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute sin() on a disposed array.');
   }
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if (a.dtype.isInteger ||
+      a.dtype == DType.boolean ||
+      a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
       final res = sin<Float64, R>(promoted, where: where, out: out);
@@ -206,7 +209,10 @@ NDArray<R> sinc<T, R>(
     throw StateError('Cannot execute sinc() on a disposed array.');
   }
 
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if (a.dtype.isInteger ||
+      a.dtype == DType.boolean ||
+      a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
       final res = sinc<Float64, R>(promoted, where: where, out: out);
@@ -366,7 +372,10 @@ NDArray<R> cos<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute cos() on a disposed array.');
   }
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if (a.dtype.isInteger ||
+      a.dtype == DType.boolean ||
+      a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
       final res = cos<Float64, R>(promoted, where: where, out: out);
@@ -528,7 +537,10 @@ NDArray<R> tan<T, R>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<R>? out}) {
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute tan() on a disposed array.');
   }
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if (a.dtype.isInteger ||
+      a.dtype == DType.boolean ||
+      a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
       final res = tan<Float64, R>(promoted, where: where, out: out);
@@ -703,7 +715,10 @@ NDArray<R> asin<T, R>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute asin() on a disposed array.');
   }
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if (a.dtype.isInteger ||
+      a.dtype == DType.boolean ||
+      a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
       final res = asin<Float64, R>(promoted, where: where, out: out);
@@ -878,7 +893,10 @@ NDArray<R> acos<T, R>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute acos() on a disposed array.');
   }
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if (a.dtype.isInteger ||
+      a.dtype == DType.boolean ||
+      a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
       final res = acos<Float64, R>(promoted, where: where, out: out);
@@ -1053,7 +1071,10 @@ NDArray<R> atan<T, R>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute atan() on a disposed array.');
   }
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if (a.dtype.isInteger ||
+      a.dtype == DType.boolean ||
+      a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
       final res = atan<Float64, R>(promoted, where: where, out: out);
@@ -1226,7 +1247,10 @@ NDArray<R> sinh<T, R>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute sinh() on a disposed array.');
   }
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if (a.dtype.isInteger ||
+      a.dtype == DType.boolean ||
+      a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
       final res = sinh<Float64, R>(promoted, where: where, out: out);
@@ -1402,7 +1426,10 @@ NDArray<R> cosh<T, R>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute cosh() on a disposed array.');
   }
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if (a.dtype.isInteger ||
+      a.dtype == DType.boolean ||
+      a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
       final res = cosh<Float64, R>(promoted, where: where, out: out);
@@ -1578,7 +1605,10 @@ NDArray<R> tanh<T, R>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute tanh() on a disposed array.');
   }
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if (a.dtype.isInteger ||
+      a.dtype == DType.boolean ||
+      a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
       final res = tanh<Float64, R>(promoted, where: where, out: out);
@@ -1755,7 +1785,10 @@ NDArray<R> asinh<T, R>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute asinh() on a disposed array.');
   }
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if (a.dtype.isInteger ||
+      a.dtype == DType.boolean ||
+      a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
       final res = asinh<Float64, R>(promoted, where: where, out: out);
@@ -1931,7 +1964,10 @@ NDArray<R> acosh<T, R>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute acosh() on a disposed array.');
   }
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if (a.dtype.isInteger ||
+      a.dtype == DType.boolean ||
+      a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
       final res = acosh<Float64, R>(promoted, where: where, out: out);
@@ -2107,7 +2143,10 @@ NDArray<R> atanh<T, R>(
       (where != null && where.isDisposed)) {
     throw StateError('Cannot execute atanh() on a disposed array.');
   }
-  if (a.dtype.isInteger || a.dtype == DType.boolean) {
+  if (a.dtype.isInteger ||
+      a.dtype == DType.boolean ||
+      a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16) {
     final promoted = promoteToDouble(a);
     try {
       final res = atanh<Float64, R>(promoted, where: where, out: out);
@@ -2402,10 +2441,10 @@ NDArray<double> atan2<Ty, Tx>(
       }
     }
 
-    elementWiseOp<double, double, double>(
+    elementWiseOp<dynamic, dynamic, double>(
       result,
-      y as NDArray<double>,
-      x as NDArray<double>,
+      y,
+      x,
       shape,
       broadcastResult.stridesA,
       broadcastResult.stridesB,
@@ -2414,7 +2453,7 @@ NDArray<double> atan2<Ty, Tx>(
       y.offsetElements,
       x.offsetElements,
       result.offsetElements,
-      (a, b) => math.atan2(a, b),
+      (a, b) => math.atan2((a as num).toDouble(), (b as num).toDouble()),
       maskHolder.pointer,
     );
     return result;
@@ -2443,11 +2482,22 @@ NDArray<R> hypot<Ta, Tb, R>(
   }
   final broadcastResult = broadcast(a, b);
   final shape = broadcastResult.shape;
-  final DType<R> targetDType =
-      ((a.dtype == DType.complex64 || b.dtype == DType.complex64)
-              ? DType.float32
-              : DType.float64)
-          as DType<R>;
+  final isCpx = (a.dtype.isComplex || b.dtype.isComplex);
+  final is64BitComplex = (a.dtype == DType.complex128 ||
+      b.dtype == DType.complex128 ||
+      a.dtype == DType.float64 ||
+      b.dtype == DType.float64 ||
+      a.dtype == DType.int64 ||
+      b.dtype == DType.uint64);
+
+  final DType<R> targetDType;
+  if (isCpx) {
+    targetDType = (is64BitComplex ? DType.float64 : DType.float32) as DType<R>;
+  } else {
+    final resType = resolveDType(a.dtype, b.dtype);
+    targetDType =
+        (resType == DType.float32 ? DType.float32 : DType.float64) as DType<R>;
+  }
 
   final NDArray<R> result;
   if (out != null) {
@@ -2465,35 +2515,32 @@ NDArray<R> hypot<Ta, Tb, R>(
   NDArray<Complex>? bCpx;
 
   try {
-    if (a.dtype == DType.complex128 ||
-        b.dtype == DType.complex128 ||
-        a.dtype == DType.complex64 ||
-        b.dtype == DType.complex64) {
-      aCpx = (a.dtype == DType.complex128 || a.dtype == DType.complex64)
-          ? a as NDArray<Complex>
-          : promoteToComplex(a);
-      bCpx = (b.dtype == DType.complex128 || b.dtype == DType.complex64)
-          ? b as NDArray<Complex>
-          : promoteToComplex(b);
+    if (isCpx) {
+      final cpxDType = is64BitComplex ? DType.complex128 : DType.complex64;
+      aCpx = castNDArray<Complex>(a, cpxDType);
+      bCpx = castNDArray<Complex>(b, cpxDType);
+      final aNonNullCpx = aCpx;
+      final bNonNullCpx = bCpx;
+      final cpxBroadcast = broadcast(aNonNullCpx, bNonNullCpx);
       if (listEquals(a.shape, b.shape) &&
           a.isContiguous &&
           b.isContiguous &&
           result.isContiguous) {
-        if (aCpx.dtype == DType.complex128) {
+        if (cpxDType == DType.complex128) {
           v_hypot_complex128(
-            aCpx.pointer.cast(),
-            bCpx.pointer.cast(),
+            aNonNullCpx.pointer.cast(),
+            bNonNullCpx.pointer.cast(),
             result.pointer.cast(),
-            aCpx.size,
+            aNonNullCpx.size,
             maskHolder.pointer,
           );
           return result;
         } else {
           v_hypot_complex64(
-            aCpx.pointer.cast(),
-            bCpx.pointer.cast(),
+            aNonNullCpx.pointer.cast(),
+            bNonNullCpx.pointer.cast(),
             result.pointer.cast(),
-            aCpx.size,
+            aNonNullCpx.size,
             maskHolder.pointer,
           );
           return result;
@@ -2502,15 +2549,15 @@ NDArray<R> hypot<Ta, Tb, R>(
         final rank = shape.length;
         final marker = ScratchArena.marker;
         final cShape = ScratchArena.copyInts(shape);
-        final cStridesA = ScratchArena.copyInts(broadcastResult.stridesA);
-        final cStridesB = ScratchArena.copyInts(broadcastResult.stridesB);
+        final cStridesA = ScratchArena.copyInts(cpxBroadcast.stridesA);
+        final cStridesB = ScratchArena.copyInts(cpxBroadcast.stridesB);
         final cStridesRes = ScratchArena.copyInts(result.strides);
         try {
-          if (aCpx.dtype == DType.complex128) {
+          if (cpxDType == DType.complex128) {
             s_hypot_complex128(
-              aCpx.pointer.cast(),
+              aNonNullCpx.pointer.cast(),
               cStridesA,
-              bCpx.pointer.cast(),
+              bNonNullCpx.pointer.cast(),
               cStridesB,
               result.pointer.cast(),
               cStridesRes,
@@ -2521,9 +2568,9 @@ NDArray<R> hypot<Ta, Tb, R>(
             return result;
           } else {
             s_hypot_complex64(
-              aCpx.pointer.cast(),
+              aNonNullCpx.pointer.cast(),
               cStridesA,
-              bCpx.pointer.cast(),
+              bNonNullCpx.pointer.cast(),
               cStridesB,
               result.pointer.cast(),
               cStridesRes,
@@ -2553,10 +2600,10 @@ NDArray<R> hypot<Ta, Tb, R>(
       return x * math.sqrt(1.0 + t * t);
     }
 
-    elementWiseOp<num, num, R>(
+    elementWiseOp<dynamic, dynamic, dynamic>(
       result,
-      a as NDArray<num>,
-      b as NDArray<num>,
+      a,
+      b,
       shape,
       broadcastResult.stridesA,
       broadcastResult.stridesB,
@@ -2565,7 +2612,11 @@ NDArray<R> hypot<Ta, Tb, R>(
       a.offsetElements,
       b.offsetElements,
       result.offsetElements,
-      (valA, valB) => hypotOp(valA.toDouble(), valB.toDouble()) as R,
+      (valA, valB) {
+        final da = valA is bool ? (valA ? 1.0 : 0.0) : (valA as num).toDouble();
+        final db = valB is bool ? (valB ? 1.0 : 0.0) : (valB as num).toDouble();
+        return castValue(hypotOp(da, db), result.dtype);
+      },
       maskHolder.pointer,
     );
 

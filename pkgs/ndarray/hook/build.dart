@@ -292,7 +292,19 @@ void main(List<String> args) async {
         final srcF = File(src);
         final objF = File(obj);
         if (!objF.existsSync()) return true;
-        return srcF.lastModifiedSync().isAfter(objF.lastModifiedSync());
+        final objTime = objF.lastModifiedSync();
+        if (srcF.lastModifiedSync().isAfter(objTime)) return true;
+        for (final header in [
+          'hook/custom_indexing.h',
+          'hook/custom_sorting.h',
+          'hook/custom_ufuncs.h',
+        ]) {
+          final hF = File(input.packageRoot.resolve(header).toFilePath());
+          if (hF.existsSync() && hF.lastModifiedSync().isAfter(objTime)) {
+            return true;
+          }
+        }
+        return false;
       }
 
       final ufuncsSrc = input.packageRoot

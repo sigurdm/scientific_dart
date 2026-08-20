@@ -117,7 +117,7 @@ NDArray<T> bincount<T extends num>(
     }
 
     final maxVal = max(x).scalar;
-    final outSize = math.max(maxVal + 1, minlength ?? 0);
+    final minRequiredSize = math.max(maxVal + 1, minlength ?? 0);
 
     if (weights != null) {
       if (weights.isDisposed) {
@@ -133,12 +133,14 @@ NDArray<T> bincount<T extends num>(
         (out?.dtype ?? weights?.dtype ?? DType.int64) as DType<T>;
 
     if (out != null) {
-      if (out.shape.length != 1 || out.shape[0] < outSize) {
+      if (out.shape.length != 1 || out.shape[0] < minRequiredSize) {
         throw ArgumentError(
-          'Output array must be 1D and have size at least $outSize.',
+          'Output array must be 1D and have size at least $minRequiredSize.',
         );
       }
     }
+
+    final outSize = out != null ? out.shape[0] : minRequiredSize;
 
     final size = x.size;
     final resSize = outSize;

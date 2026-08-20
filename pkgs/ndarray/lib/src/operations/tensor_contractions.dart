@@ -1729,7 +1729,7 @@ NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
       final strideRes_1 = maxRank >= 1 ? result.strides[maxRank - 1] : 0;
 
       native_kron_2d(
-        targetDType.index,
+        encodeDType(targetDType),
         aCast.pointer.cast(),
         strideA_0,
         strideA_1,
@@ -1776,7 +1776,7 @@ NDArray<R> kron<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 
       try {
         native_kron_nd(
-          targetDType.index,
+          encodeDType(targetDType),
           aCast.pointer.cast(),
           cStridesA,
           cShapeA,

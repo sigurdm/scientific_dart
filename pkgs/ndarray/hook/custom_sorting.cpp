@@ -1530,6 +1530,52 @@ void native_apply_mask(
             }
             break;
         }
+        case DTYPE_UINT64: { // uint64
+            const uint64_t *s = (const uint64_t *)src;
+            uint64_t *d = (uint64_t *)dest;
+            int count = 0;
+            for (int i = 0; i < size; i++) {
+                if (mask[i]) d[count++] = s[i];
+            }
+            break;
+        }
+        case DTYPE_UINT32: { // uint32
+            const uint32_t *s = (const uint32_t *)src;
+            uint32_t *d = (uint32_t *)dest;
+            int count = 0;
+            for (int i = 0; i < size; i++) {
+                if (mask[i]) d[count++] = s[i];
+            }
+            break;
+        }
+        case DTYPE_UINT16: { // uint16
+            const uint16_t *s = (const uint16_t *)src;
+            uint16_t *d = (uint16_t *)dest;
+            int count = 0;
+            for (int i = 0; i < size; i++) {
+                if (mask[i]) d[count++] = s[i];
+            }
+            break;
+        }
+        case DTYPE_INT8: { // int8
+            const int8_t *s = (const int8_t *)src;
+            int8_t *d = (int8_t *)dest;
+            int count = 0;
+            for (int i = 0; i < size; i++) {
+                if (mask[i]) d[count++] = s[i];
+            }
+            break;
+        }
+        case DTYPE_FLOAT16:
+        case DTYPE_BFLOAT16: {
+            const uint16_t *s = (const uint16_t *)src;
+            uint16_t *d = (uint16_t *)dest;
+            int count = 0;
+            for (int i = 0; i < size; i++) {
+                if (mask[i]) d[count++] = s[i];
+            }
+            break;
+        }
         case DTYPE_BOOLEAN: { // boolean
             const uint8_t *s = (const uint8_t *)src;
             uint8_t *d = (uint8_t *)dest;
@@ -1778,6 +1824,21 @@ static int unique_template(const T *src, T *dest, int size,
     return write_idx + 1;
 }
 
+template<typename T>
+static int unique_scalar_fast(const T *src, T *dest, int size) {
+    if (size <= 0) return 0;
+    memcpy(dest, src, size * sizeof(T));
+    std::sort(dest, dest + size);
+    int write_idx = 0;
+    for (int read_idx = 1; read_idx < size; read_idx++) {
+        if (dest[read_idx] != dest[write_idx]) {
+            write_idx++;
+            dest[write_idx] = dest[read_idx];
+        }
+    }
+    return write_idx + 1;
+}
+
 extern "C" {
 int ndarray_unique(const void *src, void *dest, int size, int dtype,
                    int64_t *out_index, int64_t *out_inverse, int64_t *out_counts) {
@@ -1790,15 +1851,26 @@ int ndarray_unique(const void *src, void *dest, int size, int dtype,
                 return unique_double_fast((const double *)src, (double *)dest, size);
             case DTYPE_FLOAT32:
                 return unique_float_fast((const float *)src, (float *)dest, size);
-            case DTYPE_INT32:
-                return unique_int32_fast((const int32_t *)src, (int32_t *)dest, size);
             case DTYPE_INT64:
-                return unique_int64_fast((const int64_t *)src, (int64_t *)dest, size);
+                return unique_scalar_fast<int64_t>((const int64_t *)src, (int64_t *)dest, size);
+            case DTYPE_INT32:
+                return unique_scalar_fast<int32_t>((const int32_t *)src, (int32_t *)dest, size);
             case DTYPE_INT16:
-                return unique_int16_fast((const int16_t *)src, (int16_t *)dest, size);
+                return unique_scalar_fast<int16_t>((const int16_t *)src, (int16_t *)dest, size);
+            case DTYPE_INT8:
+                return unique_scalar_fast<int8_t>((const int8_t *)src, (int8_t *)dest, size);
+            case DTYPE_UINT64:
+                return unique_scalar_fast<uint64_t>((const uint64_t *)src, (uint64_t *)dest, size);
+            case DTYPE_UINT32:
+                return unique_scalar_fast<uint32_t>((const uint32_t *)src, (uint32_t *)dest, size);
+            case DTYPE_UINT16:
+                return unique_scalar_fast<uint16_t>((const uint16_t *)src, (uint16_t *)dest, size);
             case DTYPE_UINT8:
             case DTYPE_BOOLEAN:
-                return unique_uint8_fast((const uint8_t *)src, (uint8_t *)dest, size);
+                return unique_scalar_fast<uint8_t>((const uint8_t *)src, (uint8_t *)dest, size);
+            case DTYPE_FLOAT16:
+            case DTYPE_BFLOAT16:
+                return unique_scalar_fast<uint16_t>((const uint16_t *)src, (uint16_t *)dest, size);
             case DTYPE_COMPLEX128:
                 return unique_complex128_fast((const complex128_t *)src, (complex128_t *)dest, size);
             case DTYPE_COMPLEX64:
@@ -1831,17 +1903,17 @@ int ndarray_unique(const void *src, void *dest, int size, int dtype,
                     return (a == b) || (std::isnan(a) && std::isnan(b));
                 }
             );
-        case DTYPE_INT32:
-            return unique_template<int32_t>(
-                (const int32_t *)src, (int32_t *)dest, size,
-                out_index, out_inverse, out_counts,
-                std::less<int32_t>(), std::equal_to<int32_t>()
-            );
         case DTYPE_INT64:
             return unique_template<int64_t>(
                 (const int64_t *)src, (int64_t *)dest, size,
                 out_index, out_inverse, out_counts,
                 std::less<int64_t>(), std::equal_to<int64_t>()
+            );
+        case DTYPE_INT32:
+            return unique_template<int32_t>(
+                (const int32_t *)src, (int32_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                std::less<int32_t>(), std::equal_to<int32_t>()
             );
         case DTYPE_INT16:
             return unique_template<int16_t>(
@@ -1849,12 +1921,43 @@ int ndarray_unique(const void *src, void *dest, int size, int dtype,
                 out_index, out_inverse, out_counts,
                 std::less<int16_t>(), std::equal_to<int16_t>()
             );
+        case DTYPE_INT8:
+            return unique_template<int8_t>(
+                (const int8_t *)src, (int8_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                std::less<int8_t>(), std::equal_to<int8_t>()
+            );
+        case DTYPE_UINT64:
+            return unique_template<uint64_t>(
+                (const uint64_t *)src, (uint64_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                std::less<uint64_t>(), std::equal_to<uint64_t>()
+            );
+        case DTYPE_UINT32:
+            return unique_template<uint32_t>(
+                (const uint32_t *)src, (uint32_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                std::less<uint32_t>(), std::equal_to<uint32_t>()
+            );
+        case DTYPE_UINT16:
+            return unique_template<uint16_t>(
+                (const uint16_t *)src, (uint16_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                std::less<uint16_t>(), std::equal_to<uint16_t>()
+            );
         case DTYPE_UINT8:
         case DTYPE_BOOLEAN:
             return unique_template<uint8_t>(
                 (const uint8_t *)src, (uint8_t *)dest, size,
                 out_index, out_inverse, out_counts,
                 std::less<uint8_t>(), std::equal_to<uint8_t>()
+            );
+        case DTYPE_FLOAT16:
+        case DTYPE_BFLOAT16:
+            return unique_template<uint16_t>(
+                (const uint16_t *)src, (uint16_t *)dest, size,
+                out_index, out_inverse, out_counts,
+                std::less<uint16_t>(), std::equal_to<uint16_t>()
             );
         case DTYPE_COMPLEX128:
             return unique_template<complex128_t>(

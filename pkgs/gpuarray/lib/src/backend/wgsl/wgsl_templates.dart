@@ -391,14 +391,18 @@ ${bindings[3].toWgslDeclaration()}
 $mathHelpers
 
 @compute ${wgSize.toAttribute()}
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-  let idx = global_id.x;
-  if (idx >= uniforms.total_elements) {
-    return;
+fn main(
+  @builtin(global_invocation_id) global_id: vec3<u32>,
+  @builtin(num_workgroups) num_workgroups: vec3<u32>
+) {
+  var idx = global_id.x;
+  let stride = num_workgroups.x * ${workgroupSize}u;
+  while (idx < uniforms.total_elements) {
+    let a_val = src_a[idx];
+    let b_val = src_b[idx];
+    dst[idx] = $opExpr;
+    idx += stride;
   }
-  let a_val = src_a[idx];
-  let b_val = src_b[idx];
-  dst[idx] = $opExpr;
 }
 ''';
     } else {
@@ -529,13 +533,17 @@ ${bindings[2].toWgslDeclaration()}
 $mathHelpers
 
 @compute ${wgSize.toAttribute()}
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-  let idx = global_id.x;
-  if (idx >= uniforms.total_elements) {
-    return;
+fn main(
+  @builtin(global_invocation_id) global_id: vec3<u32>,
+  @builtin(num_workgroups) num_workgroups: vec3<u32>
+) {
+  var idx = global_id.x;
+  let stride = num_workgroups.x * ${workgroupSize}u;
+  while (idx < uniforms.total_elements) {
+    let x_val = src[idx];
+    dst[idx] = $unaryExpr;
+    idx += stride;
   }
-  let x_val = src[idx];
-  dst[idx] = $unaryExpr;
 }
 ''';
     } else {

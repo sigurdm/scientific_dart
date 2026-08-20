@@ -86,7 +86,7 @@ NDArray<Float64> fv(
     final NDArray<Float64> fvNonzero = negative(fvNonzeroInner);
 
     final cond = equal(rate, zero);
-    final NDArray<Float64> result = where(cond, fvZero, fvNonzero, out);
+    final result = where(cond, fvZero, fvNonzero, out) as NDArray<Float64>;
     return result.detachToParentScope();
   });
 }
@@ -147,7 +147,7 @@ NDArray<Float64> pv(
     final NDArray<Float64> pvNonzero = negative(pvNonzeroInner);
 
     final cond = equal(rate, zero);
-    final NDArray<Float64> result = where(cond, pvZero, pvNonzero, out);
+    final result = where(cond, pvZero, pvNonzero, out) as NDArray<Float64>;
     return result.detachToParentScope();
   });
 }

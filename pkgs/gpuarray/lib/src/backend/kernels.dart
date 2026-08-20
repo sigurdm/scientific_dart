@@ -1,7 +1,10 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 import '../dtype.dart';
 import '../buffer.dart';
 import 'compute_engine.dart';
+import 'wgsl/wgsl_templates.dart';
+import 'wgsl/wgsl_types.dart';
 
 /// Standard binary operation kernel types.
 enum BinaryOp {
@@ -68,6 +71,32 @@ final class GpuKernels {
     final bStridesA = ShapeUtils.broadcastStrides(shapeA, stridesA, outShape);
     final bStridesB = ShapeUtils.broadcastStrides(shapeB, stridesB, outShape);
     final totalElements = ShapeUtils.computeSize(outShape);
+
+    if (!srcA.device.backend.isSimulated &&
+        dtypeA == DType.float32 &&
+        dtypeB == DType.float32 &&
+        dtypeDst == DType.float32 &&
+        ShapeUtils.isContiguous(shapeA, stridesA) &&
+        ShapeUtils.isContiguous(shapeB, stridesB) &&
+        ShapeUtils.isContiguous(outShape, outStrides) &&
+        offsetA == 0 &&
+        offsetB == 0 &&
+        offsetDst == 0 &&
+        shapeA.length == outShape.length &&
+        shapeB.length == outShape.length) {
+      final shaderModule = WgslTemplates.elementwiseBinary(
+        op: op.name,
+        dtype: WgslDType.float32,
+        strided: false,
+      );
+      srcA.device.backend.dispatchComputePipeline(
+        shaderModule: shaderModule,
+        buffers: [srcA, srcB, dst],
+        uniforms: [totalElements, 0, 0, 0],
+        workgroupsX: math.min(65535, (totalElements + 255) ~/ 256),
+      );
+      return;
+    }
 
     final rank = outShape.length;
     final coords = List<int>.filled(rank, 0);
@@ -165,6 +194,28 @@ final class GpuKernels {
     required DType dtypeDst,
   }) {
     final totalElements = ShapeUtils.computeSize(shape);
+
+    if (!src.device.backend.isSimulated &&
+        dtypeSrc == DType.float32 &&
+        dtypeDst == DType.float32 &&
+        ShapeUtils.isContiguous(shape, strides) &&
+        ShapeUtils.isContiguous(shape, outStrides) &&
+        offsetSrc == 0 &&
+        offsetDst == 0) {
+      final shaderModule = WgslTemplates.elementwiseUnary(
+        op: op.name,
+        dtype: WgslDType.float32,
+        strided: false,
+      );
+      src.device.backend.dispatchComputePipeline(
+        shaderModule: shaderModule,
+        buffers: [src, dst],
+        uniforms: [totalElements, 0, 0, 0],
+        workgroupsX: math.min(65535, (totalElements + 255) ~/ 256),
+      );
+      return;
+    }
+
     final rank = shape.length;
     final coords = List<int>.filled(rank, 0);
 
@@ -481,6 +532,40 @@ final class GpuKernels {
       final M = shapeA[0];
       final K = shapeA[1];
       final N = shapeB[1];
+
+      if (!srcA.device.backend.isSimulated &&
+          dtypeA == DType.float32 &&
+          dtypeB == DType.float32 &&
+          dtypeDst == DType.float32) {
+        final shaderModule = WgslTemplates.tiledMatmul(
+          tileSize: 16,
+          dtype: WgslDType.float32,
+        );
+
+        final alphaBits = ByteData(4)..setFloat32(0, 1.0, Endian.little);
+        final betaBits = ByteData(4)..setFloat32(0, 0.0, Endian.little);
+
+        final uniforms = <int>[
+          M, N, K,
+          stridesA[0], stridesA[1],
+          stridesB[0], stridesB[1],
+          outStrides[0], outStrides[1],
+          offsetA, offsetB, offsetDst,
+          alphaBits.getUint32(0, Endian.little),
+          betaBits.getUint32(0, Endian.little),
+          0, 0,
+        ];
+
+        srcA.device.backend.dispatchComputePipeline(
+          shaderModule: shaderModule,
+          buffers: [srcA, srcB, dst],
+          uniforms: uniforms,
+          workgroupsX: (N + 15) ~/ 16,
+          workgroupsY: (M + 15) ~/ 16,
+          workgroupsZ: 1,
+        );
+        return;
+      }
 
       for (var m = 0; m < M; m++) {
         for (var n = 0; n < N; n++) {

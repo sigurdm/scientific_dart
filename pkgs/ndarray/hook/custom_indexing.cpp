@@ -271,6 +271,37 @@ static int dispatch_take_along_axis_by_dtype(
                 idx_ptr, idx_shape, idx_strides,
                 (int16_t *)dest, out_shape, out_strides,
                 rank, axis, out_error_idx);
+        case DTYPE_UINT64:
+            return take_along_axis_impl<uint64_t, IndexT>(
+                (const uint64_t *)src, arr_shape, arr_strides,
+                idx_ptr, idx_shape, idx_strides,
+                (uint64_t *)dest, out_shape, out_strides,
+                rank, axis, out_error_idx);
+        case DTYPE_UINT32:
+            return take_along_axis_impl<uint32_t, IndexT>(
+                (const uint32_t *)src, arr_shape, arr_strides,
+                idx_ptr, idx_shape, idx_strides,
+                (uint32_t *)dest, out_shape, out_strides,
+                rank, axis, out_error_idx);
+        case DTYPE_UINT16:
+            return take_along_axis_impl<uint16_t, IndexT>(
+                (const uint16_t *)src, arr_shape, arr_strides,
+                idx_ptr, idx_shape, idx_strides,
+                (uint16_t *)dest, out_shape, out_strides,
+                rank, axis, out_error_idx);
+        case DTYPE_INT8:
+            return take_along_axis_impl<int8_t, IndexT>(
+                (const int8_t *)src, arr_shape, arr_strides,
+                idx_ptr, idx_shape, idx_strides,
+                (int8_t *)dest, out_shape, out_strides,
+                rank, axis, out_error_idx);
+        case DTYPE_FLOAT16:
+        case DTYPE_BFLOAT16:
+            return take_along_axis_impl<uint16_t, IndexT>(
+                (const uint16_t *)src, arr_shape, arr_strides,
+                idx_ptr, idx_shape, idx_strides,
+                (uint16_t *)dest, out_shape, out_strides,
+                rank, axis, out_error_idx);
         case DTYPE_COMPLEX128:
             return take_along_axis_impl<complex128_t, IndexT>(
                 (const complex128_t *)src, arr_shape, arr_strides,
@@ -565,6 +596,37 @@ static int dispatch_put_along_axis_by_dtype(
                 idx_ptr, idx_shape, idx_strides,
                 (const int16_t *)values, val_shape, val_strides,
                 rank, axis, out_error_idx);
+        case DTYPE_UINT64:
+            return put_along_axis_impl<uint64_t, IndexT>(
+                (uint64_t *)target, target_shape, target_strides,
+                idx_ptr, idx_shape, idx_strides,
+                (const uint64_t *)values, val_shape, val_strides,
+                rank, axis, out_error_idx);
+        case DTYPE_UINT32:
+            return put_along_axis_impl<uint32_t, IndexT>(
+                (uint32_t *)target, target_shape, target_strides,
+                idx_ptr, idx_shape, idx_strides,
+                (const uint32_t *)values, val_shape, val_strides,
+                rank, axis, out_error_idx);
+        case DTYPE_UINT16:
+            return put_along_axis_impl<uint16_t, IndexT>(
+                (uint16_t *)target, target_shape, target_strides,
+                idx_ptr, idx_shape, idx_strides,
+                (const uint16_t *)values, val_shape, val_strides,
+                rank, axis, out_error_idx);
+        case DTYPE_INT8:
+            return put_along_axis_impl<int8_t, IndexT>(
+                (int8_t *)target, target_shape, target_strides,
+                idx_ptr, idx_shape, idx_strides,
+                (const int8_t *)values, val_shape, val_strides,
+                rank, axis, out_error_idx);
+        case DTYPE_FLOAT16:
+        case DTYPE_BFLOAT16:
+            return put_along_axis_impl<uint16_t, IndexT>(
+                (uint16_t *)target, target_shape, target_strides,
+                idx_ptr, idx_shape, idx_strides,
+                (const uint16_t *)values, val_shape, val_strides,
+                rank, axis, out_error_idx);
         case DTYPE_COMPLEX128:
             return put_along_axis_impl<complex128_t, IndexT>(
                 (complex128_t *)target, target_shape, target_strides,
@@ -707,19 +769,25 @@ extern "C" int native_tile_contiguous(
     switch (dtype) {
         case DTYPE_FLOAT64:
         case DTYPE_INT64:
+        case DTYPE_UINT64:
         case DTYPE_COMPLEX64:
             itemsize = 8;
             break;
         case DTYPE_FLOAT32:
         case DTYPE_INT32:
+        case DTYPE_UINT32:
             itemsize = 4;
             break;
+        case DTYPE_INT16:
+        case DTYPE_UINT16:
+        case DTYPE_FLOAT16:
+        case DTYPE_BFLOAT16:
+            itemsize = 2;
+            break;
+        case DTYPE_INT8:
         case DTYPE_UINT8:
         case DTYPE_BOOLEAN:
             itemsize = 1;
-            break;
-        case DTYPE_INT16:
-            itemsize = 2;
             break;
         case DTYPE_COMPLEX128:
             itemsize = 16;
@@ -918,6 +986,27 @@ extern "C" int native_tile_strided(
             return tile_strided_impl<int16_t>(
                 (const int16_t *)src, src_shape, src_strides, reps,
                 (int16_t *)dest, out_shape, out_strides, rank);
+        case DTYPE_UINT64:
+            return tile_strided_impl<uint64_t>(
+                (const uint64_t *)src, src_shape, src_strides, reps,
+                (uint64_t *)dest, out_shape, out_strides, rank);
+        case DTYPE_UINT32:
+            return tile_strided_impl<uint32_t>(
+                (const uint32_t *)src, src_shape, src_strides, reps,
+                (uint32_t *)dest, out_shape, out_strides, rank);
+        case DTYPE_UINT16:
+            return tile_strided_impl<uint16_t>(
+                (const uint16_t *)src, src_shape, src_strides, reps,
+                (uint16_t *)dest, out_shape, out_strides, rank);
+        case DTYPE_INT8:
+            return tile_strided_impl<int8_t>(
+                (const int8_t *)src, src_shape, src_strides, reps,
+                (int8_t *)dest, out_shape, out_strides, rank);
+        case DTYPE_FLOAT16:
+        case DTYPE_BFLOAT16:
+            return tile_strided_impl<uint16_t>(
+                (const uint16_t *)src, src_shape, src_strides, reps,
+                (uint16_t *)dest, out_shape, out_strides, rank);
         case DTYPE_COMPLEX128:
             return tile_strided_impl<complex128_t>(
                 (const complex128_t *)src, src_shape, src_strides, reps,
@@ -1622,6 +1711,32 @@ extern "C" int native_pad_2d(
                 (const int16_t *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
                 (int16_t *)dest, pad_top, pad_bottom, pad_left, pad_right, mode,
                 (const int16_t *)const_before, (const int16_t *)const_after, is_uniform_constant);
+        case DTYPE_UINT64:
+            return pad_2d_impl<uint64_t>(
+                (const uint64_t *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
+                (uint64_t *)dest, pad_top, pad_bottom, pad_left, pad_right, mode,
+                (const uint64_t *)const_before, (const uint64_t *)const_after, is_uniform_constant);
+        case DTYPE_UINT32:
+            return pad_2d_impl<uint32_t>(
+                (const uint32_t *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
+                (uint32_t *)dest, pad_top, pad_bottom, pad_left, pad_right, mode,
+                (const uint32_t *)const_before, (const uint32_t *)const_after, is_uniform_constant);
+        case DTYPE_UINT16:
+            return pad_2d_impl<uint16_t>(
+                (const uint16_t *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
+                (uint16_t *)dest, pad_top, pad_bottom, pad_left, pad_right, mode,
+                (const uint16_t *)const_before, (const uint16_t *)const_after, is_uniform_constant);
+        case DTYPE_INT8:
+            return pad_2d_impl<int8_t>(
+                (const int8_t *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
+                (int8_t *)dest, pad_top, pad_bottom, pad_left, pad_right, mode,
+                (const int8_t *)const_before, (const int8_t *)const_after, is_uniform_constant);
+        case DTYPE_FLOAT16:
+        case DTYPE_BFLOAT16:
+            return pad_2d_impl<uint16_t>(
+                (const uint16_t *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
+                (uint16_t *)dest, pad_top, pad_bottom, pad_left, pad_right, mode,
+                (const uint16_t *)const_before, (const uint16_t *)const_after, is_uniform_constant);
         case DTYPE_COMPLEX128:
             return pad_2d_impl<complex128_t>(
                 (const complex128_t *)src, src_rows, src_cols, src_stride_rows, src_stride_cols,
@@ -1690,6 +1805,32 @@ extern "C" int native_pad_nd(
                 (const int16_t *)src, src_shape, src_strides,
                 (int16_t *)dest, dest_shape, pad_before, pad_after, rank, mode,
                 (const int16_t *)const_before, (const int16_t *)const_after, is_uniform_constant);
+        case DTYPE_UINT64:
+            return pad_nd_impl<uint64_t>(
+                (const uint64_t *)src, src_shape, src_strides,
+                (uint64_t *)dest, dest_shape, pad_before, pad_after, rank, mode,
+                (const uint64_t *)const_before, (const uint64_t *)const_after, is_uniform_constant);
+        case DTYPE_UINT32:
+            return pad_nd_impl<uint32_t>(
+                (const uint32_t *)src, src_shape, src_strides,
+                (uint32_t *)dest, dest_shape, pad_before, pad_after, rank, mode,
+                (const uint32_t *)const_before, (const uint32_t *)const_after, is_uniform_constant);
+        case DTYPE_UINT16:
+            return pad_nd_impl<uint16_t>(
+                (const uint16_t *)src, src_shape, src_strides,
+                (uint16_t *)dest, dest_shape, pad_before, pad_after, rank, mode,
+                (const uint16_t *)const_before, (const uint16_t *)const_after, is_uniform_constant);
+        case DTYPE_INT8:
+            return pad_nd_impl<int8_t>(
+                (const int8_t *)src, src_shape, src_strides,
+                (int8_t *)dest, dest_shape, pad_before, pad_after, rank, mode,
+                (const int8_t *)const_before, (const int8_t *)const_after, is_uniform_constant);
+        case DTYPE_FLOAT16:
+        case DTYPE_BFLOAT16:
+            return pad_nd_impl<uint16_t>(
+                (const uint16_t *)src, src_shape, src_strides,
+                (uint16_t *)dest, dest_shape, pad_before, pad_after, rank, mode,
+                (const uint16_t *)const_before, (const uint16_t *)const_after, is_uniform_constant);
         case DTYPE_COMPLEX128:
             return pad_nd_impl<complex128_t>(
                 (const complex128_t *)src, src_shape, src_strides,
@@ -1709,21 +1850,26 @@ extern "C" int native_pad_nd(
 // ============================================================================
 // 4. ROLL KERNELS
 // ============================================================================
-
 static inline size_t get_roll_dtype_itemsize(int dtype) {
     switch (dtype) {
         case DTYPE_FLOAT64:
         case DTYPE_INT64:
+        case DTYPE_UINT64:
         case DTYPE_COMPLEX64:
             return 8;
         case DTYPE_FLOAT32:
         case DTYPE_INT32:
+        case DTYPE_UINT32:
             return 4;
+        case DTYPE_INT16:
+        case DTYPE_UINT16:
+        case DTYPE_FLOAT16:
+        case DTYPE_BFLOAT16:
+            return 2;
+        case DTYPE_INT8:
         case DTYPE_UINT8:
         case DTYPE_BOOLEAN:
             return 1;
-        case DTYPE_INT16:
-            return 2;
         case DTYPE_COMPLEX128:
             return 16;
         default:
@@ -1804,72 +1950,45 @@ static int roll_strided_impl(
     const int64_t *RESTRICT dest_strides
 ) {
     if (rank <= 0) {
-        dest[0] = src[0];
+        if (src != dest) {
+            dest[0] = src[0];
+        }
         return 0;
     }
-    const int64_t axis_size = shape[axis];
-    if (axis_size <= 0) return 0;
 
     int64_t total_elements = 1;
     for (int64_t i = 0; i < rank; i++) {
         if (shape[i] <= 0) return 0;
         total_elements *= shape[i];
     }
-    if (total_elements == 0) return 0;
 
+    int64_t axis_size = shape[axis];
     int64_t s = shift % axis_size;
     if (s < 0) s += axis_size;
 
-    // Fast path: 1D strided
-    if (rank == 1) {
-        const int64_t s_stride = src_strides[0];
-        const int64_t d_stride = dest_strides[0];
-        if (s == 0) {
-            for (int64_t i = 0; i < total_elements; i++) {
-                dest[i * d_stride] = src[i * s_stride];
-            }
-            return 0;
-        }
-        for (int64_t i = 0; i < s; i++) {
-            dest[i * d_stride] = src[(axis_size - s + i) * s_stride];
-        }
-        for (int64_t i = 0; i < axis_size - s; i++) {
-            dest[(s + i) * d_stride] = src[i * s_stride];
-        }
-        return 0;
-    }
+    std::vector<int64_t> coords(rank, 0);
 
-    // General N-D strided traversal
-    int64_t coord_stack[32] = {0};
-    std::vector<int64_t> coord_vec;
-    int64_t *coord = coord_stack;
-    if (rank > 32) {
-        coord_vec.assign(rank, 0);
-        coord = coord_vec.data();
-    }
-
-    int64_t offsetDest = 0;
-    for (int64_t el = 0; el < total_elements; el++) {
-        int64_t offsetSrc = 0;
+    for (int64_t idx = 0; idx < total_elements; idx++) {
+        int64_t src_offset = 0;
+        int64_t dest_offset = 0;
         for (int64_t d = 0; d < rank; d++) {
-            int64_t c = coord[d];
             if (d == axis) {
-                int64_t src_c = (c < s) ? (c + axis_size - s) : (c - s);
-                offsetSrc += src_c * src_strides[d];
+                int64_t dest_coord_axis = (coords[d] + s) % axis_size;
+                src_offset += coords[d] * src_strides[d];
+                dest_offset += dest_coord_axis * dest_strides[d];
             } else {
-                offsetSrc += c * src_strides[d];
+                src_offset += coords[d] * src_strides[d];
+                dest_offset += coords[d] * dest_strides[d];
             }
         }
-        dest[offsetDest] = src[offsetSrc];
+        dest[dest_offset] = src[src_offset];
 
         for (int64_t d = rank - 1; d >= 0; d--) {
-            coord[d]++;
-            if (coord[d] < shape[d]) {
-                offsetDest += dest_strides[d];
+            coords[d]++;
+            if (coords[d] < shape[d]) {
                 break;
             }
-            coord[d] = 0;
-            offsetDest -= (shape[d] - 1) * dest_strides[d];
+            coords[d] = 0;
         }
     }
     return 0;
@@ -1903,15 +2022,36 @@ static int dispatch_roll_strided_by_dtype(
             return roll_strided_impl<int32_t>(
                 (const int32_t *)src, shape, src_strides, rank, shift, axis,
                 (int32_t *)dest, dest_strides);
+        case DTYPE_UINT64:
+            return roll_strided_impl<uint64_t>(
+                (const uint64_t *)src, shape, src_strides, rank, shift, axis,
+                (uint64_t *)dest, dest_strides);
+        case DTYPE_UINT32:
+            return roll_strided_impl<uint32_t>(
+                (const uint32_t *)src, shape, src_strides, rank, shift, axis,
+                (uint32_t *)dest, dest_strides);
+        case DTYPE_UINT16:
+            return roll_strided_impl<uint16_t>(
+                (const uint16_t *)src, shape, src_strides, rank, shift, axis,
+                (uint16_t *)dest, dest_strides);
+        case DTYPE_INT16:
+            return roll_strided_impl<int16_t>(
+                (const int16_t *)src, shape, src_strides, rank, shift, axis,
+                (int16_t *)dest, dest_strides);
+        case DTYPE_INT8:
+            return roll_strided_impl<int8_t>(
+                (const int8_t *)src, shape, src_strides, rank, shift, axis,
+                (int8_t *)dest, dest_strides);
         case DTYPE_UINT8:
         case DTYPE_BOOLEAN:
             return roll_strided_impl<uint8_t>(
                 (const uint8_t *)src, shape, src_strides, rank, shift, axis,
                 (uint8_t *)dest, dest_strides);
-        case DTYPE_INT16:
-            return roll_strided_impl<int16_t>(
-                (const int16_t *)src, shape, src_strides, rank, shift, axis,
-                (int16_t *)dest, dest_strides);
+        case DTYPE_FLOAT16:
+        case DTYPE_BFLOAT16:
+            return roll_strided_impl<uint16_t>(
+                (const uint16_t *)src, shape, src_strides, rank, shift, axis,
+                (uint16_t *)dest, dest_strides);
         case DTYPE_COMPLEX128:
             return roll_strided_impl<complex128_t>(
                 (const complex128_t *)src, shape, src_strides, rank, shift, axis,

@@ -5,19 +5,19 @@
 
 #define DTYPE_FLOAT64 0
 #define DTYPE_FLOAT32 1
-#define DTYPE_INT32 2
-#define DTYPE_INT64 3
-#define DTYPE_UINT8 4
-#define DTYPE_INT16 5
-#define DTYPE_COMPLEX128 6
-#define DTYPE_COMPLEX64 7
-#define DTYPE_BOOLEAN 8
-#define DTYPE_FLOAT16 9
-#define DTYPE_BFLOAT16 10
-#define DTYPE_INT8 11
-#define DTYPE_UINT64 12
-#define DTYPE_UINT32 13
-#define DTYPE_UINT16 14
+#define DTYPE_FLOAT16 2
+#define DTYPE_BFLOAT16 3
+#define DTYPE_INT64 4
+#define DTYPE_INT32 5
+#define DTYPE_INT16 6
+#define DTYPE_INT8 7
+#define DTYPE_UINT64 8
+#define DTYPE_UINT32 9
+#define DTYPE_UINT16 10
+#define DTYPE_UINT8 11
+#define DTYPE_COMPLEX128 12
+#define DTYPE_COMPLEX64 13
+#define DTYPE_BOOLEAN 14
 
 #ifdef __cplusplus
 extern "C" {

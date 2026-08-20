@@ -457,15 +457,18 @@ $bufferDeclarations
 ${WgslTemplates.mathHelpers}
 
 @compute ${wgSize.toAttribute()}
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-  let idx = global_id.x;
-  if (idx >= uniforms.total_elements) {
-    return;
-  }
-
+fn main(
+  @builtin(global_invocation_id) global_id: vec3<u32>,
+  @builtin(num_workgroups) num_workgroups: vec3<u32>
+) {
+  var idx = global_id.x;
+  let stride = num_workgroups.x * ${workgroupSize}u;
+  while (idx < uniforms.total_elements) {
 $loadStatements
-  let result = ${expression.toWgsl()};
-  dst[idx] = result;
+    let result = ${expression.toWgsl()};
+    dst[idx] = result;
+    idx += stride;
+  }
 }
 ''';
     } else {

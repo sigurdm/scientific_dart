@@ -8,6 +8,41 @@ import '../scratch_arena.dart';
 import 'spacers.dart';
 import 'helpers.dart';
 
+NDArray _createNDArrayTyped(List<int> shape, DType dtype) {
+  switch (dtype) {
+    case DType.float64:
+      return NDArray<Float64>.create(shape, DType.float64);
+    case DType.float32:
+      return NDArray<Float32>.create(shape, DType.float32);
+    case DType.float16:
+      return NDArray<Float16>.create(shape, DType.float16);
+    case DType.bfloat16:
+      return NDArray<BFloat16>.create(shape, DType.bfloat16);
+    case DType.int64:
+      return NDArray<Int64>.create(shape, DType.int64);
+    case DType.int32:
+      return NDArray<Int32>.create(shape, DType.int32);
+    case DType.int16:
+      return NDArray<Int16>.create(shape, DType.int16);
+    case DType.int8:
+      return NDArray<Int8>.create(shape, DType.int8);
+    case DType.uint64:
+      return NDArray<Uint64>.create(shape, DType.uint64);
+    case DType.uint32:
+      return NDArray<Uint32>.create(shape, DType.uint32);
+    case DType.uint16:
+      return NDArray<Uint16>.create(shape, DType.uint16);
+    case DType.uint8:
+      return NDArray<Uint8>.create(shape, DType.uint8);
+    case DType.complex128:
+      return NDArray<Complex128>.create(shape, DType.complex128);
+    case DType.complex64:
+      return NDArray<Complex64>.create(shape, DType.complex64);
+    case DType.boolean:
+      return NDArray<bool>.create(shape, DType.boolean);
+  }
+}
+
 /// Returns a sorted copy of an array along a specified [axis].
 ///
 /// This function corresponds to NumPy's `sort` function.
@@ -137,14 +172,36 @@ NDArray<T> sort<T extends Object>(
           native_sort_complex128(rowPtr.cast<ffi.Double>(), n, nativeKind);
         case DType.complex64:
           native_sort_complex64(rowPtr.cast<ffi.Float>(), n, nativeKind);
+        case DType.boolean:
+          for (var r = 0; r < numRows; r++) {
+            final rowStart = r * n;
+            final vals = List<bool>.generate(
+              n,
+              (i) => src.getCellFlat(rowStart + i) as bool,
+            );
+            vals.sort((a, b) => a == b ? 0 : (a ? 1 : -1));
+            for (var i = 0; i < n; i++) {
+              (result as NDArray<bool>).setCellFlat(rowStart + i, vals[i]);
+            }
+          }
         case DType.float16:
         case DType.bfloat16:
         case DType.int8:
         case DType.uint64:
         case DType.uint32:
         case DType.uint16:
-        case DType.boolean:
-          break;
+          final doubleSrc = NDArray.fromList(
+            src.toList().cast<num>().map((e) => e.toDouble()).toList(),
+            src.shape,
+            DType.float64,
+          );
+          final doubleSorted = sort(doubleSrc, axis: -1, kind: kind);
+          final casted = castNDArray(doubleSorted, result.dtype);
+          casted.copy(out: result);
+          doubleSrc.dispose();
+          doubleSorted.dispose();
+          casted.dispose();
+          return result;
       }
     }
 
@@ -568,6 +625,7 @@ NDArray<T> partition<T extends Object>(
           case DType.uint32:
           case DType.uint16:
           case DType.boolean:
+            sort(result, axis: rank - 1, out: result);
             break;
         }
       }
@@ -1245,7 +1303,7 @@ dynamic where<T extends Object>(
   final stridesX = broadcastStrides(xCast, commonShape);
   final stridesY = broadcastStrides(yCast, commonShape);
 
-  final result = out ?? NDArray.create(commonShape, targetDType as DType<T>);
+  final NDArray result = out ?? _createNDArrayTyped(commonShape, targetDType);
   final resultStrides = result.strides;
 
   if (commonShape.length > 8) {
@@ -1918,6 +1976,19 @@ NDArray<int> count_nonzero<T>(NDArray<T> a, {int? axis, NDArray<int>? out}) {
       'Cannot write count_nonzero result to a disposed output array.',
     );
   }
+  if (a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16 ||
+      a.dtype == DType.int8 ||
+      a.dtype == DType.uint64 ||
+      a.dtype == DType.uint32 ||
+      a.dtype == DType.uint16) {
+    final doubleA = castNDArray(a, DType.float64);
+    try {
+      return count_nonzero(doubleA, axis: axis, out: out);
+    } finally {
+      doubleA.dispose();
+    }
+  }
 
   final rank = a.shape.length;
 
@@ -2149,6 +2220,19 @@ NDArray<int> _argminmaxFFI<T>(
   }
   if (a.dtype == DType.complex128 || a.dtype == DType.complex64) {
     throw UnsupportedError('Complex numbers are not supported.');
+  }
+  if (a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16 ||
+      a.dtype == DType.int8 ||
+      a.dtype == DType.uint64 ||
+      a.dtype == DType.uint32 ||
+      a.dtype == DType.uint16) {
+    final doubleA = castNDArray(a, DType.float64);
+    try {
+      return _argminmaxFFI(doubleA, axis, isMax, keepdims: keepdims, out: out);
+    } finally {
+      doubleA.dispose();
+    }
   }
 
   final rank = a.shape.length;

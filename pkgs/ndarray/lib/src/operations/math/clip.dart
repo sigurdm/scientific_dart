@@ -96,31 +96,31 @@ NDArray<T> clip<T>(
     if (a.dtype.isInteger) {
       final mn = resolvedMin.toInt();
       final mx = resolvedMax.toInt();
-      unaryOp<int, int>(
-        result as NDArray<int>,
-        a as NDArray<int>,
+      unaryOp<dynamic, dynamic>(
+        result,
+        a,
         a.shape,
         a.strides,
         result.strides,
         0,
         a.offsetElements,
         result.offsetElements,
-        (x) => x.clamp(mn, mx),
+        (x) => castValue((x as num).toInt().clamp(mn, mx), a.dtype),
         maskHolder.pointer,
       );
     } else {
       final mn = resolvedMin.toDouble();
       final mx = resolvedMax.toDouble();
-      unaryOp<double, double>(
-        result as NDArray<double>,
-        a as NDArray<double>,
+      unaryOp<dynamic, dynamic>(
+        result,
+        a,
         a.shape,
         a.strides,
         result.strides,
         0,
         a.offsetElements,
         result.offsetElements,
-        (x) => x.clamp(mn, mx),
+        (x) => castValue((x as num).toDouble().clamp(mn, mx), a.dtype),
         maskHolder.pointer,
       );
     }
@@ -380,45 +380,27 @@ NDArray<T> clipArray<T>(
         ScratchArena.reset(marker);
       }
 
-      if (a.dtype.isInteger) {
-        ternaryOp<int, int, int, int>(
-          result as NDArray<int>,
-          broadcastA as NDArray<int>,
-          broadcastMin as NDArray<int>,
-          broadcastMax as NDArray<int>,
-          commonShape,
-          broadcastA.strides,
-          broadcastMin.strides,
-          broadcastMax.strides,
-          result.strides,
-          0,
-          broadcastA.offsetElements,
-          broadcastMin.offsetElements,
-          broadcastMax.offsetElements,
-          result.offsetElements,
-          (x, mn, mx) => x.clamp(mn, mx),
-          maskHolder.pointer,
-        );
-      } else {
-        ternaryOp<double, double, double, double>(
-          result as NDArray<double>,
-          broadcastA as NDArray<double>,
-          broadcastMin as NDArray<double>,
-          broadcastMax as NDArray<double>,
-          commonShape,
-          broadcastA.strides,
-          broadcastMin.strides,
-          broadcastMax.strides,
-          result.strides,
-          0,
-          broadcastA.offsetElements,
-          broadcastMin.offsetElements,
-          broadcastMax.offsetElements,
-          result.offsetElements,
-          (x, mn, mx) => x.clamp(mn, mx),
-          maskHolder.pointer,
-        );
-      }
+      ternaryOp<dynamic, dynamic, dynamic, dynamic>(
+        result,
+        broadcastA,
+        broadcastMin,
+        broadcastMax,
+        commonShape,
+        broadcastA.strides,
+        broadcastMin.strides,
+        broadcastMax.strides,
+        result.strides,
+        0,
+        broadcastA.offsetElements,
+        broadcastMin.offsetElements,
+        broadcastMax.offsetElements,
+        result.offsetElements,
+        (x, mn, mx) => castValue(
+          (x as num).clamp(mn as num, mx as num),
+          a.dtype,
+        ),
+        maskHolder.pointer,
+      );
 
       return result;
     } finally {
@@ -434,6 +416,8 @@ num _getMinLimit(DType dtype) {
   switch (dtype) {
     case DType.float64:
     case DType.float32:
+    case DType.float16:
+    case DType.bfloat16:
       return double.negativeInfinity;
     case DType.int64:
       return -9223372036854775808;
@@ -441,6 +425,11 @@ num _getMinLimit(DType dtype) {
       return -2147483648;
     case DType.int16:
       return -32768;
+    case DType.int8:
+      return -128;
+    case DType.uint64:
+    case DType.uint32:
+    case DType.uint16:
     case DType.uint8:
       return 0;
     default:
@@ -452,6 +441,8 @@ num _getMaxLimit(DType dtype) {
   switch (dtype) {
     case DType.float64:
     case DType.float32:
+    case DType.float16:
+    case DType.bfloat16:
       return double.infinity;
     case DType.int64:
       return 9223372036854775807;
@@ -459,6 +450,14 @@ num _getMaxLimit(DType dtype) {
       return 2147483647;
     case DType.int16:
       return 32767;
+    case DType.int8:
+      return 127;
+    case DType.uint64:
+      return 9223372036854775807;
+    case DType.uint32:
+      return 4294967295;
+    case DType.uint16:
+      return 65535;
     case DType.uint8:
       return 255;
     default:
