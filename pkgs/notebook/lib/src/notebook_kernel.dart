@@ -140,7 +140,7 @@ class NotebookKernel {
 
     var vm = await _service!.getVM();
     IsolateRef? mainIsolateRef;
-    final timeout = DateTime.now().add(const Duration(seconds: 10));
+    final timeout = DateTime.now().add(const Duration(seconds: 30));
 
     while (mainIsolateRef == null) {
       if (DateTime.now().isAfter(timeout)) {
@@ -162,7 +162,7 @@ class NotebookKernel {
 
     _isolateId = mainIsolateRef.id!;
 
-    final isolateTimeout = DateTime.now().add(const Duration(seconds: 10));
+    final isolateTimeout = DateTime.now().add(const Duration(seconds: 30));
     var isolate = await _service!.getIsolate(_isolateId!);
     while (isolate.runnable != true || isolate.rootLib == null) {
       if (DateTime.now().isAfter(isolateTimeout)) {

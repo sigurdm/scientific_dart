@@ -43,6 +43,9 @@ final class HtmlCodeEditor {
   bool _isDragging = false;
   bool _isFocused = false;
 
+  /// The root DOM element for this editor.
+  web.HTMLDivElement get rootElement => _root;
+
   /// Creates and mounts an [HtmlCodeEditor] into [hostElement].
   HtmlCodeEditor({
     required this.hostElement,

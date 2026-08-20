@@ -22,11 +22,12 @@
         const instantiatedApp = await compiledApp.instantiate({});
         instantiatedApp.invokeMain();
         console.log('Dart CodeEditor WebAssembly module loaded successfully. DartEditor type:', typeof window.DartEditor);
-        if (typeof window.switchEditorEngine === 'function') {
-          const stored = localStorage.getItem('notebook_editor_engine') || 'codemirror';
+        const stored = localStorage.getItem('notebook_editor_engine');
+        if (stored) {
+          currentEditorEngine = stored;
           const select = document.getElementById('editorEngineSelect');
           if (select) select.value = stored;
-          if (stored === 'dart_editor') {
+          if (stored === 'dart_editor' && typeof window.switchEditorEngine === 'function') {
             window.switchEditorEngine('dart_editor');
           }
         }
@@ -955,7 +956,7 @@
       cell.innerHTML = `
         <div class="cell-header">
           <span class="cell-number">[ M ]</span>
-          <span class="cell-engine-badge cm" style="color: #a6e3a1; border-color: rgba(166, 227, 161, 0.3);">Markdown</span>
+          <span class="cell-engine-badge md" style="color: #a6e3a1; border-color: rgba(166, 227, 161, 0.3);">Markdown</span>
           <div class="cell-actions">
             <button onclick="runCell('${cellId}')" title="Render Markdown (Shift+Enter)">▶ Render</button>
             <button onclick="editMarkdownCell('${cellId}')" title="Edit Markdown">✏️ Edit</button>
@@ -1083,11 +1084,14 @@
       localStorage.setItem('notebook_editor_engine', engine);
 
       document.querySelectorAll('.cell').forEach(cell => {
-        const code = cell._cm ? cell._cm.getValue() : '';
+        if (cell.getAttribute('data-cell-type') === 'markdown') return;
+        const code = cell._cm ? cell._cm.getValue() : (document.getElementById(`editor-${cell.id}`)?.value || '');
         const container = cell.querySelector('.code-container');
-        container.innerHTML = `<textarea class="code-editor" id="editor-${cell.id}" placeholder="Enter Dart code or expression... (Ctrl+Space for autocompletion)">${code}</textarea>`;
-        const textarea = document.getElementById(`editor-${cell.id}`);
-        setupEditorForCell(cell, textarea, cell.id, code);
+        if (container) {
+          container.innerHTML = `<textarea class="code-editor" id="editor-${cell.id}" placeholder="Enter Dart code or expression... (Ctrl+Space for autocompletion)">${code}</textarea>`;
+          const textarea = document.getElementById(`editor-${cell.id}`);
+          setupEditorForCell(cell, textarea, cell.id, code);
+        }
       });
     }
 
@@ -1187,7 +1191,14 @@
         if (!cm.getLine) cm.getLine = () => '';
         if (!cm.replaceRange) cm.replaceRange = () => {};
         if (!cm.focus) cm.focus = () => textarea.focus();
-        if (!cm.on) cm.on = () => {};
+        if (typeof cm.on === 'function') {
+          cm.on('change', (instance, changeObj) => {
+            cell.classList.remove('evaluated');
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'update_cell', id: cellId, code: cm.getValue() }));
+            }
+          });
+        }
       }
 
       cell._cm = cm;

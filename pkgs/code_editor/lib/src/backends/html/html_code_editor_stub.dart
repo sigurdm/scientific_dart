@@ -17,6 +17,8 @@ final class HtmlCodeEditor {
     this.onHoverRequested,
   });
 
+  Object get rootElement => Object();
+
   void focus() {}
   void render() {}
 }
