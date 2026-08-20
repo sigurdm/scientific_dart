@@ -344,6 +344,21 @@ final class GpuComputePipelinePackage {
         // 4. Allocate Uniforms Buffer
         let uniformBuffer = null;
         let uniformData = new Uint32Array(pkg.uniforms.length > 0 ? pkg.uniforms : [1, 0, 0, 0]);
+
+        // Pre-populate slider initial values into uniformData
+        if (pkg.sliders && pkg.sliders.length > 0) {
+          for (let i = 0; i < pkg.sliders.length; i++) {
+            const s = pkg.sliders[i];
+            const val = parseFloat(s.initialValue);
+            if (s.isInteger) {
+              uniformData[s.uniformWordIndex] = Math.round(val);
+            } else {
+              const f32View = new Float32Array(uniformData.buffer);
+              f32View[s.uniformWordIndex] = val;
+            }
+          }
+        }
+
         if (pkg.uniforms && pkg.uniforms.length > 0) {
           const uniSize = Math.max(16, ((uniformData.byteLength + 15) & ~15));
           uniformBuffer = device.createBuffer({

@@ -861,17 +861,18 @@
             wrapper.className = 'output-html-wrapper';
             wrapper.innerHTML = payload;
             tryRenderKaTeX(wrapper);
+            outputElement.appendChild(wrapper);
             const scripts = Array.from(wrapper.getElementsByTagName('script'));
             for (const s of scripts) {
-              if (s.innerText) {
+              const code = s.innerText || s.textContent;
+              if (code) {
                 try {
-                  new Function(s.innerText)();
+                  new Function(code)();
                 } catch (e) {
                   console.warn('Script execution error:', e);
                 }
               }
             }
-            outputElement.appendChild(wrapper);
           } else {
             const wrapper = document.createElement('div');
             wrapper.className = 'output-plain-text';
@@ -902,6 +903,17 @@
         wrapper.innerHTML = cleaned;
         tryRenderKaTeX(wrapper);
         outputElement.appendChild(wrapper);
+        const scripts = Array.from(wrapper.getElementsByTagName('script'));
+        for (const s of scripts) {
+          const code = s.innerText || s.textContent;
+          if (code) {
+            try {
+              new Function(code)();
+            } catch (e) {
+              console.warn('Script execution error:', e);
+            }
+          }
+        }
         return;
       }
 
