@@ -72,6 +72,13 @@ final class GpuKernels {
     final rank = outShape.length;
     final coords = List<int>.filled(rank, 0);
 
+    final isComplex = dtypeA == DType.complex64 ||
+        dtypeA == DType.complex128 ||
+        dtypeB == DType.complex64 ||
+        dtypeB == DType.complex128 ||
+        dtypeDst == DType.complex64 ||
+        dtypeDst == DType.complex128;
+
     for (var i = 0; i < totalElements; i++) {
       // Calculate source element offsets from multidimensional coordinates
       var elemIdxA = 0;
@@ -84,28 +91,53 @@ final class GpuKernels {
         elemIdxDst += coords[d] * outStrides[d];
       }
 
-      final valA = ComputeEngine.readValue(
-        srcA,
-        dtypeA,
-        elemIdxA,
-        offsetElements: offsetA,
-      );
-      final valB = ComputeEngine.readValue(
-        srcB,
-        dtypeB,
-        elemIdxB,
-        offsetElements: offsetB,
-      );
+      if (isComplex) {
+        final valA = ComputeEngine.readAny(
+          srcA,
+          dtypeA,
+          elemIdxA,
+          offsetElements: offsetA,
+        );
+        final valB = ComputeEngine.readAny(
+          srcB,
+          dtypeB,
+          elemIdxB,
+          offsetElements: offsetB,
+        );
 
-      final result = _applyBinary(op, valA, valB);
+        final result = _applyComplexBinary(op, valA, valB);
 
-      ComputeEngine.writeValue(
-        dst,
-        dtypeDst,
-        elemIdxDst,
-        result,
-        offsetElements: offsetDst,
-      );
+        ComputeEngine.writeAny(
+          dst,
+          dtypeDst,
+          elemIdxDst,
+          result,
+          offsetElements: offsetDst,
+        );
+      } else {
+        final valA = ComputeEngine.readValue(
+          srcA,
+          dtypeA,
+          elemIdxA,
+          offsetElements: offsetA,
+        );
+        final valB = ComputeEngine.readValue(
+          srcB,
+          dtypeB,
+          elemIdxB,
+          offsetElements: offsetB,
+        );
+
+        final result = _applyBinary(op, valA, valB);
+
+        ComputeEngine.writeValue(
+          dst,
+          dtypeDst,
+          elemIdxDst,
+          result,
+          offsetElements: offsetDst,
+        );
+      }
 
       // Increment multidimensional coordinate
       for (var d = rank - 1; d >= 0; d--) {
@@ -135,6 +167,11 @@ final class GpuKernels {
     final rank = shape.length;
     final coords = List<int>.filled(rank, 0);
 
+    final isComplex = dtypeSrc == DType.complex64 ||
+        dtypeSrc == DType.complex128 ||
+        dtypeDst == DType.complex64 ||
+        dtypeDst == DType.complex128;
+
     for (var i = 0; i < totalElements; i++) {
       var elemIdxSrc = 0;
       var elemIdxDst = 0;
@@ -144,21 +181,39 @@ final class GpuKernels {
         elemIdxDst += coords[d] * outStrides[d];
       }
 
-      final val = ComputeEngine.readValue(
-        src,
-        dtypeSrc,
-        elemIdxSrc,
-        offsetElements: offsetSrc,
-      );
-      final result = _applyUnary(op, val);
+      if (isComplex) {
+        final val = ComputeEngine.readAny(
+          src,
+          dtypeSrc,
+          elemIdxSrc,
+          offsetElements: offsetSrc,
+        );
+        final result = _applyComplexUnary(op, val);
 
-      ComputeEngine.writeValue(
-        dst,
-        dtypeDst,
-        elemIdxDst,
-        result,
-        offsetElements: offsetDst,
-      );
+        ComputeEngine.writeAny(
+          dst,
+          dtypeDst,
+          elemIdxDst,
+          result,
+          offsetElements: offsetDst,
+        );
+      } else {
+        final val = ComputeEngine.readValue(
+          src,
+          dtypeSrc,
+          elemIdxSrc,
+          offsetElements: offsetSrc,
+        );
+        final result = _applyUnary(op, val);
+
+        ComputeEngine.writeValue(
+          dst,
+          dtypeDst,
+          elemIdxDst,
+          result,
+          offsetElements: offsetDst,
+        );
+      }
 
       for (var d = rank - 1; d >= 0; d--) {
         coords[d]++;
@@ -514,6 +569,62 @@ final class GpuKernels {
         }
         coords[d] = 0;
       }
+    }
+  }
+
+  static dynamic _applyComplexBinary(BinaryOp op, dynamic rawA, dynamic rawB) {
+    Complex toC(dynamic v) {
+      if (v is Complex) return v;
+      if (v is num) return Complex(v.toDouble(), 0.0);
+      if (v is bool) return Complex(v ? 1.0 : 0.0, 0.0);
+      return Complex(0.0, 0.0);
+    }
+    final a = toC(rawA);
+    final b = toC(rawB);
+    switch (op) {
+      case BinaryOp.add:
+        return Complex(a.real + b.real, a.imag + b.imag);
+      case BinaryOp.subtract:
+        return Complex(a.real - b.real, a.imag - b.imag);
+      case BinaryOp.multiply:
+        return Complex(
+          a.real * b.real - a.imag * b.imag,
+          a.real * b.imag + a.imag * b.real,
+        );
+      case BinaryOp.divide:
+        final denom = b.real * b.real + b.imag * b.imag;
+        if (denom == 0) return Complex(double.nan, double.nan);
+        return Complex(
+          (a.real * b.real + a.imag * b.imag) / denom,
+          (a.imag * b.real - a.real * b.imag) / denom,
+        );
+      case BinaryOp.equal:
+        return (a.real == b.real && a.imag == b.imag) ? 1 : 0;
+      case BinaryOp.notEqual:
+        return (a.real != b.real || a.imag != b.imag) ? 1 : 0;
+      default:
+        return Complex(a.real, a.imag);
+    }
+  }
+
+  static dynamic _applyComplexUnary(UnaryOp op, dynamic raw) {
+    Complex toC(dynamic v) {
+      if (v is Complex) return v;
+      if (v is num) return Complex(v.toDouble(), 0.0);
+      if (v is bool) return Complex(v ? 1.0 : 0.0, 0.0);
+      return Complex(0.0, 0.0);
+    }
+    final c = toC(raw);
+    switch (op) {
+      case UnaryOp.negate:
+        return Complex(-c.real, -c.imag);
+      case UnaryOp.abs:
+        return math.sqrt(c.real * c.real + c.imag * c.imag);
+      case UnaryOp.exp:
+        final expR = math.exp(c.real);
+        return Complex(expR * math.cos(c.imag), expR * math.sin(c.imag));
+      default:
+        return c;
     }
   }
 

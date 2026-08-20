@@ -44,7 +44,7 @@ final class GpuDevice implements ScopedResource {
   /// Hardware category of this device.
   final GpuDeviceType type;
 
-  final Set<GpuBuffer> _activeBuffers = {};
+  final Set<WeakReference<GpuBuffer>> _activeBuffers = {};
   bool _isDisposed = false;
 
   GpuDevice._({
@@ -68,12 +68,28 @@ final class GpuDevice implements ScopedResource {
   @override
   bool get isDisposed => _isDisposed;
 
+  void _pruneDeadBuffers() {
+    _activeBuffers.removeWhere((ref) => ref.target == null);
+  }
+
   /// Total number of active buffers currently allocated on this device.
-  int get activeBufferCount => _activeBuffers.length;
+  int get activeBufferCount {
+    _pruneDeadBuffers();
+    return _activeBuffers.length;
+  }
 
   /// Total bytes of memory currently allocated on this device.
-  int get allocatedMemoryBytes =>
-      _activeBuffers.fold(0, (sum, buf) => sum + buf.sizeInBytes);
+  int get allocatedMemoryBytes {
+    _pruneDeadBuffers();
+    var sum = 0;
+    for (final ref in _activeBuffers) {
+      final buf = ref.target;
+      if (buf != null && !buf.isDisposed) {
+        sum += buf.sizeInBytes;
+      }
+    }
+    return sum;
+  }
 
   /// Allocates a new [GpuBuffer] on this device.
   GpuBuffer createBuffer({
@@ -85,6 +101,7 @@ final class GpuDevice implements ScopedResource {
         'Cannot allocate on a disposed GpuDevice.',
       );
     }
+    _pruneDeadBuffers();
     return GpuBuffer.allocate(
       sizeInBytes: sizeInBytes,
       usage: usage,
@@ -132,12 +149,16 @@ final class GpuDevice implements ScopedResource {
 
   /// Registers an active buffer with this device.
   void registerBuffer(GpuBuffer buffer) {
-    _activeBuffers.add(buffer);
+    _pruneDeadBuffers();
+    _activeBuffers.add(WeakReference(buffer));
   }
 
   /// Unregisters a buffer from this device when it is disposed.
   void unregisterBuffer(GpuBuffer buffer) {
-    _activeBuffers.remove(buffer);
+    _activeBuffers.removeWhere((ref) {
+      final target = ref.target;
+      return target == null || identical(target, buffer);
+    });
   }
 
   @override
@@ -145,7 +166,10 @@ final class GpuDevice implements ScopedResource {
     if (_isDisposed) return;
     _isDisposed = true;
     ResourceScope.untrack(this);
-    final buffers = _activeBuffers.toList();
+    final buffers = _activeBuffers
+        .map((ref) => ref.target)
+        .whereType<GpuBuffer>()
+        .toList();
     for (final buf in buffers) {
       if (!buf.isDisposed) {
         buf.dispose();

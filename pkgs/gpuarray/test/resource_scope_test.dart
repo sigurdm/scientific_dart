@@ -55,5 +55,73 @@ void main() {
         expect(result.isDisposed, isTrue);
       },
     );
+    test(
+      'ResourceScope.returning promotes subviews without use-after-free',
+      () {
+        GpuArray? parentRef;
+
+        final subview = ResourceScope.returning(() {
+          final parent = GpuArray.fromList([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [2, 3], DType.float64);
+          parentRef = parent;
+          final view = parent.slice([Slice(0, 2), Slice(1, 3)]);
+          return view;
+        });
+
+        // Parent array is disposed at scope exit
+        expect(parentRef!.isDisposed, isTrue);
+
+        // Subview and its underlying buffer remain active and accessible
+        expect(subview.isDisposed, isFalse);
+        expect(subview.buffer.isDisposed, isFalse);
+        expect(subview.shape, equals([2, 2]));
+        expect(subview.toList(), equals([2.0, 3.0, 5.0, 6.0]));
+
+        // Disposing the subview finally releases the buffer
+        subview.dispose();
+        expect(subview.isDisposed, isTrue);
+        expect(subview.buffer.isDisposed, isTrue);
+      },
+    );
+
+    test('Multiple views reference count buffer correctly', () {
+      final base = GpuArray.fromList([10.0, 20.0, 30.0, 40.0], [4], DType.float64);
+      final v1 = base.slice([Slice(0, 2)]);
+      final v2 = base.slice([Slice(2, 4)]);
+      expect(base.buffer.refCount, equals(3));
+
+      base.dispose();
+      expect(base.isDisposed, isTrue);
+      expect(v1.isDisposed, isFalse);
+      expect(v1.buffer.isDisposed, isFalse);
+      expect(v1.toList(), equals([10.0, 20.0]));
+
+      v1.dispose();
+      expect(v1.isDisposed, isTrue);
+      expect(v2.isDisposed, isFalse);
+      expect(v2.buffer.isDisposed, isFalse);
+      expect(v2.toList(), equals([30.0, 40.0]));
+
+      v2.dispose();
+      expect(v2.isDisposed, isTrue);
+      expect(v2.buffer.isDisposed, isTrue);
+    });
+
+    test('GpuDevice activeBufferCount and memory tracking with WeakReference', () {
+      final dev = GpuDevice.create(name: 'Test Dev');
+      expect(dev.activeBufferCount, equals(0));
+
+      final buf1 = dev.createBuffer(sizeInBytes: 128, usage: GpuBufferUsage.storage);
+      final buf2 = dev.createBuffer(sizeInBytes: 256, usage: GpuBufferUsage.storage);
+      expect(dev.activeBufferCount, equals(2));
+      expect(dev.allocatedMemoryBytes, equals(384));
+
+      buf1.dispose();
+      expect(dev.activeBufferCount, equals(1));
+      expect(dev.allocatedMemoryBytes, equals(256));
+
+      dev.dispose();
+      expect(dev.isDisposed, isTrue);
+      expect(buf2.isDisposed, isTrue);
+    });
   });
 }

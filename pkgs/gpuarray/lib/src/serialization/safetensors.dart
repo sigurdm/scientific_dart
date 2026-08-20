@@ -1,3 +1,4 @@
+import '../backend/compute_engine.dart';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'dart:io';
@@ -107,11 +108,11 @@ Uint8List saveSafetensors(
     currentOffset += byteLen;
 
     final u8List = Uint8List(byteLen);
-    final ptr = (contiguousTensor.buffer.pointer.cast<ffi.Uint8>() +
-            contiguousTensor.offsetElements * contiguousTensor.dtype.byteWidth)
-        .cast<ffi.Uint8>();
-    for (var i = 0; i < byteLen; i++) {
-      u8List[i] = ptr[i];
+    if (byteLen > 0) {
+      final ptr = (contiguousTensor.buffer.pointer.cast<ffi.Uint8>() +
+              contiguousTensor.offsetElements * contiguousTensor.dtype.byteWidth)
+          .cast<ffi.Uint8>();
+      u8List.setAll(0, ptr.asTypedList(byteLen));
     }
     tensorBytesList.add(u8List);
 
@@ -146,8 +147,19 @@ Map<String, GpuArray> loadSafetensors(
   GpuDevice? device,
 }) {
   final dev = device ?? GpuDevice.defaultDevice;
+  if (bytes.length < 8) {
+    throw ArgumentError(
+      'Invalid SafeTensors buffer: buffer size (${bytes.length}) smaller than header length prefix.',
+    );
+  }
   final bdata = ByteData.sublistView(bytes);
   final headerLen = bdata.getUint64(0, Endian.little);
+
+  if (8 + headerLen > bytes.length) {
+    throw ArgumentError(
+      'Invalid SafeTensors buffer: header length ($headerLen) exceeds buffer size (${bytes.length}).',
+    );
+  }
 
   final headerBytes = bytes.sublist(8, 8 + headerLen);
   final headerJson = utf8.decode(headerBytes);
@@ -165,14 +177,31 @@ Map<String, GpuArray> loadSafetensors(
     final shape = (info['shape'] as List).cast<int>();
     final offsets = (info['data_offsets'] as List).cast<int>();
 
+    if (offsets.length != 2 || offsets[0] < 0 || offsets[1] < offsets[0]) {
+      throw FormatException('Invalid data_offsets for tensor "${entry.key}": $offsets');
+    }
+
     final start = dataStartOffset + offsets[0];
     final end = dataStartOffset + offsets[1];
-    final rawTensorBytes = bytes.sublist(start, end);
+    final expectedByteSize = ShapeUtils.computeSize(shape) * dtype.byteWidth;
+
+    if (offsets[1] - offsets[0] != expectedByteSize) {
+      throw FormatException(
+        'Data offset length (${offsets[1] - offsets[0]}) does not match expected tensor byte size ($expectedByteSize) for tensor "${entry.key}".',
+      );
+    }
+
+    if (end > bytes.length) {
+      throw FormatException(
+        'Data offset end ($end) exceeds buffer length (${bytes.length}) for tensor "${entry.key}".',
+      );
+    }
 
     final tensor = GpuArray.empty(shape, dtype, device: dev);
-    final ptr = tensor.buffer.pointer.cast<ffi.Uint8>();
-    for (var i = 0; i < rawTensorBytes.length; i++) {
-      ptr[i] = rawTensorBytes[i];
+    if (expectedByteSize > 0) {
+      final ptr = tensor.buffer.pointer.cast<ffi.Uint8>();
+      final srcView = Uint8List.sublistView(bytes, start, end);
+      ptr.asTypedList(expectedByteSize).setAll(0, srcView);
     }
 
     result[entry.key] = tensor;

@@ -164,6 +164,16 @@ final class ComputeEngine {
       if (v is bool) return v ? 1.0 : 0.0;
       if (v is num) return v.toDouble();
       if (v is Complex) return v.real;
+      if (v is Float16) return v.value;
+      if (v is BFloat16) return v.value;
+      if (v is Int64) return v.value.toDouble();
+      if (v is Int32) return v.value.toDouble();
+      if (v is Int16) return v.value.toDouble();
+      if (v is Int8) return v.value.toDouble();
+      if (v is Uint64) return v.value.toDouble();
+      if (v is Uint32) return v.value.toDouble();
+      if (v is Uint16) return v.value.toDouble();
+      if (v is Uint8) return v.value.toDouble();
       return 0.0;
     }
 
@@ -171,6 +181,16 @@ final class ComputeEngine {
       if (v is bool) return v ? 1 : 0;
       if (v is num) return v.toInt();
       if (v is BigInt) return v.toSigned(64).toInt();
+      if (v is Float16) return v.value.toInt();
+      if (v is BFloat16) return v.value.toInt();
+      if (v is Int64) return v.value;
+      if (v is Int32) return v.value;
+      if (v is Int16) return v.value;
+      if (v is Int8) return v.value;
+      if (v is Uint64) return v.value;
+      if (v is Uint32) return v.value;
+      if (v is Uint16) return v.value;
+      if (v is Uint8) return v.value;
       return 0;
     }
 
@@ -200,7 +220,9 @@ final class ComputeEngine {
         ptr.cast<ffi.Int8>()[idx] = toIntVal(value);
         break;
       case DType.uint64:
-        ptr.cast<ffi.Uint64>()[idx] = toIntVal(value);
+        ptr.cast<ffi.Uint64>()[idx] = (value is BigInt)
+            ? value.toUnsigned(64).toInt()
+            : (value is Uint64 ? value.value : toIntVal(value));
         break;
       case DType.uint32:
         ptr.cast<ffi.Uint32>()[idx] = toIntVal(value);
