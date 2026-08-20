@@ -292,16 +292,16 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
 
   /// Returns a new tensor sharing the same buffer, detached from the current autograd graph.
   GpuArray<T> detach() => GpuArray<T>._(
-        buffer,
-        shape: shape,
-        strides: strides,
-        dtype: dtype,
-        device: device,
-        offsetElements: offsetElements,
-        isContiguous: isContiguous,
-        parent: _parent ?? this,
-        requiresGrad: false,
-      );
+    buffer,
+    shape: shape,
+    strides: strides,
+    dtype: dtype,
+    device: device,
+    offsetElements: offsetElements,
+    isContiguous: isContiguous,
+    parent: _parent ?? this,
+    requiresGrad: false,
+  );
 
   /// Returns the scalar value if this array has exactly one element.
   T get scalar {
@@ -844,7 +844,9 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
     try {
       ndarray = nd.NDArray<T>.create(shape, dtype);
     } catch (_) {
-      ndarray = (nd.NDArray<dynamic>.create(shape, dtype) as dynamic) as nd.NDArray<T>;
+      ndarray =
+          (nd.NDArray<dynamic>.create(shape, dtype) as dynamic)
+              as nd.NDArray<T>;
     }
 
     contiguousArray.buffer.copyToHost(
@@ -1086,10 +1088,11 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
       }
     }
 
-    final GpuArray dst = (op == 'mean')
+    final isComplex = dtype == DType.complex64 || dtype == DType.complex128;
+    final GpuArray dst = (op == 'mean' && !isComplex)
         ? GpuArray<double>.empty(outShape, DType.float64, device: device)
         : GpuArray<T>.empty(outShape, dtype, device: device);
-    final outDtype = (op == 'mean') ? DType.float64 : dtype;
+    final outDtype = (op == 'mean' && !isComplex) ? DType.float64 : dtype;
 
     GpuKernels.executeReduction(
       op: op,

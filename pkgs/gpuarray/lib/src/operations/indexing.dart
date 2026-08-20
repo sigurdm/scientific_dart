@@ -178,6 +178,49 @@ void put_along_axis<T>(
   );
 }
 
+bool _isNonZero(dynamic val) {
+  if (val is Complex) {
+    return val.real != 0.0 || val.imag != 0.0;
+  }
+  if (val is bool) {
+    return val;
+  }
+  if (val is num) {
+    return val != 0;
+  }
+  if (val is Float16) {
+    return val.value != 0.0;
+  }
+  if (val is BFloat16) {
+    return val.value != 0.0;
+  }
+  if (val is Int64) {
+    return val.value != 0;
+  }
+  if (val is Int32) {
+    return val.value != 0;
+  }
+  if (val is Int16) {
+    return val.value != 0;
+  }
+  if (val is Int8) {
+    return val.value != 0;
+  }
+  if (val is Uint64) {
+    return val.value != 0;
+  }
+  if (val is Uint32) {
+    return val.value != 0;
+  }
+  if (val is Uint16) {
+    return val.value != 0;
+  }
+  if (val is Uint8) {
+    return val.value != 0;
+  }
+  return false;
+}
+
 /// Returns the indices of non-zero elements as a list of 1D arrays, one per dimension.
 List<GpuArray<Int32>> nonzero(GpuArray arr) {
   final rank = arr.shape.length;
@@ -192,16 +235,14 @@ List<GpuArray<Int32>> nonzero(GpuArray arr) {
       elemIdx += coords[d] * arr.strides[d];
     }
 
-    final isNonZero =
-        ComputeEngine.readValue(
-          arr.buffer,
-          arr.dtype,
-          elemIdx,
-          offsetElements: arr.offsetElements,
-        ) !=
-        0.0;
+    final val = ComputeEngine.readAny(
+      arr.buffer,
+      arr.dtype,
+      elemIdx,
+      offsetElements: arr.offsetElements,
+    );
 
-    if (isNonZero) {
+    if (_isNonZero(val)) {
       for (var d = 0; d < rank; d++) {
         matchingCoords[d].add(coords[d]);
       }
@@ -231,13 +272,13 @@ GpuArray<Int32> flatnonzero(GpuArray arr) {
   final matching = <int>[];
 
   for (var i = 0; i < total; i++) {
-    final val = ComputeEngine.readValue(
+    final val = ComputeEngine.readAny(
       flat.buffer,
       flat.dtype,
       i,
       offsetElements: flat.offsetElements,
     );
-    if (val != 0.0) {
+    if (_isNonZero(val)) {
       matching.add(i);
     }
   }

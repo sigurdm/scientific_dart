@@ -72,7 +72,8 @@ final class GpuKernels {
     final rank = outShape.length;
     final coords = List<int>.filled(rank, 0);
 
-    final isComplex = dtypeA == DType.complex64 ||
+    final isComplex =
+        dtypeA == DType.complex64 ||
         dtypeA == DType.complex128 ||
         dtypeB == DType.complex64 ||
         dtypeB == DType.complex128 ||
@@ -167,7 +168,8 @@ final class GpuKernels {
     final rank = shape.length;
     final coords = List<int>.filled(rank, 0);
 
-    final isComplex = dtypeSrc == DType.complex64 ||
+    final isComplex =
+        dtypeSrc == DType.complex64 ||
         dtypeSrc == DType.complex128 ||
         dtypeDst == DType.complex64 ||
         dtypeDst == DType.complex128;
@@ -240,58 +242,114 @@ final class GpuKernels {
     required DType dtypeDst,
     int? axis,
   }) {
+    final isComplex =
+        dtypeSrc == DType.complex64 || dtypeSrc == DType.complex128;
+
     if (axis == null) {
       // Full reduction to scalar
       final totalElements = ShapeUtils.computeSize(shape);
       if (totalElements == 0) {
+        if (isComplex) {
+          ComputeEngine.writeAny(
+            dst,
+            dtypeDst,
+            0,
+            Complex(0.0, 0.0),
+            offsetElements: offsetDst,
+          );
+        } else {
+          ComputeEngine.writeValue(
+            dst,
+            dtypeDst,
+            0,
+            0.0,
+            offsetElements: offsetDst,
+          );
+        }
+        return;
+      }
+
+      final rank = shape.length;
+      final coords = List<int>.filled(rank, 0);
+
+      if (isComplex) {
+        var accum = _initialComplexReductionValue(op);
+
+        for (var i = 0; i < totalElements; i++) {
+          var elemIdx = 0;
+          for (var d = 0; d < rank; d++) {
+            elemIdx += coords[d] * strides[d];
+          }
+
+          final rawVal = ComputeEngine.readAny(
+            src,
+            dtypeSrc,
+            elemIdx,
+            offsetElements: offsetSrc,
+          );
+          accum = _combineComplexReduction(op, accum, _toComplex(rawVal));
+
+          for (var d = rank - 1; d >= 0; d--) {
+            coords[d]++;
+            if (coords[d] < shape[d]) {
+              break;
+            }
+            coords[d] = 0;
+          }
+        }
+
+        if (op == 'mean') {
+          accum = Complex(
+            accum.real / totalElements,
+            accum.imag / totalElements,
+          );
+        }
+
+        ComputeEngine.writeAny(
+          dst,
+          dtypeDst,
+          0,
+          accum,
+          offsetElements: offsetDst,
+        );
+      } else {
+        var accum = _initialReductionValue(op);
+
+        for (var i = 0; i < totalElements; i++) {
+          var elemIdx = 0;
+          for (var d = 0; d < rank; d++) {
+            elemIdx += coords[d] * strides[d];
+          }
+
+          final val = ComputeEngine.readValue(
+            src,
+            dtypeSrc,
+            elemIdx,
+            offsetElements: offsetSrc,
+          );
+          accum = _combineReduction(op, accum, val, i);
+
+          for (var d = rank - 1; d >= 0; d--) {
+            coords[d]++;
+            if (coords[d] < shape[d]) {
+              break;
+            }
+            coords[d] = 0;
+          }
+        }
+
+        if (op == 'mean') {
+          accum = accum / totalElements;
+        }
+
         ComputeEngine.writeValue(
           dst,
           dtypeDst,
           0,
-          0.0,
+          accum,
           offsetElements: offsetDst,
         );
-        return;
       }
-
-      var accum = _initialReductionValue(op);
-      final rank = shape.length;
-      final coords = List<int>.filled(rank, 0);
-
-      for (var i = 0; i < totalElements; i++) {
-        var elemIdx = 0;
-        for (var d = 0; d < rank; d++) {
-          elemIdx += coords[d] * strides[d];
-        }
-
-        final val = ComputeEngine.readValue(
-          src,
-          dtypeSrc,
-          elemIdx,
-          offsetElements: offsetSrc,
-        );
-        accum = _combineReduction(op, accum, val, i);
-
-        for (var d = rank - 1; d >= 0; d--) {
-          coords[d]++;
-          if (coords[d] < shape[d]) {
-            break;
-          }
-          coords[d] = 0;
-        }
-      }
-
-      if (op == 'mean') {
-        accum = accum / totalElements;
-      }
-
-      ComputeEngine.writeValue(
-        dst,
-        dtypeDst,
-        0,
-        accum,
-        offsetElements: offsetDst,
-      );
     } else {
       // Reduction along a single axis
       final normAxis = axis < 0 ? axis + shape.length : axis;
@@ -302,46 +360,83 @@ final class GpuKernels {
       final outCoords = List<int>.filled(outRank, 0);
 
       for (var outIdx = 0; outIdx < totalOut; outIdx++) {
-        var accum = _initialReductionValue(op);
-
-        for (var a = 0; a < axisSize; a++) {
-          // Reconstruct input coords from output coords + axis index
-          var srcElemIdx = 0;
-          var inDim = 0;
-          for (var d = 0; d < shape.length; d++) {
-            if (d == normAxis) {
-              srcElemIdx += a * strides[d];
-            } else {
-              srcElemIdx += outCoords[inDim] * strides[d];
-              inDim++;
-            }
-          }
-
-          final val = ComputeEngine.readValue(
-            src,
-            dtypeSrc,
-            srcElemIdx,
-            offsetElements: offsetSrc,
-          );
-          accum = _combineReduction(op, accum, val, a);
-        }
-
-        if (op == 'mean') {
-          accum = accum / axisSize;
-        }
-
         var dstElemIdx = 0;
         for (var d = 0; d < outRank; d++) {
           dstElemIdx += outCoords[d] * outStrides[d];
         }
 
-        ComputeEngine.writeValue(
-          dst,
-          dtypeDst,
-          dstElemIdx,
-          accum,
-          offsetElements: offsetDst,
-        );
+        if (isComplex) {
+          var accum = _initialComplexReductionValue(op);
+
+          for (var a = 0; a < axisSize; a++) {
+            var srcElemIdx = 0;
+            var inDim = 0;
+            for (var d = 0; d < shape.length; d++) {
+              if (d == normAxis) {
+                srcElemIdx += a * strides[d];
+              } else {
+                srcElemIdx += outCoords[inDim] * strides[d];
+                inDim++;
+              }
+            }
+
+            final rawVal = ComputeEngine.readAny(
+              src,
+              dtypeSrc,
+              srcElemIdx,
+              offsetElements: offsetSrc,
+            );
+            accum = _combineComplexReduction(op, accum, _toComplex(rawVal));
+          }
+
+          if (op == 'mean') {
+            accum = Complex(accum.real / axisSize, accum.imag / axisSize);
+          }
+
+          ComputeEngine.writeAny(
+            dst,
+            dtypeDst,
+            dstElemIdx,
+            accum,
+            offsetElements: offsetDst,
+          );
+        } else {
+          var accum = _initialReductionValue(op);
+
+          for (var a = 0; a < axisSize; a++) {
+            // Reconstruct input coords from output coords + axis index
+            var srcElemIdx = 0;
+            var inDim = 0;
+            for (var d = 0; d < shape.length; d++) {
+              if (d == normAxis) {
+                srcElemIdx += a * strides[d];
+              } else {
+                srcElemIdx += outCoords[inDim] * strides[d];
+                inDim++;
+              }
+            }
+
+            final val = ComputeEngine.readValue(
+              src,
+              dtypeSrc,
+              srcElemIdx,
+              offsetElements: offsetSrc,
+            );
+            accum = _combineReduction(op, accum, val, a);
+          }
+
+          if (op == 'mean') {
+            accum = accum / axisSize;
+          }
+
+          ComputeEngine.writeValue(
+            dst,
+            dtypeDst,
+            dstElemIdx,
+            accum,
+            offsetElements: offsetDst,
+          );
+        }
 
         for (var d = outRank - 1; d >= 0; d--) {
           outCoords[d]++;
@@ -374,6 +469,13 @@ final class GpuKernels {
   }) {
     final rankA = shapeA.length;
     final rankB = shapeB.length;
+    final isComplex =
+        dtypeA == DType.complex64 ||
+        dtypeA == DType.complex128 ||
+        dtypeB == DType.complex64 ||
+        dtypeB == DType.complex128 ||
+        dtypeDst == DType.complex64 ||
+        dtypeDst == DType.complex128;
 
     if (rankA == 2 && rankB == 2) {
       final M = shapeA[0];
@@ -382,60 +484,126 @@ final class GpuKernels {
 
       for (var m = 0; m < M; m++) {
         for (var n = 0; n < N; n++) {
-          var sum = 0.0;
-          for (var k = 0; k < K; k++) {
-            final idxA = m * stridesA[0] + k * stridesA[1];
-            final idxB = k * stridesB[0] + n * stridesB[1];
-            final a = ComputeEngine.readValue(
-              srcA,
-              dtypeA,
-              idxA,
-              offsetElements: offsetA,
-            );
-            final b = ComputeEngine.readValue(
-              srcB,
-              dtypeB,
-              idxB,
-              offsetElements: offsetB,
-            );
-            sum += a * b;
-          }
           final idxDst = m * outStrides[0] + n * outStrides[1];
-          ComputeEngine.writeValue(
-            dst,
-            dtypeDst,
-            idxDst,
-            sum,
-            offsetElements: offsetDst,
-          );
+          if (isComplex) {
+            var sumReal = 0.0;
+            var sumImag = 0.0;
+            for (var k = 0; k < K; k++) {
+              final idxA = m * stridesA[0] + k * stridesA[1];
+              final idxB = k * stridesB[0] + n * stridesB[1];
+              final a = _toComplex(
+                ComputeEngine.readAny(
+                  srcA,
+                  dtypeA,
+                  idxA,
+                  offsetElements: offsetA,
+                ),
+              );
+              final b = _toComplex(
+                ComputeEngine.readAny(
+                  srcB,
+                  dtypeB,
+                  idxB,
+                  offsetElements: offsetB,
+                ),
+              );
+              sumReal += a.real * b.real - a.imag * b.imag;
+              sumImag += a.real * b.imag + a.imag * b.real;
+            }
+            ComputeEngine.writeAny(
+              dst,
+              dtypeDst,
+              idxDst,
+              Complex(sumReal, sumImag),
+              offsetElements: offsetDst,
+            );
+          } else {
+            var sum = 0.0;
+            for (var k = 0; k < K; k++) {
+              final idxA = m * stridesA[0] + k * stridesA[1];
+              final idxB = k * stridesB[0] + n * stridesB[1];
+              final a = ComputeEngine.readValue(
+                srcA,
+                dtypeA,
+                idxA,
+                offsetElements: offsetA,
+              );
+              final b = ComputeEngine.readValue(
+                srcB,
+                dtypeB,
+                idxB,
+                offsetElements: offsetB,
+              );
+              sum += a * b;
+            }
+            ComputeEngine.writeValue(
+              dst,
+              dtypeDst,
+              idxDst,
+              sum,
+              offsetElements: offsetDst,
+            );
+          }
         }
       }
     } else if (rankA == 1 && rankB == 1) {
       // 1D dot product
       final K = shapeA[0];
-      var sum = 0.0;
-      for (var k = 0; k < K; k++) {
-        final a = ComputeEngine.readValue(
-          srcA,
-          dtypeA,
-          k * stridesA[0],
-          offsetElements: offsetA,
+      if (isComplex) {
+        var sumReal = 0.0;
+        var sumImag = 0.0;
+        for (var k = 0; k < K; k++) {
+          final a = _toComplex(
+            ComputeEngine.readAny(
+              srcA,
+              dtypeA,
+              k * stridesA[0],
+              offsetElements: offsetA,
+            ),
+          );
+          final b = _toComplex(
+            ComputeEngine.readAny(
+              srcB,
+              dtypeB,
+              k * stridesB[0],
+              offsetElements: offsetB,
+            ),
+          );
+          sumReal += a.real * b.real - a.imag * b.imag;
+          sumImag += a.real * b.imag + a.imag * b.real;
+        }
+        ComputeEngine.writeAny(
+          dst,
+          dtypeDst,
+          0,
+          Complex(sumReal, sumImag),
+          offsetElements: offsetDst,
         );
-        final b = ComputeEngine.readValue(
-          srcB,
-          dtypeB,
-          k * stridesB[0],
-          offsetElements: offsetB,
+      } else {
+        var sum = 0.0;
+        for (var k = 0; k < K; k++) {
+          final a = ComputeEngine.readValue(
+            srcA,
+            dtypeA,
+            k * stridesA[0],
+            offsetElements: offsetA,
+          );
+          final b = ComputeEngine.readValue(
+            srcB,
+            dtypeB,
+            k * stridesB[0],
+            offsetElements: offsetB,
+          );
+          sum += a * b;
+        }
+        ComputeEngine.writeValue(
+          dst,
+          dtypeDst,
+          0,
+          sum,
+          offsetElements: offsetDst,
         );
-        sum += a * b;
       }
-      ComputeEngine.writeValue(
-        dst,
-        dtypeDst,
-        0,
-        sum,
-        offsetElements: offsetDst,
-      );
     } else {
       // Batched N-D matrix multiplication
       final batchShapeA = shapeA.sublist(0, rankA - 2);
@@ -478,37 +646,81 @@ final class GpuKernels {
 
         for (var m = 0; m < M; m++) {
           for (var n = 0; n < N; n++) {
-            var sum = 0.0;
-            for (var k = 0; k < K; k++) {
-              final idxA =
-                  baseIdxA + m * stridesA[rankA - 2] + k * stridesA[rankA - 1];
-              final idxB =
-                  baseIdxB + k * stridesB[rankB - 2] + n * stridesB[rankB - 1];
-              final a = ComputeEngine.readValue(
-                srcA,
-                dtypeA,
-                idxA,
-                offsetElements: offsetA,
-              );
-              final b = ComputeEngine.readValue(
-                srcB,
-                dtypeB,
-                idxB,
-                offsetElements: offsetB,
-              );
-              sum += a * b;
-            }
             final idxDst =
                 baseIdxDst +
                 m * outStrides[outStrides.length - 2] +
                 n * outStrides[outStrides.length - 1];
-            ComputeEngine.writeValue(
-              dst,
-              dtypeDst,
-              idxDst,
-              sum,
-              offsetElements: offsetDst,
-            );
+            if (isComplex) {
+              var sumReal = 0.0;
+              var sumImag = 0.0;
+              for (var k = 0; k < K; k++) {
+                final idxA =
+                    baseIdxA +
+                    m * stridesA[rankA - 2] +
+                    k * stridesA[rankA - 1];
+                final idxB =
+                    baseIdxB +
+                    k * stridesB[rankB - 2] +
+                    n * stridesB[rankB - 1];
+                final a = _toComplex(
+                  ComputeEngine.readAny(
+                    srcA,
+                    dtypeA,
+                    idxA,
+                    offsetElements: offsetA,
+                  ),
+                );
+                final b = _toComplex(
+                  ComputeEngine.readAny(
+                    srcB,
+                    dtypeB,
+                    idxB,
+                    offsetElements: offsetB,
+                  ),
+                );
+                sumReal += a.real * b.real - a.imag * b.imag;
+                sumImag += a.real * b.imag + a.imag * b.real;
+              }
+              ComputeEngine.writeAny(
+                dst,
+                dtypeDst,
+                idxDst,
+                Complex(sumReal, sumImag),
+                offsetElements: offsetDst,
+              );
+            } else {
+              var sum = 0.0;
+              for (var k = 0; k < K; k++) {
+                final idxA =
+                    baseIdxA +
+                    m * stridesA[rankA - 2] +
+                    k * stridesA[rankA - 1];
+                final idxB =
+                    baseIdxB +
+                    k * stridesB[rankB - 2] +
+                    n * stridesB[rankB - 1];
+                final a = ComputeEngine.readValue(
+                  srcA,
+                  dtypeA,
+                  idxA,
+                  offsetElements: offsetA,
+                );
+                final b = ComputeEngine.readValue(
+                  srcB,
+                  dtypeB,
+                  idxB,
+                  offsetElements: offsetB,
+                );
+                sum += a * b;
+              }
+              ComputeEngine.writeValue(
+                dst,
+                dtypeDst,
+                idxDst,
+                sum,
+                offsetElements: offsetDst,
+              );
+            }
           }
         }
 
@@ -572,15 +784,26 @@ final class GpuKernels {
     }
   }
 
+  static Complex _toComplex(dynamic v) {
+    if (v is Complex) return v;
+    if (v is num) return Complex(v.toDouble(), 0.0);
+    if (v is bool) return Complex(v ? 1.0 : 0.0, 0.0);
+    if (v is Float16) return Complex(v.value, 0.0);
+    if (v is BFloat16) return Complex(v.value, 0.0);
+    if (v is Int64) return Complex(v.value.toDouble(), 0.0);
+    if (v is Int32) return Complex(v.value.toDouble(), 0.0);
+    if (v is Int16) return Complex(v.value.toDouble(), 0.0);
+    if (v is Int8) return Complex(v.value.toDouble(), 0.0);
+    if (v is Uint64) return Complex(v.value.toDouble(), 0.0);
+    if (v is Uint32) return Complex(v.value.toDouble(), 0.0);
+    if (v is Uint16) return Complex(v.value.toDouble(), 0.0);
+    if (v is Uint8) return Complex(v.value.toDouble(), 0.0);
+    return Complex(0.0, 0.0);
+  }
+
   static dynamic _applyComplexBinary(BinaryOp op, dynamic rawA, dynamic rawB) {
-    Complex toC(dynamic v) {
-      if (v is Complex) return v;
-      if (v is num) return Complex(v.toDouble(), 0.0);
-      if (v is bool) return Complex(v ? 1.0 : 0.0, 0.0);
-      return Complex(0.0, 0.0);
-    }
-    final a = toC(rawA);
-    final b = toC(rawB);
+    final a = _toComplex(rawA);
+    final b = _toComplex(rawB);
     switch (op) {
       case BinaryOp.add:
         return Complex(a.real + b.real, a.imag + b.imag);
@@ -608,13 +831,7 @@ final class GpuKernels {
   }
 
   static dynamic _applyComplexUnary(UnaryOp op, dynamic raw) {
-    Complex toC(dynamic v) {
-      if (v is Complex) return v;
-      if (v is num) return Complex(v.toDouble(), 0.0);
-      if (v is bool) return Complex(v ? 1.0 : 0.0, 0.0);
-      return Complex(0.0, 0.0);
-    }
-    final c = toC(raw);
+    final c = _toComplex(raw);
     switch (op) {
       case UnaryOp.negate:
         return Complex(-c.real, -c.imag);
@@ -625,6 +842,57 @@ final class GpuKernels {
         return Complex(expR * math.cos(c.imag), expR * math.sin(c.imag));
       default:
         return c;
+    }
+  }
+
+  static Complex _initialComplexReductionValue(String op) {
+    switch (op) {
+      case 'sum':
+      case 'mean':
+        return Complex(0.0, 0.0);
+      case 'prod':
+        return Complex(1.0, 0.0);
+      case 'min':
+        return Complex(double.infinity, 0.0);
+      case 'max':
+        return Complex(double.negativeInfinity, 0.0);
+      default:
+        return Complex(0.0, 0.0);
+    }
+  }
+
+  static Complex _combineComplexReduction(
+    String op,
+    Complex current,
+    Complex value,
+  ) {
+    switch (op) {
+      case 'sum':
+      case 'mean':
+        return Complex(current.real + value.real, current.imag + value.imag);
+      case 'prod':
+        return Complex(
+          current.real * value.real - current.imag * value.imag,
+          current.real * value.imag + current.imag * value.real,
+        );
+      case 'min':
+        final absVal = math.sqrt(
+          value.real * value.real + value.imag * value.imag,
+        );
+        final absCur = math.sqrt(
+          current.real * current.real + current.imag * current.imag,
+        );
+        return absVal < absCur ? value : current;
+      case 'max':
+        final absVal = math.sqrt(
+          value.real * value.real + value.imag * value.imag,
+        );
+        final absCur = math.sqrt(
+          current.real * current.real + current.imag * current.imag,
+        );
+        return absVal > absCur ? value : current;
+      default:
+        return current;
     }
   }
 

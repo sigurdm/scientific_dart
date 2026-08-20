@@ -106,8 +106,11 @@ GpuArray cross_entropy(
 
   final targetList = targets.toList().cast<int>();
   final logProbsND = logProbs.toNDArray();
-  final logProbsList =
-      logProbsND.toList().cast<num>().map((e) => e.toDouble()).toList();
+  final logProbsList = logProbsND
+      .toList()
+      .cast<num>()
+      .map((e) => e.toDouble())
+      .toList();
   logProbsND.dispose();
 
   final losses = <double>[];

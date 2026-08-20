@@ -106,5 +106,67 @@ void main() {
         expect(() => a.matmul(b), throwsA(isA<GpuShapeMismatchException>()));
       });
     });
+
+    test('Complex64 and Complex128 1D and 2D matrix multiplication', () {
+      ResourceScope.scope(() {
+        // 1D dot product with Complex64
+        final v1 = GpuArray.fromList(
+          [Complex64(1.0, 2.0), Complex64(3.0, -1.0)],
+          [2],
+          DType.complex64,
+        );
+        final v2 = GpuArray.fromList(
+          [Complex64(2.0, 1.0), Complex64(0.0, 4.0)],
+          [2],
+          DType.complex64,
+        );
+        // (1+2i)(2+i) = (2-2) + (1+4)i = 5i
+        // (3-i)(4i) = 4 + 12i
+        // Total = 4 + 17i
+        final dotC64 = v1.dot(v2);
+        expect(dotC64.dtype, equals(DType.complex64));
+        final dotScalar = dotC64.scalar as Complex;
+        expect(dotScalar.real, closeTo(4.0, 1e-5));
+        expect(dotScalar.imag, closeTo(17.0, 1e-5));
+
+        // 2D matmul with Complex128
+        final a = GpuArray.fromList(
+          [
+            [Complex128(1.0, 2.0), Complex128(3.0, 4.0)],
+            [Complex128(0.0, 1.0), Complex128(-2.0, 0.0)],
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+
+        final b = GpuArray.fromList(
+          [
+            [Complex128(2.0, -1.0), Complex128(0.0, 3.0)],
+            [Complex128(1.0, 1.0), Complex128(4.0, 2.0)],
+          ],
+          [2, 2],
+          DType.complex128,
+        );
+
+        final c = a.matmul(b);
+        expect(c.dtype, equals(DType.complex128));
+        expect(c.shape, equals([2, 2]));
+
+        final expected = [
+          [Complex(3.0, 10.0), Complex(-2.0, 25.0)],
+          [Complex(-1.0, 0.0), Complex(-11.0, -4.0)],
+        ];
+
+        final actual = c.toNestedList();
+        for (var i = 0; i < 2; i++) {
+          for (var j = 0; j < 2; j++) {
+            final actVal = actual[i][j] as Complex;
+            final expVal = expected[i][j];
+            expect(actVal.real, closeTo(expVal.real, 1e-5));
+            expect(actVal.imag, closeTo(expVal.imag, 1e-5));
+          }
+        }
+      });
+    });
   });
 }

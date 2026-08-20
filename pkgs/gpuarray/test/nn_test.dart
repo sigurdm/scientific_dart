@@ -11,10 +11,11 @@ void main() {
         expect(fc.parameters().length, equals(2)); // weight and bias
         expect(fc.namedParameters().keys, containsAll(['weight', 'bias']));
 
-        final x = GpuArray.fromList([
-          1.0, 2.0, 3.0, 4.0,
-          0.5, 1.5, 2.5, 3.5,
-        ], [2, 4], DType.float64);
+        final x = GpuArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 0.5, 1.5, 2.5, 3.5],
+          [2, 4],
+          DType.float64,
+        );
 
         final out = fc(x);
         expect(out.shape, equals([2, 2]));
@@ -42,19 +43,17 @@ void main() {
 
         final optimizer = nn.Adam(model.parameters(), lr: 0.05);
 
-        final xTrain = GpuArray.fromList([
-          1.0, 1.0,
-          2.0, 0.0,
-          0.0, 1.0,
-          -1.0, 2.0,
-        ], [4, 2], DType.float64);
+        final xTrain = GpuArray.fromList(
+          [1.0, 1.0, 2.0, 0.0, 0.0, 1.0, -1.0, 2.0],
+          [4, 2],
+          DType.float64,
+        );
 
-        final yTrain = GpuArray.fromList([
-          -1.0,
-          4.0,
-          -3.0,
-          -8.0,
-        ], [4, 1], DType.float64);
+        final yTrain = GpuArray.fromList(
+          [-1.0, 4.0, -3.0, -8.0],
+          [4, 1],
+          DType.float64,
+        );
 
         // Train for 20 steps
         double? initialLoss;
@@ -111,10 +110,12 @@ void main() {
     test('cross_entropy loss forward and backward', () {
       ResourceScope.scope(() {
         // 2 samples, 3 classes
-        final logits = GpuArray.fromList([
-          2.0, 1.0, 0.1,
-          0.5, 3.0, 0.2,
-        ], [2, 3], DType.float64, requiresGrad: true);
+        final logits = GpuArray.fromList(
+          [2.0, 1.0, 0.1, 0.5, 3.0, 0.2],
+          [2, 3],
+          DType.float64,
+          requiresGrad: true,
+        );
 
         final targets = GpuArray.fromList([0, 1], [2], DType.int32);
         final loss = nn.cross_entropy(logits, targets);
@@ -136,7 +137,11 @@ void main() {
     test('Conv2d layer forward and backward', () {
       ResourceScope.scope(() {
         final conv = nn.Conv2d(1, 2, 3, padding: 1);
-        final x = GpuArray.ones([1, 1, 4, 4], DType.float64, requiresGrad: true);
+        final x = GpuArray.ones(
+          [1, 1, 4, 4],
+          DType.float64,
+          requiresGrad: true,
+        );
 
         final out = conv(x);
         expect(out.shape, equals([1, 2, 4, 4]));
@@ -157,9 +162,12 @@ void main() {
     test('LayerNorm and Dropout', () {
       ResourceScope.scope(() {
         final ln = nn.LayerNorm([4]);
-        final x = GpuArray.fromList([
-          1.0, 2.0, 3.0, 4.0,
-        ], [1, 4], DType.float64, requiresGrad: true);
+        final x = GpuArray.fromList(
+          [1.0, 2.0, 3.0, 4.0],
+          [1, 4],
+          DType.float64,
+          requiresGrad: true,
+        );
 
         final out = ln(x);
         expect(out.shape, equals([1, 4]));
@@ -202,7 +210,12 @@ void main() {
 
     test('Optimizer state retention and disposal across training steps', () {
       ResourceScope.scope(() {
-        final param = GpuArray.fromList([1.0, 2.0], [2], DType.float64, requiresGrad: true);
+        final param = GpuArray.fromList(
+          [1.0, 2.0],
+          [2],
+          DType.float64,
+          requiresGrad: true,
+        );
         final opt = nn.AdamW([param], lr: 0.1);
 
         for (var step = 0; step < 5; step++) {

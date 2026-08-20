@@ -202,10 +202,14 @@ final class ComputeEngine {
         ptr.cast<ffi.Float>()[idx] = toDoubleVal(value);
         break;
       case DType.float16:
-        ptr.cast<ffi.Uint16>()[idx] = Float16Utils.encodeFloat16(toDoubleVal(value));
+        ptr.cast<ffi.Uint16>()[idx] = Float16Utils.encodeFloat16(
+          toDoubleVal(value),
+        );
         break;
       case DType.bfloat16:
-        ptr.cast<ffi.Uint16>()[idx] = Float16Utils.encodeBFloat16(toDoubleVal(value));
+        ptr.cast<ffi.Uint16>()[idx] = Float16Utils.encodeBFloat16(
+          toDoubleVal(value),
+        );
         break;
       case DType.int64:
         ptr.cast<ffi.Int64>()[idx] = toIntVal(value);
@@ -234,7 +238,8 @@ final class ComputeEngine {
         ptr.cast<ffi.Uint8>()[idx] = toIntVal(value);
         break;
       case DType.boolean:
-        ptr.cast<ffi.Uint8>()[idx] = (value == true || (value is num && value != 0)) ? 1 : 0;
+        ptr.cast<ffi.Uint8>()[idx] =
+            (value == true || (value is num && value != 0)) ? 1 : 0;
         break;
       case DType.complex64:
         if (value is Complex) {

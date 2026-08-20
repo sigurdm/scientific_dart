@@ -139,7 +139,10 @@ void main() {
     });
     test('Boolean promotion yields boolean', () {
       ResourceScope.scope(() {
-        expect(GpuArray.promoteDTypes(DType.boolean, DType.boolean), equals(DType.boolean));
+        expect(
+          GpuArray.promoteDTypes(DType.boolean, DType.boolean),
+          equals(DType.boolean),
+        );
         final a = GpuArray.fromList([true, false], [2], DType.boolean);
         final b = GpuArray.fromList([false, true], [2], DType.boolean);
         final res = a + b;
@@ -162,7 +165,11 @@ void main() {
         expect(c64.scalar, equals(Complex64(1.5, 2.5)));
 
         // Complex128
-        final c128 = GpuArray.filled([1], nd.Complex(3.0, -4.0), DType.complex128);
+        final c128 = GpuArray.filled(
+          [1],
+          nd.Complex(3.0, -4.0),
+          DType.complex128,
+        );
         expect(c128.scalar, equals(Complex128(3.0, -4.0)));
 
         // Uint64
@@ -193,20 +200,37 @@ void main() {
 
     test('Complex arithmetic operations maintain real and imaginary parts', () {
       ResourceScope.scope(() {
-        final c1 = GpuArray.fromList([nd.Complex(1.0, 2.0), nd.Complex(3.0, 4.0)], [2], DType.complex128);
-        final c2 = GpuArray.fromList([nd.Complex(2.0, 1.0), nd.Complex(1.0, -1.0)], [2], DType.complex128);
+        final c1 = GpuArray.fromList(
+          [nd.Complex(1.0, 2.0), nd.Complex(3.0, 4.0)],
+          [2],
+          DType.complex128,
+        );
+        final c2 = GpuArray.fromList(
+          [nd.Complex(2.0, 1.0), nd.Complex(1.0, -1.0)],
+          [2],
+          DType.complex128,
+        );
 
         // Addition: (1+2i) + (2+1i) = (3+3i), (3+4i) + (1-1i) = (4+3i)
         final sum = c1 + c2;
-        expect(sum.toList(), equals([nd.Complex(3.0, 3.0), nd.Complex(4.0, 3.0)]));
+        expect(
+          sum.toList(),
+          equals([nd.Complex(3.0, 3.0), nd.Complex(4.0, 3.0)]),
+        );
 
         // Subtraction: (1+2i) - (2+1i) = (-1+1i)
         final diff = c1 - c2;
-        expect(diff.toList(), equals([nd.Complex(-1.0, 1.0), nd.Complex(2.0, 5.0)]));
+        expect(
+          diff.toList(),
+          equals([nd.Complex(-1.0, 1.0), nd.Complex(2.0, 5.0)]),
+        );
 
         // Multiplication: (1+2i) * (2+1i) = (2-2 + 1i+4i) = (0 + 5i)
         final prod = c1 * c2;
-        expect(prod.toList(), equals([nd.Complex(0.0, 5.0), nd.Complex(7.0, 1.0)]));
+        expect(
+          prod.toList(),
+          equals([nd.Complex(0.0, 5.0), nd.Complex(7.0, 1.0)]),
+        );
       });
     });
   });

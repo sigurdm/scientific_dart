@@ -169,20 +169,21 @@ void _fft1d(
 }
 
 /// Computes the 1D Discrete Fourier Transform of [a] along [axis].
-GpuArray<T> fft<T>(
-  GpuArray a, {
-  int? n,
-  int axis = -1,
-  String? norm,
-}) {
+GpuArray<T> fft<T>(GpuArray a, {int? n, int axis = -1, String? norm}) {
   final normAxis = axis < 0 ? axis + a.rank : axis;
   final length = n ?? a.shape[normAxis];
 
-  final outDType = (a.dtype == DType.complex64) ? DType.complex64 : DType.complex128;
+  final outDType = (a.dtype == DType.complex64)
+      ? DType.complex64
+      : DType.complex128;
   final outShape = List<int>.from(a.shape);
   outShape[normAxis] = length;
 
-  final result = GpuArray<T>.empty(outShape, outDType as DType<T>, device: a.device);
+  final result = GpuArray<T>.empty(
+    outShape,
+    outDType as DType<T>,
+    device: a.device,
+  );
 
   final inLength = a.shape[normAxis];
   final outerSize = a.shape.sublist(0, normAxis).fold(1, (r, e) => r * e);
@@ -235,22 +236,21 @@ GpuArray<T> fft<T>(
 }
 
 /// Computes the 1D Inverse Discrete Fourier Transform of [a] along [axis].
-GpuArray<T> ifft<T>(
-  GpuArray a, {
-  int? n,
-  int axis = -1,
-  String? norm,
-}) {
+GpuArray<T> ifft<T>(GpuArray a, {int? n, int axis = -1, String? norm}) {
   final normAxis = axis < 0 ? axis + a.rank : axis;
   final length = n ?? a.shape[normAxis];
 
-  final outDType =
-      (a.dtype == DType.complex64) ? DType.complex64 : DType.complex128;
+  final outDType = (a.dtype == DType.complex64)
+      ? DType.complex64
+      : DType.complex128;
   final outShape = List<int>.from(a.shape);
   outShape[normAxis] = length;
 
-  final result =
-      GpuArray<T>.empty(outShape, outDType as DType<T>, device: a.device);
+  final result = GpuArray<T>.empty(
+    outShape,
+    outDType as DType<T>,
+    device: a.device,
+  );
 
   final inLength = a.shape[normAxis];
   final outerSize = a.shape.sublist(0, normAxis).fold(1, (r, e) => r * e);
@@ -303,12 +303,7 @@ GpuArray<T> ifft<T>(
 }
 
 /// Computes 1D real Discrete Fourier Transform of [a].
-GpuArray<T> rfft<T>(
-  GpuArray a, {
-  int? n,
-  int axis = -1,
-  String? norm,
-}) {
+GpuArray<T> rfft<T>(GpuArray a, {int? n, int axis = -1, String? norm}) {
   final normAxis = axis < 0 ? axis + a.rank : axis;
   final length = n ?? a.shape[normAxis];
   final outLen = (length ~/ 2) + 1;
@@ -322,12 +317,7 @@ GpuArray<T> rfft<T>(
 }
 
 /// Computes inverse of 1D real Discrete Fourier Transform.
-GpuArray<T> irfft<T>(
-  GpuArray a, {
-  int? n,
-  int axis = -1,
-  String? norm,
-}) {
+GpuArray<T> irfft<T>(GpuArray a, {int? n, int axis = -1, String? norm}) {
   final normAxis = axis < 0 ? axis + a.rank : axis;
   final inLen = a.shape[normAxis];
   final outLen = n ?? ((inLen - 1) * 2);
@@ -335,8 +325,11 @@ GpuArray<T> irfft<T>(
   final fullComplexShape = List<int>.from(a.shape);
   fullComplexShape[normAxis] = outLen;
 
-  final fullComplex =
-      GpuArray.zeros(fullComplexShape, DType.complex128, device: a.device);
+  final fullComplex = GpuArray.zeros(
+    fullComplexShape,
+    DType.complex128,
+    device: a.device,
+  );
 
   final aFlat = a.toNDArray();
   final aList = aFlat.toList();
@@ -377,7 +370,11 @@ GpuArray<T> irfft<T>(
   fullComplex.dispose();
 
   final outDType = (a.dtype == DType.complex64) ? DType.float32 : DType.float64;
-  final result = GpuArray<T>.empty(fullComplexShape, outDType as DType<T>, device: a.device);
+  final result = GpuArray<T>.empty(
+    fullComplexShape,
+    outDType as DType<T>,
+    device: a.device,
+  );
 
   final ifftFlat = ifftRes.toNDArray();
   final ifftList = ifftFlat.toList();
@@ -483,7 +480,9 @@ GpuArray<T> fftshift<T>(GpuArray<T> x, {Object? axes}) {
     }
     return curr;
   }
-  throw ArgumentError('Invalid axes for fftshift: $axes. Expected int, List<int>, or null.');
+  throw ArgumentError(
+    'Invalid axes for fftshift: $axes. Expected int, List<int>, or null.',
+  );
 }
 
 /// Inverse of [fftshift].
@@ -511,5 +510,7 @@ GpuArray<T> ifftshift<T>(GpuArray<T> x, {Object? axes}) {
     }
     return curr;
   }
-  throw ArgumentError('Invalid axes for ifftshift: $axes. Expected int, List<int>, or null.');
+  throw ArgumentError(
+    'Invalid axes for ifftshift: $axes. Expected int, List<int>, or null.',
+  );
 }
