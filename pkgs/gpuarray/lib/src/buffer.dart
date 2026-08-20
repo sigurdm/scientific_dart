@@ -51,6 +51,7 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
   final int _sizeInBytes;
   final GpuBufferUsage _usage;
   final GpuDevice _device;
+  int _refCount = 1;
   bool _isDisposed = false;
 
   GpuBuffer._(this._pointer, this._sizeInBytes, this._usage, this._device) {
@@ -59,6 +60,38 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
     }
     ResourceScope.track(this);
     _device.registerBuffer(this);
+  }
+
+  /// Retains a reference to this buffer, incrementing its reference count.
+  void retain() {
+    if (_isDisposed) {
+      throw GpuMemoryException('Cannot retain a disposed GpuBuffer.');
+    }
+    _refCount++;
+  }
+
+  /// Releases a reference to this buffer, decrementing its reference count.
+  /// If the reference count drops to 0, frees the underlying native memory.
+  void release() {
+    if (_isDisposed) return;
+    _refCount--;
+    if (_refCount <= 0) {
+      _disposeInternal();
+    }
+  }
+
+  /// Reference count of active holders of this buffer.
+  int get refCount => _refCount;
+
+  void _disposeInternal() {
+    if (_isDisposed) return;
+    _isDisposed = true;
+    ResourceScope.untrack(this);
+    _device.unregisterBuffer(this);
+    if (_pointer != ffi.nullptr) {
+      _finalizer.detach(this);
+      calloc.free(_pointer);
+    }
   }
 
   /// Allocates a new [GpuBuffer] on the given [device].
@@ -125,9 +158,7 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
 
     final dst = (_pointer.cast<ffi.Uint8>() + offset).cast<ffi.Uint8>();
     final src = hostPtr.cast<ffi.Uint8>();
-    for (var i = 0; i < bytes; i++) {
-      dst[i] = src[i];
-    }
+    dst.asTypedList(bytes).setAll(0, src.asTypedList(bytes));
   }
 
   /// Copies [bytes] from this GPU buffer starting at [offset] into a host memory [hostPtr].
@@ -144,9 +175,7 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
 
     final src = (_pointer.cast<ffi.Uint8>() + offset).cast<ffi.Uint8>();
     final dst = hostPtr.cast<ffi.Uint8>();
-    for (var i = 0; i < bytes; i++) {
-      dst[i] = src[i];
-    }
+    dst.asTypedList(bytes).setAll(0, src.asTypedList(bytes));
   }
 
   /// Copies [bytes] from this buffer into another [dst] buffer.
@@ -174,21 +203,12 @@ final class GpuBuffer implements ffi.Finalizable, ScopedResource {
     final srcPtr = (_pointer.cast<ffi.Uint8>() + srcOffset).cast<ffi.Uint8>();
     final dstPtr = (dst._pointer.cast<ffi.Uint8>() + dstOffset)
         .cast<ffi.Uint8>();
-    for (var i = 0; i < bytes; i++) {
-      dstPtr[i] = srcPtr[i];
-    }
+    dstPtr.asTypedList(bytes).setAll(0, srcPtr.asTypedList(bytes));
   }
 
   @override
   void dispose() {
-    if (_isDisposed) return;
-    _isDisposed = true;
-    ResourceScope.untrack(this);
-    _device.unregisterBuffer(this);
-    if (_pointer != ffi.nullptr) {
-      _finalizer.detach(this);
-      calloc.free(_pointer);
-    }
+    release();
   }
 
   @override

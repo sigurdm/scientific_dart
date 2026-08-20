@@ -67,6 +67,9 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
   }) : isContiguous = isContiguous ?? ShapeUtils.isContiguous(shape, strides),
        _parent = parent {
     ResourceScope.track(this);
+    if (parent != null) {
+      buffer.retain();
+    }
   }
 
   /// Creates a [GpuArray] initialized from a flat or nested Dart list of values.
@@ -95,6 +98,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
           GpuBufferUsage.copyDst |
           GpuBufferUsage.copySrc,
     );
+    gpuBuffer.detachFromScope();
 
     final strides = ShapeUtils.computeCStrides(shape);
     final array = GpuArray<T>._(
@@ -130,6 +134,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
           GpuBufferUsage.copyDst |
           GpuBufferUsage.copySrc,
     );
+    gpuBuffer.detachFromScope();
     final strides = ShapeUtils.computeCStrides(shape);
 
     return GpuArray<T>._(
@@ -154,6 +159,9 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
     GpuArray? parent,
     bool requiresGrad = false,
   }) {
+    if (parent == null) {
+      buffer.retain();
+    }
     return GpuArray<T>._(
       buffer,
       shape: List.unmodifiable(shape),
@@ -220,12 +228,9 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
       device: device,
       requiresGrad: requiresGrad,
     );
-    final numVal = (value is bool)
-        ? (value ? 1.0 : 0.0)
-        : (value is num ? (value as num).toDouble() : 0.0);
     final totalSize = array.size;
     for (var i = 0; i < totalSize; i++) {
-      ComputeEngine.writeValue(array.buffer, dtype, i, numVal);
+      ComputeEngine.writeAny(array.buffer, dtype, i, value);
     }
     return array;
   }
@@ -245,6 +250,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
       byteSize,
       GpuBufferUsage.storage | GpuBufferUsage.copyDst | GpuBufferUsage.copySrc,
     );
+    gpuBuffer.detachFromScope();
 
     if (!identical(contiguousND, ndarray)) {
       contiguousND.dispose();
@@ -293,7 +299,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
         device: device,
         offsetElements: offsetElements,
         isContiguous: isContiguous,
-        parent: _parent,
+        parent: _parent ?? this,
         requiresGrad: false,
       );
 
@@ -302,20 +308,17 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
     if (size != 1) {
       throw StateError('Cannot retrieve scalar from tensor with size $size');
     }
-    final raw = ComputeEngine.readValue(
+    final raw = ComputeEngine.readAny(
       buffer,
       dtype,
       0,
       offsetElements: offsetElements,
     );
     if (dtype == DType.boolean) {
-      return (raw != 0.0) as T;
+      return (raw == true || (raw is num && raw != 0)) as T;
     }
-    if (dtype == DType.int32 ||
-        dtype == DType.int64 ||
-        dtype == DType.uint8 ||
-        dtype == DType.int16) {
-      return raw.toInt() as T;
+    if (raw is num && (dtype == DType.float64 || dtype == DType.float32)) {
+      return raw.toDouble() as T;
     }
     return raw as T;
   }
@@ -805,7 +808,12 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
   /// Downloads this GPU tensor into host memory as a standard [NDArray].
   nd.NDArray<T> toNDArray() {
     final contiguousArray = isContiguous ? this : copy();
-    final ndarray = nd.NDArray<T>.create(shape, dtype);
+    nd.NDArray ndarray;
+    try {
+      ndarray = nd.NDArray<T>.create(shape, dtype);
+    } catch (_) {
+      ndarray = nd.NDArray<dynamic>.create(shape, dtype);
+    }
 
     contiguousArray.buffer.copyToHost(
       ndarray.pointer,
@@ -817,7 +825,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
       contiguousArray.dispose();
     }
 
-    return ndarray;
+    return ndarray as nd.NDArray<T>;
   }
 
   /// Returns a flat Dart list containing a copy of the elements in this tensor.
@@ -1050,7 +1058,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
   }
 
   static DType _promotedDType(DType a, DType b) {
-    if (a == DType.boolean && b == DType.boolean) return DType.uint8;
+    if (a == DType.boolean && b == DType.boolean) return DType.boolean;
     if (a == b) return a;
     if (a == DType.boolean) return b;
     if (b == DType.boolean) return a;
@@ -1160,9 +1168,7 @@ final class GpuArray<T> implements ffi.Finalizable, ScopedResource {
     if (_isDisposed) return;
     _isDisposed = true;
     ResourceScope.untrack(this);
-    if (_parent == null) {
-      buffer.dispose();
-    }
+    buffer.release();
   }
 
   @override

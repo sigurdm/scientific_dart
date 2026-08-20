@@ -137,5 +137,77 @@ void main() {
         expect(hostND.toList(), equals([largeVal, 100]));
       });
     });
+    test('Boolean promotion yields boolean', () {
+      ResourceScope.scope(() {
+        expect(GpuArray.promoteDTypes(DType.boolean, DType.boolean), equals(DType.boolean));
+        final a = GpuArray.fromList([true, false], [2], DType.boolean);
+        final b = GpuArray.fromList([false, true], [2], DType.boolean);
+        final res = a + b;
+        expect(res.dtype, equals(DType.boolean));
+      });
+    });
+
+    test('GpuArray.filled and GpuArray.scalar support all 15 dtypes', () {
+      ResourceScope.scope(() {
+        // Float16
+        final f16 = GpuArray.filled([1], 3.5, DType.float16);
+        expect(f16.scalar, equals(Float16(3.5)));
+
+        // BFloat16
+        final bf16 = GpuArray.filled([1], 4.25, DType.bfloat16);
+        expect(bf16.scalar, equals(BFloat16(4.25)));
+
+        // Complex64
+        final c64 = GpuArray.filled([1], nd.Complex(1.5, 2.5), DType.complex64);
+        expect(c64.scalar, equals(Complex64(1.5, 2.5)));
+
+        // Complex128
+        final c128 = GpuArray.filled([1], nd.Complex(3.0, -4.0), DType.complex128);
+        expect(c128.scalar, equals(Complex128(3.0, -4.0)));
+
+        // Uint64
+        final u64 = GpuArray.filled([1], 123456789, DType.uint64);
+        expect(u64.scalar, equals(Uint64(123456789)));
+
+        // Uint32
+        final u32 = GpuArray.filled([1], 42000, DType.uint32);
+        expect(u32.scalar, equals(Uint32(42000)));
+
+        // Uint16
+        final u16 = GpuArray.filled([1], 1234, DType.uint16);
+        expect(u16.scalar, equals(Uint16(1234)));
+
+        // Int8
+        final i8 = GpuArray.filled([1], -50, DType.int8);
+        expect(i8.scalar, equals(Int8(-50)));
+
+        // Boolean
+        final bTrue = GpuArray.filled([1], true, DType.boolean);
+        expect(bTrue.scalar, isTrue);
+
+        // Float64
+        final f64 = GpuArray.filled([1], 99.75, DType.float64);
+        expect(f64.scalar, equals(99.75));
+      });
+    });
+
+    test('Complex arithmetic operations maintain real and imaginary parts', () {
+      ResourceScope.scope(() {
+        final c1 = GpuArray.fromList([nd.Complex(1.0, 2.0), nd.Complex(3.0, 4.0)], [2], DType.complex128);
+        final c2 = GpuArray.fromList([nd.Complex(2.0, 1.0), nd.Complex(1.0, -1.0)], [2], DType.complex128);
+
+        // Addition: (1+2i) + (2+1i) = (3+3i), (3+4i) + (1-1i) = (4+3i)
+        final sum = c1 + c2;
+        expect(sum.toList(), equals([nd.Complex(3.0, 3.0), nd.Complex(4.0, 3.0)]));
+
+        // Subtraction: (1+2i) - (2+1i) = (-1+1i)
+        final diff = c1 - c2;
+        expect(diff.toList(), equals([nd.Complex(-1.0, 1.0), nd.Complex(2.0, 5.0)]));
+
+        // Multiplication: (1+2i) * (2+1i) = (2-2 + 1i+4i) = (0 + 5i)
+        final prod = c1 * c2;
+        expect(prod.toList(), equals([nd.Complex(0.0, 5.0), nd.Complex(7.0, 1.0)]));
+      });
+    });
   });
 }
