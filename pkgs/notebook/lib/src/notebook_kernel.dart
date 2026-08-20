@@ -53,15 +53,26 @@ class NotebookKernel {
     _writeWorkspace();
   }
 
+  File _getWorkspaceFile() {
+    final candidate2 = File(
+      p.join(workspaceDir, 'pkgs', 'notebook', 'lib', 'src', 'workspace.dart'),
+    );
+    if (candidate2.existsSync() ||
+        File(
+          p.join(workspaceDir, 'pkgs', 'notebook', 'pubspec.yaml'),
+        ).existsSync()) {
+      return candidate2;
+    }
+    return File(p.join(workspaceDir, 'lib', 'src', 'workspace.dart'));
+  }
+
   Future<void> start() async {
     await _startKernelOnly();
 
     _lspClient = LspClient(dartSdkPath: dartSdkPath, rootPath: workspaceDir);
     try {
       await _lspClient!.start();
-      final workspaceFile = File(
-        p.join(workspaceDir, 'lib', 'src', 'workspace.dart'),
-      );
+      final workspaceFile = _getWorkspaceFile();
       final fileUri = p.toUri(workspaceFile.path).toString();
       _lspClient!.didOpen(
         fileUri,
@@ -177,12 +188,18 @@ class NotebookKernel {
   }
 
   Future<String> _handleAddDependency(String pkgName) async {
+    var targetWorkingDir = workspaceDir;
+    if (File(
+      p.join(workspaceDir, 'pkgs', 'notebook', 'pubspec.yaml'),
+    ).existsSync()) {
+      targetWorkingDir = p.join(workspaceDir, 'pkgs', 'notebook');
+    }
     final dartExecutable = p.join(dartSdkPath, 'bin', 'dart');
     final result = await Process.run(dartExecutable, [
       'pub',
       'add',
       pkgName,
-    ], workingDirectory: workspaceDir);
+    ], workingDirectory: targetWorkingDir);
 
     if (result.exitCode != 0) {
       return 'Failed to add dependency "$pkgName":\n${result.stderr}';
@@ -197,7 +214,15 @@ class NotebookKernel {
   }
 
   Future<void> _ensurePackageInstalled(String pkgName) async {
-    final pubspecFile = File(p.join(workspaceDir, 'pubspec.yaml'));
+    var pubspecFile = File(p.join(workspaceDir, 'pubspec.yaml'));
+    if (!pubspecFile.existsSync() &&
+        File(
+          p.join(workspaceDir, 'pkgs', 'notebook', 'pubspec.yaml'),
+        ).existsSync()) {
+      pubspecFile = File(
+        p.join(workspaceDir, 'pkgs', 'notebook', 'pubspec.yaml'),
+      );
+    }
     if (pubspecFile.existsSync()) {
       final content = pubspecFile.readAsStringSync();
       if (content.contains('$pkgName:')) return;
@@ -266,7 +291,10 @@ class NotebookKernel {
       ).firstMatch(rawCode);
       if (pkgMatch != null) {
         final pkgName = pkgMatch.group(1)!;
-        if (pkgName != 'ndarray' && pkgName != 'notebook') {
+        if (pkgName != 'ndarray' &&
+            pkgName != 'notebook' &&
+            pkgName != 'symbolic_dart' &&
+            pkgName != 'resource_scope') {
           await _ensurePackageInstalled(pkgName);
         }
       }
@@ -643,6 +671,52 @@ class NotebookKernel {
             type: 'method',
             detail: 'void dispose()',
           ),
+          CompletionItem(
+            label: 'diff(Symbol x)',
+            type: 'method',
+            detail: 'Expr diff(Symbol x)',
+          ),
+          CompletionItem(
+            label: 'expand()',
+            type: 'method',
+            detail: 'Expr expand()',
+          ),
+          CompletionItem(
+            label: 'subs(Map map)',
+            type: 'method',
+            detail: 'Expr subs(Map<Object, Object> map)',
+          ),
+          CompletionItem(
+            label: 'lambdify(List<Symbol> vars)',
+            type: 'method',
+            detail: 'SymbolicLambda lambdify(List<Symbol> variables)',
+          ),
+          CompletionItem(
+            label: 'toLatex()',
+            type: 'method',
+            detail: 'String toLatex()',
+          ),
+          CompletionItem(
+            label: 'toCCode()',
+            type: 'method',
+            detail: 'String toCCode()',
+          ),
+          CompletionItem(label: 'det()', type: 'method', detail: 'Expr det()'),
+          CompletionItem(
+            label: 'inv()',
+            type: 'method',
+            detail: 'SymbolicMatrix inv()',
+          ),
+          CompletionItem(
+            label: 'solve(SymbolicMatrix b)',
+            type: 'method',
+            detail: 'SymbolicMatrix solve(SymbolicMatrix b)',
+          ),
+          CompletionItem(
+            label: 'factor()',
+            type: 'method',
+            detail: 'PolyFactorization factor()',
+          ),
         ]);
       }
       return items
@@ -667,6 +741,81 @@ class NotebookKernel {
     }
 
     items.addAll([
+      CompletionItem(
+        label: 'Symbol',
+        type: 'class',
+        detail: 'Symbolic variable: Symbol(String name)',
+      ),
+      CompletionItem(
+        label: 'Integer',
+        type: 'class',
+        detail: 'Exact integer symbolic node: Integer(int value)',
+      ),
+      CompletionItem(
+        label: 'Real',
+        type: 'class',
+        detail: 'Real floating-point symbolic node: Real(double value)',
+      ),
+      CompletionItem(
+        label: 'Rational',
+        type: 'class',
+        detail: 'Exact rational number: Rational(int num, int den)',
+      ),
+      CompletionItem(
+        label: 'Expr',
+        type: 'class',
+        detail: 'Symbolic expression CAS node',
+      ),
+      CompletionItem(
+        label: 'SymbolicMatrix',
+        type: 'class',
+        detail: 'Dense symbolic matrix: CDenseMatrix',
+      ),
+      CompletionItem(
+        label: 'FlintRationalPoly',
+        type: 'class',
+        detail: 'Exact polynomial over Q[x] with factorization',
+      ),
+      CompletionItem(
+        label: 'SymbolicOptimizer',
+        type: 'class',
+        detail: 'Newton-Raphson & Gradient Descent auto-diff solvers',
+      ),
+      CompletionItem(
+        label: 'diff',
+        type: 'function',
+        detail: 'Expr diff(Expr f, Symbol x)',
+      ),
+      CompletionItem(
+        label: 'expand',
+        type: 'function',
+        detail: 'Expr expand(Expr f)',
+      ),
+      CompletionItem(
+        label: 'subs',
+        type: 'function',
+        detail: 'Expr subs(Expr f, Map<Object, Object> substitutions)',
+      ),
+      CompletionItem(
+        label: 'lambdify',
+        type: 'function',
+        detail: 'SymbolicLambda lambdify(Expr f, List<Symbol> vars)',
+      ),
+      CompletionItem(
+        label: 'evaluateSymbolic',
+        type: 'function',
+        detail: 'NDArray evaluateSymbolic(Expr f, Map<Symbol, NDArray> inputs)',
+      ),
+      CompletionItem(
+        label: 'plotSymbolic',
+        type: 'function',
+        detail: 'Plot plotSymbolic(Expr f, Symbol var, {from, to, points})',
+      ),
+      CompletionItem(
+        label: 'plotSymbolic2D',
+        type: 'function',
+        detail: 'Heatmap plotSymbolic2D(Expr f, Symbol x, Symbol y, ...)',
+      ),
       CompletionItem(
         label: 'sum',
         type: 'function',
@@ -705,37 +854,52 @@ class NotebookKernel {
       CompletionItem(
         label: 'sin',
         type: 'function',
-        detail: 'NDArray sin(NDArray a)',
+        detail: 'NDArray sin(NDArray a) / Expr sin(Expr a)',
       ),
       CompletionItem(
         label: 'cos',
         type: 'function',
-        detail: 'NDArray cos(NDArray a)',
+        detail: 'NDArray cos(NDArray a) / Expr cos(Expr a)',
       ),
       CompletionItem(
         label: 'exp',
         type: 'function',
-        detail: 'NDArray exp(NDArray a)',
+        detail: 'NDArray exp(NDArray a) / Expr exp(Expr a)',
       ),
       CompletionItem(
         label: 'log',
         type: 'function',
-        detail: 'NDArray log(NDArray a)',
+        detail: 'NDArray log(NDArray a) / Expr log(Expr a)',
       ),
       CompletionItem(
         label: 'abs',
         type: 'function',
-        detail: 'NDArray abs(NDArray a)',
+        detail: 'NDArray abs(NDArray a) / Expr abs(Expr a)',
       ),
       CompletionItem(
         label: 'sqrt',
         type: 'function',
-        detail: 'NDArray sqrt(NDArray a)',
+        detail: 'NDArray sqrt(NDArray a) / Expr sqrt(Expr a)',
       ),
       CompletionItem(
         label: 'NDArray',
         type: 'class',
         detail: 'Multi-dimensional array',
+      ),
+      CompletionItem(
+        label: 'Plot',
+        type: 'class',
+        detail: '2D line plot widget: Plot(x: xArr, y: yArr)',
+      ),
+      CompletionItem(
+        label: 'Heatmap',
+        type: 'class',
+        detail: '2D heatmap widget: Heatmap(matrix2D)',
+      ),
+      CompletionItem(
+        label: 'LaTeX',
+        type: 'class',
+        detail: 'Mathematical KaTeX equation display widget',
       ),
       CompletionItem(
         label: 'Image',
@@ -768,6 +932,8 @@ class NotebookKernel {
     if (reloadReport.success != true) {
       throw StateError('Failed to reload workspace: ${reloadReport.toJson()}');
     }
+    final isolate = await _service!.getIsolate(_isolateId!);
+    _updateWorkspaceLibId(isolate);
   }
 
   Future<List<Map<String, dynamic>>> getVariableInspectorData() async {
@@ -787,6 +953,17 @@ class NotebookKernel {
     if (val is NDArray) {
       return 'NDArray shape: \${val.shape} | dtype: \${val.dtype.name} | strided: \${!val.isContiguous}';
     }
+    if (val is Expr) {
+      final str = '\$val';
+      return 'Expr -> \${str.length > 60 ? str.substring(0, 60) + '...' : str}';
+    }
+    if (val is SymbolicMatrix) {
+      return 'SymbolicMatrix [\${val.rows}x\${val.cols}]';
+    }
+    if (val is FlintRationalPoly) {
+      final str = '\$val';
+      return 'FlintRationalPoly degree: \${val.degree} -> \${str.length > 50 ? str.substring(0, 50) + '...' : str}';
+    }
     final str = '\$val';
     return '\${val.runtimeType} -> \${str.length > 60 ? str.substring(0, 60) + '...' : str}';
   } catch (e) {
@@ -805,6 +982,12 @@ class NotebookKernel {
           'name': sym,
           'type': desc.startsWith('NDArray')
               ? 'NDArray'
+              : desc.startsWith('Expr')
+              ? 'Expr'
+              : desc.startsWith('SymbolicMatrix')
+              ? 'SymbolicMatrix'
+              : desc.startsWith('FlintRationalPoly')
+              ? 'FlintRationalPoly'
               : desc.split(' -> ').first,
           'summary': desc,
         });
@@ -814,15 +997,16 @@ class NotebookKernel {
   }
 
   void _writeWorkspace() {
-    final workspaceFile = File(
-      p.join(workspaceDir, 'lib', 'src', 'workspace.dart'),
-    );
+    final workspaceFile = _getWorkspaceFile();
     final buffer = StringBuffer();
     buffer.writeln('// ignore_for_file: unused_import, unused_element');
     buffer.writeln('// Auto-generated workspace. Do not edit.');
     final defaultImports = {
+      "import 'dart:math' as math;",
       "import 'package:notebook/src/kernel_helper.dart';",
-      "import 'package:ndarray/ndarray.dart';",
+      "import 'package:ndarray/ndarray.dart' hide sin, cos, tan, asin, acos, atan, exp, log, sqrt, abs;",
+      "import 'package:symbolic_dart/symbolic_dart.dart' hide sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, exp, log, sqrt, abs;",
+      "import 'package:resource_scope/resource_scope.dart';",
     };
     for (var imp in defaultImports) {
       buffer.writeln(imp);

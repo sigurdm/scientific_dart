@@ -536,3 +536,141 @@ external int native_pad_nd(
   ffi.Pointer<ffi.Void> constAfter,
   int isUniformConstant,
 );
+
+/// Native Fisher-Yates shuffle for 1D arrays
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void native_shuffle_1d(
+  ffi.Pointer<ffi.Void> data,
+  int size,
+  int stride,
+  int itemSize,
+  int seed,
+);
+
+/// Native slice-based Fisher-Yates shuffle for N-D arrays along axis 0
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int,
+    ffi.Int,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void native_shuffle_nd(
+  ffi.Pointer<ffi.Void> data,
+  ffi.Pointer<ffi.Int64> shape,
+  ffi.Pointer<ffi.Int64> strides,
+  int rank,
+  int itemSize,
+  int seed,
+);
+
+/// Native uniform random choice with replacement
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int64,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void native_choice_uniform(
+  ffi.Pointer<ffi.Void> src,
+  int srcStride,
+  ffi.Pointer<ffi.Void> dest,
+  int destStride,
+  int srcSize,
+  int sampleCount,
+  int itemSize,
+  int seed,
+);
+
+/// Native weighted random choice with replacement (CDF binary search)
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int64,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int64,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void native_choice_weighted(
+  ffi.Pointer<ffi.Void> src,
+  int srcStride,
+  ffi.Pointer<ffi.Void> dest,
+  int destStride,
+  ffi.Pointer<ffi.Double> cdf,
+  int srcSize,
+  int sampleCount,
+  int itemSize,
+  int seed,
+);
+
+/// Native uniform random choice without replacement
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int64,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void native_choice_without_replacement(
+  ffi.Pointer<ffi.Void> src,
+  int srcStride,
+  ffi.Pointer<ffi.Void> dest,
+  int destStride,
+  int srcSize,
+  int sampleCount,
+  int itemSize,
+  int seed,
+);
+
+/// Native weighted random choice without replacement
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Int64,
+    ffi.Pointer<ffi.Void>,
+    ffi.Int64,
+    ffi.Pointer<ffi.Double>,
+    ffi.Int64,
+    ffi.Int64,
+    ffi.Int,
+    ffi.UnsignedLongLong,
+  )
+>()
+external void native_choice_weighted_without_replacement(
+  ffi.Pointer<ffi.Void> src,
+  int srcStride,
+  ffi.Pointer<ffi.Void> dest,
+  int destStride,
+  ffi.Pointer<ffi.Double> probs,
+  int srcSize,
+  int sampleCount,
+  int itemSize,
+  int seed,
+);

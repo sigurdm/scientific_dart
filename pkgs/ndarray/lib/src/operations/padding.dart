@@ -439,6 +439,30 @@ _prepareConstants<T extends Object>(
         afterVals.cast<Complex>(),
       ).cast<ffi.Void>(),
     ),
+    DType.float16 || DType.bfloat16 => (
+      ScratchArena.copyFloats(
+        beforeVals.cast<num>().map((e) => e.toDouble()).toList(),
+      ).cast<ffi.Void>(),
+      ScratchArena.copyFloats(
+        afterVals.cast<num>().map((e) => e.toDouble()).toList(),
+      ).cast<ffi.Void>(),
+    ),
+    DType.int8 => (
+      _copyUint8s(beforeVals.cast<int>()).cast<ffi.Void>(),
+      _copyUint8s(afterVals.cast<int>()).cast<ffi.Void>(),
+    ),
+    DType.uint64 => (
+      ScratchArena.copyInt64s(beforeVals.cast<int>()).cast<ffi.Void>(),
+      ScratchArena.copyInt64s(afterVals.cast<int>()).cast<ffi.Void>(),
+    ),
+    DType.uint32 => (
+      ScratchArena.copyInt32s(beforeVals.cast<int>()).cast<ffi.Void>(),
+      ScratchArena.copyInt32s(afterVals.cast<int>()).cast<ffi.Void>(),
+    ),
+    DType.uint16 => (
+      _copyInt16s(beforeVals.cast<int>()).cast<ffi.Void>(),
+      _copyInt16s(afterVals.cast<int>()).cast<ffi.Void>(),
+    ),
   };
 
   return (cbPtr, caPtr, isUniform);
@@ -472,6 +496,7 @@ NDArray<T> _padNativeFast<T extends Object>(
     DType.complex128 => 6,
     DType.complex64 => 7,
     DType.boolean => 8,
+    _ => throw UnsupportedError("Unsupported dtype"),
   };
 
   return NDArray.scope(() {
@@ -900,6 +925,48 @@ void _padAxis<T extends Object>(
           statLengthBefore,
           statLengthAfter,
         );
+      case DType.float16:
+      case DType.bfloat16:
+      case DType.int8:
+      case DType.uint64:
+      case DType.uint32:
+      case DType.uint16:
+        final doubleSrc = NDArray.fromList(
+          src.toList().cast<num>().map((e) => e.toDouble()).toList(),
+          src.shape,
+          DType.float64,
+        );
+        final doubleDest = NDArray<Float64>.zeros(dest.shape, DType.float64);
+        final doubleShapeSrcPtr = ScratchArena.copyInts(doubleSrc.shape);
+        final doubleStridesSrcPtr = ScratchArena.copyInts(doubleSrc.strides);
+        final doubleShapeDestPtr = ScratchArena.copyInts(doubleDest.shape);
+        bindings.pad_axis_double(
+          doubleSrc.pointer.cast(),
+          doubleShapeSrcPtr,
+          doubleStridesSrcPtr,
+          doubleDest.pointer.cast(),
+          doubleShapeDestPtr,
+          rank,
+          axis,
+          padBefore,
+          padAfter,
+          modeInt,
+          (constantBefore as num).toDouble(),
+          (constantAfter as num).toDouble(),
+          (endBefore as num).toDouble(),
+          (endAfter as num).toDouble(),
+          statLengthBefore,
+          statLengthAfter,
+        );
+        final castedDest = NDArray.fromList(
+          doubleDest.toList(),
+          doubleDest.shape,
+          dest.dtype,
+        );
+        castedDest.copy(out: dest);
+        doubleSrc.dispose();
+        doubleDest.dispose();
+        castedDest.dispose();
     }
   } finally {
     ScratchArena.reset(marker);

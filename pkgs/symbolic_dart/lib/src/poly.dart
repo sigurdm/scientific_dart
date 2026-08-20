@@ -497,11 +497,114 @@ final class FlintRationalPoly implements ffi.Finalizable, ScopedResource {
     }
   }
 
+  /// Returns the exact rational coefficient at [degreeIndex] as `(numerator, denominator)`.
+  ({int numerator, int denominator}) getCoefficientRational(int degreeIndex) {
+    if (degreeIndex < 0 || degreeIndex >= length) {
+      return (numerator: 0, denominator: 1);
+    }
+    final q = calloc<fl.fmpq>();
+    final numPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
+    final denPtr = calloc<ffi.Int64>().cast<fl.fmpz>();
+    try {
+      fl.fmpq_poly_get_coeff_fmpq(q, pointer, degreeIndex);
+      fl.fmpq_numerator(numPtr, q);
+      fl.fmpq_denominator(denPtr, q);
+      final n = fl.fmpz_get_si(numPtr);
+      final d = fl.fmpz_get_si(denPtr);
+      return (numerator: n, denominator: d == 0 ? 1 : d);
+    } finally {
+      calloc.free(q);
+      calloc.free(numPtr);
+      calloc.free(denPtr);
+    }
+  }
+
+  /// Formats this polynomial as a LaTeX mathematical string in descending order of powers.
+  String toLatex([String variable = 'x']) {
+    _checkDisposed();
+    final d = degree;
+    if (d < 0) return '0';
+    final terms = <String>[];
+    for (var k = d; k >= 0; k--) {
+      final c = getCoefficientRational(k);
+      if (c.numerator == 0) continue;
+      final isNeg = c.numerator < 0;
+      final absNum = c.numerator.abs();
+      final den = c.denominator;
+
+      String coeffStr;
+      if (den == 1) {
+        if (absNum == 1 && k > 0) {
+          coeffStr = '';
+        } else {
+          coeffStr = '$absNum';
+        }
+      } else {
+        coeffStr =
+            r'\frac{'
+            '$absNum}{$den}';
+      }
+
+      String term;
+      if (k == 0) {
+        term = coeffStr.isEmpty ? '1' : coeffStr;
+      } else if (k == 1) {
+        term = '$coeffStr$variable';
+      } else {
+        term = '$coeffStr$variable^{$k}';
+      }
+
+      if (terms.isEmpty) {
+        terms.add(isNeg ? '-$term' : term);
+      } else {
+        terms.add(isNeg ? ' - $term' : ' + $term');
+      }
+    }
+    return terms.isEmpty ? '0' : terms.join();
+  }
+
   @override
   String toString() {
     _checkDisposed();
     final cStr = fl.fmpq_poly_get_str(pointer);
     if (cStr == ffi.nullptr) return '0';
     return cStr.cast<Utf8>().toDartString();
+  }
+}
+
+/// Extension adding LaTeX rendering to [FlintRationalPoly.factor] factorization records.
+extension PolyFactorizationLatex
+    on
+        ({
+          ({int numerator, int denominator}) content,
+          List<({FlintRationalPoly factor, int exponent})> factors,
+        }) {
+  /// Formats this factorization record as a LaTeX product: `c * (f1)^e1 * (f2)^e2`.
+  String toLatex([String variable = 'x']) {
+    final sb = StringBuffer();
+    final c = content;
+    if (c.numerator != 1 || c.denominator != 1 || factors.isEmpty) {
+      if (c.denominator == 1) {
+        if (c.numerator == -1 && factors.isNotEmpty) {
+          sb.write('-');
+        } else {
+          sb.write('${c.numerator}');
+        }
+      } else {
+        sb.write(
+          r'\frac{'
+          '${c.numerator}}{${c.denominator}}',
+        );
+      }
+    }
+    for (final item in factors) {
+      sb.write(r'\left(');
+      sb.write(item.factor.toLatex(variable));
+      sb.write(r'\right)');
+      if (item.exponent > 1) {
+        sb.write('^{${item.exponent}}');
+      }
+    }
+    return sb.toString();
   }
 }

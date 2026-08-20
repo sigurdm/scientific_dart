@@ -409,6 +409,24 @@ final class SymbolicMatrix implements ffi.Finalizable, ScopedResource {
     }
   }
 
+  /// Formats this matrix as a LaTeX `\begin{bmatrix} ... \end{bmatrix}` representation.
+  String toLatex() {
+    _checkDisposed();
+    final r = rows;
+    final c = cols;
+    if (r == 0 || c == 0) return r'\begin{bmatrix}\end{bmatrix}';
+    final sb = StringBuffer(r'\begin{bmatrix}');
+    for (var i = 0; i < r; i++) {
+      for (var j = 0; j < c; j++) {
+        sb.write(getCell(i, j).toLatex());
+        if (j < c - 1) sb.write(' & ');
+      }
+      if (i < r - 1) sb.write(r' \\ ');
+    }
+    sb.write(r'\end{bmatrix}');
+    return sb.toString();
+  }
+
   /// Checks structural equality between two symbolic matrices.
   bool eq(SymbolicMatrix other) {
     return mat.dense_matrix_eq(pointer, other.pointer) != 0;

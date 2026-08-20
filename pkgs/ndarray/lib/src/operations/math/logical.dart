@@ -64,13 +64,27 @@ NDArray<bool> logical_not<T>(
             case DType.float32:
               v_to_bool_float(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
             case DType.int64:
+            case DType.uint64:
               v_to_bool_int64(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
             case DType.int32:
+            case DType.uint32:
               v_to_bool_int32(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
             case DType.uint8:
+            case DType.int8:
               v_to_bool_uint8(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
             case DType.int16:
+            case DType.uint16:
               v_to_bool_int16(a.pointer.cast(), aBoolPtr, a.size, ffi.nullptr);
+            case DType.float16:
+            case DType.bfloat16:
+              final doubleA = castNDArray(a, DType.float64);
+              v_to_bool_double(
+                doubleA.pointer.cast(),
+                aBoolPtr,
+                a.size,
+                ffi.nullptr,
+              );
+              doubleA.dispose();
             case DType.complex128:
               v_to_bool_complex128(
                 a.pointer.cast(),
@@ -121,6 +135,7 @@ NDArray<bool> logical_not<T>(
                 ffi.nullptr,
               );
             case DType.int64:
+            case DType.uint64:
               s_to_bool_int64(
                 a.pointer.cast(),
                 cStridesA,
@@ -131,6 +146,7 @@ NDArray<bool> logical_not<T>(
                 ffi.nullptr,
               );
             case DType.int32:
+            case DType.uint32:
               s_to_bool_int32(
                 a.pointer.cast(),
                 cStridesA,
@@ -141,6 +157,7 @@ NDArray<bool> logical_not<T>(
                 ffi.nullptr,
               );
             case DType.uint8:
+            case DType.int8:
               s_to_bool_uint8(
                 a.pointer.cast(),
                 cStridesA,
@@ -151,6 +168,7 @@ NDArray<bool> logical_not<T>(
                 ffi.nullptr,
               );
             case DType.int16:
+            case DType.uint16:
               s_to_bool_int16(
                 a.pointer.cast(),
                 cStridesA,
@@ -160,6 +178,20 @@ NDArray<bool> logical_not<T>(
                 ndim,
                 ffi.nullptr,
               );
+            case DType.float16:
+            case DType.bfloat16:
+              final doubleA = castNDArray(a, DType.float64);
+              final doubleStridesA = ScratchArena.copyInts(doubleA.strides);
+              s_to_bool_double(
+                doubleA.pointer.cast(),
+                doubleStridesA,
+                aBoolPtr,
+                cStridesTemp,
+                cShape,
+                ndim,
+                ffi.nullptr,
+              );
+              doubleA.dispose();
             case DType.complex128:
               s_to_bool_complex128(
                 a.pointer.cast(),
@@ -834,13 +866,22 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
       case DType.float32:
         v_to_bool_float(x.pointer.cast(), destPtr, x.size, ffi.nullptr);
       case DType.int64:
+      case DType.uint64:
         v_to_bool_int64(x.pointer.cast(), destPtr, x.size, ffi.nullptr);
       case DType.int32:
+      case DType.uint32:
         v_to_bool_int32(x.pointer.cast(), destPtr, x.size, ffi.nullptr);
       case DType.uint8:
+      case DType.int8:
         v_to_bool_uint8(x.pointer.cast(), destPtr, x.size, ffi.nullptr);
       case DType.int16:
+      case DType.uint16:
         v_to_bool_int16(x.pointer.cast(), destPtr, x.size, ffi.nullptr);
+      case DType.float16:
+      case DType.bfloat16:
+        final doubleX = castNDArray(x, DType.float64);
+        v_to_bool_double(doubleX.pointer.cast(), destPtr, x.size, ffi.nullptr);
+        doubleX.dispose();
       case DType.complex128:
         v_to_bool_complex128(x.pointer.cast(), destPtr, x.size, ffi.nullptr);
       case DType.complex64:
@@ -881,6 +922,7 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
           ffi.nullptr,
         );
       case DType.int64:
+      case DType.uint64:
         s_to_bool_int64(
           x.pointer.cast(),
           cStridesX,
@@ -891,6 +933,7 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
           ffi.nullptr,
         );
       case DType.int32:
+      case DType.uint32:
         s_to_bool_int32(
           x.pointer.cast(),
           cStridesX,
@@ -901,6 +944,7 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
           ffi.nullptr,
         );
       case DType.uint8:
+      case DType.int8:
         s_to_bool_uint8(
           x.pointer.cast(),
           cStridesX,
@@ -911,6 +955,7 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
           ffi.nullptr,
         );
       case DType.int16:
+      case DType.uint16:
         s_to_bool_int16(
           x.pointer.cast(),
           cStridesX,
@@ -920,6 +965,20 @@ ffi.Pointer<ffi.Uint8> _castToBoolean(
           ndim,
           ffi.nullptr,
         );
+      case DType.float16:
+      case DType.bfloat16:
+        final doubleX = castNDArray(x, DType.float64);
+        final doubleStridesX = ScratchArena.copyInts(doubleX.strides);
+        s_to_bool_double(
+          doubleX.pointer.cast(),
+          doubleStridesX,
+          destPtr,
+          cStridesTemp,
+          cShape,
+          ndim,
+          ffi.nullptr,
+        );
+        doubleX.dispose();
       case DType.complex128:
         s_to_bool_complex128(
           x.pointer.cast(),

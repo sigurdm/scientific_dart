@@ -1127,15 +1127,21 @@ NDArray<T> diff<T>(NDArray<T> a, {int n = 1, int axis = -1, NDArray<T>? out}) {
           rank,
           targetAxis,
         );
+      case DType.float16:
+      case DType.bfloat16:
+      case DType.int8:
+      case DType.uint64:
+      case DType.uint32:
+      case DType.uint16:
       case DType.uint8:
       case DType.int16:
       case DType.boolean:
-        final intA = castNDArray(a, DType.int32);
-        final intRes = NDArray<int>.create(targetShape, DType.int32);
+        final intA = castNDArray(a, DType.float64);
+        final intRes = NDArray<Float64>.create(targetShape, DType.float64);
         final cStridesIntA = ScratchArena.copyInts(intA.strides);
         final cStridesIntRes = ScratchArena.copyInts(intRes.strides);
 
-        s_diff_int32(
+        s_diff_double(
           intA.pointer.cast(),
           cStridesIntA,
           intRes.pointer.cast(),

@@ -1,6 +1,7 @@
 // ignore_for_file: non_constant_identifier_names
 import 'package:pocketfft/pocketfft.dart';
 import '../ndarray.dart';
+import '../float16_utils.dart';
 import 'dart:ffi' as ffi;
 import '../scratch_arena.dart';
 import 'padding.dart';
@@ -64,6 +65,42 @@ void _loadSignalToKissInput<T>(
       final inPtr = inputA.pointer.cast<ffi.Uint8>() + srcStart;
       for (var i = 0; i < copyLen; i++) {
         pin[i].r = inPtr[i].toDouble();
+        pin[i].i = 0.0;
+      }
+    case DType.int8:
+      final inPtr = inputA.pointer.cast<ffi.Int8>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i].toDouble();
+        pin[i].i = 0.0;
+      }
+    case DType.uint64:
+      final inPtr = inputA.pointer.cast<ffi.Uint64>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i].toDouble();
+        pin[i].i = 0.0;
+      }
+    case DType.uint32:
+      final inPtr = inputA.pointer.cast<ffi.Uint32>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i].toDouble();
+        pin[i].i = 0.0;
+      }
+    case DType.uint16:
+      final inPtr = inputA.pointer.cast<ffi.Uint16>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = inPtr[i].toDouble();
+        pin[i].i = 0.0;
+      }
+    case DType.float16:
+      final inPtr = inputA.pointer.cast<ffi.Uint16>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = Float16Utils.decodeFloat16(inPtr[i]);
+        pin[i].i = 0.0;
+      }
+    case DType.bfloat16:
+      final inPtr = inputA.pointer.cast<ffi.Uint16>() + srcStart;
+      for (var i = 0; i < copyLen; i++) {
+        pin[i].r = Float16Utils.decodeBFloat16(inPtr[i]);
         pin[i].i = 0.0;
       }
     case DType.boolean:

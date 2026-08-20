@@ -444,9 +444,15 @@ NDArray<T> linspaceGrid<T>(
             numSamples,
             endpoint ? 1 : 0,
           );
+        case DType.float16:
+        case DType.bfloat16:
+        case DType.int8:
+        case DType.uint64:
+        case DType.uint32:
+        case DType.uint16:
         case DType.boolean:
           throw UnsupportedError(
-            'linspaceGrid not supported for boolean arrays',
+            'linspaceGrid not supported for type $resolvedDType',
           );
       }
     } finally {
@@ -538,6 +544,12 @@ NDArray<T> logspace<T>(
         numSamples,
       );
       return arr;
+    case DType.float16:
+    case DType.bfloat16:
+    case DType.int8:
+    case DType.uint64:
+    case DType.uint32:
+    case DType.uint16:
     case DType.int64:
     case DType.int32:
     case DType.int16:
@@ -711,6 +723,12 @@ NDArray<T> geomspace<T>(
         );
       }
       return arr;
+    case DType.float16:
+    case DType.bfloat16:
+    case DType.int8:
+    case DType.uint64:
+    case DType.uint32:
+    case DType.uint16:
     case DType.int64:
     case DType.int32:
     case DType.int16:

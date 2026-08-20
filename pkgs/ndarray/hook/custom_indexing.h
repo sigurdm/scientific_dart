@@ -12,6 +12,12 @@
 #define DTYPE_COMPLEX128 6
 #define DTYPE_COMPLEX64 7
 #define DTYPE_BOOLEAN 8
+#define DTYPE_FLOAT16 9
+#define DTYPE_BFLOAT16 10
+#define DTYPE_INT8 11
+#define DTYPE_UINT64 12
+#define DTYPE_UINT32 13
+#define DTYPE_UINT16 14
 
 #ifdef __cplusplus
 extern "C" {

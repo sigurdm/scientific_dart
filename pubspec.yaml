@@ -1,6 +1,6 @@
 name: math_workspace
 environment:
-  sdk: ^3.11.5
+  sdk: ^3.10.0
 workspace:
   - pkgs/openblas
   - pkgs/ndarray
@@ -11,6 +11,7 @@ workspace:
   - pkgs/code_editor
   - pkgs/symbolic_dart
   - pkgs/resource_scope
+  - pkgs/gpuarray
 dependencies:
   http: ^1.6.0
 

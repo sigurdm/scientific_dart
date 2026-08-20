@@ -9496,6 +9496,10 @@ static void dispatch_cast_src(
         case DTYPE_COMPLEX128: s_cast_generic_impl<cpx_t, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
         case DTYPE_COMPLEX64: s_cast_generic_impl<cpx_f_t, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
         case DTYPE_BOOLEAN: s_cast_generic_impl<uint8_t, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
+        case DTYPE_INT8: s_cast_generic_impl<int8_t, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
+        case DTYPE_UINT64: s_cast_generic_impl<uint64_t, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
+        case DTYPE_UINT32: s_cast_generic_impl<uint32_t, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
+        case DTYPE_UINT16: s_cast_generic_impl<uint16_t, DestType>(src_ptr, stridesSrc, dest_ptr, shape, rank, total_elements); break;
     }
 }
 
@@ -9535,6 +9539,18 @@ void s_cast_generic(
             break;
         case DTYPE_BOOLEAN:
             dispatch_cast_src<uint8_t>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+            break;
+        case DTYPE_INT8:
+            dispatch_cast_src<int8_t>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+            break;
+        case DTYPE_UINT64:
+            dispatch_cast_src<uint64_t>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+            break;
+        case DTYPE_UINT32:
+            dispatch_cast_src<uint32_t>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
+            break;
+        case DTYPE_UINT16:
+            dispatch_cast_src<uint16_t>(src_ptr, stridesSrc, dtypeSrc, dest_ptr, shape, rank, total_elements);
             break;
     }
 }
@@ -15265,3 +15281,602 @@ void s_vander_fit_complex64(const cpx_f_t *x, int strideX,
         }
     }
 }
+
+/* ============================================================================
+ * SECTION: RANDOM SHUFFLE & CHOICE NATIVE ACCELERATORS IMPLEMENTATION
+ * ============================================================================
+ */
+
+typedef struct {
+    uint64_t a;
+    uint64_t b;
+} Item16;
+
+template <typename T>
+static inline void shuffle_1d_contiguous_impl(T* RESTRICT data, int64_t size, uint64_t s[4]) {
+    for (int64_t i = size - 1; i > 0; i--) {
+        int64_t j = (int64_t)(xoshiro256_next(s) % (uint64_t)(i + 1));
+        if (i != j) {
+            T temp = data[i];
+            data[i] = data[j];
+            data[j] = temp;
+        }
+    }
+}
+
+template <typename T>
+static inline void shuffle_1d_strided_impl(T* RESTRICT data, int64_t size, int64_t stride, uint64_t s[4]) {
+    for (int64_t i = size - 1; i > 0; i--) {
+        int64_t j = (int64_t)(xoshiro256_next(s) % (uint64_t)(i + 1));
+        if (i != j) {
+            T temp = data[i * stride];
+            data[i * stride] = data[j * stride];
+            data[j * stride] = temp;
+        }
+    }
+}
+
+template <typename T>
+static inline void choice_uniform_impl(
+    const T* RESTRICT src, int64_t src_stride,
+    T* RESTRICT dest, int64_t dest_stride,
+    int64_t src_size, int64_t sample_count,
+    uint64_t s[4]
+) {
+    if (src_stride == 1 && dest_stride == 1) {
+        for (int64_t i = 0; i < sample_count; i++) {
+            uint64_t idx = xoshiro256_next(s) % (uint64_t)src_size;
+            dest[i] = src[idx];
+        }
+    } else {
+        for (int64_t i = 0; i < sample_count; i++) {
+            uint64_t idx = xoshiro256_next(s) % (uint64_t)src_size;
+            dest[i * dest_stride] = src[idx * src_stride];
+        }
+    }
+}
+
+template <typename T>
+static inline void choice_weighted_impl(
+    const T* RESTRICT src, int64_t src_stride,
+    T* RESTRICT dest, int64_t dest_stride,
+    const double* RESTRICT cdf,
+    int64_t src_size, int64_t sample_count,
+    uint64_t s[4]
+) {
+    if (src_stride == 1 && dest_stride == 1) {
+        for (int64_t i = 0; i < sample_count; i++) {
+            double u = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
+            const double* it = std::upper_bound(cdf, cdf + src_size, u);
+            int64_t idx = (int64_t)(it - cdf);
+            if (idx >= src_size) idx = src_size - 1;
+            dest[i] = src[idx];
+        }
+    } else {
+        for (int64_t i = 0; i < sample_count; i++) {
+            double u = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
+            const double* it = std::upper_bound(cdf, cdf + src_size, u);
+            int64_t idx = (int64_t)(it - cdf);
+            if (idx >= src_size) idx = src_size - 1;
+            dest[i * dest_stride] = src[idx * src_stride];
+        }
+    }
+}
+
+template <typename T>
+static inline void choice_without_replacement_impl(
+    const T* RESTRICT src, int64_t src_stride,
+    T* RESTRICT dest, int64_t dest_stride,
+    int64_t src_size, int64_t sample_count,
+    uint64_t s[4]
+) {
+    if (sample_count == src_size && src_stride == 1 && dest_stride == 1) {
+        memcpy(dest, src, src_size * sizeof(T));
+        shuffle_1d_contiguous_impl<T>(dest, src_size, s);
+        return;
+    }
+
+    int64_t* indices = (int64_t*)malloc(src_size * sizeof(int64_t));
+    if (!indices) return;
+    for (int64_t i = 0; i < src_size; i++) {
+        indices[i] = i;
+    }
+
+    if (src_stride == 1 && dest_stride == 1) {
+        for (int64_t i = 0; i < sample_count; i++) {
+            int64_t j = i + (int64_t)(xoshiro256_next(s) % (uint64_t)(src_size - i));
+            int64_t chosen = indices[j];
+            indices[j] = indices[i];
+            dest[i] = src[chosen];
+        }
+    } else {
+        for (int64_t i = 0; i < sample_count; i++) {
+            int64_t j = i + (int64_t)(xoshiro256_next(s) % (uint64_t)(src_size - i));
+            int64_t chosen = indices[j];
+            indices[j] = indices[i];
+            dest[i * dest_stride] = src[chosen * src_stride];
+        }
+    }
+
+    free(indices);
+}
+
+template <typename T>
+static inline void choice_weighted_without_replacement_impl(
+    const T* RESTRICT src, int64_t src_stride,
+    T* RESTRICT dest, int64_t dest_stride,
+    const double* RESTRICT probs,
+    int64_t src_size, int64_t sample_count,
+    uint64_t s[4]
+) {
+    double* temp_probs = (double*)malloc(src_size * sizeof(double));
+    uint8_t* drawn = (uint8_t*)calloc(src_size, sizeof(uint8_t));
+    if (!temp_probs || !drawn) {
+        if (temp_probs) free(temp_probs);
+        if (drawn) free(drawn);
+        return;
+    }
+
+    for (int64_t i = 0; i < src_size; i++) {
+        temp_probs[i] = probs[i];
+    }
+
+    for (int64_t draw = 0; draw < sample_count; draw++) {
+        double sumP = 0.0;
+        for (int64_t i = 0; i < src_size; i++) {
+            if (!drawn[i]) {
+                sumP += temp_probs[i];
+            }
+        }
+
+        int64_t index = src_size - 1;
+        if (sumP > 0.0) {
+            double u = ((double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0)) * sumP;
+            double cum = 0.0;
+            for (int64_t j = 0; j < src_size; j++) {
+                if (!drawn[j]) {
+                    cum += temp_probs[j];
+                    if (cum > u || (cum == u && temp_probs[j] > 0.0)) {
+                        index = j;
+                        break;
+                    }
+                }
+            }
+        } else {
+            int64_t remaining = src_size - draw;
+            int64_t pick = (remaining > 0) ? (int64_t)(xoshiro256_next(s) % (uint64_t)remaining) : 0;
+            int64_t count = 0;
+            for (int64_t j = 0; j < src_size; j++) {
+                if (!drawn[j]) {
+                    if (count == pick) {
+                        index = j;
+                        break;
+                    }
+                    count++;
+                }
+            }
+        }
+
+        drawn[index] = 1;
+        if (src_stride == 1 && dest_stride == 1) {
+            dest[draw] = src[index];
+        } else {
+            dest[draw * dest_stride] = src[index * src_stride];
+        }
+    }
+
+    free(temp_probs);
+    free(drawn);
+}
+
+extern "C" {
+
+void native_shuffle_1d(
+    void *data,
+    int64_t size,
+    int64_t stride,
+    int item_size,
+    unsigned long long seed
+) {
+    if (data == nullptr || size <= 1 || item_size <= 0) return;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
+
+    if (stride == 1) {
+        switch (item_size) {
+            case 1:
+                shuffle_1d_contiguous_impl<uint8_t>((uint8_t*)data, size, s);
+                break;
+            case 2:
+                shuffle_1d_contiguous_impl<uint16_t>((uint16_t*)data, size, s);
+                break;
+            case 4:
+                shuffle_1d_contiguous_impl<uint32_t>((uint32_t*)data, size, s);
+                break;
+            case 8:
+                shuffle_1d_contiguous_impl<uint64_t>((uint64_t*)data, size, s);
+                break;
+            case 16:
+                shuffle_1d_contiguous_impl<Item16>((Item16*)data, size, s);
+                break;
+            default: {
+                char stack_buf[256];
+                char* temp = (item_size <= (int)sizeof(stack_buf)) ? stack_buf : (char*)malloc(item_size);
+                if (!temp) return;
+                char* ptr = (char*)data;
+                for (int64_t i = size - 1; i > 0; i--) {
+                    int64_t j = (int64_t)(xoshiro256_next(s) % (uint64_t)(i + 1));
+                    if (i != j) {
+                        memcpy(temp, ptr + i * item_size, item_size);
+                        memcpy(ptr + i * item_size, ptr + j * item_size, item_size);
+                        memcpy(ptr + j * item_size, temp, item_size);
+                    }
+                }
+                if (temp != stack_buf) free(temp);
+                break;
+            }
+        }
+    } else {
+        switch (item_size) {
+            case 1:
+                shuffle_1d_strided_impl<uint8_t>((uint8_t*)data, size, stride, s);
+                break;
+            case 2:
+                shuffle_1d_strided_impl<uint16_t>((uint16_t*)data, size, stride, s);
+                break;
+            case 4:
+                shuffle_1d_strided_impl<uint32_t>((uint32_t*)data, size, stride, s);
+                break;
+            case 8:
+                shuffle_1d_strided_impl<uint64_t>((uint64_t*)data, size, stride, s);
+                break;
+            case 16:
+                shuffle_1d_strided_impl<Item16>((Item16*)data, size, stride, s);
+                break;
+            default: {
+                char stack_buf[256];
+                char* temp = (item_size <= (int)sizeof(stack_buf)) ? stack_buf : (char*)malloc(item_size);
+                if (!temp) return;
+                char* ptr = (char*)data;
+                for (int64_t i = size - 1; i > 0; i--) {
+                    int64_t j = (int64_t)(xoshiro256_next(s) % (uint64_t)(i + 1));
+                    if (i != j) {
+                        memcpy(temp, ptr + i * stride * item_size, item_size);
+                        memcpy(ptr + i * stride * item_size, ptr + j * stride * item_size, item_size);
+                        memcpy(ptr + j * stride * item_size, temp, item_size);
+                    }
+                }
+                if (temp != stack_buf) free(temp);
+                break;
+            }
+        }
+    }
+}
+
+static void copy_slice_strided_recursive(
+    const char* RESTRICT src, int64_t src_offset, const int64_t* RESTRICT shape, const int64_t* RESTRICT strides_src,
+    char* RESTRICT dest, int64_t dest_offset, const int64_t* RESTRICT strides_dest,
+    int dim, int rank, int item_size
+) {
+    int64_t count = shape[dim];
+    int64_t step_src = strides_src[dim] * item_size;
+    int64_t step_dest = strides_dest[dim] * item_size;
+    if (dim == rank - 1) {
+        for (int64_t i = 0; i < count; i++) {
+            memcpy(dest + dest_offset + i * step_dest, src + src_offset + i * step_src, item_size);
+        }
+    } else {
+        for (int64_t i = 0; i < count; i++) {
+            copy_slice_strided_recursive(
+                src, src_offset + i * step_src, shape, strides_src,
+                dest, dest_offset + i * step_dest, strides_dest,
+                dim + 1, rank, item_size
+            );
+        }
+    }
+}
+
+void native_shuffle_nd(
+    void *data,
+    const int64_t *shape,
+    const int64_t *strides,
+    int rank,
+    int item_size,
+    unsigned long long seed
+) {
+    if (data == nullptr || shape == nullptr || strides == nullptr || rank <= 0 || item_size <= 0) return;
+    int64_t d0 = shape[0];
+    if (d0 <= 1) return;
+
+    if (rank == 1) {
+        native_shuffle_1d(data, shape[0], strides[0], item_size, seed);
+        return;
+    }
+
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
+
+    int64_t slice_elements = 1;
+    for (int i = 1; i < rank; i++) {
+        slice_elements *= shape[i];
+    }
+    if (slice_elements <= 0) return;
+
+    bool slice_is_contiguous = true;
+    int64_t expected = 1;
+    for (int i = rank - 1; i >= 1; i--) {
+        if (strides[i] != expected) {
+            slice_is_contiguous = false;
+            break;
+        }
+        expected *= shape[i];
+    }
+
+    int64_t slice_bytes = slice_elements * item_size;
+    char stack_buf[4096];
+    char* temp = (slice_bytes <= (int64_t)sizeof(stack_buf)) ? stack_buf : (char*)malloc(slice_bytes);
+    if (!temp) return;
+
+    char* base = (char*)data;
+    if (slice_is_contiguous) {
+        int64_t step_bytes = strides[0] * item_size;
+        for (int64_t i = d0 - 1; i > 0; i--) {
+            int64_t j = (int64_t)(xoshiro256_next(s) % (uint64_t)(i + 1));
+            if (i != j) {
+                char* pi = base + i * step_bytes;
+                char* pj = base + j * step_bytes;
+                memcpy(temp, pi, slice_bytes);
+                memcpy(pi, pj, slice_bytes);
+                memcpy(pj, temp, slice_bytes);
+            }
+        }
+    } else {
+        int64_t temp_strides[32];
+        if (rank <= 32) {
+            temp_strides[rank - 1] = 1;
+            for (int i = rank - 2; i >= 1; i--) {
+                temp_strides[i] = temp_strides[i + 1] * shape[i + 1];
+            }
+            int64_t step_i_bytes = strides[0] * item_size;
+            for (int64_t i = d0 - 1; i > 0; i--) {
+                int64_t j = (int64_t)(xoshiro256_next(s) % (uint64_t)(i + 1));
+                if (i != j) {
+                    int64_t offsetI = i * step_i_bytes;
+                    int64_t offsetJ = j * step_i_bytes;
+                    copy_slice_strided_recursive(base, offsetI, shape, strides, temp, 0, temp_strides, 1, rank, item_size);
+                    copy_slice_strided_recursive(base, offsetJ, shape, strides, base, offsetI, strides, 1, rank, item_size);
+                    copy_slice_strided_recursive(temp, 0, shape, temp_strides, base, offsetJ, strides, 1, rank, item_size);
+                }
+            }
+        }
+    }
+
+    if (temp != stack_buf) {
+        free(temp);
+    }
+}
+
+void native_choice_uniform(
+    const void *src,
+    int64_t src_stride,
+    void *dest,
+    int64_t dest_stride,
+    int64_t src_size,
+    int64_t sample_count,
+    int item_size,
+    unsigned long long seed
+) {
+    if (src == nullptr || dest == nullptr || src_size <= 0 || sample_count <= 0 || item_size <= 0) return;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
+
+    switch (item_size) {
+        case 1:
+            choice_uniform_impl<uint8_t>((const uint8_t*)src, src_stride, (uint8_t*)dest, dest_stride, src_size, sample_count, s);
+            break;
+        case 2:
+            choice_uniform_impl<uint16_t>((const uint16_t*)src, src_stride, (uint16_t*)dest, dest_stride, src_size, sample_count, s);
+            break;
+        case 4:
+            choice_uniform_impl<uint32_t>((const uint32_t*)src, src_stride, (uint32_t*)dest, dest_stride, src_size, sample_count, s);
+            break;
+        case 8:
+            choice_uniform_impl<uint64_t>((const uint64_t*)src, src_stride, (uint64_t*)dest, dest_stride, src_size, sample_count, s);
+            break;
+        case 16:
+            choice_uniform_impl<Item16>((const Item16*)src, src_stride, (Item16*)dest, dest_stride, src_size, sample_count, s);
+            break;
+        default: {
+            const char* s_src = (const char*)src;
+            char* d_dest = (char*)dest;
+            for (int64_t i = 0; i < sample_count; i++) {
+                uint64_t idx = xoshiro256_next(s) % (uint64_t)src_size;
+                memcpy(d_dest + i * dest_stride * item_size, s_src + idx * src_stride * item_size, item_size);
+            }
+            break;
+        }
+    }
+}
+
+void native_choice_weighted(
+    const void *src,
+    int64_t src_stride,
+    void *dest,
+    int64_t dest_stride,
+    const double *cdf,
+    int64_t src_size,
+    int64_t sample_count,
+    int item_size,
+    unsigned long long seed
+) {
+    if (src == nullptr || dest == nullptr || cdf == nullptr || src_size <= 0 || sample_count <= 0 || item_size <= 0) return;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
+
+    switch (item_size) {
+        case 1:
+            choice_weighted_impl<uint8_t>((const uint8_t*)src, src_stride, (uint8_t*)dest, dest_stride, cdf, src_size, sample_count, s);
+            break;
+        case 2:
+            choice_weighted_impl<uint16_t>((const uint16_t*)src, src_stride, (uint16_t*)dest, dest_stride, cdf, src_size, sample_count, s);
+            break;
+        case 4:
+            choice_weighted_impl<uint32_t>((const uint32_t*)src, src_stride, (uint32_t*)dest, dest_stride, cdf, src_size, sample_count, s);
+            break;
+        case 8:
+            choice_weighted_impl<uint64_t>((const uint64_t*)src, src_stride, (uint64_t*)dest, dest_stride, cdf, src_size, sample_count, s);
+            break;
+        case 16:
+            choice_weighted_impl<Item16>((const Item16*)src, src_stride, (Item16*)dest, dest_stride, cdf, src_size, sample_count, s);
+            break;
+        default: {
+            const char* s_src = (const char*)src;
+            char* d_dest = (char*)dest;
+            for (int64_t i = 0; i < sample_count; i++) {
+                double u = (double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0);
+                const double* it = std::upper_bound(cdf, cdf + src_size, u);
+                int64_t idx = (int64_t)(it - cdf);
+                if (idx >= src_size) idx = src_size - 1;
+                memcpy(d_dest + i * dest_stride * item_size, s_src + idx * src_stride * item_size, item_size);
+            }
+            break;
+        }
+    }
+}
+
+void native_choice_without_replacement(
+    const void *src,
+    int64_t src_stride,
+    void *dest,
+    int64_t dest_stride,
+    int64_t src_size,
+    int64_t sample_count,
+    int item_size,
+    unsigned long long seed
+) {
+    if (src == nullptr || dest == nullptr || src_size <= 0 || sample_count <= 0 || item_size <= 0 || sample_count > src_size) return;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
+
+    switch (item_size) {
+        case 1:
+            choice_without_replacement_impl<uint8_t>((const uint8_t*)src, src_stride, (uint8_t*)dest, dest_stride, src_size, sample_count, s);
+            break;
+        case 2:
+            choice_without_replacement_impl<uint16_t>((const uint16_t*)src, src_stride, (uint16_t*)dest, dest_stride, src_size, sample_count, s);
+            break;
+        case 4:
+            choice_without_replacement_impl<uint32_t>((const uint32_t*)src, src_stride, (uint32_t*)dest, dest_stride, src_size, sample_count, s);
+            break;
+        case 8:
+            choice_without_replacement_impl<uint64_t>((const uint64_t*)src, src_stride, (uint64_t*)dest, dest_stride, src_size, sample_count, s);
+            break;
+        case 16:
+            choice_without_replacement_impl<Item16>((const Item16*)src, src_stride, (Item16*)dest, dest_stride, src_size, sample_count, s);
+            break;
+        default: {
+            int64_t* indices = (int64_t*)malloc(src_size * sizeof(int64_t));
+            if (!indices) return;
+            for (int64_t i = 0; i < src_size; i++) indices[i] = i;
+            const char* s_src = (const char*)src;
+            char* d_dest = (char*)dest;
+            for (int64_t i = 0; i < sample_count; i++) {
+                int64_t j = i + (int64_t)(xoshiro256_next(s) % (uint64_t)(src_size - i));
+                int64_t chosen = indices[j];
+                indices[j] = indices[i];
+                memcpy(d_dest + i * dest_stride * item_size, s_src + chosen * src_stride * item_size, item_size);
+            }
+            free(indices);
+            break;
+        }
+    }
+}
+
+void native_choice_weighted_without_replacement(
+    const void *src,
+    int64_t src_stride,
+    void *dest,
+    int64_t dest_stride,
+    const double *probs,
+    int64_t src_size,
+    int64_t sample_count,
+    int item_size,
+    unsigned long long seed
+) {
+    if (src == nullptr || dest == nullptr || probs == nullptr || src_size <= 0 || sample_count <= 0 || item_size <= 0 || sample_count > src_size) return;
+    uint64_t s[4];
+    xoshiro256_seed(seed, s);
+
+    switch (item_size) {
+        case 1:
+            choice_weighted_without_replacement_impl<uint8_t>((const uint8_t*)src, src_stride, (uint8_t*)dest, dest_stride, probs, src_size, sample_count, s);
+            break;
+        case 2:
+            choice_weighted_without_replacement_impl<uint16_t>((const uint16_t*)src, src_stride, (uint16_t*)dest, dest_stride, probs, src_size, sample_count, s);
+            break;
+        case 4:
+            choice_weighted_without_replacement_impl<uint32_t>((const uint32_t*)src, src_stride, (uint32_t*)dest, dest_stride, probs, src_size, sample_count, s);
+            break;
+        case 8:
+            choice_weighted_without_replacement_impl<uint64_t>((const uint64_t*)src, src_stride, (uint64_t*)dest, dest_stride, probs, src_size, sample_count, s);
+            break;
+        case 16:
+            choice_weighted_without_replacement_impl<Item16>((const Item16*)src, src_stride, (Item16*)dest, dest_stride, probs, src_size, sample_count, s);
+            break;
+        default: {
+            double* temp_probs = (double*)malloc(src_size * sizeof(double));
+            uint8_t* drawn = (uint8_t*)calloc(src_size, sizeof(uint8_t));
+            if (!temp_probs || !drawn) {
+                if (temp_probs) free(temp_probs);
+                if (drawn) free(drawn);
+                return;
+            }
+            for (int64_t i = 0; i < src_size; i++) temp_probs[i] = probs[i];
+            const char* s_src = (const char*)src;
+            char* d_dest = (char*)dest;
+
+            for (int64_t draw = 0; draw < sample_count; draw++) {
+                double sumP = 0.0;
+                for (int64_t i = 0; i < src_size; i++) {
+                    if (!drawn[i]) sumP += temp_probs[i];
+                }
+                int64_t index = src_size - 1;
+                if (sumP > 0.0) {
+                    double u = ((double)(xoshiro256_next(s) >> 11) * (1.0 / 9007199254740992.0)) * sumP;
+                    double cum = 0.0;
+                    for (int64_t j = 0; j < src_size; j++) {
+                        if (!drawn[j]) {
+                            cum += temp_probs[j];
+                            if (cum > u || (cum == u && temp_probs[j] > 0.0)) {
+                                index = j;
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    int64_t remaining = src_size - draw;
+                    int64_t pick = (remaining > 0) ? (int64_t)(xoshiro256_next(s) % (uint64_t)remaining) : 0;
+                    int64_t count = 0;
+                    for (int64_t j = 0; j < src_size; j++) {
+                        if (!drawn[j]) {
+                            if (count == pick) {
+                                index = j;
+                                break;
+                            }
+                            count++;
+                        }
+                    }
+                }
+                drawn[index] = 1;
+                memcpy(d_dest + draw * dest_stride * item_size, s_src + index * src_stride * item_size, item_size);
+            }
+            free(temp_probs);
+            free(drawn);
+            break;
+        }
+    }
+}
+
+}
+
+

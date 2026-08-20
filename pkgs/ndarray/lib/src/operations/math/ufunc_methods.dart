@@ -1813,6 +1813,39 @@ NDArray<T> reduceatUfunc<T extends Object>(
               opCode,
             );
             return result;
+          case DType.float16:
+          case DType.bfloat16:
+          case DType.int8:
+          case DType.uint64:
+          case DType.uint32:
+          case DType.uint16:
+            final doubleA = NDArray.fromList(
+              a.toList().cast<num>().map((e) => e.toDouble()).toList(),
+              a.shape,
+              DType.float64,
+            );
+            final doubleRes = NDArray<Float64>.create(
+              result.shape,
+              DType.float64,
+            );
+            v_reduceat_double(
+              doubleA.pointer.cast(),
+              axisLen,
+              indicesPtr,
+              numIndices,
+              doubleRes.pointer.cast(),
+              opCode,
+            );
+            final casted = NDArray.fromList(
+              doubleRes.toList(),
+              doubleRes.shape,
+              result.dtype,
+            );
+            casted.copy(out: result);
+            doubleA.dispose();
+            doubleRes.dispose();
+            casted.dispose();
+            return result;
         }
       }
 
@@ -1945,6 +1978,45 @@ NDArray<T> reduceatUfunc<T extends Object>(
             numIndices,
             opCode,
           );
+          return result;
+        case DType.float16:
+        case DType.bfloat16:
+        case DType.int8:
+        case DType.uint64:
+        case DType.uint32:
+        case DType.uint16:
+          final doubleA = NDArray.fromList(
+            a.toList().cast<num>().map((e) => e.toDouble()).toList(),
+            a.shape,
+            DType.float64,
+          );
+          final doubleRes = NDArray<Float64>.create(
+            result.shape,
+            DType.float64,
+          );
+          final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
+          final cStridesDoubleRes = ScratchArena.copyInts(doubleRes.strides);
+          s_reduceat_double(
+            doubleA.pointer.cast(),
+            cStridesDoubleA,
+            doubleRes.pointer.cast(),
+            cStridesDoubleRes,
+            cShape,
+            rank,
+            normAxis,
+            indicesPtr,
+            numIndices,
+            opCode,
+          );
+          final casted = NDArray.fromList(
+            doubleRes.toList(),
+            doubleRes.shape,
+            result.dtype,
+          );
+          casted.copy(out: result);
+          doubleA.dispose();
+          doubleRes.dispose();
+          casted.dispose();
           return result;
       }
     } finally {
@@ -2253,6 +2325,47 @@ void atUfunc<T extends Object>(
           rankB,
           opCode,
         );
+      case DType.float16:
+      case DType.bfloat16:
+      case DType.int8:
+      case DType.uint64:
+      case DType.uint32:
+      case DType.uint16:
+        final doubleA = NDArray.fromList(
+          a.toList().cast<num>().map((e) => e.toDouble()).toList(),
+          a.shape,
+          DType.float64,
+        );
+        final doubleB = NDArray.fromList(
+          b.toList().cast<num>().map((e) => e.toDouble()).toList(),
+          b.shape,
+          DType.float64,
+        );
+        final cStridesDoubleA = ScratchArena.copyInts(doubleA.strides);
+        final cStridesDoubleB = ScratchArena.copyInts(doubleB.strides);
+        s_at_double(
+          doubleA.pointer.cast(),
+          cStridesDoubleA,
+          cShapeA,
+          rankA,
+          idxPtr,
+          numIndices,
+          effectiveStrideIdx,
+          doubleB.pointer.cast(),
+          cStridesDoubleB,
+          cShapeB,
+          rankB,
+          opCode,
+        );
+        final castedBack = NDArray.fromList(
+          doubleA.toList(),
+          doubleA.shape,
+          a.dtype,
+        );
+        castedBack.copy(out: a);
+        doubleA.dispose();
+        doubleB.dispose();
+        castedBack.dispose();
     }
   } finally {
     ScratchArena.reset(marker);

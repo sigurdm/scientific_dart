@@ -1383,6 +1383,8 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<T>? out}) {
             }
           }
           return result;
+        default:
+          break;
       }
     } else {
       final rank = a.shape.length;
@@ -1493,11 +1495,14 @@ NDArray<T> square<T>(NDArray<T> a, {NDArray<dynamic>? where, NDArray<T>? out}) {
               maskHolder.pointer,
             );
             return result;
+          default:
+            break;
         }
       } finally {
         ScratchArena.reset(marker);
       }
     }
+    return result;
   } finally {
     maskHolder.dispose();
   }
@@ -2348,6 +2353,10 @@ NDArray<T> negative<T>(
       case DType.boolean:
         throw UnsupportedError(
           'Boolean arrays do not support negative operator',
+        );
+      default:
+        throw UnsupportedError(
+          'Negative operator not supported for dtype ${a.dtype}',
         );
     }
     return result;
@@ -4059,6 +4068,8 @@ NDArray<T> sign<T extends Object>(
         );
       case DType.boolean:
         a.copy(out: result);
+      default:
+        throw UnsupportedError('Unsupported dtype for sign: ${a.dtype}');
     }
     return result;
   } finally {
@@ -4144,6 +4155,8 @@ NDArray<T> ceil<T extends Object>(
           (x) => x.ceilToDouble(),
           maskHolder.pointer,
         );
+      default:
+        throw UnsupportedError('Unsupported dtype for ceil: ${a.dtype}');
     }
     return result;
   } finally {
@@ -4231,6 +4244,8 @@ NDArray<T> floor<T extends Object>(
           (x) => x.floorToDouble(),
           maskHolder.pointer,
         );
+      default:
+        throw UnsupportedError('Unsupported dtype for floor: ${a.dtype}');
     }
     return result;
   } finally {
@@ -4318,6 +4333,8 @@ NDArray<T> round<T extends Object>(
           (x) => x.roundToDouble(),
           maskHolder.pointer,
         );
+      default:
+        throw UnsupportedError('Unsupported dtype for round: ${a.dtype}');
     }
     return result;
   } finally {
@@ -5834,13 +5851,40 @@ NDArray<R> add<Ta, Tb, R>(
           maskHolder.pointer,
         );
         return result;
+      default:
+        break;
     }
   } finally {
     ScratchArena.reset(marker);
     maskHolder.dispose();
   }
-  // ignore: dead_code
-  throw UnsupportedError('Unsupported operand types');
+  if (result.dtype.isComplex || a.dtype.isComplex || b.dtype.isComplex) {
+    final cpxA = castNDArray(a, DType.complex128);
+    final cpxB = castNDArray(b, DType.complex128);
+    final cpxRes = add<Complex, Complex, Complex>(cpxA, cpxB, where: where);
+    final casted = castNDArray<R>(cpxRes, result.dtype);
+    casted.copy(out: result);
+    if (!identical(cpxA, a)) cpxA.dispose();
+    if (!identical(cpxB, b)) cpxB.dispose();
+    cpxRes.dispose();
+    casted.dispose();
+    return result;
+  } else {
+    final doubleA = castNDArray(a, DType.float64);
+    final doubleB = castNDArray(b, DType.float64);
+    final doubleRes = add<Float64, Float64, Float64>(
+      doubleA,
+      doubleB,
+      where: where,
+    );
+    final casted = castNDArray<R>(doubleRes, result.dtype);
+    casted.copy(out: result);
+    if (!identical(doubleA, a)) doubleA.dispose();
+    if (!identical(doubleB, b)) doubleB.dispose();
+    doubleRes.dispose();
+    casted.dispose();
+    return result;
+  }
 }
 
 /// Element-wise subtraction of two arrays.
@@ -7336,13 +7380,44 @@ NDArray<R> subtract<Ta, Tb, R>(
           maskHolder.pointer,
         );
         return result;
+      default:
+        break;
     }
   } finally {
     ScratchArena.reset(marker);
     maskHolder.dispose();
   }
-  // ignore: dead_code
-  throw UnsupportedError('Unsupported operand types');
+  if (result.dtype.isComplex || a.dtype.isComplex || b.dtype.isComplex) {
+    final cpxA = castNDArray(a, DType.complex128);
+    final cpxB = castNDArray(b, DType.complex128);
+    final cpxRes = subtract<Complex, Complex, Complex>(
+      cpxA,
+      cpxB,
+      where: where,
+    );
+    final casted = castNDArray<R>(cpxRes, result.dtype);
+    casted.copy(out: result);
+    if (!identical(cpxA, a)) cpxA.dispose();
+    if (!identical(cpxB, b)) cpxB.dispose();
+    cpxRes.dispose();
+    casted.dispose();
+    return result;
+  } else {
+    final doubleA = castNDArray(a, DType.float64);
+    final doubleB = castNDArray(b, DType.float64);
+    final doubleRes = subtract<Float64, Float64, Float64>(
+      doubleA,
+      doubleB,
+      where: where,
+    );
+    final casted = castNDArray<R>(doubleRes, result.dtype);
+    casted.copy(out: result);
+    if (!identical(doubleA, a)) doubleA.dispose();
+    if (!identical(doubleB, b)) doubleB.dispose();
+    doubleRes.dispose();
+    casted.dispose();
+    return result;
+  }
 }
 
 /// Element-wise multiplication of two arrays with full broadcasting support.
@@ -8843,13 +8918,44 @@ NDArray<R> multiply<Ta, Tb, R>(
           maskHolder.pointer,
         );
         return result;
+      default:
+        break;
     }
   } finally {
     ScratchArena.reset(marker);
     maskHolder.dispose();
   }
-  // ignore: dead_code
-  throw UnsupportedError('Unsupported operand types');
+  if (result.dtype.isComplex || a.dtype.isComplex || b.dtype.isComplex) {
+    final cpxA = castNDArray(a, DType.complex128);
+    final cpxB = castNDArray(b, DType.complex128);
+    final cpxRes = multiply<Complex, Complex, Complex>(
+      cpxA,
+      cpxB,
+      where: where,
+    );
+    final casted = castNDArray<R>(cpxRes, result.dtype);
+    casted.copy(out: result);
+    if (!identical(cpxA, a)) cpxA.dispose();
+    if (!identical(cpxB, b)) cpxB.dispose();
+    cpxRes.dispose();
+    casted.dispose();
+    return result;
+  } else {
+    final doubleA = castNDArray(a, DType.float64);
+    final doubleB = castNDArray(b, DType.float64);
+    final doubleRes = multiply<Float64, Float64, Float64>(
+      doubleA,
+      doubleB,
+      where: where,
+    );
+    final casted = castNDArray<R>(doubleRes, result.dtype);
+    casted.copy(out: result);
+    if (!identical(doubleA, a)) doubleA.dispose();
+    if (!identical(doubleB, b)) doubleB.dispose();
+    doubleRes.dispose();
+    casted.dispose();
+    return result;
+  }
 }
 
 /// Element-wise division of two arrays with full broadcasting support.
@@ -10364,11 +10470,38 @@ NDArray<R> divide<Ta, Tb, R>(
           maskHolder.pointer,
         );
         return result;
+      default:
+        break;
     }
   } finally {
     ScratchArena.reset(marker);
     maskHolder.dispose();
   }
-  // ignore: dead_code
-  throw UnsupportedError('Unsupported operand types');
+  if (result.dtype.isComplex || a.dtype.isComplex || b.dtype.isComplex) {
+    final cpxA = castNDArray(a, DType.complex128);
+    final cpxB = castNDArray(b, DType.complex128);
+    final cpxRes = divide<Complex, Complex, Complex>(cpxA, cpxB, where: where);
+    final casted = castNDArray<R>(cpxRes, result.dtype);
+    casted.copy(out: result);
+    if (!identical(cpxA, a)) cpxA.dispose();
+    if (!identical(cpxB, b)) cpxB.dispose();
+    cpxRes.dispose();
+    casted.dispose();
+    return result;
+  } else {
+    final doubleA = castNDArray(a, DType.float64);
+    final doubleB = castNDArray(b, DType.float64);
+    final doubleRes = divide<Float64, Float64, Float64>(
+      doubleA,
+      doubleB,
+      where: where,
+    );
+    final casted = castNDArray<R>(doubleRes, result.dtype);
+    casted.copy(out: result);
+    if (!identical(doubleA, a)) doubleA.dispose();
+    if (!identical(doubleB, b)) doubleB.dispose();
+    doubleRes.dispose();
+    casted.dispose();
+    return result;
+  }
 }

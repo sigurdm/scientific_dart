@@ -265,6 +265,7 @@ void main(List<String> args) async {
             '-DCMAKE_C_COMPILER=$ccPath',
             '-DCMAKE_CXX_COMPILER=$ccPath',
           ],
+          '..',
         ];
 
         if (!hasSystemMpfrHeader) {

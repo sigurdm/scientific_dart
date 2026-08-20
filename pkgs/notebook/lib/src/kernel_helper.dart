@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:math' as math;
 import 'package:ndarray/ndarray.dart';
+import 'package:symbolic_dart/symbolic_dart.dart'
+    hide sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, exp, log, sqrt, abs;
 
 /// Represents a single typed output item produced during cell execution.
 final class CellOutputItem {
@@ -34,6 +36,18 @@ void display(dynamic object) {
     capturedOutputs.add(CellOutputItem(object.mimeType, object.toHtml()));
   } else if (object is Image) {
     capturedOutputs.add(CellOutputItem('text/html', object.toHtml()));
+  } else if (object is Expr) {
+    capturedOutputs.add(
+      CellOutputItem('text/html', LaTeX(object.toLatex()).toHtml()),
+    );
+  } else if (object is SymbolicMatrix) {
+    capturedOutputs.add(
+      CellOutputItem('text/html', LaTeX(object.toLatex()).toHtml()),
+    );
+  } else if (object is FlintRationalPoly) {
+    capturedOutputs.add(
+      CellOutputItem('text/html', LaTeX(object.toLatex()).toHtml()),
+    );
   } else {
     capturedOutputs.add(CellOutputItem('text/plain', object.toString()));
   }
@@ -66,6 +80,8 @@ abstract class Displayable {
 ///
 /// If [x] implements [Displayable], returns its [Displayable.toHtml] representation.
 /// If [x] is an [Image], returns a Base64-encoded BMP data URL string.
+/// If [x] is a symbolic AST node ([Expr], [SymbolicMatrix], [FlintRationalPoly]),
+/// automatically formats it into a rendered LaTeX KaTeX widget.
 /// Otherwise, falls back to [Object.toString].
 String prettyFormat(dynamic x) {
   if (x is Image) {
@@ -73,6 +89,15 @@ String prettyFormat(dynamic x) {
   }
   if (x is Displayable) {
     return x.toHtml();
+  }
+  if (x is Expr) {
+    return LaTeX(x.toLatex()).toHtml();
+  }
+  if (x is SymbolicMatrix) {
+    return LaTeX(x.toLatex()).toHtml();
+  }
+  if (x is FlintRationalPoly) {
+    return LaTeX(x.toLatex()).toHtml();
   }
   return x.toString();
 }
@@ -938,6 +963,60 @@ final class Spectrogram extends Displayable {
     }
     return spec;
   }
+}
+
+/// Evaluates and plots a 1D symbolic expression [f] with respect to variable [varName]
+/// over the range [[from], [to]] using [points] samples.
+Plot plotSymbolic(
+  Expr f,
+  Expr varName, {
+  num from = -10,
+  num to = 10,
+  int points = 200,
+  String? title,
+  String color = '#89b4fa',
+}) {
+  if (points <= 1) {
+    throw ArgumentError('points must be greater than 1');
+  }
+  final lambda = f.lambdify([varName]);
+  final xArr = linspace<Float64>(
+    Float64(from.toDouble()),
+    Float64(to.toDouble()),
+    points,
+  );
+  final yArr = lambda.callArray([xArr]);
+  return Plot(
+    x: xArr,
+    y: yArr,
+    title: title ?? 'f($varName) = $f',
+    color: color,
+  );
+}
+
+/// Evaluates and plots a 2D symbolic expression [f] with respect to variables [xVar] and [yVar]
+/// as a 2D heatmap over the ranges [[xFrom], [xTo]] and [[yFrom], [yTo]].
+Heatmap plotSymbolic2D(
+  Expr f,
+  Expr xVar,
+  Expr yVar, {
+  num xFrom = -5,
+  num xTo = 5,
+  num yFrom = -5,
+  num yTo = 5,
+  int points = 50,
+  String? title,
+}) {
+  if (points <= 1) {
+    throw ArgumentError('points must be greater than 1');
+  }
+  final lambda = f.lambdify([xVar, yVar]);
+  final grids = ogrid([
+    GridRange(xFrom.toDouble(), xTo.toDouble(), numPoints: points),
+    GridRange(yFrom.toDouble(), yTo.toDouble(), numPoints: points),
+  ]);
+  final zArr = lambda.callArray([grids[0], grids[1]]);
+  return Heatmap(zArr, title: title ?? 'f($xVar, $yVar) = $f');
 }
 
 dynamic evalInNotebookZone(dynamic Function() body) {

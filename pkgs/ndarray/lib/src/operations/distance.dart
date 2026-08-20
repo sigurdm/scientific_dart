@@ -2,6 +2,7 @@ import 'dart:ffi' as ffi;
 import '../ndarray.dart';
 import '../ndarray_bindings.dart' as bindings;
 import '../scratch_arena.dart';
+import 'helpers.dart' show encodeDType;
 import 'math.dart';
 import 'stats.dart';
 import 'linalg.dart';
@@ -70,9 +71,9 @@ NDArray<Float64> _promoteToFloat64(NDArray a) {
     bindings.s_cast_generic(
       a.pointer.cast(),
       cStridesSrc,
-      a.dtype.index,
+      encodeDType(a.dtype),
       res.pointer.cast(),
-      DType.float64.index,
+      encodeDType(DType.float64),
       cShape,
       ndim,
     );
@@ -162,7 +163,7 @@ NDArray<Float64> pdist<T extends Object>(
     final metricVal = metric.index;
 
     bindings.ndarray_pdist(
-      x.dtype.index,
+      encodeDType(x.dtype),
       x.pointer.cast(),
       m,
       n,
@@ -273,7 +274,7 @@ NDArray<Float64> cdist<Ta extends Object, Tb extends Object>(
     final metricVal = metric.index;
 
     bindings.ndarray_cdist(
-      xaReal.dtype.index,
+      encodeDType(xaReal.dtype),
       xaReal.pointer.cast(),
       xbReal.pointer.cast(),
       m,

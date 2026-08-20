@@ -5025,6 +5025,21 @@ NDArray<R> outer<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
           result.strides[0],
           result.strides[1],
         );
+      case DType.float16:
+      case DType.bfloat16:
+      case DType.int8:
+      case DType.uint64:
+      case DType.uint32:
+      case DType.uint16:
+        final doubleA = castNDArray(flatA, DType.float64);
+        final doubleB = castNDArray(flatB, DType.float64);
+        final doubleRes = outer(doubleA, doubleB);
+        final casted = castNDArray(doubleRes, result.dtype);
+        casted.copy(out: result);
+        doubleA.dispose();
+        doubleB.dispose();
+        doubleRes.dispose();
+        casted.dispose();
     }
   } finally {
     if (flatA != a) flatA.dispose();
@@ -5122,6 +5137,31 @@ NDArray<R> cross<Ta, Tb, R>(
 
   final result =
       out ?? NDArray<R>.create(expectedShape, targetDType as DType<R>);
+
+  if (targetDType == DType.float16 ||
+      targetDType == DType.bfloat16 ||
+      targetDType == DType.int8 ||
+      targetDType == DType.uint64 ||
+      targetDType == DType.uint32 ||
+      targetDType == DType.uint16) {
+    final doubleA = castNDArray(a, DType.float64);
+    final doubleB = castNDArray(b, DType.float64);
+    final doubleRes = cross(
+      doubleA,
+      doubleB,
+      axisa: axisa,
+      axisb: axisb,
+      axisc: axisc,
+      axis: axis,
+    );
+    final casted = castNDArray(doubleRes, targetDType as DType<R>);
+    casted.copy(out: result);
+    doubleA.dispose();
+    doubleB.dispose();
+    doubleRes.dispose();
+    casted.dispose();
+    return result;
+  }
 
   final aCast = castNDArray(a, targetDType);
   final bCast = castNDArray(b, targetDType);
@@ -5334,6 +5374,13 @@ NDArray<R> cross<Ta, Tb, R>(
               result.pointer.cast<ffi.Uint8>() + offsetRes,
             );
           }
+        case DType.float16:
+        case DType.bfloat16:
+        case DType.int8:
+        case DType.uint64:
+        case DType.uint32:
+        case DType.uint16:
+          break;
       }
       return;
     }

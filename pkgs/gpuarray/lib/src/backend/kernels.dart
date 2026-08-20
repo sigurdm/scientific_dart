@@ -1,0 +1,1120 @@
+import 'dart:math' as math;
+import '../dtype.dart';
+import '../buffer.dart';
+import 'compute_engine.dart';
+
+/// Standard binary operation kernel types.
+enum BinaryOp {
+  add,
+  subtract,
+  multiply,
+  divide,
+  power,
+  remainder,
+  maximum,
+  minimum,
+  equal,
+  notEqual,
+  greater,
+  less,
+  greaterEqual,
+  lessEqual,
+}
+
+/// Standard unary operation kernel types.
+enum UnaryOp {
+  negate,
+  abs,
+  sqrt,
+  exp,
+  log,
+  sin,
+  cos,
+  tan,
+  asin,
+  acos,
+  atan,
+  sinh,
+  cosh,
+  tanh,
+  floor,
+  ceil,
+  round,
+}
+
+/// Execution kernels for GPU compute operations.
+final class GpuKernels {
+  GpuKernels._();
+
+  /// Executes an elementwise binary kernel with support for multidimensional broadcasting and non-contiguous striding.
+  static void executeBinaryOp({
+    required BinaryOp op,
+    required GpuBuffer srcA,
+    required List<int> shapeA,
+    required List<int> stridesA,
+    required int offsetA,
+    required DType dtypeA,
+    required GpuBuffer srcB,
+    required List<int> shapeB,
+    required List<int> stridesB,
+    required int offsetB,
+    required DType dtypeB,
+    required GpuBuffer dst,
+    required List<int> outShape,
+    required List<int> outStrides,
+    required int offsetDst,
+    required DType dtypeDst,
+  }) {
+    final bStridesA = ShapeUtils.broadcastStrides(shapeA, stridesA, outShape);
+    final bStridesB = ShapeUtils.broadcastStrides(shapeB, stridesB, outShape);
+    final totalElements = ShapeUtils.computeSize(outShape);
+
+    final rank = outShape.length;
+    final coords = List<int>.filled(rank, 0);
+
+    for (var i = 0; i < totalElements; i++) {
+      // Calculate source element offsets from multidimensional coordinates
+      var elemIdxA = 0;
+      var elemIdxB = 0;
+      var elemIdxDst = 0;
+
+      for (var d = 0; d < rank; d++) {
+        elemIdxA += coords[d] * bStridesA[d];
+        elemIdxB += coords[d] * bStridesB[d];
+        elemIdxDst += coords[d] * outStrides[d];
+      }
+
+      final valA = ComputeEngine.readValue(
+        srcA,
+        dtypeA,
+        elemIdxA,
+        offsetElements: offsetA,
+      );
+      final valB = ComputeEngine.readValue(
+        srcB,
+        dtypeB,
+        elemIdxB,
+        offsetElements: offsetB,
+      );
+
+      final result = _applyBinary(op, valA, valB);
+
+      ComputeEngine.writeValue(
+        dst,
+        dtypeDst,
+        elemIdxDst,
+        result,
+        offsetElements: offsetDst,
+      );
+
+      // Increment multidimensional coordinate
+      for (var d = rank - 1; d >= 0; d--) {
+        coords[d]++;
+        if (coords[d] < outShape[d]) {
+          break;
+        }
+        coords[d] = 0;
+      }
+    }
+  }
+
+  /// Executes an elementwise unary kernel on a tensor.
+  static void executeUnaryOp({
+    required UnaryOp op,
+    required GpuBuffer src,
+    required List<int> shape,
+    required List<int> strides,
+    required int offsetSrc,
+    required DType dtypeSrc,
+    required GpuBuffer dst,
+    required List<int> outStrides,
+    required int offsetDst,
+    required DType dtypeDst,
+  }) {
+    final totalElements = ShapeUtils.computeSize(shape);
+    final rank = shape.length;
+    final coords = List<int>.filled(rank, 0);
+
+    for (var i = 0; i < totalElements; i++) {
+      var elemIdxSrc = 0;
+      var elemIdxDst = 0;
+
+      for (var d = 0; d < rank; d++) {
+        elemIdxSrc += coords[d] * strides[d];
+        elemIdxDst += coords[d] * outStrides[d];
+      }
+
+      final val = ComputeEngine.readValue(
+        src,
+        dtypeSrc,
+        elemIdxSrc,
+        offsetElements: offsetSrc,
+      );
+      final result = _applyUnary(op, val);
+
+      ComputeEngine.writeValue(
+        dst,
+        dtypeDst,
+        elemIdxDst,
+        result,
+        offsetElements: offsetDst,
+      );
+
+      for (var d = rank - 1; d >= 0; d--) {
+        coords[d]++;
+        if (coords[d] < shape[d]) {
+          break;
+        }
+        coords[d] = 0;
+      }
+    }
+  }
+
+  /// Executes a reduction kernel across specified axes or the entire tensor.
+  static void executeReduction({
+    required String op, // 'sum', 'mean', 'prod', 'min', 'max'
+    required GpuBuffer src,
+    required List<int> shape,
+    required List<int> strides,
+    required int offsetSrc,
+    required DType dtypeSrc,
+    required GpuBuffer dst,
+    required List<int> outShape,
+    required List<int> outStrides,
+    required int offsetDst,
+    required DType dtypeDst,
+    int? axis,
+  }) {
+    if (axis == null) {
+      // Full reduction to scalar
+      final totalElements = ShapeUtils.computeSize(shape);
+      if (totalElements == 0) {
+        ComputeEngine.writeValue(
+          dst,
+          dtypeDst,
+          0,
+          0.0,
+          offsetElements: offsetDst,
+        );
+        return;
+      }
+
+      var accum = _initialReductionValue(op);
+      final rank = shape.length;
+      final coords = List<int>.filled(rank, 0);
+
+      for (var i = 0; i < totalElements; i++) {
+        var elemIdx = 0;
+        for (var d = 0; d < rank; d++) {
+          elemIdx += coords[d] * strides[d];
+        }
+
+        final val = ComputeEngine.readValue(
+          src,
+          dtypeSrc,
+          elemIdx,
+          offsetElements: offsetSrc,
+        );
+        accum = _combineReduction(op, accum, val, i);
+
+        for (var d = rank - 1; d >= 0; d--) {
+          coords[d]++;
+          if (coords[d] < shape[d]) {
+            break;
+          }
+          coords[d] = 0;
+        }
+      }
+
+      if (op == 'mean') {
+        accum = accum / totalElements;
+      }
+
+      ComputeEngine.writeValue(
+        dst,
+        dtypeDst,
+        0,
+        accum,
+        offsetElements: offsetDst,
+      );
+    } else {
+      // Reduction along a single axis
+      final normAxis = axis < 0 ? axis + shape.length : axis;
+      final axisSize = shape[normAxis];
+      final totalOut = ShapeUtils.computeSize(outShape);
+
+      final outRank = outShape.length;
+      final outCoords = List<int>.filled(outRank, 0);
+
+      for (var outIdx = 0; outIdx < totalOut; outIdx++) {
+        var accum = _initialReductionValue(op);
+
+        for (var a = 0; a < axisSize; a++) {
+          // Reconstruct input coords from output coords + axis index
+          var srcElemIdx = 0;
+          var inDim = 0;
+          for (var d = 0; d < shape.length; d++) {
+            if (d == normAxis) {
+              srcElemIdx += a * strides[d];
+            } else {
+              srcElemIdx += outCoords[inDim] * strides[d];
+              inDim++;
+            }
+          }
+
+          final val = ComputeEngine.readValue(
+            src,
+            dtypeSrc,
+            srcElemIdx,
+            offsetElements: offsetSrc,
+          );
+          accum = _combineReduction(op, accum, val, a);
+        }
+
+        if (op == 'mean') {
+          accum = accum / axisSize;
+        }
+
+        var dstElemIdx = 0;
+        for (var d = 0; d < outRank; d++) {
+          dstElemIdx += outCoords[d] * outStrides[d];
+        }
+
+        ComputeEngine.writeValue(
+          dst,
+          dtypeDst,
+          dstElemIdx,
+          accum,
+          offsetElements: offsetDst,
+        );
+
+        for (var d = outRank - 1; d >= 0; d--) {
+          outCoords[d]++;
+          if (outCoords[d] < outShape[d]) {
+            break;
+          }
+          outCoords[d] = 0;
+        }
+      }
+    }
+  }
+
+  /// Executes tiled 2D or batched N-D matrix multiplication.
+  static void executeMatmul({
+    required GpuBuffer srcA,
+    required List<int> shapeA,
+    required List<int> stridesA,
+    required int offsetA,
+    required DType dtypeA,
+    required GpuBuffer srcB,
+    required List<int> shapeB,
+    required List<int> stridesB,
+    required int offsetB,
+    required DType dtypeB,
+    required GpuBuffer dst,
+    required List<int> outShape,
+    required List<int> outStrides,
+    required int offsetDst,
+    required DType dtypeDst,
+  }) {
+    final rankA = shapeA.length;
+    final rankB = shapeB.length;
+
+    if (rankA == 2 && rankB == 2) {
+      final M = shapeA[0];
+      final K = shapeA[1];
+      final N = shapeB[1];
+
+      for (var m = 0; m < M; m++) {
+        for (var n = 0; n < N; n++) {
+          var sum = 0.0;
+          for (var k = 0; k < K; k++) {
+            final idxA = m * stridesA[0] + k * stridesA[1];
+            final idxB = k * stridesB[0] + n * stridesB[1];
+            final a = ComputeEngine.readValue(
+              srcA,
+              dtypeA,
+              idxA,
+              offsetElements: offsetA,
+            );
+            final b = ComputeEngine.readValue(
+              srcB,
+              dtypeB,
+              idxB,
+              offsetElements: offsetB,
+            );
+            sum += a * b;
+          }
+          final idxDst = m * outStrides[0] + n * outStrides[1];
+          ComputeEngine.writeValue(
+            dst,
+            dtypeDst,
+            idxDst,
+            sum,
+            offsetElements: offsetDst,
+          );
+        }
+      }
+    } else if (rankA == 1 && rankB == 1) {
+      // 1D dot product
+      final K = shapeA[0];
+      var sum = 0.0;
+      for (var k = 0; k < K; k++) {
+        final a = ComputeEngine.readValue(
+          srcA,
+          dtypeA,
+          k * stridesA[0],
+          offsetElements: offsetA,
+        );
+        final b = ComputeEngine.readValue(
+          srcB,
+          dtypeB,
+          k * stridesB[0],
+          offsetElements: offsetB,
+        );
+        sum += a * b;
+      }
+      ComputeEngine.writeValue(
+        dst,
+        dtypeDst,
+        0,
+        sum,
+        offsetElements: offsetDst,
+      );
+    } else {
+      // Batched N-D matrix multiplication
+      final batchShapeA = shapeA.sublist(0, rankA - 2);
+      final batchShapeB = shapeB.sublist(0, rankB - 2);
+      final batchOutShape = ShapeUtils.broadcastShapes(
+        batchShapeA,
+        batchShapeB,
+      );
+
+      final M = shapeA[rankA - 2];
+      final K = shapeA[rankA - 1];
+      final N = shapeB[rankB - 1];
+
+      final batchSize = ShapeUtils.computeSize(batchOutShape);
+      final batchRank = batchOutShape.length;
+      final batchCoords = List<int>.filled(batchRank, 0);
+
+      final batchStridesA = ShapeUtils.broadcastStrides(
+        batchShapeA,
+        stridesA.sublist(0, rankA - 2),
+        batchOutShape,
+      );
+      final batchStridesB = ShapeUtils.broadcastStrides(
+        batchShapeB,
+        stridesB.sublist(0, rankB - 2),
+        batchOutShape,
+      );
+      final batchStridesDst = outStrides.sublist(0, outStrides.length - 2);
+
+      for (var b = 0; b < batchSize; b++) {
+        var baseIdxA = 0;
+        var baseIdxB = 0;
+        var baseIdxDst = 0;
+
+        for (var d = 0; d < batchRank; d++) {
+          baseIdxA += batchCoords[d] * batchStridesA[d];
+          baseIdxB += batchCoords[d] * batchStridesB[d];
+          baseIdxDst += batchCoords[d] * batchStridesDst[d];
+        }
+
+        for (var m = 0; m < M; m++) {
+          for (var n = 0; n < N; n++) {
+            var sum = 0.0;
+            for (var k = 0; k < K; k++) {
+              final idxA =
+                  baseIdxA + m * stridesA[rankA - 2] + k * stridesA[rankA - 1];
+              final idxB =
+                  baseIdxB + k * stridesB[rankB - 2] + n * stridesB[rankB - 1];
+              final a = ComputeEngine.readValue(
+                srcA,
+                dtypeA,
+                idxA,
+                offsetElements: offsetA,
+              );
+              final b = ComputeEngine.readValue(
+                srcB,
+                dtypeB,
+                idxB,
+                offsetElements: offsetB,
+              );
+              sum += a * b;
+            }
+            final idxDst =
+                baseIdxDst +
+                m * outStrides[outStrides.length - 2] +
+                n * outStrides[outStrides.length - 1];
+            ComputeEngine.writeValue(
+              dst,
+              dtypeDst,
+              idxDst,
+              sum,
+              offsetElements: offsetDst,
+            );
+          }
+        }
+
+        for (var d = batchRank - 1; d >= 0; d--) {
+          batchCoords[d]++;
+          if (batchCoords[d] < batchOutShape[d]) {
+            break;
+          }
+          batchCoords[d] = 0;
+        }
+      }
+    }
+  }
+
+  /// Copies strided data from [src] to contiguous [dst].
+  static void copyStrided({
+    required GpuBuffer src,
+    required List<int> shape,
+    required List<int> strides,
+    required int offsetSrc,
+    required DType dtypeSrc,
+    required GpuBuffer dst,
+    required List<int> outStrides,
+    required int offsetDst,
+    required DType dtypeDst,
+  }) {
+    final totalElements = ShapeUtils.computeSize(shape);
+    final rank = shape.length;
+    final coords = List<int>.filled(rank, 0);
+
+    for (var i = 0; i < totalElements; i++) {
+      var elemIdxSrc = 0;
+      var elemIdxDst = 0;
+
+      for (var d = 0; d < rank; d++) {
+        elemIdxSrc += coords[d] * strides[d];
+        elemIdxDst += coords[d] * outStrides[d];
+      }
+
+      final val = ComputeEngine.readAny(
+        src,
+        dtypeSrc,
+        elemIdxSrc,
+        offsetElements: offsetSrc,
+      );
+      ComputeEngine.writeAny(
+        dst,
+        dtypeDst,
+        elemIdxDst,
+        val,
+        offsetElements: offsetDst,
+      );
+
+      for (var d = rank - 1; d >= 0; d--) {
+        coords[d]++;
+        if (coords[d] < shape[d]) {
+          break;
+        }
+        coords[d] = 0;
+      }
+    }
+  }
+
+  static double _applyBinary(BinaryOp op, double a, double b) {
+    switch (op) {
+      case BinaryOp.add:
+        return a + b;
+      case BinaryOp.subtract:
+        return a - b;
+      case BinaryOp.multiply:
+        return a * b;
+      case BinaryOp.divide:
+        return a / b;
+      case BinaryOp.power:
+        return math.pow(a, b).toDouble();
+      case BinaryOp.remainder:
+        return a % b;
+      case BinaryOp.maximum:
+        return math.max(a, b);
+      case BinaryOp.minimum:
+        return math.min(a, b);
+      case BinaryOp.equal:
+        return (a == b) ? 1.0 : 0.0;
+      case BinaryOp.notEqual:
+        return (a != b) ? 1.0 : 0.0;
+      case BinaryOp.greater:
+        return (a > b) ? 1.0 : 0.0;
+      case BinaryOp.less:
+        return (a < b) ? 1.0 : 0.0;
+      case BinaryOp.greaterEqual:
+        return (a >= b) ? 1.0 : 0.0;
+      case BinaryOp.lessEqual:
+        return (a <= b) ? 1.0 : 0.0;
+    }
+  }
+
+  static double _applyUnary(UnaryOp op, double v) {
+    switch (op) {
+      case UnaryOp.negate:
+        return -v;
+      case UnaryOp.abs:
+        return v.abs();
+      case UnaryOp.sqrt:
+        return math.sqrt(v);
+      case UnaryOp.exp:
+        return math.exp(v);
+      case UnaryOp.log:
+        return math.log(v);
+      case UnaryOp.sin:
+        return math.sin(v);
+      case UnaryOp.cos:
+        return math.cos(v);
+      case UnaryOp.tan:
+        return math.tan(v);
+      case UnaryOp.asin:
+        return math.asin(v);
+      case UnaryOp.acos:
+        return math.acos(v);
+      case UnaryOp.atan:
+        return math.atan(v);
+      case UnaryOp.sinh:
+        return (math.exp(v) - math.exp(-v)) / 2.0;
+      case UnaryOp.cosh:
+        return (math.exp(v) + math.exp(-v)) / 2.0;
+      case UnaryOp.tanh:
+        final ep = math.exp(v);
+        final em = math.exp(-v);
+        return (ep - em) / (ep + em);
+      case UnaryOp.floor:
+        return v.floorToDouble();
+      case UnaryOp.ceil:
+        return v.ceilToDouble();
+      case UnaryOp.round:
+        return v.roundToDouble();
+    }
+  }
+
+  static double _initialReductionValue(String op) {
+    switch (op) {
+      case 'sum':
+      case 'mean':
+        return 0.0;
+      case 'prod':
+        return 1.0;
+      case 'min':
+        return double.infinity;
+      case 'max':
+        return double.negativeInfinity;
+      default:
+        return 0.0;
+    }
+  }
+
+  static double _combineReduction(
+    String op,
+    double current,
+    double value,
+    int index,
+  ) {
+    switch (op) {
+      case 'sum':
+      case 'mean':
+        return current + value;
+      case 'prod':
+        return current * value;
+      case 'min':
+        return math.min(current, value);
+      case 'max':
+        return math.max(current, value);
+      default:
+        return current;
+    }
+  }
+
+  /// Dispatches conditional ternary selection (where).
+  static void executeWhere({
+    required GpuBuffer cond,
+    required List<int> shapeCond,
+    required List<int> stridesCond,
+    required int offsetCond,
+    required GpuBuffer srcX,
+    required List<int> shapeX,
+    required List<int> stridesX,
+    required int offsetX,
+    required DType dtypeX,
+    required GpuBuffer srcY,
+    required List<int> shapeY,
+    required List<int> stridesY,
+    required int offsetY,
+    required DType dtypeY,
+    required GpuBuffer dst,
+    required List<int> outShape,
+    required List<int> outStrides,
+    required int offsetDst,
+    required DType dtypeDst,
+  }) {
+    final totalElements = ShapeUtils.computeSize(outShape);
+    final rank = outShape.length;
+    final bStridesCond = ShapeUtils.broadcastStrides(
+      shapeCond,
+      stridesCond,
+      outShape,
+    );
+    final bStridesX = ShapeUtils.broadcastStrides(shapeX, stridesX, outShape);
+    final bStridesY = ShapeUtils.broadcastStrides(shapeY, stridesY, outShape);
+    final coords = List<int>.filled(rank, 0);
+
+    for (var i = 0; i < totalElements; i++) {
+      var elemIdxCond = 0;
+      var elemIdxX = 0;
+      var elemIdxY = 0;
+      var elemIdxDst = 0;
+
+      for (var d = 0; d < rank; d++) {
+        elemIdxCond += coords[d] * bStridesCond[d];
+        elemIdxX += coords[d] * bStridesX[d];
+        elemIdxY += coords[d] * bStridesY[d];
+        elemIdxDst += coords[d] * outStrides[d];
+      }
+
+      final cVal = ComputeEngine.readValue(
+        cond,
+        DType.boolean,
+        elemIdxCond,
+        offsetElements: offsetCond,
+      );
+      final isTrue = cVal != 0.0;
+
+      final val = isTrue
+          ? ComputeEngine.readAny(
+              srcX,
+              dtypeX,
+              elemIdxX,
+              offsetElements: offsetX,
+            )
+          : ComputeEngine.readAny(
+              srcY,
+              dtypeY,
+              elemIdxY,
+              offsetElements: offsetY,
+            );
+
+      ComputeEngine.writeAny(
+        dst,
+        dtypeDst,
+        elemIdxDst,
+        val,
+        offsetElements: offsetDst,
+      );
+
+      for (var d = rank - 1; d >= 0; d--) {
+        coords[d]++;
+        if (coords[d] < outShape[d]) break;
+        coords[d] = 0;
+      }
+    }
+  }
+
+  /// Extracts elements along an axis according to coordinates in [indices].
+  static void executeTakeAlongAxis({
+    required GpuBuffer src,
+    required List<int> shapeSrc,
+    required List<int> stridesSrc,
+    required int offsetSrc,
+    required DType dtypeSrc,
+    required GpuBuffer indices,
+    required List<int> shapeIdx,
+    required List<int> stridesIdx,
+    required int offsetIdx,
+    required DType dtypeIdx,
+    required GpuBuffer dst,
+    required List<int> outShape,
+    required List<int> outStrides,
+    required int offsetDst,
+    required DType dtypeDst,
+    required int axis,
+  }) {
+    final totalElements = ShapeUtils.computeSize(outShape);
+    final rank = outShape.length;
+    final normAxis = axis < 0 ? axis + rank : axis;
+    final axisLen = shapeSrc[normAxis];
+    final coords = List<int>.filled(rank, 0);
+
+    for (var i = 0; i < totalElements; i++) {
+      var elemIdxIdx = 0;
+      var elemIdxDst = 0;
+
+      for (var d = 0; d < rank; d++) {
+        elemIdxIdx += coords[d] * stridesIdx[d];
+        elemIdxDst += coords[d] * outStrides[d];
+      }
+
+      final idxValNum = ComputeEngine.readValue(
+        indices,
+        dtypeIdx,
+        elemIdxIdx,
+        offsetElements: offsetIdx,
+      );
+      var k = idxValNum.toInt();
+      if (k < 0) k += axisLen;
+      if (k < 0 || k >= axisLen) {
+        throw IndexError.withLength(
+          k,
+          axisLen,
+          name: 'take_along_axis index out of bounds',
+        );
+      }
+
+      var elemIdxSrc = 0;
+      for (var d = 0; d < rank; d++) {
+        final c = (d == normAxis) ? k : coords[d];
+        elemIdxSrc += c * stridesSrc[d];
+      }
+
+      final val = ComputeEngine.readAny(
+        src,
+        dtypeSrc,
+        elemIdxSrc,
+        offsetElements: offsetSrc,
+      );
+      ComputeEngine.writeAny(
+        dst,
+        dtypeDst,
+        elemIdxDst,
+        val,
+        offsetElements: offsetDst,
+      );
+
+      for (var d = rank - 1; d >= 0; d--) {
+        coords[d]++;
+        if (coords[d] < outShape[d]) break;
+        coords[d] = 0;
+      }
+    }
+  }
+
+  /// Inserts [values] into [arr] along an axis according to [indices].
+  static void executePutAlongAxis({
+    required GpuBuffer arr,
+    required List<int> shapeArr,
+    required List<int> stridesArr,
+    required int offsetArr,
+    required DType dtypeArr,
+    required GpuBuffer indices,
+    required List<int> shapeIdx,
+    required List<int> stridesIdx,
+    required int offsetIdx,
+    required DType dtypeIdx,
+    required GpuBuffer values,
+    required List<int> shapeVal,
+    required List<int> stridesVal,
+    required int offsetVal,
+    required DType dtypeVal,
+    required int axis,
+  }) {
+    final totalElements = ShapeUtils.computeSize(shapeIdx);
+    final rank = shapeArr.length;
+    final normAxis = axis < 0 ? axis + rank : axis;
+    final axisLen = shapeArr[normAxis];
+    final bStridesVal = ShapeUtils.broadcastStrides(
+      shapeVal,
+      stridesVal,
+      shapeIdx,
+    );
+    final coords = List<int>.filled(rank, 0);
+
+    for (var i = 0; i < totalElements; i++) {
+      var elemIdxIdx = 0;
+      var elemIdxVal = 0;
+
+      for (var d = 0; d < rank; d++) {
+        elemIdxIdx += coords[d] * stridesIdx[d];
+        elemIdxVal += coords[d] * bStridesVal[d];
+      }
+
+      final idxValNum = ComputeEngine.readValue(
+        indices,
+        dtypeIdx,
+        elemIdxIdx,
+        offsetElements: offsetIdx,
+      );
+      var k = idxValNum.toInt();
+      if (k < 0) k += axisLen;
+      if (k < 0 || k >= axisLen) {
+        throw IndexError.withLength(
+          k,
+          axisLen,
+          name: 'put_along_axis index out of bounds',
+        );
+      }
+
+      var elemIdxArr = 0;
+      for (var d = 0; d < rank; d++) {
+        final c = (d == normAxis) ? k : coords[d];
+        elemIdxArr += c * stridesArr[d];
+      }
+
+      final val = ComputeEngine.readAny(
+        values,
+        dtypeVal,
+        elemIdxVal,
+        offsetElements: offsetVal,
+      );
+      ComputeEngine.writeAny(
+        arr,
+        dtypeArr,
+        elemIdxArr,
+        val,
+        offsetElements: offsetArr,
+      );
+
+      for (var d = rank - 1; d >= 0; d--) {
+        coords[d]++;
+        if (coords[d] < shapeIdx[d]) break;
+        coords[d] = 0;
+      }
+    }
+  }
+
+  /// Concatenates a list of tensors along [axis].
+  static void executeConcatenate({
+    required List<GpuBuffer> srcBuffers,
+    required List<List<int>> srcShapes,
+    required List<List<int>> srcStrides,
+    required List<int> srcOffsets,
+    required List<DType> srcDtypes,
+    required GpuBuffer dst,
+    required List<int> outShape,
+    required List<int> outStrides,
+    required int offsetDst,
+    required DType dtypeDst,
+    required int axis,
+  }) {
+    final rank = outShape.length;
+    final normAxis = axis < 0 ? axis + rank : axis;
+    var axisOffset = 0;
+
+    for (var aIdx = 0; aIdx < srcBuffers.length; aIdx++) {
+      final src = srcBuffers[aIdx];
+      final shape = srcShapes[aIdx];
+      final strides = srcStrides[aIdx];
+      final offset = srcOffsets[aIdx];
+      final dtype = srcDtypes[aIdx];
+      final total = ShapeUtils.computeSize(shape);
+      final coords = List<int>.filled(rank, 0);
+
+      for (var i = 0; i < total; i++) {
+        var elemIdxSrc = 0;
+        var elemIdxDst = 0;
+
+        for (var d = 0; d < rank; d++) {
+          elemIdxSrc += coords[d] * strides[d];
+          final outCoord = (d == normAxis) ? coords[d] + axisOffset : coords[d];
+          elemIdxDst += outCoord * outStrides[d];
+        }
+
+        final val = ComputeEngine.readAny(
+          src,
+          dtype,
+          elemIdxSrc,
+          offsetElements: offset,
+        );
+        ComputeEngine.writeAny(
+          dst,
+          dtypeDst,
+          elemIdxDst,
+          val,
+          offsetElements: offsetDst,
+        );
+
+        for (var d = rank - 1; d >= 0; d--) {
+          coords[d]++;
+          if (coords[d] < shape[d]) break;
+          coords[d] = 0;
+        }
+      }
+
+      axisOffset += shape[normAxis];
+    }
+  }
+
+  /// Pads a tensor with specified padding widths.
+  static void executePad({
+    required GpuBuffer src,
+    required List<int> shapeSrc,
+    required List<int> stridesSrc,
+    required int offsetSrc,
+    required DType dtypeSrc,
+    required GpuBuffer dst,
+    required List<int> outShape,
+    required List<int> outStrides,
+    required int offsetDst,
+    required DType dtypeDst,
+    required List<List<int>> padWidth,
+    required dynamic constantValue,
+  }) {
+    final totalElements = ShapeUtils.computeSize(outShape);
+    final rank = outShape.length;
+    final coords = List<int>.filled(rank, 0);
+
+    for (var i = 0; i < totalElements; i++) {
+      var elemIdxDst = 0;
+      var inBounds = true;
+      var elemIdxSrc = 0;
+
+      for (var d = 0; d < rank; d++) {
+        elemIdxDst += coords[d] * outStrides[d];
+        final srcCoord = coords[d] - padWidth[d][0];
+        if (srcCoord < 0 || srcCoord >= shapeSrc[d]) {
+          inBounds = false;
+        } else {
+          elemIdxSrc += srcCoord * stridesSrc[d];
+        }
+      }
+
+      if (inBounds) {
+        final val = ComputeEngine.readAny(
+          src,
+          dtypeSrc,
+          elemIdxSrc,
+          offsetElements: offsetSrc,
+        );
+        ComputeEngine.writeAny(
+          dst,
+          dtypeDst,
+          elemIdxDst,
+          val,
+          offsetElements: offsetDst,
+        );
+      } else {
+        ComputeEngine.writeAny(
+          dst,
+          dtypeDst,
+          elemIdxDst,
+          constantValue,
+          offsetElements: offsetDst,
+        );
+      }
+
+      for (var d = rank - 1; d >= 0; d--) {
+        coords[d]++;
+        if (coords[d] < outShape[d]) break;
+        coords[d] = 0;
+      }
+    }
+  }
+
+  /// Repeatedly tiles a tensor along all dimensions.
+  static void executeTile({
+    required GpuBuffer src,
+    required List<int> shapeSrc,
+    required List<int> stridesSrc,
+    required int offsetSrc,
+    required DType dtypeSrc,
+    required GpuBuffer dst,
+    required List<int> outShape,
+    required List<int> outStrides,
+    required int offsetDst,
+    required DType dtypeDst,
+  }) {
+    final totalElements = ShapeUtils.computeSize(outShape);
+    final rank = outShape.length;
+    final padRank = rank - shapeSrc.length;
+    final paddedShapeSrc = List<int>.filled(padRank, 1, growable: true)
+      ..addAll(shapeSrc);
+    final paddedStridesSrc = List<int>.filled(padRank, 0, growable: true)
+      ..addAll(stridesSrc);
+    final coords = List<int>.filled(rank, 0);
+
+    for (var i = 0; i < totalElements; i++) {
+      var elemIdxDst = 0;
+      var elemIdxSrc = 0;
+
+      for (var d = 0; d < rank; d++) {
+        elemIdxDst += coords[d] * outStrides[d];
+        final srcCoord = coords[d] % paddedShapeSrc[d];
+        elemIdxSrc += srcCoord * paddedStridesSrc[d];
+      }
+
+      final val = ComputeEngine.readAny(
+        src,
+        dtypeSrc,
+        elemIdxSrc,
+        offsetElements: offsetSrc,
+      );
+      ComputeEngine.writeAny(
+        dst,
+        dtypeDst,
+        elemIdxDst,
+        val,
+        offsetElements: offsetDst,
+      );
+
+      for (var d = rank - 1; d >= 0; d--) {
+        coords[d]++;
+        if (coords[d] < outShape[d]) break;
+        coords[d] = 0;
+      }
+    }
+  }
+
+  /// Extracts upper or lower triangular portion of a 2D or batched 2D tensor.
+  static void executeTriangular({
+    required GpuBuffer src,
+    required List<int> shapeSrc,
+    required List<int> stridesSrc,
+    required int offsetSrc,
+    required DType dtypeSrc,
+    required GpuBuffer dst,
+    required List<int> outStrides,
+    required int offsetDst,
+    required DType dtypeDst,
+    required int k,
+    required bool upper,
+  }) {
+    final totalElements = ShapeUtils.computeSize(shapeSrc);
+    final rank = shapeSrc.length;
+    final coords = List<int>.filled(rank, 0);
+
+    for (var i = 0; i < totalElements; i++) {
+      var elemIdxSrc = 0;
+      var elemIdxDst = 0;
+
+      for (var d = 0; d < rank; d++) {
+        elemIdxSrc += coords[d] * stridesSrc[d];
+        elemIdxDst += coords[d] * outStrides[d];
+      }
+
+      final row = coords[rank - 2];
+      final col = coords[rank - 1];
+      final keep = upper ? (col - row >= k) : (col - row <= k);
+
+      if (keep) {
+        final val = ComputeEngine.readAny(
+          src,
+          dtypeSrc,
+          elemIdxSrc,
+          offsetElements: offsetSrc,
+        );
+        ComputeEngine.writeAny(
+          dst,
+          dtypeDst,
+          elemIdxDst,
+          val,
+          offsetElements: offsetDst,
+        );
+      } else {
+        ComputeEngine.writeAny(
+          dst,
+          dtypeDst,
+          elemIdxDst,
+          0.0,
+          offsetElements: offsetDst,
+        );
+      }
+
+      for (var d = rank - 1; d >= 0; d--) {
+        coords[d]++;
+        if (coords[d] < shapeSrc[d]) break;
+        coords[d] = 0;
+      }
+    }
+  }
+}

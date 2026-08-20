@@ -520,6 +520,130 @@ void main() {
             () => choice(a, size: [4], replace: false),
             throwsArgumentError,
           );
+
+          // Out buffer mismatch
+          final outBad = NDArray<int>.create([4], DType.int32);
+          expect(() => choice(a, size: [3], out: outBad), throwsArgumentError);
+          final outDisposed = NDArray<int>.create([3], DType.int32)..dispose();
+          expect(
+            () => choice(a, size: [3], out: outDisposed),
+            throwsStateError,
+          );
+          expect(() => permutation(a, out: outDisposed), throwsStateError);
+        });
+      });
+
+      test('shuffle, permutation, and choice with various data types', () {
+        NDArray.scope(() {
+          // Complex128
+          final c128 = NDArray.fromList(
+            [
+              Complex(1.0, 2.0),
+              Complex(3.0, 4.0),
+              Complex(5.0, 6.0),
+              Complex(7.0, 8.0),
+            ],
+            [4],
+            DType.complex128,
+          );
+          final c128Perm = permutation(c128, seed: 123);
+          expect(c128Perm.dtype, DType.complex128);
+          expect(c128Perm.toList(), containsAll(c128.toList()));
+          final c128Sample = choice(c128, size: [2], replace: false, seed: 123);
+          expect(c128Sample.shape, [2]);
+          expect(c128Sample.dtype, DType.complex128);
+
+          // Complex64
+          final c64 = NDArray.fromList(
+            [Complex(1.0, 2.0), Complex(3.0, 4.0), Complex(5.0, 6.0)],
+            [3],
+            DType.complex64,
+          );
+          shuffle(c64, seed: 99);
+          expect(
+            c64.toList(),
+            containsAll([
+              Complex(1.0, 2.0),
+              Complex(3.0, 4.0),
+              Complex(5.0, 6.0),
+            ]),
+          );
+
+          // Uint8 / Bool / Int16 / Int64 / Float32
+          final u8 = NDArray.fromList([10, 20, 30, 40, 50], [5], DType.uint8);
+          shuffle(u8, seed: 42);
+          expect(u8.toList(), containsAll([10, 20, 30, 40, 50]));
+
+          final i64 = NDArray.fromList([100, 200, 300, 400], [4], DType.int64);
+          final i64Sample = choice(i64, size: [6], replace: true, seed: 42);
+          expect(i64Sample.shape, [6]);
+          expect(i64Sample.dtype, DType.int64);
+
+          final f32 = NDArray.fromList([1.5, 2.5, 3.5], [3], DType.float32);
+          final f32Out = NDArray<double>.create([3], DType.float32);
+          permutation(f32, seed: 42, out: f32Out);
+          expect(f32Out.toList(), containsAll([1.5, 2.5, 3.5]));
+        });
+      });
+
+      test('shuffle and choice on strided arrays and views', () {
+        NDArray.scope(() {
+          // Strided 1D view from a 2D matrix column
+          final matrix = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+            [4, 2],
+            DType.float64,
+          );
+
+          // Slices along axis 0
+          shuffle(matrix, seed: 42);
+          expect(matrix.shape, [4, 2]);
+          final rowPairs = [
+            for (var r = 0; r < 4; r++)
+              [
+                matrix.getCell([r, 0]),
+                matrix.getCell([r, 1]),
+              ],
+          ];
+          expect(
+            rowPairs,
+            containsAll([
+              [1.0, 2.0],
+              [3.0, 4.0],
+              [5.0, 6.0],
+              [7.0, 8.0],
+            ]),
+          );
+
+          // 3D array shuffling
+          final t3d = NDArray.fromList(
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0],
+            [3, 2, 2],
+            DType.float64,
+          );
+          shuffle(t3d, seed: 100);
+          expect(t3d.shape, [3, 2, 2]);
+
+          // Choice with out recycler buffer
+          final pool = NDArray.fromList([10, 20, 30, 40, 50], [5], DType.int32);
+          final outChoice = NDArray<int>.create([2, 3], DType.int32);
+          choice(pool, size: [2, 3], replace: true, seed: 42, out: outChoice);
+          expect(outChoice.shape, [2, 3]);
+          for (var i = 0; i < 6; i++) {
+            expect(pool.toList(), contains(outChoice.getCellFlat(i)));
+          }
+        });
+      });
+
+      test('shuffle 0-length and 1-length arrays', () {
+        NDArray.scope(() {
+          final a0 = NDArray<double>.create([0], DType.float64);
+          shuffle(a0);
+          expect(a0.size, 0);
+
+          final a1 = NDArray.fromList([42.0], [1], DType.float64);
+          shuffle(a1);
+          expect(a1.toList(), [42.0]);
         });
       });
     });

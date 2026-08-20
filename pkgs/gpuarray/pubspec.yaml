@@ -1,0 +1,23 @@
+name: gpuarray
+description: GPU-accelerated N-dimensional array computing with seamless NDArray interoperability.
+version: 0.0.1
+publish_to: none
+resolution: workspace
+repository: https://github.com/sigurdm/math
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  ndarray:
+    path: ../ndarray
+  resource_scope:
+    path: ../resource_scope
+  ffi: ^2.2.0
+  meta: ^1.18.2
+
+dev_dependencies:
+  test: ^1.31.1
+  lints: ^6.1.0
+  criterion:
+    git: https://github.com/sigurdm/criterion.git

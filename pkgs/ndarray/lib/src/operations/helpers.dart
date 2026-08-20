@@ -23,31 +23,96 @@ int mapSortKind(SortKind kind) {
 
 DType resolveDType(DType a, DType b) {
   if (a == DType.boolean && b == DType.boolean) return DType.uint8;
+  if (a == b) return a;
   if (a == DType.boolean) return b;
   if (b == DType.boolean) return a;
-  if (a == b) return a;
 
-  if ((a == DType.uint8 && b == DType.int16) ||
-      (a == DType.int16 && b == DType.uint8)) {
-    return DType.int16;
-  }
-
-  final isAIntLarge = a == DType.int64 || a == DType.int32;
-  final isBIntLarge = b == DType.int64 || b == DType.int32;
-
+  // Complex promotion
   if (a == DType.complex128 || b == DType.complex128) return DType.complex128;
   if (a == DType.complex64 || b == DType.complex64) {
-    if (a == DType.float64 || b == DType.float64) return DType.complex128;
-    if (isAIntLarge || isBIntLarge) return DType.complex128;
+    final other = (a == DType.complex64) ? b : a;
+    if (other == DType.float64 ||
+        other == DType.int64 ||
+        other == DType.uint64 ||
+        other == DType.complex128) {
+      return DType.complex128;
+    }
     return DType.complex64;
   }
+
+  // Floating point promotion
   if (a == DType.float64 || b == DType.float64) return DType.float64;
   if (a == DType.float32 || b == DType.float32) {
-    if (isAIntLarge || isBIntLarge) return DType.float64;
+    final other = (a == DType.float32) ? b : a;
+    if (other == DType.int64 || other == DType.uint64) return DType.float64;
     return DType.float32;
   }
-  if (a == DType.int64 || b == DType.int64) return DType.int64;
-  return DType.int32;
+  if ((a == DType.float16 && b == DType.bfloat16) ||
+      (a == DType.bfloat16 && b == DType.float16)) {
+    return DType.float32;
+  }
+  if (a == DType.float16 || b == DType.float16) {
+    final other = (a == DType.float16) ? b : a;
+    if (other == DType.int64 || other == DType.uint64) return DType.float64;
+    if (other == DType.int32 ||
+        other == DType.uint32 ||
+        other == DType.int16 ||
+        other == DType.uint16) {
+      return DType.float32;
+    }
+    return DType.float16;
+  }
+  if (a == DType.bfloat16 || b == DType.bfloat16) {
+    final other = (a == DType.bfloat16) ? b : a;
+    if (other == DType.int64 || other == DType.uint64) return DType.float64;
+    if (other == DType.int32 ||
+        other == DType.uint32 ||
+        other == DType.int16 ||
+        other == DType.uint16) {
+      return DType.float32;
+    }
+    return DType.bfloat16;
+  }
+
+  // Integer promotions
+  final isASigned =
+      a == DType.int64 ||
+      a == DType.int32 ||
+      a == DType.int16 ||
+      a == DType.int8;
+  final isBSigned =
+      b == DType.int64 ||
+      b == DType.int32 ||
+      b == DType.int16 ||
+      b == DType.int8;
+
+  if (isASigned && isBSigned) {
+    final maxBytes = math.max(a.byteWidth, b.byteWidth);
+    if (maxBytes >= 8) return DType.int64;
+    if (maxBytes >= 4) return DType.int32;
+    if (maxBytes >= 2) return DType.int16;
+    return DType.int8;
+  }
+
+  if (!isASigned && !isBSigned) {
+    final maxBytes = math.max(a.byteWidth, b.byteWidth);
+    if (maxBytes >= 8) return DType.uint64;
+    if (maxBytes >= 4) return DType.uint32;
+    if (maxBytes >= 2) return DType.uint16;
+    return DType.uint8;
+  }
+
+  // Mixed signed and unsigned
+  final signed = isASigned ? a : b;
+  final unsigned = isASigned ? b : a;
+
+  if (signed.byteWidth > unsigned.byteWidth) {
+    return signed;
+  }
+  if (unsigned.byteWidth == 1) return DType.int16;
+  if (unsigned.byteWidth == 2) return DType.int32;
+  if (unsigned.byteWidth == 4) return DType.int64;
+  return DType.float64;
 }
 
 DType<T> defaultDType<T>() {
@@ -64,14 +129,20 @@ Object normalizeScalar(Object o, DType dtype) {
       if (o is Complex) return o;
       if (o is num) return Complex(o.toDouble(), 0.0);
       return Complex((o as num).toDouble(), 0.0);
-    case DType.float32:
     case DType.float64:
+    case DType.float32:
+    case DType.float16:
+    case DType.bfloat16:
       if (o is num) return o.toDouble();
       if (o is Complex) return o.real;
       return (o as num).toDouble();
-    case DType.int32:
     case DType.int64:
+    case DType.int32:
     case DType.int16:
+    case DType.int8:
+    case DType.uint64:
+    case DType.uint32:
+    case DType.uint16:
     case DType.uint8:
       if (o is num) return o.toInt();
       if (o is Complex) return o.real.toInt();
@@ -186,6 +257,22 @@ NDArray<T> toNDArray<T>(Object o, DType<T> dtype) {
       final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
       v_linspace_uint8(arr.pointer.cast(), s, stp, numSamples);
       step = normalizeScalar(stp, resolvedDType) as T;
+    case DType.float16:
+    case DType.bfloat16:
+    case DType.int8:
+    case DType.uint64:
+    case DType.uint32:
+    case DType.uint16:
+      final s = (start as num).toDouble();
+      final e = (stop as num).toDouble();
+      final stp = numSamples <= 1 ? 0.0 : (e - s) / div;
+      final temp = NDArray<Float64>.create([numSamples], DType.float64);
+      v_linspace_double(temp.pointer.cast(), s, stp, numSamples);
+      final casted = castNDArray(temp, resolvedDType);
+      casted.copy(out: arr);
+      temp.dispose();
+      casted.dispose();
+      step = normalizeScalar(stp, resolvedDType) as T;
     case DType.boolean:
       throw UnsupportedError('linspace not supported for boolean arrays');
   }
@@ -278,7 +365,38 @@ List<int> broadcastStackShapes(List<int> sA, List<int> sB) {
 }
 
 int encodeDType(DType type) {
-  return type.index;
+  switch (type) {
+    case DType.float64:
+      return 0;
+    case DType.float32:
+      return 1;
+    case DType.int32:
+      return 2;
+    case DType.int64:
+      return 3;
+    case DType.uint8:
+      return 4;
+    case DType.int16:
+      return 5;
+    case DType.complex128:
+      return 6;
+    case DType.complex64:
+      return 7;
+    case DType.boolean:
+      return 8;
+    case DType.float16:
+      return 9;
+    case DType.bfloat16:
+      return 10;
+    case DType.int8:
+      return 11;
+    case DType.uint64:
+      return 12;
+    case DType.uint32:
+      return 13;
+    case DType.uint16:
+      return 14;
+  }
 }
 
 NDArray<Float64> promoteToDouble(NDArray a) {
@@ -304,7 +422,7 @@ NDArray<Float64> promoteToDouble(NDArray a) {
       cStridesSrc,
       encodeDType(a.dtype),
       res.pointer.cast(),
-      0, // dest is double
+      encodeDType(DType.float64),
       cShape,
       ndim,
     );
@@ -337,7 +455,7 @@ NDArray<Complex> promoteToComplex(NDArray a) {
       cStridesSrc,
       encodeDType(a.dtype),
       res.pointer.cast(),
-      6, // dest is complex128
+      encodeDType(DType.complex128),
       cShape,
       ndim,
     );
@@ -642,6 +760,8 @@ dynamic castValue(dynamic val, DType dtype) {
       return Complex(0.0, 0.0);
     case DType.float64:
     case DType.float32:
+    case DType.float16:
+    case DType.bfloat16:
       if (val is num) return val.toDouble();
       if (val is Complex) return val.real;
       if (val is bool) return val ? 1.0 : 0.0;
@@ -649,6 +769,10 @@ dynamic castValue(dynamic val, DType dtype) {
     case DType.int64:
     case DType.int32:
     case DType.int16:
+    case DType.int8:
+    case DType.uint64:
+    case DType.uint32:
+    case DType.uint16:
     case DType.uint8:
       if (val is num) return val.toInt();
       if (val is Complex) return val.real.toInt();
@@ -741,8 +865,14 @@ NDArray<R> cumOpFFI<T, R>(
               rank,
               axis,
             );
-          case DType.uint8:
+          case DType.float16:
+          case DType.bfloat16:
           case DType.int16:
+          case DType.int8:
+          case DType.uint64:
+          case DType.uint32:
+          case DType.uint16:
+          case DType.uint8:
           case DType.boolean:
             _cumOpFallbackHelper(a, result, axis, s_cumsum_double);
         }
@@ -810,8 +940,14 @@ NDArray<R> cumOpFFI<T, R>(
               rank,
               axis,
             );
-          case DType.uint8:
+          case DType.float16:
+          case DType.bfloat16:
           case DType.int16:
+          case DType.int8:
+          case DType.uint64:
+          case DType.uint32:
+          case DType.uint16:
+          case DType.uint8:
           case DType.boolean:
             _cumOpFallbackHelper(a, result, axis, s_cumprod_double);
         }
@@ -859,8 +995,14 @@ NDArray<R> cumOpFFI<T, R>(
               rank,
               axis,
             );
-          case DType.uint8:
+          case DType.float16:
+          case DType.bfloat16:
           case DType.int16:
+          case DType.int8:
+          case DType.uint64:
+          case DType.uint32:
+          case DType.uint16:
+          case DType.uint8:
           case DType.boolean:
             _cumOpFallbackHelper(a, result, axis, s_cummin_double);
           case DType.complex128:
@@ -913,8 +1055,14 @@ NDArray<R> cumOpFFI<T, R>(
               rank,
               axis,
             );
-          case DType.uint8:
+          case DType.float16:
+          case DType.bfloat16:
           case DType.int16:
+          case DType.int8:
+          case DType.uint64:
+          case DType.uint32:
+          case DType.uint16:
+          case DType.uint8:
           case DType.boolean:
             _cumOpFallbackHelper(a, result, axis, s_cummax_double);
           case DType.complex128:
@@ -932,6 +1080,28 @@ NDArray<R> cumOpFFI<T, R>(
 
 NDArray<R> castNDArray<R>(NDArray a, DType<R> targetDType) {
   if (a.dtype == targetDType) return a as NDArray<R>;
+  if (a.dtype == DType.float16 ||
+      a.dtype == DType.bfloat16 ||
+      targetDType == DType.float16 ||
+      targetDType == DType.bfloat16) {
+    final list = a.toList();
+    if (targetDType.isFloating) {
+      final doubleList = list.cast<num>().map((e) => e.toDouble()).toList();
+      return NDArray<R>.fromList(doubleList, a.shape, targetDType);
+    } else if (targetDType.isInteger) {
+      final intList = list.cast<num>().map((e) => e.toInt()).toList();
+      return NDArray<R>.fromList(intList, a.shape, targetDType);
+    } else if (targetDType == DType.boolean) {
+      final boolList = list.cast<num>().map((e) => e != 0).toList();
+      return NDArray<R>.fromList(boolList, a.shape, targetDType);
+    } else if (targetDType.isComplex) {
+      final cpxList = list
+          .cast<num>()
+          .map((e) => Complex(e.toDouble(), 0.0))
+          .toList();
+      return NDArray<R>.fromList(cpxList, a.shape, targetDType);
+    }
+  }
   final result = NDArray<R>.create(a.shape, targetDType);
   final ndim = a.shape.length;
   final marker = ScratchArena.marker;

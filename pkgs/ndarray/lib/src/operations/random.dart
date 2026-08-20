@@ -4,6 +4,8 @@ import 'dart:math' show Random;
 import '../ndarray.dart';
 import 'dart:ffi' as ffi;
 import '../ndarray_bindings.dart';
+import '../ndarray_extensions_bindings.dart';
+import '../scratch_arena.dart';
 
 // Standalone operational relative cross-imports
 import 'math.dart';
@@ -821,6 +823,19 @@ NDArray<T> choice<T>(
       ? 1
       : sampleShape.reduce((x, y) => x * y);
 
+  if (a.size == 0) {
+    if (sampleCount > 0) {
+      throw ArgumentError(
+        'Cannot choose $sampleCount elements from an empty array.',
+      );
+    }
+    return out ?? NDArray<T>.create(sampleShape, a.dtype);
+  }
+
+  if (sampleCount == 0) {
+    return out ?? NDArray<T>.create(sampleShape, a.dtype);
+  }
+
   if (!replace && sampleCount > a.size) {
     throw ArgumentError(
       'Cannot choose $sampleCount elements without replacement from an array of size ${a.size}.',
@@ -828,105 +843,129 @@ NDArray<T> choice<T>(
   }
 
   if (out != null) {
+    if (out.isDisposed) {
+      throw StateError(
+        'Cannot write choice result to a disposed output array.',
+      );
+    }
     if (!listEquals(out.shape, sampleShape) || out.dtype != a.dtype) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
 
-  final rand = secure
-      ? Random.secure()
-      : Random(seed ?? Random().nextInt(4294967296));
+  final seedVal = secure
+      ? Random.secure().nextInt(4294967296)
+      : (seed ?? Random().nextInt(4294967296));
+
   final result1D = out != null
-      ? out.reshape([sampleCount])
+      ? (out.shape.length == 1 && out.shape[0] == sampleCount
+            ? out
+            : out.reshape([sampleCount]))
       : NDArray<T>.create([sampleCount], a.dtype);
 
-  // Pre-calculate CDF if probability array p is specified
-  List<double>? cdf;
-  if (p != null) {
-    final nonNullP = p;
-    cdf = List<double>.filled(a.size, 0.0);
-    var sumP = 0.0;
-    for (var i = 0; i < a.size; i++) {
-      final prob = nonNullP.getCellFlat(i).value;
-      if (prob < 0.0) {
-        throw ArgumentError(
-          'pvals must contain non-negative probabilities (was $prob at index $i)',
-        );
-      }
-      sumP += prob;
-      cdf[i] = sumP;
-    }
-    if ((sumP - 1.0).abs() > 1e-3) {
-      for (var i = 0; i < a.size; i++) {
-        cdf[i] /= sumP;
-      }
-    }
-  }
+  final srcPtr = ffi.Pointer<ffi.Void>.fromAddress(
+    a.pointer.address + a.offsetElements * a.dtype.byteWidth,
+  );
+  final destPtr = ffi.Pointer<ffi.Void>.fromAddress(
+    result1D.pointer.address +
+        result1D.offsetElements * result1D.dtype.byteWidth,
+  );
+  final srcStride = a.strides.isEmpty ? 1 : a.strides[0];
+  final destStride = result1D.strides.isEmpty ? 1 : result1D.strides[0];
 
-  if (replace) {
-    // Draw with replacement
-    for (var i = 0; i < sampleCount; i++) {
-      var index = 0;
-      if (cdf != null) {
-        // Draw using CDF
-        final u = rand.nextDouble();
-        index = a.size - 1;
-        for (var j = 0; j < a.size; j++) {
-          if (u <= cdf[j]) {
-            index = j;
-            break;
-          }
-        }
-      } else {
-        // Uniform draw
-        index = rand.nextInt(a.size);
-      }
-      result1D.setCellFlat(i, a.getCell([index]));
+  if (p == null) {
+    if (replace) {
+      native_choice_uniform(
+        srcPtr,
+        srcStride,
+        destPtr,
+        destStride,
+        a.size,
+        sampleCount,
+        a.dtype.byteWidth,
+        seedVal,
+      );
+    } else {
+      native_choice_without_replacement(
+        srcPtr,
+        srcStride,
+        destPtr,
+        destStride,
+        a.size,
+        sampleCount,
+        a.dtype.byteWidth,
+        seedVal,
+      );
     }
   } else {
-    // Draw without replacement
-    if (cdf == null) {
-      final indices = List<int>.generate(a.size, (i) => i);
-      for (var i = a.size - 1; i > a.size - 1 - sampleCount; i--) {
-        final j = rand.nextInt(i + 1);
-        final temp = indices[i];
-        indices[i] = indices[j];
-        indices[j] = temp;
-      }
-      for (var i = 0; i < sampleCount; i++) {
-        final idx = indices[a.size - 1 - i];
-        result1D.setCellFlat(i, a.getCell([idx]));
-      }
-    } else {
-      final nonNullP = p!;
-      final tempProbs = List<double>.generate(
-        a.size,
-        (i) => nonNullP.getCell([i]),
-      );
-      final drawn = List<bool>.filled(a.size, false);
-
-      for (var draw = 0; draw < sampleCount; draw++) {
-        final drawCdf = List<double>.filled(a.size, 0.0);
+    final marker = ScratchArena.marker;
+    try {
+      final nonNullP = p;
+      if (replace) {
+        final cdfPtr = ScratchArena.allocate<ffi.Double>(
+          a.size * ffi.sizeOf<ffi.Double>(),
+        );
         var sumP = 0.0;
         for (var i = 0; i < a.size; i++) {
-          if (!drawn[i]) {
-            sumP += tempProbs[i];
+          final prob = nonNullP.getCellFlat(i).value;
+          if (prob < 0.0) {
+            throw ArgumentError(
+              'pvals must contain non-negative probabilities (was $prob at index $i)',
+            );
           }
-          drawCdf[i] = sumP;
+          sumP += prob;
+          cdfPtr[i] = sumP;
         }
-
-        final u = rand.nextDouble() * sumP;
-        var index = a.size - 1;
-        for (var j = 0; j < a.size; j++) {
-          if (!drawn[j] && u <= drawCdf[j]) {
-            index = j;
-            break;
+        if ((sumP - 1.0).abs() > 1e-3) {
+          for (var i = 0; i < a.size; i++) {
+            cdfPtr[i] /= sumP;
           }
         }
-
-        drawn[index] = true;
-        result1D.setCellFlat(draw, a.getCell([index]));
+        native_choice_weighted(
+          srcPtr,
+          srcStride,
+          destPtr,
+          destStride,
+          cdfPtr,
+          a.size,
+          sampleCount,
+          a.dtype.byteWidth,
+          seedVal,
+        );
+      } else {
+        final probsPtr = ScratchArena.allocate<ffi.Double>(
+          a.size * ffi.sizeOf<ffi.Double>(),
+        );
+        var sumP = 0.0;
+        for (var i = 0; i < a.size; i++) {
+          final prob = nonNullP.getCellFlat(i).value;
+          if (prob < 0.0) {
+            throw ArgumentError(
+              'pvals must contain non-negative probabilities (was $prob at index $i)',
+            );
+          }
+          sumP += prob;
+          probsPtr[i] = prob;
+        }
+        if ((sumP - 1.0).abs() > 1e-3 && sumP > 0.0) {
+          for (var i = 0; i < a.size; i++) {
+            probsPtr[i] /= sumP;
+          }
+        }
+        native_choice_weighted_without_replacement(
+          srcPtr,
+          srcStride,
+          destPtr,
+          destStride,
+          probsPtr,
+          a.size,
+          sampleCount,
+          a.dtype.byteWidth,
+          seedVal,
+        );
       }
+    } finally {
+      ScratchArena.reset(marker);
     }
   }
 
@@ -949,7 +988,8 @@ NDArray<T> choice<T>(
 /// - It is an error if [a] is disposed.
 ///
 /// **Performance considerations:**
-/// - Uses Fisher-Yates shuffle, performing $O(D_0)$ swaps where $D_0$ is the size of the first dimension.
+/// - Uses native C Fisher-Yates shuffle directly in unmanaged memory with zero Dart allocations.
+/// - Performs $O(D_0)$ swaps where $D_0$ is the size of the first dimension (`shape[0]`).
 /// - Time complexity is $O(D_0 \cdot S)$ where $S$ is the size of each sub-array slice.
 ///
 /// **Example:**
@@ -962,73 +1002,42 @@ void shuffle<T extends Object>(NDArray<T> a, {int? seed, bool secure = false}) {
     throw StateError('Cannot shuffle a disposed array.');
   }
 
-  final rand = secure
-      ? Random.secure()
-      : Random(seed ?? Random().nextInt(4294967296));
   final d0 = a.shape.isEmpty ? 1 : a.shape[0];
   if (d0 <= 1) return;
 
+  final seedVal = secure
+      ? Random.secure().nextInt(4294967296)
+      : (seed ?? Random().nextInt(4294967296));
+
+  final ptr = ffi.Pointer<ffi.Void>.fromAddress(
+    a.pointer.address + a.offsetElements * a.dtype.byteWidth,
+  );
+
   if (a.shape.length == 1) {
-    final offset = a.offsetElements;
-    final stride = a.strides[0];
-    for (var i = d0 - 1; i > 0; i--) {
-      final j = rand.nextInt(i + 1);
-      if (i != j) {
-        final temp = a.getCellRaw(offset + i * stride);
-        a.setCellRaw(offset + i * stride, a.getCellRaw(offset + j * stride));
-        a.setCellRaw(offset + j * stride, temp);
-      }
-    }
+    native_shuffle_1d(
+      ptr,
+      a.shape[0],
+      a.strides[0],
+      a.dtype.byteWidth,
+      seedVal,
+    );
     return;
   }
 
-  final sliceShape = a.shape.sublist(1);
-  final sliceStrides = a.strides.sublist(1);
-
-  final tempSlice = NDArray<T>.create(sliceShape, a.dtype);
+  final marker = ScratchArena.marker;
   try {
-    final stepStride = a.strides[0];
-
-    for (var i = d0 - 1; i > 0; i--) {
-      final j = rand.nextInt(i + 1);
-      if (i != j) {
-        final offsetI = a.offsetElements + i * stepStride;
-        final offsetJ = a.offsetElements + j * stepStride;
-
-        _copySlice(
-          a,
-          offsetI,
-          tempSlice,
-          0,
-          sliceShape,
-          sliceStrides,
-          tempSlice.strides,
-          0,
-        );
-        _copySlice(
-          a,
-          offsetJ,
-          a,
-          offsetI,
-          sliceShape,
-          sliceStrides,
-          sliceStrides,
-          0,
-        );
-        _copySlice(
-          tempSlice,
-          0,
-          a,
-          offsetJ,
-          sliceShape,
-          tempSlice.strides,
-          sliceStrides,
-          0,
-        );
-      }
-    }
+    final cShape = ScratchArena.copyInt64s(a.shape);
+    final cStrides = ScratchArena.copyInt64s(a.strides);
+    native_shuffle_nd(
+      ptr,
+      cShape,
+      cStrides,
+      a.rank,
+      a.dtype.byteWidth,
+      seedVal,
+    );
   } finally {
-    tempSlice.dispose();
+    ScratchArena.reset(marker);
   }
 }
 
@@ -1036,12 +1045,14 @@ void shuffle<T extends Object>(NDArray<T> a, {int? seed, bool secure = false}) {
 ///
 /// **Preconditions:**
 /// - The array [a] must not be disposed.
+/// - If provided, [out] must not be disposed and must match the shape and dtype of [a].
 ///
 /// - It is an error if [a] is disposed.
+/// - It is an error if [out] is disposed or has incompatible shape or dtype.
 ///
 /// **Performance considerations:**
 /// - Returns a brand new contiguous deep copy of the array permuted along axis 0.
-/// - Time complexity matches [shuffle].
+/// - Time complexity matches [shuffle] ($O(N)$).
 ///
 /// **Example:**
 /// ```dart
@@ -1057,50 +1068,12 @@ NDArray<T> permutation<T extends Object>(
   if (a.isDisposed || (out != null && out.isDisposed)) {
     throw StateError('Cannot permute a disposed array.');
   }
+  if (out != null) {
+    if (!listEquals(out.shape, a.shape) || out.dtype != a.dtype) {
+      throw ArgumentError('Incompatible out buffer shape or dtype.');
+    }
+  }
   final copyArr = a.copy(out: out);
   shuffle(copyArr, seed: seed, secure: secure);
   return copyArr;
-}
-
-void _copySlice<T extends Object>(
-  NDArray<T> src,
-  int srcOffset,
-  NDArray<T> dest,
-  int destOffset,
-  List<int> shape,
-  List<int> stridesSrc,
-  List<int> stridesDest,
-  int dim,
-) {
-  if (shape.isEmpty) {
-    dest.setCellRaw(destOffset, src.getCellRaw(srcOffset));
-    return;
-  }
-  if (dim == shape.length - 1) {
-    final limit = shape[dim];
-    final strideSrc = stridesSrc[dim];
-    final strideDest = stridesDest[dim];
-    for (var i = 0; i < limit; i++) {
-      dest.setCellRaw(
-        destOffset + i * strideDest,
-        src.getCellRaw(srcOffset + i * strideSrc),
-      );
-    }
-    return;
-  }
-  final limit = shape[dim];
-  final strideSrc = stridesSrc[dim];
-  final strideDest = stridesDest[dim];
-  for (var i = 0; i < limit; i++) {
-    _copySlice(
-      src,
-      srcOffset + i * strideSrc,
-      dest,
-      destOffset + i * strideDest,
-      shape,
-      stridesSrc,
-      stridesDest,
-      dim + 1,
-    );
-  }
 }

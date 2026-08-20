@@ -1,0 +1,99 @@
+import 'package:criterion/criterion.dart';
+import 'package:ndarray/ndarray.dart';
+
+void main() async {
+  setNumThreads(1);
+  const size = 100000;
+
+  await criterion(
+    'NDArray Random Number Generation & Distributions Benchmark Suite',
+    (c) {
+      c.group('1. Continuous & Discrete Distributions (100k samples)', () {
+        c.bench('uniform([100k])', () {
+          final res = uniform<double>([size]);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
+
+        c.bench(
+          'normal([100k], loc=5.0, scale=2.0)',
+          () {
+            final res = normal<double>([size], loc: 5.0, scale: 2.0);
+            blackhole(res);
+            res.dispose();
+          },
+          throughput: Throughput.elements(size),
+        );
+
+        c.bench('exponential([100k], scale=1.5)', () {
+          final res = exponential<double>([size], scale: 1.5);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
+
+        c.bench('poisson([100k], lam=5.0)', () {
+          final res = poisson<int>([size], lam: 5.0);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
+
+        c.bench('binomial([100k], n=10, p=0.5)', () {
+          final res = binomial<int>([size], n: 10, p: 0.5);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
+
+        c.bench(
+          'randint([100k], low=0, high=100)',
+          () {
+            final res = randint<int>([size], low: 0, high: 100);
+            blackhole(res);
+            res.dispose();
+          },
+          throughput: Throughput.elements(size),
+        );
+      });
+
+      c.group('2. Permutations, Choice & Shuffling', () {
+        final samplePool = linspace<double>(
+          0.0,
+          100.0,
+          size,
+          dtype: DType.float64,
+        );
+
+        c.bench(
+          'choice(pool, size=100k, replace=true)',
+          () {
+            final res = choice(samplePool, size: [size], replace: true);
+            blackhole(res);
+            res.dispose();
+          },
+          throughput: Throughput.elements(size),
+        );
+
+        c.bench('permutation(arr) [100k]', () {
+          final res = permutation(samplePool);
+          blackhole(res);
+          res.dispose();
+        }, throughput: Throughput.elements(size));
+
+        final shuffleArr = linspace<double>(
+          0.0,
+          100.0,
+          size,
+          dtype: DType.float64,
+        );
+        c.bench('shuffle(arr) [100k in-place]', () {
+          shuffle(shuffleArr);
+          blackhole(shuffleArr);
+        }, throughput: Throughput.elements(size));
+      });
+    },
+    config: CriterionConfig(
+      generateHtmlReport: true,
+      exportJson: true,
+      reportDir: 'benchmark/report/random_distributions',
+    ),
+  );
+}

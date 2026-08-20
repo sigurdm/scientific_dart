@@ -137,7 +137,13 @@ NDArray<T> sort<T extends Object>(
           native_sort_complex128(rowPtr.cast<ffi.Double>(), n, nativeKind);
         case DType.complex64:
           native_sort_complex64(rowPtr.cast<ffi.Float>(), n, nativeKind);
-        default:
+        case DType.float16:
+        case DType.bfloat16:
+        case DType.int8:
+        case DType.uint64:
+        case DType.uint32:
+        case DType.uint16:
+        case DType.boolean:
           break;
       }
     }
@@ -219,13 +225,13 @@ NDArray<int> argsort<T extends Object>(
     needsDispose = true;
   }
 
+  final result = out ?? NDArray<int>.create(src.shape, DType.int32);
   ScratchMarker? marker;
   try {
     final n = src.shape.last;
     final totalSize = src.shape.isEmpty ? 1 : src.shape.reduce((x, y) => x * y);
     final numRows = totalSize ~/ n;
 
-    final result = out ?? NDArray<int>.create(src.shape, DType.int32);
     final nativeKind = mapSortKind(kind);
 
     final is64 = result.dtype == DType.int64;
@@ -342,6 +348,21 @@ NDArray<int> argsort<T extends Object>(
             result.setCellFlat(rowStart + i, indices[i]);
           }
         }
+      case DType.float16:
+      case DType.bfloat16:
+      case DType.int8:
+      case DType.uint64:
+      case DType.uint32:
+      case DType.uint16:
+        final doubleSrc = NDArray.fromList(
+          src.toList().cast<num>().map((e) => e.toDouble()).toList(),
+          src.shape,
+          DType.float64,
+        );
+        final doubleArgsort = argsort(doubleSrc, axis: -1, kind: kind);
+        doubleArgsort.copy(out: result);
+        doubleSrc.dispose();
+        doubleArgsort.dispose();
         return result;
     }
   } finally {
@@ -352,6 +373,7 @@ NDArray<int> argsort<T extends Object>(
       src.dispose();
     }
   }
+  return result;
 }
 
 /// Rearranges the elements of the array along a specified [axis] such that
@@ -539,7 +561,13 @@ NDArray<T> partition<T extends Object>(
               cKList,
               uniqueK.length,
             );
-          default:
+          case DType.float16:
+          case DType.bfloat16:
+          case DType.int8:
+          case DType.uint64:
+          case DType.uint32:
+          case DType.uint16:
+          case DType.boolean:
             break;
         }
       }
@@ -781,6 +809,22 @@ NDArray<int> argpartition<T extends Object>(
               result.setCellFlat(rowStart + i, indices[i]);
             }
           }
+        case DType.float16:
+        case DType.bfloat16:
+        case DType.int8:
+        case DType.uint64:
+        case DType.uint32:
+        case DType.uint16:
+          final doubleSrc = NDArray.fromList(
+            src.toList().cast<num>().map((e) => e.toDouble()).toList(),
+            src.shape,
+            DType.float64,
+          );
+          final doubleArgpart = argpartition(doubleSrc, kth, axis: -1);
+          doubleArgpart.copy(out: result);
+          doubleSrc.dispose();
+          doubleArgpart.dispose();
+          return result;
       }
 
       if (is64 && src.dtype != DType.boolean) {
@@ -1068,6 +1112,25 @@ NDArray<int> searchsorted<T extends Object>(
           }
           result.setCellFlat(vIdx, low);
         }
+      case DType.float16:
+      case DType.bfloat16:
+      case DType.int8:
+      case DType.uint64:
+      case DType.uint32:
+      case DType.uint16:
+        final doubleA = castNDArray(srcA, DType.float64);
+        final doubleV = castNDArray(srcV, DType.float64);
+        final doubleRes = searchsorted(
+          doubleA,
+          doubleV,
+          side: side,
+          sorter: srcSorter,
+        );
+        doubleRes.copy(out: result);
+        doubleA.dispose();
+        doubleV.dispose();
+        doubleRes.dispose();
+        return result;
     }
     if (is64 && srcA.dtype != DType.boolean) {
       final outPtr = result.pointer.cast<ffi.LongLong>();
@@ -1324,6 +1387,21 @@ dynamic where<T extends Object>(
           cShape,
           commonShape.length,
         );
+      case DType.float16:
+      case DType.bfloat16:
+      case DType.int8:
+      case DType.uint64:
+      case DType.uint32:
+      case DType.uint16:
+        final doubleX = castNDArray(xCast, DType.float64);
+        final doubleY = castNDArray(yCast, DType.float64);
+        final doubleRes = where(condition, doubleX, doubleY);
+        final casted = castNDArray(doubleRes, result.dtype);
+        casted.copy(out: result);
+        doubleX.dispose();
+        doubleY.dispose();
+        doubleRes.dispose();
+        casted.dispose();
     }
   } finally {
     ScratchArena.reset(marker);
@@ -1456,6 +1534,29 @@ List<NDArray<int>> nonzero<T extends Object>(NDArray<T> a) {
             isContiguousVal,
             res.pointer.cast(),
           );
+        case DType.float16:
+        case DType.bfloat16:
+        case DType.int8:
+        case DType.uint64:
+        case DType.uint32:
+        case DType.uint16:
+          final doubleA = castNDArray(a, DType.float64);
+          final doubleStrides = ScratchArena.allocate<ffi.Int>(
+            rank * ffi.sizeOf<ffi.Int>(),
+          );
+          for (var i = 0; i < rank; i++) {
+            doubleStrides[i] = doubleA.strides[i];
+          }
+          native_to_bool_mask_double(
+            doubleA.pointer.cast(),
+            doubleA.size,
+            cShape,
+            doubleStrides,
+            rank,
+            doubleA.isContiguous ? 1 : 0,
+            res.pointer.cast(),
+          );
+          doubleA.dispose();
       }
     } finally {
       ScratchArena.reset(marker);
@@ -1628,6 +1729,29 @@ NDArray<int> argwhere<T extends Object>(NDArray<T> a) {
             isContiguousVal,
             cond.pointer.cast(),
           );
+        case DType.float16:
+        case DType.bfloat16:
+        case DType.int8:
+        case DType.uint64:
+        case DType.uint32:
+        case DType.uint16:
+          final doubleA = castNDArray(a, DType.float64);
+          final doubleStrides = ScratchArena.allocate<ffi.Int>(
+            rank * ffi.sizeOf<ffi.Int>(),
+          );
+          for (var i = 0; i < rank; i++) {
+            doubleStrides[i] = doubleA.strides[i];
+          }
+          native_to_bool_mask_double(
+            doubleA.pointer.cast(),
+            doubleA.size,
+            cShape,
+            doubleStrides,
+            rank,
+            doubleA.isContiguous ? 1 : 0,
+            cond.pointer.cast(),
+          );
+          doubleA.dispose();
       }
 
       final cCondShape = ScratchArena.allocate<ffi.Int>(
@@ -1749,6 +1873,22 @@ void _dispatchCountNonzeroFFI(
       );
     case DType.complex64:
       native_count_nonzero_complex64(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isContig,
+      );
+    case DType.float16:
+    case DType.bfloat16:
+    case DType.int8:
+    case DType.uint64:
+    case DType.uint32:
+    case DType.uint16:
+      native_count_nonzero_double(
         src,
         stridesSrc,
         dest.cast(),
@@ -1966,7 +2106,25 @@ void _dispatchArgMinMaxFFI(
         isMax,
         isContig,
       );
-    default:
+    case DType.float16:
+    case DType.bfloat16:
+    case DType.int8:
+    case DType.uint64:
+    case DType.uint32:
+    case DType.uint16:
+      native_argminmax_double(
+        src,
+        stridesSrc,
+        dest.cast(),
+        stridesDest,
+        shape,
+        rank,
+        axis,
+        isMax,
+        isContig,
+      );
+    case DType.complex128:
+    case DType.complex64:
       throw UnsupportedError('Unsupported data type for argmin/argmax: $dtype');
   }
 }
@@ -2369,6 +2527,27 @@ ffi.Pointer<ffi.Void> _allocateTarget(dynamic value, DType dtype) {
       final ptr = ScratchArena.allocate<ffi.Float>(ffi.sizeOf<ffi.Float>() * 2);
       ptr[0] = cVal.real;
       ptr[1] = cVal.imag;
+      return ptr.cast();
+    case DType.float16:
+    case DType.bfloat16:
+      final ptr = ScratchArena.allocate<ffi.Float>(ffi.sizeOf<ffi.Float>());
+      ptr.value = (value as num).toDouble();
+      return ptr.cast();
+    case DType.int8:
+      final ptr = ScratchArena.allocate<ffi.Int8>(ffi.sizeOf<ffi.Int8>());
+      ptr.value = value as int;
+      return ptr.cast();
+    case DType.uint64:
+      final ptr = ScratchArena.allocate<ffi.Uint64>(ffi.sizeOf<ffi.Uint64>());
+      ptr.value = value as int;
+      return ptr.cast();
+    case DType.uint32:
+      final ptr = ScratchArena.allocate<ffi.Uint32>(ffi.sizeOf<ffi.Uint32>());
+      ptr.value = value as int;
+      return ptr.cast();
+    case DType.uint16:
+      final ptr = ScratchArena.allocate<ffi.Uint16>(ffi.sizeOf<ffi.Uint16>());
+      ptr.value = value as int;
       return ptr.cast();
   }
 }

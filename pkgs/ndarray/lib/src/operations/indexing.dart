@@ -167,9 +167,15 @@ NDArray<T> take_along_axis<T extends Object>(
       final status = switch (arr.dtype) {
         DType.float64 ||
         DType.float32 ||
+        DType.float16 ||
+        DType.bfloat16 ||
         DType.int64 ||
         DType.int32 ||
         DType.int16 ||
+        DType.int8 ||
+        DType.uint64 ||
+        DType.uint32 ||
+        DType.uint16 ||
         DType.uint8 ||
         DType.boolean ||
         DType.complex128 ||
@@ -336,9 +342,15 @@ NDArray<T> put_along_axis<T extends Object>(
       final status = switch (arr.dtype) {
         DType.float64 ||
         DType.float32 ||
+        DType.float16 ||
+        DType.bfloat16 ||
         DType.int64 ||
         DType.int32 ||
         DType.int16 ||
+        DType.int8 ||
+        DType.uint64 ||
+        DType.uint32 ||
+        DType.uint16 ||
         DType.uint8 ||
         DType.boolean ||
         DType.complex128 ||
@@ -472,53 +484,36 @@ NDArray<T> choose<T extends Object>(
           .map((c) => List<int>.filled(c.shape.length, 0))
           .toList();
 
-      switch (resolvedDType) {
-        case DType.float64:
-        case DType.float32:
-        case DType.int64:
-        case DType.int32:
-        case DType.int16:
-        case DType.uint8:
-        case DType.boolean:
-        case DType.complex128:
-        case DType.complex64:
-          final iter = NDIter(result);
-          while (iter.moveNext()) {
-            final coords = iter.coords;
-            _mapCoordInPlace(coords, a.shape, aCoord);
-            var idxVal = a.getCell(aCoord);
+      final iter = NDIter(result);
+      while (iter.moveNext()) {
+        final coords = iter.coords;
+        _mapCoordInPlace(coords, a.shape, aCoord);
+        var idxVal = a.getCell(aCoord);
 
-            switch (mode) {
-              case ChooseMode.raise:
-                if (idxVal < 0 || idxVal >= nChoices) {
-                  throw RangeError.range(
-                    idxVal,
-                    0,
-                    nChoices - 1,
-                    'choice index',
-                  );
-                }
-                break;
-              case ChooseMode.wrap:
-                idxVal = idxVal % nChoices;
-                if (idxVal < 0) idxVal += nChoices;
-                break;
-              case ChooseMode.clip:
-                if (idxVal < 0) {
-                  idxVal = 0;
-                } else if (idxVal >= nChoices) {
-                  idxVal = nChoices - 1;
-                }
-                break;
+        switch (mode) {
+          case ChooseMode.raise:
+            if (idxVal < 0 || idxVal >= nChoices) {
+              throw RangeError.range(idxVal, 0, nChoices - 1, 'choice index');
             }
+            break;
+          case ChooseMode.wrap:
+            idxVal = idxVal % nChoices;
+            if (idxVal < 0) idxVal += nChoices;
+            break;
+          case ChooseMode.clip:
+            if (idxVal < 0) {
+              idxVal = 0;
+            } else if (idxVal >= nChoices) {
+              idxVal = nChoices - 1;
+            }
+            break;
+        }
 
-            final choiceArr = choiceArrays[idxVal];
-            final choiceCoord = choiceCoords[idxVal];
-            _mapCoordInPlace(coords, choiceArr.shape, choiceCoord);
-            final val = choiceArr.getCell(choiceCoord);
-            result.setCell(coords, val);
-          }
-          break;
+        final choiceArr = choiceArrays[idxVal];
+        final choiceCoord = choiceCoords[idxVal];
+        _mapCoordInPlace(coords, choiceArr.shape, choiceCoord);
+        final val = choiceArr.getCell(choiceCoord);
+        result.setCell(coords, val);
       }
 
       return result.detachToParentScope();
@@ -648,43 +643,31 @@ NDArray<T> select<T extends Object>(
           .toList();
       final defaultCoord = List<int>.filled(defaultArr.shape.length, 0);
 
-      switch (resolvedDType) {
-        case DType.float64:
-        case DType.float32:
-        case DType.int64:
-        case DType.int32:
-        case DType.int16:
-        case DType.uint8:
-        case DType.boolean:
-        case DType.complex128:
-        case DType.complex64:
-          final iter = NDIter(result);
-          while (iter.moveNext()) {
-            final coords = iter.coords;
-            var selectedIdx = -1;
-            for (var i = 0; i < nConds; i++) {
-              final condArr = condlist[i];
-              final condCoord = condCoords[i];
-              _mapCoordInPlace(coords, condArr.shape, condCoord);
-              if (condArr.getCell(condCoord)) {
-                selectedIdx = i;
-                break;
-              }
-            }
-
-            if (selectedIdx != -1) {
-              final choiceArr = choiceArrays[selectedIdx];
-              final choiceCoord = choiceCoords[selectedIdx];
-              _mapCoordInPlace(coords, choiceArr.shape, choiceCoord);
-              final val = choiceArr.getCell(choiceCoord);
-              result.setCell(coords, castValue(val, result.dtype));
-            } else {
-              _mapCoordInPlace(coords, defaultArr.shape, defaultCoord);
-              final val = defaultArr.getCell(defaultCoord);
-              result.setCell(coords, castValue(val, result.dtype));
-            }
+      final iter = NDIter(result);
+      while (iter.moveNext()) {
+        final coords = iter.coords;
+        var selectedIdx = -1;
+        for (var i = 0; i < nConds; i++) {
+          final condArr = condlist[i];
+          final condCoord = condCoords[i];
+          _mapCoordInPlace(coords, condArr.shape, condCoord);
+          if (condArr.getCell(condCoord)) {
+            selectedIdx = i;
+            break;
           }
-          break;
+        }
+
+        if (selectedIdx != -1) {
+          final choiceArr = choiceArrays[selectedIdx];
+          final choiceCoord = choiceCoords[selectedIdx];
+          _mapCoordInPlace(coords, choiceArr.shape, choiceCoord);
+          final val = choiceArr.getCell(choiceCoord);
+          result.setCell(coords, castValue(val, result.dtype));
+        } else {
+          _mapCoordInPlace(coords, defaultArr.shape, defaultCoord);
+          final val = defaultArr.getCell(defaultCoord);
+          result.setCell(coords, castValue(val, result.dtype));
+        }
       }
 
       return result.detachToParentScope();

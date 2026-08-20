@@ -222,10 +222,39 @@ NDArray<T> unwrap<T extends double>(
           discont,
         );
         return result;
+      case DType.float16:
+      case DType.bfloat16:
+      case DType.int8:
+      case DType.uint64:
+      case DType.uint32:
+      case DType.uint16:
+      case DType.int64:
+      case DType.int32:
+      case DType.int16:
+      case DType.uint8:
+      case DType.boolean:
+      case DType.complex128:
+      case DType.complex64:
+        final doubleA = NDArray.fromList(
+          a.toList().cast<num>().map((e) => e.toDouble()).toList(),
+          a.shape,
+          DType.float64,
+        );
+        final doubleRes = unwrap(doubleA, discont: discont, axis: axis);
+        final casted = NDArray.fromList(
+          doubleRes.toList(),
+          doubleRes.shape,
+          result.dtype,
+        );
+        casted.copy(out: result);
+        doubleA.dispose();
+        doubleRes.dispose();
+        casted.dispose();
     }
   } finally {
     ScratchArena.reset(marker);
   }
+  return result;
 }
 
 /// Internal helper executing direct stencil N-D valid cross-correlation.

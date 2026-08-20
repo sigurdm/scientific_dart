@@ -404,6 +404,10 @@ NDArray<bool> isfinite<T extends Object>(
       case DType.int32:
       case DType.int64:
       case DType.int16:
+      case DType.int8:
+      case DType.uint64:
+      case DType.uint32:
+      case DType.uint16:
       case DType.uint8:
       case DType.boolean:
         final maskPtr = maskHolder.pointer;
@@ -412,6 +416,15 @@ NDArray<bool> isfinite<T extends Object>(
             result.setCellFlat(i, true);
           }
         }
+        return result;
+      case DType.float16:
+      case DType.bfloat16:
+        final doubleA = castNDArray(a, DType.float64);
+        final doubleRes = isfinite(doubleA, where: where);
+        doubleRes.copy(out: result);
+        doubleA.dispose();
+        doubleRes.dispose();
+        return result;
     }
   } else {
     final rank = a.rank;
@@ -474,6 +487,10 @@ NDArray<bool> isfinite<T extends Object>(
         case DType.int32:
         case DType.int64:
         case DType.int16:
+        case DType.int8:
+        case DType.uint64:
+        case DType.uint32:
+        case DType.uint16:
         case DType.uint8:
         case DType.boolean:
           final maskPtr = maskHolder.pointer;
@@ -483,12 +500,19 @@ NDArray<bool> isfinite<T extends Object>(
             }
           }
           return result;
+        case DType.float16:
+        case DType.bfloat16:
+          final doubleA = castNDArray(a, DType.float64);
+          final doubleRes = isfinite(doubleA, where: where);
+          doubleRes.copy(out: result);
+          doubleA.dispose();
+          doubleRes.dispose();
+          return result;
       }
     } finally {
       ScratchArena.reset(marker);
     }
   }
-  return result;
 }
 
 /// Returns first element-wise argument with the sign of the second element-wise argument.

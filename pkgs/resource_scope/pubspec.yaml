@@ -5,7 +5,7 @@ resolution: workspace
 repository: https://github.com/sigurdm/math
 
 environment:
-  sdk: ^3.11.5
+  sdk: ^3.10.0
 
 dev_dependencies:
   lints: ^6.1.0

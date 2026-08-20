@@ -2015,6 +2015,75 @@ void s_vander_fit_complex64(const cpx_f_t *x, int strideX,
                             cpx_f_t *v_mat, cpx_f_t *rhs,
                             int m, int deg);
 
+/* ============================================================================
+ * SECTION: RANDOM SHUFFLE & CHOICE NATIVE ACCELERATORS
+ * ============================================================================
+ */
+
+void native_shuffle_1d(
+    void *data,
+    int64_t size,
+    int64_t stride,
+    int item_size,
+    unsigned long long seed
+);
+
+void native_shuffle_nd(
+    void *data,
+    const int64_t *shape,
+    const int64_t *strides,
+    int rank,
+    int item_size,
+    unsigned long long seed
+);
+
+void native_choice_uniform(
+    const void *src,
+    int64_t src_stride,
+    void *dest,
+    int64_t dest_stride,
+    int64_t src_size,
+    int64_t sample_count,
+    int item_size,
+    unsigned long long seed
+);
+
+void native_choice_weighted(
+    const void *src,
+    int64_t src_stride,
+    void *dest,
+    int64_t dest_stride,
+    const double *cdf,
+    int64_t src_size,
+    int64_t sample_count,
+    int item_size,
+    unsigned long long seed
+);
+
+void native_choice_without_replacement(
+    const void *src,
+    int64_t src_stride,
+    void *dest,
+    int64_t dest_stride,
+    int64_t src_size,
+    int64_t sample_count,
+    int item_size,
+    unsigned long long seed
+);
+
+void native_choice_weighted_without_replacement(
+    const void *src,
+    int64_t src_stride,
+    void *dest,
+    int64_t dest_stride,
+    const double *probs,
+    int64_t src_size,
+    int64_t sample_count,
+    int item_size,
+    unsigned long long seed
+);
+
 #ifdef __cplusplus
 }
 #endif
+
