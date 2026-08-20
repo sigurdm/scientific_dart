@@ -572,13 +572,43 @@ $loadStatements
       sizeInBytes: outBytes,
     );
 
+    final scalarList = scalarParams.toList();
+    final uniformWords = <int>[totalOut];
+    final byteData = ByteData(4);
+    for (final sp in scalarList) {
+      byteData.setFloat32(0, sp.defaultValue, Endian.little);
+      uniformWords.add(byteData.getUint32(0, Endian.little));
+    }
+    while (uniformWords.length % 4 != 0) {
+      uniformWords.add(0);
+    }
+
+    final resolvedSliders = parsedSliders.map((slider) {
+      if (slider.uniformWordIndex == 0) {
+        final paramIdx = scalarList.indexWhere((sp) => sp.name == slider.name);
+        if (paramIdx != -1) {
+          return WebGpuSlider(
+            name: slider.name,
+            label: slider.label,
+            min: slider.min,
+            max: slider.max,
+            initialValue: slider.initialValue,
+            step: slider.step,
+            isInteger: slider.isInteger,
+            uniformWordIndex: paramIdx + 1,
+          );
+        }
+      }
+      return slider;
+    }).toList();
+
     final pkg = GpuComputePipelinePackage(
       name: name,
       wgslCode: wgslSource,
       inputs: inputPayloads,
       output: outputPayload,
-      uniforms: [totalOut, 0, 0, 0],
-      sliders: parsedSliders,
+      uniforms: uniformWords,
+      sliders: resolvedSliders,
       renderToCanvas: renderToCanvas,
       canvasWidth: canvasWidth,
       canvasHeight: canvasHeight,
