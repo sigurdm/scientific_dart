@@ -177,5 +177,50 @@ void main() {
         expect(dBatchList[1], closeTo(13.0, 1e-4));
       });
     });
+
+    test('Batched linear solve with 1D vector RHS', () {
+      ResourceScope.scope(() {
+        // A0: [[2, 1, 1], [4, 3, 3], [8, 7, 9]], b0: [4, 10, 24] -> x0: [1, 1, 1]
+        // A1: [[1, 2, 3], [0, 1, 4], [5, 6, 0]], b1: [14, 14, 17] -> x1: [1, 2, 3]
+        final a = GpuArray.fromList(
+          [
+            2.0, 1.0, 1.0, 4.0, 3.0, 3.0, 8.0, 7.0, 9.0,
+            1.0, 2.0, 3.0, 0.0, 1.0, 4.0, 5.0, 6.0, 0.0,
+          ],
+          [2, 3, 3],
+          DType.float64,
+        );
+        final b = GpuArray.fromList(
+          [4.0, 10.0, 24.0, 14.0, 14.0, 17.0],
+          [2, 3],
+          DType.float64,
+        );
+
+        final x = linalg.solve(a, b);
+        expect(x.shape, equals([2, 3]));
+        final xList = x.toList().cast<double>();
+        expect(xList[0], closeTo(1.0, 1e-4));
+        expect(xList[1], closeTo(1.0, 1e-4));
+        expect(xList[2], closeTo(1.0, 1e-4));
+        expect(xList[3], closeTo(1.0, 1e-4));
+        expect(xList[4], closeTo(2.0, 1e-4));
+        expect(xList[5], closeTo(3.0, 1e-4));
+      });
+    });
+
+    test('0-Dimension matrices throw ArgumentError in solvers', () {
+      ResourceScope.scope(() {
+        final empty = GpuArray.fromList(<double>[], [0, 0], DType.float64);
+        final emptyVec = GpuArray.fromList(<double>[], [0], DType.float64);
+        expect(() => linalg.solve(empty, emptyVec), throwsArgumentError);
+        expect(() => linalg.inv(empty), throwsArgumentError);
+        expect(() => linalg.pinv(empty), throwsArgumentError);
+        expect(() => linalg.det(empty), throwsArgumentError);
+        expect(() => linalg.slogdet(empty), throwsArgumentError);
+        expect(() => linalg.matrix_power(empty, 2), throwsArgumentError);
+        expect(() => linalg.matrix_rank(empty), throwsArgumentError);
+        expect(() => linalg.cond(empty), throwsArgumentError);
+      });
+    });
   });
 }

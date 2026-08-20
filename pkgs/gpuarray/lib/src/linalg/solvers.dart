@@ -30,6 +30,14 @@ GpuArray<T> solve<T>(GpuArray<T> a, GpuArray<T> b) {
   if (m != n) {
     throw GpuShapeMismatchException('solve', a.shape, a.shape);
   }
+  if (m == 0 || n == 0 || ShapeUtils.computeSize(a.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
+  }
+  if (b.rank != a.rank && b.rank != a.rank - 1) {
+    throw ArgumentError(
+      'solve: RHS b rank (${b.rank}) must be either equal to A rank (${a.rank}) or A rank - 1 (${a.rank - 1}).',
+    );
+  }
 
   final luRes = lu_factor(a);
   return lu_solve(luRes.lu, luRes.piv, b);
@@ -44,6 +52,9 @@ GpuArray<T> inv<T>(GpuArray<T> a) {
   final n = a.shape[a.rank - 1];
   if (m != n) {
     throw GpuShapeMismatchException('inv', a.shape, a.shape);
+  }
+  if (m == 0 || n == 0 || ShapeUtils.computeSize(a.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
   }
 
   final batchShape = a.shape.sublist(0, a.rank - 2);
@@ -64,6 +75,11 @@ GpuArray<T> inv<T>(GpuArray<T> a) {
 GpuArray<T> pinv<T>(GpuArray<T> a, {double rcond = 1e-15}) {
   if (a.rank < 2) {
     throw ArgumentError('pinv() requires matrix of at least 2 dimensions.');
+  }
+  final m = a.shape[a.rank - 2];
+  final n = a.shape[a.rank - 1];
+  if (m == 0 || n == 0 || ShapeUtils.computeSize(a.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
   }
 
   final svdRes = svd(a, fullMatrices: false);
@@ -120,6 +136,9 @@ dynamic det<T>(GpuArray<T> a) {
   if (m != n) {
     throw GpuShapeMismatchException('det', a.shape, a.shape);
   }
+  if (m == 0 || n == 0 || ShapeUtils.computeSize(a.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
+  }
 
   final luFact = lu_factor(a);
   final lu = luFact.lu;
@@ -165,6 +184,9 @@ SlogdetResult<T> slogdet<T>(GpuArray<T> a) {
   final n = a.shape[a.rank - 1];
   if (m != n) {
     throw GpuShapeMismatchException('slogdet', a.shape, a.shape);
+  }
+  if (m == 0 || n == 0 || ShapeUtils.computeSize(a.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
   }
 
   final luFact = lu_factor(a);
@@ -230,6 +252,9 @@ GpuArray<T> matrix_power<T>(GpuArray<T> a, int n) {
   if (m != cols) {
     throw GpuShapeMismatchException('matrix_power', a.shape, a.shape);
   }
+  if (m == 0 || cols == 0 || ShapeUtils.computeSize(a.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
+  }
 
   if (n == 0) {
     final batchShape = a.shape.sublist(0, a.rank - 2);
@@ -273,6 +298,9 @@ dynamic matrix_rank<T>(GpuArray<T> a, {double? tol}) {
   }
   final m = a.shape[a.rank - 2];
   final n = a.shape[a.rank - 1];
+  if (m == 0 || n == 0 || ShapeUtils.computeSize(a.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
+  }
   final k = math.min(m, n);
 
   final s = svd(a, fullMatrices: false, computeUv: false).s;
@@ -326,6 +354,14 @@ dynamic norm<T>(
 
 /// Computes the condition number of a matrix [a].
 dynamic cond<T>(GpuArray<T> a, {dynamic p}) {
+  if (a.rank < 2) {
+    throw ArgumentError('cond() requires matrix of at least 2 dimensions.');
+  }
+  final m = a.shape[a.rank - 2];
+  final n = a.shape[a.rank - 1];
+  if (m == 0 || n == 0 || ShapeUtils.computeSize(a.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
+  }
   final s = svd(a, fullMatrices: false, computeUv: false).s;
   final k = s.shape[s.rank - 1];
   final sData = s.toList().cast<num>().map((e) => e.toDouble()).toList();

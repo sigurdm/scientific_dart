@@ -249,5 +249,49 @@ void main() {
         expect(svdBatchFat.vt.shape, equals([2, 2, 3]));
       });
     });
+
+    test('Batched lu_solve with 1D vector RHS', () {
+      ResourceScope.scope(() {
+        final a = GpuArray.fromList(
+          [
+            2.0, 1.0, 1.0, 4.0, 3.0, 3.0, 8.0, 7.0, 9.0,
+            1.0, 2.0, 3.0, 0.0, 1.0, 4.0, 5.0, 6.0, 0.0,
+          ],
+          [2, 3, 3],
+          DType.float64,
+        );
+        final b = GpuArray.fromList(
+          [4.0, 10.0, 24.0, 14.0, 14.0, 17.0],
+          [2, 3],
+          DType.float64,
+        );
+
+        final fact = linalg.lu_factor(a);
+        final x = linalg.lu_solve(fact.lu, fact.piv, b);
+        expect(x.shape, equals([2, 3]));
+        final xList = x.toList().cast<double>();
+        expect(xList[0], closeTo(1.0, 1e-4));
+        expect(xList[1], closeTo(1.0, 1e-4));
+        expect(xList[2], closeTo(1.0, 1e-4));
+        expect(xList[3], closeTo(1.0, 1e-4));
+        expect(xList[4], closeTo(2.0, 1e-4));
+        expect(xList[5], closeTo(3.0, 1e-4));
+      });
+    });
+
+    test('0-Dimension matrices throw ArgumentError in decompositions', () {
+      ResourceScope.scope(() {
+        final empty = GpuArray.fromList(<double>[], [0, 0], DType.float64);
+        expect(() => linalg.qr(empty), throwsArgumentError);
+        expect(() => linalg.cholesky(empty), throwsArgumentError);
+        expect(() => linalg.lu(empty), throwsArgumentError);
+        expect(() => linalg.lu_factor(empty), throwsArgumentError);
+        final emptyPiv = GpuArray.fromList(<int>[], [0], DType.int32);
+        final emptyB = GpuArray.fromList(<double>[], [0], DType.float64);
+        expect(() => linalg.lu_solve(empty, emptyPiv, emptyB), throwsArgumentError);
+        expect(() => linalg.svd(empty), throwsArgumentError);
+        expect(() => linalg.eigh(empty), throwsArgumentError);
+      });
+    });
   });
 }

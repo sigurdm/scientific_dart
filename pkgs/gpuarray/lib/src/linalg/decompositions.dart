@@ -90,6 +90,9 @@ QrResult<T> qr<T>(GpuArray<T> a, {String mode = 'reduced'}) {
 
   final m = a.shape[a.rank - 2];
   final n = a.shape[a.rank - 1];
+  if (m == 0 || n == 0 || ShapeUtils.computeSize(a.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
+  }
   final k = math.min(m, n);
   final isReduced = (mode == 'reduced');
 
@@ -204,6 +207,9 @@ GpuArray<T> cholesky<T>(GpuArray<T> a, {bool upper = false}) {
   if (n != m) {
     throw GpuShapeMismatchException('cholesky', a.shape, a.shape);
   }
+  if (m == 0 || n == 0 || ShapeUtils.computeSize(a.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
+  }
 
   final result = GpuArray<T>.empty(a.shape, a.dtype, device: a.device);
   final batchSize = ShapeUtils.computeSize(a.shape) ~/ (n * n);
@@ -262,6 +268,9 @@ LuResult<T> lu<T>(GpuArray<T> a) {
 
   final m = a.shape[a.rank - 2];
   final n = a.shape[a.rank - 1];
+  if (m == 0 || n == 0 || ShapeUtils.computeSize(a.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
+  }
   final k = math.min(m, n);
 
   final pShape = List<int>.from(a.shape)..setRange(a.rank - 2, a.rank, [m, m]);
@@ -371,6 +380,9 @@ LuFactorResult<T> lu_factor<T>(GpuArray<T> a) {
 
   final m = a.shape[a.rank - 2];
   final n = a.shape[a.rank - 1];
+  if (m == 0 || n == 0 || ShapeUtils.computeSize(a.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
+  }
   final k = math.min(m, n);
 
   final lu = GpuArray<T>.empty(a.shape, a.dtype, device: a.device);
@@ -447,9 +459,24 @@ LuFactorResult<T> lu_factor<T>(GpuArray<T> a) {
 
 /// Solves a linear system $A x = b$ using precomputed LU factorization [lu] and pivots [piv].
 GpuArray<T> lu_solve<T>(GpuArray<T> lu, GpuArray<Int32> piv, GpuArray<T> b) {
+  if (lu.rank < 2) {
+    throw ArgumentError('lu_solve() requires lu of at least 2 dimensions.');
+  }
   final n = lu.shape[lu.rank - 1];
-  final is1D = b.rank == 1;
-  final bCols = is1D ? 1 : b.shape[b.rank - 1];
+  final m = lu.shape[lu.rank - 2];
+  if (m != n) {
+    throw GpuShapeMismatchException('lu_solve', lu.shape, lu.shape);
+  }
+  if (m == 0 || n == 0 || ShapeUtils.computeSize(lu.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
+  }
+  final isVector = (b.rank == lu.rank - 1);
+  if (b.rank != lu.rank && !isVector) {
+    throw ArgumentError(
+      'lu_solve: RHS b rank (${b.rank}) must be either equal to lu rank (${lu.rank}) or lu rank - 1 (${lu.rank - 1}).',
+    );
+  }
+  final bCols = isVector ? 1 : b.shape[b.rank - 1];
 
   final outShape = List<int>.from(b.shape);
   final x = GpuArray<T>.empty(outShape, lu.dtype, device: lu.device);
@@ -465,7 +492,12 @@ GpuArray<T> lu_solve<T>(GpuArray<T> lu, GpuArray<Int32> piv, GpuArray<T> b) {
   for (var bt = 0; bt < batchSize; bt++) {
     final bMat = List.generate(
       n,
-      (i) => List.generate(bCols, (j) => bData[bt * n * bCols + i * bCols + j]),
+      (i) => List.generate(
+        bCols,
+        (j) => isVector
+            ? bData[bt * n + i]
+            : bData[bt * n * bCols + i * bCols + j],
+      ),
     );
 
     // Apply permutations
@@ -505,7 +537,8 @@ GpuArray<T> lu_solve<T>(GpuArray<T> lu, GpuArray<Int32> piv, GpuArray<T> b) {
 
     for (var i = 0; i < n; i++) {
       for (var j = 0; j < bCols; j++) {
-        xData[bt * n * bCols + i * bCols + j] = xMat[i][j];
+        final idx = isVector ? (bt * n + i) : (bt * n * bCols + i * bCols + j);
+        xData[idx] = xMat[i][j];
       }
     }
   }
@@ -532,6 +565,9 @@ SvdResult<T> svd<T>(
 
   final m = a.shape[a.rank - 2];
   final n = a.shape[a.rank - 1];
+  if (m == 0 || n == 0 || ShapeUtils.computeSize(a.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
+  }
 
   // When m < n (fat matrix), compute SVD of A^T and transpose singular vectors
   if (m < n) {
@@ -729,6 +765,9 @@ EigResult<T> eigh<T>(GpuArray<T> a, {String UPLO = 'L'}) {
   final m = a.shape[a.rank - 2];
   if (n != m) {
     throw GpuShapeMismatchException('eigh', a.shape, a.shape);
+  }
+  if (m == 0 || n == 0 || ShapeUtils.computeSize(a.shape) == 0) {
+    throw ArgumentError('Matrix dimensions cannot be zero.');
   }
 
   final wShape = List<int>.from(a.shape)..removeLast();
