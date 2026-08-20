@@ -121,59 +121,37 @@ dynamic det<T>(GpuArray<T> a) {
     throw GpuShapeMismatchException('det', a.shape, a.shape);
   }
 
-  final luRes = lu(a);
-  final u = luRes.u;
-  final p = luRes.p;
+  final luFact = lu_factor(a);
+  final lu = luFact.lu;
+  final piv = luFact.piv;
 
   final batchShape = a.shape.sublist(0, a.rank - 2);
   final outShape = batchShape;
   final result = GpuArray<T>.empty(outShape, a.dtype, device: a.device);
 
   final batchSize = ShapeUtils.computeSize(a.shape) ~/ (n * n);
-  final uFlat = u.toNDArray();
-  final uData = uFlat.toList().cast<num>().map((e) => e.toDouble()).toList();
-  final pFlat = p.toNDArray();
-  final pData = pFlat.toList().cast<num>().map((e) => e.toDouble()).toList();
+  final luFlat = lu.toNDArray();
+  final luData = luFlat.toList().cast<num>().map((e) => e.toDouble()).toList();
+  final pivData = piv.toList().cast<int>();
 
   for (var b = 0; b < batchSize; b++) {
     var d = 1.0;
     for (var i = 0; i < n; i++) {
-      d *= uData[b * n * n + i * n + i];
+      d *= luData[b * n * n + i * n + i];
     }
 
-    // Determine sign of permutation P
-    var permSign = 1.0;
-    final perm = List<int>.filled(n, 0);
+    var swaps = 0;
     for (var i = 0; i < n; i++) {
-      for (var j = 0; j < n; j++) {
-        if (pData[b * n * n + i * n + j] != 0.0) {
-          perm[i] = j;
-          break;
-        }
+      if (pivData[b * n + i] != i) {
+        swaps++;
       }
     }
-
-    final visited = List<bool>.filled(n, false);
-    for (var i = 0; i < n; i++) {
-      if (!visited[i]) {
-        var curr = i;
-        var cycleLen = 0;
-        while (!visited[curr]) {
-          visited[curr] = true;
-          curr = perm[curr];
-          cycleLen++;
-        }
-        if (cycleLen % 2 == 0) {
-          permSign = -permSign;
-        }
-      }
-    }
+    final permSign = (swaps % 2 == 1) ? -1.0 : 1.0;
 
     ComputeEngine.writeValue(result.buffer, a.dtype, b, permSign * d);
   }
 
-  uFlat.dispose();
-  pFlat.dispose();
+  luFlat.dispose();
 
   return result.shape.isEmpty ? result.item() : result;
 }
@@ -183,27 +161,31 @@ SlogdetResult<T> slogdet<T>(GpuArray<T> a) {
   if (a.rank < 2) {
     throw ArgumentError('slogdet() requires matrix of at least 2 dimensions.');
   }
+  final m = a.shape[a.rank - 2];
   final n = a.shape[a.rank - 1];
-  final luRes = lu(a);
-  final u = luRes.u;
-  final p = luRes.p;
+  if (m != n) {
+    throw GpuShapeMismatchException('slogdet', a.shape, a.shape);
+  }
+
+  final luFact = lu_factor(a);
+  final lu = luFact.lu;
+  final piv = luFact.piv;
 
   final outShape = a.shape.sublist(0, a.rank - 2);
   final signArr = GpuArray<T>.empty(outShape, a.dtype, device: a.device);
   final logabsdetArr = GpuArray<T>.empty(outShape, a.dtype, device: a.device);
 
   final batchSize = ShapeUtils.computeSize(a.shape) ~/ (n * n);
-  final uFlat = u.toNDArray();
-  final uData = uFlat.toList().cast<num>().map((e) => e.toDouble()).toList();
-  final pFlat = p.toNDArray();
-  final pData = pFlat.toList().cast<num>().map((e) => e.toDouble()).toList();
+  final luFlat = lu.toNDArray();
+  final luData = luFlat.toList().cast<num>().map((e) => e.toDouble()).toList();
+  final pivData = piv.toList().cast<int>();
 
   for (var b = 0; b < batchSize; b++) {
     var logSum = 0.0;
     var sign = 1.0;
 
     for (var i = 0; i < n; i++) {
-      final diag = uData[b * n * n + i * n + i];
+      final diag = luData[b * n * n + i * n + i];
       if (diag == 0.0) {
         sign = 0.0;
         logSum = double.negativeInfinity;
@@ -216,30 +198,14 @@ SlogdetResult<T> slogdet<T>(GpuArray<T> a) {
     }
 
     if (sign != 0.0) {
-      final perm = List<int>.filled(n, 0);
+      var swaps = 0;
       for (var i = 0; i < n; i++) {
-        for (var j = 0; j < n; j++) {
-          if (pData[b * n * n + i * n + j] != 0.0) {
-            perm[i] = j;
-            break;
-          }
+        if (pivData[b * n + i] != i) {
+          swaps++;
         }
       }
-
-      final visited = List<bool>.filled(n, false);
-      for (var i = 0; i < n; i++) {
-        if (!visited[i]) {
-          var curr = i;
-          var cycleLen = 0;
-          while (!visited[curr]) {
-            visited[curr] = true;
-            curr = perm[curr];
-            cycleLen++;
-          }
-          if (cycleLen % 2 == 0) {
-            sign = -sign;
-          }
-        }
+      if (swaps % 2 == 1) {
+        sign = -sign;
       }
     }
 
@@ -247,8 +213,7 @@ SlogdetResult<T> slogdet<T>(GpuArray<T> a) {
     ComputeEngine.writeValue(logabsdetArr.buffer, a.dtype, b, logSum);
   }
 
-  uFlat.dispose();
-  pFlat.dispose();
+  luFlat.dispose();
 
   return SlogdetResult<T>(sign: signArr, logabsdet: logabsdetArr);
 }

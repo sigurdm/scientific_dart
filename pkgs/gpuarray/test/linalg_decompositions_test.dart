@@ -173,5 +173,81 @@ void main() {
         expect(vals.toList(), equals(w.toList()));
       });
     });
+    test('SVD for Rectangular Tall & Fat Matrices (svd)', () {
+      ResourceScope.scope(() {
+        // 1. Fat matrix (m < n): 2 x 3
+        final aFat = GpuArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [2, 3],
+          DType.float64,
+        );
+
+        // Reduced SVD
+        final svdFatReduced = linalg.svd(aFat, fullMatrices: false);
+        expect(svdFatReduced.u.shape, equals([2, 2]));
+        expect(svdFatReduced.s.shape, equals([2]));
+        expect(svdFatReduced.vt.shape, equals([2, 3]));
+
+        // Reconstruction for reduced SVD: U * diag(S) * Vt == A
+        final sDiagFat = diag(svdFatReduced.s);
+        final reconFatRed = svdFatReduced.u
+            .matmul(sDiagFat)
+            .matmul(svdFatReduced.vt);
+        final reconFatRedList = reconFatRed.toList().cast<double>();
+        final origFatList = aFat.toList().cast<double>();
+        for (var i = 0; i < 6; i++) {
+          expect(reconFatRedList[i], closeTo(origFatList[i], 1e-4));
+        }
+
+        // Full SVD for fat matrix (2 x 3): U is (2, 2), S is (2), Vt is (3, 3)
+        final svdFatFull = linalg.svd(aFat, fullMatrices: true);
+        expect(svdFatFull.u.shape, equals([2, 2]));
+        expect(svdFatFull.s.shape, equals([2]));
+        expect(svdFatFull.vt.shape, equals([3, 3]));
+
+        // Check Vt is orthogonal: Vt * Vt^T = I_3
+        final vtVtt = svdFatFull.vt.matmul(svdFatFull.vt.transpose([1, 0]));
+        final vtVttList = vtVtt.toList().cast<double>();
+        for (var i = 0; i < 3; i++) {
+          for (var j = 0; j < 3; j++) {
+            final expected = (i == j) ? 1.0 : 0.0;
+            expect(vtVttList[i * 3 + j], closeTo(expected, 1e-4));
+          }
+        }
+
+        // 2. Tall matrix (m > n): 3 x 2 Full SVD
+        final aTall = GpuArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+          [3, 2],
+          DType.float64,
+        );
+
+        final svdTallFull = linalg.svd(aTall, fullMatrices: true);
+        expect(svdTallFull.u.shape, equals([3, 3]));
+        expect(svdTallFull.s.shape, equals([2]));
+        expect(svdTallFull.vt.shape, equals([2, 2]));
+
+        // Check U is completed orthogonally: U * U^T = I_3
+        final uUt = svdTallFull.u.matmul(svdTallFull.u.transpose([1, 0]));
+        final uUtList = uUt.toList().cast<double>();
+        for (var i = 0; i < 3; i++) {
+          for (var j = 0; j < 3; j++) {
+            final expected = (i == j) ? 1.0 : 0.0;
+            expect(uUtList[i * 3 + j], closeTo(expected, 1e-4));
+          }
+        }
+
+        // 3. Batched fat matrices: [2, 2, 3]
+        final aBatchFat = GpuArray.fromList(
+          [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 2.0, 0.0, 1.0, 1.0, 3.0, 2.0],
+          [2, 2, 3],
+          DType.float64,
+        );
+        final svdBatchFat = linalg.svd(aBatchFat, fullMatrices: false);
+        expect(svdBatchFat.u.shape, equals([2, 2, 2]));
+        expect(svdBatchFat.s.shape, equals([2, 2]));
+        expect(svdBatchFat.vt.shape, equals([2, 2, 3]));
+      });
+    });
   });
 }

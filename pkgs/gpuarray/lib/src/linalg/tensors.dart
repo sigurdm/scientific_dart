@@ -2,7 +2,9 @@
 import 'dart:math' as math;
 import '../dtype.dart';
 import '../gpu_array.dart';
+import '../exceptions.dart';
 import '../backend/compute_engine.dart';
+import '../operations/manipulation.dart' as manip;
 
 /// Evaluates the Einstein summation convention on the operands.
 GpuArray<T> einsum<T>(String subscripts, List<GpuArray> operands) {
@@ -84,12 +86,15 @@ GpuArray<T> einsum<T>(String subscripts, List<GpuArray> operands) {
   final coords = List<int>.filled(allIndices.length, 0);
 
   final outIndexList = outTerm.split('');
-  final outStrides = result.strides;
+  final outStrides = ShapeUtils.computeCStrides(outShape);
 
   // Flattened data views
   final opFlats = operands.map((op) => op.toNDArray()).toList();
   final opDataList = opFlats
       .map((nd) => nd.toList().cast<num>().map((e) => e.toDouble()).toList())
+      .toList();
+  final opStridesList = operands
+      .map((op) => ShapeUtils.computeCStrides(op.shape))
       .toList();
   final outData = List<double>.filled(ShapeUtils.computeSize(outShape), 0.0);
 
@@ -101,10 +106,10 @@ GpuArray<T> einsum<T>(String subscripts, List<GpuArray> operands) {
     var prod = 1.0;
     for (var opIdx = 0; opIdx < operands.length; opIdx++) {
       final term = inputTerms[opIdx];
-      final op = operands[opIdx];
+      final opStrides = opStridesList[opIdx];
       var elemIdx = 0;
       for (var d = 0; d < term.length; d++) {
-        elemIdx += currIndexVals[term[d]]! * op.strides[d];
+        elemIdx += currIndexVals[term[d]]! * opStrides[d];
       }
       prod *= opDataList[opIdx][elemIdx];
     }
@@ -286,10 +291,23 @@ GpuArray<T> cross<T>(
   int? axisc,
   int? axis,
 }) {
+  if (a.rank < 1 || b.rank < 1) {
+    throw ArgumentError('cross() requires arrays of at least 1 dimension.');
+  }
+
   final axA = axis ?? axisa ?? -1;
   final axB = axis ?? axisb ?? -1;
+  final axC = axis ?? axisc ?? -1;
+
   final normAxA = axA < 0 ? axA + a.rank : axA;
   final normAxB = axB < 0 ? axB + b.rank : axB;
+
+  if (normAxA < 0 || normAxA >= a.rank) {
+    throw GpuAxisOutOfBoundsException(axA, a.rank);
+  }
+  if (normAxB < 0 || normAxB >= b.rank) {
+    throw GpuAxisOutOfBoundsException(axB, b.rank);
+  }
 
   if (a.shape[normAxA] != 3 || b.shape[normAxB] != 3) {
     throw ArgumentError(
@@ -297,17 +315,32 @@ GpuArray<T> cross<T>(
     );
   }
 
-  final outDType = GpuArray.promoteDTypes(a.dtype, b.dtype) as DType<T>;
-  final outShape = ShapeUtils.broadcastShapes(a.shape, b.shape);
-  final result = GpuArray<T>.empty(outShape, outDType, device: a.device);
+  // Move the vector axes to the trailing dimension (-1)
+  final aMoved = (normAxA == a.rank - 1) ? a : manip.moveaxis(a, normAxA, -1);
+  final bMoved = (normAxB == b.rank - 1) ? b : manip.moveaxis(b, normAxB, -1);
 
-  final aFlat = a.toNDArray();
-  final bFlat = b.toNDArray();
+  final batchShapeA = aMoved.shape.sublist(0, aMoved.rank - 1);
+  final batchShapeB = bMoved.shape.sublist(0, bMoved.rank - 1);
+  final batchShape = ShapeUtils.broadcastShapes(batchShapeA, batchShapeB);
+
+  final targetShape = [...batchShape, 3];
+  final aBroad = manip.broadcast_to(aMoved, targetShape);
+  final bBroad = manip.broadcast_to(bMoved, targetShape);
+
+  final outDType = GpuArray.promoteDTypes(a.dtype, b.dtype) as DType<T>;
+  final interResult = GpuArray<T>.empty(
+    targetShape,
+    outDType,
+    device: a.device,
+  );
+
+  final aFlat = aBroad.toNDArray();
+  final bFlat = bBroad.toNDArray();
   final aData = aFlat.toList().cast<num>().map((e) => e.toDouble()).toList();
   final bData = bFlat.toList().cast<num>().map((e) => e.toDouble()).toList();
-  final outData = List<double>.filled(ShapeUtils.computeSize(outShape), 0.0);
+  final outData = List<double>.filled(ShapeUtils.computeSize(targetShape), 0.0);
 
-  final total = ShapeUtils.computeSize(outShape) ~/ 3;
+  final total = ShapeUtils.computeSize(targetShape) ~/ 3;
   for (var i = 0; i < total; i++) {
     final a0 = aData[i * 3];
     final a1 = aData[i * 3 + 1];
@@ -326,10 +359,19 @@ GpuArray<T> cross<T>(
   bFlat.dispose();
 
   for (var i = 0; i < outData.length; i++) {
-    ComputeEngine.writeAny(result.buffer, outDType, i, outData[i]);
+    ComputeEngine.writeAny(interResult.buffer, outDType, i, outData[i]);
   }
 
-  return result;
+  final finalRank = targetShape.length;
+  final normAxC = axC < 0 ? axC + finalRank : axC;
+  if (normAxC < 0 || normAxC >= finalRank) {
+    throw GpuAxisOutOfBoundsException(axC, finalRank);
+  }
+
+  if (normAxC == finalRank - 1) {
+    return interResult;
+  }
+  return manip.moveaxis(interResult, -1, normAxC);
 }
 
 /// Efficiently chains matrix multiplications with optimized parenthesization.
@@ -338,13 +380,72 @@ GpuArray<T> multi_dot<T>(List<GpuArray> arrays) {
     throw ArgumentError('multi_dot requires at least one array.');
   }
   if (arrays.length == 1) return arrays[0] as GpuArray<T>;
-  if (arrays.length == 2) return arrays[0].matmul<T>(arrays[1]);
+  if (arrays.length == 2) {
+    final a0 = arrays[0];
+    final a1 = arrays[1];
+    if (a0.rank == 1 && a1.rank == 1) {
+      return a0.matmul<T>(a1);
+    } else if (a0.rank == 1 && a1.rank == 2) {
+      if (a0.shape[0] != a1.shape[0]) {
+        throw GpuShapeMismatchException('multi_dot', a0.shape, a1.shape);
+      }
+      final r0 = a0.reshape([1, a0.shape[0]]);
+      final res = r0.matmul(a1);
+      return res.reshape([a1.shape[1]]) as GpuArray<T>;
+    } else if (a0.rank == 2 && a1.rank == 1) {
+      if (a0.shape[1] != a1.shape[0]) {
+        throw GpuShapeMismatchException('multi_dot', a0.shape, a1.shape);
+      }
+      final r1 = a1.reshape([a1.shape[0], 1]);
+      final res = a0.matmul(r1);
+      return res.reshape([a0.shape[0]]) as GpuArray<T>;
+    } else if (a0.rank == 2 && a1.rank == 2) {
+      return a0.matmul<T>(a1);
+    } else {
+      throw ArgumentError(
+        'multi_dot only supports 1D vectors and 2D matrices.',
+      );
+    }
+  }
 
-  final n = arrays.length;
+  final isFirst1D = arrays[0].rank == 1;
+  final isLast1D = arrays.last.rank == 1;
+
+  if (arrays[0].rank != 1 && arrays[0].rank != 2) {
+    throw ArgumentError('First array in multi_dot must be 1D or 2D.');
+  }
+  if (arrays.last.rank != 1 && arrays.last.rank != 2) {
+    throw ArgumentError('Last array in multi_dot must be 1D or 2D.');
+  }
+  for (var i = 1; i < arrays.length - 1; i++) {
+    if (arrays[i].rank != 2) {
+      throw ArgumentError(
+        'Intermediate arrays in multi_dot must be 2D matrices.',
+      );
+    }
+  }
+
+  final ops = <GpuArray>[];
+  ops.add(isFirst1D ? arrays[0].reshape([1, arrays[0].shape[0]]) : arrays[0]);
+  for (var i = 1; i < arrays.length - 1; i++) {
+    ops.add(arrays[i]);
+  }
+  ops.add(
+    isLast1D ? arrays.last.reshape([arrays.last.shape[0], 1]) : arrays.last,
+  );
+
+  final n = ops.length;
   final p = List<int>.filled(n + 1, 0);
-  p[0] = arrays[0].shape[0];
+  p[0] = ops[0].shape[0];
   for (var i = 0; i < n; i++) {
-    p[i + 1] = arrays[i].shape[1];
+    if (ops[i].shape[0] != p[i]) {
+      throw GpuShapeMismatchException(
+        'multi_dot',
+        ops[i - 1].shape,
+        ops[i].shape,
+      );
+    }
+    p[i + 1] = ops[i].shape[1];
   }
 
   final m = List.generate(n, (_) => List.filled(n, 0));
@@ -364,13 +465,23 @@ GpuArray<T> multi_dot<T>(List<GpuArray> arrays) {
     }
   }
 
-  GpuArray multiplyChain(int i, int j) {
-    if (i == j) return arrays[i];
+  GpuArray<T> multiplyChain(int i, int j) {
+    if (i == j) return ops[i] as GpuArray<T>;
     final k = s[i][j];
     final left = multiplyChain(i, k);
     final right = multiplyChain(k + 1, j);
-    return left.matmul(right);
+    return left.matmul<T>(right);
   }
 
-  return multiplyChain(0, n - 1) as GpuArray<T>;
+  final full2DResult = multiplyChain(0, n - 1);
+
+  if (isFirst1D && isLast1D) {
+    return full2DResult.reshape([]);
+  } else if (isFirst1D) {
+    return full2DResult.reshape([p[n]]);
+  } else if (isLast1D) {
+    return full2DResult.reshape([p[0]]);
+  } else {
+    return full2DResult;
+  }
 }
