@@ -3,6 +3,7 @@ import '../dtype.dart';
 import '../gpu_array.dart';
 import '../device.dart';
 import '../random/random.dart' as rng;
+import '../autograd/autograd.dart';
 import 'module.dart';
 import 'functional.dart' as f;
 
@@ -141,20 +142,87 @@ class Conv2d extends Module {
   GpuArray forward(GpuArray input) {
     // Input: [N, C_in, H, W]
     final batchSize = input.shape[0];
+    final inC = input.shape[1];
     final inH = input.shape[2];
     final inW = input.shape[3];
 
     final outH = ((inH + 2 * padding - kernelSize) ~/ stride) + 1;
     final outW = ((inW + 2 * padding - kernelSize) ~/ stride) + 1;
 
-    // Direct im2col convolution or sliding window spatial reduction
-    final out = GpuArray.zeros(
+    final inputND = input.toNDArray();
+    final inputList =
+        inputND.toList().cast<num>().map((e) => e.toDouble()).toList();
+    inputND.dispose();
+
+    final weightND = weight.toNDArray();
+    final weightList =
+        weightND.toList().cast<num>().map((e) => e.toDouble()).toList();
+    weightND.dispose();
+
+    List<double>? biasList;
+    if (bias != null) {
+      final biasND = bias!.toNDArray();
+      biasList = biasND.toList().cast<num>().map((e) => e.toDouble()).toList();
+      biasND.dispose();
+    }
+
+    final outSize = batchSize * outChannels * outH * outW;
+    final outList = List<double>.filled(outSize, 0.0);
+
+    for (var b = 0; b < batchSize; b++) {
+      for (var oc = 0; oc < outChannels; oc++) {
+        final bVal = biasList != null ? biasList[oc] : 0.0;
+        for (var oh = 0; oh < outH; oh++) {
+          for (var ow = 0; ow < outW; ow++) {
+            var sum = bVal;
+            final ihStart = oh * stride - padding;
+            final iwStart = ow * stride - padding;
+
+            for (var ic = 0; ic < inC; ic++) {
+              for (var kh = 0; kh < kernelSize; kh++) {
+                final ih = ihStart + kh;
+                if (ih < 0 || ih >= inH) continue;
+                for (var kw = 0; kw < kernelSize; kw++) {
+                  final iw = iwStart + kw;
+                  if (iw < 0 || iw >= inW) continue;
+
+                    final inIdx = ((b * inC + ic) * inH + ih) * inW + iw;
+                    final wIdx =
+                        ((oc * inC + ic) * kernelSize + kh) * kernelSize + kw;
+                    sum += inputList[inIdx] * weightList[wIdx];
+                }
+              }
+            }
+
+            final outIdx = ((b * outChannels + oc) * outH + oh) * outW + ow;
+            outList[outIdx] = sum;
+          }
+        }
+      }
+    }
+
+    final out = GpuArray.fromList(
+      outList,
       [batchSize, outChannels, outH, outW],
-      DType.float64,
+      input.dtype,
       device: input.device,
     );
 
-    // Simplified reference spatial conv
+    if (isGradEnabled &&
+        (input.requiresGrad ||
+            weight.requiresGrad ||
+            (bias != null && bias!.requiresGrad))) {
+      out.requiresGrad = true;
+      out.gradFn = Conv2dBackward(
+        input: input,
+        weight: weight,
+        bias: bias,
+        stride: stride,
+        padding: padding,
+        kernelSize: kernelSize,
+      );
+    }
+
     return out;
   }
 }
@@ -196,7 +264,8 @@ class LayerNorm extends Module {
   @override
   GpuArray forward(GpuArray input) {
     final mean = input.mean(axis: -1, keepDims: true);
-    final variance = ((input - mean) * (input - mean)).mean(axis: -1, keepDims: true);
+    final variance =
+        ((input - mean) * (input - mean)).mean(axis: -1, keepDims: true);
     final normalized = (input - mean) / ((variance + eps).sqrt());
     return normalized * weight + bias;
   }
@@ -211,7 +280,8 @@ class Dropout extends Module {
   @override
   GpuArray forward(GpuArray input) {
     if (!isTraining || p == 0.0) return input;
-    final mask = rng.rand(input.shape, input.device).greater(p).astype(input.dtype);
+    final mask =
+        rng.rand(input.shape, input.device).greater(p).astype(input.dtype);
     final scale = 1.0 / (1.0 - p);
     return input * mask * scale;
   }
@@ -245,19 +315,29 @@ class Embedding extends Module {
 
   @override
   GpuArray forward(GpuArray indices) {
-    // indices: 1D integer array
     final idxList = indices.toList().cast<int>();
     final outRows = <dynamic>[];
     for (final idx in idxList) {
       final row = weight[idx];
       outRows.addAll(row.toList());
     }
-    return GpuArray.fromList(
+    final outShape = [...indices.shape, embeddingDim];
+    final out = GpuArray.fromList(
       outRows,
-      [idxList.length, embeddingDim],
-      DType.float64,
+      outShape,
+      weight.dtype,
       device: indices.device,
     );
+    if (isGradEnabled && weight.requiresGrad) {
+      out.requiresGrad = true;
+      out.gradFn = EmbeddingBackward(
+        weight,
+        indices,
+        numEmbeddings,
+        embeddingDim,
+      );
+    }
+    return out;
   }
 }
 

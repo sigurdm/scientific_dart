@@ -1,5 +1,6 @@
 import 'package:test/test.dart';
 import 'package:gpuarray/gpuarray.dart';
+import 'package:gpuarray/nn.dart' as nn;
 import 'package:resource_scope/resource_scope.dart';
 
 void main() {
@@ -22,12 +23,121 @@ void main() {
       });
     });
 
+    test('SigmoidBackward and TanhBackward declare forward input as DAG inputs', () {
+      ResourceScope.scope(() {
+        // Test Sigmoid at x = 0.0: sigma(0) = 0.5, sigma'(0) = 0.25
+        final xSig = GpuArray.fromList([0.0], [1], DType.float64, requiresGrad: true);
+        final ySig = nn.sigmoid(xSig);
+        expect(ySig.requiresGrad, isTrue);
+        expect(ySig.gradFn, isA<SigmoidBackward>());
+        expect(ySig.gradFn!.inputs, equals([xSig])); // Must point to input x, not output y
+
+        ySig.backward();
+        expect(xSig.grad, isNotNull);
+        expect(xSig.grad!.toList().cast<double>().first, closeTo(0.25, 1e-4));
+
+        // Test Tanh at x = 0.0: tanh(0) = 0.0, tanh'(0) = 1.0
+        final xTanh = GpuArray.fromList([0.0], [1], DType.float64, requiresGrad: true);
+        final yTanh = nn.tanh(xTanh);
+        expect(yTanh.requiresGrad, isTrue);
+        expect(yTanh.gradFn, isA<TanhBackward>());
+        expect(yTanh.gradFn!.inputs, equals([xTanh])); // Must point to input x
+
+        yTanh.backward();
+        expect(xTanh.grad, isNotNull);
+        expect(xTanh.grad!.toList().cast<double>().first, closeTo(1.0, 1e-4));
+      });
+    });
+
+    test('View Tracking: Transpose and Swapaxes backward propagation', () {
+      ResourceScope.scope(() {
+        // X: [2, 3] -> X^T: [3, 2]
+        final x = GpuArray.fromList([
+          1.0, 2.0, 3.0,
+          4.0, 5.0, 6.0,
+        ], [2, 3], DType.float64, requiresGrad: true);
+
+        final xT = x.transpose([1, 0]);
+        expect(xT.requiresGrad, isTrue);
+        expect(xT.shape, equals([3, 2]));
+        expect(xT.gradFn, isA<TransposeBackward>());
+        expect(xT.gradFn!.inputs, equals([x]));
+
+        // Loss = sum(xT * weights)
+        final w = GpuArray.fromList([
+          10.0, 20.0,
+          30.0, 40.0,
+          50.0, 60.0,
+        ], [3, 2], DType.float64);
+
+        final loss = (xT * w).sum();
+        loss.backward();
+
+        expect(x.grad, isNotNull);
+        expect(x.grad!.shape, equals([2, 3]));
+        // w^T is [[10, 30, 50], [20, 40, 60]]
+        final xGrad = x.grad!.toList().cast<double>();
+        expect(xGrad, equals([10.0, 30.0, 50.0, 20.0, 40.0, 60.0]));
+
+        // Test swapaxes
+        final x2 = GpuArray.fromList([1.0, 2.0, 3.0, 4.0], [2, 2], DType.float64, requiresGrad: true);
+        final xSwapped = x2.swapaxes(-1, -2);
+        expect(xSwapped.requiresGrad, isTrue);
+        expect(xSwapped.gradFn, isA<TransposeBackward>());
+        final loss2 = xSwapped.sum();
+        loss2.backward();
+        expect(x2.grad!.toList().cast<double>(), equals([1.0, 1.0, 1.0, 1.0]));
+      });
+    });
+
+    test('View Tracking: Reshape, Squeeze, Unsqueeze, and Slice backward propagation', () {
+      ResourceScope.scope(() {
+        // Reshape [4] -> [2, 2]
+        final x = GpuArray.fromList([1.0, 2.0, 3.0, 4.0], [4], DType.float64, requiresGrad: true);
+        final reshaped = x.reshape([2, 2]);
+        expect(reshaped.requiresGrad, isTrue);
+        expect(reshaped.gradFn, isA<ReshapeBackward>());
+
+        final loss1 = (reshaped * 2.0).sum();
+        loss1.backward();
+        expect(x.grad!.shape, equals([4]));
+        expect(x.grad!.toList().cast<double>(), equals([2.0, 2.0, 2.0, 2.0]));
+
+        // Squeeze & Unsqueeze
+        final x2 = GpuArray.fromList([5.0, 6.0], [1, 2, 1], DType.float64, requiresGrad: true);
+        final sq = x2.squeeze();
+        expect(sq.shape, equals([2]));
+        expect(sq.requiresGrad, isTrue);
+        expect(sq.gradFn, isA<SqueezeBackward>());
+
+        final unsq = sq.unsqueeze(0);
+        expect(unsq.shape, equals([1, 2]));
+        expect(unsq.requiresGrad, isTrue);
+        expect(unsq.gradFn, isA<UnsqueezeBackward>());
+
+        // Slice subview gradient
+        final x3 = GpuArray.fromList([
+          10.0, 20.0,
+          30.0, 40.0,
+          50.0, 60.0,
+        ], [3, 2], DType.float64, requiresGrad: true);
+
+        // Slice row 1: [30.0, 40.0]
+        final row1 = x3[1];
+        expect(row1.shape, equals([2]));
+        expect(row1.requiresGrad, isTrue);
+        expect(row1.gradFn, isA<SliceBackward>());
+
+        final loss3 = (row1 * 3.0).sum();
+        loss3.backward();
+        expect(x3.grad!.shape, equals([3, 2]));
+        // Row 0 and 2 are 0.0, row 1 is [3.0, 3.0]
+        expect(x3.grad!.toList().cast<double>(), equals([0.0, 0.0, 3.0, 3.0, 0.0, 0.0]));
+      });
+    });
+
     test('Vector and matrix multi-variable gradient (z = x @ y)', () {
       ResourceScope.scope(() {
-        // X: [2, 2], Y: [2, 2]
-        // Z = X @ Y, L = sum(Z)
-        // dL/dX = ones(2, 2) @ Y^T
-        // dL/dY = X^T @ ones(2, 2)
         final x = GpuArray.fromList([
           1.0, 2.0,
           3.0, 4.0,
@@ -46,19 +156,47 @@ void main() {
         expect(x.grad, isNotNull);
         expect(y.grad, isNotNull);
 
-        // dL/dX = [[1, 1], [1, 1]] @ [[5, 7], [6, 8]] = [[11, 15], [11, 15]]
         final xGrad = x.grad!.toList().cast<double>();
         expect(xGrad, equals([11.0, 15.0, 11.0, 15.0]));
 
-        // dL/dY = [[1, 3], [2, 4]] @ [[1, 1], [1, 1]] = [[4, 4], [6, 6]]
         final yGrad = y.grad!.toList().cast<double>();
         expect(yGrad, equals([4.0, 4.0, 6.0, 6.0]));
       });
     });
 
+    test('Batched Matmul with broadcast reduction in MatmulBackward', () {
+      ResourceScope.scope(() {
+        // A: [1, 2, 2], B: [2, 2, 2]
+        final a = GpuArray.fromList([
+          1.0, 0.0,
+          0.0, 1.0,
+        ], [1, 2, 2], DType.float64, requiresGrad: true);
+
+        final b = GpuArray.fromList([
+          2.0, 3.0,
+          4.0, 5.0,
+          6.0, 7.0,
+          8.0, 9.0,
+        ], [2, 2, 2], DType.float64, requiresGrad: true);
+
+        final c = a.matmul(b); // shape [2, 2, 2]
+        expect(c.shape, equals([2, 2, 2]));
+
+        final loss = c.sum();
+        loss.backward();
+
+        // a.grad should be reduced across batch dimension to [1, 2, 2]
+        expect(a.grad, isNotNull);
+        expect(a.grad!.shape, equals([1, 2, 2]));
+
+        // b.grad should have shape [2, 2, 2]
+        expect(b.grad, isNotNull);
+        expect(b.grad!.shape, equals([2, 2, 2]));
+      });
+    });
+
     test('Broadcasting gradient accumulation (Linear layer: Y = XW + B)', () {
       ResourceScope.scope(() {
-        // X: [3, 2], W: [2, 2], B: [2]
         final x = GpuArray.fromList([
           1.0, 2.0,
           3.0, 4.0,
@@ -83,10 +221,29 @@ void main() {
         expect(b.grad, isNotNull);
         expect(b.grad!.shape, equals([2]));
 
-        // Check gradient of bias (each element averaged over 3 batch samples * 2 output features = 1/6 * 3 = 0.5)
         final bGrad = b.grad!.toList().cast<double>();
         expect(bGrad[0], closeTo(0.5, 1e-4));
         expect(bGrad[1], closeTo(0.5, 1e-4));
+      });
+    });
+
+    test('Softmax and LogSoftmax backward', () {
+      ResourceScope.scope(() {
+        final x = GpuArray.fromList([1.0, 2.0, 3.0], [1, 3], DType.float64, requiresGrad: true);
+        final sm = nn.softmax(x);
+        final loss = sm.sum(); // sum of probabilities is 1.0, derivative wrt inputs should be 0.0
+        loss.backward();
+
+        expect(x.grad, isNotNull);
+        final xGrad = x.grad!.toList().cast<double>();
+        for (final g in xGrad) {
+          expect(g, closeTo(0.0, 1e-4));
+        }
+
+        final x2 = GpuArray.fromList([1.0, 2.0, 3.0], [1, 3], DType.float64, requiresGrad: true);
+        final lsm = nn.log_softmax(x2);
+        expect(lsm.requiresGrad, isTrue);
+        expect(lsm.gradFn, isA<LogSoftmaxBackward>());
       });
     });
 
