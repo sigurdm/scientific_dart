@@ -26,7 +26,7 @@ void main() async {
 
   if (testProcess.exitCode != 0) {
     stderr.writeln(
-      'Error: dart test coverage execution failed!\n${testProcess.stderr}',
+      'Error: dart test coverage execution failed!\n${testProcess.stdout}\n${testProcess.stderr}',
     );
     exit(testProcess.exitCode);
   }
