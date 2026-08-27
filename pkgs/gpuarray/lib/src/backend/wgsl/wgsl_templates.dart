@@ -169,6 +169,18 @@ fn mish(x: f32) -> f32 {
       case 'lessequal':
       case '<=':
         return 'select(0.0, 1.0, $a <= $b)';
+      case 'and':
+      case '&':
+        return 'select(0.0, 1.0, ($a > 0.0) && ($b > 0.0))';
+      case 'or':
+      case '|':
+        return 'select(0.0, 1.0, ($a > 0.0) || ($b > 0.0))';
+      case 'atan2':
+        return 'atan2($a, $b)';
+      case 'hypot':
+        return 'sqrt(($a * $a) + ($b * $b))';
+      case 'step':
+        return 'step($a, $b)';
       default:
         throw ArgumentError('Unsupported binary operation: $op');
     }
@@ -232,6 +244,14 @@ fn mish(x: f32) -> f32 {
         return 'softplus($x)';
       case 'mish':
         return 'mish($x)';
+      case 'not':
+      case '~':
+      case '!':
+        return 'select(0.0, 1.0, $x <= 0.0)';
+      case 'fract':
+        return 'fract($x)';
+      case 'sign':
+        return 'sign($x)';
       default:
         throw ArgumentError('Unsupported unary operation: $op');
     }

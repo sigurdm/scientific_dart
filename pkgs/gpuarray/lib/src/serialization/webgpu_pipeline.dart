@@ -528,6 +528,9 @@ final class WebGpuWidget {
   /// The underlying serialized compute pipeline package.
   final GpuComputePipelinePackage pipeline;
 
+  /// Alias for [pipeline].
+  GpuComputePipelinePackage get pipelinePackage => pipeline;
+
   /// Custom title displayed at the top of the widget.
   final String title;
 

@@ -302,4 +302,57 @@ display(descriptor.createBrowserWidget(
     expect(result, contains('<canvas'));
     expect(result, contains('fused_mandelbrot_loop'));
   });
+
+  test('evaluates zero-input GpuExpr.coord Mandelbrot in notebook kernel', () async {
+    final code = '''
+final size = 64;
+final xIn = GpuExpr.coord(1, shape: [size, size], normalized: true) - 0.5;
+final yIn = GpuExpr.coord(0, shape: [size, size], normalized: true) - 0.5;
+
+final zoom = GpuExpr.scalar('zoom', defaultValue: 2.5);
+final centerX = GpuExpr.scalar('center_x', defaultValue: -0.7);
+final centerY = GpuExpr.scalar('center_y', defaultValue: 0.0);
+final maxIter = GpuExpr.scalar('max_iter', defaultValue: 32.0);
+
+final cr = xIn * zoom + centerX;
+final ci = yIn * zoom + centerY;
+
+final mandelbrotExpr = GpuExpr.loop(
+  initialValues: [GpuExpr.constant(0.0), GpuExpr.constant(0.0), GpuExpr.constant(0.0)],
+  maxIterations: maxIter,
+  condition: (s, i) => (s[0] * s[0] + s[1] * s[1]).lessThan(4.0),
+  step: (s, i) => [
+    s[0] * s[0] - s[1] * s[1] + cr,
+    s[0] * s[1] * 2.0 + ci,
+    s[2] + 1.0,
+  ],
+  result: (s) => (s[2].greaterEqual(maxIter)).where(
+    GpuExpr.constant(0.0),
+    s[2] / maxIter,
+  ),
+);
+
+final descriptor = FusedKernelDescriptor(
+  name: 'zero_input_mandelbrot',
+  outputExpr: mandelbrotExpr,
+);
+
+display(descriptor.createBrowserWidget(
+  outputShape: [size, size],
+  sliders: [
+    const WebGpuSlider(name: 'zoom', label: 'Zoom', min: 0.01, max: 3.5, initialValue: 2.5, step: 0.01),
+  ],
+  renderToCanvas: true,
+  canvasWidth: size,
+  canvasHeight: size,
+  colorMap: 'turbo',
+  title: '⚡ Zero-Input Mandelbrot (Coordinate AST)',
+));
+''';
+
+    final result = await kernel.execute(code);
+    expect(result, contains('text/html'));
+    expect(result, contains('<canvas'));
+    expect(result, contains('zero_input_mandelbrot'));
+  });
 }
