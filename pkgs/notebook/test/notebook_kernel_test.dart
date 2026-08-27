@@ -232,7 +232,7 @@ final cr = xIn * zoom + centerX;
 final ci = yIn * zoom + centerY;
 
 final mandelbrotExpr = GpuExpr.loop(
-  initialValues: [cr, ci, GpuExpr.constant(0.0)],
+  initialValues: [GpuExpr.constant(0.0), GpuExpr.constant(0.0), GpuExpr.constant(0.0)],
   maxIterations: maxIter,
   condition: (s, i) => (s[0] * s[0] + s[1] * s[1]).lessThan(4.0),
   step: (s, i) => [

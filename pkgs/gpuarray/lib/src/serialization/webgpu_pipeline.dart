@@ -438,7 +438,14 @@ final class GpuComputePipelinePackage {
             for (let i = 0; i < count; i++) {
               const val = floatArr[i];
               const pIdx = i * 4;
-              const norm = Math.max(0, Math.min(1, isNaN(val) ? 0 : val));
+              if (val <= 0.0 || isNaN(val)) {
+                pixels[pIdx] = 0;
+                pixels[pIdx + 1] = 0;
+                pixels[pIdx + 2] = 0;
+                pixels[pIdx + 3] = 255;
+                continue;
+              }
+              const norm = Math.max(0, Math.min(1, val));
 
               if (pkg.colorMap === 'viridis') {
                 pixels[pIdx] = Math.floor(Math.sin(norm * Math.PI * 0.9) * 200 + 30);
@@ -456,7 +463,7 @@ final class GpuComputePipelinePackage {
                 pixels[pIdx + 2] = Math.floor((1 - norm) * 210 + 40);
                 pixels[pIdx + 3] = 255;
               } else if (pkg.colorMap === 'turbo' || pkg.colorMap === 'rainbow') {
-                const h = (1 - norm) * 240;
+                const h = Math.max(0, Math.min(240, (1 - norm) * 240));
                 const s = 1.0, l = 0.5;
                 const c = (1 - Math.abs(2 * l - 1)) * s;
                 const x = c * (1 - Math.abs((h / 60) % 2 - 1));
@@ -465,7 +472,7 @@ final class GpuComputePipelinePackage {
                 if (h >= 0 && h < 60) { r = c; g = x; b = 0; }
                 else if (h >= 60 && h < 120) { r = x; g = c; b = 0; }
                 else if (h >= 120 && h < 180) { r = 0; g = c; b = x; }
-                else if (h >= 180 && h < 240) { r = 0; g = x; b = c; }
+                else if (h >= 180 && h <= 240) { r = 0; g = x; b = c; }
                 pixels[pIdx] = Math.floor((r + m) * 255);
                 pixels[pIdx + 1] = Math.floor((g + m) * 255);
                 pixels[pIdx + 2] = Math.floor((b + m) * 255);

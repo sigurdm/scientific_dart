@@ -801,34 +801,26 @@ $loadStatements
         orElse: () => null,
       );
       final initialVal = matchingSlider?.initialValue ?? sp.defaultValue;
-      if (matchingSlider?.isInteger == true) {
-        uniformWords.add(initialVal.round());
-      } else {
-        byteData.setFloat32(0, initialVal, Endian.little);
-        uniformWords.add(byteData.getUint32(0, Endian.little));
-      }
+      byteData.setFloat32(0, initialVal, Endian.little);
+      uniformWords.add(byteData.getUint32(0, Endian.little));
     }
     while (uniformWords.length % 4 != 0) {
       uniformWords.add(0);
     }
 
     final resolvedSliders = parsedSliders.map((slider) {
-      if (slider.uniformWordIndex == 0) {
-        final paramIdx = scalarList.indexWhere((sp) => sp.name == slider.name);
-        if (paramIdx != -1) {
-          return WebGpuSlider(
-            name: slider.name,
-            label: slider.label,
-            min: slider.min,
-            max: slider.max,
-            initialValue: slider.initialValue,
-            step: slider.step,
-            isInteger: slider.isInteger,
-            uniformWordIndex: paramIdx + 1,
-          );
-        }
-      }
-      return slider;
+      final paramIdx = scalarList.indexWhere((sp) => sp.name == slider.name);
+      return WebGpuSlider(
+        name: slider.name,
+        label: slider.label,
+        min: slider.min,
+        max: slider.max,
+        initialValue: slider.initialValue,
+        step: slider.step,
+        // In FusedKernelDescriptor, all scalar parameters in FusedUniforms are f32 in WGSL.
+        isInteger: false,
+        uniformWordIndex: paramIdx != -1 ? paramIdx + 1 : slider.uniformWordIndex,
+      );
     }).toList();
 
     final pkg = GpuComputePipelinePackage(
