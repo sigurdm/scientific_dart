@@ -271,7 +271,13 @@ NDArray<dynamic> load(String filepath) {
 
     // 6. Zero-Copy direct stream file read straight into C Heap pointers!
     final byteView = result.pointer.cast<ffi.Uint8>().asTypedList(byteSize);
-    raf.readIntoSync(byteView);
+    final bytesRead = raf.readIntoSync(byteView);
+    if (bytesRead != byteSize) {
+      result.dispose();
+      throw FormatException(
+        'Unexpected EOF while reading NPY payload: expected $byteSize bytes, got $bytesRead',
+      );
+    }
 
     return result;
   } finally {
