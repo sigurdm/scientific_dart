@@ -52,7 +52,7 @@ enum DType<T> {
   float64<Float64>('float64', 8, '<f8'),
   float32<Float32>('float32', 4, '<f4'),
   float16<Float16>('float16', 2, '<f2'),
-  bfloat16<BFloat16>('bfloat16', 2, '<b2'),
+  bfloat16<BFloat16>('bfloat16', 2, '|V2'),
   int64<Int64>('int64', 8, '<i8'),
   int32<Int32>('int32', 4, '<i4'),
   int16<Int16>('int16', 2, '<i2'),
@@ -1135,6 +1135,44 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     }
 
     return result;
+  }
+
+  /// Returns a copy of the array cast to the specified [targetDType].
+  ///
+  /// If [copy] is `false` and [targetDType] matches this array's [dtype],
+  /// returns this array directly without copying. Otherwise, allocates
+  /// and returns a new [NDArray] of type [R].
+  ///
+  /// **Preconditions:**
+  /// - This array must not be disposed.
+  ///
+  /// **Performance considerations:**
+  /// - If [copy] is `false` and dtypes match, returns this in $O(1)$ time and $O(1)$ memory.
+  /// - Otherwise, complexity is $O(N)$ where $N$ is the total number of elements.
+  ///
+  /// **Throws:**
+  /// - It is an error if the array is already disposed.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final a = NDArray.fromList([1, 2, 3], [3], DType.int32);
+  /// final b = a.astype(DType.float64);
+  /// print(b.dtype); // DType.float64
+  /// ```
+  NDArray<R> astype<R extends Object>(
+    DType<R> targetDType, {
+    bool copy = true,
+  }) {
+    if (isDisposed) {
+      throw StateError('Cannot cast a disposed array.');
+    }
+    if (!copy && dtype == targetDType) {
+      return this as NDArray<R>;
+    }
+    if (dtype == targetDType) {
+      return this.copy() as NDArray<R>;
+    }
+    return helpers.castNDArray<R>(this, targetDType);
   }
 
   /// Internal helper to copy contiguous array elements to another contiguous array,
@@ -3223,6 +3261,190 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
     return Object.hash(baseHash, elementsHash);
   }
+
+  @override
+  String toString() => _ndarrayToString(this);
+}
+
+String _ndarrayToString(NDArray arr) {
+  if (arr.isDisposed) {
+    return '<disposed NDArray<${arr.dtype.name}>>';
+  }
+  final content = _formatND(arr);
+  if (arr.shape.isEmpty || arr.dtype != DType.float64) {
+    return '$content, dtype=${arr.dtype.name}';
+  }
+  return content;
+}
+
+String _formatScalar(dynamic value, DType dtype) {
+  if (value is double || dtype.isFloating) {
+    final d = (value as num).toDouble();
+    if (d.isNaN) return 'nan';
+    if (d == double.infinity) return 'inf';
+    if (d == double.negativeInfinity) return '-inf';
+    if (d == 0.0 && 1 / d < 0) return '-0.';
+    if (d.truncateToDouble() == d && !d.toString().contains('e')) {
+      return '${d.toInt()}.';
+    }
+    return d.toString();
+  } else if (dtype.isInteger) {
+    if (value is int) return value.toString();
+    return (value as num).toInt().toString();
+  } else if (value is bool || dtype == DType.boolean) {
+    return value == true ? 'true' : 'false';
+  } else if (value is Complex || dtype.isComplex) {
+    final c = value as Complex;
+    final rStr = _formatScalar(c.real, DType.float64);
+    final iStr = _formatScalar(c.imag.abs(), DType.float64);
+    final sign = c.imag < 0 ? '-' : '+';
+    return '$rStr $sign ${iStr}j';
+  }
+  return value.toString();
+}
+
+String _format1D(NDArray arr) {
+  final len = arr.shape[0];
+  if (len == 0) return '[]';
+  final items = <String>[];
+  if (len <= 6) {
+    for (var i = 0; i < len; i++) {
+      items.add(_formatScalar(arr.getCell([i]), arr.dtype));
+    }
+  } else {
+    for (var i = 0; i < 3; i++) {
+      items.add(_formatScalar(arr.getCell([i]), arr.dtype));
+    }
+    items.add('...');
+    for (var i = len - 3; i < len; i++) {
+      items.add(_formatScalar(arr.getCell([i]), arr.dtype));
+    }
+  }
+  return '[${items.join(", ")}]';
+}
+
+String _format2D(NDArray arr, {String indent = ' '}) {
+  final numRows = arr.shape[0];
+  final numCols = arr.shape[1];
+  if (numRows == 0 || numCols == 0) {
+    return '[], shape=[$numRows, $numCols]';
+  }
+
+  final rowIndices = numRows <= 6
+      ? List.generate(numRows, (i) => i)
+      : [0, 1, 2, -1, numRows - 3, numRows - 2, numRows - 1];
+
+  final colIndices = numCols <= 6
+      ? List.generate(numCols, (j) => j)
+      : [0, 1, 2, -1, numCols - 3, numCols - 2, numCols - 1];
+
+  final grid = <List<String>>[];
+  final colWidths = List<int>.filled(colIndices.length, 0);
+
+  for (final r in rowIndices) {
+    if (r == -1) {
+      grid.add(['...']);
+      continue;
+    }
+    final rowStrs = <String>[];
+    for (var cIdx = 0; cIdx < colIndices.length; cIdx++) {
+      final c = colIndices[cIdx];
+      final String str;
+      if (c == -1) {
+        str = '...';
+      } else {
+        str = _formatScalar(arr.getCell([r, c]), arr.dtype);
+      }
+      rowStrs.add(str);
+      if (str.length > colWidths[cIdx]) {
+        colWidths[cIdx] = str.length;
+      }
+    }
+    grid.add(rowStrs);
+  }
+
+  final sb = StringBuffer();
+  for (var rIdx = 0; rIdx < rowIndices.length; rIdx++) {
+    final r = rowIndices[rIdx];
+    final isFirst = rIdx == 0;
+    final isLast = rIdx == rowIndices.length - 1;
+
+    if (r == -1) {
+      sb.write('$indent...');
+      if (!isLast) sb.write(',\n');
+      continue;
+    }
+
+    final rowStrs = grid[rIdx];
+    final paddedCells = <String>[];
+    for (var cIdx = 0; cIdx < colIndices.length; cIdx++) {
+      final str = rowStrs[cIdx];
+      paddedCells.add(str.padLeft(colWidths[cIdx]));
+    }
+
+    final rowContent = '[${paddedCells.join(", ")}]';
+    if (isFirst) {
+      sb.write('[$rowContent');
+    } else {
+      sb.write('$indent$rowContent');
+    }
+    if (!isLast) {
+      sb.write(',\n');
+    } else {
+      sb.write(']');
+    }
+  }
+  return sb.toString();
+}
+
+String _formatND(NDArray arr, {String indent = ''}) {
+  final rank = arr.shape.length;
+  if (rank == 0) {
+    return _formatScalar(arr.getCell([]), arr.dtype);
+  }
+  if (rank == 1) {
+    return _format1D(arr);
+  }
+  if (rank == 2) {
+    return _format2D(arr, indent: indent.isEmpty ? ' ' : '$indent ');
+  }
+
+  final dim0 = arr.shape[0];
+  if (dim0 == 0) {
+    return '[], shape=${arr.shape}';
+  }
+
+  final indices = dim0 <= 6
+      ? List.generate(dim0, (i) => i)
+      : [0, 1, 2, -1, dim0 - 3, dim0 - 2, dim0 - 1];
+
+  final sb = StringBuffer();
+  final separator = '\n' * (rank - 1);
+
+  for (var iIdx = 0; iIdx < indices.length; iIdx++) {
+    final idx = indices[iIdx];
+    final isFirst = iIdx == 0;
+    final isLast = iIdx == indices.length - 1;
+
+    if (idx == -1) {
+      sb.write('$indent ...,\n$separator');
+      continue;
+    }
+
+    final subArray = arr[idx] as NDArray;
+    final formattedSub = _formatND(subArray, indent: '$indent ');
+    if (isFirst) {
+      sb.write('[$formattedSub');
+    } else {
+      sb.write('$indent$formattedSub');
+    }
+    if (!isLast) {
+      sb.write(',$separator');
+    } else {
+      sb.write(']');
+    }
+  }
+  return sb.toString();
 }
 
 /// Structural elements equality check between two lists.

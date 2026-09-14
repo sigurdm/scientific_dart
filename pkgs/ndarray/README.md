@@ -60,7 +60,7 @@ void main() {
     print('1. Generated pure 10 Hz sine wave signal.');
 
     // 2. Inject RNG Gaussian Noise to simulate measurement sensors
-    final noise = normal([numPoints], loc: 0.0, scale: 0.5, random: math.Random(42));
+    final noise = normal([numPoints], loc: 0.0, scale: 0.5, seed: 42);
     
     // Combine pure signal + noise element-wise!
     final noisySignal = add(pureSignal, noise);

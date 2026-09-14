@@ -25,20 +25,32 @@ DType<dynamic> _descrToDType(String descr) {
       return DType.float64;
     case 'f4':
       return DType.float32;
+    case 'f2':
+      return DType.float16;
     case 'i8':
       return DType.int64;
     case 'i4':
       return DType.int32;
+    case 'i2':
+      return DType.int16;
+    case 'i1':
+      return DType.int8;
+    case 'u8':
+      return DType.uint64;
+    case 'u4':
+      return DType.uint32;
+    case 'u2':
+      return DType.uint16;
+    case 'u1':
+      return DType.uint8;
     case 'c16':
       return DType.complex128;
     case 'c8':
       return DType.complex64;
-    case 'u1':
-      return DType.uint8;
-    case 'i2':
-      return DType.int16;
     case 'b1':
       return DType.boolean;
+    case 'V2' || 'b2' || 'bfloat16':
+      return DType.bfloat16;
     default:
       throw UnsupportedError('Unsupported NumPy data type descriptor: $descr');
   }

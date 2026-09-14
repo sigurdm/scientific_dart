@@ -8,6 +8,7 @@ import '../scratch_arena.dart';
 
 // Standalone operational relative cross-imports
 import 'helpers.dart';
+export 'helpers.dart' show castNDArray;
 
 /// Concatenates a list of arrays along a specified axis.
 ///
@@ -686,7 +687,12 @@ NDArray<T> rot90<T extends Object>(
   var rotK = k % 4;
   if (rotK < 0) rotK += 4;
   if (rotK == 0) {
-    return NDArray.view(a, shape: a.shape, strides: a.strides, offsetElements: 0);
+    return NDArray.view(
+      a,
+      shape: a.shape,
+      strides: a.strides,
+      offsetElements: 0,
+    );
   }
   if (rotK == 2) {
     return flip(flip(a, axis: ax0), axis: ax1);
@@ -1547,4 +1553,34 @@ NDArray<T> _rollSingleND<T extends Object>(
   }
 
   return targetResult;
+}
+
+/// Returns a copy of array [a] cast to the specified [targetDType].
+///
+/// If [copy] is `false` and [targetDType] matches [a.dtype],
+/// returns [a] directly without copying. Otherwise, allocates
+/// and returns a new [NDArray] of type [R].
+///
+/// **Preconditions:**
+/// - [a] must not be disposed.
+///
+/// **Performance considerations:**
+/// - If [copy] is `false` and dtypes match, returns this in $O(1)$ time and $O(1)$ memory.
+/// - Otherwise, complexity is $O(N)$ where $N$ is the total number of elements.
+///
+/// **Throws:**
+/// - It is an error if [a] is already disposed.
+///
+/// **Example:**
+/// ```dart
+/// final a = NDArray.fromList([1, 2, 3], [3], DType.int32);
+/// final b = astype(a, DType.float64);
+/// print(b.dtype); // DType.float64
+/// ```
+NDArray<R> astype<R extends Object>(
+  NDArray a,
+  DType<R> targetDType, {
+  bool copy = true,
+}) {
+  return a.astype<R>(targetDType, copy: copy);
 }
