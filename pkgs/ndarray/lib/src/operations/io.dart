@@ -539,6 +539,13 @@ Map<String, NDArray<dynamic>> loadz(String filepath) {
           strides = fStrides;
         }
 
+        final expectedBytes = shape.fold(1, (a, b) => a * b) * dtype.byteWidth;
+        if (dataLen != expectedBytes) {
+          throw FormatException(
+            'Mismatched data size in NPZ archive for entry: expected $expectedBytes bytes from NPY header, got $dataLen bytes from ZIP header.',
+          );
+        }
+
         final loadedArray = NDArray.create(shape, dtype, strides: strides);
 
         final extractStatus = npz_reader_extract_data(
@@ -546,6 +553,7 @@ Map<String, NDArray<dynamic>> loadz(String filepath) {
           i,
           headerLen,
           loadedArray.pointer.cast<ffi.Void>(),
+          expectedBytes,
           dataLen,
         );
 

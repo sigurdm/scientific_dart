@@ -981,7 +981,7 @@ IMPLEMENT_V_BINARY_FUNC(logaddexp2, float, logaddexp2_op<float>)
 // OPTIMIZED REDUCTION KERNELS (AVX2 SIMD & UNROLLED ACCUMULATION)
 // ============================================================================
 
-#if (defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86))
+#if defined(__AVX2__)
 #define HAS_AVX2_REDUCTIONS 1
 #else
 #define HAS_AVX2_REDUCTIONS 0
@@ -7029,7 +7029,7 @@ static inline void kron_row_double(
 {
     if constexpr (CONTIG_B && CONTIG_RES) {
         int c = 0;
-#if (defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86))
+#if HAS_AVX2_REDUCTIONS
         __m256d va = _mm256_set1_pd(a_val);
         for (; c + 15 < q; c += 16) {
             __m256d vb0 = _mm256_loadu_pd(b_row + c);
@@ -7066,7 +7066,7 @@ static inline void kron_row_float(
 {
     if constexpr (CONTIG_B && CONTIG_RES) {
         int c = 0;
-#if (defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86))
+#if HAS_AVX2_REDUCTIONS
         __m256 va = _mm256_set1_ps(a_val);
         for (; c + 31 < q; c += 32) {
             __m256 vb0 = _mm256_loadu_ps(b_row + c);
@@ -7123,7 +7123,7 @@ static inline void kron_row_int32(
 {
     if constexpr (CONTIG_B && CONTIG_RES) {
         int c = 0;
-#if (defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86))
+#if HAS_AVX2_REDUCTIONS
         __m256i va = _mm256_set1_epi32(a_val);
         for (; c + 15 < q; c += 16) {
             __m256i vb0 = _mm256_loadu_si256((const __m256i *)(b_row + c));
@@ -7155,7 +7155,7 @@ static inline void kron_row_int16(
 {
     if constexpr (CONTIG_B && CONTIG_RES) {
         int c = 0;
-#if (defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86))
+#if HAS_AVX2_REDUCTIONS
         __m256i va = _mm256_set1_epi16(a_val);
         for (; c + 15 < q; c += 16) {
             __m256i vb = _mm256_loadu_si256((const __m256i *)(b_row + c));
@@ -7201,7 +7201,7 @@ static inline void kron_row_complex128(
 {
     if constexpr (CONTIG_B && CONTIG_RES) {
         int c = 0;
-#if (defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86))
+#if HAS_AVX2_REDUCTIONS
         const double *b_d = (const double *)b_row;
         double *res_d = (double *)dest_ptr;
         __m256d a_re = _mm256_set1_pd(a_val.r);
@@ -7250,7 +7250,7 @@ static inline void kron_row_complex64(
 {
     if constexpr (CONTIG_B && CONTIG_RES) {
         int c = 0;
-#if (defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86))
+#if HAS_AVX2_REDUCTIONS
         const float *b_f = (const float *)b_row;
         float *res_f = (float *)dest_ptr;
         __m256 a_re = _mm256_set1_ps(a_val.r);

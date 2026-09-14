@@ -410,6 +410,11 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       throw ArgumentError('Shape dimensions cannot be negative: $shape');
     }
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+    if (totalSize > 2147483647) {
+      throw UnsupportedError(
+        'NDArray operations currently support arrays up to 2^31 - 1 elements. Got $totalSize.',
+      );
+    }
     final finalStrides = strides ?? computeCStrides(shape);
 
     final allocator = zeroInit ? calloc : malloc;
@@ -890,6 +895,11 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
       throw ArgumentError('Shape dimensions cannot be negative: $shape');
     }
     final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+    if (totalSize > 2147483647) {
+      throw UnsupportedError(
+        'NDArray operations currently support arrays up to 2^31 - 1 elements. Got $totalSize.',
+      );
+    }
     final finalStrides = strides ?? computeCStrides(shape);
 
     List<T> data;
