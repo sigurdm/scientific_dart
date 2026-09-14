@@ -285,6 +285,7 @@ external int npz_reader_get_entry_info(
     ffi.Size,
     ffi.Pointer<ffi.Void>,
     ffi.Size,
+    ffi.Size,
   )
 >()
 external int npz_reader_extract_data(
@@ -292,6 +293,7 @@ external int npz_reader_extract_data(
   int index,
   int header_len,
   ffi.Pointer<ffi.Void> dest_ptr,
+  int dest_capacity,
   int data_len,
 );
 

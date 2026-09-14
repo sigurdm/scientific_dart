@@ -25,20 +25,32 @@ DType<dynamic> _descrToDType(String descr) {
       return DType.float64;
     case 'f4':
       return DType.float32;
+    case 'f2':
+      return DType.float16;
     case 'i8':
       return DType.int64;
     case 'i4':
       return DType.int32;
+    case 'i2':
+      return DType.int16;
+    case 'i1':
+      return DType.int8;
+    case 'u8':
+      return DType.uint64;
+    case 'u4':
+      return DType.uint32;
+    case 'u2':
+      return DType.uint16;
+    case 'u1':
+      return DType.uint8;
     case 'c16':
       return DType.complex128;
     case 'c8':
       return DType.complex64;
-    case 'u1':
-      return DType.uint8;
-    case 'i2':
-      return DType.int16;
     case 'b1':
       return DType.boolean;
+    case 'V2' || 'b2' || 'bfloat16':
+      return DType.bfloat16;
     default:
       throw UnsupportedError('Unsupported NumPy data type descriptor: $descr');
   }
@@ -259,7 +271,13 @@ NDArray<dynamic> load(String filepath) {
 
     // 6. Zero-Copy direct stream file read straight into C Heap pointers!
     final byteView = result.pointer.cast<ffi.Uint8>().asTypedList(byteSize);
-    raf.readIntoSync(byteView);
+    final bytesRead = raf.readIntoSync(byteView);
+    if (bytesRead != byteSize) {
+      result.dispose();
+      throw FormatException(
+        'Unexpected EOF while reading NPY payload: expected $byteSize bytes, got $bytesRead',
+      );
+    }
 
     return result;
   } finally {
@@ -465,101 +483,116 @@ Map<String, NDArray<dynamic>> loadz(String filepath) {
       final pHeaderLen = arena<ffi.Size>();
       final pDataLen = arena<ffi.Size>();
 
-      for (var i = 0; i < numEntries; i++) {
-        final infoStatus = npz_reader_get_entry_info(
-          handle,
-          i,
-          nameBuf,
-          nameBufLen,
-          headerBuf,
-          headerBufLen,
-          pHeaderLen,
-          pDataLen,
-        );
+      try {
+        for (var i = 0; i < numEntries; i++) {
+          final infoStatus = npz_reader_get_entry_info(
+            handle,
+            i,
+            nameBuf,
+            nameBufLen,
+            headerBuf,
+            headerBufLen,
+            pHeaderLen,
+            pDataLen,
+          );
 
-        if (infoStatus != 0) {
-          if (infoStatus == -8) {
-            // Corrupted magic bytes in .npy file
-            throw FormatException('Invalid .npy magic header in archive entry');
+          if (infoStatus != 0) {
+            if (infoStatus == -8) {
+              // Corrupted magic bytes in .npy file
+              throw FormatException('Invalid .npy magic header in archive entry');
+            }
+            continue;
           }
-          continue;
-        }
 
-        final filename = nameBuf.cast<Utf8>().toDartString();
-        if (!filename.endsWith('.npy')) {
-          continue;
-        }
-        final key = filename.substring(0, filename.length - 4);
-
-        final headerLen = pHeaderLen.value;
-        final dataLen = pDataLen.value;
-
-        final asciiHeaderLen = headerLen - 10;
-        final headerBytes = (headerBuf + 10).asTypedList(asciiHeaderLen);
-        final headerStr = String.fromCharCodes(headerBytes);
-
-        final descrMatch = _descrRegex.firstMatch(headerStr);
-        if (descrMatch == null) {
-          throw FormatException(
-            'Invalid npy header: could not parse "descr" parameter string',
-          );
-        }
-        final descr = descrMatch.group(1)!;
-        final dtype = _descrToDType(descr);
-
-        final fortMatch = _fortranRegex.firstMatch(headerStr);
-        if (fortMatch == null) {
-          throw FormatException(
-            'Invalid npy header: could not parse "fortran_order" boolean flag',
-          );
-        }
-        final fortranOrder = fortMatch.group(1)!.toLowerCase() == 'true';
-
-        final shapeMatch = _shapeRegex.firstMatch(headerStr);
-        if (shapeMatch == null) {
-          throw FormatException(
-            'Invalid npy header: could not parse "shape" tuple tokens',
-          );
-        }
-        final shapeTokens = shapeMatch.group(1)!.split(',');
-        final shape = <int>[];
-        for (final tok in shapeTokens) {
-          final cleanTok = tok.trim();
-          if (cleanTok.isNotEmpty) shape.add(int.parse(cleanTok));
-        }
-
-        List<int>? strides;
-        if (fortranOrder && shape.length > 1) {
-          final fStrides = List<int>.filled(shape.length, 0);
-          var stride = 1;
-          for (var s = 0; s < shape.length; s++) {
-            fStrides[s] = stride;
-            stride *= shape[s];
+          final filename = nameBuf.cast<Utf8>().toDartString();
+          if (!filename.endsWith('.npy')) {
+            continue;
           }
-          strides = fStrides;
-        }
+          final key = filename.substring(0, filename.length - 4);
 
-        final loadedArray = NDArray.create(shape, dtype, strides: strides);
+          final headerLen = pHeaderLen.value;
+          final dataLen = pDataLen.value;
 
-        final extractStatus = npz_reader_extract_data(
-          handle,
-          i,
-          headerLen,
-          loadedArray.pointer.cast<ffi.Void>(),
-          dataLen,
-        );
+          final asciiHeaderLen = headerLen - 10;
+          final headerBytes = (headerBuf + 10).asTypedList(asciiHeaderLen);
+          final headerStr = String.fromCharCodes(headerBytes);
 
-        if (extractStatus != 0) {
-          loadedArray.dispose();
-          throw FormatException(
-            'Failed to extract .npy array data from .npz entry (index: $i, key: $key, code: $extractStatus)',
+          final descrMatch = _descrRegex.firstMatch(headerStr);
+          if (descrMatch == null) {
+            throw FormatException(
+              'Invalid npy header: could not parse "descr" parameter string',
+            );
+          }
+          final descr = descrMatch.group(1)!;
+          final dtype = _descrToDType(descr);
+
+          final fortMatch = _fortranRegex.firstMatch(headerStr);
+          if (fortMatch == null) {
+            throw FormatException(
+              'Invalid npy header: could not parse "fortran_order" boolean flag',
+            );
+          }
+          final fortranOrder = fortMatch.group(1)!.toLowerCase() == 'true';
+
+          final shapeMatch = _shapeRegex.firstMatch(headerStr);
+          if (shapeMatch == null) {
+            throw FormatException(
+              'Invalid npy header: could not parse "shape" tuple tokens',
+            );
+          }
+          final shapeTokens = shapeMatch.group(1)!.split(',');
+          final shape = <int>[];
+          for (final tok in shapeTokens) {
+            final cleanTok = tok.trim();
+            if (cleanTok.isNotEmpty) shape.add(int.parse(cleanTok));
+          }
+
+          List<int>? strides;
+          if (fortranOrder && shape.length > 1) {
+            final fStrides = List<int>.filled(shape.length, 0);
+            var stride = 1;
+            for (var s = 0; s < shape.length; s++) {
+              fStrides[s] = stride;
+              stride *= shape[s];
+            }
+            strides = fStrides;
+          }
+
+          final expectedBytes = shape.fold(1, (a, b) => a * b) * dtype.byteWidth;
+          if (dataLen != expectedBytes) {
+            throw FormatException(
+              'Mismatched data size in NPZ archive for entry: expected $expectedBytes bytes from NPY header, got $dataLen bytes from ZIP header.',
+            );
+          }
+
+          final loadedArray = NDArray.create(shape, dtype, strides: strides);
+
+          final extractStatus = npz_reader_extract_data(
+            handle,
+            i,
+            headerLen,
+            loadedArray.pointer.cast<ffi.Void>(),
+            expectedBytes,
+            dataLen,
           );
+
+          if (extractStatus != 0) {
+            loadedArray.dispose();
+            throw FormatException(
+              'Failed to extract .npy array data from .npz entry (index: $i, key: $key, code: $extractStatus)',
+            );
+          }
+
+          results[key] = loadedArray;
         }
 
-        results[key] = loadedArray;
+        return results;
+      } catch (e) {
+        for (final arr in results.values) {
+          arr.dispose();
+        }
+        rethrow;
       }
-
-      return results;
     } finally {
       npz_close_reader(handle);
     }

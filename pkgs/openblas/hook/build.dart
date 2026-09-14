@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
+import 'package:crypto/crypto.dart';
 import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
 
@@ -64,10 +65,29 @@ void main(List<String> args) async {
             client.close();
           }
 
+          final actualZipHash = sha256.convert(zipBytes).toString();
+          const expectedZipHash =
+              '7ad797ef0c9a5c42e28903bf726eaaaade307dafe187ff0e923d90cd4002780c';
+          if (actualZipHash != expectedZipHash) {
+            throw StateError(
+              'SHA-256 mismatch for OpenBLAS zip: expected $expectedZipHash, got $actualZipHash',
+            );
+          }
+
           print('Extracting precompiled OpenBLAS zip...');
           final archive = ZipDecoder().decodeBytes(zipBytes);
+          final extractDirPath = Directory.fromUri(extractDir).path;
+          final safeExtractPrefix =
+              extractDirPath.endsWith(Platform.pathSeparator)
+                  ? extractDirPath
+                  : '$extractDirPath${Platform.pathSeparator}';
           for (final file in archive) {
             final outPath = extractDir.resolve(file.name).toFilePath();
+            if (!outPath.startsWith(safeExtractPrefix)) {
+              throw FormatException(
+                'Path traversal attempt in OpenBLAS zip: ${file.name}',
+              );
+            }
             if (file.isFile) {
               final outFile = File(outPath);
               outFile.createSync(recursive: true);
@@ -273,12 +293,30 @@ void main(List<String> args) async {
             client.close();
           }
 
+          final actualTarHash = sha256.convert(tarGzBytes).toString();
+          const expectedTarHash =
+              '6761af1d9f5d353ab4f0b7497be2643313b36c8f31caec0144bfef198e71e6ab';
+          if (actualTarHash != expectedTarHash) {
+            throw StateError(
+              'SHA-256 mismatch for OpenBLAS archive: expected $expectedTarHash, got $actualTarHash',
+            );
+          }
+
           print('Extracting OpenBLAS...');
           final unzippedBytes = GZipDecoder().decodeBytes(tarGzBytes);
           final archive = TarDecoder().decodeBytes(unzippedBytes);
 
+          final safeOutputPrefix =
+              outputDir.path.endsWith(Platform.pathSeparator)
+                  ? outputDir.path
+                  : '${outputDir.path}${Platform.pathSeparator}';
           for (final file in archive) {
             final outPath = outputDir.uri.resolve(file.name).toFilePath();
+            if (!outPath.startsWith(safeOutputPrefix)) {
+              throw FormatException(
+                'Path traversal attempt in OpenBLAS archive: ${file.name}',
+              );
+            }
             if (file.isFile) {
               final outFile = File(outPath);
               outFile.createSync(recursive: true);
@@ -292,6 +330,7 @@ void main(List<String> args) async {
           final makeArgs = <String>[
             '-j${Platform.numberOfProcessors}',
             'TARGET=$openBlasTarget',
+            if (arch == Architecture.x64) 'DYNAMIC_ARCH=1',
             'USE_THREAD=1',
           ];
 

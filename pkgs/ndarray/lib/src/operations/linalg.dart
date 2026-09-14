@@ -229,8 +229,17 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     }
 
     final resShape = [...broadcastStack, m, n];
+    final bool isAliased =
+        out != null &&
+        (out.pointer == a.pointer ||
+            out.pointer == b.pointer ||
+            out.pointer == aCast.pointer ||
+            out.pointer == bCast.pointer);
     final bool canUseOutDirectly =
-        out != null && out.isContiguous && listEquals(out.shape, resShape);
+        out != null &&
+        !isAliased &&
+        out.isContiguous &&
+        listEquals(out.shape, resShape);
     result = canUseOutDirectly
         ? out
         : NDArray.zeros(resShape, targetDType as DType<R>);
@@ -838,20 +847,7 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 
     if (out != null) {
       if (!canUseOutDirectly) {
-        if (out.isContiguous && result.isContiguous) {
-          final byteCount = result.size * targetDType.byteWidth;
-          ffi.Pointer.fromAddress(out.pointer.address)
-              .cast<ffi.Uint8>()
-              .asTypedList(byteCount)
-              .setAll(
-                0,
-                ffi.Pointer.fromAddress(
-                  result.pointer.address,
-                ).cast<ffi.Uint8>().asTypedList(byteCount),
-              );
-        } else {
-          result.reshape(out.shape).copy(out: out);
-        }
+        result.reshape(out.shape).copy(out: out);
         result.dispose();
       }
       success = true;
@@ -860,19 +856,22 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
 
     // Post-calculation 1D dummy dimensions demotions
     if (aPromoted && bPromoted) {
-      final finalRes = result.reshape([]);
+      final finalRes = result.reshape([]).copy();
+      result.dispose();
       success = true;
       return finalRes; // 0D scalar array for pure vector dot products
     } else if (aPromoted) {
       final newShape = List<int>.from(result.shape)
         ..removeAt(result.shape.length - 2);
-      final finalRes = result.reshape(newShape);
+      final finalRes = result.reshape(newShape).copy();
+      result.dispose();
       success = true;
       return finalRes;
     } else if (bPromoted) {
       final newShape = List<int>.from(result.shape)
         ..removeAt(result.shape.length - 1);
-      final finalRes = result.reshape(newShape);
+      final finalRes = result.reshape(newShape).copy();
+      result.dispose();
       success = true;
       return finalRes;
     }
@@ -5408,8 +5407,6 @@ NDArray<R> cross<Ta, Tb, R>(
   return result;
 }
 
-/// Supported norm orders and calculation modes for vector and matrix norm computations.
-
 /// Matrix triangle selection for symmetric/Hermitian operations.
 enum MatrixTriangle {
   /// Lower triangular part.
@@ -5428,6 +5425,7 @@ enum SchurForm {
   complex,
 }
 
+/// Supported norm orders and calculation modes for vector and matrix norm computations.
 enum NormKind { frobenius, nuclear, l1, l2, infinity, negInfinity }
 
 /// Computes a vector or matrix norm.

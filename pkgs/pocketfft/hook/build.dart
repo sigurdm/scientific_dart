@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
+import 'package:crypto/crypto.dart';
 import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
 
@@ -39,14 +40,40 @@ void main(List<String> args) async {
         }
         final tarGzBytes = bytesBuilder.toBytes();
 
+        final actualHash = sha256.convert(tarGzBytes).toString();
+        const expectedHash =
+            '3da5fb17fa446f5368a7e9c71e2ae6a1a29a9940f7afc499a3e70224a17c95e5';
+        if (actualHash != expectedHash) {
+          throw StateError(
+            'SHA-256 mismatch for KissFFT archive: expected $expectedHash, got $actualHash',
+          );
+        }
+
         final unzippedBytes = GZipDecoder().decodeBytes(tarGzBytes);
         final archive = TarDecoder().decodeBytes(unzippedBytes);
 
+        final safeSrcPrefix = srcDir.path.endsWith(Platform.pathSeparator)
+            ? srcDir.path
+            : '${srcDir.path}${Platform.pathSeparator}';
+
         for (final file in archive) {
           if (file.isFile) {
-            final baseName = file.name.split('/').last;
+            final cleanName = file.name.replaceAll('\\', '/');
+            final baseName = cleanName.split('/').last;
+            if (baseName.contains('..') ||
+                baseName.contains('/') ||
+                baseName.contains('\\')) {
+              throw FormatException(
+                'Invalid filename in KissFFT archive: ${file.name}',
+              );
+            }
             if (baseName.endsWith('.c') || baseName.endsWith('.h')) {
               final outFile = File.fromUri(srcDir.uri.resolve(baseName));
+              if (!outFile.path.startsWith(safeSrcPrefix)) {
+                throw FormatException(
+                  'Path traversal attempt in KissFFT archive: ${file.name}',
+                );
+              }
               outFile.writeAsBytesSync(file.content as List<int>, flush: true);
               print('Extracted: $baseName');
             }

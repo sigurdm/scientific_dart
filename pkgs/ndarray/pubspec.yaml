@@ -3,6 +3,12 @@ description: N-dimensional arrays and numerical operations.
 version: 0.0.2
 resolution: workspace
 repository: https://github.com/sigurdm/math
+topics:
+  - numerical
+  - math
+  - ffi
+  - science
+  - matrix
 
 environment:
   sdk: ^3.10.0

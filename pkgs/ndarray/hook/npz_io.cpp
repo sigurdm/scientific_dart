@@ -411,11 +411,11 @@ struct NpzEntryInfo {
     char name[512];
     uint16_t comp_method;
     uint32_t crc32;
-    uint32_t comp_size;
-    uint32_t uncomp_size;
-    uint32_t local_header_offset;
-    uint32_t data_offset;
-    uint32_t header_len;
+    uint64_t comp_size;
+    uint64_t uncomp_size;
+    uint64_t local_header_offset;
+    uint64_t data_offset;
+    uint64_t header_len;
     bool is_directory;
     bool is_npy;
     int header_status;
@@ -552,8 +552,8 @@ NDARRAY_EXPORT void* npz_open_reader(const char* filepath, int64_t* out_num_entr
 
     const uint8_t* eocd = mmap_data + eocd_pos;
     uint16_t total_entries = read_u16_le(eocd + 10);
-    uint32_t cd_size = read_u32_le(eocd + 12);
-    uint32_t cd_offset = read_u32_le(eocd + 16);
+    uint64_t cd_size = read_u32_le(eocd + 12);
+    uint64_t cd_offset = read_u32_le(eocd + 16);
 
     if (cd_offset + cd_size > file_size) {
         npz_close_reader(reader);
@@ -567,7 +567,7 @@ NDARRAY_EXPORT void* npz_open_reader(const char* filepath, int64_t* out_num_entr
         return NULL;
     }
 
-    size_t cur_cd = cd_offset;
+    uint64_t cur_cd = cd_offset;
     for (size_t i = 0; i < total_entries; i++) {
         if (cur_cd + 46 > file_size) {
             npz_close_reader(reader);
@@ -613,7 +613,7 @@ NDARRAY_EXPORT void* npz_open_reader(const char* filepath, int64_t* out_num_entr
         }
         e->is_npy = true;
 
-        uint32_t lfh_off = e->local_header_offset;
+        uint64_t lfh_off = e->local_header_offset;
         if (lfh_off + 30 > file_size) {
             e->header_status = -2;
             continue;
@@ -633,6 +633,10 @@ NDARRAY_EXPORT void* npz_open_reader(const char* filepath, int64_t* out_num_entr
         }
 
         if (e->comp_method == 0) {
+            if (e->comp_size != e->uncomp_size) {
+                e->header_status = -2;
+                continue;
+            }
             if (e->uncomp_size < 10) {
                 e->header_status = -7;
                 continue;
@@ -649,7 +653,7 @@ NDARRAY_EXPORT void* npz_open_reader(const char* filepath, int64_t* out_num_entr
                 e->header_status = -11;
                 continue;
             }
-            e->header_len = (uint32_t)total_header_len;
+            e->header_len = total_header_len;
             e->header_status = 0;
         } else {
             e->header_status = 0;
@@ -762,20 +766,28 @@ NDARRAY_EXPORT int npz_reader_extract_data(
     size_t index,
     size_t header_len,
     void* dest_ptr,
+    size_t dest_capacity,
     size_t data_len) {
     struct NpzReader* reader = (struct NpzReader*)handle;
     if (!reader || index >= reader->num_files || !dest_ptr) return -1;
+    if (data_len > dest_capacity) return -5;
 
     NpzEntryInfo* e = &reader->entries[index];
     if (e->comp_method == 0) {
-        size_t src_offset = e->data_offset + header_len;
+        if (e->comp_size != e->uncomp_size) {
+            return -4;
+        }
+        if (header_len > e->uncomp_size || data_len > e->uncomp_size - header_len) {
+            return -4;
+        }
+        size_t src_offset = (size_t)e->data_offset + header_len;
         if (src_offset + data_len > reader->file_size) {
             return -4;
         }
         if (reader->mmap_data) {
             memcpy(dest_ptr, reader->mmap_data + src_offset, data_len);
         } else {
-            fseek(reader->fp, src_offset, SEEK_SET);
+            fseek(reader->fp, (long)src_offset, SEEK_SET);
             if (fread(dest_ptr, 1, data_len, reader->fp) != data_len) {
                 return -4;
             }

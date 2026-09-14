@@ -129,93 +129,91 @@ NDArray<T> take_along_axis<T extends Object>(
     }
   }
 
-  return NDArray.scope(() {
-    final result = out ?? NDArray<T>.create(targetShape, arr.dtype);
-    final marker = ScratchArena.marker;
-    try {
-      final cArrShape = ScratchArena.allocate<ffi.Int64>(
-        rank * ffi.sizeOf<ffi.Int64>(),
-      );
-      final cArrStrides = ScratchArena.allocate<ffi.Int64>(
-        rank * ffi.sizeOf<ffi.Int64>(),
-      );
-      final cIdxShape = ScratchArena.allocate<ffi.Int64>(
-        rank * ffi.sizeOf<ffi.Int64>(),
-      );
-      final cIdxStrides = ScratchArena.allocate<ffi.Int64>(
-        rank * ffi.sizeOf<ffi.Int64>(),
-      );
-      final cOutShape = ScratchArena.allocate<ffi.Int64>(
-        rank * ffi.sizeOf<ffi.Int64>(),
-      );
-      final cOutStrides = ScratchArena.allocate<ffi.Int64>(
-        rank * ffi.sizeOf<ffi.Int64>(),
-      );
-      final cOutErrorIdx = ScratchArena.allocate<ffi.Int64>(
-        ffi.sizeOf<ffi.Int64>(),
-      );
+  final result = out ?? NDArray<T>.create(targetShape, arr.dtype);
+  final marker = ScratchArena.marker;
+  try {
+    final cArrShape = ScratchArena.allocate<ffi.Int64>(
+      rank * ffi.sizeOf<ffi.Int64>(),
+    );
+    final cArrStrides = ScratchArena.allocate<ffi.Int64>(
+      rank * ffi.sizeOf<ffi.Int64>(),
+    );
+    final cIdxShape = ScratchArena.allocate<ffi.Int64>(
+      rank * ffi.sizeOf<ffi.Int64>(),
+    );
+    final cIdxStrides = ScratchArena.allocate<ffi.Int64>(
+      rank * ffi.sizeOf<ffi.Int64>(),
+    );
+    final cOutShape = ScratchArena.allocate<ffi.Int64>(
+      rank * ffi.sizeOf<ffi.Int64>(),
+    );
+    final cOutStrides = ScratchArena.allocate<ffi.Int64>(
+      rank * ffi.sizeOf<ffi.Int64>(),
+    );
+    final cOutErrorIdx = ScratchArena.allocate<ffi.Int64>(
+      ffi.sizeOf<ffi.Int64>(),
+    );
 
-      for (var i = 0; i < rank; i++) {
-        cArrShape[i] = arr.shape[i];
-        cArrStrides[i] = arr.strides[i];
-        cIdxShape[i] = indices.shape[i];
-        cIdxStrides[i] = indices.strides[i];
-        cOutShape[i] = targetShape[i];
-        cOutStrides[i] = result.strides[i];
-      }
-
-      final status = switch (arr.dtype) {
-        DType.float64 ||
-        DType.float32 ||
-        DType.float16 ||
-        DType.bfloat16 ||
-        DType.int64 ||
-        DType.int32 ||
-        DType.int16 ||
-        DType.int8 ||
-        DType.uint64 ||
-        DType.uint32 ||
-        DType.uint16 ||
-        DType.uint8 ||
-        DType.boolean ||
-        DType.complex128 ||
-        DType.complex64 => native_take_along_axis(
-          arr.dtype.index,
-          indices.dtype.index,
-          arr.pointer,
-          cArrShape,
-          cArrStrides,
-          indices.pointer,
-          cIdxShape,
-          cIdxStrides,
-          result.pointer,
-          cOutShape,
-          cOutStrides,
-          rank,
-          normAxis,
-          cOutErrorIdx,
-        ),
-      };
-
-      if (status != 0) {
-        if (status == -1) {
-          final badIdx = cOutErrorIdx.value;
-          final axisSize = arr.shape[normAxis];
-          throw RangeError.range(
-            badIdx,
-            0,
-            axisSize - 1,
-            'index along axis $normAxis',
-          );
-        }
-        throw ArgumentError('take_along_axis failed with status $status');
-      }
-
-      return result.detachToParentScope();
-    } finally {
-      ScratchArena.reset(marker);
+    for (var i = 0; i < rank; i++) {
+      cArrShape[i] = arr.shape[i];
+      cArrStrides[i] = arr.strides[i];
+      cIdxShape[i] = indices.shape[i];
+      cIdxStrides[i] = indices.strides[i];
+      cOutShape[i] = targetShape[i];
+      cOutStrides[i] = result.strides[i];
     }
-  });
+
+    final status = switch (arr.dtype) {
+      DType.float64 ||
+      DType.float32 ||
+      DType.float16 ||
+      DType.bfloat16 ||
+      DType.int64 ||
+      DType.int32 ||
+      DType.int16 ||
+      DType.int8 ||
+      DType.uint64 ||
+      DType.uint32 ||
+      DType.uint16 ||
+      DType.uint8 ||
+      DType.boolean ||
+      DType.complex128 ||
+      DType.complex64 => native_take_along_axis(
+        arr.dtype.index,
+        indices.dtype.index,
+        arr.pointer,
+        cArrShape,
+        cArrStrides,
+        indices.pointer,
+        cIdxShape,
+        cIdxStrides,
+        result.pointer,
+        cOutShape,
+        cOutStrides,
+        rank,
+        normAxis,
+        cOutErrorIdx,
+      ),
+    };
+
+    if (status != 0) {
+      if (status == -1) {
+        final badIdx = cOutErrorIdx.value;
+        final axisSize = arr.shape[normAxis];
+        throw RangeError.range(
+          badIdx,
+          0,
+          axisSize - 1,
+          'index along axis $normAxis',
+        );
+      }
+      throw ArgumentError('take_along_axis failed with status $status');
+    }
+
+    return result;
+  } finally {
+    ScratchArena.reset(marker);
+  }
 }
 
 /// Puts values into an array along a specified [axis] using 1D index arrays.
@@ -261,136 +259,140 @@ NDArray<T> put_along_axis<T extends Object>(
     throw RangeError.range(normAxis, 0, rank - 1, 'axis');
   }
 
-  return NDArray.scope(() {
-    final valuesArr = values is NDArray<T>
-        ? values
-        : toNDArray(values, arr.dtype);
-    if (valuesArr.isDisposed) {
-      throw StateError('Cannot execute put_along_axis with disposed values.');
+  final bool valuesAllocated = values is! NDArray<T>;
+  final valuesArr = valuesAllocated ? toNDArray(values, arr.dtype) : values;
+  if (valuesArr.isDisposed) {
+    if (valuesAllocated) valuesArr.dispose();
+    throw StateError('Cannot execute put_along_axis with disposed values.');
+  }
+
+  final valRank = valuesArr.shape.length;
+  if (valRank > rank) {
+    if (valuesAllocated) valuesArr.dispose();
+    throw ArgumentError(
+      'values rank ($valRank) cannot be greater than arr rank ($rank)',
+    );
+  }
+
+  final NDArray<T> target;
+  if (out != null) {
+    if (out.dtype != arr.dtype) {
+      if (valuesAllocated) valuesArr.dispose();
+      throw ArgumentError('out dtype must match arr dtype');
     }
-
-    final valRank = valuesArr.shape.length;
-    if (valRank > rank) {
-      throw ArgumentError(
-        'values rank ($valRank) cannot be greater than arr rank ($rank)',
-      );
+    if (!listEquals(out.shape, arr.shape)) {
+      if (valuesAllocated) valuesArr.dispose();
+      throw ArgumentError('out shape must match arr shape');
     }
-
-    final NDArray<T> target;
-    if (out != null) {
-      if (out.dtype != arr.dtype) {
-        throw ArgumentError('out dtype must match arr dtype');
-      }
-      if (!listEquals(out.shape, arr.shape)) {
-        throw ArgumentError('out shape must match arr shape');
-      }
-      if (!identical(out, arr)) {
-        arr.copy(out: out);
-      }
-      target = out;
-    } else {
-      target = arr;
+    if (!identical(out, arr)) {
+      arr.copy(out: out);
     }
+    target = out;
+  } else {
+    target = arr;
+  }
 
-    final marker = ScratchArena.marker;
-    try {
-      final cTargetShape = ScratchArena.allocate<ffi.Int64>(
-        rank * ffi.sizeOf<ffi.Int64>(),
-      );
-      final cTargetStrides = ScratchArena.allocate<ffi.Int64>(
-        rank * ffi.sizeOf<ffi.Int64>(),
-      );
-      final cIdxShape = ScratchArena.allocate<ffi.Int64>(
-        rank * ffi.sizeOf<ffi.Int64>(),
-      );
-      final cIdxStrides = ScratchArena.allocate<ffi.Int64>(
-        rank * ffi.sizeOf<ffi.Int64>(),
-      );
-      final cValShape = ScratchArena.allocate<ffi.Int64>(
-        rank * ffi.sizeOf<ffi.Int64>(),
-      );
-      final cValStrides = ScratchArena.allocate<ffi.Int64>(
-        rank * ffi.sizeOf<ffi.Int64>(),
-      );
-      final cOutErrorIdx = ScratchArena.allocate<ffi.Int64>(
-        ffi.sizeOf<ffi.Int64>(),
-      );
+  final marker = ScratchArena.marker;
+  try {
+    final cTargetShape = ScratchArena.allocate<ffi.Int64>(
+      rank * ffi.sizeOf<ffi.Int64>(),
+    );
+    final cTargetStrides = ScratchArena.allocate<ffi.Int64>(
+      rank * ffi.sizeOf<ffi.Int64>(),
+    );
+    final cIdxShape = ScratchArena.allocate<ffi.Int64>(
+      rank * ffi.sizeOf<ffi.Int64>(),
+    );
+    final cIdxStrides = ScratchArena.allocate<ffi.Int64>(
+      rank * ffi.sizeOf<ffi.Int64>(),
+    );
+    final cValShape = ScratchArena.allocate<ffi.Int64>(
+      rank * ffi.sizeOf<ffi.Int64>(),
+    );
+    final cValStrides = ScratchArena.allocate<ffi.Int64>(
+      rank * ffi.sizeOf<ffi.Int64>(),
+    );
+    final cOutErrorIdx = ScratchArena.allocate<ffi.Int64>(
+      ffi.sizeOf<ffi.Int64>(),
+    );
 
-      for (var i = 0; i < rank; i++) {
-        cTargetShape[i] = target.shape[i];
-        cTargetStrides[i] = target.strides[i];
-        cIdxShape[i] = indices.shape[i];
-        cIdxStrides[i] = indices.strides[i];
+    for (var i = 0; i < rank; i++) {
+      cTargetShape[i] = target.shape[i];
+      cTargetStrides[i] = target.strides[i];
+      cIdxShape[i] = indices.shape[i];
+      cIdxStrides[i] = indices.strides[i];
 
-        final valDimIndex = i - (rank - valRank);
-        if (valDimIndex < 0) {
-          cValShape[i] = 1;
-          cValStrides[i] = 0;
-        } else {
-          final valDim = valuesArr.shape[valDimIndex];
-          final idxDim = indices.shape[i];
-          if (valDim != idxDim && valDim != 1) {
-            throw ArgumentError(
-              'Incompatible shapes for put_along_axis: indices shape ${indices.shape} and values shape ${valuesArr.shape}',
-            );
-          }
-          cValShape[i] = valDim;
-          cValStrides[i] = valuesArr.strides[valDimIndex];
-        }
-      }
-
-      final status = switch (arr.dtype) {
-        DType.float64 ||
-        DType.float32 ||
-        DType.float16 ||
-        DType.bfloat16 ||
-        DType.int64 ||
-        DType.int32 ||
-        DType.int16 ||
-        DType.int8 ||
-        DType.uint64 ||
-        DType.uint32 ||
-        DType.uint16 ||
-        DType.uint8 ||
-        DType.boolean ||
-        DType.complex128 ||
-        DType.complex64 => native_put_along_axis(
-          arr.dtype.index,
-          indices.dtype.index,
-          target.pointer,
-          cTargetShape,
-          cTargetStrides,
-          indices.pointer,
-          cIdxShape,
-          cIdxStrides,
-          valuesArr.pointer,
-          cValShape,
-          cValStrides,
-          rank,
-          normAxis,
-          cOutErrorIdx,
-        ),
-      };
-
-      if (status != 0) {
-        if (status == -1) {
-          final badIdx = cOutErrorIdx.value;
-          final axisSize = target.shape[normAxis];
-          throw RangeError.range(
-            badIdx,
-            0,
-            axisSize - 1,
-            'index along axis $normAxis',
+      final valDimIndex = i - (rank - valRank);
+      if (valDimIndex < 0) {
+        cValShape[i] = 1;
+        cValStrides[i] = 0;
+      } else {
+        final valDim = valuesArr.shape[valDimIndex];
+        final idxDim = indices.shape[i];
+        if (valDim != idxDim && valDim != 1) {
+          throw ArgumentError(
+            'Incompatible shapes for put_along_axis: indices shape ${indices.shape} and values shape ${valuesArr.shape}',
           );
         }
-        throw ArgumentError('put_along_axis failed with status $status');
+        cValShape[i] = valDim;
+        cValStrides[i] = valuesArr.strides[valDimIndex];
       }
-
-      return target.detachToParentScope();
-    } finally {
-      ScratchArena.reset(marker);
     }
-  });
+
+    final status = switch (arr.dtype) {
+      DType.float64 ||
+      DType.float32 ||
+      DType.float16 ||
+      DType.bfloat16 ||
+      DType.int64 ||
+      DType.int32 ||
+      DType.int16 ||
+      DType.int8 ||
+      DType.uint64 ||
+      DType.uint32 ||
+      DType.uint16 ||
+      DType.uint8 ||
+      DType.boolean ||
+      DType.complex128 ||
+      DType.complex64 => native_put_along_axis(
+        arr.dtype.index,
+        indices.dtype.index,
+        target.pointer,
+        cTargetShape,
+        cTargetStrides,
+        indices.pointer,
+        cIdxShape,
+        cIdxStrides,
+        valuesArr.pointer,
+        cValShape,
+        cValStrides,
+        rank,
+        normAxis,
+        cOutErrorIdx,
+      ),
+    };
+
+    if (status != 0) {
+      if (status == -1) {
+        final badIdx = cOutErrorIdx.value;
+        final axisSize = target.shape[normAxis];
+        throw RangeError.range(
+          badIdx,
+          0,
+          axisSize - 1,
+          'index along axis $normAxis',
+        );
+      }
+      throw ArgumentError('put_along_axis failed with status $status');
+    }
+
+    return target;
+  } finally {
+    ScratchArena.reset(marker);
+    if (valuesAllocated) {
+      valuesArr.dispose();
+    }
+  }
 }
 
 /// Constructs an array from an index array ([a]) and a list of arrays or scalars ([choices]).
@@ -516,7 +518,7 @@ NDArray<T> choose<T extends Object>(
         result.setCell(coords, val);
       }
 
-      return result.detachToParentScope();
+      return out != null ? result : result.detachToParentScope();
     } finally {
       ScratchArena.reset(marker);
     }
@@ -670,7 +672,7 @@ NDArray<T> select<T extends Object>(
         }
       }
 
-      return result.detachToParentScope();
+      return out != null ? result : result.detachToParentScope();
     } finally {
       ScratchArena.reset(marker);
     }

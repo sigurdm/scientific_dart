@@ -112,15 +112,27 @@ NDArray<T> sort<T extends Object>(
     src = a.copy();
   }
 
+  NDArray<T>? tempResult;
   try {
     final NDArray<T> result;
-    if (out != null) {
+    if (out != null && !out.isContiguous) {
+      tempResult = src.copy();
+      result = tempResult;
+    } else if (out != null) {
       if (out != src) {
         src.copy(out: out);
       }
       result = out;
     } else {
       result = src.copy();
+    }
+
+    NDArray<T> finish() {
+      if (tempResult != null) {
+        tempResult.copy(out: out!);
+        return out;
+      }
+      return result;
     }
 
     final n = src.shape.last;
@@ -142,7 +154,7 @@ NDArray<T> sort<T extends Object>(
           result.setCellFlat(rowStart + i, true as T);
         }
       }
-      return result;
+      return finish();
     }
 
     final elementSizeInBytes = src.dtype.byteWidth;
@@ -173,21 +185,22 @@ NDArray<T> sort<T extends Object>(
         case DType.complex64:
           native_sort_complex64(rowPtr.cast<ffi.Float>(), n, nativeKind);
         case DType.boolean:
+          break; // Handled above in O(N)
+        case DType.uint64:
           for (var r = 0; r < numRows; r++) {
             final rowStart = r * n;
-            final vals = List<bool>.generate(
+            final vals = List<int>.generate(
               n,
-              (i) => src.getCellFlat(rowStart + i) as bool,
+              (i) => src.getCellFlat(rowStart + i) as int,
             );
-            vals.sort((a, b) => a == b ? 0 : (a ? 1 : -1));
+            vals.sort(uint64Compare);
             for (var i = 0; i < n; i++) {
-              (result as NDArray<bool>).setCellFlat(rowStart + i, vals[i]);
+              (result as NDArray<int>).setCellFlat(rowStart + i, vals[i]);
             }
           }
         case DType.float16:
         case DType.bfloat16:
         case DType.int8:
-        case DType.uint64:
         case DType.uint32:
         case DType.uint16:
           final doubleSrc = NDArray.fromList(
@@ -201,12 +214,13 @@ NDArray<T> sort<T extends Object>(
           doubleSrc.dispose();
           doubleSorted.dispose();
           casted.dispose();
-          return result;
+          return finish();
       }
     }
 
-    return result;
+    return finish();
   } finally {
+    tempResult?.dispose();
     if (needsDisposeSrc) {
       src.dispose();
     }
@@ -282,7 +296,23 @@ NDArray<int> argsort<T extends Object>(
     needsDispose = true;
   }
 
-  final result = out ?? NDArray<int>.create(src.shape, DType.int32);
+  NDArray<int>? tempResult;
+  final NDArray<int> result;
+  if (out != null && !out.isContiguous) {
+    tempResult = NDArray<int>.create(src.shape, out.dtype);
+    result = tempResult;
+  } else {
+    result = out ?? NDArray<int>.create(src.shape, DType.int32);
+  }
+
+  NDArray<int> finish() {
+    if (tempResult != null) {
+      tempResult.copy(out: out!);
+      return out;
+    }
+    return result;
+  }
+
   ScratchMarker? marker;
   try {
     final n = src.shape.last;
@@ -314,7 +344,7 @@ NDArray<int> argsort<T extends Object>(
             outPtr[i] = resPtr[i];
           }
         }
-        return result;
+        return finish();
       case DType.float32:
         final dataPtr = src.pointer.cast<ffi.Float>();
         for (var r = 0; r < numRows; r++) {
@@ -326,7 +356,7 @@ NDArray<int> argsort<T extends Object>(
             outPtr[i] = resPtr[i];
           }
         }
-        return result;
+        return finish();
       case DType.int64:
         final dataPtr = src.pointer.cast<ffi.LongLong>();
         for (var r = 0; r < numRows; r++) {
@@ -338,7 +368,7 @@ NDArray<int> argsort<T extends Object>(
             outPtr[i] = resPtr[i];
           }
         }
-        return result;
+        return finish();
       case DType.int32:
         final dataPtr = src.pointer.cast<ffi.Int>();
         for (var r = 0; r < numRows; r++) {
@@ -350,7 +380,7 @@ NDArray<int> argsort<T extends Object>(
             outPtr[i] = resPtr[i];
           }
         }
-        return result;
+        return finish();
       case DType.int16:
         final dataPtr = src.pointer.cast<ffi.Int16>();
         for (var r = 0; r < numRows; r++) {
@@ -362,7 +392,7 @@ NDArray<int> argsort<T extends Object>(
             outPtr[i] = resPtr[i];
           }
         }
-        return result;
+        return finish();
       case DType.uint8:
         final dataPtr = src.pointer.cast<ffi.Uint8>();
         for (var r = 0; r < numRows; r++) {
@@ -374,7 +404,7 @@ NDArray<int> argsort<T extends Object>(
             outPtr[i] = resPtr[i];
           }
         }
-        return result;
+        return finish();
       case DType.complex128:
       case DType.complex64:
         for (var r = 0; r < numRows; r++) {
@@ -390,7 +420,7 @@ NDArray<int> argsort<T extends Object>(
             result.setCellFlat(rowStart + i, indices[i]);
           }
         }
-        return result;
+        return finish();
       case DType.boolean:
         for (var r = 0; r < numRows; r++) {
           final rowStart = r * n;
@@ -405,10 +435,22 @@ NDArray<int> argsort<T extends Object>(
             result.setCellFlat(rowStart + i, indices[i]);
           }
         }
+      case DType.uint64:
+        for (var r = 0; r < numRows; r++) {
+          final rowStart = r * n;
+          final indices = List<int>.generate(n, (i) => i);
+          indices.sort((i, j) {
+            final valA = src.getCellFlat(rowStart + i) as int;
+            final valB = src.getCellFlat(rowStart + j) as int;
+            return uint64Compare(valA, valB);
+          });
+          for (var i = 0; i < n; i++) {
+            result.setCellFlat(rowStart + i, indices[i]);
+          }
+        }
       case DType.float16:
       case DType.bfloat16:
       case DType.int8:
-      case DType.uint64:
       case DType.uint32:
       case DType.uint16:
         final doubleSrc = NDArray.fromList(
@@ -417,12 +459,17 @@ NDArray<int> argsort<T extends Object>(
           DType.float64,
         );
         final doubleArgsort = argsort(doubleSrc, axis: -1, kind: kind);
-        doubleArgsort.copy(out: result);
+        final casted = castNDArray(doubleArgsort, result.dtype);
+        casted.copy(out: result);
         doubleSrc.dispose();
         doubleArgsort.dispose();
-        return result;
+        if (!identical(casted, doubleArgsort)) {
+          casted.dispose();
+        }
+        return finish();
     }
   } finally {
+    tempResult?.dispose();
     if (marker != null) {
       ScratchArena.reset(marker);
     }
@@ -430,7 +477,7 @@ NDArray<int> argsort<T extends Object>(
       src.dispose();
     }
   }
-  return result;
+  return finish();
 }
 
 /// Rearranges the elements of the array along a specified [axis] such that
@@ -525,15 +572,29 @@ NDArray<T> partition<T extends Object>(
     needsDisposeSrc = true;
   }
 
+  NDArray<T>? tempResult;
   try {
-    final result = out ?? NDArray<T>.create(src.shape, src.dtype);
+    final NDArray<T> result;
+    if (out != null && !out.isContiguous) {
+      tempResult = src.copy();
+      result = tempResult;
+    } else {
+      result = out ?? NDArray<T>.create(src.shape, src.dtype);
+      if (result != src) {
+        src.copy(out: result);
+      }
+    }
 
-    if (result != src) {
-      src.copy(out: result);
+    NDArray<T> finish() {
+      if (tempResult != null) {
+        tempResult.copy(out: out!);
+        return out;
+      }
+      return result;
     }
 
     if (uniqueK.isEmpty) {
-      return result;
+      return finish();
     }
 
     final totalSize = src.shape.isEmpty ? 1 : src.shape.reduce((x, y) => x * y);
@@ -541,7 +602,8 @@ NDArray<T> partition<T extends Object>(
 
     if (src.dtype == DType.boolean) {
       // A boolean partition is sorted
-      return sort(result, axis: rank - 1, out: result);
+      sort(result, axis: rank - 1, out: result);
+      return finish();
     }
 
     final elementSizeInBytes = src.dtype.byteWidth;
@@ -633,8 +695,9 @@ NDArray<T> partition<T extends Object>(
       ScratchArena.reset(marker);
     }
 
-    return result;
+    return finish();
   } finally {
+    tempResult?.dispose();
     if (needsDisposeSrc) {
       src.dispose();
     }
@@ -736,17 +799,32 @@ NDArray<int> argpartition<T extends Object>(
     needsDispose = true;
   }
 
+  NDArray<int>? tempResult;
   try {
     final totalSize = src.shape.isEmpty ? 1 : src.shape.reduce((x, y) => x * y);
     final numRows = totalSize ~/ n;
 
-    final result = out ?? NDArray<int>.create(src.shape, DType.int32);
+    final NDArray<int> result;
+    if (out != null && !out.isContiguous) {
+      tempResult = NDArray<int>.create(src.shape, out.dtype);
+      result = tempResult;
+    } else {
+      result = out ?? NDArray<int>.create(src.shape, DType.int32);
+    }
+
+    NDArray<int> finish() {
+      if (tempResult != null) {
+        tempResult.copy(out: out!);
+        return out;
+      }
+      return result;
+    }
 
     if (uniqueK.isEmpty) {
       for (var i = 0; i < totalSize; i++) {
         result.setCellFlat(i, i % n);
       }
-      return result;
+      return finish();
     }
 
     final is64 = result.dtype == DType.int64;
@@ -867,10 +945,12 @@ NDArray<int> argpartition<T extends Object>(
               result.setCellFlat(rowStart + i, indices[i]);
             }
           }
+        case DType.uint64:
+          argsort(src as NDArray<Object>, axis: -1, out: result);
+          return finish();
         case DType.float16:
         case DType.bfloat16:
         case DType.int8:
-        case DType.uint64:
         case DType.uint32:
         case DType.uint16:
           final doubleSrc = NDArray.fromList(
@@ -882,7 +962,7 @@ NDArray<int> argpartition<T extends Object>(
           doubleArgpart.copy(out: result);
           doubleSrc.dispose();
           doubleArgpart.dispose();
-          return result;
+          return finish();
       }
 
       if (is64 && src.dtype != DType.boolean) {
@@ -891,7 +971,7 @@ NDArray<int> argpartition<T extends Object>(
           outPtr[i] = resPtr[i];
         }
       }
-      return result;
+      return finish();
     } finally {
       ScratchArena.reset(marker);
       if (outMarker != null) {
@@ -899,6 +979,7 @@ NDArray<int> argpartition<T extends Object>(
       }
     }
   } finally {
+    tempResult?.dispose();
     if (needsDispose) {
       src.dispose();
     }
@@ -963,14 +1044,43 @@ NDArray<int> searchsorted<T extends Object>(
     throw ArgumentError('a must be a 1-D array.');
   }
 
-  if (sorter != null &&
-      (sorter.shape.length != 1 || sorter.shape[0] != a.shape[0])) {
-    throw ArgumentError('sorter must be a 1-D array of the same size as a.');
+  NDArray<int>? ownedSorter;
+  NDArray<int>? srcSorter;
+  if (sorter != null) {
+    if (sorter.shape.length != 1 || sorter.shape[0] != a.shape[0]) {
+      throw ArgumentError('sorter must be a 1-D array of the same size as a.');
+    }
+    if (sorter.dtype != DType.int32) {
+      if (!sorter.dtype.isInteger) {
+        throw ArgumentError(
+          'sorter must have an integer dtype, got ${sorter.dtype}.',
+        );
+      }
+      final casted = castNDArray(sorter, DType.int32);
+      ownedSorter = casted;
+      srcSorter = casted;
+    } else if (!sorter.isContiguous) {
+      final copy = sorter.copy();
+      ownedSorter = copy;
+      srcSorter = copy;
+    } else {
+      srcSorter = sorter;
+    }
+    final aSize = a.shape[0];
+    final sorterPtr = srcSorter.pointer.cast<ffi.Int>();
+    for (var i = 0; i < aSize; i++) {
+      final idx = sorterPtr[i];
+      if (idx < 0 || idx >= aSize) {
+        ownedSorter?.dispose();
+        throw IndexError.withLength(idx, aSize, name: 'sorter[$i]');
+      }
+    }
   }
 
   if (out != null) {
     if (!listEquals(out.shape, v.shape) ||
         (out.dtype != DType.int32 && out.dtype != DType.int64)) {
+      ownedSorter?.dispose();
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -978,6 +1088,7 @@ NDArray<int> searchsorted<T extends Object>(
   final result = out ?? NDArray<int>.create(v.shape, DType.int32);
 
   if (v.size == 0) {
+    ownedSorter?.dispose();
     return result;
   }
 
@@ -989,11 +1100,6 @@ NDArray<int> searchsorted<T extends Object>(
   NDArray srcV = v;
   if (!v.isContiguous) {
     srcV = v.copy();
-  }
-
-  NDArray<int>? srcSorter = sorter;
-  if (sorter != null && !sorter.isContiguous) {
-    srcSorter = sorter.copy();
   }
 
   final size = srcA.shape[0];
@@ -1170,10 +1276,43 @@ NDArray<int> searchsorted<T extends Object>(
           }
           result.setCellFlat(vIdx, low);
         }
+      case DType.uint64:
+        if (srcV.dtype != DType.uint64) {
+          throw ArgumentError(
+            'v and a must have matching dtypes (expected uint64, got ${v.dtype})',
+          );
+        }
+        for (var vIdx = 0; vIdx < numValues; vIdx++) {
+          final val = srcV.getCellFlat(vIdx) as int;
+          var low = 0;
+          var high = size;
+          while (low < high) {
+            final mid = low + (high - low) ~/ 2;
+            final midIdx = (srcSorter != null)
+                ? srcSorter.getCellFlat(mid)
+                : mid;
+            final midVal = srcA.getCellFlat(midIdx) as int;
+            final comp = uint64Compare(midVal, val);
+            if (side == SearchSide.left) {
+              if (comp < 0) {
+                low = mid + 1;
+              } else {
+                high = mid;
+              }
+            } else {
+              if (comp <= 0) {
+                low = mid + 1;
+              } else {
+                high = mid;
+              }
+            }
+          }
+          result.setCellFlat(vIdx, low);
+        }
+        return result;
       case DType.float16:
       case DType.bfloat16:
       case DType.int8:
-      case DType.uint64:
       case DType.uint32:
       case DType.uint16:
         final doubleA = castNDArray(srcA, DType.float64);
@@ -1202,7 +1341,7 @@ NDArray<int> searchsorted<T extends Object>(
     }
     if (srcA != a) srcA.dispose();
     if (srcV != v) srcV.dispose();
-    if (srcSorter != sorter) srcSorter?.dispose();
+    ownedSorter?.dispose();
   }
 
   return result;
@@ -2200,6 +2339,101 @@ void _dispatchArgMinMaxFFI(
   }
 }
 
+NDArray<int> _uint64ArgMinMax(
+  NDArray a,
+  int? normAxis,
+  bool isMax, {
+  bool keepdims = false,
+  NDArray<int>? out,
+  required List<int> targetShape,
+}) {
+  final result = out ?? NDArray<int>.create(targetShape, DType.int32);
+  final rank = a.shape.length;
+
+  if (normAxis == null) {
+    if (a.size == 0) {
+      throw ArgumentError('attempt to get argmin/argmax of an empty sequence');
+    }
+    var bestIdx = 0;
+    var bestVal = a.getCellFlat(0) as int;
+    for (var i = 1; i < a.size; i++) {
+      final val = a.getCellFlat(i) as int;
+      final comp = uint64Compare(val, bestVal);
+      if (isMax ? comp > 0 : comp < 0) {
+        bestVal = val;
+        bestIdx = i;
+      }
+    }
+    result.setCellFlat(0, bestIdx);
+    return result;
+  }
+
+  final axisLen = a.shape[normAxis];
+  if (axisLen == 0) {
+    throw ArgumentError('attempt to get argmin/argmax of an empty sequence');
+  }
+
+  final squeezedDestStrides = keepdims
+      ? (List<int>.from(result.strides)..removeAt(normAxis))
+      : result.strides;
+  final outShape = List<int>.from(a.shape)..removeAt(normAxis);
+  final outRank = outShape.length;
+  final outSize = result.size;
+
+  if (outRank == 0) {
+    var bestIdx = 0;
+    var bestVal = a.getCellFlat(0) as int;
+    for (var i = 1; i < axisLen; i++) {
+      final val = a.getCellFlat(i) as int;
+      final comp = uint64Compare(val, bestVal);
+      if (isMax ? comp > 0 : comp < 0) {
+        bestVal = val;
+        bestIdx = i;
+      }
+    }
+    result.setCellFlat(0, bestIdx);
+    return result;
+  }
+
+  final outCoords = List<int>.filled(outRank, 0);
+  final aCoords = List<int>.filled(rank, 0);
+
+  for (var outIdx = 0; outIdx < outSize; outIdx++) {
+    var c = 0;
+    for (var d = 0; d < rank; d++) {
+      if (d == normAxis) continue;
+      aCoords[d] = outCoords[c++];
+    }
+
+    aCoords[normAxis] = 0;
+    var bestIdx = 0;
+    var bestVal = a.getCell(aCoords) as int;
+    for (var i = 1; i < axisLen; i++) {
+      aCoords[normAxis] = i;
+      final val = a.getCell(aCoords) as int;
+      final comp = uint64Compare(val, bestVal);
+      if (isMax ? comp > 0 : comp < 0) {
+        bestVal = val;
+        bestIdx = i;
+      }
+    }
+
+    var destOffset = result.offsetElements;
+    for (var d = 0; d < outRank; d++) {
+      destOffset += outCoords[d] * squeezedDestStrides[d];
+    }
+    result.setCellRaw(destOffset, bestIdx);
+
+    for (var d = outRank - 1; d >= 0; d--) {
+      outCoords[d]++;
+      if (outCoords[d] < outShape[d]) break;
+      outCoords[d] = 0;
+    }
+  }
+
+  return result;
+}
+
 NDArray<int> _argminmaxFFI<T>(
   NDArray<T> a,
   int? axis,
@@ -2224,7 +2458,6 @@ NDArray<int> _argminmaxFFI<T>(
   if (a.dtype == DType.float16 ||
       a.dtype == DType.bfloat16 ||
       a.dtype == DType.int8 ||
-      a.dtype == DType.uint64 ||
       a.dtype == DType.uint32 ||
       a.dtype == DType.uint16) {
     final doubleA = castNDArray(a, DType.float64);
@@ -2258,6 +2491,17 @@ NDArray<int> _argminmaxFFI<T>(
     if (!listEquals(out.shape, targetShape) || out.dtype != DType.int32) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
+  }
+
+  if (a.dtype == DType.uint64) {
+    return _uint64ArgMinMax(
+      a,
+      normAxis,
+      isMax,
+      keepdims: keepdims,
+      out: out,
+      targetShape: targetShape,
+    );
   }
 
   if (normAxis == null) {

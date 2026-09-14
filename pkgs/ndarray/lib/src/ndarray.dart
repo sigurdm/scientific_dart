@@ -48,15 +48,63 @@ extension type const Complex128._(Complex value) implements Complex {
 }
 
 /// Supported data types for the elements of an [NDArray].
+
+/// Compares two 64-bit integers as unsigned values.
+///
+/// In Dart, `int` is a signed 64-bit integer. Bit patterns with the MSB set
+/// (values >= 2^63) represent negative integers in Dart. This function compares
+/// two integers treating their bit patterns as unsigned 64-bit values.
+int uint64Compare(int a, int b) {
+  if (a == b) return 0;
+  if (a < 0 && b >= 0) return 1;
+  if (a >= 0 && b < 0) return -1;
+  return a.compareTo(b);
+}
+
+int _computeCheckedTotalSize(List<int> shape) {
+  var totalSize = 1;
+  for (final dim in shape) {
+    if (dim < 0) {
+      throw ArgumentError('Shape dimensions cannot be negative: $shape');
+    }
+    if (dim > 2147483647) {
+      throw UnsupportedError(
+        'NDArray operations currently support arrays up to 2^31 - 1 elements. Got ${shape.length == 1 ? dim : shape}.',
+      );
+    }
+    if (dim == 0) {
+      totalSize = 0;
+      continue;
+    }
+    if (totalSize != 0 && totalSize > 2147483647 ~/ dim) {
+      throw UnsupportedError(
+        'NDArray operations currently support arrays up to 2^31 - 1 elements. Got $shape.',
+      );
+    }
+    totalSize *= dim;
+  }
+  if (totalSize > 2147483647 || totalSize < 0) {
+    throw UnsupportedError(
+      'NDArray operations currently support arrays up to 2^31 - 1 elements. Got $totalSize.',
+    );
+  }
+  return totalSize;
+}
+
 enum DType<T> {
   float64<Float64>('float64', 8, '<f8'),
   float32<Float32>('float32', 4, '<f4'),
   float16<Float16>('float16', 2, '<f2'),
-  bfloat16<BFloat16>('bfloat16', 2, '<b2'),
+  bfloat16<BFloat16>('bfloat16', 2, '|V2'),
   int64<Int64>('int64', 8, '<i8'),
   int32<Int32>('int32', 4, '<i4'),
   int16<Int16>('int16', 2, '<i2'),
   int8<Int8>('int8', 1, '<i1'),
+
+  /// Unsigned 64-bit integer ('<u8', 8 bytes).
+  ///
+  /// Note: Dart `int` is signed 64-bit. Bit patterns with MSB set (>= 2^63)
+  /// represent negative ints in Dart. Use [uint64Compare] for unsigned comparisons.
   uint64<Uint64>('uint64', 8, '<u8'),
   uint32<Uint32>('uint32', 4, '<u4'),
   uint16<Uint16>('uint16', 2, '<u2'),
@@ -406,10 +454,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     bool zeroInit = false,
     @internal List<int>? strides,
   }) {
-    if (shape.any((dim) => dim < 0)) {
-      throw ArgumentError('Shape dimensions cannot be negative: $shape');
-    }
-    final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+    final totalSize = _computeCheckedTotalSize(shape);
     final finalStrides = strides ?? computeCStrides(shape);
 
     final allocator = zeroInit ? calloc : malloc;
@@ -886,10 +931,7 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     nativeFinalizer,
     List<int>? strides,
   }) {
-    if (shape.any((dim) => dim < 0)) {
-      throw ArgumentError('Shape dimensions cannot be negative: $shape');
-    }
-    final totalSize = shape.isEmpty ? 1 : shape.reduce((a, b) => a * b);
+    final totalSize = _computeCheckedTotalSize(shape);
     final finalStrides = strides ?? computeCStrides(shape);
 
     List<T> data;
@@ -1135,6 +1177,44 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     }
 
     return result;
+  }
+
+  /// Returns a copy of the array cast to the specified [targetDType].
+  ///
+  /// If [copy] is `false` and [targetDType] matches this array's [dtype],
+  /// returns this array directly without copying. Otherwise, allocates
+  /// and returns a new [NDArray] of type [R].
+  ///
+  /// **Preconditions:**
+  /// - This array must not be disposed.
+  ///
+  /// **Performance considerations:**
+  /// - If [copy] is `false` and dtypes match, returns this in $O(1)$ time and $O(1)$ memory.
+  /// - Otherwise, complexity is $O(N)$ where $N$ is the total number of elements.
+  ///
+  /// **Throws:**
+  /// - It is an error if the array is already disposed.
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final a = NDArray.fromList([1, 2, 3], [3], DType.int32);
+  /// final b = a.astype(DType.float64);
+  /// print(b.dtype); // DType.float64
+  /// ```
+  NDArray<R> astype<R extends Object>(
+    DType<R> targetDType, {
+    bool copy = true,
+  }) {
+    if (isDisposed) {
+      throw StateError('Cannot cast a disposed array.');
+    }
+    if (!copy && dtype == targetDType) {
+      return this as NDArray<R>;
+    }
+    if (dtype == targetDType) {
+      return this.copy() as NDArray<R>;
+    }
+    return helpers.castNDArray<R>(this, targetDType);
   }
 
   /// Internal helper to copy contiguous array elements to another contiguous array,
@@ -2237,31 +2317,103 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
     }
   }
 
-  NDArray _wrapScalar(dynamic value, List<int> targetShape) {
+  NDArray _wrapScalar(
+    dynamic value,
+    List<int> targetShape, [
+    DType? targetDType,
+  ]) {
+    final shape1 = List.filled(targetShape.length, 1);
+    if (targetDType != null) {
+      if (targetDType.isFloating && value is num) {
+        final dVal = value.toDouble();
+        switch (targetDType) {
+          case DType.float64:
+            return NDArray<Float64>.fromList(
+              <double>[dVal],
+              shape1,
+              DType.float64,
+            );
+          case DType.float32:
+            return NDArray<Float32>.fromList(
+              <double>[dVal],
+              shape1,
+              DType.float32,
+            );
+          case DType.float16:
+            return NDArray<Float16>.fromList(
+              <double>[dVal],
+              shape1,
+              DType.float16,
+            );
+          case DType.bfloat16:
+            return NDArray<BFloat16>.fromList(
+              <double>[dVal],
+              shape1,
+              DType.bfloat16,
+            );
+          default:
+            break;
+        }
+      } else if (targetDType.isInteger && value is int) {
+        switch (targetDType) {
+          case DType.int64:
+            return NDArray<Int64>.fromList(<int>[value], shape1, DType.int64);
+          case DType.int32:
+            return NDArray<Int32>.fromList(<int>[value], shape1, DType.int32);
+          case DType.int16:
+            return NDArray<Int16>.fromList(<int>[value], shape1, DType.int16);
+          case DType.int8:
+            return NDArray<Int8>.fromList(<int>[value], shape1, DType.int8);
+          case DType.uint64:
+            return NDArray<Uint64>.fromList(<int>[value], shape1, DType.uint64);
+          case DType.uint32:
+            return NDArray<Uint32>.fromList(<int>[value], shape1, DType.uint32);
+          case DType.uint16:
+            return NDArray<Uint16>.fromList(<int>[value], shape1, DType.uint16);
+          case DType.uint8:
+            return NDArray<Uint8>.fromList(<int>[value], shape1, DType.uint8);
+          default:
+            break;
+        }
+      } else if (targetDType.isComplex) {
+        final cVal = value is Complex
+            ? value
+            : (value is num ? Complex(value.toDouble(), 0) : null);
+        if (cVal != null) {
+          switch (targetDType) {
+            case DType.complex128:
+              return NDArray<Complex128>.fromList(
+                <Complex>[cVal],
+                shape1,
+                DType.complex128,
+              );
+            case DType.complex64:
+              return NDArray<Complex64>.fromList(
+                <Complex>[cVal],
+                shape1,
+                DType.complex64,
+              );
+            default:
+              break;
+          }
+        }
+      } else if (targetDType == DType.boolean && value is bool) {
+        return NDArray<bool>.fromList(<bool>[value], shape1, DType.boolean);
+      }
+    }
+
     if (value is Complex) {
       return NDArray<Complex128>.fromList(
         <Complex>[value],
-        List.filled(targetShape.length, 1),
+        shape1,
         DType.complex128,
       );
     } else if (value is int) {
-      return NDArray<Int64>.fromList(
-        <int>[value],
-        List.filled(targetShape.length, 1),
-        DType.int64,
-      );
+      return NDArray<Int64>.fromList(<int>[value], shape1, DType.int64);
     } else if (value is double) {
-      return NDArray<Float64>.fromList(
-        <double>[value],
-        List.filled(targetShape.length, 1),
-        DType.float64,
-      );
+      return NDArray<Float64>.fromList(<double>[value], shape1, DType.float64);
     } else if (value is bool) {
-      return NDArray<bool>.fromList(
-        <bool>[value],
-        List.filled(targetShape.length, 1),
-        DType.boolean,
-      );
+      return NDArray<bool>.fromList(<bool>[value], shape1, DType.boolean);
     } else {
       throw ArgumentError('Unsupported scalar type: ${value.runtimeType}');
     }
@@ -2269,13 +2421,17 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
   /// Element-wise addition with full broadcasting support.
   NDArray operator +(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.add(this, otherArr);
   }
 
   /// Element-wise subtraction with full broadcasting support.
   NDArray operator -(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.subtract(this, otherArr);
   }
 
@@ -2285,7 +2441,9 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// - **Integer arrays** (`int32`, `int64`, etc.) overflow silently wrapping around via standard two's complement.
   /// - **Floating-point arrays** (`float32`, `float64`) overflow silently to `double.infinity` or `double.negativeInfinity` per IEEE 754.
   NDArray operator *(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.multiply(this, otherArr);
   }
 
@@ -2299,7 +2457,9 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   /// - Dividing zero by zero results in `double.nan`.
   /// No exception is thrown.
   NDArray operator /(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.divide(this, otherArr);
   }
 
@@ -2310,7 +2470,9 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
   /// - **Floating-point arrays**: Returns `double.nan` silently without throwing exceptions.
   NDArray operator ~/(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.floor_divide(this as NDArray<num>, otherArr as NDArray<num>);
   }
 
@@ -2321,7 +2483,9 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///   This upfront safety check prevents a native C integer division by zero which would crash the entire Dart process.
   /// - **Floating-point divisor**: Returns `double.nan` silently without throwing exceptions.
   NDArray operator %(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.remainder(this as NDArray<num>, otherArr as NDArray<num>);
   }
 
@@ -2332,19 +2496,25 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
   /// Element-wise bitwise AND with full broadcasting support.
   NDArray operator &(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.bitwise_and(this, otherArr);
   }
 
   /// Element-wise bitwise OR with full broadcasting support.
   NDArray operator |(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.bitwise_or(this, otherArr);
   }
 
   /// Element-wise bitwise XOR with full broadcasting support.
   NDArray operator ^(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.bitwise_xor(this, otherArr);
   }
 
@@ -2355,13 +2525,17 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
   /// Element-wise left shift with full broadcasting support.
   NDArray operator <<(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.left_shift(this, otherArr);
   }
 
   /// Element-wise right shift with full broadcasting support.
   NDArray operator >>(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.right_shift(this, otherArr);
   }
 
@@ -2386,7 +2560,9 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///
   /// Reference: See NumPy's [greater](https://numpy.org/doc/stable/reference/generated/numpy.greater.html).
   NDArray<bool> operator >(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.greater(this, otherArr);
   }
 
@@ -2410,7 +2586,9 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///
   /// Reference: See NumPy's [less](https://numpy.org/doc/stable/reference/generated/numpy.less.html).
   NDArray<bool> operator <(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.less(this, otherArr);
   }
 
@@ -2434,7 +2612,9 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///
   /// Reference: See NumPy's [greater_equal](https://numpy.org/doc/stable/reference/generated/numpy.greater_equal.html).
   NDArray<bool> operator >=(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.greaterEqual(this, otherArr);
   }
 
@@ -2458,7 +2638,9 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///
   /// Reference: See NumPy's [less_equal](https://numpy.org/doc/stable/reference/generated/numpy.less_equal.html).
   NDArray<bool> operator <=(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.lessEqual(this, otherArr);
   }
 
@@ -2487,7 +2669,9 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
   ///
   /// Reference: See NumPy's [equal](https://numpy.org/doc/stable/reference/generated/numpy.equal.html).
   NDArray<bool> eq(dynamic other) {
-    final otherArr = (other is NDArray) ? other : _wrapScalar(other, shape);
+    final otherArr = (other is NDArray)
+        ? other
+        : _wrapScalar(other, shape, dtype);
     return ops.equal(this, otherArr);
   }
 
@@ -2815,6 +2999,9 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
   /// Returns a flat Dart list containing a copy of the elements in this array,
   /// traversed in the logical order defined by its shape and strides.
+  ///
+  /// Note for [DType.uint64]: Values >= 2^63 are represented as negative integers
+  /// in Dart due to Dart's signed 64-bit integer representation.
   List<T> toList() {
     if (isDisposed) {
       throw StateError(
@@ -3223,6 +3410,190 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
 
     return Object.hash(baseHash, elementsHash);
   }
+
+  @override
+  String toString() => _ndarrayToString(this);
+}
+
+String _ndarrayToString(NDArray arr) {
+  if (arr.isDisposed) {
+    return '<disposed NDArray<${arr.dtype.name}>>';
+  }
+  final content = _formatND(arr);
+  if (arr.shape.isEmpty || arr.dtype != DType.float64) {
+    return '$content, dtype=${arr.dtype.name}';
+  }
+  return content;
+}
+
+String _formatScalar(dynamic value, DType dtype) {
+  if (value is double || dtype.isFloating) {
+    final d = (value as num).toDouble();
+    if (d.isNaN) return 'nan';
+    if (d == double.infinity) return 'inf';
+    if (d == double.negativeInfinity) return '-inf';
+    if (d == 0.0 && 1 / d < 0) return '-0.';
+    if (d.truncateToDouble() == d && !d.toString().contains('e')) {
+      return '${d.toInt()}.';
+    }
+    return d.toString();
+  } else if (dtype.isInteger) {
+    if (value is int) return value.toString();
+    return (value as num).toInt().toString();
+  } else if (value is bool || dtype == DType.boolean) {
+    return value == true ? 'true' : 'false';
+  } else if (value is Complex || dtype.isComplex) {
+    final c = value as Complex;
+    final rStr = _formatScalar(c.real, DType.float64);
+    final iStr = _formatScalar(c.imag.abs(), DType.float64);
+    final sign = c.imag < 0 ? '-' : '+';
+    return '$rStr $sign ${iStr}j';
+  }
+  return value.toString();
+}
+
+String _format1D(NDArray arr) {
+  final len = arr.shape[0];
+  if (len == 0) return '[]';
+  final items = <String>[];
+  if (len <= 6) {
+    for (var i = 0; i < len; i++) {
+      items.add(_formatScalar(arr.getCell([i]), arr.dtype));
+    }
+  } else {
+    for (var i = 0; i < 3; i++) {
+      items.add(_formatScalar(arr.getCell([i]), arr.dtype));
+    }
+    items.add('...');
+    for (var i = len - 3; i < len; i++) {
+      items.add(_formatScalar(arr.getCell([i]), arr.dtype));
+    }
+  }
+  return '[${items.join(", ")}]';
+}
+
+String _format2D(NDArray arr, {String indent = ' '}) {
+  final numRows = arr.shape[0];
+  final numCols = arr.shape[1];
+  if (numRows == 0 || numCols == 0) {
+    return '[], shape=[$numRows, $numCols]';
+  }
+
+  final rowIndices = numRows <= 6
+      ? List.generate(numRows, (i) => i)
+      : [0, 1, 2, -1, numRows - 3, numRows - 2, numRows - 1];
+
+  final colIndices = numCols <= 6
+      ? List.generate(numCols, (j) => j)
+      : [0, 1, 2, -1, numCols - 3, numCols - 2, numCols - 1];
+
+  final grid = <List<String>>[];
+  final colWidths = List<int>.filled(colIndices.length, 0);
+
+  for (final r in rowIndices) {
+    if (r == -1) {
+      grid.add(['...']);
+      continue;
+    }
+    final rowStrs = <String>[];
+    for (var cIdx = 0; cIdx < colIndices.length; cIdx++) {
+      final c = colIndices[cIdx];
+      final String str;
+      if (c == -1) {
+        str = '...';
+      } else {
+        str = _formatScalar(arr.getCell([r, c]), arr.dtype);
+      }
+      rowStrs.add(str);
+      if (str.length > colWidths[cIdx]) {
+        colWidths[cIdx] = str.length;
+      }
+    }
+    grid.add(rowStrs);
+  }
+
+  final sb = StringBuffer();
+  for (var rIdx = 0; rIdx < rowIndices.length; rIdx++) {
+    final r = rowIndices[rIdx];
+    final isFirst = rIdx == 0;
+    final isLast = rIdx == rowIndices.length - 1;
+
+    if (r == -1) {
+      sb.write('$indent...');
+      if (!isLast) sb.write(',\n');
+      continue;
+    }
+
+    final rowStrs = grid[rIdx];
+    final paddedCells = <String>[];
+    for (var cIdx = 0; cIdx < colIndices.length; cIdx++) {
+      final str = rowStrs[cIdx];
+      paddedCells.add(str.padLeft(colWidths[cIdx]));
+    }
+
+    final rowContent = '[${paddedCells.join(", ")}]';
+    if (isFirst) {
+      sb.write('[$rowContent');
+    } else {
+      sb.write('$indent$rowContent');
+    }
+    if (!isLast) {
+      sb.write(',\n');
+    } else {
+      sb.write(']');
+    }
+  }
+  return sb.toString();
+}
+
+String _formatND(NDArray arr, {String indent = ''}) {
+  final rank = arr.shape.length;
+  if (rank == 0) {
+    return _formatScalar(arr.getCell([]), arr.dtype);
+  }
+  if (rank == 1) {
+    return _format1D(arr);
+  }
+  if (rank == 2) {
+    return _format2D(arr, indent: indent.isEmpty ? ' ' : '$indent ');
+  }
+
+  final dim0 = arr.shape[0];
+  if (dim0 == 0) {
+    return '[], shape=${arr.shape}';
+  }
+
+  final indices = dim0 <= 6
+      ? List.generate(dim0, (i) => i)
+      : [0, 1, 2, -1, dim0 - 3, dim0 - 2, dim0 - 1];
+
+  final sb = StringBuffer();
+  final separator = '\n' * (rank - 1);
+
+  for (var iIdx = 0; iIdx < indices.length; iIdx++) {
+    final idx = indices[iIdx];
+    final isFirst = iIdx == 0;
+    final isLast = iIdx == indices.length - 1;
+
+    if (idx == -1) {
+      sb.write('$indent ...,\n$separator');
+      continue;
+    }
+
+    final subArray = arr[idx] as NDArray;
+    final formattedSub = _formatND(subArray, indent: '$indent ');
+    if (isFirst) {
+      sb.write('[$formattedSub');
+    } else {
+      sb.write('$indent$formattedSub');
+    }
+    if (!isLast) {
+      sb.write(',$separator');
+    } else {
+      sb.write(']');
+    }
+  }
+  return sb.toString();
 }
 
 /// Structural elements equality check between two lists.

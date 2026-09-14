@@ -34,7 +34,9 @@ void main(List<String> args) async {
 
     // Compile highway if needed
     final highwayDir = input.packageRoot.resolve('third_party/highway/');
-    final highwayBuildDir = Directory.fromUri(highwayDir.resolve('hwy_build'));
+    final highwayBuildDir = Directory.fromUri(
+      outputDir.uri.resolve('hwy_build'),
+    );
 
     final String hwyLibName;
     final String hwyContribLibName;
@@ -72,7 +74,7 @@ void main(List<String> args) async {
           '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
           '-DHWY_ENABLE_TESTS=OFF',
           '-DHWY_ENABLE_EXAMPLES=OFF',
-          '..',
+          highwayDir.toFilePath(),
         ],
         workingDirectory: highwayBuildDir.path,
         environment: msvcEnv,
@@ -130,8 +132,6 @@ void main(List<String> args) async {
       'Compiling ndarray custom C++ extensions using compiler: $cppCompilerPath',
     );
 
-    final isX64 = input.config.code.targetArchitecture == Architecture.x64;
-
     if (isMSVC) {
       final ufuncsObj = outputDir.uri.resolve('custom_ufuncs.obj').toFilePath();
       final sortingObj = outputDir.uri
@@ -146,7 +146,6 @@ void main(List<String> args) async {
       var res = await Process.run(cppCompilerPath, [
         '/c',
         '/O2',
-        if (isX64) '/arch:AVX2',
         '/MD',
         '/EHsc',
         '/D_USE_MATH_DEFINES',
@@ -165,7 +164,6 @@ void main(List<String> args) async {
       res = await Process.run(cppCompilerPath, [
         '/c',
         '/O2',
-        if (isX64) '/arch:AVX2',
         '/MD',
         '/EHsc',
         '/D_USE_MATH_DEFINES',
@@ -185,7 +183,6 @@ void main(List<String> args) async {
       res = await Process.run(cppCompilerPath, [
         '/c',
         '/O2',
-        if (isX64) '/arch:AVX2',
         '/MD',
         '/EHsc',
         '/D_USE_MATH_DEFINES',
@@ -220,7 +217,6 @@ void main(List<String> args) async {
       res = await Process.run(cppCompilerPath, [
         '/c',
         '/O2',
-        if (isX64) '/arch:AVX2',
         '/MD',
         '/EHsc',
         '/I${input.packageRoot.toFilePath()}',
@@ -316,7 +312,6 @@ void main(List<String> args) async {
           '-c',
           '-fPIC',
           '-O3',
-          if (isX64) ...['-mavx2', '-mfma'],
           '-fno-math-errno',
           '-I${input.packageRoot.toFilePath()}',
           ufuncsSrc,
@@ -337,7 +332,6 @@ void main(List<String> args) async {
           '-c',
           '-fPIC',
           '-O3',
-          if (isX64) ...['-mavx2', '-mfma'],
           '-fno-math-errno',
           '-I${input.packageRoot.toFilePath()}',
           '-I${input.packageRoot.resolve('third_party/highway/').toFilePath()}',
@@ -359,7 +353,6 @@ void main(List<String> args) async {
           '-c',
           '-fPIC',
           '-O3',
-          if (isX64) ...['-mavx2', '-mfma'],
           '-fno-math-errno',
           '-I${input.packageRoot.toFilePath()}',
           indexingSrc,
