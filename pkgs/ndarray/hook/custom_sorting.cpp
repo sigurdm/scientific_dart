@@ -10,6 +10,7 @@
 #include "hwy/contrib/sort/vqsort.h"
 #include "hwy/highway.h"
 #include <vector>
+#include <type_traits>
 
 // ----------------------------------------------------------------------------
 // Struct definitions for Complex number representations
@@ -689,6 +690,14 @@ static void to_bool_mask(
     }
 }
 
+template <typename T>
+static inline bool is_nan_check(T val) {
+    if constexpr (std::is_floating_point_v<T>) {
+        return std::isnan(val);
+    }
+    return false;
+}
+
 template <typename T, typename Compare>
 static void argminmax(
     const T *src,
@@ -706,8 +715,16 @@ static void argminmax(
     if (is_contiguous && axis == -1) {
         int best_idx = 0;
         T best_val = src[0];
+        if (is_nan_check(best_val)) {
+            dest[0] = 0;
+            return;
+        }
         for (int i = 1; i < shape[0]; i++) {
             T val = src[i];
+            if (is_nan_check(val)) {
+                best_idx = i;
+                break;
+            }
             if (is_max) {
                 if (cmp(val, best_val) > 0) {
                     best_val = val;
@@ -765,22 +782,30 @@ static void argminmax(
             }
         }
         T best_val = src[base_src_offset];
-        for (int i = 1; i < shape[axis]; i++) {
-            int src_offset = base_src_offset + i * stridesSrc[axis];
-            T val = src[src_offset];
-            if (is_max) {
-                if (cmp(val, best_val) > 0) {
-                    best_val = val;
+        if (is_nan_check(best_val)) {
+            dest[dest_offset] = 0;
+        } else {
+            for (int i = 1; i < shape[axis]; i++) {
+                int src_offset = base_src_offset + i * stridesSrc[axis];
+                T val = src[src_offset];
+                if (is_nan_check(val)) {
                     best_idx = i;
+                    break;
                 }
-            } else {
-                if (cmp(val, best_val) < 0) {
-                    best_val = val;
-                    best_idx = i;
+                if (is_max) {
+                    if (cmp(val, best_val) > 0) {
+                        best_val = val;
+                        best_idx = i;
+                    }
+                } else {
+                    if (cmp(val, best_val) < 0) {
+                        best_val = val;
+                        best_idx = i;
+                    }
                 }
             }
+            dest[dest_offset] = best_idx;
         }
-        dest[dest_offset] = best_idx;
         if (rank_dest > 0) {
             for (int d = rank_dest - 1; d >= 0; d--) {
                 coord_dest[d]++;

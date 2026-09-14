@@ -622,8 +622,8 @@ void main() {
             }
 
             final b = NDArray.fromList([true, false, true], [3], DType.boolean);
-            expect(sum(b).scalar, true);
-            expect(prod(b).scalar, false);
+            expect(sum(b).scalar, 2);
+            expect(prod(b).scalar, 0);
 
             final c128 = NDArray.fromList(
               [Complex(1.0, 2.0), Complex(3.0, 4.0)],

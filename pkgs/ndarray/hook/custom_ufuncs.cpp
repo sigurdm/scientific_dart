@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include "custom_sorting.h"
 #include <vector>
+#include <type_traits>
 #if (defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86))
 #include <immintrin.h>
 #endif
@@ -9779,48 +9780,15 @@ static inline cpx_f_t interpolate_complex64(cpx_f_t start, cpx_f_t end, int step
 }
 
 // Helper macros for defining numeric statistics (double, float, int64, int32, uint8)
-#define DEFINE_NUMERIC_STATS(TYPE, NAME_SUFFIX, SORTER, CAST_TYPE) \
-static inline TYPE stats_min_##NAME_SUFFIX(const TYPE *base, int stride, int len) { \
-    TYPE m = *base; \
-    for (int i = 1; i < len; i++) { \
-        TYPE v = *(base + i * stride); \
-        if (v < m) m = v; \
-    } \
-    return m; \
-} \
-static inline TYPE stats_max_##NAME_SUFFIX(const TYPE *base, int stride, int len) { \
-    TYPE m = *base; \
-    for (int i = 1; i < len; i++) { \
-        TYPE v = *(base + i * stride); \
-        if (v > m) m = v; \
-    } \
-    return m; \
-} \
-static inline TYPE stats_mean_##NAME_SUFFIX(const TYPE *base, int stride, int len) { \
-    double sum = 0; \
-    for (int i = 0; i < len; i++) { \
-        sum += (double)*(base + i * stride); \
-    } \
-    return (TYPE)(sum / len); \
-} \
-static inline TYPE stats_median_##NAME_SUFFIX(const TYPE *base, int _stride, int len) { \
-    /* Median calculation requires temporary buffer. We use malloc here. */ \
-    /* In actual usage, len is capped by dimension size. */ \
-    TYPE *buf = (TYPE*)malloc(len * sizeof(TYPE)); \
-    if (buf == nullptr) return (TYPE)0; \
-    for (int i = 0; i < len; i++) { \
-        buf[i] = *(base + i * _stride); \
-    } \
-    SORTER((CAST_TYPE)buf, len, 0); /* 0 = quicksort */ \
-    TYPE res; \
-    if (len % 2 == 1) { \
-        res = buf[len / 2]; \
-    } else { \
-        res = (TYPE)(((double)buf[len / 2 - 1] + (double)buf[len / 2]) / 2.0); \
-    } \
-    free(buf); \
-    return res; \
+template <typename T>
+static inline bool is_nan_check(T val) {
+    if constexpr (std::is_floating_point_v<T>) {
+        return std::isnan(val);
+    }
+    return false;
 }
+
+#define DEFINE_NUMERIC_STATS(TYPE, NAME_SUFFIX, SORTER, CAST_TYPE) static inline TYPE stats_min_##NAME_SUFFIX(const TYPE *base, int stride, int len) {     TYPE m = *base;     for (int i = 1; i < len; i++) {         if (is_nan_check(m)) break;         TYPE v = *(base + i * stride);         if (is_nan_check(v)) { m = v; break; }         if (v < m) m = v;     }     return m; } static inline TYPE stats_max_##NAME_SUFFIX(const TYPE *base, int stride, int len) {     TYPE m = *base;     for (int i = 1; i < len; i++) {         if (is_nan_check(m)) break;         TYPE v = *(base + i * stride);         if (is_nan_check(v)) { m = v; break; }         if (v > m) m = v;     }     return m; } static inline TYPE stats_mean_##NAME_SUFFIX(const TYPE *base, int stride, int len) {     double sum = 0;     for (int i = 0; i < len; i++) {         sum += (double)*(base + i * stride);     }     return (TYPE)(sum / len); } static inline TYPE stats_median_##NAME_SUFFIX(const TYPE *base, int _stride, int len) {     /* Median calculation requires temporary buffer. We use malloc here. */     /* In actual usage, len is capped by dimension size. */     TYPE *buf = (TYPE*)malloc(len * sizeof(TYPE));     if (buf == nullptr) return (TYPE)0;     bool has_nan = false;     for (int i = 0; i < len; i++) {         TYPE v = *(base + i * _stride);         if (is_nan_check(v)) has_nan = true;         buf[i] = v;     }     if (has_nan) {         free(buf);         if constexpr (std::is_floating_point_v<TYPE>) {             return (TYPE)NAN;         }         return (TYPE)0;     }     SORTER((CAST_TYPE)buf, len, 0); /* 0 = quicksort */     TYPE res;     if (len % 2 == 1) {         res = buf[len / 2];     } else {         res = (TYPE)(((double)buf[len / 2 - 1] + (double)buf[len / 2]) / 2.0);     }     free(buf);     return res; }
 
 DEFINE_NUMERIC_STATS(double, double, native_sort_double, double*)
 DEFINE_NUMERIC_STATS(float, float, native_sort_float, float*)
@@ -10508,17 +10476,24 @@ void s_median_double(const double *src, const int *stridesSrc,
             }
         }
         int stride_axis = stridesSrc[axis];
+        bool has_nan = false;
         for (int i = 0; i < size_axis; i++) {
-            tmp_buf[i] = src[offsetSrc + i * stride_axis];
+            double v = src[offsetSrc + i * stride_axis];
+            if (std::isnan(v)) has_nan = true;
+            tmp_buf[i] = v;
         }
-        native_sort_double(tmp_buf, size_axis, 0);
-        double median_val;
-        if (size_axis % 2 == 1) {
-            median_val = tmp_buf[size_axis / 2];
+        if (has_nan) {
+            dest[offsetRes] = NAN;
         } else {
-            median_val = (tmp_buf[size_axis / 2 - 1] + tmp_buf[size_axis / 2]) / 2.0;
+            native_sort_double(tmp_buf, size_axis, 0);
+            double median_val;
+            if (size_axis % 2 == 1) {
+                median_val = tmp_buf[size_axis / 2];
+            } else {
+                median_val = (tmp_buf[size_axis / 2 - 1] + tmp_buf[size_axis / 2]) / 2.0;
+            }
+            dest[offsetRes] = median_val;
         }
-        dest[offsetRes] = median_val;
         for (int d = rank - 1; d >= 0; d--) {
             if (d == axis) continue;
             coord[d]++;
@@ -10555,17 +10530,24 @@ void s_median_float(const float *src, const int *stridesSrc,
             }
         }
         int stride_axis = stridesSrc[axis];
+        bool has_nan = false;
         for (int i = 0; i < size_axis; i++) {
-            tmp_buf[i] = src[offsetSrc + i * stride_axis];
+            float v = src[offsetSrc + i * stride_axis];
+            if (std::isnan(v)) has_nan = true;
+            tmp_buf[i] = v;
         }
-        native_sort_float(tmp_buf, size_axis, 0);
-        float median_val;
-        if (size_axis % 2 == 1) {
-            median_val = tmp_buf[size_axis / 2];
+        if (has_nan) {
+            dest[offsetRes] = NAN;
         } else {
-            median_val = (tmp_buf[size_axis / 2 - 1] + tmp_buf[size_axis / 2]) / 2.0f;
+            native_sort_float(tmp_buf, size_axis, 0);
+            float median_val;
+            if (size_axis % 2 == 1) {
+                median_val = tmp_buf[size_axis / 2];
+            } else {
+                median_val = (tmp_buf[size_axis / 2 - 1] + tmp_buf[size_axis / 2]) / 2.0f;
+            }
+            dest[offsetRes] = median_val;
         }
-        dest[offsetRes] = median_val;
         for (int d = rank - 1; d >= 0; d--) {
             if (d == axis) continue;
             coord[d]++;
@@ -11433,15 +11415,7 @@ int ndarray_equals(
 
 // Reduction Min/Max
 
-#define DEFINE_R_MINMAX(NAME, TYPE, OP) \
-TYPE r_##NAME##_##TYPE(const TYPE *src, int size) { \
-    if (src == nullptr || size <= 0) return (TYPE)0; \
-    TYPE acc = src[0]; \
-    for (int i = 1; i < size; i++) { \
-        if (src[i] OP acc) acc = src[i]; \
-    } \
-    return acc; \
-}
+#define DEFINE_R_MINMAX(NAME, TYPE, OP) TYPE r_##NAME##_##TYPE(const TYPE *src, int size) {     if (src == nullptr || size <= 0) return (TYPE)0;     TYPE acc = src[0];     for (int i = 1; i < size; i++) {         if (is_nan_check(acc)) break;         if (is_nan_check(src[i])) { acc = src[i]; break; }         if (src[i] OP acc) acc = src[i];     }     return acc; }
 
 DEFINE_R_MINMAX(min, double, <)
 DEFINE_R_MINMAX(min, float, <)
@@ -11485,14 +11459,7 @@ void s_##NAME##_##TYPE(const TYPE *src, const int *stridesSrc, \
                 } \
             } \
         } \
-        TYPE val_acc = src[offsetSrc]; \
-        int stride_axis = stridesSrc[axis]; \
-        for (int i = 1; i < size_axis; i++) { \
-            TYPE val = src[offsetSrc + i * stride_axis]; \
-            if (val OP val_acc) val_acc = val; \
-        } \
-        dest[offsetRes] = val_acc; \
-        for (int d = rank - 1; d >= 0; d--) { \
+        TYPE val_acc = src[offsetSrc];         int stride_axis = stridesSrc[axis];         for (int i = 1; i < size_axis; i++) {             if (is_nan_check(val_acc)) break;             TYPE val = src[offsetSrc + i * stride_axis];             if (is_nan_check(val)) { val_acc = val; break; }             if (val OP val_acc) val_acc = val;         }         dest[offsetRes] = val_acc;         for (int d = rank - 1; d >= 0; d--) { \
             if (d == axis) continue; \
             coord[d]++; \
             if (coord[d] < shape[d]) break; \

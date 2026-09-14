@@ -184,10 +184,21 @@ NDArray<T> sort<T extends Object>(
               (result as NDArray<bool>).setCellFlat(rowStart + i, vals[i]);
             }
           }
+        case DType.uint64:
+          for (var r = 0; r < numRows; r++) {
+            final rowStart = r * n;
+            final vals = List<int>.generate(
+              n,
+              (i) => src.getCellFlat(rowStart + i) as int,
+            );
+            vals.sort(uint64Compare);
+            for (var i = 0; i < n; i++) {
+              (result as NDArray<int>).setCellFlat(rowStart + i, vals[i]);
+            }
+          }
         case DType.float16:
         case DType.bfloat16:
         case DType.int8:
-        case DType.uint64:
         case DType.uint32:
         case DType.uint16:
           final doubleSrc = NDArray.fromList(
@@ -405,10 +416,22 @@ NDArray<int> argsort<T extends Object>(
             result.setCellFlat(rowStart + i, indices[i]);
           }
         }
+      case DType.uint64:
+        for (var r = 0; r < numRows; r++) {
+          final rowStart = r * n;
+          final indices = List<int>.generate(n, (i) => i);
+          indices.sort((i, j) {
+            final valA = src.getCellFlat(rowStart + i) as int;
+            final valB = src.getCellFlat(rowStart + j) as int;
+            return uint64Compare(valA, valB);
+          });
+          for (var i = 0; i < n; i++) {
+            result.setCellFlat(rowStart + i, indices[i]);
+          }
+        }
       case DType.float16:
       case DType.bfloat16:
       case DType.int8:
-      case DType.uint64:
       case DType.uint32:
       case DType.uint16:
         final doubleSrc = NDArray.fromList(
@@ -963,14 +986,43 @@ NDArray<int> searchsorted<T extends Object>(
     throw ArgumentError('a must be a 1-D array.');
   }
 
-  if (sorter != null &&
-      (sorter.shape.length != 1 || sorter.shape[0] != a.shape[0])) {
-    throw ArgumentError('sorter must be a 1-D array of the same size as a.');
+  NDArray<int>? ownedSorter;
+  NDArray<int>? srcSorter;
+  if (sorter != null) {
+    if (sorter.shape.length != 1 || sorter.shape[0] != a.shape[0]) {
+      throw ArgumentError('sorter must be a 1-D array of the same size as a.');
+    }
+    if (sorter.dtype != DType.int32) {
+      if (!sorter.dtype.isInteger) {
+        throw ArgumentError(
+          'sorter must have an integer dtype, got ${sorter.dtype}.',
+        );
+      }
+      final casted = castNDArray(sorter, DType.int32);
+      ownedSorter = casted;
+      srcSorter = casted;
+    } else if (!sorter.isContiguous) {
+      final copy = sorter.copy();
+      ownedSorter = copy;
+      srcSorter = copy;
+    } else {
+      srcSorter = sorter;
+    }
+    final aSize = a.shape[0];
+    final sorterPtr = srcSorter.pointer.cast<ffi.Int>();
+    for (var i = 0; i < aSize; i++) {
+      final idx = sorterPtr[i];
+      if (idx < 0 || idx >= aSize) {
+        ownedSorter?.dispose();
+        throw IndexError.withLength(idx, aSize, name: 'sorter[$i]');
+      }
+    }
   }
 
   if (out != null) {
     if (!listEquals(out.shape, v.shape) ||
         (out.dtype != DType.int32 && out.dtype != DType.int64)) {
+      ownedSorter?.dispose();
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
   }
@@ -978,6 +1030,7 @@ NDArray<int> searchsorted<T extends Object>(
   final result = out ?? NDArray<int>.create(v.shape, DType.int32);
 
   if (v.size == 0) {
+    ownedSorter?.dispose();
     return result;
   }
 
@@ -989,11 +1042,6 @@ NDArray<int> searchsorted<T extends Object>(
   NDArray srcV = v;
   if (!v.isContiguous) {
     srcV = v.copy();
-  }
-
-  NDArray<int>? srcSorter = sorter;
-  if (sorter != null && !sorter.isContiguous) {
-    srcSorter = sorter.copy();
   }
 
   final size = srcA.shape[0];
@@ -1170,10 +1218,42 @@ NDArray<int> searchsorted<T extends Object>(
           }
           result.setCellFlat(vIdx, low);
         }
+      case DType.uint64:
+        if (srcV.dtype != DType.uint64) {
+          throw ArgumentError(
+            'v and a must have matching dtypes (expected uint64, got ${v.dtype})',
+          );
+        }
+        for (var vIdx = 0; vIdx < numValues; vIdx++) {
+          final val = srcV.getCellFlat(vIdx) as int;
+          var low = 0;
+          var high = size;
+          while (low < high) {
+            final mid = low + (high - low) ~/ 2;
+            final midIdx = (srcSorter != null)
+                ? srcSorter.getCellFlat(mid)
+                : mid;
+            final midVal = srcA.getCellFlat(midIdx) as int;
+            final comp = uint64Compare(midVal, val);
+            if (side == SearchSide.left) {
+              if (comp < 0) {
+                low = mid + 1;
+              } else {
+                high = mid;
+              }
+            } else {
+              if (comp <= 0) {
+                low = mid + 1;
+              } else {
+                high = mid;
+              }
+            }
+          }
+          result.setCellFlat(vIdx, low);
+        }
       case DType.float16:
       case DType.bfloat16:
       case DType.int8:
-      case DType.uint64:
       case DType.uint32:
       case DType.uint16:
         final doubleA = castNDArray(srcA, DType.float64);
@@ -1202,7 +1282,7 @@ NDArray<int> searchsorted<T extends Object>(
     }
     if (srcA != a) srcA.dispose();
     if (srcV != v) srcV.dispose();
-    if (srcSorter != sorter) srcSorter?.dispose();
+    ownedSorter?.dispose();
   }
 
   return result;

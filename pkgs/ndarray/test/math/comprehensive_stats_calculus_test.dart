@@ -401,7 +401,7 @@ void main() {
                 [4],
                 DType.boolean,
               );
-              expect(sum(bools).scalar, isTrue);
+              expect(sum(bools).scalar, equals(3));
 
               // Empty array sum
               final empty = NDArray.zeros([0], DType.float64);
