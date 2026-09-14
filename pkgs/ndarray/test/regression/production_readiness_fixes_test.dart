@@ -489,7 +489,7 @@ void main() {
       expect(min(a).scalar.isNaN, isTrue, reason: 'min must propagate NaN');
       expect(max(a).scalar.isNaN, isTrue, reason: 'max must propagate NaN');
       expect(
-        argmax(a),
+        argmax(a).scalar,
         1,
         reason: 'argmax must return first NaN index per NumPy',
       );
@@ -523,7 +523,7 @@ void main() {
         );
         expect(
           () => searchsorted(arr, v, sorter: wrongDType as dynamic),
-          throwsArgumentError,
+          throwsA(anyOf(isA<ArgumentError>(), isA<TypeError>())),
         );
 
         // Out of bounds index

@@ -402,7 +402,7 @@ void main() {
           final path = '${tempDir.path}/bad_descr.npy';
           _writeFakeNpy(
             path,
-            "{'descr': '<u2', 'fortran_order': False, 'shape': (2,)}",
+            "{'descr': '<f16', 'fortran_order': False, 'shape': (2,)}",
           );
           expect(() => load(path), throwsUnsupportedError);
         }),
