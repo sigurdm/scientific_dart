@@ -97,11 +97,18 @@ void _s_stat_strided_fallback<T>(
       normAxis,
     );
     final casted = castNDArray(doubleRes, result.dtype);
-    casted.copy(out: result);
-    casted.dispose();
+    try {
+      casted.copy(out: result);
+    } finally {
+      if (!identical(casted, doubleRes)) {
+        casted.dispose();
+      }
+    }
   } finally {
     ScratchArena.reset(marker);
-    doubleA.dispose();
+    if (!identical(doubleA, a)) {
+      doubleA.dispose();
+    }
     doubleRes.dispose();
   }
 }
@@ -1818,7 +1825,9 @@ NDArray<Float64> nanstd<T extends num>(
 
   final v = nanvar(a, axis: axis, keepdims: keepdims);
   if (axis == null) {
-    final stdVal = math.sqrt((v.scalar as num).toDouble());
+    final num varianceVal =
+        v.shape.isEmpty ? (v.scalar as num) : (v.getCellFlat(0) as num);
+    final stdVal = math.sqrt(varianceVal.toDouble());
     final result = out ?? NDArray<Float64>.create(targetShape, DType.float64);
     result.setCell(List.filled(targetShape.length, 0), Float64(stdVal));
     v.dispose();

@@ -185,17 +185,7 @@ NDArray<T> sort<T extends Object>(
         case DType.complex64:
           native_sort_complex64(rowPtr.cast<ffi.Float>(), n, nativeKind);
         case DType.boolean:
-          for (var r = 0; r < numRows; r++) {
-            final rowStart = r * n;
-            final vals = List<bool>.generate(
-              n,
-              (i) => src.getCellFlat(rowStart + i) as bool,
-            );
-            vals.sort((a, b) => a == b ? 0 : (a ? 1 : -1));
-            for (var i = 0; i < n; i++) {
-              (result as NDArray<bool>).setCellFlat(rowStart + i, vals[i]);
-            }
-          }
+          break; // Handled above in O(N)
         case DType.uint64:
           for (var r = 0; r < numRows; r++) {
             final rowStart = r * n;
@@ -469,9 +459,13 @@ NDArray<int> argsort<T extends Object>(
           DType.float64,
         );
         final doubleArgsort = argsort(doubleSrc, axis: -1, kind: kind);
-        doubleArgsort.copy(out: result);
+        final casted = castNDArray(doubleArgsort, result.dtype);
+        casted.copy(out: result);
         doubleSrc.dispose();
         doubleArgsort.dispose();
+        if (!identical(casted, doubleArgsort)) {
+          casted.dispose();
+        }
         return finish();
     }
   } finally {
@@ -951,10 +945,12 @@ NDArray<int> argpartition<T extends Object>(
               result.setCellFlat(rowStart + i, indices[i]);
             }
           }
+        case DType.uint64:
+          argsort(src as NDArray<Object>, axis: -1, out: result);
+          return finish();
         case DType.float16:
         case DType.bfloat16:
         case DType.int8:
-        case DType.uint64:
         case DType.uint32:
         case DType.uint16:
           final doubleSrc = NDArray.fromList(
@@ -1313,6 +1309,7 @@ NDArray<int> searchsorted<T extends Object>(
           }
           result.setCellFlat(vIdx, low);
         }
+        return result;
       case DType.float16:
       case DType.bfloat16:
       case DType.int8:
@@ -2342,6 +2339,101 @@ void _dispatchArgMinMaxFFI(
   }
 }
 
+NDArray<int> _uint64ArgMinMax(
+  NDArray a,
+  int? normAxis,
+  bool isMax, {
+  bool keepdims = false,
+  NDArray<int>? out,
+  required List<int> targetShape,
+}) {
+  final result = out ?? NDArray<int>.create(targetShape, DType.int32);
+  final rank = a.shape.length;
+
+  if (normAxis == null) {
+    if (a.size == 0) {
+      throw ArgumentError('attempt to get argmin/argmax of an empty sequence');
+    }
+    var bestIdx = 0;
+    var bestVal = a.getCellFlat(0) as int;
+    for (var i = 1; i < a.size; i++) {
+      final val = a.getCellFlat(i) as int;
+      final comp = uint64Compare(val, bestVal);
+      if (isMax ? comp > 0 : comp < 0) {
+        bestVal = val;
+        bestIdx = i;
+      }
+    }
+    result.setCellFlat(0, bestIdx);
+    return result;
+  }
+
+  final axisLen = a.shape[normAxis];
+  if (axisLen == 0) {
+    throw ArgumentError('attempt to get argmin/argmax of an empty sequence');
+  }
+
+  final squeezedDestStrides = keepdims
+      ? (List<int>.from(result.strides)..removeAt(normAxis))
+      : result.strides;
+  final outShape = List<int>.from(a.shape)..removeAt(normAxis);
+  final outRank = outShape.length;
+  final outSize = result.size;
+
+  if (outRank == 0) {
+    var bestIdx = 0;
+    var bestVal = a.getCellFlat(0) as int;
+    for (var i = 1; i < axisLen; i++) {
+      final val = a.getCellFlat(i) as int;
+      final comp = uint64Compare(val, bestVal);
+      if (isMax ? comp > 0 : comp < 0) {
+        bestVal = val;
+        bestIdx = i;
+      }
+    }
+    result.setCellFlat(0, bestIdx);
+    return result;
+  }
+
+  final outCoords = List<int>.filled(outRank, 0);
+  final aCoords = List<int>.filled(rank, 0);
+
+  for (var outIdx = 0; outIdx < outSize; outIdx++) {
+    var c = 0;
+    for (var d = 0; d < rank; d++) {
+      if (d == normAxis) continue;
+      aCoords[d] = outCoords[c++];
+    }
+
+    aCoords[normAxis] = 0;
+    var bestIdx = 0;
+    var bestVal = a.getCell(aCoords) as int;
+    for (var i = 1; i < axisLen; i++) {
+      aCoords[normAxis] = i;
+      final val = a.getCell(aCoords) as int;
+      final comp = uint64Compare(val, bestVal);
+      if (isMax ? comp > 0 : comp < 0) {
+        bestVal = val;
+        bestIdx = i;
+      }
+    }
+
+    var destOffset = result.offsetElements;
+    for (var d = 0; d < outRank; d++) {
+      destOffset += outCoords[d] * squeezedDestStrides[d];
+    }
+    result.setCellRaw(destOffset, bestIdx);
+
+    for (var d = outRank - 1; d >= 0; d--) {
+      outCoords[d]++;
+      if (outCoords[d] < outShape[d]) break;
+      outCoords[d] = 0;
+    }
+  }
+
+  return result;
+}
+
 NDArray<int> _argminmaxFFI<T>(
   NDArray<T> a,
   int? axis,
@@ -2366,7 +2458,6 @@ NDArray<int> _argminmaxFFI<T>(
   if (a.dtype == DType.float16 ||
       a.dtype == DType.bfloat16 ||
       a.dtype == DType.int8 ||
-      a.dtype == DType.uint64 ||
       a.dtype == DType.uint32 ||
       a.dtype == DType.uint16) {
     final doubleA = castNDArray(a, DType.float64);
@@ -2400,6 +2491,17 @@ NDArray<int> _argminmaxFFI<T>(
     if (!listEquals(out.shape, targetShape) || out.dtype != DType.int32) {
       throw ArgumentError('Incompatible out buffer shape or dtype.');
     }
+  }
+
+  if (a.dtype == DType.uint64) {
+    return _uint64ArgMinMax(
+      a,
+      normAxis,
+      isMax,
+      keepdims: keepdims,
+      out: out,
+      targetShape: targetShape,
+    );
   }
 
   if (normAxis == null) {

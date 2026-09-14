@@ -777,6 +777,9 @@ NDARRAY_EXPORT int npz_reader_extract_data(
         if (e->comp_size != e->uncomp_size) {
             return -4;
         }
+        if (header_len > e->uncomp_size || data_len > e->uncomp_size - header_len) {
+            return -4;
+        }
         size_t src_offset = (size_t)e->data_offset + header_len;
         if (src_offset + data_len > reader->file_size) {
             return -4;

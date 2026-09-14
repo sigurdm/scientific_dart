@@ -67,13 +67,18 @@ int _computeCheckedTotalSize(List<int> shape) {
     if (dim < 0) {
       throw ArgumentError('Shape dimensions cannot be negative: $shape');
     }
+    if (dim > 2147483647) {
+      throw UnsupportedError(
+        'NDArray operations currently support arrays up to 2^31 - 1 elements. Got ${shape.length == 1 ? dim : shape}.',
+      );
+    }
     if (dim == 0) {
       totalSize = 0;
       continue;
     }
-    if (totalSize != 0 && (dim > 2147483647 || totalSize > 2147483647 ~/ dim)) {
+    if (totalSize != 0 && totalSize > 2147483647 ~/ dim) {
       throw UnsupportedError(
-        'NDArray operations currently support arrays up to 2^31 - 1 elements. Got ${shape.length == 1 ? dim : shape}.',
+        'NDArray operations currently support arrays up to 2^31 - 1 elements. Got $shape.',
       );
     }
     totalSize *= dim;
@@ -2370,22 +2375,27 @@ final class NDArray<T> implements ffi.Finalizable, ScopedResource {
           default:
             break;
         }
-      } else if (targetDType.isComplex && value is Complex) {
-        switch (targetDType) {
-          case DType.complex128:
-            return NDArray<Complex128>.fromList(
-              <Complex>[value],
-              shape1,
-              DType.complex128,
-            );
-          case DType.complex64:
-            return NDArray<Complex64>.fromList(
-              <Complex>[value],
-              shape1,
-              DType.complex64,
-            );
-          default:
-            break;
+      } else if (targetDType.isComplex) {
+        final cVal = value is Complex
+            ? value
+            : (value is num ? Complex(value.toDouble(), 0) : null);
+        if (cVal != null) {
+          switch (targetDType) {
+            case DType.complex128:
+              return NDArray<Complex128>.fromList(
+                <Complex>[cVal],
+                shape1,
+                DType.complex128,
+              );
+            case DType.complex64:
+              return NDArray<Complex64>.fromList(
+                <Complex>[cVal],
+                shape1,
+                DType.complex64,
+              );
+            default:
+              break;
+          }
         }
       } else if (targetDType == DType.boolean && value is bool) {
         return NDArray<bool>.fromList(<bool>[value], shape1, DType.boolean);

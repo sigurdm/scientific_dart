@@ -77,9 +77,13 @@ void main(List<String> args) async {
           print('Extracting precompiled OpenBLAS zip...');
           final archive = ZipDecoder().decodeBytes(zipBytes);
           final extractDirPath = Directory.fromUri(extractDir).path;
+          final safeExtractPrefix =
+              extractDirPath.endsWith(Platform.pathSeparator)
+                  ? extractDirPath
+                  : '$extractDirPath${Platform.pathSeparator}';
           for (final file in archive) {
             final outPath = extractDir.resolve(file.name).toFilePath();
-            if (!outPath.startsWith(extractDirPath)) {
+            if (!outPath.startsWith(safeExtractPrefix)) {
               throw FormatException(
                 'Path traversal attempt in OpenBLAS zip: ${file.name}',
               );
@@ -302,9 +306,13 @@ void main(List<String> args) async {
           final unzippedBytes = GZipDecoder().decodeBytes(tarGzBytes);
           final archive = TarDecoder().decodeBytes(unzippedBytes);
 
+          final safeOutputPrefix =
+              outputDir.path.endsWith(Platform.pathSeparator)
+                  ? outputDir.path
+                  : '${outputDir.path}${Platform.pathSeparator}';
           for (final file in archive) {
             final outPath = outputDir.uri.resolve(file.name).toFilePath();
-            if (!outPath.startsWith(outputDir.path)) {
+            if (!outPath.startsWith(safeOutputPrefix)) {
               throw FormatException(
                 'Path traversal attempt in OpenBLAS archive: ${file.name}',
               );

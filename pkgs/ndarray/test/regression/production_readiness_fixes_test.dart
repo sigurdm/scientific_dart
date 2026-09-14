@@ -541,5 +541,99 @@ void main() {
         negSorter.dispose();
       },
     );
+
+    group('Review Gate Regressions and Hardening Tests', () {
+      test(
+        'matmul vector promotion inside ResourceScope.returning produces owned valid array',
+        () {
+          final res = ResourceScope.returning(() {
+            final v = NDArray.fromList([1.0, 2.0], [2], DType.float64);
+            final m = NDArray.fromList([3.0, 4.0, 5.0, 6.0], [2, 2], DType.float64);
+            return matmul(v, m);
+          });
+
+          // Verify result is valid after scope exit
+          expect(res.shape, [2]);
+          expect(res.toList(), equals([13.0, 16.0]));
+          // Verify it is an owned array that can be explicitly disposed
+          expect(res.isDisposed, isFalse);
+          res.dispose();
+          expect(res.isDisposed, isTrue);
+        },
+      );
+
+      test('nanstd with axis: null and keepdims: true returns 1D/scalar array', () {
+        final a = NDArray.fromList([1.0, 2.0, double.nan, 3.0], [4], DType.float64);
+        final s = nanstd(a, keepdims: true);
+        expect(s.shape, [1]);
+        expect(s.getCellFlat(0), closeTo(0.816496, 1e-4));
+        a.dispose();
+        s.dispose();
+      });
+
+      test('argsort with int64 out buffer on fallback dtype', () {
+        final a = NDArray.fromList([10, -5, 20], [3], DType.int8);
+        final out64 = NDArray<int>.zeros([3], DType.int64);
+        final res = argsort(a, out: out64);
+        expect(identical(res, out64), isTrue);
+        expect(res.dtype, DType.int64);
+        expect(res.toList(), equals([1, 0, 2]));
+        a.dispose();
+        out64.dispose();
+      });
+
+      test('searchsorted with uint64 and int64 out buffer', () {
+        // -1 as uint64 is 2^64 - 1
+        final a = NDArray.fromList([10, 20, -1], [3], DType.uint64);
+        final v = NDArray.fromList([15, -1], [2], DType.uint64);
+        final out64 = NDArray<int>.zeros([2], DType.int64);
+        final res = searchsorted(a, v, out: out64);
+        expect(res.dtype, DType.int64);
+        expect(res.toList(), equals([1, 2]));
+        a.dispose();
+        v.dispose();
+        out64.dispose();
+      });
+
+      test('argmax and argmin with uint64 values >= 2^63', () {
+        // 100 vs -1 (where -1 is 2^64 - 1 in unsigned 64-bit)
+        final a = NDArray.fromList([100, -1], [2], DType.uint64);
+        expect(argmax(a).scalar, 1);
+        expect(argmin(a).scalar, 0);
+
+        // 2D along axis
+        final a2D = NDArray.fromList([100, -1, -1, 100], [2, 2], DType.uint64);
+        expect(argmax(a2D, axis: 1).toList(), equals([1, 0]));
+        expect(argmin(a2D, axis: 1).toList(), equals([0, 1]));
+
+        a.dispose();
+        a2D.dispose();
+      });
+
+      test('argpartition with uint64 values >= 2^63', () {
+        final a = NDArray.fromList([100, -1, 50], [3], DType.uint64);
+        final part = argpartition(a, 1);
+        // Smallest is 50 (index 2), then 100 (index 0), largest is -1 (index 1)
+        expect(part.getCellFlat(1), 0);
+        a.dispose();
+        part.dispose();
+      });
+
+      test('complex64 + real scalar maintains Complex64', () {
+        final c = NDArray.fromList([Complex(1.0, 2.0)], [1], DType.complex64);
+        final res = c + 5.0;
+        expect(res.dtype, DType.complex64);
+        expect(res.getCellFlat(0), equals(Complex(6.0, 2.0)));
+        c.dispose();
+        res.dispose();
+      });
+
+      test('shape with dim > 2^31 throws UnsupportedError regardless of zero dimension', () {
+        expect(
+          () => NDArray<Float64>.create([0, 2147483648], DType.float64),
+          throwsUnsupportedError,
+        );
+      });
+    });
   });
 }

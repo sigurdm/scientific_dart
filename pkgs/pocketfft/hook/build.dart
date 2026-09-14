@@ -52,12 +52,24 @@ void main(List<String> args) async {
         final unzippedBytes = GZipDecoder().decodeBytes(tarGzBytes);
         final archive = TarDecoder().decodeBytes(unzippedBytes);
 
+        final safeSrcPrefix = srcDir.path.endsWith(Platform.pathSeparator)
+            ? srcDir.path
+            : '${srcDir.path}${Platform.pathSeparator}';
+
         for (final file in archive) {
           if (file.isFile) {
-            final baseName = file.name.split('/').last;
+            final cleanName = file.name.replaceAll('\\', '/');
+            final baseName = cleanName.split('/').last;
+            if (baseName.contains('..') ||
+                baseName.contains('/') ||
+                baseName.contains('\\')) {
+              throw FormatException(
+                'Invalid filename in KissFFT archive: ${file.name}',
+              );
+            }
             if (baseName.endsWith('.c') || baseName.endsWith('.h')) {
               final outFile = File.fromUri(srcDir.uri.resolve(baseName));
-              if (!outFile.path.startsWith(srcDir.path)) {
+              if (!outFile.path.startsWith(safeSrcPrefix)) {
                 throw FormatException(
                   'Path traversal attempt in KissFFT archive: ${file.name}',
                 );
