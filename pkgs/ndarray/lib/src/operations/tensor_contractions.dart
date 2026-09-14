@@ -571,7 +571,6 @@ final class EinsumSubscripts {
 /// ```
 ///
 /// Reference: [NumPy einsum](https://numpy.org/doc/stable/reference/generated/numpy.einsum.html)
-
 NDArray<R> einsum<T extends Object, R extends Object>(
   EinsumSubscripts subscripts,
   List<NDArray<T>> operands, {

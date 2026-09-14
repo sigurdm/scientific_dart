@@ -5417,8 +5417,6 @@ NDArray<R> cross<Ta, Tb, R>(
   return result;
 }
 
-/// Supported norm orders and calculation modes for vector and matrix norm computations.
-
 /// Matrix triangle selection for symmetric/Hermitian operations.
 enum MatrixTriangle {
   /// Lower triangular part.
@@ -5437,6 +5435,7 @@ enum SchurForm {
   complex,
 }
 
+/// Supported norm orders and calculation modes for vector and matrix norm computations.
 enum NormKind { frobenius, nuclear, l1, l2, infinity, negInfinity }
 
 /// Computes a vector or matrix norm.

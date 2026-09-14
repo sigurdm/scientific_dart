@@ -226,7 +226,7 @@ void main() {
     print('Transposed shape: ${transposed.shape}');
 
     // 4. Element-wise Math & ufuncs
-    final scaled = add(multiply(mat, Float64(2.0)), Float64(10.0));
+    final scaled = (mat * 2.0) + 10.0;
     final sinMat = sin(scaled);
 
     // 5. Reductions & Comparison Masking
