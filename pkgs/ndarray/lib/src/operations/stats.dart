@@ -57,7 +57,7 @@ void _s_stat_strided_fallback<T>(
   NDArray<T> result,
   int rank,
   int normAxis,
-  List<int> squeezedDestStrides,
+  List<int> _,
   void Function(
     ffi.Pointer<ffi.Double> src,
     ffi.Pointer<ffi.Int> srcStrides,
@@ -81,8 +81,11 @@ void _s_stat_strided_fallback<T>(
       cShape[i] = doubleA.shape[i];
       cStridesA[i] = doubleA.strides[i];
     }
-    for (var i = 0; i < squeezedDestStrides.length; i++) {
-      cStridesRes[i] = squeezedDestStrides[i];
+    final resSqueezedStrides = (doubleRes.shape.length == rank)
+        ? (List<int>.from(doubleRes.strides)..removeAt(normAxis))
+        : doubleRes.strides;
+    for (var i = 0; i < resSqueezedStrides.length; i++) {
+      cStridesRes[i] = resSqueezedStrides[i];
     }
     sDoubleFunc(
       doubleA.pointer.cast(),
@@ -923,15 +926,25 @@ NDArray<R> mean<R, T>(
     final result =
         out ??
         (targetDType.isComplex
-            ? NDArray<Complex>.create(targetShape, DType.complex128)
+            ? NDArray<Complex>.full(
+                    targetShape,
+                    Complex(double.nan, double.nan),
+                    dtype: DType.complex128,
+                  )
                   as NDArray<R>
-            : NDArray<Float64>.create(targetShape, DType.float64)
+            : NDArray<Float64>.full(
+                    targetShape,
+                    Float64(double.nan),
+                    dtype: DType.float64,
+                  )
                   as NDArray<R>);
     if (size == 0) {
-      if (targetDType.isComplex) {
-        result.setCellFlat(0, Complex(double.nan, double.nan) as R);
-      } else {
-        result.setCellFlat(0, double.nan as R);
+      if (out != null) {
+        if (targetDType.isComplex) {
+          result.setCellFlat(0, Complex(double.nan, double.nan) as R);
+        } else {
+          result.setCellFlat(0, Float64(double.nan) as R);
+        }
       }
       return result;
     }
@@ -1017,8 +1030,30 @@ NDArray<R> mean<R, T>(
   final result =
       out ??
       (targetDType.isComplex
-          ? NDArray<Complex>.create(targetShape, DType.complex128) as NDArray<R>
-          : NDArray<Float64>.create(targetShape, DType.float64) as NDArray<R>);
+          ? NDArray<Complex>.full(
+                  targetShape,
+                  Complex(double.nan, double.nan),
+                  dtype: DType.complex128,
+                )
+                as NDArray<R>
+          : NDArray<Float64>.full(
+                  targetShape,
+                  Float64(double.nan),
+                  dtype: DType.float64,
+                )
+                as NDArray<R>);
+
+  if (a.shape[normAxis] == 0) {
+    if (out != null) {
+      result.fill(
+        (targetDType.isComplex
+                ? Complex(double.nan, double.nan)
+                : Float64(double.nan))
+            as R,
+      );
+    }
+    return result;
+  }
 
   final squeezedDestStrides = keepdims
       ? (List<int>.from(result.strides)..removeAt(normAxis))
@@ -1196,9 +1231,17 @@ NDArray<Float64> std<T extends num>(
 
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final result = out ?? NDArray<Float64>.create(targetShape, DType.float64);
+    final result =
+        out ??
+        NDArray<Float64>.full(
+          targetShape,
+          Float64(double.nan),
+          dtype: DType.float64,
+        );
     if (size <= ddof || size == 0) {
-      result.setCellFlat(0, Float64(double.nan));
+      if (out != null) {
+        result.setCellFlat(0, Float64(double.nan));
+      }
       return result;
     }
 
@@ -1280,7 +1323,20 @@ NDArray<Float64> std<T extends num>(
     throw RangeError.range(normAxis, 0, rank - 1, 'axis');
   }
 
-  final result = out ?? NDArray<Float64>.create(targetShape, DType.float64);
+  final result =
+      out ??
+      NDArray<Float64>.full(
+        targetShape,
+        Float64(double.nan),
+        dtype: DType.float64,
+      );
+
+  if (a.shape[normAxis] <= ddof || a.shape[normAxis] == 0) {
+    if (out != null) {
+      result.fill(Float64(double.nan));
+    }
+    return result;
+  }
 
   final squeezedDestStrides = keepdims
       ? (List<int>.from(result.strides)..removeAt(normAxis))
@@ -1482,15 +1538,7 @@ NDArray<Float64> nanvar<T extends num>(
       out: out,
     );
     sqDiff.dispose();
-    if (out != null) {
-      return out;
-    }
-    final resultVal = NDArray<Float64>.view(
-      res,
-      shape: res.shape,
-      strides: res.strides,
-    );
-    return resultVal;
+    return res;
   }
 }
 
@@ -1538,17 +1586,8 @@ NDArray<Float64> nanstd<T extends num>(
     return result;
   } else {
     final res = sqrt(v, out: out);
-    if (out != null) {
-      v.dispose();
-      return out;
-    }
-    final resultVal = NDArray<Float64>.view(
-      res,
-      shape: res.shape,
-      strides: res.strides,
-    );
     v.dispose();
-    return resultVal;
+    return res;
   }
 }
 
@@ -2650,9 +2689,17 @@ NDArray<Float64> variance<T extends num>(
 
   if (axis == null) {
     final size = a.shape.isEmpty ? 1 : a.shape.reduce((x, y) => x * y);
-    final result = out ?? NDArray<Float64>.create(targetShape, DType.float64);
+    final result =
+        out ??
+        NDArray<Float64>.full(
+          targetShape,
+          Float64(double.nan),
+          dtype: DType.float64,
+        );
     if (size <= ddof || size == 0) {
-      result.setCellFlat(0, Float64(double.nan));
+      if (out != null) {
+        result.setCellFlat(0, Float64(double.nan));
+      }
       return result;
     }
 
@@ -2734,7 +2781,20 @@ NDArray<Float64> variance<T extends num>(
     throw RangeError.range(normAxis, 0, rank - 1, 'axis');
   }
 
-  final result = out ?? NDArray<Float64>.create(targetShape, DType.float64);
+  final result =
+      out ??
+      NDArray<Float64>.full(
+        targetShape,
+        Float64(double.nan),
+        dtype: DType.float64,
+      );
+
+  if (a.shape[normAxis] <= ddof || a.shape[normAxis] == 0) {
+    if (out != null) {
+      result.fill(Float64(double.nan));
+    }
+    return result;
+  }
 
   final squeezedDestStrides = keepdims
       ? (List<int>.from(result.strides)..removeAt(normAxis))

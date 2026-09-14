@@ -140,6 +140,9 @@ final class ResourceScope {
         'detachToParentScope() is only valid inside an active NDArray scope.',
       );
     }
+    if (scope._isClosed) {
+      throw StateError('Cannot promote a ScopedResource from a closed scope.');
+    }
     scope._untrack(resource);
     scope._parentScope?._track(resource);
   }
@@ -152,10 +155,20 @@ final class _ResourceScopeInstance {
   final _ResourceScopeInstance? _parentScope;
   final List<ScopedResource> _list = [];
   Set<ScopedResource>? _set;
+  bool _isClosed = false;
 
   _ResourceScopeInstance(this._parentScope);
 
   void _track(ScopedResource resource) {
+    if (_isClosed) {
+      if (!resource.isDisposed) {
+        resource.dispose();
+      }
+      throw StateError(
+        'Cannot allocate or track a ScopedResource in a closed scope.',
+      );
+    }
+
     if (_set != null) {
       _set!.add(resource);
       return;
@@ -170,6 +183,8 @@ final class _ResourceScopeInstance {
   }
 
   void _untrack(ScopedResource resource) {
+    if (_isClosed) return;
+
     if (_set != null) {
       _set!.remove(resource);
       return;
@@ -189,6 +204,7 @@ final class _ResourceScopeInstance {
   }
 
   void dispose() {
+    _isClosed = true;
     if (_set != null) {
       final resources = _set!.toList(growable: false);
       _set!.clear();

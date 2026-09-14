@@ -229,8 +229,17 @@ NDArray<R> matmul<Ta, Tb, R>(NDArray<Ta> a, NDArray<Tb> b, {NDArray<R>? out}) {
     }
 
     final resShape = [...broadcastStack, m, n];
+    final bool isAliased =
+        out != null &&
+        (out.pointer == a.pointer ||
+            out.pointer == b.pointer ||
+            out.pointer == aCast.pointer ||
+            out.pointer == bCast.pointer);
     final bool canUseOutDirectly =
-        out != null && out.isContiguous && listEquals(out.shape, resShape);
+        out != null &&
+        !isAliased &&
+        out.isContiguous &&
+        listEquals(out.shape, resShape);
     result = canUseOutDirectly
         ? out
         : NDArray.zeros(resShape, targetDType as DType<R>);
